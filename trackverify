@@ -20,9 +20,18 @@
 import sys
 import os.path
 import audiotools
-import gettext
-
-gettext.install("audiotools", unicode=True)
+from audiotools.text import (USAGE_TRACKVERIFY,
+                             OPT_NO_SUMMARY,
+                             OPT_JOINT,
+                             OPT_VERBOSE,
+                             OPT_TYPE_TRACKVERIFY,
+                             LAB_TRACKVERIFY_RESULTS,
+                             LAB_TRACKVERIFY_RESULT_FORMAT,
+                             LAB_TRACKVERIFY_RESULT_SUCCESS,
+                             LAB_TRACKVERIFY_RESULT_FAILURE,
+                             LAB_TRACKVERIFY_RESULT_TOTAL,
+                             LAB_TRACKVERIFY_RESULT,
+                             LAB_TRACKVERIFY_OK)
 
 MAX_CPUS = audiotools.MAX_JOBS
 
@@ -109,21 +118,21 @@ class Results:
         (filename, track_type, error) = result
         if (error is None):
             self.summary_success.setdefault(track_type, Counter()).increment()
-            return _(u"%(path)s : %(result)s") % {
+            return LAB_TRACKVERIFY_RESULT % {
                 "path": filename,
-                "result": self.msg.ansi(_(u"OK"), [self.msg.FG_GREEN])}
+                "result": self.msg.ansi(LAB_TRACKVERIFY_OK,
+                                        [self.msg.FG_GREEN])}
         else:
             self.summary_failure.setdefault(track_type, Counter()).increment()
-            return _(u"%(path)s : %(result)s") % {
+            return LAB_TRACKVERIFY_RESULT % {
                 "path": filename,
-                "result": self.msg.ansi(error, [self.msg.FG_RED])}
+                "result": self.msg.ansi(error,
+                                        [self.msg.FG_RED])}
 
-
-gettext.install("audiotools", unicode=True)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u"%prog <track 1> [track 2] ..."),
+        usage=USAGE_TRACKVERIFY,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-t', '--type',
@@ -131,26 +140,26 @@ if (__name__ == '__main__'):
                       dest='accept_list',
                       metavar='type',
                       choices=audiotools.TYPE_MAP.keys(),
-                      help=_(u'a type of audio to accept'))
+                      help=OPT_TYPE_TRACKVERIFY)
 
     parser.add_option('-R', '--no-summary',
                       action='store_true',
                       dest='no_summary',
-                      help=_(u'suppress summary output'))
+                      help=OPT_NO_SUMMARY)
 
     parser.add_option('-j', '--joint',
         action='store',
         type='int',
         default=MAX_CPUS,
         dest='max_processes',
-        help=_(u'the maximum number of processes to run at a time'))
+        help=OPT_JOINT)
 
     parser.add_option('-V', '--verbose',
                       action='store',
                       dest='verbosity',
                       choices=audiotools.VERBOSITY_LEVELS,
                       default=audiotools.DEFAULT_VERBOSITY,
-                      help=_(u'the verbosity level to execute at'))
+                      help=OPT_VERBOSE)
 
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackverify", options)
@@ -176,16 +185,16 @@ if (__name__ == '__main__'):
     failure_total = sum(map(int, summary_failure.values()))
 
     if ((len(formats) > 0) and (not options.no_summary)):
-        msg.output(_(u"Results:"))
+        msg.output(LAB_TRACKVERIFY_RESULTS)
         msg.output(u"")
         msg.new_row()
-        msg.output_column(_(u"format"), True)
+        msg.output_column(LAB_TRACKVERIFY_RESULT_FORMAT, True)
         msg.output_column(u" ")
-        msg.output_column(_(u"success"), True)
+        msg.output_column(LAB_TRACKVERIFY_RESULT_SUCCESS, True)
         msg.output_column(u" ")
-        msg.output_column(_(u"failure"), True)
+        msg.output_column(LAB_TRACKVERIFY_RESULT_FAILURE, True)
         msg.output_column(u" ")
-        msg.output_column(_(u"total"), True)
+        msg.output_column(LAB_TRACKVERIFY_RESULT_TOTAL, True)
         msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
 
         for format in formats:

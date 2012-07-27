@@ -19,14 +19,83 @@
 
 
 import sys
+import os.path
 import audiotools
 import audiotools.ui
-import os.path
-import gettext
+from audiotools.text import (USAGE_TRACKTAG,
+                             OPT_CAT_TEXT,
+                             OPT_CAT_REMOVAL,
+                             OPT_CAT_IMAGE,
+                             OPT_INTERACTIVE_METADATA,
+                             OPT_TRACKTAG_COMMENT_FILE,
+                             OPT_TRACKTAG_REPLACE,
+                             OPT_TRACKTAG_REMOVE_IMAGES,
+                             OPT_TRACKTAG_FRONT_COVER,
+                             OPT_TRACKTAG_BACK_COVER,
+                             OPT_TRACKTAG_LEAFLET,
+                             OPT_TRACKTAG_MEDIA,
+                             OPT_TRACKTAG_OTHER_IMAGE,
+                             OPT_TRACKTAG_THUMBNAIL,
+                             OPT_TRACKTAG_CUESHEET,
+                             OPT_JOINT,
+                             OPT_VERBOSE,
+                             OPT_REPLAY_GAIN_TRACKTAG,
+                             ERR_DUPLICATE_FILE,
+                             ERR_NO_THUMBNAILS,
+                             ERR_THUMBNAIL_SUGGESTION1,
+                             ERR_THUMBNAIL_SUGGESTION2,
+                             ERR_THUMBNAIL_SUGGESTION3,
+                             ERR_INVALID_THUMBNAIL_FORMAT,
+                             ERR_AVAILABLE_THUMBNAIL_FORMATS,
+                             ERR_INVALID_IMAGE,
+                             ERR_ENCODING_ERROR,
+                             ERR_TRACKTAG_COMMENT_NOT_UTF8,
+                             ERR_TRACKTAG_COMMENT_IOERROR,
+                             LAB_APPLY,
+                             LAB_QUIT,
+                             LAB_TRACKTAG_UPDATING,
+                             LAB_TRACKTAG_UPDATED,
+                             LAB_TRACKTAG_UPDATED_1,
+                             LAB_KEY_NEXT,
+                             LAB_KEY_PREVIOUS,
 
-from audiotools.text import (ERR_DUPLICATE_FILE,)
+                             LAB_TRACKTAG_UPDATE_TRACK_NAME,
+                             LAB_TRACKTAG_UPDATE_ARTIST_NAME,
+                             LAB_TRACKTAG_UPDATE_PERFORMER_NAME,
+                             LAB_TRACKTAG_UPDATE_COMPOSER_NAME,
+                             LAB_TRACKTAG_UPDATE_CONDUCTOR_NAME,
+                             LAB_TRACKTAG_UPDATE_ALBUM_NAME,
+                             LAB_TRACKTAG_UPDATE_CATALOG,
+                             LAB_TRACKTAG_UPDATE_TRACK_NUMBER,
+                             LAB_TRACKTAG_UPDATE_TRACK_TOTAL,
+                             LAB_TRACKTAG_UPDATE_ALBUM_NUMBER,
+                             LAB_TRACKTAG_UPDATE_ALBUM_TOTAL,
+                             LAB_TRACKTAG_UPDATE_ISRC,
+                             LAB_TRACKTAG_UPDATE_PUBLISHER,
+                             LAB_TRACKTAG_UPDATE_MEDIA,
+                             LAB_TRACKTAG_UPDATE_YEAR,
+                             LAB_TRACKTAG_UPDATE_DATE,
+                             LAB_TRACKTAG_UPDATE_COPYRIGHT,
+                             LAB_TRACKTAG_UPDATE_COMMENT,
 
-gettext.install("audiotools", unicode=True)
+                             LAB_TRACKTAG_REMOVE_TRACK_NAME,
+                             LAB_TRACKTAG_REMOVE_ARTIST_NAME,
+                             LAB_TRACKTAG_REMOVE_PERFORMER_NAME,
+                             LAB_TRACKTAG_REMOVE_COMPOSER_NAME,
+                             LAB_TRACKTAG_REMOVE_CONDUCTOR_NAME,
+                             LAB_TRACKTAG_REMOVE_ALBUM_NAME,
+                             LAB_TRACKTAG_REMOVE_CATALOG,
+                             LAB_TRACKTAG_REMOVE_TRACK_NUMBER,
+                             LAB_TRACKTAG_REMOVE_TRACK_TOTAL,
+                             LAB_TRACKTAG_REMOVE_ALBUM_NUMBER,
+                             LAB_TRACKTAG_REMOVE_ALBUM_TOTAL,
+                             LAB_TRACKTAG_REMOVE_ISRC,
+                             LAB_TRACKTAG_REMOVE_PUBLISHER,
+                             LAB_TRACKTAG_REMOVE_MEDIA,
+                             LAB_TRACKTAG_REMOVE_YEAR,
+                             LAB_TRACKTAG_REMOVE_DATE,
+                             LAB_TRACKTAG_REMOVE_COPYRIGHT,
+                             LAB_TRACKTAG_REMOVE_COMMENT)
 
 if (audiotools.ui.AVAILABLE):
     urwid_present = True
@@ -51,8 +120,10 @@ if (audiotools.ui.AVAILABLE):
                                                          self.changed,
                                                          self.swiveled)
 
-            self.save_button = urwid.Button("Apply", on_press=self.save)
-            cancel = urwid.Button("Quit", on_press=self.exit)
+            self.save_button = urwid.Button(LAB_APPLY,
+                                            on_press=self.save)
+            cancel = urwid.Button(LAB_QUIT,
+                                  on_press=self.exit)
 
             urwid.Pile.__init__(
                 self,
@@ -75,7 +146,7 @@ if (audiotools.ui.AVAILABLE):
 
         def save(self, button, arg=None):
             if (self.modified):
-                self.status.set_text(u"updating tracks")
+                self.status.set_text(LAB_TRACKTAG_UPDATING)
                 self.draw_screen()
 
                 total = 0
@@ -97,18 +168,18 @@ if (audiotools.ui.AVAILABLE):
                         total += 1
 
                 if (total != 1):
-                    self.status.set_text(u"%d tracks updated" % (total))
+                    self.status.set_text(LAB_TRACKTAG_UPDATED % (total))
                 else:
-                    self.status.set_text(u"%d track updated" % (total))
+                    self.status.set_text(LAB_TRACKTAG_UPDATED_1)
 
-                self.save_button.set_label(u"Apply")
+                self.save_button.set_label(LAB_TRACKTAG_APPLY)
                 self.modified = False
 
         def exit(self, button, arg=None):
             raise urwid.ExitMainLoop()
 
         def changed(self, widget, new_text):
-            self.save_button.set_label(('modified', u"Apply"))
+            self.save_button.set_label(('modified', LAB_TRACKTAG_APPLY))
             self.status.set_text(u"")
             self.modified = True
 
@@ -117,12 +188,12 @@ if (audiotools.ui.AVAILABLE):
                 keys = []
                 if (radio_button.previous_radio_button() is not None):
                     keys.extend([('key', u"F1"),
-                                 u" - previous %s" % (swivel.swivel_type)])
+                                 LAB_KEY_PREVIOUS % (swivel.swivel_type)])
                 if (radio_button.next_radio_button() is not None):
                     if (len(keys) > 0):
                         keys.append(u"   ")
                     keys.extend([('key', u"F2"),
-                                 u" - next %s" % (swivel.swivel_type)])
+                                 LAB_KEY_NEXT % (swivel.swivel_type)])
 
                 if (len(keys) > 0):
                     self.status.set_text(keys)
@@ -143,7 +214,8 @@ def get_raw_image(filename, type):
 
         return audiotools.Image.new(data, u'', type)
     except IOError:
-        raise audiotools.InvalidImage(_(u"Unable to open file"))
+        raise audiotools.InvalidImage(ERR_OPEN_IOERROR %
+                                      (audiotools.Filename(filename),))
 
 
 def get_thumbnailed_image(filename, type):
@@ -169,96 +241,96 @@ def read_comment(filename, messenger):
 
         if (((data.count(u"\uFFFD") * 100) / len(data)) >= 10):
             messenger.error(
-                _(u"Comment file \"%s\" does not appear to be UTF-8 text") %
+                ERR_TRACKTAG_COMMENT_NOT_UTF8 %
                 (audiotools.Filename(filename),))
             sys.exit(1)
         else:
             return data
     except IOError:
-        messenger.error(_(u"Unable to open comment file \"%s\"") %
+        messenger.error(ERR_TRACKTAG_COMMENT_IOERROR %
                         (audiotools.Filename(filename),))
         sys.exit(1)
 
 
 UPDATE_OPTIONS = {"track_name":("--name",
-                                _(u"the name of the track")),
+                                LAB_TRACKTAG_UPDATE_TRACK_NAME),
                   "artist_name":("--artist",
-                                 _(u'the name of the artist')),
+                                 LAB_TRACKTAG_UPDATE_ARTIST_NAME),
                   "performer_name":("--performer",
-                                    _(u'the name of the performer')),
+                                    LAB_TRACKTAG_UPDATE_PERFORMER_NAME),
                   "composer_name":("--composer",
-                                   _(u'the name of the composer')),
+                                   LAB_TRACKTAG_UPDATE_COMPOSER_NAME),
                   "conductor_name":("--conductor",
-                                    _(u'the name of the conductor')),
+                                    LAB_TRACKTAG_UPDATE_CONDUCTOR_NAME),
                   "album_name":("--album",
-                                _(u'the name of the album')),
+                                LAB_TRACKTAG_UPDATE_ALBUM_NAME),
                   "catalog":("--catalog",
-                             _(u'the catalog number of the album')),
+                             LAB_TRACKTAG_UPDATE_CATALOG),
                   "track_number":("--number",
-                                  _(u"the number of the track in the album")),
+                                  LAB_TRACKTAG_UPDATE_TRACK_NUMBER),
                   "track_total":("--track-total",
-                                 _(u"the total number of tracks in the album")),
+                                 LAB_TRACKTAG_UPDATE_TRACK_TOTAL),
                   "album_number":("--album-number",
-                                  _(u'the number of the album in a set of albums')),
+                                  LAB_TRACKTAG_UPDATE_ALBUM_NUMBER),
                   "album_total":("--album-total",
-                                 _(u"the total number of albums in a set of albums")),
+                                 LAB_TRACKTAG_UPDATE_ALBUM_TOTAL),
                   "ISRC":("--ISRC",
-                          _(u'the ISRC of the track')),
+                          LAB_TRACKTAG_UPDATE_ISRC),
                   "publisher":("--publisher",
-                               _(u'the publisher of the album')),
+                               LAB_TRACKTAG_UPDATE_PUBLISHER),
                   "media":("--media-type",
-                           _(u'the media type of the album, such as "CD"')),
+                           LAB_TRACKTAG_UPDATE_MEDIA),
                   "year":("--year",
-                          _(u'the year of release')),
+                          LAB_TRACKTAG_UPDATE_YEAR),
                   "date":("--date",
-                          _(u'the date of recording')),
+                          LAB_TRACKTAG_UPDATE_DATE),
                   "copyright":("--copyright",
-                               _(u'copyright information')),
+                               LAB_TRACKTAG_UPDATE_COPYRIGHT),
                   "comment":("--comment",
-                             _(u'a text comment'))}
+                             LAB_TRACKTAG_UPDATE_COMMENT)}
 
 REMOVE_OPTIONS = {"track_name":("--remove-name",
-                                _(u"remove track name")),
+                                LAB_TRACKTAG_REMOVE_TRACK_NAME),
                   "artist_name":("--remove-artist",
-                                 _(u'remove track artist')),
+                                 LAB_TRACKTAG_REMOVE_ARTIST_NAME),
                   "performer_name":("--remove-performer",
-                                    _(u'remove track performer')),
+                                    LAB_TRACKTAG_REMOVE_PERFORMER_NAME),
                   "composer_name":("--remove-composer",
-                                   _(u'remove track composer')),
+                                   LAB_TRACKTAG_REMOVE_COMPOSER_NAME),
                   "conductor_name":("--remove-conductor",
-                                 _(u'remove track conductor')),
+                                 LAB_TRACKTAG_REMOVE_CONDUCTOR_NAME),
                   "album_name":("--remove-album",
-                                _(u'remove album name')),
+                                LAB_TRACKTAG_REMOVE_ALBUM_NAME),
                   "catalog":("--remove-catalog",
-                             _(u'remove catalog number')),
+                             LAB_TRACKTAG_REMOVE_CATALOG),
                   "track_number":("--remove-number",
-                                  _(u'remove track number')),
+                                  LAB_TRACKTAG_REMOVE_TRACK_NUMBER),
                   "track_total":("--remove-track-total",
-                                 _(u'remove total number of tracks')),
+                                 LAB_TRACKTAG_REMOVE_TRACK_TOTAL),
                   "album_number":("--remove-album-number",
-                                  _(u'remove album number')),
+                                  LAB_TRACKTAG_REMOVE_ALBUM_NUMBER),
                   "album_total":("--remove-album-total",
-                                 _(u'remove total number of albums')),
+                                 LAB_TRACKTAG_REMOVE_ALBUM_TOTAL),
                   "ISRC":("--remove-ISRC",
-                          _(u'remove ISRC')),
+                          LAB_TRACKTAG_REMOVE_ISRC),
                   "publisher":("--remove-publisher",
-                               _(u'remove publisher')),
+                               LAB_TRACKTAG_REMOVE_PUBLISHER),
                   "media":("--remove-media-type",
-                           _(u'remove album\'s media type')),
+                           LAB_TRACKTAG_REMOVE_MEDIA),
                   "year":("--remove-year",
-                          _(u'remove release year')),
+                          LAB_TRACKTAG_REMOVE_YEAR),
                   "date":("--remove-date",
-                          _(u'remove recording date')),
+                          LAB_TRACKTAG_REMOVE_DATE),
                   "copyright":("--remove-copyright",
-                               _(u'remove copyright information')),
+                               LAB_TRACKTAG_REMOVE_COPYRIGHT),
                   "comment":("--remove-comment",
-                             _(u'remove text comment'))}
+                             LAB_TRACKTAG_REMOVE_COMMENT)}
 
 if (__name__ == '__main__'):
     #add an enormous number of options to the parser
     #neatly categorized for convenience
     parser = audiotools.OptionParser(
-        usage=_(u"%prog [options] <track 1> [track 2] ..."),
+        usage=USAGE_TRACKTAG,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option(
@@ -266,9 +338,9 @@ if (__name__ == '__main__'):
         action='store_true',
         default=False,
         dest='interactive',
-        help=_(u'run in interactive mode'))
+        help=OPT_INTERACTIVE_METADATA)
 
-    text_group = audiotools.OptionGroup(parser, _(u"Text Options"))
+    text_group = audiotools.OptionGroup(parser, OPT_CAT_TEXT)
 
     for field in audiotools.MetaData.FIELD_ORDER:
         if (field in UPDATE_OPTIONS):
@@ -290,7 +362,7 @@ if (__name__ == '__main__'):
         type='string',
         dest='comment_file',
         metavar='FILENAME',
-        help=_(u'a file containing comment text'))
+        help=OPT_TRACKTAG_COMMENT_FILE)
 
     parser.add_option_group(text_group)
 
@@ -299,7 +371,7 @@ if (__name__ == '__main__'):
         action='store_true',
         default=False,
         dest='replace',
-        help=_(u'completely replace all metadata'))
+        help=OPT_TRACKTAG_REPLACE)
 
     parser.add_option(
         '--cue',
@@ -307,26 +379,23 @@ if (__name__ == '__main__'):
         type='string',
         dest='cue',
         metavar='FILENAME',
-        help=_(u'a cuesheet to import or get audio metadata from'))
+        help=OPT_TRACKTAG_CUESHEET)
 
-    img_group = audiotools.OptionGroup(parser, _(u"Image Options"))
+    img_group = audiotools.OptionGroup(parser, OPT_CAT_IMAGE)
 
     img_group.add_option(
         '--remove-images',
         action='store_true',
         default=False,
         dest='remove_images',
-        help=_(u'remove existing images prior to adding new ones'))
+        help=OPT_TRACKTAG_REMOVE_IMAGES)
 
     for (option, destination, helptext) in [
-        ('--front-cover', 'front_cover',
-         _(u'an image file of the front cover')),
-        ('--back-cover', 'back_cover',
-         _(u'an image file of the back cover')),
-        ('--leaflet', 'leaflet', _(u'an image file of a leaflet page')),
-        ('--media', 'media', _(u'an image file of the media')),
-        ('--other-image', 'other_image',
-         _(u'an image file related to the track'))]:
+        ('--front-cover', 'front_cover', OPT_TRACKTAG_FRONT_COVER),
+        ('--back-cover', 'back_cover', OPT_TRACKTAG_BACK_COVER),
+        ('--leaflet', 'leaflet', OPT_TRACKTAG_LEAFLET),
+        ('--media', 'media', OPT_TRACKTAG_MEDIA),
+        ('--other-image', 'other_image', OPT_TRACKTAG_OTHER_IMAGE)]:
         img_group.add_option(
             option,
             action='append',
@@ -340,12 +409,11 @@ if (__name__ == '__main__'):
         action='store_true',
         default=False,
         dest='thumbnail',
-        help=_(u'convert given images to smaller thumbnails ' +
-               u'before adding'))
+        help=OPT_TRACKTAG_THUMBNAIL)
 
     parser.add_option_group(img_group)
 
-    remove_group = audiotools.OptionGroup(parser, _(u"Removal Options"))
+    remove_group = audiotools.OptionGroup(parser, OPT_CAT_REMOVAL)
 
     for field in audiotools.MetaData.FIELD_ORDER:
         if (field in REMOVE_OPTIONS):
@@ -365,7 +433,7 @@ if (__name__ == '__main__'):
         action='store_true',
         default=False,
         dest='add_replay_gain',
-        help=_(u'add ReplayGain metadata to track(s)'))
+        help=OPT_REPLAY_GAIN_TRACKTAG)
 
     parser.add_option(
         '-j', '--joint',
@@ -373,7 +441,7 @@ if (__name__ == '__main__'):
         type='int',
         default=audiotools.MAX_JOBS,
         dest='max_processes',
-        help=_(u'the maximum number of processes to run at a time'))
+        help=OPT_JOINT)
 
     parser.add_option(
         '-V', '--verbose',
@@ -381,7 +449,7 @@ if (__name__ == '__main__'):
         dest='verbosity',
         choices=audiotools.VERBOSITY_LEVELS,
         default=audiotools.DEFAULT_VERBOSITY,
-        help=_(u'the verbosity level to execute at'))
+        help=OPT_VERBOSE)
 
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("tracktag", options)
@@ -420,19 +488,17 @@ if (__name__ == '__main__'):
 
     if (options.thumbnail):
         if (not audiotools.can_thumbnail()):
-            msg.error(_(u"Unable to generate thumbnails"))
-            msg.info(
-                _(u"Please install the Python Imaging Library"))
-            msg.info(
-                _(u"available at http://www.pythonware.com/products/pil/"))
-            msg.info(_(u"to enable image resizing"))
+            msg.error(ERR_NO_THUMBNAILS)
+            msg.info(ERR_THUMBNAIL_SUGGESTION1)
+            msg.info(ERR_THUMBNAIL_SUGGESTION2)
+            msg.info(ERR_THUMBNAIL_SUGGESTION3)
             sys.exit(1)
 
         if (audiotools.THUMBNAIL_FORMAT.upper() not in
             audiotools.thumbnail_formats()):
-            msg.error(_(u"Unsupported thumbnail format \"%s\"") %
+            msg.error(ERR_INVALID_THUMBNAIL_FORMAT %
                       (audiotools.THUMBNAIL_FORMAT))
-            msg.info(_(u"Available formats are: %s") %
+            msg.info(ERR_AVAILABLE_THUMBNAIL_FORMATS %
                      (", ".join(audiotools.thumbnail_formats())))
             sys.exit(1)
 
@@ -491,9 +557,9 @@ if (__name__ == '__main__'):
                         metadata.add_image(get_image(path, 4))
                         track_modified = True
         except audiotools.InvalidImage, err:
-            msg.error(_(u"%(filename)s: %(message)s") % \
-                          {"filename": audiotools.Filename(file.filename),
-                           "message": unicode(err)})
+            msg.error(ERR_INVALID_IMAGE %
+                      {"filename": audiotools.Filename(file.filename),
+                       "message": unicode(err)})
             sys.exit(1)
 
         #apply text field removal
@@ -542,7 +608,7 @@ if (__name__ == '__main__'):
                 if (import_cuesheet is not None):
                     file.set_cuesheet(import_cuesheet)
             except IOError:
-                msg.error(_(u"Unable to modify \"%s\"") %
+                msg.error(ERR_ENCODING_ERROR %
                           (audiotools.Filename(file.filename),))
                 sys.exit(1)
 
@@ -560,24 +626,21 @@ if (__name__ == '__main__'):
             audio_type = album[0].__class__
 
             if (audio_type.can_add_replay_gain(album)):
-                progress_text = \
+                #FIXME - should pull ReplayGain text
+                #from elsewhere
+                queue.execute(
+                    audio_type.add_replay_gain,
                     (u"%s ReplayGain%s" %
                      ((u"Adding" if audio_type.lossless_replay_gain() else
                        u"Applying"),
                       (u"" if album_number is None else
-                       (u" to album %d" % (album_number)))))
-
-                completion_output = \
+                       (u" to album %d" % (album_number))))),
                     (u"ReplayGain %s%s" %
                      ((u"added" if audio_type.lossless_replay_gain() else
                        u"applied"),
                       (u"" if album_number is None else
-                       (u" to album %d" % (album_number)))))
-
-                queue.execute(audio_type.add_replay_gain,
-                              progress_text,
-                              completion_output,
-                              [a.filename for a in album])
+                       (u" to album %d" % (album_number))))),
+                    [a.filename for a in album])
 
         try:
             queue.run(options.max_processes)

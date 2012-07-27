@@ -102,6 +102,13 @@ try:
             #and all choices must have the same number of tracks
             assert(len(set(map(len, metadata_choices))) == 1)
 
+            from audiotools.text import (LAB_SELECT_BEST_MATCH,
+                                         LAB_TRACK_X_OF_Y,
+                                         LAB_APPLY,
+                                         LAB_CANCEL,
+                                         LAB_KEY_NEXT,
+                                         LAB_KEY_PREVIOUS)
+
             self.metadata_choices = metadata_choices
 
             self.status = urwid.Text(u"")
@@ -122,13 +129,13 @@ try:
             self.select_match = urwid.LineBox(urwid.ListBox(radios))
 
             if (hasattr(self.select_match, "set_title")):
-                self.select_match.set_title(u"Select Best Match")
+                self.select_match.set_title(LAB_SELECT_BEST_MATCH)
 
             #setup a MetaDataEditor for each possible match
             self.edit_matches = [
                 MetaDataEditor(
                     [(i,
-                      u"track %2.1d / %d" % (i + 1, len(metadata_choices[0])),
+                      LAB_TRACK_X_OF_Y % (i + 1, len(metadata_choices[0])),
                       track) for (i, track) in enumerate(choice)],
                     on_swivel_change=self.swiveled)
                 for choice in metadata_choices]
@@ -150,10 +157,10 @@ try:
             widgets.append(
                 ("fixed", 1,
                  urwid.Filler(
-                        urwid.GridFlow([urwid.Button(u"Apply",
+                        urwid.GridFlow([urwid.Button(LAB_APPLY,
                                                      on_press=self.finish,
                                                      user_data=True),
-                                        urwid.Button(u"Cancel",
+                                        urwid.Button(LAB_CANCEL,
                                                      on_press=self.finish,
                                                      user_data=False)],
                                        10, 5, 1, 'center'))))
@@ -178,12 +185,12 @@ try:
                 keys = []
                 if (radio_button.previous_radio_button() is not None):
                     keys.extend([('key', u"F1"),
-                                 u" - previous %s" % (swivel.swivel_type)])
+                                 LAB_KEY_PREVIOUS % (swivel.swivel_type)])
                 if (radio_button.next_radio_button() is not None):
                     if (len(keys) > 0):
                         keys.append(u"   ")
                     keys.extend([('key', u"F2"),
-                                 u" - next %s" % (swivel.swivel_type)])
+                                 LAB_KEY_NEXT % (swivel.swivel_type)])
 
                 if (len(keys) > 0):
                     self.status.set_text(keys)
@@ -627,11 +634,13 @@ def select_metadata(metadata_choices, msg):
     else:
         choice = None
         while (choice not in range(0, len(metadata_choices))):
+            from audiotools.text import (LAB_SELECT_BEST_MATCH)
             for (i, choice) in enumerate(metadata_choices):
                 msg.output(u"%d) %s" % (i + 1, choice[0].album_name))
             try:
-                choice = int(raw_input("please select best match (1-%d) : " %
-                                       (len(metadata_choices)))) - 1
+                choice = int(raw_input(u"%s (1-%d) : " %
+                                       (LAB_SELECT_BEST_MATCH,
+                                        len(metadata_choices)))) - 1
             except ValueError:
                 choice = None
 
@@ -642,7 +651,9 @@ def not_available_message(msg):
     """prints a message about lack of Urwid availability
     to a Messenger object"""
 
-    msg.error(u"urwid is required for interactive mode")
-    msg.output(u"Please download and install urwid " +
-               u"from http://excess.org/urwid/")
-    msg.output(u"or your system's package manager.")
+    from audiotools.text import (ERR_URWID_REQUIRED,
+                                 ERR_GET_URWID1,
+                                 ERR_GET_URWID2)
+    msg.error(ERR_URWID_REQUIRED)
+    msg.output(ERR_GET_URWID1)
+    msg.output(ERR_GET_URWID2)

@@ -17,19 +17,22 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import audiotools
-import audiotools.delta
 import sys
 import os
 import os.path
-import re
 import tempfile
-import subprocess
-import cStringIO
-import anydbm
-import gettext
-
-gettext.install("audiotools", unicode=True)
+import audiotools
+import audiotools.delta
+from audiotools.text import (USAGE_TRACKLINT,
+                             OPT_VERBOSE,
+                             ERR_ENCODING_ERROR,
+                             ERR_OPEN_IOERROR,
+                             ERR_NO_UNDO_DB,
+                             OPT_TRACKLINT_FIX,
+                             OPT_TRACKLINT_DB,
+                             OPT_TRACKLINT_UNDO,
+                             LAB_TRACKLINT_RESTORED,
+                             LAB_TRACKLINT_MESSAGE)
 
 try:
     from hashlib import sha1
@@ -49,9 +52,9 @@ def checksum(path):
 
 def display_messages(messenger, track, messages):
     for message in messages:
-        messenger.info(_(u"* %(filename)s: %(message)s") % \
-                           {"filename": audiotools.Filename(track.filename),
-                            "message": message})
+        messenger.info(LAB_TRACKLINT_MESSAGE %
+                       {"filename": audiotools.Filename(track.filename),
+                        "message": message})
 
 
 def audiofiles(paths, processed_filenames, messenger):
@@ -68,7 +71,7 @@ def audiofiles(paths, processed_filenames, messenger):
             except audiotools.UnsupportedFile:
                 pass
             except IOError, err:
-                messenger.warning(u"Unable to open \"%s\"" % (filename,))
+                messenger.warning(ERR_OPEN_IOERROR % (filename,))
             except audiotools.InvalidFile, err:
                 messenger.error(unicode(err))
         elif (os.path.isdir(p)):
@@ -129,47 +132,46 @@ def update_and_backup(track, undo_db, messenger):
 
 def undo_from_backup(track, undo_db, messenger):
     if (undo_db.undo(track.filename)):
-        messenger.info(_(u"Restored: %s") %
+        messenger.info(LAB_TRACKLINT_RESTORED %
                        (audiotools.Filename(track.filename),))
 
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u'%prog [options] [--fix] [--undo] [--db file] ' +
-                u'<track 1> [track 2] ...'),
+        usage=USAGE_TRACKLINT,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('--fix',
                       action='store_true',
                       default=False,
                       dest='fix',
-                      help=_(u'perform suggest fixes'))
+                      help=OPT_TRACKLINT_FIX)
 
     parser.add_option('--db',
                       action='store',
                       type='string',
                       dest='db',
-                      help=_(u'undo database file'))
+                      help=OPT_TRACKLINT_DB)
 
     parser.add_option('--undo',
                       action='store_true',
                       default=False,
                       dest='undo',
-                      help=_(u'undo performed fixes'))
+                      help=OPT_TRACKLINT_UNDO)
 
     parser.add_option('-V', '--verbose',
                       action='store',
                       dest='verbosity',
                       choices=audiotools.VERBOSITY_LEVELS,
                       default=audiotools.DEFAULT_VERBOSITY,
-                      help=_(u'the verbosity level to execute at'))
+                      help=OPT_VERBOSE)
 
     (options, args) = parser.parse_args()
     processed_filenames = set([])
     msg = audiotools.Messenger("tracklint", options)
 
     if (options.undo and (options.db is None)):
-        msg.error(_(u"Cannot perform undo without undo db"))
+        msg.error(ERR_NO_UNDO_DB)
         sys.exit(1)
 
     if (options.fix):
@@ -179,15 +181,17 @@ if (__name__ == '__main__'):
             try:
                 undo_db = audiotools.delta.open_db(options.db)
             except:
-                msg.error(_(u"Unable to open \"%s\"") %
+                msg.error(ERR_OPEN_IOERROR %
                           (audiotools.Filename(options.db),))
                 sys.exit(1)
             try:
-                for track in audiofiles(args, processed_filenames, messenger=msg):
+                for track in audiofiles(args,
+                                        processed_filenames,
+                                        messenger=msg):
                     try:
                         update_and_backup(track, undo_db, msg)
                     except IOError:
-                        msg.error(_(u"Unable to write \"%s\"") %
+                        msg.error(ERR_ENCODING_ERROR %
                                   (audiotools.Filename(track.filename),))
                         sys.exit(1)
                     except ValueError, err:
@@ -203,7 +207,7 @@ if (__name__ == '__main__'):
                 try:
                     update_without_backup(track, msg)
                 except IOError:
-                    msg.error(_(u"Unable to write \"%s\"") %
+                    msg.error(ERR_ENCODING_ERROR %
                               (audiotools.Filename(track.filename),))
                     sys.exit(1)
                 except ValueError, err:
@@ -213,7 +217,7 @@ if (__name__ == '__main__'):
         try:
             undo_db = audiotools.delta.open_db(options.db)
         except:
-            msg.error(_(u"Unable to open \"%s\"") %
+            msg.error(ERR_OPEN_IOERROR %
                       (audiotools.Filename(options.db),))
             sys.exit(1)
         try:
@@ -221,7 +225,7 @@ if (__name__ == '__main__'):
                 try:
                     undo_from_backup(track, undo_db, msg)
                 except IOError:
-                    msg.error(_(u"Unable to write \"%s\"") %
+                    msg.error(ERR_ENCODING_ERROR %
                               (audiotools.Filename(track.filename),))
                     sys.exit(1)
         finally:

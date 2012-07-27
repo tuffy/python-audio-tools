@@ -20,6 +20,9 @@
 """a text strings module"""
 
 #Utility usage
+USAGE_AT_CONFIG = \
+    u"%prog [options]"
+
 USAGE_CD2TRACK = \
     u"%prog [options] [track #] [track #] ..."
 
@@ -71,13 +74,34 @@ USAGE_TRACKINFO = \
 USAGE_TRACKLENGTH = \
     u"%prog <track 1> [track 2] ..."
 
+USAGE_TRACKLINT = \
+    u"%prog [options] [--fix] [--undo] [--db file] <track 1> [track 2] ..."
+
+USAGE_TRACKRENAME = \
+    u"%prog [options] <track 1> [track 2] ..."
+
+USAGE_TRACKVERIFY = \
+    u"%prog <track 1> [track 2] ..."
+
+USAGE_TRACKTAG = \
+    u"%prog [options] <track 1> [track 2] ..."
+
 #Utility Options
 OPT_VERBOSE = \
     u"the verbosity level to execute at"
+OPT_VERBOSE_AT_CONFIG = \
+    u"the new default verbosity level"
 OPT_TYPE = \
     u"the type of audio track to create"
+OPT_TYPE_AT_CONFIG = \
+    u"the default audio type to use, " + \
+    u"or the type for a given default quality level"
+OPT_TYPE_TRACKVERIFY = \
+    u"a type of audio to accept"
 OPT_QUALITY = \
     u"the quality to store audio tracks at"
+OPT_QUALITY_AT_CONFIG = \
+    u"the default quality level for a given audio type"
 OPT_DIR = \
     u"the directory to store new audio tracks"
 OPT_DIR_IMAGES = \
@@ -107,6 +131,8 @@ OPT_ALBUM_TOTAL = \
     u"the total albums of this disc\'s set, if it is one of a series of albums"
 OPT_REPLAY_GAIN = \
     u"add ReplayGain metadata to newly created tracks"
+OPT_REPLAY_GAIN_TRACKTAG = \
+    u"add ReplayGain metadata to tracks"
 OPT_NO_REPLAY_GAIN = \
     u"do not add ReplayGain metadata in newly created tracks"
 OPT_PLAYBACK_TRACK_GAIN = \
@@ -144,12 +170,87 @@ OPT_CUESHEET_TRACKSPLIT = \
 OPT_NO_SUMMARY = \
     u"suppress summary output"
 
+OPT_TRACKLINT_FIX = \
+    u"perform suggest fixes"
+
+OPT_TRACKLINT_DB = \
+    u"undo database file"
+
+OPT_TRACKLINT_UNDO = \
+    u"undo performed fixes"
+
+OPT_TRACKTAG_COMMENT_FILE = \
+    u"a file containing comment text"
+
+OPT_TRACKTAG_REPLACE = \
+    u"completely replace all metadata"
+
+OPT_TRACKTAG_CUESHEET = \
+    u"a cuesheet to import or get audio metadata from"
+
+OPT_TRACKTAG_REMOVE_IMAGES = \
+    u"remove existing images prior to adding new ones"
+
+OPT_TRACKTAG_FRONT_COVER = \
+    u"an image file of the front cover"
+
+OPT_TRACKTAG_BACK_COVER = \
+    u"an image file of the back cover"
+
+OPT_TRACKTAG_LEAFLET = \
+    u"an image file of a leaflet page"
+
+OPT_TRACKTAG_MEDIA = \
+    u"an image file of the media"
+
+OPT_TRACKTAG_OTHER_IMAGE = \
+    u"an image file related to the track"
+
+OPT_TRACKTAG_THUMBNAIL = \
+    u"convert given images to smaller thumbnails before adding"
+
+OPT_AT_CONFIG_READ_OFFSET = \
+    u"the CD-ROM read offset to use"
+
+OPT_AT_CONFIG_WRITE_OFFSET = \
+    u"the CD-ROM write offset to use"
+
+OPT_AT_CONFIG_FS_ENCODING = \
+    u"the filesystem's text encoding"
+
+OPT_AT_CONFIG_IO_ENCODING = \
+    u"the system's text encoding"
+
+OPT_AT_CONFIG_THUMBNAIL_FORMAT = \
+    u"the image format to use for thumbnails such as \"jpeg\" or \"png\""
+
+OPT_AT_CONFIG_THUMBNAIL_SIZE = \
+    u"the maximum size of each thumbnail, in pixels squared"
+
+OPT_AT_CONFIG_ID3V2_VERSION = \
+    u"which ID3v2 version to use by default, if any"
+
+OPT_AT_CONFIG_ID3V1_VERSION = \
+    u"which ID3v1 version to use by default, if any"
+
+OPT_AT_CONFIG_ID3V2_PAD = \
+    u"whether or not to pad ID3v2 digit fields to 2 digits"
+
 OPT_CAT_EXTRACTION = u"Extraction Options"
 OPT_CAT_CD_LOOKUP = u"CD Lookup Options"
 OPT_CAT_DVDA_LOOKUP = u"DVD-A Lookup Options"
 OPT_CAT_METADATA = u"Metadata Options"
 OPT_CAT_CONVERSION = u"Conversion Options"
 OPT_CAT_ENCODING = u"Encoding Options"
+OPT_CAT_TEXT = u"Text Options"
+OPT_CAT_IMAGE = u"Image Options"
+OPT_CAT_REMOVAL = u"Removal Options"
+OPT_CAT_SYSTEM = u"System Options"
+OPT_CAT_TRANSCODING = u"Transcoding Options"
+OPT_CAT_THUMBNAIL = u"Thumbnail Options"
+OPT_CAT_ID3 = u"ID3 Options"
+OPT_CAT_REPLAYGAIN = u"ReplayGain Options"
+OPT_CAT_BINARIES = u"Binaries Options"
 
 #MetaData Fields
 METADATA_TRACK_NAME = u"Track Name"
@@ -268,6 +369,9 @@ LAB_TRACK = \
 LAB_X_OF_Y = \
     u"%d / %d"
 
+LAB_TRACK_X_OF_Y = \
+    u"track %2.1d / %d"
+
 LAB_CHOOSE_FILE = \
     u"Choose an audio file"
 
@@ -285,6 +389,9 @@ LAB_DIMENSIONS = \
 
 LAB_BITS_PER_PIXEL = \
     u"%d bits"
+
+LAB_SELECT_BEST_MATCH = \
+    u"Select Best Match"
 
 LAB_DVDA_TRACK = \
     u"title %(title_number)d - track %(track_number)2.2d"
@@ -402,6 +509,227 @@ LAB_TRACKINFO_UNDEFINED = \
 
 LAB_TRACKLENGTH = \
     u"%(hours)d:%(minutes)2.2d:%(seconds)2.2d"
+
+LAB_TRACKLINT_RESTORED = \
+    u"Restored: %s"
+
+LAB_TRACKLINT_MESSAGE = \
+    u"* %(filename)s: %(message)s"
+
+LAB_TRACKVERIFY_RESULTS = \
+    u"Results:"
+
+LAB_TRACKVERIFY_RESULT_FORMAT = \
+    u"format"
+
+LAB_TRACKVERIFY_RESULT_SUCCESS = \
+    u"success"
+
+LAB_TRACKVERIFY_RESULT_FAILURE = \
+    u"failure"
+
+LAB_TRACKVERIFY_RESULT_TOTAL = \
+    u"total"
+
+LAB_TRACKVERIFY_RESULT = \
+    u"%(path)s : %(result)s"
+
+LAB_TRACKVERIFY_OK = \
+    u"OK"
+
+LAB_APPLY = \
+    u"Apply"
+
+LAB_QUIT = \
+    u"Quit"
+
+LAB_CANCEL = \
+    u"Cancel"
+
+LAB_TRACKTAG_UPDATING = \
+    u"updating tracks"
+
+LAB_TRACKTAG_UPDATED = \
+    u"%d tracks updated"
+
+LAB_TRACKTAG_UPDATED_1 = \
+    u"1 track updated"
+
+LAB_KEY_NEXT = \
+    u" - next %s"
+
+LAB_KEY_PREVIOUS = \
+    u" - previous %s"
+
+LAB_TRACKTAG_UPDATE_TRACK_NAME = u"the name of the track"
+LAB_TRACKTAG_UPDATE_ARTIST_NAME = u"the name of the artist"
+LAB_TRACKTAG_UPDATE_PERFORMER_NAME = u"the name of the performer"
+LAB_TRACKTAG_UPDATE_COMPOSER_NAME = u"the name of the composer"
+LAB_TRACKTAG_UPDATE_CONDUCTOR_NAME = u"the name of the conductor"
+LAB_TRACKTAG_UPDATE_ALBUM_NAME = u"the name of the album"
+LAB_TRACKTAG_UPDATE_CATALOG = u"the catalog number of the album"
+LAB_TRACKTAG_UPDATE_TRACK_NUMBER = u"the number of the track in the album"
+LAB_TRACKTAG_UPDATE_TRACK_TOTAL = u"the total number of tracks in the album"
+LAB_TRACKTAG_UPDATE_ALBUM_NUMBER = u"the number of the album in a set of albums"
+LAB_TRACKTAG_UPDATE_ALBUM_TOTAL = u"the total number of albums in a set of albums"
+LAB_TRACKTAG_UPDATE_ISRC = u"the ISRC of the track"
+LAB_TRACKTAG_UPDATE_PUBLISHER = u"the publisher of the album"
+LAB_TRACKTAG_UPDATE_MEDIA = u"the media type of the album, such as \"CD\""
+LAB_TRACKTAG_UPDATE_YEAR = u"the year of release"
+LAB_TRACKTAG_UPDATE_DATE = u"the date of recording"
+LAB_TRACKTAG_UPDATE_COPYRIGHT = u"copyright information"
+LAB_TRACKTAG_UPDATE_COMMENT = u"a text comment"
+
+LAB_TRACKTAG_REMOVE_TRACK_NAME = u"remove track name"
+LAB_TRACKTAG_REMOVE_ARTIST_NAME = u"remove track artist"
+LAB_TRACKTAG_REMOVE_PERFORMER_NAME = u"remove track performer"
+LAB_TRACKTAG_REMOVE_COMPOSER_NAME = u"remove track composer"
+LAB_TRACKTAG_REMOVE_CONDUCTOR_NAME = u"remove track conductor"
+LAB_TRACKTAG_REMOVE_ALBUM_NAME = u"remove album name"
+LAB_TRACKTAG_REMOVE_CATALOG = u"remove catalog number"
+LAB_TRACKTAG_REMOVE_TRACK_NUMBER = u"remove track number"
+LAB_TRACKTAG_REMOVE_TRACK_TOTAL = u"remove total number of tracks"
+LAB_TRACKTAG_REMOVE_ALBUM_NUMBER = u"remove album number"
+LAB_TRACKTAG_REMOVE_ALBUM_TOTAL = u"remove total number of albums"
+LAB_TRACKTAG_REMOVE_ISRC = u"remove ISRC"
+LAB_TRACKTAG_REMOVE_PUBLISHER = u"remove publisher"
+LAB_TRACKTAG_REMOVE_MEDIA = u"remove album's media type"
+LAB_TRACKTAG_REMOVE_YEAR = u"remove release year"
+LAB_TRACKTAG_REMOVE_DATE = u"remove recording date"
+LAB_TRACKTAG_REMOVE_COPYRIGHT = u"remove copyright information"
+LAB_TRACKTAG_REMOVE_COMMENT = u"remove text comment"
+
+LAB_AT_CONFIG_CD_BURNING = \
+    u"CD Burning via track2cd"
+
+LAB_AT_CONFIG_WITHOUT_CUE = \
+    u"without cue"
+
+LAB_AT_CONFIG_WITH_CUE = \
+    u"with cue"
+
+LAB_AT_CONFIG_YES = \
+    u"yes"
+
+LAB_AT_CONFIG_NO = \
+    u"no"
+
+LAB_AT_CONFIG_SYS_CONFIG = \
+    u"System configuration:"
+
+LAB_AT_CONFIG_USE_MUSICBRAINZ = \
+    u"Use MusicBrainz service"
+
+LAB_AT_CONFIG_MUSICBRAINZ_SERVER = \
+    u"Default MusicBrainz server"
+
+LAB_AT_CONFIG_MUSICBRAINZ_PORT = \
+    u"Default MusicBrainz port"
+
+LAB_AT_CONFIG_USE_FREEDB = \
+    u"Use FreeDB service"
+
+LAB_AT_CONFIG_FREEDB_SERVER = \
+    u"Default FreeDB server"
+
+LAB_AT_CONFIG_FREEDB_PORT = \
+    u"Default FreeDB port"
+
+LAB_AT_CONFIG_DEFAULT_CDROM = \
+    u"Default CD-ROM device"
+
+LAB_AT_CONFIG_CDROM_READ_OFFSET = \
+    u"CD-ROM sample read offset"
+
+LAB_AT_CONFIG_CDROM_WRITE_OFFSET = \
+    u"CD-ROM sample write offset"
+
+LAB_AT_CONFIG_JOBS = \
+    u"Default simultaneous jobs"
+
+LAB_AT_CONFIG_VERBOSITY = \
+    u"Default verbosity level"
+
+LAB_AT_CONFIG_AUDIO_OUTPUT = \
+    u"Audio output"
+
+LAB_AT_CONFIG_FS_ENCODING = \
+    u"Filesystem text encoding"
+
+LAB_AT_CONFIG_IO_ENCODING = \
+    u"TTY text encoding"
+
+LAB_AT_CONFIG_ID3V2_VERSION = \
+    u"ID3v2 tag version"
+
+LAB_AT_CONFIG_ID3V2_ID3V22 = \
+    u"ID3v2.2"
+
+LAB_AT_CONFIG_ID3V2_ID3V23 = \
+    u"ID3v2.3"
+
+LAB_AT_CONFIG_ID3V2_ID3V24 = \
+    u"ID3v2.4"
+
+LAB_AT_CONFIG_ID3V2_NONE = \
+    u"no ID3v2 tags"
+
+LAB_AT_CONFIG_ID3V2_PADDING = \
+    u"ID3v2 digit padding"
+
+LAB_AT_CONFIG_ID3V2_PADDING_YES = \
+    u"padded to 2 digits (\"01\", \"02\", etc.)"
+
+LAB_AT_CONFIG_ID3V2_PADDING_NO = \
+    u"no padding (\"1\", \"2\", etc.)"
+
+LAB_AT_CONFIG_ID3V1_VERSION = \
+    u"ID3v1 tag version"
+
+LAB_AT_CONFIG_ID3V1_ID3V11 = \
+    u"ID3v1.1"
+
+LAB_AT_CONFIG_ID3V1_NONE = \
+    u"no ID3v1 tags"
+
+LAB_AT_CONFIG_CAN_THUMBNAIL = \
+    u"Can create thumbnails"
+
+LAB_AT_CONFIG_NO_PIL = \
+    u"(Python Imaging Library not found)"
+
+LAB_AT_CONFIG_THUMBNAIL_FORMAT = \
+    u"Default thumbnail format"
+
+LAB_AT_CONFIG_THUMBNAIL_SIZE = \
+    u"Default thumbnail size"
+
+LAB_AT_CONFIG_ADD_REPLAY_GAIN = \
+    u"Add ReplayGain by default"
+
+LAB_AT_CONFIG_FORMAT = \
+    u"File name format : %s"
+
+LAB_AT_CONFIG_FILE_WRITTEN = \
+    u"* \"%s\" written"
+
+LAB_AT_CONFIG_FOUND = \
+    u"found"
+
+LAB_AT_CONFIG_NOT_FOUND = \
+    u"not found"
+
+LAB_AT_CONFIG_TYPE = \
+    u" type "
+
+LAB_AT_CONFIG_BINARIES = \
+    u" binaries "
+
+LAB_AT_CONFIG_QUALITY = \
+    u" quality "
+
+LAB_AT_CONFIG_REPLAY_GAIN = \
+    u" ReplayGain "
 
 #Compression settings
 COMP_FLAC_0 = \
@@ -878,6 +1206,21 @@ ERR_TRACKSPLIT_NO_CUESHEET = \
 
 ERR_TRACKSPLIT_OVERLONG_CUESHEET = \
     u"Cuesheet too long for track being split"
+
+ERR_NO_UNDO_DB = \
+    u"Cannot perform undo without undo db"
+
+ERR_RENAME = \
+    u"unable to rename \"%(source)s\" to \"%(target)s\""
+
+ERR_INVALID_IMAGE = \
+    u"%(filename)s: %(message)s"
+
+ERR_TRACKTAG_COMMENT_NOT_UTF8 = \
+    u"Comment file \"%s\" does not appear to be UTF-8 text"
+
+ERR_TRACKTAG_COMMENT_IOERROR = \
+    u"Unable to open comment file \"%s\""
 
 #Cleaning messages
 

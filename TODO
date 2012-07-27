@@ -5690,8 +5690,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    where SOME_TEXT is a predefined unicode string
    in an audiotools sub-module.
    This makes text more consistent *and* easier to modify.
-*** TODO Update utilities
-    - [ ] audiotools-config
+*** DONE Update utilities
+    - [X] audiotools-config
     - [X] cd2track
     - [X] cdinfo
     - [X] cdplay
@@ -5705,13 +5705,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] trackcmp
     - [X] trackinfo
     - [X] tracklength
-    - [ ] tracklint
+    - [X] tracklint
     - [X] trackplay
-    - [ ] trackrename
+    - [X] trackrename
     - [X] tracksplit
-    - [ ] tracktag
-    - [ ] trackverify
-*** TODO Update modules
+    - [X] tracktag
+    - [X] trackverify
+*** DONE Update modules
     - [X] __init__.py
     - [X] aiff.py
     - [X] ape.py
@@ -5725,13 +5725,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] mp3.py
     - [X] ogg.py
     - [X] toc.py
-    - [ ] ui.py
+    - [X] ui.py
     - [X] vorbis.py
     - [X] vorbiscomment.py
     - [X] wav.py
     - [X] wavpack.py
-*** TODO Remove gettext
-    - [ ] audiotools-config
+*** DONE Remove gettext
+    - [X] audiotools-config
     - [X] cd2track
     - [X] cdinfo
     - [X] cdplay
@@ -5745,12 +5745,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] trackcmp
     - [X] trackinfo
     - [X] tracklength
-    - [ ] tracklint
+    - [X] tracklint
     - [X] trackplay
-    - [ ] trackrename
+    - [X] trackrename
     - [X] tracksplit
-    - [ ] tracktag
-    - [ ] trackverify
+    - [X] tracktag
+    - [X] trackverify
     - [X] audiotools/__init__.py
     - [X] audiotools/aiff.py
     - [X] audiotools/ape.py
@@ -5770,7 +5770,29 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [ ] test_metadata.py
     - [ ] test_utils.py
 *** TODO Reduce big import chunks
-    Try to add text strings to utilities only when needed
+    Convert "from audiotools.text import (CONSTANT, ...)"
+    to "import audiotools.text as t" and "t.CONSTANT"
+    to avoid having huge import blocks at the start of utilities.
+    - [ ] audiotools-config
+    - [ ] cd2track
+    - [ ] cdinfo
+    - [ ] cdplay
+    - [ ] coverdump
+    - [ ] coverview
+    - [ ] dvda2track
+    - [ ] dvdainfo
+    - [ ] track2cd
+    - [ ] track2track
+    - [ ] trackcat
+    - [ ] trackcmp
+    - [ ] trackinfo
+    - [ ] tracklength
+    - [ ] tracklint
+    - [ ] trackplay
+    - [ ] trackrename
+    - [ ] tracksplit
+    - [ ] tracktag
+    - [ ] trackverify
 *** TODO Ensure unit tests pass
 ** TODO Remove Python Imaging Library requirement
    This is only used for thumbnailing
