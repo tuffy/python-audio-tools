@@ -142,7 +142,8 @@ def parse(tokens):
                        ERR_CUE_INVALID_FLAG,
                        ERR_CUE_INVALID_TIMESTAMP,
                        ERR_CUE_INVALID_INDEX_NUMBER,
-                       ERR_CUE_MISSING_TAG)
+                       ERR_CUE_MISSING_TAG,
+                       ERR_CUE_MISSING_VALUE)
 
     def skip_to_eol(tokens):
         (token, element, line_number) = tokens.next()

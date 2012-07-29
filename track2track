@@ -45,7 +45,7 @@ from audiotools.text import (USAGE_TRACK2TRACK,
                              ERR_INVALID_JOINT,
                              ERR_DUPLICATE_FILE,
                              ERR_OUTPUT_IS_INPUT,
-                             ERR_DUPLICATE_FILE,
+                             ERR_DUPLICATE_OUTPUT_FILE,
                              ERR_ENCODING_ERROR,
                              ERR_TRACK2TRACK_O_AND_D,
                              ERR_TRACK2TRACK_O_AND_D_SUGGESTION,
@@ -321,7 +321,7 @@ if (__name__ == '__main__'):
                               (output_filename,))
                     sys.exit(1)
                 if (output_filename in output_filenames):
-                    msg.error(ERR_DUPLICATE_FILE %
+                    msg.error(ERR_DUPLICATE_OUTPUT_FILE %
                               (output_filename,))
                     sys.exit(1)
                 else:

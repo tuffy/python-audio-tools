@@ -26,7 +26,7 @@ import shutil
 from audiotools.text import (USAGE_TRACKRENAME,
                              OPT_FORMAT,
                              OPT_VERBOSE,
-                             ERR_1_FILE_REQUIRED,
+                             ERR_FILES_REQUIRED,
                              ERR_DUPLICATE_FILE,
                              ERR_DUPLICATE_OUTPUT_FILE,
                              LAB_ENCODE,
@@ -64,7 +64,7 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     if (len(audiofiles) < 1):
-        msg.error(ERR_1_FILE_REQUIRED)
+        msg.error(ERR_FILES_REQUIRED)
         sys.exit(1)
 
     #get a set of files to be renamed

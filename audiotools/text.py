@@ -849,7 +849,7 @@ ERR_AIFF_INVALID_CHUNK_ID = \
 ERR_AIFF_INVALID_CHUNK = \
     u"Invalid AIFF chunk"
 
-ERR_AIFF_MULTIPLE_COMM_CHUKNS = \
+ERR_AIFF_MULTIPLE_COMM_CHUNKS = \
     u"multiple COMM chunks found"
 
 ERR_AIFF_PREMATURE_SSND_CHUNK = \
@@ -1243,7 +1243,7 @@ CLEAN_REMOVE_LEADING_ZEROES = \
     u"removed leading zeroes from %(field)s"
 
 CLEAN_ADD_LEADING_ZEROES = \
-    u"added leading zeroes to %(field)"
+    u"added leading zeroes to %(field)s"
 
 CLEAN_REMOVE_EMPTY_TAG = \
     u"removed empty field %(field)s"

@@ -37,7 +37,9 @@ from audiotools.text import (USAGE_TRACKCAT,
                              ERR_FILES_REQUIRED,
                              ERR_SAMPLE_RATE_MISMATCH,
                              ERR_CHANNEL_COUNT_MISMATCH,
-                             ERR_CHANNEL_MASK_MISMATCH)
+                             ERR_CHANNEL_MASK_MISMATCH,
+                             ERR_BPS_MISMATCH,
+                             ERR_ENCODING_ERROR)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(

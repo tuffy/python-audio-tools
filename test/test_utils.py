@@ -1510,7 +1510,8 @@ class trackcat(UtilTest):
                                      ERR_OUTPUT_IS_INPUT,
                                      ERR_NO_OUTPUT_FILE,
                                      ERR_UNSUPPORTED_AUDIO_TYPE,
-                                     ERR_UNSUPPORTED_COMPRESSION_MODE)
+                                     ERR_UNSUPPORTED_COMPRESSION_MODE,
+                                     ERR_ENCODING_ERROR)
 
         #first, check the error conditions
         self.assertEqual(
@@ -1555,7 +1556,7 @@ class trackcat(UtilTest):
                               self.track1.filename,
                               self.track2.filename,
                               self.track3.filename]), 1)
-        self.__check_error__(ERR_CUE_MISSING_TAG)
+        self.__check_error__(ERR_CUE_MISSING_TAG % (1))
 
         self.assertEqual(
             self.__run_app__(["trackcat",
@@ -1584,92 +1585,91 @@ class trackcat(UtilTest):
              outfile,
              count,
              options) in self.output_combinations(all_options):
-                if (os.path.isfile(outfile)):
-                    f = open(outfile, "wb")
-                    f.close()
+            if (os.path.isfile(outfile)):
+                f = open(outfile, "wb")
+                f.close()
 
-                options = self.populate_options(options,
-                                                type,
-                                                quality,
-                                                outfile) + \
-                                                [self.track1.filename,
-                                                 self.track2.filename,
-                                                 self.track3.filename]
+            options = self.populate_options(options,
+                                            type,
+                                            quality,
+                                            outfile) + \
+                                            [self.track1.filename,
+                                             self.track2.filename,
+                                             self.track3.filename]
 
-                #check a few common errors
-                if ("-o" not in options):
-                    self.assertEqual(self.__run_app__(["trackcat"] + options),
-                                     1)
+            #check a few common errors
+            if ("-o" not in options):
+                self.assertEqual(self.__run_app__(["trackcat"] + options),
+                                 1)
 
-                    self.__check_error__(ERR_NO_OUTPUT_FILE)
-                    continue
+                self.__check_error__(ERR_NO_OUTPUT_FILE)
+                continue
 
-                if ("-t" in options):
-                    output_format = audiotools.TYPE_MAP[type]
-                else:
-                    try:
-                        output_format = audiotools.filename_to_type(outfile)
-                    except audiotools.UnknownAudioType:
-                        self.assertEqual(self.__run_app__(["trackcat"] +
-                                                          options), 1)
+            if ("-t" in options):
+                output_format = audiotools.TYPE_MAP[type]
+            else:
+                try:
+                    output_format = audiotools.filename_to_type(outfile)
+                except audiotools.UnknownAudioType:
+                    self.assertEqual(self.__run_app__(["trackcat"] +
+                                                      options), 1)
 
-                        self.__check_error__(
-                            ERR_UNSUPPORTED_AUDIO_TYPE % (u"",))
-                        continue
-
-                if (("-q" in options) and
-                    (quality not in output_format.COMPRESSION_MODES)):
-                    self.assertEqual(self.__run_app__(["trackcat"] + options),
-                                     1)
                     self.__check_error__(
-                        ERR_UNSUPPORTED_COMPRESSION_MODE %
-                        {"quality": quality,
-                         "type": output_format.NAME.decode('ascii')})
+                        ERR_UNSUPPORTED_AUDIO_TYPE % (u"",))
                     continue
 
-                if (outfile.startswith("/dev/")):
-                    self.assertEqual(self.__run_app__(["trackcat"] + options),
-                                     1)
-                    self.__check_error__(
-                        u"%(filename)s: [Errno 20] Not a directory: '%(filename)s'" %
-                        {"filename": audiotools.Filename(outfile)})
-                    continue
+            if (("-q" in options) and
+                (quality not in output_format.COMPRESSION_MODES)):
+                self.assertEqual(self.__run_app__(["trackcat"] + options),
+                                 1)
+                self.__check_error__(
+                    ERR_UNSUPPORTED_COMPRESSION_MODE %
+                    {"quality": quality,
+                     "type": output_format.NAME.decode('ascii')})
+                continue
 
-                #check that no PCM data is lost
-                self.assertEqual(
-                    self.__run_app__(["trackcat"] + options), 0)
-                new_track = audiotools.open(outfile)
-                self.assertEqual(new_track.NAME, output_format.NAME)
-                self.assertEqual(new_track.total_frames(), 793800)
-                self.assert_(audiotools.pcm_frame_cmp(
-                        new_track.to_pcm(),
-                        audiotools.PCMCat(iter([track.to_pcm() for track in
-                                                [self.track1,
-                                                 self.track2,
-                                                 self.track3]]))) is None)
+            if (outfile.startswith("/dev/")):
+                self.assertEqual(self.__run_app__(["trackcat"] + options),
+                                 1)
+                self.__check_error__(
+                    ERR_ENCODING_ERROR % (audiotools.Filename(outfile),))
+                continue
 
-                #check that metadata is merged properly
-                metadata = new_track.get_metadata()
-                if (metadata is not None):
-                    self.assertEqual(metadata.track_name, None)
-                    self.assertEqual(metadata.album_name, u"Album")
-                    self.assertEqual(metadata.artist_name, u"Artist")
-                    self.assertEqual(metadata.track_number, None)
-                    self.assertEqual(metadata.track_total, 3)
+            #check that no PCM data is lost
+            self.assertEqual(
+                self.__run_app__(["trackcat"] + options), 0)
+            new_track = audiotools.open(outfile)
+            self.assertEqual(new_track.NAME, output_format.NAME)
+            self.assertEqual(new_track.total_frames(), 793800)
+            self.assert_(audiotools.pcm_frame_cmp(
+                    new_track.to_pcm(),
+                    audiotools.PCMCat(iter([track.to_pcm() for track in
+                                            [self.track1,
+                                             self.track2,
+                                             self.track3]]))) is None)
 
-                #check that the cuesheet is embedded properly
-                if (("--cue" in options) and
-                    (output_format is audiotools.FlacAudio)):
-                    cuesheet = new_track.get_cuesheet()
-                    self.assert_(cuesheet is not None)
-                    self.assertEqual(cuesheet.ISRCs(),
-                                     {1: 'JPPI00652340',
-                                      2: 'JPPI00652349',
-                                      3: 'JPPI00652341'})
-                    self.assertEqual(list(cuesheet.indexes()),
-                                     [(0,), (225, 375), (675, 825)])
-                    self.assertEqual(cuesheet.pcm_lengths(793800),
-                                     [220500, 264600, 308700])
+            #check that metadata is merged properly
+            metadata = new_track.get_metadata()
+            if (metadata is not None):
+                self.assertEqual(metadata.track_name, None)
+                self.assertEqual(metadata.album_name, u"Album")
+                self.assertEqual(metadata.artist_name, u"Artist")
+                self.assertEqual(metadata.track_number, None)
+                self.assertEqual(metadata.track_total, 3)
+
+            #check that the cuesheet is embedded properly
+            if (("--cue" in options) and
+                (output_format is audiotools.FlacAudio)):
+                cuesheet = new_track.get_cuesheet()
+                self.assert_(cuesheet is not None)
+                self.assertEqual(cuesheet.ISRCs(),
+                                 {1: 'JPPI00652340',
+                                  2: 'JPPI00652349',
+                                  3: 'JPPI00652341'})
+                self.assertEqual(list(cuesheet.indexes()),
+                                 [(0,), (225, 375), (675, 825)])
+                self.assertEqual(cuesheet.pcm_lengths(793800),
+                                 [220500, 264600, 308700])
 
 
 class trackcmp(UtilTest):
@@ -3304,7 +3304,9 @@ class tracktag(UtilTest):
 class tracktag_errors(UtilTest):
     @UTIL_TRACKTAG
     def test_bad_options(self):
-        from audiotools.text import (ERR_OPEN_IOERROR,
+        from audiotools.text import (ERR_INVALID_IMAGE,
+                                     ERR_OPEN_IOERROR,
+                                     ERR_ENCODING_ERROR,
                                      ERR_TRACKTAG_COMMENT_IOERROR,
                                      ERR_TRACKTAG_COMMENT_NOT_UTF8)
 
@@ -3321,8 +3323,11 @@ class tracktag_errors(UtilTest):
             self.assertEqual(self.__run_app__(
                     ["tracktag", "--front-cover=/dev/null/foo.jpg",
                      temp_track.filename]), 1)
-            self.__check_error__(ERR_OPEN_IOERROR %
-                                 (audiotools.Filename(temp_track.filename)))
+            self.__check_error__(
+                ERR_INVALID_IMAGE %
+                {"filename":audiotools.Filename(temp_track.filename),
+                 "message":ERR_OPEN_IOERROR %
+                 (audiotools.Filename("/dev/null/foo.jpg"),)})
 
             self.assertEqual(self.__run_app__(
                     ["tracktag", "--comment-file=/dev/null/foo.txt",
@@ -4350,7 +4355,7 @@ class trackrename(UtilTest):
                     self.__check_info__(u"%(track_number)2.2d")
                 else:
                     self.__check_info__(u"%%(%s)s" % (field))
-                self.__check_info__(u"%(basename)s")
+            self.__check_info__(u"%(basename)s")
 
             if (track.get_metadata() is not None):
                 os.chmod(tempdir, tempdir_stat & 0x7555)
