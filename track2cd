@@ -25,22 +25,7 @@ import tempfile
 import subprocess
 import audiotools
 import audiotools.toc
-from audiotools.text import (USAGE_TRACK2CD,
-                             OPT_SPEED,
-                             OPT_CUESHEET_TRACK2CD,
-                             OPT_JOINT,
-                             OPT_VERBOSE,
-                             ERR_INVALID_JOINT,
-                             ERR_FILES_REQUIRED,
-                             ERR_NO_CDRDAO,
-                             ERR_GET_CDRDAO,
-                             LAB_CONVERTING_FILE,
-                             ERR_SAMPLE_RATE_MISMATCH,
-                             ERR_CHANNEL_COUNT_MISMATCH,
-                             ERR_BPS_MISMATCH,
-                             ERR_NO_CDRECORD,
-                             ERR_GET_CDRECORD,
-                             ERR_TRACK2CD_INVALIDFILE)
+import audiotools.text as _
 
 MAX_CPUS = audiotools.MAX_JOBS
 
@@ -74,7 +59,7 @@ def convert_to_wave(progress, audiofile, wave_filename):
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=USAGE_TRACK2CD,
+        usage=_.USAGE_TRACK2CD,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option(
@@ -85,7 +70,7 @@ if (__name__ == '__main__'):
         "-s", "--speed", dest="speed",
         default=20,
         type="int",
-        help=OPT_SPEED)
+        help=_.OPT_SPEED)
 
     parser.add_option(
         '--cue',
@@ -93,7 +78,7 @@ if (__name__ == '__main__'):
         type='string',
         dest='cuesheet',
         metavar='FILENAME',
-        help=OPT_CUESHEET_TRACK2CD)
+        help=_.OPT_CUESHEET_TRACK2CD)
 
     parser.add_option(
         '-j', '--joint',
@@ -101,7 +86,7 @@ if (__name__ == '__main__'):
         type='int',
         default=MAX_CPUS,
         dest='max_processes',
-        help=OPT_JOINT)
+        help=_.OPT_JOINT)
 
     parser.add_option(
         '-V', '--verbose',
@@ -109,13 +94,13 @@ if (__name__ == '__main__'):
         dest='verbosity',
         choices=audiotools.VERBOSITY_LEVELS,
         default=audiotools.DEFAULT_VERBOSITY,
-        help=OPT_VERBOSE)
+        help=_.OPT_VERBOSE)
 
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("track2cd", options)
 
     if (options.max_processes < 1):
-        msg.error(ERR_INVALID_JOINT)
+        msg.error(_.ERR_INVALID_JOINT)
         sys.exit(1)
     else:
         max_processes = options.max_processes
@@ -126,7 +111,7 @@ if (__name__ == '__main__'):
                                        warn_duplicates=True)
 
     if (len(audiofiles) < 1):
-        msg.error(ERR_FILES_REQUIRED)
+        msg.error(_.ERR_FILES_REQUIRED)
         sys.exit(1)
 
     if ((len(audiofiles) == 1) and
@@ -135,8 +120,8 @@ if (__name__ == '__main__'):
         #so extract its contents to wave/cue and call cdrdao
 
         if (not audiotools.BIN.can_execute(audiotools.BIN['cdrdao'])):
-            msg.error(ERR_NO_CDRDAO)
-            msg.info(ERR_GET_CDRDAO)
+            msg.error(_.ERR_NO_CDRDAO)
+            msg.info(_.ERR_GET_CDRDAO)
             sys.exit(1)
 
         cuesheet = audiofiles[0].get_cuesheet()
@@ -149,7 +134,7 @@ if (__name__ == '__main__'):
         temptoc.flush()
 
         progress = audiotools.SingleProgressDisplay(
-            msg, LAB_CONVERTING_FILE)
+            msg, _.LAB_CONVERTING_FILE)
 
         if ((audiofiles[0].sample_rate() == 44100) and
             (audiofiles[0].channels() == 2) and
@@ -208,20 +193,20 @@ if (__name__ == '__main__'):
         #so combine them into a single wave/cue and call cdrdao
 
         if (not audiotools.BIN.can_execute(audiotools.BIN['cdrdao'])):
-            msg.error(ERR_NO_CDRDAO)
-            msg.info(ERR_GET_CDRDAO)
+            msg.error(_.ERR_NO_CDRDAO)
+            msg.info(_.ERR_GET_CDRDAO)
             sys.exit(1)
 
         if (len(set([f.sample_rate() for f in audiofiles])) != 1):
-            msg.error(ERR_SAMPLE_RATE_MISMATCH)
+            msg.error(_.ERR_SAMPLE_RATE_MISMATCH)
             sys.exit(1)
 
         if (len(set([f.channels() for f in audiofiles])) != 1):
-            msg.error(ERR_CHANNEL_COUNT_MISMATCH)
+            msg.error(_.ERR_CHANNEL_COUNT_MISMATCH)
             sys.exit(1)
 
         if (len(set([f.bits_per_sample() for f in audiofiles])) != 1):
-            msg.error(ERR_BPS_MISMATCH)
+            msg.error(_.ERR_BPS_MISMATCH)
             sys.exit(1)
 
         try:
@@ -260,7 +245,7 @@ if (__name__ == '__main__'):
                              audiofiles[0].sample_rate())
 
         progress = audiotools.SingleProgressDisplay(
-            msg, LAB_CONVERTING_FILE)
+            msg, _.LAB_CONVERTING_FILE)
 
         try:
             write_offset = int(audiotools.config.get_default(
@@ -315,8 +300,8 @@ if (__name__ == '__main__'):
         #so extract them to waves and call cdrecord
 
         if (not audiotools.BIN.can_execute(audiotools.BIN['cdrecord'])):
-            msg.error(ERR_NO_CDRECORD)
-            msg.info(ERR_GET_CDRECORD)
+            msg.error(_.ERR_NO_CDRECORD)
+            msg.info(_.ERR_GET_CDRECORD)
             sys.exit(1)
 
         exec_args = [audiotools.BIN['cdrecord']]
@@ -357,7 +342,7 @@ if (__name__ == '__main__'):
         except (audiotools.UnsupportedFile,
                 audiotools.InvalidFile,
                 IOError):
-            msg.error(ERR_TRACK2CD_INVALIDFILE)
+            msg.error(_.ERR_TRACK2CD_INVALIDFILE)
             sys.exit(1)
 
         exec_args += wave_files

@@ -22,22 +22,13 @@ import sys
 import os
 import os.path
 import audiotools
-from audiotools.text import (USAGE_COVERDUMP,
-                             OPT_VERBOSE,
-                             OPT_DIR_IMAGES,
-                             OPT_PREFIX,
-                             ERR_1_FILE_REQUIRED,
-                             ERR_OPEN_IOERROR,
-                             ERR_OUTPUT_IS_INPUT,
-                             ERR_ENCODING_ERROR,
-                             LAB_ENCODE,
-                             )
+import audiotools.text as _
 
 FILENAME_TYPES = ("front_cover", "back_cover", "leaflet", "media", "other")
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=USAGE_COVERDUMP,
+        usage=_.USAGE_COVERDUMP,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-V', '--verbose',
@@ -45,26 +36,26 @@ if (__name__ == '__main__'):
                       dest='verbosity',
                       choices=audiotools.VERBOSITY_LEVELS,
                       default=audiotools.DEFAULT_VERBOSITY,
-                      help=OPT_VERBOSE)
+                      help=_.OPT_VERBOSE)
 
     parser.add_option('-d', '--dir',
                       action='store',
                       type='string',
                       dest='dir',
                       default='.',
-                      help=OPT_DIR_IMAGES)
+                      help=_.OPT_DIR_IMAGES)
 
     parser.add_option('-p', '--prefix',
                       action='store',
                       dest='prefix',
                       default="",
-                      help=OPT_PREFIX)
+                      help=_.OPT_PREFIX)
 
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("coverdump", options)
 
     if (len(args) != 1):
-        msg.error(ERR_1_FILE_REQUIRED)
+        msg.error(_.ERR_1_FILE_REQUIRED)
         sys.exit(1)
     else:
         input_filename = audiotools.Filename(args[0])
@@ -72,10 +63,10 @@ if (__name__ == '__main__'):
     try:
         audiofile = audiotools.open(str(input_filename))
     except audiotools.UnsupportedFile:
-        msg.error(ERR_1_FILE_REQUIRED)
+        msg.error(_.ERR_1_FILE_REQUIRED)
         sys.exit(1)
     except IOError:
-        msg.error(ERR_OPEN_IOERROR % (audiotools.Filename(args[0]),))
+        msg.error(_.ERR_OPEN_IOERROR % (audiotools.Filename(args[0]),))
         sys.exit(1)
 
     metadata = audiofile.get_metadata()
@@ -115,7 +106,7 @@ if (__name__ == '__main__'):
         # so we have to be sure it's not going to be overwritten)
         if (input_filename in
             [output_filename for (image, output_filename) in output_images]):
-            msg.error(ERR_OUTPUT_IS_INPUT % (input_filename,))
+            msg.error(_.ERR_OUTPUT_IS_INPUT % (input_filename,))
             sys.exit(1)
 
         #finally, write actual image data to disk if possible
@@ -125,11 +116,11 @@ if (__name__ == '__main__'):
                 f = open(str(output_filename), "wb")
                 f.write(image.data)
                 f.close()
-                msg.info(LAB_ENCODE %
+                msg.info(_.LAB_ENCODE %
                          {"source": input_filename,
                           "destination": output_filename})
             except IOError, e:
-                msg.error(ERR_ENCODING_ERROR % (output_filename,))
+                msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
                 sys.exit(1)
             except OSError, e:
                 msg.os_error(e)

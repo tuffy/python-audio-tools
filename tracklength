@@ -21,12 +21,11 @@
 import os.path
 from decimal import Decimal
 import audiotools
-from audiotools.text import (USAGE_TRACKLENGTH,
-                             LAB_TRACKLENGTH)
+import audiotools.text as _
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=USAGE_TRACKLENGTH,
+        usage=_.USAGE_TRACKLENGTH,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     (options, args) = parser.parse_args()
@@ -47,8 +46,8 @@ if (__name__ == '__main__'):
     total_length = int(total_length)
 
     if (total_length > 0):
-        msg.output(LAB_TRACKLENGTH % {"hours": total_length / (60 * 60),
+        msg.output(_.LAB_TRACKLENGTH % {"hours": total_length / (60 * 60),
                                       "minutes": (total_length / 60) % 60,
                                       "seconds": total_length % 60})
     else:
-        msg.output(LAB_TRACKLENGTH % {"hours": 0, "minutes": 0, "seconds": 0})
+        msg.output(_.LAB_TRACKLENGTH % {"hours": 0, "minutes": 0, "seconds": 0})

@@ -23,19 +23,12 @@ import audiotools
 import os.path
 import shutil
 
-from audiotools.text import (USAGE_TRACKRENAME,
-                             OPT_FORMAT,
-                             OPT_VERBOSE,
-                             ERR_FILES_REQUIRED,
-                             ERR_DUPLICATE_FILE,
-                             ERR_DUPLICATE_OUTPUT_FILE,
-                             LAB_ENCODE,
-                             ERR_RENAME)
+import audiotools.text as _
 
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        USAGE_TRACKRENAME,
+        _.USAGE_TRACKRENAME,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('--format',
@@ -43,14 +36,14 @@ if (__name__ == '__main__'):
                       type='string',
                       default=None,
                       dest='format',
-                      help=OPT_FORMAT)
+                      help=_.OPT_FORMAT)
 
     parser.add_option('-V', '--verbose',
                       action='store',
                       dest='verbosity',
                       choices=audiotools.VERBOSITY_LEVELS,
                       default=audiotools.DEFAULT_VERBOSITY,
-                      help=OPT_VERBOSE)
+                      help=_.OPT_VERBOSE)
 
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackrename", options)
@@ -60,11 +53,11 @@ if (__name__ == '__main__'):
                                            messenger=msg,
                                            no_duplicates=True)
     except audiotools.DuplicateFile, err:
-        msg.error(ERR_DUPLICATE_FILE % (err.filename,))
+        msg.error(_.ERR_DUPLICATE_FILE % (err.filename,))
         sys.exit(1)
 
     if (len(audiofiles) < 1):
-        msg.error(ERR_FILES_REQUIRED)
+        msg.error(_.ERR_FILES_REQUIRED)
         sys.exit(1)
 
     #get a set of files to be renamed
@@ -86,7 +79,7 @@ if (__name__ == '__main__'):
                     renamed_filenames.add(new_filename)
                     to_rename.append((original_filename, new_filename))
                 else:
-                    msg.error(ERR_DUPLICATE_OUTPUT_FILE %
+                    msg.error(_.ERR_DUPLICATE_OUTPUT_FILE %
                               (new_filename,))
                     sys.exit(1)
     except audiotools.UnsupportedTracknameField, err:
@@ -107,11 +100,11 @@ if (__name__ == '__main__'):
             shutil.move(str(original_filename), str(new_filename))
             msg.info(
                 audiotools.output_progress(
-                    LAB_ENCODE % {"source":original_filename,
+                    _.LAB_ENCODE % {"source":original_filename,
                                   "destination":new_filename},
                     i + 1, len(to_rename)))
         except IOError, err:
-            msg.error(ERR_RENAME %
+            msg.error(_.ERR_RENAME %
                       {"source":original_filename,
                        "target":new_filename})
             sys.exit(1)

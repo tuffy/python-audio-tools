@@ -24,39 +24,12 @@ import tempfile
 from itertools import izip
 import audiotools
 import audiotools.ui
-from audiotools.text import (USAGE_DVDA2TRACK,
-                             OPT_VERBOSE,
-                             OPT_AUDIO_TS,
-                             OPT_DVDA_TITLE,
-                             OPT_CAT_EXTRACTION,
-                             OPT_TYPE,
-                             OPT_QUALITY,
-                             OPT_FORMAT,
-                             OPT_DIR,
-                             OPT_INTERACTIVE_METADATA,
-                             OPT_CAT_METADATA,
-                             OPT_CAT_DVDA_LOOKUP,
-                             OPT_NO_MUSICBRAINZ,
-                             OPT_NO_FREEDB,
-                             OPT_NO_REPLAY_GAIN,
-                             OPT_DEFAULT,
-                             OPT_ALBUM_NUMBER,
-                             OPT_ALBUM_TOTAL,
-                             OPT_REPLAY_GAIN,
-                             LAB_AVAILABLE_COMPRESSION_TYPES,
-                             ERR_UNSUPPORTED_COMPRESSION_MODE,
-                             ERR_DUPLICATE_OUTPUT_FILE,
-                             ERR_ENCODING_ERROR,
-                             OPT_TRACK_START,
-                             OPT_TRACK_TOTAL,
-                             ERR_NO_AUDIO_TS,
-                             LAB_ENCODE,
-                             LAB_DVDA_TRACK)
+import audiotools.text as _
 
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=USAGE_DVDA2TRACK,
+        usage=_.USAGE_DVDA2TRACK,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option(
@@ -65,7 +38,7 @@ if (__name__ == '__main__'):
         dest='verbosity',
         choices=audiotools.VERBOSITY_LEVELS,
         default=audiotools.DEFAULT_VERBOSITY,
-        help=OPT_VERBOSE)
+        help=_.OPT_VERBOSE)
 
     parser.add_option(
         '-c', '--cdrom', action='store',
@@ -74,13 +47,13 @@ if (__name__ == '__main__'):
 
     parser.add_option('-A', '--audio-ts', action='store', default=None,
                       type='string', dest='audio_ts', metavar='DIR',
-                      help=OPT_AUDIO_TS)
+                      help=_.OPT_AUDIO_TS)
 
     parser.add_option('--title', action='store', default=1,
                       type='int', dest='title',
-                      help=OPT_DVDA_TITLE)
+                      help=_.OPT_DVDA_TITLE)
 
-    conversion = audiotools.OptionGroup(parser, OPT_CAT_EXTRACTION)
+    conversion = audiotools.OptionGroup(parser, _.OPT_CAT_EXTRACTION)
 
     conversion.add_option(
         '-t', '--type',
@@ -88,14 +61,14 @@ if (__name__ == '__main__'):
         dest='type',
         choices=audiotools.TYPE_MAP.keys(),
         default=audiotools.DEFAULT_TYPE,
-        help=OPT_TYPE)
+        help=_.OPT_TYPE)
 
     conversion.add_option(
         '-q', '--quality',
         action='store',
         type='string',
         dest='quality',
-        help=OPT_QUALITY)
+        help=_.OPT_QUALITY)
 
     conversion.add_option(
         '-d', '--dir',
@@ -103,7 +76,7 @@ if (__name__ == '__main__'):
         type='string',
         dest='dir',
         default='.',
-        help=OPT_DIR)
+        help=_.OPT_DIR)
 
     conversion.add_option(
         '--format',
@@ -111,11 +84,11 @@ if (__name__ == '__main__'):
         type='string',
         default=None,
         dest='format',
-        help=OPT_FORMAT)
+        help=_.OPT_FORMAT)
 
     parser.add_option_group(conversion)
 
-    lookup = audiotools.OptionGroup(parser, OPT_CAT_DVDA_LOOKUP)
+    lookup = audiotools.OptionGroup(parser, _.OPT_CAT_DVDA_LOOKUP)
 
     lookup.add_option(
         '--musicbrainz-server', action='store',
@@ -131,7 +104,7 @@ if (__name__ == '__main__'):
         '--no-musicbrainz', action='store_false',
         dest='use_musicbrainz',
         default=audiotools.MUSICBRAINZ_SERVICE,
-        help=OPT_NO_MUSICBRAINZ)
+        help=_.OPT_NO_MUSICBRAINZ)
 
     lookup.add_option(
         '--freedb-server', action='store',
@@ -147,23 +120,23 @@ if (__name__ == '__main__'):
         '--no-freedb', action='store_false',
         dest='use_freedb',
         default=audiotools.FREEDB_SERVICE,
-        help=OPT_NO_FREEDB)
+        help=_.OPT_NO_FREEDB)
 
     lookup.add_option(
         '-I', '--interactive',
         action='store_true',
         default=False,
         dest='interactive',
-        help=OPT_INTERACTIVE_METADATA)
+        help=_.OPT_INTERACTIVE_METADATA)
 
     lookup.add_option(
         '-D', '--default',
         dest='use_default', action='store_true', default=False,
-        help=OPT_DEFAULT)
+        help=_.OPT_DEFAULT)
 
     parser.add_option_group(lookup)
 
-    metadata = audiotools.OptionGroup(parser, OPT_CAT_METADATA)
+    metadata = audiotools.OptionGroup(parser, _.OPT_CAT_METADATA)
 
     metadata.add_option(
         '--track-start',
@@ -171,7 +144,7 @@ if (__name__ == '__main__'):
         type='int',
         dest='track_start',
         default=1,
-        help=OPT_TRACK_START)
+        help=_.OPT_TRACK_START)
 
     metadata.add_option(
         '--track-total',
@@ -179,7 +152,7 @@ if (__name__ == '__main__'):
         type='int',
         dest='track_total',
         default=None,
-        help=OPT_TRACK_TOTAL)
+        help=_.OPT_TRACK_TOTAL)
 
     metadata.add_option(
         '--album-number',
@@ -187,7 +160,7 @@ if (__name__ == '__main__'):
         action='store',
         type='int',
         default=0,
-        help=OPT_ALBUM_NUMBER)
+        help=_.OPT_ALBUM_NUMBER)
 
     metadata.add_option(
         '--album-total',
@@ -195,7 +168,7 @@ if (__name__ == '__main__'):
         action='store',
         type='int',
         default=0,
-        help=OPT_ALBUM_TOTAL)
+        help=_.OPT_ALBUM_TOTAL)
 
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)
@@ -206,13 +179,13 @@ if (__name__ == '__main__'):
         '--replay-gain',
         action='store_true',
         dest='add_replay_gain',
-        help=OPT_REPLAY_GAIN)
+        help=_.OPT_REPLAY_GAIN)
 
     metadata.add_option(
         '--no-replay-gain',
         action='store_false',
         dest='add_replay_gain',
-        help=OPT_NO_REPLAY_GAIN)
+        help=_.OPT_NO_REPLAY_GAIN)
 
     parser.add_option_group(metadata)
 
@@ -230,7 +203,7 @@ if (__name__ == '__main__'):
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(LAB_AVAILABLE_COMPRESSION_TYPES %
+            msg.info(_.LAB_AVAILABLE_COMPRESSION_TYPES %
                      (AudioType.NAME))
             for mode in AudioType.COMPRESSION_MODES:
                 msg.new_row()
@@ -253,7 +226,7 @@ if (__name__ == '__main__'):
     elif (options.quality is None):
         options.quality = audiotools.__default_quality__(AudioType.NAME)
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(ERR_UNSUPPORTED_COMPRESSION_MODE %
+        msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
                   {"quality": options.quality,
                    "type": AudioType.NAME})
         sys.exit(1)
@@ -262,7 +235,7 @@ if (__name__ == '__main__'):
     base_directory = options.dir
 
     if (options.audio_ts is None):
-        msg.error(ERR_NO_AUDIO_TS)
+        msg.error(_.ERR_NO_AUDIO_TS)
         sys.exit(1)
 
     #get main DVDAudio object
@@ -379,7 +352,7 @@ if (__name__ == '__main__'):
                                              track_metadata=metadata,
                                              format=options.format)))
                 if (output_filename in output_filenames):
-                    msg.error(ERR_DUPLICATE_OUTPUT_FILE %
+                    msg.error(_.ERR_DUPLICATE_OUTPUT_FILE %
                               (output_filename,))
                     sys.exit(1)
                 else:
@@ -428,8 +401,8 @@ if (__name__ == '__main__'):
                 progress.clear()
 
                 msg.info(audiotools.output_progress(
-                        LAB_ENCODE % {
-                            "source":LAB_DVDA_TRACK %
+                        _.LAB_ENCODE % {
+                            "source":_.LAB_DVDA_TRACK %
                             {"title_number": options.title,
                              "track_number": title_track_number},
                             "destination":output_filename},
@@ -440,7 +413,7 @@ if (__name__ == '__main__'):
                 msg.os_error(err)
                 sys.exit(1)
             except audiotools.EncodingError, err:
-                msg.error(ERR_ENCODING_ERROR % (output_filename,))
+                msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
                 sys.exit(1)
         else:
             audiotools.transfer_framelist_data(pcmreader, lambda f: f)

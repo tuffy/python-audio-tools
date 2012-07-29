@@ -26,32 +26,7 @@ import termios
 import cStringIO
 import audiotools
 import audiotools.player
-from audiotools.text import (USAGE_CDPLAY,
-                             OPT_CAT_CD_LOOKUP,
-                             OPT_VERBOSE,
-                             OPT_INTERACTIVE_PLAY,
-                             OPT_OUTPUT_PLAY,
-                             OPT_NO_MUSICBRAINZ,
-                             OPT_NO_FREEDB,
-                             LAB_TRACK_LENGTH,
-                             LAB_PLAY_BUTTON,
-                             LAB_PLAY_STATUS,
-                             LAB_PLAY_STATUS_1,
-                             METADATA_TRACK_NAME,
-                             METADATA_ARTIST_NAME,
-                             METADATA_ALBUM_NAME,
-                             LAB_PLAY_TRACK,
-                             LAB_NEXT_BUTTON,
-                             LAB_PREVIOUS_BUTTON,
-                             LAB_TRACK,
-                             LAB_X_OF_Y,
-                             LAB_PAUSE_BUTTON,
-                             ERR_URWID_REQUIRED,
-                             ERR_GET_URWID1,
-                             ERR_GET_URWID2,
-                             ERR_INVALID_CDDA,
-                             ERR_TERMIOS_ERROR,
-                             ERR_TERMIOS_SUGGESTION)
+import audiotools.text as _
 
 try:
     import urwid
@@ -107,12 +82,12 @@ try:
             (maxcol,) = size
 
             try:
-                txt = urwid.Text(LAB_TRACK_LENGTH %
+                txt = urwid.Text(_.LAB_TRACK_LENGTH %
                                  ((self.current / self.sample_rate) / 60,
                                   (self.current / self.sample_rate) % 60),
                                  'center', 'clip')
             except ZeroDivisionError:
-                txt = urwid.Text(LAB_TRACK_LENGTH %
+                txt = urwid.Text(_.LAB_TRACK_LENGTH %
                                  (0, 0),
                                  'center', 'clip')
             c = txt.render((maxcol,))
@@ -162,7 +137,7 @@ try:
             self.channels = urwid.Text("2ch", align='right')
             self.sample_rate = urwid.Text("44100Hz", align='right')
             self.bits_per_sample = urwid.Text("16bps", align='right')
-            self.play_pause_button = MappedButton(LAB_PLAY_BUTTON,
+            self.play_pause_button = MappedButton(_.LAB_PLAY_BUTTON,
                                                   on_press=self.play_pause,
                                                   key_map={'tab': 'right'})
             self.progress = AudioProgressBar(normal='pg normal',
@@ -177,46 +152,46 @@ try:
             track_len = cdda.length() / 75
 
             self.status = urwid.Text(
-                (LAB_PLAY_STATUS if (len(self.track_list) > 1) else
-                 LAB_PLAY_STATUS_1) %
+                (_.LAB_PLAY_STATUS if (len(self.track_list) > 1) else
+                 _.LAB_PLAY_STATUS_1) %
                 {"count": len(self.track_list),
                  "min": int(track_len) / 60,
                  "sec": int(track_len) % 60},
                 align='center')
 
             label_width = max([len(audiotools.display_unicode(s))
-                               for s in [METADATA_TRACK_NAME,
-                                         METADATA_ARTIST_NAME,
-                                         METADATA_ALBUM_NAME,
-                                         LAB_PLAY_TRACK]]) + 3
+                               for s in [_.METADATA_TRACK_NAME,
+                                         _.METADATA_ARTIST_NAME,
+                                         _.METADATA_ALBUM_NAME,
+                                         _.LAB_PLAY_TRACK]]) + 3
 
             header = urwid.Pile([
                     urwid.Columns([
                             ('fixed',
                              label_width,
                              urwid.Text(('header',
-                                         u"%s : " % (METADATA_TRACK_NAME)),
+                                         u"%s : " % (_.METADATA_TRACK_NAME)),
                                         align='right')),
                             ('weight', 1, self.track_name)]),
                     urwid.Columns([
                             ('fixed',
                              label_width,
                              urwid.Text(('header',
-                                         u"%s : " % (METADATA_ARTIST_NAME)),
+                                         u"%s : " % (_.METADATA_ARTIST_NAME)),
                                         align='right')),
                             ('weight', 1, self.artist_name)]),
                     urwid.Columns([
                             ('fixed',
                              label_width,
                              urwid.Text(('header',
-                                         u"%s : " % (METADATA_ALBUM_NAME)),
+                                         u"%s : " % (_.METADATA_ALBUM_NAME)),
                                         align='right')),
                             ('weight', 1, self.album_name)]),
                     urwid.Columns([
                             ('fixed',
                              label_width,
                              urwid.Text(('header',
-                                         u"%s : " % (LAB_PLAY_TRACK)),
+                                         u"%s : " % (_.LAB_PLAY_TRACK)),
                                         align='right')),
                             ('fixed', 7, self.tracknum),
                             ('fixed', 7, self.length),
@@ -226,11 +201,11 @@ try:
                     self.progress])
 
             controls = urwid.GridFlow([
-                    MappedButton(LAB_PREVIOUS_BUTTON,
+                    MappedButton(_.LAB_PREVIOUS_BUTTON,
                                  on_press=self.previous_track,
                                  key_map={'tab': 'right'}),
                     self.play_pause_button,
-                    MappedButton(LAB_NEXT_BUTTON,
+                    MappedButton(_.LAB_NEXT_BUTTON,
                                  on_press=self.next_track,
                                  key_map={'tab': 'down'})],
                                       9, 4, 1, 'center')
@@ -240,9 +215,9 @@ try:
                 if (label is not None):
                     return label
                 elif (track_number is not None):
-                    return u"%s %2.2d" % (LAB_TRACK, track_number)
+                    return u"%s %2.2d" % (_.LAB_TRACK, track_number)
                 else:
-                    return LAB_TRACK
+                    return _.LAB_TRACK
 
             track_list = urwid.ListBox([
                     MappedRadioButton(
@@ -295,12 +270,12 @@ try:
                                          if album_name is not None else u"")
                 self.artist_name.set_text(artist_name
                                           if artist_name is not None else u"")
-                self.tracknum.set_text(LAB_X_OF_Y %
+                self.tracknum.set_text(_.LAB_X_OF_Y %
                                        (track.track_number,
                                         len(self.cdda)))
 
                 track_length = track.length() / 75
-                self.length.set_text(LAB_TRACK_LENGTH %
+                self.length.set_text(_.LAB_TRACK_LENGTH %
                                      (int(track_length) / 60,
                                       int(track_length) % 60))
 
@@ -310,17 +285,17 @@ try:
                 self.player.open(track.track_number)
                 if (auto_play):
                     self.player.play()
-                    self.play_pause_button.set_label(LAB_PAUSE_BUTTON)
+                    self.play_pause_button.set_label(_.LAB_PAUSE_BUTTON)
 
         def update_status(self):
             self.progress.set_completion(self.player.progress()[0])
 
         def play_pause(self, user_data):
             self.player.toggle_play_pause()
-            if (self.play_pause_button.get_label() == LAB_PLAY_BUTTON):
-                self.play_pause_button.set_label(LAB_PAUSE_BUTTON)
-            elif (self.play_pause_button.get_label() == LAB_PAUSE_BUTTON):
-                self.play_pause_button.set_label(LAB_PLAY_BUTTON)
+            if (self.play_pause_button.get_label() == _.LAB_PLAY_BUTTON):
+                self.play_pause_button.set_label(_.LAB_PAUSE_BUTTON)
+            elif (self.play_pause_button.get_label() == _.LAB_PAUSE_BUTTON):
+                self.play_pause_button.set_label(_.LAB_PLAY_BUTTON)
 
         def handle_text(self, i):
             if ((i == 'esc') or (i == 'q') or (i == 'Q')):
@@ -412,7 +387,7 @@ class CDplayTTY:
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=USAGE_CDPLAY,
+        usage=_.USAGE_CDPLAY,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option(
@@ -421,14 +396,14 @@ if (__name__ == '__main__'):
         dest='verbosity',
         choices=audiotools.VERBOSITY_LEVELS,
         default=audiotools.DEFAULT_VERBOSITY,
-        help=OPT_VERBOSE)
+        help=_.OPT_VERBOSE)
 
     parser.add_option(
         '-I', '--interactive',
         action='store_true',
         default=False,
         dest='interactive',
-        help=OPT_INTERACTIVE_PLAY)
+        help=_.OPT_INTERACTIVE_PLAY)
 
     players_map = dict([(player.NAME, player)
                         for player in audiotools.player.AUDIO_OUTPUT])
@@ -440,7 +415,7 @@ if (__name__ == '__main__'):
         choices=players_map.keys(),
         default=[player.NAME for player in audiotools.player.AUDIO_OUTPUT
                  if player.available()][0],
-        help=OPT_OUTPUT_PLAY % \
+        help=_.OPT_OUTPUT_PLAY % \
             u", ".join([u"\"%s\"" % (player.NAME.decode('ascii'))
                         for player in audiotools.player.AUDIO_OUTPUT
                         if player.available()]))
@@ -454,7 +429,7 @@ if (__name__ == '__main__'):
         '--shuffle', action='store_true', dest='shuffle', default=False,
         help='shuffle tracks')
 
-    lookup = audiotools.OptionGroup(parser, OPT_CAT_CD_LOOKUP)
+    lookup = audiotools.OptionGroup(parser, _.OPT_CAT_CD_LOOKUP)
 
     lookup.add_option(
         '--musicbrainz-server', action='store',
@@ -470,7 +445,7 @@ if (__name__ == '__main__'):
         '--no-musicbrainz', action='store_false',
         dest='use_musicbrainz',
         default=audiotools.MUSICBRAINZ_SERVICE,
-        help=OPT_NO_MUSICBRAINZ)
+        help=_.OPT_NO_MUSICBRAINZ)
 
     lookup.add_option(
         '--freedb-server', action='store',
@@ -486,7 +461,7 @@ if (__name__ == '__main__'):
         '--no-freedb', action='store_false',
         dest='use_freedb',
         default=audiotools.FREEDB_SERVICE,
-        help=OPT_NO_FREEDB)
+        help=_.OPT_NO_FREEDB)
 
     parser.add_option_group(lookup)
 
@@ -494,15 +469,15 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("trackplay", options)
 
     if (options.interactive and (not interactive_available)):
-        msg.error(ERR_URWID_REQUIRED)
-        msg.output(ERR_GET_URWID1)
-        msg.output(ERR_GET_URWID2)
+        msg.error(_.ERR_URWID_REQUIRED)
+        msg.output(_.ERR_GET_URWID1)
+        msg.output(_.ERR_GET_URWID2)
         sys.exit(1)
 
     try:
         cdda = audiotools.CDDA(options.cdrom, perform_logging=False)
     except IOError, err:
-        msg.error(unicode(err) + ERR_INVALID_CDDA)
+        msg.error(unicode(err) + _.ERR_INVALID_CDDA)
         sys.exit(-1)
 
     if (len(cdda) == 0):
@@ -561,8 +536,8 @@ if (__name__ == '__main__'):
         try:
             loop.run()
         except termios.error:
-            msg.error(ERR_TERMIOS_ERROR)
-            msg.info(ERR_TERMIOS_SUGGESTION)
+            msg.error(_.ERR_TERMIOS_ERROR)
+            msg.info(_.ERR_TERMIOS_SUGGESTION)
             sys.exit(1)
     else:
         trackplay = CDplayTTY(cdda=cdda,
@@ -574,8 +549,8 @@ if (__name__ == '__main__'):
         try:
             original_terminal_settings = termios.tcgetattr(0)
         except termios.error:
-            msg.error(ERR_TERMIOS_ERROR)
-            msg.info(ERR_TERMIOS_SUGGESTION)
+            msg.error(_.ERR_TERMIOS_ERROR)
+            msg.info(_.ERR_TERMIOS_SUGGESTION)
             sys.exit(1)
         try:
             tty.setcbreak(sys.stdin.fileno())

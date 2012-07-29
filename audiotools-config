@@ -23,19 +23,18 @@ import sys
 
 def check_binaries(msg, binary_list):
     from audiotools import BIN
-    from audiotools.text import (LAB_AT_CONFIG_FOUND,
-                                 LAB_AT_CONFIG_NOT_FOUND)
+    import audiotools.text as _
 
     for binary in binary_list:
         msg.new_row()
         if (BIN.can_execute(audiotools.BIN[binary])):
             msg.output_column(u"+ ")
-            msg.output_column(LAB_AT_CONFIG_FOUND, True)
+            msg.output_column(_.LAB_AT_CONFIG_FOUND, True)
             msg.output_column(u" : ")
             msg.output_column(binary.decode('ascii'))
         else:
             msg.output_column(u"- ")
-            msg.output_column(LAB_AT_CONFIG_NOT_FOUND, True)
+            msg.output_column(_.LAB_AT_CONFIG_NOT_FOUND, True)
             msg.output_column(u" : ")
             msg.output_column(binary.decode('ascii'))
     msg.output_rows()
@@ -54,10 +53,7 @@ class FormatSummary:
 
     @classmethod
     def headers(cls, messenger):
-        from audiotools.text import (LAB_AT_CONFIG_TYPE,
-                                     LAB_AT_CONFIG_BINARIES,
-                                     LAB_AT_CONFIG_QUALITY,
-                                     LAB_AT_CONFIG_REPLAY_GAIN)
+        import audiotools.text as _
 
         messenger.new_row()
         messenger.output_column(u" ")
@@ -69,13 +65,13 @@ class FormatSummary:
         messenger.output_column(u" ")
 
         messenger.new_row()
-        messenger.output_column(LAB_AT_CONFIG_TYPE)
+        messenger.output_column(_.LAB_AT_CONFIG_TYPE)
         messenger.output_column(u" ")
-        messenger.output_column(LAB_AT_CONFIG_BINARIES)
+        messenger.output_column(_.LAB_AT_CONFIG_BINARIES)
         messenger.output_column(u" ")
-        messenger.output_column(LAB_AT_CONFIG_QUALITY)
+        messenger.output_column(_.LAB_AT_CONFIG_QUALITY)
         messenger.output_column(u" ")
-        messenger.output_column(LAB_AT_CONFIG_REPLAY_GAIN)
+        messenger.output_column(_.LAB_AT_CONFIG_REPLAY_GAIN)
         messenger.divider_row([u"-", u"+", u"-",
                                    u"+", u"-", u"+", u"-"])
 

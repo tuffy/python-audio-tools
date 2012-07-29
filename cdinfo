@@ -21,23 +21,12 @@
 import os.path
 import sys
 import audiotools
-from audiotools.text import (USAGE_CDINFO,
-                             ERR_NO_CDDA,
-                             ERR_NO_EMPTY_CDDA,
-                             LAB_TOTAL_TRACKS,
-                             LAB_TOTAL_LENGTH,
-                             LAB_TRACK_LENGTH,
-                             LAB_TRACK_LENGTH_FRAMES,
-                             LAB_FREEDB_ID,
-                             LAB_MUSICBRAINZ_ID,
-                             LAB_CDINFO_LENGTH,
-                             LAB_CDINFO_FRAMES,
-                             LAB_CDINFO_OFFSET)
+import audiotools.text as _
 
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=USAGE_CDINFO,
+        usage=_.USAGE_CDINFO,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-c', '--cdrom', action='store',
@@ -54,33 +43,33 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     if (len(cdda) == 255):
-        msg.error(ERR_NO_CDDA)
+        msg.error(_.ERR_NO_CDDA)
         sys.exit(1)
     elif (len(cdda) < 1):
-        msg.error(ERR_NO_EMPTY_CDDA)
+        msg.error(_.ERR_NO_EMPTY_CDDA)
         sys.exit(1)
 
     tracks = list(cdda)
 
     msg.new_row()
-    msg.output_column(LAB_TOTAL_TRACKS, True)
+    msg.output_column(_.LAB_TOTAL_TRACKS, True)
     msg.output_column(u" : ")
     msg.output_column(unicode(len(cdda)))
 
     msg.new_row()
-    msg.output_column(LAB_TOTAL_LENGTH, True)
+    msg.output_column(_.LAB_TOTAL_LENGTH, True)
     msg.output_column(u" : ")
-    msg.output_column(LAB_TRACK_LENGTH_FRAMES % (cdda.length() / 75 / 60,
+    msg.output_column(_.LAB_TRACK_LENGTH_FRAMES % (cdda.length() / 75 / 60,
                                                  cdda.length() / 75 % 60,
                                                  cdda.length()))
 
     msg.new_row()
-    msg.output_column(LAB_FREEDB_ID, True)
+    msg.output_column(_.LAB_FREEDB_ID, True)
     msg.output_column(u" : ")
     msg.output_column(str(cdda.freedb_disc_id()).decode('ascii'))
 
     msg.new_row()
-    msg.output_column(LAB_MUSICBRAINZ_ID, True)
+    msg.output_column(_.LAB_MUSICBRAINZ_ID, True)
     msg.output_column(u" : ")
 
     msg.output_column(str(cdda.musicbrainz_disc_id()).decode('ascii'))
@@ -91,26 +80,26 @@ if (__name__ == '__main__'):
     msg.new_row()
     msg.output_column(u"#", True)
     msg.output_column(u" ")
-    msg.output_column(LAB_CDINFO_LENGTH)
+    msg.output_column(_.LAB_CDINFO_LENGTH)
     msg.output_column(u" ")
-    msg.output_column(LAB_CDINFO_FRAMES)
+    msg.output_column(_.LAB_CDINFO_FRAMES)
     msg.output_column(u" ")
-    msg.output_column(LAB_CDINFO_OFFSET)
+    msg.output_column(_.LAB_CDINFO_OFFSET)
 
     msg.new_row()
     msg.output_column(u"--")
     msg.output_column(u" ")
-    msg.output_column(u"-" * len(audiotools.display_unicode(LAB_CDINFO_LENGTH)))
+    msg.output_column(u"-" * len(audiotools.display_unicode(_.LAB_CDINFO_LENGTH)))
     msg.output_column(u" ")
-    msg.output_column(u"-" * len(audiotools.display_unicode(LAB_CDINFO_FRAMES)))
+    msg.output_column(u"-" * len(audiotools.display_unicode(_.LAB_CDINFO_FRAMES)))
     msg.output_column(u" ")
-    msg.output_column(u"-" * len(audiotools.display_unicode(LAB_CDINFO_OFFSET)))
+    msg.output_column(u"-" * len(audiotools.display_unicode(_.LAB_CDINFO_OFFSET)))
 
     for track in tracks:
         msg.new_row()
         msg.output_column(unicode(track.track_number), True)
         msg.output_column(u" ")
-        msg.output_column(LAB_TRACK_LENGTH % (track.length() / 75 / 60,
+        msg.output_column(_.LAB_TRACK_LENGTH % (track.length() / 75 / 60,
                                               track.length() / 75 % 60), True)
         msg.output_column(u" ")
         msg.output_column(unicode(track.length()))

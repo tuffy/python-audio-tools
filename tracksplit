@@ -23,32 +23,7 @@ import os.path
 import audiotools
 import audiotools.cue
 import audiotools.ui
-from audiotools.text import (USAGE_TRACKSPLIT,
-                             OPT_CAT_CD_LOOKUP,
-                             OPT_CAT_METADATA,
-                             OPT_VERBOSE,
-                             OPT_CUESHEET_TRACKSPLIT,
-                             OPT_CAT_ENCODING,
-                             OPT_TYPE,
-                             OPT_QUALITY,
-                             OPT_DIR,
-                             OPT_FORMAT,
-                             OPT_NO_MUSICBRAINZ,
-                             OPT_NO_FREEDB,
-                             OPT_INTERACTIVE_METADATA,
-                             OPT_DEFAULT,
-                             OPT_ALBUM_NUMBER,
-                             OPT_ALBUM_TOTAL,
-                             OPT_REPLAY_GAIN,
-                             OPT_NO_REPLAY_GAIN,
-                             LAB_AVAILABLE_COMPRESSION_TYPES,
-                             ERR_NO_COMPRESSION_MODES,
-                             ERR_UNSUPPORTED_COMPRESSION_MODE,
-                             ERR_1_FILE_REQUIRED,
-                             ERR_INVALID_FILE,
-                             ERR_OPEN_IOERROR,
-                             ERR_TRACKSPLIT_NO_CUESHEET,
-                             ERR_TRACKSPLIT_OVERLONG_CUESHEET)
+import audiotools.text as _
 
 
 def has_embedded_cuesheet(audiofile):
@@ -56,7 +31,7 @@ def has_embedded_cuesheet(audiofile):
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=USAGE_TRACKSPLIT,
+        usage=_.USAGE_TRACKSPLIT,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option(
@@ -65,7 +40,7 @@ if (__name__ == '__main__'):
         dest='verbosity',
         choices=audiotools.VERBOSITY_LEVELS,
         default=audiotools.DEFAULT_VERBOSITY,
-        help=OPT_VERBOSE)
+        help=_.OPT_VERBOSE)
 
     parser.add_option(
         '--cue',
@@ -73,23 +48,23 @@ if (__name__ == '__main__'):
         type='string',
         dest='cuesheet',
         metavar='FILENAME',
-        help=OPT_CUESHEET_TRACKSPLIT)
+        help=_.OPT_CUESHEET_TRACKSPLIT)
 
-    conversion = audiotools.OptionGroup(parser, OPT_CAT_ENCODING)
+    conversion = audiotools.OptionGroup(parser, _.OPT_CAT_ENCODING)
 
     conversion.add_option(
         '-t', '--type',
         action='store',
         dest='type',
         choices=audiotools.TYPE_MAP.keys(),
-        help=OPT_TYPE)
+        help=_.OPT_TYPE)
 
     conversion.add_option(
         '-q', '--quality',
         action='store',
         type='string',
         dest='quality',
-        help=OPT_QUALITY)
+        help=_.OPT_QUALITY)
 
     conversion.add_option(
         '-d', '--dir',
@@ -97,7 +72,7 @@ if (__name__ == '__main__'):
         type='string',
         dest='dir',
         default='.',
-        help=OPT_DIR)
+        help=_.OPT_DIR)
 
     conversion.add_option(
         '--format',
@@ -105,11 +80,11 @@ if (__name__ == '__main__'):
         type='string',
         default=None,
         dest='format',
-        help=OPT_FORMAT)
+        help=_.OPT_FORMAT)
 
     parser.add_option_group(conversion)
 
-    lookup = audiotools.OptionGroup(parser, OPT_CAT_CD_LOOKUP)
+    lookup = audiotools.OptionGroup(parser, _.OPT_CAT_CD_LOOKUP)
 
     lookup.add_option(
         '--musicbrainz-server', action='store',
@@ -125,7 +100,7 @@ if (__name__ == '__main__'):
         '--no-musicbrainz', action='store_false',
         dest='use_musicbrainz',
         default=audiotools.MUSICBRAINZ_SERVICE,
-        help=OPT_NO_MUSICBRAINZ)
+        help=_.OPT_NO_MUSICBRAINZ)
 
     lookup.add_option(
         '--freedb-server', action='store',
@@ -141,23 +116,23 @@ if (__name__ == '__main__'):
         '--no-freedb', action='store_false',
         dest='use_freedb',
         default=audiotools.FREEDB_SERVICE,
-        help=OPT_NO_FREEDB)
+        help=_.OPT_NO_FREEDB)
 
     lookup.add_option(
         '-I', '--interactive',
         action='store_true',
         default=False,
         dest='interactive',
-        help=OPT_INTERACTIVE_METADATA)
+        help=_.OPT_INTERACTIVE_METADATA)
 
     lookup.add_option(
         '-D', '--default',
         dest='use_default', action='store_true', default=False,
-        help=OPT_DEFAULT)
+        help=_.OPT_DEFAULT)
 
     parser.add_option_group(lookup)
 
-    metadata = audiotools.OptionGroup(parser, OPT_CAT_METADATA)
+    metadata = audiotools.OptionGroup(parser, _.OPT_CAT_METADATA)
 
     metadata.add_option(
         '--album-number',
@@ -165,7 +140,7 @@ if (__name__ == '__main__'):
         action='store',
         type='int',
         default=0,
-        help=OPT_ALBUM_NUMBER)
+        help=_.OPT_ALBUM_NUMBER)
 
     metadata.add_option(
         '--album-total',
@@ -173,7 +148,7 @@ if (__name__ == '__main__'):
         action='store',
         type='int',
         default=0,
-        help=OPT_ALBUM_TOTAL)
+        help=_.OPT_ALBUM_TOTAL)
 
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)
@@ -184,13 +159,13 @@ if (__name__ == '__main__'):
         '--replay-gain',
         action='store_true',
         dest='add_replay_gain',
-        help=OPT_REPLAY_GAIN)
+        help=_.OPT_REPLAY_GAIN)
 
     metadata.add_option(
         '--no-replay-gain',
         action='store_false',
         dest='add_replay_gain',
-        help=OPT_NO_REPLAY_GAIN)
+        help=_.OPT_NO_REPLAY_GAIN)
 
     parser.add_option_group(metadata)
 
@@ -211,7 +186,7 @@ if (__name__ == '__main__'):
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(LAB_AVAILABLE_COMPRESSION_TYPES %
+            msg.info(_.LAB_AVAILABLE_COMPRESSION_TYPES %
                      (AudioType.NAME))
             for mode in AudioType.COMPRESSION_MODES:
                 msg.new_row()
@@ -229,18 +204,18 @@ if (__name__ == '__main__'):
                     AudioType.COMPRESSION_DESCRIPTIONS.get(mode, u""))
             msg.info_rows()
         else:
-            msg.error(ERR_NO_COMPRESSION_MODES % (AudioType.NAME))
+            msg.error(_.ERR_NO_COMPRESSION_MODES % (AudioType.NAME))
         sys.exit(0)
     elif (options.quality is None):
         options.quality = audiotools.__default_quality__(AudioType.NAME)
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(ERR_UNSUPPORTED_COMPRESSION_MODE %
+        msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
                   {"quality": options.quality,
                    "type": AudioType.NAME})
         sys.exit(1)
 
     if (len(args) != 1):
-        msg.error(ERR_1_FILE_REQUIRED)
+        msg.error(_.ERR_1_FILE_REQUIRED)
         sys.exit(1)
     else:
         input_filename = audiotools.Filename(args[0])
@@ -249,12 +224,12 @@ if (__name__ == '__main__'):
     try:
         audiofile = audiotools.open(str(input_filename))
     except audiotools.UnsupportedFile:
-        msg.error(ERR_1_FILE_REQUIRED)
+        msg.error(_.ERR_1_FILE_REQUIRED)
         sys.exit(1)
     except audiotools.InvalidFile:
-        msg.error(ERR_INVALID_FILE % (input_filename,))
+        msg.error(_.ERR_INVALID_FILE % (input_filename,))
     except IOError:
-        msg.error(ERR_OPEN_IOERROR % (input_filename,))
+        msg.error(_.ERR_OPEN_IOERROR % (input_filename,))
         sys.exit(1)
 
     if (options.add_replay_gain is None):
@@ -278,11 +253,11 @@ if (__name__ == '__main__'):
         if (has_embedded_cuesheet(audiofile)):
             cuesheet = audiofile.get_cuesheet()
         else:
-            msg.error(ERR_TRACKSPLIT_NO_CUESHEET)
+            msg.error(_.ERR_TRACKSPLIT_NO_CUESHEET)
             sys.exit(1)
 
     if (list(cuesheet.pcm_lengths(audiofile.total_frames()))[-1] <= 0):
-        msg.error(ERR_TRACKSPLIT_OVERLONG_CUESHEET)
+        msg.error(_.ERR_TRACKSPLIT_OVERLONG_CUESHEET)
         sys.exit(1)
 
     #use cuesheet to query metadata services for metadata choices

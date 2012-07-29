@@ -24,24 +24,7 @@ import os
 import os.path
 import operator
 import audiotools
-from audiotools.text import (USAGE_TRACKCMP,
-                             OPT_JOINT,
-                             OPT_VERBOSE,
-                             OPT_NO_SUMMARY,
-                             ERR_INVALID_JOINT,
-                             ERR_TRACKCMP_TYPE_MISMATCH,
-                             LAB_TRACKCMP_CMP,
-                             LAB_TRACKCMP_MISMATCH,
-                             LAB_TRACKCMP_OK,
-                             LAB_TRACKCMP_ERROR,
-                             LAB_TRACKCMP_MISSING,
-                             LAB_TRACKCMP_RESULTS,
-                             LAB_TRACKCMP_HEADER_SUCCESS,
-                             LAB_TRACKCMP_HEADER_FAILURE,
-                             LAB_TRACKCMP_HEADER_TOTAL,
-                             LAB_TRACKCMP_TYPE_MISMATCH,
-                             USAGE_TRACKCMP_CDIMAGE,
-                             USAGE_TRACKCMP_FILES)
+import audiotools.text as _
 
 def near_equal(audiofile1, audiofile2):
     p1 = audiofile1.to_pcm()
@@ -97,7 +80,7 @@ class Results:
                                     track_number
                                     if track_number is not None else 0)))))) +
                       u" : " +
-                      self.msg.ansi(LAB_TRACKCMP_MISSING,
+                      self.msg.ansi(_.LAB_TRACKCMP_MISSING,
                                     [self.msg.FG_RED]))
         sys.stdout.flush()
 
@@ -107,36 +90,36 @@ class Results:
         if (mismatch is None):
             self.successes += 1
 
-            return ((LAB_TRACKCMP_CMP %
+            return ((_.LAB_TRACKCMP_CMP %
                      {"file1":audiotools.Filename(path1),
                       "file2":audiotools.Filename(path2)}) +
                     u" : " +
-                    self.msg.ansi(LAB_TRACKCMP_OK,
+                    self.msg.ansi(_.LAB_TRACKCMP_OK,
                                   [self.msg.FG_GREEN]))
         elif (mismatch >= 0):
             self.failures += 1
 
-            return ((LAB_TRACKCMP_CMP %
+            return ((_.LAB_TRACKCMP_CMP %
                      {"file1":audiotools.Filename(path1),
                       "file2":audiotools.Filename(path2)}) +
                     u" : " +
-                    self.msg.ansi(LAB_TRACKCMP_MISMATCH %
+                    self.msg.ansi(_.LAB_TRACKCMP_MISMATCH %
                                   {"frame_number":mismatch + 1},
                                   [self.msg.FG_RED]))
         else:
             self.failures += 1
 
-            return ((LAB_TRACKCMP_CMP %
+            return ((_.LAB_TRACKCMP_CMP %
                      {"file1":audiotools.Filename(path1),
                       "file2":audiotools.Filename(path2)}) +
                     u" : " +
-                    self.msg.ansi(LAB_TRACKCMP_ERROR,
+                    self.msg.ansi(_.LAB_TRACKCMP_ERROR,
                                   [self.msg.FG_RED]))
 
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=USAGE_TRACKCMP,
+        usage=_.USAGE_TRACKCMP,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option(
@@ -145,25 +128,25 @@ if (__name__ == '__main__'):
         type='int',
         default=audiotools.MAX_JOBS,
         dest='max_processes',
-        help=OPT_JOINT)
+        help=_.OPT_JOINT)
 
     parser.add_option('-R', '--no-summary',
                       action='store_true',
                       dest='no_summary',
-                      help=OPT_NO_SUMMARY)
+                      help=_.OPT_NO_SUMMARY)
 
     parser.add_option('-V', '--verbose',
                       action='store',
                       dest='verbosity',
                       choices=audiotools.VERBOSITY_LEVELS,
                       default=audiotools.DEFAULT_VERBOSITY,
-                      help=OPT_VERBOSE)
+                      help=_.OPT_VERBOSE)
 
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackcmp", options)
 
     if (options.max_processes < 1):
-        msg.error(ERR_INVALID_JOINT)
+        msg.error(_.ERR_INVALID_JOINT)
         sys.exit(1)
 
     check_function = audiotools.pcm_frame_cmp
@@ -176,7 +159,7 @@ if (__name__ == '__main__'):
                                                messenger=msg,
                                                sorted=False)
             if (len(audiofiles) != 2):
-                msg.error(ERR_TRACKCMP_TYPE_MISMATCH)
+                msg.error(_.ERR_TRACKCMP_TYPE_MISMATCH)
                 sys.exit(1)
             try:
                 (audiofile_1,
@@ -196,12 +179,12 @@ if (__name__ == '__main__'):
                         pass
                     else:
                         msg.partial_info(
-                            (LAB_TRACKCMP_CMP %
+                            (_.LAB_TRACKCMP_CMP %
                              {"file1": filename_1,
                               "file2": filename_2}) +
                             u" : ")
                         msg.info(msg.ansi(
-                                LAB_TRACKCMP_MISMATCH %
+                                _.LAB_TRACKCMP_MISMATCH %
                                 {"frame_number": frame_mismatch + 1},
                                 [msg.FG_RED]))
                         sys.exit(1)
@@ -245,7 +228,7 @@ if (__name__ == '__main__'):
                 list(files1_tracknumbers & files2_tracknumbers)):
                 queue.execute(
                     function=cmp_files,
-                    progress_text=(LAB_TRACKCMP_CMP %
+                    progress_text=(_.LAB_TRACKCMP_CMP %
                                    {"file1":audiotools.Filename(
                                 files1_map[(album_number,
                                             track_number)].filename),
@@ -259,14 +242,14 @@ if (__name__ == '__main__'):
             queue.run(options.max_processes)
 
             if (not options.no_summary):
-                msg.output(LAB_TRACKCMP_RESULTS)
+                msg.output(_.LAB_TRACKCMP_RESULTS)
                 msg.output(u"")
                 msg.new_row()
-                msg.output_column(LAB_TRACKCMP_HEADER_SUCCESS, True)
+                msg.output_column(_.LAB_TRACKCMP_HEADER_SUCCESS, True)
                 msg.output_column(u" ")
-                msg.output_column(LAB_TRACKCMP_HEADER_FAILURE, True)
+                msg.output_column(_.LAB_TRACKCMP_HEADER_FAILURE, True)
                 msg.output_column(u" ")
-                msg.output_column(LAB_TRACKCMP_HEADER_TOTAL, True)
+                msg.output_column(_.LAB_TRACKCMP_HEADER_TOTAL, True)
                 msg.divider_row([u"-", u" ", u"-", u" ", u"-"])
                 msg.new_row()
                 msg.output_column(unicode(results.successes), True)
@@ -281,11 +264,11 @@ if (__name__ == '__main__'):
                 sys.exit(1)
         else:
             #comparison mismatch
-            msg.error((LAB_TRACKCMP_CMP %
+            msg.error((_.LAB_TRACKCMP_CMP %
                        {"file1":audiotools.Filename(args[0]),
                         "file2":audiotools.Filename(args[1])}) +
                       u" : " +
-                      msg.ansi(LAB_TRACKCMP_TYPE_MISMATCH,
+                      msg.ansi(_.LAB_TRACKCMP_TYPE_MISMATCH,
                                [msg.FG_RED]))
             sys.exit(1)
     elif (len(args) > 2):
@@ -300,7 +283,7 @@ if (__name__ == '__main__'):
 
         if (sum([t.total_frames() for t in audiofiles[0:-1]]) !=
             audiofiles[-1].total_frames()):
-            msg.usage(USAGE_TRACKCMP_CDIMAGE)
+            msg.usage(_.USAGE_TRACKCMP_CDIMAGE)
             sys.exit(1)
 
         cd_image = audiofiles[-1]
@@ -313,7 +296,7 @@ if (__name__ == '__main__'):
         cd_data = audiotools.BufferedPCMReader(cd_image.to_pcm())
         for (i, track) in enumerate(tracks):
             progress.add_row(0,
-                             LAB_TRACKCMP_CMP %
+                             _.LAB_TRACKCMP_CMP %
                              {"file1": audiotools.Filename(cd_image.filename),
                               "file2": audiotools.Filename(track.filename)})
             mismatch = audiotools.pcm_frame_cmp(
@@ -322,18 +305,18 @@ if (__name__ == '__main__'):
             progress.delete_row(0)
             progress.clear()
             msg.output(audiotools.output_progress(
-                    (LAB_TRACKCMP_CMP +
+                    (_.LAB_TRACKCMP_CMP +
                      {"file1":audiotools.Filename(cd_image.filename),
                       "file2":audiotools.Filename(track.filename)}) +
                     u" : " +
-                    (msg.ansi(LAB_TRACKCMP_OK, [msg.FG_GREEN])
+                    (msg.ansi(_.LAB_TRACKCMP_OK, [msg.FG_GREEN])
                      if mismatch is None else
-                     msg.ansi(LAB_TRACKCMP_MISMATCH %
+                     msg.ansi(_.LAB_TRACKCMP_MISMATCH %
                               {"frame_number":mismatch + 1},
                               [msg.FG_RED])),
                     i + 1, len(tracks)))
             if (mismatch is not None):
                 sys.exit(1)
     else:
-        msg.usage(USAGE_TRACKCMP_FILES)
+        msg.usage(_.USAGE_TRACKCMP_FILES)
         sys.exit(1)

@@ -5685,7 +5685,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] id3v2
      - [X] vorbis
      - [X] m4a
-** TODO Replace gettext with string constants
+** DONE Replace gettext with string constants
    Transforming _(u"some text") to SOME_TEXT
    where SOME_TEXT is a predefined unicode string
    in an audiotools sub-module.
@@ -5769,31 +5769,31 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] test_formats.py
     - [X] test_metadata.py
     - [X] test_utils.py
-*** TODO Reduce big import chunks
+*** DONE Reduce big import chunks
     Convert "from audiotools.text import (CONSTANT, ...)"
     to "import audiotools.text as t" and "t.CONSTANT"
     to avoid having huge import blocks at the start of utilities.
-    - [ ] audiotools-config
-    - [ ] cd2track
-    - [ ] cdinfo
-    - [ ] cdplay
-    - [ ] coverdump
-    - [ ] coverview
-    - [ ] dvda2track
-    - [ ] dvdainfo
-    - [ ] track2cd
-    - [ ] track2track
-    - [ ] trackcat
-    - [ ] trackcmp
-    - [ ] trackinfo
-    - [ ] tracklength
-    - [ ] tracklint
-    - [ ] trackplay
-    - [ ] trackrename
-    - [ ] tracksplit
-    - [ ] tracktag
-    - [ ] trackverify
-*** TODO Ensure unit tests pass
+    - [X] audiotools-config
+    - [X] cd2track
+    - [X] cdinfo
+    - [X] cdplay
+    - [X] coverdump
+    - [X] coverview
+    - [X] dvda2track
+    - [X] dvdainfo
+    - [X] track2cd
+    - [X] track2track
+    - [X] trackcat
+    - [X] trackcmp
+    - [X] trackinfo
+    - [X] tracklength
+    - [X] tracklint
+    - [X] trackplay
+    - [X] trackrename
+    - [X] tracksplit
+    - [X] tracktag
+    - [X] trackverify
+*** DONE Ensure unit tests pass
 ** TODO Remove Python Imaging Library requirement
    This is only used for thumbnailing
    and for TKinter-based image display.
