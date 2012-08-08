@@ -1,5 +1,5 @@
-#include <stdlib.h>		/* for malloc() */
-#include <string.h>		/* for memcpy() */
+#include <stdlib.h>     /* for malloc() */
+#include <string.h>     /* for memcpy() */
 
 #include "md5.h"
 
@@ -185,9 +185,9 @@ audiotools__MD5Update(audiotools__MD5Context *ctx,
 
     t = ctx->bytes[0];
     if ((ctx->bytes[0] = t + (uint32_t)len) < t)
-        ctx->bytes[1]++;	/* Carry from low to high */
+        ctx->bytes[1]++;    /* Carry from low to high */
 
-    t = 64 - (t & 0x3f);	/* Space available in ctx->in (at least 1) */
+    t = 64 - (t & 0x3f);    /* Space available in ctx->in (at least 1) */
     if (t > len) {
         memcpy((unsigned char *)ctx->in + 64 - t, buf, len);
         return;
@@ -238,7 +238,7 @@ audiotools__MD5Init(audiotools__MD5Context *ctx)
 void
 audiotools__MD5Final(unsigned char *digest, audiotools__MD5Context *ctx)
 {
-    int count = ctx->bytes[0] & 0x3f;	/* Number of bytes in ctx->in */
+    int count = ctx->bytes[0] & 0x3f;   /* Number of bytes in ctx->in */
     unsigned char *p = (unsigned char *)ctx->in + count;
 
     /* Set the first char of padding to 0x80.  There is always room. */
@@ -247,7 +247,7 @@ audiotools__MD5Final(unsigned char *digest, audiotools__MD5Context *ctx)
     /* Bytes of padding needed to make 56 bytes (-8..55) */
     count = 56 - 1 - count;
 
-    if (count < 0) {	/* Padding forces an extra block */
+    if (count < 0) {    /* Padding forces an extra block */
         memset(p, 0, count + 8);
         byteSwapX16(ctx->in);
         audiotools__MD5Transform(ctx->buf, ctx->in);
@@ -264,12 +264,10 @@ audiotools__MD5Final(unsigned char *digest, audiotools__MD5Context *ctx)
 
     byteSwap(ctx->buf, 4);
     memcpy(digest, ctx->buf, 16);
-    memset(ctx, 0, sizeof(ctx));	/* In case it's sensitive */
+    /* memset(ctx, 0, sizeof(ctx)); */  /* In case it's sensitive */
     if(0 != ctx->internal_buf) {
         free(ctx->internal_buf);
         ctx->internal_buf = 0;
         ctx->capacity = 0;
     }
 }
-
-

@@ -182,6 +182,9 @@ try:
 
         def swiveled(self, radio_button, selected, swivel):
             if (selected):
+                from .text import (LAB_KEY_NEXT,
+                                   LAB_KEY_PREVIOUS)
+
                 keys = []
                 if (radio_button.previous_radio_button() is not None):
                     keys.extend([('key', u"F1"),

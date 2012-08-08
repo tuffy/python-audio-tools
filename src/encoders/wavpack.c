@@ -1325,13 +1325,13 @@ wv_log2(int value)
     unsigned c = (a != 0) ? (LOG2(a) + 1) : 0;
 
     if (value >= 0) {
-        if ((0 <= a) && (a < 256)) {
+        if (a < 256) {
             return (c << 8) + WLOG[(a << (9 - c)) % 256];
         } else {
             return (c << 8) + WLOG[(a >> (c - 9)) % 256];
         }
     } else {
-        if ((0 <= a) && (a < 256)) {
+        if (a < 256) {
             return -((c << 8) + WLOG[(a << (9 - c)) % 256]);
         } else {
             return -((c << 8) + WLOG[(a >> (c - 9)) % 256]);

@@ -305,7 +305,7 @@ if (__name__ == '__main__'):
             progress.delete_row(0)
             progress.clear()
             msg.output(audiotools.output_progress(
-                    (_.LAB_TRACKCMP_CMP +
+                    (_.LAB_TRACKCMP_CMP %
                      {"file1":audiotools.Filename(cd_image.filename),
                       "file2":audiotools.Filename(track.filename)}) +
                     u" : " +
