@@ -99,14 +99,14 @@ if (audiotools.ui.AVAILABLE):
                 else:
                     self.status.set_text(_.LAB_TRACKTAG_UPDATED_1)
 
-                self.save_button.set_label(LAB_TRACKTAG_APPLY)
+                self.save_button.set_label(_.LAB_TRACKTAG_APPLY)
                 self.modified = False
 
         def exit(self, button, arg=None):
             raise urwid.ExitMainLoop()
 
         def changed(self, widget, new_text):
-            self.save_button.set_label(('modified', LAB_TRACKTAG_APPLY))
+            self.save_button.set_label(('modified', _.LAB_TRACKTAG_APPLY))
             self.status.set_text(u"")
             self.modified = True
 

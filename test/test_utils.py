@@ -2054,7 +2054,11 @@ class tracklength(UtilTest):
     @UTIL_TRACKLENGTH
     def test_tracklength(self):
         import shutil
-        from audiotools.text import (LAB_TRACKLENGTH)
+        from audiotools.text import (LAB_TRACKLENGTH_FILE_FORMAT,
+                                     LAB_TRACKLENGTH_FILE_COUNT,
+                                     LAB_TRACKLENGTH_FILE_LENGTH,
+                                     LAB_TRACKLENGTH_FILE_SIZE,
+                                     LAB_TRACKLENGTH)
 
         track1 = audiotools.open("1s.flac")
         track2 = audiotools.open("1m.flac")
@@ -2063,41 +2067,124 @@ class tracklength(UtilTest):
         self.assertEqual(track2.seconds_length(), 60)
         self.assertEqual(track3.seconds_length(), 60 * 60)
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac"]), 0)
-        self.__check_output__(LAB_TRACKLENGTH %
-                              {"hours":0,
-                               "minutes":0,
-                               "seconds":1})
+        self.__check_output__(u"%6s %5s %7s %4s" %
+                              (LAB_TRACKLENGTH_FILE_FORMAT,
+                               LAB_TRACKLENGTH_FILE_COUNT,
+                               LAB_TRACKLENGTH_FILE_LENGTH,
+                               LAB_TRACKLENGTH_FILE_SIZE))
+        self.__check_output__(u"%s %s %s %s" %
+                              (u"-" * 6,
+                               u"-" * 5,
+                               u"-" * 7,
+                               u"-" * 4))
+        self.__check_output__(u"%6s %5s %7s %4s" %
+                              (u"flac",
+                               1,
+                               LAB_TRACKLENGTH % {"hours":0,
+                                                  "minutes":0,
+                                                  "seconds":1},
+                               380))
+
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
                                            "1s.flac"]), 0)
-        self.__check_output__(LAB_TRACKLENGTH %
-                              {"hours":0,
-                               "minutes":0,
-                               "seconds":2})
+        self.__check_output__(u"%6s %5s %7s %4s" %
+                              (LAB_TRACKLENGTH_FILE_FORMAT,
+                               LAB_TRACKLENGTH_FILE_COUNT,
+                               LAB_TRACKLENGTH_FILE_LENGTH,
+                               LAB_TRACKLENGTH_FILE_SIZE))
+        self.__check_output__(u"%s %s %s %s" %
+                              (u"-" * 6,
+                               u"-" * 5,
+                               u"-" * 7,
+                               u"-" * 4))
+        self.__check_output__(u"%6s %5s %7s %4s" %
+                              (u"flac",
+                               2,
+                               LAB_TRACKLENGTH % {"hours":0,
+                                                  "minutes":0,
+                                                  "seconds":2},
+                               760))
+
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
                                            "1m.flac"]), 0)
-        self.__check_output__(LAB_TRACKLENGTH %
-                              {"hours":0,
-                               "minutes":1,
-                               "seconds":1})
+        self.__check_output__(u"%6s %5s %7s %4s" %
+                              (LAB_TRACKLENGTH_FILE_FORMAT,
+                               LAB_TRACKLENGTH_FILE_COUNT,
+                               LAB_TRACKLENGTH_FILE_LENGTH,
+                               LAB_TRACKLENGTH_FILE_SIZE))
+        self.__check_output__(u"%s %s %s %s" %
+                              (u"-" * 6,
+                               u"-" * 5,
+                               u"-" * 7,
+                               u"-" * 4))
+        self.__check_output__(u"%6s %5s %7s %4s" %
+                              (u"flac",
+                               2,
+                               LAB_TRACKLENGTH % {"hours":0,
+                                                  "minutes":1,
+                                                  "seconds":1},
+                               u"9.8K"))
+
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
                                            "1m.flac", "1m.flac"]), 0)
-        self.__check_output__(LAB_TRACKLENGTH %
-                              {"hours":0,
-                               "minutes":2,
-                               "seconds":1})
+        self.__check_output__(u"%6s %5s %7s %5s" %
+                              (LAB_TRACKLENGTH_FILE_FORMAT,
+                               LAB_TRACKLENGTH_FILE_COUNT,
+                               LAB_TRACKLENGTH_FILE_LENGTH,
+                               LAB_TRACKLENGTH_FILE_SIZE))
+        self.__check_output__(u"%s %s %s %s" %
+                              (u"-" * 6,
+                               u"-" * 5,
+                               u"-" * 7,
+                               u"-" * 5))
+        self.__check_output__(u"%6s %5s %7s %5s" %
+                              (u"flac",
+                               3,
+                               LAB_TRACKLENGTH % {"hours":0,
+                                                  "minutes":2,
+                                                  "seconds":1},
+                               u"19.1K"))
+
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
                                            "1m.flac", "1h.flac"]), 0)
-        self.__check_output__(LAB_TRACKLENGTH %
-                              {"hours":1,
-                               "minutes":1,
-                               "seconds":1})
+        self.__check_output__(u"%6s %5s %7s %5s" %
+                              (LAB_TRACKLENGTH_FILE_FORMAT,
+                               LAB_TRACKLENGTH_FILE_COUNT,
+                               LAB_TRACKLENGTH_FILE_LENGTH,
+                               LAB_TRACKLENGTH_FILE_SIZE))
+        self.__check_output__(u"%s %s %s %s" %
+                              (u"-" * 6,
+                               u"-" * 5,
+                               u"-" * 7,
+                               u"-" * 5))
+        self.__check_output__(u"%6s %5s %7s %5s" %
+                              (u"flac",
+                               3,
+                               LAB_TRACKLENGTH % {"hours":1,
+                                                  "minutes":1,
+                                                  "seconds":1},
+                               u"22.5K"))
+
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
                                            "1m.flac", "1h.flac",
                                            "1h.flac"]), 0)
-        self.__check_output__(LAB_TRACKLENGTH %
-                              {"hours":2,
-                               "minutes":1,
-                               "seconds":1})
+        self.__check_output__(u"%6s %5s %7s %5s" %
+                              (LAB_TRACKLENGTH_FILE_FORMAT,
+                               LAB_TRACKLENGTH_FILE_COUNT,
+                               LAB_TRACKLENGTH_FILE_LENGTH,
+                               LAB_TRACKLENGTH_FILE_SIZE))
+        self.__check_output__(u"%s %s %s %s" %
+                              (u"-" * 6,
+                               u"-" * 5,
+                               u"-" * 7,
+                               u"-" * 5))
+        self.__check_output__(u"%6s %5s %7s %5s" %
+                              (u"flac",
+                               4,
+                               LAB_TRACKLENGTH % {"hours":2,
+                                                  "minutes":1,
+                                                  "seconds":1},
+                               u"35.3K"))
 
         tempdir = tempfile.mkdtemp()
         try:
@@ -2105,10 +2192,23 @@ class tracklength(UtilTest):
             shutil.copy(track2.filename, tempdir)
             shutil.copy(track3.filename, tempdir)
             self.assertEqual(self.__run_app__(["tracklength", tempdir]), 0)
-            self.__check_output__(LAB_TRACKLENGTH %
-                                  {"hours":1,
-                                   "minutes":1,
-                                   "seconds":1})
+            self.__check_output__(u"%6s %5s %7s %5s" %
+                                  (LAB_TRACKLENGTH_FILE_FORMAT,
+                                   LAB_TRACKLENGTH_FILE_COUNT,
+                                   LAB_TRACKLENGTH_FILE_LENGTH,
+                                   LAB_TRACKLENGTH_FILE_SIZE))
+            self.__check_output__(u"%s %s %s %s" %
+                                  (u"-" * 6,
+                                   u"-" * 5,
+                                   u"-" * 7,
+                                   u"-" * 5))
+            self.__check_output__(u"%6s %5s %7s %5s" %
+                                  (u"flac",
+                                   3,
+                                   LAB_TRACKLENGTH % {"hours":1,
+                                                      "minutes":1,
+                                                      "seconds":1},
+                                   u"22.5K"))
         finally:
             for f in os.listdir(tempdir):
                 os.unlink(os.path.join(tempdir, f))

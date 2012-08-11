@@ -330,7 +330,7 @@ try:
 
                 swivel = Swivel(
                     swivel_type=u"field",
-                    left_top_widget=urwid.Text(('label', 'files')),
+                    left_top_widget=urwid.Text(('label', u'files')),
                     left_alignment='weight',
                     left_width=1,
                     left_radios=track_radios,

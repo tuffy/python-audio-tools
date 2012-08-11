@@ -23,6 +23,69 @@ from decimal import Decimal
 import audiotools
 import audiotools.text as _
 
+def audio_files(msg, args):
+    for audio_file in audiotools.open_files(filter(os.path.isfile, args),
+                                            messenger=msg,
+                                            warn_duplicates=True):
+        yield audio_file
+
+    for parent_dir in filter(os.path.isdir, args):
+        for audio_file in audiotools.open_directory(parent_dir,
+                                                    sorted=False,
+                                                    messenger=msg):
+            yield audio_file
+
+
+class FormatSummary:
+    def __init__(self):
+        self.total_length = Decimal(0)
+        self.file_count = 0
+        self.total_size = 0
+
+    def add(self, audiofile):
+        self.total_length += audiofile.seconds_length()
+        self.file_count += 1
+        self.total_size += os.path.getsize(audiofile.filename)
+
+    def to_row(self, name, msg):
+        msg.new_row()
+        msg.output_column(name, True)
+        msg.output_column(u" ")
+        msg.output_column(unicode(self.file_count), True)
+        msg.output_column(u" ")
+        format_length = int(self.total_length)
+        msg.output_column(_.LAB_TRACKLENGTH %
+                          {"hours":format_length / (60 * 60),
+                           "minutes":(format_length / 60) % 60,
+                           "seconds":format_length % 60},
+                          True)
+        msg.output_column(u" ")
+        if (self.total_size > (2 ** 40)):
+            #terabytes
+            total_size = u"%sT" % \
+                ((self.total_size /
+                  Decimal(2 ** 40)).quantize(Decimal("1.0")))
+        elif (self.total_size > (2 ** 30)):
+            #gigabytes
+            total_size = u"%sG" % \
+                ((self.total_size /
+                  Decimal(2 ** 30)).quantize(Decimal("1.0")))
+        elif (self.total_size > (2 ** 20)):
+            #megabytes
+            total_size = u"%sM" % \
+                ((self.total_size /
+                  Decimal(2 ** 20)).quantize(Decimal("1.0")))
+        elif (self.total_size > (2 ** 10)):
+            #kilobytes
+            total_size = u"%sK" % \
+                ((self.total_size /
+                  Decimal(2 ** 10)).quantize(Decimal("1.0")))
+        else:
+            #bytes
+            total_size = unicode(self.total_size)
+        msg.output_column(total_size, True)
+
+
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_.USAGE_TRACKLENGTH,
@@ -31,23 +94,30 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("tracklength", options)
 
-    total_length = Decimal(0)
+    format_summaries = {}
+    total_summary = FormatSummary()
 
-    audio_files = audiotools.open_files(filter(os.path.isfile, args),
-                                        messenger=msg,
-                                        warn_duplicates=True)
-    total_length += sum([file.seconds_length() for file in audio_files])
+    for audio_file in audio_files(msg, args):
+        if (audio_file.NAME not in format_summaries.keys()):
+            format_summaries[audio_file.NAME] = FormatSummary()
+        format_summaries[audio_file.NAME].add(audio_file)
+        total_summary.add(audio_file)
 
-    for parent_dir in filter(os.path.isdir, args):
-        for f in audiotools.open_directory(parent_dir, sorted=False,
-                                           messenger=msg):
-            total_length += f.seconds_length()
+    if (total_summary.file_count > 0):
+        msg.new_row()
+        msg.output_column(_.LAB_TRACKLENGTH_FILE_FORMAT, True)
+        msg.output_column(u" ")
+        msg.output_column(_.LAB_TRACKLENGTH_FILE_COUNT, True)
+        msg.output_column(u" ")
+        msg.output_column(_.LAB_TRACKLENGTH_FILE_LENGTH, True)
+        msg.output_column(u" ")
+        msg.output_column(_.LAB_TRACKLENGTH_FILE_SIZE, True)
+        msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
+        for name in sorted(format_summaries.keys()):
+            format_summaries[name].to_row(name.decode('ascii'), msg)
 
-    total_length = int(total_length)
+        if (len(format_summaries.keys()) > 1):
+            msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
+            total_summary.to_row(_.LAB_TRACKLENGTH_FILE_TOTAL, msg)
 
-    if (total_length > 0):
-        msg.output(_.LAB_TRACKLENGTH % {"hours": total_length / (60 * 60),
-                                      "minutes": (total_length / 60) % 60,
-                                      "seconds": total_length % 60})
-    else:
-        msg.output(_.LAB_TRACKLENGTH % {"hours": 0, "minutes": 0, "seconds": 0})
+        msg.output_rows()

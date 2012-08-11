@@ -363,6 +363,8 @@ class WaveAudio(WaveContainer):
                             break
                     except IOError:
                         continue
+                    except ValueError,err:
+                        raise InvalidWave(str(err))
                 elif (chunk.id == "data"):
                     self.__data_size__ = chunk.size()
                     data_read = True
