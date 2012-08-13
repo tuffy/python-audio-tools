@@ -1738,11 +1738,10 @@ class FlacAudio(WaveContainer, AiffContainer):
             metadata = flac.get_metadata()
 
             #generate SEEKTABLE from encoder offsets and add it to metadata
-            metadata_length = flac.metadata_length() + 4
             seekpoint_interval = pcmreader.sample_rate * 10
 
             metadata.add_block(flac.seektable(
-                    [(byte_offset - metadata_length,
+                    [(byte_offset,
                       pcm_frames) for byte_offset, pcm_frames in offsets],
                     seekpoint_interval))
 

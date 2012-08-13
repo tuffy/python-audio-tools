@@ -68,6 +68,7 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     array_ia* samples;
 
+    uint64_t current_offset = 0;
     PyObject *frame_offsets = NULL;
     PyObject *offset = NULL;
 
@@ -242,8 +243,8 @@ encoders_encode_flac(char *filename,
 
     while (samples->_[0]->len > 0) {
 #ifndef STANDALONE
-        offset = Py_BuildValue("(i, i)",
-                               bw_ftell(output_stream),
+        offset = Py_BuildValue("(K, i)",
+                               current_offset,
                                samples->_[0]->len);
         PyList_Append(frame_offsets, offset);
         Py_DECREF(offset);
@@ -259,6 +260,7 @@ encoders_encode_flac(char *filename,
         encoder.streaminfo.maximum_frame_size =
             MAX(encoder.streaminfo.maximum_frame_size,
                 encoder.frame->bits_written(encoder.frame) / 8);
+        current_offset += encoder.frame->bytes_written(encoder.frame);
         bw_rec_copy(output_stream, encoder.frame);
 #ifndef STANDALONE
         Py_END_ALLOW_THREADS
