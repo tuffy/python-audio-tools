@@ -158,14 +158,13 @@ ARRAY_MAPPEND(array_f_mappend, array_f, double)
     void                                                   \
     FUNC_NAME(ARRAY_TYPE *array, unsigned count, ...)      \
     {                                                               \
-        ARRAY_DATA_TYPE i;                                          \
         va_list ap;                                                 \
                                                                     \
         array->reset(array);                                        \
         array->resize(array, count);                                \
         va_start(ap, count);                                        \
         for (; count > 0; count--) {                                \
-            i = va_arg(ap, ARRAY_DATA_TYPE);                        \
+            const ARRAY_DATA_TYPE i = va_arg(ap, ARRAY_DATA_TYPE);  \
             array->_[array->len++] = i;                             \
         }                                                           \
         va_end(ap);                                                 \
@@ -191,11 +190,11 @@ ARRAY_MSET(array_f_mset, array_f, double)
     void                                                          \
     FUNC_NAME(ARRAY_TYPE *array, const ARRAY_TYPE *to_add)        \
     {                                                             \
-        array->resize(array, array->len + to_add->len);         \
-        memcpy(array->_ + array->len,                            \
+        array->resize(array, array->len + to_add->len);           \
+        memcpy(array->_ + array->len,                             \
                to_add->_,                                         \
-               sizeof(ARRAY_DATA_TYPE) * to_add->len);           \
-        array->len += to_add->len;                              \
+               sizeof(ARRAY_DATA_TYPE) * to_add->len);            \
+        array->len += to_add->len;                                \
     }
 ARRAY_EXTEND(array_i_extend, array_i, int)
 ARRAY_EXTEND(array_f_extend, array_f, double)
@@ -206,7 +205,7 @@ ARRAY_EXTEND(array_f_extend, array_f, double)
     {                                                              \
         assert(array->_ != NULL);                                  \
         assert(compare->_ != NULL);                                \
-        if (array->len == compare->len) {                        \
+        if (array->len == compare->len) {                               \
             return (memcmp(array->_, compare->_,                        \
                            sizeof(ARRAY_DATA_TYPE) * array->len) == 0); \
         } else                                                          \
@@ -340,7 +339,7 @@ ARRAY_SWAP(array_faa_swap, array_faa)
     void                                                            \
     FUNC_NAME(const ARRAY_TYPE *array, unsigned count, ARRAY_TYPE *head) \
     {                                                                   \
-        unsigned to_copy = MIN(count, array->len);                      \
+        const unsigned to_copy = MIN(count, array->len);                \
                                                                         \
         if (head != array) {                                            \
             head->resize(head, to_copy);                                \
@@ -380,7 +379,7 @@ ARRAY_DE_HEAD(array_f_de_head, array_f, double)
     void                                                                \
     FUNC_NAME(const ARRAY_TYPE *array, unsigned count, ARRAY_TYPE *tail) \
     {                                                                   \
-        unsigned to_copy = MIN(count, array->len);                      \
+        const unsigned to_copy = MIN(count, array->len);                \
                                                                         \
         if (tail != array) {                                            \
             tail->resize(tail, to_copy);                                \
@@ -422,8 +421,8 @@ ARRAY_DE_TAIL(array_f_de_tail, array_f, double)
               ARRAY_TYPE *head, ARRAY_TYPE *tail)                       \
     {                                                                   \
         /*ensure we don't try to move too many items*/                  \
-        unsigned to_head = MIN(count, array->len);                      \
-        unsigned to_tail = array->len - to_head;                        \
+        const unsigned to_head = MIN(count, array->len);                \
+        const unsigned to_tail = array->len - to_head;                  \
                                                                         \
         if ((head == array) && (tail == array)) {                       \
             /*do nothing*/                                              \
@@ -512,12 +511,11 @@ ARRAY_SLICE(array_f_slice, array_f, double, array_f_new)
     {                                                           \
         unsigned i;                                             \
         unsigned j;                                             \
-        ARRAY_DATA_TYPE x;                                      \
         ARRAY_DATA_TYPE *data = array->_;                       \
                                                                 \
         if (array->len > 0) {                                   \
             for (i = 0, j = array->len - 1; i < j; i++, j--) {  \
-                x = data[i];                                    \
+                ARRAY_DATA_TYPE x = data[i];                    \
                 data[i] = data[j];                              \
                 data[j] = x;                                    \
             }                                                   \
@@ -615,7 +613,7 @@ ARRAY_L_SWAP(array_lf_swap, array_lf)
     void                                                                \
     FUNC_NAME(const ARRAY_TYPE *array, unsigned count, ARRAY_TYPE *head) \
     {                                                                   \
-        unsigned to_copy = MIN(count, array->len);                      \
+        const unsigned to_copy = MIN(count, array->len);                \
         assert(array->_ != NULL);                                       \
         head->_ = array->_;                                             \
         head->len = to_copy;                                            \
@@ -642,7 +640,7 @@ ARRAY_L_DE_HEAD(array_lf_de_head, array_lf)
     void                                                                \
     FUNC_NAME(const ARRAY_TYPE *array, unsigned count, ARRAY_TYPE *tail) \
     {                                                                   \
-        unsigned to_copy = MIN(count, array->len);                      \
+        const unsigned to_copy = MIN(count, array->len);                \
         assert(array->_ != NULL);                                       \
         tail->_ = array->_ + (array->len - to_copy);                    \
         tail->len = to_copy;                                            \
@@ -660,29 +658,29 @@ ARRAY_L_TAIL(array_lf_tail, array_lf)
 ARRAY_L_DE_TAIL(array_li_de_tail, array_li)
 ARRAY_L_DE_TAIL(array_lf_de_tail, array_lf)
 
-#define ARRAY_L_SPLIT(FUNC_NAME, ARRAY_TYPE)            \
-    void                                                \
-    FUNC_NAME(const ARRAY_TYPE *array, unsigned count,  \
-              ARRAY_TYPE *head, ARRAY_TYPE *tail)       \
-    {                                                   \
-        /*ensure we don't try to move too many items*/  \
-        unsigned to_head = MIN(count, array->len);      \
-        unsigned to_tail = array->len - to_head;        \
-        assert(array->_ != NULL);                       \
-                                                        \
-        if ((head == array) && (tail == array)) {       \
-            /*do nothing*/                              \
-            return;                                     \
-        } else if (head == tail) {                      \
-            /*copy all data to head*/                   \
-            head->_ = array->_;                         \
-            head->len = array->len;                     \
-        } else {                                        \
-            head->_ = array->_;                         \
-            head->len = to_head;                        \
-            tail->_ = array->_ + to_head;               \
-            tail->len = to_tail;                        \
-        }                                               \
+#define ARRAY_L_SPLIT(FUNC_NAME, ARRAY_TYPE)             \
+    void                                                 \
+    FUNC_NAME(const ARRAY_TYPE *array, unsigned count,   \
+              ARRAY_TYPE *head, ARRAY_TYPE *tail)        \
+    {                                                    \
+        /*ensure we don't try to move too many items*/   \
+        const unsigned to_head = MIN(count, array->len); \
+        const unsigned to_tail = array->len - to_head;   \
+        assert(array->_ != NULL);                        \
+                                                         \
+        if ((head == array) && (tail == array)) {        \
+            /*do nothing*/                               \
+            return;                                      \
+        } else if (head == tail) {                       \
+            /*copy all data to head*/                    \
+            head->_ = array->_;                          \
+            head->len = array->len;                      \
+        } else {                                         \
+            head->_ = array->_;                          \
+            head->len = to_head;                         \
+            tail->_ = array->_ + to_head;                \
+            tail->len = to_tail;                         \
+        }                                                \
     }
 ARRAY_L_SPLIT(array_li_split, array_li)
 ARRAY_L_SPLIT(array_lf_split, array_lf)
@@ -1504,7 +1502,7 @@ void
 array_o_head(const struct array_o_s *array, unsigned count,
              struct array_o_s *head)
 {
-    unsigned to_copy = MIN(count, array->len);
+    const unsigned to_copy = MIN(count, array->len);
 
     if (head != array) {
         unsigned i;
@@ -1524,7 +1522,7 @@ void
 array_o_tail(const struct array_o_s *array, unsigned count,
              struct array_o_s *tail)
 {
-    unsigned to_copy = MIN(count, array->len);
+    const unsigned to_copy = MIN(count, array->len);
 
     if (tail != array) {
         unsigned i;
@@ -1566,8 +1564,8 @@ void
 array_o_split(const struct array_o_s *array, unsigned count,
               struct array_o_s *head, struct array_o_s *tail)
 {
-    unsigned to_head = MIN(count, array->len);
-    unsigned to_tail = array->len - to_head;
+    const unsigned to_head = MIN(count, array->len);
+    const unsigned to_tail = array->len - to_head;
 
     if ((head == array) && (tail == array)) {
         /*do nothing*/
