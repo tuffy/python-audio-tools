@@ -260,8 +260,8 @@ int pcmreader_read(struct pcmreader_s* reader,
     channels->reset(channels);
     for (channel = 0; channel < framelist->channels; channel++) {
         channel_a = channels->append(channels);
+        channel_a->resize(channel_a, framelist->frames);
         for (frame = 0; frame < framelist->frames; frame++) {
-            channel_a->resize(channel_a, framelist->frames);
             a_append(channel_a,
                      framelist->samples[(frame * framelist->channels) +
                                         channel]);

@@ -105,8 +105,8 @@ typedef struct pcmreader_s {
 
       returns 0 on success, 1 if there's an exception during reading*/
     int (*read)(struct pcmreader_s* reader,
-                 unsigned pcm_frames,
-                 array_ia* channels);
+                unsigned pcm_frames,
+                array_ia* channels);
 
     /*forwards a call to "close" to the wrapped PCMReader object*/
     void (*close)(struct pcmreader_s* reader);
