@@ -340,9 +340,9 @@ if (__name__ == '__main__'):
                     metadata.track_number = logical_track_number
                     if (options.track_total is not None):
                         metadata.track_total = options.track_total
-                    if (options.album_number is not None):
+                    if (options.album_number != 0):
                         metadata.album_number = options.album_number
-                    if (options.album_total is not None):
+                    if (options.album_total != 0):
                         metadata.album_total = options.album_total
 
                 output_filename = audiotools.Filename(

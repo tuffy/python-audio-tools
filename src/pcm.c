@@ -612,14 +612,13 @@ PyObject*
 FrameList_to_float(pcm_FrameList *self, PyObject *args)
 {
     unsigned i;
-    int adjustment;
+    const int adjustment = 1 << (self->bits_per_sample - 1);
     pcm_FloatFrameList *framelist = FloatFrameList_create();
     framelist->frames = self->frames;
     framelist->channels = self->channels;
     framelist->samples_length = self->samples_length;
     framelist->samples = malloc(sizeof(double) * framelist->samples_length);
 
-    adjustment = 1 << (self->bits_per_sample - 1);
     for (i = 0; i < self->samples_length; i++) {
         framelist->samples[i] = ((double)self->samples[i]) / adjustment;
     }
