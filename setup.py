@@ -42,7 +42,8 @@ pcmmodule = Extension('audiotools.pcm',
 pcmconvmodule = Extension('audiotools.pcmconverter',
                           sources=['src/pcmconverter.c',
                                    'src/pcmconv.c',
-                                   'src/array.c'])
+                                   'src/array.c',
+                                   'src/bitstream.c'])
 
 replaygainmodule = Extension('audiotools.replaygain',
                              sources=['src/replaygain.c'])

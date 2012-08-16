@@ -1,7 +1,9 @@
 #include <Python.h>
 #include "pcmconv.h"
 #include "array.h"
+#include "bitstream.h"
 #include "samplerate/samplerate.h"
+#include "pcmconverter.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -29,108 +31,9 @@
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
-PyMethodDef module_methods[] = {
-    {NULL}
-};
-
-
 /*******************************************************
  Downmixer for reducing channel count from many to 2
 *******************************************************/
-
-typedef struct {
-    PyObject_HEAD
-
-    struct pcmreader_s* pcmreader;
-    array_ia* input_channels;
-    array_i* empty_channel;
-    array_lia* six_channels;
-    array_ia* output_channels;
-    PyObject* audiotools_pcm;
-} pcmconverter_Downmixer;
-
-static PyObject*
-Downmixer_sample_rate(pcmconverter_Downmixer *self, void *closure);
-
-static PyObject*
-Downmixer_bits_per_sample(pcmconverter_Downmixer *self, void *closure);
-
-static PyObject*
-Downmixer_channels(pcmconverter_Downmixer *self, void *closure);
-
-static PyObject*
-Downmixer_channel_mask(pcmconverter_Downmixer *self, void *closure);
-
-static PyObject*
-Downmixer_read(pcmconverter_Downmixer *self, PyObject *args);
-
-static PyObject*
-Downmixer_close(pcmconverter_Downmixer *self, PyObject *args);
-
-static PyObject*
-Downmixer_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
-
-void
-Downmixer_dealloc(pcmconverter_Downmixer *self);
-
-int
-Downmixer_init(pcmconverter_Downmixer *self, PyObject *args, PyObject *kwds);
-
-PyGetSetDef Downmixer_getseters[] = {
-    {"sample_rate", (getter)Downmixer_sample_rate, NULL, "sample rate", NULL},
-    {"bits_per_sample", (getter)Downmixer_bits_per_sample, NULL, "bits per sample", NULL},
-    {"channels", (getter)Downmixer_channels, NULL, "channels", NULL},
-    {"channel_mask", (getter)Downmixer_channel_mask, NULL, "channel_mask", NULL},
-    {NULL}
-};
-
-PyMethodDef Downmixer_methods[] = {
-    {"read", (PyCFunction)Downmixer_read, METH_VARARGS, ""},
-    {"close", (PyCFunction)Downmixer_close, METH_NOARGS, ""},
-    {NULL}
-};
-
-PyTypeObject pcmconverter_DownmixerType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
-    "pcmconverter.Downmixer",     /*tp_name*/
-    sizeof(pcmconverter_Downmixer),/*tp_basicsize*/
-    0,                         /*tp_itemsize*/
-    (destructor)Downmixer_dealloc, /*tp_dealloc*/
-    0,                         /*tp_print*/
-    0,                         /*tp_getattr*/
-    0,                         /*tp_setattr*/
-    0,                         /*tp_compare*/
-    0,                         /*tp_repr*/
-    0,                         /*tp_as_number*/
-    0,                         /*tp_as_sequence*/
-    0,                         /*tp_as_mapping*/
-    0,                         /*tp_hash */
-    0,                         /*tp_call*/
-    0,                         /*tp_str*/
-    0,                         /*tp_getattro*/
-    0,                         /*tp_setattro*/
-    0,                         /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "Downmixer objects",       /* tp_doc */
-    0,                         /* tp_traverse */
-    0,                         /* tp_clear */
-    0,                         /* tp_richcompare */
-    0,                         /* tp_weaklistoffset */
-    0,                         /* tp_iter */
-    0,                         /* tp_iternext */
-    Downmixer_methods,         /* tp_methods */
-    0,                         /* tp_members */
-    Downmixer_getseters,       /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    (initproc)Downmixer_init,  /* tp_init */
-    0,                         /* tp_alloc */
-    Downmixer_new,             /* tp_new */
-};
 
 PyObject*
 Downmixer_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
@@ -222,6 +125,7 @@ Downmixer_read(pcmconverter_Downmixer *self, PyObject *args)
         -(1 << (self->pcmreader->bits_per_sample - 1));
         const int SAMPLE_MAX =
         (1 << (self->pcmreader->bits_per_sample - 1)) - 1;
+        PyThreadState *thread_state = PyEval_SaveThread();
 
         /*setup intermediate arrays*/
         if (self->empty_channel->len != frame_count)
@@ -315,6 +219,7 @@ Downmixer_read(pcmconverter_Downmixer *self, PyObject *args)
             a_append(right, MAX(MIN(right_i, SAMPLE_MAX), SAMPLE_MIN));
         }
 
+        PyEval_RestoreThread(thread_state);
         /*convert output to pcm.FrameList object and return it*/
         return array_ia_to_FrameList(self->audiotools_pcm,
                                      self->output_channels,
@@ -335,103 +240,6 @@ Downmixer_close(pcmconverter_Downmixer *self, PyObject *args)
 /*******************************************************
  Resampler for changing a PCMReader's sample rate
 *******************************************************/
-
-typedef struct {
-    PyObject_HEAD
-
-    struct pcmreader_s* pcmreader;
-    array_ia* input_channels;
-    SRC_STATE *src_state;
-    double ratio;
-    unsigned unprocessed_frame_count;
-    array_f* unprocessed_samples;
-    array_i* processed_samples;
-    int sample_rate;
-    PyObject* audiotools_pcm;
-} pcmconverter_Resampler;
-
-static PyObject*
-Resampler_sample_rate(pcmconverter_Resampler *self, void *closure);
-
-static PyObject*
-Resampler_bits_per_sample(pcmconverter_Resampler *self, void *closure);
-
-static PyObject*
-Resampler_channels(pcmconverter_Resampler *self, void *closure);
-
-static PyObject*
-Resampler_channel_mask(pcmconverter_Resampler *self, void *closure);
-
-static PyObject*
-Resampler_read(pcmconverter_Resampler *self, PyObject *args);
-
-static PyObject*
-Resampler_close(pcmconverter_Resampler *self, PyObject *args);
-
-static PyObject*
-Resampler_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
-
-void
-Resampler_dealloc(pcmconverter_Resampler *self);
-
-int
-Resampler_init(pcmconverter_Resampler *self, PyObject *args, PyObject *kwds);
-
-PyGetSetDef Resampler_getseters[] = {
-    {"sample_rate", (getter)Resampler_sample_rate, NULL, "sample rate", NULL},
-    {"bits_per_sample", (getter)Resampler_bits_per_sample, NULL, "bits per sample", NULL},
-    {"channels", (getter)Resampler_channels, NULL, "channels", NULL},
-    {"channel_mask", (getter)Resampler_channel_mask, NULL, "channel_mask", NULL},
-    {NULL}
-};
-
-PyMethodDef Resampler_methods[] = {
-    {"read", (PyCFunction)Resampler_read, METH_VARARGS, ""},
-    {"close", (PyCFunction)Resampler_close, METH_NOARGS, ""},
-    {NULL}
-};
-
-PyTypeObject pcmconverter_ResamplerType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
-    "pcmconverter.Resampler",     /*tp_name*/
-    sizeof(pcmconverter_Resampler),/*tp_basicsize*/
-    0,                         /*tp_itemsize*/
-    (destructor)Resampler_dealloc, /*tp_dealloc*/
-    0,                         /*tp_print*/
-    0,                         /*tp_getattr*/
-    0,                         /*tp_setattr*/
-    0,                         /*tp_compare*/
-    0,                         /*tp_repr*/
-    0,                         /*tp_as_number*/
-    0,                         /*tp_as_sequence*/
-    0,                         /*tp_as_mapping*/
-    0,                         /*tp_hash */
-    0,                         /*tp_call*/
-    0,                         /*tp_str*/
-    0,                         /*tp_getattro*/
-    0,                         /*tp_setattro*/
-    0,                         /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "Resampler objects",       /* tp_doc */
-    0,                         /* tp_traverse */
-    0,                         /* tp_clear */
-    0,                         /* tp_richcompare */
-    0,                         /* tp_weaklistoffset */
-    0,                         /* tp_iter */
-    0,                         /* tp_iternext */
-    Resampler_methods,         /* tp_methods */
-    0,                         /* tp_members */
-    Resampler_getseters,       /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    (initproc)Resampler_init,  /* tp_init */
-    0,                         /* tp_alloc */
-    Resampler_new,             /* tp_new */
-};
 
 static PyObject*
 Resampler_sample_rate(pcmconverter_Resampler *self, void *closure)
@@ -476,6 +284,7 @@ Resampler_read(pcmconverter_Resampler *self, PyObject *args)
         unsigned s = 0;
         unsigned c;
         unsigned i;
+        PyThreadState *thread_state = PyEval_SaveThread();
 
         /*populate SRC_DATA from unprocessed samples and FrameList*/
         src_data.input_frames = (self->unprocessed_frame_count +
@@ -502,6 +311,7 @@ Resampler_read(pcmconverter_Resampler *self, PyObject *args)
         /*run src_process() on self->SRC_STATE and SRC_DATA*/
         if ((processing_error = src_process(self->src_state, &src_data)) != 0) {
             /*some sort of processing error raises ValueError*/
+            PyEval_RestoreThread(thread_state);
             PyErr_SetString(PyExc_ValueError,
                             src_strerror(processing_error));
             free(src_data.data_in);
@@ -539,6 +349,7 @@ Resampler_read(pcmconverter_Resampler *self, PyObject *args)
 
             /*return FrameList*/
             free(src_data.data_in);
+            PyEval_RestoreThread(thread_state);
             return array_i_to_FrameList(self->audiotools_pcm,
                                         processed_samples,
                                         self->pcmreader->channels,
@@ -611,6 +422,253 @@ Resampler_init(pcmconverter_Resampler *self, PyObject *args, PyObject *kwds)
     return 0;
 }
 
+static int
+read_os_random(PyObject* os_module,
+               struct bs_buffer* buffer);
+
+static void
+close_os_random(PyObject* os_module);
+
+static void
+free_os_random(PyObject* os_module);
+
+static PyObject*
+BPSConverter_sample_rate(pcmconverter_BPSConverter *self, void *closure)
+{
+    return Py_BuildValue("i", self->pcmreader->sample_rate);
+}
+
+static PyObject*
+BPSConverter_bits_per_sample(pcmconverter_BPSConverter *self, void *closure)
+{
+    return Py_BuildValue("i", self->bits_per_sample);
+}
+
+static PyObject*
+BPSConverter_channels(pcmconverter_BPSConverter *self, void *closure)
+{
+    return Py_BuildValue("i", self->pcmreader->channels);
+}
+
+static PyObject*
+BPSConverter_channel_mask(pcmconverter_BPSConverter *self, void *closure)
+{
+    return Py_BuildValue("i", self->pcmreader->channel_mask);
+}
+
+static PyObject*
+BPSConverter_read(pcmconverter_BPSConverter *self, PyObject *args)
+{
+    /*read FrameList from PCMReader*/
+    if (self->pcmreader->read(self->pcmreader,
+                              4096,
+                              self->input_channels)) {
+        return NULL;
+    } else {
+        /*convert old bits-per-sample to new bits-per-sample using shifts*/
+        if (self->bits_per_sample < self->pcmreader->bits_per_sample) {
+            BitstreamReader* white_noise = self->white_noise;
+
+            /*decreasing bits-per-sample is a right shift*/
+            if (!setjmp(*br_try(white_noise))) {
+                const unsigned shift =
+                    self->pcmreader->bits_per_sample - self->bits_per_sample;
+                unsigned c;
+
+                self->output_channels->reset(self->output_channels);
+
+                for (c = 0; c < self->input_channels->len; c++) {
+                    array_i* input_channel =
+                        self->input_channels->_[c];
+                    array_i* output_channel =
+                        self->output_channels->append(self->output_channels);
+                    unsigned i;
+
+                    output_channel->resize(output_channel, input_channel->len);
+                    for (i = 0; i < input_channel->len; i++) {
+                        /*and add apply white noise dither
+                          taken from os.random()*/
+                        a_append(output_channel,
+                                 (input_channel->_[i] >> shift) ^
+                                 white_noise->read(white_noise, 1));
+                    }
+                }
+
+                br_etry(white_noise);
+                return array_ia_to_FrameList(self->audiotools_pcm,
+                                             self->output_channels,
+                                             self->bits_per_sample);
+            } else {
+                /*I/O error reading white noise from os.random()*/
+                br_etry(white_noise);
+                PyErr_SetString(
+                    PyExc_IOError,
+                    "I/O error reading dither data from os.urandom");
+                return NULL;
+            }
+        } else if (self->bits_per_sample > self->pcmreader->bits_per_sample) {
+            /*increasing bits-per-sample is a simple left shift*/
+            const unsigned shift =
+                self->bits_per_sample - self->pcmreader->bits_per_sample;
+            unsigned c;
+
+            self->output_channels->reset(self->output_channels);
+
+            for (c = 0; c < self->input_channels->len; c++) {
+                array_i* input_channel =
+                    self->input_channels->_[c];
+                array_i* output_channel =
+                    self->output_channels->append(self->output_channels);
+                unsigned i;
+
+                output_channel->resize(output_channel, input_channel->len);
+                for (i = 0; i < input_channel->len; i++) {
+                    a_append(output_channel, input_channel->_[i] << shift);
+                }
+            }
+
+            return array_ia_to_FrameList(self->audiotools_pcm,
+                                         self->output_channels,
+                                         self->bits_per_sample);
+        } else {
+            /*leaving bits-per-sample unchanged returns FrameList as-is*/
+            return array_ia_to_FrameList(self->audiotools_pcm,
+                                         self->input_channels,
+                                         self->bits_per_sample);
+        }
+    }
+}
+
+static PyObject*
+BPSConverter_close(pcmconverter_BPSConverter *self, PyObject *args)
+{
+    self->pcmreader->close(self->pcmreader);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BPSConverter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    pcmconverter_BPSConverter *self;
+
+    self = (pcmconverter_BPSConverter *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
+}
+
+void
+BPSConverter_dealloc(pcmconverter_BPSConverter *self)
+{
+    if (self->pcmreader != NULL)
+        self->pcmreader->del(self->pcmreader);
+    self->input_channels->del(self->input_channels);
+    self->output_channels->del(self->output_channels);
+    Py_XDECREF(self->audiotools_pcm);
+    if (self->white_noise != NULL)
+        self->white_noise->close(self->white_noise);
+
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+int
+BPSConverter_init(pcmconverter_BPSConverter *self,
+                  PyObject *args, PyObject *kwds)
+{
+    PyObject* os_module;
+
+    self->pcmreader = NULL;
+    self->input_channels = array_ia_new();
+    self->output_channels = array_ia_new();
+    self->audiotools_pcm = NULL;
+    self->white_noise = NULL;
+
+    if (!PyArg_ParseTuple(args, "O&i", pcmreader_converter,
+                          &(self->pcmreader),
+                          &(self->bits_per_sample)))
+        return -1;
+
+    /*ensure bits per sample is supported*/
+    switch (self->bits_per_sample) {
+    case 8:
+    case 16:
+    case 24:
+        break;
+    default:
+        PyErr_SetString(PyExc_ValueError,
+                        "new bits per sample must be 8, 16 or 24");
+        return -1;
+    }
+
+    if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
+        return -1;
+
+    if ((os_module = PyImport_ImportModule("os")) != NULL) {
+        self->white_noise = br_open_external(os_module,
+                                             BS_BIG_ENDIAN,
+                                             (EXT_READ)read_os_random,
+                                             (EXT_CLOSE)close_os_random,
+                                             (EXT_FREE)free_os_random);
+    } else {
+        return -1;
+    }
+
+
+    return 0;
+}
+
+static int
+read_os_random(PyObject* os_module,
+               struct bs_buffer* buffer)
+{
+    PyObject* string;
+
+    /*call os.urandom() and retrieve a Python object*/
+    if ((string = PyObject_CallMethod(os_module,
+                                      "urandom", "(i)", 4096)) != NULL) {
+        char *buffer_s;
+        Py_ssize_t buffer_len;
+
+        /*convert Python object to string and length*/
+        if (PyString_AsStringAndSize(string, &buffer_s, &buffer_len) != -1) {
+            /*extend buffer for additional data*/
+            uint8_t* new_data = buf_extend(buffer, (uint32_t)buffer_len);
+
+            /*copy string to buffer and extend buffer length*/
+            memcpy(new_data, buffer_s, (size_t)buffer_len);
+
+            buffer->buffer_size += (uint32_t)buffer_len;
+
+            /*DECREF Python object and return OK*/
+            Py_DECREF(string);
+            return 0;
+        } else {
+            /*os.urandom() didn't return a string
+              so print error and clear it*/
+            Py_DECREF(string);
+            PyErr_Print();
+            return 1;
+        }
+    } else {
+        /*error occured in os.urandom() call
+          so print error and clear it*/
+        PyErr_Print();
+        return 1;
+    }
+}
+
+static void
+close_os_random(PyObject* os_module)
+{
+    return;  /* does nothing*/
+}
+
+static void
+free_os_random(PyObject* os_module)
+{
+    Py_XDECREF(os_module);
+}
+
 
 PyMODINIT_FUNC
 initpcmconverter(void)
@@ -625,6 +683,10 @@ initpcmconverter(void)
     if (PyType_Ready(&pcmconverter_ResamplerType) < 0)
         return;
 
+    pcmconverter_BPSConverterType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&pcmconverter_BPSConverterType) < 0)
+        return;
+
     m = Py_InitModule3("pcmconverter", module_methods,
                        "A PCM stream conversion module");
 
@@ -635,6 +697,10 @@ initpcmconverter(void)
     Py_INCREF(&pcmconverter_ResamplerType);
     PyModule_AddObject(m, "Resampler",
                        (PyObject *)&pcmconverter_ResamplerType);
+
+    Py_INCREF(&pcmconverter_BPSConverterType);
+    PyModule_AddObject(m, "BPSConverter",
+                       (PyObject *)&pcmconverter_BPSConverterType);
 }
 
 #include "samplerate/samplerate.c"
