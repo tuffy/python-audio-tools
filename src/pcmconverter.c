@@ -32,6 +32,118 @@
 #endif
 
 /*******************************************************
+ Averager for reducing channel count from many to 1
+*******************************************************/
+
+static PyObject*
+Averager_sample_rate(pcmconverter_Averager *self, void *closure)
+{
+    return Py_BuildValue("I", self->pcmreader->sample_rate);
+}
+
+static PyObject*
+Averager_bits_per_sample(pcmconverter_Averager *self, void *closure)
+{
+    return Py_BuildValue("I", self->pcmreader->bits_per_sample);
+}
+
+static PyObject*
+Averager_channels(pcmconverter_Averager *self, void *closure)
+{
+    return Py_BuildValue("i", 1);
+}
+
+static PyObject*
+Averager_channel_mask(pcmconverter_Averager *self, void *closure)
+{
+    return Py_BuildValue("i", 0x4);
+}
+
+static PyObject*
+Averager_read(pcmconverter_Averager *self, PyObject *args)
+{
+    if (self->pcmreader->read(self->pcmreader,
+                              4096,
+                              self->input_channels)) {
+        /*error occured during call to .read()*/
+        return NULL;
+    } else {
+        unsigned c;
+        unsigned i;
+        array_ia* input = self->input_channels;
+        array_i* output = self->output_channel;
+        const unsigned frame_count = input->_[0]->len;
+        const unsigned channel_count = input->len;
+        PyThreadState *thread_state = PyEval_SaveThread();
+
+        output->reset(output);
+        output->resize(output, frame_count);
+        for (i = 0; i < frame_count; i++) {
+            int64_t accumulator = 0;
+            for (c = 0; c < channel_count; c++) {
+                accumulator += input->_[c]->_[i];
+            }
+            a_append(output, (int)(accumulator / channel_count));
+        }
+
+        PyEval_RestoreThread(thread_state);
+        return array_i_to_FrameList(self->audiotools_pcm,
+                                    output,
+                                    1,
+                                    self->pcmreader->bits_per_sample);
+    }
+}
+
+static PyObject*
+Averager_close(pcmconverter_Averager *self, PyObject *args)
+{
+    self->pcmreader->close(self->pcmreader);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+Averager_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    pcmconverter_Averager *self;
+
+    self = (pcmconverter_Averager *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
+}
+
+void
+Averager_dealloc(pcmconverter_Averager *self)
+{
+    if (self->pcmreader != NULL)
+        self->pcmreader->del(self->pcmreader);
+    self->input_channels->del(self->input_channels);
+    self->output_channel->del(self->output_channel);
+    Py_XDECREF(self->audiotools_pcm);
+
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+int
+Averager_init(pcmconverter_Averager *self, PyObject *args, PyObject *kwds)
+{
+    self->pcmreader = NULL;
+    self->input_channels = array_ia_new();
+    self->output_channel = array_i_new();
+    self->audiotools_pcm = NULL;
+
+    if (!PyArg_ParseTuple(args, "O&", pcmreader_converter,
+                          &(self->pcmreader)))
+        return -1;
+
+    if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
+        return -1;
+
+    return 0;
+}
+
+
+/*******************************************************
  Downmixer for reducing channel count from many to 2
 *******************************************************/
 
@@ -675,6 +787,10 @@ initpcmconverter(void)
 {
     PyObject* m;
 
+    pcmconverter_AveragerType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&pcmconverter_AveragerType) < 0)
+        return;
+
     pcmconverter_DownmixerType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&pcmconverter_DownmixerType) < 0)
         return;
@@ -689,6 +805,10 @@ initpcmconverter(void)
 
     m = Py_InitModule3("pcmconverter", module_methods,
                        "A PCM stream conversion module");
+
+    Py_INCREF(&pcmconverter_AveragerType);
+    PyModule_AddObject(m, "Averager",
+                       (PyObject *)&pcmconverter_AveragerType);
 
     Py_INCREF(&pcmconverter_DownmixerType);
     PyModule_AddObject(m, "Downmixer",

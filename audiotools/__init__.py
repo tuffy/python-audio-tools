@@ -1667,17 +1667,31 @@ class PCMReaderProgress:
 class ReorderedPCMReader:
     """a PCMReader wrapper which reorders its output channels"""
 
-    def __init__(self, pcmreader, channel_order):
+    def __init__(self, pcmreader, channel_order, channel_mask=None):
         """initialized with a PCMReader and list of channel number integers
 
         for example, to swap the channels of a stereo stream:
         >>> ReorderedPCMReader(reader,[1,0])
+
+        may raise ValueError if the number of channels specified by
+        channel_order doesn't match the given channel mask
+        if channel mask is nonzero
         """
 
         self.pcmreader = pcmreader
         self.sample_rate = pcmreader.sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
+        self.channels = len(channel_order)
+        if (channel_mask is None):
+            self.channel_mask = pcmreader.channel_mask
+        else:
+            self.channel_mask = channel_mask
+
+        if ((self.channel_mask != 0) and
+            (len(ChannelMask(self.channel_mask)) != self.channels)):
+            #channel_mask is defined but has a different number of channels
+            #than the channel count attribute
+            from .text import ERR_CHANNEL_COUNT_MASK_MISMATCH
+            raise ValueError(ERR_CHANNEL_COUNT_MASK_MISMATCH)
         self.bits_per_sample = pcmreader.bits_per_sample
         self.channel_order = channel_order
 
@@ -2326,7 +2340,7 @@ def __add_dither__(frame_list):
                          True)
 
 
-class PCMConverter:
+class PCMConverter2:
     """a PCMReader wrapper for converting attributes
 
     for example, this can be used to alter sample_rate, bits_per_sample,
@@ -2405,6 +2419,82 @@ class PCMConverter:
         """closes the stream for reading"""
 
         self.reader.close()
+
+
+def PCMConverter(pcmreader,
+                 sample_rate,
+                 channels,
+                 channel_mask,
+                 bits_per_sample):
+    """a PCMReader wrapper for converting attributes
+
+    for example, this can be used to alter sample_rate, bits_per_sample,
+    channel_mask, channel count, or any combination of those
+    attributes.  It resamples, downsamples, etc. to achieve the proper
+    output
+
+    may raise ValueError if any of the attributes are unsupported
+    or invalid
+    """
+
+    if (sample_rate <= 0):
+        from .text import ERR_INVALID_SAMPLE_RATE
+        raise ValueError(ERR_INVALID_SAMPLE_RATE)
+    elif (channels <= 0):
+        from .text import ERR_INVALID_CHANNEL_COUNT
+        raise ValueError(ERR_INVALID_CHANNEL_COUNT)
+    elif (bits_per_sample not in (8, 16, 24)):
+        from .text import ERR_INVALID_BITS_PER_SAMPLE
+        raise ValueError(ERR_INVALID_BITS_PER_SAMPLE)
+
+    if ((channel_mask != 0) and (len(ChannelMask(channel_mask)) != channels)):
+        #channel_mask is defined but has a different number of channels
+        #than the channel count attribute
+        from .text import ERR_CHANNEL_COUNT_MASK_MISMATCH
+        raise ValueError(ERR_CHANNEL_COUNT_MASK_MISMATCH)
+
+    if (pcmreader.channels > channels):
+        if ((channels == 1) and (channel_mask in (0, 0x4))):
+            if (pcmreader.channels > 2):
+                #reduce channel count through downmixing
+                #followed by averaging
+                from .pcmconverter import Averager,Downmixer
+                pcmreader = Averager(Downmixer(pcmreader))
+            else:
+                #pcmreader.channels == 2
+                #so reduce channel count through averaging
+                from .pcmconverter import Averager
+                pcmreader = Averager(pcmreader)
+        elif ((channels == 2) and (channel_mask in (0, 0x3))):
+            #reduce channel count through downmixing
+            from .pcmconverter import Downmixer
+            pcmreader = Downmixer(pcmreader)
+        else:
+            #unusual channel count/mask combination
+            #so pull mask channels from pcmreader
+            #and replace remainder with empty channels
+            raise NotImplementedError()
+    elif (pcmreader.channels < channels):
+        #increase channel count by duplicating first channel
+        #(this is usually just going from mono to stereo
+        # since there's no way to summon surround channels
+        # out of thin air)
+        pcmreader = ReorderedPCMReader(pcmreader,
+                                       range(pcmreader.channels) +
+                                       [0] * (channels - pcmreader.channels),
+                                       channel_mask)
+
+    if (pcmreader.sample_rate != sample_rate):
+        #convert sample rate through resampling
+        from .pcmconverter import Resampler
+        pcmreader = Resampler(pcmreader, sample_rate)
+
+    if (pcmreader.bits_per_sample != bits_per_sample):
+        #use bitshifts/dithering to adjust bits-per-sample
+        from .pcmconverter import BPSConverter
+        pcmreader = BPSConverter(pcmreader, bits_per_sample)
+
+    return pcmreader
 
 
 class ReplayGainReader:
