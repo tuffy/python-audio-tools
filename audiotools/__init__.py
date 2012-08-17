@@ -1709,6 +1709,69 @@ class ReorderedPCMReader:
         self.pcmreader.close()
 
 
+class RemaskedPCMReader:
+    """a PCMReader wrapper which changes the channel count and mask"""
+
+    def __init__(self, pcmreader, channel_count, channel_mask):
+        self.pcmreader = pcmreader
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = channel_count
+        self.channel_mask = channel_mask
+        self.bits_per_sample = pcmreader.bits_per_sample
+
+        if ((pcmreader.channel_mask != 0) and (channel_mask != 0)):
+            #both channel masks are defined
+            #so forward matching channels from pcmreader
+            #and replace non-matching channels with empty samples
+
+            mask = ChannelMask(channel_mask)
+            if (len(mask) != channel_count):
+                from .text import ERR_CHANNEL_COUNT_MASK_MISMATCH
+                raise ValueError(ERR_CHANNEL_COUNT_MASK_MISMATCH)
+            reader_channels = ChannelMask(pcmreader.channel_mask).channels()
+
+            self.__channels__ = [(reader_channels.index(c)
+                                  if c in reader_channels
+                                  else None) for c in mask.channels()]
+        else:
+            #at least one channel mask is undefined
+            #so forward up to "channel_count" channels from pcmreader
+            #and replace any remainders with empty samples
+            if (channel_count <= pcmreader.channel_count):
+                self.__channels__ = range(channel_count)
+            else:
+                self.__channels__ = (range(channel_count) +
+                                     [None] * (channel_count -
+                                               pcmreader.channel_count))
+
+        from .pcm import from_list,from_channels
+        self.blank_channel = from_list([],
+                                       1,
+                                       self.pcmreader.bits_per_sample,
+                                       True)
+        self.from_channels = from_channels
+
+    def read(self, pcm_frames):
+        frame = self.pcmreader.read(pcm_frames)
+
+        if (len(self.blank_channel) != frame.frames):
+            #ensure blank channel is large enough
+            from .pcm import from_list
+            self.blank_channel = from_list([0] * frame.frames,
+                                           1,
+                                           self.pcmreader.bits_per_sample,
+                                           True)
+
+        return self.from_channels([(frame.channel(c)
+                                    if c is not None else
+                                    self.blank_channel)
+                                   for c in self.__channels__])
+
+
+    def close(self):
+        self.pcmreader.close()
+
+
 class ResampledPCMReader:
     """a PCMReader wrapper which changes the sample rate"""
 
@@ -2103,324 +2166,6 @@ def pcm_split(reader, pcm_lengths):
     full_data.close()
 
 
-#going from many channels to less channels
-class __channel_remover__:
-    def __init__(self, old_channel_mask, new_channel_mask):
-        old_channels = ChannelMask(old_channel_mask).channels()
-        self.channels_to_keep = []
-        for new_channel in ChannelMask(new_channel_mask).channels():
-            if (new_channel in old_channels):
-                self.channels_to_keep.append(old_channels.index(new_channel))
-
-    def convert(self, frame_list):
-        return pcm.from_channels(
-            [frame_list.channel(i) for i in self.channels_to_keep])
-
-
-class __channel_adder__:
-    def __init__(self, channels):
-        self.channels = channels
-
-    def convert(self, frame_list):
-        current_channels = [frame_list.channel(i)
-                            for i in xrange(frame_list.channels)]
-        while (len(current_channels) < self.channels):
-            current_channels.append(current_channels[0])
-
-        return pcm.from_channels(current_channels)
-
-
-class __stereo_to_mono__:
-    def __init__(self):
-        pass
-
-    def convert(self, frame_list):
-        from itertools import izip
-
-        return pcm.from_list(
-            [(l + r) / 2 for l, r in izip(frame_list.channel(0),
-                                          frame_list.channel(1))],
-            1, frame_list.bits_per_sample, True)
-
-
-#going from many channels to 2
-class __downmixer__:
-    def __init__(self, old_channel_mask, old_channel_count):
-        #grab the front_left, front_right, front_center,
-        #back_left and back_right channels from old frame_list, if possible
-        #missing channels are replaced with 0-sample channels
-        #excess channels are dropped entirely
-        #side_left and side_right may be substituted for back_left/right
-        #but back channels take precedence
-
-        if (int(old_channel_mask) == 0):
-            #if the old_channel_mask is undefined
-            #invent a channel mask based on the channel count
-            old_channel_mask = {1: ChannelMask.from_fields(front_center=True),
-                                2: ChannelMask.from_fields(front_left=True,
-                                                           front_right=True),
-                                3: ChannelMask.from_fields(front_left=True,
-                                                           front_right=True,
-                                                          front_center=True),
-                                4: ChannelMask.from_fields(front_left=True,
-                                                           front_right=True,
-                                                           back_left=True,
-                                                           back_right=True),
-                                5: ChannelMask.from_fields(front_left=True,
-                                                           front_right=True,
-                                                           front_center=True,
-                                                           back_left=True,
-                                                           back_right=True)}[
-                min(old_channel_count, 5)]
-        else:
-            old_channel_mask = ChannelMask(old_channel_mask)
-
-        #channels_to_keep is an array of channel offsets
-        #where the index is:
-        #0 - front_left
-        #1 - front_right
-        #2 - front_center
-        #3 - back/side_left
-        #4 - back/side_right
-        #if -1, the channel is blank
-        self.channels_to_keep = []
-        for channel in ["front_left", "front_right", "front_center"]:
-            if (getattr(old_channel_mask, channel)):
-                self.channels_to_keep.append(old_channel_mask.index(channel))
-            else:
-                self.channels_to_keep.append(-1)
-
-        if (old_channel_mask.back_left):
-            self.channels_to_keep.append(old_channel_mask.index("back_left"))
-        elif (old_channel_mask.side_left):
-            self.channels_to_keep.append(old_channel_mask.index("side_left"))
-        else:
-            self.channels_to_keep.append(-1)
-
-        if (old_channel_mask.back_right):
-            self.channels_to_keep.append(old_channel_mask.index("back_right"))
-        elif (old_channel_mask.side_right):
-            self.channels_to_keep.append(old_channel_mask.index("side_right"))
-        else:
-            self.channels_to_keep.append(-1)
-
-        self.has_empty_channels = (-1 in self.channels_to_keep)
-
-    def convert(self, frame_list):
-        from itertools import izip
-
-        REAR_GAIN = 0.6
-        CENTER_GAIN = 0.7
-
-        if (self.has_empty_channels):
-            empty_channel = pcm.from_list([0] * frame_list.frames,
-                                          1,
-                                          frame_list.bits_per_sample,
-                                          True)
-
-        if (self.channels_to_keep[0] != -1):
-            Lf = frame_list.channel(self.channels_to_keep[0])
-        else:
-            Lf = empty_channel
-
-        if (self.channels_to_keep[1] != -1):
-            Rf = frame_list.channel(self.channels_to_keep[1])
-        else:
-            Rf = empty_channel
-
-        if (self.channels_to_keep[2] != -1):
-            C = frame_list.channel(self.channels_to_keep[2])
-        else:
-            C = empty_channel
-
-        if (self.channels_to_keep[3] != -1):
-            Lr = frame_list.channel(self.channels_to_keep[3])
-        else:
-            Lr = empty_channel
-
-        if (self.channels_to_keep[4] != -1):
-            Rr = frame_list.channel(self.channels_to_keep[4])
-        else:
-            Rr = empty_channel
-
-        mono_rear = [0.7 * (Lr_i + Rr_i) for Lr_i, Rr_i in izip(Lr, Rr)]
-
-        converter = lambda x: int(round(x))
-
-        left_channel = pcm.from_list(
-            [converter(Lf_i +
-                       (REAR_GAIN * mono_rear_i) +
-                       (CENTER_GAIN * C_i))
-             for Lf_i, mono_rear_i, C_i in izip(Lf, mono_rear, C)],
-            1,
-            frame_list.bits_per_sample,
-            True)
-
-        right_channel = pcm.from_list(
-            [converter(Rf_i -
-                       (REAR_GAIN * mono_rear_i) +
-                       (CENTER_GAIN * C_i))
-             for Rf_i, mono_rear_i, C_i in izip(Rf, mono_rear, C)],
-            1,
-            frame_list.bits_per_sample,
-            True)
-
-        return pcm.from_channels([left_channel, right_channel])
-
-
-#going from many channels to 1
-class __downmix_to_mono__:
-    def __init__(self, old_channel_mask, old_channel_count):
-        self.downmix = __downmixer__(old_channel_mask, old_channel_count)
-        self.mono = __stereo_to_mono__()
-
-    def convert(self, frame_list):
-        return self.mono.convert(self.downmix.convert(frame_list))
-
-
-class __convert_sample_rate__:
-    def __init__(self, old_sample_rate, new_sample_rate,
-                 channels, bits_per_sample):
-        from . import resample
-
-        self.resampler = resample.Resampler(
-                channels,
-                float(new_sample_rate) / float(old_sample_rate),
-                0)
-        self.unresampled = pcm.FloatFrameList([], channels)
-        self.bits_per_sample = bits_per_sample
-
-    def convert(self, frame_list):
-        #FIXME - The floating-point output from resampler.process()
-        #should be normalized rather than just chopping off
-        #excessively high or low samples (above 1.0 or below -1.0)
-        #during conversion to PCM.
-        #Unfortunately, that'll require building a second pass
-        #into the conversion process which will complicate PCMConverter
-        #a lot.
-        (output, self.unresampled) = self.resampler.process(
-            self.unresampled + frame_list.to_float(),
-            (len(frame_list) == 0) and (len(self.unresampled) == 0))
-
-        return output.to_int(self.bits_per_sample)
-
-
-class __convert_sample_rate_and_bits_per_sample__(__convert_sample_rate__):
-    def convert(self, frame_list):
-        (output, self.unresampled) = self.resampler.process(
-            self.unresampled + frame_list.to_float(),
-            (len(frame_list) == 0) and (len(self.unresampled) == 0))
-
-        return __add_dither__(output.to_int(self.bits_per_sample))
-
-
-class __convert_bits_per_sample__:
-    def __init__(self, bits_per_sample):
-        self.bits_per_sample = bits_per_sample
-
-    def convert(self, frame_list):
-        return __add_dither__(
-            frame_list.to_float().to_int(self.bits_per_sample))
-
-
-def __add_dither__(frame_list):
-    from itertools import izip
-
-    if (frame_list.bits_per_sample >= 16):
-        random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
-        white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
-                       for i in xrange(len(frame_list))]
-    else:
-        white_noise = [0] * len(frame_list)
-
-    return pcm.from_list([i ^ w for (i, w) in izip(frame_list,
-                                                   white_noise)],
-                         frame_list.channels,
-                         frame_list.bits_per_sample,
-                         True)
-
-
-class PCMConverter2:
-    """a PCMReader wrapper for converting attributes
-
-    for example, this can be used to alter sample_rate, bits_per_sample,
-    channel_mask, channel count, or any combination of those
-    attributes.  It resamples, downsamples, etc. to achieve the proper
-    output
-    """
-
-    def __init__(self, pcmreader,
-                 sample_rate,
-                 channels,
-                 channel_mask,
-                 bits_per_sample):
-        """takes a PCMReader input and the attributes of the new stream"""
-
-        self.sample_rate = sample_rate
-        self.channels = channels
-        self.bits_per_sample = bits_per_sample
-        self.channel_mask = channel_mask
-        self.reader = pcmreader
-
-        self.conversions = []
-        if (self.reader.channels != self.channels):
-            if (self.channels == 1):
-                self.conversions.append(
-                    __downmix_to_mono__(pcmreader.channel_mask,
-                                        pcmreader.channels))
-            elif (self.channels == 2):
-                self.conversions.append(
-                    __downmixer__(pcmreader.channel_mask,
-                                  pcmreader.channels))
-            elif (self.channels < pcmreader.channels):
-                self.conversions.append(
-                    __channel_remover__(pcmreader.channel_mask,
-                                        channel_mask))
-            elif (self.channels > pcmreader.channels):
-                self.conversions.append(
-                    __channel_adder__(self.channels))
-
-        if (self.reader.sample_rate != self.sample_rate):
-            #if we're converting sample rate and bits-per-sample
-            #at the same time, short-circuit the conversion to do both at once
-            #which can be sped up somewhat
-            if (self.reader.bits_per_sample != self.bits_per_sample):
-                self.conversions.append(
-                    __convert_sample_rate_and_bits_per_sample__(
-                        self.reader.sample_rate,
-                        self.sample_rate,
-                        self.channels,
-                        self.bits_per_sample))
-            else:
-                self.conversions.append(
-                    __convert_sample_rate__(
-                        self.reader.sample_rate,
-                        self.sample_rate,
-                        self.channels,
-                        self.bits_per_sample))
-
-        else:
-            if (self.reader.bits_per_sample != self.bits_per_sample):
-                self.conversions.append(
-                    __convert_bits_per_sample__(
-                        self.bits_per_sample))
-
-    def read(self, pcm_frames):
-        """try to read a pcm.FrameList with the given number of PCM frames"""
-
-        frame_list = self.reader.read(pcm_frames)
-
-        for converter in self.conversions:
-            frame_list = converter.convert(frame_list)
-
-        return frame_list
-
-    def close(self):
-        """closes the stream for reading"""
-
-        self.reader.close()
-
-
 def PCMConverter(pcmreader,
                  sample_rate,
                  channels,
@@ -2471,9 +2216,9 @@ def PCMConverter(pcmreader,
             pcmreader = Downmixer(pcmreader)
         else:
             #unusual channel count/mask combination
-            #so pull mask channels from pcmreader
-            #and replace remainder with empty channels
-            raise NotImplementedError()
+            pcmreader = RemaskedPCMReader(pcmreader,
+                                          channels,
+                                          channel_mask)
     elif (pcmreader.channels < channels):
         #increase channel count by duplicating first channel
         #(this is usually just going from mono to stereo
@@ -2495,66 +2240,6 @@ def PCMConverter(pcmreader,
         pcmreader = BPSConverter(pcmreader, bits_per_sample)
 
     return pcmreader
-
-
-class ReplayGainReader:
-    """a PCMReader which applies ReplayGain on its output"""
-
-    def __init__(self, pcmreader, replaygain, peak):
-        """fields are:
-
-        pcmreader  - a PCMReader object
-        replaygain - a floating point dB value
-        peak       - the maximum absolute value PCM sample, as a float
-
-        the latter two are typically stored with the file,
-        split into album gain and track gain pairs
-        which the user can apply based on preference
-        """
-
-        self.reader = pcmreader
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
-
-        self.replaygain = replaygain
-        self.peak = peak
-        self.bytes_per_sample = self.bits_per_sample / 8
-        self.multiplier = 10 ** (replaygain / 20)
-
-        #if we're increasing the volume (multipler is positive)
-        #and that increases the peak beyond 1.0 (which causes clipping)
-        #reduce the multiplier so that the peak doesn't go beyond 1.0
-        if ((self.multiplier * self.peak) > 1.0):
-            self.multiplier = 1.0 / self.peak
-
-    def read(self, pcm_frames):
-        """try to read a pcm.FrameList with the given number of PCM frames"""
-
-        from itertools import izip
-
-        multiplier = self.multiplier
-        samples = self.reader.read(pcm_frames)
-
-        if (self.bits_per_sample >= 16):
-            random_bytes = map(ord, os.urandom((len(samples) / 8) + 1))
-            white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
-                           for i in xrange(len(samples))]
-        else:
-            white_noise = [0] * len(samples)
-
-        return pcm.from_list(
-            [(int(round(s * multiplier)) ^ w) for (s, w) in
-             izip(samples, white_noise)],
-            samples.channels,
-            samples.bits_per_sample,
-            True)
-
-    def close(self):
-        """closes the stream for reading"""
-
-        self.reader.close()
 
 
 def resampled_frame_count(initial_frame_count,
