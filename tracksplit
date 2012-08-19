@@ -364,12 +364,10 @@ if (__name__ == '__main__'):
                         format=options.format)))
 
             if (output_filename in input_filenames):
-                msg.error(u"\"%s\" cannot be both input and output file" %
-                          (output_filename,))
+                msg.error(_.ERR_OUTPUT_IS_INPUT % (output_filename,))
                 sys.exit(1)
             elif (output_filename in output_filenames):
-                msg.error(u"Output file \"%s\" occurs more than once" %
-                          (output_filename,))
+                msg.error(_.ERR_DUPLICATE_OUTPUT_FILE % (output_filename,))
                 sys.exit(1)
             else:
                 output_filenames.add(output_filename)

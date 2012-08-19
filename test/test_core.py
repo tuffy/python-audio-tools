@@ -3454,9 +3454,9 @@ class TestReplayGain(unittest.TestCase):
             #apply gain to dummy file
             track2 = test_format.from_pcm(
                 dummy2.name,
-                audiotools.ReplayGainReader(track1.to_pcm(),
-                                            gain,
-                                            peak))
+                audiotools.replaygain.ReplayGainReader(track1.to_pcm(),
+                                                       gain,
+                                                       peak))
 
             #ensure gain applied is quieter than without gain applied
             gain2 = audiotools.replaygain.ReplayGain(track1.sample_rate())
