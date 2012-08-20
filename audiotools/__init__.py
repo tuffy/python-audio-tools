@@ -1772,35 +1772,6 @@ class RemaskedPCMReader:
         self.pcmreader.close()
 
 
-class ResampledPCMReader:
-    """a PCMReader wrapper which changes the sample rate"""
-
-    def __init__(self, pcmreader, new_sample_rate):
-        self.pcmreader = pcmreader
-        self.sample_rate = new_sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
-
-        from . import resample
-        self.resampler = resample.Resampler(
-            self.channels,
-            float(new_sample_rate) / float(pcmreader.sample_rate),
-            0)
-        self.unresampled = pcm.FloatFrameList([], self.channels)
-
-    def read(self, pcm_frames):
-        framelist = self.pcmreader.read(pcm_frames)
-        (output, self.unresampled) = self.resampler.process(
-            self.unresampled + framelist.to_float(),
-            (len(framelist) == 0) and (len(self.unresampled) == 0))
-
-        return output.to_int(self.bits_per_sample)
-
-    def close(self):
-        self.pcmreader.close()
-
-
 def transfer_data(from_function, to_function):
     """sends BUFFER_SIZE strings from from_function to to_function
 
@@ -2321,7 +2292,8 @@ def calculate_replay_gain(tracks, progress=None):
             pcm = ReorderedPCMReader(pcm, [0, 1])
         if (pcm.sample_rate != target_rate):
             #add a wrapper to resample any nonstandard rates
-            pcm = ResampledPCMReader(pcm, target_rate)
+            from .pcmconverter import Resampler
+            pcm = Resampler(pcm, target_rate)
 
         #finally, perform the gain calculation on the PCMReader
         frame = pcm.read(FRAMELIST_SIZE)

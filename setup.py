@@ -33,9 +33,6 @@ cdiomodule = Extension('audiotools.cdio',
                        libraries=['cdio', 'cdio_paranoia',
                                   'cdio_cdda', 'm'])
 
-resamplemodule = Extension('audiotools.resample',
-                           sources=['src/resample.c'])
-
 pcmmodule = Extension('audiotools.pcm',
                       sources=['src/pcm.c'])
 
@@ -114,7 +111,6 @@ setup(name='Python Audio Tools',
       packages=["audiotools",
                 "audiotools.py_decoders", "audiotools.py_encoders"],
       ext_modules=[cdiomodule,
-                   resamplemodule,
                    pcmmodule,
                    pcmconvmodule,
                    replaygainmodule,
