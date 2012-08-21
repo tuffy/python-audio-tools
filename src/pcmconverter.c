@@ -4,6 +4,7 @@
 #include "bitstream.h"
 #include "samplerate/samplerate.h"
 #include "pcmconverter.h"
+#include "dither.c"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -687,8 +688,6 @@ int
 BPSConverter_init(pcmconverter_BPSConverter *self,
                   PyObject *args, PyObject *kwds)
 {
-    PyObject* os_module;
-
     self->pcmreader = NULL;
     self->input_channels = array_ia_new();
     self->output_channels = array_ia_new();
@@ -715,72 +714,11 @@ BPSConverter_init(pcmconverter_BPSConverter *self,
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
-    if ((os_module = PyImport_ImportModule("os")) != NULL) {
-        self->white_noise = br_open_external(os_module,
-                                             BS_BIG_ENDIAN,
-                                             (EXT_READ)read_os_random,
-                                             (EXT_CLOSE)close_os_random,
-                                             (EXT_FREE)free_os_random);
-    } else {
+    if ((self->white_noise = open_dither()) == NULL)
         return -1;
-    }
-
 
     return 0;
 }
-
-static int
-read_os_random(PyObject* os_module,
-               struct bs_buffer* buffer)
-{
-    PyObject* string;
-
-    /*call os.urandom() and retrieve a Python object*/
-    if ((string = PyObject_CallMethod(os_module,
-                                      "urandom", "(i)", 4096)) != NULL) {
-        char *buffer_s;
-        Py_ssize_t buffer_len;
-
-        /*convert Python object to string and length*/
-        if (PyString_AsStringAndSize(string, &buffer_s, &buffer_len) != -1) {
-            /*extend buffer for additional data*/
-            uint8_t* new_data = buf_extend(buffer, (uint32_t)buffer_len);
-
-            /*copy string to buffer and extend buffer length*/
-            memcpy(new_data, buffer_s, (size_t)buffer_len);
-
-            buffer->buffer_size += (uint32_t)buffer_len;
-
-            /*DECREF Python object and return OK*/
-            Py_DECREF(string);
-            return 0;
-        } else {
-            /*os.urandom() didn't return a string
-              so print error and clear it*/
-            Py_DECREF(string);
-            PyErr_Print();
-            return 1;
-        }
-    } else {
-        /*error occured in os.urandom() call
-          so print error and clear it*/
-        PyErr_Print();
-        return 1;
-    }
-}
-
-static void
-close_os_random(PyObject* os_module)
-{
-    return;  /* does nothing*/
-}
-
-static void
-free_os_random(PyObject* os_module)
-{
-    Py_XDECREF(os_module);
-}
-
 
 PyMODINIT_FUNC
 initpcmconverter(void)

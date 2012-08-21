@@ -43,7 +43,10 @@ pcmconvmodule = Extension('audiotools.pcmconverter',
                                    'src/bitstream.c'])
 
 replaygainmodule = Extension('audiotools.replaygain',
-                             sources=['src/replaygain.c'])
+                             sources=['src/replaygain.c',
+                                      'src/pcmconv.c',
+                                      'src/array.c',
+                                      'src/bitstream.c'])
 
 decoders_defines = [("VERSION", VERSION)]
 decoders_sources = ['src/array.c',

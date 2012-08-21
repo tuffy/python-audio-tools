@@ -113,9 +113,10 @@ ReplayGain_get_album_gain(replaygain_ReplayGain *self);
 typedef struct {
     PyObject_HEAD;
 
-    PyObject* pcm_module;
-    PyObject* os_module;
-    PyObject* pcmreader;
+    pcmreader* pcmreader;
+    array_ia* channels;
+    BitstreamReader* white_noise;
+    PyObject* audiotools_pcm;
     double multiplier;
 } replaygain_ReplayGainReader;
 
