@@ -72,10 +72,7 @@ typedef struct {
     uint32_t  A [STEPS_per_dB_times_MAX_dB];
     uint32_t  B [STEPS_per_dB_times_MAX_dB];
 
-    double title_peak;
     double album_peak;
-
-    PyObject *pcm_module;
 } replaygain_ReplayGain;
 
 void
@@ -88,10 +85,7 @@ int
 ReplayGain_init(replaygain_ReplayGain *self, PyObject *args, PyObject *kwds);
 
 PyObject*
-ReplayGain_update(replaygain_ReplayGain *self, PyObject *args);
-
-PyObject*
-ReplayGain_title_gain(replaygain_ReplayGain *self);
+ReplayGain_title_gain(replaygain_ReplayGain *self, PyObject* args);
 
 PyObject*
 ReplayGain_album_gain(replaygain_ReplayGain *self);

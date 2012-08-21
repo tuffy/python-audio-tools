@@ -1643,14 +1643,14 @@ def to_pcm_progress(audiofile, progress):
 
 
 class PCMReaderProgress:
-    def __init__(self, pcmreader, total_frames, progress):
+    def __init__(self, pcmreader, total_frames, progress, current_frames=0):
         self.__read__ = pcmreader.read
         self.__close__ = pcmreader.close
         self.sample_rate = pcmreader.sample_rate
         self.channels = pcmreader.channels
         self.channel_mask = pcmreader.channel_mask
         self.bits_per_sample = pcmreader.bits_per_sample
-        self.current_frames = 0
+        self.current_frames = current_frames
         self.total_frames = total_frames
         self.progress = progress
 
@@ -2274,17 +2274,18 @@ def calculate_replay_gain(tracks, progress=None):
         bisect(SUPPORTED_RATES, most_numerous([track.sample_rate()
                                                for track in tracks]))]
 
-    total_frames = sum([resampled_frame_count(track.total_frames(),
-                                              track.sample_rate(),
-                                              target_rate)
-                        for track in tracks])
-    processed_frames = 0
+    track_frames = [resampled_frame_count(track.total_frames(),
+                                          track.sample_rate(),
+                                          target_rate)
+                    for track in tracks]
+    current_frames = 0
+    total_frames = sum(track_frames)
 
     rg = replaygain.ReplayGain(target_rate)
 
     gains = []
 
-    for track in tracks:
+    for (track, track_frames) in zip(tracks, track_frames):
         pcm = track.to_pcm()
 
         if (pcm.channels > 2):
@@ -2296,21 +2297,17 @@ def calculate_replay_gain(tracks, progress=None):
             pcm = Resampler(pcm, target_rate)
 
         #finally, perform the gain calculation on the PCMReader
-        frame = pcm.read(FRAMELIST_SIZE)
-        while (len(frame) > 0):
-            rg.update(frame)
-            if (progress is not None):
-                processed_frames += frame.frames
-                progress(processed_frames, total_frames)
-            frame = pcm.read(FRAMELIST_SIZE)
-
-        pcm.close()
-
-        #accumulate the title gain
-        (track_gain, track_peak) = rg.title_gain()
+        #and accumulate the title gain
+        if (progress is not None):
+            (track_gain, track_peak) = rg.title_gain(
+                PCMReaderProgress(pcm, total_frames, progress,
+                                  current_frames=current_frames))
+            current_frames += track_frames
+        else:
+            (track_gain, track_peak) = rg.title_gain(pcm)
         gains.append((track, track_gain, track_peak))
 
-    #once everything is calculate, get the album gain
+    #once everything is calculated, get the album gain
     (album_gain, album_peak) = rg.album_gain()
 
     #yield a set of accumulated track and album gains

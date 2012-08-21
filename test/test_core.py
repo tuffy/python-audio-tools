@@ -3368,6 +3368,7 @@ class TestReplayGain(unittest.TestCase):
     def test_basics(self):
         import audiotools.replaygain
         import audiotools.pcm
+        from cStringIO import StringIO
 
         #check for invalid sample rate
         self.assertRaises(ValueError,
@@ -3376,13 +3377,17 @@ class TestReplayGain(unittest.TestCase):
 
         #check for invalid channel count
         rg = audiotools.replaygain.ReplayGain(44100)
+
         self.assertRaises(ValueError,
-                          rg.update,
-                          audiotools.pcm.from_list(range(20), 4, 16, True))
+                          rg.title_gain,
+                          audiotools.PCMReader(StringIO(""),
+                                               44100, 4, 0x33, 16))
 
         #check for not enough samples
-        rg.update(audiotools.pcm.from_list([1, 2], 2, 16, True))
-        self.assertRaises(ValueError, rg.title_gain)
+        self.assertRaises(ValueError,
+                          rg.title_gain,
+                          audiotools.PCMReader(StringIO("0123"),
+                                               44100, 2, 0x3, 16))
         self.assertRaises(ValueError, rg.album_gain)
 
         #check for no tracks
@@ -3424,8 +3429,7 @@ class TestReplayGain(unittest.TestCase):
                                               0x4,
                                               16,
                                               (30000, sample_rate / 100))
-            audiotools.transfer_data(reader.read, gain.update)
-            (gain, peak) = gain.title_gain()
+            (gain, peak) = gain.title_gain(reader)
             self.assert_(gain < -4.0)
             self.assert_(peak > .90)
 
@@ -3447,9 +3451,7 @@ class TestReplayGain(unittest.TestCase):
 
             #calculate its ReplayGain
             gain = audiotools.replaygain.ReplayGain(track1.sample_rate())
-            pcm = track1.to_pcm()
-            audiotools.transfer_data(pcm.read, gain.update)
-            (gain, peak) = gain.title_gain()
+            (gain, peak) = gain.title_gain(track1.to_pcm())
 
             #apply gain to dummy file
             track2 = test_format.from_pcm(
@@ -3460,9 +3462,7 @@ class TestReplayGain(unittest.TestCase):
 
             #ensure gain applied is quieter than without gain applied
             gain2 = audiotools.replaygain.ReplayGain(track1.sample_rate())
-            pcm = track2.to_pcm()
-            audiotools.transfer_data(pcm.read, gain2.update)
-            (gain2, peak2) = gain2.title_gain()
+            (gain2, peak2) = gain2.title_gain(track2.to_pcm())
 
             self.assert_(gain2 > gain)
         finally:
