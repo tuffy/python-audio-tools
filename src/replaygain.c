@@ -117,8 +117,12 @@ ReplayGain_init(replaygain_ReplayGain *self, PyObject *args, PyObject *kwds)
     long sample_rate;
     int  i;
 
+    self->sample_rate = 0;
+
     if (!PyArg_ParseTuple(args, "l", &sample_rate))
         return -1;
+
+    self->sample_rate = (unsigned)sample_rate;
 
     /* zero out initial values*/
     for (i = 0; i < MAX_ORDER; i++ )
@@ -192,6 +196,15 @@ ReplayGain_title_gain(replaygain_ReplayGain *self, PyObject *args)
         array_ia* channels = array_ia_new();
         array_fa* channels_f = array_fa_new();
         const int32_t peak_shift = 1 << (pcmreader->bits_per_sample - 1);
+
+        if (pcmreader->sample_rate != self->sample_rate) {
+            PyErr_SetString(PyExc_ValueError,
+                            "pcmreader's sample rate doesn't match");
+            pcmreader->del(pcmreader);
+            channels->del(channels);
+            channels_f->del(channels_f);
+            return NULL;
+        }
 
         /*read a FrameList object from PCMReader*/
         if (pcmreader->read(pcmreader, 4096, channels)) {

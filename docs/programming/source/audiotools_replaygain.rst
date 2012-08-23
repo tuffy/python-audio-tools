@@ -20,19 +20,20 @@ ReplayGain Objects
    the given ``sample_rate``.
    Raises :exc:`ValueError` if the sample rate is not supported.
 
-.. method:: Replaygain.update(frame_list)
+.. method:: ReplayGain.title_gain(pcmreader)
 
-   Takes a :class:`pcm.FrameList` object and updates our ongoing
-   ReplayGain calculation.
-   Raises :exc:`ValueError` if some error occurs during calculation.
-
-.. method:: ReplayGain.title_gain()
-
-   Returns a pair of floats.
+   Given a :class:`audiotools.PCMReader`-compatible object,
+   calculates its ReplayGain values and returns a pair of floats.
    The first is the calculated gain value since our last call
    to :meth:`title_gain`.
    The second is the calculated peak value since our last call
    to :meth:`title_gain`.
+
+   May raise :exc:`ValueError` if the stream's sample rate
+   doesn't match the rate given at init-time,
+   the stream's number of channels is more than 2,
+   the stream doesn't contain enough samples
+   or the calculation generates some other error.
 
 .. method:: ReplayGain.album_gain()
 

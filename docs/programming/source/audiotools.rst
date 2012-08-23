@@ -1274,6 +1274,19 @@ PCMConverter Objects
 
    This method functions the same as the :meth:`PCMReader.close` method.
 
+RemaskedPCMReader Objects
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. class:: RemaskedPCMReader(pcmreader, channel_count, channel_mask)
+
+   This class wraps around an existing :class:`PCMReader` object
+   and constructs a new :class:`PCMReader` with the given
+   channel count and mask.
+
+   Channels common to ``pcmreader`` and the given channel mask
+   are output by calls to :meth:`RemaskedPCMReader.read`
+   while missing channels are populated with silence.
+
 BufferedPCMReader Objects
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 

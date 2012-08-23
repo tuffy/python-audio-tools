@@ -5906,7 +5906,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] tracktag
     - [X] trackverify
 *** DONE Ensure unit tests pass
-** TODO Fix --number=0 argument to tracktag
+** DONE Update C-based ReplayGainReader
+   Use a lot of the new C-based facilities to make it simpler.
+** DONE Fix --number=0 argument to tracktag
    I'd like to make track_number=0 a valid value
    and have track_number=None indicate a missing field.
    The problem is maintaining consistency between
@@ -5922,9 +5924,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] ID3v24Comment
    - [X] M4A_META_Atom
    - [X] VorbisComment
-*** TODO Update utilities
-*** TODO Update documentation
-*** TODO Update unit tests
+*** DONE Update utilities
+*** DONE Update documentation
+*** DONE Update unit tests
 **** DONE Add getitem/setitem/getattr/setattr/delattr tests to metadata
      - [X] flac
      - [X] wavpack
@@ -5937,8 +5939,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    and for TKinter-based image display.
    Since a Python3 version doesn't seem to be pending,
    it would be better to remove the requirement.
-** TODO Update C-based ReplayGainReader
-   Use a lot of the new C-based facilities to make it simpler.
 ** TODO Add internal MP3 codec
    This is likely the codec people are most interested in
    and so it should be folded in so it can be used

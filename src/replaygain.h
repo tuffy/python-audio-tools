@@ -72,6 +72,7 @@ typedef struct {
     uint32_t  A [STEPS_per_dB_times_MAX_dB];
     uint32_t  B [STEPS_per_dB_times_MAX_dB];
 
+    unsigned sample_rate;
     double album_peak;
 } replaygain_ReplayGain;
 
