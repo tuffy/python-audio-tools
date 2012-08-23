@@ -130,9 +130,6 @@ MUSICBRAINZ_PORT = config.getint_default("MusicBrainz", "port", 80)
 ADD_REPLAYGAIN = config.getboolean_default("ReplayGain", "add_by_default",
                                            True)
 
-THUMBNAIL_FORMAT = config.get_default("Thumbnail", "format", "jpeg")
-THUMBNAIL_SIZE = config.getint_default("Thumbnail", "size", 150)
-
 VERSION = "2.19alpha2"
 
 FILENAME_FORMAT = config.get_default(
@@ -2880,18 +2877,6 @@ class Image:
                      description=description,
                      type=type)
 
-    def thumbnail(self, width, height, format):
-        """returns a new Image object with the given attributes
-
-        width and height are integers
-        format is a string such as "JPEG"
-        """
-
-        from .image import thumbnail_image
-
-        return Image.new(thumbnail_image(self.data, width, height, format),
-                         self.description, self.type)
-
     def __eq__(self, image):
         if (image is not None):
             for attr in ["data", "mime_type", "width", "height",
@@ -2917,9 +2902,6 @@ class InvalidImage(Exception):
 
     def __unicode__(self):
         return self.err
-
-from .image import can_thumbnail
-from .image import thumbnail_formats
 
 
 #######################

@@ -58,16 +58,6 @@
       the default maximum number of processes to execute at one time
     </option>
   </options>
-  <options category="thumbnail">
-    <option long="thumbnail-format" arg="type">
-      the format to use for thumbnails, such as "jpeg" or "png"
-    </option>
-    <option long="thumbnail-size" arg="int">
-      The maximum size of each thumbnail, in pixels squared.
-      For example, specifying 100 results in thumbnails a maximum of
-      100x100 pixels large.
-    </option>
-  </options>
   <options category="freedb">
     <option long="use-freedb" arg="yes/no">
       whether to use the FreeDB service for CD lookups by default

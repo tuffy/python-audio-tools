@@ -32,7 +32,7 @@ MAX_CPUS = audiotools.MAX_JOBS
 
 def convert(progress, source_audiofile, destination_filename,
             destination_class, compression,
-            metadata, thumbnail_images):
+            metadata):
     destination_audiofile = source_audiofile.convert(
         destination_filename,
         destination_class,
@@ -40,14 +40,6 @@ def convert(progress, source_audiofile, destination_filename,
         progress)
 
     if (metadata is not None):
-        if (thumbnail_images):
-            for img in metadata.images():
-                metadata.delete_image(img)
-                metadata.add_image(img.thumbnail(
-                        audiotools.THUMBNAIL_SIZE,
-                        audiotools.THUMBNAIL_SIZE,
-                        audiotools.THUMBNAIL_FORMAT))
-
         destination_audiofile.set_metadata(metadata)
     elif ((source_audiofile.track_number() != 0) or
           (source_audiofile.album_number() != 0)):
@@ -119,13 +111,6 @@ if (__name__ == '__main__'):
     parser.add_option_group(conversion)
 
     metadata = audiotools.OptionGroup(parser, _.OPT_CAT_METADATA)
-
-    metadata.add_option(
-        '-T', '--thumbnail',
-        action='store_true',
-        default=False,
-        dest='thumbnail',
-        help=_.OPT_THUMBNAIL)
 
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)
@@ -245,22 +230,6 @@ if (__name__ == '__main__'):
             audiotools.ADD_REPLAYGAIN and
             AudioType.lossless_replay_gain())
 
-    if (options.thumbnail):
-        if (not audiotools.can_thumbnail()):
-            msg.error(_.ERR_NO_THUMBNAILS)
-            msg.info(_.ERR_THUMBNAIL_SUGGESTION1)
-            msg.info(_.ERR_THUMBNAIL_SUGGESTION2)
-            msg.info(_.ERR_THUMBNAIL_SUGGESTION3)
-            sys.exit(1)
-
-        if (audiotools.THUMBNAIL_FORMAT.upper() not in
-            audiotools.thumbnail_formats()):
-            msg.error(_.ERR_INVALID_THUMBNAIL_FORMAT %
-                      (audiotools.THUMBNAIL_FORMAT))
-            msg.info(_.ERR_AVAILABLE_THUMBNAIL_FORMATS %
-                     (", ".join(audiotools.thumbnail_formats())))
-            sys.exit(1)
-
     quality = options.quality
     max_processes = options.max_processes
 
@@ -308,8 +277,7 @@ if (__name__ == '__main__'):
                           destination_filename=str(output_filename),
                           destination_class=AudioType,
                           compression=quality,
-                          metadata=track_metadata,
-                          thumbnail_images=options.thumbnail)
+                          metadata=track_metadata)
 
         #try to create subdirectories in advance
         #so as to bail out as early as possible
@@ -381,8 +349,7 @@ if (__name__ == '__main__'):
                       destination_filename=options.output,
                       destination_class=AudioType,
                       compression=quality,
-                      metadata=track_metadata,
-                      thumbnail_images=options.thumbnail)
+                      metadata=track_metadata)
 
         try:
             queue.run(1)

@@ -51,9 +51,6 @@
     </option>
   </options>
   <options category="metadata">
-    <option short="T" long="thumbnail">
-      convert embedded images to smaller thumbnails during conversion
-    </option>
     <option long="replay-gain">
       add ReplayGain metadata to newly created tracks
     </option>

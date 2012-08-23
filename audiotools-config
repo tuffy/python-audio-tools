@@ -166,76 +166,10 @@ if (__name__ == '__main__'):
         print "Perhaps you should re-install the Python Audio Tools"
         sys.exit(1)
 
-    from audiotools.text import(USAGE_AT_CONFIG,
-                                OPT_CAT_SYSTEM,
-                                OPT_AT_CONFIG_READ_OFFSET,
-                                OPT_AT_CONFIG_WRITE_OFFSET,
-                                OPT_AT_CONFIG_FS_ENCODING,
-                                OPT_AT_CONFIG_IO_ENCODING,
-                                OPT_CAT_TRANSCODING,
-                                OPT_TYPE_AT_CONFIG,
-                                OPT_QUALITY_AT_CONFIG,
-                                OPT_JOINT,
-                                OPT_CAT_THUMBNAIL,
-                                OPT_AT_CONFIG_THUMBNAIL_FORMAT,
-                                OPT_AT_CONFIG_THUMBNAIL_SIZE,
-                                OPT_CAT_CD_LOOKUP,
-                                OPT_CAT_ID3,
-                                OPT_AT_CONFIG_ID3V2_VERSION,
-                                OPT_AT_CONFIG_ID3V1_VERSION,
-                                OPT_AT_CONFIG_ID3V2_PAD,
-                                OPT_CAT_REPLAYGAIN,
-                                OPT_REPLAY_GAIN,
-                                OPT_CAT_BINARIES,
-                                OPT_FORMAT,
-                                OPT_VERBOSE_AT_CONFIG,
-                                LAB_AT_CONFIG_CD_BURNING,
-                                LAB_AT_CONFIG_YES,
-                                LAB_AT_CONFIG_NO,
-                                LAB_AT_CONFIG_WITHOUT_CUE,
-                                LAB_AT_CONFIG_WITH_CUE,
-                                LAB_AT_CONFIG_SYS_CONFIG,
-                                LAB_AT_CONFIG_USE_MUSICBRAINZ,
-                                LAB_AT_CONFIG_MUSICBRAINZ_SERVER,
-                                LAB_AT_CONFIG_MUSICBRAINZ_PORT,
-                                LAB_AT_CONFIG_USE_FREEDB,
-                                LAB_AT_CONFIG_FREEDB_SERVER,
-                                LAB_AT_CONFIG_FREEDB_PORT,
-                                LAB_AT_CONFIG_JOBS,
-                                LAB_AT_CONFIG_AUDIO_OUTPUT,
-                                LAB_AT_CONFIG_DEFAULT_CDROM,
-                                LAB_AT_CONFIG_CDROM_READ_OFFSET,
-                                LAB_AT_CONFIG_CDROM_WRITE_OFFSET,
-                                LAB_AT_CONFIG_VERBOSITY,
-                                LAB_AT_CONFIG_FORMAT,
-                                LAB_AT_CONFIG_FS_ENCODING,
-                                LAB_AT_CONFIG_IO_ENCODING,
-                                LAB_AT_CONFIG_ID3V2_VERSION,
-                                LAB_AT_CONFIG_ID3V2_ID3V22,
-                                LAB_AT_CONFIG_ID3V2_ID3V23,
-                                LAB_AT_CONFIG_ID3V2_ID3V24,
-                                LAB_AT_CONFIG_ID3V2_NONE,
-                                LAB_AT_CONFIG_ID3V2_PADDING,
-                                LAB_AT_CONFIG_ID3V2_PADDING_YES,
-                                LAB_AT_CONFIG_ID3V2_PADDING_NO,
-                                LAB_AT_CONFIG_ID3V1_VERSION,
-                                LAB_AT_CONFIG_ID3V1_ID3V11,
-                                LAB_AT_CONFIG_ID3V1_NONE,
-                                LAB_AT_CONFIG_CAN_THUMBNAIL,
-                                LAB_AT_CONFIG_NO_PIL,
-                                LAB_AT_CONFIG_THUMBNAIL_FORMAT,
-                                LAB_AT_CONFIG_THUMBNAIL_SIZE,
-                                LAB_DIMENSIONS,
-                                LAB_AT_CONFIG_ADD_REPLAY_GAIN,
-                                LAB_AVAILABLE_COMPRESSION_TYPES,
-                                ERR_NO_COMPRESSION_MODES,
-                                ERR_UNSUPPORTED_COMPRESSION_MODE,
-                                LAB_AT_CONFIG_FILE_WRITTEN,
-
-        )
+    import audiotools.text as _
 
     parser = audiotools.OptionParser(
-        usage=USAGE_AT_CONFIG,
+        usage=_.USAGE_AT_CONFIG,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     opt_map = {"system_cdrom": ("System", "cdrom"),
@@ -244,9 +178,6 @@ if (__name__ == '__main__'):
                "system_fs_encoding": ("System", "fs_encoding"),
                "system_io_encoding": ("System", "io_encoding"),
                "system_maximum_jobs": ("System", "maximum_jobs"),
-
-               "thumbnail_format": ("Thumbnail", "format"),
-               "thumbnail_size": ("Thumbnail", "size"),
 
                "freedb_server": ("FreeDB", "server"),
                "freedb_port": ("FreeDB", "port"),
@@ -264,7 +195,7 @@ if (__name__ == '__main__'):
                "id3v1_version": ("ID3", "id3v1"),
                "add_replaygain": ("ReplayGain", "add_by_default")}
 
-    system = audiotools.OptionGroup(parser, OPT_CAT_SYSTEM)
+    system = audiotools.OptionGroup(parser, _.OPT_CAT_SYSTEM)
 
     system.add_option('-c', '--cdrom',
                       action='store',
@@ -276,46 +207,46 @@ if (__name__ == '__main__'):
                       type='int',
                       metavar='INT',
                       dest='system_cdrom_read_offset',
-                      help=OPT_AT_CONFIG_READ_OFFSET)
+                      help=_.OPT_AT_CONFIG_READ_OFFSET)
 
     system.add_option('--cdrom-write-offset',
                       action='store',
                       type='int',
                       metavar='INT',
                       dest='system_cdrom_write_offset',
-                      help=OPT_AT_CONFIG_WRITE_OFFSET)
+                      help=_.OPT_AT_CONFIG_WRITE_OFFSET)
 
     system.add_option(
         '--fs-encoding',
         action='store',
         metavar='ENCODING',
         dest='system_fs_encoding',
-        help=OPT_AT_CONFIG_FS_ENCODING)
+        help=_.OPT_AT_CONFIG_FS_ENCODING)
 
     system.add_option(
         '--io-encoding',
         action='store',
         metavar='ENCODING',
         dest='system_io_encoding',
-        help=OPT_AT_CONFIG_IO_ENCODING)
+        help=_.OPT_AT_CONFIG_IO_ENCODING)
 
     parser.add_option_group(system)
 
-    transcoding = audiotools.OptionGroup(parser, OPT_CAT_TRANSCODING)
+    transcoding = audiotools.OptionGroup(parser, _.OPT_CAT_TRANSCODING)
 
     transcoding.add_option(
         '-t', '--type',
         action='store',
         dest='type',
         choices=audiotools.TYPE_MAP.keys(),
-        help=OPT_TYPE_AT_CONFIG)
+        help=_.OPT_TYPE_AT_CONFIG)
 
     transcoding.add_option(
         '-q', '--quality',
         action='store',
         type='string',
         dest='quality',
-        help=OPT_QUALITY_AT_CONFIG)
+        help=_.OPT_QUALITY_AT_CONFIG)
 
     transcoding.add_option(
         '-j', '--joint',
@@ -323,30 +254,11 @@ if (__name__ == '__main__'):
         type='int',
         metavar='MAX_PROCESSES',
         dest='system_maximum_jobs',
-        help=OPT_JOINT)
+        help=_.OPT_JOINT)
 
     parser.add_option_group(transcoding)
 
-    thumbnails = audiotools.OptionGroup(parser, OPT_CAT_THUMBNAIL)
-
-    thumbnails.add_option(
-        '--thumbnail-format',
-        action='store',
-        metavar='TYPE',
-        dest='thumbnail_format',
-        help=OPT_AT_CONFIG_THUMBNAIL_FORMAT)
-
-    thumbnails.add_option(
-        '--thumbnail-size',
-        action='store',
-        type='int',
-        metavar='INT',
-        dest='thumbnail_size',
-        help=OPT_AT_CONFIG_THUMBNAIL_SIZE)
-
-    parser.add_option_group(thumbnails)
-
-    lookup = audiotools.OptionGroup(parser, OPT_CAT_CD_LOOKUP)
+    lookup = audiotools.OptionGroup(parser, _.OPT_CAT_CD_LOOKUP)
 
     lookup.add_option(
         '--use-freedb',
@@ -388,7 +300,7 @@ if (__name__ == '__main__'):
 
     parser.add_option_group(lookup)
 
-    id3 = audiotools.OptionGroup(parser, OPT_CAT_ID3)
+    id3 = audiotools.OptionGroup(parser, _.OPT_CAT_ID3)
 
     id3.add_option(
         '--id3v2-version',
@@ -397,7 +309,7 @@ if (__name__ == '__main__'):
         choices=('id3v2.2', 'id3v2.3', 'id3v2.4', 'none'),
         dest='id3v2_version',
         metavar='VERSION',
-        help=OPT_AT_CONFIG_ID3V2_VERSION)
+        help=_.OPT_AT_CONFIG_ID3V2_VERSION)
 
     id3.add_option(
         '--id3v1-version',
@@ -406,7 +318,7 @@ if (__name__ == '__main__'):
         choices=('id3v1.1', 'none'),
         dest='id3v1_version',
         metavar='VERSION',
-        help=OPT_AT_CONFIG_ID3V1_VERSION)
+        help=_.OPT_AT_CONFIG_ID3V1_VERSION)
 
     id3.add_option(
         '--id3v2-pad',
@@ -415,11 +327,11 @@ if (__name__ == '__main__'):
         choices=('true', 'false'),
         dest='id3_digit_padding',
         metavar='true / false',
-        help=OPT_AT_CONFIG_ID3V2_PAD)
+        help=_.OPT_AT_CONFIG_ID3V2_PAD)
 
     parser.add_option_group(id3)
 
-    replaygain = audiotools.OptionGroup(parser, OPT_CAT_REPLAYGAIN)
+    replaygain = audiotools.OptionGroup(parser, _.OPT_CAT_REPLAYGAIN)
 
     replaygain.add_option(
         '--replay-gain',
@@ -428,11 +340,11 @@ if (__name__ == '__main__'):
         choices=('yes', 'no'),
         dest='add_replaygain',
         metavar='yes / no',
-        help=OPT_REPLAY_GAIN)
+        help=_.OPT_REPLAY_GAIN)
 
     parser.add_option_group(replaygain)
 
-    binaries = audiotools.OptionGroup(parser, OPT_CAT_BINARIES)
+    binaries = audiotools.OptionGroup(parser, _.OPT_CAT_BINARIES)
 
     bins = set([])
     for audioclass in audiotools.AVAILABLE_TYPES:
@@ -453,7 +365,7 @@ if (__name__ == '__main__'):
         action='store',
         metavar='FORMAT',
         dest='filename_format',
-        help=OPT_FORMAT)
+        help=_.OPT_FORMAT)
 
     parser.add_option(
         '-V', '--verbose',
@@ -461,7 +373,7 @@ if (__name__ == '__main__'):
         dest='verbosity',
         choices=audiotools.VERBOSITY_LEVELS,
         default=audiotools.DEFAULT_VERBOSITY,
-        help=OPT_VERBOSE_AT_CONFIG)
+        help=_.OPT_VERBOSE_AT_CONFIG)
 
     (options, args) = parser.parse_args()
 
@@ -476,15 +388,15 @@ if (__name__ == '__main__'):
         msg.output_rows()
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_CD_BURNING, True)
+        msg.output_column(_.LAB_AT_CONFIG_CD_BURNING, True)
         msg.output_column(u" : ")
         burning_options = []
         if (audiotools.BIN.can_execute(audiotools.BIN["cdrecord"])):
-            burning_options.append(LAB_AT_CONFIG_WITHOUT_CUE)
+            burning_options.append(_.LAB_AT_CONFIG_WITHOUT_CUE)
         if (audiotools.BIN.can_execute(audiotools.BIN["cdrdao"])):
-            burning_options.append(LAB_AT_CONFIG_WITH_CUE)
+            burning_options.append(_.LAB_AT_CONFIG_WITH_CUE)
         if (len(burning_options) == 0):
-            burning_options.append(LAB_AT_CONFIG_NO)
+            burning_options.append(_.LAB_AT_CONFIG_NO)
         msg.output_column(u", ".join([s.decode('ascii')
                                       for s in burning_options]))
         msg.output_rows()
@@ -492,60 +404,60 @@ if (__name__ == '__main__'):
 
         msg.output(u"-" * 30)
 
-        msg.output(LAB_AT_CONFIG_SYS_CONFIG)
+        msg.output(_.LAB_AT_CONFIG_SYS_CONFIG)
         msg.output(u"")
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_USE_MUSICBRAINZ, True)
+        msg.output_column(_.LAB_AT_CONFIG_USE_MUSICBRAINZ, True)
         msg.output_column(u" : ")
-        msg.output_column({True: LAB_AT_CONFIG_YES,
-                           False: LAB_AT_CONFIG_NO}[
+        msg.output_column({True: _.LAB_AT_CONFIG_YES,
+                           False: _.LAB_AT_CONFIG_NO}[
                 audiotools.MUSICBRAINZ_SERVICE])
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_MUSICBRAINZ_SERVER, True)
+        msg.output_column(_.LAB_AT_CONFIG_MUSICBRAINZ_SERVER, True)
         msg.output_column(u" : ")
         msg.output_column(audiotools.MUSICBRAINZ_SERVER.decode('ascii',
                                                                'replace'))
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_MUSICBRAINZ_PORT, True)
+        msg.output_column(_.LAB_AT_CONFIG_MUSICBRAINZ_PORT, True)
         msg.output_column(u" : ")
         msg.output_column(unicode(audiotools.MUSICBRAINZ_PORT))
         msg.blank_row()
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_USE_FREEDB, True)
+        msg.output_column(_.LAB_AT_CONFIG_USE_FREEDB, True)
         msg.output_column(u" : ")
-        msg.output_column({True: LAB_AT_CONFIG_YES,
-                           False: LAB_AT_CONFIG_NO}[audiotools.FREEDB_SERVICE])
+        msg.output_column({True: _.LAB_AT_CONFIG_YES,
+                           False: _.LAB_AT_CONFIG_NO}[audiotools.FREEDB_SERVICE])
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_FREEDB_SERVER, True)
+        msg.output_column(_.LAB_AT_CONFIG_FREEDB_SERVER, True)
         msg.output_column(u" : ")
         msg.output_column(audiotools.FREEDB_SERVER.decode('ascii',
                                                           'replace'))
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_FREEDB_PORT, True)
+        msg.output_column(_.LAB_AT_CONFIG_FREEDB_PORT, True)
         msg.output_column(u" : ")
         msg.output_column(unicode(audiotools.FREEDB_PORT))
 
         msg.blank_row()
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_DEFAULT_CDROM, True)
+        msg.output_column(_.LAB_AT_CONFIG_DEFAULT_CDROM, True)
         msg.output_column(u" : ")
         msg.output_column(audiotools.DEFAULT_CDROM.decode(
                 audiotools.FS_ENCODING))
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_CDROM_READ_OFFSET, True)
+        msg.output_column(_.LAB_AT_CONFIG_CDROM_READ_OFFSET, True)
         msg.output_column(u" : ")
         msg.output_column(
             unicode(audiotools.config.getint_default("System",
                                                      "cdrom_read_offset", 0)))
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_CDROM_WRITE_OFFSET, True)
+        msg.output_column(_.LAB_AT_CONFIG_CDROM_WRITE_OFFSET, True)
         msg.output_column(u" : ")
         msg.output_column(
             unicode(audiotools.config.getint_default("System",
@@ -554,12 +466,12 @@ if (__name__ == '__main__'):
         msg.blank_row()
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_JOBS, True)
+        msg.output_column(_.LAB_AT_CONFIG_JOBS, True)
         msg.output_column(u" : ")
         msg.output_column(unicode(audiotools.MAX_JOBS))
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_VERBOSITY, True)
+        msg.output_column(_.LAB_AT_CONFIG_VERBOSITY, True)
         msg.output_column(u" : ")
         msg.output_column(audiotools.DEFAULT_VERBOSITY.decode('ascii'))
 
@@ -574,79 +486,56 @@ if (__name__ == '__main__'):
                     output_options.append(player.NAME.decode('ascii'))
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_AUDIO_OUTPUT, True)
+        msg.output_column(_.LAB_AT_CONFIG_AUDIO_OUTPUT, True)
         msg.output_column(u" : ")
         msg.output_column(u", ".join(output_options))
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_FS_ENCODING, True)
+        msg.output_column(_.LAB_AT_CONFIG_FS_ENCODING, True)
         msg.output_column(u" : ")
         msg.output_column(audiotools.FS_ENCODING.decode('ascii'))
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_IO_ENCODING, True)
+        msg.output_column(_.LAB_AT_CONFIG_IO_ENCODING, True)
         msg.output_column(u" : ")
         msg.output_column(audiotools.IO_ENCODING.decode('ascii'))
 
         msg.blank_row()
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_ID3V2_VERSION, True)
+        msg.output_column(_.LAB_AT_CONFIG_ID3V2_VERSION, True)
         msg.output_column(u" : ")
-        msg.output_column({"id3v2.2":LAB_AT_CONFIG_ID3V2_ID3V22,
-                           "id3v2.3":LAB_AT_CONFIG_ID3V2_ID3V23,
-                           "id3v2.4":LAB_AT_CONFIG_ID3V2_ID3V24,
-                           "none":LAB_AT_CONFIG_ID3V2_NONE}.get(
+        msg.output_column({"id3v2.2":_.LAB_AT_CONFIG_ID3V2_ID3V22,
+                           "id3v2.3":_.LAB_AT_CONFIG_ID3V2_ID3V23,
+                           "id3v2.4":_.LAB_AT_CONFIG_ID3V2_ID3V24,
+                           "none":_.LAB_AT_CONFIG_ID3V2_NONE}.get(
                 audiotools.config.get_default("ID3", "id3v2", "id3v2.3"),
                 u"ID3v2.3"))
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_ID3V2_PADDING, True)
+        msg.output_column(_.LAB_AT_CONFIG_ID3V2_PADDING, True)
         msg.output_column(u" : ")
-        msg.output_column({True:LAB_AT_CONFIG_ID3V2_PADDING_YES,
-                           False:LAB_AT_CONFIG_ID3V2_PADDING_NO}[
+        msg.output_column({True:_.LAB_AT_CONFIG_ID3V2_PADDING_YES,
+                           False:_.LAB_AT_CONFIG_ID3V2_PADDING_NO}[
                 audiotools.config.getboolean_default("ID3", "pad", False)])
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_ID3V1_VERSION, True)
+        msg.output_column(_.LAB_AT_CONFIG_ID3V1_VERSION, True)
         msg.output_column(u" : ")
-        msg.output_column({"id3v1.1":LAB_AT_CONFIG_ID3V1_ID3V11,
-                           "none":LAB_AT_CONFIG_ID3V1_NONE}.get(
+        msg.output_column({"id3v1.1":_.LAB_AT_CONFIG_ID3V1_ID3V11,
+                           "none":_.LAB_AT_CONFIG_ID3V1_NONE}.get(
                 audiotools.config.get_default("ID3", "id3v1", "id3v1.1"),
                 u"ID3v1.1"))
         msg.blank_row()
 
         msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_CAN_THUMBNAIL, True)
+        msg.output_column(_.LAB_AT_CONFIG_ADD_REPLAY_GAIN, True)
         msg.output_column(u" : ")
-        if (audiotools.can_thumbnail()):
-            msg.output_column(LAB_AT_CONFIG_YES)
-        else:
-            msg.output_column(LAB_AT_CONFIG_NO +
-                              u" " +
-                              LAB_AT_CONFIG_NO_PIL)
-
-        msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_THUMBNAIL_FORMAT, True)
-        msg.output_column(u" : ")
-        msg.output_column(audiotools.THUMBNAIL_FORMAT.decode('ascii'))
-
-        msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_THUMBNAIL_SIZE, True)
-        msg.output_column(u" : ")
-        msg.output_column(LAB_DIMENSIONS % (audiotools.THUMBNAIL_SIZE,
-                                            audiotools.THUMBNAIL_SIZE))
-
-        msg.blank_row()
-
-        msg.new_row()
-        msg.output_column(LAB_AT_CONFIG_ADD_REPLAY_GAIN, True)
-        msg.output_column(u" : ")
-        msg.output_column({True: LAB_AT_CONFIG_YES,
-                           False: LAB_AT_CONFIG_NO}[audiotools.ADD_REPLAYGAIN])
+        msg.output_column({True: _.LAB_AT_CONFIG_YES,
+                           False: _.LAB_AT_CONFIG_NO}[audiotools.ADD_REPLAYGAIN])
 
         msg.blank_row()
         msg.output_rows()
 
-        msg.output(LAB_AT_CONFIG_FORMAT %
+        msg.output(_.LAB_AT_CONFIG_FORMAT %
                    (audiotools.FILENAME_FORMAT.decode('ascii', 'replace')))
     else:
         import os.path
@@ -668,7 +557,7 @@ if (__name__ == '__main__'):
             if (options.quality is not None):
                 if (options.quality == 'help'):
                     if (len(AudioType.COMPRESSION_MODES) > 1):
-                        msg.info(LAB_AVAILABLE_COMPRESSION_TYPES %
+                        msg.info(_.LAB_AVAILABLE_COMPRESSION_TYPES %
                                  (AudioType.NAME))
                         for mode in AudioType.COMPRESSION_MODES:
                             msg.new_row()
@@ -689,12 +578,12 @@ if (__name__ == '__main__'):
                         msg.info_rows()
                     else:
                         msg.error(
-                            ERR_NO_COMPRESSION_MODES %
+                            _.ERR_NO_COMPRESSION_MODES %
                             (AudioType.NAME))
                     sys.exit(0)
                 elif (options.quality not in AudioType.COMPRESSION_MODES):
                     msg.error(
-                        ERR_UNSUPPORTED_COMPRESSION_MODE %
+                        _.ERR_UNSUPPORTED_COMPRESSION_MODE %
                         {"quality": options.quality,
                          "type": AudioType.NAME})
                     sys.exit(1)
@@ -713,5 +602,5 @@ if (__name__ == '__main__'):
         configfile = open(configpath, 'w')
         config.write(configfile)
         configfile.close()
-        msg.info(LAB_AT_CONFIG_FILE_WRITTEN %
+        msg.info(_.LAB_AT_CONFIG_FILE_WRITTEN %
                  (audiotools.Filename(configpath),))

@@ -119,9 +119,6 @@
     <option long="other-image" arg="filename">
       an image file related to the album
     </option>
-    <option long="thumbnail">
-      convert images to smaller thumbnails before adding
-    </option>
   </options>
   <options category="removal">
     <option long="remove-name"/>

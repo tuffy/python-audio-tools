@@ -5934,11 +5934,29 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] id3v2
      - [X] vorbis
      - [X] m4a
-** TODO Remove Python Imaging Library requirement
+** DONE Remove Python Imaging Library requirement
    This is only used for thumbnailing
    and for TKinter-based image display.
    Since a Python3 version doesn't seem to be pending,
    it would be better to remove the requirement.
+*** DONE Remove thumbnail functions from audiotools.image
+    - [X] can_thumbnail
+    - [X] thumbnail_formats
+    - [X] thumbnail_image
+*** DONE Remove thumbnail method from audiotools.Image
+*** DONE Remove thumbnail config options
+    - [X] audiotools.THUMBNAIL_FORMAT
+    - [X] audiotools.THUMBNAIL_SIZE
+*** DONE Update utilities
+    - [X] audiotools-config
+    - [X] track2track
+    - [X] tracktag
+*** DONE Update utility man pages
+    - [X] audiotools-config
+    - [X] track2track
+    - [X] tracktag
+*** DONE Update programming documentation
+*** DONE Update unit tests
 ** TODO Add internal MP3 codec
    This is likely the codec people are most interested in
    and so it should be folded in so it can be used

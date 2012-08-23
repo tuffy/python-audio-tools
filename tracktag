@@ -145,17 +145,6 @@ def get_raw_image(filename, type):
                                       (audiotools.Filename(filename),))
 
 
-def get_thumbnailed_image(filename, type):
-    image = get_raw_image(filename, type)
-    if ((image.width > audiotools.THUMBNAIL_SIZE) or
-        (image.height > audiotools.THUMBNAIL_SIZE)):
-        return image.thumbnail(audiotools.THUMBNAIL_SIZE,
-                               audiotools.THUMBNAIL_SIZE,
-                               audiotools.THUMBNAIL_FORMAT)
-    else:
-        return image
-
-
 #given a comment filename
 #returns the comment as a unicode string
 #or exits with an error if the file cannot be read
@@ -331,13 +320,6 @@ if (__name__ == '__main__'):
             metavar='FILENAME',
             help=helptext)
 
-    img_group.add_option(
-        '-T', '--thumbnail',
-        action='store_true',
-        default=False,
-        dest='thumbnail',
-        help=_.OPT_TRACKTAG_THUMBNAIL)
-
     parser.add_option_group(img_group)
 
     remove_group = audiotools.OptionGroup(parser, _.OPT_CAT_REMOVAL)
@@ -413,25 +395,7 @@ if (__name__ == '__main__'):
             msg.error(unicode(err))
             sys.exit(1)
 
-    if (options.thumbnail):
-        if (not audiotools.can_thumbnail()):
-            msg.error(_.ERR_NO_THUMBNAILS)
-            msg.info(_.ERR_THUMBNAIL_SUGGESTION1)
-            msg.info(_.ERR_THUMBNAIL_SUGGESTION2)
-            msg.info(_.ERR_THUMBNAIL_SUGGESTION3)
-            sys.exit(1)
-
-        if (audiotools.THUMBNAIL_FORMAT.upper() not in
-            audiotools.thumbnail_formats()):
-            msg.error(_.ERR_INVALID_THUMBNAIL_FORMAT %
-                      (audiotools.THUMBNAIL_FORMAT))
-            msg.info(_.ERR_AVAILABLE_THUMBNAIL_FORMATS %
-                     (", ".join(audiotools.thumbnail_formats())))
-            sys.exit(1)
-
-        get_image = get_thumbnailed_image
-    else:
-        get_image = get_raw_image
+    get_image = get_raw_image
 
     for file in audiofiles:
         track_modified = False

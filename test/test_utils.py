@@ -902,7 +902,7 @@ class track2track(UtilTest):
 
         messenger = audiotools.Messenger("track2track", None)
 
-        all_options = ["-t", "-q", "-d", "--format", "-o", "-T",
+        all_options = ["-t", "-q", "-d", "--format", "-o",
                        "--replay-gain", "--no-replay-gain"]
 
         for count in xrange(1, len(all_options) + 1):
@@ -988,13 +988,8 @@ class track2track(UtilTest):
                     self.assertEqual(track2.get_metadata(), metadata)
 
                     image = track2.get_metadata().images()[0]
-                    if ('-T' in options):
-                        self.assertEqual(max(image.width,
-                                             image.height),
-                                         audiotools.THUMBNAIL_SIZE)
-                    else:
-                        self.assertEqual(image.width, self.cover.width)
-                        self.assertEqual(image.height, self.cover.height)
+                    self.assertEqual(image.width, self.cover.width)
+                    self.assertEqual(image.height, self.cover.height)
 
                 if (output_class.supports_replay_gain()):
                     if (output_class.lossless_replay_gain()):
@@ -1027,7 +1022,7 @@ class track2track(UtilTest):
                                      )
 
         all_options = ["-t", "-q", "-d", "--format", "-o", "-j",
-                       "-T", "--replay-gain", "--no-replay-gain"]
+                       "--replay-gain", "--no-replay-gain"]
         for count in xrange(0, len(all_options) + 1):
             for options in Combinations(all_options, count):
                 self.clean_output_dirs()
@@ -3098,16 +3093,6 @@ class tracktag(UtilTest):
         self.back_cover_image = audiotools.Image.new(
             TEST_COVER2, u"", 1)
 
-        self.thumbnailed_front_cover_image = self.front_cover_image.thumbnail(
-            audiotools.THUMBNAIL_SIZE,
-            audiotools.THUMBNAIL_SIZE,
-            audiotools.THUMBNAIL_FORMAT)
-
-        self.thumbnailed_back_cover_image = self.back_cover_image.thumbnail(
-            audiotools.THUMBNAIL_SIZE,
-            audiotools.THUMBNAIL_SIZE,
-            audiotools.THUMBNAIL_FORMAT)
-
     @UTIL_TRACKTAG
     def tearDown(self):
         self.track_file.close()
@@ -3187,8 +3172,7 @@ class tracktag(UtilTest):
         most_options = ['-r', '--cue',
                         '--name', '--number', '--track-total',
                         '--album-number', '--comment', '--comment-file',
-                        '--remove-images', '--front-cover', '--back-cover',
-                        '-T']
+                        '--remove-images', '--front-cover', '--back-cover']
 
         #ensure tagging the same file twice triggers an error
         self.assertEqual(self.__run_app__(
@@ -3284,82 +3268,44 @@ class tracktag(UtilTest):
 
                     if (("-r" in options) or
                         ("--remove-images" in options)):
-                        if ("-T" in options):
-                            self.assertEqual(
-                                metadata.front_covers(),
-                                [self.thumbnailed_front_cover_image])
-                            self.assertEqual(
-                                metadata.back_covers(),
-                                [self.thumbnailed_back_cover_image])
-                        else:
-                            self.assertEqual(metadata.front_covers(),
-                                             [self.front_cover_image])
-                            self.assertEqual(metadata.back_covers(),
-                                             [self.back_cover_image])
+                        self.assertEqual(metadata.front_covers(),
+                                         [self.front_cover_image])
+                        self.assertEqual(metadata.back_covers(),
+                                         [self.back_cover_image])
                         self.assertEqual(len(metadata.images()), 2)
                     else:
-                        if ("-T" in options):
-                            self.assertEqual(
-                                metadata.front_covers(),
-                                [self.image,
-                                 self.thumbnailed_front_cover_image])
-                            self.assertEqual(
-                                metadata.back_covers(),
-                                [self.thumbnailed_back_cover_image])
-                        else:
-                            self.assertEqual(metadata.front_covers(),
-                                             [self.image,
-                                              self.front_cover_image])
-                            self.assertEqual(metadata.back_covers(),
-                                             [self.back_cover_image])
+                        self.assertEqual(metadata.front_covers(),
+                                         [self.image,
+                                          self.front_cover_image])
+                        self.assertEqual(metadata.back_covers(),
+                                         [self.back_cover_image])
                         self.assertEqual(len(metadata.images()), 3)
                 elif ("--front-cover" in options):
                     #adding front-cover
 
                     if (("-r" in options) or
                         ("--remove-images" in options)):
-                        if ("-T" in options):
-                            self.assertEqual(
-                                metadata.images(),
-                                [self.thumbnailed_front_cover_image])
-                        else:
-                            self.assertEqual(metadata.images(),
-                                             [self.front_cover_image])
+                        self.assertEqual(metadata.images(),
+                                         [self.front_cover_image])
                         self.assertEqual(len(metadata.images()), 1)
                     else:
-                        if ("-T" in options):
-                            self.assertEqual(
-                                metadata.images(),
-                                [self.image,
-                                 self.thumbnailed_front_cover_image])
-                        else:
-                            self.assertEqual(metadata.images(),
-                                             [self.image,
-                                              self.front_cover_image])
+                        self.assertEqual(metadata.images(),
+                                         [self.image,
+                                          self.front_cover_image])
                         self.assertEqual(len(metadata.images()), 2)
                 elif ("--back-cover" in options):
                     #adding back cover
 
                     if (("-r" in options) or
                         ("--remove-images" in options)):
-                        if ("-T" in options):
-                            self.assertEqual(
-                                metadata.images(),
-                                [self.thumbnailed_back_cover_image])
-                        else:
-                            self.assertEqual(metadata.images(),
-                                             [self.back_cover_image])
+                        self.assertEqual(metadata.images(),
+                                         [self.back_cover_image])
                         self.assertEqual(len(metadata.images()), 1)
                     else:
                         self.assertEqual(metadata.front_covers(),
                                          [self.image])
-                        if ("-T" in options):
-                            self.assertEqual(
-                                metadata.back_covers(),
-                                [self.thumbnailed_back_cover_image])
-                        else:
-                            self.assertEqual(metadata.back_covers(),
-                                             [self.back_cover_image])
+                        self.assertEqual(metadata.back_covers(),
+                                         [self.back_cover_image])
                         self.assertEqual(len(metadata.images()), 2)
                 else:
                     #no new images added

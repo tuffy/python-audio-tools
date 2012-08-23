@@ -1132,12 +1132,6 @@ Image Objects
    Raises :exc:`InvalidImage` If unable to determine the
    image type from the data string.
 
-.. method:: Image.thumbnail(width, height, format)
-
-   Given width and height integers and a format string (such as ``"JPEG"``)
-   returns a new :class:`Image` object resized to those dimensions
-   while retaining its original aspect ratio.
-
 ReplayGain Objects
 ------------------
 
