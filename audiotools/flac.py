@@ -516,8 +516,10 @@ class Flac_VORBISCOMMENT(VorbisComment):
         """returns this metadata block from a BitstreamReader"""
 
         reader.set_endianness(1)
-        vendor_string = reader.read_bytes(reader.read(32)).decode('utf-8')
-        return cls([reader.read_bytes(reader.read(32)).decode('utf-8')
+        vendor_string = reader.read_bytes(reader.read(32)).decode('utf-8',
+                                                                  'replace')
+        return cls([reader.read_bytes(reader.read(32)).decode('utf-8',
+                                                              'replace')
                     for i in xrange(reader.read(32))], vendor_string)
 
     def build(self, writer):

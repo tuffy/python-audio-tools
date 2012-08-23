@@ -5659,32 +5659,144 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] ID3v2.4
 *** DONE APEv2
 *** DONE M4A
-** TODO Fix --number=0 argument to tracktag
-   I'd like to make track_number=0 a valid value
-   and have track_number=None indicate a missing field.
-   The problem is maintaining consistency between
-   metadata formats that store track numbers as text (like ID3v2)
-   and those that store track numbers as integers (like M4A).
-   - [X] MetaData
-   - [X] ApeTag
-   - [X] FlacMetaData
-   - [X] ID3CommentPair
-   - [X] ID3v1Comment
-   - [X] ID3v22Comment
-   - [X] ID3v23Comment
-   - [X] ID3v24Comment
-   - [X] M4A_META_Atom
-   - [X] VorbisComment
-*** TODO Update utilities
-*** TODO Update documentation
-*** TODO Update unit tests
-**** DONE Add getitem/setitem/getattr/setattr/delattr tests to metadata
-     - [X] flac
-     - [X] wavpack
-     - [X] id3v1
-     - [X] id3v2
-     - [X] vorbis
-     - [X] m4a
+** DONE Remove Construct module
+   Convert all usage of Construct to BitstreamReader/BitstreamWriter.
+   Since this is unlikely to be updated for Python 3,
+   removing it should smooth that inevitable transition.
+*** DONE __accuraterip__.py
+*** DONE __aiff__.py
+    - [X] chunks
+    - [X] get_metadata
+    - [X] set_metadata
+    - [X] delete_metadata
+    - [X] to_pcm
+    - [X] from_pcm
+    - [X] pcm_split
+    - [X] aiff_from_chunks
+**** DONE AiffReader
+     - [X] __init__
+     - [X] read
+*** DONE __ape__.py
+*** DONE __au__.py
+*** DONE cue.py
+*** DONE __dvda__.py
+**** DONE DVDAudio
+     - [X] __titlesets__
+     - [X] __titles__
+**** DONE DVDATitle
+     - [X] __parse_info__
+*** DONE __flac__.py
+*** DONE __freedb__.py
+*** DONE __id3__.py
+*** DONE __id3v1__.py
+*** DONE __image__.py
+    - [X] __JPEG__
+    - [X] __PNG__
+    - [X] __GIF__
+    - [X] __BMP__
+    - [X] __TIFF__
+**** DONE check these against PIL's output
+**** DONE check against truncated images
+*** DONE __init__.py
+*** DONE __m4a__.py
+**** DONE M4ATaggedAudio
+     - [X] get_metadata
+     - [X] set_metadata
+     - [X] delete_metadata
+**** DONE M4A_META_Atom
+     - [X] __init__
+     - [X] __repr__
+     - [X] parse
+     - [X] __getattr__
+     - [X] __setattr__
+     - [X] __delattr__
+     - [X] images
+     - [X] add_image
+     - [X] delete_image
+     - [X] converted
+     - [X] __comment_name__
+     - [X] supports_images
+     - [X] __by_pair__
+     - [X] __comment_pairs__
+     - [X] clean
+**** DONE M4AAudio_faac
+     - [X] __init__
+     - [X] is_type
+**** DONE ALACAudio
+     - [X] __init__
+     - [X] is_type
+     - [X] to_pcm
+     - [X] from_pcm
+     - [X] __ftyp_atom__
+     - [X] __moov_atom__
+     - [X] __free_atom__
+*** DONE __m4a_atoms__.py
+    Re-implement atom parsing/building without Construct
+**** DONE ftyp
+**** DONE moov
+***** DONE mvhd
+***** DONE trak
+****** DONE tkhd
+****** DONE mdia
+******* DONE mdhd
+******* DONE hdlr
+******* DONE minf
+******** DONE smhd
+******** DONE dinf
+********* DONE dref
+******** DONE stbl
+********* DONE stsd
+********** DONE alac
+********* DONE stts
+********* DONE stsc
+********* DONE stsz
+********* DONE stco
+***** DONE udta
+****** DONE meta
+**** DONE free
+**** DONE Rename __m4a_atoms2__.py to __m4a_atoms__.py
+*** DONE __mp3__.py
+**** DONE MP3
+     - [X] __init__
+     - [X] is_type
+     - [X] __find_next_mp3_frame__
+     - [X] __find_mp3_start__
+     - [X] __find_last_mp3_frame__
+     - [X] verify
+**** DONE MP2
+     - [X] is_type
+*** DONE __musepack__.py
+*** DONE __musicbrainz__.py
+*** DONE __ogg__.py
+*** DONE player.py
+*** DONE __shn__.py
+*** DONE toc.py
+*** DONE __vorbis__.py
+**** DONE VorbisAudio
+     - [X] __read_metadata__
+     - [X] total_frames
+     - [X] get_metadata
+     - [X] set_metadata
+**** DONE Remove cruft
+     - [X] OggStreamReader
+     - [X] OggStreamWriter
+*** DONE __vorbiscomment__.py
+*** DONE __wav__.py
+*** DONE __wavpack__.py
+*** DONE test/test_core.py
+**** DONE TestFrameList
+     - [X] test_8bit_roundtrip
+     - [X] test_16bit_roundtrip
+     - [X] test_24bit_roundtrip
+*** DONE test/test_formats.py
+**** DONE ALACFileTest
+     - [X] test_blocksizes
+**** DONE FlacFileTest
+     - [X] test_blocksizes
+**** DONE ShortenFileTest
+     - [X] test_blocksizes
+**** DONE WavpackFileTest
+     - [X] test_blocksizes
 ** DONE Replace gettext with string constants
    Transforming _(u"some text") to SOME_TEXT
    where SOME_TEXT is a predefined unicode string
@@ -5794,6 +5906,32 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] tracktag
     - [X] trackverify
 *** DONE Ensure unit tests pass
+** TODO Fix --number=0 argument to tracktag
+   I'd like to make track_number=0 a valid value
+   and have track_number=None indicate a missing field.
+   The problem is maintaining consistency between
+   metadata formats that store track numbers as text (like ID3v2)
+   and those that store track numbers as integers (like M4A).
+   - [X] MetaData
+   - [X] ApeTag
+   - [X] FlacMetaData
+   - [X] ID3CommentPair
+   - [X] ID3v1Comment
+   - [X] ID3v22Comment
+   - [X] ID3v23Comment
+   - [X] ID3v24Comment
+   - [X] M4A_META_Atom
+   - [X] VorbisComment
+*** TODO Update utilities
+*** TODO Update documentation
+*** TODO Update unit tests
+**** DONE Add getitem/setitem/getattr/setattr/delattr tests to metadata
+     - [X] flac
+     - [X] wavpack
+     - [X] id3v1
+     - [X] id3v2
+     - [X] vorbis
+     - [X] m4a
 ** TODO Remove Python Imaging Library requirement
    This is only used for thumbnailing
    and for TKinter-based image display.
@@ -5895,141 +6033,3 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [ ] Ensure valid and invalid files generate the proper return values
           when run in "quiet" mode to the "NULL" decoder
     - [ ] Check command-line arguments
-** TODO Remove Construct module
-   Convert all usage of Construct to BitstreamReader/BitstreamWriter.
-   Since this is unlikely to be updated for Python 3,
-   removing it should smooth that inevitable transition.
-*** DONE __accuraterip__.py
-*** DONE __aiff__.py
-    - [X] chunks
-    - [X] get_metadata
-    - [X] set_metadata
-    - [X] delete_metadata
-    - [X] to_pcm
-    - [X] from_pcm
-    - [X] pcm_split
-    - [X] aiff_from_chunks
-**** DONE AiffReader
-     - [X] __init__
-     - [X] read
-*** DONE __ape__.py
-*** DONE __au__.py
-*** DONE cue.py
-*** DONE __dvda__.py
-**** DONE DVDAudio
-     - [X] __titlesets__
-     - [X] __titles__
-**** DONE DVDATitle
-     - [X] __parse_info__
-*** DONE __flac__.py
-*** DONE __freedb__.py
-*** DONE __id3__.py
-*** DONE __id3v1__.py
-*** TODO __image__.py
-    - [X] __JPEG__
-    - [X] __PNG__
-    - [X] __GIF__
-    - [X] __BMP__
-    - [X] __TIFF__
-**** TODO check these against PIL's output
-**** TODO check against truncated images
-*** DONE __init__.py
-*** DONE __m4a__.py
-**** DONE M4ATaggedAudio
-     - [X] get_metadata
-     - [X] set_metadata
-     - [X] delete_metadata
-**** DONE M4A_META_Atom
-     - [X] __init__
-     - [X] __repr__
-     - [X] parse
-     - [X] __getattr__
-     - [X] __setattr__
-     - [X] __delattr__
-     - [X] images
-     - [X] add_image
-     - [X] delete_image
-     - [X] converted
-     - [X] __comment_name__
-     - [X] supports_images
-     - [X] __by_pair__
-     - [X] __comment_pairs__
-     - [X] clean
-**** DONE M4AAudio_faac
-     - [X] __init__
-     - [X] is_type
-**** DONE ALACAudio
-     - [X] __init__
-     - [X] is_type
-     - [X] to_pcm
-     - [X] from_pcm
-     - [X] __ftyp_atom__
-     - [X] __moov_atom__
-     - [X] __free_atom__
-*** DONE __m4a_atoms__.py
-    Re-implement atom parsing/building without Construct
-**** DONE ftyp
-**** DONE moov
-***** DONE mvhd
-***** DONE trak
-****** DONE tkhd
-****** DONE mdia
-******* DONE mdhd
-******* DONE hdlr
-******* DONE minf
-******** DONE smhd
-******** DONE dinf
-********* DONE dref
-******** DONE stbl
-********* DONE stsd
-********** DONE alac
-********* DONE stts
-********* DONE stsc
-********* DONE stsz
-********* DONE stco
-***** DONE udta
-****** DONE meta
-**** DONE free
-**** DONE Rename __m4a_atoms2__.py to __m4a_atoms__.py
-*** DONE __mp3__.py
-**** DONE MP3
-     - [X] __init__
-     - [X] is_type
-     - [X] __find_next_mp3_frame__
-     - [X] __find_mp3_start__
-     - [X] __find_last_mp3_frame__
-     - [X] verify
-**** DONE MP2
-     - [X] is_type
-*** DONE __musepack__.py
-*** DONE __musicbrainz__.py
-*** DONE __ogg__.py
-*** DONE player.py
-*** DONE __shn__.py
-*** DONE toc.py
-*** DONE __vorbis__.py
-**** DONE VorbisAudio
-     - [X] __read_metadata__
-     - [X] total_frames
-     - [X] get_metadata
-     - [X] set_metadata
-**** DONE Remove cruft
-     - [X] OggStreamReader
-     - [X] OggStreamWriter
-*** DONE __vorbiscomment__.py
-*** DONE __wav__.py
-*** DONE __wavpack__.py
-*** DONE test/test_core.py
-**** DONE TestFrameList
-     - [X] test_8bit_roundtrip
-     - [X] test_16bit_roundtrip
-     - [X] test_24bit_roundtrip
-*** DONE test/test_formats.py
-**** DONE ALACFileTest
-     - [X] test_blocksizes
-**** DONE FlacFileTest
-     - [X] test_blocksizes
-**** DONE ShortenFileTest
-     - [X] test_blocksizes
-**** DONE WavpackFileTest
-     - [X] test_blocksizes

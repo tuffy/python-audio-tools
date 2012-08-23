@@ -130,19 +130,23 @@ class __JPEG__(ImageMetrics):
                     raise InvalidJPEG(ERR_IMAGE_INVALID_JPEG_MARKER)
                 segment_type = reader.read(8)
 
-        for (segment_type, segment_data) in segments(BitstreamReader(file, 0)):
-            if (segment_type in (0xC0, 0xC1, 0xC2, 0xC3,
-                                 0xC5, 0XC5, 0xC6, 0xC7,
-                                 0xC9, 0xCA, 0xCB, 0xCD,
-                                 0xCE, 0xCF)):  # start of frame
-                (data_precision,
-                 image_height,
-                 image_width,
-                 components) = segment_data.parse("8u 16u 16u 8u")
-                return __JPEG__(width=image_width,
-                                height=image_height,
-                                bits_per_pixel=data_precision * components)
-
+        try:
+            for (segment_type,
+                 segment_data) in segments(BitstreamReader(file, 0)):
+                if (segment_type in (0xC0, 0xC1, 0xC2, 0xC3,
+                                     0xC5, 0XC5, 0xC6, 0xC7,
+                                     0xC9, 0xCA, 0xCB, 0xCD,
+                                     0xCE, 0xCF)):  # start of frame
+                    (data_precision,
+                     image_height,
+                     image_width,
+                     components) = segment_data.parse("8u 16u 16u 8u")
+                    return __JPEG__(width=image_width,
+                                    height=image_height,
+                                    bits_per_pixel=data_precision * components)
+        except IOError:
+            from .text import ERR_IMAGE_IOERROR_JPEG
+            raise InvalidJPEG(ERR_IMAGE_IOERROR_JPEG)
 
 #######################
 #PNG
@@ -177,25 +181,29 @@ class __PNG__(ImageMetrics):
         ihdr = None
         plte_length = 0
 
-        for (chunk_type,
-             chunk_length,
-             chunk_data) in chunks(BitstreamReader(file, 0)):
-            if (chunk_type == 'IHDR'):
-                ihdr = chunk_data
-            elif (chunk_type == 'PLTE'):
-                plte_length = chunk_length
+        try:
+            for (chunk_type,
+                 chunk_length,
+                 chunk_data) in chunks(BitstreamReader(file, 0)):
+                if (chunk_type == 'IHDR'):
+                    ihdr = chunk_data
+                elif (chunk_type == 'PLTE'):
+                    plte_length = chunk_length
 
-        if (ihdr is None):
-            from .text import ERR_IMAGE_INVALID_PNG
-            raise InvalidPNG(ERR_IMAGE_INVALID_PNG)
+            if (ihdr is None):
+                from .text import ERR_IMAGE_INVALID_PNG
+                raise InvalidPNG(ERR_IMAGE_INVALID_PNG)
 
-        (width,
-         height,
-         bit_depth,
-         color_type,
-         compression_method,
-         filter_method,
-         interlace_method) = ihdr.parse("32u 32u 8u 8u 8u 8u 8u")
+            (width,
+             height,
+             bit_depth,
+             color_type,
+             compression_method,
+             filter_method,
+             interlace_method) = ihdr.parse("32u 32u 8u 8u 8u 8u 8u")
+        except IOError:
+            from .text import ERR_IMAGE_IOERROR_PNG
+            raise InvalidPNG(ERR_IMAGE_IOERROR_PNG)
 
         if (color_type == 0):    # grayscale
             return cls(width=width,
@@ -245,22 +253,27 @@ class __BMP__(ImageMetrics):
 
     @classmethod
     def parse(cls, file):
-        (magic_number,
-         file_size,
-         data_offset,
-         header_size,
-         width,
-         height,
-         color_planes,
-         bits_per_pixel,
-         compression_method,
-         image_size,
-         horizontal_resolution,
-         vertical_resolution,
-         colors_used,
-         important_colors_used) = BitstreamReader(file, 1).parse(
-            "2b 32u 16p 16p 32u " +
-            "32u 32u 32u 16u 16u 32u 32u 32u 32u 32u 32u")
+        try:
+            (magic_number,
+             file_size,
+             data_offset,
+             header_size,
+             width,
+             height,
+             color_planes,
+             bits_per_pixel,
+             compression_method,
+             image_size,
+             horizontal_resolution,
+             vertical_resolution,
+             colors_used,
+             important_colors_used) = BitstreamReader(file, 1).parse(
+                "2b 32u 16p 16p 32u " +
+                "32u 32u 32u 16u 16u 32u 32u 32u 32u 32u 32u")
+        except IOError:
+            from .text import ERR_IMAGE_IOERROR_BMP
+            raise InvalidBMP(ERR_IMAGE_IOERROR_BMP)
+
         if (magic_number != 'BM'):
             from .text import ERR_IMAGE_INVALID_BMP
             raise InvalidBMP(ERR_IMAGE_INVALID_BMP)
@@ -289,14 +302,20 @@ class __GIF__(ImageMetrics):
 
     @classmethod
     def parse(cls, file):
-        (gif,
-         version,
-         width,
-         height,
-         color_table_size) = BitstreamReader(file, 1).parse(
-            "3b 3b 16u 16u 3u 5p")
+        try:
+            (gif,
+             version,
+             width,
+             height,
+             color_table_size) = BitstreamReader(file, 1).parse(
+                "3b 3b 16u 16u 3u 5p")
+        except IOError:
+            from .text import ERR_IMAGE_IOERROR_GIF
+            raise InvalidGIF(ERR_IMAGE_IOERROR_GIF)
+
         if (gif != 'GIF'):
-            raise InvalidGIF(u'Invalid GIF')
+            from .text import ERR_IMAGE_INVALID_GIF
+            raise InvalidGIF(ERR_IMAGE_INVALID_GIF)
         else:
             return cls(width=width,
                        height=height,
@@ -356,35 +375,39 @@ class __TIFF__(ImageMetrics):
                 else:
                     break
 
-        byte_order = file.read(2)
-        if (byte_order == 'II'):
-            order = 1
-        elif (byte_order == 'MM'):
-            order = 0
-        else:
-            from .text import ERR_IMAGE_INVALID_TIFF
-            raise InvalidTIFF(ERR_IMAGE_INVALID_TIFF)
-        reader = BitstreamReader(file, order)
-        if (reader.read(16) != 42):
-            from .text import ERR_IMAGE_INVALID_TIFF
-            raise InvalidTIFF(ERR_IMAGE_INVALID_TIFF)
+        try:
+            byte_order = file.read(2)
+            if (byte_order == 'II'):
+                order = 1
+            elif (byte_order == 'MM'):
+                order = 0
+            else:
+                from .text import ERR_IMAGE_INVALID_TIFF
+                raise InvalidTIFF(ERR_IMAGE_INVALID_TIFF)
+            reader = BitstreamReader(file, order)
+            if (reader.read(16) != 42):
+                from .text import ERR_IMAGE_INVALID_TIFF
+                raise InvalidTIFF(ERR_IMAGE_INVALID_TIFF)
 
-        initial_ifd = reader.read(32)
-        file.seek(initial_ifd, 0)
+            initial_ifd = reader.read(32)
+            file.seek(initial_ifd, 0)
 
-        width = 0
-        height = 0
-        bits_per_pixel = 0
-        color_count = 0
-        for (tag_id, tag_values) in tags(file, order):
-            if (tag_id == 0x0100):
-                width = tag_values[0]
-            elif (tag_id == 0x0101):
-                height = tag_values[0]
-            elif (tag_id == 0x0102):
-                bits_per_pixel = sum(tag_values)
-            elif (tag_id == 0x0140):
-                color_count = len(tag_values) / 3
+            width = 0
+            height = 0
+            bits_per_pixel = 0
+            color_count = 0
+            for (tag_id, tag_values) in tags(file, order):
+                if (tag_id == 0x0100):
+                    width = tag_values[0]
+                elif (tag_id == 0x0101):
+                    height = tag_values[0]
+                elif (tag_id == 0x0102):
+                    bits_per_pixel = sum(tag_values)
+                elif (tag_id == 0x0140):
+                    color_count = len(tag_values) / 3
+        except IOError:
+            from .text import ERR_IMAGE_IOERROR_TIFF
+            raise InvalidTIFF(ERR_IMAGE_IOERROR_TIFF)
 
         return cls(width=width,
                    height=height,
