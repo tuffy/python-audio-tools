@@ -445,10 +445,13 @@ CUESHEET
    Returns a list of ``(start, end)`` integer tuples
    indicating all the index points in the cuesheet.
 
-.. method:: Flac_CUESHEET.pcm_lengths(total_length)
+.. method:: Flac_CUESHEET.pcm_lengths(total_length, sample_rate)
 
-   Given a total length of the file in PCM frames,
-   returns a list of PCM frame lengths for each track in the cuesheet.
+   Given a total length of the file, in PCM frames,
+   and the sample rate of the stream, in Hz.
+   Returns a list of PCM frame lengths for each track in the cuesheet.
+   This list of lengths can be used to split a single CD image
+   file into several individual tracks.
 
 .. class:: Flac_CUESHEET_track(offset, number, ISRC, track_type, pre_emphasis, index_points)
 

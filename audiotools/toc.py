@@ -129,7 +129,7 @@ class TOCFile:
             else:
                 yield (track.indexes[0],)
 
-    def pcm_lengths(self, total_length):
+    def pcm_lengths(self, total_length, sample_rate):
         """yields a list of PCM lengths for all audio tracks within the file
 
         total_length is the length of the entire file in PCM frames"""
@@ -140,7 +140,8 @@ class TOCFile:
             if (previous is None):
                 previous = current
             else:
-                track_length = (max(current) - max(previous)) * (44100 / 75)
+                track_length = ((max(current) - max(previous)) *
+                                sample_rate / 75)
                 total_length -= track_length
                 yield track_length
                 previous = current

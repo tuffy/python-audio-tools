@@ -930,7 +930,11 @@ class Flac_CUESHEET:
                  (self.catalog_number.decode('ascii', 'replace')),
              u"    lead-in samples = %d" % (self.lead_in_samples),
              u"            is CDDA = %d" % (self.is_cdda),
-             u"    track        offset          ISRC"] +
+             u"%9s %5s %8s %13s %12s" % (u"track",
+                                         u"audio",
+                                         u"pre-emph",
+                                         u"offset",
+                                         u"ISRC")] +
             [track.raw_info() for track in self.tracks])
 
     @classmethod
@@ -1037,11 +1041,12 @@ class Flac_CUESHEET:
                 sorted(self.tracks, lambda t1, t2: cmp(t1.number, t2.number))
                 if (track.number != 170)]
 
-    def pcm_lengths(self, total_length):
+    def pcm_lengths(self, total_length, sample_rate):
         """returns a list of PCM lengths for all cuesheet audio tracks
 
-        note that the total length variable is only for compatibility
-        it is not necessary for FlacCueSheets
+        note that the total_length and sample_rate variables
+        are only for compatibility
+        as FLAC's CUESHEET blocks store sample counts directly
         """
 
         if (len(self.tracks) > 0):
@@ -1053,11 +1058,6 @@ class Flac_CUESHEET:
                     zip(self.tracks, self.tracks[1:])]
         else:
             return []
-
-    def __unicode__(self):
-        from . import sheet_to_unicode
-
-        return sheet_to_unicode(self, None)
 
 
 class Flac_CUESHEET_track:
@@ -1095,11 +1095,18 @@ class Flac_CUESHEET_track:
         """returns a human-readable version of this track as unicode"""
 
         if (len(self.ISRC.strip(chr(0))) > 0):
-            return u"%9.d %13.d  %s" % \
-                (self.number, self.offset, self.ISRC)
+            return u"%9.d %5s %8s %13.d %12s" % \
+                (self.number,
+                 u"yes" if self.track_type == 0 else u"no",
+                 u"yes" if self.pre_emphasis == 1 else u"no",
+                 self.offset,
+                 self.ISRC)
         else:
-            return u"%9.d %13.d" % \
-                (self.number, self.offset)
+            return u"%9.d %5s %8s %13.d" % \
+                (self.number,
+                 u"yes" if self.track_type == 0 else u"no",
+                 u"yes" if self.pre_emphasis == 1 else u"no",
+                 self.offset)
 
     def __eq__(self, track):
         for attr in ["offset",

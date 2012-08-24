@@ -48,9 +48,10 @@ Cuesheet Objects
    Each index is a tuple of CD sectors corresponding to a
    track's offset on disk.
 
-.. method:: Cuesheet.pcm_lengths(total_length)
+.. method:: Cuesheet.pcm_lengths(total_length, sample_rate)
 
-   Takes the total length of the entire CD in PCM frames.
+   Takes the total length of the entire CD, in PCM frames,
+   and the sample rate of the stream, in Hz.
    Returns a list of PCM frame lengths for all audio tracks within
    the cuesheet.
    This list of lengths can be used to split a single CD image

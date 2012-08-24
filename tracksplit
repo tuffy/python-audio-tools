@@ -256,7 +256,8 @@ if (__name__ == '__main__'):
             msg.error(_.ERR_TRACKSPLIT_NO_CUESHEET)
             sys.exit(1)
 
-    if (list(cuesheet.pcm_lengths(audiofile.total_frames()))[-1] <= 0):
+    if (list(cuesheet.pcm_lengths(audiofile.total_frames(),
+                                  audiofile.sample_rate()))[-1] <= 0):
         msg.error(_.ERR_TRACKSPLIT_OVERLONG_CUESHEET)
         sys.exit(1)
 
@@ -354,7 +355,8 @@ if (__name__ == '__main__'):
     #determine PCM frames and output filename for each track to be split
     try:
         for (i, pcm_frames) in enumerate(
-            cuesheet.pcm_lengths(audiofile.total_frames())):
+            cuesheet.pcm_lengths(audiofile.total_frames(),
+                                 audiofile.sample_rate())):
             track_number = i + 1
             output_filename = audiotools.Filename(
                 os.path.join(base_directory,

@@ -384,7 +384,8 @@ if (__name__ == '__main__'):
             #attempt to embed the cuesheet in the file
             if ((len(audiofiles) == 1) and
                 (list(cuesheet.pcm_lengths(
-                            audiofiles[0].total_frames()))[-1] > 0)):
+                            audiofiles[0].total_frames(),
+                            audiofiles[0].sample_rate()))[-1] > 0)):
                 import_cuesheet = cuesheet
             else:
                 #otherwise, treat the cuesheet as a source of ISRC data

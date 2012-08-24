@@ -1734,12 +1734,12 @@ class RemaskedPCMReader:
             #at least one channel mask is undefined
             #so forward up to "channel_count" channels from pcmreader
             #and replace any remainders with empty samples
-            if (channel_count <= pcmreader.channel_count):
+            if (channel_count <= pcmreader.channels):
                 self.__channels__ = range(channel_count)
             else:
                 self.__channels__ = (range(channel_count) +
                                      [None] * (channel_count -
-                                               pcmreader.channel_count))
+                                               pcmreader.channels))
 
         from .pcm import from_list,from_channels
         self.blank_channel = from_list([],
@@ -3689,42 +3689,6 @@ def build_timestamp(i):
     """
 
     return "%2.2d:%2.2d:%2.2d" % ((i / 75) / 60, (i / 75) % 60, i % 75)
-
-
-def sheet_to_unicode(sheet, total_frames):
-    """returns formatted unicode from a cuesheet object and total PCM frames
-
-    its output is pretty-printed for eventual display by trackinfo
-    """
-
-    #FIXME? - This (and pcm_lengths() in general) assumes all cuesheets
-    #have a sample rate of 44100Hz.
-    #It's difficult to envision a scenario
-    #in which this assumption doesn't hold
-    #The point of cuesheets is to manage disc-based data as
-    #"solid" archives which can be rewritten identically to the original
-    #yet this only works for CD audio, which must always be 44100Hz.
-    #DVD-Audio is encoded into AOB files which cannot be mapped to cuesheets
-    #and SACD's DSD format is beyond the scope of these PCM-centric tools.
-
-    ISRCs = sheet.ISRCs()
-
-    tracks = unicode(os.linesep).join(
-        [" Track %2.2d - %2.2d:%2.2d%s" % \
-             (i + 1,
-              length / 44100 / 60,
-              length / 44100 % 60,
-              (" (ISRC %s)" % (ISRCs[i + 1].decode('ascii', 'replace'))) if
-                ((i + 1) in ISRCs.keys()) else u"")
-         for (i, length) in enumerate(sheet.pcm_lengths(total_frames))])
-
-    if ((sheet.catalog() is not None) and
-        (len(sheet.catalog()) > 0)):
-        return u"  Catalog - %s%s%s" % \
-            (sheet.catalog().decode('ascii', 'replace'),
-             os.linesep, tracks)
-    else:
-        return tracks
 
 
 def at_a_time(total, per):
