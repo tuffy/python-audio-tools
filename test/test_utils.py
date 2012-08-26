@@ -1663,7 +1663,7 @@ class trackcat(UtilTest):
                                   3: 'JPPI00652341'})
                 self.assertEqual(list(cuesheet.indexes()),
                                  [(0,), (225, 375), (675, 825)])
-                self.assertEqual(cuesheet.pcm_lengths(793800),
+                self.assertEqual(cuesheet.pcm_lengths(793800, 44100),
                                  [220500, 264600, 308700])
 
 
@@ -4161,8 +4161,8 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
                                  sorted(sheet2.ISRCs().items()))
                 self.assertEqual(list(sheet.indexes()),
                                  list(sheet2.indexes()))
-                self.assertEqual(list(sheet.pcm_lengths(69470436)),
-                                 list(sheet2.pcm_lengths(69470436)))
+                self.assertEqual(list(sheet.pcm_lengths(69470436, 44100)),
+                                 list(sheet2.pcm_lengths(69470436, 44100)))
             finally:
                 temp_track.close()
                 temp_sheet.close()
@@ -4221,8 +4221,8 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
                                  sorted(sheet2.ISRCs().items()))
                 self.assertEqual(list(sheet.indexes()),
                                  list(sheet2.indexes()))
-                self.assertEqual(list(sheet.pcm_lengths(69470436)),
-                                 list(sheet2.pcm_lengths(69470436)))
+                self.assertEqual(list(sheet.pcm_lengths(69470436, 44100)),
+                                 list(sheet2.pcm_lengths(69470436, 44100)))
             finally:
                 temp_track.close()
                 temp_sheet.close()

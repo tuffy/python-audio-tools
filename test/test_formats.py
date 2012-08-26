@@ -720,27 +720,24 @@ class AudioFileTest(unittest.TestCase):
                 gains = audiotools.replaygain.ReplayGain(44100)
 
                 track_data1.reset()
-                audiotools.transfer_data(track_data1.read, gains.update)
                 track_gain1 = track1.replay_gain()
-                (track_gain, track_peak) = gains.title_gain()
+                (track_gain, track_peak) = gains.title_gain(track_data1)
                 self.assertEqual(round(track_gain1.track_gain, 4),
                                  round(track_gain, 4))
                 self.assertEqual(round(track_gain1.track_peak, 4),
                                  round(track_peak, 4))
 
                 track_data2.reset()
-                audiotools.transfer_data(track_data2.read, gains.update)
                 track_gain2 = track2.replay_gain()
-                (track_gain, track_peak) = gains.title_gain()
+                (track_gain, track_peak) = gains.title_gain(track_data2)
                 self.assertEqual(round(track_gain2.track_gain, 4),
                                  round(track_gain, 4))
                 self.assertEqual(round(track_gain2.track_peak, 4),
                                  round(track_peak, 4))
 
                 track_data3.reset()
-                audiotools.transfer_data(track_data3.read, gains.update)
                 track_gain3 = track3.replay_gain()
-                (track_gain, track_peak) = gains.title_gain()
+                (track_gain, track_peak) = gains.title_gain(track_data3)
                 self.assertEqual(round(track_gain3.track_gain, 4),
                                  round(track_gain, 4))
                 self.assertEqual(round(track_gain3.track_peak, 4),

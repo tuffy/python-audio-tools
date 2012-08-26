@@ -476,16 +476,6 @@ class PCMConverter(unittest.TestCase):
         self.tempwav.close()
 
     @LIB_CORE
-    def test_resampler_init(self):
-        from audiotools.resample import Resampler
-
-        self.assertRaises(TypeError, Resampler)
-        self.assertRaises(ValueError, Resampler, -1, 1.0, 0)
-        self.assertRaises(ValueError, Resampler, 0, 1.0, 0)
-        self.assertRaises(ValueError, Resampler, 2, 1.0, -1)
-        self.assertRaises(ValueError, Resampler, 2, 1.0, 5)
-
-    @LIB_CORE
     def test_conversions(self):
         for ((i_sample_rate,
               i_channels,
