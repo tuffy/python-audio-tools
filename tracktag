@@ -79,20 +79,29 @@ if (audiotools.ui.AVAILABLE):
                 total = 0
                 for (track_id, updated_metadata) in self.metadata.metadata():
                     (track, original_metadata) = self.edited_tracks[track_id]
-                    if (updated_metadata != original_metadata):
-                        for attr in audiotools.MetaData.FIELDS:
-                            original_value = getattr(original_metadata, attr)
-                            updated_value = getattr(updated_metadata, attr)
-                            if (original_value != updated_value):
-                                #if updated_value is None,
-                                #this will work like delattr
-                                setattr(original_metadata,
-                                        attr,
-                                        updated_value)
+                    if (original_metadata is not None):
+                        if (updated_metadata != original_metadata):
+                            for attr in audiotools.MetaData.FIELDS:
+                                original_value = getattr(original_metadata,
+                                                         attr)
+                                updated_value = getattr(updated_metadata,
+                                                        attr)
+                                if (original_value != updated_value):
+                                    #if updated_value is None,
+                                    #this will work like delattr
+                                    setattr(original_metadata,
+                                            attr,
+                                            updated_value)
 
-                        #FIXME - check for errors here
-                        track.update_metadata(original_metadata)
-                        total += 1
+                            #FIXME - check for errors here
+                            track.update_metadata(original_metadata)
+                            total += 1
+                    else:
+                        original_metadata = audiotools.MetaData()
+                        if (updated_metadata != audiotools.MetaData()):
+                            #FIXME - check for errors here
+                            track.set_metadata(updated_metadata)
+                            total += 1
 
                 if (total != 1):
                     self.status.set_text(_.LAB_TRACKTAG_UPDATED % (total))
