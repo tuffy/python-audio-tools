@@ -67,17 +67,6 @@ class VorbisAudio(AudioFile):
         except IOError, msg:
             raise InvalidVorbis(str(msg))
 
-    @classmethod
-    def is_type(cls, file):
-        """returns True if the given file object describes this format
-
-        takes a seekable file pointer rewound to the start of the file"""
-
-        header = file.read(0x23)
-
-        return (header.startswith('OggS') and
-                header[0x1C:0x23] == '\x01vorbis')
-
     def __read_identification__(self):
         from .bitstream import BitstreamReader
 

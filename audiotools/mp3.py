@@ -201,28 +201,6 @@ class MP3Audio(AudioFile):
         finally:
             mp3file.close()
 
-    @classmethod
-    def is_type(cls, file):
-        """returns True if the given file object describes this format
-
-        takes a seekable file pointer rewound to the start of the file"""
-
-        from .bitstream import BitstreamReader
-        from .id3 import skip_id3v2_comment
-
-        try:
-            skip_id3v2_comment(file)
-
-            (frame_sync,
-             mpeg_id,
-             layer) = BitstreamReader(file, 0).parse("11u 2u 2u 1p")
-
-            return ((frame_sync == 0x7FF) and
-                    (mpeg_id in (0, 2, 3)) and
-                    (layer in (1, 3)))
-        except IOError:
-            return False
-
     def lossless(self):
         """returns False"""
 
@@ -736,28 +714,6 @@ class MP2Audio(MP3Audio):
     COMPRESSION_DESCRIPTIONS = {"64": COMP_TWOLAME_64,
                                 "384": COMP_TWOLAME_384}
     BINARIES = ("mpg123", "twolame")
-
-    @classmethod
-    def is_type(cls, file):
-        """returns True if the given file object describes this format
-
-        takes a seekable file pointer rewound to the start of the file"""
-
-        from .bitstream import BitstreamReader
-        from .id3 import skip_id3v2_comment
-
-        try:
-            skip_id3v2_comment(file)
-
-            (frame_sync,
-             mpeg_id,
-             layer) = BitstreamReader(file, 0).parse("11u 2u 2u 1p")
-
-            return ((frame_sync == 0x7FF) and
-                    (mpeg_id in (0, 2, 3)) and
-                    (layer == 2))
-        except IOError:
-            return False
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):

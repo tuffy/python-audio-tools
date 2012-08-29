@@ -352,17 +352,6 @@ class AiffAudio(AiffContainer):
 
         return self.__sample_rate__
 
-    @classmethod
-    def is_type(cls, file):
-        """returns True if the given file object describes this format
-
-        takes a seekable file pointer rewound to the start of the file"""
-
-        header = file.read(12)
-
-        return ((header[0:4] == 'FORM') and
-                (header[8:12] == 'AIFF'))
-
     def chunks(self):
         """yields a AIFF_Chunk compatible objects for each chunk in file"""
 

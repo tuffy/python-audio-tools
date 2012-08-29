@@ -52,14 +52,14 @@ def open_file(filename):
 
     f = open(filename, "rb")
     try:
-        for audioclass in audiotools.TYPE_MAP.values():
-            f.seek(0, 0)
-            if (audioclass.is_type(f)):
-                class_name = audioclass.NAME
-                try:
-                    return audioclass(filename)
-                except audiotools.InvalidFile, err:
-                    return FailedAudioFile(class_name, filename, err)
+        audio_class = audiotools.file_type(f)
+        if ((audio_class is not None) and
+            (audio_class.has_binaries(audiotools.BIN))):
+            class_name = audio_class.NAME
+            try:
+                return audio_class(filename)
+            except audiotools.InvalidFile, err:
+                return FailedAudioFile(class_name, filename, err)
         else:
             raise audiotools.UnsupportedFile(filename)
     finally:

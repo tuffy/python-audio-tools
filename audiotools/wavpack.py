@@ -119,14 +119,6 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         except IOError, msg:
             raise InvalidWavPack(str(msg))
 
-    @classmethod
-    def is_type(cls, file):
-        """returns True if the given file object describes this format
-
-        takes a seekable file pointer rewound to the start of the file"""
-
-        return file.read(4) == 'wvpk'
-
     def lossless(self):
         """returns True"""
 

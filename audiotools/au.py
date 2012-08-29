@@ -103,14 +103,6 @@ class AuAudio(AudioFile):
         except KeyError:
             raise InvalidAU(ERR_AU_UNSUPPORTED_FORMAT)
 
-    @classmethod
-    def is_type(cls, file):
-        """returns True if the given file object describes this format
-
-        takes a seekable file pointer rewound to the start of the file"""
-
-        return file.read(4) == ".snd"
-
     def lossless(self):
         """returns True"""
 

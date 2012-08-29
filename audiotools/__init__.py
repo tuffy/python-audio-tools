@@ -1081,6 +1081,182 @@ class DecodingError(IOError):
         self.error_message = error_message
 
 
+def file_type(file):
+    """given a seekable file stream rewound to the file's start
+    returns an AudioFile-compatible class that stream is a type of
+    or None of the stream's type is unknown
+
+    the AudioFile class is not guaranteed to be available"""
+
+    header = file.read(35)  #FIXME - adjust this as needed
+    if ((header[4:8] == "ftyp") and
+        (header[8:12] in ('mp41', 'mp42', 'M4A ', 'M4B '))):
+        #possibly ALAC or M4A
+
+        from .bitstream import BitstreamReader
+        from .m4a import get_m4a_atom
+
+        file.seek(0, 0)
+        reader = BitstreamReader(file, 0)
+
+        #so get contents of moov->trak->mdia->minf->stbl->stsd atom
+        try:
+            stsd = get_m4a_atom(reader,
+                                "moov", "trak", "mdia",
+                                "minf", "stbl", "stsd")[1]
+            (stsd_version, descriptions,
+             atom_size, atom_type) = stsd.parse("8u 24p 32u 32u 4b")
+
+            if (atom_type == "alac"):
+                #if first description is "alac" atom, it's an ALAC
+                return ALACAudio
+            elif (atom_type == "mp4a"):
+                #if first description is "mp4a" atom, it's M4A
+                return M4AAudio
+            else:
+                #otherwise, it's unknown
+                return None
+        except KeyError:
+            #no stsd atom, so unknown
+            return None
+        except IOError:
+            #error reading atom, so unknown
+            return None
+    elif ((header[0:4] == "FORM") and (header[8:12] == "AIFF")):
+        return AiffAudio
+    elif (header[0:4] == ".snd"):
+        return AuAudio
+    elif (header[0:4] == "fLaC"):
+        return FlacAudio
+    elif ((len(header) >= 4) and (header[0] == "\xFF")):
+        #possibly MP3 or MP2
+
+        from .bitstream import BitstreamReader
+        from cStringIO import StringIO
+
+        #header is at least 32 bits, so no IOError is possible
+        (frame_sync,
+         mpeg_id,
+         layer_description,
+         protection,
+         bitrate,
+         sample_rate,
+         pad,
+         private,
+         channels,
+         mode_extension,
+         copy,
+         original,
+         emphasis) = BitstreamReader(StringIO(header), 0).parse(
+            "11u 2u 2u 1u 4u 2u 1u 1u 2u 2u 1u 1u 2u")
+        if ((frame_sync == 0x7FF) and
+            (mpeg_id == 3) and
+            (layer_description == 1) and
+            (bitrate != 0xF) and
+            (sample_rate != 3) and
+            (emphasis != 2)):
+            #MP3s are MPEG-1, Layer-III
+            return MP3Audio
+        elif ((frame_sync == 0x7FF) and
+              (mpeg_id == 3) and
+              (layer_description == 2) and
+              (bitrate != 0xF) and
+              (sample_rate != 3) and
+              (emphasis != 2)):
+            #MP2s are MPEG-1, Layer-II
+            return MP2Audio
+        else:
+            #nothing else starts with an initial byte of 0xFF
+            #so the file is unknown
+            return None
+    elif (header[0:4] == "OggS"):
+        #possibly Ogg FLAC or Ogg Vorbis
+         if (header[0x1C:0x21] == "\x7FFLAC"):
+             return OggFlacAudio
+         elif (header[0x1C:0x23]):
+             return VorbisAudio
+         else:
+             return None
+    elif (header[0:5] == "ajkg\x02"):
+        return ShortenAudio
+    elif (header[0:4] == "wvpk"):
+        return WavPackAudio
+    elif ((header[0:4] == "RIFF") and (header[8:12] == "WAVE")):
+        return WaveAudio
+    elif ((len(header) >= 10) and
+          (header[0:3] == "ID3") and
+          (ord(header[3]) in (2, 3, 4))):
+        #file contains ID3v2 tag
+        #so it may be MP3, MP2 or FLAC
+
+        #determine sync-safe tag size and skip entire tag
+        tag_size = 0
+        for b in header[6:10]:
+            tag_size = (tag_size << 7) | (ord(b) % 0x7F)
+        file.seek(10 + tag_size, 0)
+        b = file.read(1)
+        while (b == "\x00"):
+            #skip NULL bytes after ID3v2 tag
+            b = file.read(1)
+
+        if (b == ""):
+            #no data after tag, so file is unknown
+            return None
+        elif (b == "\xFF"):
+            #possibly MP3 or MP2 file
+
+            from .bitstream import BitstreamReader
+
+            try:
+                (frame_sync,
+                 mpeg_id,
+                 layer_description,
+                 protection,
+                 bitrate,
+                 sample_rate,
+                 pad,
+                 private,
+                 channels,
+                 mode_extension,
+                 copy,
+                 original,
+                 emphasis) = BitstreamReader(file, 0).parse(
+                    "3u 2u 2u 1u 4u 2u 1u 1u 2u 2u 1u 1u 2u")
+                if ((frame_sync == 0x7) and
+                    (mpeg_id == 3) and
+                    (layer_description == 1) and
+                    (bitrate != 0xF) and
+                    (sample_rate != 3) and
+                    (emphasis != 2)):
+                    #MP3s are MPEG-1, Layer-III
+                    return MP3Audio
+                elif ((frame_sync == 0x7) and
+                      (mpeg_id == 3) and
+                      (layer_description == 2) and
+                      (bitrate != 0xF) and
+                      (sample_rate != 3) and
+                      (emphasis != 2)):
+                    #MP2s are MPEG-1, Layer-II
+                    return MP2Audio
+                else:
+                    #nothing else starts with an initial byte of 0xFF
+                    #so the file is unknown
+                    return None
+            except IOError:
+                return None
+        elif (b == "f"):
+            #possibly FLAC file
+            if (file.read(3) == "LaC"):
+                return FlacAudio
+            else:
+                return None
+        else:
+            #unknown file after ID3 tag
+            return None
+    else:
+        return None
+
+
 def open(filename):
     """returns an AudioFile located at the given filename path
 
@@ -1092,17 +1268,14 @@ def open(filename):
     raises IOError if some problem occurs attempting to open the file
     """
 
-    available_types = frozenset(TYPE_MAP.values())
-
     f = file(filename, "rb")
     try:
-        for audioclass in TYPE_MAP.values():
-            f.seek(0, 0)
-            if (audioclass.is_type(f)):
-                return audioclass(filename)
+        audio_class = file_type(f)
+        if ((audio_class is not None) and
+            (audio_class.has_binaries(BIN))):
+            return audio_class(filename)
         else:
             raise UnsupportedFile(filename)
-
     finally:
         f.close()
 
@@ -2994,14 +3167,6 @@ class AudioFile:
 
         self.filename = filename
 
-    @classmethod
-    def is_type(cls, file):
-        """returns True if the given file object describes this format
-
-        takes a seekable file pointer rewound to the start of the file"""
-
-        return False
-
     def bits_per_sample(self):
         """returns an integer number of bits-per-sample this track contains"""
 
@@ -3393,9 +3558,11 @@ class AudioFile:
 
         checks the __system_binaries__ class for which path to check"""
 
-        return set([True] + \
-                   [system_binaries.can_execute(system_binaries[command])
-                    for command in cls.BINARIES]) == set([True])
+        for command in cls.BINARIES:
+            if (not system_binaries.can_execute(system_binaries[command])):
+                return False
+        else:
+            return True
 
     def clean(self, fixes_performed, output_filename=None):
         """cleans the file of known data and metadata problems

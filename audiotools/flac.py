@@ -1258,43 +1258,6 @@ class FlacAudio(WaveContainer, AiffContainer):
         except IOError, msg:
             raise InvalidFLAC(str(msg))
 
-    @classmethod
-    def is_type(cls, file):
-        """returns True if the given file object describes this format
-
-        takes a seekable file pointer rewound to the start of the file"""
-
-        if (file.read(4) == 'fLaC'):
-            #proper FLAC file with no junk at the beginning
-            try:
-                block_ids = list(cls.__block_ids__(file))
-            except (ValueError, IOError):
-                return False
-            if ((len(block_ids) == 0) or (0 not in block_ids)):
-                return False
-            else:
-                return True
-        else:
-            #messed-up FLAC file with ID3v2 tags at the beginning
-            #which can be fixed using clean()
-            file.seek(0, 0)
-            if (file.read(3) == 'ID3'):
-                file.seek(-3, 1)
-                skip_id3v2_comment(file)
-                if (file.read(4) == 'fLaC'):
-                    try:
-                        block_ids = list(cls.__block_ids__(file))
-                    except (ValueError, IOError):
-                        return False
-                    if ((len(block_ids) == 0) or (0 not in block_ids)):
-                        return False
-                    else:
-                        return True
-                else:
-                    return False
-            else:
-                return False
-
     def channel_mask(self):
         """returns a ChannelMask object of this track's channel layout"""
 
@@ -2715,17 +2678,6 @@ class OggFlacAudio(FlacAudio):
             self.__read_streaminfo__()
         except IOError, msg:
             raise InvalidFLAC(str(msg))
-
-    @classmethod
-    def is_type(cls, file):
-        """returns True if the given file object describes this format
-
-        takes a seekable file pointer rewound to the start of the file"""
-
-        header = file.read(0x23)
-
-        return (header.startswith('OggS') and
-                header[0x1C:0x21] == '\x7FFLAC')
 
     def bits_per_sample(self):
         """returns an integer number of bits-per-sample this track contains"""

@@ -158,14 +158,6 @@ class ShortenAudio(WaveContainer, AiffContainer):
             except IOError:
                 pass
 
-    @classmethod
-    def is_type(cls, file):
-        """returns True if the given file object describes this format
-
-        takes a seekable file pointer rewound to the start of the file"""
-
-        return (file.read(4) == 'ajkg') and (ord(file.read(1)) == 2)
-
     def bits_per_sample(self):
         """returns an integer number of bits-per-sample this track contains"""
 

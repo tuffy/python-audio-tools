@@ -370,41 +370,6 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         else:
             return ChannelMask(0)
 
-    @classmethod
-    def is_type(cls, file):
-        """returns True if the given file object describes this format
-
-        takes a seekable file pointer rewound to the start of the file"""
-
-        from .bitstream import BitstreamReader
-
-        reader = BitstreamReader(file, 0)
-        reader.mark()
-        try:
-            (ftyp, major_brand) = reader.parse("32p 4b 4b")
-        except IOError:
-            reader.unmark()
-            return False
-
-        if ((ftyp == 'ftyp') and
-            (major_brand in ('mp41', 'mp42', 'M4A ', 'M4B '))):
-            reader.rewind()
-            reader.unmark()
-            try:
-                stsd = get_m4a_atom(reader, "moov", "trak", "mdia",
-                                    "minf", "stbl", "stsd")[1]
-                try:
-                    (stsd_version, descriptions) = stsd.parse("8u 24p 32u")
-                    (mp4a_size, mp4a_type) = stsd.parse("32u 4b")
-                    return (mp4a_type == 'mp4a')
-                except IOError:
-                    return False
-            except KeyError:
-                return False
-        else:
-            reader.unmark()
-            return False
-
     def lossless(self):
         """returns False"""
 
@@ -911,41 +876,6 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 raise InvalidALAC(ERR_M4A_INVALID_MDHD)
         finally:
             mdia.unmark()
-
-    @classmethod
-    def is_type(cls, file):
-        """returns True if the given file object describes this format
-
-        takes a seekable file pointer rewound to the start of the file"""
-
-        from .bitstream import BitstreamReader
-
-        reader = BitstreamReader(file, 0)
-        reader.mark()
-        try:
-            (ftyp, major_brand) = reader.parse("32p 4b 4b")
-        except IOError:
-            reader.unmark()
-            return False
-
-        if ((ftyp == 'ftyp') and
-            (major_brand in ('mp41', 'mp42', 'M4A ', 'M4B '))):
-            reader.rewind()
-            reader.unmark()
-            try:
-                stsd = get_m4a_atom(reader, "moov", "trak", "mdia",
-                                    "minf", "stbl", "stsd")[1]
-                try:
-                    (stsd_version, descriptions) = stsd.parse("8u 24p 32u")
-                    (alac_size, alac_type) = stsd.parse("32u 4b")
-                    return (alac_type == 'alac')
-                except IOError:
-                    return False
-            except KeyError:
-                return False
-        else:
-            reader.unmark()
-            return False
 
     def channels(self):
         """returns an integer number of channels this track contains"""

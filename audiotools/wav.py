@@ -373,16 +373,6 @@ class WaveAudio(WaveContainer):
         except IOError:
             raise InvalidWave("I/O error reading wave")
 
-    @classmethod
-    def is_type(cls, file):
-        """returns True if the given file object describes this format
-
-        takes a seekable file pointer rewound to the start of the file"""
-
-        header = file.read(12)
-        return ((header[0:4] == 'RIFF') and
-                (header[8:12] == 'WAVE'))
-
     def lossless(self):
         """returns True"""
 
