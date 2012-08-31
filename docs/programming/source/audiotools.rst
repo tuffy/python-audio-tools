@@ -104,6 +104,16 @@ classes and functions upon which all of the other modules depend.
    this is set to the user's CPU count.
    If neither is available, this is set to 1.
 
+.. function:: file_type(file)
+
+   Given a seekable file object rewound to the file's start,
+   returns an :class:`AudioFile`-compatible class of the stream's
+   detected type, or ``None`` if the stream's type is unknown.
+
+   The :class:`AudioFile` class may not be available for use
+   and so its :meth:`AudioFile.has_binaries` classmethod
+   may need to be checked separately.
+
 .. function:: open(filename)
 
    Opens the given filename string and returns an :class:`AudioFile`-compatible
@@ -343,14 +353,6 @@ AudioFile Objects
    order to use the :meth:`add_replay_gain` classmethod.
    This tuple may be empty if the format requires no binaries
    or has no ReplayGain support.
-
-.. classmethod:: AudioFile.is_type(file)
-
-   Takes a file-like object with :meth:`read` and :meth:`seek` methods
-   that's reset to the beginning of the stream.
-   Returns ``True`` if the file is determined to be of the same type
-   as this particular :class:`AudioFile` implementation.
-   Returns ``False`` if not.
 
 .. method:: AudioFile.bits_per_sample()
 

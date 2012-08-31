@@ -1088,7 +1088,7 @@ def file_type(file):
 
     the AudioFile class is not guaranteed to be available"""
 
-    header = file.read(35)  #FIXME - adjust this as needed
+    header = file.read(35)
     if ((header[4:8] == "ftyp") and
         (header[8:12] in ('mp41', 'mp42', 'M4A ', 'M4B '))):
         #possibly ALAC or M4A

@@ -5963,7 +5963,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] tracksplit
     - [X] tracktag
 *** DONE Ensure unit tests pass
-** TODO Add faster and more accurate audio type identifier
+** DONE Add faster and more accurate audio type identifier
    Instead of checking open files on a format-by-format basis
    to determine its type via looping, it's more effecient
    to check for all possible file types from the same stream simultaneously
@@ -6000,9 +6000,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] VorbisAudio
     - [X] WavPackAudio
     - [X] WaveAudio
-*** TODO Update programming documentation
-*** TODO Update unit tests
-    - [ ] test_formats.py
+*** DONE Update programming documentation
+*** DONE Update unit tests
+    - [X] test_formats.py
 ** TODO Add internal MP3 codec
    This is likely the codec people are most interested in
    and so it should be folded in so it can be used

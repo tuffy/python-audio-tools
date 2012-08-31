@@ -161,18 +161,20 @@ class AudioFileTest(unittest.TestCase):
         valid = tempfile.NamedTemporaryFile(suffix=self.suffix)
         invalid = tempfile.NamedTemporaryFile(suffix=self.suffix)
         try:
-            #generate a valid file and check its is_type routine
+            #generate a valid file and check audiotools.file_type
             self.audio_class.from_pcm(valid.name, BLANK_PCM_Reader(1))
-            f = open(valid.name, 'rb')
-            self.assertEqual(self.audio_class.is_type(f), True)
-            f.close()
+            self.assertEqual(audiotools.file_type(open(valid.name, "rb")),
+                             self.audio_class)
 
-            #generate several invalid files and check its is_type routine
+            #several invalid files and ensure audiotools.file_type
+            #returns None
+            #(though it's *possible* os.urandom might generate a valid file
+            # by virtue of being random that's extremely unlikely in practice)
             for i in xrange(256):
                 self.assertEqual(os.path.getsize(invalid.name), i)
-                f = open(invalid.name, 'rb')
-                self.assertEqual(self.audio_class.is_type(f), False)
-                f.close()
+                self.assertEqual(
+                    audiotools.file_type(open(invalid.name, "rb")),
+                    None)
                 invalid.write(os.urandom(1))
                 invalid.flush()
 
@@ -2931,10 +2933,10 @@ class FlacFileTest(TestForeignAiffChunks,
                 temp.write(flac_data[0:i])
                 temp.flush()
                 self.assertEqual(os.path.getsize(temp.name), i)
-                if (i < 8):
-                    f = open(temp.name, 'rb')
-                    self.assertEqual(audiotools.FlacAudio.is_type(f), False)
-                    f.close()
+                if (i < 4):
+                    self.assertEqual(
+                        audiotools.file_type(open(temp.name, "rb")),
+                        None)
                 self.assertRaises(IOError,
                                   audiotools.decoders.FlacDecoder,
                                   temp.name, 1)
