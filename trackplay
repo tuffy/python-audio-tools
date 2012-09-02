@@ -253,13 +253,19 @@ try:
             if (new_state == True):
                 (track, metadata) = user_data
                 if (metadata is not None):
-                    self.track_name.set_text(metadata.track_name)
-                    self.album_name.set_text(metadata.album_name)
-                    self.artist_name.set_text(metadata.artist_name)
+                    self.track_name.set_text(metadata.track_name if
+                                             metadata.track_name is not None
+                                             else u"")
+                    self.album_name.set_text(metadata.album_name if
+                                             metadata.album_name is not None
+                                             else u"")
+                    self.artist_name.set_text(metadata.artist_name if
+                                              metadata.artist_name is not None
+                                              else u"")
                     track_number = track.track_number()
                     track_total = metadata.track_total
-                    if (track_number > 0):
-                        if (track_total > 0):
+                    if (track_number is not None):
+                        if (track_total is not None):
                             self.tracknum.set_text(_.LAB_X_OF_Y %
                                                    (track_number,
                                                     track_total))
@@ -272,7 +278,7 @@ try:
                     self.album_name.set_text(u"")
                     self.artist_name.set_text(u"")
                     track_number = track.track_number()
-                    if (track_number > 0):
+                    if (track_number is not None):
                         self.tracknum.set_text(unicode(track_number))
                     else:
                         self.tracknum.set_text(u"")
