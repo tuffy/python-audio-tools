@@ -105,6 +105,22 @@ verifymodule = Extension('audiotools.verify',
                                   'src/common/ogg_crc.c',
                                   'src/bitstream.c'])
 
+output_sources = ['src/output.c']
+output_defines = []
+output_link_args = []
+
+if (sys.platform == 'darwin'):
+    output_sources.append('src/output/core_audio.c')
+    output_defines.append(("CORE_AUDIO", "1"))
+    output_link_args.extend(["-framework", "AudioToolbox",
+                             "-framework", "AudioUnit",
+                             "-framework", "CoreServices"])
+
+outputmodule = Extension('audiotools.output',
+                         sources=output_sources,
+                         define_macros=output_defines,
+                         extra_link_args=output_link_args)
+
 setup(name='Python Audio Tools',
       version=VERSION,
       description='A collection of audio handling utilities',
@@ -120,7 +136,8 @@ setup(name='Python Audio Tools',
                    decodersmodule,
                    encodersmodule,
                    bitstreammodule,
-                   verifymodule],
+                   verifymodule,
+                   outputmodule],
       data_files=[("/etc", ["audiotools.cfg"])],
       scripts=["audiotools-config",
                "cd2track",
