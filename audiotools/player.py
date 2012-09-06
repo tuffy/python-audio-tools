@@ -169,8 +169,11 @@ class PlayerThread:
                         channels=pcmreader.channels,
                         channel_mask=pcmreader.channel_mask,
                         bits_per_sample=pcmreader.bits_per_sample)
+
+                from . import BufferedPCMReader
+
                 self.pcmconverter = ThreadedPCMConverter(
-                    pcmreader,
+                    BufferedPCMReader(pcmreader),
                     self.audio_output.framelist_converter())
                 self.frames_played = 0
                 self.state = PLAYER_PLAYING
@@ -402,7 +405,7 @@ class CDPlayerThread:
 class ThreadedPCMConverter:
     """a class for decoding a PCMReader in a seperate thread
 
-    pCMReader's data is queued such that even if decoding and
+    PCMReader's data is queued such that even if decoding and
     conversion are relatively time-consuming, read() will
     continue smoothly"""
 
@@ -416,7 +419,7 @@ class ThreadedPCMConverter:
         import Queue
         import threading
 
-        self.decoded_data = Queue.Queue()
+        self.decoded_data = Queue.Queue(100)
         self.stop_decoding = threading.Event()
 
         def convert(pcmreader, buffer_size, converter, decoded_data,
@@ -424,8 +427,13 @@ class ThreadedPCMConverter:
             try:
                 frame = pcmreader.read(buffer_size)
                 while ((not stop_decoding.is_set()) and (len(frame) > 0)):
-                    decoded_data.put((converter(frame), frame.frames))
-                    frame = pcmreader.read(buffer_size)
+                    try:
+                        decoded_data.put((converter(frame), frame.frames),
+                                         True,
+                                         1)
+                        frame = pcmreader.read(buffer_size)
+                    except Queue.Full:
+                        pass
                 else:
                     decoded_data.put((None, 0))
                     pcmreader.close()
