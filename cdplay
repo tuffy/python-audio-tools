@@ -412,7 +412,8 @@ if (__name__ == '__main__'):
         '-o', '--output',
         action='store',
         dest='output',
-        choices=players_map.keys(),
+        choices=[player.NAME for player in audiotools.player.AUDIO_OUTPUT
+                 if player.available()],
         default=[player.NAME for player in audiotools.player.AUDIO_OUTPUT
                  if player.available()][0],
         help=_.OPT_OUTPUT_PLAY % \
