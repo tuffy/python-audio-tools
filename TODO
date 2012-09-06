@@ -6071,11 +6071,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Update Player object to handle ReplayGain
     - [X] track gain
     - [X] album gain
-*** TODO Add different audio output sinks
+*** DONE Add different audio output sinks
 **** DONE PulseAudioOutput
 **** DONE OSSAudioOutput
 **** DONE NULLAudioOutput
-**** TODO CoreAudioOutput
+**** DONE CoreAudioOutput
 *** DONE Support different sinks from trackplay(1)
 *** DONE Update trackplay man page
 *** DONE Add audiotools.player programming documentation

@@ -45,7 +45,7 @@ class Player:
                                    replay_gain)
         self.thread = threading.Thread(target=self.worker.run,
                                        args=(next_track_callback,))
-        self.thread.daemon = True
+        # self.thread.daemon = True
         self.thread.start()
 
     def open(self, track):
@@ -213,6 +213,7 @@ class PlayerThread:
                 try:
                     (command, args) = self.command_queue.get_nowait()
                     if (command == "exit"):
+                        self.audio_output.close()
                         return
                     else:
                         getattr(self, command)(*args)

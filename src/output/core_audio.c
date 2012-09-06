@@ -74,6 +74,7 @@ CoreAudio_init(output_CoreAudio *self, PyObject *args, PyObject *kwds) {
     }
 
     self->ao = malloc(sizeof(audio_output_t));
+
     if (init_coreaudio(self->ao,
                        sample_rate,
                        channels,
@@ -82,17 +83,66 @@ CoreAudio_init(output_CoreAudio *self, PyObject *args, PyObject *kwds) {
         PyErr_SetString(PyExc_ValueError,
                         "error initializing CoreAudio");
         return -1;
-    }
-
-    if (self->ao->open(self->ao)) {
-        PyErr_SetString(PyExc_ValueError,
-                        "error opening CoreAudio");
-        return -1;
     } else {
-        self->closed = 0;
-    }
+        PyObject* os_module_obj;
+        PyObject* devnull_obj;
+        char* devnull;
+        int current_stdout;
+        int devnull_stdout;
+        int returnval;
 
-    return 0;
+        /*because CoreAudio loves spewing text to stdout
+          at init-time, we'll need to temporarily redirect
+          stdout to /dev/null*/
+
+        /*first, determine the location of /dev/null from os.devnull*/
+        if ((os_module_obj = PyImport_ImportModule("os")) == NULL) {
+            return -1;
+        }
+        if ((devnull_obj =
+             PyObject_GetAttrString(os_module_obj, "devnull")) == NULL) {
+            Py_DECREF(os_module_obj);
+            return -1;
+        }
+        if ((devnull = PyString_AsString(devnull_obj)) == NULL) {
+            Py_DECREF(os_module_obj);
+            Py_DECREF(devnull_obj);
+            return -1;
+        }
+
+        /*open /dev/null*/
+        if ((devnull_stdout = open(devnull, O_WRONLY | O_TRUNC)) == -1) {
+            Py_DECREF(os_module_obj);
+            Py_DECREF(devnull_obj);
+            PyErr_SetFromErrno(PyExc_IOError);
+            return -1;
+        } else {
+            /*close unneeded Python objects once descriptor is open*/
+            Py_DECREF(os_module_obj);
+            Py_DECREF(devnull_obj);
+        }
+
+        /*swap file descriptors*/
+        current_stdout = dup(STDOUT_FILENO);
+        dup2(devnull_stdout, STDOUT_FILENO);
+
+        /*initialize CoreAudio itself*/
+        if (self->ao->open(self->ao)) {
+            PyErr_SetString(PyExc_ValueError,
+                            "error opening CoreAudio");
+            returnval = -1;
+        } else {
+            self->closed = 0;
+            returnval = 0;
+        }
+
+        /*close /dev/null and swap file descriptors back again*/
+        dup2(current_stdout, STDOUT_FILENO);
+        close(current_stdout);
+        close(devnull_stdout);
+
+        return returnval;
+    }
 }
 
 static PyObject* CoreAudio_play(output_CoreAudio *self, PyObject *args)
@@ -124,7 +174,12 @@ static PyObject* CoreAudio_play(output_CoreAudio *self, PyObject *args)
 
 static PyObject* CoreAudio_flush(output_CoreAudio *self, PyObject *args)
 {
-    /*FIXME - ensure pending samples are played to output*/
+    /*ensure pending samples are played to output
+      by sleeping for the duration of the ring buffer*/
+    Py_BEGIN_ALLOW_THREADS
+    usleep(FIFO_DURATION * 1000000);
+    Py_END_ALLOW_THREADS
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -134,6 +189,7 @@ static PyObject* CoreAudio_close(output_CoreAudio *self, PyObject *args)
     if (!self->closed) {
         self->ao->flush(self->ao);
         self->ao->close(self->ao);
+        self->closed = 1;
     }
 
     Py_INCREF(Py_None);
@@ -281,7 +337,7 @@ static int open_coreaudio(audio_output_t *ao)
         }
 
         /* Initialise FIFO */
-        ringbuffer_len = (ao->rate *
+        ringbuffer_len = ((int)ao->rate *
                           FIFO_DURATION *
                           ca->bps *
                           ao->channels);
