@@ -231,8 +231,8 @@ static int open_coreaudio(audio_output_t *ao)
 {
     mpg123_coreaudio_t* ca = (mpg123_coreaudio_t*)ao->userptr;
     UInt32 size;
-    ComponentDescription desc;
-    Component comp;
+    AudioComponentDescription desc;
+    AudioComponent comp;
     AudioStreamBasicDescription inFormat;
     AudioStreamBasicDescription outFormat;
     AURenderCallbackStruct  renderCallback;
@@ -253,12 +253,12 @@ static int open_coreaudio(audio_output_t *ao)
     desc.componentManufacturer = kAudioUnitManufacturer_Apple;
     desc.componentFlags = 0;
     desc.componentFlagsMask = 0;
-    comp = FindNextComponent(NULL, &desc);
+    comp = AudioComponentFindNext(NULL, &desc);
     if(comp == NULL) {
         return -1;
     }
 
-    if(OpenAComponent(comp, &(ca->outputUnit)))  {
+    if(AudioComponentInstanceNew(comp, &(ca->outputUnit)))  {
         return -1;
     }
 
@@ -397,11 +397,12 @@ static int close_coreaudio(audio_output_t *ao)
         ca->decode_done = 1;
         while(!ca->play_done && ca->play) usleep(10000);
 
-        /* No matter the error code, we want to close it (by brute force if necessary) */
+        /* No matter the error code, we want to close it
+           (by brute force if necessary) */
         AudioConverterDispose(ca->converter);
         AudioOutputUnitStop(ca->outputUnit);
         AudioUnitUninitialize(ca->outputUnit);
-        CloseComponent(ca->outputUnit);
+        AudioComponentInstanceDispose(ca->outputUnit);
 
         /* Free the ring buffer */
         sfifo_close( &ca->fifo );
