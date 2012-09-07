@@ -172,7 +172,9 @@ class PlayerThread:
 
                 from . import BufferedPCMReader
 
-                self.pcmconverter = ThreadedPCMConverter(
+                if (self.pcmconverter is not None):
+                    self.pcmconverter.close()
+                self.pcmconverter = PCMConverter(
                     BufferedPCMReader(pcmreader),
                     self.audio_output.framelist_converter())
                 self.frames_played = 0
@@ -339,7 +341,9 @@ class CDPlayerThread:
     def play(self):
         if (self.track is not None):
             if (self.state == PLAYER_STOPPED):
-                self.pcmconverter = ThreadedPCMConverter(
+                if (self.pcmconverter is not None):
+                    self.pcmconverter.close()
+                self.pcmconverter = PCMConverter(
                     self.track,
                     self.framelist_converter)
                 self.frames_played = 0
@@ -402,69 +406,22 @@ class CDPlayerThread:
                         self.stop()
 
 
-class ThreadedPCMConverter:
-    """a class for decoding a PCMReader in a seperate thread
-
-    PCMReader's data is queued such that even if decoding and
-    conversion are relatively time-consuming, read() will
-    continue smoothly"""
-
+class PCMConverter:
     def __init__(self, pcmreader, converter):
-        """pcmreader is a PCMReader object
-
-        converter is a function which takes a FrameList
-        and returns an object suitable for the current AudioOutput object
-        upon conclusion, the PCMReader is automatically closed"""
-
-        import Queue
-        import threading
-
-        self.decoded_data = Queue.Queue(100)
-        self.stop_decoding = threading.Event()
-
-        def convert(pcmreader, buffer_size, converter, decoded_data,
-                    stop_decoding):
-            try:
-                frame = pcmreader.read(buffer_size)
-                while ((not stop_decoding.is_set()) and (len(frame) > 0)):
-                    try:
-                        decoded_data.put((converter(frame), frame.frames),
-                                         True,
-                                         1)
-                        frame = pcmreader.read(buffer_size)
-                    except Queue.Full:
-                        pass
-                else:
-                    decoded_data.put((None, 0))
-                    pcmreader.close()
-            except (ValueError, IOError):
-                decoded_data.put((None, 0))
-                pcmreader.close()
-
-        buffer_size = (pcmreader.sample_rate *
-                       pcmreader.channels *
-                       (pcmreader.bits_per_sample / 8)) / 20
-
-        self.thread = threading.Thread(
-            target=convert,
-            args=(pcmreader,
-                  buffer_size,
-                  converter,
-                  self.decoded_data,
-                  self.stop_decoding))
-        self.thread.daemon = True
-        self.thread.start()
-
+        self.pcmreader = pcmreader
+        self.converter = converter
+        self.buffer_size = (pcmreader.sample_rate *
+                            pcmreader.channels *
+                            (pcmreader.bits_per_sample / 8)) / 20
     def read(self):
-        """returns a (converted_data, pcm_frame_count) tuple"""
-
-        return self.decoded_data.get(True)
+        try:
+            frame = self.pcmreader.read(self.buffer_size)
+            return (self.converter(frame), frame.frames)
+        except (ValueError, IOError):
+            return (None, 0)
 
     def close(self):
-        """stops the decoding thread and closes the PCMReader"""
-
-        self.stop_decoding.set()
-        self.thread.join()
+        self.pcmreader.close()
 
 
 class AudioOutput:
