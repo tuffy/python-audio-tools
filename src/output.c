@@ -45,5 +45,8 @@ initoutput(void)
     Py_INCREF(&output_CoreAudioType);
     PyModule_AddObject(m, "CoreAudio",
                        (PyObject *)&output_CoreAudioType);
+#else
+    /*to avoid an unused variable warning if no output types are present*/
+    (void)m;
 #endif
 }

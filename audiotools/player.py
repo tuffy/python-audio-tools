@@ -45,7 +45,7 @@ class Player:
                                    replay_gain)
         self.thread = threading.Thread(target=self.worker.run,
                                        args=(next_track_callback,))
-        # self.thread.daemon = True
+        self.thread.daemon = True
         self.thread.start()
 
     def open(self, track):
@@ -421,7 +421,11 @@ class PCMConverter:
             return (None, 0)
 
     def close(self):
-        self.pcmreader.close()
+        from . import DecodingError
+        try:
+            self.pcmreader.close()
+        except DecodingError:
+            pass
 
 
 class AudioOutput:

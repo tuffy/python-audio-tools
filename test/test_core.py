@@ -774,9 +774,7 @@ class Test_open(unittest.TestCase):
         finally:
             os.chmod(self.dummy1.name, 0600)
 
-        #ensure a file whose __init__ method triggers InvalidFile
-        #raises UnsupportedFile
-        self.assertRaises(audiotools.UnsupportedFile,
+        self.assertRaises(audiotools.InvalidFile,
                           audiotools.open,
                           self.dummy3.name)
 
@@ -4417,6 +4415,7 @@ class Test_Player(unittest.TestCase):
         player.play()
         time.sleep(6)
         self.assertEqual(callback.called, True)
+        player.close()
 
 
 class Test_CDPlayer(unittest.TestCase):
@@ -4486,3 +4485,4 @@ class Test_CDPlayer(unittest.TestCase):
         player.play()
         time.sleep(6)
         self.assertEqual(callback.called, True)
+        player.close()
