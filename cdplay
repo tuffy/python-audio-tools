@@ -219,7 +219,7 @@ try:
                 else:
                     return _.LAB_TRACK
 
-            track_list = urwid.ListBox([
+            self.track_list_widget = urwid.ListBox([
                     MappedRadioButton(
                         group=self.track_group,
                         label=track_label(
@@ -234,7 +234,7 @@ try:
                     for track in self.track_list])
             body = urwid.Pile([('fixed', 2, urwid.Filler(urwid.Pile([
                                 controls, urwid.Divider(div_char='-')]))),
-                               ('weight', 1, track_list)])
+                               ('weight', 1, self.track_list_widget)])
             footer = urwid.Pile([urwid.Divider(div_char='-'),
                                  self.status])
 
@@ -244,6 +244,7 @@ try:
             track_index = [g.state for g in self.track_group].index(True)
             try:
                 self.track_group[track_index + 1].set_state(True)
+                self.track_list_widget.set_focus(track_index + 1, "above")
             except IndexError:
                 pass
 
@@ -254,6 +255,7 @@ try:
                     raise IndexError()
                 else:
                     self.track_group[track_index - 1].set_state(True)
+                    self.track_list_widget.set_focus(track_index - 1, "below")
             except IndexError:
                 pass
 

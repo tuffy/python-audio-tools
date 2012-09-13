@@ -333,8 +333,8 @@ LAB_AT_CONFIG_QUALITY = u" quality "
 LAB_AT_CONFIG_REPLAY_GAIN = u" ReplayGain "
 
 #Compression settings
-COMP_FLAC_0 = u"least amount of compresson, fastest compression speed"
-COMP_FLAC_8 = u"most amount of compression, slowest compression speed"
+COMP_FLAC_0 = u"least compresson, fastest compression speed"
+COMP_FLAC_8 = u"most compression, slowest compression speed"
 COMP_NERO_LOW = u"lowest quality, corresponds to neroAacEnc -q 0.4"
 COMP_NERO_HIGH = u"highest quality, corresponds to neroAacEnc -q 1"
 COMP_LAME_0 = u"high quality, larger files, corresponds to lame's -V0"
