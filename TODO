@@ -6018,6 +6018,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Update programming documentation
 *** DONE Update unit tests
     - [X] test_formats.py
+** DONE Update utilities to handle broken track_name template fields
+   - [X] cd2track
+   - [X] dvda2track
+   - [X] track2track
+   - [X] trackrename
+   - [X] tracksplit
+*** DONE Add unit tests for broken track_name template fields
 ** TODO Update .convert() method to use fewer temporary files
    .wav and .aiff containers with embedded chunks
    currently route data through actual .wav/.aiff files

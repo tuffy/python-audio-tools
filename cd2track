@@ -306,6 +306,9 @@ if (__name__ == '__main__'):
             except audiotools.UnsupportedTracknameField, err:
                 err.error_msg(msg)
                 sys.exit(1)
+            except audiotools.InvalidFilenameFormat, err:
+                msg.error(unicode(err))
+                sys.exit(1)
             except audiotools.InvalidFormat, err:
                 msg.error(unicode(err))
                 sys.exit(1)

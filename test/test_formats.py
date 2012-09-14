@@ -661,7 +661,7 @@ class AudioFileTest(unittest.TestCase):
                                  (format_template %
                                   {u"basename": base}).encode('utf-8'))
 
-        #finally, ensure %(suffix)s is set properly
+        #ensure %(suffix)s is set properly
         format_template = u"Fo\u00f3 %(suffix)s"
         for path in ["track",
                      "/foo/bar/track",
@@ -676,6 +676,38 @@ class AudioFileTest(unittest.TestCase):
                                   {u"suffix":
                                        self.audio_class.SUFFIX.decode(
                                 'ascii')}).encode('utf-8'))
+
+        for metadata in [None, audiotools.MetaData()]:
+            #unsupported template fields raise UnsupportedTracknameField
+            self.assertRaises(audiotools.UnsupportedTracknameField,
+                              self.audio_class.track_name,
+                              "", metadata,
+                              "%(foo)s")
+
+            #broken template fields raise InvalidFilenameFormat
+            self.assertRaises(audiotools.InvalidFilenameFormat,
+                              self.audio_class.track_name,
+                              "", metadata, "%")
+
+            self.assertRaises(audiotools.InvalidFilenameFormat,
+                              self.audio_class.track_name,
+                              "", metadata, "%{")
+
+            self.assertRaises(audiotools.InvalidFilenameFormat,
+                              self.audio_class.track_name,
+                              "", metadata, "%[")
+
+            self.assertRaises(audiotools.InvalidFilenameFormat,
+                              self.audio_class.track_name,
+                              "", metadata, "%(")
+
+            self.assertRaises(audiotools.InvalidFilenameFormat,
+                              self.audio_class.track_name,
+                              "", metadata, "%(track_name")
+
+            self.assertRaises(audiotools.InvalidFilenameFormat,
+                              self.audio_class.track_name,
+                              "", metadata, "%(track_name)")
 
     @FORMAT_AUDIOFILE
     def test_replay_gain(self):

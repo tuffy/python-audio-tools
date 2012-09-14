@@ -3145,6 +3145,14 @@ class UnsupportedTracknameField(Exception):
 
         messenger.info(u"%(basename)s")
 
+class InvalidFilenameFormat(Exception):
+    """raised by AudioFile.track_name()
+    if its format string contains broken fields"""
+
+    def __unicode__(self):
+        from .text import ERR_INVALID_FILENAME_FORMAT
+        return ERR_INVALID_FILENAME_FORMAT
+
 
 class AudioFile:
     """an abstract class representing audio files on disk
@@ -3369,8 +3377,12 @@ class AudioFile:
         and an ASCII-encoded suffix string (such as "mp3")
         returns a plain string of a new filename with format's
         fields filled-in and encoded as FS_ENCODING
+
         raises UnsupportedTracknameField if the format string
-        contains invalid template fields"""
+        contains invalid template fields
+
+        raises InvalidFilenameFormat if the format string
+        has broken template fields"""
 
         if (format is None):
             format = FILENAME_FORMAT
@@ -3450,6 +3462,10 @@ class AudioFile:
                 FS_ENCODING, 'replace')
         except KeyError, error:
             raise UnsupportedTracknameField(unicode(error.args[0]))
+        except TypeError:
+            raise InvalidFilenameFormat()
+        except ValueError:
+            raise InvalidFilenameFormat()
 
     @classmethod
     def supports_replay_gain(cls):
