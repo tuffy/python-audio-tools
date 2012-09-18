@@ -233,9 +233,9 @@ try:
                         key_map={'tab': 'down'})
                     for track in self.track_list])
             body = urwid.Pile([('fixed', 2, urwid.Filler(urwid.Pile([
-                                controls, urwid.Divider(div_char='-')]))),
+                                controls, urwid.Divider(div_char=u'\u2500')]))),
                                ('weight', 1, self.track_list_widget)])
-            footer = urwid.Pile([urwid.Divider(div_char='-'),
+            footer = urwid.Pile([urwid.Divider(div_char=u'\u2500'),
                                  self.status])
 
             urwid.Frame.__init__(self, body=body, header=header, footer=footer)
