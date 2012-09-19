@@ -1281,10 +1281,45 @@ def open(filename):
 
 
 class DuplicateFile(Exception):
+    """raised if the same file is included more than once"""
+
     def __init__(self, filename):
         """filename is a Filename object"""
 
         self.filename = filename
+
+    def __unicode__(self):
+        from .text import ERR_DUPLICATE_FILE
+
+        return ERR_DUPLICATE_FILE % (self.filename,)
+
+
+class DuplicateOutputFile(Exception):
+    """raised if the same output file is generated more than once"""
+
+    def __init__(self, filename):
+        """filename is a Filename object"""
+
+        self.filename = filename
+
+    def __unicode__(self):
+        from .text import ERR_DUPLICATE_OUTPUT_FILE
+
+        return ERR_DUPLICATE_OUTPUT_FILE % (self.filename,)
+
+
+class OutputFileIsInput(Exception):
+    """raised if an output file is the same as an input file"""
+
+    def __init__(self, filename):
+        """filename is a Filename object"""
+
+        self.filename = filename
+
+    def __unicode__(self):
+        from .text import ERR_OUTPUT_IS_INPUT
+
+        return ERR_OUTPUT_IS_INPUT % (self.filename,)
 
 
 class Filename(tuple):
@@ -1311,6 +1346,11 @@ class Filename(tuple):
         """returns the basename (no directory) of this file"""
 
         return Filename(os.path.basename(self[0]))
+
+    def expanduser(self):
+        """returns a Filename object with user directory expanded"""
+
+        return Filename(os.path.expanduser(self[0]))
 
     def __repr__(self):
         return "Filename(%s, %s, %s)" % \

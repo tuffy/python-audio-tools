@@ -78,7 +78,7 @@ if (__name__ == '__main__'):
         '--format',
         action='store',
         type='string',
-        default=None,
+        default=audiotools.FILENAME_FORMAT,
         dest='format',
         help=_.OPT_FORMAT)
 
@@ -261,10 +261,12 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_TRACKSPLIT_OVERLONG_CUESHEET)
         sys.exit(1)
 
+    output_track_count = len(list(cuesheet.indexes()))
+
     #use cuesheet to query metadata services for metadata choices
     metadata_choices = audiotools.metadata_lookup(
         first_track_number=1,
-        last_track_number=len(list(cuesheet.indexes())),
+        last_track_number=output_track_count,
         offsets=[i[-1] + 150 for i in cuesheet.indexes()],
         lead_out_offset=audiofile.cd_frames() + 150,
         total_length=audiofile.cd_frames(),
@@ -322,77 +324,67 @@ if (__name__ == '__main__'):
                 metadata.ISRC = cuesheet_ISRCs[metadata.track_number].decode(
                     'ascii', 'replace')
 
-    #decide which metadata to use to tag split tracks
+    #decide which metadata and output options to use when splitting tracks
     if (options.interactive):
         #pick choice using interactive widget
-        metadata_widget = audiotools.ui.MetaDataFiller(metadata_choices)
+        output_widget = audiotools.ui.OutputFiller(
+            track_labels=[_.LAB_TRACK_X_OF_Y % (i + 1, output_track_count)
+                          for i in xrange(output_track_count)],
+            metadata_choices=metadata_choices,
+            input_filenames=[input_filename for i in
+                             xrange(output_track_count)],
+            output_directory=options.dir,
+            format_string=options.format,
+            output_class=AudioType,
+            quality=options.quality,
+            completion_label=_.LAB_TRACKSPLIT_APPLY)
+
         loop = audiotools.ui.urwid.MainLoop(
-            metadata_widget,
-            [('key', 'white', 'dark blue'),
-             ('label', 'default,bold', 'default')],
-            unhandled_input=metadata_widget.handle_text)
+            output_widget,
+            audiotools.ui.style(),
+            unhandled_input=output_widget.handle_text,
+            pop_ups=True)
         loop.run()
 
-        if (not metadata_widget.canceled):
-            track_metadatas = dict([(m.track_number, m) for m in
-                                    metadata_widget.populated_metadata()])
+        if (not output_widget.cancelled()):
+            output_tracks = list(output_widget.output_tracks())
         else:
             sys.exit(0)
     else:
-        if ((len(metadata_choices) == 1) or options.use_default):
-            #use default choice
-            track_metadatas = dict([(m.track_number, m) for m in
-                                    metadata_choices[0]])
-        else:
-            #pick choice using raw stdin/stdout
-            track_metadatas = \
-                dict([(m.track_number, m) for m in
-                      audiotools.ui.select_metadata(metadata_choices, msg)])
-
-    output = []
-    output_filenames = set([])
-
-    #determine PCM frames and output filename for each track to be split
-    try:
-        for (i, pcm_frames) in enumerate(
-            cuesheet.pcm_lengths(audiofile.total_frames(),
-                                 audiofile.sample_rate())):
-            track_number = i + 1
-            output_filename = audiotools.Filename(
-                os.path.join(base_directory,
-                             AudioType.track_name(
-                        file_path=audiofile.filename,
-                        track_metadata=track_metadatas.get(i + 1, None),
-                        format=options.format)))
-
-            if (output_filename in input_filenames):
-                msg.error(_.ERR_OUTPUT_IS_INPUT % (output_filename,))
-                sys.exit(1)
-            elif (output_filename in output_filenames):
-                msg.error(_.ERR_DUPLICATE_OUTPUT_FILE % (output_filename,))
-                sys.exit(1)
-            else:
-                output_filenames.add(output_filename)
-                output.append((track_number,
-                               pcm_frames,
-                               output_filename))
-
-    except audiotools.UnsupportedTracknameField, err:
-        err.error_msg(msg)
-        sys.exit(1)
-    except audiotools.InvalidFilenameFormat, err:
-        msg.error(unicode(err))
-        sys.exit(1)
+        #pick choice without using GUI
+        try:
+            output_tracks = list(audiotools.ui.process_output_options(
+                    metadata_choices=metadata_choices,
+                    input_filenames=[input_filename for i in
+                                     xrange(output_track_count)],
+                    output_directory=options.dir,
+                    format_string=options.format,
+                    output_class=AudioType,
+                    quality=options.quality,
+                    msg=msg,
+                    use_default=options.use_default))
+        except audiotools.UnsupportedTracknameField, err:
+            err.error_msg(msg)
+            sys.exit(1)
+        except (audiotools.InvalidFilenameFormat,
+                audiotools.OutputFileIsInput,
+                audiotools.DuplicateOutputFile), err:
+            msg.error(unicode(err))
+            sys.exit(1)
 
     #perform actual track splitting and tagging
     encoded_tracks = []
     total_pcm = audiotools.BufferedPCMReader(audiofile.to_pcm())
 
     try:
-        for (i, (track_number,
-                 pcm_frames,
-                 output_filename)) in enumerate(output):
-            track_metadata = track_metadatas.get(track_number, None)
+        for (i, (pcm_frames,
+                 (output_class,
+                  output_filename,
+                  output_quality,
+                  output_metadata))) in enumerate(
+            zip(cuesheet.pcm_lengths(audiofile.total_frames(),
+                                     audiofile.sample_rate()),
+                output_tracks)):
 
             audiotools.make_dirs(str(output_filename))
 
@@ -401,28 +393,28 @@ if (__name__ == '__main__'):
 
             #FIXME - catch from_pcm errors here
             encoded_tracks.append(
-                AudioType.from_pcm(
+                output_class.from_pcm(
                     str(output_filename),
                     audiotools.PCMReaderProgress(
                         audiotools.LimitedPCMReader(total_pcm, pcm_frames),
                         pcm_frames,
                         progress.update),
-                    options.quality))
-            encoded_tracks[-1].set_metadata(track_metadata)
+                    output_quality))
+            encoded_tracks[-1].set_metadata(output_metadata)
             progress.clear()
             msg.info(
                 audiotools.output_progress(
                     u"%s -> %s" % (input_filename, output_filename),
-                    i + 1, len(output)))
+                    i + 1, len(output_tracks)))
     except audiotools.EncodingError, err:
         msg.error(unicode(err))
         sys.exit(1)
 
     #apply ReplayGain to split tracks, if requested
     if (options.add_replay_gain and
-        AudioType.can_add_replay_gain(encoded_tracks)):
+        output_class.can_add_replay_gain(encoded_tracks)):
         rg_progress = audiotools.ReplayGainProgressDisplay(
-            msg, AudioType.lossless_replay_gain())
+            msg, output_class.lossless_replay_gain())
         rg_progress.initial_message()
         try:
             #separate encoded files by album_name and album_number
@@ -430,8 +422,8 @@ if (__name__ == '__main__'):
                 #add ReplayGain to groups of files
                 #belonging to the same album
 
-                AudioType.add_replay_gain([a.filename for a in album],
-                                          rg_progress.update)
+                output_class.add_replay_gain([a.filename for a in album],
+                                             rg_progress.update)
         except ValueError, err:
             rg_progress.clear()
             msg.error(unicode(err))

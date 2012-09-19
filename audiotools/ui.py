@@ -90,7 +90,7 @@ try:
         def __init__(self,
                      track_labels,
                      metadata_choices,
-                     file_paths,
+                     input_filenames,
                      output_directory,
                      format_string,
                      output_class,
@@ -102,8 +102,8 @@ try:
             is a MetaData object for choice number "c" and track number "t"
             all choices must have the same number of tracks
 
-            file_paths is a list of strings for file input paths
-            the number of file paths must equal the number of metadata objects
+            input_filenames is a list of Filename objects for input files
+            the number of input files must equal the number of metadata objects
             in each metadata choice
 
             output_directory is a string of the default output dir
@@ -118,13 +118,16 @@ try:
             self.__cancelled__ = True
 
             #ensure label count equals path count
-            assert(len(track_labels) == len(file_paths))
+            assert(len(track_labels) == len(input_filenames))
 
             #ensure there's at least one set of choices
             assert(len(metadata_choices) > 0)
 
             #ensure file path count is equal to metadata track count
-            assert(len(metadata_choices[0]) == len(file_paths))
+            assert(len(metadata_choices[0]) == len(input_filenames))
+
+            for f in input_filenames:
+                assert(isinstance(f, audiotools.Filename))
 
             from audiotools.text import (LAB_CANCEL,
                                          LAB_NEXT,
@@ -164,8 +167,8 @@ try:
                 format_string=format_string,
                 audio_class=output_class,
                 quality=quality,
-                file_paths=file_paths,
-                metadatas=[None for t in file_paths],
+                input_filenames=input_filenames,
+                metadatas=[None for t in input_filenames],
                 extra_widgets=[("fixed", 1, options_buttons)])
 
             self.options.set_focus(options_buttons)
@@ -220,18 +223,20 @@ try:
 
         def output_tracks(self):
             """yields (output_class,
-                       output_path,
+                       output_filename,
                        output_quality,
                        output_metadata) tuple for each input audio file"""
 
             from itertools import izip
 
-            (audiofile_class, quality, paths) = self.options.selected_options()
+            (audiofile_class,
+             quality,
+             output_filenames) = self.options.selected_options()
             for (metadata,
-                 output_path) in izip(self.metadata.populated_metadata(),
-                                      iter(paths)):
+                 output_filename) in izip(self.metadata.populated_metadata(),
+                                          iter(output_filenames)):
                 yield (audiofile_class,
-                       output_path,
+                       output_filename,
                        quality,
                        metadata)
 
@@ -350,6 +355,8 @@ try:
 
 
     class MetaDataEditor(urwid.Frame):
+        """a class for editing MetaData values for a set of tracks"""
+
         def __init__(self, tracks,
                      on_text_change=None,
                      on_swivel_change=None):
@@ -1217,22 +1224,26 @@ try:
 
     class OutputOptions(urwid.Pile):
         def __init__(self, output_dir, format_string,
-                     audio_class, quality, file_paths, metadatas,
+                     audio_class, quality, input_filenames, metadatas,
                      extra_widgets=None):
             """
-            | field         | value      | meaning                             |
-            |---------------+------------+-------------------------------------|
-            | output_dir    | string     | default output directory            |
-            | format_string | string     | format string to use for files      |
-            | audio_class   | AudioFile  | audio class of output files         |
-            | quality       | string     | quality level of output             |
-            | file_paths    | [string]   | list of strings for input paths     |
-            | metadatas     | [MetaData] | MetaData objects for files, or None |
+            | field           | value      | meaning                          |
+            |-----------------+------------+----------------------------------|
+            | output_dir      | string     | default output directory         |
+            | format_string   | string     | format string to use for files   |
+            | audio_class     | AudioFile  | audio class of output files      |
+            | quality         | string     | quality level of output          |
+            | input_filenames | [Filename] | Filename objects for input files |
+            | metadatas       | [MetaData] | MetaData objects for input files |
 
-            note that the length of file_paths must equal length of metadatas
+            note that the length of input_filenames
+            must equal length of metadatas
             """
 
-            assert(len(file_paths) == len(metadatas))
+            assert(len(input_filenames) == len(metadatas))
+
+            for f in input_filenames:
+                assert(isinstance(f, audiotools.Filename))
 
             from audiotools.text import (ERR_INVALID_FILENAME_FORMAT,
                                          LAB_OPTIONS_OUTPUT_DIRECTORY,
@@ -1241,7 +1252,7 @@ try:
                                          LAB_OPTIONS_AUDIO_QUALITY,
                                          LAB_OPTIONS_OUTPUT_FILES)
 
-            self.file_paths = file_paths
+            self.input_filenames = input_filenames
             self.metadatas = metadatas
             self.selected_class = audio_class
             self.selected_quality = quality
@@ -1249,7 +1260,7 @@ try:
             self.has_errors = False      #set if format string is invalid
 
             self.output_format = urwid.Edit(
-                edit_text=audiotools.FILENAME_FORMAT.decode('utf-8'))
+                edit_text=format_string.decode('utf-8'))
             urwid.connect_signal(self.output_format,
                                  'change',
                                  self.format_changed)
@@ -1266,7 +1277,7 @@ try:
             if (hasattr(output_tracks_frame_linebox, "set_title")):
                 output_tracks_frame_linebox.set_title(LAB_OPTIONS_OUTPUT_FILES)
 
-            self.output_tracks = [urwid.Text(u"") for path in file_paths]
+            self.output_tracks = [urwid.Text(u"") for path in input_filenames]
 
             self.output_tracks_list = urwid.ListBox(self.output_tracks)
 
@@ -1379,21 +1390,23 @@ try:
                 filename_format = \
                     self.output_format.get_edit_text().encode('utf-8')
             try:
-                #generate list of filename strings
+                #generate list of Filename objects
                 #from paths, metadatas and format
-                filenames = [audio_class.track_name(file_path,
-                                                    metadata,
-                                                    filename_format)
-                             for (file_path, metadata) in zip(self.file_paths,
-                                                              self.metadatas)]
+                #with selected output directory prepended
+                self.output_filenames = [
+                    audiotools.Filename(
+                        os.path.join(output_directory,
+                                     audio_class.track_name(str(filename),
+                                                            metadata,
+                                                            filename_format)))
+                    for (filename,
+                         metadata) in zip(self.input_filenames,
+                                          self.metadatas)]
 
-                #prepend selected directory to filename strings
-                self.output_paths = [os.path.join(output_directory, filename)
-                                     for filename in filenames]
-
-                #check for duplicates in paths
-                path_counts = {}
-                for path in self.output_paths:
+                #check for duplicates in output/input files
+                #(don't care if input files are duplicated)
+                path_counts = dict([(f, 1) for f in self.input_filenames])
+                for path in self.output_filenames:
                     if (path in path_counts):
                         path_counts[path] += 1
                     else:
@@ -1402,12 +1415,12 @@ try:
                 self.has_duplicates = max(path_counts.values()) > 1
 
                 #and populate output files list
-                for (path, track) in zip(self.output_paths,
-                                         self.output_tracks):
-                    if (path_counts[path] == 1):
-                        track.set_text(path.decode(FS_ENCODING))
+                for (filename, track) in zip(self.output_filenames,
+                                             self.output_tracks):
+                    if (path_counts[filename] == 1):
+                        track.set_text(unicode(filename))
                     else:
-                        track.set_text(("duplicate", path.decode(FS_ENCODING)))
+                        track.set_text(("duplicate", unicode(filename)))
                 if (self.output_tracks_frame.get_body() is not
                     self.output_tracks_list):
                     self.output_tracks_frame.set_body(
@@ -1424,14 +1437,14 @@ try:
                         self.invalid_output_format)
 
         def selected_options(self):
-            """returns (AudioFile class, quality string, [output path strings])
-            based on selected options"""
+            """returns (AudioFile class, quality string, [output Filename])
+            based on selected options in the UI"""
 
             import os.path
 
             return (self.selected_class,
                     self.output_quality.selection(),
-                    map(os.path.expanduser, self.output_paths))
+                    [f.expanduser() for f in self.output_filenames])
 
         def set_metadatas(self, metadatas):
             """metadatas is a list of MetaData objects
@@ -1444,15 +1457,32 @@ try:
             self.update_tracks()
 
 
+    def style():
+        """returns a list of widget style tuples
+        for use with urwid.MainLoop"""
+
+        return [('key', 'white', 'dark blue'),
+                ('label', 'default,bold', 'default'),
+                ('duplicate', 'light red', 'default')]
+
 
 except ImportError:
     AVAILABLE = False
 
 
 def select_metadata(metadata_choices, msg):
-    """queries the user for the best matching metadata to use"""
+    """queries the user for the best matching metadata to use
+    returns a list of MetaData objects for the selected choice"""
 
+    #there must be at least one choice
     assert(len(metadata_choices) > 0)
+
+    #all choices must have at least 1 track
+    assert(min(map(len, metadata_choices)) > 0)
+
+    #and all choices must have the same number of tracks
+    assert(len(set(map(len, metadata_choices))) == 1)
+
     if (len(metadata_choices) == 1):
         return metadata_choices[0]
     else:
@@ -1471,14 +1501,84 @@ def select_metadata(metadata_choices, msg):
         return metadata_choices[choice]
 
 
-#FIXME - add an option validator
-#which ensures all command-line options are valid
-#prior to calling UI or option handler
+def process_output_options(metadata_choices,
+                           input_filenames,
+                           output_directory,
+                           format_string,
+                           output_class,
+                           quality,
+                           msg,
+                           use_default=False):
+    """metadata_choices[c][t]
+    is a MetaData object for choice number "c" and track number "t"
+    all choices must have the same number of tracks
 
+    input_filenames is a list of Filename objects for input files
+    the number of input files must equal the number of metadata objects
+    in each metadata choice
 
-#FIXME - add an option handler
-#which returns (class, path, quality, metadata) tuples
-#based on options, or raises exception on invalid options
+    output_directory is a string of the default output dir
+
+    format_string is a UTF-8 encoded format string
+
+    output_class is the default AudioFile-compatible class
+
+    quality is a string of the default output quality to use
+
+    msg is a Messenger object
+
+    this may take user input from the prompt to select a MetaData choice
+    after which it yields (output_class,
+                           output_filename,
+                           output_quality,
+                           output_metadata) tuple for each input file
+
+    may raise UnsupportedTracknameField or InvalidFilenameFormat
+    if the given format_string is invalid
+
+    may raise DuplicateOutputFile
+    if the same output file is generated more than once
+
+    may raise OutputFileIsInput
+    if an output file is the same as one of the given input_filenames"""
+
+    #there must be at least one choice
+    assert(len(metadata_choices) > 0)
+
+    #ensure input filename count is equal to metadata track count
+    assert(len(metadata_choices[0]) == len(input_filenames))
+
+    import os.path
+
+    if (not use_default):
+        selected_metadata = select_metadata(metadata_choices, msg)
+    else:
+        selected_metadata = metadata_choices[0]
+
+    #ensure no output paths overwrite input paths
+    #and that all output paths are distinct
+    __input__ = frozenset(input_filenames)
+    __output__ = set([])
+    output_filenames = []
+    for (input_filename, metadata) in zip(input_filenames, selected_metadata):
+        output_filename = audiotools.Filename(
+            os.path.join(output_directory,
+                         output_class.track_name(str(input_filename),
+                                                 metadata,
+                                                 format_string)))
+        if (output_filename in __input__):
+            raise audiotools.OutputFileIsInput(output_filename)
+        elif (output_filename in __output__):
+            raise audiotools.DuplicateOutputFile(output_filename)
+        else:
+            __output__.add(output_filename)
+            output_filenames.append(output_filename)
+
+    for (output_filename, metadata) in zip(output_filenames, selected_metadata):
+        yield (output_class,
+               output_filename,
+               quality,
+               metadata)
 
 
 def not_available_message(msg):
