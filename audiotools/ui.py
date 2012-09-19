@@ -87,13 +87,18 @@ try:
         """a class for selecting MetaData and populating output parameters
         for tracks"""
 
-        def __init__(self, metadata_choices,
+        def __init__(self,
+                     track_labels,
+                     metadata_choices,
                      file_paths,
                      output_directory,
                      format_string,
                      output_class,
-                     quality):
-            """metadata_choices[c][t]
+                     quality,
+                     completion_label=u"Apply"):
+            """track_labels is a list of unicode strings, one per track
+
+            metadata_choices[c][t]
             is a MetaData object for choice number "c" and track number "t"
             all choices must have the same number of tracks
 
@@ -111,6 +116,9 @@ try:
             """
 
             self.__cancelled__ = True
+
+            #ensure label count equals path count
+            assert(len(track_labels) == len(file_paths))
 
             #ensure there's at least one set of choices
             assert(len(metadata_choices) > 0)
@@ -136,7 +144,8 @@ try:
                     dividechars=3,
                     focus_column=1))
 
-            self.metadata = MetaDataFiller(metadata_choices,
+            self.metadata = MetaDataFiller(track_labels,
+                                           metadata_choices,
                                            self.metadata_status,
                                            [("fixed", 1, metadata_buttons)])
 
@@ -145,7 +154,7 @@ try:
                 urwid.Columns(
                     widget_list=[urwid.Button(LAB_PREVIOUS,
                                               on_press=self.previous),
-                                 urwid.Button(u"Apply", #FIXME
+                                 urwid.Button(completion_label,
                                               on_press=self.complete)],
                     dividechars=3,
                     focus_column=1))
@@ -181,8 +190,15 @@ try:
             self.set_footer(self.options_status)
 
         def complete(self, button):
-            self.__cancelled__ = False
-            raise urwid.ExitMainLoop()
+            if (self.options.has_duplicates):
+                from audiotools.text import ERR_OUTPUT_DUPLICATE_NAME
+                self.options_status.set_text(ERR_OUTPUT_DUPLICATE_NAME)
+            elif (self.options.has_errors):
+                from audiotools.text import ERR_OUTPUT_INVALID_FORMAT
+                self.options_status.set_text(ERR_OUTPUT_INVALID_FORMAT)
+            else:
+                self.__cancelled__ = False
+                raise urwid.ExitMainLoop()
 
         def cancelled(self):
             """returns True if the widget was cancelled,
@@ -208,19 +224,34 @@ try:
                        output_quality,
                        output_metadata) tuple for each input audio file"""
 
-            (audiofile_class, quality, paths) = self.options.selected_options()
+            from itertools import izip
 
+            (audiofile_class, quality, paths) = self.options.selected_options()
+            for (metadata,
+                 output_path) in izip(self.metadata.populated_metadata(),
+                                      iter(paths)):
+                yield (audiofile_class,
+                       output_path,
+                       quality,
+                       metadata)
 
 
     class MetaDataFiller(urwid.Pile):
         """a class for selecting the MetaData to apply to tracks"""
 
-        def __init__(self, metadata_choices, status,
+        def __init__(self, track_labels, metadata_choices, status,
                      extra_widgets=None):
-            """metadata_choices[c][t]
+            """track_labels is a list of unicode strings, one per track
+
+            metadata_choices[c][t]
             is a MetaData object for choice number "c" and track number "t"
             this widget allows the user to populate a set of MetaData objects
             which can be applied to tracks
+
+            status is an urwid.Text object
+
+            extra_widgets is a list of additional widgets
+            to append to this pile
             """
 
             #there must be at least one choice
@@ -233,7 +264,6 @@ try:
             assert(len(set(map(len, metadata_choices))) == 1)
 
             from audiotools.text import (LAB_SELECT_BEST_MATCH,
-                                         LAB_TRACK_X_OF_Y,
                                          LAB_KEY_NEXT,
                                          LAB_KEY_PREVIOUS)
 
@@ -262,9 +292,8 @@ try:
             #setup a MetaDataEditor for each possible match
             self.edit_matches = [
                 MetaDataEditor(
-                    [(i,
-                      LAB_TRACK_X_OF_Y % (i + 1, len(metadata_choices[0])),
-                      track) for (i, track) in enumerate(choice)],
+                    [(i, label, track) for (i, (track, label)) in
+                     enumerate(zip(choice, track_labels))],
                     on_swivel_change=self.swiveled)
                 for choice in metadata_choices]
             self.selected_match = self.edit_matches[0]
@@ -326,7 +355,7 @@ try:
                      on_swivel_change=None):
             """tracks is a list of (id, label, MetaData) tuples
             in the order they are to be displayed
-            where id is some hashable ID value
+            where id is some unique hashable ID value
             label is a unicode string
             and MetaData is an audiotools.MetaData-compatible object or None
 
@@ -787,6 +816,30 @@ try:
                 return key
 
 
+    class CroppedLineBox(urwid.LineBox):
+        def __init__(self, original_widget,
+                     lline=u"\u2502", blcorner=u"\u2514", rline=u"\u2502",
+                     bline=u"\u2500", brcorner=u"\u2518"):
+            bline = urwid.Divider(bline)
+            lline, rline = urwid.SolidFill(lline), urwid.SolidFill(rline)
+            blcorner, brcorner = urwid.Text(blcorner), urwid.Text(brcorner)
+
+            middle = urwid.Columns([
+                    ('fixed', 1, lline),
+                    original_widget,
+                    ('fixed', 1, rline),
+                    ], box_columns = [0,2], focus_column=1)
+
+            bottom = urwid.Columns([
+                    ('fixed', 1, blcorner), bline, ('fixed', 1, brcorner)
+                    ])
+
+            pile = urwid.Pile([middle, ('flow', bottom)], focus_item=0)
+
+            urwid.WidgetDecoration.__init__(self, original_widget)
+            urwid.WidgetWrap.__init__(self, pile)
+
+
     class SelectOneDialog(urwid.WidgetWrap):
         signals = ['close']
         def __init__(self, select_one, items, selected_value):
@@ -805,7 +858,7 @@ try:
                                  selected_button,
                                  lambda: self._emit("close"))
             fill = urwid.Filler(pile)
-            self.__super.__init__(urwid.AttrWrap(fill, 'popbg'))
+            self.__super.__init__(CroppedLineBox(fill))
 
         def select_button(self, button, label_value):
             (label, value) = label_value
@@ -856,8 +909,8 @@ try:
             return {'left':0,
                     'top':1,
                     'overlay_width':max([4 + len(i[0]) for i in
-                                         self.__items__]),
-                    'overlay_height':len(self.__items__)}
+                                         self.__items__]) + 2,
+                    'overlay_height':len(self.__items__) + 1}
 
         def make_selection(self, label, value):
             self.__select_button__.set_label(label)
@@ -971,11 +1024,27 @@ try:
         def __init__(self, edit_directory):
             """edit_directory is an EditDirectory object"""
 
+            from audiotools.text import (LAB_KEY_SELECT,
+                                         LAB_KEY_TOGGLE_OPEN,
+                                         LAB_KEY_CANCEL)
+
             browser = DirectoryBrowser(
                 edit_directory.get_directory(),
                 directory_selected=self.select_directory,
                 cancelled=lambda: self._emit("close"))
-            self.__super.__init__(urwid.AttrWrap(browser, 'popbg'))
+
+            frame = CroppedLineBox(urwid.Frame(
+                body=browser,
+                footer=urwid.Text([('key', 'enter'),
+                                   LAB_KEY_SELECT,
+                                   u"   ",
+                                   ('key', 'space'),
+                                   LAB_KEY_TOGGLE_OPEN,
+                                   u"   ",
+                                   ('key', 'esc'),
+                                   LAB_KEY_CANCEL])))
+
+            self.__super.__init__(frame)
             self.edit_directory = edit_directory
 
         def select_directory(self, selected_directory):
@@ -1121,9 +1190,10 @@ try:
             dirs = []
             try:
                 path = self.get_value()
-                for a in os.listdir(path):
-                    if os.path.isdir(os.path.join(path,a)):
-                        dirs.append(a)
+                for d in sorted(os.listdir(path)):
+                    if ((not d.startswith(".")) and
+                        os.path.isdir(os.path.join(path, d))):
+                        dirs.append(d)
             except OSError, e:
                 depth = self.get_depth() + 1
                 self._children[None] = ErrorNode(self, parent=self, key=None,
@@ -1164,10 +1234,19 @@ try:
 
             assert(len(file_paths) == len(metadatas))
 
+            from audiotools.text import (ERR_INVALID_FILENAME_FORMAT,
+                                         LAB_OPTIONS_OUTPUT_DIRECTORY,
+                                         LAB_OPTIONS_FILENAME_FORMAT,
+                                         LAB_OPTIONS_AUDIO_CLASS,
+                                         LAB_OPTIONS_AUDIO_QUALITY,
+                                         LAB_OPTIONS_OUTPUT_FILES)
+
             self.file_paths = file_paths
             self.metadatas = metadatas
             self.selected_class = audio_class
             self.selected_quality = quality
+            self.has_duplicates = False  #set if any track names are duplicates
+            self.has_errors = False      #set if format string is invalid
 
             self.output_format = urwid.Edit(
                 edit_text=audiotools.FILENAME_FORMAT.decode('utf-8'))
@@ -1181,12 +1260,18 @@ try:
             self.output_tracks_frame = urwid.Frame(
                 body=urwid.Filler(urwid.Text(u"")))
 
+            output_tracks_frame_linebox = urwid.LineBox(
+                self.output_tracks_frame)
+
+            if (hasattr(output_tracks_frame_linebox, "set_title")):
+                output_tracks_frame_linebox.set_title(LAB_OPTIONS_OUTPUT_FILES)
+
             self.output_tracks = [urwid.Text(u"") for path in file_paths]
 
             self.output_tracks_list = urwid.ListBox(self.output_tracks)
 
             self.invalid_output_format = urwid.Filler(
-                urwid.Text(u"invalid output format string",
+                urwid.Text(ERR_INVALID_FILENAME_FORMAT,
                            align="center"))
 
             self.output_quality = SelectOne(
@@ -1202,30 +1287,36 @@ try:
 
             self.select_type(audio_class, quality)
 
-            widgets = []
-            widgets.append(("fixed", 1,
-                            urwid.Filler(urwid.Columns(
-                            [('fixed', 10, urwid.Text(u"Dir : ",
-                                                      align="right")),
-                             ('weight', 1, self.output_directory)]))))
-            widgets.append(("fixed", 1,
-                            urwid.Filler(urwid.Columns(
-                            [('fixed', 10, urwid.Text(u"Format : ",
-                                                      align="right")),
-                             ('weight', 1, self.output_format)]))))
-            widgets.append(("fixed", 1,
-                            urwid.Filler(urwid.Columns(
-                            [('fixed', 10, urwid.Text(u"Type : ",
-                                                      align="right")),
-                             ('weight', 1, self.output_type)]))))
-            widgets.append(("fixed", 1,
-                            urwid.Filler(urwid.Columns(
-                            [('fixed', 10, urwid.Text(u"Quality : ",
-                                                      align="right")),
-                             ('weight', 1, self.output_quality)]))))
-            widgets.append(("weight", 1,
-                            urwid.LineBox(self.output_tracks_frame,
-                                          title=u"Output Files")))
+            widgets = [("fixed", 1,
+                        urwid.Filler(urwid.Columns(
+                            [('fixed', 10,
+                              urwid.Text(u"%s : " %
+                                         (LAB_OPTIONS_OUTPUT_DIRECTORY),
+                                         align="right")),
+                             ('weight', 1, self.output_directory)]))),
+                       ("fixed", 1,
+                        urwid.Filler(urwid.Columns(
+                            [('fixed', 10,
+                              urwid.Text(u"%s : " %
+                                         (LAB_OPTIONS_FILENAME_FORMAT),
+                                         align="right")),
+                             ('weight', 1, self.output_format)]))),
+                       ("fixed", 1,
+                        urwid.Filler(urwid.Columns(
+                            [('fixed', 10,
+                              urwid.Text(u"%s : " %
+                                         (LAB_OPTIONS_AUDIO_CLASS),
+                                         align="right")),
+                             ('weight', 1, self.output_type)]))),
+                       ("fixed", 1,
+                        urwid.Filler(urwid.Columns(
+                            [('fixed', 10,
+                              urwid.Text(u"%s : " %
+                                         (LAB_OPTIONS_AUDIO_QUALITY),
+                                         align="right")),
+                             ('weight', 1, self.output_quality)]))),
+                       ("weight", 1,
+                        output_tracks_frame_linebox)]
 
             if (extra_widgets is not None):
                 widgets.extend(extra_widgets)
@@ -1308,6 +1399,8 @@ try:
                     else:
                         path_counts[path] = 1
 
+                self.has_duplicates = max(path_counts.values()) > 1
+
                 #and populate output files list
                 for (path, track) in zip(self.output_paths,
                                          self.output_tracks):
@@ -1319,10 +1412,12 @@ try:
                     self.output_tracks_list):
                     self.output_tracks_frame.set_body(
                         self.output_tracks_list)
+                self.has_errors = False
             except (audiotools.UnsupportedTracknameField,
                     audiotools.InvalidFilenameFormat):
                 #if there's an error calling track_name,
                 #populate files list with an error message
+                self.has_errors = True
                 if (self.output_tracks_frame.get_body() is not
                     self.invalid_output_format):
                     self.output_tracks_frame.set_body(
@@ -1332,9 +1427,11 @@ try:
             """returns (AudioFile class, quality string, [output path strings])
             based on selected options"""
 
+            import os.path
+
             return (self.selected_class,
                     self.output_quality.selection(),
-                    self.output_paths)
+                    map(os.path.expanduser, self.output_paths))
 
         def set_metadatas(self, metadatas):
             """metadatas is a list of MetaData objects
@@ -1372,6 +1469,11 @@ def select_metadata(metadata_choices, msg):
                 choice = None
 
         return metadata_choices[choice]
+
+
+#FIXME - add an option validator
+#which ensures all command-line options are valid
+#prior to calling UI or option handler
 
 
 #FIXME - add an option handler
