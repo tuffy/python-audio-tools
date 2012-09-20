@@ -1405,7 +1405,8 @@ try:
 
                 #check for duplicates in output/input files
                 #(don't care if input files are duplicated)
-                path_counts = dict([(f, 1) for f in self.input_filenames])
+                path_counts = dict([(f, 1) for f in self.input_filenames
+                                    if f.disk_file()])
                 for path in self.output_filenames:
                     if (path in path_counts):
                         path_counts[path] += 1
@@ -1557,7 +1558,7 @@ def process_output_options(metadata_choices,
 
     #ensure no output paths overwrite input paths
     #and that all output paths are distinct
-    __input__ = frozenset(input_filenames)
+    __input__ = frozenset([f for f in input_filenames if f.disk_file()])
     __output__ = set([])
     output_filenames = []
     for (input_filename, metadata) in zip(input_filenames, selected_metadata):

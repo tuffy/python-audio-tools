@@ -232,11 +232,6 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_OPEN_IOERROR % (input_filename,))
         sys.exit(1)
 
-    if (options.add_replay_gain is None):
-        options.add_replay_gain = (
-            audiotools.ADD_REPLAYGAIN and
-            AudioType.lossless_replay_gain())
-
     base_directory = options.dir
     encoded_filenames = []
 
@@ -385,8 +380,11 @@ if (__name__ == '__main__'):
             zip(cuesheet.pcm_lengths(audiofile.total_frames(),
                                      audiofile.sample_rate()),
                 output_tracks)):
-
-            audiotools.make_dirs(str(output_filename))
+            try:
+                audiotools.make_dirs(str(output_filename))
+            except OSError, err:
+                msg.os_error(err)
+                sys.exit(1)
 
             progress = audiotools.SingleProgressDisplay(
                 msg, unicode(output_filename))
@@ -411,8 +409,10 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     #apply ReplayGain to split tracks, if requested
-    if (options.add_replay_gain and
-        output_class.can_add_replay_gain(encoded_tracks)):
+    if (audiotools.ADD_REPLAYGAIN and
+        (options.add_replay_gain if (options.add_replay_gain is not None)
+         else output_class.lossless_replay_gain()) and
+        output_class.can_add_replay_gain(encoded)):
         rg_progress = audiotools.ReplayGainProgressDisplay(
             msg, output_class.lossless_replay_gain())
         rg_progress.initial_message()

@@ -27,6 +27,14 @@ import audiotools.ui
 import audiotools.text as _
 
 
+def limit(l, indexes):
+    """given a list and set of indexes (starting from 1)
+    returns a new list with only those items"""
+
+    return [item for (index, item) in enumerate(l)
+            if ((index + 1) in indexes)]
+
+
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_.USAGE_DVDA2TRACK,
@@ -82,7 +90,7 @@ if (__name__ == '__main__'):
         '--format',
         action='store',
         type='string',
-        default=None,
+        default=audiotools.FILENAME_FORMAT,
         dest='format',
         help=_.OPT_FORMAT)
 
@@ -143,7 +151,7 @@ if (__name__ == '__main__'):
         action='store',
         type='int',
         dest='track_start',
-        default=1,
+        default=None,
         help=_.OPT_TRACK_START)
 
     metadata.add_option(
@@ -159,7 +167,7 @@ if (__name__ == '__main__'):
         dest='album_number',
         action='store',
         type='int',
-        default=0,
+        default=None,
         help=_.OPT_ALBUM_NUMBER)
 
     metadata.add_option(
@@ -167,7 +175,7 @@ if (__name__ == '__main__'):
         dest='album_total',
         action='store',
         type='int',
-        default=0,
+        default=None,
         help=_.OPT_ALBUM_TOTAL)
 
     #if adding ReplayGain is a lossless process
@@ -263,32 +271,21 @@ if (__name__ == '__main__'):
         use_musicbrainz=options.use_musicbrainz,
         use_freedb=options.use_freedb)
 
-    #decide which metadata to use to tag extracted tracks
-    if (options.interactive):
-        #pick choice using interactive widget
-        metadata_widget = audiotools.ui.MetaDataFiller(metadata_choices)
-        loop = audiotools.ui.urwid.MainLoop(
-            metadata_widget,
-            [('key', 'white', 'dark blue'),
-             ('label', 'default,bold', 'default')],
-            unhandled_input=metadata_widget.handle_text)
-        loop.run()
-
-        if (not metadata_widget.canceled):
-            track_metadatas = dict([(m.track_number, m) for m in
-                                    metadata_widget.populated_metadata()])
-        else:
-            sys.exit(0)
-    else:
-        if ((len(metadata_choices) == 1) or options.use_default):
-            #use default choice
-            track_metadatas = dict([(m.track_number, m) for m in
-                                    metadata_choices[0]])
-        else:
-            #pick choice using raw stdin/stdout
-            track_metadatas = \
-                dict([(m.track_number, m) for m in
-                      audiotools.ui.select_metadata(metadata_choices, msg)])
+    #update MetaData with command-line
+    #track_start, track_total, album_number, album_total - if given
+    for c in metadata_choices:
+        for m in c:
+            if ((options.track_start is not None) and
+                (m.track_number is not None)):
+                #track_number and track_start both start at 1
+                #so minus 1 to take care of the offset
+                m.track_number += (options.track_start - 1)
+            if (options.track_total is not None):
+                m.track_total = options.track_total
+            if (options.album_number is not None):
+                m.album_number = options.album_number
+            if (options.album_total is not None):
+                m.album_total = options.album_total
 
     #determine which tracks to extract from the DVDATitle
     if (len(args) == 0):
@@ -303,133 +300,121 @@ if (__name__ == '__main__'):
             except ValueError:
                 continue
 
-    (sample_rate,
-     channels,
-     channel_mask,
-     bits_per_sample,
-     stream_type) = title.info()
+    #decide which metadata and output options use when extracting tracks
+    if (options.interactive):
+        #pick choice using interactive widget
+        output_widget = audiotools.ui.OutputFiller(
+            track_labels=[_.LAB_TRACK_X_OF_Y % (i, len(title))
+                          for i in sorted(to_rip.keys())],
+            metadata_choices=[limit(c, to_rip.keys())
+                              for c in metadata_choices],
+            input_filenames=[
+                audiotools.Filename("track-%d-%2.2d.dvda.wav" %
+                                    (options.title, i))
+                for i in sorted(to_rip.keys())],
+            output_directory=options.dir,
+            format_string=options.format,
+            output_class=AudioType,
+            quality=options.quality,
+            completion_label=_.LAB_DVDA2TRACK_APPLY)
 
-    #determine whether to add ReplayGain by default
-    if (options.add_replay_gain is None):
-        options.add_replay_gain = (
-            audiotools.ADD_REPLAYGAIN and
-            AudioType.lossless_replay_gain())
+        loop = audiotools.ui.urwid.MainLoop(
+            output_widget,
+            audiotools.ui.style(),
+            unhandled_input=output_widget.handle_text,
+            pop_ups=True)
+        loop.run()
 
-    #determine tracks to extract from title
-    output_filenames = set([])
-    to_extract = []
-    for (i, pts_ticks) in enumerate([t.pts_length for t in title]):
-        title_track_number = i + 1
-        logical_track_number = i + options.track_start
-
-        if (options.track_total is None):
-            track_total = len(title)
+        if (not output_widget.cancelled()):
+            output_tracks = list(output_widget.output_tracks())
         else:
-            track_total = options.track_total
-
-        if (title_track_number in to_rip.keys()):
-            dvda_track = to_rip[title_track_number]
-
-            basename = "track%2d%2.2d" % (options.album_number,
-                                          logical_track_number)
-
-            try:
-                metadata = track_metadatas.get(dvda_track.track, None)
-                if (metadata is not None):
-                    #update track metadata with additional fields
-                    metadata.track_number = logical_track_number
-                    if (options.track_total is not None):
-                        metadata.track_total = options.track_total
-                    if (options.album_number != 0):
-                        metadata.album_number = options.album_number
-                    if (options.album_total != 0):
-                        metadata.album_total = options.album_total
-
-                output_filename = audiotools.Filename(
-                    os.path.join(
-                        base_directory,
-                        AudioType.track_name(file_path=basename,
-                                             track_metadata=metadata,
-                                             format=options.format)))
-                if (output_filename in output_filenames):
-                    msg.error(_.ERR_DUPLICATE_OUTPUT_FILE %
-                              (output_filename,))
-                    sys.exit(1)
-                else:
-                    output_filenames.add(output_filename)
-            except audiotools.UnsupportedTracknameField, err:
-                err.error_msg(msg)
-                sys.exit(1)
-            except audiotools.InvalidFilenameFormat, err:
-                msg.error(unicode(err))
-                sys.exit(1)
-            except audiotools.InvalidFormat, err:
-                msg.error(unicode(err))
-                sys.exit(1)
-            except KeyError:
-                continue
-
-            to_extract.append((pts_ticks,
-                               (title_track_number, output_filename, metadata)))
-        else:
-            to_extract.append((pts_ticks,
-                               None))
+            sys.exit(0)
+    else:
+        #pick choice without using GUI
+        try:
+            output_tracks = list(audiotools.ui.process_output_options(
+                    metadata_choices=[limit(c, to_rip.keys())
+                                      for c in metadata_choices],
+                    input_filenames=[
+                        audiotools.Filename("track-%d-%2.2d.dvda.wav" %
+                                            (options.title, i))
+                                            for i in sorted(to_rip.keys())],
+                    output_directory=options.dir,
+                    format_string=options.format,
+                    output_class=AudioType,
+                    quality=options.quality,
+                    msg=msg,
+                    use_default=options.use_default))
+        except audiotools.UnsupportedTracknameField, err:
+            err.error_msg(msg)
+            sys.exit(1)
+        except (audiotools.InvalidFilenameFormat,
+                audiotools.OutputFileIsInput,
+                audiotools.DuplicateOutputFile), err:
+            msg.error(unicode(err))
+            sys.exit(1)
 
     #perform actual track extraction
     encoded = []
     pcmreader = title.to_pcm()
-    for (i, (pts_ticks, extract_data)) in enumerate(to_extract):
+    for (i, pts_ticks) in enumerate([t.pts_length for t in title]):
         pcmreader.next_track(pts_ticks)
         pcm_frames = pcmreader.pcm_frames
 
-        if (extract_data is not None):
-            (title_track_number, output_filename, metadata) = extract_data
+        if ((i + 1) in to_rip):
+            (output_class,
+             output_filename,
+             output_quality,
+             output_metadata) = output_tracks.pop(0)
 
             try:
                 audiotools.make_dirs(str(output_filename))
-
-                progress = audiotools.SingleProgressDisplay(
-                    msg, unicode(output_filename))
-
-                track = AudioType.from_pcm(
-                    str(output_filename),
-                    audiotools.PCMReaderProgress(pcmreader,
-                                                 pcm_frames,
-                                                 progress.update),
-                    quality)
-
-                track.set_metadata(metadata)
-                encoded.append(track)
-
-                progress.clear()
-
-                msg.info(audiotools.output_progress(
-                        _.LAB_ENCODE % {
-                            "source":_.LAB_DVDA_TRACK %
-                            {"title_number": options.title,
-                             "track_number": title_track_number},
-                            "destination":output_filename},
-                        i + 1,
-                        len(to_extract)))
-
             except OSError, err:
                 msg.os_error(err)
                 sys.exit(1)
+
+            progress = audiotools.SingleProgressDisplay(
+                msg, unicode(output_filename))
+
+            try:
+                encoded.append(
+                    output_class.from_pcm(
+                        str(output_filename),
+                        audiotools.PCMReaderProgress(pcmreader,
+                                                     pcm_frames,
+                                                     progress.update),
+                        output_quality))
             except audiotools.EncodingError, err:
                 msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
                 sys.exit(1)
+
+            encoded[-1].set_metadata(output_metadata)
+            progress.clear()
+
+            msg.info(audiotools.output_progress(
+                    _.LAB_ENCODE % {
+                        "source":_.LAB_DVDA_TRACK %
+                        {"title_number":options.title,
+                         "track_number":i + 1},
+                        "destination":output_filename},
+                    len(to_rip) - len(output_tracks),
+                    len(to_rip)))
         else:
+            #bypass skipped tracks by decoding them to null
             audiotools.transfer_framelist_data(pcmreader, lambda f: f)
 
-    if (options.add_replay_gain and
-        AudioType.can_add_replay_gain(encoded)):
+    #add ReplayGain to ripped tracks, if necessary
+    if (audiotools.ADD_REPLAYGAIN and
+        (options.add_replay_gain if (options.add_replay_gain is not None)
+         else output_class.lossless_replay_gain()) and
+        output_class.can_add_replay_gain(encoded)):
         rg_progress = audiotools.ReplayGainProgressDisplay(
-            msg, AudioType.lossless_replay_gain())
+            msg, output_class.lossless_replay_gain())
         rg_progress.initial_message()
         try:
             #all audio files must belong to the same album, by definition
-            AudioType.add_replay_gain([f.filename for f in encoded],
-                                      rg_progress.update)
+            output_class.add_replay_gain([f.filename for f in encoded],
+                                         rg_progress.update)
         except ValueError, err:
             rg_progress.clear()
             msg.error(unicode(err))

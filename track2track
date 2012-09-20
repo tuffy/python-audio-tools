@@ -24,6 +24,7 @@ import os.path
 import select
 import cPickle
 import audiotools
+import audiotools.ui
 import audiotools.text as _
 
 
@@ -90,7 +91,7 @@ if (__name__ == '__main__'):
         '--format',
         action='store',
         type='string',
-        default=None,
+        default=audiotools.FILENAME_FORMAT,
         dest='format',
         help=_.OPT_FORMAT)
 
@@ -110,13 +111,61 @@ if (__name__ == '__main__'):
 
     parser.add_option_group(conversion)
 
+    lookup = audiotools.OptionGroup(parser, _.OPT_CAT_CD_LOOKUP)
+
+    lookup.add_option(
+        '-M', '--metadata-lookup', action='store_true',
+        default=False, dest='metadata_lookup',
+        help=_.OPT_METADATA_LOOKUP)
+
+    lookup.add_option(
+        '--musicbrainz-server', action='store',
+        type='string', dest='musicbrainz_server',
+        default=audiotools.MUSICBRAINZ_SERVER,
+        metavar='HOSTNAME')
+    lookup.add_option(
+        '--musicbrainz-port', action='store',
+        type='int', dest='musicbrainz_port',
+        default=audiotools.MUSICBRAINZ_PORT,
+        metavar='PORT')
+    lookup.add_option(
+        '--no-musicbrainz', action='store_false',
+        dest='use_musicbrainz',
+        default=audiotools.MUSICBRAINZ_SERVICE,
+        help=_.OPT_NO_MUSICBRAINZ)
+
+    lookup.add_option(
+        '--freedb-server', action='store',
+        type='string', dest='freedb_server',
+        default=audiotools.FREEDB_SERVER,
+        metavar='HOSTNAME')
+    lookup.add_option(
+        '--freedb-port', action='store',
+        type='int', dest='freedb_port',
+        default=audiotools.FREEDB_PORT,
+        metavar='PORT')
+    lookup.add_option(
+        '--no-freedb', action='store_false',
+        dest='use_freedb',
+        default=audiotools.FREEDB_SERVICE,
+        help=_.OPT_NO_FREEDB)
+
+    lookup.add_option(
+        '-I', '--interactive',
+        action='store_true',
+        default=False,
+        dest='interactive',
+        help=_.OPT_INTERACTIVE_METADATA)
+
+    lookup.add_option(
+        '-D', '--default',
+        dest='use_default', action='store_true', default=False,
+        help=_.OPT_DEFAULT)
+
+    parser.add_option_group(lookup)
+
     metadata = audiotools.OptionGroup(parser, _.OPT_CAT_METADATA)
 
-    #if adding ReplayGain is a lossless process
-    #(i.e. added as tags rather than modifying track data)
-    #add_replay_gain should default to True
-    #if not, add_replay_gain should default to False
-    #which is which depends on the track type
     metadata.add_option(
         '--replay-gain',
         action='store_true',
@@ -224,53 +273,103 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_TRACK2TRACK_O_AND_MULTIPLE)
         sys.exit(1)
 
-    #determine whether to add ReplayGain by default
-    if (options.add_replay_gain is None):
-        options.add_replay_gain = (
-            audiotools.ADD_REPLAYGAIN and
-            AudioType.lossless_replay_gain())
-
-    quality = options.quality
-    max_processes = options.max_processes
-
     if (options.output is None):
         #the default encoding method, without an output file
 
-        base_directory = options.dir
-        output_filenames = set([])
-        queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
+        if (not options.metadata_lookup):
+            #pull metadata from existing files, if any
+            metadata_choices = [[f.get_metadata() for f in audiofiles]]
+        else:
+            #perform CD lookup for existing files
 
-        for audiofile in audiofiles:
-            track_metadata = audiofile.get_metadata()
+            track_frames = [f.cd_frames() for f in audiofiles]
+            track_numbers = [f.track_number() for f in audiofiles]
 
-            #use old track's metadata for new track, if any
-            track_metadata = audiofile.get_metadata()
+            metadata_choices = audiotools.metadata_lookup(
+                first_track_number=(min(track_numbers)
+                                    if None not in track_numbers else 1),
+                last_track_number=(max(track_numbers)
+                                   if None not in track_numbers else
+                                   len(track_numbers)),
+                offsets=[150 + sum(track_frames[0:i]) for i in
+                         xrange(len(track_frames))],
+                lead_out_offset=150 + sum(track_frames),
+                total_length=sum(track_frames) - 1,
+                musicbrainz_server=options.musicbrainz_server,
+                musicbrainz_port=options.musicbrainz_port,
+                freedb_server=options.freedb_server,
+                freedb_port=options.freedb_port,
+                use_musicbrainz=options.use_musicbrainz,
+                use_freedb=options.use_freedb)
 
+            #and add metadata from existing files as an option, if any
+            track_metadatas = [f.get_metadata() for f in audiofiles]
+            if (track_metadatas != [None] * len(track_metadatas)):
+                metadata_choices.insert(0, track_metadatas)
+
+        if (options.interactive):
+            #pick options using interactive widget
+            output_widget = audiotools.ui.OutputFiller(
+                track_labels=[
+                    unicode(audiotools.Filename(f.filename).basename())
+                    for f in audiofiles],
+                metadata_choices=metadata_choices,
+                input_filenames=[audiotools.Filename(f.filename)
+                                 for f in audiofiles],
+                output_directory=options.dir,
+                format_string=options.format,
+                output_class=AudioType,
+                quality=options.quality,
+                completion_label=_.LAB_TRACK2TRACK_APPLY)
+
+            loop = audiotools.ui.urwid.MainLoop(
+                output_widget,
+                audiotools.ui.style(),
+                unhandled_input=output_widget.handle_text,
+                pop_ups=True)
+            loop.run()
+
+            if (not output_widget.cancelled()):
+                output_tracks = list(output_widget.output_tracks())
+            else:
+                sys.exit(0)
+        else:
+            #pick options without using GUI
             try:
-                output_filename = audiotools.Filename(os.path.join(
-                        base_directory,
-                        AudioType.track_name(file_path=audiofile.filename,
-                                             track_metadata=track_metadata,
-                                             format=options.format)))
-
-                if (output_filename in input_filenames):
-                    msg.error(_.ERR_OUTPUT_IS_INPUT %
-                              (output_filename,))
-                    sys.exit(1)
-                if (output_filename in output_filenames):
-                    msg.error(_.ERR_DUPLICATE_OUTPUT_FILE %
-                              (output_filename,))
-                    sys.exit(1)
-                else:
-                    output_filenames.add(output_filename)
+                output_tracks = list(audiotools.ui.process_output_options(
+                        metadata_choices=metadata_choices,
+                        input_filenames=[audiotools.Filename(f.filename)
+                                         for f in audiofiles],
+                        output_directory=options.dir,
+                        format_string=options.format,
+                        output_class=AudioType,
+                        quality=options.quality,
+                        msg=msg,
+                        use_default=options.use_default))
             except audiotools.UnsupportedTracknameField, err:
                 err.error_msg(msg)
                 sys.exit(1)
-            except audiotools.InvalidFilenameFormat, err:
+            except (audiotools.InvalidFilenameFormat,
+                    audiotools.OutputFileIsInput,
+                    audiotools.DuplicateOutputFile), err:
                 msg.error(unicode(err))
                 sys.exit(1)
 
-            #queue up conversion job
+        queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
+
+        #queue jobs to be executed
+        for (audiofile, (output_class,
+                         output_filename,
+                         output_quality,
+                         output_metadata)) in zip(audiofiles, output_tracks):
+            #try to create subdirectories in advance
+            #so as to bail out as early as possible
+            try:
+                audiotools.make_dirs(str(output_filename))
+            except OSError:
+                msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
+                sys.exit(1)
+
             queue.execute(function=convert,
                           progress_text=unicode(output_filename),
                           completion_output=_.LAB_ENCODE % \
@@ -278,22 +377,13 @@ if (__name__ == '__main__'):
                                "destination":output_filename},
                           source_audiofile=audiofile,
                           destination_filename=str(output_filename),
-                          destination_class=AudioType,
-                          compression=quality,
-                          metadata=track_metadata)
+                          destination_class=output_class,
+                          compression=output_quality,
+                          metadata=output_metadata)
 
-        #try to create subdirectories in advance
-        #so as to bail out as early as possible
-        for filename in output_filenames:
-            try:
-                audiotools.make_dirs(str(filename))
-            except OSError:
-                msg.error(_.ERR_ENCODING_ERROR % (filename,))
-                sys.exit(1)
-
-        #perform all queued conversion jobs
+        #perform actual track conversion
         try:
-            queue.run(max_processes)
+            queue.run(options.max_processes)
         except audiotools.EncodingError, err:
             msg.error(unicode(err))
             sys.exit(1)
@@ -301,8 +391,10 @@ if (__name__ == '__main__'):
         output_files = audiotools.open_files(queue.results.values())
 
         #add ReplayGain to converted files, if necessary
-        if (options.add_replay_gain and
-            AudioType.can_add_replay_gain(output_files)):
+        if (audiotools.ADD_REPLAYGAIN and
+            (options.add_replay_gain if (options.add_replay_gain is not None)
+             else output_class.lossless_replay_gain()) and
+            output_class.can_add_replay_gain(output_files)):
             #separate encoded files by album_name and album_number
             for album in audiotools.group_tracks(output_files):
                 #add ReplayGain to groups of files
@@ -327,7 +419,7 @@ if (__name__ == '__main__'):
                     [a.filename for a in album])
 
             try:
-                queue.run(max_processes)
+                queue.run(options.max_processes)
             except ValueError, err:
                 msg.error(unicode(err))
                 sys.exit(1)
