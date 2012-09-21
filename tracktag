@@ -32,13 +32,13 @@ if (audiotools.ui.AVAILABLE):
         def __init__(self, tracks):
             self.status = urwid.Text(u"")
 
-            #a dict of track_id -> (AudioFile, MetaData) values
+            #a dict of track_id -> AudioFile values
             self.edited_tracks = {}
             track_data = []
             for track in tracks:
                 filename = audiotools.Filename(track.filename)
                 metadata = track.get_metadata()
-                self.edited_tracks[filename] = (track, metadata)
+                self.edited_tracks[filename] = track
                 track_data.append((filename,
                                    unicode(filename.basename()),
                                    metadata))
@@ -78,7 +78,8 @@ if (audiotools.ui.AVAILABLE):
 
                 total = 0
                 for (track_id, updated_metadata) in self.metadata.metadata():
-                    (track, original_metadata) = self.edited_tracks[track_id]
+                    track = self.edited_tracks[track_id]
+                    original_metadata = track.get_metadata()
                     if (original_metadata is not None):
                         if (updated_metadata != original_metadata):
                             for attr in audiotools.MetaData.FIELDS:
@@ -93,23 +94,36 @@ if (audiotools.ui.AVAILABLE):
                                             attr,
                                             updated_value)
 
-                            #FIXME - check for errors here
-                            track.update_metadata(original_metadata)
-                            total += 1
+                            try:
+                                track.update_metadata(original_metadata)
+                                total += 1
+                            except IOError:
+                                self.status.set_text(
+                                    ([('error',
+                                       _.ERR_ENCODING_ERROR %
+                                       (audiotools.Filename(track.filename),)),
+                                     u" - ",
+                                     _.LAB_TRACKTAG_UPDATED % (total)
+                                     if (total != 1) else
+                                     _.LAB_TRACKTAG_UPDATED_1]))
+                                break
                     else:
-                        original_metadata = audiotools.MetaData()
                         if (updated_metadata != audiotools.MetaData()):
-                            #FIXME - check for errors here
-                            track.set_metadata(updated_metadata)
-                            total += 1
-
-                if (total != 1):
-                    self.status.set_text(_.LAB_TRACKTAG_UPDATED % (total))
+                            try:
+                                track.set_metadata(updated_metadata)
+                                total += 1
+                            except IOError:
+                                self.status.set_text(u"I/O Error")
+                                break
                 else:
-                    self.status.set_text(_.LAB_TRACKTAG_UPDATED_1)
-
-                self.save_button.set_label(_.LAB_TRACKTAG_APPLY)
-                self.modified = False
+                    if (total == 1):
+                        self.status.set_text(_.LAB_TRACKTAG_UPDATED_1)
+                        self.save_button.set_label(_.LAB_TRACKTAG_APPLY)
+                        self.modified = False
+                    elif (total > 1):
+                        self.status.set_text(_.LAB_TRACKTAG_UPDATED % (total))
+                        self.save_button.set_label(_.LAB_TRACKTAG_APPLY)
+                        self.modified = False
 
         def exit(self, button, arg=None):
             raise urwid.ExitMainLoop()
@@ -558,9 +572,7 @@ if (__name__ == '__main__'):
 
         tracktag = Tracktag(audiofiles)
         loop = urwid.MainLoop(tracktag,
-                              [('label', 'default,bold', 'default'),
-                               ('key', 'white', 'dark blue'),
-                               ('modified', 'default,bold', 'default', '')],
+                              audiotools.ui.style(),
                               unhandled_input=tracktag.unhandled_input)
         tracktag.draw_screen = loop.draw_screen
         loop.run()

@@ -412,7 +412,7 @@ if (__name__ == '__main__'):
     if (audiotools.ADD_REPLAYGAIN and
         (options.add_replay_gain if (options.add_replay_gain is not None)
          else output_class.lossless_replay_gain()) and
-        output_class.can_add_replay_gain(encoded)):
+        output_class.can_add_replay_gain(encoded_tracks)):
         rg_progress = audiotools.ReplayGainProgressDisplay(
             msg, output_class.lossless_replay_gain())
         rg_progress.initial_message()

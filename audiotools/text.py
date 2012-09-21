@@ -145,6 +145,11 @@ METADATA_ALBUM_NUMBER = u"Album Number"
 METADATA_ALBUM_TOTAL = u"Album Total"
 METADATA_COMMENT = u"Comment"
 
+#Derived MetaData Fields
+METADATA_SUFFIX = u"File Name Suffix"
+METADATA_ALBUM_TRACK_NUMBER = u"Combined Album and Track Number"
+METADATA_BASENAME = u"File Name Without Suffix"
+
 #ReplayGain
 RG_ADDING_REPLAYGAIN = u"Adding ReplayGain"
 RG_APPLYING_REPLAYGAIN = u"Applying ReplayGain"
@@ -264,6 +269,7 @@ LAB_KEY_PREVIOUS = u" - previous %s"
 LAB_KEY_SELECT = u" - select"
 LAB_KEY_TOGGLE_OPEN = u" - toggle open"
 LAB_KEY_CANCEL = u" - cancel"
+LAB_KEY_CLEAR_FORMAT = u" - clear format"
 LAB_TRACKTAG_UPDATE_TRACK_NAME = u"the name of the track"
 LAB_TRACKTAG_UPDATE_ARTIST_NAME = u"the name of the artist"
 LAB_TRACKTAG_UPDATE_PERFORMER_NAME = u"the name of the performer"

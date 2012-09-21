@@ -91,7 +91,7 @@ if (__name__ == '__main__'):
         '--format',
         action='store',
         type='string',
-        default=audiotools.FILENAME_FORMAT,
+        default=None,
         dest='format',
         help=_.OPT_FORMAT)
 
@@ -276,6 +276,12 @@ if (__name__ == '__main__'):
     if (options.output is None):
         #the default encoding method, without an output file
 
+        format = (audiotools.FILENAME_FORMAT if
+                  options.format is None else
+                  options.format)
+
+        track_metadatas = [f.get_metadata() for f in audiofiles]
+
         if (not options.metadata_lookup):
             #pull metadata from existing files, if any
             metadata_choices = [[f.get_metadata() for f in audiofiles]]
@@ -302,8 +308,7 @@ if (__name__ == '__main__'):
                 use_musicbrainz=options.use_musicbrainz,
                 use_freedb=options.use_freedb)
 
-            #and add metadata from existing files as an option, if any
-            track_metadatas = [f.get_metadata() for f in audiofiles]
+            #and prepend metadata from existing files as an option, if any
             if (track_metadatas != [None] * len(track_metadatas)):
                 metadata_choices.insert(0, track_metadatas)
 
@@ -317,7 +322,7 @@ if (__name__ == '__main__'):
                 input_filenames=[audiotools.Filename(f.filename)
                                  for f in audiofiles],
                 output_directory=options.dir,
-                format_string=options.format,
+                format_string=format,
                 output_class=AudioType,
                 quality=options.quality,
                 completion_label=_.LAB_TRACK2TRACK_APPLY)
@@ -330,7 +335,35 @@ if (__name__ == '__main__'):
             loop.run()
 
             if (not output_widget.cancelled()):
-                output_tracks = list(output_widget.output_tracks())
+                from itertools import izip
+
+                #merge input track metadata
+                #with new metadata returned from widget
+                output_tracks = []
+                for (current_metadata,
+                     (output_class,
+                      output_filename,
+                      output_quality,
+                      output_metadata)) in izip(iter(track_metadatas),
+                                                output_widget.output_tracks()):
+                    if (current_metadata is not None):
+                        for attr in audiotools.MetaData.FIELDS:
+                            original_value = getattr(current_metadata, attr)
+                            updated_value = getattr(output_metadata, attr)
+                            if (original_value != updated_value):
+                                setattr(current_metadata,
+                                        attr,
+                                        updated_value)
+                        else:
+                            output_tracks.append((output_class,
+                                                  output_filename,
+                                                  output_quality,
+                                                  current_metadata))   
+                    else:
+                        output_tracks.append((output_class,
+                                              output_filename,
+                                              output_quality,
+                                              output_metadata))
             else:
                 sys.exit(0)
         else:
@@ -341,7 +374,7 @@ if (__name__ == '__main__'):
                         input_filenames=[audiotools.Filename(f.filename)
                                          for f in audiofiles],
                         output_directory=options.dir,
-                        format_string=options.format,
+                        format_string=format,
                         output_class=AudioType,
                         quality=options.quality,
                         msg=msg,
@@ -443,7 +476,7 @@ if (__name__ == '__main__'):
                       source_audiofile=audiofile,
                       destination_filename=options.output,
                       destination_class=AudioType,
-                      compression=quality,
+                      compression=options.quality,
                       metadata=track_metadata)
 
         try:

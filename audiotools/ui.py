@@ -225,7 +225,14 @@ try:
             """yields (output_class,
                        output_filename,
                        output_quality,
-                       output_metadata) tuple for each input audio file"""
+                       output_metadata) tuple for each input audio file
+
+            output_metadata is a newly created MetaData object"""
+
+            #Note that output_tracks() creates new MetaData objects
+            #while process_output_options() reuses inputted MetaData objects.
+            #This is because we don't want to modify MetaData objects
+            #in the event they're being used elsewhere.
 
             from itertools import izip
 
@@ -347,7 +354,7 @@ try:
                     self.status.set_text(u"")
 
         def populated_metadata(self):
-            """yields a fully populated MetaData object per track
+            """yields a new, populated MetaData object per track
             to be called once Urwid's main loop has completed"""
 
             for (track_id, metadata) in self.selected_match.metadata():
@@ -392,7 +399,7 @@ try:
                     metadata = audiotools.MetaData()
                 self.track_ids.append(track_id)
                 for (attr, value) in metadata.fields():
-                        base_metadata.setdefault(attr, set([])).add(value)
+                    base_metadata.setdefault(attr, set([])).add(value)
 
             base_metadata = BaseMetaData(
                 metadata=audiotools.MetaData(
@@ -553,7 +560,9 @@ try:
 
         def metadata(self):
             """yields a (track_id, MetaData) tuple
-            per edited metadata track"""
+            per edited metadata track
+
+            MetaData objects are newly created"""
 
             for track_id in self.track_ids:
                 yield (track_id,
@@ -716,8 +725,8 @@ try:
                 setattr(self, field, linked_widget)
 
         def edited_metadata(self):
-            """returns a MetaData object of the track's
-            current value based on its widgets"""
+            """returns a new MetaData object of the track's
+            current value based on its widgets' values"""
 
             return audiotools.MetaData(**dict(
                     [(attr, value) for (attr, value) in
@@ -973,12 +982,14 @@ try:
             import os.path
 
             if (key == 'tab'):
+                #FIXME - only tab complete stuff before cursor
                 new_text = tab_complete(os.path.expanduser(
                         self.get_edit_text().encode(FS_ENCODING))).decode(
                     FS_ENCODING)
                 self.set_edit_text(new_text)
                 self.set_edit_pos(len(new_text))
             elif (key == 'ctrl w'):
+                #FIXME - only delete stuff before cursor
                 new_text = pop_directory(os.path.expanduser(
                         self.get_edit_text().encode(FS_ENCODING))).decode(
                     FS_ENCODING)
@@ -1007,6 +1018,7 @@ try:
         def __init__(self, edit_directory):
             """edit_directory is an EditDirectory object"""
 
+            #FIXME - take button label from .text
             self.__super.__init__(
                 urwid.Button(u"browse",
                              on_press=lambda button: self.open_pop_up()))
@@ -1222,6 +1234,82 @@ try:
             return DirectoryWidget(self)
 
 
+    class BrowseFields(urwid.PopUpLauncher):
+        def __init__(self, output_format):
+            """output_format is an Edit object"""
+
+            #FIXME - take button label from .text
+            self.__super.__init__(
+                urwid.Button(u"fields",
+                             on_press=lambda button: self.open_pop_up()))
+            self.output_format = output_format
+
+        def create_pop_up(self):
+            pop_up = BrowseFieldsDialog(self.output_format)
+            urwid.connect_signal(pop_up, "close",
+                                 lambda button: self.close_pop_up())
+            return pop_up
+
+        def get_pop_up_parameters(self):
+            return {'left':0,
+                    'top':1,
+                    'overlay_width':(max([len(label) + 4
+                                          for (string, label) in
+                                          audiotools.FORMAT_FIELDS.values()]) +
+                                     2),
+                    'overlay_height':20}
+
+
+    class BrowseFieldsDialog(urwid.WidgetWrap):
+        signals = ['close']
+        def __init__(self, output_format):
+            from audiotools.text import (LAB_KEY_CANCEL,
+                                         LAB_KEY_CLEAR_FORMAT)
+
+            self.__super.__init__(
+                CroppedLineBox(
+                    urwid.Frame(body=FieldsList(output_format, self.close),
+                                footer=urwid.Text([('key', 'del'),
+                                                   LAB_KEY_CLEAR_FORMAT,
+                                                   u"   ",
+                                                   ('key', 'esc'),
+                                                   LAB_KEY_CANCEL]))))
+
+        def close(self):
+            self._emit("close")
+
+
+    class FieldsList(urwid.ListBox):
+        def __init__(self, output_format, close):
+            urwid.ListBox.__init__(
+                self,
+                [urwid.Button(label,
+                              on_press=self.select_field,
+                              user_data=(output_format, string))
+                 for (string, label) in
+                 [audiotools.FORMAT_FIELDS[field] for field in
+                  audiotools.FORMAT_FIELD_ORDER]])
+            self.output_format = output_format
+            self.close = close
+
+        def select_field(self, button, field_value):
+            (field, value) = field_value
+            field.insert_text(value)
+            self.close()
+
+        def cancel(self):
+            self.close()
+
+        def keypress(self, size, input):
+            input = urwid.ListBox.keypress(self, size, input)
+            if (input == 'esc'):
+                self.cancel()
+            elif (input == 'delete'):
+                self.output_format.set_edit_text(u"")
+            else:
+                return input
+
+
     class OutputOptions(urwid.Pile):
         def __init__(self, output_dir, format_string,
                      audio_class, quality, input_filenames, metadatas,
@@ -1265,6 +1353,8 @@ try:
                                  'change',
                                  self.format_changed)
 
+            self.browse_fields = BrowseFields(self.output_format)
+
             self.output_directory = SelectDirectory(output_dir,
                                                     self.directory_changed)
 
@@ -1301,29 +1391,34 @@ try:
             widgets = [("fixed", 1,
                         urwid.Filler(urwid.Columns(
                             [('fixed', 10,
-                              urwid.Text(u"%s : " %
-                                         (LAB_OPTIONS_OUTPUT_DIRECTORY),
+                              urwid.Text(('label',
+                                          u"%s : " %
+                                          (LAB_OPTIONS_OUTPUT_DIRECTORY)),
                                          align="right")),
                              ('weight', 1, self.output_directory)]))),
                        ("fixed", 1,
                         urwid.Filler(urwid.Columns(
                             [('fixed', 10,
-                              urwid.Text(u"%s : " %
-                                         (LAB_OPTIONS_FILENAME_FORMAT),
+                              urwid.Text(('label',
+                                          u"%s : " %
+                                          (LAB_OPTIONS_FILENAME_FORMAT)),
                                          align="right")),
-                             ('weight', 1, self.output_format)]))),
+                             ('weight', 1, self.output_format),
+                             ('fixed', 10, self.browse_fields)]))),
                        ("fixed", 1,
                         urwid.Filler(urwid.Columns(
                             [('fixed', 10,
-                              urwid.Text(u"%s : " %
-                                         (LAB_OPTIONS_AUDIO_CLASS),
+                              urwid.Text(('label',
+                                          u"%s : " %
+                                          (LAB_OPTIONS_AUDIO_CLASS)),
                                          align="right")),
                              ('weight', 1, self.output_type)]))),
                        ("fixed", 1,
                         urwid.Filler(urwid.Columns(
                             [('fixed', 10,
-                              urwid.Text(u"%s : " %
-                                         (LAB_OPTIONS_AUDIO_QUALITY),
+                              urwid.Text(('label',
+                                          u"%s : " %
+                                          (LAB_OPTIONS_AUDIO_QUALITY)),
                                          align="right")),
                              ('weight', 1, self.output_quality)]))),
                        ("weight", 1,
@@ -1464,7 +1559,9 @@ try:
 
         return [('key', 'white', 'dark blue'),
                 ('label', 'default,bold', 'default'),
-                ('duplicate', 'light red', 'default')]
+                ('modified', 'default,bold', 'default', ''),
+                ('duplicate', 'light red', 'default'),
+                ('error', 'light red,bold', 'default')]
 
 
 except ImportError:
@@ -1533,6 +1630,8 @@ def process_output_options(metadata_choices,
                            output_filename,
                            output_quality,
                            output_metadata) tuple for each input file
+
+    output_metadata is a reference to an object in metadata_choices
 
     may raise UnsupportedTracknameField or InvalidFilenameFormat
     if the given format_string is invalid
