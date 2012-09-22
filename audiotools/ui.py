@@ -23,6 +23,10 @@ import audiotools
 
 try:
     import urwid
+
+    if (urwid.version.VERSION < (1, 0, 0)):
+        raise ImportError()
+
     AVAILABLE = True
 
     class DownEdit(urwid.Edit):
@@ -129,9 +133,9 @@ try:
             for f in input_filenames:
                 assert(isinstance(f, audiotools.Filename))
 
-            from audiotools.text import (LAB_CANCEL,
-                                         LAB_NEXT,
-                                         LAB_PREVIOUS)
+            from audiotools.text import (LAB_CANCEL_BUTTON,
+                                         LAB_NEXT_BUTTON,
+                                         LAB_PREVIOUS_BUTTON)
 
             #setup status bars for output messages
             self.metadata_status = urwid.Text(u"")
@@ -140,9 +144,9 @@ try:
             #setup a widget for populating metadata fields
             metadata_buttons = urwid.Filler(
                 urwid.Columns(
-                    widget_list=[urwid.Button(LAB_CANCEL,
+                    widget_list=[urwid.Button(LAB_CANCEL_BUTTON,
                                               on_press=self.exit),
-                                 urwid.Button(LAB_NEXT,
+                                 urwid.Button(LAB_NEXT_BUTTON,
                                               on_press=self.next)],
                     dividechars=3,
                     focus_column=1))
@@ -155,7 +159,7 @@ try:
             #setup a widget for populating output parameters
             options_buttons = urwid.Filler(
                 urwid.Columns(
-                    widget_list=[urwid.Button(LAB_PREVIOUS,
+                    widget_list=[urwid.Button(LAB_PREVIOUS_BUTTON,
                                               on_press=self.previous),
                                  urwid.Button(completion_label,
                                               on_press=self.complete)],
@@ -331,7 +335,7 @@ try:
         def select_match(self, radio, selected, match):
             if (selected):
                 self.selected_match = self.edit_matches[match]
-                self.body.widget_list[1] = self.selected_match
+                self.widget_list[1] = self.selected_match
 
         def swiveled(self, radio_button, selected, swivel):
             if (selected):
@@ -1348,7 +1352,8 @@ try:
             self.has_errors = False      #set if format string is invalid
 
             self.output_format = urwid.Edit(
-                edit_text=format_string.decode('utf-8'))
+                edit_text=format_string.decode('utf-8'),
+                wrap='clip')
             urwid.connect_signal(self.output_format,
                                  'change',
                                  self.format_changed)
@@ -1388,41 +1393,35 @@ try:
 
             self.select_type(audio_class, quality)
 
-            widgets = [("fixed", 1,
-                        urwid.Filler(urwid.Columns(
-                            [('fixed', 10,
-                              urwid.Text(('label',
-                                          u"%s : " %
-                                          (LAB_OPTIONS_OUTPUT_DIRECTORY)),
-                                         align="right")),
-                             ('weight', 1, self.output_directory)]))),
-                       ("fixed", 1,
-                        urwid.Filler(urwid.Columns(
-                            [('fixed', 10,
-                              urwid.Text(('label',
-                                          u"%s : " %
-                                          (LAB_OPTIONS_FILENAME_FORMAT)),
-                                         align="right")),
-                             ('weight', 1, self.output_format),
-                             ('fixed', 10, self.browse_fields)]))),
-                       ("fixed", 1,
-                        urwid.Filler(urwid.Columns(
-                            [('fixed', 10,
-                              urwid.Text(('label',
-                                          u"%s : " %
-                                          (LAB_OPTIONS_AUDIO_CLASS)),
-                                         align="right")),
-                             ('weight', 1, self.output_type)]))),
-                       ("fixed", 1,
-                        urwid.Filler(urwid.Columns(
-                            [('fixed', 10,
-                              urwid.Text(('label',
-                                          u"%s : " %
-                                          (LAB_OPTIONS_AUDIO_QUALITY)),
-                                         align="right")),
-                             ('weight', 1, self.output_quality)]))),
-                       ("weight", 1,
-                        output_tracks_frame_linebox)]
+            header = urwid.Pile([
+                    urwid.Columns([('fixed', 10,
+                                    urwid.Text(('label',
+                                                u"%s : " %
+                                                (LAB_OPTIONS_OUTPUT_DIRECTORY)),
+                                               align="right")),
+                                   ('weight', 1, self.output_directory)]),
+                    urwid.Columns([('fixed', 10,
+                                    urwid.Text(('label',
+                                                u"%s : " %
+                                                (LAB_OPTIONS_FILENAME_FORMAT)),
+                                               align="right")),
+                                   ('weight', 1, self.output_format),
+                                   ('fixed', 10, self.browse_fields)]),
+                    urwid.Columns([('fixed', 10,
+                                    urwid.Text(('label',
+                                                u"%s : " %
+                                                (LAB_OPTIONS_AUDIO_CLASS)),
+                                               align="right")),
+                                   ('weight', 1, self.output_type)]),
+                    urwid.Columns([('fixed', 10,
+                                    urwid.Text(('label',
+                                                u"%s : " %
+                                                (LAB_OPTIONS_AUDIO_QUALITY)),
+                                               align="right")),
+                                   ('weight', 1, self.output_quality)])])
+
+            widgets = [('fixed', 4, urwid.Filler(header)),
+                       ('weight', 1, output_tracks_frame_linebox)]
 
             if (extra_widgets is not None):
                 widgets.extend(extra_widgets)
@@ -1562,7 +1561,6 @@ try:
                 ('modified', 'default,bold', 'default', ''),
                 ('duplicate', 'light red', 'default'),
                 ('error', 'light red,bold', 'default')]
-
 
 except ImportError:
     AVAILABLE = False

@@ -191,6 +191,11 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("track2track", options)
 
+    #ensure interactive mode is available, if selected
+    if (options.interactive and (not audiotools.ui.AVAILABLE)):
+        audiotools.ui.not_available_message(msg)
+        sys.exit(1)
+
     #if one specifies incompatible output options,
     #complain about it right away
     if (options.output is not None):
@@ -287,20 +292,8 @@ if (__name__ == '__main__'):
             metadata_choices = [[f.get_metadata() for f in audiofiles]]
         else:
             #perform CD lookup for existing files
-
-            track_frames = [f.cd_frames() for f in audiofiles]
-            track_numbers = [f.track_number() for f in audiofiles]
-
-            metadata_choices = audiotools.metadata_lookup(
-                first_track_number=(min(track_numbers)
-                                    if None not in track_numbers else 1),
-                last_track_number=(max(track_numbers)
-                                   if None not in track_numbers else
-                                   len(track_numbers)),
-                offsets=[150 + sum(track_frames[0:i]) for i in
-                         xrange(len(track_frames))],
-                lead_out_offset=150 + sum(track_frames),
-                total_length=sum(track_frames) - 1,
+            metadata_choices = audiotools.track_metadata_lookup(
+                audiofiles=audiofiles,
                 musicbrainz_server=options.musicbrainz_server,
                 musicbrainz_port=options.musicbrainz_port,
                 freedb_server=options.freedb_server,
@@ -310,7 +303,10 @@ if (__name__ == '__main__'):
 
             #and prepend metadata from existing files as an option, if any
             if (track_metadatas != [None] * len(track_metadatas)):
-                metadata_choices.insert(0, track_metadatas)
+                metadata_choices.insert(0,
+                                        [(m if m is not None
+                                          else audiotools.MetaData())
+                                          for m in track_metadatas])
 
         if (options.interactive):
             #pick options using interactive widget
@@ -358,7 +354,7 @@ if (__name__ == '__main__'):
                             output_tracks.append((output_class,
                                                   output_filename,
                                                   output_quality,
-                                                  current_metadata))   
+                                                  current_metadata))
                     else:
                         output_tracks.append((output_class,
                                               output_filename,
@@ -438,14 +434,14 @@ if (__name__ == '__main__'):
                 #FIXME - should pull ReplayGain text
                 #from elsewhere
                 queue.execute(
-                    AudioType.add_replay_gain,
+                    output_class.add_replay_gain,
                     (u"%s ReplayGain%s" %
-                     ((u"Adding" if AudioType.lossless_replay_gain() else
+                     ((u"Adding" if output_class.lossless_replay_gain() else
                        u"Applying"),
                       (u"" if album_number is None else
                        (u" to album %d" % (album_number))))),
                     (u"ReplayGain %s%s" %
-                     ((u"added" if AudioType.lossless_replay_gain() else
+                     ((u"added" if output_class.lossless_replay_gain() else
                        u"applied"),
                       (u"" if album_number is None else
                        (u" to album %d" % (album_number))))),

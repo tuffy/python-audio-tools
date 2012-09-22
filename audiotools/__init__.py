@@ -4611,6 +4611,48 @@ def metadata_lookup(first_track_number, last_track_number,
         return matches
 
 
+def track_metadata_lookup(audiofiles,
+                          musicbrainz_server="musicbrainz.org",
+                          musicbrainz_port=80,
+                          freedb_server="us.freedb.org",
+                          freedb_port=80,
+                          use_musicbrainz=True,
+                          use_freedb=True):
+    """given a list of AudioFile objects,
+    this treats them as a single CD
+    and generates a set of MetaData objects pulled from lookup services
+
+    returns a metadata[c][t] list of lists
+    where 'c' is a possible choice
+    and 't' is the MetaData for a given track (starting from 0)
+
+    this will always return at least one choice,
+    which may be a list of largely empty MetaData objects
+    if no match can be found for the CD
+    """
+
+    audiofiles.sort(lambda x,y: cmp(x.track_number(), y.track_number()))
+    track_frames = [f.cd_frames() for f in audiofiles]
+    track_numbers = [f.track_number() for f in audiofiles]
+
+    return metadata_lookup(
+        first_track_number=(min(track_numbers)
+                            if None not in track_numbers else 1),
+        last_track_number=(max(track_numbers)
+                           if None not in track_numbers else
+                           len(track_numbers)),
+        offsets=[150 + sum(track_frames[0:i]) for i in
+                 xrange(len(track_frames))],
+        lead_out_offset=150 + sum(track_frames),
+        total_length=sum(track_frames) - 1,
+        musicbrainz_server=musicbrainz_server,
+        musicbrainz_port=musicbrainz_port,
+        freedb_server=freedb_server,
+        freedb_port=freedb_port,
+        use_musicbrainz=use_musicbrainz,
+        use_freedb=use_freedb)
+
+
 #######################
 #DVD-Audio Discs
 #######################

@@ -4604,30 +4604,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO Add a -r/--no-results flag to trackcmp/trackverify
   Listing only the final results and not the running list
 ** TODO Update man page
-* TODO Add optional interactive modes to utilities
-  Now that Urwid is being used for editxmcd, it might be helpful
-  to add optional console-based interactive modes to the other tools.
-  This may improve ease-of-use (particularly discoverability
-  in the case of format and quality options) without sacrificing
-  scriptability or command-line power.
-
-  Just as the command-line options are kept as consistent as possible,
-  all interactive modes will also need a consistent interface.
-** DONE cd2track
-** TODO cdinfo
-** TODO track2track
-** TODO trackrename
-** TODO trackinfo
-** TODO tracklength
-** TODO track2cd
-** TODO trackcmp
-** DONE trackplay
-** DONE tracktag
-** TODO trackcat
-** DONE tracksplit
-** TODO tracklint
-** TODO trackverify
-** TODO coverdump
 * TODO Add DVD-A support
 ** DONE Build AOB parser/extractor
 *** DONE Optimize AOB extractor for better offset handling
@@ -6031,6 +6007,39 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    in order to pass those chunks to another format.
    It would be better to avoid creating an intermediate
    file whenever possible.
+** TODO Add optional interactive modes to utilities
+   Now that Urwid is being used for editxmcd, it might be helpful
+   to add optional console-based interactive modes to the other tools.
+   This may improve ease-of-use (particularly discoverability
+   in the case of format and quality options) without sacrificing
+   scriptability or command-line power.
+
+   Just as the command-line options are kept as consistent as possible,
+   all interactive modes will also need a consistent interface.
+*** TODO cd2track
+**** TODO update man page
+*** TODO cdinfo
+*** TODO cdplay
+**** TODO make player widget generic
+*** TODO track2track
+**** TODO update man page
+**** DONE add CD lookup option
+*** TODO trackrename
+*** TODO trackinfo
+*** TODO tracklength
+*** TODO track2cd
+*** TODO trackcmp
+*** TODO trackplay
+**** TODO make player widget generic
+*** TODO tracktag
+**** TODO update man page
+**** TODO add CD lookup option
+*** TODO trackcat
+*** TODO tracksplit
+**** TODO update man page
+*** TODO tracklint
+*** TODO trackverify
+*** TODO coverdump
 ** TODO Add internal Ogg FLAC encoder
    This shouldn't be too hard since native FLAC encoding is already in place,
    as is Ogg stream encoding.

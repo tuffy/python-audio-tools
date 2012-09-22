@@ -47,9 +47,9 @@ if (audiotools.ui.AVAILABLE):
                                                          self.changed,
                                                          self.swiveled)
 
-            self.save_button = urwid.Button(_.LAB_APPLY,
+            self.save_button = urwid.Button(_.LAB_APPLY_BUTTON,
                                             on_press=self.save)
-            cancel = urwid.Button(_.LAB_QUIT,
+            cancel = urwid.Button(_.LAB_QUIT_BUTTON,
                                   on_press=self.exit)
 
             urwid.Pile.__init__(
