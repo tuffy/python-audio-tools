@@ -1566,7 +1566,7 @@ except ImportError:
     AVAILABLE = False
 
 
-def select_metadata(metadata_choices, msg):
+def select_metadata(metadata_choices, msg, use_default=False):
     """queries the user for the best matching metadata to use
     returns a list of MetaData objects for the selected choice"""
 
@@ -1579,7 +1579,7 @@ def select_metadata(metadata_choices, msg):
     #and all choices must have the same number of tracks
     assert(len(set(map(len, metadata_choices))) == 1)
 
-    if (len(metadata_choices) == 1):
+    if ((len(metadata_choices) == 1) or use_default):
         return metadata_choices[0]
     else:
         choice = None
@@ -1648,10 +1648,7 @@ def process_output_options(metadata_choices,
 
     import os.path
 
-    if (not use_default):
-        selected_metadata = select_metadata(metadata_choices, msg)
-    else:
-        selected_metadata = metadata_choices[0]
+    selected_metadata = select_metadata(metadata_choices, msg, use_default)
 
     #ensure no output paths overwrite input paths
     #and that all output paths are distinct

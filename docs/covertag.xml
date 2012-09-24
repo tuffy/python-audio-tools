@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manpage>
+  <utility>covertag</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>update audio file image metadata</name>
+  <title>Audio File Image Tagger</title>
+  <synopsis>[OPTIONS] &lt;track 1&gt; [track 2] ...</synopsis>
+  <description>
+    covertag takes image files and a list of audio files
+    and updates those files with the new artwork.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug.
+    </option>
+    <option short="r" long="replace">
+      this options erases all existing images and replaces them
+      with any specified files
+    </option>
+  </options>
+  <options category="image">
+    <option long="front-cover" arg="filename">
+      an image file of the album's front cover
+    </option>
+    <option long="back-cover" arg="filename">
+      an image file of the album's back cover
+    </option>
+    <option long="leaflet" arg="filename">
+      an image file of one of the album's leaflet pages
+    </option>
+    <option long="media" arg="filename">
+      an image file of the album's media
+    </option>
+    <option long="other-image" arg="filename">
+      an image file related to the album
+    </option>
+  </options>
+  <examples>
+    <example>
+      <description>
+        Replace all images in track.mp3 with a PNG file
+      </description>
+      <command>
+        covertag -r --front-cover=front.png track.mp3
+      </command>
+    </example>
+    <example>
+      <description>
+        Add several JPEG images to track.flac
+      </description>
+      <command>
+        covertag --front-cover=front.jpg --back-cover=back.jpg
+        --leaflet=page1.jpg --leaflet=page2.jpg --leaflet=page3.jpg
+        track.flac
+      </command>
+    </example>
+    <example>
+      <description>
+        Remove all cover art from track.wv
+      </description>
+      <command>
+        covertag -r track.wv
+      </command>
+    </example>
+  </examples>
+</manpage>

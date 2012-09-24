@@ -99,27 +99,6 @@
       a file containing comment text, for particularly long comments
     </option>
   </options>
-  <options category="image">
-    <option long="remove-images">
-      remove existing images;
-      if new images are added, existing images will be removed beforehand
-    </option>
-    <option long="front-cover" arg="filename">
-      an image file of the album's front cover
-    </option>
-    <option long="back-cover" arg="filename">
-      an image file of the album's back cover
-    </option>
-    <option long="leaflet" arg="filename">
-      an image file of one of the album's leaflet pages
-    </option>
-    <option long="media" arg="filename">
-      an image file of the album's media
-    </option>
-    <option long="other-image" arg="filename">
-      an image file related to the album
-    </option>
-  </options>
   <options category="removal">
     <option long="remove-name"/>
     <option long="remove-artist"/>
@@ -148,16 +127,6 @@
       </description>
       <command>
         tracktag "--name=Test Track" --number=5 track.flac
-      </command>
-    </example>
-    <example>
-      <description>
-        Add several JPEG images to track.flac
-      </description>
-      <command>
-        tracktag --front-cover=front.jpg --back-cover=back.jpg
-        --leaflet=page1.jpg --leaflet=page2.jpg --leaflet=page3.jpg
-        track.flac
       </command>
     </example>
     <example>

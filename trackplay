@@ -213,7 +213,7 @@ try:
                     MappedButton(_.LAB_NEXT_BUTTON,
                                  on_press=self.next_track,
                                  key_map={'tab': 'down'})],
-                                      9, 4, 1, 'center')
+                                      12, 4, 1, 'center')
             controls.set_focus(1)
 
             self.track_list_widget = urwid.ListBox([

@@ -154,20 +154,6 @@ else:
     urwid_present = False
 
 
-#tries to return a populated Image object of the appropriate type
-#raises InvalidImage if something goes wrong during opening or parsing
-def get_raw_image(filename, type):
-    try:
-        f = open(filename, 'rb')
-        data = f.read()
-        f.close()
-
-        return audiotools.Image.new(data, u'', type)
-    except IOError:
-        raise audiotools.InvalidImage(_.ERR_OPEN_IOERROR %
-                                      (audiotools.Filename(filename),))
-
-
 #given a comment filename
 #returns the comment as a unicode string
 #or exits with an error if the file cannot be read
@@ -320,31 +306,6 @@ if (__name__ == '__main__'):
         metavar='FILENAME',
         help=_.OPT_TRACKTAG_CUESHEET)
 
-    img_group = audiotools.OptionGroup(parser, _.OPT_CAT_IMAGE)
-
-    img_group.add_option(
-        '--remove-images',
-        action='store_true',
-        default=False,
-        dest='remove_images',
-        help=_.OPT_TRACKTAG_REMOVE_IMAGES)
-
-    for (option, destination, helptext) in [
-        ('--front-cover', 'front_cover', _.OPT_TRACKTAG_FRONT_COVER),
-        ('--back-cover', 'back_cover', _.OPT_TRACKTAG_BACK_COVER),
-        ('--leaflet', 'leaflet', _.OPT_TRACKTAG_LEAFLET),
-        ('--media', 'media', _.OPT_TRACKTAG_MEDIA),
-        ('--other-image', 'other_image', _.OPT_TRACKTAG_OTHER_IMAGE)]:
-        img_group.add_option(
-            option,
-            action='append',
-            type='string',
-            dest=destination,
-            metavar='FILENAME',
-            help=helptext)
-
-    parser.add_option_group(img_group)
-
     remove_group = audiotools.OptionGroup(parser, _.OPT_CAT_REMOVAL)
 
     for field in audiotools.MetaData.FIELD_ORDER:
@@ -419,8 +380,6 @@ if (__name__ == '__main__'):
             msg.error(unicode(err))
             sys.exit(1)
 
-    get_image = get_raw_image
-
     for file in audiofiles:
         track_modified = False
 
@@ -438,44 +397,6 @@ if (__name__ == '__main__'):
             update_method = "set_metadata"
 
         #apply tagging options to that metadata in reverse order of precedence
-
-        #perform the image tagging
-        try:
-            if (metadata.supports_images()):
-                if (options.remove_images):
-                    for i in metadata.images():
-                        metadata.delete_image(i)
-                        track_modified = True
-
-                if (options.front_cover is not None):
-                    for path in options.front_cover:
-                        metadata.add_image(get_image(path, 0))
-                        track_modified = True
-
-                if (options.leaflet is not None):
-                    for path in options.leaflet:
-                        metadata.add_image(get_image(path, 2))
-                        track_modified = True
-
-                if (options.back_cover is not None):
-                    for path in options.back_cover:
-                        metadata.add_image(get_image(path, 1))
-                        track_modified = True
-
-                if (options.media is not None):
-                    for path in options.media:
-                        metadata.add_image(get_image(path, 3))
-                        track_modified = True
-
-                if (options.other_image is not None):
-                    for path in options.other_image:
-                        metadata.add_image(get_image(path, 4))
-                        track_modified = True
-        except audiotools.InvalidImage, err:
-            msg.error(_.ERR_INVALID_IMAGE %
-                      {"filename": audiotools.Filename(file.filename),
-                       "message": unicode(err)})
-            sys.exit(1)
 
         #apply text field removal
         for (attr, (option, help_text)) in REMOVE_OPTIONS.items():

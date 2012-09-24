@@ -3080,26 +3080,11 @@ class tracktag(UtilTest):
         self.comment_file.write("Comment File")
         self.comment_file.flush()
 
-        self.front_cover = tempfile.NamedTemporaryFile(suffix=".png")
-        self.front_cover.write(TEST_COVER4)
-        self.front_cover.flush()
-
-        self.back_cover = tempfile.NamedTemporaryFile(suffix=".png")
-        self.back_cover.write(TEST_COVER2)
-        self.back_cover.flush()
-
-        self.front_cover_image = audiotools.Image.new(
-            TEST_COVER4, u"", 0)
-        self.back_cover_image = audiotools.Image.new(
-            TEST_COVER2, u"", 1)
-
     @UTIL_TRACKTAG
     def tearDown(self):
         self.track_file.close()
         self.cuesheet.close()
         self.comment_file.close()
-        self.front_cover.close()
-        self.back_cover.close()
 
     def populate_options(self, options):
         populated = []
@@ -3135,12 +3120,6 @@ class tracktag(UtilTest):
             elif (option == '--comment-file'):
                 populated.append(option)
                 populated.append(self.comment_file.name)
-            elif (option == '--front-cover'):
-                populated.append(option)
-                populated.append(self.front_cover.name)
-            elif (option == '--back-cover'):
-                populated.append(option)
-                populated.append(self.back_cover.name)
             else:
                 populated.append(option)
 
@@ -3148,8 +3127,7 @@ class tracktag(UtilTest):
 
     @UTIL_TRACKTAG
     def test_options(self):
-        from audiotools.text import (ERR_DUPLICATE_FILE,
-                                     )
+        from audiotools.text import (ERR_DUPLICATE_FILE,)
 
         #start out with a bit of sanity checking
         f = open(self.track_file.name, 'wb')
@@ -3171,8 +3149,7 @@ class tracktag(UtilTest):
         #which is still over 8000 different option combinations.
         most_options = ['-r', '--cue',
                         '--name', '--number', '--track-total',
-                        '--album-number', '--comment', '--comment-file',
-                        '--remove-images', '--front-cover', '--back-cover']
+                        '--album-number', '--comment', '--comment-file']
 
         #ensure tagging the same file twice triggers an error
         self.assertEqual(self.__run_app__(
@@ -3262,62 +3239,6 @@ class tracktag(UtilTest):
                 else:
                     self.assertEqual(metadata.ISRC, u"ABCD00000000")
 
-                if (("--front-cover" in options) and
-                    ("--back-cover" in options)):
-                    #adding front and back cover
-
-                    if (("-r" in options) or
-                        ("--remove-images" in options)):
-                        self.assertEqual(metadata.front_covers(),
-                                         [self.front_cover_image])
-                        self.assertEqual(metadata.back_covers(),
-                                         [self.back_cover_image])
-                        self.assertEqual(len(metadata.images()), 2)
-                    else:
-                        self.assertEqual(metadata.front_covers(),
-                                         [self.image,
-                                          self.front_cover_image])
-                        self.assertEqual(metadata.back_covers(),
-                                         [self.back_cover_image])
-                        self.assertEqual(len(metadata.images()), 3)
-                elif ("--front-cover" in options):
-                    #adding front-cover
-
-                    if (("-r" in options) or
-                        ("--remove-images" in options)):
-                        self.assertEqual(metadata.images(),
-                                         [self.front_cover_image])
-                        self.assertEqual(len(metadata.images()), 1)
-                    else:
-                        self.assertEqual(metadata.images(),
-                                         [self.image,
-                                          self.front_cover_image])
-                        self.assertEqual(len(metadata.images()), 2)
-                elif ("--back-cover" in options):
-                    #adding back cover
-
-                    if (("-r" in options) or
-                        ("--remove-images" in options)):
-                        self.assertEqual(metadata.images(),
-                                         [self.back_cover_image])
-                        self.assertEqual(len(metadata.images()), 1)
-                    else:
-                        self.assertEqual(metadata.front_covers(),
-                                         [self.image])
-                        self.assertEqual(metadata.back_covers(),
-                                         [self.back_cover_image])
-                        self.assertEqual(len(metadata.images()), 2)
-                else:
-                    #no new images added
-
-                    if (("-r" in options) or
-                        ("--remove-images" in options)):
-                        self.assertEqual(len(metadata.images()), 0)
-                    else:
-                        self.assertEqual(metadata.images(),
-                                         [self.image])
-                        self.assertEqual(len(metadata.images()), 1)
-
                 if ("--replay-gain" in options):
                     self.assert_(track.replay_gain() is not None)
 
@@ -3350,8 +3271,7 @@ class tracktag(UtilTest):
 class tracktag_errors(UtilTest):
     @UTIL_TRACKTAG
     def test_bad_options(self):
-        from audiotools.text import (ERR_INVALID_IMAGE,
-                                     ERR_OPEN_IOERROR,
+        from audiotools.text import (ERR_OPEN_IOERROR,
                                      ERR_ENCODING_ERROR,
                                      ERR_TRACKTAG_COMMENT_IOERROR,
                                      ERR_TRACKTAG_COMMENT_NOT_UTF8)
@@ -3365,15 +3285,6 @@ class tracktag_errors(UtilTest):
                 BLANK_PCM_Reader(5))
 
             temp_track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
-
-            self.assertEqual(self.__run_app__(
-                    ["tracktag", "--front-cover=/dev/null/foo.jpg",
-                     temp_track.filename]), 1)
-            self.__check_error__(
-                ERR_INVALID_IMAGE %
-                {"filename":audiotools.Filename(temp_track.filename),
-                 "message":ERR_OPEN_IOERROR %
-                 (audiotools.Filename("/dev/null/foo.jpg"),)})
 
             self.assertEqual(self.__run_app__(
                     ["tracktag", "--comment-file=/dev/null/foo.txt",
@@ -3410,7 +3321,6 @@ class tracktag_errors(UtilTest):
             suffix="." + audio_class.SUFFIX)
             tempwv = tempfile.NamedTemporaryFile(
                 suffix="." + audiotools.WavPackAudio.SUFFIX)
-            big_bmp = tempfile.NamedTemporaryFile(suffix=".bmp")
             big_text = tempfile.NamedTemporaryFile(suffix=".txt")
             try:
                 flac = audio_class.from_pcm(
@@ -3419,9 +3329,6 @@ class tracktag_errors(UtilTest):
 
                 flac.set_metadata(audiotools.MetaData(track_name=u"Foo"))
 
-                big_bmp.write(HUGE_BMP.decode('bz2'))
-                big_bmp.flush()
-
                 big_text.write("QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2'))
                 big_text.flush()
 
@@ -3429,18 +3336,6 @@ class tracktag_errors(UtilTest):
                 pcm = flac.to_pcm()
                 audiotools.transfer_framelist_data(pcm, orig_md5.update)
                 pcm.close()
-
-                #ensure that setting a big image via tracktag
-                #doesn't break the file
-                subprocess.call(["tracktag", "-V", "quiet",
-                                 "--front-cover=%s" % (big_bmp.name),
-                                 flac.filename])
-                new_md5 = md5()
-                pcm = flac.to_pcm()
-                audiotools.transfer_framelist_data(pcm, new_md5.update)
-                pcm.close()
-                self.assertEqual(orig_md5.hexdigest(),
-                                 new_md5.hexdigest())
 
                 #ensure that setting big text via tracktag
                 #doesn't break the file
@@ -3464,11 +3359,9 @@ class tracktag_errors(UtilTest):
 
                 self.assertEqual(subprocess.call(
                         ["tracktag", "-V", "quiet",
-                         "--front-cover=%s" % (big_bmp.name),
                          "--comment-file=%s" % (big_text.name),
                          wv.filename]), 0)
 
-                self.assertEqual(len(wv.get_metadata().images()), 1)
                 self.assert_(len(wv.get_metadata().comment) > 0)
 
                 subprocess.call(["track2track", "-t", audio_class.NAME, "-o",
@@ -3479,7 +3372,6 @@ class tracktag_errors(UtilTest):
             finally:
                 tempflac.close()
                 tempwv.close()
-                big_bmp.close()
                 big_text.close()
 
 
@@ -4227,6 +4119,256 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
                 temp_track.close()
                 temp_sheet.close()
 
+
+class covertag(UtilTest):
+    @UTIL_COVERTAG
+    def setUp(self):
+        track_file_base = tempfile.NamedTemporaryFile()
+        self.initial_metadata = audiotools.MetaData(
+            track_name=u"Name 1",
+            track_number=1,
+            track_total=2,
+            album_name=u"Album 1",
+            artist_name=u"Artist 1",
+            album_number=3,
+            album_total=4,
+            ISRC=u'ABCD00000000',
+            comment=u"Comment 1")
+
+
+        self.image = audiotools.Image.new(TEST_COVER1, u"", 0)
+        self.initial_metadata.add_image(self.image)
+
+        track_base = audiotools.FlacAudio.from_pcm(
+            track_file_base.name,
+            BLANK_PCM_Reader(1))
+        track_base.set_metadata(self.initial_metadata)
+        self.track_data = open(track_base.filename, 'rb').read()
+        track_file_base.close()
+
+        self.track_file = tempfile.NamedTemporaryFile()
+
+        self.front_cover1 = tempfile.NamedTemporaryFile(suffix=".png")
+        self.front_cover1.write(TEST_COVER4)
+        self.front_cover1.flush()
+
+        self.front_cover2 = tempfile.NamedTemporaryFile(suffix=".jpg")
+        self.front_cover2.write(TEST_COVER3)
+        self.front_cover2.flush()
+
+        self.back_cover = tempfile.NamedTemporaryFile(suffix=".png")
+        self.back_cover.write(TEST_COVER2)
+        self.back_cover.flush()
+
+        self.leaflet = tempfile.NamedTemporaryFile(suffix=".jpg")
+        self.leaflet.write(TEST_COVER1)
+        self.leaflet.flush()
+
+        self.media = tempfile.NamedTemporaryFile(suffix=".png")
+        self.media.write(TEST_COVER2)
+        self.media.flush()
+
+        self.other = tempfile.NamedTemporaryFile(suffix=".png")
+        self.other.write(TEST_COVER4)
+        self.other.flush()
+
+        self.front_cover1_image = audiotools.Image.new(
+            TEST_COVER4, u"", 0)
+        self.front_cover2_image = audiotools.Image.new(
+            TEST_COVER3, u"", 0)
+        self.back_cover_image = audiotools.Image.new(
+            TEST_COVER2, u"", 1)
+        self.leaflet_image = audiotools.Image.new(
+            TEST_COVER1, u"", 2)
+        self.media_image = audiotools.Image.new(
+            TEST_COVER2, u"", 3)
+        self.other_image = audiotools.Image.new(
+            TEST_COVER4, u"", 4)
+
+    @UTIL_COVERTAG
+    def tearDown(self):
+        self.track_file.close()
+        self.front_cover1.close()
+        self.front_cover2.close()
+        self.back_cover.close()
+        self.leaflet.close()
+        self.media.close()
+        self.other.close()
+
+    def populate_options(self, options):
+        populated = []
+        front_covers = [self.front_cover1.name, self.front_cover2.name]
+
+        for option in sorted(options):
+            if (option == '--front-cover'):
+                populated.append(option)
+                populated.append(front_covers.pop(0))
+            elif (option == '--back-cover'):
+                populated.append(option)
+                populated.append(self.back_cover.name)
+            elif (option == '--leaflet'):
+                populated.append(option)
+                populated.append(self.leaflet.name)
+            elif (option == '--media'):
+                populated.append(option)
+                populated.append(self.media.name)
+            elif (option == '--other-image'):
+                populated.append(option)
+                populated.append(self.other.name)
+            else:
+                populated.append(option)
+
+        return populated
+
+    @UTIL_COVERTAG
+    def test_options(self):
+        from audiotools.text import (ERR_DUPLICATE_FILE,)
+
+        #start out with a bit of sanity checking
+        f = open(self.track_file.name, 'wb')
+        f.write(self.track_data)
+        f.close()
+
+        track = audiotools.open(self.track_file.name)
+        track.verify()
+        metadata = track.get_metadata()
+        self.assertEqual(metadata.images(),
+                         [self.image])
+
+        covertag_options = ['-r', '--front-cover', '--front-cover',
+                            '--back-cover', '--leaflet', '--media',
+                            '--other-image']
+
+        #ensure tagging the same file twice triggers an error
+        self.assertEqual(self.__run_app__(
+                ["covertag", "--front-cover", self.front_cover1.name,
+                 self.track_file.name, self.track_file.name]), 1)
+        self.__check_error__(ERR_DUPLICATE_FILE %
+                             (audiotools.Filename(self.track_file.name),))
+
+        for count in xrange(1, len(covertag_options) + 1):
+            for options in Combinations(covertag_options, count):
+                f = open(self.track_file.name, 'wb')
+                f.write(self.track_data)
+                f.close()
+
+                options = self.populate_options(options)
+                self.assertEqual(
+                    self.__run_app__(["covertag"] +
+                                     options +
+                                     [self.track_file.name]), 0)
+
+                track = audiotools.open(self.track_file.name)
+                track.verify()
+                metadata = track.get_metadata()
+
+                if ('-r' in options):
+                    if (options.count('--front-cover') == 0):
+                        self.assertEqual(metadata.front_covers(),
+                                         [])
+                    elif (options.count('--front-cover') == 1):
+                        self.assertEqual(metadata.front_covers(),
+                                         [self.front_cover1_image])
+                    elif (options.count('--front-cover') == 2):
+                        self.assertEqual(metadata.front_covers(),
+                                         [self.front_cover1_image,
+                                          self.front_cover2_image])
+                else:
+                    if (options.count('--front-cover') == 0):
+                        self.assertEqual(metadata.front_covers(),
+                                         [self.image])
+                    elif (options.count('--front-cover') == 1):
+                        self.assertEqual(metadata.front_covers(),
+                                         [self.image,
+                                          self.front_cover1_image])
+                    elif (options.count('--front-cover') == 2):
+                        self.assertEqual(metadata.front_covers(),
+                                         [self.image,
+                                          self.front_cover1_image,
+                                          self.front_cover2_image])
+                if ('--back-cover' in options):
+                    self.assertEqual(metadata.back_covers(),
+                                     [self.back_cover_image])
+                else:
+                    self.assertEqual(metadata.back_covers(),
+                                     [])
+                if ('--leaflet' in options):
+                    self.assertEqual(metadata.leaflet_pages(),
+                                     [self.leaflet_image])
+                else:
+                    self.assertEqual(metadata.leaflet_pages(),
+                                     [])
+                if ('--media' in options):
+                    self.assertEqual(metadata.media_images(),
+                                     [self.media_image])
+                else:
+                    self.assertEqual(metadata.media_images(),
+                                     [])
+                if ('--other-image' in options):
+                    self.assertEqual(metadata.other_images(),
+                                     [self.other_image])
+                else:
+                    self.assertEqual(metadata.other_images(),
+                                     [])
+
+
+class covertag_errors(UtilTest):
+    @UTIL_COVERTAG
+    def test_bad_options(self):
+        from audiotools.text import (ERR_OPEN_IOERROR,)
+
+        temp_track_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        temp_track_stat = os.stat(temp_track_file.name)[0]
+        try:
+            temp_track = audiotools.FlacAudio.from_pcm(
+                temp_track_file.name,
+                BLANK_PCM_Reader(5))
+
+            self.assertEqual(self.__run_app__(
+                    ["covertag", "--front-cover=/dev/null/foo.jpg",
+                     temp_track.filename]), 1)
+            self.__check_error__(
+                ERR_OPEN_IOERROR % (audiotools.Filename(u"/dev/null/foo.jpg"),))
+        finally:
+            os.chmod(temp_track_file.name, temp_track_stat)
+            temp_track_file.close()
+
+    @UTIL_COVERTAG
+    def test_oversized_metadata(self):
+        for audio_class in [audiotools.FlacAudio,
+                            audiotools.OggFlacAudio]:
+            tempflac = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            big_bmp = tempfile.NamedTemporaryFile(suffix=".bmp")
+            try:
+                flac = audio_class.from_pcm(
+                    tempflac.name,
+                    BLANK_PCM_Reader(5))
+
+                flac.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+
+                big_bmp.write(HUGE_BMP.decode('bz2'))
+                big_bmp.flush()
+
+                orig_md5 = md5()
+                pcm = flac.to_pcm()
+                audiotools.transfer_framelist_data(pcm, orig_md5.update)
+                pcm.close()
+
+                #ensure that setting a big image via covertag
+                #doesn't break the file
+                subprocess.call(["covertag", "-V", "quiet",
+                                 "--front-cover=%s" % (big_bmp.name),
+                                 flac.filename])
+                new_md5 = md5()
+                pcm = flac.to_pcm()
+                audiotools.transfer_framelist_data(pcm, new_md5.update)
+                pcm.close()
+                self.assertEqual(orig_md5.hexdigest(),
+                                 new_md5.hexdigest())
+            finally:
+                tempflac.close()
+                big_bmp.close()
 
 class trackrename(UtilTest):
     @UTIL_TRACKRENAME

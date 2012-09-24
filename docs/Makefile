@@ -7,6 +7,7 @@ cd2track.1 \
 cdinfo.1 \
 cdplay.1 \
 coverdump.1 \
+covertag.1 \
 coverview.1 \
 dvda2track.1 \
 dvdainfo.1 \
@@ -30,6 +31,7 @@ cd2track.xml \
 cdinfo.xml \
 cdplay.xml \
 coverdump.xml \
+covertag.xml \
 coverview.xml \
 dvda2track.xml \
 dvdainfo.xml \
