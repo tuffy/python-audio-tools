@@ -3232,10 +3232,10 @@ class tracktag(UtilTest):
                 else:
                     self.assertEqual(metadata.comment, u"Comment 1")
 
-                if (("--cue" in options) and ("--number" not in options)):
-                    self.assertEqual(metadata.ISRC, u"JPPI00652340")
-                elif ("-r" in options):
+                if ("-r" in options):
                     self.assertEqual(metadata.ISRC, None)
+                elif (("--cue" in options) and ("--number" not in options)):
+                    self.assertEqual(metadata.ISRC, u"JPPI00652340")
                 else:
                     self.assertEqual(metadata.ISRC, u"ABCD00000000")
 
@@ -3304,7 +3304,7 @@ class tracktag_errors(UtilTest):
 
             os.chmod(temp_track_file.name, temp_track_stat & 07555)
             self.assertEqual(self.__run_app__(
-                    ["tracktag", "--name=Foo",
+                    ["tracktag", "--name=Bar",
                      temp_track.filename]), 1)
             self.__check_error__(ERR_ENCODING_ERROR %
                                  (audiotools.Filename(temp_track.filename),))
@@ -4035,12 +4035,18 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
                     album_number=2,
                     album_total=3)
 
+                #ensure metadata matches
+                self.assertEqual(album.get_metadata(), metadata)
+
+                #ensure cuesheet starts as None
+                self.assertEqual(album.get_cuesheet(), None)
+
                 #add cuesheet
                 self.assertEqual(
                     subprocess.call(["tracktag", "--cue", temp_sheet.name,
                                      temp_track.name]), 0)
 
-                #ensure metadata matches
+                #ensure metadata still matches
                 self.assertEqual(album.get_metadata(), metadata)
 
                 #ensure cuesheet matches

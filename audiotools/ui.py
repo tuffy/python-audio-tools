@@ -144,10 +144,12 @@ try:
             #setup a widget for populating metadata fields
             metadata_buttons = urwid.Filler(
                 urwid.Columns(
-                    widget_list=[urwid.Button(LAB_CANCEL_BUTTON,
-                                              on_press=self.exit),
-                                 urwid.Button(LAB_NEXT_BUTTON,
-                                              on_press=self.next)],
+                    widget_list=[('weight', 1,
+                                  urwid.Button(LAB_CANCEL_BUTTON,
+                                               on_press=self.exit)),
+                                 ('weight', 2,
+                                  urwid.Button(LAB_NEXT_BUTTON,
+                                               on_press=self.next))],
                     dividechars=3,
                     focus_column=1))
 
@@ -159,10 +161,12 @@ try:
             #setup a widget for populating output parameters
             options_buttons = urwid.Filler(
                 urwid.Columns(
-                    widget_list=[urwid.Button(LAB_PREVIOUS_BUTTON,
-                                              on_press=self.previous),
-                                 urwid.Button(completion_label,
-                                              on_press=self.complete)],
+                    widget_list=[('weight', 1,
+                                  urwid.Button(LAB_PREVIOUS_BUTTON,
+                                               on_press=self.previous)),
+                                 ('weight', 2,
+                                  urwid.Button(completion_label,
+                                               on_press=self.complete))],
                     dividechars=3,
                     focus_column=1))
 

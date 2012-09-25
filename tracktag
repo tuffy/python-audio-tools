@@ -28,153 +28,61 @@ if (audiotools.ui.AVAILABLE):
     urwid_present = True
     urwid = audiotools.ui.urwid
 
-    class Tracktag(urwid.Pile):
-        def __init__(self, tracks):
-            self.status = urwid.Text(u"")
+    class Tracktag(urwid.Frame):
+        def __init__(self, tracks, metadata_choices):
+            self.__cancelled__ = True
+            status = urwid.Text(u"")
 
-            #a dict of track_id -> AudioFile values
-            self.edited_tracks = {}
-            track_data = []
-            for track in tracks:
-                filename = audiotools.Filename(track.filename)
-                metadata = track.get_metadata()
-                self.edited_tracks[filename] = track
-                track_data.append((filename,
-                                   unicode(filename.basename()),
-                                   metadata))
+            buttons = urwid.Filler(
+                urwid.Columns(
+                    widget_list=[('weight', 1,
+                                  urwid.Button(_.LAB_CANCEL_BUTTON,
+                                               on_press=self.exit)),
+                                 ('weight', 2,
+                                  urwid.Button(_.LAB_APPLY_BUTTON,
+                                               on_press=self.apply))],
+                    dividechars=3,
+                    focus_column=1))
 
-            self.metadata = audiotools.ui.MetaDataEditor(track_data,
-                                                         self.changed,
-                                                         self.swiveled)
+            self.filler = audiotools.ui.MetaDataFiller(
+                [unicode(audiotools.Filename(t.filename).basename())
+                 for t in tracks],
+                metadata_choices,
+                status,
+                [("fixed", 1, buttons)])
 
-            self.save_button = urwid.Button(_.LAB_APPLY_BUTTON,
-                                            on_press=self.save)
-            cancel = urwid.Button(_.LAB_QUIT_BUTTON,
-                                  on_press=self.exit)
+            urwid.Frame.__init__(self,
+                                 body=self.filler,
+                                 footer=status)
 
-            urwid.Pile.__init__(
-                self,
-                [("weight", 1, self.metadata),
-                 ("fixed", 1, urwid.Filler(urwid.Divider(u"\u2500"))),
-                 ("fixed", 1, urwid.Filler(urwid.GridFlow([self.save_button,
-                                                           cancel],
-                                                          10, 5, 1, 'center'))),
-                 ("fixed", 1, urwid.Filler(self.status))])
-
-            self.modified = False
-
-        def unhandled_input(self, i):
-            if (i == 'esc'):
-                raise urwid.ExitMainLoop()
-            elif (i == 'f1'):
-                self.metadata.select_previous_item()
-            elif (i == 'f2'):
-                self.metadata.select_next_item()
-
-        def save(self, button, arg=None):
-            if (self.modified):
-                self.status.set_text(_.LAB_TRACKTAG_UPDATING)
-                self.draw_screen()
-
-                total = 0
-                for (track_id, updated_metadata) in self.metadata.metadata():
-                    track = self.edited_tracks[track_id]
-                    original_metadata = track.get_metadata()
-                    if (original_metadata is not None):
-                        if (updated_metadata != original_metadata):
-                            for attr in audiotools.MetaData.FIELDS:
-                                original_value = getattr(original_metadata,
-                                                         attr)
-                                updated_value = getattr(updated_metadata,
-                                                        attr)
-                                if (original_value != updated_value):
-                                    #if updated_value is None,
-                                    #this will work like delattr
-                                    setattr(original_metadata,
-                                            attr,
-                                            updated_value)
-
-                            try:
-                                track.update_metadata(original_metadata)
-                                total += 1
-                            except IOError:
-                                self.status.set_text(
-                                    ([('error',
-                                       _.ERR_ENCODING_ERROR %
-                                       (audiotools.Filename(track.filename),)),
-                                     u" - ",
-                                     _.LAB_TRACKTAG_UPDATED % (total)
-                                     if (total != 1) else
-                                     _.LAB_TRACKTAG_UPDATED_1]))
-                                break
-                    else:
-                        if (updated_metadata != audiotools.MetaData()):
-                            try:
-                                track.set_metadata(updated_metadata)
-                                total += 1
-                            except IOError:
-                                self.status.set_text(u"I/O Error")
-                                break
-                else:
-                    if (total == 1):
-                        self.status.set_text(_.LAB_TRACKTAG_UPDATED_1)
-                        self.save_button.set_label(_.LAB_TRACKTAG_APPLY)
-                        self.modified = False
-                    elif (total > 1):
-                        self.status.set_text(_.LAB_TRACKTAG_UPDATED % (total))
-                        self.save_button.set_label(_.LAB_TRACKTAG_APPLY)
-                        self.modified = False
-
-        def exit(self, button, arg=None):
+        def apply(self, button):
+            self.__cancelled__ = False
             raise urwid.ExitMainLoop()
 
-        def changed(self, widget, new_text):
-            self.save_button.set_label(('modified', _.LAB_TRACKTAG_APPLY))
-            self.status.set_text(u"")
-            self.modified = True
+        def exit(self, button):
+            self.__cancelled__ = True
+            raise urwid.ExitMainLoop()
 
-        def swiveled(self, radio_button, selected, swivel):
-            if (selected):
-                keys = []
-                if (radio_button.previous_radio_button() is not None):
-                    keys.extend([('key', u"F1"),
-                                 _.LAB_KEY_PREVIOUS % (swivel.swivel_type)])
-                if (radio_button.next_radio_button() is not None):
-                    if (len(keys) > 0):
-                        keys.append(u"   ")
-                    keys.extend([('key', u"F2"),
-                                 _.LAB_KEY_NEXT % (swivel.swivel_type)])
+        def cancelled(self):
+            return self.__cancelled__
 
-                if (len(keys) > 0):
-                    self.status.set_text(keys)
-                else:
-                    self.status.set_text(u"")
+        def handle_text(self, i):
+            if (i == 'esc'):
+                self.exit(None)
+            elif (i == 'f1'):
+                self.filler.selected_match.select_previous_item()
+            elif (i == 'f2'):
+                self.filler.selected_match.select_next_item()
+
+        def populated_metadata(self):
+            """yields a new, populated MetaData object per track
+            to be called once Urwid's main loop has completed"""
+
+            for (track_id, metadata) in self.filler.selected_match.metadata():
+                yield metadata
 
 else:
     urwid_present = False
-
-
-#given a comment filename
-#returns the comment as a unicode string
-#or exits with an error if the file cannot be read
-#or is not UTF-8 text
-def read_comment(filename, messenger):
-    try:
-        f = open(filename, 'rb')
-        data = f.read().decode('utf-8', 'replace')
-        f.close()
-
-        if (((data.count(u"\uFFFD") * 100) / len(data)) >= 10):
-            messenger.error(
-                _.ERR_TRACKTAG_COMMENT_NOT_UTF8 %
-                (audiotools.Filename(filename),))
-            sys.exit(1)
-        else:
-            return data
-    except IOError:
-        messenger.error(_.ERR_TRACKTAG_COMMENT_IOERROR %
-                        (audiotools.Filename(filename),))
-        sys.exit(1)
 
 
 UPDATE_OPTIONS = {"track_name":("--name",
@@ -321,6 +229,52 @@ if (__name__ == '__main__'):
 
     parser.add_option_group(remove_group)
 
+    lookup = audiotools.OptionGroup(parser, _.OPT_CAT_CD_LOOKUP)
+
+    lookup.add_option(
+        '-M', '--metadata-lookup', action='store_true',
+        default=False, dest='metadata_lookup',
+        help=_.OPT_METADATA_LOOKUP)
+
+    lookup.add_option(
+        '--musicbrainz-server', action='store',
+        type='string', dest='musicbrainz_server',
+        default=audiotools.MUSICBRAINZ_SERVER,
+        metavar='HOSTNAME')
+    lookup.add_option(
+        '--musicbrainz-port', action='store',
+        type='int', dest='musicbrainz_port',
+        default=audiotools.MUSICBRAINZ_PORT,
+        metavar='PORT')
+    lookup.add_option(
+        '--no-musicbrainz', action='store_false',
+        dest='use_musicbrainz',
+        default=audiotools.MUSICBRAINZ_SERVICE,
+        help=_.OPT_NO_MUSICBRAINZ)
+
+    lookup.add_option(
+        '--freedb-server', action='store',
+        type='string', dest='freedb_server',
+        default=audiotools.FREEDB_SERVER,
+        metavar='HOSTNAME')
+    lookup.add_option(
+        '--freedb-port', action='store',
+        type='int', dest='freedb_port',
+        default=audiotools.FREEDB_PORT,
+        metavar='PORT')
+    lookup.add_option(
+        '--no-freedb', action='store_false',
+        dest='use_freedb',
+        default=audiotools.FREEDB_SERVICE,
+        help=_.OPT_NO_FREEDB)
+
+    lookup.add_option(
+        '-D', '--default',
+        dest='use_default', action='store_true', default=False,
+        help=_.OPT_DEFAULT)
+
+    parser.add_option_group(lookup)
+
     parser.add_option(
         '--replay-gain',
         action='store_true',
@@ -349,16 +303,15 @@ if (__name__ == '__main__'):
 
     #open our set of input files for tagging
     try:
-        audiofiles = audiotools.open_files(args,
-                                           messenger=msg,
-                                           no_duplicates=True)
+        tracks = audiotools.open_files(args,
+                                       messenger=msg,
+                                       no_duplicates=True)
+        track_metadatas = [t.get_metadata() for t in tracks]
     except audiotools.DuplicateFile, err:
         msg.error(_.ERR_DUPLICATE_FILE % (err.filename,))
         sys.exit(1)
 
-    #and the --cue file
-    isrcs = {}
-    import_cuesheet = None
+    #open the --cue sheet
     if (options.cue is not None):
         try:
             cuesheet = audiotools.read_sheet(options.cue)
@@ -366,94 +319,178 @@ if (__name__ == '__main__'):
             #if there's a single audio file
             #and the cuesheet is sized to fit that file
             #attempt to embed the cuesheet in the file
-            if ((len(audiofiles) == 1) and
+            if ((len(tracks) == 1) and
                 (list(cuesheet.pcm_lengths(
-                            audiofiles[0].total_frames(),
-                            audiofiles[0].sample_rate()))[-1] > 0)):
+                            tracks[0].total_frames(),
+                            tracks[0].sample_rate()))[-1] > 0)):
+                isrcs = {}
                 import_cuesheet = cuesheet
             else:
                 #otherwise, treat the cuesheet as a source of ISRC data
                 isrcs = dict([(k, v.decode('ascii', 'replace'))
                               for (k, v) in
                               cuesheet.ISRCs().items()])
+                import_cuesheet = None
         except audiotools.SheetException, err:
             msg.error(unicode(err))
             sys.exit(1)
+    else:
+        isrcs = {}
+        import_cuesheet = None
 
-    for file in audiofiles:
-        track_modified = False
+    #open a --comment-file as UTF-8
+    if (options.comment_file is not None):
+        try:
+            comment_file = open(options.comment_file,
+                                "rb").read().decode('utf-8', 'replace')
+        except IOError:
+            msg.error(_.ERR_TRACKTAG_COMMENT_IOERROR %
+                      (audiotools.Filename(options.comment_file),))
+            sys.exit(1)
 
-        #determine which MetaData to use as our base
-        #depending on whether we're performing a full replacement
+        if (((comment_file.count(u"\uFFFD") * 100) /
+             len(comment_file)) >= 10):
+            msg.error(_.ERR_TRACKTAG_COMMENT_NOT_UTF8 %
+                      (audiotools.Filename(options.comment_file),))
+            sys.exit(1)
+    else:
+        comment_file = None
+
+
+    if (not options.metadata_lookup):
+        #if not performing metadata lookup,
+        #build fresh MetaData objects
+        metadata_choices = [[audiotools.MetaData()
+                             for t in tracks]]
+    else:
+        #if performining metadata lookup,
+        #get initial metadata from CD lookup service
+        metadata_choices = audiotools.track_metadata_lookup(
+            audiofiles=tracks,
+            musicbrainz_server=options.musicbrainz_server,
+            musicbrainz_port=options.musicbrainz_port,
+            freedb_server=options.freedb_server,
+            freedb_port=options.freedb_port,
+            use_musicbrainz=options.use_musicbrainz,
+            use_freedb=options.use_freedb)
+
+        #if interactive mode not indicated,
+        #have user pick choice right away
+        if (not options.interactive):
+            metadata_choices = [audiotools.ui.select_metadata(
+                    metadata_choices, msg, options.use_default)]
+
+    #if not replacing all metadata
+    #merge metadata with that from original files, if any
+    #where new values take precedence over old ones
+    if (not options.replace):
+        for choice in metadata_choices:
+            for (new_metadata, old_metadata) in zip(choice, track_metadatas):
+                if (old_metadata is not None):
+                    for (attr, value) in new_metadata.empty_fields():
+                        setattr(new_metadata, attr,
+                                getattr(old_metadata, attr))
+
+    for choice in metadata_choices:
+        for metadata in choice:
+            #apply ISRCs across all metadata choices
+            if (options.update_track_number is not None):
+                if (options.update_track_number in isrcs):
+                    metadata.ISRC = isrcs[options.update_track_number]
+            elif (metadata.track_number is not None):
+                if (metadata.track_number in isrcs):
+                    metadata.ISRC = isrcs[metadata.track_number]
+
+            #apply field removal options across all metadata choices
+            for attr in audiotools.MetaData.FIELD_ORDER:
+                if (getattr(options, "remove_%s" % (attr))):
+                    delattr(metadata, attr)
+
+            #apply field addition options across all metadata choices
+            for attr in audiotools.MetaData.FIELD_ORDER:
+                if (getattr(options, "update_%s" % (attr)) is not None):
+                    setattr(metadata, attr,
+                            getattr(options, "update_%s" % (attr)))
+
+            #apply comment file across all metadata choices
+            if (comment_file is not None):
+                metadata.comment = comment_file
+
+    if (options.interactive):
+        #if interactive mode indicated, edit metadata choices in widget
+        widget = Tracktag(tracks, metadata_choices)
+        loop = audiotools.ui.urwid.MainLoop(
+            widget,
+            audiotools.ui.style(),
+            unhandled_input=widget.handle_text)
+        loop.run()
+
+        if (not widget.cancelled()):
+            final_metadata = list(widget.populated_metadata())
+            tagging_cancelled = False
+        else:
+            tagging_cancelled = True
+    else:
+        #if interactive mode not indicated, use first choice
+        #since all other choices have been culled already
+        final_metadata = metadata_choices[0]
+        tagging_cancelled = False
+
+    if (not tagging_cancelled):
         if (not options.replace):
-            metadata = file.get_metadata()
-            if (metadata is not None):
-                update_method = "update_metadata"
-            else:
-                metadata = audiotools.MetaData()
-                update_method = "set_metadata"
+            #apply final metadata to tracks using update_metadata
+            #if no replacement
+            for (old_metadata, (track, new_metadata)) in zip(
+                track_metadatas, zip(tracks, final_metadata)):
+                if (old_metadata is not None):
+                    #merge new fields with old fields
+                    field_updated = False
+                    for (attr, value) in new_metadata.fields():
+                        if (getattr(old_metadata, attr) !=
+                            getattr(new_metadata, attr)):
+                            setattr(old_metadata, attr, value)
+                            field_updated = True
+
+                    if (field_updated):
+                        #update track if at least one field has changed
+                        try:
+                            track.update_metadata(old_metadata)
+                        except IOError, err:
+                            msg.error(_.ERR_ENCODING_ERROR %
+                                      (audiotools.Filename(track.filename),))
+                            sys.exit(1)
+                else:
+                    try:
+                        track.set_metadata(new_metadata)
+                    except IOError, err:
+                        msg.error(_.ERR_ENCODING_ERROR %
+                                  (audiotools.Filename(track.filename),))
+                        sys.exit(1)
         else:
-            metadata = audiotools.MetaData()
-            update_method = "set_metadata"
+            #apply final metadata to tracks using set_metadata() if replacement
+            for (track, metadata) in zip(tracks, final_metadata):
+                try:
+                    track.set_metadata(metadata)
+                except IOError, err:
+                    msg.error(_.ERR_ENCODING_ERROR %
+                              (audiotools.Filename(track.filename),))
+                    sys.exit(1)
 
-        #apply tagging options to that metadata in reverse order of precedence
+    #if cuesheet file given, add to track
+    if (import_cuesheet is not None):
+        try:
+            tracks[0].set_cuesheet(import_cuesheet)
+        except IOError, err:
+            msg.error(_.ERR_ENCODING_ERROR %
+                      (audiotools.Filename(tracks[0].filename),))
+            sys.exit(1)
 
-        #apply text field removal
-        for (attr, (option, help_text)) in REMOVE_OPTIONS.items():
-            variable = "remove_%s" % (attr)
-            if (getattr(options, variable)):
-                delattr(metadata, attr)
-                track_modified = True
-
-        if (options.update_track_number is not None):
-            track_number = options.update_track_number
-        else:
-            track_number = file.track_number()
-
-        #handle cuesheet ISRC data
-        if (track_number in isrcs):
-            metadata.ISRC = isrcs[track_number]
-            track_modified = True
-
-        #update fields from the command line
-        for (attr, (option, help_text)) in UPDATE_OPTIONS.items():
-            variable = "update_%s" % (attr)
-            new_value = getattr(options, variable)
-            if (new_value is not None):
-                if (isinstance(new_value, str)):
-                    new_value = new_value.decode(audiotools.IO_ENCODING,
-                                                 'replace')
-                setattr(metadata, attr, new_value)
-                track_modified = True
-
-        #add comment-file
-        if (options.comment_file is not None):
-            metadata.comment = read_comment(options.comment_file, msg)
-            track_modified = True
-
-        #check if there's been any modifications made
-        if (track_modified or
-            (import_cuesheet is not None) or
-            options.replace):
-            try:
-                #either set or update metadata
-                #depending on whether we're performing a full replacement
-                getattr(file, update_method)(metadata)
-
-                #insert embedded cuesheet file
-                if (import_cuesheet is not None):
-                    file.set_cuesheet(import_cuesheet)
-            except IOError:
-                msg.error(_.ERR_ENCODING_ERROR %
-                          (audiotools.Filename(file.filename),))
-                sys.exit(1)
-
-    #add/apply replay_gain to tracks if indicated
-    if (options.add_replay_gain and (len(audiofiles) > 0)):
+    #add ReplayGain to tracks, if indicated
+    if (options.add_replay_gain and (len(tracks) > 0)):
         queue = audiotools.ExecProgressQueue(
             audiotools.ProgressDisplay(msg))
 
-        for album in audiotools.group_tracks(audiofiles):
+        for album in audiotools.group_tracks(tracks):
             #add ReplayGain to groups of files
             #belonging to the same album
 
@@ -483,17 +520,3 @@ if (__name__ == '__main__'):
         except ValueError, err:
             msg.error(unicode(err))
             sys.exit(1)
-
-    #finally, after all the command-line arguments are processed
-    #run interactive mode if indicated
-    if (options.interactive):
-        if (not urwid_present):
-            audiotools.ui.not_available_message(msg)
-            sys.exit(1)
-
-        tracktag = Tracktag(audiofiles)
-        loop = urwid.MainLoop(tracktag,
-                              audiotools.ui.style(),
-                              unhandled_input=tracktag.unhandled_input)
-        tracktag.draw_screen = loop.draw_screen
-        loop.run()
