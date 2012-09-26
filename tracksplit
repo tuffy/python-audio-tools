@@ -384,7 +384,6 @@ if (__name__ == '__main__'):
             progress = audiotools.SingleProgressDisplay(
                 msg, unicode(output_filename))
 
-            #FIXME - catch from_pcm errors here
             encoded_tracks.append(
                 output_class.from_pcm(
                     str(output_filename),

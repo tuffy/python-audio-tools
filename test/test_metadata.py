@@ -780,20 +780,20 @@ class WavPackApeTagMetaData(MetaDataTest):
         metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/2")])
         del(metadata.track_number)
         self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Track", "0/2")])
-        self.assertEqual(metadata.track_number, 0)
+        self.assertEqual(metadata.track_number, None)
         self.assertEqual(metadata.track_total, 2)
 
         metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/2")])
         metadata.track_number = None
         self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Track", "0/2")])
-        self.assertEqual(metadata.track_number, 0)
+        self.assertEqual(metadata.track_number, None)
         self.assertEqual(metadata.track_total, 2)
 
         metadata = ApeTag([ApeTagItem(0, 0, "Track", "foo 1 bar / baz 2 blah")])
         metadata.track_number = None
         self.assertEqual(metadata.tags,
                          [ApeTagItem(0, 0, "Track", "foo 0 bar / baz 2 blah")])
-        self.assertEqual(metadata.track_number, 0)
+        self.assertEqual(metadata.track_number, None)
         self.assertEqual(metadata.track_total, 2)
 
         #deleting track_total without track_number removes "Track" field
@@ -865,20 +865,20 @@ class WavPackApeTagMetaData(MetaDataTest):
         metadata = ApeTag([ApeTagItem(0, 0, "Media", "3/4")])
         del(metadata.album_number)
         self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Media", "0/4")])
-        self.assertEqual(metadata.album_number, 0)
+        self.assertEqual(metadata.album_number, None)
         self.assertEqual(metadata.album_total, 4)
 
         metadata = ApeTag([ApeTagItem(0, 0, "Media", "3/4")])
         metadata.album_number = None
         self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Media", "0/4")])
-        self.assertEqual(metadata.album_number, 0)
+        self.assertEqual(metadata.album_number, None)
         self.assertEqual(metadata.album_total, 4)
 
         metadata = ApeTag([ApeTagItem(0, 0, "Media", "foo 3 bar / baz 4 blah")])
         metadata.album_number = None
         self.assertEqual(metadata.tags,
                          [ApeTagItem(0, 0, "Media", "foo 0 bar / baz 4 blah")])
-        self.assertEqual(metadata.album_number, 0)
+        self.assertEqual(metadata.album_number, None)
         self.assertEqual(metadata.album_total, 4)
 
         #deleting album_total without album_number removes "Media" field
@@ -1135,7 +1135,7 @@ class WavPackApeTagMetaData(MetaDataTest):
                         'Track', u"0/2")
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(metadata.track_number, 0)
+                self.assertEqual(metadata.track_number, None)
                 self.assertEqual(metadata.track_total, 2)
                 del(metadata['Track'])
                 track.set_metadata(metadata)
@@ -1161,7 +1161,7 @@ class WavPackApeTagMetaData(MetaDataTest):
                         'Media', u"0/4")
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(metadata.album_number, 0)
+                self.assertEqual(metadata.album_number, None)
                 self.assertEqual(metadata.album_total, 4)
                 del(metadata['Media'])
                 track.set_metadata(metadata)

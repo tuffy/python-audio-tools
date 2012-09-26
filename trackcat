@@ -199,11 +199,7 @@ if (__name__ == '__main__'):
         progress.clear()
 
         if (cuesheet is not None):
-            #set_metadata() will sometimes transfer a cuesheet automatically
-            #in that case, don't transfer it again via set_cuesheet()
-            existing_cuesheet = encoded.get_cuesheet()
-            if (existing_cuesheet is None):
-                encoded.set_cuesheet(cuesheet)
+            encoded.set_cuesheet(cuesheet)
 
     except audiotools.EncodingError, err:
         msg.error(_.ERR_ENCODING_ERROR % (output_filename,))

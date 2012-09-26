@@ -312,9 +312,18 @@ class ApeTag(MetaData):
 
         if (attr == 'track_number'):
             try:
-                track = re.search(r'\d+', unicode(self["Track"]))
+                track_text = unicode(self["Track"])
+                track = re.search(r'\d+', track_text)
                 if (track is not None):
-                    return int(track.group(0))
+                    track_number = int(track.group(0))
+                    if ((track_number == 0) and
+                        (re.search(r'/.*?(\d+)', track_text) is not None)):
+                        #if track_total is nonzero and track_number is 0
+                        #track_number is a placeholder
+                        #so treat track_number as None
+                        return None
+                    else:
+                        return track_number
                 else:
                     #"Track" isn't an integer
                     return None
@@ -334,9 +343,18 @@ class ApeTag(MetaData):
                 return None
         elif (attr == 'album_number'):
             try:
-                media = re.search(r'\d+', unicode(self["Media"]))
+                media_text = unicode(self["Media"])
+                media = re.search(r'\d+', media_text)
                 if (media is not None):
-                    return int(media.group(0))
+                    album_number = int(media.group(0))
+                    if ((album_number == 0) and
+                        (re.search(r'/.*?(\d+)', media_text) is not None)):
+                        #if album_total is nonzero and album_number is 0
+                        #album_number is a placeholder
+                        #so treat album_number as None
+                        return None
+                    else:
+                        return album_number
                 else:
                     #"Media" isn't an integer
                     return None
