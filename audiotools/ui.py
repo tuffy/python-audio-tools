@@ -201,7 +201,10 @@ try:
             self.set_footer(self.options_status)
 
         def complete(self, button):
-            if (self.options.has_duplicates):
+            if (self.options.has_collisions):
+                from audiotools.text import ERR_OUTPUT_OUTPUTS_ARE_INPUT
+                self.options_status.set_text(ERR_OUTPUT_OUTPUTS_ARE_INPUT)
+            elif (self.options.has_duplicates):
                 from audiotools.text import ERR_OUTPUT_DUPLICATE_NAME
                 self.options_status.set_text(ERR_OUTPUT_DUPLICATE_NAME)
             elif (self.options.has_errors):
@@ -816,10 +819,20 @@ try:
         import os.path
 
         base = os.path.split(path.rstrip(os.sep))[0]
-        if (not base.endswith(os.sep)):
+        if (base == ''):
+            return base
+        elif (not base.endswith(os.sep)):
             return base + os.sep
         else:
             return base
+
+
+    def split_at_cursor(edit):
+        """returns a (prefix, suffix) unicode pair
+        of text before and after the urwid.Edit widget's cursor"""
+
+        return (edit.get_edit_text()[0:edit.edit_pos],
+                edit.get_edit_text()[edit.edit_pos:])
 
 
     class SelectButtons(urwid.Pile):
@@ -990,19 +1003,21 @@ try:
             import os.path
 
             if (key == 'tab'):
-                #FIXME - only tab complete stuff before cursor
-                new_text = tab_complete(os.path.expanduser(
-                        self.get_edit_text().encode(FS_ENCODING))).decode(
-                    FS_ENCODING)
-                self.set_edit_text(new_text)
-                self.set_edit_pos(len(new_text))
+                #only tab complete stuff before cursor
+                (prefix, suffix) = split_at_cursor(self)
+                new_prefix = tab_complete(os.path.expanduser(
+                        prefix.encode(FS_ENCODING))).decode(FS_ENCODING)
+
+                self.set_edit_text(new_prefix + suffix)
+                self.set_edit_pos(len(new_prefix))
             elif (key == 'ctrl w'):
-                #FIXME - only delete stuff before cursor
-                new_text = pop_directory(os.path.expanduser(
-                        self.get_edit_text().encode(FS_ENCODING))).decode(
-                    FS_ENCODING)
-                self.set_edit_text(new_text)
-                self.set_edit_pos(len(new_text))
+                #only delete stuff before cursor
+                (prefix, suffix) = split_at_cursor(self)
+                new_prefix = pop_directory(os.path.expanduser(
+                        prefix.encode(FS_ENCODING))).decode(FS_ENCODING)
+
+                self.set_edit_text(new_prefix + suffix)
+                self.set_edit_pos(len(new_prefix))
             else:
                 return key
 
@@ -1026,9 +1041,10 @@ try:
         def __init__(self, edit_directory):
             """edit_directory is an EditDirectory object"""
 
-            #FIXME - take button label from .text
+            from audiotools.text import LAB_BROWSE_BUTTON
+
             self.__super.__init__(
-                urwid.Button(u"browse",
+                urwid.Button(LAB_BROWSE_BUTTON,
                              on_press=lambda button: self.open_pop_up()))
             self.edit_directory = edit_directory
 
@@ -1246,9 +1262,9 @@ try:
         def __init__(self, output_format):
             """output_format is an Edit object"""
 
-            #FIXME - take button label from .text
+            from audiotools.text import LAB_FIELDS_BUTTON
             self.__super.__init__(
-                urwid.Button(u"fields",
+                urwid.Button(LAB_FIELDS_BUTTON,
                              on_press=lambda button: self.open_pop_up()))
             self.output_format = output_format
 
@@ -1352,6 +1368,7 @@ try:
             self.metadatas = metadatas
             self.selected_class = audio_class
             self.selected_quality = quality
+            self.has_collisions = False  #set if input files same as output
             self.has_duplicates = False  #set if any track names are duplicates
             self.has_errors = False      #set if format string is invalid
 
@@ -1503,20 +1520,27 @@ try:
 
                 #check for duplicates in output/input files
                 #(don't care if input files are duplicated)
-                path_counts = dict([(f, 1) for f in self.input_filenames
-                                    if f.disk_file()])
-                for path in self.output_filenames:
-                    if (path in path_counts):
-                        path_counts[path] += 1
-                    else:
-                        path_counts[path] = 1
+                input_filenames = frozenset([f for f in self.input_filenames
+                                             if f.disk_file()])
+                output_filenames = set([])
+                collisions = set([])
 
-                self.has_duplicates = max(path_counts.values()) > 1
+                self.has_collisions = False
+                self.has_duplicates = False
+                for path in self.output_filenames:
+                    if (path in input_filenames):
+                        collisions.add(path)
+                        self.has_collisions = True
+                    elif (path in output_filenames):
+                        collisions.add(path)
+                        self.has_duplicates = True
+                    else:
+                        output_filenames.add(path)
 
                 #and populate output files list
                 for (filename, track) in zip(self.output_filenames,
                                              self.output_tracks):
-                    if (path_counts[filename] == 1):
+                    if (filename not in collisions):
                         track.set_text(unicode(filename))
                     else:
                         track.set_text(("duplicate", unicode(filename)))

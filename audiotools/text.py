@@ -187,6 +187,8 @@ LAB_QUIT_BUTTON = u"Quit"
 LAB_CANCEL_BUTTON = u"Cancel"
 LAB_NEXT_BUTTON = u"Next"
 LAB_PREVIOUS_BUTTON = u"Previous"
+LAB_BROWSE_BUTTON = u"browse"
+LAB_FIELDS_BUTTON = u"fields"
 LAB_PLAY_STATUS = u"%(count)d tracks, %(min)d:%(sec)2.2d minutes"
 LAB_PLAY_STATUS_1 = u"%(count)d track, %(min)d:%(sec)2.2d minutes"
 LAB_PLAY_TRACK = u"Track"
@@ -540,6 +542,8 @@ ERR_TRACKTAG_COMMENT_NOT_UTF8 = \
     u"comment file \"%s\" does not appear to be UTF-8 text"
 ERR_TRACKTAG_COMMENT_IOERROR = u"unable to open comment file \"%s\""
 ERR_OUTPUT_DUPLICATE_NAME = u"all output tracks must have different names"
+ERR_OUTPUT_OUTPUTS_ARE_INPUT = \
+    u"output tracks must have different names than input tracks"
 ERR_OUTPUT_INVALID_FORMAT = u"output tracks must have valid format string"
 
 #Cleaning messages

@@ -150,11 +150,6 @@ if (__name__ == '__main__'):
         default=0,
         help=_.OPT_ALBUM_TOTAL)
 
-    #if adding ReplayGain is a lossless process
-    #(i.e. added as tags rather than modifying track data)
-    #add_replay_gain should default to True
-    #if not, add_replay_gain should default to False
-    #which is which depends on the track type
     metadata.add_option(
         '--replay-gain',
         action='store_true',
