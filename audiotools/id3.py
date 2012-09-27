@@ -393,9 +393,21 @@ class ID3v22_T__Frame:
         import re
 
         if (self.id in self.NUMERICAL_IDS):
-            int_value = re.search(r'\d+', unicode(self))
-            if (int_value is not None):
-                return int(int_value.group(0))
+            unicode_value = unicode(self)
+            int_string = re.search(r'\d+', unicode_value)
+            if (int_string is not None):
+                int_value = int(int_string.group(0))
+                if (int_value == 0):
+                    total_string = re.search(r'/\D*?(\d+)', unicode_value)
+                    if (total_string is not None):
+                        #don't return placeholder 0 value
+                        #when a track_total value is present
+                        #but track_number value is 0
+                        return None
+                    else:
+                        return int_value
+                else:
+                    return int_value
             else:
                 return None
         else:

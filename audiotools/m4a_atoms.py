@@ -1167,9 +1167,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         elif (attr in self.INT_ATTRIB_TO_ILST):
             if (self.has_ilst_atom()):
                 try:
-                    return int(
-                        self.ilst_atom()[
-                            self.INT_ATTRIB_TO_ILST[attr]]['data'])
+                    return self.ilst_atom()[
+                        self.INT_ATTRIB_TO_ILST[attr]]['data'].number()
                 except KeyError:
                     return None
             else:
@@ -1273,7 +1272,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                     lambda atom: atom.name != self.UNICODE_ATTRIB_TO_ILST[attr],
                     ilst_atom)
             elif (attr == "track_number"):
-                if (self.track_total == 0):
+                if (self.track_total is None):
                     #if track_number and track_total are both 0
                     #remove trkn atom
                     ilst_atom.leaf_atoms = filter(
@@ -1281,7 +1280,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 else:
                     self.track_number = 0
             elif (attr == "track_total"):
-                if (self.track_number == 0):
+                if (self.track_number is None):
                     #if track_number and track_total are both 0
                     #remove trkn atom
                     ilst_atom.leaf_atoms = filter(
@@ -1289,7 +1288,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 else:
                     self.track_total = 0
             elif (attr == "album_number"):
-                if (self.album_total == 0):
+                if (self.album_total is None):
                     #if album_number and album_total are both 0
                     #remove disk atom
                     ilst_atom.leaf_atoms = filter(
@@ -1297,7 +1296,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 else:
                     self.album_number = 0
             elif (attr == "album_total"):
-                if (self.album_number == 0):
+                if (self.album_number is None):
                     #if album_number and album_total are both 0
                     #remove disk atom
                     ilst_atom.leaf_atoms = filter(
@@ -1518,29 +1517,6 @@ class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
             else:
                 yield u"%s : %s" % (name, repr(leaf_atom))  # FIXME
 
-    def int(self):
-        """returns the integer value of the first "data" atom
-        or None if there is no data atom or it is not an integer"""
-
-        #FIXME
-        try:
-            return int(filter(lambda f: f.name == 'data',
-                              self.leaf_atoms)[0])
-        except IndexError:
-            return 0
-
-    def total(self):
-        """returns the track/album total field
-        of this atom's "data" sub atom, if any
-        otherwise raises IndexError"""
-
-        #FIXME
-        try:
-            return filter(lambda f: f.name == 'data',
-                          self.leaf_atoms)[0].total()
-        except IndexError:
-            return 0
-
 
 class M4A_ILST_Unicode_Data_Atom(M4A_Leaf_Atom):
     def __init__(self, type, flags, data):
@@ -1657,13 +1633,23 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
 
         return 16
 
-    def __int__(self):
-        return self.track_number
+    def number(self):
+        """returns this atom's track_number field
+        or None if the field is 0"""
+
+        if (self.track_number != 0):
+            return self.track_number
+        else:
+            return None
 
     def total(self):
-        """returns this atom's track_total field"""
+        """returns this atom's track_total field
+        or None if the field is 0"""
 
-        return self.track_total
+        if (self.track_total != 0):
+            return self.track_total
+        else:
+            return None
 
 
 class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
@@ -1724,13 +1710,21 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
 
         return 14
 
-    def __int__(self):
-        return self.disk_number
+    def number(self):
+        """returns this atom's disc_number field"""
+
+        if (self.disk_number != 0):
+            return self.disk_number
+        else:
+            return None
 
     def total(self):
         """returns this atom's disk_total field"""
 
-        return self.disk_total
+        if (self.disk_total != 0):
+            return self.disk_total
+        else:
+            return None
 
 
 class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):

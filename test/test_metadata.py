@@ -137,10 +137,10 @@ class MetaDataTest(unittest.TestCase):
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field), u"")
                     else:
-                        setattr(metadata, field, 0)
+                        setattr(metadata, field, None)
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
-                        self.assertEqual(getattr(metadata, field), 0)
+                        self.assertEqual(getattr(metadata, field), None)
 
                 #re-set the fields with random values
                 for field in self.supported_fields:
@@ -2508,10 +2508,10 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.track_number, None)
         self.assertEqual(metadata.frames, [])
 
-        #deleting track_number with track_total converts track_number to 0
+        #deleting track_number with track_total converts track_number to None
         metadata = self.metadata_class([self.text_tag("track_number", u"1/2")])
         del(metadata.track_number)
-        self.assertEqual(metadata.track_number, 0)
+        self.assertEqual(metadata.track_number, None)
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata.frames,
                          [self.text_tag("track_number", u"0/2")])
@@ -2519,7 +2519,7 @@ class ID3v22MetaData(MetaDataTest):
         metadata = self.metadata_class([self.text_tag(
                     "track_number", u"foo 1 bar / blah 2 baz")])
         del(metadata.track_number)
-        self.assertEqual(metadata.track_number, 0)
+        self.assertEqual(metadata.track_number, None)
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata.frames,
                          [self.text_tag("track_number",
@@ -2587,10 +2587,10 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.album_number, None)
         self.assertEqual(metadata.frames, [])
 
-        #deleting album_number with album_total converts album_number to 0
+        #deleting album_number with album_total converts album_number to None
         metadata = self.metadata_class([self.text_tag("album_number", u"3/4")])
         del(metadata.album_number)
-        self.assertEqual(metadata.album_number, 0)
+        self.assertEqual(metadata.album_number, None)
         self.assertEqual(metadata.album_total, 4)
         self.assertEqual(metadata.frames,
                          [self.text_tag("album_number", u"0/4")])
@@ -2598,7 +2598,7 @@ class ID3v22MetaData(MetaDataTest):
         metadata = self.metadata_class([self.text_tag(
                     "album_number", u"foo 3 bar / blah 4 baz")])
         del(metadata.album_number)
-        self.assertEqual(metadata.album_number, 0)
+        self.assertEqual(metadata.album_number, None)
         self.assertEqual(metadata.album_total, 4)
         self.assertEqual(metadata.frames,
                          [self.text_tag("album_number",
@@ -5397,14 +5397,14 @@ class M4AMetaDataTest(MetaDataTest):
                             'trkn',
                             [M4A_ILST_TRKN_Data_Atom(1, 0)])])])
         self.assertEqual(metadata.track_number, 1)
-        self.assertEqual(metadata.track_total, 0)
+        self.assertEqual(metadata.track_total, None)
         del(metadata.track_number)
         self.assertEqual(metadata.track_number, None)
         self.assertEqual(metadata.track_total, None)
         self.assertEqual(metadata,
                          M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])]))
 
-        #removing track number sets value to 0 if track total is > 0
+        #removing track number sets value to None if track total is > 0
         metadata = M4A_META_Atom(
             0, 0,
             [M4A_Tree_Atom('ilst', [
@@ -5414,7 +5414,7 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 2)
         del(metadata.track_number)
-        self.assertEqual(metadata.track_number, 0)
+        self.assertEqual(metadata.track_number, None)
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata,
                          M4A_META_Atom(
@@ -5424,14 +5424,14 @@ class M4AMetaDataTest(MetaDataTest):
                                 'trkn',
                                 [M4A_ILST_TRKN_Data_Atom(0, 2)])])]))
 
-        #removing track total removes atom if track number if 0
+        #removing track total removes atom if track number is 0
         metadata = M4A_META_Atom(
             0, 0,
             [M4A_Tree_Atom('ilst', [
                         M4A_ILST_Leaf_Atom(
                             'trkn',
                             [M4A_ILST_TRKN_Data_Atom(0, 2)])])])
-        self.assertEqual(metadata.track_number, 0)
+        self.assertEqual(metadata.track_number, None)
         self.assertEqual(metadata.track_total, 2)
         del(metadata.track_total)
         self.assertEqual(metadata.track_number, None)
@@ -5439,7 +5439,7 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertEqual(metadata,
                          M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])]))
 
-        #removing track total sets value to 0 if track number is > 0
+        #removing track total sets value to None if track number is > 0
         metadata = M4A_META_Atom(
             0, 0,
             [M4A_Tree_Atom('ilst', [
@@ -5450,7 +5450,7 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertEqual(metadata.track_total, 2)
         del(metadata.track_total)
         self.assertEqual(metadata.track_number, 1)
-        self.assertEqual(metadata.track_total, 0)
+        self.assertEqual(metadata.track_total, None)
         self.assertEqual(metadata,
                          M4A_META_Atom(
                 0, 0,
@@ -5467,14 +5467,14 @@ class M4AMetaDataTest(MetaDataTest):
                             'disk',
                             [M4A_ILST_DISK_Data_Atom(3, 0)])])])
         self.assertEqual(metadata.album_number, 3)
-        self.assertEqual(metadata.album_total, 0)
+        self.assertEqual(metadata.album_total, None)
         del(metadata.album_number)
         self.assertEqual(metadata.album_number, None)
         self.assertEqual(metadata.album_total, None)
         self.assertEqual(metadata,
                          M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])]))
 
-        #removing album number sets value to 0 if album total is > 0
+        #removing album number sets value to None if album total is > 0
         metadata = M4A_META_Atom(
             0, 0,
             [M4A_Tree_Atom('ilst', [
@@ -5484,7 +5484,7 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertEqual(metadata.album_number, 3)
         self.assertEqual(metadata.album_total, 4)
         del(metadata.album_number)
-        self.assertEqual(metadata.album_number, 0)
+        self.assertEqual(metadata.album_number, None)
         self.assertEqual(metadata.album_total, 4)
         self.assertEqual(metadata,
                          M4A_META_Atom(
@@ -5501,7 +5501,7 @@ class M4AMetaDataTest(MetaDataTest):
                         M4A_ILST_Leaf_Atom(
                             'disk',
                             [M4A_ILST_DISK_Data_Atom(0, 4)])])])
-        self.assertEqual(metadata.album_number, 0)
+        self.assertEqual(metadata.album_number, None)
         self.assertEqual(metadata.album_total, 4)
         del(metadata.album_total)
         self.assertEqual(metadata.album_number, None)
@@ -5509,7 +5509,7 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertEqual(metadata,
                          M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])]))
 
-        #removing album total sets value to 0 if album number is > 0
+        #removing album total sets value to None if album number is > 0
         metadata = M4A_META_Atom(
             0, 0,
             [M4A_Tree_Atom('ilst', [
@@ -5520,7 +5520,7 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertEqual(metadata.album_total, 4)
         del(metadata.album_total)
         self.assertEqual(metadata.album_number, 3)
-        self.assertEqual(metadata.album_total, 0)
+        self.assertEqual(metadata.album_total, None)
         self.assertEqual(metadata,
                          M4A_META_Atom(
                 0, 0,
