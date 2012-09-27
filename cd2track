@@ -39,12 +39,11 @@ if (__name__ == '__main__'):
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option(
-        '-V', '--verbose',
-        action='store',
-        dest='verbosity',
-        choices=audiotools.VERBOSITY_LEVELS,
-        default=audiotools.DEFAULT_VERBOSITY,
-        help=_.OPT_VERBOSE)
+        '-I', '--interactive',
+        action='store_true',
+        default=False,
+        dest='interactive',
+        help=_.OPT_INTERACTIVE_OPTIONS)
 
     parser.add_option(
         '-c', '--cdrom', action='store',
@@ -54,6 +53,14 @@ if (__name__ == '__main__'):
     parser.add_option(
         '-s', '--speed', action='store',
         type='int', dest='speed')
+
+    parser.add_option(
+        '-V', '--verbose',
+        action='store',
+        dest='verbosity',
+        choices=audiotools.VERBOSITY_LEVELS,
+        default=audiotools.DEFAULT_VERBOSITY,
+        help=_.OPT_VERBOSE)
 
     conversion = audiotools.OptionGroup(parser, _.OPT_CAT_EXTRACTION)
 
@@ -120,13 +127,6 @@ if (__name__ == '__main__'):
         dest='use_freedb',
         default=audiotools.FREEDB_SERVICE,
         help=_.OPT_NO_FREEDB)
-
-    lookup.add_option(
-        '-I', '--interactive',
-        action='store_true',
-        default=False,
-        dest='interactive',
-        help=_.OPT_INTERACTIVE_METADATA)
 
     lookup.add_option(
         '-D', '--default',

@@ -20,6 +20,9 @@
       May be used multiple times.
       For a list of available audio formats, try: -t help
     </option>
+    <option short="R" long="no-summary">
+      do not display summary information when verification is complete
+    </option>
     <option short="j" long="joint" arg="processes">
       The maximum number of tracks to verify at one time.
       If one has multiple CPUs or CPU cores, allowing
@@ -28,8 +31,9 @@
       However, the maximum speed is likely to be limited by
       I/O-bound rather than CPU-bound.
     </option>
-    <option short="R" long="no-summary">
-      do not display summary information when verification is complete
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug'.
     </option>
   </options>
   <element name="verification">

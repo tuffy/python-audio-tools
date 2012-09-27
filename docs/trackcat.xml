@@ -12,12 +12,12 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
+    <option long="cue" arg="filename">
+      a cuesheet to embed in the output file
+    </option>
     <option short="V" long="verbose" arg="verbosity">
       The level of output to display.
       Choose between 'normal', 'quiet' and 'debug.
-    </option>
-    <option long="cue" arg="filename">
-      a cuesheet to embed in the output file
     </option>
   </options>
   <options category="encoding">

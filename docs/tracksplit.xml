@@ -11,12 +11,15 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
-    <option short="V" long="verbose" arg="verbosity">
-      The level of output to display.
-      Choose between 'normal', 'quiet' and 'debug.
+    <option short="I" long="interactive">
+      edit metadata in interactive mode prior to splitting file
     </option>
     <option long="cue" arg="filename">
       the cuesheet to use for splitting track
+    </option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug'.
     </option>
   </options>
   <options category="encoding">
@@ -59,9 +62,6 @@
     </option>
     <option long="no-freedb">
       don't query FreeDB for metadata
-    </option>
-    <option short="I" long="interactive">
-      edit metadata in interactive mode prior to splitting file
     </option>
     <option short="D" long="default">
       When multiple metadata choices are available,

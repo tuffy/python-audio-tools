@@ -12,10 +12,6 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
-    <option short="V" long="verbose" arg="verbosity">
-      The level of output to display.
-      Choose between 'normal', 'quiet' and 'debug.
-    </option>
     <option short="c" long="cdrom" arg="cdrom">
       the cdrom device to write the CD to
     </option>
@@ -34,6 +30,10 @@
       track2cd(1)
       to use all of them simultaneously can reduce the time needed
       to decode tracks prior to CD burning.
+    </option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug'.
     </option>
   </options>
   <examples>

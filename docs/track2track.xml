@@ -11,9 +11,13 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
+    <option short="I" long="interactive">
+      edit metadata and encoding options in interactive mode
+      prior to converting tracks
+    </option>
     <option short="V" long="verbose" arg="verbosity">
       The level of output to display.
-      Choose between 'normal', 'quiet' and 'debug.
+      Choose between 'normal', 'quiet' and 'debug'.
     </option>
   </options>
   <options category="conversion">
@@ -71,9 +75,6 @@
     </option>
     <option long="no-freedb">
       don't query FreeDB for metadata
-    </option>
-    <option short="I" long="interactive">
-      edit metadata in interactive mode prior to converting tracks
     </option>
     <option short="D" long="default">
       When multiple metadata choices are available,

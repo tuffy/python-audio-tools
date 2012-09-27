@@ -12,10 +12,6 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
-    <option short="V" long="verbose" arg="verbosity">
-      The level of output to display.
-      Choose between 'normal', 'quiet' and 'debug.
-    </option>
     <option short="I" long="interactive">
       Once any other command-line arguments are processed,
       edit the given tracks in interactive mode.
@@ -37,6 +33,10 @@
     </option>
     <option short="j" long="joint" arg="processes">
       The maximum number of albums to calculate ReplayGain for at one time.
+    </option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug'.
     </option>
   </options>
   <options category="text">

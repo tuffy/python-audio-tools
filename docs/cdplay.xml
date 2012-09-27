@@ -12,10 +12,6 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
-    <option short="V" long="verbose" arg="verbosity">
-      The level of output to display.
-      Choose between 'normal', 'quiet' and 'debug.
-    </option>
     <option short="I" long="interactive">
       run in interactive mode;
       this provides a text-based GUI and allows one to operate
@@ -24,15 +20,15 @@
     <option short="o" long="output" arg="system">
       the output system to use, such as "PulseAudio" or "OSS"
     </option>
-    <option short="x" long="XMCD" arg="filename">
-      FreeDB XMCD or MusicBrainz XML metadata file for displaying
-      disc information in interactive mode
-    </option>
     <option short="c" long="cdrom" arg="cdrom">
       the CD-ROM device to play audio from
     </option>
     <option long="shuffle">
       shuffle tracks randomly before playback
+    </option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug.
     </option>
   </options>
   <options category="CD lookup">

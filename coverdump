@@ -31,13 +31,6 @@ if (__name__ == '__main__'):
         usage=_.USAGE_COVERDUMP,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-V', '--verbose',
-                      action='store',
-                      dest='verbosity',
-                      choices=audiotools.VERBOSITY_LEVELS,
-                      default=audiotools.DEFAULT_VERBOSITY,
-                      help=_.OPT_VERBOSE)
-
     parser.add_option('-d', '--dir',
                       action='store',
                       type='string',
@@ -51,6 +44,13 @@ if (__name__ == '__main__'):
                       default="",
                       help=_.OPT_PREFIX)
 
+    parser.add_option('-V', '--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=audiotools.VERBOSITY_LEVELS,
+                      default=audiotools.DEFAULT_VERBOSITY,
+                      help=_.OPT_VERBOSE)
+    
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("coverdump", options)
 

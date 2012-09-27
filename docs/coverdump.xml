@@ -12,16 +12,16 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
-    <option short="V" long="verbose" arg="verbosity">
-      The level of output to display.
-      Choose between 'normal', 'quiet' and 'debug.
-    </option>
     <option short="d" long="dir" arg="directory">
       the target directory for the extracted image files;
       if none is given, the current working directory is used
     </option>
     <option short="p" long="prefix" arg="prefix">
       a string to prefix to each extracted image file
+    </option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug'.
     </option>
   </options>
   <examples>

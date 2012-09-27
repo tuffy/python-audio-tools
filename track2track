@@ -63,6 +63,21 @@ if (__name__ == '__main__'):
         usage=_.USAGE_TRACK2TRACK,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
+    parser.add_option(
+        '-I', '--interactive',
+        action='store_true',
+        default=False,
+        dest='interactive',
+        help=_.OPT_INTERACTIVE_OPTIONS)
+
+    parser.add_option(
+        '-V', '--verbose',
+        action='store',
+        dest='verbosity',
+        choices=audiotools.VERBOSITY_LEVELS,
+        default=audiotools.DEFAULT_VERBOSITY,
+        help=_.OPT_VERBOSE)
+
     conversion = audiotools.OptionGroup(parser, _.OPT_CAT_CONVERSION)
 
     conversion.add_option(
@@ -151,13 +166,6 @@ if (__name__ == '__main__'):
         help=_.OPT_NO_FREEDB)
 
     lookup.add_option(
-        '-I', '--interactive',
-        action='store_true',
-        default=False,
-        dest='interactive',
-        help=_.OPT_INTERACTIVE_METADATA)
-
-    lookup.add_option(
         '-D', '--default',
         dest='use_default', action='store_true', default=False,
         help=_.OPT_DEFAULT)
@@ -179,14 +187,6 @@ if (__name__ == '__main__'):
         help=_.OPT_NO_REPLAY_GAIN)
 
     parser.add_option_group(metadata)
-
-    parser.add_option(
-        '-V', '--verbose',
-        action='store',
-        dest='verbosity',
-        choices=audiotools.VERBOSITY_LEVELS,
-        default=audiotools.DEFAULT_VERBOSITY,
-        help=_.OPT_VERBOSE)
 
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("track2track", options)

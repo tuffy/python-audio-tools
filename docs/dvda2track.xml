@@ -14,9 +14,9 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
-    <option short="V" long="verbose" arg="verbosity">
-      The level of output to display.
-      Choose between 'normal', 'quiet' and 'debug.
+    <option short="I" long="interactive">
+      edit metadata and encoding options in interactive mode
+      prior to extracting files
     </option>
     <option short="c" long="cdrom" arg="cdrom">
       the DVD-ROM device to extract audio from
@@ -27,6 +27,10 @@
     <option long="title" arg="number">
       the title number to retrieve tracks from, starting from 1;
       the number of titles can be determined from the dvdainfo(1) utility
+    </option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug'.
     </option>
   </options>
   <options category="extraction">
@@ -69,9 +73,6 @@
     </option>
     <option long="no-freedb">
       don't query FreeDB for metadata
-    </option>
-    <option short="I" long="interactive">
-      edit metadata in interactive mode prior to splitting file
     </option>
     <option short="D" long="default">
       When multiple metadata choices are available,

@@ -431,33 +431,11 @@ if (__name__ == '__main__'):
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option(
-        '-V', '--verbose',
-        action='store',
-        dest='verbosity',
-        choices=audiotools.VERBOSITY_LEVELS,
-        default=audiotools.DEFAULT_VERBOSITY,
-        help=_.OPT_VERBOSE)
-
-    parser.add_option(
         '-I', '--interactive',
         action='store_true',
         default=False,
         dest='interactive',
         help=_.OPT_INTERACTIVE_PLAY)
-
-    parser.add_option(
-        '-T', '--track-replaygain',
-        action='store_true',
-        default=False,
-        dest='track_replaygain',
-        help=_.OPT_PLAYBACK_TRACK_GAIN)
-
-    parser.add_option(
-        '-A', '--album-replaygain',
-        action='store_true',
-        default=False,
-        dest='album_replaygain',
-        help=_.OPT_PLAYBACK_ALBUM_GAIN)
 
     players_map = dict([(player.NAME, player)
                         for player in audiotools.player.AUDIO_OUTPUT])
@@ -476,8 +454,30 @@ if (__name__ == '__main__'):
                         if player.available()]))
 
     parser.add_option(
+        '-T', '--track-replaygain',
+        action='store_true',
+        default=False,
+        dest='track_replaygain',
+        help=_.OPT_PLAYBACK_TRACK_GAIN)
+
+    parser.add_option(
+        '-A', '--album-replaygain',
+        action='store_true',
+        default=False,
+        dest='album_replaygain',
+        help=_.OPT_PLAYBACK_ALBUM_GAIN)
+
+    parser.add_option(
         '--shuffle', action='store_true', dest='shuffle', default=False,
         help=_.OPT_SHUFFLE)
+
+    parser.add_option(
+        '-V', '--verbose',
+        action='store',
+        dest='verbosity',
+        choices=audiotools.VERBOSITY_LEVELS,
+        default=audiotools.DEFAULT_VERBOSITY,
+        help=_.OPT_VERBOSE)
 
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackplay", options)

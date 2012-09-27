@@ -261,25 +261,6 @@ if (__name__ == '__main__'):
     lookup = audiotools.OptionGroup(parser, _.OPT_CAT_CD_LOOKUP)
 
     lookup.add_option(
-        '--use-freedb',
-        metavar='yes/no',
-        choices=("yes", "no"),
-        dest='use_freedb')
-
-    lookup.add_option(
-        '--freedb-server',
-        action='store',
-        metavar='HOSTNAME',
-        dest='freedb_server')
-
-    lookup.add_option(
-        '--freedb-port',
-        action='store',
-        metavar='PORT',
-        type='int',
-        dest='freedb_port')
-
-    lookup.add_option(
         '--use-musicbrainz',
         metavar='yes/no',
         choices=("yes", "no"),
@@ -297,6 +278,25 @@ if (__name__ == '__main__'):
         metavar='PORT',
         type='int',
         dest='musicbrainz_port')
+
+    lookup.add_option(
+        '--use-freedb',
+        metavar='yes/no',
+        choices=("yes", "no"),
+        dest='use_freedb')
+
+    lookup.add_option(
+        '--freedb-server',
+        action='store',
+        metavar='HOSTNAME',
+        dest='freedb_server')
+
+    lookup.add_option(
+        '--freedb-port',
+        action='store',
+        metavar='PORT',
+        type='int',
+        dest='freedb_port')
 
     parser.add_option_group(lookup)
 

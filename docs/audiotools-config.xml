@@ -15,14 +15,14 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
-    <option short="V" long="verbose" arg="verbosity">
-      The level of output to display.
-      Choose between 'normal', 'quiet' and 'debug.
-    </option>
     <option long="format" arg="string">
       The format string to use for new filenames.
       Template fields are replaced with metadata values when
       new tracks are created.  All other text is left as-is.
+    </option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug'.
     </option>
   </options>
   <options category="system">
@@ -58,18 +58,7 @@
       the default maximum number of processes to execute at one time
     </option>
   </options>
-  <options category="freedb">
-    <option long="use-freedb" arg="yes/no">
-      whether to use the FreeDB service for CD lookups by default
-    </option>
-    <option long="freedb-server" arg="hostname">
-      the default FreeDB server to use
-    </option>
-    <option long="freedb-port" arg="port">
-      the default FreeDB port number to use
-    </option>
-  </options>
-  <options category="musicbrainz">
+  <options category="CD lookup">
     <option long="use-musicbrainz" arg="yes/no">
       whether to use the MusicBrainz service for CD lookups by default
     </option>
@@ -78,6 +67,15 @@
     </option>
     <option long="musicbrainz-port" arg="port">
       the default MusicBrainz port number to use
+    </option>
+    <option long="use-freedb" arg="yes/no">
+      whether to use the FreeDB service for CD lookups by default
+    </option>
+    <option long="freedb-server" arg="hostname">
+      the default FreeDB server to use
+    </option>
+    <option long="freedb-port" arg="port">
+      the default FreeDB port number to use
     </option>
   </options>
   <options category="id3">

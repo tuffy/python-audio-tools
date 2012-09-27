@@ -12,15 +12,15 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
-    <option short="V" long="verbose" arg="verbosity">
-      The level of output to display.
-      Choose between 'normal', 'quiet' and 'debug.
-    </option>
     <option long="format" arg="string">
       The format string to use for new filenames.
       Template fields are replaced with metadata values when
       new tracks are created.  All other text is left as-is.
       If this option is omitted, a default format string is used.
+    </option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug'.
     </option>
   </options>
   <examples>

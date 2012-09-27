@@ -19,10 +19,6 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
-    <option short="V" long="verbose" arg="verbosity">
-      The level of output to display.
-      Choose between 'normal', 'quiet' and 'debug.
-    </option>
     <option short="j" long="joint" arg="processes">
       The maximum number of tracks to compare at one time.
       If one has multiple CPUs or CPU cores, allowing
@@ -31,6 +27,10 @@
     </option>
     <option short="R" long="no-summary">
       suppress summary output
+    </option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug.
     </option>
   </options>
 </manpage>

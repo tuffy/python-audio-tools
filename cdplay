@@ -393,14 +393,6 @@ if (__name__ == '__main__'):
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option(
-        '-V', '--verbose',
-        action='store',
-        dest='verbosity',
-        choices=audiotools.VERBOSITY_LEVELS,
-        default=audiotools.DEFAULT_VERBOSITY,
-        help=_.OPT_VERBOSE)
-
-    parser.add_option(
         '-I', '--interactive',
         action='store_true',
         default=False,
@@ -431,6 +423,14 @@ if (__name__ == '__main__'):
     parser.add_option(
         '--shuffle', action='store_true', dest='shuffle', default=False,
         help='shuffle tracks')
+
+    parser.add_option(
+        '-V', '--verbose',
+        action='store',
+        dest='verbosity',
+        choices=audiotools.VERBOSITY_LEVELS,
+        default=audiotools.DEFAULT_VERBOSITY,
+        help=_.OPT_VERBOSE)
 
     lookup = audiotools.OptionGroup(parser, _.OPT_CAT_CD_LOOKUP)
 

@@ -17,10 +17,6 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
-    <option short="V" long="verbose" arg="verbosity">
-      The level of output to display.
-      Choose between 'normal', 'quiet' and 'debug.
-    </option>
     <option long="fix">
       perform tracklint's suggested fixes on the given audio tracks
     </option>
@@ -39,6 +35,10 @@
       However, it is important that the tracks not be modified further
       prior to using this option or else tracklint's undo information will
       no longer be applicable.
+    </option>
+    <option short="V" long="verbose" arg="verbosity">
+      The level of output to display.
+      Choose between 'normal', 'quiet' and 'debug'.
     </option>
   </options>
   <element name="fixes">
