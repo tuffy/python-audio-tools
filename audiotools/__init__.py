@@ -3290,6 +3290,7 @@ class AudioFile:
 
     SUFFIX = ""
     NAME = ""
+    DESCRIPTION = u""
     DEFAULT_COMPRESSION = ""
     COMPRESSION_MODES = ("",)
     COMPRESSION_DESCRIPTIONS = {}

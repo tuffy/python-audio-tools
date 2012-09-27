@@ -84,7 +84,7 @@ if (__name__ == '__main__'):
         '-t', '--type',
         action='store',
         dest='type',
-        choices=audiotools.TYPE_MAP.keys(),
+        choices=sorted(audiotools.TYPE_MAP.keys() + ['help']),
         help=_.OPT_TYPE)
 
     conversion.add_option(
@@ -208,7 +208,10 @@ if (__name__ == '__main__'):
             msg.warning(_.ERR_TRACK2TRACK_O_AND_FORMAT)
 
     #get the AudioFile class we are converted to
-    if (options.output is None):
+    if (options.type == 'help'):
+        audiotools.ui.show_available_formats(msg)
+        sys.exit(0)
+    elif (options.output is None):
         if (options.type is not None):
             AudioType = audiotools.TYPE_MAP[options.type]
         else:
@@ -225,26 +228,7 @@ if (__name__ == '__main__'):
 
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
-        if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(_.LAB_AVAILABLE_COMPRESSION_TYPES %
-                     (AudioType.NAME))
-            for mode in AudioType.COMPRESSION_MODES:
-                msg.new_row()
-                if (mode == audiotools.__default_quality__(AudioType.NAME)):
-                    msg.output_column(msg.ansi(mode.decode('ascii'),
-                                               [msg.BOLD,
-                                                msg.UNDERLINE]), True)
-                else:
-                    msg.output_column(mode.decode('ascii'), True)
-                if (mode in AudioType.COMPRESSION_DESCRIPTIONS):
-                    msg.output_column(u" : ")
-                else:
-                    msg.output_column(u"   ")
-                msg.output_column(
-                    AudioType.COMPRESSION_DESCRIPTIONS.get(mode, u""))
-            msg.info_rows()
-        else:
-            msg.error(_.ERR_NO_COMPRESSION_MODES % (AudioType.NAME))
+        audiotools.ui.show_available_qualities(msg, AudioType)
         sys.exit(0)
     elif (options.quality is None):
         options.quality = audiotools.__default_quality__(AudioType.NAME)

@@ -31,37 +31,43 @@ if (__name__ == '__main__'):
 
     conversion = audiotools.OptionGroup(parser, _.OPT_CAT_ENCODING)
 
-    conversion.add_option('-t', '--type',
-                          action='store',
-                          dest='type',
-                          choices=audiotools.TYPE_MAP.keys(),
-                          help=_.OPT_TYPE)
+    conversion.add_option(
+        '-t', '--type',
+        action='store',
+        dest='type',
+        choices=sorted(audiotools.TYPE_MAP.keys() + ['help']),
+        help=_.OPT_TYPE)
 
-    conversion.add_option('-q', '--quality',
-                          action='store',
-                          type='string',
-                          dest='quality',
-                          help=_.OPT_QUALITY)
+    conversion.add_option(
+        '-q', '--quality',
+        action='store',
+        type='string',
+        dest='quality',
+        help=_.OPT_QUALITY)
 
-    conversion.add_option('-o', '--output', dest='filename',
-                          metavar='FILE',
-                          help=_.OPT_OUTPUT_TRACKCAT)
+    conversion.add_option(
+        '-o', '--output',
+        dest='filename',
+        metavar='FILE',
+        help=_.OPT_OUTPUT_TRACKCAT)
 
     parser.add_option_group(conversion)
 
-    parser.add_option('--cue',
-                      action='store',
-                      type='string',
-                      dest='cuesheet',
-                      metavar='FILENAME',
-                      help=_.OPT_CUESHEET_TRACKCAT)
+    parser.add_option(
+        '--cue',
+        action='store',
+        type='string',
+        dest='cuesheet',
+        metavar='FILENAME',
+        help=_.OPT_CUESHEET_TRACKCAT)
 
-    parser.add_option('-V', '--verbose',
-                      action='store',
-                      dest='verbosity',
-                      choices=audiotools.VERBOSITY_LEVELS,
-                      default=audiotools.DEFAULT_VERBOSITY,
-                      help=_.OPT_VERBOSE)
+    parser.add_option(
+        '-V', '--verbose',
+        action='store',
+        dest='verbosity',
+        choices=audiotools.VERBOSITY_LEVELS,
+        default=audiotools.DEFAULT_VERBOSITY,
+        help=_.OPT_VERBOSE)
 
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackcat", options)
@@ -71,7 +77,11 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     #get the AudioFile class we are converted to
-    if (options.type is not None):
+    if (options.type == 'help'):
+        import audiotools.ui
+        audiotools.ui.show_available_formats(msg)
+        sys.exit(0)
+    elif (options.type is not None):
         AudioType = audiotools.TYPE_MAP[options.type]
     else:
         try:
@@ -82,26 +92,8 @@ if (__name__ == '__main__'):
 
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
-        if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(_.LAB_AVAILABLE_COMPRESSION_TYPES %
-                     (AudioType.NAME))
-            for mode in AudioType.COMPRESSION_MODES:
-                msg.new_row()
-                if (mode == audiotools.__default_quality__(AudioType.NAME)):
-                    msg.output_column(msg.ansi(mode.decode('ascii'),
-                                               [msg.BOLD,
-                                                msg.UNDERLINE]), True)
-                else:
-                    msg.output_column(mode.decode('ascii'), True)
-                if (mode in AudioType.COMPRESSION_DESCRIPTIONS):
-                    msg.output_column(u" : ")
-                else:
-                    msg.output_column(u"   ")
-                msg.output_column(
-                    AudioType.COMPRESSION_DESCRIPTIONS.get(mode, u""))
-            msg.info_rows()
-        else:
-            msg.error(_.ERR_NO_COMPRESSION_MODES % (AudioType.NAME))
+        import audiotools.ui
+        audiotools.ui.show_available_qualities(msg, AudioType)
         sys.exit(0)
     elif (options.quality is None):
         options.quality = audiotools.__default_quality__(AudioType.NAME)

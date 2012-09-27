@@ -44,6 +44,7 @@ class MP3Audio(AudioFile):
 
     SUFFIX = "mp3"
     NAME = SUFFIX
+    DESCRIPTION = u"MPEG-1 Audio Layer III"
     DEFAULT_COMPRESSION = "2"
     #0 is better quality/lower compression
     #9 is worse quality/higher compression
@@ -708,6 +709,7 @@ class MP2Audio(MP3Audio):
 
     SUFFIX = "mp2"
     NAME = SUFFIX
+    DESCRIPTION = u"MPEG-1 Audio Layer II"
     DEFAULT_COMPRESSION = str(192)
     COMPRESSION_MODES = tuple(map(str, (64,  96,  112, 128, 160, 192,
                                         224, 256, 320, 384)))

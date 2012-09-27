@@ -49,6 +49,7 @@ class VorbisAudio(AudioFile):
 
     SUFFIX = "ogg"
     NAME = SUFFIX
+    DESCRIPTION = u"Ogg Vorbis"
     DEFAULT_COMPRESSION = "3"
     COMPRESSION_MODES = tuple([str(i) for i in range(0, 11)])
     COMPRESSION_DESCRIPTIONS = {"0": COMP_VORBIS_0,

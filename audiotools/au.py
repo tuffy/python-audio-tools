@@ -75,6 +75,7 @@ class AuAudio(AudioFile):
 
     SUFFIX = "au"
     NAME = SUFFIX
+    DESCRIPTION = u"Sun Au"
 
     def __init__(self, filename):
         AudioFile.__init__(self, filename)

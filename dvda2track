@@ -74,7 +74,7 @@ if (__name__ == '__main__'):
         '-t', '--type',
         action='store',
         dest='type',
-        choices=audiotools.TYPE_MAP.keys(),
+        choices=sorted(audiotools.TYPE_MAP.keys() + ['help']),
         default=audiotools.DEFAULT_TYPE,
         help=_.OPT_TYPE)
 
@@ -206,30 +206,15 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     #get the AudioFile class we are converted to
-    AudioType = audiotools.TYPE_MAP[options.type]
+    if (options.type == 'help'):
+        audiotools.ui.show_available_formats(msg)
+        sys.exit(0)
+    else:
+        AudioType = audiotools.TYPE_MAP[options.type]
 
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
-        if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(_.LAB_AVAILABLE_COMPRESSION_TYPES %
-                     (AudioType.NAME))
-            for mode in AudioType.COMPRESSION_MODES:
-                msg.new_row()
-                if (mode == audiotools.__default_quality__(AudioType.NAME)):
-                    msg.output_column(msg.ansi(mode.decode('ascii'),
-                                               [msg.BOLD,
-                                                msg.UNDERLINE]), True)
-                else:
-                    msg.output_column(mode.decode('ascii'), True)
-                if (mode in AudioType.COMPRESSION_DESCRIPTIONS):
-                    msg.output_column(u" : ")
-                else:
-                    msg.output_column(u"   ")
-                msg.output_column(
-                    AudioType.COMPRESSION_DESCRIPTIONS.get(mode, u""))
-            msg.output_rows()
-        else:
-            msg.error(ERR_NO_COMPRESSION_MODES % (AudioType.NAME))
+        audiotools.ui.show_available_qualities(msg, AudioType)
         sys.exit(0)
     elif (options.quality is None):
         options.quality = audiotools.__default_quality__(AudioType.NAME)

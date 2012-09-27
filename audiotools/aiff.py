@@ -288,6 +288,7 @@ class AiffAudio(AiffContainer):
 
     SUFFIX = "aiff"
     NAME = SUFFIX
+    DESCRIPTION = u"Audio Interchange File Format"
 
     PRINTABLE_ASCII = frozenset([chr(i) for i in xrange(0x20, 0x7E + 1)])
 

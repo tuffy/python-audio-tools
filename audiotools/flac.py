@@ -1235,6 +1235,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
     SUFFIX = "flac"
     NAME = SUFFIX
+    DESCRIPTION = u"Free Lossless Audio Codec"
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple(map(str, range(0, 9)))
     COMPRESSION_DESCRIPTIONS = {"0": COMP_FLAC_0,
@@ -2657,6 +2658,7 @@ class OggFlacAudio(FlacAudio):
 
     SUFFIX = "oga"
     NAME = SUFFIX
+    DESCRIPTION = u"Ogg FLAC"
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple(map(str, range(0, 9)))
     COMPRESSION_DESCRIPTIONS = {"0": COMP_FLAC_0,

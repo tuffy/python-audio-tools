@@ -1405,7 +1405,8 @@ try:
                 [(u"N/A", "")])
 
             self.output_type = SelectOne(
-                sorted([(t.NAME, t) for t in
+                sorted([(u"%s - %s" % (t.NAME.decode('ascii'),
+                                       t.DESCRIPTION), t) for t in
                         audiotools.AVAILABLE_TYPES
                         if t.has_binaries(audiotools.BIN)],
                        lambda x,y: cmp(x[0], y[0])),
@@ -1592,6 +1593,74 @@ try:
 
 except ImportError:
     AVAILABLE = False
+
+
+def show_available_formats(msg):
+    """given a Messenger object,
+    display all the available file formats"""
+
+    from audiotools.text import (LAB_AVAILABLE_FORMATS,
+                                 LAB_OUTPUT_TYPE,
+                                 LAB_OUTPUT_TYPE_DESCRIPTION)
+
+    msg.output(LAB_AVAILABLE_FORMATS)
+    msg.info(u"")
+
+    msg.new_row()
+    msg.output_column(LAB_OUTPUT_TYPE, True)
+    msg.output_column(u" ")
+    msg.output_column(LAB_OUTPUT_TYPE_DESCRIPTION)
+    msg.divider_row([u"-", u" ", u"-"])
+    for name in sorted(audiotools.TYPE_MAP.keys()):
+        msg.new_row()
+        if (name == audiotools.DEFAULT_TYPE):
+            msg.output_column(msg.ansi(name.decode('ascii'),
+                                       [msg.BOLD,
+                                        msg.UNDERLINE]), True)
+        else:
+            msg.output_column(name.decode('ascii'), True)
+        msg.output_column(u" : ")
+        msg.output_column(audiotools.TYPE_MAP[name].DESCRIPTION)
+    msg.output_rows()
+
+
+def show_available_qualities(msg, audiotype):
+    """given a Messenger object and AudioFile class,
+    display all available quality types for that format"""
+
+    from audiotools.text import (LAB_AVAILABLE_COMPRESSION_TYPES,
+                                 LAB_OUTPUT_QUALITY_DESCRIPTION,
+                                 LAB_OUTPUT_QUALITY,
+                                 ERR_NO_COMPRESSION_MODES)
+
+    if (len(audiotype.COMPRESSION_MODES) > 1):
+        msg.info(LAB_AVAILABLE_COMPRESSION_TYPES %
+                 (audiotype.NAME.decode('ascii')))
+        msg.info(u"")
+
+        msg.new_row()
+        msg.output_column(LAB_OUTPUT_QUALITY, True)
+        msg.output_column(u"   ")
+        msg.output_column(LAB_OUTPUT_QUALITY_DESCRIPTION)
+        msg.divider_row([u"-", u" ", u"-"])
+        for mode in audiotype.COMPRESSION_MODES:
+            msg.new_row()
+            if (mode == audiotools.__default_quality__(audiotype.NAME)):
+                msg.output_column(msg.ansi(mode.decode('ascii'),
+                                           [msg.BOLD,
+                                            msg.UNDERLINE]), True)
+            else:
+                msg.output_column(mode.decode('ascii'), True)
+            if (mode in audiotype.COMPRESSION_DESCRIPTIONS):
+                msg.output_column(u" : ")
+            else:
+                msg.output_column(u"   ")
+            msg.output_column(
+                audiotype.COMPRESSION_DESCRIPTIONS.get(mode, u""))
+        msg.info_rows()
+    else:
+        msg.info(ERR_NO_COMPRESSION_MODES %
+                 (audiotype.NAME.decode('ascii')))
 
 
 def select_metadata(metadata_choices, msg, use_default=False):

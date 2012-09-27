@@ -32,6 +32,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
     SUFFIX = "shn"
     NAME = SUFFIX
+    DESCRIPTION = u"Shorten"
 
     def __init__(self, filename):
         """filename is a plain string"""

@@ -320,6 +320,11 @@ AudioFile Objects
    function for inferring the file format from its name.
    However, it need not be unique among all formats.
 
+.. attribute:: AudioFile.DESCRIPTION
+
+   A longer, descriptive name for the audio type as a unicode string.
+   This is meant to be human-readable.
+
 .. attribute:: AudioFile.COMPRESSION_MODES
 
    A tuple of valid compression level strings, for use with the

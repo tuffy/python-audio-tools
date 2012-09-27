@@ -68,6 +68,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
     SUFFIX = "wv"
     NAME = SUFFIX
+    DESCRIPTION = u"WavPack"
     DEFAULT_COMPRESSION = "standard"
     COMPRESSION_MODES = ("veryfast", "fast", "standard", "high", "veryhigh")
     COMPRESSION_DESCRIPTIONS = {"veryfast": COMP_WAVPACK_VERYFAST,

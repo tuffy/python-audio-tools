@@ -273,6 +273,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
 
     SUFFIX = "m4a"
     NAME = SUFFIX
+    DESCRIPTION = u"Advanced Audio Coding"
     DEFAULT_COMPRESSION = "100"
     COMPRESSION_MODES = tuple(["10"] + map(str, range(50, 500, 25)) + ["500"])
     BINARIES = ("faac", "faad")
@@ -792,6 +793,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
     SUFFIX = "m4a"
     NAME = "alac"
+    DESCRIPTION = u"Apple Lossless"
     DEFAULT_COMPRESSION = ""
     COMPRESSION_MODES = ("",)
     BINARIES = tuple()
