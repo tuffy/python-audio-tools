@@ -80,7 +80,7 @@ if (__name__ == '__main__'):
                 {"minutes": length / 60,
                  "seconds": length % 60,
                  "channels": file.channels(),
-                 "rate": file.sample_rate(),
+                 "rate": audiotools.khz(file.sample_rate()),
                  "bits": file.bits_per_sample(),
                  "filename": audiotools.Filename(file.filename)})
         if (not options.no_metadata):

@@ -289,10 +289,12 @@ try:
                 self.length.set_text(_.LAB_TRACK_LENGTH %
                                      (int(track_length) / 60,
                                       int(track_length) % 60))
-                self.channels.set_text("%dch" % (track.channels()))
-                self.sample_rate.set_text("%dHz" % (track.sample_rate()))
+                self.channels.set_text(
+                    u"%dch" % (track.channels()))
+                self.sample_rate.set_text(
+                    audiotools.khz(track.sample_rate()))
                 self.bits_per_sample.set_text(
-                    "%dbps" % (track.bits_per_sample()))
+                    u"%dbps" % (track.bits_per_sample()))
 
                 self.progress.current = 0
                 self.progress.done = track.total_frames()
@@ -346,7 +348,7 @@ class TrackplayTTY:
     OUTPUT_FORMAT = (u"%(track_number)d/%(track_total)d " +
                      u"[%(sent_minutes)d:%(sent_seconds)2.2d / " +
                      u"%(total_minutes)d:%(total_seconds)2.2d] " +
-                     u"%(channels)dch %(sample_rate)dHz " +
+                     u"%(channels)dch %(sample_rate)s " +
                      u"%(bits_per_sample)d-bit")
 
     def __init__(self, track_list, audio_output,
@@ -421,7 +423,7 @@ class TrackplayTTY:
                  "total_seconds":
                      (frames_total / self.sample_rate) % 60,
                  "channels": self.channels,
-                 "sample_rate": self.sample_rate,
+                 "sample_rate": audiotools.khz(self.sample_rate),
                  "bits_per_sample": self.bits_per_sample})
 
 

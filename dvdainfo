@@ -65,7 +65,7 @@ if (__name__ == '__main__'):
                           {"minutes": title.pts_length / 90000 / 60,
                            "seconds": title.pts_length / 90000 % 60,
                            "channels": channels,
-                           "rate": sample_rate,
+                           "rate": audiotools.khz(sample_rate),
                            "bits": bits_per_sample,
                            "type": {0xA0: u"PCM",
                                     0xA1: u"MLP"}.get(stream_type,

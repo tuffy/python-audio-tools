@@ -312,6 +312,20 @@ __CHAR_WIDTHS__ = {"Na": 1,
                    "H": 1}
 
 
+def khz(hz):
+    """given an integer sample rate value in Hz,
+    returns a unicode kHz value with suffix
+
+    the string is typically 7-8 characters wide"""
+
+    num = hz / 1000
+    den = (hz % 1000) / 100
+    if (den == 0):
+        return u"%dkHz" % (num)
+    else:
+        return u"%d.%dkHz" % (num, den)
+
+
 def str_width(s):
     """returns the width of unicode string s, in characters
 

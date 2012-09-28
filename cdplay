@@ -134,9 +134,12 @@ try:
             self.artist_name = urwid.Text("")
             self.tracknum = urwid.Text("")
             self.length = urwid.Text("", align='right')
-            self.channels = urwid.Text("2ch", align='right')
-            self.sample_rate = urwid.Text("44100Hz", align='right')
-            self.bits_per_sample = urwid.Text("16bps", align='right')
+            self.channels = urwid.Text(
+                u"%dch" % (2), align='right')
+            self.sample_rate = urwid.Text(
+                audiotools.khz(44100), align='right')
+            self.bits_per_sample = urwid.Text(
+                u"%dbps" % (16), align='right')
             self.play_pause_button = MappedButton(_.LAB_PLAY_BUTTON,
                                                   on_press=self.play_pause,
                                                   key_map={'tab': 'right'})
@@ -208,7 +211,7 @@ try:
                     MappedButton(_.LAB_NEXT_BUTTON,
                                  on_press=self.next_track,
                                  key_map={'tab': 'down'})],
-                                      9, 4, 1, 'center')
+                                      12, 4, 1, 'center')
             controls.set_focus(1)
 
             def track_label(label, track_number):
@@ -326,7 +329,7 @@ class CDplayTTY:
     OUTPUT_FORMAT = (u"%(track_number)d/%(track_total)d " +
                      u"[%(sent_minutes)d:%(sent_seconds)2.2d / " +
                      u"%(total_minutes)d:%(total_seconds)2.2d] " +
-                     u"%(channels)dch %(sample_rate)dHz " +
+                     u"%(channels)dch %(sample_rate)s " +
                      u"%(bits_per_sample)d-bit")
 
     def __init__(self, cdda, track_list, audio_output):
@@ -384,7 +387,7 @@ class CDplayTTY:
                  "total_minutes":(frames_total / 44100) / 60,
                  "total_seconds":(frames_total / 44100) % 60,
                  "channels":2,
-                 "sample_rate":44100,
+                 "sample_rate":audiotools.khz(44100),
                  "bits_per_sample":16})
 
 if (__name__ == '__main__'):

@@ -214,7 +214,7 @@ LAB_DVDA_TITLE = u"Title %d"
 LAB_DVDA_TRACKS = u" (%d tracks)"
 LAB_DVDA_TITLE_INFO = \
     u"%(minutes)2.2d:%(seconds)2.2d " + \
-    u"%(channels)dch %(rate)dHz %(bits)d-bit " + \
+    u"%(channels)dch %(rate)s %(bits)d-bit " + \
     u"%(type)s"
 LAB_DVDAINFO_TITLE = u"Title"
 LAB_DVDAINFO_TRACK = u"Track"
@@ -240,7 +240,7 @@ LAB_TRACKINFO_BITRATE = u"%(bitrate)4.4s kbps: %(filename)s"
 LAB_TRACKINFO_PERCENTAGE = u"%(percentage)3.3s%%: %(filename)s"
 LAB_TRACKINFO_ATTRIBS = \
     u"%(minutes)2.2d:%(seconds)2.2d " + \
-    u"%(channels)dch %(rate)dHz %(bits)d-bit: %(filename)s"
+    u"%(channels)dch %(rate)s %(bits)d-bit: %(filename)s"
 LAB_TRACKINFO_REPLAYGAIN = u"ReplayGain:"
 LAB_TRACKINFO_TRACK_GAIN = u"Track Gain : "
 LAB_TRACKINFO_TRACK_PEAK = u"Track Peak : "
