@@ -25,303 +25,62 @@ import tty
 import termios
 import cStringIO
 import audiotools
+import audiotools.ui
 import audiotools.player
 import audiotools.text as _
 
-try:
-    import urwid
+if (audiotools.ui.AVAILABLE):
+    urwid = audiotools.ui.urwid
 
-    class MappedButton(urwid.Button):
-        def __init__(self, label, on_press=None, user_data=None,
-                     key_map={}):
-            urwid.Button.__init__(self, label=label,
-                                  on_press=on_press,
-                                  user_data=user_data)
-            self.__key_map__ = key_map
-
-        def keypress(self, size, key):
-            return urwid.Button.keypress(self,
-                                         size,
-                                         self.__key_map__.get(key, key))
-
-    class MappedRadioButton(urwid.RadioButton):
-        def __init__(self, group, label, state='first True',
-                     on_state_change=None, user_data=None,
-                     key_map={}):
-            urwid.RadioButton.__init__(self, group=group,
-                                       label=label,
-                                       state=state,
-                                       on_state_change=on_state_change,
-                                       user_data=user_data)
-            self.__key_map__ = key_map
-
-        def keypress(self, size, key):
-            return urwid.RadioButton.keypress(self,
-                                              size,
-                                              self.__key_map__.get(key, key))
-
-    class AudioProgressBar(urwid.ProgressBar):
-        def __init__(self, normal, complete, sample_rate, current=0, done=100,
-                     satt=None):
-            urwid.ProgressBar.__init__(self,
-                                       normal=normal,
-                                       complete=complete,
-                                       current=current,
-                                       done=done,
-                                       satt=satt)
-            self.sample_rate = sample_rate
-
-        def render(self, size, focus=False):
-            """
-            Render the progress bar.
-            """
-
-            #leeched from the orignal implementation
-            #only the txt formatting differs
-
-            (maxcol,) = size
-
-            try:
-                txt = urwid.Text(_.LAB_TRACK_LENGTH %
-                                 ((self.current / self.sample_rate) / 60,
-                                  (self.current / self.sample_rate) % 60),
-                                 'center', 'clip')
-            except ZeroDivisionError:
-                txt = urwid.Text(_.LAB_TRACK_LENGTH %
-                                 (0, 0),
-                                 'center', 'clip')
-            c = txt.render((maxcol,))
-
-            cf = float(self.current) * maxcol / self.done
-            ccol = int(cf)
-            cs = 0
-            if self.satt is not None:
-                cs = int((cf - ccol) * 8)
-            if ccol < 0 or (ccol == 0 and cs == 0):
-                c._attr = [[(self.normal, maxcol)]]
-            elif ccol >= maxcol:
-                c._attr = [[(self.complete, maxcol)]]
-            elif cs and c._text[0][ccol] == " ":
-                t = c._text[0]
-                cenc = self.eighths[cs].encode("utf-8")
-                c._text[0] = t[:ccol] + cenc + t[ccol + 1:]
-                a = []
-                if ccol > 0:
-                    a.append((self.complete, ccol))
-                a.append((self.satt, len(cenc)))
-                if maxcol - ccol - 1 > 0:
-                    a.append((self.normal, maxcol - ccol - 1))
-                c._attr = [a]
-                c._cs = [[(None, len(c._text[0]))]]
-            else:
-                c._attr = [[(self.complete, ccol),
-                    (self.normal, maxcol - ccol)]]
-            return c
-
-    class CDplayGUI(urwid.Frame):
+    class CDplayGUI(audiotools.ui.PlayerGUI):
         def __init__(self, cdda, metadata, track_list, audio_output):
             self.cdda = cdda
-            self.metadata = metadata
-            self.track_list = track_list
-            self.audio_output = audio_output
-            self.player = audiotools.player.CDPlayer(
-                cdda=cdda,
-                audio_output=audio_output,
-                next_track_callback=self.next_track)
 
-            self.track_name = urwid.Text("")
-            self.album_name = urwid.Text("")
-            self.artist_name = urwid.Text("")
-            self.tracknum = urwid.Text("")
-            self.length = urwid.Text("", align='right')
-            self.channels = urwid.Text(
-                u"%dch" % (2), align='right')
-            self.sample_rate = urwid.Text(
-                audiotools.khz(44100), align='right')
-            self.bits_per_sample = urwid.Text(
-                u"%dbps" % (16), align='right')
-            self.play_pause_button = MappedButton(_.LAB_PLAY_BUTTON,
-                                                  on_press=self.play_pause,
-                                                  key_map={'tab': 'right'})
-            self.progress = AudioProgressBar(normal='pg normal',
-                                             complete='pg complete',
-                                             sample_rate=0,
-                                             current=0,
-                                             done=100)
-            self.progress.sample_rate = 44100
-
-            self.track_group = []
-
-            track_len = cdda.length() / 75
-
-            self.status = urwid.Text(
-                (_.LAB_PLAY_STATUS if (len(self.track_list) > 1) else
-                 _.LAB_PLAY_STATUS_1) %
-                {"count": len(self.track_list),
-                 "min": int(track_len) / 60,
-                 "sec": int(track_len) % 60},
-                align='center')
-
-            label_width = max([len(audiotools.display_unicode(s))
-                               for s in [_.METADATA_TRACK_NAME,
-                                         _.METADATA_ARTIST_NAME,
-                                         _.METADATA_ALBUM_NAME,
-                                         _.LAB_PLAY_TRACK]]) + 3
-
-            header = urwid.Pile([
-                    urwid.Columns([
-                            ('fixed',
-                             label_width,
-                             urwid.Text(('header',
-                                         u"%s : " % (_.METADATA_TRACK_NAME)),
-                                        align='right')),
-                            ('weight', 1, self.track_name)]),
-                    urwid.Columns([
-                            ('fixed',
-                             label_width,
-                             urwid.Text(('header',
-                                         u"%s : " % (_.METADATA_ARTIST_NAME)),
-                                        align='right')),
-                            ('weight', 1, self.artist_name)]),
-                    urwid.Columns([
-                            ('fixed',
-                             label_width,
-                             urwid.Text(('header',
-                                         u"%s : " % (_.METADATA_ALBUM_NAME)),
-                                        align='right')),
-                            ('weight', 1, self.album_name)]),
-                    urwid.Columns([
-                            ('fixed',
-                             label_width,
-                             urwid.Text(('header',
-                                         u"%s : " % (_.LAB_PLAY_TRACK)),
-                                        align='right')),
-                            ('fixed', 7, self.tracknum),
-                            ('fixed', 7, self.length),
-                            ('fixed', 5, self.channels),
-                            ('fixed', 10, self.sample_rate),
-                            ('fixed', 7, self.bits_per_sample)]),
-                    self.progress])
-
-            controls = urwid.GridFlow([
-                    MappedButton(_.LAB_PREVIOUS_BUTTON,
-                                 on_press=self.previous_track,
-                                 key_map={'tab': 'right'}),
-                    self.play_pause_button,
-                    MappedButton(_.LAB_NEXT_BUTTON,
-                                 on_press=self.next_track,
-                                 key_map={'tab': 'down'})],
-                                      12, 4, 1, 'center')
-            controls.set_focus(1)
-
-            def track_label(label, track_number):
-                if (label is not None):
-                    return label
-                elif (track_number is not None):
-                    return u"%s %2.2d" % (_.LAB_TRACK, track_number)
-                else:
-                    return _.LAB_TRACK
-
-            self.track_list_widget = urwid.ListBox([
-                    MappedRadioButton(
-                        group=self.track_group,
-                        label=track_label(
-                            metadata[track.track_number].track_name,
-                            track.track_number),
-                        user_data=(track,
-                                   metadata[track.track_number].track_name,
-                                   metadata[track.track_number].artist_name,
-                                   metadata[track.track_number].album_name),
-                        on_state_change=self.select_track,
-                        key_map={'tab': 'down'})
-                    for track in self.track_list])
-            body = urwid.Pile([('fixed', 2, urwid.Filler(urwid.Pile([
-                                controls, urwid.Divider(div_char=u'\u2500')]))),
-                               ('weight', 1, self.track_list_widget)])
-            footer = urwid.Pile([urwid.Divider(div_char=u'\u2500'),
-                                 self.status])
-
-            urwid.Frame.__init__(self, body=body, header=header, footer=footer)
-
-        def next_track(self, user_data=None):
-            track_index = [g.state for g in self.track_group].index(True)
-            try:
-                self.track_group[track_index + 1].set_state(True)
-                self.track_list_widget.set_focus(track_index + 1, "above")
-            except IndexError:
-                pass
-
-        def previous_track(self, user_data=None):
-            track_index = [g.state for g in self.track_group].index(True)
-            try:
-                if (track_index == 0):
-                    raise IndexError()
-                else:
-                    self.track_group[track_index - 1].set_state(True)
-                    self.track_list_widget.set_focus(track_index - 1, "below")
-            except IndexError:
-                pass
+            audiotools.ui.PlayerGUI.__init__(
+                self,
+                audiotools.player.CDPlayer(
+                    cdda=cdda,
+                    audio_output=audio_output,
+                    next_track_callback=self.next_track),
+                [(metadata[track.track_number].track_name
+                  if (metadata[track.track_number].track_name is not None)
+                  else (u"track %2.2d" % (track.track_number)),
+                  (track, metadata[track.track_number]))
+                 for track in track_list],
+                cdda.length() / 75)
 
         def select_track(self, radio_button, new_state, user_data,
                          auto_play=True):
             if (new_state == True):
-                (track,
-                 track_name,
-                 artist_name,
-                 album_name) = user_data
-                self.track_name.set_text(track_name
-                                         if track_name is not None else u"")
-                self.album_name.set_text(album_name
-                                         if album_name is not None else u"")
-                self.artist_name.set_text(artist_name
-                                          if artist_name is not None else u"")
-                self.tracknum.set_text(_.LAB_X_OF_Y %
-                                       (track.track_number,
-                                        len(self.cdda)))
+                (track, metadata) = user_data
 
-                track_length = track.length() / 75
-                self.length.set_text(_.LAB_TRACK_LENGTH %
-                                     (int(track_length) / 60,
-                                      int(track_length) % 60))
-
-                self.progress.current = 0
-                self.progress.done = track.length() * (44100 / 75)
+                if (metadata is not None):
+                    self.update_metadata(
+                        track_name=metadata.track_name,
+                        album_name=metadata.album_name,
+                        artist_name=metadata.artist_name,
+                        track_number=track.track_number,
+                        track_total=len(self.cdda),
+                        pcm_frames=track.length() * 588,
+                        channels=2,
+                        sample_rate=44100,
+                        bits_per_sample=16)
+                else:
+                    self.update_metadata(
+                        track_total=len(self.cdda),
+                        pcm_frames=track.length() * 588,
+                        channels=2,
+                        sample_rate=44100,
+                        bits_per_sample=16)
 
                 self.player.open(track.track_number)
                 if (auto_play):
                     self.player.play()
                     self.play_pause_button.set_label(_.LAB_PAUSE_BUTTON)
 
-        def update_status(self):
-            self.progress.set_completion(self.player.progress()[0])
-
-        def play_pause(self, user_data):
-            self.player.toggle_play_pause()
-            if (self.play_pause_button.get_label() == _.LAB_PLAY_BUTTON):
-                self.play_pause_button.set_label(_.LAB_PAUSE_BUTTON)
-            elif (self.play_pause_button.get_label() == _.LAB_PAUSE_BUTTON):
-                self.play_pause_button.set_label(_.LAB_PLAY_BUTTON)
-
-        def handle_text(self, i):
-            if ((i == 'esc') or (i == 'q') or (i == 'Q')):
-                self.perform_exit()
-            elif ((i == 'n') or (i == 'N')):
-                self.next_track()
-            elif ((i == 'p') or (i == 'P')):
-                self.previous_track()
-
-        def perform_exit(self, *args):
-            self.player.close()
-            raise urwid.ExitMainLoop()
-
-    def timer(main_loop, cdplay):
-        cdplay.update_status()
-        loop.set_alarm_at(tm=time.time() + 1,
-                          callback=timer,
-                          user_data=cdplay)
 
     interactive_available = True
-except ImportError:
+else:
     interactive_available = False
 
 
@@ -524,9 +283,7 @@ if (__name__ == '__main__'):
         if (len(cdda) > 0):
             cdplay.select_track(None, True,
                                 (tracks[0],
-                                 metadata[1].track_name,
-                                 metadata[1].artist_name,
-                                 metadata[1].album_name),
+                                 metadata[tracks[0].track_number]),
                                 False)
 
         loop = urwid.MainLoop(cdplay,
@@ -536,7 +293,7 @@ if (__name__ == '__main__'):
                                ('pg smooth', 'dark blue', 'black')],
                               unhandled_input=cdplay.handle_text)
         loop.set_alarm_at(tm=time.time() + 1,
-                          callback=timer,
+                          callback=audiotools.ui.timer,
                           user_data=cdplay)
 
         try:

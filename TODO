@@ -6016,30 +6016,30 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
    Just as the command-line options are kept as consistent as possible,
    all interactive modes will also need a consistent interface.
-*** TODO cd2track
-**** TODO update man page
-*** TODO cdinfo
+*** TODO audiotools-config
+*** DONE cd2track
 *** TODO cdplay
 **** TODO make player widget generic
-*** TODO track2track
-**** TODO update man page
-**** DONE add CD lookup option
-*** TODO trackrename
-*** TODO trackinfo
-*** TODO tracklength
+*** TODO coverdump
+*** TODO covertag
+**** TODO add wxPython interactive mode
+*** TODO coverview
+**** TODO update to wxPython
+     Although it's an additional prerequisite,
+     it's probably best to stick with one widget set
+     that's available on many platforms
+     than the PyGTK/TKinter split that's going on now.
+*** DONE dvda2track
 *** TODO track2cd
-*** TODO trackcmp
+*** DONE track2track
+*** TODO trackcat
+*** TODO tracklint
 *** TODO trackplay
 **** TODO make player widget generic
+*** TODO trackrename
+*** DONE tracksplit
 *** TODO tracktag
-**** TODO update man page
-**** TODO add CD lookup option
-*** TODO trackcat
-*** TODO tracksplit
-**** TODO update man page
-*** TODO tracklint
 *** TODO trackverify
-*** TODO coverdump
 ** TODO Add internal Ogg FLAC encoder
    This shouldn't be too hard since native FLAC encoding is already in place,
    as is Ogg stream encoding.

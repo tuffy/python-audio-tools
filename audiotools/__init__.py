@@ -2602,11 +2602,20 @@ def calculate_replay_gain(tracks, progress=None):
 
         if (pcm.channels > 2):
             #add a wrapper to cull any channels above 2
-            pcm = ReorderedPCMReader(pcm, [0, 1])
-        if (pcm.sample_rate != target_rate):
-            #add a wrapper to resample any nonstandard rates
-            from .pcmconverter import Resampler
-            pcm = Resampler(pcm, target_rate)
+            output_channels = 2
+            output_channel_mask = 0x3
+        else:
+            output_channels = pcm.channels
+            output_channel_mask = pcm.channel_mask
+
+        if ((pcm.channels != output_channels) or
+            (pcm.channel_mask != output_channel_mask) or
+            (pcm.sample_rate) != target_rate):
+            pcm = PCMConverter(pcm,
+                               target_rate,
+                               output_channels,
+                               output_channel_mask,
+                               pcm.bits_per_sample)
 
         #finally, perform the gain calculation on the PCMReader
         #and accumulate the title gain

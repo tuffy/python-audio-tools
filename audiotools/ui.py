@@ -1581,6 +1581,290 @@ try:
             self.update_tracks()
 
 
+    class MappedButton(urwid.Button):
+        def __init__(self, label, on_press=None, user_data=None,
+                     key_map={}):
+            urwid.Button.__init__(self, label=label,
+                                  on_press=on_press,
+                                  user_data=user_data)
+            self.__key_map__ = key_map
+
+        def keypress(self, size, key):
+            return urwid.Button.keypress(self,
+                                         size,
+                                         self.__key_map__.get(key, key))
+
+
+    class MappedRadioButton(urwid.RadioButton):
+        def __init__(self, group, label, state='first True',
+                     on_state_change=None, user_data=None,
+                     key_map={}):
+            urwid.RadioButton.__init__(self, group=group,
+                                       label=label,
+                                       state=state,
+                                       on_state_change=on_state_change,
+                                       user_data=user_data)
+            self.__key_map__ = key_map
+
+        def keypress(self, size, key):
+            return urwid.RadioButton.keypress(self,
+                                              size,
+                                              self.__key_map__.get(key, key))
+
+
+    class AudioProgressBar(urwid.ProgressBar):
+        def __init__(self, normal, complete, sample_rate, current=0, done=100,
+                     satt=None):
+            urwid.ProgressBar.__init__(self,
+                                       normal=normal,
+                                       complete=complete,
+                                       current=current,
+                                       done=done,
+                                       satt=satt)
+            self.sample_rate = sample_rate
+
+        def get_text(self):
+            from audiotools.text import LAB_TRACK_LENGTH
+
+            try:
+                return LAB_TRACK_LENGTH % \
+                    ((self.current / self.sample_rate) / 60,
+                     (self.current / self.sample_rate) % 60)
+            except ZeroDivisionError:
+                return LAB_TRACK_LENGTH % (0, 0)
+
+    class PlayerGUI(urwid.Frame):
+        def __init__(self, player, tracks, track_len):
+            """player is a Player-compatible object
+
+            tracks is a list of (track_name, user_data) objects
+            where "track_name" is a unicode string
+            to place in the radio buttons
+            and "user_data" is forwarded to calls to select_track()
+
+            track_len is the length of all tracks in seconds"""
+
+            from audiotools.text import (LAB_PLAY_BUTTON,
+                                         METADATA_TRACK_NAME,
+                                         METADATA_ARTIST_NAME,
+                                         METADATA_ALBUM_NAME,
+                                         LAB_PLAY_TRACK,
+                                         LAB_PREVIOUS_BUTTON,
+                                         LAB_NEXT_BUTTON,
+                                         LAB_PLAY_STATUS,
+                                         LAB_PLAY_STATUS_1)
+
+            self.player = player
+
+            self.track_name = urwid.Text(u"")
+            self.album_name = urwid.Text(u"")
+            self.artist_name = urwid.Text(u"")
+            self.tracknum = urwid.Text(u"")
+            self.length = urwid.Text(u"", align='right')
+            self.channels = urwid.Text(u"", align='right')
+            self.sample_rate = urwid.Text(u"", align='right')
+            self.bits_per_sample = urwid.Text(u"", align='right')
+            self.play_pause_button = MappedButton(LAB_PLAY_BUTTON,
+                                                  on_press=self.play_pause,
+                                                  key_map={'tab': 'right'})
+            self.progress = AudioProgressBar(normal='pg normal',
+                                             complete='pg complete',
+                                             sample_rate=0,
+                                             current=0,
+                                             done=100)
+
+            self.status = urwid.Text(
+                (LAB_PLAY_STATUS if (len(tracks) > 1) else
+                 LAB_PLAY_STATUS_1) % {"count": len(tracks),
+                                       "min": int(track_len) / 60,
+                                       "sec": int(track_len) % 60},
+                align='center')
+
+            label_width = max([len(audiotools.display_unicode(s))
+                               for s in [METADATA_TRACK_NAME,
+                                         METADATA_ARTIST_NAME,
+                                         METADATA_ALBUM_NAME,
+                                         LAB_PLAY_TRACK]]) + 3
+
+            header = urwid.Pile([
+                    urwid.Columns([
+                            ('fixed',
+                             label_width,
+                             urwid.Text(('header',
+                                         u"%s : " % (METADATA_TRACK_NAME)),
+                                        align='right')),
+                            ('weight', 1, self.track_name)]),
+                    urwid.Columns([
+                            ('fixed',
+                             label_width,
+                             urwid.Text(('header',
+                                         u"%s : " % (METADATA_ARTIST_NAME)),
+                                        align='right')),
+                            ('weight', 1, self.artist_name)]),
+                    urwid.Columns([
+                            ('fixed',
+                             label_width,
+                             urwid.Text(('header',
+                                         u"%s : " % (METADATA_ALBUM_NAME)),
+                                        align='right')),
+                            ('weight', 1, self.album_name)]),
+                    urwid.Columns([
+                            ('fixed',
+                             label_width,
+                             urwid.Text(('header',
+                                         u"%s : " % (LAB_PLAY_TRACK)),
+                                        align='right')),
+                            ('fixed', 7, self.tracknum),
+                            ('fixed', 7, self.length),
+                            ('fixed', 5, self.channels),
+                            ('fixed', 10, self.sample_rate),
+                            ('fixed', 7, self.bits_per_sample)]),
+                    self.progress])
+
+            controls = urwid.GridFlow([
+                    MappedButton(LAB_PREVIOUS_BUTTON,
+                                 on_press=self.previous_track,
+                                 key_map={'tab': 'right'}),
+                    self.play_pause_button,
+                    MappedButton(LAB_NEXT_BUTTON,
+                                 on_press=self.next_track,
+                                 key_map={'tab': 'down'})],
+                                      12, 4, 1, 'center')
+            controls.set_focus(1)
+
+            self.track_group = []
+            self.track_list_widget = urwid.ListBox([
+                    MappedRadioButton(group=self.track_group,
+                                      label=track_label,
+                                      user_data=user_data,
+                                      on_state_change=self.select_track,
+                                      key_map={'tab': 'down'})
+                    for (track_label, user_data) in tracks])
+            body = urwid.Pile([('fixed', 2, urwid.Filler(urwid.Pile([
+                                controls, urwid.Divider(div_char=u'\u2500')]))),
+                               ('weight', 1, self.track_list_widget)])
+            footer = urwid.Pile([urwid.Divider(div_char=u'\u2500'),
+                                 self.status])
+
+            urwid.Frame.__init__(self, body=body, header=header, footer=footer)
+
+        def select_track(self, radio_button, new_state, user_data,
+                         auto_play=True):
+            #to be implemented by subclasses
+
+            raise NotImplementedError()
+
+        def next_track(self, user_data=None):
+            track_index = [g.state for g in self.track_group].index(True)
+            try:
+                self.track_group[track_index + 1].set_state(True)
+                self.track_list_widget.set_focus(track_index + 1, "above")
+            except IndexError:
+                pass
+
+        def previous_track(self, user_data=None):
+            track_index = [g.state for g in self.track_group].index(True)
+            try:
+                if (track_index == 0):
+                    raise IndexError()
+                else:
+                    self.track_group[track_index - 1].set_state(True)
+                    self.track_list_widget.set_focus(track_index - 1, "below")
+            except IndexError:
+                pass
+
+        def update_metadata(self, track_name=None,
+                            album_name=None,
+                            artist_name=None,
+                            track_number=None,
+                            track_total=None,
+                            pcm_frames=0,
+                            channels=0,
+                            sample_rate=0,
+                            bits_per_sample=0):
+            """updates metadata fields with new values
+            for when a new track is opened"""
+
+            from audiotools.text import (LAB_X_OF_Y,
+                                         LAB_TRACK_LENGTH)
+
+            self.track_name.set_text(track_name if
+                                     track_name is not None
+                                     else u"")
+            self.album_name.set_text(album_name if
+                                     album_name is not None
+                                     else u"")
+            self.artist_name.set_text(artist_name if
+                                      artist_name is not None
+                                      else u"")
+            if (track_number is not None):
+                if (track_total is not None):
+                    self.tracknum.set_text(LAB_X_OF_Y %
+                                           (track_number,
+                                            track_total))
+                else:
+                    self.tracknum.set_text(unicode(track_number))
+            else:
+                self.tracknum.set_text(u"")
+
+            try:
+                seconds_length = pcm_frames / sample_rate
+            except ZeroDivisionError:
+                seconds_length = 0
+
+            self.length.set_text(LAB_TRACK_LENGTH %
+                                 (int(seconds_length) / 60,
+                                  int(seconds_length) % 60))
+            self.channels.set_text(u"%dch" % (channels))
+            self.sample_rate.set_text(audiotools.khz(sample_rate))
+            self.bits_per_sample.set_text(u"%dbps" % (bits_per_sample))
+
+            self.progress.current = 0
+            self.progress.done = pcm_frames
+            self.progress.sample_rate = sample_rate
+
+        def update_status(self):
+            self.progress.set_completion(self.player.progress()[0])
+
+        def play_pause(self, user_data):
+            from audiotools.text import (LAB_PLAY_BUTTON,
+                                         LAB_PAUSE_BUTTON)
+
+            self.player.toggle_play_pause()
+            if (self.play_pause_button.get_label() == LAB_PLAY_BUTTON):
+                self.play_pause_button.set_label(LAB_PAUSE_BUTTON)
+            elif (self.play_pause_button.get_label() == LAB_PAUSE_BUTTON):
+                self.play_pause_button.set_label(LAB_PLAY_BUTTON)
+
+        def stop(self):
+            from audiotools.text import LAB_PLAY_BUTTON
+
+            self.player.stop()
+            self.play_pause_button.set_label(LAB_PLAY_BUTTON)
+
+        def handle_text(self, i):
+            if ((i == 'esc') or (i == 'q') or (i == 'Q')):
+                self.perform_exit()
+            elif ((i == 'n') or (i == 'N')):
+                self.next_track()
+            elif ((i == 'p') or (i == 'P')):
+                self.previous_track()
+            elif ((i == 's') or (i == 'S')):
+                self.stop()
+
+        def perform_exit(self, *args):
+            self.player.close()
+            raise urwid.ExitMainLoop()
+
+    def timer(main_loop, trackplay):
+        import time
+
+        trackplay.update_status()
+        main_loop.set_alarm_at(tm=time.time() + 1,
+                               callback=timer,
+                               user_data=trackplay)
+
+
     def style():
         """returns a list of widget style tuples
         for use with urwid.MainLoop"""
