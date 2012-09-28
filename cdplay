@@ -84,70 +84,46 @@ else:
     interactive_available = False
 
 
-class CDplayTTY:
-    OUTPUT_FORMAT = (u"%(track_number)d/%(track_total)d " +
-                     u"[%(sent_minutes)d:%(sent_seconds)2.2d / " +
-                     u"%(total_minutes)d:%(total_seconds)2.2d] " +
-                     u"%(channels)dch %(sample_rate)s " +
-                     u"%(bits_per_sample)d-bit")
-
+class CDplayTTY(audiotools.ui.PlayerTTY):
     def __init__(self, cdda, track_list, audio_output):
-        self.track_list = track_list
-        self.player = audiotools.player.CDPlayer(
-            cdda=cdda,
-            audio_output=audio_output,
-            next_track_callback=self.next_track)
         self.track_index = -1
-        self.current_track = None
-        self.seconds_total = 0
-        self.track_number = 0
-        self.track_total = len(self.track_list)
-
-    def quit(self):
-        if (self.current_track is not None):
-            self.current_track = None
-            self.player.close()
-
-    def toggle_play_pause(self):
-        if (self.current_track is not None):
-            self.player.toggle_play_pause()
-
-    def play(self):
-        self.next_track()
+        self.track_list = track_list
+        self.cdda = cdda
+        audiotools.ui.PlayerTTY.__init__(
+            self,
+            audiotools.player.CDPlayer(
+                cdda=cdda,
+                audio_output=audio_output,
+                next_track_callback=self.next_track))
 
     def previous_track(self):
         if (self.track_index > 0):
             self.track_index -= 1
-            self.current_track = self.track_list[self.track_index]
-            self.track_number = self.track_index + 1
-            self.player.open(self.current_track.track_number)
+            current_track = self.track_list[self.track_index]
+            self.set_metadata(
+                track_number=self.track_index + 1,
+                track_total=len(self.cdda),
+                channels=2,
+                sample_rate=44100,
+                bits_per_sample=16)
+            self.player.open(current_track.track_number)
             self.player.play()
 
     def next_track(self):
         try:
             self.track_index += 1
-            self.current_track = self.track_list[self.track_index]
-            self.track_number = self.track_index + 1
-            self.player.open(self.current_track.track_number)
+            current_track = self.track_list[self.track_index]
+            self.set_metadata(
+                track_number=self.track_index + 1,
+                track_total=len(self.cdda),
+                channels=2,
+                sample_rate=44100,
+                bits_per_sample=16)
+            self.player.open(current_track.track_number)
             self.player.play()
         except IndexError:
-            self.current_track = None
-            self.player.close()
+            self.playing_finished = True
 
-    def progress(self):
-        return self.player.progress()
-
-    def progress_line(self):
-        return (self.OUTPUT_FORMAT %
-                {"track_number":self.track_number,
-                 "track_total":self.track_total,
-                 "sent_minutes":(frames_sent / 44100) / 60,
-                 "sent_seconds":(frames_sent / 44100) % 60,
-                 "total_minutes":(frames_total / 44100) / 60,
-                 "total_seconds":(frames_total / 44100) % 60,
-                 "channels":2,
-                 "sample_rate":audiotools.khz(44100),
-                 "bits_per_sample":16})
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
@@ -306,48 +282,4 @@ if (__name__ == '__main__'):
         trackplay = CDplayTTY(cdda=cdda,
                               track_list=tracks,
                               audio_output=players_map[options.output]())
-        trackplay.play()
-        output_line_len = 0
-
-        try:
-            original_terminal_settings = termios.tcgetattr(0)
-        except termios.error:
-            msg.error(_.ERR_TERMIOS_ERROR)
-            msg.info(_.ERR_TERMIOS_SUGGESTION)
-            sys.exit(1)
-        try:
-            tty.setcbreak(sys.stdin.fileno())
-            while (trackplay.current_track is not None):
-                (frames_sent, frames_total) = trackplay.progress()
-                output_line = trackplay.progress_line()
-                msg.ansi_clearline()
-                if (len(output_line) > output_line_len):
-                    output_line_len = len(output_line)
-                    msg.partial_output(output_line)
-                else:
-                    msg.partial_output(output_line +
-                                       (u" " * (output_line_len -
-                                                len(output_line))))
-
-                (r_list, w_list, x_list) = select.select([sys.stdin.fileno()],
-                                                         [], [], 1)
-                if (len(r_list) > 0):
-                    char = os.read(sys.stdin.fileno(), 1)
-                    if ((char == 'q') or
-                        (char == 'Q') or
-                        (char == '\x1B')):
-                        trackplay.quit()
-                    elif (char == ' '):
-                        trackplay.toggle_play_pause()
-                    elif ((char == 'n') or
-                          (char == 'N')):
-                        trackplay.next_track()
-                    elif ((char == 'p') or
-                          (char == 'P')):
-                        trackplay.previous_track()
-                    else:
-                        pass
-
-            msg.ansi_clearline()
-        finally:
-            termios.tcsetattr(0, termios.TCSADRAIN, original_terminal_settings)
+        sys.exit(trackplay.run(msg, sys.stdin))

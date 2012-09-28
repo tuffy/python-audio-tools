@@ -2057,6 +2057,134 @@ def process_output_options(metadata_choices,
                metadata)
 
 
+class PlayerTTY:
+    OUTPUT_FORMAT = (u"%(track_number)d/%(track_total)d " +
+                     u"[%(sent_minutes)d:%(sent_seconds)2.2d / " +
+                     u"%(total_minutes)d:%(total_seconds)2.2d] " +
+                     u"%(channels)dch %(sample_rate)s " +
+                     u"%(bits_per_sample)d-bit")
+
+    def __init__(self, player):
+        self.player = player
+        self.track_number = 0
+        self.track_total = 0
+        self.channels = 0
+        self.sample_rate = 0
+        self.bits_per_sample = 0
+        self.playing_finished = False
+
+    def previous_track(self):
+        #implement this in subclass
+        #to call set_metadata() and have the player open the previous track
+        raise NotImplementedError()
+
+    def next_track(self):
+        #implement this in subclass
+        #to call set_metadata() and have the player open the next track
+        #set playing_finished to True when all tracks have been exhausted
+        raise NotImplementedError()
+
+    def set_metadata(self, track_number,
+                     track_total,
+                     channels,
+                     sample_rate,
+                     bits_per_sample):
+        self.track_number = track_number
+        self.track_total = track_total
+        self.channels = channels
+        self.sample_rate = sample_rate
+        self.bits_per_sample = bits_per_sample
+
+    def toggle_play_pause(self):
+        self.player.toggle_play_pause()
+
+    def stop(self):
+        self.player.stop()
+
+    def run(self, msg, stdin):
+        """msg is a Messenger object
+        stdin is a file object for keyboard input
+
+        returns 0 on a successful exit, 1 if there's an error"""
+
+        import os
+        import tty
+        import termios
+        import select
+
+        try:
+            original_terminal_settings = termios.tcgetattr(0)
+        except termios.error:
+            msg.error(_.ERR_TERMIOS_ERROR)
+            msg.info(_.ERR_TERMIOS_SUGGESTION)
+            return 1
+
+        output_line_len = 0
+        self.next_track()
+
+        try:
+            tty.setcbreak(stdin.fileno())
+            while (not self.playing_finished):
+                (frames_sent, frames_total) = self.progress()
+                output_line = self.progress_line(frames_sent, frames_total)
+                msg.ansi_clearline()
+                if (len(output_line) > output_line_len):
+                    output_line_len = len(output_line)
+                    msg.partial_output(output_line)
+                else:
+                    msg.partial_output(output_line +
+                                       (u" " * (output_line_len -
+                                                len(output_line))))
+
+                (r_list, w_list, x_list) = select.select([stdin.fileno()],
+                                                         [], [], 1)
+                if (len(r_list) > 0):
+                    char = os.read(stdin.fileno(), 1)
+                    if ((char == 'q') or
+                        (char == 'Q') or
+                        (char == '\x1B')):
+                        self.playing_finished = True
+                    elif (char == ' '):
+                        self.toggle_play_pause()
+                    elif ((char == 'n') or
+                          (char == 'N')):
+                        self.next_track()
+                    elif ((char == 'p') or
+                          (char == 'P')):
+                        self.previous_track()
+                    elif ((char == 's') or
+                          (char == 'S')):
+                        self.stop()
+                    else:
+                        pass
+
+            msg.ansi_clearline()
+            self.player.close()
+            return 0
+        finally:
+            termios.tcsetattr(0, termios.TCSADRAIN, original_terminal_settings)
+
+    def progress(self):
+        return self.player.progress()
+
+    def progress_line(self, frames_sent, frames_total):
+        return (self.OUTPUT_FORMAT %
+                {"track_number": self.track_number,
+                 "track_total": self.track_total,
+                 "sent_minutes":
+                     (frames_sent / self.sample_rate) / 60,
+                 "sent_seconds":
+                     (frames_sent / self.sample_rate) % 60,
+                 "total_minutes":
+                     (frames_total / self.sample_rate) / 60,
+                 "total_seconds":
+                     (frames_total / self.sample_rate) % 60,
+                 "channels": self.channels,
+                 "sample_rate": audiotools.khz(self.sample_rate),
+                 "bits_per_sample": self.bits_per_sample})
+
+
+
 def not_available_message(msg):
     """prints a message about lack of Urwid availability
     to a Messenger object"""
