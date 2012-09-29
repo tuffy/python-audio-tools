@@ -29,7 +29,7 @@ if (audiotools.ui.AVAILABLE):
     urwid = audiotools.ui.urwid
 
     class Tracktag(urwid.Frame):
-        def __init__(self, tracks, metadata_choices):
+        def __init__(self, tracks, metadata_choices, final_album=True):
             self.__cancelled__ = True
             status = urwid.Text(u"")
 
@@ -39,7 +39,9 @@ if (audiotools.ui.AVAILABLE):
                                   urwid.Button(_.LAB_CANCEL_BUTTON,
                                                on_press=self.exit)),
                                  ('weight', 2,
-                                  urwid.Button(_.LAB_APPLY_BUTTON,
+                                  urwid.Button(_.LAB_APPLY_BUTTON
+                                               if final_album
+                                               else _.LAB_TRACK2TRACK_NEXT,
                                                on_press=self.apply))],
                     dividechars=3,
                     focus_column=1))
@@ -206,14 +208,6 @@ if (__name__ == '__main__'):
         dest='replace',
         help=_.OPT_TRACKTAG_REPLACE)
 
-    parser.add_option(
-        '--cue',
-        action='store',
-        type='string',
-        dest='cue',
-        metavar='FILENAME',
-        help=_.OPT_TRACKTAG_CUESHEET)
-
     remove_group = audiotools.OptionGroup(parser, _.OPT_CAT_REMOVAL)
 
     for field in audiotools.MetaData.FIELD_ORDER:
@@ -301,43 +295,6 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("tracktag", options)
 
-    #open our set of input files for tagging
-    try:
-        tracks = audiotools.open_files(args,
-                                       messenger=msg,
-                                       no_duplicates=True)
-        track_metadatas = [t.get_metadata() for t in tracks]
-    except audiotools.DuplicateFile, err:
-        msg.error(_.ERR_DUPLICATE_FILE % (err.filename,))
-        sys.exit(1)
-
-    #open the --cue sheet
-    if (options.cue is not None):
-        try:
-            cuesheet = audiotools.read_sheet(options.cue)
-
-            #if there's a single audio file
-            #and the cuesheet is sized to fit that file
-            #attempt to embed the cuesheet in the file
-            if ((len(tracks) == 1) and
-                (list(cuesheet.pcm_lengths(
-                            tracks[0].total_frames(),
-                            tracks[0].sample_rate()))[-1] > 0)):
-                isrcs = {}
-                import_cuesheet = cuesheet
-            else:
-                #otherwise, treat the cuesheet as a source of ISRC data
-                isrcs = dict([(k, v.decode('ascii', 'replace'))
-                              for (k, v) in
-                              cuesheet.ISRCs().items()])
-                import_cuesheet = None
-        except audiotools.SheetException, err:
-            msg.error(unicode(err))
-            sys.exit(1)
-    else:
-        isrcs = {}
-        import_cuesheet = None
-
     #open a --comment-file as UTF-8
     if (options.comment_file is not None):
         try:
@@ -356,92 +313,128 @@ if (__name__ == '__main__'):
     else:
         comment_file = None
 
+    #open our set of input files for tagging
+    try:
+        tracks = audiotools.open_files(args,
+                                       messenger=msg,
+                                       no_duplicates=True)
+    except audiotools.DuplicateFile, err:
+        msg.error(_.ERR_DUPLICATE_FILE % (err.filename,))
+        sys.exit(1)
 
     if (not options.metadata_lookup):
         #if not performing metadata lookup,
         #build fresh MetaData objects
-        metadata_choices = [[audiotools.MetaData()
-                             for t in tracks]]
+        #and tag them all simultaneously
+        input_albums = [(tracks,
+                         [t.get_metadata() for t in tracks],
+                         [[audiotools.MetaData() for t in tracks]])]
     else:
         #if performining metadata lookup,
         #get initial metadata from CD lookup service
-        metadata_choices = audiotools.track_metadata_lookup(
-            audiofiles=tracks,
-            musicbrainz_server=options.musicbrainz_server,
-            musicbrainz_port=options.musicbrainz_port,
-            freedb_server=options.freedb_server,
-            freedb_port=options.freedb_port,
-            use_musicbrainz=options.use_musicbrainz,
-            use_freedb=options.use_freedb)
+        #for each album in set of tracks
+        #and tag them album-by-album
+        input_albums = []
+        for album_tracks in audiotools.group_tracks(tracks):
+            track_metadatas = [t.get_metadata() for t in album_tracks]
 
-        #if interactive mode not indicated,
-        #have user pick choice right away
-        if (not options.interactive):
-            metadata_choices = [audiotools.ui.select_metadata(
-                    metadata_choices, msg, options.use_default)]
+            metadata_choices = audiotools.track_metadata_lookup(
+                audiofiles=album_tracks,
+                musicbrainz_server=options.musicbrainz_server,
+                musicbrainz_port=options.musicbrainz_port,
+                freedb_server=options.freedb_server,
+                freedb_port=options.freedb_port,
+                use_musicbrainz=options.use_musicbrainz,
+                use_freedb=options.use_freedb)
 
-    #if not replacing all metadata
-    #merge metadata with that from original files, if any
-    #where new values take precedence over old ones
-    if (not options.replace):
-        for choice in metadata_choices:
-            for (new_metadata, old_metadata) in zip(choice, track_metadatas):
-                if (old_metadata is not None):
-                    for (attr, value) in new_metadata.empty_fields():
-                        setattr(new_metadata, attr,
-                                getattr(old_metadata, attr))
+            if (not options.interactive):
+                #if interactive mode not indicated,
+                #have user pick choice right away
+                metadata_choices = [audiotools.ui.select_metadata(
+                        metadata_choices, msg, options.use_default)]
+            else:
+                #otherwise, add tracks' original metadatas
+                #to list of possibilities
+                metadata_choices.insert(0, track_metadatas)
 
-    for choice in metadata_choices:
-        for metadata in choice:
-            #apply ISRCs across all metadata choices
-            if (options.update_track_number is not None):
-                if (options.update_track_number in isrcs):
-                    metadata.ISRC = isrcs[options.update_track_number]
-            elif (metadata.track_number is not None):
-                if (metadata.track_number in isrcs):
-                    metadata.ISRC = isrcs[metadata.track_number]
+            input_albums.append((album_tracks,
+                                 track_metadatas,
+                                 metadata_choices))
 
-            #apply field removal options across all metadata choices
-            for attr in audiotools.MetaData.FIELD_ORDER:
-                if (getattr(options, "remove_%s" % (attr))):
-                    delattr(metadata, attr)
+    #a list of (tracks, old_metadatas, new_metadatas) tuples
+    #to apply once all interactive widgets have finished
+    to_tag = []
 
-            #apply field addition options across all metadata choices
-            for attr in audiotools.MetaData.FIELD_ORDER:
-                if (getattr(options, "update_%s" % (attr)) is not None):
-                    setattr(metadata, attr,
-                            getattr(options, "update_%s" % (attr)))
+    for (last_album,
+         (album_tracks,
+          album_track_metadatas,
+          album_metadata_choices)) in audiotools.iter_last(iter(input_albums)):
+        #if not replacing all metadata
+        #merge metadata with that from original files, if any
+        #where new values take precedence over old ones
+        if (not options.replace):
+            for choice in album_metadata_choices:
+                for (new_metadata,
+                     old_metadata) in zip(choice, album_track_metadatas):
+                    if (old_metadata is not None):
+                        for (attr, value) in new_metadata.empty_fields():
+                            setattr(new_metadata, attr,
+                                    getattr(old_metadata, attr))
 
-            #apply comment file across all metadata choices
-            if (comment_file is not None):
-                metadata.comment = comment_file
+        for choice in album_metadata_choices:
+            for metadata in choice:
+                #apply field removal options across all metadata choices
+                for attr in audiotools.MetaData.FIELD_ORDER:
+                    if (getattr(options, "remove_%s" % (attr))):
+                        delattr(metadata, attr)
 
-    if (options.interactive):
-        #if interactive mode indicated, edit metadata choices in widget
-        widget = Tracktag(tracks, metadata_choices)
-        loop = audiotools.ui.urwid.MainLoop(
-            widget,
-            audiotools.ui.style(),
-            unhandled_input=widget.handle_text)
-        loop.run()
+                #apply field addition options across all metadata choices
+                for attr in audiotools.MetaData.FIELD_ORDER:
+                    if (getattr(options, "update_%s" % (attr)) is not None):
+                        setattr(metadata, attr,
+                                getattr(options, "update_%s" % (attr)))
 
-        if (not widget.cancelled()):
-            final_metadata = list(widget.populated_metadata())
-            tagging_cancelled = False
+                #apply comment file across all metadata choices
+                if (comment_file is not None):
+                    metadata.comment = comment_file
+
+        if (options.interactive):
+            #if interactive mode indicated, edit metadata choices in widget
+            widget = Tracktag(album_tracks,
+                              album_metadata_choices,
+                              last_album)
+            loop = audiotools.ui.urwid.MainLoop(
+                widget,
+                audiotools.ui.style(),
+                unhandled_input=widget.handle_text)
+            loop.run()
+
+            if (not widget.cancelled()):
+                to_tag.append((album_tracks,
+                               album_track_metadatas,
+                               list(widget.populated_metadata())))
+            else:
+                sys.exit(0)
         else:
-            tagging_cancelled = True
-    else:
-        #if interactive mode not indicated, use first choice
-        #since all other choices have been culled already
-        final_metadata = metadata_choices[0]
-        tagging_cancelled = False
+            #if interactive mode not indicated, use first choice
+            #since all other choices have been culled already
+            to_tag.append((album_tracks,
+                           album_track_metadatas,
+                           album_metadata_choices[0]))
 
-    if (not tagging_cancelled):
+    queue = audiotools.ExecProgressQueue(
+        audiotools.ProgressDisplay(msg))
+
+    #once all final output metadata is set,
+    #perform actual tagging
+    for (album_tracks, old_metadatas, new_metadatas) in to_tag:
         if (not options.replace):
             #apply final metadata to tracks using update_metadata
             #if no replacement
-            for (old_metadata, (track, new_metadata)) in zip(
-                track_metadatas, zip(tracks, final_metadata)):
+            for (old_metadata,
+                 (track,
+                  new_metadata)) in zip(old_metadatas,
+                                        zip(album_tracks, new_metadatas)):
                 if (old_metadata is not None):
                     #merge new fields with old fields
                     field_updated = False
@@ -456,8 +449,9 @@ if (__name__ == '__main__'):
                         try:
                             track.update_metadata(old_metadata)
                         except IOError, err:
-                            msg.error(_.ERR_ENCODING_ERROR %
-                                      (audiotools.Filename(track.filename),))
+                            msg.error(
+                                _.ERR_ENCODING_ERROR %
+                                (audiotools.Filename(track.filename),))
                             sys.exit(1)
                 else:
                     try:
@@ -467,8 +461,9 @@ if (__name__ == '__main__'):
                                   (audiotools.Filename(track.filename),))
                         sys.exit(1)
         else:
-            #apply final metadata to tracks using set_metadata() if replacement
-            for (track, metadata) in zip(tracks, final_metadata):
+            #apply final metadata to tracks
+            #using set_metadata() if replacement
+            for (track, metadata) in zip(album_tracks, new_metadatas):
                 try:
                     track.set_metadata(metadata)
                 except IOError, err:
@@ -476,29 +471,12 @@ if (__name__ == '__main__'):
                               (audiotools.Filename(track.filename),))
                     sys.exit(1)
 
-    #if cuesheet file given, add to track
-    if (import_cuesheet is not None):
-        try:
-            tracks[0].set_cuesheet(import_cuesheet)
-        except IOError, err:
-            msg.error(_.ERR_ENCODING_ERROR %
-                      (audiotools.Filename(tracks[0].filename),))
-            sys.exit(1)
+        #add ReplayGain to tracks, if indicated
+        if (options.add_replay_gain and (len(album_tracks) > 0)):
+            album_number = set([t.album_number() for t in album_tracks]).pop()
+            audio_type = album_tracks[0].__class__
 
-    #add ReplayGain to tracks, if indicated
-    if (options.add_replay_gain and (len(tracks) > 0)):
-        queue = audiotools.ExecProgressQueue(
-            audiotools.ProgressDisplay(msg))
-
-        for album in audiotools.group_tracks(tracks):
-            #add ReplayGain to groups of files
-            #belonging to the same album
-
-            album_number = set([t.album_number() for t in album]).pop()
-
-            audio_type = album[0].__class__
-
-            if (audio_type.can_add_replay_gain(album)):
+            if (audio_type.can_add_replay_gain(album_tracks)):
                 #FIXME - should pull ReplayGain text
                 #from elsewhere
                 queue.execute(
@@ -513,10 +491,11 @@ if (__name__ == '__main__'):
                        u"applied"),
                       (u"" if album_number is None else
                        (u" to album %d" % (album_number))))),
-                    [a.filename for a in album])
+                    [a.filename for a in album_tracks])
 
-        try:
-            queue.run(options.max_processes)
-        except ValueError, err:
-            msg.error(unicode(err))
-            sys.exit(1)
+    #execute ReplayGain addition once all tracks have been tagged
+    try:
+        queue.run(options.max_processes)
+    except ValueError, err:
+        msg.error(unicode(err))
+        sys.exit(1)

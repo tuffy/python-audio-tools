@@ -20,14 +20,6 @@
       this options erases all existing metadata and replaces it
       with any specified values
     </option>
-    <option long="cue" arg="filename">
-      If given along with multiple audio tracks,
-      this file's ISRC metadata will be added to those tracks;
-      if given with a single CD image track, this file will
-      be embedded in that image.
-      Note that only FLAC and WavPack currently support embedded cuesheets
-      and not all CDs contain ISRC metadata.
-    </option>
     <option long="replay-gain">
       add ReplayGain metadata to tracks
     </option>

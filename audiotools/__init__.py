@@ -1582,14 +1582,13 @@ def group_tracks(tracks):
     collection = {}
     for track in tracks:
         metadata = track.get_metadata()
-        if (metadata is not None):
-            collection.setdefault((track.album_number(),
-                                   metadata.album_name), []).append(track)
-        else:
-            collection.setdefault((track.album_number(),
-                                   None), []).append(track)
-    for tracks in collection.values():
-        yield tracks
+        collection.setdefault(
+            (track.album_number(),
+             metadata.album_name
+             if metadata is not None else None), []).append(track)
+
+    for key in sorted(collection.keys()):
+        yield collection[key]
 
 
 class UnknownAudioType(Exception):

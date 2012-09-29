@@ -258,6 +258,28 @@ try:
                        quality,
                        metadata)
 
+        def output_directory(self):
+            """returns the currently selected output directory
+            as a plain string"""
+
+            return self.options.output_directory.get_directory()
+
+        def format_string(self):
+            """returns the current format string
+            as a plain, UTF-8 encoded string"""
+
+            return self.options.output_format.get_edit_text().encode('utf-8')
+
+        def output_class(self):
+            """returns the current AudioFile-compatible output class"""
+
+            return self.options.selected_options()[0]
+
+        def quality(self):
+            """returns the current quality string"""
+
+            return self.options.selected_options()[1]
+
 
     class MetaDataFiller(urwid.Pile):
         """a class for selecting the MetaData to apply to tracks"""
