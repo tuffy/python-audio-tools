@@ -2005,7 +2005,7 @@ class trackinfo(UtilTest):
                                      (track.filename), line) is not None)
                     else:
                         self.assert_(
-                            re.match(r'\d+:\d+ 2ch 44100Hz 16-bit: %s\n' %
+                            re.match(r'\d+:\d+ 2ch 44.1kHz 16-bit: %s\n' %
                                      (track.filename), line) is not None)
 
                     #check metadata/low-level metadata if -n not present
@@ -2770,9 +2770,9 @@ class tracklint(UtilTest):
         fixed = audiotools.MetaData(
             track_name=u"Track Name",
             track_number=2,
-            track_total=0,
+            track_total=None,
             album_number=3,
-            album_total=0,
+            album_total=None,
             artist_name=u"Some Artist",
             comment=u"Some Comment")
 
@@ -3072,10 +3072,6 @@ class tracktag(UtilTest):
 
         self.track_file = tempfile.NamedTemporaryFile()
 
-        self.cuesheet = tempfile.NamedTemporaryFile(suffix=".cue")
-        self.cuesheet.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC JPPI00652340\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC JPPI00652349\r\n    INDEX 00 03:40:72\r\n    INDEX 01 03:42:27\r\n  TRACK 03 AUDIO\r\n    ISRC JPPI00652341\r\n    INDEX 00 07:22:45\r\n    INDEX 01 07:24:37\r\n')
-        self.cuesheet.flush()
-
         self.comment_file = tempfile.NamedTemporaryFile(suffix=".txt")
         self.comment_file.write("Comment File")
         self.comment_file.flush()
@@ -3083,17 +3079,13 @@ class tracktag(UtilTest):
     @UTIL_TRACKTAG
     def tearDown(self):
         self.track_file.close()
-        self.cuesheet.close()
         self.comment_file.close()
 
     def populate_options(self, options):
         populated = []
 
         for option in sorted(options):
-            if (option == '--cue'):
-                populated.append(option)
-                populated.append(self.cuesheet.name)
-            elif (option == '--name'):
+            if (option == '--name'):
                 populated.append(option)
                 populated.append("Name 3")
             elif (option == '--artist'):
@@ -3147,8 +3139,7 @@ class tracktag(UtilTest):
         #Since most of those options are straight text,
         #we'll restrict the tests to the more interesting ones
         #which is still over 8000 different option combinations.
-        most_options = ['-r', '--cue',
-                        '--name', '--number', '--track-total',
+        most_options = ['-r', '--name', '--number', '--track-total',
                         '--album-number', '--comment', '--comment-file']
 
         #ensure tagging the same file twice triggers an error
@@ -3234,8 +3225,6 @@ class tracktag(UtilTest):
 
                 if ("-r" in options):
                     self.assertEqual(metadata.ISRC, None)
-                elif (("--cue" in options) and ("--number" not in options)):
-                    self.assertEqual(metadata.ISRC, u"JPPI00652340")
                 else:
                     self.assertEqual(metadata.ISRC, u"ABCD00000000")
 
@@ -3581,132 +3570,6 @@ class tracktag_misc(UtilTest):
             elif (field == 'album_total'):
                 options.append('--remove-album-total')
         return options
-
-    @UTIL_TRACKTAG
-    def test_cuesheet1(self):
-        for audio_class in [audiotools.FlacAudio,
-                            audiotools.WavPackAudio]:
-            #create single track and cuesheet
-            temp_track = tempfile.NamedTemporaryFile(
-                suffix="." + audio_class.SUFFIX)
-            temp_sheet = tempfile.NamedTemporaryFile(
-                suffix=".cue")
-            try:
-                temp_sheet.write(
-"""eJydkF1LwzAUQN8L/Q+X/oBxk6YfyVtoM4mu68iy6WudQ8qkHbNu+u9NneCc1IdCnk649xyuUQXk
-epnpHGiOMU2Q+Z5xMCuLQs0tBOq92nTy7alus3b/AUeccL5/ZIHvZdLKWXkDjKcpIg2RszjxvYUy
-09IUykCwanZNe2pAHrr6tXMjVtuZ+uG27l62Dk91T03VPG8np+oYwL1cK98DsEZmd4AE5CrXZU8c
-O++wh2qzQxKc4X/S/l8vTQa3i7V2kWEap/iN57l66Pcjiq93IaWDUjpOyn9LETAVyASh1y0OR4Il
-Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64').decode('zlib'))
-                temp_sheet.flush()
-                album = audio_class.from_pcm(
-                    temp_track.name,
-                    EXACT_BLANK_PCM_Reader(69470436))
-                sheet = audiotools.read_sheet(temp_sheet.name)
-
-                #add metadata
-                self.assertEqual(subprocess.call(["tracktag",
-                                                  "--album", "Album Name",
-                                                  "--artist", "Artist Name",
-                                                  "--album-number", "2",
-                                                  "--album-total", "3",
-                                                  temp_track.name]), 0)
-
-                metadata = audiotools.MetaData(
-                    album_name=u"Album Name",
-                    artist_name=u"Artist Name",
-                    album_number=2,
-                    album_total=3)
-
-                #ensure metadata matches
-                self.assertEqual(album.get_metadata(), metadata)
-
-                #ensure cuesheet starts as None
-                self.assertEqual(album.get_cuesheet(), None)
-
-                #add cuesheet
-                self.assertEqual(
-                    subprocess.call(["tracktag", "--cue", temp_sheet.name,
-                                     temp_track.name]), 0)
-
-                #ensure metadata still matches
-                self.assertEqual(album.get_metadata(), metadata)
-
-                #ensure cuesheet matches
-                sheet2 = album.get_cuesheet()
-
-                self.assertNotEqual(sheet2, None)
-                self.assertEqual(sheet.catalog(),
-                                 sheet2.catalog())
-                self.assertEqual(sorted(sheet.ISRCs().items()),
-                                 sorted(sheet2.ISRCs().items()))
-                self.assertEqual(list(sheet.indexes()),
-                                 list(sheet2.indexes()))
-                self.assertEqual(list(sheet.pcm_lengths(69470436, 44100)),
-                                 list(sheet2.pcm_lengths(69470436, 44100)))
-            finally:
-                temp_track.close()
-                temp_sheet.close()
-
-    @UTIL_TRACKTAG
-    def test_cuesheet2(self):
-        for audio_class in [audiotools.FlacAudio,
-                            audiotools.WavPackAudio]:
-            #create single track and cuesheet
-            temp_track = tempfile.NamedTemporaryFile(
-                suffix="." + audio_class.SUFFIX)
-            temp_sheet = tempfile.NamedTemporaryFile(
-                suffix=".cue")
-            try:
-                temp_sheet.write(
-"""eJydkF1LwzAUQN8L/Q+X/oBxk6YfyVtoM4mu68iy6WudQ8qkHbNu+u9NneCc1IdCnk649xyuUQXk
-epnpHGiOMU2Q+Z5xMCuLQs0tBOq92nTy7alus3b/AUeccL5/ZIHvZdLKWXkDjKcpIg2RszjxvYUy
-09IUykCwanZNe2pAHrr6tXMjVtuZ+uG27l62Dk91T03VPG8np+oYwL1cK98DsEZmd4AE5CrXZU8c
-O++wh2qzQxKc4X/S/l8vTQa3i7V2kWEap/iN57l66Pcjiq93IaWDUjpOyn9LETAVyASh1y0OR4Il
-Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64').decode('zlib'))
-                temp_sheet.flush()
-                album = audio_class.from_pcm(
-                            temp_track.name,
-                            EXACT_BLANK_PCM_Reader(69470436))
-                sheet = audiotools.read_sheet(temp_sheet.name)
-
-                #add cuesheet
-                self.assertEqual(
-                    subprocess.call(["tracktag", "--cue", temp_sheet.name,
-                                     temp_track.name]), 0)
-
-                #add metadata
-                self.assertEqual(subprocess.call(["tracktag",
-                                                  "--album", "Album Name",
-                                                  "--artist", "Artist Name",
-                                                  "--album-number", "2",
-                                                  "--album-total", "3",
-                                                  temp_track.name]), 0)
-
-                metadata = audiotools.MetaData(
-                    album_name=u"Album Name",
-                    artist_name=u"Artist Name",
-                    album_number=2,
-                    album_total=3)
-
-                #ensure metadata matches
-                self.assertEqual(album.get_metadata(), metadata)
-
-                #ensure cuesheet matches
-                sheet2 = album.get_cuesheet()
-
-                self.assertNotEqual(sheet2, None)
-                self.assertEqual(sheet.catalog(),
-                                 sheet2.catalog())
-                self.assertEqual(sorted(sheet.ISRCs().items()),
-                                 sorted(sheet2.ISRCs().items()))
-                self.assertEqual(list(sheet.indexes()),
-                                 list(sheet2.indexes()))
-                self.assertEqual(list(sheet.pcm_lengths(69470436, 44100)),
-                                 list(sheet2.pcm_lengths(69470436, 44100)))
-            finally:
-                temp_track.close()
-                temp_sheet.close()
 
 
 class covertag(UtilTest):
