@@ -295,6 +295,11 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("tracktag", options)
 
+    #ensure interactive mode is available, if selected
+    if (options.interactive and (not audiotools.ui.AVAILABLE)):
+        audiotools.ui.not_available_message(msg)
+        sys.exit(1)
+
     #open a --comment-file as UTF-8
     if (options.comment_file is not None):
         try:

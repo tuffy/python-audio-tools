@@ -6018,8 +6018,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    all interactive modes will also need a consistent interface.
 *** TODO audiotools-config
 *** DONE cd2track
-*** TODO cdplay
-**** TODO make player widget generic
+*** DONE cdplay
+**** DONE make player widget generic
 *** TODO coverdump
 *** TODO covertag
 **** TODO add wxPython interactive mode
@@ -6034,11 +6034,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE track2track
 *** TODO trackcat
 *** TODO tracklint
-*** TODO trackplay
-**** TODO make player widget generic
-*** TODO trackrename
+*** DONE trackplay
+**** DONE make player widget generic
+*** DONE trackrename
 *** DONE tracksplit
-*** TODO tracktag
+*** DONE tracktag
 *** TODO trackverify
 ** TODO Add internal Ogg FLAC encoder
    This shouldn't be too hard since native FLAC encoding is already in place,

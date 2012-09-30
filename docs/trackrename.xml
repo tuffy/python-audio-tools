@@ -12,6 +12,9 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
+    <option short="I" long="interactive">
+      edit format string in interactive mode prior to renaming tracks
+    </option>
     <option long="format" arg="string">
       The format string to use for new filenames.
       Template fields are replaced with metadata values when

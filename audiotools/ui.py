@@ -1576,11 +1576,11 @@ try:
                     audiotools.InvalidFilenameFormat):
                 #if there's an error calling track_name,
                 #populate files list with an error message
-                self.has_errors = True
                 if (self.output_tracks_frame.get_body() is not
                     self.invalid_output_format):
                     self.output_tracks_frame.set_body(
                         self.invalid_output_format)
+                self.has_errors = True
 
         def selected_options(self):
             """returns (AudioFile class, quality string, [output Filename])
