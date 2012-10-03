@@ -775,72 +775,8 @@ class CoreAudioOutput(AudioOutput):
         except ImportError:
             return False
 
-class PortAudioOutput(AudioOutput):
-    """an AudioOutput subclass for PortAudio output"""
-
-    NAME = "PortAudio"
-
-    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream
-
-        this *must* be called prior to play() and close()"""
-
-        if (not self.initialized):
-            import pyaudio
-
-            self.sample_rate = sample_rate
-            self.channels = channels
-            self.channel_mask = channel_mask
-            self.bits_per_sample = bits_per_sample
-
-            self.pyaudio = pyaudio.PyAudio()
-            self.stream = self.pyaudio.open(
-                format=self.pyaudio.get_format_from_width(
-                    self.bits_per_sample / 8, False),
-                channels=self.channels,
-                rate=self.sample_rate,
-                output=True)
-
-            self.initialized = True
-        else:
-            self.close()
-            self.init(sample_rate=sample_rate,
-                      channels=channels,
-                      channel_mask=channel_mask,
-                      bits_per_sample=bits_per_sample)
-
-    def framelist_converter(self):
-        """returns a function which converts framelist objects
-
-        to objects acceptable by our play() method"""
-
-        return lambda f: f.to_bytes(False, True)
-
-    def play(self, data):
-        """plays a chunk of converted data"""
-
-        self.stream.write(data)
-
-    def close(self):
-        """closes the output stream"""
-
-        if (self.initialized):
-            self.stream.close()
-            self.pyaudio.terminate()
-            self.initialized = False
-
-    @classmethod
-    def available(cls):
-        """returns True if the AudioOutput is available on the system"""
-
-        try:
-            import pyaudio
-            return True
-        except ImportError:
-            return False
 
 AUDIO_OUTPUT = (PulseAudioOutput,
                 OSSAudioOutput,
                 CoreAudioOutput,
-                PortAudioOutput,
                 NULLAudioOutput)
