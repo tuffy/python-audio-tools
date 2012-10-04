@@ -6016,7 +6016,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
    Just as the command-line options are kept as consistent as possible,
    all interactive modes will also need a consistent interface.
-*** TODO audiotools-config
+*** DONE audiotools-config
 *** DONE cd2track
 *** DONE cdplay
 **** DONE make player widget generic

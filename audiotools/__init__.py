@@ -132,9 +132,9 @@ ADD_REPLAYGAIN = config.getboolean_default("ReplayGain", "add_by_default",
 
 VERSION = "2.19alpha3"
 
-FILENAME_FORMAT = config.get_default(
-    "Filenames", "format",
-    '%(track_number)2.2d - %(track_name)s.%(suffix)s')
+DEFAULT_FILENAME_FORMAT = '%(track_number)2.2d - %(track_name)s.%(suffix)s'
+FILENAME_FORMAT = config.get_default("Filenames", "format",
+                                     DEFAULT_FILENAME_FORMAT)
 
 FS_ENCODING = config.get_default("System", "fs_encoding",
                                  sys.getfilesystemencoding())
@@ -747,6 +747,14 @@ class VerboseMessenger:
 
         if (sys.stdout.isatty()):
             sys.stdout.write(u"\u001B[0J")
+            sys.stdout.flush()
+
+    def ansi_clearscreen(self):
+        """clears the entire screen and moves cursor to upper left corner"""
+
+        if (sys.stdout.isatty()):
+            sys.stdout.write(u"\u001B[2J")
+            sys.stdout.write(u"\u001B[1;1H")
             sys.stdout.flush()
 
     def ansi_err(self, s, codes):

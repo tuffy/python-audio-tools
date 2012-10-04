@@ -15,31 +15,10 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
-    <option long="format" arg="string">
-      The format string to use for new filenames.
-      Template fields are replaced with metadata values when
-      new tracks are created.  All other text is left as-is.
-    </option>
+    <option short="I" long="interactive">edit options interactively</option>
     <option short="V" long="verbose" arg="verbosity">
       The level of output to display.
       Choose between 'normal', 'quiet' and 'debug'.
-    </option>
-  </options>
-  <options category="system">
-    <option short="c" long="cdrom" name="cdrom">
-      the default CD-ROM drive to use
-    </option>
-    <option long="cdrom-read-offset" name="samples">
-      the CD-ROM read offset, in PCM samples
-    </option>
-    <option long="cdrom-write-offset" name="samples">
-      the CD-ROM write offset, in PCM samples
-    </option>
-    <option long="fs-encoding" name="encoding">
-      the encoding of filenames on the system, such as "UTF-8"
-    </option>
-    <option long="io-encoding" name="encoding">
-      the encoding of text sent to the screen, such as "UTF-8"
     </option>
   </options>
   <options category="transcoding">
@@ -54,8 +33,36 @@
       The default quality level for a given audio type.
       For a list of available quality levels, try: -q help
     </option>
+    <option long="format" arg="string">
+      The format string to use for new filenames.
+      Template fields are replaced with metadata values when
+      new tracks are created.  All other text is left as-is.
+    </option>
     <option short="j" long="joint" name="processes">
       the default maximum number of processes to execute at one time
+    </option>
+    <option long="replay-gain" arg="yes/no">
+      whether to add ReplayGain metadata by default
+    </option>
+  </options>
+  <options category="id3">
+    <option long="id3v2-version" arg="version">
+      Which version to use for newly created ID3v2 tags.
+      Choose from "id3v2.2", "id3v2.3", "id3v2.4", or "none".
+      All three ID3v2 tag versions are roughly equivalent in terms
+      of supported features, but "id3v2.2" and "id3v2.3" have
+      the widest level of support.
+      If "none" is given, new MP3 files will not be given ID3v2 tags.
+    </option>
+    <option long="id3v2-pad" arg="true / false">
+      Whether to pad ID3v2 numerical fields to 2 digits.
+      For example, if "true", track number 1 will be stored as "01"
+      in ID3v2 tags.  If false, it will be stored as "1".
+    </option>
+    <option long="id3v1-version" arg="version">
+      Which version to use for newly created ID3v1 tags.
+      Choose from "id3v1.1" or "none".
+      If "none" is given, new MP3 files will not be given ID3v1 tags.
     </option>
   </options>
   <options category="CD lookup">
@@ -78,29 +85,21 @@
       the default FreeDB port number to use
     </option>
   </options>
-  <options category="id3">
-    <option long="id3v2-version" arg="version">
-      Which version to use for newly created ID3v2 tags.
-      Choose from "id3v2.2", "id3v2.3", "id3v2.4", or "none".
-      All three ID3v2 tag versions are roughly equivalent in terms
-      of supported features, but "id3v2.2" and "id3v2.3" have
-      the widest level of support.
-      If "none" is given, new MP3 files will not be given ID3v2 tags.
+  <options category="system">
+    <option short="c" long="cdrom" name="cdrom">
+      the default CD-ROM drive to use
     </option>
-    <option long="id3v1-version" arg="version">
-      Which version to use for newly created ID3v1 tags.
-      Choose from "id3v1.1" or "none".
-      If "none" is given, new MP3 files will not be given ID3v1 tags.
+    <option long="cdrom-read-offset" name="samples">
+      the CD-ROM read offset, in PCM samples
     </option>
-    <option long="id3v2-pad" arg="true / false">
-      Whether to pad ID3v2 numerical fields to 2 digits.
-      For example, if "true", track number 1 will be stored as "01"
-      in ID3v2 tags.  If false, it will be stored as "1".
+    <option long="cdrom-write-offset" name="samples">
+      the CD-ROM write offset, in PCM samples
     </option>
-  </options>
-  <options category="ReplayGain">
-    <option long="replay-gain" arg="yes/no">
-      whether to add ReplayGain metadata by default
+    <option long="fs-encoding" name="encoding">
+      the encoding of filenames on the system, such as "UTF-8"
+    </option>
+    <option long="io-encoding" name="encoding">
+      the encoding of text sent to the screen, such as "UTF-8"
     </option>
   </options>
   <options category="binaries">

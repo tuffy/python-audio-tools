@@ -926,14 +926,15 @@ try:
 
 
     class SelectOne(urwid.PopUpLauncher):
-        def __init__(self, items, selected_value=None, on_change=None):
+        def __init__(self, items, selected_value=None, on_change=None,
+                     user_data=None):
             """items is a list of (unicode, value) tuples
             where value can be any sort of object
 
             selected_value is a selected object
 
             on_change is a callback which takes a new selected object
-            which is called as on_change(new_value)"""
+            which is called as on_change(new_value, [user_data])"""
 
             self.__select_button__ = urwid.Button(u"")
             self.__super.__init__(self.__select_button__)
@@ -944,17 +945,21 @@ try:
 
             self.__items__ = items
             self.__selected_value__ = None  #set by make_selection, below
-            self.__on_change__ = on_change
+            self.__on_change__ = None
+            self.__user_data__ = None
 
             if (selected_value is not None):
                 try:
                     (label, value) = [pair for pair in items
-                                      if pair[1] is selected_value][0]
+                                      if pair[1] == selected_value][0]
                 except IndexError:
                     (label, value) = items[0]
             else:
                 (label, value) = items[0]
+
             self.make_selection(label, value)
+            self.__on_change__ = on_change
+            self.__user_data__ = user_data
 
         def create_pop_up(self):
             pop_up = SelectOneDialog(self,
@@ -975,7 +980,10 @@ try:
             self.__select_button__.set_label(label)
             self.__selected_value__ = value
             if (self.__on_change__ is not None):
-                self.__on_change__(value)
+                if (self.__user_data__ is not None):
+                    self.__on_change__(value, self.__user_data__)
+                else:
+                    self.__on_change__(value)
 
         def selection(self):
             return self.__selected_value__
