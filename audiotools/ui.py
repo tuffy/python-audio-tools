@@ -316,24 +316,6 @@ try:
 
             self.status = status
 
-            #setup radio button for each possible match
-            matches = []
-            radios = [urwid.RadioButton(matches,
-                                        (choice[0].album_name
-                                         if (choice[0].album_name is not None)
-                                         else u""),
-                                        on_state_change=self.select_match,
-                                        user_data=i)
-                      for (i, choice) in enumerate(metadata_choices)]
-            for radio in radios:
-                radio._label.set_wrap_mode(urwid.CLIP)
-
-            #put radio buttons in pretty container
-            self.select_match = urwid.LineBox(urwid.ListBox(radios))
-
-            if (hasattr(self.select_match, "set_title")):
-                self.select_match.set_title(LAB_SELECT_BEST_MATCH)
-
             #setup a MetaDataEditor for each possible match
             self.edit_matches = [
                 MetaDataEditor(
@@ -345,9 +327,28 @@ try:
 
             #place selector at top only if there's more than one match
             if (len(metadata_choices) > 1):
+                #setup radio button for each possible match
+                matches = []
+                radios = [urwid.RadioButton(
+                        matches,
+                        (choice[0].album_name
+                         if (choice[0].album_name is not None)
+                         else u""),
+                        on_state_change=self.select_match,
+                        user_data=i)
+                          for (i, choice) in enumerate(metadata_choices)]
+                for radio in radios:
+                    radio._label.set_wrap_mode(urwid.CLIP)
+
+                #put radio buttons in pretty container
+                select_match = urwid.LineBox(urwid.ListBox(radios))
+
+                if (hasattr(select_match, "set_title")):
+                    select_match.set_title(LAB_SELECT_BEST_MATCH)
+
                 widgets = [("fixed",
                             len(metadata_choices) + 2,
-                            self.select_match)]
+                            select_match)]
             else:
                 widgets = []
 
