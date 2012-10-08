@@ -288,7 +288,7 @@ try:
         def __init__(self,
                      track_label,
                      metadata_choices,
-                     input_filename,
+                     input_filenames,
                      output_file,
                      output_class,
                      quality,
@@ -298,7 +298,7 @@ try:
             metadata_choices is a list of MetaData objects,
             one per possible metadata choice to apply
 
-            input_filename is a Filename object
+            input_filenames is a list or set of Filename objects
 
             output_file is a string of the default output filename
 
@@ -306,14 +306,15 @@ try:
 
             quality is a string of the default output quality to use"""
 
-            self.input_filename = input_filename
+            self.input_filenames = input_filenames
             self.__cancelled__ = True
 
             #ensure there's at least one choice
             assert(len(metadata_choices) > 0)
 
             #ensure input file is a Filename object
-            assert(isinstance(input_filename, audiotools.Filename))
+            for f in input_filenames:
+                assert(isinstance(f, audiotools.Filename))
 
             from audiotools.text import LAB_CANCEL_BUTTON
 
@@ -338,8 +339,7 @@ try:
             self.options = SingleOutputOptions(
                 output_filename=output_file,
                 audio_class=output_class,
-                quality=quality,
-                input_filename=input_filename)
+                quality=quality)
 
             #combine metadata and output options into single widget
             self.metadata = MetaDataFiller(
@@ -361,12 +361,13 @@ try:
             raise urwid.ExitMainLoop()
 
         def complete(self, button):
+            output_filename = self.options.selected_options()[2]
+
             #ensure output filename isn't same as input filename
-            if (self.options.selected_options()[2] ==
-                self.input_filename):
+            if (output_filename in self.input_filenames):
                 from audiotools.text import ERR_OUTPUT_IS_INPUT
                 self.options_status.set_text(
-                    ERR_OUTPUT_IS_INPUT % (self.input_filename,))
+                    ERR_OUTPUT_IS_INPUT % (output_filename,))
             else:
                 self.__cancelled__ = False
                 raise urwid.ExitMainLoop()
@@ -1752,15 +1753,13 @@ try:
         def __init__(self,
                      output_filename,
                      audio_class,
-                     quality,
-                     input_filename):
+                     quality):
             """
-            | field           | value     | meaning                        |
-            |-----------------+-----------+--------------------------------|
-            | output_filename | string    | default output filename        |
-            | audio_class     | AudioFile | audio class of output file     |
-            | quality         | string    | quality level of output        |
-            | input_filename  | Filename  | Filename object for input file |
+            | field           | value     | meaning                    |
+            |-----------------+-----------+----------------------------|
+            | output_filename | string    | default output filename    |
+            | audio_class     | AudioFile | audio class of output file |
+            | quality         | string    | quality level of output    |
             """
 
             #FIXME - add support for directory selector

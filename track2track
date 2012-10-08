@@ -486,7 +486,7 @@ if (__name__ == '__main__'):
                 track_label=unicode(input_filename),
                 metadata_choices=[track_metadata if track_metadata is not None
                                   else audiotools.MetaData()],
-                input_filename=input_filename,
+                input_filenames=[input_filename],
                 output_file=options.output,
                 output_class=AudioType,
                 quality=options.quality,

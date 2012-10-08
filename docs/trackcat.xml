@@ -12,15 +12,22 @@
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
+    <option short="I" long="interactive">
+      edit metadata and encoding options in interactive mode
+      prior to converting tracks
+    </option>
     <option long="cue" arg="filename">
       a cuesheet to embed in the output file
     </option>
     <option short="V" long="verbose" arg="verbosity">
       The level of output to display.
-      Choose between 'normal', 'quiet' and 'debug.
+      Choose between 'normal', 'quiet' and 'debug'.
     </option>
   </options>
   <options category="encoding">
+    <option short="o" long="output" arg="filename">
+      the output filename of the concatenated track
+    </option>
     <option short="t" long="type" arg="type">
       the audio format of the concatenated track;
       for a list of available audio formats, try: -t help
@@ -29,8 +36,33 @@
       the desired quality of the concatenated track;
       for a list of available quality modes for a given format, try: -q help
     </option>
-    <option short="o" long="output" arg="filename">
-      the output filename of the concatenated track
+  </options>
+  <options category="CD lookup">
+    <option short="M" long="metadata-lookup">
+      perform metadata lookup for converted tracks
+    </option>
+    <option long="musicbrainz-server" arg="hostname">
+      the MusicBrainz server name to query for metadata
+    </option>
+    <option long="musicbrainz-port" arg="port">
+      the MusicBrainz port to query for metadata
+    </option>
+    <option long="no-musicbrainz">
+      don't query MusicBrainz for metadata
+    </option>
+    <option long="freedb-server" arg="hostname">
+      the FreeDB server name to query for metadata
+    </option>
+    <option long="freedb-port" arg="port">
+      the FreeDB port to query for metadata
+    </option>
+    <option long="no-freedb">
+      don't query FreeDB for metadata
+    </option>
+    <option short="D" long="default">
+      When multiple metadata choices are available,
+      select the first one automatically.
+      This option has no effect when used with -I
     </option>
   </options>
   <examples>

@@ -22,36 +22,56 @@ import sys
 import os
 import os.path
 import audiotools
+import audiotools.ui
 import audiotools.text as _
+
+
+def merge_metadatas(metadatas):
+    """given a list of MetaData objects, or Nones,
+    returns a single MetaData object
+    containing only fields that are the same across all objects
+    or returns None if all MetaData objects are None"""
+
+    track_metadatas = [m for m in metadatas if m is not None]
+
+    if (len(track_metadatas) == 0):
+        return None
+    elif (len(track_metadatas) == 1):
+        return track_metadatas[0]
+    else:
+        track_fields = dict([(field,
+                              set([getattr(m, field)
+                                   for m in track_metadatas]))
+                             for field in audiotools.MetaData.FIELDS])
+
+        metadata = audiotools.MetaData(**dict([(field, values.pop())
+                                               for (field, values) in
+                                               track_fields.items()
+                                               if (len(values) == 1)]))
+
+        #port over non-duplicate images
+        images = []
+        for m in track_metadatas:
+            for i in m.images():
+                if (i not in images):
+                    images.append(i)
+        for i in images:
+            metadata.add_image(i)
+
+        return metadata
+
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_.USAGE_TRACKCAT,
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    conversion = audiotools.OptionGroup(parser, _.OPT_CAT_ENCODING)
-
-    conversion.add_option(
-        '-t', '--type',
-        action='store',
-        dest='type',
-        choices=sorted(audiotools.TYPE_MAP.keys() + ['help']),
-        help=_.OPT_TYPE)
-
-    conversion.add_option(
-        '-q', '--quality',
-        action='store',
-        type='string',
-        dest='quality',
-        help=_.OPT_QUALITY)
-
-    conversion.add_option(
-        '-o', '--output',
-        dest='filename',
-        metavar='FILE',
-        help=_.OPT_OUTPUT_TRACKCAT)
-
-    parser.add_option_group(conversion)
+    parser.add_option(
+        '-I', '--interactive',
+        action='store_true',
+        default=False,
+        dest='interactive',
+        help=_.OPT_INTERACTIVE_OPTIONS)
 
     parser.add_option(
         '--cue',
@@ -69,55 +89,92 @@ if (__name__ == '__main__'):
         default=audiotools.DEFAULT_VERBOSITY,
         help=_.OPT_VERBOSE)
 
+    conversion = audiotools.OptionGroup(parser, _.OPT_CAT_ENCODING)
+
+    conversion.add_option(
+        '-o', '--output',
+        dest='filename',
+        metavar='FILE',
+        help=_.OPT_OUTPUT_TRACKCAT)
+
+    conversion.add_option(
+        '-t', '--type',
+        action='store',
+        dest='type',
+        choices=sorted(audiotools.TYPE_MAP.keys() + ['help']),
+        help=_.OPT_TYPE)
+
+    conversion.add_option(
+        '-q', '--quality',
+        action='store',
+        type='string',
+        dest='quality',
+        help=_.OPT_QUALITY)
+
+    parser.add_option_group(conversion)
+
+    lookup = audiotools.OptionGroup(parser, _.OPT_CAT_CD_LOOKUP)
+
+    lookup.add_option(
+        '-M', '--metadata-lookup', action='store_true',
+        default=False, dest='metadata_lookup',
+        help=_.OPT_METADATA_LOOKUP)
+
+    lookup.add_option(
+        '--musicbrainz-server', action='store',
+        type='string', dest='musicbrainz_server',
+        default=audiotools.MUSICBRAINZ_SERVER,
+        metavar='HOSTNAME')
+    lookup.add_option(
+        '--musicbrainz-port', action='store',
+        type='int', dest='musicbrainz_port',
+        default=audiotools.MUSICBRAINZ_PORT,
+        metavar='PORT')
+    lookup.add_option(
+        '--no-musicbrainz', action='store_false',
+        dest='use_musicbrainz',
+        default=audiotools.MUSICBRAINZ_SERVICE,
+        help=_.OPT_NO_MUSICBRAINZ)
+
+    lookup.add_option(
+        '--freedb-server', action='store',
+        type='string', dest='freedb_server',
+        default=audiotools.FREEDB_SERVER,
+        metavar='HOSTNAME')
+    lookup.add_option(
+        '--freedb-port', action='store',
+        type='int', dest='freedb_port',
+        default=audiotools.FREEDB_PORT,
+        metavar='PORT')
+    lookup.add_option(
+        '--no-freedb', action='store_false',
+        dest='use_freedb',
+        default=audiotools.FREEDB_SERVICE,
+        help=_.OPT_NO_FREEDB)
+
+    lookup.add_option(
+        '-D', '--default',
+        dest='use_default', action='store_true', default=False,
+        help=_.OPT_DEFAULT)
+
+    parser.add_option_group(lookup)
+
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackcat", options)
 
-    if (options.filename is None):
-        msg.error(_.ERR_NO_OUTPUT_FILE)
-        sys.exit(1)
-
-    #get the AudioFile class we are converted to
-    if (options.type == 'help'):
-        import audiotools.ui
-        audiotools.ui.show_available_formats(msg)
-        sys.exit(0)
-    elif (options.type is not None):
-        AudioType = audiotools.TYPE_MAP[options.type]
-    else:
-        try:
-            AudioType = audiotools.filename_to_type(options.filename)
-        except audiotools.UnknownAudioType, exp:
-            exp.error_msg(msg)
-            sys.exit(1)
-
-    #ensure the selected compression is compatible with that class
-    if (options.quality == 'help'):
-        import audiotools.ui
-        audiotools.ui.show_available_qualities(msg, AudioType)
-        sys.exit(0)
-    elif (options.quality is None):
-        options.quality = audiotools.__default_quality__(AudioType.NAME)
-    elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
-                  {"quality": options.quality,
-                   "type": AudioType.NAME})
+    #ensure interactive mode is available, if selected
+    if (options.interactive and (not audiotools.ui.AVAILABLE)):
+        audiotools.ui.not_available_message(msg)
         sys.exit(1)
 
     #grab the list of AudioFile objects we are converting from
-    output_filename = audiotools.Filename(options.filename)
     opened_files = set([])
-    if (options.cuesheet is not None):
-        opened_files.add(audiotools.Filename(options.cuesheet))
     audiofiles = audiotools.open_files(args,
                                        messenger=msg,
                                        warn_duplicates=True,
                                        opened_files=opened_files)
 
     #perform some option sanity checking
-    if (output_filename in opened_files):
-        msg.error(_.ERR_OUTPUT_IS_INPUT % (output_filename,))
-        sys.exit(1)
-
     if (len(audiofiles) < 1):
         msg.error(_.ERR_FILES_REQUIRED)
         sys.exit(1)
@@ -142,49 +199,121 @@ if (__name__ == '__main__'):
     if (options.cuesheet is not None):
         try:
             cuesheet = audiotools.read_sheet(options.cuesheet)
+            #FIXME - ensure cuesheet is long enough to be embedded
+
+            opened_files.add(audiotools.Filename(options.cuesheet))
         except audiotools.SheetException, err:
             msg.error(unicode(err))
             sys.exit(1)
     else:
         cuesheet = None
 
-    #constuct a MetaData object from our audiofiles
-    track_metadatas = [f.get_metadata() for f in
-                       audiofiles if (f.get_metadata() is not None)]
-
-    if (len(track_metadatas) > 0):
-        track_fields = dict([(field,
-                              set([getattr(m, field)
-                                   for m in track_metadatas]))
-                             for field in audiotools.MetaData.FIELDS])
-
-        metadata = audiotools.MetaData(**dict([(field, list(values)[0])
-                                               for (field, values) in
-                                               track_fields.items()
-                                               if (len(values) == 1)]))
-
-        #port over non-duplicate images
-        images = []
-        for m in track_metadatas:
-            for i in m.images():
-                if (i not in images):
-                    images.append(i)
-        for i in images:
-            metadata.add_image(i)
+    if (options.filename is None):
+        msg.error(_.ERR_NO_OUTPUT_FILE)
+        sys.exit(1)
     else:
-        metadata = None
+        output_filename = audiotools.Filename(options.filename)
+        if (output_filename in opened_files):
+            msg.error(_.ERR_OUTPUT_IS_INPUT % (output_filename,))
+            sys.exit(1)
 
+    #get the AudioFile class we are converted to
+    if (options.type == 'help'):
+        import audiotools.ui
+        audiotools.ui.show_available_formats(msg)
+        sys.exit(0)
+    elif (options.type is not None):
+        AudioType = audiotools.TYPE_MAP[options.type]
+    else:
+        if (options.filename is not None):
+            try:
+                AudioType = audiotools.filename_to_type(options.filename)
+            except audiotools.UnknownAudioType, exp:
+                exp.error_msg(msg)
+                sys.exit(1)
+        else:
+            AudioType = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
+
+    #ensure the selected compression is compatible with that class
+    if (options.quality == 'help'):
+        import audiotools.ui
+        audiotools.ui.show_available_qualities(msg, AudioType)
+        sys.exit(0)
+    elif (options.quality is None):
+        options.quality = audiotools.__default_quality__(AudioType.NAME)
+    elif (options.quality not in AudioType.COMPRESSION_MODES):
+        msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
+                  {"quality": options.quality,
+                   "type": AudioType.NAME})
+        sys.exit(1)
+
+    #constuct a MetaData object from our audiofiles
+    #which may be None if there is no metadata
+    metadata = merge_metadatas([t.get_metadata() for t in audiofiles])
+
+    if (not options.metadata_lookup):
+        metadata_choices = [metadata]
+    else:
+        #perform CD lookup for existing files
+        metadata_choices = [merge_metadatas(choice) for choice in
+                            audiotools.track_metadata_lookup(
+                audiofiles=audiofiles,
+                musicbrainz_server=options.musicbrainz_server,
+                musicbrainz_port=options.musicbrainz_port,
+                freedb_server=options.freedb_server,
+                freedb_port=options.freedb_port,
+                use_musicbrainz=options.use_musicbrainz,
+                use_freedb=options.use_freedb)]
+
+        #and prepend metadata from existing files as an option, if any
+        if (metadata is not None):
+            metadata_choices.insert(0, metadata)
+
+    if (options.interactive):
+        #pick options using interactive widget
+        output_widget = audiotools.ui.SingleOutputFiller(
+            track_label=_.LAB_TRACKCAT_INPUT % (len(audiofiles)),
+            metadata_choices=metadata_choices,
+            input_filenames=opened_files,
+            output_file=str(output_filename),
+            output_class=AudioType,
+            quality=options.quality,
+            completion_label=_.LAB_TRACKCAT_APPLY)
+        loop = audiotools.ui.urwid.MainLoop(
+            output_widget,
+            audiotools.ui.style(),
+            unhandled_input=output_widget.handle_text,
+            pop_ups=True)
+        loop.run()
+
+        if (not output_widget.cancelled()):
+            (output_class,
+             output_filename,
+             output_quality,
+             metadata) = output_widget.output_track()
+        else:
+            sys.exit(0)
+    else:
+        #pick options without using GUI
+        output_class = AudioType
+        output_quality = options.quality
+        metadata = audiotools.ui.select_metadata(
+            metadata_choices,
+            msg,
+            options.use_default)[0]
+
+    # perform track concatenation using options
     progress = audiotools.SingleProgressDisplay(
         msg, unicode(output_filename))
 
     try:
-        encoded = AudioType.from_pcm(
+        encoded = output_class.from_pcm(
             str(output_filename),
             audiotools.PCMReaderProgress(
                 audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles])),
                 sum([af.total_frames() for af in audiofiles]),
                 progress.update),
-            options.quality)
+            output_quality)
 
         encoded.set_metadata(metadata)
 

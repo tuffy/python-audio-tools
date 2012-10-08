@@ -6032,14 +6032,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE dvda2track
 *** TODO track2cd
 *** DONE track2track
-*** TODO trackcat
-*** TODO tracklint
+*** DONE trackcat
 *** DONE trackplay
 **** DONE make player widget generic
 *** DONE trackrename
 *** DONE tracksplit
 *** DONE tracktag
-*** TODO trackverify
 ** TODO Add internal Ogg FLAC encoder
    This shouldn't be too hard since native FLAC encoding is already in place,
    as is Ogg stream encoding.
