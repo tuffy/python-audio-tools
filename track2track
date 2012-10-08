@@ -335,7 +335,10 @@ if (__name__ == '__main__'):
                     format_string=format_string,
                     output_class=output_class,
                     quality=quality,
-                    completion_label=(_.LAB_TRACK2TRACK_APPLY if last_album
+                    completion_label=((_.LAB_TRACK2TRACK_APPLY if
+                                       (len(album_tracks) != 1) else
+                                       _.LAB_TRACK2TRACK_APPLY_1)
+                                      if last_album
                                       else _.LAB_TRACK2TRACK_NEXT))
 
                 loop = audiotools.ui.urwid.MainLoop(
@@ -475,27 +478,60 @@ if (__name__ == '__main__'):
         #encoding only a single file
         audiofile = audiofiles[0]
         input_filename = audiotools.Filename(audiofile.filename)
-        output_filename = audiotools.Filename(options.output)
-        track_metadata = audiofile.get_metadata()
 
-        if (input_filename == output_filename):
-            msg.error(_.ERR_OUTPUT_IS_INPUT %
-                      (output_filename,))
-            sys.exit(1)
+        if (options.interactive):
+            track_metadata = audiofile.get_metadata()
 
-        queue = audiotools.ExecProgressQueue(
-            audiotools.ProgressDisplay(
-                audiotools.SilentMessenger("track2track")))
+            output_widget = audiotools.ui.SingleOutputFiller(
+                track_label=unicode(input_filename),
+                metadata_choices=[track_metadata if track_metadata is not None
+                                  else audiotools.MetaData()],
+                input_filename=input_filename,
+                output_file=options.output,
+                output_class=AudioType,
+                quality=options.quality,
+                completion_label=_.LAB_TRACK2TRACK_APPLY_1)
+            loop = audiotools.ui.urwid.MainLoop(
+                output_widget,
+                audiotools.ui.style(),
+                unhandled_input=output_widget.handle_text,
+                pop_ups=True)
+            loop.run()
 
-        queue.execute(function=convert,
-                      source_audiofile=audiofile,
-                      destination_filename=options.output,
-                      destination_class=AudioType,
-                      compression=options.quality,
-                      metadata=track_metadata)
+            if (not output_widget.cancelled()):
+                (destination_class,
+                 output_filename,
+                 compression,
+                 track_metadata) = output_widget.output_track()
+            else:
+                sys.exit(0)
+        else:
+            output_filename = audiotools.Filename(options.output)
+            destination_class = AudioType
+            compression = options.quality
+            track_metadata = audiofile.get_metadata()
 
+            if (input_filename == output_filename):
+                msg.error(_.ERR_OUTPUT_IS_INPUT %
+                          (output_filename,))
+                sys.exit(1)
+
+        progress = audiotools.SingleProgressDisplay(
+            messenger=msg,
+            progress_text=unicode(output_filename))
         try:
-            queue.run(1)
+            convert(progress=progress.update,
+                    source_audiofile=audiofile,
+                    destination_filename=str(output_filename),
+                    destination_class=destination_class,
+                    compression=compression,
+                    metadata=track_metadata)
+            progress.clear()
+
+            msg.output(_.LAB_ENCODE %
+                       {"source":input_filename,
+                        "destination":output_filename})
         except audiotools.EncodingError, err:
+            progress.clear()
             msg.error(unicode(err))
             sys.exit(1)

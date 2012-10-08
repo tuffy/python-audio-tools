@@ -89,7 +89,7 @@ try:
 
     class OutputFiller(urwid.Frame):
         """a class for selecting MetaData and populating output parameters
-        for tracks"""
+        for multiple input tracks"""
 
         def __init__(self,
                      track_labels,
@@ -279,6 +279,125 @@ try:
             """returns the current quality string"""
 
             return self.options.selected_options()[1]
+
+
+    class SingleOutputFiller(urwid.Frame):
+        """a class for selecting MetaData and populating output parameters
+        for a single input track"""
+
+        def __init__(self,
+                     track_label,
+                     metadata_choices,
+                     input_filename,
+                     output_file,
+                     output_class,
+                     quality,
+                     completion_label=u"Apply"):
+            """track_label is a unicode string
+
+            metadata_choices is a list of MetaData objects,
+            one per possible metadata choice to apply
+
+            input_filename is a Filename object
+
+            output_file is a string of the default output filename
+
+            output_class is the default AudioFile-compatible class
+
+            quality is a string of the default output quality to use"""
+
+            self.input_filename = input_filename
+            self.__cancelled__ = True
+
+            #ensure there's at least one choice
+            assert(len(metadata_choices) > 0)
+
+            #ensure input file is a Filename object
+            assert(isinstance(input_filename, audiotools.Filename))
+
+            from audiotools.text import LAB_CANCEL_BUTTON
+
+            #setup status bar for output messages
+            self.status = urwid.Text(u"")
+
+            #setup a widget for cancel/finish buttons
+            output_buttons = urwid.Filler(
+                urwid.Columns(
+                    widget_list=[('weight', 1,
+                                  urwid.Button(
+                                LAB_CANCEL_BUTTON,
+                                on_press=self.exit)),
+                                 ('weight', 2,
+                                  urwid.Button(
+                                completion_label,
+                                on_press=self.complete))],
+                    dividechars=3,
+                    focus_column=1))
+
+            #setup a widget for populating output parameters
+            self.options = SingleOutputOptions(
+                output_filename=output_file,
+                audio_class=output_class,
+                quality=quality,
+                input_filename=input_filename)
+
+            #combine metadata and output options into single widget
+            self.metadata = MetaDataFiller(
+                track_labels=[track_label],
+                metadata_choices=[[m] for m in metadata_choices],
+                status=self.status,
+                extra_widgets=[('fixed', 3, self.options),
+                               ('fixed', 1,
+                                urwid.Filler(urwid.Divider(u"\u2500"))),
+                               ('fixed', 1, output_buttons)])
+
+            #finish initialization
+            urwid.Frame.__init__(self,
+                                 body=self.metadata,
+                                 footer=self.status)
+
+        def exit(self, button):
+            self.__cancelled__ = True
+            raise urwid.ExitMainLoop()
+
+        def complete(self, button):
+            #ensure output filename isn't same as input filename
+            if (self.options.selected_options()[2] ==
+                self.input_filename):
+                from audiotools.text import ERR_OUTPUT_IS_INPUT
+                self.options_status.set_text(
+                    ERR_OUTPUT_IS_INPUT % (self.input_filename,))
+            else:
+                self.__cancelled__ = False
+                raise urwid.ExitMainLoop()
+
+        def cancelled(self):
+            return self.__cancelled__
+
+        def handle_text(self, i):
+            if (i == 'esc'):
+                self.exit(None)
+            elif (i == 'f1'):
+                self.metadata.selected_match.select_previous_item()
+            elif (i == 'f2'):
+                self.metadata.selected_match.select_next_item()
+
+        def output_track(self):
+            """returns (output_class,
+                        output_filename,
+                        output_quality,
+                        output_metadata)
+
+            output_metadata is a newly created MetaData object"""
+
+            (output_class,
+             output_quality,
+             output_filename) = self.options.selected_options()
+
+            return (output_class,
+                    output_filename,
+                    output_quality,
+                    list(self.metadata.populated_metadata())[0])
 
 
     class MetaDataFiller(urwid.Pile):
@@ -1366,8 +1485,16 @@ try:
 
 
     class OutputOptions(urwid.Pile):
-        def __init__(self, output_dir, format_string,
-                     audio_class, quality, input_filenames, metadatas,
+        """a widget for selecting the typical set of output options
+        for multiple input files:  --dir, --format, --type, --quality"""
+
+        def __init__(self,
+                     output_dir,
+                     format_string,
+                     audio_class,
+                     quality,
+                     input_filenames,
+                     metadatas,
                      extra_widgets=None):
             """
             | field           | value      | meaning                          |
@@ -1393,7 +1520,8 @@ try:
                                          LAB_OPTIONS_FILENAME_FORMAT,
                                          LAB_OPTIONS_AUDIO_CLASS,
                                          LAB_OPTIONS_AUDIO_QUALITY,
-                                         LAB_OPTIONS_OUTPUT_FILES)
+                                         LAB_OPTIONS_OUTPUT_FILES,
+                                         LAB_OPTIONS_OUTPUT_FILES_1)
 
             self.input_filenames = input_filenames
             self.metadatas = metadatas
@@ -1422,7 +1550,12 @@ try:
                 self.output_tracks_frame)
 
             if (hasattr(output_tracks_frame_linebox, "set_title")):
-                output_tracks_frame_linebox.set_title(LAB_OPTIONS_OUTPUT_FILES)
+                if (len(input_filenames) != 1):
+                    output_tracks_frame_linebox.set_title(
+                        LAB_OPTIONS_OUTPUT_FILES)
+                else:
+                    output_tracks_frame_linebox.set_title(
+                        LAB_OPTIONS_OUTPUT_FILES_1)
 
             self.output_tracks = [urwid.Text(u"") for path in input_filenames]
 
@@ -1610,6 +1743,116 @@ try:
 
             self.metadatas = metadatas
             self.update_tracks()
+
+
+    class SingleOutputOptions(urwid.ListBox):
+        """a widget for selecting the typical set of output options
+        for a single input file:  --output, --type, --quality"""
+
+        def __init__(self,
+                     output_filename,
+                     audio_class,
+                     quality,
+                     input_filename):
+            """
+            | field           | value     | meaning                        |
+            |-----------------+-----------+--------------------------------|
+            | output_filename | string    | default output filename        |
+            | audio_class     | AudioFile | audio class of output file     |
+            | quality         | string    | quality level of output        |
+            | input_filename  | Filename  | Filename object for input file |
+            """
+
+            #FIXME - add support for directory selector
+            #FIXME - add support for field populator
+
+            from audiotools.text import (LAB_OPTIONS_OUTPUT,
+                                         LAB_OPTIONS_AUDIO_CLASS,
+                                         LAB_OPTIONS_AUDIO_QUALITY)
+
+            self.output_filename = urwid.Edit(
+                edit_text=unicode(audiotools.Filename(output_filename)),
+                wrap="clip")
+
+            self.output_quality = SelectOne(
+                [(u"N/A", "")])
+
+            self.output_type = SelectOne(
+                sorted([(u"%s - %s" % (t.NAME.decode('ascii'),
+                                       t.DESCRIPTION), t) for t in
+                        audiotools.AVAILABLE_TYPES
+                        if t.has_binaries(audiotools.BIN)],
+                       lambda x,y: cmp(x[0], y[0])),
+                audio_class,
+                self.select_type)
+
+            self.select_type(audio_class, quality)
+
+            widgets = [urwid.Columns([
+                        ('fixed', 10, urwid.Text(('label',
+                                                  u"%s : " %
+                                                  (LAB_OPTIONS_OUTPUT)),
+                                                 align="right")),
+                        ('weight', 1, self.output_filename)]),
+                       urwid.Columns([('fixed', 10,
+                                       urwid.Text(('label',
+                                                   u"%s : " %
+                                                   (LAB_OPTIONS_AUDIO_CLASS)),
+                                                  align="right")),
+                                      ('weight', 1, self.output_type)]),
+                       urwid.Columns([('fixed', 10,
+                                       urwid.Text(('label',
+                                                   u"%s : " %
+                                                   (LAB_OPTIONS_AUDIO_QUALITY)),
+                                                  align="right")),
+                                      ('weight', 1, self.output_quality)])]
+
+            urwid.ListBox.__init__(self, widgets)
+
+        def set_metadata(self, metadata):
+            """setting metadata allows output field to be populated
+            by metadata fields"""
+
+            pass  #FIXME
+
+        def select_type(self, audio_class, default_quality=None):
+            self.selected_class = audio_class
+
+            if (len(audio_class.COMPRESSION_MODES) < 2):
+                #one audio quality for selected type
+                try:
+                    quality = audio_class.COMPRESSION_MODES[0]
+                except IndexError:
+                    #this shouldn't happen, but just in case
+                    quality = ""
+                self.output_quality.set_items([(u"N/A", quality)], quality)
+            else:
+                #two or more audio qualities for selected type
+                qualities = audio_class.COMPRESSION_MODES
+                if (default_quality is not None):
+                    default = [q for q in qualities if
+                               q == default_quality][0]
+                else:
+                    default = [q for q in qualities if
+                               q == audio_class.DEFAULT_COMPRESSION][0]
+                self.output_quality.set_items(
+                    [(q.decode('ascii') if q not in
+                      audio_class.COMPRESSION_DESCRIPTIONS else
+                      u"%s - %s" % (q.decode('ascii'),
+                                    audio_class.COMPRESSION_DESCRIPTIONS[q]),
+                      q)
+                     for q in qualities],
+                    default)
+
+        def selected_options(self):
+            """returns (AudioFile class, quality string, output Filename)
+            based on selected options in the UI"""
+
+            return (self.selected_class,
+                    self.output_quality.selection(),
+                    audiotools.Filename(
+                    self.output_filename.get_edit_text().decode(
+                        audiotools.FS_ENCODING)))
 
 
     class MappedButton(urwid.Button):
