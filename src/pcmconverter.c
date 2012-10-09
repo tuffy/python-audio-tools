@@ -387,10 +387,17 @@ Resampler_read(pcmconverter_Resampler *self, PyObject *args)
     if (self->pcmreader->read(self->pcmreader,
                               4096,
                               self->input_channels)) {
+        /*error reading from pcmreader*/
         return NULL;
     } else {
         const unsigned input_frame_count = self->input_channels->_[0]->len;
         const unsigned channels = self->pcmreader->channels;
+        const unsigned quantization =
+            (1 << (self->pcmreader->bits_per_sample - 1));
+        const int max_sample =
+            (1 << (self->pcmreader->bits_per_sample - 1)) - 1;
+        const int min_sample =
+            -(1 << (self->pcmreader->bits_per_sample - 1));
         SRC_DATA src_data;
         int processing_error;
         static float data_out[OUTPUT_SAMPLES_LENGTH];
@@ -418,7 +425,9 @@ Resampler_read(pcmconverter_Resampler *self, PyObject *args)
         /*then append the new input samples*/
         for (i = 0; i < input_frame_count; i++) {
             for (c = 0; c < channels; c++)
-                src_data.data_in[s++] = self->input_channels->_[c]->_[i];
+                src_data.data_in[s++] =
+                    ((float)self->input_channels->_[c]->_[i] /
+                     quantization);
         }
 
         /*run src_process() on self->SRC_STATE and SRC_DATA*/
@@ -457,7 +466,9 @@ Resampler_read(pcmconverter_Resampler *self, PyObject *args)
             processed_samples->resize(processed_samples,
                                       processed_sample_count);
             for (i = 0; i < processed_sample_count; i++) {
-                a_append(processed_samples, src_data.data_out[i]);
+                const int sample = (int)(src_data.data_out[i] * quantization);
+                a_append(processed_samples,
+                         MAX(MIN(sample, max_sample), min_sample));
             }
 
             /*return FrameList*/
