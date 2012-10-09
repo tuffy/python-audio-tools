@@ -220,8 +220,11 @@ class OggStreamReader:
             from .text import ERR_OGG_CHECKSUM_MISMATCH
             raise ValueError(ERR_OGG_CHECKSUM_MISMATCH)
         else:
-            return (granule_position, segments,
-                    continuation, first_page, last_page)
+            return (granule_position,
+                    segments,
+                    continuation,
+                    first_page,
+                    last_page)
 
     def pages(self):
         """yields a tuple of (granule_position,

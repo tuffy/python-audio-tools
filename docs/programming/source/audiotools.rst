@@ -33,6 +33,7 @@ classes and functions upon which all of the other modules depend.
    MP3Audio      MPEG-1 Layer 3
    MP2Audio      MPEG-1 Layer 2
    OggFlacAudio  Ogg Free Lossless Audio Codec
+   OpusAudio     Opus Audio Codec
    ShortenAudio  Shorten
    SpeexAudio    Ogg Speex
    VorbisAudio   Ogg Vorbis

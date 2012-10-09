@@ -5685,7 +5685,6 @@ class M4AMetaDataTest(MetaDataTest):
         #so there's no need to check those
 
 
-
 class VorbisCommentTest(MetaDataTest):
     def setUp(self):
         self.metadata_class = audiotools.VorbisComment
@@ -6907,3 +6906,186 @@ class VorbisCommentTest(MetaDataTest):
                         temp2.close()
             finally:
                 temp1.close()
+
+
+class OpusTagsTest(MetaDataTest):
+    def setUp(self):
+        self.metadata_class = audiotools.OpusTags
+        self.supported_fields = ["track_name",
+                                 "track_number",
+                                 "track_total",
+                                 "album_name",
+                                 "artist_name",
+                                 "performer_name",
+                                 "composer_name",
+                                 "conductor_name",
+                                 "media",
+                                 "ISRC",
+                                 "catalog",
+                                 "copyright",
+                                 "publisher",
+                                 "year",
+                                 "album_number",
+                                 "album_total",
+                                 "comment"]
+        self.supported_formats = [audiotools.OpusAudio]
+
+    def empty_metadata(self):
+        return self.metadata_class.converted(audiotools.MetaData())
+
+    @METADATA_OPUS
+    def test_update(self):
+        import os
+
+        for audio_class in self.supported_formats:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            track = audio_class.from_pcm(temp_file.name, BLANK_PCM_Reader(10))
+            temp_file_stat = os.stat(temp_file.name)[0]
+            try:
+                #update_metadata on file's internal metadata round-trips okay
+                track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Foo")
+                metadata.track_name = u"Bar"
+                track.update_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+
+                #update_metadata on unwritable file generates IOError
+                metadata = track.get_metadata()
+                os.chmod(temp_file.name, 0)
+                self.assertRaises(IOError,
+                                  track.update_metadata,
+                                  metadata)
+                os.chmod(temp_file.name, temp_file_stat)
+
+                #update_metadata with foreign MetaData generates ValueError
+                self.assertRaises(ValueError,
+                                  track.update_metadata,
+                                  audiotools.MetaData(track_name=u"Foo"))
+
+                #update_metadata with None makes no changes
+                track.update_metadata(None)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+
+                #vendor_string not updated with set_metadata()
+                #but can be updated with update_metadata()
+                old_metadata = track.get_metadata()
+                new_metadata = audiotools.OpusTags(
+                    comment_strings=old_metadata.comment_strings[:],
+                    vendor_string=u"Vendor String")
+                track.set_metadata(new_metadata)
+                self.assertEqual(track.get_metadata().vendor_string,
+                                 old_metadata.vendor_string)
+                track.update_metadata(new_metadata)
+                self.assertEqual(track.get_metadata().vendor_string,
+                                 new_metadata.vendor_string)
+
+                #REPLAYGAIN_* tags not updated with set_metadata()
+                #but can be updated with update_metadata()
+                old_metadata = track.get_metadata()
+                new_metadata = audiotools.OpusTags(
+                    comment_strings=old_metadata.comment_strings +
+                    [u"REPLAYGAIN_REFERENCE_LOUDNESS=89.0 dB"],
+                    vendor_string=old_metadata.vendor_string)
+                track.set_metadata(new_metadata)
+                self.assertRaises(
+                    KeyError,
+                    track.get_metadata().__getitem__,
+                    u"REPLAYGAIN_REFERENCE_LOUDNESS")
+                track.update_metadata(new_metadata)
+                self.assertEqual(
+                    track.get_metadata()[u"REPLAYGAIN_REFERENCE_LOUDNESS"],
+                    [u"89.0 dB"])
+            finally:
+                temp_file.close()
+
+    @METADATA_OPUS
+    def test_foreign_field(self):
+        metadata = audiotools.OpusTags([u"TITLE=Track Name",
+                                        u"ALBUM=Album Name",
+                                        u"TRACKNUMBER=1",
+                                        u"TRACKTOTAL=3",
+                                        u"DISCNUMBER=2",
+                                        u"DISCTOTAL=4",
+                                        u"FOO=Bar"], u"")
+        for format in self.supported_formats:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + format.SUFFIX)
+            try:
+                track = format.from_pcm(temp_file.name,
+                                        BLANK_PCM_Reader(1))
+                track.set_metadata(metadata)
+                metadata2 = track.get_metadata()
+                self.assert_(set(metadata.comment_strings).issubset(
+                        set(metadata2.comment_strings)))
+                self.assertEqual(metadata.__class__, metadata2.__class__)
+                self.assertEqual(metadata2[u"FOO"], [u"Bar"])
+            finally:
+                temp_file.close()
+
+    @METADATA_OPUS
+    def test_field_mapping(self):
+        mapping = [('track_name', 'TITLE', u'a'),
+                   ('track_number', 'TRACKNUMBER', 1),
+                   ('track_total', 'TRACKTOTAL', 2),
+                   ('album_name', 'ALBUM', u'b'),
+                   ('artist_name', 'ARTIST', u'c'),
+                   ('performer_name', 'PERFORMER', u'd'),
+                   ('composer_name', 'COMPOSER', u'e'),
+                   ('conductor_name', 'CONDUCTOR', u'f'),
+                   ('media', 'SOURCE MEDIUM', u'g'),
+                   ('ISRC', 'ISRC', u'h'),
+                   ('catalog', 'CATALOG', u'i'),
+                   ('copyright', 'COPYRIGHT', u'j'),
+                   ('year', 'DATE', u'k'),
+                   ('album_number', 'DISCNUMBER', 3),
+                   ('album_total', 'DISCTOTAL', 4),
+                   ('comment', 'COMMENT', u'l')]
+
+        for format in self.supported_formats:
+            temp_file = tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)
+            try:
+                track = format.from_pcm(temp_file.name, BLANK_PCM_Reader(1))
+
+                #ensure that setting a class field
+                #updates its corresponding low-level implementation
+                for (field, key, value) in mapping:
+                    track.delete_metadata()
+                    metadata = self.empty_metadata()
+                    setattr(metadata, field, value)
+                    self.assertEqual(getattr(metadata, field), value)
+                    self.assertEqual(
+                        metadata[key][0],
+                        unicode(value))
+                    track.set_metadata(metadata)
+                    metadata2 = track.get_metadata()
+                    self.assertEqual(getattr(metadata2, field), value)
+                    self.assertEqual(
+                        metadata2[key][0],
+                        unicode(value))
+
+                #ensure that updating the low-level implementation
+                #is reflected in the class field
+                for (field, key, value) in mapping:
+                    track.delete_metadata()
+                    metadata = self.empty_metadata()
+                    metadata[key] = [unicode(value)]
+                    self.assertEqual(getattr(metadata, field), value)
+                    self.assertEqual(
+                        metadata[key][0],
+                        unicode(value))
+                    track.set_metadata(metadata)
+                    metadata2 = track.get_metadata()
+                    self.assertEqual(getattr(metadata2, field), value)
+                    self.assertEqual(
+                        metadata2[key][0],
+                        unicode(value))
+            finally:
+                temp_file.close()
+
+    @METADATA_OPUS
+    def test_supports_images(self):
+        self.assertEqual(self.metadata_class.supports_images(), False)

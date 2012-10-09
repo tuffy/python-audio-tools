@@ -1712,6 +1712,14 @@ Vorbis Comment
    >>> tag.track_name
    u'Title1'
 
+Opus Tags
+---------
+
+.. class:: OpusTags(comment_strings, vendor_string)
+
+   OpusTags is a subclass of :class:`VorbisComment`
+   which supports the same field/metadata mapping.
+
 .. _APEv2: http://wiki.hydrogenaudio.org/index.php?title=APEv2
 
 .. _ID3v1: http://www.id3.org/ID3v1

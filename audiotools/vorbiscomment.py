@@ -121,6 +121,9 @@ class VorbisComment(MetaData):
         return "VorbisComment(%s, %s)" % \
             (repr(self.comment_strings), repr(self.vendor_string))
 
+    def __comment_name__(self):
+        return u"Vorbis Comment"
+
     def raw_info(self):
         """returns a Unicode string of low-level MetaData information
 
@@ -154,7 +157,7 @@ class VorbisComment(MetaData):
             comment_strings = 0
 
         return linesep.decode('ascii').join(
-            [u"Vorbis Comment:  %s" % (self.vendor_string)] +
+            [u"%s:  %s" % (self.__comment_name__(), self.vendor_string)] +
             comment_strings)
 
     def __getattr__(self, attr):
@@ -408,7 +411,8 @@ class VorbisComment(MetaData):
                            vorbis_comment.vendor_string)
             else:
                 return cls([], u"Python Audio Tools %s" % (VERSION))
-        elif (metadata.__class__.__name__ == 'Flac_VORBISCOMMENT'):
+        elif (metadata.__class__.__name__ in ('Flac_VORBISCOMMENT',
+                                              'OpusTags')):
             return cls(metadata.comment_strings[:],
                        metadata.vendor_string)
         else:

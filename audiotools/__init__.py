@@ -1198,7 +1198,7 @@ def file_type(file):
 
     the AudioFile class is not guaranteed to be available"""
 
-    header = file.read(35)
+    header = file.read(37)
     if ((header[4:8] == "ftyp") and
         (header[8:12] in ('mp41', 'mp42', 'M4A ', 'M4B '))):
         #possibly ALAC or M4A
@@ -1280,11 +1280,13 @@ def file_type(file):
             #so the file is unknown
             return None
     elif (header[0:4] == "OggS"):
-        #possibly Ogg FLAC or Ogg Vorbis
+        #possibly Ogg FLAC, Ogg Vorbis or Ogg Opus
          if (header[0x1C:0x21] == "\x7FFLAC"):
              return OggFlacAudio
-         elif (header[0x1C:0x23]):
+         elif (header[0x1C:0x23] == "\x01vorbis"):
              return VorbisAudio
+         elif (header[0x1C:0x26] == "OpusHead\x01"):
+             return OpusAudio
          else:
              return None
     elif (header[0:5] == "ajkg\x02"):
@@ -5141,6 +5143,7 @@ from .mp3 import MP2Audio
 from .vorbis import VorbisAudio
 from .m4a import M4AAudio
 from .m4a import ALACAudio
+from .opus import OpusAudio
 
 from .ape import ApeTag
 from .flac import FlacMetaData
@@ -5151,6 +5154,7 @@ from .id3 import ID3v23Comment
 from .id3 import ID3v24Comment
 from .m4a_atoms import M4A_META_Atom
 from .vorbiscomment import VorbisComment
+from .opus import OpusTags
 
 AVAILABLE_TYPES = (FlacAudio,
                    OggFlacAudio,
@@ -5163,7 +5167,8 @@ AVAILABLE_TYPES = (FlacAudio,
                    M4AAudio,
                    ALACAudio,
                    WavPackAudio,
-                   ShortenAudio)
+                   ShortenAudio,
+                   OpusAudio)
 
 TYPE_MAP = dict([(track_type.NAME, track_type)
                  for track_type in AVAILABLE_TYPES
