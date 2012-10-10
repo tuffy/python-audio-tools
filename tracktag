@@ -431,9 +431,6 @@ if (__name__ == '__main__'):
                            album_track_metadatas,
                            album_metadata_choices[0]))
 
-    queue = audiotools.ExecProgressQueue(
-        audiotools.ProgressDisplay(msg))
-
     #once all final output metadata is set,
     #perform actual tagging
     for (album_tracks, old_metadatas, new_metadatas) in to_tag:
@@ -480,7 +477,11 @@ if (__name__ == '__main__'):
                               (audiotools.Filename(track.filename),))
                     sys.exit(1)
 
-        #add ReplayGain to tracks, if indicated
+    #add ReplayGain to tracks, if indicated
+    queue = audiotools.ExecProgressQueue(
+        audiotools.ProgressDisplay(msg))
+
+    for album_tracks in audiotools.group_tracks(tracks):
         if (options.add_replay_gain and (len(album_tracks) > 0)):
             album_number = set([t.album_number() for t in album_tracks]).pop()
             audio_type = album_tracks[0].__class__
