@@ -42,8 +42,8 @@ def convert(progress, source_audiofile, destination_filename,
 
     if (metadata is not None):
         destination_audiofile.set_metadata(metadata)
-    elif ((source_audiofile.track_number() != 0) or
-          (source_audiofile.album_number() != 0)):
+    elif ((source_audiofile.track_number() is not None) or
+          (source_audiofile.album_number() is not None)):
         destination_audiofile.set_metadata(audiotools.MetaData(
                 track_number=source_audiofile.track_number(),
                 album_number=source_audiofile.album_number()))

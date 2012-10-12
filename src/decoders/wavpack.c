@@ -1693,7 +1693,7 @@ undo_extended_integers(const struct extended_integers* params,
             for (i = 0; i < extended->len; i++)
                 un_extended->append(un_extended,
                                     (extended->_[i] << params->one_bits) |
-                                    ((1 < params->one_bits) - 1));
+                                    ((1 << params->one_bits) - 1));
         } else if (params->duplicate_bits > 0) {
             for (i = 0; i < extended->len; i++) {
                 int shifted = extended->_[i];

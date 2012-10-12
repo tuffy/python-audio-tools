@@ -57,6 +57,14 @@ def build_ieee_extended(bitstream, value):
 
     bitstream.build("1u 15u 64U", (signed, exponent, mantissa))
 
+
+def pad_data(pcm_frames, channels, bits_per_sample):
+    """returns True if the given stream combination
+    requires an extra padding byte at the end of the 'data' chunk"""
+
+    return (pcm_frames * channels * (bits_per_sample / 8)) % 2
+
+
 #######################
 #AIFF
 #######################
@@ -679,113 +687,18 @@ class AiffAudio(AiffContainer):
 
         return AiffAudio(filename)
 
-    def to_aiff(self, aiff_filename, progress=None):
-        """writes the contents of this file to the given .aiff filename string
+    def has_foreign_aiff_chunks(self):
+        """returns True if the audio file contains non-audio AIFF chunks"""
 
-        raises EncodingError if some error occurs during decoding"""
+        return (set(['COMM', 'SSND']) != set([c.id for c in self.chunks()]))
 
-        from . import transfer_data
-        from . import EncodingError
+    def aiff_header_footer(self):
+        """returns (header, footer) tuple of strings
+        containing all data before and after the PCM stream
 
-        try:
-            self.verify()
-        except InvalidAIFF, err:
-            raise EncodingError(str(err))
-
-        try:
-            output = file(aiff_filename, 'wb')
-            input = file(self.filename, 'rb')
-        except IOError, msg:
-            raise EncodingError(str(msg))
-        try:
-            transfer_data(input.read, output.write)
-        finally:
-            input.close()
-            output.close()
-
-    @classmethod
-    def from_aiff(cls, filename, aiff_filename, compression=None,
-                  progress=None):
-        """encodes a new AiffAudio from an existing .aiff file
-
-        takes a filename string, aiff_filename string
-        of an existing AiffAudio file
-        and an optional compression level string
-        encodes a new audio file from the wave's data
-        at the given filename with the specified compression level
-        and returns a new AudioFile compatible object"""
-
-        import os.path
-        from . import EncodingError
-
-        try:
-            cls(aiff_filename).verify()
-        except InvalidAIFF, err:
-            raise EncodingError(unicode(err))
-
-        try:
-            input = file(aiff_filename, 'rb')
-            output = file(filename, 'wb')
-        except IOError, err:
-            raise EncodingError(str(err))
-        try:
-            total_bytes = os.path.getsize(aiff_filename)
-            current_bytes = 0
-            s = input.read(4096)
-            while (len(s) > 0):
-                current_bytes += len(s)
-                output.write(s)
-                if (progress is not None):
-                    progress(current_bytes, total_bytes)
-                s = input.read(4096)
-            output.flush()
-            try:
-                return AiffAudio(filename)
-            except InvalidFile:
-                cls.__unlink__(filename)
-                raise EncodingError(u"invalid AIFF source file")
-        finally:
-            input.close()
-            output.close()
-
-    def convert(self, target_path, target_class, compression=None,
-                progress=None):
-        """encodes a new AiffAudio from existing AudioFile
-
-        take a filename string, target class and optional compression string
-        encodes a new AudioFile in the target class and returns
-        the resulting object
-        may raise EncodingError if some problem occurs during encoding"""
-
-        from . import to_pcm_progress
-
-        if (hasattr(target_class, "from_aiff")):
-            return target_class.from_aiff(target_path,
-                                          self.filename,
-                                          compression=compression,
-                                          progress=progress)
-        else:
-            return target_class.from_pcm(target_path,
-                                         to_pcm_progress(self, progress),
-                                         compression)
-
-    def pcm_split(self):
-        """returns a pair of data strings before and after PCM data
-
-        the first contains all data before the PCM content of the data chunk
-        the second containing all data after the data chunk
-        for example:
-
-        >>> a = audiotools.open("input.aiff")
-        >>> (head, tail) = a.pcm_split()
-        >>> f = open("output.aiff", "wb")
-        >>> f.write(head)
-        >>> audiotools.transfer_framelist_data(a.to_pcm(), f.write, True, True)
-        >>> f.write(tail)
-        >>> f.close()
-
-        should result in "output.aiff" being identical to "input.aiff"
-        """
+        if self.has_foreign_aiff_chunks() is False,
+        may raise ValueError if the file has no header and footer
+        for any reason"""
 
         from .bitstream import BitstreamReader
         from .bitstream import BitstreamRecorder
@@ -845,10 +758,60 @@ class AiffAudio(AiffContainer):
         finally:
             aiff_file.close()
 
-    def has_foreign_aiff_chunks(self):
-        """returns True if the audio file contains non-audio AIFF chunks"""
+    @classmethod
+    def from_aiff(cls, filename, header, pcmreader, footer, compression=None):
+        """encodes a new file from AIFF data
 
-        return (set(['COMM', 'SSND']) != set([c.id for c in self.chunks()]))
+        takes a filename string, header string,
+        PCMReader object, footer string
+        and optional compression level string
+        encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new AiffAudio object
+
+        header + pcm data + footer should always result
+        in the original AIFF file being restored
+        without need for any padding bytes
+
+        may raise EncodingError if some problem occurs when
+        encoding the input file"""
+
+        from . import (DecodingError,EncodingError,FRAMELIST_SIZE)
+        from struct import unpack
+
+        if ((len(header) > 16) and (header[-16:-12] == "SSND")):
+            #decrement 8 for offset and block size fields
+            data_size = unpack(">I", header[-12:-8])[0] - 8
+        else:
+            raise EncodingError("invalid header")
+
+        try:
+            f = open(filename, "wb")
+            f.write(header)
+
+            data_bytes_written = 0
+            s = pcmreader.read(FRAMELIST_SIZE).to_bytes(True, True)
+            while (len(s) > 0):
+                data_bytes_written += len(s)
+                f.write(s)
+                s = pcmreader.read(FRAMELIST_SIZE).to_bytes(True, True)
+
+            if (data_size != data_bytes_written):
+                cls.__unlink__(filename)
+                raise EncodingError(
+                    "premature end of SSND chunk (%d != %d)" % \
+                        (data_size,
+                         data_bytes_written))
+
+            f.write(footer)
+            f.close()
+            return cls(filename)
+        except IOError, err:
+            cls.__unlink__(filename)
+            raise EncodingError(str(err))
+        except DecodingError, err:
+            cls.__unlink__(filename)
+            raise EncodingError(err.error_message)
 
     def verify(self, progress=None):
         """verifies the current file for correctness

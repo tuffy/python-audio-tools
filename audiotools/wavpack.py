@@ -27,32 +27,23 @@ class InvalidWavPack(InvalidFile):
 
 
 def __riff_chunk_ids__(data_size, data):
-    data_size = __Counter__(data_size)
-    data.add_callback(data_size.callback)
     (riff, size, wave) = data.parse("4b 32u 4b")
     if (riff != "RIFF"):
         return
     elif (wave != "WAVE"):
         return
+    else:
+        data_size -= 12
 
-    while (int(data_size) > 0):
+    while (data_size > 0):
         (chunk_id, chunk_size) = data.parse("4b 32u")
+        data_size -= 8
         if ((chunk_size % 2) == 1):
             chunk_size += 1
         yield chunk_id
         if (chunk_id != 'data'):
             data.skip_bytes(chunk_size)
-
-
-class __Counter__:
-    def __init__(self, value):
-        self.value = value
-
-    def callback(self, byte):
-        self.value -= 1
-
-    def __int__(self):
-        return self.value
+            data_size -= chunk_size
 
 
 #######################
@@ -140,7 +131,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             metadata.frame_count = self.total_frames()
         return metadata
 
-    def has_foreign_riff_chunks(self):
+    def has_foreign_wave_chunks(self):
         """returns True if the audio file contains non-audio RIFF chunks
 
         during transcoding, if the source audio file has foreign RIFF chunks
@@ -157,6 +148,70 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                 return True
         else:
             return False
+
+    def wave_header_footer(self):
+        """returns (header, footer) tuple of strings
+        containing all data before and after the PCM stream
+
+        if self.has_foreign_wave_chunks() is False,
+        may raise ValueError if the file has no header and footer
+        for any reason"""
+
+        head = None
+        tail = None
+
+        for (sub_block_id, nondecoder, data_size, data) in self.sub_blocks():
+            if ((sub_block_id == 1) and nondecoder):
+                head = data.read_bytes(data_size)
+            elif ((sub_block_id == 2) and nondecoder):
+                tail = data.read_bytes(data_size)
+
+        if (head is not None):
+            return (head, tail if tail is not None else "")
+        else:
+            raise ValueError("no wave header found")
+
+    @classmethod
+    def from_wave(cls, filename, header, pcmreader, footer, compression=None):
+        """encodes a new file from wave data
+
+        takes a filename string, header string,
+        PCMReader object, footer string
+        and optional compression level string
+        encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new WaveAudio object
+
+        header + pcm data + footer should always result
+        in the original wave file being restored
+        without need for any padding bytes
+
+        may raise EncodingError if some problem occurs when
+        encoding the input file"""
+
+        from .encoders import encode_wavpack
+        from . import BufferedPCMReader
+        from . import EncodingError
+        from . import __default_quality__
+
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
+
+        try:
+            encode_wavpack(filename,
+                           BufferedPCMReader(pcmreader),
+                           wave_header=header,
+                           wave_footer=footer,
+                           **cls.__options__[compression])
+
+            return cls(filename)
+        except (ValueError, IOError), msg:
+            cls.__unlink__(filename)
+            raise EncodingError(str(msg))
+        except Exception, err:
+            cls.__unlink__(filename)
+            raise err
 
     def blocks(self, reader=None):
         """yields (length, reader) tuples of WavPack frames
@@ -381,39 +436,6 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             cls.__unlink__(filename)
             raise err
 
-    def to_wave(self, wave_filename, progress=None):
-        """writes the contents of this file to the given .wav filename string
-
-        raises EncodingError if some error occurs during decoding"""
-
-        from . import decoders
-        from . import EncodingError
-
-        try:
-            f = open(wave_filename, 'wb')
-        except IOError, msg:
-            raise EncodingError(str(msg))
-
-        (head, tail) = self.pcm_split()
-
-        try:
-            f.write(head)
-            total_frames = self.total_frames()
-            current_frames = 0
-            decoder = decoders.WavPackDecoder(self.filename)
-            frame = decoder.read(4096)
-            while (len(frame) > 0):
-                f.write(frame.to_bytes(False, self.bits_per_sample() > 8))
-                current_frames += frame.frames
-                if (progress is not None):
-                    progress(current_frames, total_frames)
-                frame = decoder.read(4096)
-            f.write(tail)
-            f.close()
-        except IOError, msg:
-            self.__unlink__(wave_filename)
-            raise EncodingError(str(msg))
-
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
@@ -428,123 +450,6 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                                   channels=self.__channels__,
                                   channel_mask=int(self.channel_mask()),
                                   bits_per_sample=self.__bitspersample__)
-
-    @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None,
-                  progress=None):
-        """encodes a new AudioFile from an existing .wav file
-
-        takes a filename string, wave_filename string
-        of an existing WaveAudio file
-        and an optional compression level string
-        encodes a new audio file from the wave's data
-        at the given filename with the specified compression level
-        and returns a new WavPackAudio object"""
-
-        from .encoders import encode_wavpack
-        from . import EncodingError
-        from . import __default_quality__
-        from . import to_pcm_progress
-        from .wav import WaveAudio
-
-        if ((compression is None) or
-            (compression not in cls.COMPRESSION_MODES)):
-            compression = __default_quality__(cls.NAME)
-
-        wave = WaveAudio(wave_filename)
-
-        (head, tail) = wave.pcm_split()
-
-        try:
-            encode_wavpack(filename,
-                           to_pcm_progress(wave, progress),
-                           wave_header=head,
-                           wave_footer=tail,
-                           **cls.__options__[compression])
-
-            return cls(filename)
-        except (ValueError, IOError), msg:
-            cls.__unlink__(filename)
-            raise EncodingError(str(msg))
-        except Exception, err:
-            cls.__unlink__(filename)
-            raise err
-
-    def pcm_split(self):
-        """returns a pair of data strings before and after PCM data"""
-
-        head = None
-        tail = ""
-
-        for (sub_block_id, nondecoder, data_size, data) in self.sub_blocks():
-            if ((sub_block_id == 1) and nondecoder):
-                head = data.read_bytes(data_size)
-            elif ((sub_block_id == 2) and nondecoder):
-                tail = data.read_bytes(data_size)
-
-        #build dummy head if none found in file
-        if (head is None):
-            import audiotools.bitstream as bitstream
-
-            riff_head = bitstream.BitstreamRecorder(1)
-
-            avg_bytes_per_second = (self.sample_rate() *
-                                    self.channels() *
-                                    (self.bits_per_sample() / 8))
-            block_align = (self.channels() *
-                           (self.bits_per_sample() / 8))
-            total_size = 4 * 3   # "RIFF" + size + "WAVE"
-
-            total_size += 4 * 2  # "fmt " + size
-            if ((self.channels() <= 2) or
-                (self.bits_per_sample() <= 16)):
-                # classic fmt chunk
-                fmt = "16u 16u 32u 32u 16u 16u"
-            else:
-                # extended fmt chunk
-                fmt = "16u 16u 32u 32u 16u 16u 16u 16u 32u 16b"
-
-            total_size += bitstream.format_size(fmt) / 8
-
-            total_size += 4 * 2  # "data" + size
-            data_size = (self.total_frames() *
-                         self.channels() *
-                         (self.bits_per_sample() / 8))
-            total_size += data_size
-
-            total_size += len(tail)
-
-            riff_head.build("4b 32u 4b 4b 32u",
-                            ("RIFF", total_size - 8, "WAVE",
-                             "fmt ", bitstream.format_size(fmt) / 8))
-            if ((self.channels() <= 2) or
-                (self.bits_per_sample() <= 16)):
-                riff_head.build(fmt,
-                                (1,  # compression code
-                                 self.channels(),
-                                 self.sample_rate(),
-                                 avg_bytes_per_second,
-                                 block_align,
-                                 self.bits_per_sample()))
-            else:
-                riff_head.build(fmt,
-                                (0xFFFE,  # compression code
-                                 self.channels(),
-                                 self.sample_rate(),
-                                 avg_bytes_per_second,
-                                 block_align,
-                                 self.bits_per_sample(),
-                                 22,      # CB size
-                                 self.bits_per_sample(),
-                                 self.channel_mask(),
-                                 "\x01\x00\x00\x00\x00\x00\x10\x00" +
-                                 "\x80\x00\x00\xaa\x00\x38\x9b\x71"))
-
-            riff_head.build("4b 32u", ("data", data_size))
-
-            head = riff_head.data()
-
-        return (head, tail)
 
     def fmt_chunk(self, reader=None):
         """returns the 'fmt' chunk as a BitstreamReader"""

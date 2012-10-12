@@ -1772,7 +1772,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         return Flac_SEEKTABLE(seekpoints)
 
-    def has_foreign_riff_chunks(self):
+    def has_foreign_wave_chunks(self):
         """returns True if the audio file contains non-audio RIFF chunks
 
         during transcoding, if the source audio file has foreign RIFF chunks
@@ -1787,106 +1787,143 @@ class FlacAudio(WaveContainer, AiffContainer):
         except IOError:
             return False
 
-    def riff_wave_chunks(self, progress=None):
-        """yields a set of RIFF_Chunk or RIFF_File_Chunk objects"""
+    def wave_header_footer(self):
+        """returns (header, footer) tuple of strings
+        containing all data before and after the PCM stream"""
 
-        from struct import unpack
-        from .wav import RIFF_Chunk
-        from . import PCMReaderProgress
+        from .wav import pad_data
 
-        for application_block in [
-            block.data for block in
-            self.get_metadata().get_blocks(Flac_APPLICATION.BLOCK_ID)
-            if (block.application_id == "riff")]:
-
-            (chunk_id, chunk_size, chunk_data) = (application_block[0:4],
-                                                  application_block[4:8],
-                                                  application_block[8:])
-            if (chunk_id == 'RIFF'):
-                #skip 12 byte RIFF<size>WAVE header
-                continue
-            elif (chunk_id == 'data'):
-                if (progress is not None):
-                    yield FLAC_Data_Chunk(
-                        self.__total_frames__,
-                        PCMReaderProgress(self.to_pcm(),
-                                          self.__total_frames__,
-                                          progress))
-                else:
-                    yield FLAC_Data_Chunk(self.__total_frames__, self.to_pcm())
-            else:
-                chunk_size = unpack("<I", chunk_size)[0]
-                yield RIFF_Chunk(chunk_id, chunk_size, chunk_data[0:chunk_size])
-
-    def to_wave(self, wave_filename, progress=None):
-        """writes the contents of this file to the given .wav filename string
-
-        raises EncodingError if some error occurs during decoding"""
-
-        from . import to_pcm_progress
-        from . import WaveAudio
-
-        if (self.has_foreign_riff_chunks()):
-            WaveAudio.wave_from_chunks(wave_filename,
-                                       self.riff_wave_chunks(progress))
+        header = []
+        if (pad_data(self.total_frames(),
+                     self.channels(),
+                     self.bits_per_sample())):
+            footer = [chr(0)]
         else:
-            WaveAudio.from_pcm(wave_filename, to_pcm_progress(self, progress))
+            footer = []
+        current_block = header
+
+        #convert individual chunks into combined header and footer strings
+        for block in self.get_metadata().get_blocks(Flac_APPLICATION.BLOCK_ID):
+            if (block.application_id == "riff"):
+                chunk_id = block.data[0:4]
+                #combine APPLICATION metadata blocks up to "data" as header
+                if (chunk_id != "data"):
+                    current_block.append(block.data)
+                else:
+                    #combine APPLICATION metadata blocks past "data" as footer
+                    current_block.append(block.data)
+                    current_block = footer
+
+        #return tuple of header and footer
+        if ((len(header) != 0) or (len(footer) != 0)):
+            return ("".join(header), "".join(footer))
+        else:
+            raise ValueError("no foreign RIFF chunks")
 
     @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None,
-                  progress=None):
-        """encodes a new AudioFile from an existing .wav file
+    def from_wave(cls, filename, header, pcmreader, footer, compression=None):
+        """encodes a new file from wave data
 
-        takes a filename string, wave_filename string
-        of an existing WaveAudio file
-        and an optional compression level string
-        encodes a new audio file from the wave's data
+        takes a filename string, header string,
+        PCMReader object, footer string
+        and optional compression level string
+        encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
-        and returns a new FlacAudio object"""
+        and returns a new WaveAudio object
 
+        may raise EncodingError if some problem occurs when
+        encoding the input file"""
+
+        from .bitstream import BitstreamReader
+        from .bitstream import BitstreamRecorder
+        from .bitstream import format_byte_size
         import cStringIO
-        from . import WaveAudio
-        from . import __default_quality__
-        from . import to_pcm_progress
+        from .wav import pad_data
+        from . import EncodingError
 
-        if ((compression is None) or
-            (compression not in cls.COMPRESSION_MODES)):
-            compression = __default_quality__(cls.NAME)
+        #split header and footer into distinct chunks
+        header_len = len(header)
+        footer_len = len(footer)
+        blocks = []
+        try:
+            #read everything from start of header to "data<size>"
+            #chunk header
+            r = BitstreamReader(cStringIO.StringIO(header), 1)
+            (riff, size, wave) = r.parse("4b 32u 4b")
+            if ((riff != "RIFF") or (wave != "WAVE")):
+                raise EncodingError("invalid RIFF WAVE header")
+            else:
+                block_data = BitstreamRecorder(1)
+                block_data.build("4b 32u 4b", (riff, size, wave))
+                blocks.append(Flac_APPLICATION("riff", block_data.data()))
+                header_len -= format_byte_size("4b 32u 4b")
 
-        wave = WaveAudio(wave_filename)
+            while (header_len):
+                block_data = BitstreamRecorder(1)
+                (chunk_id, chunk_size) = r.parse("4b 32u")
+                header_len -= format_byte_size("4b 32u")
+                block_data.build("4b 32u", (chunk_id, chunk_size))
 
-        flac = cls.from_pcm(filename,
-                            to_pcm_progress(wave, progress),
-                            compression=compression)
+                if (chunk_id != "data"):
+                    if (chunk_size % 2):
+                        #transfer padded chunk to APPLICATION block
+                        block_data.write_bytes(r.read_bytes(chunk_size + 1))
+                        header_len -= (chunk_size + 1)
+                    else:
+                        #transfer un-padded chunk to APPLICATION block
+                        block_data.write_bytes(r.read_bytes(chunk_size))
+                        header_len -= chunk_size
 
-        if (wave.has_foreign_riff_chunks()):
-            from struct import pack
-
-            metadata = flac.get_metadata()
-
-            #add block containing RIFF WAVE header
-            metadata.add_block(Flac_APPLICATION(
-                    application_id="riff",
-                    data=pack("<4sI4s",
-                              "RIFF",
-                              4 + sum([c.total_size() for c in wave.chunks()]),
-                              "WAVE")))
-
-            #add remaining chunks as APPLICATION blocks
-            for chunk in wave.chunks():
-                if (chunk.id == "data"):
-                    metadata.add_block(Flac_APPLICATION(
-                            application_id="riff",
-                            data=pack("<4sI", "data", chunk.size())))
+                    blocks.append(Flac_APPLICATION("riff", block_data.data()))
                 else:
-                    chunk_data = cStringIO.StringIO()
-                    chunk.write(chunk_data)
-                    metadata.add_block(Flac_APPLICATION(
-                            application_id="riff",
-                            data=chunk_data.getvalue()))
+                    #transfer only "data" chunk header to APPLICATION block
+                    blocks.append(
+                        Flac_APPLICATION("riff", block_data.data()))
+                    if (header_len != 0):
+                        raise EncodingError("extra data after 'data' chunk")
+                    else:
+                        data_chunk_size = chunk_size
+                        break
+            else:
+                raise EncodingError("no 'data' chunk found")
 
-            flac.update_metadata(metadata)
+            #read everything from start of footer to end of footer
+            r = BitstreamReader(cStringIO.StringIO(footer), 1)
+            #skip initial footer pad byte
+            if (data_chunk_size % 2):
+                if (r.read_bytes(1) != chr(0)):
+                    raise EncodingError("invalid 'data' chunk pad byte")
+                footer_len -= 1
 
+            while (footer_len):
+                block_data = BitstreamRecorder(1)
+                (chunk_id, chunk_size) = r.parse("4b 32u")
+                footer_len -= format_byte_size("4b 32u")
+                block_data.build("4b 32u", (chunk_id, chunk_size))
+
+                if (chunk_size % 2):
+                    #transfer padded chunk to APPLICATION block
+                    block_data.write_bytes(r.read_bytes(chunk_size + 1))
+                    footer_len -= (chunk_size + 1)
+                else:
+                    #transfer un-padded chunk to APPLICATION block
+                    block_data.write_bytes(r.read_bytes(chunk_size))
+                    footer_len -= chunk_size
+
+                blocks.append(Flac_APPLICATION("riff", block_data.data()))
+        except IOError:
+            raise EncodingError("I/O error reading header or footer")
+
+        #perform standard FLAC encode from PCMReader
+        flac = cls.from_pcm(filename, pcmreader, compression)
+
+        #add chunks as APPLICATION metadata blocks
+        metadata = flac.get_metadata()
+        for block in blocks:
+            metadata.add_block(block)
+        flac.update_metadata(metadata)
+
+        #return encoded FLAC file
         return flac
 
     def has_foreign_aiff_chunks(self):
@@ -1896,106 +1933,154 @@ class FlacAudio(WaveContainer, AiffContainer):
             block.application_id for block in
             self.get_metadata().get_blocks(Flac_APPLICATION.BLOCK_ID)]
 
-    @classmethod
-    def from_aiff(cls, filename, aiff_filename, compression=None,
-                  progress=None):
-        """encodes a new AudioFile from an existing .aiff file
+    def aiff_header_footer(self):
+        """returns (header, footer) tuple of strings
+        containing all data before and after the PCM stream
 
-        takes a filename string, aiff_filename string
-        of an existing AiffAudio file
-        and an optional compression level string
-        encodes a new audio file from the wave's data
-        at the given filename with the specified compression level
-        and returns a new FlacAudio object"""
+        if self.has_foreign_aiff_chunks() is False,
+        may raise ValueError if the file has no header and footer
+        for any reason"""
 
-        import cStringIO
-        from . import AiffAudio
-        from . import __default_quality__
-        from . import to_pcm_progress
+        from .aiff import pad_data
 
-        if ((compression is None) or
-            (compression not in cls.COMPRESSION_MODES)):
-            compression = __default_quality__(cls.NAME)
-
-        aiff = AiffAudio(aiff_filename)
-
-        flac = cls.from_pcm(filename,
-                            to_pcm_progress(aiff, progress),
-                            compression=compression)
-
-        if (AiffAudio(aiff_filename).has_foreign_aiff_chunks()):
-            from struct import pack
-
-            metadata = flac.get_metadata()
-
-            #add block containing FORM AIFF header
-            metadata.add_block(Flac_APPLICATION(
-                    application_id="aiff",
-                    data=pack(">4sI4s",
-                              "FORM",
-                              4 + sum([c.total_size() for c in aiff.chunks()]),
-                              "AIFF")))
-
-            #add remaining chunks as APPLICATION blocks
-            for chunk in aiff.chunks():
-                if (chunk.id == "SSND"):
-                    metadata.add_block(Flac_APPLICATION(
-                            application_id="aiff",
-                            data=pack(">4sIII", "SSND", chunk.size(), 0, 0)))
-                else:
-                    chunk_data = cStringIO.StringIO()
-                    chunk.write(chunk_data)
-                    metadata.add_block(Flac_APPLICATION(
-                            application_id="aiff",
-                            data=chunk_data.getvalue()))
-
-            flac.update_metadata(metadata)
-
-        return flac
-
-    def to_aiff(self, aiff_filename, progress=None):
-        """writes the contents of this file to the given .aiff filename string
-
-        raises EncodingError if some error occurs during decoding"""
-
-        from . import AiffAudio
-        from . import to_pcm_progress
-
-        if (self.has_foreign_aiff_chunks()):
-            AiffAudio.aiff_from_chunks(aiff_filename,
-                                       self.aiff_chunks(progress))
+        header = []
+        if (pad_data(self.total_frames(),
+                     self.channels(),
+                     self.bits_per_sample())):
+            footer = [chr(0)]
         else:
-            AiffAudio.from_pcm(aiff_filename, to_pcm_progress(self, progress))
+            footer = []
+        current_block = header
 
-    def aiff_chunks(self, progress=None):
-        """yields a set of AIFF_Chunk or AIFF_File_Chunk objects"""
-
-        from struct import unpack
-        from .aiff import AIFF_Chunk
-        from . import PCMReaderProgress
-
-        for application_block in [
-            block.data for block in
-            self.get_metadata().get_blocks(Flac_APPLICATION.BLOCK_ID)
-            if (block.application_id == "aiff")]:
-            (chunk_id, chunk_size, chunk_data) = (application_block[0:4],
-                                                  application_block[4:8],
-                                                  application_block[8:])
-            if (chunk_id == 'FORM'):
-                #skip 12 byte FORM<size>AIFF header
-                continue
-            elif (chunk_id == 'SSND'):
-                if (progress is not None):
-                    yield FLAC_SSND_Chunk(
-                        self.__total_frames__,
-                        PCMReaderProgress(self.to_pcm(),
-                                          self.__total_frames__,
-                                          progress))
+        #convert individual chunks into combined header and footer strings
+        for block in self.get_metadata().get_blocks(Flac_APPLICATION.BLOCK_ID):
+            if (block.application_id == "aiff"):
+                chunk_id = block.data[0:4]
+                #combine APPLICATION metadata blocks up to "SSND" as header
+                if (chunk_id != "SSND"):
+                    current_block.append(block.data)
                 else:
-                    yield FLAC_SSND_Chunk(self.__total_frames__, self.to_pcm())
+                    #combine APPLICATION metadata blocks past "SSND" as footer
+                    current_block.append(block.data)
+                    current_block = footer
+
+        #return tuple of header and footer
+        if ((len(header) != 0) or (len(footer) != 0)):
+            return ("".join(header), "".join(footer))
+        else:
+            raise ValueError("no foreign AIFF chunks")
+
+    @classmethod
+    def from_aiff(cls, filename, header, pcmreader, footer, compression=None):
+        """encodes a new file from AIFF data
+
+        takes a filename string, header string,
+        PCMReader object, footer string
+        and optional compression level string
+        encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new AiffAudio object
+
+        header + pcm data + footer should always result
+        in the original AIFF file being restored
+        without need for any padding bytes
+
+        may raise EncodingError if some problem occurs when
+        encoding the input file"""
+
+        from .bitstream import BitstreamReader
+        from .bitstream import BitstreamRecorder
+        from .bitstream import format_byte_size
+        import cStringIO
+        from .wav import pad_data
+        from . import EncodingError
+
+        #split header and footer into distinct chunks
+        header_len = len(header)
+        footer_len = len(footer)
+        blocks = []
+        try:
+            #read everything from start of header to "SSND<size>"
+            #chunk header
+            r = BitstreamReader(cStringIO.StringIO(header), 0)
+            (form, size, aiff) = r.parse("4b 32u 4b")
+            if ((form != "FORM") or (aiff != "AIFF")):
+                raise EncodingError("invalid AIFF header")
             else:
-                chunk_size = unpack(">I", chunk_size)[0]
-                yield AIFF_Chunk(chunk_id, chunk_size, chunk_data[0:chunk_size])
+                block_data = BitstreamRecorder(0)
+                block_data.build("4b 32u 4b", (form, size, aiff))
+                blocks.append(Flac_APPLICATION("aiff", block_data.data()))
+                header_len -= format_byte_size("4b 32u 4b")
+
+            while (header_len):
+                block_data = BitstreamRecorder(0)
+                (chunk_id, chunk_size) = r.parse("4b 32u")
+                header_len -= format_byte_size("4b 32u")
+                block_data.build("4b 32u", (chunk_id, chunk_size))
+
+                if (chunk_id != "SSND"):
+                    if (chunk_size % 2):
+                        #transfer padded chunk to APPLICATION block
+                        block_data.write_bytes(r.read_bytes(chunk_size + 1))
+                        header_len -= (chunk_size + 1)
+                    else:
+                        #transfer un-padded chunk to APPLICATION block
+                        block_data.write_bytes(r.read_bytes(chunk_size))
+                        header_len -= chunk_size
+
+                    blocks.append(Flac_APPLICATION("aiff", block_data.data()))
+                else:
+                    #transfer only "SSND" chunk header to APPLICATION block
+                    block_data.write_bytes(r.read_bytes(8))
+                    header_len -= 8
+                    blocks.append(
+                        Flac_APPLICATION("aiff", block_data.data()))
+                    if (header_len != 0):
+                        raise EncodingError("extra data after 'SSND' chunk")
+                    else:
+                        data_chunk_size = chunk_size
+                        break
+            else:
+                raise EncodingError("no 'SSND' chunk found")
+
+            #read everything from start of footer to end of footer
+            r = BitstreamReader(cStringIO.StringIO(footer), 0)
+            #skip initial footer pad byte
+            if (data_chunk_size % 2):
+                if (r.read_bytes(1) != chr(0)):
+                    raise EncodingError("invalid 'SSND' chunk pad byte")
+                footer_len -= 1
+
+            while (footer_len):
+                block_data = BitstreamRecorder(0)
+                (chunk_id, chunk_size) = r.parse("4b 32u")
+                footer_len -= format_byte_size("4b 32u")
+                block_data.build("4b 32u", (chunk_id, chunk_size))
+
+                if (chunk_size % 2):
+                    #transfer padded chunk to APPLICATION block
+                    block_data.write_bytes(r.read_bytes(chunk_size + 1))
+                    footer_len -= (chunk_size + 1)
+                else:
+                    #transfer un-padded chunk to APPLICATION block
+                    block_data.write_bytes(r.read_bytes(chunk_size))
+                    footer_len -= chunk_size
+
+                blocks.append(Flac_APPLICATION("aiff", block_data.data()))
+        except IOError:
+            raise EncodingError("I/O error reading header or footer")
+
+        #perform standard FLAC encode from PCMReader
+        flac = cls.from_pcm(filename, pcmreader, compression)
+
+        #add chunks as APPLICATION metadata blocks
+        metadata = flac.get_metadata()
+        for block in blocks:
+            metadata.add_block(block)
+        flac.update_metadata(metadata)
+
+        #return encoded FLAC file
+        return flac
 
     def convert(self, target_path, target_class, compression=None,
                 progress=None):
@@ -2015,36 +2100,22 @@ class FlacAudio(WaveContainer, AiffContainer):
         from . import AiffAudio
         from . import to_pcm_progress
 
-        if (target_class == WaveAudio):
-            self.to_wave(target_path, progress=progress)
-            return WaveAudio(target_path)
-        elif (target_class == AiffAudio):
-            self.to_aiff(target_path, progress=progress)
-            return AiffAudio(target_path)
-        elif (self.has_foreign_riff_chunks() and
-              hasattr(target_class, "from_wave")):
-            temp_wave = tempfile.NamedTemporaryFile(suffix=".wav")
-            try:
-                #we'll only log the second leg of conversion,
-                #since that's likely to be the slower portion
-                self.to_wave(temp_wave.name)
-                return target_class.from_wave(target_path,
-                                              temp_wave.name,
-                                              compression,
-                                              progress=progress)
-            finally:
-                temp_wave.close()
+        if (self.has_foreign_wave_chunks() and
+            hasattr(target_class, "from_wave") and
+            callable(target_class.from_wave)):
+            return WaveContainer.convert(self,
+                                         target_path,
+                                         target_class,
+                                         compression,
+                                         progress)
         elif (self.has_foreign_aiff_chunks() and
-              hasattr(target_class, "from_aiff")):
-            temp_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
-            try:
-                self.to_aiff(temp_aiff.name)
-                return target_class.from_aiff(target_path,
-                                              temp_aiff.name,
-                                              compression,
-                                              progress=progress)
-            finally:
-                temp_aiff.close()
+              hasattr(target_class, "from_aiff") and
+              callable(target_class.from_aiff)):
+            return AiffContainer.convert(self,
+                                         target_path,
+                                         target_class,
+                                         compression,
+                                         progress)
         else:
             return target_class.from_pcm(target_path,
                                          to_pcm_progress(self, progress),

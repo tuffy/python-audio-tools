@@ -143,6 +143,13 @@ class RIFF_File_Chunk(RIFF_Chunk):
         return self.total_size()
 
 
+def pad_data(pcm_frames, channels, bits_per_sample):
+    """returns True if the given stream combination
+    requires an extra padding byte at the end of the 'data' chunk"""
+
+    return (pcm_frames * channels * (bits_per_sample / 8)) % 2
+
+
 def parse_fmt(fmt):
     """given a fmt block BitstreamReader (without the 8 byte header)
     returns (channels, sample_rate, bits_per_sample, channel_mask)
@@ -379,7 +386,7 @@ class WaveAudio(WaveContainer):
 
         return True
 
-    def has_foreign_riff_chunks(self):
+    def has_foreign_wave_chunks(self):
         """returns True if the audio file contains non-audio RIFF chunks
 
         during transcoding, if the source audio file has foreign RIFF chunks
@@ -538,96 +545,6 @@ class WaveAudio(WaveContainer):
             f.close()
 
         return WaveAudio(filename)
-
-    def to_wave(self, wave_filename, progress=None):
-        """writes the contents of this file to the given .wav filename string
-
-        raises EncodingError if some error occurs during decoding"""
-
-        from . import transfer_data
-        from . import EncodingError
-
-        try:
-            self.verify()
-        except InvalidWave, err:
-            raise EncodingError(str(err))
-
-        try:
-            output = file(wave_filename, 'wb')
-            input = file(self.filename, 'rb')
-        except IOError, msg:
-            raise EncodingError(str(msg))
-        try:
-            transfer_data(input.read, output.write)
-        finally:
-            input.close()
-            output.close()
-
-    @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None,
-                  progress=None):
-        """encodes a new AudioFile from an existing .wav file
-
-        takes a filename string, wave_filename string
-        of an existing WaveAudio file
-        and an optional compression level string
-        encodes a new audio file from the wave's data
-        at the given filename with the specified compression level
-        and returns a new WaveAudio object"""
-
-        from os.path import getsize
-        from . import EncodingError
-
-        try:
-            cls(wave_filename).verify()
-        except InvalidWave, err:
-            raise EncodingError(unicode(err))
-
-        try:
-            input = file(wave_filename, 'rb')
-            output = file(filename, 'wb')
-        except IOError, err:
-            raise EncodingError(str(err))
-        try:
-            total_bytes = getsize(wave_filename)
-            current_bytes = 0
-            s = input.read(4096)
-            while (len(s) > 0):
-                current_bytes += len(s)
-                output.write(s)
-                if (progress is not None):
-                    progress(current_bytes, total_bytes)
-                s = input.read(4096)
-            output.flush()
-            try:
-                return WaveAudio(filename)
-            except InvalidFile:
-                cls.__unlink__(filename)
-                raise EncodingError(u"invalid RIFF WAVE source file")
-        finally:
-            input.close()
-            output.close()
-
-    def convert(self, target_path, target_class, compression=None,
-                progress=None):
-        """encodes a new AudioFile from existing AudioFile
-
-        take a filename string, target class and optional compression string
-        encodes a new AudioFile in the target class and returns
-        the resulting object
-        may raise EncodingError if some problem occurs during encoding"""
-
-        if (hasattr(target_class, "from_wave")):
-            return target_class.from_wave(target_path,
-                                          self.filename,
-                                          compression=compression,
-                                          progress=progress)
-        else:
-            from . import to_pcm_progress
-
-            return target_class.from_pcm(target_path,
-                                         to_pcm_progress(self, progress),
-                                         compression)
 
     def total_frames(self):
         """returns the total PCM frames of the track as an integer"""
@@ -819,7 +736,7 @@ class WaveAudio(WaveContainer):
         finally:
             wave_file.close()
 
-    def pcm_split(self):
+    def wave_header_footer(self):
         """returns a pair of data strings before and after PCM data
 
         the first contains all data before the PCM content of the data chunk
@@ -827,7 +744,7 @@ class WaveAudio(WaveContainer):
         for example:
 
         >>> w = audiotools.open("input.wav")
-        >>> (head, tail) = w.pcm_split()
+        >>> (head, tail) = w.wave_header_footer()
         >>> f = open("output.wav", "wb")
         >>> f.write(head)
         >>> audiotools.transfer_framelist_data(w.to_pcm(), f.write)
@@ -892,6 +809,61 @@ class WaveAudio(WaveContainer):
             return (head.data(), tail.data())
         finally:
             wave_file.close()
+
+    @classmethod
+    def from_wave(cls, filename, header, pcmreader, footer, compression=None):
+        """encodes a new file from wave data
+
+        takes a filename string, header string,
+        PCMReader object, footer string
+        and optional compression level string
+        encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new WaveAudio object
+
+        header + pcm data + footer should always result
+        in the original wave file being restored
+        without need for any padding bytes
+
+        may raise EncodingError if some problem occurs when
+        encoding the input file"""
+
+        from . import (DecodingError,EncodingError,FRAMELIST_SIZE)
+        from struct import unpack
+
+        if ((len(header) > 8) and (header[-8:-4] == "data")):
+            data_size = unpack("<I", header[-4:])[0]
+        else:
+            raise EncodingError("invalid header")
+
+        try:
+            f = open(filename, "wb")
+            f.write(header)
+
+            data_bytes_written = 0
+            signed = (pcmreader.bits_per_sample > 8)
+            s = pcmreader.read(FRAMELIST_SIZE).to_bytes(False, signed)
+            while (len(s) > 0):
+                data_bytes_written += len(s)
+                f.write(s)
+                s = pcmreader.read(FRAMELIST_SIZE).to_bytes(False, signed)
+
+            if (data_size != data_bytes_written):
+                cls.__unlink__(filename)
+                raise EncodingError(
+                    "premature end of data chunk (%d != %d)" % \
+                        (data_size,
+                         data_bytes_written))
+
+            f.write(footer)
+            f.close()
+            return cls(filename)
+        except IOError, err:
+            cls.__unlink__(filename)
+            raise EncodingError(str(err))
+        except DecodingError, err:
+            cls.__unlink__(filename)
+            raise EncodingError(err.error_message)
 
     def verify(self, progress=None):
         """verifies the current file for correctness
