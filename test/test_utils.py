@@ -3353,7 +3353,8 @@ class tracktag_errors(UtilTest):
 
                 self.assert_(len(wv.get_metadata().comment) > 0)
 
-                subprocess.call(["track2track", "-t", audio_class.NAME, "-o",
+                subprocess.call(["track2track", "-V", "quiet",
+                                 "-t", audio_class.NAME, "-o",
                                  flac.filename, wv.filename])
 
                 flac = audiotools.open(tempflac.name)

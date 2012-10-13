@@ -633,7 +633,7 @@ class M4AAudio_nero(M4AAudio_faac):
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
-            self.to_wave(f.name)
+            self.__to_wave__(f.name)
             return WaveReader(wave_file=file(f.name, "rb"),
                               sample_rate=self.sample_rate(),
                               channels=self.channels(),
@@ -646,7 +646,7 @@ class M4AAudio_nero(M4AAudio_faac):
                                   channel_mask=int(self.channel_mask()),
                                   bits_per_sample=self.bits_per_sample())
 
-    def to_wave(self, wave_file, progress=None):
+    def __to_wave__(self, wave_file, progress=None):
         """writes the contents of this file to the given .wav filename string
 
         raises EncodingError if some error occurs during decoding"""
@@ -666,58 +666,6 @@ class M4AAudio_nero(M4AAudio_faac):
                 raise EncodingError(u"unable to write file with neroAacDec")
         finally:
             devnull.close()
-
-    @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None,
-                  progress=None):
-        """encodes a new AudioFile from an existing .wav file
-
-        takes a filename string, wave_filename string
-        of an existing WaveAudio file
-        and an optional compression level string
-        encodes a new audio file from the wave's data
-        at the given filename with the specified compression level
-        and returns a new M4AAudio object"""
-
-        from . import PCMConverter
-        from . import EncodingError
-        from . import WaveAudio
-        from . import to_pcm_progress
-        from . import __default_quality__
-
-        if ((compression is None) or
-            (compression not in cls.COMPRESSION_MODES)):
-            compression = __default_quality__(cls.NAME)
-
-        try:
-            wave = WaveAudio(wave_filename)
-            wave.verify()
-        except InvalidFile:
-            raise EncodingError(u"invalid wave file")
-
-        if (wave.sample_rate > 96000):
-            #convert through PCMConverter if sample rate is too high
-            import tempfile
-            import os.path
-
-            tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav")
-            try:
-                tempwave = WaveAudio.from_pcm(
-                    tempwavefile.name,
-                    PCMConverter(to_pcm_progress(wave, progress),
-                                 sample_rate=96000,
-                                 channels=wave.channels(),
-                                 channel_mask=wave.channel_mask(),
-                                 bits_per_sample=wave.bits_per_sample()))
-                return cls.__from_wave__(filename, tempwave.filename,
-                                         compression)
-            finally:
-                if (os.path.isfile(tempwavefile.name)):
-                    tempwavefile.close()
-                else:
-                    tempwavefile.close_called = True
-        else:
-            return cls.__from_wave__(filename, wave_filename, compression)
 
     @classmethod
     def __from_wave__(cls, filename, wave_filename, compression):

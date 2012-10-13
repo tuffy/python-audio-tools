@@ -55,7 +55,7 @@ def display_defaults(config, msg):
 
     msg.divider_row([u" ", u"\u2500", u" ", u"\u2500", u" ", u"\u2500"])
 
-    for audio_type in sorted(audiotools.TYPE_MAP.values(),
+    for audio_type in sorted(audiotools.AVAILABLE_TYPES,
                              lambda x,y: cmp(x.NAME, y.NAME)):
         msg.new_row()
         msg.output_column(u"  ")

@@ -665,27 +665,32 @@ This is accomplished by implementing three additional methods.
 
 .. class:: WaveContainer
 
-.. method:: WaveContainer.to_wave(wave_filename[, progress])
-
-   Creates a Wave file with the given filename string
-   from our data, with any stored chunks intact.
-   ``progress``, if given, functions identically to the
-   :meth:`AudioFile.convert` method.
-   May raise :exc:`EndodingError` if some problem occurs during encoding.
-
-.. classmethod:: WaveContainer.from_wave(filename, wave_filename[, compression[, progress]])
-
-   Like :meth:`AudioFile.from_pcm`, creates a file with our class
-   at the given ``filename`` string, from the given ``wave_filename``
-   string and returns a new object of our class.
-   ``compression`` is an optional compression level string
-   and ``progress`` functions identically to that of
-   :meth:`AudioFile.convert`.
-   May raise :exc:`EndodingError` if some problem occurs during encoding.
-
-.. method:: WaveContainer.has_foreign_riff_chunks()
+.. method:: WaveContainer.has_foreign_wave_chunks()
 
    Returns ``True`` if our object has non-audio RIFF WAVE chunks.
+
+.. method:: WaveContainer.wave_header_footer()
+
+   Returns ``(header, footer)`` tuple of strings
+   where ``header`` is everything before the PCM data
+   and ``footer`` is everything after the PCM data.
+
+   If :meth:`WaveContainer.has_foreign_wave_chunks` returns ``False``,
+   this may raise :exc:`ValueError` if the file has no header and footer
+   for any reason.
+   Otherwise, it will always return two strings.
+
+.. classmethod:: WaveContainer.from_wave(filename, header, pcmreader, footer[, compression])
+
+   Encodes a new file from wave data.
+   ``header`` and ``footer`` are binary strings as returned by a
+   :meth:`WaveContainer.wave_header_footer` method,
+   ``pcmreader`` is a :class:`PCMReader` object
+   and ``compression`` is a binary string.
+
+   Returns a new :class:`AudioFile`-compatible object
+   or raises :exc:`EncodingError` if some error occurs when
+   encoding the file.
 
 AiffContainer Objects
 ^^^^^^^^^^^^^^^^^^^^^
@@ -700,27 +705,32 @@ This is accomplished by implementing three additional methods.
 
 .. class:: AiffContainer
 
-.. method:: AiffContainer.to_aiff(aiff_filename[, progress])
-
-   Creates an AIFF file with the given filename string
-   from our data, with any stored chunks intact.
-   ``progress``, if given, functions identically to the
-   :meth:`AudioFile.convert` method.
-   May raise :exc:`EndodingError` if some problem occurs during encoding.
-
-.. classmethod:: AiffContainer.from_aiff(filename, aiff_filename[, compression[, progress]])
-
-   Like :meth:`AudioFile.from_pcm`, creates a file with our class
-   at the given ``filename`` string, from the given ``aiff_filename``
-   string and returns a new object of our class.
-   ``compression`` is an optional compression level string
-   and ``progress`` functions identically to that of
-   :meth:`AudioFile.convert`.
-   May raise :exc:`EndodingError` if some problem occurs during encoding.
-
 .. method:: AiffContainer.has_foreign_aiff_chunks()
 
    Returns ``True`` if our object has non-audio AIFF chunks.
+
+.. method:: AiffContainer.aiff_header_footer()
+
+   Returns ``(header, footer)`` tuple of strings
+   where ``header`` is everything before the PCM data
+   and ``footer`` is everything after the PCM data.
+
+   If :meth:`WaveContainer.has_foreign_aiff_chunks` returns ``False``,
+   this may raise :exc:`ValueError` if the file has no header and footer
+   for any reason.
+   Otherwise, it will always return two strings.
+
+.. classmethod:: AiffContainer.from_aiff(filename, header, pcmreader, footer[, compression])
+
+   Encodes a new file from wave data.
+   ``header`` and ``footer`` are binary strings as returned by a
+   :meth:`AiffContainer.aiff_header_footer` method,
+   ``pcmreader`` is a :class:`PCMReader` object
+   and ``compression`` is a binary string.
+
+   Returns a new :class:`AudioFile`-compatible object
+   or raises :exc:`EncodingError` if some error occurs when
+   encoding the file.
 
 MetaData Objects
 ----------------

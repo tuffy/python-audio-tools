@@ -618,7 +618,7 @@ class WaveAudio(WaveContainer):
              album_peak) in calculate_replay_gain(wave_files, progress):
             temp_wav_file = tempfile.NamedTemporaryFile(suffix=".wav")
             try:
-                (header, footer) = original_wave.pcm_split()
+                (header, footer) = original_wave.wave_header_footer()
                 temp_wav_file.write(header)
                 replaygain_pcm = ReplayGainReader(original_wave.to_pcm(),
                                                   track_gain, track_peak)

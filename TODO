@@ -6044,7 +6044,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] wave_header_footer()
      - [X] from_wave(filename, header, pcmreader, footer, compression)
      - [X] convert(target_page, target_class, compression, progress)
-**** TODO Update programming documentation
+**** DONE Update programming documentation
 **** TODO Update unit tests
 *** TODO Update aiff containers to use new interface
     AiffContainer.has_foreign_aiff_chunks()
@@ -6079,7 +6079,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] aiff_header_footer()
      - [X] from_aiff(filename, header, pcmreader, footer, compression)
      - [X] convert(target_page, target_class, compression, progress)
-**** TODO Update programming documentation
+**** DONE Update programming documentation
 **** TODO Update unit tests
 ** TODO Add optional interactive modes to utilities
    Now that Urwid is being used for editxmcd, it might be helpful

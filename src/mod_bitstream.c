@@ -544,12 +544,20 @@ BitstreamReader_substream_append(bitstream_BitstreamReader *self,
         return NULL;
     }
 
-    self->bitstream->substream_append(self->bitstream,
-                                      substream->bitstream,
-                                      bytes);
+    if (!setjmp(*br_try(self->bitstream))) {
+        self->bitstream->substream_append(self->bitstream,
+                                          substream->bitstream,
+                                          bytes);
 
-    Py_INCREF(Py_None);
-    return Py_None;
+        br_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        br_etry(self->bitstream);
+        /*read error occured during substream_append*/
+        PyErr_SetString(PyExc_IOError, "I/O error appending substream");
+        return NULL;
+    }
 }
 
 static PyObject*

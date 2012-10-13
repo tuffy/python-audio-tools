@@ -1449,7 +1449,7 @@ class TestForeignWaveChunks:
             # in favor of the more flexible convert() method)
             track = wave.convert(audio.name, audiotools.WaveAudio)
 
-            self.assertEqual(track.has_foreign_riff_chunks(), True)
+            self.assertEqual(track.has_foreign_wave_chunks(), True)
 
             #convert it back to WAVE via convert()
             track.convert(tempwav2.name, audiotools.WaveAudio)
@@ -1462,7 +1462,7 @@ class TestForeignWaveChunks:
             #finally, ensure that setting metadata doesn't erase the chunks
             track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
             track = audiotools.open(track.filename)
-            self.assertEqual(track.has_foreign_riff_chunks(), True)
+            self.assertEqual(track.has_foreign_wave_chunks(), True)
         finally:
             tempwav1.close()
             tempwav2.close()
@@ -1506,11 +1506,11 @@ class TestForeignWaveChunks:
             audiotools.WaveAudio.wave_from_chunks(input_wave.name, base_chunks)
             wave = audiotools.open(input_wave.name)
             wave.verify()
-            self.assert_(wave.has_foreign_riff_chunks())
+            self.assert_(wave.has_foreign_wave_chunks())
 
             #convert it to our audio type using convert()
             track1 = wave.convert(track1_file.name, self.audio_class)
-            self.assert_(track1.has_foreign_riff_chunks())
+            self.assert_(track1.has_foreign_wave_chunks())
 
             #convert it to every other WAVE-containing format
             for new_class in [t for t in audiotools.AVAILABLE_TYPES
@@ -1519,7 +1519,7 @@ class TestForeignWaveChunks:
                     suffix="." + new_class.SUFFIX)
                 try:
                     track2 = track1.convert(track2_file.name, new_class)
-                    self.assert_(track2.has_foreign_riff_chunks(),
+                    self.assert_(track2.has_foreign_wave_chunks(),
                                  "format %s lost RIFF chunks" % (new_class))
 
                     #then, convert it back to a WAVE
@@ -1576,11 +1576,11 @@ class TestForeignWaveChunks:
             audiotools.WaveAudio.wave_from_chunks(input_wave.name, base_chunks)
             wave = audiotools.open(input_wave.name)
             wave.verify()
-            self.assert_(wave.has_foreign_riff_chunks())
+            self.assert_(wave.has_foreign_wave_chunks())
 
             #convert it to our audio type using convert
             track1 = wave.convert(track1_file.name, self.audio_class)
-            self.assert_(track1.has_foreign_riff_chunks())
+            self.assert_(track1.has_foreign_wave_chunks())
 
             #convert our track to every other format
             for new_class in audiotools.AVAILABLE_TYPES:
@@ -3986,6 +3986,13 @@ class OggVerify:
             good_file.close()
             bad_file.close()
 
+        if (self.audio_class is audiotools.OpusAudio):
+            #opusdec doesn't currently reject invalid
+            #streams like it should
+            #so the encoding test doesn't work right
+            #(this is a known bug)
+            return
+
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
         try:
             track = self.audio_class.from_pcm(
@@ -3994,7 +4001,7 @@ class OggVerify:
             self.assertEqual(track.verify(), True)
             good_data = open(temp.name, 'rb').read()
             f = open(temp.name, 'wb')
-            f.write(good_data[0:100])
+            f.write(good_data[0:min(100, len(good_data) - 1)])
             f.close()
             if (os.path.isfile("dummy.wav")):
                 os.unlink("dummy.wav")
@@ -4286,7 +4293,7 @@ class ShortenFileTest(TestForeignWaveChunks,
         temp_input_wave.verify()
 
         options = encode_options.copy()
-        (head, tail) = temp_input_wave.pcm_split()
+        (head, tail) = temp_input_wave.wave_header_footer()
         options["is_big_endian"] = False
         options["signed_samples"] = (pcmreader.bits_per_sample == 16)
         options["header_data"] = head
@@ -4345,7 +4352,7 @@ class ShortenFileTest(TestForeignWaveChunks,
         options = encode_options.copy()
         options["is_big_endian"] = True
         options["signed_samples"] = True
-        (head, tail) = temp_input_aiff.pcm_split()
+        (head, tail) = temp_input_aiff.aiff_header_footer()
         options["header_data"] = head
         if (len(tail) > 0):
             options["footer_data"] = tail

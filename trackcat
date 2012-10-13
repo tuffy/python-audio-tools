@@ -298,7 +298,7 @@ if (__name__ == '__main__'):
         output_class = AudioType
         output_quality = options.quality
         metadata = audiotools.ui.select_metadata(
-            metadata_choices,
+            [[m] for m in metadata_choices],
             msg,
             options.use_default)[0]
 

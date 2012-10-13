@@ -4023,7 +4023,8 @@ class TestMultiChannel(unittest.TestCase):
                 PCM_Reader_Multiplexer([t.to_pcm() for t in tone_tracks],
                                        channel_mask))
 
-            gain_values = [replaygain.ReplayGain(44100).title_gain(
+            gain_values = [
+                replaygain.ReplayGain(temp_track.sample_rate()).title_gain(
                     audiotools.RemaskedPCMReader(temp_track.to_pcm(),
                                                  1,
                                                  mask))[0]

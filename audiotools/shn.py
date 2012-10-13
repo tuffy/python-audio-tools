@@ -235,7 +235,13 @@ class ShortenAudio(WaveContainer, AiffContainer):
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
             w = WaveAudio.from_pcm(f.name, pcmreader)
-            return cls.from_wave(filename, f.name, compression, block_size)
+            (header, footer) = w.wave_header_footer()
+            return cls.from_wave(filename,
+                                 header,
+                                 w.to_pcm(),
+                                 footer,
+                                 compression,
+                                 block_size)
         finally:
             if (os.path.isfile(f.name)):
                 f.close()
@@ -328,7 +334,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         encoding the input file"""
 
         from .encoders import encode_shn
-        from . import UnsupportedBitsPerSample
+        from . import UnsupportedBitsPerSample,EncodingError
 
         if (pcmreader.bits_per_sample not in (8, 16)):
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
