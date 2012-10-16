@@ -427,7 +427,7 @@ if (__name__ == '__main__'):
                             user_data=(config,
                                        "Quality",
                                        audio_type.NAME),
-                            label=u"Quality")  #FIXME
+                            label=_.LAB_OPTIONS_AUDIO_QUALITY)
                         no_modes = False
 
                     format_rows.append(
@@ -841,7 +841,7 @@ if (__name__ == '__main__'):
                         focus_column=1))
 
                 option_widgets = urwid.ListBox(
-                    [verbosity_row,
+                    [urwid.LineBox(verbosity_row),
                      urwid.BoxAdapter(transcode_box,
                                       len(audiotools.TYPE_MAP) + 8),
                      urwid.BoxAdapter(id3_box, 5),

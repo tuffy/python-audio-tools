@@ -19,6 +19,7 @@
 
 import sys
 import time
+import termios
 import os
 import audiotools
 import audiotools.ui

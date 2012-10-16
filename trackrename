@@ -95,7 +95,7 @@ if (audiotools.ui.AVAILABLE):
 
             urwid.Pile.__init__(
                 self,
-                [('fixed', 1, urwid.Filler(template_row)),
+                [('fixed', 3, urwid.LineBox(urwid.Filler(template_row))),
                  ('weight', 1,
                   urwid.LineBox(self.output_tracks_frame,
                                 title=_.LAB_OPTIONS_OUTPUT_FILES)),

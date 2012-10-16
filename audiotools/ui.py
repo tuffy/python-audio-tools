@@ -992,13 +992,29 @@ try:
                 return key
 
 
-    class CroppedLineBox(urwid.LineBox):
-        def __init__(self, original_widget,
-                     lline=u"\u2502", blcorner=u"\u2514", rline=u"\u2502",
+    class BottomLineBox(urwid.LineBox):
+        """a LineBox that places its title at the bottom instead of the top"""
+
+        def __init__(self, original_widget, title="",
+                     tlcorner=u"\u250c", tline=u"\u2500", lline=u"\u2502",
+                     trcorner=u"\u2510", blcorner=u"\u2514", rline=u"\u2502",
                      bline=u"\u2500", brcorner=u"\u2518"):
-            bline = urwid.Divider(bline)
+            tline, bline = urwid.Divider(tline), urwid.Divider(bline)
             lline, rline = urwid.SolidFill(lline), urwid.SolidFill(rline)
+            tlcorner, trcorner = urwid.Text(tlcorner), urwid.Text(trcorner)
             blcorner, brcorner = urwid.Text(blcorner), urwid.Text(brcorner)
+
+            self.title_widget = urwid.Text(self.format_title(title))
+            self.tline_widget = urwid.Columns([
+                    tline,
+                    ('flow', self.title_widget),
+                    tline])
+
+            top = urwid.Columns([
+                    ('fixed', 1, tlcorner),
+                    bline,
+                    ('fixed', 1, trcorner)
+                    ])
 
             middle = urwid.Columns([
                     ('fixed', 1, lline),
@@ -1007,10 +1023,14 @@ try:
                     ], box_columns = [0,2], focus_column=1)
 
             bottom = urwid.Columns([
-                    ('fixed', 1, blcorner), bline, ('fixed', 1, brcorner)
+                    ('fixed', 1, blcorner),
+                    self.tline_widget,
+                    ('fixed', 1, brcorner)
                     ])
 
-            pile = urwid.Pile([middle, ('flow', bottom)], focus_item=0)
+            pile = urwid.Pile([('flow', top),
+                               middle,
+                               ('flow', bottom)], focus_item=1)
 
             urwid.WidgetDecoration.__init__(self, original_widget)
             urwid.WidgetWrap.__init__(self, pile)
@@ -1526,9 +1546,9 @@ try:
                 assert(isinstance(f, audiotools.Filename))
 
             from audiotools.text import (ERR_INVALID_FILENAME_FORMAT,
+                                         LAB_OPTIONS_FILENAME_FORMAT,
                                          LAB_OUTPUT_OPTIONS,
                                          LAB_OPTIONS_OUTPUT_DIRECTORY,
-                                         LAB_OPTIONS_FILENAME_FORMAT,
                                          LAB_OPTIONS_AUDIO_CLASS,
                                          LAB_OPTIONS_AUDIO_QUALITY,
                                          LAB_OPTIONS_OUTPUT_FILES,
@@ -1959,13 +1979,6 @@ try:
                                              current=0,
                                              done=100)
 
-            self.status = urwid.Text(
-                (LAB_PLAY_STATUS if (len(tracks) > 1) else
-                 LAB_PLAY_STATUS_1) % {"count": len(tracks),
-                                       "min": int(track_len) / 60,
-                                       "sec": int(track_len) % 60},
-                align='center')
-
             label_width = max([len(audiotools.display_unicode(s))
                                for s in [METADATA_TRACK_NAME,
                                          METADATA_ARTIST_NAME,
@@ -2026,13 +2039,23 @@ try:
                                       on_state_change=self.select_track,
                                       key_map={'tab': 'down'})
                     for (track_label, user_data) in tracks])
-            body = urwid.Pile([('fixed', 2, urwid.Filler(urwid.Pile([
-                                controls, urwid.Divider(div_char=u'\u2500')]))),
-                               ('weight', 1, self.track_list_widget)])
-            footer = urwid.Pile([urwid.Divider(div_char=u'\u2500'),
-                                 self.status])
 
-            urwid.Frame.__init__(self, body=body, header=header, footer=footer)
+            status = ((LAB_PLAY_STATUS if (len(tracks) > 1) else
+                       LAB_PLAY_STATUS_1) % {"count": len(tracks),
+                                             "min": int(track_len) / 60,
+                                             "sec": int(track_len) % 60})
+
+            body = urwid.Pile(
+                [("fixed", 1,
+                  urwid.Filler(controls)),
+                 ("weight", 1,
+                  BottomLineBox(self.track_list_widget,
+                                title=status))])
+
+            urwid.Frame.__init__(
+                self,
+                body=body,
+                header=urwid.LineBox(header))
 
         def select_track(self, radio_button, new_state, user_data,
                          auto_play=True):
