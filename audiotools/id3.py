@@ -606,11 +606,11 @@ class ID3v22_W__Frame:
         self.data = data
 
     def copy(self):
-        return self.__class__(self.frame_id, self.data)
+        return self.__class__(self.id, self.data)
 
     def __repr__(self):
         return "ID3v22_W__Frame(%s, %s)" % \
-            (repr(self.frame_id), repr(self.data))
+            (repr(self.id), repr(self.data))
 
     def raw_info(self):
         """returns a human-readable version of this frame as unicode"""
@@ -642,7 +642,7 @@ class ID3v22_W__Frame:
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
 
-        return self.__class__(self.frame_id, self.data)
+        return self.__class__(self.id, self.data)
 
 
 class ID3v22_WXX_Frame:
@@ -1441,7 +1441,7 @@ class ID3v23_TXXX_Frame(ID3v22_TXX_Frame):
 class ID3v23_W___Frame(ID3v22_W__Frame):
     def __repr__(self):
         return "ID3v23_W___Frame(%s, %s)" % \
-            (repr(self.frame_id), repr(self.data))
+            (repr(self.id), repr(self.data))
 
 
 class ID3v23_WXXX_Frame(ID3v22_WXX_Frame):
@@ -1937,7 +1937,7 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
 class ID3v24_W___Frame(ID3v23_W___Frame):
     def __repr__(self):
         return "ID3v24_W___Frame(%s, %s)" % \
-            (repr(self.frame_id), repr(self.data))
+            (repr(self.id), repr(self.data))
 
 
 class ID3v24_WXXX_Frame(ID3v23_WXXX_Frame):
