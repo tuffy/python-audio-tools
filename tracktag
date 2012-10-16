@@ -50,11 +50,12 @@ if (audiotools.ui.AVAILABLE):
                 [unicode(audiotools.Filename(t.filename).basename())
                  for t in tracks],
                 metadata_choices,
-                status,
-                [("fixed", 1, buttons)])
+                status)
 
             urwid.Frame.__init__(self,
-                                 body=self.filler,
+                                 body=urwid.Pile([
+                        ("weight", 1, self.filler),
+                        ("fixed", 1, buttons)]),
                                  footer=status)
 
         def apply(self, button):
