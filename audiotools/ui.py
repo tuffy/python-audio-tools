@@ -142,8 +142,7 @@ try:
             self.options_status = urwid.Text(u"")
 
             #setup a widget for populating metadata fields
-            metadata_buttons = urwid.Filler(
-                urwid.Columns(
+            metadata_buttons = urwid.Filler(urwid.Columns(
                     widget_list=[('weight', 1,
                                   urwid.Button(LAB_CANCEL_BUTTON,
                                                on_press=self.exit)),
@@ -155,8 +154,10 @@ try:
 
             self.metadata = MetaDataFiller(track_labels,
                                            metadata_choices,
-                                           self.metadata_status,
-                                           [("fixed", 1, metadata_buttons)])
+                                           self.metadata_status)
+            self.metadata_frame = urwid.Pile(
+                [("weight", 1, self.metadata),
+                 ("fixed", 1, metadata_buttons)])
 
             #setup a widget for populating output parameters
             options_buttons = urwid.Filler(
@@ -183,7 +184,7 @@ try:
 
             #finish initialization
             urwid.Frame.__init__(self,
-                                 body=self.metadata,
+                                 body=self.metadata_frame,
                                  footer=self.metadata_status)
 
         def exit(self, button):
@@ -191,7 +192,7 @@ try:
             raise urwid.ExitMainLoop()
 
         def previous(self, button):
-            self.set_body(self.metadata)
+            self.set_body(self.metadata_frame)
             self.set_footer(self.metadata_status)
 
         def next(self, button):
@@ -221,7 +222,7 @@ try:
             return self.__cancelled__
 
         def handle_text(self, i):
-            if (self.get_body() is self.metadata):
+            if (self.get_body() is self.metadata_frame):
                 if (i == 'esc'):
                     self.exit(None)
                 elif (i == 'f1'):
@@ -316,7 +317,8 @@ try:
             for f in input_filenames:
                 assert(isinstance(f, audiotools.Filename))
 
-            from audiotools.text import LAB_CANCEL_BUTTON
+            from audiotools.text import (LAB_CANCEL_BUTTON,
+                                         LAB_OUTPUT_OPTIONS)
 
             #setup status bar for output messages
             self.status = urwid.Text(u"")
@@ -345,15 +347,17 @@ try:
             self.metadata = MetaDataFiller(
                 track_labels=[track_label],
                 metadata_choices=[[m] for m in metadata_choices],
-                status=self.status,
-                extra_widgets=[('fixed', 3, self.options),
-                               ('fixed', 1,
-                                urwid.Filler(urwid.Divider(u"\u2500"))),
-                               ('fixed', 1, output_buttons)])
+                status=self.status)
+
+            body = urwid.Pile([
+                    ("weight", 1, self.metadata),
+                    ("fixed", 5, urwid.LineBox(self.options,
+                                               title=LAB_OUTPUT_OPTIONS)),
+                    ("fixed", 1, output_buttons)])
 
             #finish initialization
             urwid.Frame.__init__(self,
-                                 body=self.metadata,
+                                 body=body,
                                  footer=self.status)
 
         def exit(self, button):
@@ -404,8 +408,7 @@ try:
     class MetaDataFiller(urwid.Pile):
         """a class for selecting the MetaData to apply to tracks"""
 
-        def __init__(self, track_labels, metadata_choices, status,
-                     extra_widgets=None):
+        def __init__(self, track_labels, metadata_choices, status):
             """track_labels is a list of unicode strings, one per track
 
             metadata_choices[c][t]
@@ -414,9 +417,6 @@ try:
             which can be applied to tracks
 
             status is an urwid.Text object
-
-            extra_widgets is a list of additional widgets
-            to append to this pile
             """
 
             #there must be at least one choice
@@ -429,6 +429,7 @@ try:
             assert(len(set(map(len, metadata_choices))) == 1)
 
             from audiotools.text import (LAB_SELECT_BEST_MATCH,
+                                         LAB_TRACK_METADATA,
                                          LAB_KEY_NEXT,
                                          LAB_KEY_PREVIOUS)
 
@@ -472,20 +473,18 @@ try:
             else:
                 widgets = []
 
-            widgets.append(("weight", 1,
-                            self.edit_matches[0]))
-            widgets.append(("fixed", 1,
-                            urwid.Filler(urwid.Divider(u"\u2500"))))
+            self.track_metadata = urwid.Frame(body=self.edit_matches[0])
 
-            if (extra_widgets is not None):
-                widgets.extend(extra_widgets)
+            widgets.append(("weight", 1,
+                            urwid.LineBox(self.track_metadata,
+                                          title=LAB_TRACK_METADATA)))
 
             urwid.Pile.__init__(self, widgets)
 
         def select_match(self, radio, selected, match):
             if (selected):
                 self.selected_match = self.edit_matches[match]
-                self.widget_list[1] = self.selected_match
+                self.track_metadata.set_body(self.selected_match)
 
         def swiveled(self, radio_button, selected, swivel):
             if (selected):
@@ -549,10 +548,9 @@ try:
             #determine the base metadata all others should be linked against
             base_metadata = {}
             for (track_id, track_label, metadata) in tracks:
-                if (metadata is None):
-                    metadata = audiotools.MetaData()
                 self.track_ids.append(track_id)
-                for (attr, value) in metadata.fields():
+                for (attr, value) in (metadata if metadata is not None
+                                      else audiotools.MetaData()).fields():
                     base_metadata.setdefault(attr, set([])).add(value)
 
             base_metadata = BaseMetaData(
@@ -564,12 +562,11 @@ try:
 
             #populate the track_labels and metadata_edits lookup tables
             for (track_id, track_label, metadata) in tracks:
-                if (metadata is None):
-                    metadata = audiotools.MetaData()
                 if (track_id not in self.metadata_edits):
                     track_labels.append((track_id, track_label))
                     self.metadata_edits[track_id] = TrackMetaData(
-                        metadata=metadata,
+                        metadata=(metadata if metadata is not None
+                                  else audiotools.MetaData()),
                         base_metadata=base_metadata,
                         on_change=on_text_change)
                 else:
@@ -608,11 +605,15 @@ try:
 
                 radio._label.set_wrap_mode(urwid.CLIP)
 
-                urwid.connect_signal(radio, 'change', self.activate_swivel,
+                urwid.connect_signal(radio,
+                                     'change',
+                                     self.activate_swivel,
                                      swivel)
 
                 if (on_swivel_change is not None):
-                    urwid.connect_signal(radio, 'change', on_swivel_change,
+                    urwid.connect_signal(radio,
+                                         'change',
+                                         on_swivel_change,
                                          swivel)
 
                 track_radios[track_id] = radio
@@ -641,11 +642,15 @@ try:
 
                 radio._label.set_align_mode('right')
 
-                urwid.connect_signal(radio, 'change', self.activate_swivel,
+                urwid.connect_signal(radio,
+                                     'change',
+                                     self.activate_swivel,
                                      swivel)
 
                 if (on_swivel_change is not None):
-                    urwid.connect_signal(radio, 'change', on_swivel_change,
+                    urwid.connect_signal(radio,
+                                         'change',
+                                         on_swivel_change,
                                          swivel)
 
                 field_radios[field_id] = radio
@@ -670,35 +675,25 @@ try:
 
                 #add new entries according to swivel's values
                 self.set_body(
-                    # urwid.Filler(
-                        urwid.ListBox([
-                                urwid.Columns([(swivel.left_alignment,
-                                                swivel.left_width,
-                                                left_widget),
-                                               (swivel.right_alignment,
-                                                swivel.right_width,
-                                                right_widget)])
-                                for (left_widget,
-                                     right_widget) in swivel.rows()]))
-                        # valign='top'))
+                    urwid.ListBox([
+                            urwid.Columns([(swivel.left_alignment,
+                                            swivel.left_width,
+                                            left_widget),
+                                           (swivel.right_alignment,
+                                            swivel.right_width,
+                                            right_widget)])
+                            for (left_widget,
+                                 right_widget) in swivel.rows()]))
 
                 #update header with swivel's values
-                self.set_header(
-                    urwid.Pile([urwid.Columns(
-                                [(swivel.left_alignment,
-                                  swivel.left_width,
-                                  swivel.left_top_widget),
-                                 (swivel.right_alignment,
-                                  swivel.right_width,
-                                  LinkedWidgetHeader(
-                                            swivel.right_top_widget))]),
-                                urwid.Columns(
-                                [(swivel.left_alignment,
-                                  swivel.left_width,
-                                  urwid.Divider(u"\u2500")),
-                                 (swivel.right_alignment,
-                                  swivel.right_width,
-                                  LinkedWidgetDivider())])]))
+                self.set_header(urwid.Columns(
+                        [(swivel.left_alignment,
+                          swivel.left_width,
+                          urwid.Text(u"")),
+                         (swivel.right_alignment,
+                          swivel.right_width,
+                          LinkedWidgetHeader(
+                                    swivel.right_top_widget))]))
             else:
                 pass
 
@@ -757,7 +752,7 @@ try:
     class LinkedWidgetHeader(urwid.Columns):
         def __init__(self, widget):
             urwid.Columns.__init__(self,
-                                   [("fixed", 3, urwid.Text(u" \u2502 ")),
+                                   [("fixed", 3, urwid.Text(u"   ")),
                                     ("weight", 1, widget),
                                     ("fixed", 4, urwid.Text(u""))])
 
@@ -892,6 +887,8 @@ try:
 
 
     class Swivel:
+        """this is a container for the objects of a swiveling operation"""
+
         def __init__(self, swivel_type,
                      left_top_widget,
                      left_alignment,
@@ -902,7 +899,6 @@ try:
                      right_alignment,
                      right_width,
                      right_widgets):
-
             assert(len(left_ids) == len(right_widgets))
 
             self.swivel_type = swivel_type
@@ -917,8 +913,8 @@ try:
             self.right_widgets = right_widgets
 
         def rows(self):
-            for (left_id,
-                 right_widget) in zip(self.left_ids, self.right_widgets):
+            for (left_id, right_widget) in zip(self.left_ids,
+                                               self.right_widgets):
                 yield (self.left_radios[left_id], right_widget)
 
 
@@ -1530,6 +1526,7 @@ try:
                 assert(isinstance(f, audiotools.Filename))
 
             from audiotools.text import (ERR_INVALID_FILENAME_FORMAT,
+                                         LAB_OUTPUT_OPTIONS,
                                          LAB_OPTIONS_OUTPUT_DIRECTORY,
                                          LAB_OPTIONS_FILENAME_FORMAT,
                                          LAB_OPTIONS_AUDIO_CLASS,
@@ -1561,15 +1558,10 @@ try:
                 body=urwid.Filler(urwid.Text(u"")))
 
             output_tracks_frame_linebox = urwid.LineBox(
-                self.output_tracks_frame)
-
-            if (hasattr(output_tracks_frame_linebox, "set_title")):
-                if (len(input_filenames) != 1):
-                    output_tracks_frame_linebox.set_title(
-                        LAB_OPTIONS_OUTPUT_FILES)
-                else:
-                    output_tracks_frame_linebox.set_title(
-                        LAB_OPTIONS_OUTPUT_FILES_1)
+                self.output_tracks_frame,
+                title=(LAB_OPTIONS_OUTPUT_FILES if
+                       (len(input_filenames) != 1) else
+                       LAB_OPTIONS_OUTPUT_FILES_1))
 
             self.output_tracks = [urwid.Text(u"") for path in input_filenames]
 
@@ -1622,7 +1614,10 @@ try:
                                                align="right")),
                                    ('weight', 1, self.output_quality)])])
 
-            widgets = [('fixed', 4, urwid.Filler(header)),
+            widgets = [('fixed', 6,
+                        urwid.Filler(urwid.LineBox(
+                            header,
+                            title=LAB_OUTPUT_OPTIONS))),
                        ('weight', 1, output_tracks_frame_linebox)]
 
             if (extra_widgets is not None):
@@ -1922,6 +1917,7 @@ try:
                      (self.current / self.sample_rate) % 60)
             except ZeroDivisionError:
                 return LAB_TRACK_LENGTH % (0, 0)
+
 
     class PlayerGUI(urwid.Frame):
         def __init__(self, player, tracks, track_len):
