@@ -449,7 +449,8 @@ class MP3Audio(AudioFile):
             id3v1_class = {"id3v1.1": ID3v1Comment,
                            "none": None}.get(config.get_default("ID3",
                                                                 "id3v1",
-                                                                DEFAULT_ID3V1))
+                                                                DEFAULT_ID3V1),
+                                             DEFAULT_ID3V1)
             if ((id3v2_class is not None) and (id3v1_class is not None)):
                 self.update_metadata(
                     ID3CommentPair.converted(metadata,

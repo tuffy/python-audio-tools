@@ -426,7 +426,8 @@ if (__name__ == '__main__'):
                             on_change=self.change_quality,
                             user_data=(config,
                                        "Quality",
-                                       audio_type.NAME))
+                                       audio_type.NAME),
+                            label=u"Quality")  #FIXME
                         no_modes = False
 
                     format_rows.append(

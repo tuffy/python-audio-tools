@@ -1022,23 +1022,28 @@ try:
 
     class SelectOneDialog(urwid.WidgetWrap):
         signals = ['close']
-        def __init__(self, select_one, items, selected_value):
+        def __init__(self, select_one, items, selected_value,
+                     label=None):
             self.select_one = select_one
             self.items = items
 
             selected_button = 0
             buttons = []
-            for (i, (label, value)) in enumerate(items):
-                buttons.append(urwid.Button(label=label,
+            for (i, (l, value)) in enumerate(items):
+                buttons.append(urwid.Button(label=l,
                                             on_press=self.select_button,
-                                            user_data=(label, value)))
+                                            user_data=(l, value)))
                 if (value == selected_value):
                     selected_button = i
             pile = SelectButtons(buttons,
                                  selected_button,
                                  lambda: self._emit("close"))
             fill = urwid.Filler(pile)
-            self.__super.__init__(CroppedLineBox(fill))
+            if (label is not None):
+                linebox = urwid.LineBox(fill, title=label)
+            else:
+                linebox = urwid.LineBox(fill)
+            self.__super.__init__(linebox)
 
         def select_button(self, button, label_value):
             (label, value) = label_value
@@ -1048,14 +1053,16 @@ try:
 
     class SelectOne(urwid.PopUpLauncher):
         def __init__(self, items, selected_value=None, on_change=None,
-                     user_data=None):
+                     user_data=None, label=None):
             """items is a list of (unicode, value) tuples
             where value can be any sort of object
 
             selected_value is a selected object
 
             on_change is a callback which takes a new selected object
-            which is called as on_change(new_value, [user_data])"""
+            which is called as on_change(new_value, [user_data])
+
+            label is a unicode label string for the selection box"""
 
             self.__select_button__ = urwid.Button(u"")
             self.__super.__init__(self.__select_button__)
@@ -1068,6 +1075,7 @@ try:
             self.__selected_value__ = None  #set by make_selection, below
             self.__on_change__ = None
             self.__user_data__ = None
+            self.__label__ = label
 
             if (selected_value is not None):
                 try:
@@ -1085,7 +1093,8 @@ try:
         def create_pop_up(self):
             pop_up = SelectOneDialog(self,
                                      self.__items__,
-                                     self.__selected_value__)
+                                     self.__selected_value__,
+                                     self.__label__)
             urwid.connect_signal(pop_up, 'close',
                 lambda button: self.close_pop_up())
             return pop_up
@@ -1095,7 +1104,7 @@ try:
                     'top':1,
                     'overlay_width':max([4 + len(i[0]) for i in
                                          self.__items__]) + 2,
-                    'overlay_height':len(self.__items__) + 1}
+                    'overlay_height':len(self.__items__) + 2}
 
         def make_selection(self, label, value):
             self.__select_button__.set_label(label)
@@ -1220,14 +1229,15 @@ try:
 
             from audiotools.text import (LAB_KEY_SELECT,
                                          LAB_KEY_TOGGLE_OPEN,
-                                         LAB_KEY_CANCEL)
+                                         LAB_KEY_CANCEL,
+                                         LAB_CHOOSE_DIRECTORY)
 
             browser = DirectoryBrowser(
                 edit_directory.get_directory(),
                 directory_selected=self.select_directory,
                 cancelled=lambda: self._emit("close"))
 
-            frame = CroppedLineBox(urwid.Frame(
+            frame = urwid.LineBox(urwid.Frame(
                 body=browser,
                 footer=urwid.Text([('key', 'enter'),
                                    LAB_KEY_SELECT,
@@ -1236,7 +1246,8 @@ try:
                                    LAB_KEY_TOGGLE_OPEN,
                                    u"   ",
                                    ('key', 'esc'),
-                                   LAB_KEY_CANCEL])))
+                                   LAB_KEY_CANCEL])),
+                                  title=LAB_CHOOSE_DIRECTORY)
 
             self.__super.__init__(frame)
             self.edit_directory = edit_directory
@@ -1432,23 +1443,25 @@ try:
                                           for (string, label) in
                                           audiotools.FORMAT_FIELDS.values()]) +
                                      2),
-                    'overlay_height':20}
+                    'overlay_height':len(audiotools.FORMAT_FIELDS.values()) + 2}
 
 
     class BrowseFieldsDialog(urwid.WidgetWrap):
         signals = ['close']
         def __init__(self, output_format):
             from audiotools.text import (LAB_KEY_CANCEL,
-                                         LAB_KEY_CLEAR_FORMAT)
+                                         LAB_KEY_CLEAR_FORMAT,
+                                         LAB_ADD_FIELD)
 
             self.__super.__init__(
-                CroppedLineBox(
+                urwid.LineBox(
                     urwid.Frame(body=FieldsList(output_format, self.close),
                                 footer=urwid.Text([('key', 'del'),
                                                    LAB_KEY_CLEAR_FORMAT,
                                                    u"   ",
                                                    ('key', 'esc'),
-                                                   LAB_KEY_CANCEL]))))
+                                                   LAB_KEY_CANCEL])),
+                    title=LAB_ADD_FIELD))
 
         def close(self):
             self._emit("close")
@@ -1567,16 +1580,18 @@ try:
                            align="center"))
 
             self.output_quality = SelectOne(
-                [(u"N/A", "")])
+                items=[(u"N/A", "")],
+                label=LAB_OPTIONS_AUDIO_QUALITY)
 
             self.output_type = SelectOne(
-                sorted([(u"%s - %s" % (t.NAME.decode('ascii'),
-                                       t.DESCRIPTION), t) for t in
-                        audiotools.AVAILABLE_TYPES
-                        if t.has_binaries(audiotools.BIN)],
-                       lambda x,y: cmp(x[0], y[0])),
-                audio_class,
-                self.select_type)
+                items=sorted([(u"%s - %s" % (t.NAME.decode('ascii'),
+                                             t.DESCRIPTION), t) for t in
+                              audiotools.AVAILABLE_TYPES
+                              if t.has_binaries(audiotools.BIN)],
+                             lambda x,y: cmp(x[0], y[0])),
+                selected_value=audio_class,
+                on_change=self.select_type,
+                label=LAB_OPTIONS_AUDIO_CLASS)
 
             self.select_type(audio_class, quality)
 
@@ -1774,16 +1789,18 @@ try:
                 wrap="clip")
 
             self.output_quality = SelectOne(
-                [(u"N/A", "")])
+                items=[(u"N/A", "")],
+                label=LAB_OPTIONS_AUDIO_QUALITY)
 
             self.output_type = SelectOne(
-                sorted([(u"%s - %s" % (t.NAME.decode('ascii'),
-                                       t.DESCRIPTION), t) for t in
-                        audiotools.AVAILABLE_TYPES
-                        if t.has_binaries(audiotools.BIN)],
-                       lambda x,y: cmp(x[0], y[0])),
-                audio_class,
-                self.select_type)
+                items=sorted([(u"%s - %s" % (t.NAME.decode('ascii'),
+                                             t.DESCRIPTION), t) for t in
+                              audiotools.AVAILABLE_TYPES
+                              if t.has_binaries(audiotools.BIN)],
+                             lambda x,y: cmp(x[0], y[0])),
+                selected_value=audio_class,
+                on_change=self.select_type,
+                label=LAB_OPTIONS_AUDIO_CLASS)
 
             self.select_type(audio_class, quality)
 
