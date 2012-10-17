@@ -370,7 +370,7 @@ try:
             #ensure output filename isn't same as input filename
             if (output_filename in self.input_filenames):
                 from audiotools.text import ERR_OUTPUT_IS_INPUT
-                self.options_status.set_text(
+                self.status.set_text(
                     ERR_OUTPUT_IS_INPUT % (output_filename,))
             else:
                 self.__cancelled__ = False
@@ -919,7 +919,7 @@ try:
 
 
     def tab_complete(path):
-        """given a partially-completed path string
+        """given a partially-completed directory path string
         returns a path string completed as far as possible
         """
 
@@ -942,6 +942,41 @@ try:
                     #so complete as much as possible
                     return os.path.join(base,
                                         os.path.commonprefix(candidate_dirs))
+            except OSError:
+                #unable to read base dir to complete the rest
+                return path
+        else:
+            #base doesn't exist,
+            #so we don't know how to complete the rest
+            return path
+
+
+    def tab_complete_file(path):
+        """given a partially-completed file path string
+        returns a path string completed as far as possible"""
+
+        import os.path
+
+        (base, remainder) = os.path.split(path)
+        if (os.path.isdir(base)):
+            try:
+                candidates = [f for f in os.listdir(base)
+                              if f.startswith(remainder)]
+                if (len(candidates) == 0):
+                    #no possible matches to tab complete
+                    return path
+                elif (len(candidates) == 1):
+                    #one possible match to tab complete
+                    path = os.path.join(base, candidates[0])
+                    if (os.path.isdir(path)):
+                        return path + os.sep
+                    else:
+                        return path
+                else:
+                    #multiple possible matches to tab complete
+                    #so complete as much as possible
+                    return os.path.join(base,
+                                        os.path.commonprefix(candidates))
             except OSError:
                 #unable to read base dir to complete the rest
                 return path
@@ -1164,14 +1199,20 @@ try:
     class EditDirectory(urwid.Edit):
         def __init__(self, initial_directory):
             """initial_directory is a plain string
-            in the default filesystem encoding"""
+            in the default filesystem encoding
 
+            this directory has username expanded
+            and is converted to the absolute path"""
+
+            import os.path
             FS_ENCODING = audiotools.FS_ENCODING
 
-            urwid.Edit.__init__(self,
-                                edit_text=initial_directory.decode(FS_ENCODING),
-                                wrap='clip',
-                                allow_tab=False)
+            urwid.Edit.__init__(
+                self,
+                edit_text=os.path.abspath(
+                    os.path.expanduser(initial_directory)).decode(FS_ENCODING),
+                wrap='clip',
+                allow_tab=False)
 
         def keypress(self, size, key):
             key = urwid.Edit.keypress(self, size, key)
@@ -1181,16 +1222,16 @@ try:
             if (key == 'tab'):
                 #only tab complete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
-                new_prefix = tab_complete(os.path.expanduser(
-                        prefix.encode(FS_ENCODING))).decode(FS_ENCODING)
+                new_prefix = tab_complete(os.path.abspath(os.path.expanduser(
+                        prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
 
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
             elif (key == 'ctrl w'):
                 #only delete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
-                new_prefix = pop_directory(os.path.expanduser(
-                        prefix.encode(FS_ENCODING))).decode(FS_ENCODING)
+                new_prefix = pop_directory(os.path.abspath(os.path.expanduser(
+                        prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
 
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
@@ -1434,6 +1475,60 @@ try:
 
         def load_widget(self):
             return DirectoryWidget(self)
+
+
+    class EditFilename(urwid.Edit):
+        def __init__(self, initial_filename):
+            """initial_filename is a plain string
+            in the default filesystem encoding
+
+            this filename has username expanded
+            and is converted to the absolute path"""
+
+            import os.path
+            FS_ENCODING = audiotools.FS_ENCODING
+
+            urwid.Edit.__init__(
+                self,
+                edit_text=os.path.abspath(
+                    os.path.expanduser(initial_filename)).decode(FS_ENCODING),
+                wrap="clip",
+                allow_tab=False)
+
+        def keypress(self, size, key):
+            key = urwid.Edit.keypress(self, size, key)
+            FS_ENCODING = audiotools.FS_ENCODING
+            import os.path
+
+            if (key == 'tab'):
+                #only tab complete stuff before cursor
+                (prefix, suffix) = split_at_cursor(self)
+                new_prefix = tab_complete_file(
+                    os.path.abspath(os.path.expanduser(
+                            prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
+
+                self.set_edit_text(new_prefix + suffix)
+                self.set_edit_pos(len(new_prefix))
+            elif (key == 'ctrl w'):
+                #only delete stuff before cursor
+                (prefix, suffix) = split_at_cursor(self)
+                new_prefix = pop_directory(os.path.abspath(os.path.expanduser(
+                        prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
+
+                self.set_edit_text(new_prefix + suffix)
+                self.set_edit_pos(len(new_prefix))
+            else:
+                return key
+
+        def set_filename(self, filename):
+            """filename is a plain filename string to set"""
+
+            raise NotImplementedError()
+
+        def get_filename(self):
+            """returns selected filename as a plain string"""
+
+            raise NotImplementedError()
 
 
     class BrowseFields(urwid.PopUpLauncher):
@@ -1799,9 +1894,8 @@ try:
                                          LAB_OPTIONS_AUDIO_CLASS,
                                          LAB_OPTIONS_AUDIO_QUALITY)
 
-            self.output_filename = urwid.Edit(
-                edit_text=unicode(audiotools.Filename(output_filename)),
-                wrap="clip")
+            self.output_filename = EditFilename(
+                initial_filename=output_filename)
 
             self.output_quality = SelectOne(
                 items=[(u"N/A", "")],
