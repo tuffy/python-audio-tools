@@ -1401,221 +1401,221 @@ class LossyFileTest(AudioFileTest):
 
 class TestForeignWaveChunks:
     @FORMAT_LOSSLESS
-    def test_roundtrip_wave_chunks(self):
+    def test_convert_wave_chunks(self):
         import filecmp
 
         self.assert_(issubclass(self.audio_class,
                                 audiotools.WaveContainer))
 
-        tempwav1 = tempfile.NamedTemporaryFile(suffix=".wav")
-        tempwav2 = tempfile.NamedTemporaryFile(suffix=".wav")
-        audio = tempfile.NamedTemporaryFile(
-            suffix='.' + self.audio_class.SUFFIX)
-        try:
-            #build a WAVE with some oddball chunks
-            audiotools.WaveAudio.wave_from_chunks(
-                tempwav1.name,
-                [audiotools.wav.RIFF_Chunk(
-                        'fmt ',
-                        16,
-                        '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
-                 audiotools.wav.RIFF_Chunk(
-                        'fooz',
-                        8,
-                        'testtext'),
-                 audiotools.wav.RIFF_Chunk(
-                        'barz',
-                        16,
-                        'somemoretesttext'),
-                 audiotools.wav.RIFF_Chunk(
-                        'bazz',
-                        1024,
-                        chr(0) * 1024),
-                 audiotools.wav.RIFF_Chunk(
-                        'data',
-                        882000,
-                        'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2')),
-                 audiotools.wav.RIFF_Chunk(
-                        'spam',
-                        12,
-                        'anotherchunk')])
+        #several even-sized chunks
+        chunks1 = (("x\x9c\x0b\xf2ts\xdbQ\xc9\xcb\x10\xee\x18" +
+                    "\xe6\x9a\x96[\xa2 \xc0\xc0\xc0\xc0\xc8\xc0" +
+                    "\xc4\xe0\xb2\x86\x81A`#\x13\x03\x0b\x83" +
+                    "\x00CZ~~\x15\x07P\xbc$\xb5\xb8\xa4$\xb5" +
+                    "\xa2$)\xb1\xa8\n\xa4\xae8?757\xbf(\x15!^U" +
+                    "\x05\xd40\nF\xc1(\x18\xc1 %\xb1$1\xa0\x94" +
+                    "\x97\x01\x00`\xb0\x18\xf7").decode('zlib'),
+                   (220500, 44100, 2, 16, 0x3),
+                   "spam\x0c\x00\x00\x00anotherchunk")
 
-            wave = audiotools.open(tempwav1.name)
-            wave.verify()
+        #several odd-sized chunks
+        chunks2 = (("x\x9c\x0b\xf2ts\xcbc``\x08w\x0csM\xcb\xcf\xaf" +
+                    "\xe2b@\x06i\xb9%\n\x02@\x9a\x11\x08]\xd60" +
+                    "\x801#\x03\x07CRbQ\x157H\x1c\x01\x18R\x12K\x12" +
+                    "\xf9\x81b\x00\x19\xdd\x0ba").decode('zlib'),
+                   (15, 44100, 1, 8, 0x4),
+                   "\x00barz\x0b\x00\x00\x00\x01\x01\x01\x01" +
+                   "\x01\x01\x01\x01\x01\x01\x01\x00")
 
-            #convert it to our audio type using convert()
-            #(this used to be a to_wave()/from_wave() test,
-            # but I may deprecate that interface from direct use
-            # in favor of the more flexible convert() method)
-            track = wave.convert(audio.name, audiotools.WaveAudio)
+        for (header,
+             (total_frames,
+              sample_rate,
+              channels,
+              bits_per_sample,
+              channel_mask), footer) in [chunks1, chunks2]:
+            temp1 = tempfile.NamedTemporaryFile(
+                suffix="." + self.audio_class.SUFFIX)
+            try:
+                #build our audio file from the from_pcm() interface
+                track = self.audio_class.from_pcm(
+                    temp1.name,
+                    EXACT_RANDOM_PCM_Reader(
+                        pcm_frames=total_frames,
+                        sample_rate=sample_rate,
+                        channels=channels,
+                        bits_per_sample=bits_per_sample,
+                        channel_mask=channel_mask))
 
-            self.assertEqual(track.has_foreign_wave_chunks(), True)
+                #check has_foreign_wave_chunks
+                self.assertEqual(track.has_foreign_wave_chunks(), False)
+            finally:
+                temp1.close()
 
-            #convert it back to WAVE via convert()
-            track.convert(tempwav2.name, audiotools.WaveAudio)
+        for (header,
+             (total_frames,
+              sample_rate,
+              channels,
+              bits_per_sample,
+              channel_mask), footer) in [chunks1, chunks2]:
+            temp1 = tempfile.NamedTemporaryFile(
+                suffix="." + self.audio_class.SUFFIX)
+            try:
+                #build our audio file using the from_wave() interface
+                track = self.audio_class.from_wave(
+                    temp1.name,
+                    header,
+                    EXACT_RANDOM_PCM_Reader(
+                        pcm_frames=total_frames,
+                        sample_rate=sample_rate,
+                        channels=channels,
+                        bits_per_sample=bits_per_sample,
+                        channel_mask=channel_mask),
+                    footer)
 
-            #check that the to WAVEs are byte-for-byte identical
-            self.assertEqual(filecmp.cmp(tempwav1.name,
-                                         tempwav2.name,
-                                         False), True)
+                #check has_foreign_wave_chunks
+                self.assertEqual(track.has_foreign_wave_chunks(), True)
 
-            #finally, ensure that setting metadata doesn't erase the chunks
-            track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
-            track = audiotools.open(track.filename)
-            self.assertEqual(track.has_foreign_wave_chunks(), True)
-        finally:
-            tempwav1.close()
-            tempwav2.close()
-            audio.close()
+                #ensure wave_header_footer returns same header and footer
+                (track_header,
+                 track_footer) = track.wave_header_footer()
+                self.assertEqual(header, track_header)
+                self.assertEqual(footer, track_footer)
 
-    @FORMAT_LOSSLESS
-    def test_convert_wave_chunks(self):
-        import filecmp
+                #convert our file to every other WaveContainer format
+                #(including our own)
+                for new_class in audiotools.AVAILABLE_TYPES:
+                    if (isinstance(new_class, audiotools.WaveContainer)):
+                        temp2 = tempfile.NamedTemporaryFile(
+                            suffix="." + wav_class.SUFFIX)
+                        log = Log()
+                        try:
+                            track2 = track.convert(temp2,
+                                                   new_class,
+                                                   log.update)
 
-        #no "t" in this set
-        #which prevents a random generator from creating
-        #"fmt " or "data" chunk names
-        chunk_name_chars = "abcdefghijklmnopqrsuvwxyz "
+                            #ensure the progress function
+                            #gets called during conversion
+                            self.assert_(
+                                len(log.results) > 0,
+                                "no logging converting %s to %s" %
+                                (self.audio_class.NAME,
+                                 new_class.NAME))
 
-        input_wave = tempfile.NamedTemporaryFile(suffix=".wav")
-        track1_file = tempfile.NamedTemporaryFile(
-            suffix="." + self.audio_class.SUFFIX)
-        output_wave = tempfile.NamedTemporaryFile(suffix=".wav")
-        try:
-            #build a WAVE with some random oddball chunks
-            base_chunks = [
-                audiotools.wav.RIFF_Chunk(
-                    'fmt ',
-                    16,
-                    '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
-                audiotools.wav.RIFF_Chunk(
-                    'data',
-                    882000,
-                    'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))]
+                            self.assert_(
+                                len(set([r[1] for r in log.results])) == 1)
+                            for x, y in zip(log.results[1:], log.results):
+                                self.assert_((x[0] - y[0]) >= 0)
 
-            for i in xrange(random.choice(range(1, 10))):
-                chunk_size = random.choice(range(1, 1024)) * 2
-                base_chunks.insert(
-                    random.choice(range(0, len(base_chunks) + 1)),
-                    audiotools.wav.RIFF_Chunk(
-                        "".join([random.choice(chunk_name_chars)
-                                 for i in xrange(4)]),
-                        chunk_size,
-                        os.urandom(chunk_size)))
+                            #ensure newly converted file
+                            #matches has_foreign_wave_chunks
+                            self.assertEqual(
+                                track2.has_foreign_wave_chunks(), True)
 
-            audiotools.WaveAudio.wave_from_chunks(input_wave.name, base_chunks)
-            wave = audiotools.open(input_wave.name)
-            wave.verify()
-            self.assert_(wave.has_foreign_wave_chunks())
+                            #ensure newly converted file
+                            #has same header and footer
+                            (track2_header,
+                             track2_footer) = track2.wave_header_footer()
+                            self.assertEqual(header, track2_header)
+                            self.assertEqual(footer, track2_footer)
 
-            #convert it to our audio type using convert()
-            track1 = wave.convert(track1_file.name, self.audio_class)
-            self.assert_(track1.has_foreign_wave_chunks())
+                            #ensure newly converted file has same PCM data
+                            self.assertEqual(
+                                audiotools.pcm_frame_cmp(
+                                    track.to_pcm(), track2.to_pcm()), None)
+                        finally:
+                            temp2.close()
+            finally:
+                temp1.close()
 
-            #convert it to every other WAVE-containing format
-            for new_class in [t for t in audiotools.AVAILABLE_TYPES
-                              if issubclass(t, audiotools.WaveContainer)]:
-                track2_file = tempfile.NamedTemporaryFile(
-                    suffix="." + new_class.SUFFIX)
-                try:
-                    track2 = track1.convert(track2_file.name, new_class)
-                    self.assert_(track2.has_foreign_wave_chunks(),
-                                 "format %s lost RIFF chunks" % (new_class))
+        if (os.path.isfile("bad.wav")):
+            os.unlink("bad.wav")
 
-                    #then, convert it back to a WAVE
-                    track2.convert(output_wave.name, audiotools.WaveAudio)
+        for (header, footer) in [
+            #wave header without "RIFF<size>WAVE raises an error
+            ("", ""),
+            ("FOOZ\x00\x00\x00\x00BARZ", ""),
 
-                    #and ensure the result is byte-for-byte identical
-                    self.assertEqual(filecmp.cmp(input_wave.name,
-                                                 output_wave.name,
-                                                 False), True,
-                                     "format %s lost RIFF chunks" % (new_class))
-                finally:
-                    track2_file.close()
-        finally:
-            input_wave.close()
-            track1_file.close()
-            output_wave.close()
+            #invalid total size raises an error
+            ("RIFFZ\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00" +
+             "\x10\x00data2\x00\x00\x00", ""),
 
-    @FORMAT_LOSSLESS
-    def test_convert_progress_wave_chunks(self):
-        import filecmp
+            #invalid data size raises an error
+            ("RIFFV\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00" +
+             "\x10\x00data6\x00\x00\x00", ""),
 
-        #no "t" in this set
-        #which prevents a random generator from creating
-        #"fmt " or "data" chunk names
-        chunk_name_chars = "abcdefghijklmnopqrsuvwxyz "
+            #invalid chunk IDs in header raise an error
+            ("RIFFb\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
+             "chn\x00\x04\x00\x00\x00\x01\x02\x03\x04" +
+             "data2\x00\x00\x00", ""),
 
-        input_wave = tempfile.NamedTemporaryFile(suffix=".wav")
-        track1_file = tempfile.NamedTemporaryFile(
-            suffix="." + self.audio_class.SUFFIX)
-        output_wave = tempfile.NamedTemporaryFile(suffix=".wav")
+            #mulitple fmt chunks raise an error
+            ("RIFFn\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00" +
+             "\x10\x00" +
+             "fmt \x10\x00\x00\x00\x01" +
+             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00" +
+             "\x10\x00" +
+             "data2\x00\x00\x00", ""),
 
-        try:
-            #build a WAVE with some random oddball chunks
-            base_chunks = [
-                audiotools.wav.RIFF_Chunk(
-                    'fmt ',
-                    16,
-                    '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
-                audiotools.wav.RIFF_Chunk(
-                    'data',
-                    882000,
-                    'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))]
+            #data chunk before fmt chunk raises an error
+            ("RIFFJ\x00\x00\x00WAVE" +
+             "chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
+             "data2\x00\x00\x00", ""),
 
-            for i in xrange(random.choice(range(1, 10))):
-                chunk_size = random.choice(range(1, 1024)) * 2
-                base_chunks.insert(
-                    random.choice(range(0, len(base_chunks) + 1)),
-                    audiotools.wav.RIFF_Chunk(
-                        "".join([random.choice(chunk_name_chars)
-                                 for i in xrange(4)]),
-                        chunk_size,
-                        os.urandom(chunk_size)))
+            #bytes after data chunk raises an error
+            ("RIFFb\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
+             "chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
+             "data3\x00\x00\x00\x01", ""),
 
-            audiotools.WaveAudio.wave_from_chunks(input_wave.name, base_chunks)
-            wave = audiotools.open(input_wave.name)
-            wave.verify()
-            self.assert_(wave.has_foreign_wave_chunks())
+            #truncated chunks in header raise an error
+            ("RIFFb\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
+             "chnk\x04\x00\x00\x00\x01\x02\x03", ""),
 
-            #convert it to our audio type using convert
-            track1 = wave.convert(track1_file.name, self.audio_class)
-            self.assert_(track1.has_foreign_wave_chunks())
+            #fmt chunk in footer raises an error
+            ("RIFFz\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
+             "chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
+             "data2\x00\x00\x00",
+             "fmt \x10\x00\x00\x00\x01" +
+             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00"),
 
-            #convert our track to every other format
-            for new_class in audiotools.AVAILABLE_TYPES:
-                track2_file = tempfile.NamedTemporaryFile(
-                    suffix="." + new_class.SUFFIX)
-                log = Log()
-                try:
-                    track2 = track1.convert(track2_file.name,
-                                            new_class,
-                                            progress=log.update)
+            #data chunk in footer raises an error
+            ("RIFFn\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
+             "chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
+             "data2\x00\x00\x00",
+             "data\x04\x00\x00\x00\x01\x02\x03\x04"),
 
-                    self.assert_(
-                        len(log.results) > 0,
-                        "no logging converting %s to %s with RIFF chunks" %
-                        (self.audio_class.NAME,
-                         new_class.NAME))
-                    self.assert_(len(set([r[1] for r in log.results])) == 1)
-                    for x, y in zip(log.results[1:], log.results):
-                        self.assert_((x[0] - y[0]) >= 0)
+            #invalid chunk IDs in footer raise an error
+            ("RIFFn\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
+             "chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
+             "data2\x00\x00\x00",
+             "chn\x00\x04\x00\x00\x00\x01\x02\x03\x04"),
 
-                    #if the format is a WAVE container, convert it back
-                    if (issubclass(new_class, audiotools.WaveContainer)):
-                        track2.convert(output_wave.name, audiotools.WaveAudio)
-
-                        #and ensure the result is byte-for-byte identical
-                        self.assertEqual(filecmp.cmp(input_wave.name,
-                                                     output_wave.name,
-                                                     False), True)
-                finally:
-                    track2_file.close()
-        finally:
-            input_wave.close()
-            track1_file.close()
-            output_wave.close()
-
+            #truncated chunks in footer raise an error
+            ("RIFFn\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
+             "chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
+             "data2\x00\x00\x00",
+             "chnk\x04\x00\x00\x00\x01\x02\x03"),
+            ]:
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_wave,
+                              "bad.wav",
+                              header,
+                              EXACT_BLANK_PCM_Reader(25,
+                                                     44100,
+                                                     1,
+                                                     16,
+                                                     0x4),
+                              footer)
+            self.assertEqual(os.path.isfile("bad.wav"), False)
 
 class TestForeignAiffChunks:
     @FORMAT_LOSSLESS

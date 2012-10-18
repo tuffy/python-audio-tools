@@ -19,7 +19,8 @@
 
 from audiotools.bitstream import BitstreamReader
 from audiotools.pcm import from_list, from_channels
-from audiotools import parse_fmt, parse_comm
+from audiotools.wav import parse_fmt
+from audiotools.aiff import parse_comm
 import cStringIO
 
 
@@ -237,6 +238,7 @@ class SHNDecoder:
                          for channel in xrange(self.channels)])
                 elif (command == 5):  # BLOCKSIZE
                     self.block_length = self.long()
+                    print "block length : %d" % (block_length)
                 elif (command == 6):  # BITSHIFT
                     self.left_shift = self.unsigned(2)
                 elif (command == 9):  # VERBATIM

@@ -1821,6 +1821,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         metadata = self.get_metadata()
         if (metadata is None):
+            #FIXME
             raise ValueError("no foreign RIFF chunks")
 
         #convert individual chunks into combined header and footer strings
@@ -1839,6 +1840,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         if ((len(header) != 0) or (len(footer) != 0)):
             return ("".join(header), "".join(footer))
         else:
+            #FIXME
             raise ValueError("no foreign RIFF chunks")
 
     @classmethod
@@ -1859,33 +1861,76 @@ class FlacAudio(WaveContainer, AiffContainer):
         from .bitstream import BitstreamRecorder
         from .bitstream import format_byte_size
         import cStringIO
-        from .wav import pad_data
-        from . import EncodingError
+        from .wav import (pad_data, WaveAudio)
+        from . import (EncodingError, CounterPCMReader)
 
         #split header and footer into distinct chunks
         header_len = len(header)
         footer_len = len(footer)
+        fmt_found = False
         blocks = []
         try:
             #read everything from start of header to "data<size>"
             #chunk header
             r = BitstreamReader(cStringIO.StringIO(header), 1)
-            (riff, size, wave) = r.parse("4b 32u 4b")
-            if ((riff != "RIFF") or (wave != "WAVE")):
-                raise EncodingError("invalid RIFF WAVE header")
+            (riff, remaining_size, wave) = r.parse("4b 32u 4b")
+            if (riff != "RIFF"):
+                from .text import ERR_WAV_NOT_WAVE
+                raise EncodingError(ERR_WAV_NOT_WAVE)
+            elif (wave != "WAVE"):
+                from .text import ERR_WAV_INVALID_WAVE
+                raise EncodingError(ERR_WAV_INVALID_WAVE)
             else:
                 block_data = BitstreamRecorder(1)
-                block_data.build("4b 32u 4b", (riff, size, wave))
+                block_data.build("4b 32u 4b", (riff, remaining_size, wave))
                 blocks.append(Flac_APPLICATION("riff", block_data.data()))
+                total_size = remaining_size + 8
                 header_len -= format_byte_size("4b 32u 4b")
 
             while (header_len):
                 block_data = BitstreamRecorder(1)
                 (chunk_id, chunk_size) = r.parse("4b 32u")
-                header_len -= format_byte_size("4b 32u")
-                block_data.build("4b 32u", (chunk_id, chunk_size))
+                #ensure chunk ID is valid
+                if (not frozenset(chunk_id).issubset(
+                        WaveAudio.PRINTABLE_ASCII)):
+                    from .text import ERR_WAV_INVALID_CHUNK
+                    raise EncodingError(ERR_WAV_INVALID_CHUNK)
+                else:
+                    header_len -= format_byte_size("4b 32u")
+                    block_data.build("4b 32u", (chunk_id, chunk_size))
 
-                if (chunk_id != "data"):
+                if (chunk_id == "data"):
+                    #transfer only "data" chunk header to APPLICATION block
+                    blocks.append(
+                        Flac_APPLICATION("riff", block_data.data()))
+                    if (header_len != 0):
+                        from .text import ERR_WAV_HEADER_EXTRA_DATA
+                        raise EncodingError(ERR_WAV_HEADER_EXTRA_DATA %
+                                            (header_len))
+                    elif (not fmt_found):
+                        from .text import ERR_WAV_NO_FMT_CHUNK
+                        raise EncodingError(ERR_WAV_NO_FMT_CHUNK)
+                    else:
+                        data_chunk_size = chunk_size
+                        break
+                elif (chunk_id == "fmt "):
+                    if (not fmt_found):
+                        fmt_found = True
+                        if (chunk_size % 2):
+                            #transfer padded chunk to APPLICATION block
+                            block_data.write_bytes(r.read_bytes(chunk_size + 1))
+                            header_len -= (chunk_size + 1)
+                        else:
+                            #transfer un-padded chunk to APPLICATION block
+                            block_data.write_bytes(r.read_bytes(chunk_size))
+                            header_len -= chunk_size
+
+                        blocks.append(
+                            Flac_APPLICATION("riff", block_data.data()))
+                    else:
+                        from .text import ERR_WAV_MULTIPLE_FMT
+                        raise EncodingError(ERR_WAV_MULTIPLE_FMT)
+                else:
                     if (chunk_size % 2):
                         #transfer padded chunk to APPLICATION block
                         block_data.write_bytes(r.read_bytes(chunk_size + 1))
@@ -1896,47 +1941,75 @@ class FlacAudio(WaveContainer, AiffContainer):
                         header_len -= chunk_size
 
                     blocks.append(Flac_APPLICATION("riff", block_data.data()))
-                else:
-                    #transfer only "data" chunk header to APPLICATION block
-                    blocks.append(
-                        Flac_APPLICATION("riff", block_data.data()))
-                    if (header_len != 0):
-                        raise EncodingError("extra data after 'data' chunk")
-                    else:
-                        data_chunk_size = chunk_size
-                        break
             else:
-                raise EncodingError("no 'data' chunk found")
+                from .text import ERR_WAV_NO_DATA_CHUNK
+                raise EncodingError(ERR_WAV_NO_DATA_CHUNK)
+        except IOError:
+            from .text import ERR_WAV_HEADER_IOERROR
+            raise EncodingError(ERR_WAV_HEADER_IOERROR)
 
+        try:
             #read everything from start of footer to end of footer
             r = BitstreamReader(cStringIO.StringIO(footer), 1)
             #skip initial footer pad byte
             if (data_chunk_size % 2):
-                if (r.read_bytes(1) != chr(0)):
-                    raise EncodingError("invalid 'data' chunk pad byte")
+                r.skip_bytes(1)
                 footer_len -= 1
 
             while (footer_len):
                 block_data = BitstreamRecorder(1)
                 (chunk_id, chunk_size) = r.parse("4b 32u")
-                footer_len -= format_byte_size("4b 32u")
-                block_data.build("4b 32u", (chunk_id, chunk_size))
 
-                if (chunk_size % 2):
-                    #transfer padded chunk to APPLICATION block
-                    block_data.write_bytes(r.read_bytes(chunk_size + 1))
-                    footer_len -= (chunk_size + 1)
+                if (not frozenset(chunk_id).issubset(
+                        WaveAudio.PRINTABLE_ASCII)):
+                    #ensure chunk ID is valid
+                    from .text import ERR_WAV_INVALID_CHUNK
+                    raise EncodingError(ERR_WAV_INVALID_CHUNK)
+                elif (chunk_id == "fmt "):
+                    #multiple "fmt " chunks is an error
+                    from .text import ERR_WAV_MULTIPLE_FMT
+                    raise EncodingError(ERR_WAV_MULTIPLE_FMT)
+                elif (chunk_id == "data"):
+                    #multiple "data" chunks is an error
+                    from .text import ERR_WAV_MULTIPLE_DATA
+                    raise EncodingError(ERR_WAV_MULTIPLE_DATA)
                 else:
-                    #transfer un-padded chunk to APPLICATION block
-                    block_data.write_bytes(r.read_bytes(chunk_size))
-                    footer_len -= chunk_size
+                    footer_len -= format_byte_size("4b 32u")
+                    block_data.build("4b 32u", (chunk_id, chunk_size))
 
-                blocks.append(Flac_APPLICATION("riff", block_data.data()))
+                    if (chunk_size % 2):
+                        #transfer padded chunk to APPLICATION block
+                        block_data.write_bytes(r.read_bytes(chunk_size + 1))
+                        footer_len -= (chunk_size + 1)
+                    else:
+                        #transfer un-padded chunk to APPLICATION block
+                        block_data.write_bytes(r.read_bytes(chunk_size))
+                        footer_len -= chunk_size
+
+                    blocks.append(Flac_APPLICATION("riff", block_data.data()))
         except IOError:
-            raise EncodingError("I/O error reading header or footer")
+            from .text import ERR_WAV_FOOTER_IOERROR
+            raise EncodingError(ERR_WAV_FOOTER_IOERROR)
+
+        counter = CounterPCMReader(pcmreader)
 
         #perform standard FLAC encode from PCMReader
-        flac = cls.from_pcm(filename, pcmreader, compression)
+        flac = cls.from_pcm(filename, counter, compression)
+
+        data_bytes_written = counter.bytes_written()
+
+        #ensure processed PCM data equals size of "data chunk"
+        if (data_bytes_written != data_chunk_size):
+            cls.__unlink__(filename)
+            from .text import ERR_WAV_TRUNCATED_DATA_CHUNK
+            raise EncodingError(ERR_WAV_TRUNCATED_DATA_CHUNK)
+
+        #ensure total size of header + PCM + footer matches wav's header
+        if ((len(header) + data_bytes_written + len(footer)) !=
+            total_size):
+            cls.__unlink__(filename)
+            from .text import ERR_WAV_INVALID_SIZE
+            raise EncodingError(ERR_WAV_INVALID_SIZE)
 
         #add chunks as APPLICATION metadata blocks
         metadata = flac.get_metadata()
@@ -1983,6 +2056,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         metadata = self.get_metadata()
         if (metadata is None):
+            #FIXME
             raise ValueError("no foreign AIFF chunks")
 
         #convert individual chunks into combined header and footer strings
@@ -2001,6 +2075,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         if ((len(header) != 0) or (len(footer) != 0)):
             return ("".join(header), "".join(footer))
         else:
+            #FIXME
             raise ValueError("no foreign AIFF chunks")
 
     @classmethod
@@ -2038,6 +2113,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             r = BitstreamReader(cStringIO.StringIO(header), 0)
             (form, size, aiff) = r.parse("4b 32u 4b")
             if ((form != "FORM") or (aiff != "AIFF")):
+                #FIXME
                 raise EncodingError("invalid AIFF header")
             else:
                 block_data = BitstreamRecorder(0)
@@ -2069,11 +2145,13 @@ class FlacAudio(WaveContainer, AiffContainer):
                     blocks.append(
                         Flac_APPLICATION("aiff", block_data.data()))
                     if (header_len != 0):
+                        #FIXME
                         raise EncodingError("extra data after 'SSND' chunk")
                     else:
                         data_chunk_size = chunk_size
                         break
             else:
+                #FIXME
                 raise EncodingError("no 'SSND' chunk found")
 
             #read everything from start of footer to end of footer
@@ -2081,6 +2159,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             #skip initial footer pad byte
             if (data_chunk_size % 2):
                 if (r.read_bytes(1) != chr(0)):
+                    #FIXME
                     raise EncodingError("invalid 'SSND' chunk pad byte")
                 footer_len -= 1
 
@@ -2101,6 +2180,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
                 blocks.append(Flac_APPLICATION("aiff", block_data.data()))
         except IOError:
+            #FIXME
             raise EncodingError("I/O error reading header or footer")
 
         #perform standard FLAC encode from PCMReader
@@ -3135,6 +3215,7 @@ class OggFlacAudio(FlacAudio):
                 oggflac.update_metadata(metadata)
             return oggflac
         else:
+            #FIXME
             raise EncodingError(u"error encoding file with flac")
 
     def sub_pcm_tracks(self):

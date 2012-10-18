@@ -2369,6 +2369,32 @@ class BufferedPCMReader:
         return output
 
 
+class CounterPCMReader:
+    """a PCMReader which counts bytes and frames written"""
+
+    def __init__(self, pcmreader):
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
+        self.bits_per_sample = pcmreader.bits_per_sample
+
+        self.__pcmreader__ = pcmreader
+        self.frames_written = 0
+
+    def bytes_written(self):
+        return (self.frames_written *
+                self.channels *
+                (self.bits_per_sample / 8))
+
+    def read(self, pcm_frames):
+        frame = self.__pcmreader__.read(pcm_frames)
+        self.frames_written += frame.frames
+        return frame
+
+    def close(self):
+        self.__pcmreader__.close()
+
+
 class LimitedFileReader:
     def __init__(self, file, total_bytes):
         self.__file__ = file

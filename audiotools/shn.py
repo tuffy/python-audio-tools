@@ -50,8 +50,10 @@ class ShortenAudio(WaveContainer, AiffContainer):
         reader = BitstreamReader(f, 0)
         try:
             if (reader.parse("4b 8u") != ["ajkg", 2]):
+                #FIXME
                 raise InvalidShorten("invalid Shorten header")
         except IOError:
+            #FIXME
             raise InvalidShorten("invalid Shorten header")
 
         def read_unsigned(r, c):
@@ -75,6 +77,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         elif ((3 <= file_type) and (file_type <= 6)):
             self.__bits_per_sample__ = 16
         else:
+            #FIXME
             raise InvalidShorten("unsupported Shorten file type")
 
         #setup some default dummy metadata
@@ -308,10 +311,12 @@ class ShortenAudio(WaveContainer, AiffContainer):
             header = bitstream.BitstreamReader(cStringIO.StringIO(head), 1)
             (RIFF, SIZE, WAVE) = header.parse("4b 32u 4b")
             if ((RIFF != 'RIFF') or (WAVE != 'WAVE')):
+                #FIXME
                 raise ValueError("invalid wave header")
             else:
                 return (head, tail)
         except IOError:
+            #FIXME
             raise ValueError("invalid wave header")
 
     @classmethod
@@ -333,28 +338,59 @@ class ShortenAudio(WaveContainer, AiffContainer):
         may raise EncodingError if some problem occurs when
         encoding the input file"""
 
+        from . import (CounterPCMReader,
+                       BufferedPCMReader,
+                       UnsupportedBitsPerSample,
+                       EncodingError)
         from .encoders import encode_shn
-        from . import UnsupportedBitsPerSample,EncodingError
+        from .wav import (validate_header, validate_footer)
 
         if (pcmreader.bits_per_sample not in (8, 16)):
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
+        #ensure header is valid
+        try:
+            (total_size, data_size) = validate_header(header)
+        except ValueError,err:
+            raise EncodingError(str(err))
+
+        counter = CounterPCMReader(pcmreader)
+
         try:
             if (len(footer) == 0):
                 encode_shn(filename=filename,
-                           pcmreader=pcmreader,
+                           pcmreader=BufferedPCMReader(counter),
                            is_big_endian=False,
                            signed_samples=pcmreader.bits_per_sample == 16,
                            header_data=header,
                            block_size=block_size)
             else:
                 encode_shn(filename=filename,
-                           pcmreader=pcmreader,
+                           pcmreader=BufferedPCMReader(counter),
                            is_big_endian=False,
                            signed_samples=pcmreader.bits_per_sample == 16,
                            header_data=header,
                            footer_data=footer,
                            block_size=block_size)
+
+            data_bytes_written = counter.bytes_written()
+
+            #ensure output data size matches the "data" chunk's size
+            if (data_size != data_bytes_written):
+                from .text import ERR_WAV_TRUNCATED_DATA_CHUNK
+                raise EncodingError(ERR_WAV_TRUNCATED_DATA_CHUNK)
+
+            #ensure footer validates correctly
+            try:
+                validate_footer(footer, data_bytes_written)
+            except ValueError,err:
+                raise EncodingError(str(err))
+
+            #ensure total size is correct
+            if ((len(header) + data_size + len(footer)) !=
+                total_size):
+                from .text import ERR_WAV_INVALID_SIZE
+                raise EncodingError(ERR_WAV_INVALID_SIZE)
 
             return cls(filename)
         except IOError, err:
@@ -424,10 +460,12 @@ class ShortenAudio(WaveContainer, AiffContainer):
             header = bitstream.BitstreamReader(cStringIO.StringIO(head), 0)
             (FORM, SIZE, AIFF) = header.parse("4b 32u 4b")
             if ((FORM != 'FORM') or (AIFF != 'AIFF')):
+                #FIXME
                 raise ValueError("invalid AIFF header")
             else:
                 return (head, tail)
         except IOError:
+            #FIXME
             raise ValueError("invalid AIFF header")
 
     @classmethod

@@ -169,6 +169,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         if (head is not None):
             return (head, tail if tail is not None else "")
         else:
+            #FIXME
             raise ValueError("no wave header found")
 
     @classmethod
@@ -191,6 +192,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
         from .encoders import encode_wavpack
         from . import BufferedPCMReader
+        from . import CounterPCMReader
+        from .wav import (validate_header, validate_footer)
         from . import EncodingError
         from . import __default_quality__
 
@@ -198,12 +201,39 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             (compression not in cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
 
+        #ensure header is valid
+        try:
+            (total_size, data_size) = validate_header(header)
+        except ValueError,err:
+            raise EncodingError(str(err))
+
+        counter = CounterPCMReader(pcmreader)
+
         try:
             encode_wavpack(filename,
-                           BufferedPCMReader(pcmreader),
+                           BufferedPCMReader(counter),
                            wave_header=header,
                            wave_footer=footer,
                            **cls.__options__[compression])
+
+            data_bytes_written = counter.bytes_written()
+
+            #ensure output data size matches the "data" chunk's size
+            if (data_size != data_bytes_written):
+                from .text import ERR_WAV_TRUNCATED_DATA_CHUNK
+                raise EncodingError(ERR_WAV_TRUNCATED_DATA_CHUNK)
+
+            #ensure footer validates correctly
+            try:
+                validate_footer(footer, data_bytes_written)
+            except ValueError,err:
+                raise EncodingError(str(err))
+
+            #ensure total size is correct
+            if ((len(header) + data_size + len(footer)) !=
+                total_size):
+                from .text import ERR_WAV_INVALID_SIZE
+                raise EncodingError(ERR_WAV_INVALID_SIZE)
 
             return cls(filename)
         except (ValueError, IOError), msg:
