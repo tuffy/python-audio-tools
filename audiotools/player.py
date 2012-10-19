@@ -133,6 +133,7 @@ class PlayerThread:
 
     def pause(self):
         if (self.state == PLAYER_PLAYING):
+            self.audio_output.pause()
             self.state = PLAYER_PAUSED
 
     def play(self):
@@ -180,6 +181,7 @@ class PlayerThread:
                 self.frames_played = 0
                 self.state = PLAYER_PLAYING
             elif (self.state == PLAYER_PAUSED):
+                self.audio_output.resume()
                 self.state = PLAYER_PLAYING
             elif (self.state == PLAYER_PLAYING):
                 pass
@@ -349,12 +351,14 @@ class CDPlayerThread:
                 self.frames_played = 0
                 self.state = PLAYER_PLAYING
             elif (self.state == PLAYER_PAUSED):
+                self.audio_output.resume()
                 self.state = PLAYER_PLAYING
             elif (self.state == PLAYER_PLAYING):
                 pass
 
     def pause(self):
         if (self.state == PLAYER_PLAYING):
+            self.audio_output.pause()
             self.state = PLAYER_PAUSED
 
     def toggle_play_pause(self):
@@ -483,6 +487,16 @@ class AudioOutput:
 
         raise NotImplementedError()
 
+    def pause(self):
+        """pauses audio output, with the expectation it will be resumed"""
+
+        raise NotImplementedError()
+
+    def resume(self):
+        """resumes playing paused audio output"""
+
+        raise NotImplementedError()
+
     def close(self):
         """closes the output stream"""
 
@@ -526,6 +540,16 @@ class NULLAudioOutput(AudioOutput):
         import time
 
         time.sleep(float(data) / self.sample_rate)
+
+    def pause(self):
+        """pauses audio output, with the expectation it will be resumed"""
+
+        pass
+
+    def resume(self):
+        """resumes playing paused audio output"""
+
+        pass
 
     def close(self):
         """closes the output stream"""
@@ -600,6 +624,16 @@ class OSSAudioOutput(AudioOutput):
         """plays a chunk of converted data"""
 
         self.ossaudio.writeall(data)
+
+    def pause(self):
+        """pauses audio output, with the expectation it will be resumed"""
+
+        pass
+
+    def resume(self):
+        """resumes playing paused audio output"""
+
+        pass
 
     def close(self):
         """closes the output stream"""
@@ -684,6 +718,20 @@ class PulseAudioOutput(AudioOutput):
         self.pacat.stdin.write(data)
         self.pacat.stdin.flush()
 
+    def pause(self):
+        """pauses audio output, with the expectation it will be resumed"""
+
+        #may need to update this if I ever switch PulseAudio
+        #to the low-level interface instead of using pacat
+        pass
+
+    def resume(self):
+        """resumes playing paused audio output"""
+
+        #may need to update this if I ever switch PulseAudio
+        #to the low-level interface instead of using pacat
+        pass
+
     def close(self):
         """closes the output stream"""
 
@@ -755,6 +803,16 @@ class CoreAudioOutput(AudioOutput):
         """plays a chunk of converted data"""
 
         self.coreaudio.play(data)
+
+    def pause(self):
+        """pauses audio output, with the expectation it will be resumed"""
+
+        self.coreaudio.pause()
+
+    def resume(self):
+        """resumes playing paused audio output"""
+
+        self.coreaudio.resume()
 
     def close(self):
         """closes the output stream"""

@@ -39,6 +39,8 @@ typedef struct audio_output_struct
     /* Callbacks */
     int (*open)(struct audio_output_struct *);
     int (*write)(struct audio_output_struct *, unsigned char *,int);
+    void (*pause)(struct audio_output_struct *);
+    void (*resume)(struct audio_output_struct *);
     void (*flush)(struct audio_output_struct *);
     int (*close)(struct audio_output_struct *);
     int (*deinit)(struct audio_output_struct *);
@@ -78,6 +80,8 @@ typedef struct {
 } output_CoreAudio;
 
 static PyObject* CoreAudio_play(output_CoreAudio *self, PyObject *args);
+static PyObject* CoreAudio_pause(output_CoreAudio *self, PyObject *args);
+static PyObject* CoreAudio_resume(output_CoreAudio *self, PyObject *args);
 static PyObject* CoreAudio_flush(output_CoreAudio *self, PyObject *args);
 static PyObject* CoreAudio_close(output_CoreAudio *self, PyObject *args);
 
@@ -93,6 +97,8 @@ PyGetSetDef CoreAudio_getseters[] = {
 
 PyMethodDef CoreAudio_methods[] = {
     {"play", (PyCFunction)CoreAudio_play, METH_VARARGS, ""},
+    {"pause", (PyCFunction)CoreAudio_pause, METH_NOARGS, ""},
+    {"resume", (PyCFunction)CoreAudio_resume, METH_NOARGS, ""},
     {"flush", (PyCFunction)CoreAudio_flush, METH_NOARGS, ""},
     {"close", (PyCFunction)CoreAudio_close, METH_NOARGS, ""},
     {NULL}
@@ -148,6 +154,8 @@ static int init_coreaudio(audio_output_t* ao,
 static int open_coreaudio(audio_output_t *ao);
 static void flush_coreaudio(audio_output_t *ao);
 static int write_coreaudio(audio_output_t *ao, unsigned char *buf, int len);
+static void pause_coreaudio(audio_output_t *ao);
+static void resume_coreaudio(audio_output_t *ao);
 static int close_coreaudio(audio_output_t *ao);
 static int deinit_coreaudio(audio_output_t* ao);
 

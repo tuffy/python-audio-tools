@@ -184,6 +184,22 @@ static PyObject* CoreAudio_flush(output_CoreAudio *self, PyObject *args)
     return Py_None;
 }
 
+static PyObject* CoreAudio_pause(output_CoreAudio *self, PyObject *args)
+{
+    self->ao->pause(self->ao);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject* CoreAudio_resume(output_CoreAudio *self, PyObject *args)
+{
+    self->ao->resume(self->ao);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 static PyObject* CoreAudio_close(output_CoreAudio *self, PyObject *args)
 {
     if (!self->closed) {
@@ -208,6 +224,8 @@ static int init_coreaudio(audio_output_t* ao,
     ao->open = open_coreaudio;
     ao->flush = flush_coreaudio;
     ao->write = write_coreaudio;
+    ao->pause = pause_coreaudio;
+    ao->resume = resume_coreaudio;
     ao->close = close_coreaudio;
     ao->deinit = deinit_coreaudio;
 
@@ -387,6 +405,26 @@ static int write_coreaudio(audio_output_t *ao, unsigned char *buf, int len)
     }
 
     return len;
+}
+
+static void pause_coreaudio(audio_output_t *ao)
+{
+    mpg123_coreaudio_t* ca = (mpg123_coreaudio_t*)ao->userptr;
+
+    if (ca->play) {
+        ca->play = 0;
+        AudioOutputUnitStop(ca->outputUnit);
+    }
+}
+
+static void resume_coreaudio(audio_output_t *ao)
+{
+    mpg123_coreaudio_t* ca = (mpg123_coreaudio_t*)ao->userptr;
+
+    if (!ca->play) {
+        AudioOutputUnitStart(ca->outputUnit);
+        ca->play = 1;
+    }
 }
 
 static int close_coreaudio(audio_output_t *ao)

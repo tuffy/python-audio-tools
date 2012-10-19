@@ -5884,6 +5884,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] convert(target_page, target_class, compression, progress)
 **** DONE Update programming documentation
 **** DONE Update unit tests
+** DONE Add pause()/resume() methods to low-level output players
+   This will hopefully make pausing more responsive
+   and work better than simply emptying the output buffer.
 ** TODO Add unit tests for Python-based decoders
    Since Python-based codecs are so much slower
    it's impossible to make these as comprehensive as the C-based tests.
@@ -5924,9 +5927,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE trackrename
 *** DONE tracksplit
 *** DONE tracktag
-** TODO Add pause()/resume() methods to low-level output players
-   This will hopefully make pausing more responsive
-   and work better than simply emptying the output buffer.
 ** TODO Add volume control to low-level output players
    It should be possible to adjust the volume from trackplay/cdplay
    without adjusting the output data itself.
