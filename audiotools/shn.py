@@ -387,8 +387,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                 raise EncodingError(str(err))
 
             #ensure total size is correct
-            if ((len(header) + data_size + len(footer)) !=
-                total_size):
+            if ((len(header) + data_size + len(footer)) != total_size):
                 from .text import ERR_WAV_INVALID_SIZE
                 raise EncodingError(ERR_WAV_INVALID_SIZE)
 
@@ -487,28 +486,58 @@ class ShortenAudio(WaveContainer, AiffContainer):
         may raise EncodingError if some problem occurs when
         encoding the input file"""
 
+        from . import (CounterPCMReader,
+                       BufferedPCMReader,
+                       UnsupportedBitsPerSample,
+                       EncodingError)
         from .encoders import encode_shn
-        from . import UnsupportedBitsPerSample
+        from .aiff import (validate_header, validate_footer)
 
         if (pcmreader.bits_per_sample not in (8, 16)):
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
+        #ensure header is valid
+        try:
+            (total_size, ssnd_size) = validate_header(header)
+        except ValueError,err:
+            raise EncodingError(str(err))
+
+        counter = CounterPCMReader(pcmreader)
+
         try:
             if (len(footer) == 0):
                 encode_shn(filename=filename,
-                           pcmreader=pcmreader,
+                           pcmreader=BufferedPCMReader(counter),
                            is_big_endian=True,
                            signed_samples=True,
                            header_data=header,
                            block_size=block_size)
             else:
                 encode_shn(filename=filename,
-                           pcmreader=pcmreader,
+                           pcmreader=BufferedPCMReader(counter),
                            is_big_endian=True,
                            signed_samples=True,
                            header_data=header,
                            footer_data=footer,
                            block_size=block_size)
+
+            ssnd_bytes_written = counter.bytes_written()
+
+            #ensure output data size matches the "SSND" chunk's size
+            if (ssnd_size != ssnd_bytes_written):
+                from .text import ERR_AIFF_TRUNCATED_SSND_CHUNK
+                raise EncodingError(ERR_AIFF_TRUNCATED_SSND_CHUNK)
+
+            #ensure footer validates correctly
+            try:
+                validate_footer(footer, ssnd_bytes_written)
+            except ValueError,err:
+                raise EncodingError(str(err))
+
+            #ensure total size is correct
+            if ((len(header) + ssnd_size + len(footer)) != total_size):
+                from .text import ERR_AIFF_INVALID_SIZE
+                raise EncodingError(ERR_AIFF_INVALID_SIZE)
 
             return cls(filename)
         except IOError, err:

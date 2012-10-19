@@ -1619,224 +1619,238 @@ class TestForeignWaveChunks:
 
 class TestForeignAiffChunks:
     @FORMAT_LOSSLESS
-    def test_roundtrip_aiff_chunks(self):
-        import filecmp
-
-        tempaiff1 = tempfile.NamedTemporaryFile(suffix=".aiff")
-        tempaiff2 = tempfile.NamedTemporaryFile(suffix=".aiff")
-        audio = tempfile.NamedTemporaryFile(
-            suffix="." + self.audio_class.SUFFIX)
-        try:
-            #build an AIFF with some oddball chunks
-            audiotools.AiffAudio.aiff_from_chunks(
-                tempaiff1.name,
-                [audiotools.aiff.AIFF_Chunk(
-                        'COMM',
-                        18,
-                        '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
-                 audiotools.aiff.AIFF_Chunk(
-                        'fooz',
-                        8,
-                        'testtext'),
-                 audiotools.aiff.AIFF_Chunk(
-                        'barz',
-                        16,
-                        'somemoretesttext'),
-                 audiotools.aiff.AIFF_Chunk(
-                        'bazz',
-                        1024,
-                        chr(0) * 1024),
-                 audiotools.aiff.AIFF_Chunk(
-                        'SSND',
-                        176408,
-                        'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2')),
-                 audiotools.aiff.AIFF_Chunk(
-                        'spam',
-                        12,
-                        'anotherchunk')])
-
-            aiff = audiotools.open(tempaiff1.name)
-            aiff.verify()
-
-            #convert it to our audio type via convert()
-            track = aiff.convert(audio.name, self.audio_class)
-            if (hasattr(track, "has_foreign_aiff_chunks")):
-                self.assert_(track.has_foreign_aiff_chunks())
-
-            #convert it back to AIFF via convert()
-            self.assert_(
-                track.convert(tempaiff2.name,
-                              audiotools.AiffAudio).has_foreign_aiff_chunks())
-
-            #check that the two AIFFs are byte-for-byte identical
-            self.assertEqual(filecmp.cmp(tempaiff1.name,
-                                         tempaiff2.name,
-                                         False), True)
-
-            #however, unlike WAVE, AIFF does support metadata
-            #so setting it will make the files no longer
-            #byte-for-byte identical, but the chunks in the new file
-            #should be a superset of the chunks in the old
-
-            track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
-            track = audiotools.open(track.filename)
-            chunk_ids = set([chunk.id for chunk in
-                             track.convert(tempaiff2.name,
-                                           audiotools.AiffAudio).chunks()])
-            self.assert_(chunk_ids.issuperset(set(['COMM',
-                                                   'fooz',
-                                                   'barz',
-                                                   'bazz',
-                                                   'SSND',
-                                                   'spam'])))
-        finally:
-            tempaiff1.close()
-            tempaiff2.close()
-            audio.close()
-
-    @FORMAT_LOSSLESS
     def test_convert_aiff_chunks(self):
         import filecmp
 
-        #no "M" or "N" in this set
-        #which prevents a random generator from creating
-        #"COMM" or "SSND" chunk names
-        chunk_name_chars = "ABCDEFGHIJKLOPQRSTUVWXYZ"
+        self.assert_(issubclass(self.audio_class,
+                                audiotools.AiffContainer))
 
-        input_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
-        track1_file = tempfile.NamedTemporaryFile(
-            suffix="." + self.audio_class.SUFFIX)
-        output_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
-        try:
-            #build an AIFF with some random oddball chunks
-            base_chunks = [
-                audiotools.aiff.AIFF_Chunk(
-                    'COMM',
-                    18,
-                    '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
-                audiotools.aiff.AIFF_Chunk(
-                    'SSND',
-                    176408,
-                    'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2'))]
-            for i in xrange(random.choice(range(1, 10))):
-                block_size = random.choice(range(1, 1024)) * 2
-                base_chunks.insert(
-                    random.choice(range(0, len(base_chunks) + 1)),
-                    audiotools.aiff.AIFF_Chunk(
-                        "".join([random.choice(chunk_name_chars)
-                                 for i in xrange(4)]),
-                        block_size,
-                        os.urandom(block_size)))
+        #several even-sized chunks
+        chunks1 = (("x\x9cs\xf3\x0f\xf2e\xe0\xad<\xe4\xe8\xe9\xe6\xe6" +
+                    "\xec\xef\xeb\xcb\xc0\xc0 \xc4\xc0\xc4\xc0\x1c\x1b" +
+                    "\xc2 \xe0\xc0\xb7\xc6\x85\x01\x0c\xdc\xfc\xfd\xa3" +
+                    "\x80\x14GIjqIIjE\x89\x93c\x10\x88/P\x9c\x9f\x9b" +
+                    "\x9a\x9b_\x94\x8a\x10\x8f\x02\x8a\xb30\x8c" +
+                    "\x82Q0\nF.\x08\x0e\xf6sa\xe0-\x8d\x80\xf1\x01" +
+                    "\xcf\x8c\x17\x18").decode('zlib'),
+                   (220500, 44100, 2, 16, 0x3),
+                   "SPAM\x00\x00\x00\x0canotherchunk")
 
-            audiotools.AiffAudio.aiff_from_chunks(input_aiff.name, base_chunks)
-            aiff = audiotools.open(input_aiff.name)
-            aiff.verify()
-            self.assert_(aiff.has_foreign_aiff_chunks())
+        #several odd-sized chunks
+        chunks2 = (("x\x9cs\xf3\x0f\xf2e``\xa8p\xf4tss\xf3\xf7\x8f" +
+                    "\x02\xb2\xb9\x18\xe0\xc0\xd9\xdf\x17$+\xc4\xc0" +
+                    "\x08$\xf9\x198\x1c\xf8\xd6\xb8@d\x9c\x1c\x83@j" +
+                    "\xb9\x19\x11\x80!8\xd8\x0f$+\x0e\xd3\r" +
+                    "\x00\x16\xa5\t3").decode('zlib'),
+                   (15, 44100, 1, 8, 0x4),
+                   "\x00BAZZ\x00\x00\x00\x0b\x02\x02\x02\x02" +
+                   "\x02\x02\x02\x02\x02\x02\x02\x00")
 
-            #convert it to our audio type using convert()
-            track1 = aiff.convert(track1_file.name, self.audio_class)
-            self.assert_(track1.has_foreign_aiff_chunks())
+        for (header,
+             (total_frames,
+              sample_rate,
+              channels,
+              bits_per_sample,
+              channel_mask), footer) in [chunks1, chunks2]:
+            temp1 = tempfile.NamedTemporaryFile(
+                suffix="." + self.audio_class.SUFFIX)
+            try:
+                #build our audio file from the from_pcm() interface
+                track = self.audio_class.from_pcm(
+                    temp1.name,
+                    EXACT_RANDOM_PCM_Reader(
+                        pcm_frames=total_frames,
+                        sample_rate=sample_rate,
+                        channels=channels,
+                        bits_per_sample=bits_per_sample,
+                        channel_mask=channel_mask))
 
-            #convert it to every other AIFF-containing format
-            for new_class in [t for t in audiotools.AVAILABLE_TYPES
-                              if issubclass(t, audiotools.AiffContainer)]:
-                track2_file = tempfile.NamedTemporaryFile(
-                    suffix="." + new_class.SUFFIX)
-                try:
-                    track2 = track1.convert(track2_file.name, new_class)
-                    self.assert_(track2.has_foreign_aiff_chunks(),
-                                 "format %s lost AIFF chunks" % (new_class))
+                #check has_foreign_aiff_chunks()
+                self.assertEqual(track.has_foreign_aiff_chunks(), False)
+            finally:
+                temp1.close()
 
-                    #then, convert it back to an AIFF
-                    track2.convert(output_aiff.name, audiotools.AiffAudio)
+        for (header,
+             (total_frames,
+              sample_rate,
+              channels,
+              bits_per_sample,
+              channel_mask), footer) in [chunks1, chunks2]:
+            temp1 = tempfile.NamedTemporaryFile(
+                suffix="." + self.audio_class.SUFFIX)
+            try:
+                #build our audio file using from_aiff() interface
+                track = self.audio_class.from_aiff(
+                    temp1.name,
+                    header,
+                    EXACT_RANDOM_PCM_Reader(
+                        pcm_frames=total_frames,
+                        sample_rate=sample_rate,
+                        channels=channels,
+                        bits_per_sample=bits_per_sample,
+                        channel_mask=channel_mask),
+                    footer)
 
-                    #and ensure the result is byte-for-byte identical
-                    self.assertEqual(filecmp.cmp(input_aiff.name,
-                                                 output_aiff.name,
-                                                 False), True)
-                finally:
-                    track2_file.close()
-        finally:
-            input_aiff.close()
-            track1_file.close()
-            output_aiff.close()
+                #check has_foreign_aiff_chunks()
+                self.assertEqual(track.has_foreign_aiff_chunks(), True)
 
-    @FORMAT_LOSSLESS
-    def test_convert_progress_aiff_chunks(self):
-        import filecmp
+                #ensure aiff_header_footer returns same header and footer
+                (track_header,
+                 track_footer) = track.aiff_header_footer()
+                self.assertEqual(header, track_header)
+                self.assertEqual(footer, track_footer)
 
-        #no "M" or "N" in this set
-        #which prevents a random generator from creating
-        #"COMM" or "SSND" chunk names
-        chunk_name_chars = "ABCDEFGHIJKLOPQRSTUVWXYZ"
+                #convert our file to every other AiffContainer format
+                #(including our own)
+                for new_class in audiotools.AVAILABLE_TYPES:
+                    if (isinstance(new_class, audiotools.AiffContainer)):
+                        temp2 = tempfile.NamedTemporaryFile(
+                            suffix="." + wav_class.SUFFIX)
+                        log = Log()
+                        try:
+                            track2 = track.convert(temp2,
+                                                   new_class,
+                                                   log.update)
 
-        input_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
-        track1_file = tempfile.NamedTemporaryFile(
-            suffix="." + self.audio_class.SUFFIX)
-        output_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
-        try:
-            #build an AIFF with some random oddball chunks
-            base_chunks = [
-                audiotools.aiff.AIFF_Chunk(
-                    "COMM",
-                    18,
-                    '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
-                audiotools.aiff.AIFF_Chunk(
-                    "SSND",
-                    176408,
-                    'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2'))]
-            for i in xrange(random.choice(range(1, 10))):
-                chunk_size = random.choice(range(1, 1024)) * 2
-                base_chunks.insert(
-                    random.choice(range(0, len(base_chunks) + 1)),
-                    audiotools.aiff.AIFF_Chunk(
-                        "".join([random.choice(chunk_name_chars)
-                                 for i in xrange(4)]),
-                        chunk_size,
-                        os.urandom(chunk_size)))
+                            #ensure the progress function
+                            #gets called during conversion
+                            self.assert_(
+                                len(log.results) > 0,
+                                "no logging converting %s to %s" %
+                                (self.audio_class.NAME,
+                                 new_class.NAME))
 
-            audiotools.AiffAudio.aiff_from_chunks(input_aiff.name, base_chunks)
-            aiff = audiotools.open(input_aiff.name)
-            aiff.verify()
-            self.assert_(aiff.has_foreign_aiff_chunks())
+                            self.assert_(
+                                len(set([r[1] for r in log.results])) == 1)
+                            for x, y in zip(log.results[1:], log.results):
+                                self.assert_((x[0] - y[0]) >= 0)
 
-            #convert it to our audio type using convert()
-            track1 = aiff.convert(track1_file.name, self.audio_class)
-            self.assert_(track1.has_foreign_aiff_chunks())
+                            #ensure newly converted file
+                            #matches has_foreign_wave_chunks
+                            self.assertEqual(
+                                track2.has_foreign_aiff_chunks(), True)
 
-            #convert it to every other format
-            for new_class in audiotools.AVAILABLE_TYPES:
-                track2_file = tempfile.NamedTemporaryFile(
-                    suffix="." + new_class.SUFFIX)
-                log = Log()
-                try:
-                    track2 = track1.convert(track2_file.name,
-                                            new_class,
-                                            progress=log.update)
+                            #ensure newly converted file
+                            #has same header and footer
+                            (track2_header,
+                             track2_footer) = track2.aiff_header_footer()
+                            self.assertEqual(header, track2_header)
+                            self.assertEqual(footer, track2_footer)
 
-                    self.assert_(
-                        len(log.results) > 0,
-                        "no logging converting %s to %s with AIFF chunks" %
-                        (self.audio_class.NAME,
-                         new_class.NAME))
-                    self.assert_(len(set([r[1] for r in log.results])) == 1)
-                    for x, y in zip(log.results[1:], log.results):
-                        self.assert_((x[0] - y[0]) >= 0)
+                            #ensure newly converted file has same PCM data
+                            self.assertEqual(
+                                audiotools.pcm_frame_cmp(
+                                    track.to_pcm(), track2.to_pcm()), None)
+                        finally:
+                            temp2.close()
+            finally:
+                temp1.close()
 
-                    #if the format is an AIFF container, convert it back
-                    if (issubclass(new_class, audiotools.AiffContainer)):
-                        track2.convert(output_aiff.name, audiotools.AiffAudio)
+        if (os.path.isfile("bad.aiff")):
+            os.unlink("bad.aiff")
 
-                        #and ensure the result is byte-for-byte identical
-                        self.assertEqual(filecmp.cmp(input_aiff.name,
-                                                     output_aiff.name,
-                                                     False), True)
-                finally:
-                    track2_file.close()
-        finally:
-            input_aiff.close()
-            track1_file.close()
-            output_aiff.close()
+        for (header, footer) in [
+            #aiff header without "FORM<size>AIFF raises an error
+            ("", ""),
+            ("FOOZ\x00\x00\x00\x00BARZ", ""),
+
+            #invalid total size raises an error
+            ("FORM\x00\x00\x00tAIFF" +
+             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+
+            #invalid SSND size raises an error
+            ("FORM\x00\x00\x00rAIFF" +
+             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             "SSND\x00\x00\x00<\x00\x00\x00\x00\x00\x00\x00\x00",
+             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+
+            #invalid chunk IDs in header raise an error
+            ("FORM\x00\x00\x00~AIFF" +
+             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             "CHN\x00\x00\x00\x00\x04\x01\x02\x03\x04" +
+             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+
+            #mulitple COMM chunks raise an error
+            ("FORM\x00\x00\x00\x8cAIFF" +
+             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+
+            #SSND chunk before COMM chunk raises an error
+            ("FORM\x00\x00\x00XAIFF" +
+             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+
+            #bytes missing from SSNK chunk raises an error
+            ("FORM\x00\x00\x00rAIFF" +
+             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             "SSND\x00\x00\x00<\x00\x00\x00\x00\x00\x00",
+             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+
+            #bytes after SSND chunk raises an error
+            ("FORM\x00\x00\x00rAIFF" +
+             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             "SSND\x00\x00\x00<\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+
+            #truncated chunks in header raise an error
+            ("FORM\x00\x00\x00rAIFF" +
+             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00",
+             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+
+            #COMM chunk in footer raises an error
+            ("FORM\x00\x00\x00\x8cAIFF" +
+             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+
+            #SSND chunk in footer raises an error
+            ("FORM\x00\x00\x00rAIFF" +
+             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00" +
+             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00"),
+
+            #invalid chunk IDs in footer raise an error
+            ("FORM\x00\x00\x00rAIFF" +
+             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             "ID3\00\x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+
+            #truncated chunks in footer raise an error
+            ("FORM\x00\x00\x00rAIFF" +
+             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00"),
+            ]:
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_aiff,
+                              "bad.aiff",
+                              header,
+                              EXACT_BLANK_PCM_Reader(25,
+                                                     44100,
+                                                     1,
+                                                     16,
+                                                     0x4),
+                              footer)
+            self.assertEqual(os.path.isfile("bad.aiff"), False)
 
 
 class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):

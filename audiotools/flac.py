@@ -1901,8 +1901,6 @@ class FlacAudio(WaveContainer, AiffContainer):
 
                 if (chunk_id == "data"):
                     #transfer only "data" chunk header to APPLICATION block
-                    blocks.append(
-                        Flac_APPLICATION("riff", block_data.data()))
                     if (header_len != 0):
                         from .text import ERR_WAV_HEADER_EXTRA_DATA
                         raise EncodingError(ERR_WAV_HEADER_EXTRA_DATA %
@@ -1911,6 +1909,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                         from .text import ERR_WAV_NO_FMT_CHUNK
                         raise EncodingError(ERR_WAV_NO_FMT_CHUNK)
                     else:
+                        blocks.append(
+                            Flac_APPLICATION("riff", block_data.data()))
                         data_chunk_size = chunk_size
                         break
                 elif (chunk_id == "fmt "):
@@ -1998,7 +1998,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         data_bytes_written = counter.bytes_written()
 
-        #ensure processed PCM data equals size of "data chunk"
+        #ensure processed PCM data equals size of "data" chunk
         if (data_bytes_written != data_chunk_size):
             cls.__unlink__(filename)
             from .text import ERR_WAV_TRUNCATED_DATA_CHUNK
@@ -2100,34 +2100,79 @@ class FlacAudio(WaveContainer, AiffContainer):
         from .bitstream import BitstreamRecorder
         from .bitstream import format_byte_size
         import cStringIO
-        from .wav import pad_data
-        from . import EncodingError
+        from .aiff import (pad_data, AiffAudio)
+        from . import (EncodingError, CounterPCMReader)
 
         #split header and footer into distinct chunks
         header_len = len(header)
         footer_len = len(footer)
+        comm_found = False
         blocks = []
         try:
             #read everything from start of header to "SSND<size>"
             #chunk header
             r = BitstreamReader(cStringIO.StringIO(header), 0)
-            (form, size, aiff) = r.parse("4b 32u 4b")
-            if ((form != "FORM") or (aiff != "AIFF")):
-                #FIXME
-                raise EncodingError("invalid AIFF header")
+            (form, remaining_size, aiff) = r.parse("4b 32u 4b")
+            if (form != "FORM"):
+                from .text import ERR_AIFF_NOT_AIFF
+                raise EncodingError(ERR_AIFF_NOT_AIFF)
+            elif (aiff != "AIFF"):
+                from .text import ERR_AIFF_INVALID_AIFF
+                raise EncodingError(ERR_AIFF_INVALID_AIFF)
             else:
                 block_data = BitstreamRecorder(0)
-                block_data.build("4b 32u 4b", (form, size, aiff))
+                block_data.build("4b 32u 4b", (form, remaining_size, aiff))
                 blocks.append(Flac_APPLICATION("aiff", block_data.data()))
+                total_size = remaining_size + 8
                 header_len -= format_byte_size("4b 32u 4b")
 
             while (header_len):
                 block_data = BitstreamRecorder(0)
                 (chunk_id, chunk_size) = r.parse("4b 32u")
-                header_len -= format_byte_size("4b 32u")
-                block_data.build("4b 32u", (chunk_id, chunk_size))
+                #ensure chunk ID is valid
+                if (not frozenset(chunk_id).issubset(
+                        AiffAudio.PRINTABLE_ASCII)):
+                    from .text import ERR_AIFF_INVALID_CHUNK
+                    raise EncodingError(ERR_AIFF_INVALID_CHUNK)
+                else:
+                    header_len -= format_byte_size("4b 32u")
+                    block_data.build("4b 32u", (chunk_id, chunk_size))
 
-                if (chunk_id != "SSND"):
+                if (chunk_id == "SSND"):
+                    #transfer only "SSND" chunk header to APPLICATION block
+                    #(including 8 bytes after ID/size header)
+                    if (header_len > 8):
+                        from .text import ERR_AIFF_HEADER_EXTRA_SSND
+                        raise EncodingError(ERR_AIFF_HEADER_EXTRA_SSND)
+                    elif (header_len < 8):
+                        from .text import ERR_AIFF_HEADER_MISSING_SSND
+                        raise EncodingError(ERR_AIFF_HEADER_MISSING_SSND)
+                    elif (not comm_found):
+                        from .text import ERR_AIFF_NO_COMM_CHUNK
+                        raise EncodingError(ERR_AIFF_NO_COMM_CHUNK)
+                    else:
+                        block_data.write_bytes(r.read_bytes(8))
+                        blocks.append(
+                            Flac_APPLICATION("aiff", block_data.data()))
+                        ssnd_chunk_size = (chunk_size - 8)
+                        break
+                elif (chunk_id == "COMM"):
+                    if (not comm_found):
+                        comm_found = True
+                        if (chunk_size % 2):
+                            #transfer padded chunk to APPLICATION block
+                            block_data.write_bytes(r.read_bytes(chunk_size + 1))
+                            header_len -= (chunk_size + 1)
+                        else:
+                            #transfer un-padded chunk to APPLICATION block
+                            block_data.write_bytes(r.read_bytes(chunk_size))
+                            header_len -= chunk_size
+                        blocks.append(
+                            Flac_APPLICATION("aiff", block_data.data()))
+                    else:
+                        from .text import ERR_AIFF_MULTIPLE_COMM_CHUNKS
+                        raise EncodingError(ERR_AIFF_MULTIPLE_COMM_CHUNKS)
+                else:
                     if (chunk_size % 2):
                         #transfer padded chunk to APPLICATION block
                         block_data.write_bytes(r.read_bytes(chunk_size + 1))
@@ -2138,53 +2183,75 @@ class FlacAudio(WaveContainer, AiffContainer):
                         header_len -= chunk_size
 
                     blocks.append(Flac_APPLICATION("aiff", block_data.data()))
-                else:
-                    #transfer only "SSND" chunk header to APPLICATION block
-                    block_data.write_bytes(r.read_bytes(8))
-                    header_len -= 8
-                    blocks.append(
-                        Flac_APPLICATION("aiff", block_data.data()))
-                    if (header_len != 0):
-                        #FIXME
-                        raise EncodingError("extra data after 'SSND' chunk")
-                    else:
-                        data_chunk_size = chunk_size
-                        break
             else:
-                #FIXME
-                raise EncodingError("no 'SSND' chunk found")
+                from .text import ERR_AIFF_NO_SSND_CHUNK
+                raise EncodingError(ERR_AIFF_NO_SSND_CHUNK)
+        except IOError:
+            from .text import ERR_AIFF_HEADER_IOERROR
+            raise EncodingError(ERR_AIFF_HEADER_IOERROR)
 
+        try:
             #read everything from start of footer to end of footer
             r = BitstreamReader(cStringIO.StringIO(footer), 0)
             #skip initial footer pad byte
-            if (data_chunk_size % 2):
-                if (r.read_bytes(1) != chr(0)):
-                    #FIXME
-                    raise EncodingError("invalid 'SSND' chunk pad byte")
+            if (ssnd_chunk_size % 2):
+                r.skip_bytes(1)
                 footer_len -= 1
 
             while (footer_len):
                 block_data = BitstreamRecorder(0)
                 (chunk_id, chunk_size) = r.parse("4b 32u")
-                footer_len -= format_byte_size("4b 32u")
-                block_data.build("4b 32u", (chunk_id, chunk_size))
 
-                if (chunk_size % 2):
-                    #transfer padded chunk to APPLICATION block
-                    block_data.write_bytes(r.read_bytes(chunk_size + 1))
-                    footer_len -= (chunk_size + 1)
+                if (not frozenset(chunk_id).issubset(
+                        AiffAudio.PRINTABLE_ASCII)):
+                    #ensure chunk ID is valid
+                    from .text import ERR_AIFF_INVALID_CHUNK
+                    raise EncodingError(ERR_AIFF_INVALID_CHUNK)
+                elif (chunk_id == "COMM"):
+                    #multiple "COMM" chunks is an error
+                    from .text import ERR_AIFF_MULTIPLE_COMM_CHUNKS
+                    raise EncodingError(ERR_AIFF_MULTIPLE_COMM_CHUNKS)
+                elif (chunk_id == "SSND"):
+                    #multiple "SSND" chunks is an error
+                    from .text import ERR_AIFF_MULTIPLE_SSND_CHUNKS
+                    raise EncodingError(ERR_AIFF_MULTIPLE_SSND_CHUNKS)
                 else:
-                    #transfer un-padded chunk to APPLICATION block
-                    block_data.write_bytes(r.read_bytes(chunk_size))
-                    footer_len -= chunk_size
+                    footer_len -= format_byte_size("4b 32u")
+                    block_data.build("4b 32u", (chunk_id, chunk_size))
 
-                blocks.append(Flac_APPLICATION("aiff", block_data.data()))
+                    if (chunk_size % 2):
+                        #transfer padded chunk to APPLICATION block
+                        block_data.write_bytes(r.read_bytes(chunk_size + 1))
+                        footer_len -= (chunk_size + 1)
+                    else:
+                        #transfer un-padded chunk to APPLICATION block
+                        block_data.write_bytes(r.read_bytes(chunk_size))
+                        footer_len -= chunk_size
+
+                    blocks.append(Flac_APPLICATION("aiff", block_data.data()))
         except IOError:
-            #FIXME
-            raise EncodingError("I/O error reading header or footer")
+            from .text import ERR_AIFF_FOOTER_IOERROR
+            raise EncodingError(ERR_AIFF_FOOTER_IOERROR)
+
+        counter = CounterPCMReader(pcmreader)
 
         #perform standard FLAC encode from PCMReader
-        flac = cls.from_pcm(filename, pcmreader, compression)
+        flac = cls.from_pcm(filename, counter, compression)
+
+        ssnd_bytes_written = counter.bytes_written()
+
+        #ensure processed PCM data equals size of "SSND" chunk
+        if (ssnd_bytes_written != ssnd_chunk_size):
+            cls.__unlink__(filename)
+            from .text import ERR_AIFF_TRUNCATED_SSND_CHUNK
+            raise EncodingError(ERR_AIFF_TRUNCATED_SSND_CHUNK)
+
+        #ensure total size of header + PCM + footer matches aiff's header
+        if ((len(header) + ssnd_bytes_written + len(footer)) !=
+            total_size):
+            cls.__unlink__(filename)
+            from .text import ERR_AIFF_INVALID_SIZE
+            raise EncodingError(ERR_AIFF_INVALID_SIZE)
 
         #add chunks as APPLICATION metadata blocks
         metadata = flac.get_metadata()

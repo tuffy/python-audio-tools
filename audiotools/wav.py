@@ -1021,8 +1021,7 @@ class WaveAudio(WaveContainer):
             f.close()
 
             #ensure total size is correct
-            if ((len(header) + data_size + len(footer)) !=
-                total_size):
+            if ((len(header) + data_size + len(footer)) != total_size):
                 cls.__unlink__(filename)
                 from .text import ERR_WAV_INVALID_SIZE
                 raise EncodingError(ERR_WAV_INVALID_SIZE)

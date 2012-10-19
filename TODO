@@ -5805,7 +5805,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE py_decoders/SHNDecoder
 *** DONE py_decoders/ALACDecoder
 *** DONE py_decoders/WavPackDecoder
-** TODO Update .convert() method to use fewer temporary files
+** DONE Update .convert() method to use fewer temporary files
    .wav and .aiff containers with embedded chunks
    currently route data through actual .wav/.aiff files
    in order to pass those chunks to another format.
@@ -5849,7 +5849,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] convert(target_page, target_class, compression, progress)
 **** DONE Update programming documentation
 **** DONE Update unit tests
-*** TODO Update aiff containers to use new interface
+*** DONE Update aiff containers to use new interface
     AiffContainer.has_foreign_aiff_chunks()
     returns True if the instance has chunks to convert
 
@@ -5883,7 +5883,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] from_aiff(filename, header, pcmreader, footer, compression)
      - [X] convert(target_page, target_class, compression, progress)
 **** DONE Update programming documentation
-**** TODO Update unit tests
+**** DONE Update unit tests
 ** TODO Add unit tests for Python-based decoders
    Since Python-based codecs are so much slower
    it's impossible to make these as comprehensive as the C-based tests.
