@@ -47,6 +47,7 @@ if (audiotools.ui.AVAILABLE):
                     replay_gain=replay_gain,
                     next_track_callback=self.next_track),
                 [(track_name(track),
+                  int(track.seconds_length()),
                   (track, track.get_metadata())) for track in track_list],
                 sum([track.seconds_length() for track in track_list]))
 

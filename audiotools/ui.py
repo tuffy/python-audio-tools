@@ -2037,9 +2037,10 @@ try:
         def __init__(self, player, tracks, track_len):
             """player is a Player-compatible object
 
-            tracks is a list of (track_name, user_data) objects
+            tracks is a list of (track_name, seconds_length, user_data) tuples
             where "track_name" is a unicode string
             to place in the radio buttons
+            "seconds_length" is the length of the track in seconds
             and "user_data" is forwarded to calls to select_track()
 
             track_len is the length of all tracks in seconds"""
@@ -2060,10 +2061,6 @@ try:
             self.album_name = urwid.Text(u"")
             self.artist_name = urwid.Text(u"")
             self.tracknum = urwid.Text(u"")
-            self.length = urwid.Text(u"", align='right')
-            self.channels = urwid.Text(u"", align='right')
-            self.sample_rate = urwid.Text(u"", align='right')
-            self.bits_per_sample = urwid.Text(u"", align='right')
             self.play_pause_button = MappedButton(LAB_PLAY_BUTTON,
                                                   on_press=self.play_pause,
                                                   key_map={'tab': 'right'})
@@ -2107,11 +2104,7 @@ try:
                              urwid.Text(('header',
                                          u"%s : " % (LAB_PLAY_TRACK)),
                                         align='right')),
-                            ('fixed', 7, self.tracknum),
-                            ('fixed', 7, self.length),
-                            ('fixed', 5, self.channels),
-                            ('fixed', 10, self.sample_rate),
-                            ('fixed', 7, self.bits_per_sample)]),
+                            ('weight', 1, self.tracknum)]),
                     self.progress])
 
             controls = urwid.GridFlow([
@@ -2126,13 +2119,22 @@ try:
             controls.set_focus(1)
 
             self.track_group = []
-            self.track_list_widget = urwid.ListBox([
-                    MappedRadioButton(group=self.track_group,
-                                      label=track_label,
-                                      user_data=user_data,
-                                      on_state_change=self.select_track,
-                                      key_map={'tab': 'down'})
-                    for (track_label, user_data) in tracks])
+            self.track_list_widget = urwid.ListBox(
+                [urwid.Columns([("weight",
+                                 1,
+                                 MappedRadioButton(
+                                    group=self.track_group,
+                                    label=track_label,
+                                    user_data=user_data,
+                                    on_state_change=self.select_track,
+                                    key_map={'tab': 'down'})),
+                                ("fixed",
+                                 6,
+                                 urwid.Text(u"%2.1d:%2.2d" %
+                                            (seconds_length / 60,
+                                             seconds_length % 60),
+                                            align="right"))])
+                    for (track_label, seconds_length, user_data) in tracks])
 
             status = ((LAB_PLAY_STATUS if (len(tracks) > 1) else
                        LAB_PLAY_STATUS_1) % {"count": len(tracks),
@@ -2214,13 +2216,6 @@ try:
                 seconds_length = pcm_frames / sample_rate
             except ZeroDivisionError:
                 seconds_length = 0
-
-            self.length.set_text(LAB_TRACK_LENGTH %
-                                 (int(seconds_length) / 60,
-                                  int(seconds_length) % 60))
-            self.channels.set_text(u"%dch" % (channels))
-            self.sample_rate.set_text(audiotools.khz(sample_rate))
-            self.bits_per_sample.set_text(u"%dbps" % (bits_per_sample))
 
             self.progress.current = 0
             self.progress.done = pcm_frames

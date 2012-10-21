@@ -45,6 +45,7 @@ if (audiotools.ui.AVAILABLE):
                 [(metadata[track.track_number].track_name
                   if (metadata[track.track_number].track_name is not None)
                   else (u"track %2.2d" % (track.track_number)),
+                  track.length() / 75,
                   (track, metadata[track.track_number]))
                  for track in track_list],
                 cdda.length() / 75)
