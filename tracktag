@@ -402,7 +402,9 @@ if (__name__ == '__main__'):
                 for attr in audiotools.MetaData.FIELD_ORDER:
                     if (getattr(options, "update_%s" % (attr)) is not None):
                         setattr(metadata, attr,
-                                getattr(options, "update_%s" % (attr)))
+                                getattr(options,
+                                        "update_%s" % (attr)).decode(
+                                audiotools.FS_ENCODING))
 
                 #apply comment file across all metadata choices
                 if (comment_file is not None):
