@@ -3482,6 +3482,7 @@ class tracktag(UtilTest):
                 f.close()
 
                 options = self.populate_options(options)
+
                 self.assertEqual(
                     self.__run_app__(["tracktag"] +
                                      options +
@@ -4183,8 +4184,6 @@ class covertag(UtilTest):
              "--other-image"],
             ["image.jpg",  #check image path arguments
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046.jpg'.encode('utf-8')]):
-            print file_path,option,image_path
-
             if (os.path.isfile(file_path)):
                 os.unlink(file_path)
             if (os.path.isfile(image_path)):

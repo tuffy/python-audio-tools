@@ -185,6 +185,12 @@ class OpusAudio(VorbisAudio):
         for page in data_pages:
             updated_ogg.write_page(*page)
 
+    @classmethod
+    def supports_replay_gain(cls):
+        """returns True if this class supports ReplayGain"""
+
+        return False
+
     def set_metadata(self, metadata):
         """takes a MetaData object and sets this track's metadata
 
