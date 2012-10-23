@@ -17,7 +17,8 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import (AudioFile, InvalidFile, ChannelMask)
+from audiotools import (AudioFile, InvalidFile)
+from .vorbis import VorbisAudio,VorbisChannelMask
 from .vorbiscomment import VorbisComment
 
 class InvalidOpus(InvalidFile):
@@ -28,7 +29,7 @@ class InvalidOpus(InvalidFile):
 #Vorbis File
 #######################
 
-class OpusAudio(AudioFile):
+class OpusAudio(VorbisAudio):
     """an Opus file"""
 
     SUFFIX = "opus"
@@ -79,7 +80,7 @@ class OpusAudio(AudioFile):
                  input_sample_rate,
                  output_gain,
                  mapping_family) = ogg_reader.parse(
-                    "8b 8u 8u 16u 32u 16u 8u")
+                    "8b 8u 8u 16u 32u 16s 8u")
 
                 if (opushead != "OpusHead"):
                     from .text import ERR_OPUS_INVALID_TYPE
@@ -92,37 +93,27 @@ class OpusAudio(AudioFile):
                     raise InvalidOpus(ERR_OPUS_INVALID_CHANNELS)
 
                 #FIXME - assign channel mask from mapping family
-                if (self.__channels__ == 1):
-                    self.__channel_mask__ = 0x4
-                elif (self.__channels__ == 2):
-                    self.__channel_mask__ = 0x3
+                if (mapping_family == 0):
+                    if (self.__channels__ == 1):
+                        self.__channel_mask__ = VorbisChannelMask(0x4)
+                    elif (self.__channels__ == 2):
+                        self.__channel_mask__ = VorbisChannelMask(0x3)
+                    else:
+                        self.__channel_mask__ = VorbisChannelMask(0)
                 else:
-                    raise NotImplementedError()
+                    (stream_count,
+                     coupled_stream_count) = ogg_reader.parse("8u 8u")
+                    if (self.__channels__ !=
+                        ((coupled_stream_count * 2) +
+                         (stream_count - coupled_stream_count))):
+                        from .text import ERR_OPUS_INVALID_CHANNELS
+                        raise InvalidOpus(ERR_OPUS_INVALID_CHANNELS)
+                    channel_mapping = [ogg_reader.read(8)
+                                       for i in xrange(self.__channels__)]
             finally:
                 f.close()
         except IOError, msg:
             raise InvalidOpus(str(msg))
-
-
-    def bits_per_sample(self):
-        """returns an integer number of bits-per-sample this track contains"""
-
-        return 16
-
-    def channels(self):
-        """returns an integer number of channels this track contains"""
-
-        return self.__channels__
-
-    def channel_mask(self):
-        """returns a ChannelMask object of this track's channel layout"""
-
-        return self.__channel_mask__
-
-    def lossless(self):
-        """returns True if this track's data is stored losslessly"""
-
-        return False
 
     def update_metadata(self, metadata):
         """takes this track's current MetaData object
@@ -313,12 +304,26 @@ class OpusAudio(AudioFile):
                                stdout=subprocess.PIPE,
                                stderr=file(os.devnull, "a"))
 
-        return PCMReader(sub.stdout,
+        pcmreader = PCMReader(sub.stdout,
                          sample_rate=self.sample_rate(),
                          channels=self.channels(),
                          channel_mask=int(self.channel_mask()),
                          bits_per_sample=self.bits_per_sample(),
                          process=sub)
+
+        if (self.channels() <= 2):
+            return pcmreader
+        elif (self.channels() <= 8):
+            from . import ReorderedPCMReader
+
+            standard_channel_mask = self.channel_mask()
+            vorbis_channel_mask = VorbisChannelMask(self.channel_mask())
+            return ReorderedPCMReader(
+                pcmreader,
+                [vorbis_channel_mask.channels().index(channel) for channel in
+                 standard_channel_mask.channels()])
+        else:
+            return pcmreader
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):

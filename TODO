@@ -4893,6 +4893,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] src/encoders/shn.c
    - [X] src/encoders/wavpack.c
 * TODO handle AIFF offset/block size in SSND chunk
+* TODO Add raop support
+  It'd be useful to have support for AirPlay devices
+  using the output routines from raop_play as a base.
 * TODO Assimilate external codecs
   More of a long-term plan than anything else.
   It would be best to have as few external program
@@ -4977,6 +4980,17 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    This compresses well and does seem to be used in some circles,
    so it would be a good idea to add.
    The tricky part is that its reference implementation doesn't compile well.
+* TODO Make decoder streams seekable
+  PCMReader.seek(pcm_frames) -> pcm_frames skipped
+  could seek to the closest position in the stream to the given frames
+  without going over, and return the number of frames actually skipped.
+
+  This could dramatically improve the performance of
+  PCMReaderWindow and enable more stream features down the line.
+** TODO decoders.ALACDecoder
+** TODO decoders.FlacDecoder
+** TODO decoders.SHNDecoder
+** TODO decoders.WavPackDecoder
 * TODO Finish version 2.19
 ** DONE Update PCMReader.read() to take a PCM frame count instead of bytes
    Taking a byte count as an argument is a relic from the days
@@ -5887,12 +5901,30 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Add pause()/resume() methods to low-level output players
    This will hopefully make pausing more responsive
    and work better than simply emptying the output buffer.
+** TODO Handle multi-channel .opus files properly
+*** TODO Add unit tests
+** TODO Have cdplay play properly
+   Using the ripping routines for playback doesn't work well
+   now that the player routines aren't as threaded as before.
+   libcdio offers playback functions which should output audio directly
+   but may not offer progress indicators
 ** TODO Add unit tests for Python-based decoders
    Since Python-based codecs are so much slower
    it's impossible to make these as comprehensive as the C-based tests.
    So we'll only be able to test the basics using very small streams
    against the output of the C-based decoders.
+*** TODO FlacDecoder
+*** TODO ALACDecoder
+*** TODO WavPackDecoder
+*** TODO SHNDecoder
 ** TODO Add unit tests for Python-based encoders
+*** TODO encode_flac
+*** TODO encode_mdat
+*** TODO encode_wavpack
+*** TODO encode_shn
+** TODO Add volume control to low-level output players
+   It should be possible to adjust the volume from trackplay/cdplay
+   without adjusting the output data itself.
 ** TODO Add optional interactive modes to utilities
    Now that Urwid is being used for editxmcd, it might be helpful
    to add optional console-based interactive modes to the other tools.
@@ -5927,9 +5959,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE trackrename
 *** DONE tracksplit
 *** DONE tracktag
-** TODO Add volume control to low-level output players
-   It should be possible to adjust the volume from trackplay/cdplay
-   without adjusting the output data itself.
 ** TODO Deprecate little-used / poorly-tested bits
    Although there's a risk of annoying people by taking out
    stuff they might be using, some utilities and formats

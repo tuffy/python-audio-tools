@@ -3881,7 +3881,8 @@ class TestMultiChannel(unittest.TestCase):
             self.flac_channel_masks.append(audiotools.m4a.M4AAudio_nero)
 
         #these support a reordered subset of ChannelMasks up to 8 channels
-        self.vorbis_channel_masks = [audiotools.VorbisAudio]
+        self.vorbis_channel_masks = [audiotools.VorbisAudio,
+                                     audiotools.OpusAudio]
 
     def __test_mask_blank__(self, audio_class, channel_mask):
         temp_file = tempfile.NamedTemporaryFile(suffix="." + audio_class.SUFFIX)
