@@ -1616,7 +1616,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                                   bits_per_sample=self.bits_per_sample())
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None):
+    def from_pcm(cls, filename, pcmreader, compression=None,
+                 encoding_function=None):
         """encodes a new file from PCM data
 
         takes a filename string, PCMReader object
@@ -1715,7 +1716,8 @@ class FlacAudio(WaveContainer, AiffContainer):
             channel_mask = int(pcmreader.channel_mask)
 
         try:
-            offsets = encode_flac(
+            offsets = (encode_flac if encoding_function is None
+                       else encoding_function)(
                 filename,
                 pcmreader=BufferedPCMReader(pcmreader),
                 **encoding_options)
@@ -2526,10 +2528,14 @@ class FlacAudio(WaveContainer, AiffContainer):
                 if (stream_offset > 0):
                     from .text import CLEAN_FLAC_REMOVE_ID3V2
                     fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V2)
-                input_f.seek(-128, 2)
-                if (input_f.read(3) == 'TAG'):
-                    from .text import CLEAN_FLAC_REMOVE_ID3V1
-                    fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V1)
+                try:
+                    input_f.seek(-128, 2)
+                    if (input_f.read(3) == 'TAG'):
+                        from .text import CLEAN_FLAC_REMOVE_ID3V1
+                        fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V1)
+                except IOError:
+                    #file isn't 128 bytes long
+                    pass
 
                 #fix empty MD5SUM
                 if (self.__md5__ == chr(0) * 16):
@@ -2581,11 +2587,15 @@ class FlacAudio(WaveContainer, AiffContainer):
                     fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V2)
                     stream_size -= stream_offset
 
-                input_f.seek(-128, 2)
-                if (input_f.read(3) == 'TAG'):
-                    from .text import CLEAN_FLAC_REMOVE_ID3V1
-                    fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V1)
-                    stream_size -= 128
+                try:
+                    input_f.seek(-128, 2)
+                    if (input_f.read(3) == 'TAG'):
+                        from .text import CLEAN_FLAC_REMOVE_ID3V1
+                        fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V1)
+                        stream_size -= 128
+                except IOError:
+                    #file isn't 128 bytes long
+                    pass
 
                 output_f = open(output_filename, "wb")
                 try:

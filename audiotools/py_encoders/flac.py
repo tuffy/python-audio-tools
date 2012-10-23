@@ -92,13 +92,22 @@ class Encoding_Options:
             self.qlp_precision = 13
 
 
-def encode_flac(filename, pcmreader,
+def encode_flac(filename,
+                pcmreader,
                 block_size=4096,
                 max_lpc_order=8,
-                adaptive_mid_side=False,
+                min_residual_partition_order=0,
+                max_residual_partition_order=5,
                 mid_side=True,
+                adaptive_mid_side=False,
                 exhaustive_model_search=False,
-                max_residual_partition_order=5):
+                disable_verbatim_subframes=False,
+                disable_constant_subframes=False,
+                disable_fixed_subframes=False,
+                disable_lpc_subframes=False):
+
+    current_offset = 0
+    frame_offsets = []
 
     options = Encoding_Options(block_size,
                                max_lpc_order,
@@ -131,12 +140,12 @@ def encode_flac(filename, pcmreader,
     flac_frame = BitstreamRecorder(0)
 
     while (len(frame) > 0):
-
+        frame_offsets.append((current_offset, frame.frames))
         streaminfo.input_update(frame)
 
         flac_frame.reset()
         encode_flac_frame(flac_frame, pcmreader, options, frame_number, frame)
-
+        current_offset += flac_frame.bytes()
         streaminfo.output_update(flac_frame)
 
         flac_frame.copy(writer)
@@ -148,6 +157,8 @@ def encode_flac(filename, pcmreader,
     output_file.seek(8, 0)
     streaminfo.write(writer)
     writer.close()
+
+    return frame_offsets
 
 
 def encode_flac_frame(writer, pcmreader, options, frame_number, frame):
