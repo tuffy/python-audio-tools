@@ -30,7 +30,7 @@ import time
 import test_streams
 from hashlib import md5
 
-from test import (parser, BLANK_PCM_Reader, Combinations,
+from test import (parser, BLANK_PCM_Reader, Combinations, Possibilities,
                   EXACT_BLANK_PCM_Reader, RANDOM_PCM_Reader,
                   TEST_COVER1, TEST_COVER2, TEST_COVER3, TEST_COVER4,
                   HUGE_BMP)
@@ -323,6 +323,39 @@ class cd2track(UtilTest):
                         else:
                             self.assertEqual(metadata.album_total, None)
 
+    @UTIL_CD2TRACK
+    def test_unicode(self):
+        from shutil import rmtree
+
+        for (output_directory,
+             format_string) in Possibilities(
+            ["testdir",
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046'.encode('utf-8')],
+            ["%(track_number)d.%(suffix)s",
+             u'%(track_number)d - abc\xe0\xe7\xe8\u3041\u3044\u3046.%(suffix)s'.encode('utf-8')]):
+            if (os.path.isdir(output_directory)):
+                rmtree(output_directory)
+
+            self.assertEqual(
+                self.__run_app__(
+                    ["cd2track", "-c", self.cue_file,
+                     "--type", "flac",
+                     "--format", format_string,
+                     "--dir", output_directory]), 0)
+
+            tracks = [audiotools.open(
+                    os.path.join(output_directory,
+                                 format_string % {"track_number":i,
+                                                  "suffix":"flac"}))
+                      for i in range(1, 4)]
+
+            self.assertEqual(sum([t.total_frames() for t in tracks]),
+                             793800)
+
+            if (os.path.isdir(output_directory)):
+                rmtree(output_directory)
+
+
     def populate_bad_options(self, options):
         populated = ["--no-musicbrainz", "--no-freedb"]
 
@@ -603,6 +636,52 @@ class coverdump(UtilTest):
                         u"",
                         i)
                     self.assertEqual(output_image, image)
+
+    @UTIL_COVERDUMP
+    def test_unicode(self):
+        from shutil import rmtree
+
+        for (output_directory,
+             file_path,
+             prefix) in Possibilities(
+            ["testdir",    #check --dir
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046'.encode('utf-8')],
+            ["test.flac",  #check filename arguments
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
+            [None,         #check --prefix
+             "prefix_",
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046_'.encode('utf-8')]):
+            if (os.path.isdir(output_directory)):
+                rmtree(output_directory)
+            if (os.path.isfile(file_path)):
+                os.unlink(file_path)
+
+            track = audiotools.FlacAudio.from_pcm(
+                file_path,
+                BLANK_PCM_Reader(1))
+            metadata = track.get_metadata()
+            metadata.add_image(audiotools.Image.new(TEST_COVER1,
+                                                    u"",
+                                                    0))
+            track.update_metadata(metadata)
+
+            self.assertEqual(
+                self.__run_app__(
+                    ["coverdump",
+                     "--dir", output_directory] +
+                    (["--prefix", prefix] if prefix is not None else []) +
+                    [file_path]), 0)
+
+            self.assertEqual(
+                os.path.isfile(
+                    os.path.join(output_directory,
+                                 (prefix if prefix is not None else "") +
+                                 "front_cover.jpg")), True)
+
+            if (os.path.isdir(output_directory)):
+                rmtree(output_directory)
+            if (os.path.isfile(file_path)):
+                os.unlink(file_path)
 
     @UTIL_COVERDUMP
     def test_errors(self):
@@ -1001,6 +1080,77 @@ class track2track(UtilTest):
                     else:
                         if ("--replay-gain" in options):
                             self.__check_info__(RG_REPLAYGAIN_APPLIED)
+
+    @UTIL_TRACK2TRACK
+    def test_unicode(self):
+        from shutil import rmtree
+
+        for (output_directory,
+             format_string,
+             file_path) in Possibilities(
+            ["testdir",        #check --dir
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046'.encode('utf-8')],
+            ["new_file.flac",  #check --format]
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046-2.flac'.encode('utf-8')],
+            ["file.flac",      #check filename arguments
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')]):
+            if (os.path.isdir(output_directory)):
+                rmtree(output_directory)
+            if (os.path.isfile(file_path)):
+                os.unlink(file_path)
+
+            track = audiotools.FlacAudio.from_pcm(
+                file_path,
+                BLANK_PCM_Reader(1))
+
+            self.assertEqual(
+                self.__run_app__(
+                    ["track2track",
+                     "--dir", output_directory,
+                     "--format", format_string,
+                     file_path]), 0)
+
+            self.assertEqual(
+                audiotools.pcm_frame_cmp(
+                    track.to_pcm(),
+                    audiotools.open(os.path.join(output_directory,
+                                                 format_string)).to_pcm()),
+                None)
+
+            if (os.path.isdir(output_directory)):
+                rmtree(output_directory)
+            if (os.path.isfile(file_path)):
+                os.unlink(file_path)
+
+        for (file_path,
+             output_path) in Possibilities(
+            ["file.flac",        #check filename arguments
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
+            ["output_file.flac", #check --output argument
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046-2.flac'.encode('utf-8')]):
+            if (os.path.isfile(output_path)):
+                os.unlink(output_path)
+            if (os.path.isfile(file_path)):
+                os.unlink(file_path)
+
+            track = audiotools.FlacAudio.from_pcm(
+                file_path,
+                BLANK_PCM_Reader(1))
+
+            self.assertEqual(
+                self.__run_app__(
+                    ["track2track", "-o", output_path, file_path]), 0)
+
+            self.assertEqual(
+                audiotools.pcm_frame_cmp(
+                    track.to_pcm(),
+                    audiotools.open(output_path).to_pcm()),
+                None)
+
+            if (os.path.isfile(output_path)):
+                os.unlink(output_path)
+            if (os.path.isfile(file_path)):
+                os.unlink(file_path)
 
     @UTIL_TRACK2TRACK
     def test_errors(self):
@@ -1666,6 +1816,63 @@ class trackcat(UtilTest):
                 self.assertEqual(cuesheet.pcm_lengths(793800, 44100),
                                  [220500, 264600, 308700])
 
+    @UTIL_TRACKCAT
+    def test_unicode(self):
+        for (input_filenames,
+             output_path,
+             cuesheet_file) in Possibilities(
+            #check filename arguments
+            [["track%d.flac" % (i) for i in range(3)],
+             [(u'abc\xe0\xe7\xe8\u3041\u3044\u3046-%d.flac' %
+               (i)).encode('utf-8') for i in range(3)]],
+            #check output filename argument
+            ["output.flac",
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046-out.flac'.encode('utf-8')],
+            #check --cue argument
+            [None,
+             "cuesheet.cue",
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.cue'.encode('utf-8')]):
+
+            for input_filename in input_filenames:
+                if (os.path.isfile(input_filename)):
+                    os.unlink(input_filename)
+            if (os.path.isfile(output_path)):
+                os.unlink(output_path)
+            if ((cuesheet_file is not None) and
+                os.path.isfile(cuesheet_file)):
+                os.unlink(cuesheet_file)
+
+            tracks = [audiotools.FlacAudio.from_pcm(
+                    input_filename,
+                    EXACT_BLANK_PCM_Reader(pcm_frames))
+                      for (input_filename, pcm_frames) in
+                      zip(input_filenames, [220500, 264600, 308700])]
+
+            if (cuesheet_file is not None):
+                f = open(cuesheet_file, "wb")
+                f.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC JPPI00652340\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC JPPI00652349\r\n    INDEX 00 00:03:00\r\n    INDEX 01 00:05:00\r\n  TRACK 03 AUDIO\r\n    ISRC JPPI00652341\r\n    INDEX 00 00:9:00\r\n    INDEX 01 00:11:00\r\n')
+                f.close()
+
+            self.assertEqual(
+                self.__run_app__(
+                    ["trackcat"] + input_filenames +
+                    ([cuesheet_file] if cuesheet_file is not None else []) +
+                    ["--output", output_path]), 0)
+
+            self.assertEqual(
+                audiotools.pcm_frame_cmp(
+                    audiotools.PCMCat(iter([t.to_pcm() for t in tracks])),
+                    audiotools.open(output_path).to_pcm()), None)
+
+            for input_filename in input_filenames:
+                if (os.path.isfile(input_filename)):
+                    os.unlink(input_filename)
+            if (os.path.isfile(output_path)):
+                os.unlink(output_path)
+            if ((cuesheet_file is not None) and
+                os.path.isfile(cuesheet_file)):
+                os.unlink(cuesheet_file)
+
 
 class trackcmp(UtilTest):
     @UTIL_TRACKCMP
@@ -1937,6 +2144,39 @@ class trackcmp(UtilTest):
                     LAB_TRACKCMP_OK,
                     i, 3))
 
+    @UTIL_TRACKCMP
+    def test_unicode(self):
+        for (file1, file2) in Possibilities(
+            ["file1.flac",
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046-1.flac'.encode('utf-8')],
+            ["file2.flac",
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046-2.flac'.encode('utf-8')]):
+            if (os.path.isfile(file1)):
+                os.unlink(file1)
+            if (os.path.isfile(file2)):
+                os.unlink(file2)
+
+            track1 = audiotools.FlacAudio.from_pcm(
+                file1,
+                BLANK_PCM_Reader(1))
+            track2 = audiotools.FlacAudio.from_pcm(
+                file2,
+                BLANK_PCM_Reader(1))
+
+            self.assertEqual(
+                self.__run_app__(
+                    ["trackcmp", file1, file2]), 0)
+
+            self.assertEqual(
+                audiotools.pcm_frame_cmp(
+                    track1.to_pcm(),
+                    track2.to_pcm()), None)
+
+            if (os.path.isfile(file1)):
+                os.unlink(file1)
+            if (os.path.isfile(file2)):
+                os.unlink(file2)
+
 
 class trackinfo(UtilTest):
     METADATA_FORMATS = (audiotools.FlacAudio,
@@ -2035,6 +2275,24 @@ class trackinfo(UtilTest):
                             LAB_TRACKINFO_CHANNEL %
                             {"channel_number":2,
                              "channel_name":MASK_FRONT_RIGHT})
+
+    @UTIL_TRACKINFO
+    def test_unicode(self):
+        for filename in [
+            "track.flac",
+            u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')]:
+            if (os.path.isfile(filename)):
+                os.unlink(filename)
+
+            track = audiotools.FlacAudio.from_pcm(
+                filename,
+                BLANK_PCM_Reader(1))
+
+            self.assertEqual(
+                self.__run_app__(["trackinfo", filename]), 0)
+
+            if (os.path.isfile(filename)):
+                os.unlink(filename)
 
 
 class tracklength(UtilTest):
@@ -2208,6 +2466,24 @@ class tracklength(UtilTest):
             for f in os.listdir(tempdir):
                 os.unlink(os.path.join(tempdir, f))
             os.rmdir(tempdir)
+
+    @UTIL_TRACKLENGTH
+    def test_unicode(self):
+        for filename in [
+            "track.flac",
+            u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')]:
+            if (os.path.isfile(filename)):
+                os.unlink(filename)
+
+            track = audiotools.FlacAudio.from_pcm(
+                filename,
+                BLANK_PCM_Reader(1))
+
+            self.assertEqual(
+                self.__run_app__(["tracklength", filename]), 0)
+
+            if (os.path.isfile(filename)):
+                os.unlink(filename)
 
 
 class tracklint(UtilTest):
@@ -2910,6 +3186,56 @@ class tracklint(UtilTest):
                 track_file.close()
 
     @UTIL_TRACKLINT
+    def test_unicode(self):
+        for (input_filename,
+             backup_database) in Possibilities(
+            ["track.flac",
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
+            ["undo.db",
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.db'.encode('utf-8')]):
+            if (os.path.isfile(input_filename)):
+                os.unlink(input_filename)
+            if (os.path.isfile(backup_database)):
+                os.unlink(backup_database)
+
+            track = audiotools.FlacAudio.from_pcm(
+                input_filename,
+                BLANK_PCM_Reader(1))
+
+            metadata = track.get_metadata()
+            metadata.track_name = u"Track Name "
+            track.update_metadata(metadata)
+
+            self.assertEqual(
+                audiotools.open(input_filename).get_metadata().track_name,
+                u"Track Name ")
+
+            self.assertEqual(
+                self.__run_app__(["tracklint",
+                                  "--fix",
+                                  "--db", backup_database,
+                                  input_filename]), 0)
+
+            self.assertEqual(
+                audiotools.open(input_filename).get_metadata().track_name,
+                u"Track Name")
+
+            self.assertEqual(
+                self.__run_app__(["tracklint",
+                                  "--undo",
+                                  "--db", backup_database,
+                                  input_filename]), 0)
+
+            self.assertEqual(
+                audiotools.open(input_filename).get_metadata().track_name,
+                u"Track Name ")
+
+            if (os.path.isfile(input_filename)):
+                os.unlink(input_filename)
+            if (os.path.isfile(backup_database)):
+                os.unlink(backup_database)
+
+    @UTIL_TRACKLINT
     def test_errors1(self):
         from audiotools.text import (ERR_NO_UNDO_DB,
                                      ERR_OPEN_IOERROR,
@@ -3256,6 +3582,84 @@ class tracktag(UtilTest):
                 finally:
                     track_file.close()
 
+    @UTIL_TRACKTAG
+    def test_unicode(self):
+        for (input_filename,
+             (argument, attribute),
+             unicode_value) in Possibilities(
+            ["track.flac",  #check filename arguments
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
+            [("--name", "track_name"),  #check text arguments
+             ("--artist", "artist_name"),
+             ("--album", "album_name"),
+             ("--performer", "performer_name"),
+             ("--composer", "composer_name"),
+             ("--conductor", "conductor_name"),
+             ("--catalog", "catalog"),
+             ("--ISRC", "ISRC"),
+             ("--publisher", "publisher"),
+             ("--media-type", "media"),
+             ("--year", "year"),
+             ("--date", "date"),
+             ("--copyright", "copyright"),
+             ("--comment", "comment")],
+            [u"text",
+             u'value abc\xe0\xe7\xe8\u3041\u3044\u3046']):
+            self.assert_(isinstance(unicode_value, unicode))
+
+            if (os.path.isfile(input_filename)):
+                os.unlink(input_filename)
+
+            track = audiotools.FlacAudio.from_pcm(
+                input_filename,
+                BLANK_PCM_Reader(1))
+
+            self.assertEqual(
+                self.__run_app__(["tracktag",
+                                  argument,
+                                  unicode_value.encode('utf-8'),
+                                  input_filename]), 0)
+
+            set_value = getattr(audiotools.open(input_filename).get_metadata(),
+                                attribute)
+            if (set_value is not None):
+                self.assertEqual(set_value, unicode_value)
+
+            if (os.path.isfile(input_filename)):
+                os.unlink(input_filename)
+
+        for (input_filename,
+             comment_filename) in Possibilities(
+            ["track.flac",     #check input filename arguments
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
+            ["comment.txt",    #check comment filename arguments
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.txt'.encode('utf-8')]):
+            if (os.path.isfile(input_filename)):
+                os.unlink(input_filename)
+            if (os.path.isfile(comment_filename)):
+                os.unlink(comment_filename)
+
+            track = audiotools.FlacAudio.from_pcm(
+                input_filename,
+                BLANK_PCM_Reader(1))
+
+            f = open(comment_filename, "wb")
+            f.write("Test Text")
+            f.close()
+
+            self.assertEqual(
+                self.__run_app__(["tracktag",
+                                  "--comment-file", comment_filename,
+                                  input_filename]), 0)
+
+            self.assertEqual(
+                audiotools.open(input_filename).get_metadata().comment,
+                u"Test Text")
+
+            if (os.path.isfile(input_filename)):
+                os.unlink(input_filename)
+            if (os.path.isfile(comment_filename)):
+                os.unlink(comment_filename)
 
 class tracktag_errors(UtilTest):
     @UTIL_TRACKTAG
@@ -3588,7 +3992,6 @@ class covertag(UtilTest):
             ISRC=u'ABCD00000000',
             comment=u"Comment 1")
 
-
         self.image = audiotools.Image.new(TEST_COVER1, u"", 0)
         self.initial_metadata.add_image(self.image)
 
@@ -3764,6 +4167,49 @@ class covertag(UtilTest):
                     self.assertEqual(metadata.other_images(),
                                      [])
 
+    @UTIL_COVERTAG
+    def test_unicode(self):
+        from shutil import rmtree
+
+        for (file_path,
+             option,
+             image_path) in Possibilities(
+            ["test.flac",  #check filename arguments
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
+            ["--front-cover",
+             "--back-cover",
+             "--leaflet",
+             "--media",
+             "--other-image"],
+            ["image.jpg",  #check image path arguments
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.jpg'.encode('utf-8')]):
+            print file_path,option,image_path
+
+            if (os.path.isfile(file_path)):
+                os.unlink(file_path)
+            if (os.path.isfile(image_path)):
+                os.unlink(image_path)
+
+            track = audiotools.FlacAudio.from_pcm(
+                file_path,
+                BLANK_PCM_Reader(1))
+
+            f = open(image_path, "wb")
+            f.write(TEST_COVER1)
+            f.close()
+
+            self.assertEqual(
+                self.__run_app__(
+                    ["covertag", option, image_path, file_path]), 0)
+
+            self.assertEqual(
+                audiotools.open(file_path).get_metadata().images()[0].data,
+                TEST_COVER1)
+
+            if (os.path.isfile(file_path)):
+                os.unlink(file_path)
+            if (os.path.isfile(image_path)):
+                os.unlink(image_path)
 
 class covertag_errors(UtilTest):
     @UTIL_COVERTAG
@@ -4022,6 +4468,38 @@ class trackrename(UtilTest):
             os.unlink(track.filename)
             os.rmdir(tempdir)
 
+    @UTIL_TRACKRENAME
+    def test_unicode(self):
+        for (file_path,
+             format_string) in Possibilities(
+            ["file.flac",
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
+            ["new_file.flac",
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046-2.flac'.encode('utf-8')]):
+            print file_path,format_string
+            if (os.path.isfile(file_path)):
+                os.unlink(file_path)
+            if (os.path.isfile(format_string)):
+                os.unlink(format_string)
+
+            track = audiotools.FlacAudio.from_pcm(
+                file_path,
+                BLANK_PCM_Reader(1))
+
+            self.assertEqual(os.path.isfile(file_path), True)
+            self.assertEqual(os.path.isfile(format_string), False)
+
+            self.assertEqual(
+                self.__run_app__(
+                    ["trackrename", "--format", format_string, file_path]), 0)
+
+            self.assertEqual(os.path.isfile(file_path), False)
+            self.assertEqual(os.path.isfile(format_string), True)
+
+            if (os.path.isfile(file_path)):
+                os.unlink(file_path)
+            if (os.path.isfile(format_string)):
+                os.unlink(format_string)
 
 class tracksplit(UtilTest):
     @UTIL_TRACKSPLIT
@@ -4357,6 +4835,71 @@ class tracksplit(UtilTest):
                         metadata = output_tracks[i].get_metadata()
                         if (metadata is not None):
                             self.assertEqual(metadata.ISRC, ISRC)
+
+    @UTIL_TRACKSPLIT
+    def test_unicode(self):
+        import shutil
+
+        for (input_filename,
+             cuesheet_file,
+             output_directory,
+             output_format) in Possibilities(
+            ["track.flac",    #check filename arguments
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
+            ["cuesheet.cue",  #check --cue argument
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.cue'.encode('utf-8')],
+            ["testdir",       #check --dir argument
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046-dir'.encode('utf-8')],
+            ["%(track_number)d.%(suffix)s",  #check --format argument
+             u'%(track_number)d - abc\xe0\xe7\xe8\u3041\u3044\u3046.%(suffix)s'.encode('utf-8')]):
+            print input_filename,cuesheet_file,output_directory,output_format
+
+            if (os.path.isfile(input_filename)):
+                os.unlink(input_filename)
+            if (os.path.isfile(cuesheet_file)):
+                os.unlink(cuesheet_file)
+            if (os.path.isdir(output_directory)):
+                shutil.rmtree(output_directory)
+
+            track = audiotools.FlacAudio.from_pcm(
+                input_filename,
+                EXACT_BLANK_PCM_Reader(sum([220500, 264600, 308700])))
+
+            f = open(cuesheet_file, "wb")
+            f.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC JPPI00652340\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC JPPI00652349\r\n    INDEX 00 00:03:00\r\n    INDEX 01 00:05:00\r\n  TRACK 03 AUDIO\r\n    ISRC JPPI00652341\r\n    INDEX 00 00:9:00\r\n    INDEX 01 00:11:00\r\n')
+            f.close()
+
+            self.assertEqual(
+                self.__run_app__(
+                    ["tracksplit",
+                     "--type", "flac",
+                     "--cue", cuesheet_file,
+                     "--dir", output_directory,
+                     "--format", output_format,
+                     input_filename]), 0)
+
+            output_filenames = [output_format % {"track_number":i,
+                                                 "suffix":"flac"}
+                                for i in range(1, 4)]
+            for f in output_filenames:
+                self.assertEqual(
+                    os.path.isfile(os.path.join(output_directory, f)), True)
+
+            tracks = [audiotools.open(os.path.join(output_directory, f))
+                      for f in output_filenames]
+
+            self.assertEqual(
+                audiotools.pcm_frame_cmp(
+                    track.to_pcm(),
+                    audiotools.PCMCat(iter([t.to_pcm() for t in tracks]))),
+                None)
+
+            if (os.path.isfile(input_filename)):
+                os.unlink(input_filename)
+            if (os.path.isfile(cuesheet_file)):
+                os.unlink(cuesheet_file)
+            if (os.path.isdir(output_directory)):
+                shutil.rmtree(output_directory)
 
     def populate_bad_options(self, options):
         populated = ["--no-musicbrainz", "--no-freedb"]

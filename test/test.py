@@ -301,6 +301,16 @@ def Combinations(items, n):
                 yield [items[i]] + combos
 
 
+def Possibilities(*lists):
+    if (len(lists) == 0):
+        yield ()
+    else:
+        remainder = list(Possibilities(*lists[1:]))
+        for item in lists[0]:
+            for rem in remainder:
+                yield (item,) + rem
+
+
 from_channels = audiotools.ChannelMask.from_channels
 
 #these are combinations that tend to occur in nature
