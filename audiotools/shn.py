@@ -212,7 +212,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None,
-                 block_size=256):
+                 block_size=256, encoding_function=None):
         """encodes a new file from PCM data
 
         takes a filename string, PCMReader object
@@ -244,7 +244,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
                                  w.to_pcm(),
                                  footer,
                                  compression,
-                                 block_size)
+                                 block_size,
+                                 encoding_function)
         finally:
             if (os.path.isfile(f.name)):
                 f.close()
@@ -321,7 +322,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
     @classmethod
     def from_wave(cls, filename, header, pcmreader, footer, compression=None,
-                  block_size=256):
+                  block_size=256, encoding_function=None):
         """encodes a new file from wave data
 
         takes a filename string, header string,
@@ -342,8 +343,12 @@ class ShortenAudio(WaveContainer, AiffContainer):
                        BufferedPCMReader,
                        UnsupportedBitsPerSample,
                        EncodingError)
-        from .encoders import encode_shn
         from .wav import (validate_header, validate_footer)
+
+        if (encoding_function is None):
+            from .encoders import encode_shn
+        else:
+            encode_shn = encoding_function
 
         if (pcmreader.bits_per_sample not in (8, 16)):
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
@@ -469,7 +474,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
     @classmethod
     def from_aiff(cls, filename, header, pcmreader, footer, compression=None,
-                  block_size=256):
+                  block_size=256, encoding_function=None):
         """encodes a new file from AIFF data
 
         takes a filename string, header string,
@@ -490,8 +495,12 @@ class ShortenAudio(WaveContainer, AiffContainer):
                        BufferedPCMReader,
                        UnsupportedBitsPerSample,
                        EncodingError)
-        from .encoders import encode_shn
         from .aiff import (validate_header, validate_footer)
+
+        if (encoding_function is None):
+            from .encoders import encode_shn
+        else:
+            encode_shn = encoding_function
 
         if (pcmreader.bits_per_sample not in (8, 16)):
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)

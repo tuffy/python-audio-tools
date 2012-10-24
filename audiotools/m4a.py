@@ -922,7 +922,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None,
-                 block_size=4096):
+                 block_size=4096, encoding_function=None):
         """encodes a new file from PCM data
 
         takes a filename string, PCMReader object
@@ -970,7 +970,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             (frame_sample_sizes,
              frame_byte_sizes,
              frame_file_offsets,
-             mdat_size) = encode_alac(
+             mdat_size) = (encode_alac if encoding_function is None
+                           else encoding_function)(
                 file=mdat_file,
                 pcmreader=BufferedPCMReader(pcmreader),
                 block_size=block_size,

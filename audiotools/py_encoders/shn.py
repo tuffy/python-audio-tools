@@ -38,8 +38,13 @@ BITSHIFT_SIZE = 2
  FN_VERBATIM) = range(10)
 
 
-def encode_shn(filename, pcmreader, is_big_endian, signed_samples,
-               header_data, footer_data="", block_size=256):
+def encode_shn(filename,
+               pcmreader,
+               is_big_endian,
+               signed_samples,
+               header_data,
+               footer_data="",
+               block_size=256):
     """filename is a string to the output file's path
     pcmreader is a PCMReader object
     header_data and footer_data are binary strings

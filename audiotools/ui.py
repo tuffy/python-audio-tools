@@ -2107,16 +2107,23 @@ try:
                             ('weight', 1, self.tracknum)]),
                     self.progress])
 
-            controls = urwid.GridFlow([
-                    MappedButton(LAB_PREVIOUS_BUTTON,
-                                 on_press=self.previous_track,
-                                 key_map={'tab': 'right'}),
-                    self.play_pause_button,
-                    MappedButton(LAB_NEXT_BUTTON,
-                                 on_press=self.next_track,
-                                 key_map={'tab': 'down'})],
-                                      12, 4, 1, 'center')
-            controls.set_focus(1)
+            controls = urwid.Columns([
+                    ("weight", 1,
+                     urwid.Divider(u" ")),
+                    ("fixed", 12,
+                     MappedButton(LAB_PREVIOUS_BUTTON,
+                                  on_press=self.previous_track,
+                                  key_map={"tab":"right"})),
+                    ("fixed", 12,
+                     self.play_pause_button),
+                    ("fixed", 12,
+                     MappedButton(LAB_NEXT_BUTTON,
+                                  on_press=self.next_track,
+                                  key_map={"tab":"down"})),
+                    ("weight", 1,
+                     urwid.Divider(u" "))],
+                                    dividechars=4,
+                                    focus_column=2)
 
             self.track_group = []
             self.track_list_widget = urwid.ListBox(

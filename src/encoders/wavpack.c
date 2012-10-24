@@ -49,7 +49,7 @@ encoders_encode_wavpack(PyObject *dummy,
                              "false_stereo",
                              "wasted_bits",
                              "joint_stereo",
-                             "decorrelation_passes",
+                             "correlation_passes",
                              "wave_header",
                              "wave_footer",
                              NULL};

@@ -321,9 +321,15 @@ def block_parameters(channel_count, channel_mask, correlation_passes):
                 for c in xrange(channel_count)]
 
 
-def encode_wavpack(filename, pcmreader, block_size,
+def encode_wavpack(filename,
+                   pcmreader,
+                   block_size,
+                   false_stereo=False,
+                   wasted_bits=False,
+                   joint_stereo=False,
                    correlation_passes=0,
-                   wave_header=None, wave_footer=None):
+                   wave_header=None,
+                   wave_footer=None):
     pcmreader = BufferedPCMReader(pcmreader)
     output_file = open(filename, "wb")
     writer = BitstreamWriter(output_file, 1)

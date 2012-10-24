@@ -75,27 +75,27 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                                 "joint_stereo": True,
                                 "false_stereo": True,
                                 "wasted_bits": True,
-                                "decorrelation_passes": 1},
+                                "correlation_passes": 1},
                    "fast": {"block_size": 44100,
                             "joint_stereo": True,
                             "false_stereo": True,
                             "wasted_bits": True,
-                            "decorrelation_passes": 2},
+                            "correlation_passes": 2},
                    "standard": {"block_size": 44100,
                                 "joint_stereo": True,
                                 "false_stereo": True,
                                 "wasted_bits": True,
-                                "decorrelation_passes": 5},
+                                "correlation_passes": 5},
                    "high": {"block_size": 44100,
                             "joint_stereo": True,
                             "false_stereo": True,
                             "wasted_bits": True,
-                            "decorrelation_passes": 10},
+                            "correlation_passes": 10},
                    "veryhigh": {"block_size": 44100,
                                 "joint_stereo": True,
                                 "false_stereo": True,
                                 "wasted_bits": True,
-                                "decorrelation_passes": 16}}
+                                "correlation_passes": 16}}
 
     def __init__(self, filename):
         """filename is a plain string"""
@@ -173,7 +173,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             raise ValueError("no wave header found")
 
     @classmethod
-    def from_wave(cls, filename, header, pcmreader, footer, compression=None):
+    def from_wave(cls, filename, header, pcmreader, footer, compression=None,
+                  encoding_function=None):
         """encodes a new file from wave data
 
         takes a filename string, header string,
@@ -210,11 +211,12 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         counter = CounterPCMReader(pcmreader)
 
         try:
-            encode_wavpack(filename,
-                           BufferedPCMReader(counter),
-                           wave_header=header,
-                           wave_footer=footer,
-                           **cls.__options__[compression])
+            (encode_wavpack if encoding_function is None
+             else encoding_function)(filename,
+                                     BufferedPCMReader(counter),
+                                     wave_header=header,
+                                     wave_footer=footer,
+                                     **cls.__options__[compression])
 
             data_bytes_written = counter.bytes_written()
 
@@ -435,7 +437,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         return self.__samplerate__
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None):
+    def from_pcm(cls, filename, pcmreader, compression=None,
+                 encoding_function=None):
         """encodes a new file from PCM data
 
         takes a filename string, PCMReader object
@@ -454,9 +457,10 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             compression = __default_quality__(cls.NAME)
 
         try:
-            encode_wavpack(filename,
-                           BufferedPCMReader(pcmreader),
-                           **cls.__options__[compression])
+            (encode_wavpack if encoding_function is None
+             else encoding_function)(filename,
+                                     BufferedPCMReader(pcmreader),
+                                     **cls.__options__[compression])
 
             return cls(filename)
         except (ValueError, IOError), msg:
