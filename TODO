@@ -5973,12 +5973,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    against the output of the C-based decoders.
 *** DONE FlacDecoder
 *** TODO ALACDecoder
-*** TODO WavPackDecoder
+*** DONE WavPackDecoder
 *** TODO SHNDecoder
 ** TODO Add unit tests for Python-based encoders
 *** DONE encode_flac
 *** TODO encode_mdat
-*** TODO encode_wavpack
+*** DONE encode_wavpack
 *** TODO encode_shn
 ** TODO Add volume control to low-level output players
    It should be possible to adjust the volume from trackplay/cdplay
