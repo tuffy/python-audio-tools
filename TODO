@@ -5971,12 +5971,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    it's impossible to make these as comprehensive as the C-based tests.
    So we'll only be able to test the basics using very small streams
    against the output of the C-based decoders.
-*** TODO FlacDecoder
+*** DONE FlacDecoder
 *** TODO ALACDecoder
 *** TODO WavPackDecoder
 *** TODO SHNDecoder
 ** TODO Add unit tests for Python-based encoders
-*** TODO encode_flac
+*** DONE encode_flac
 *** TODO encode_mdat
 *** TODO encode_wavpack
 *** TODO encode_shn

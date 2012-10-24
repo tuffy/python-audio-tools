@@ -31,7 +31,7 @@ class FlacDecoder:
      SUBFRAME_FIXED,
      SUBFRAME_LPC) = range(4)
 
-    def __init__(self, filename):
+    def __init__(self, filename, channel_mask):
         self.reader = BitstreamReader(open(filename, "rb"), 0)
 
         if (self.reader.read_bytes(4) != 'fLaC'):
@@ -52,6 +52,7 @@ class FlacDecoder:
                 self.maximum_frame_size = block_reader.read(24)
                 self.sample_rate = block_reader.read(20)
                 self.channels = block_reader.read(3) + 1
+                self.channel_mask = channel_mask
                 self.bits_per_sample = block_reader.read(5) + 1
                 self.total_frames = block_reader.read64(36)
                 self.md5sum = block_reader.read_bytes(16)

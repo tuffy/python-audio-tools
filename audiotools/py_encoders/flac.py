@@ -593,7 +593,7 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
                               for lag in xrange(0, options.max_lpc_order + 1)]
 
     if ((len(autocorrelation_values) > 1) and
-        (set(autocorrelation_values) != set([1.0]))):
+        (set(autocorrelation_values) != set([0.0]))):
 
         (lp_coefficients,
          error) = compute_lp_coefficients(autocorrelation_values)
@@ -639,8 +639,7 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
 
             return (best_order, best_coeffs, best_shift_needed)
     else:
-        #FIXME - return a simple set of coefficients here
-        raise NotImplementedError()
+        return (1, [0], 0)
 
 
 def compute_lp_coefficients(autocorrelation):
@@ -698,9 +697,12 @@ def quantize_coefficients(qlp_precision, lp_coefficients, order):
     from math import log
 
     l = max(map(abs, lp_coefficients[order - 1]))
-    qlp_shift_needed = min((qlp_precision - 1) -
-                           (int(log(l) / log(2)) - 1) - 1,
-                           (2 ** 4) - 1)
+    if (l > 0):
+        qlp_shift_needed = min((qlp_precision - 1) -
+                               (int(log(l) / log(2)) - 1) - 1,
+                               (2 ** 4) - 1)
+    else:
+        qlp_shift_needed = 0
     if (qlp_shift_needed < -(2 ** 4)):
         raise ValueError("too much negative shift needed")
 

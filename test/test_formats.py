@@ -3662,6 +3662,185 @@ class FlacFileTest(TestForeignAiffChunks,
         #verifies without errors
         self.assertEqual(flac.verify(), True)
 
+    @FORMAT_FLAC
+    def test_python_codec(self):
+        #Python decoder and encoder are far too slow
+        #to run anything resembling a complete set of tests
+        #so we'll cut them down to the very basics
+
+        def test_python_reader(pcmreader, **encode_options):
+            from audiotools.py_encoders import encode_flac
+
+            #encode file using Python-based encoder
+            temp_file = tempfile.NamedTemporaryFile(suffix=".flac")
+            encode_flac(temp_file.name,
+                        audiotools.BufferedPCMReader(pcmreader),
+                        **encode_options)
+
+            #verify contents of file decoded by
+            #Python-based decoder against contents decoded by
+            #C-based decoder
+            from audiotools.py_decoders import FlacDecoder as FlacDecoder1
+            from audiotools.decoders import FlacDecoder as FlacDecoder2
+
+            self.assertEqual(audiotools.pcm_frame_cmp(
+                    FlacDecoder1(temp_file.name, 0),
+                    FlacDecoder2(temp_file.name, 0)), None)
+
+            temp_file.close()
+
+        #test small files
+        for g in [test_streams.Generate01,
+                  test_streams.Generate02,
+                  test_streams.Generate03,
+                  test_streams.Generate04]:
+            test_python_reader(g(44100),
+                               block_size=1152,
+                               max_lpc_order=16,
+                               min_residual_partition_order=0,
+                               max_residual_partition_order=3,
+                               mid_side=True,
+                               adaptive_mid_side=True,
+                               exhaustive_model_search=True)
+
+        #test full-scale deflection
+        for (bps, fsd) in [(8, test_streams.fsd8),
+                           (16, test_streams.fsd16),
+                           (24, test_streams.fsd24)]:
+            for pattern in [test_streams.PATTERN01,
+                            test_streams.PATTERN02,
+                            test_streams.PATTERN03,
+                            test_streams.PATTERN04,
+                            test_streams.PATTERN05,
+                            test_streams.PATTERN06,
+                            test_streams.PATTERN07]:
+                test_python_reader(
+                    fsd(pattern, 100),
+                    block_size=1152,
+                    max_lpc_order=16,
+                    min_residual_partition_order=0,
+                    max_residual_partition_order=3,
+                    mid_side=True,
+                    adaptive_mid_side=True,
+                    exhaustive_model_search=True)
+
+        #test sines
+        for g in [test_streams.Sine8_Mono(5000, 48000,
+                                          441.0, 0.50, 441.0, 0.49),
+                  test_streams.Sine8_Stereo(5000, 48000,
+                                            441.0, 0.50, 441.0, 0.49, 1.0),
+                  test_streams.Sine16_Mono(5000, 48000,
+                                           441.0, 0.50, 441.0, 0.49),
+                  test_streams.Sine16_Stereo(5000, 48000,
+                                             441.0, 0.50, 441.0, 0.49, 1.0),
+                  test_streams.Sine24_Mono(5000, 48000,
+                                           441.0, 0.50, 441.0, 0.49),
+                  test_streams.Sine24_Stereo(5000, 48000,
+                                             441.0, 0.50, 441.0, 0.49, 1.0),
+                  test_streams.Simple_Sine(5000, 44100, 0x7, 8,
+                                           (25, 10000),
+                                           (50, 20000),
+                                           (120, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x33, 8,
+                                           (25, 10000),
+                                           (50, 20000),
+                                           (75, 30000),
+                                           (65, 40000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x37, 8,
+                                           (25, 10000),
+                                           (35, 15000),
+                                           (45, 20000),
+                                           (50, 25000),
+                                           (55, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x3F, 8,
+                                           (25, 10000),
+                                           (45, 15000),
+                                           (65, 20000),
+                                           (85, 25000),
+                                           (105, 30000),
+                                           (120, 35000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x7, 16,
+                                           (6400, 10000),
+                                           (12800, 20000),
+                                           (30720, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x33, 16,
+                                           (6400, 10000),
+                                           (12800, 20000),
+                                           (19200, 30000),
+                                           (16640, 40000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x37, 16,
+                                           (6400, 10000),
+                                           (8960, 15000),
+                                           (11520, 20000),
+                                           (12800, 25000),
+                                           (14080, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x3F, 16,
+                                           (6400, 10000),
+                                           (11520, 15000),
+                                           (16640, 20000),
+                                           (21760, 25000),
+                                           (26880, 30000),
+                                           (30720, 35000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x7, 24,
+                                           (1638400, 10000),
+                                           (3276800, 20000),
+                                           (7864320, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x33, 24,
+                                           (1638400, 10000),
+                                           (3276800, 20000),
+                                           (4915200, 30000),
+                                           (4259840, 40000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x37, 24,
+                                           (1638400, 10000),
+                                           (2293760, 15000),
+                                           (2949120, 20000),
+                                           (3276800, 25000),
+                                           (3604480, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x3F, 24,
+                                           (1638400, 10000),
+                                           (2949120, 15000),
+                                           (4259840, 20000),
+                                           (5570560, 25000),
+                                           (6881280, 30000),
+                                           (7864320, 35000))]:
+            test_python_reader(g,
+                               block_size=1152,
+                               max_lpc_order=16,
+                               min_residual_partition_order=0,
+                               max_residual_partition_order=3,
+                               mid_side=True,
+                               adaptive_mid_side=True,
+                               exhaustive_model_search=True)
+
+        #test wasted BPS
+        test_python_reader(test_streams.WastedBPS16(1000),
+                           block_size=1152,
+                           max_lpc_order=16,
+                           min_residual_partition_order=0,
+                           max_residual_partition_order=3,
+                           mid_side=True,
+                           adaptive_mid_side=True,
+                           exhaustive_model_search=True)
+
+        #test block sizes
+        noise = struct.unpack(">32h", os.urandom(64))
+
+        encoding_args = {"min_residual_partition_order": 0,
+                         "max_residual_partition_order": 6,
+                         "mid_side": True,
+                         "adaptive_mid_side": True,
+                         "exhaustive_model_search": True}
+        for block_size in [16, 17, 18, 19, 20, 21, 22, 23,
+                           24, 25, 26, 27, 28, 29, 30, 31, 32, 33]:
+            for lpc_order in [0, 1, 2, 3, 4, 5, 7, 8, 9, 15, 16, 17, 31, 32]:
+                args = encoding_args.copy()
+                args["block_size"] = block_size
+                args["max_lpc_order"] = lpc_order
+                test_python_reader(
+                    test_streams.FrameListReader(noise, 44100, 1, 16),
+                    **args)
+
+
 
 class M4AFileTest(LossyFileTest):
     def setUp(self):
