@@ -2528,6 +2528,218 @@ class ALACFileTest(LosslessFileTest):
                                                       441.0, 0.61, 661.5, 0.37),
                              block_size=1152)
 
+    @FORMAT_ALAC
+    def test_python_codec(self):
+        def test_python_reader(pcmreader, block_size=4096):
+            #ALAC doesn't really have encoding options worth mentioning
+            from audiotools.py_encoders import encode_mdat
+
+            #encode file using Python-based encoder
+            temp_file = tempfile.NamedTemporaryFile(suffix=".m4a")
+            audiotools.ALACAudio.from_pcm(
+                temp_file.name,
+                pcmreader,
+                block_size=block_size,
+                encoding_function=encode_mdat)
+
+            #verify contents of file decoded by
+            #Python-based decoder against contents decoded by
+            #C-based decoder
+            from audiotools.py_decoders import ALACDecoder as ALACDecoder1
+            from audiotools.decoders import ALACDecoder as ALACDecoder2
+
+            self.assertEqual(audiotools.pcm_frame_cmp(
+                    ALACDecoder1(temp_file.name),
+                    ALACDecoder2(temp_file.name)), None)
+
+            temp_file.close()
+
+        #test small files
+        for g in [test_streams.Generate01,
+                  test_streams.Generate02,
+                  test_streams.Generate03,
+                  test_streams.Generate04]:
+            test_python_reader(g(44100), block_size=1152)
+
+        #test full scale deflection
+        for (bps, fsd) in [(16, test_streams.fsd16),
+                           (24, test_streams.fsd24)]:
+            for pattern in [test_streams.PATTERN01,
+                            test_streams.PATTERN02,
+                            test_streams.PATTERN03,
+                            test_streams.PATTERN04,
+                            test_streams.PATTERN05,
+                            test_streams.PATTERN06,
+                            test_streams.PATTERN07]:
+                test_python_reader(fsd(pattern, 100), block_size=1152)
+
+        #test sines
+        for g in [test_streams.Sine16_Mono(5000, 48000,
+                                           441.0, 0.50, 441.0, 0.49),
+                  test_streams.Sine16_Mono(5000, 96000,
+                                           441.0, 0.61, 661.5, 0.37),
+                  test_streams.Sine16_Stereo(5000, 48000,
+                                             441.0, 0.50, 441.0, 0.49, 1.0),
+                  test_streams.Sine16_Stereo(5000, 96000,
+                                             441.0, 0.50, 882.0, 0.49, 1.0),
+                  test_streams.Sine24_Mono(5000, 48000,
+                                           441.0, 0.50, 441.0, 0.49),
+                  test_streams.Sine24_Mono(5000, 96000,
+                                           441.0, 0.61, 661.5, 0.37),
+                  test_streams.Sine24_Stereo(5000, 48000,
+                                             441.0, 0.50, 441.0, 0.49, 1.0),
+                  test_streams.Sine24_Stereo(5000, 96000,
+                                             441.0, 0.50, 882.0, 0.49, 1.0)]:
+            test_python_reader(g, block_size=1152)
+
+        for g in [test_streams.Simple_Sine(5000, 44100, 0x0007, 16,
+                                           (6400, 10000),
+                                           (12800, 20000),
+                                           (30720, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x0107, 16,
+                                           (6400, 10000),
+                                           (12800, 20000),
+                                           (19200, 30000),
+                                           (16640, 40000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x0037, 16,
+                                           (6400, 10000),
+                                           (8960, 15000),
+                                           (11520, 20000),
+                                           (12800, 25000),
+                                           (14080, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x003F, 16,
+                                           (6400, 10000),
+                                           (11520, 15000),
+                                           (16640, 20000),
+                                           (21760, 25000),
+                                           (26880, 30000),
+                                           (30720, 35000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x013F, 16,
+                                           (6400, 10000),
+                                           (11520, 15000),
+                                           (16640, 20000),
+                                           (21760, 25000),
+                                           (26880, 30000),
+                                           (30720, 35000),
+                                           (29000, 40000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x00FF, 16,
+                                           (6400, 10000),
+                                           (11520, 15000),
+                                           (16640, 20000),
+                                           (21760, 25000),
+                                           (26880, 30000),
+                                           (30720, 35000),
+                                           (29000, 40000),
+                                           (28000, 45000)),
+
+                  test_streams.Simple_Sine(5000, 44100, 0x0007, 24,
+                                           (1638400, 10000),
+                                           (3276800, 20000),
+                                           (7864320, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x0107, 24,
+                                           (1638400, 10000),
+                                           (3276800, 20000),
+                                           (4915200, 30000),
+                                           (4259840, 40000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x0037, 24,
+                                           (1638400, 10000),
+                                           (2293760, 15000),
+                                           (2949120, 20000),
+                                           (3276800, 25000),
+                                           (3604480, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x003F, 24,
+                                           (1638400, 10000),
+                                           (2949120, 15000),
+                                           (4259840, 20000),
+                                           (5570560, 25000),
+                                           (6881280, 30000),
+                                           (7864320, 35000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x013F, 24,
+                                           (1638400, 10000),
+                                           (2949120, 15000),
+                                           (4259840, 20000),
+                                           (5570560, 25000),
+                                           (6881280, 30000),
+                                           (7864320, 35000),
+                                           (7000000, 40000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x00FF, 24,
+                                           (1638400, 10000),
+                                           (2949120, 15000),
+                                           (4259840, 20000),
+                                           (5570560, 25000),
+                                           (6881280, 30000),
+                                           (7864320, 35000),
+                                           (7000000, 40000),
+                                           (6000000, 45000))]:
+            test_python_reader(g, block_size=1152)
+
+        #test wasted BPS
+        test_python_reader(test_streams.WastedBPS16(1000),
+                           block_size=1152)
+
+        #test block sizes
+        noise = struct.unpack(">32h", os.urandom(64))
+
+        for block_size in [16, 17, 18, 19, 20, 21, 22, 23, 24,
+                           25, 26, 27, 28, 29, 30, 31, 32, 33]:
+            test_python_reader(test_streams.MD5Reader(
+                    test_streams.FrameListReader(noise,
+                                                 44100, 1, 16)),
+                               block_size=block_size)
+
+        #test noise
+        for (channels, mask) in [
+            (1, audiotools.ChannelMask.from_channels(1)),
+            (2, audiotools.ChannelMask.from_channels(2))]:
+            for bps in [16, 24]:
+                #the reference decoder can't handle very large block sizes
+                for blocksize in [32, 4096, 8192]:
+                    test_python_reader(
+                        EXACT_RANDOM_PCM_Reader(
+                            pcm_frames=4097,
+                            sample_rate=44100,
+                            channels=channels,
+                            channel_mask=mask,
+                            bits_per_sample=bps),
+                        block_size=blocksize)
+
+        #test fractional
+        for (block_size,
+             pcm_frames) in [(33, [31, 32, 33, 34, 35, 2046,
+                                   2047, 2048, 2049, 2050]),
+                             (256, [254, 255, 256, 257, 258, 510, 511, 512,
+                                    513, 514, 1022, 1023, 1024, 1025, 1026,
+                                    2046, 2047, 2048, 2049, 2050, 4094, 4095,
+                                    4096, 4097, 4098])]:
+            for frame_count in pcm_frames:
+                test_python_reader(EXACT_RANDOM_PCM_Reader(
+                        pcm_frames=frame_count,
+                        sample_rate=44100,
+                        channels=2,
+                        bits_per_sample=16),
+                                   block_size=block_size)
+
+        #test frame header variations
+        test_python_reader(
+            test_streams.Sine16_Mono(5000, 96000,
+                                     441.0, 0.61, 661.5, 0.37),
+            block_size=16)
+
+        test_python_reader(
+            test_streams.Sine16_Mono(5000, 9,
+                                     441.0, 0.61, 661.5, 0.37),
+            block_size=1152)
+
+        test_python_reader(
+            test_streams.Sine16_Mono(5000, 90,
+                                     441.0, 0.61, 661.5, 0.37),
+            block_size=1152)
+
+        test_python_reader(
+            test_streams.Sine16_Mono(5000, 90000,
+                                     441.0, 0.61, 661.5, 0.37),
+            block_size=1152)
+
 
 class AUFileTest(LosslessFileTest):
     def setUp(self):
@@ -4655,6 +4867,133 @@ class ShortenFileTest(TestForeignWaveChunks,
                                 channel_mask=mask,
                                 bits_per_sample=bps)),
                         **encode_opts)
+
+    @FORMAT_SHORTEN
+    def test_python_codec(self):
+        def test_python_reader(pcmreader, block_size=256):
+            from audiotools.py_encoders import encode_shn
+
+            temp_file = tempfile.NamedTemporaryFile(suffix=".shn")
+            audiotools.ShortenAudio.from_pcm(
+                temp_file.name,
+                pcmreader,
+                block_size=block_size,
+                encoding_function=encode_shn)
+
+            from audiotools.decoders import SHNDecoder as SHNDecoder1
+            from audiotools.py_decoders import SHNDecoder as SHNDecoder2
+
+            self.assertEqual(audiotools.pcm_frame_cmp(
+                SHNDecoder1(temp_file.name),
+                SHNDecoder2(temp_file.name)), None)
+
+            temp_file.close()
+
+        #test small files
+        for g in [test_streams.Generate01,
+                  test_streams.Generate02,
+                  test_streams.Generate03,
+                  test_streams.Generate04]:
+            gen = g(44100)
+            test_python_reader(gen, block_size=256)
+
+        #test full scale deflection
+        for (bps, fsd) in [(8, test_streams.fsd8),
+                           (16, test_streams.fsd16)]:
+            for pattern in [test_streams.PATTERN01,
+                            test_streams.PATTERN02,
+                            test_streams.PATTERN03,
+                            test_streams.PATTERN04,
+                            test_streams.PATTERN05,
+                            test_streams.PATTERN06,
+                            test_streams.PATTERN07]:
+                stream = test_streams.MD5Reader(fsd(pattern, 100))
+                test_python_reader(stream, block_size=256)
+
+        #test sines
+        for g in [test_streams.Sine8_Mono(5000, 48000,
+                                          441.0, 0.50, 441.0, 0.49),
+                  test_streams.Sine8_Stereo(5000, 48000,
+                                            441.0, 0.50, 441.0, 0.49, 1.0),
+                  test_streams.Sine16_Mono(5000, 48000,
+                                           441.0, 0.50, 441.0, 0.49),
+                  test_streams.Sine16_Stereo(5000, 48000,
+                                             441.0, 0.50, 441.0, 0.49, 1.0),
+                  test_streams.Simple_Sine(5000, 44100, 0x7, 8,
+                                           (25, 10000),
+                                           (50, 20000),
+                                           (120, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x33, 8,
+                                           (25, 10000),
+                                           (50, 20000),
+                                           (75, 30000),
+                                           (65, 40000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x37, 8,
+                                           (25, 10000),
+                                           (35, 15000),
+                                           (45, 20000),
+                                           (50, 25000),
+                                           (55, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x3F, 8,
+                                           (25, 10000),
+                                           (45, 15000),
+                                           (65, 20000),
+                                           (85, 25000),
+                                           (105, 30000),
+                                           (120, 35000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x7, 16,
+                                           (6400, 10000),
+                                           (12800, 20000),
+                                           (30720, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x33, 16,
+                                           (6400, 10000),
+                                           (12800, 20000),
+                                           (19200, 30000),
+                                           (16640, 40000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x37, 16,
+                                           (6400, 10000),
+                                           (8960, 15000),
+                                           (11520, 20000),
+                                           (12800, 25000),
+                                           (14080, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x3F, 16,
+                                           (6400, 10000),
+                                           (11520, 15000),
+                                           (16640, 20000),
+                                           (21760, 25000),
+                                           (26880, 30000),
+                                           (30720, 35000))]:
+            test_python_reader(g, block_size=256)
+
+        #test block sizes
+        noise = struct.unpack(">32h", os.urandom(64))
+
+        for block_size in [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                           256, 1024]:
+            test_python_reader(
+                test_streams.FrameListReader(noise, 44100, 1, 16),
+                block_size=block_size)
+
+        #test noise
+        for block_size in [4, 256, 1024]:
+            for (channels, mask) in [
+                (1, audiotools.ChannelMask.from_channels(1)),
+                (2, audiotools.ChannelMask.from_channels(2)),
+                (4, audiotools.ChannelMask.from_fields(
+                        front_left=True,
+                        front_right=True,
+                        back_left=True,
+                        back_right=True)),
+                (8, audiotools.ChannelMask(0))]:
+                for bps in [8, 16]:
+                    test_python_reader(
+                        EXACT_RANDOM_PCM_Reader(
+                            pcm_frames=5000,
+                            sample_rate=44100,
+                            channels=channels,
+                            channel_mask=mask,
+                            bits_per_sample=bps),
+                        block_size=block_size)
 
 
 class VorbisFileTest(OggVerify, LossyFileTest):

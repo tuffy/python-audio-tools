@@ -132,7 +132,6 @@ def encode_shn(filename,
                 #issue a new BITSHIFT command
                 wasted_bits = wasted_bps(channel)
                 if (wasted_bits != left_shift):
-                    print "writing wasted bits : %s" % (wasted_bits)
                     write_unsigned(writer, COMMAND_SIZE, FN_BITSHIFT)
                     write_unsigned(writer, BITSHIFT_SIZE, wasted_bits)
                     left_shift = wasted_bits

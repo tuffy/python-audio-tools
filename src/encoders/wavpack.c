@@ -699,7 +699,6 @@ encode_block(BitstreamWriter* bs,
         reset_block_parameters(parameters, effective_channel_count);
     }
 
-
     /*if first block in file, write wave header*/
     if (!context->wave.header_written) {
         bw_reset_recorder(sub_block);
@@ -772,6 +771,7 @@ encode_block(BitstreamWriter* bs,
     }
 
     if (effective_channel_count == 1) {         /*1 channel block*/
+        /*perform channel correlation*/
         if (parameters->terms->len > 0) {
             correlate_channels(correlated,
                                shifted,

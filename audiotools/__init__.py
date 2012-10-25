@@ -4893,6 +4893,12 @@ class ExecProgressQueue:
                 *args, **kwargs):
         """queues the given function and arguments to be run in parallel
 
+        function must have an additional "progress" argument
+        not present in "*args" or "**kwargs" which is called
+        with (current, total) integer arguments by the function
+        on a regular basis to update its progress
+        similar to:  function(*args, progress=prog(current, total), **kwargs)
+
         progress_text should be a unicode string to be displayed while running
 
         completion_output is either a unicode string,

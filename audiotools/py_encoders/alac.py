@@ -114,11 +114,11 @@ def encode_frameset(writer, pcmreader, options, frame):
                                                   frame.channel(1)])
     elif (pcmreader.channels == 3):
         for pair in [[frame.channel(2)],
-                     [frame.channel(0), frame_channel(1)]]:
+                     [frame.channel(0), frame.channel(1)]]:
             encode_frame(writer, pcmreader, options, pair)
     elif (pcmreader.channels == 4):
         for pair in [[frame.channel(2)],
-                     [frame.channel(0), frame_channel(1)],
+                     [frame.channel(0), frame.channel(1)],
                      [frame.channel(3)]]:
             encode_frame(writer, pcmreader, options, pair)
     elif (pcmreader.channels == 5):
@@ -209,6 +209,7 @@ def encode_compressed_frame(writer, pcmreader, options, channels):
         uncompressed_LSBs = 0
         LSBs = []
     else:
+        from audiotools.pcm import from_list
         #extract uncompressed LSBs
         uncompressed_LSBs = (pcmreader.bits_per_sample - 16) / 8
         LSBs = []
@@ -216,7 +217,10 @@ def encode_compressed_frame(writer, pcmreader, options, channels):
             for c in xrange(len(channels)):
                 LSBs.append(channels[c][i] %
                             (2 ** (pcmreader.bits_per_sample - 16)))
-                channels[c][i] >>= (pcmreader.bits_per_sample - 16)
+
+        channels = [from_list([i >> (pcmreader.bits_per_sample - 16)
+                               for i in channel], 1, 16, True)
+                    for channel in channels]
 
     if (len(channels) == 1):
         encode_non_interlaced_frame(writer,
