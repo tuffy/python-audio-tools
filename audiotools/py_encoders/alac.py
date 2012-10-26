@@ -247,8 +247,8 @@ def encode_compressed_frame(writer, pcmreader, options, channels):
                                     channels)
 
         for i in xrange(len(interlaced_frames) - 1):
-            if (interlaced_frames[i].bits() <
-                min([f.bits() for f in interlaced_frames[i + 1:]])):
+            if ((interlaced_frames[i].bits() <
+                 min([f.bits() for f in interlaced_frames[i + 1:]]))):
                 interlaced_frames[i].copy(writer)
                 break
         else:
@@ -353,7 +353,7 @@ def calculate_lpc_coefficients(pcmreader, options, sample_size, channel):
 
     autocorrelated = [sum([s1 * s2 for s1, s2 in zip(windowed,
                                                      windowed[lag:])])
-                        for lag in xrange(0, 9)]
+                      for lag in xrange(0, 9)]
 
     assert(len(autocorrelated) == 9)
 
@@ -424,7 +424,7 @@ def compute_lp_coefficients(autocorrelation):
 
         lp_coefficients.append([c1 - (ki * c2) for (c1, c2) in
                                 zip(lp_coefficients[i - 1],
-                                   reversed(lp_coefficients[i - 1]))] + [ki])
+                                    reversed(lp_coefficients[i - 1]))] + [ki])
 
         error.append(error[i - 1] * (1 - ki ** 2))
 
@@ -481,12 +481,14 @@ def compute_residuals(sample_size, qlp_coefficients, channel):
 
             lpc_sum = sum([(c * (s - base_sample)) for (c, s) in
                            zip(qlp_coefficients,
-                               reversed(channel[i - len(qlp_coefficients):i]))])
+                               reversed(channel[i -
+                                                len(qlp_coefficients):i]))])
 
             residual = truncate_bits(
                 channel[i] -
                 base_sample -
-                ((lpc_sum + (1 << (QLP_SHIFT_NEEDED - 1))) >> QLP_SHIFT_NEEDED),
+                ((lpc_sum + (1 << (QLP_SHIFT_NEEDED - 1))) >>
+                 QLP_SHIFT_NEEDED),
                 sample_size)
 
             residuals.append(residual)

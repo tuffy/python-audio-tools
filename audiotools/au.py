@@ -93,7 +93,7 @@ class AuAudio(AudioFile):
              encoding_format,
              self.__sample_rate__,
              self.__channels__) = BitstreamReader(f, 0).parse(
-                "4b 32u 32u 32u 32u 32u")
+                 "4b 32u 32u 32u 32u 32u")
         except IOError, msg:
             raise InvalidAU(str(msg))
 
@@ -189,8 +189,8 @@ class AuAudio(AudioFile):
             from .text import ERR_UNSUPPORTED_BITS_PER_SAMPLE
             raise InvalidFormat(
                 ERR_UNSUPPORTED_BITS_PER_SAMPLE %
-                {"target_filename":Filename(filename),
-                 "bps":pcmreader.bits_per_sample})
+                {"target_filename": Filename(filename),
+                 "bps": pcmreader.bits_per_sample})
 
         data_size = 0
         encoding_format = {8: 2, 16: 3, 24: 4}[pcmreader.bits_per_sample]

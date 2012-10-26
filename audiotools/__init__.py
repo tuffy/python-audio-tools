@@ -93,6 +93,7 @@ config.read([os.path.join("/etc", "audiotools.cfg"),
 BUFFER_SIZE = 0x100000
 FRAMELIST_SIZE = 0x100000 / 4
 
+
 class __system_binaries__:
     def __init__(self, config):
         self.config = config
@@ -150,6 +151,7 @@ if (DEFAULT_VERBOSITY not in VERBOSITY_LEVELS):
 
 DEFAULT_TYPE = config.get_default("System", "default_type", "wav")
 
+
 #field name -> (field string, text description) mapping
 def __format_fields__():
     from .text import (METADATA_TRACK_NAME,
@@ -173,48 +175,48 @@ def __format_fields__():
                        METADATA_SUFFIX,
                        METADATA_ALBUM_TRACK_NUMBER,
                        METADATA_BASENAME)
-    return {u"track_name":(u"%(track_name)s",
-                           METADATA_TRACK_NAME),
-            u"track_number":(u"%(track_number)2.2d",
-                             METADATA_TRACK_NUMBER),
-            u"track_total":(u"%(track_total)d",
-                            METADATA_TRACK_TOTAL),
-            u"album_name":(u"%(album_name)s",
-                           METADATA_ALBUM_NAME),
-            u"artist_name":(u"%(artist_name)s",
-                            METADATA_ARTIST_NAME),
-            u"performer_name":(u"%(performer_name)s",
-                               METADATA_PERFORMER_NAME),
-            u"composer_name":(u"%(composer_name)s",
-                              METADATA_COMPOSER_NAME),
-            u"conductor_name":(u"%(conductor_name)s",
-                               METADATA_CONDUCTOR_NAME),
-            u"media":(u"%(media)s",
-                      METADATA_MEDIA),
-            u"ISRC":(u"%(ISRC)s",
-                     METADATA_ISRC),
-            u"catalog":(u"%(catalog)s",
-                        METADATA_CATALOG),
-            u"copyright":(u"%(copyright)s",
-                          METADATA_COPYRIGHT),
-            u"publisher":(u"%(publisher)s",
-                          METADATA_PUBLISHER),
-            u"year":(u"%(year)s",
-                     METADATA_YEAR),
-            u"date":(u"%(date)s",
-                     METADATA_DATE),
-            u"album_number":(u"%(album_number)d",
-                             METADATA_ALBUM_NUMBER),
-            u"album_total":(u"%(album_total)d",
-                            METADATA_ALBUM_TOTAL),
-            u"comment":(u"%(comment)s",
-                        METADATA_COMMENT),
-            u"suffix":(u"%(suffix)s",
-                       METADATA_SUFFIX),
-            u"album_track_number":(u"%(album_track_number)s",
-                                   METADATA_ALBUM_TRACK_NUMBER),
-            u"basename":(u"%(basename)s",
-                         METADATA_BASENAME)}
+    return {u"track_name": (u"%(track_name)s",
+                            METADATA_TRACK_NAME),
+            u"track_number": (u"%(track_number)2.2d",
+                              METADATA_TRACK_NUMBER),
+            u"track_total": (u"%(track_total)d",
+                             METADATA_TRACK_TOTAL),
+            u"album_name": (u"%(album_name)s",
+                            METADATA_ALBUM_NAME),
+            u"artist_name": (u"%(artist_name)s",
+                             METADATA_ARTIST_NAME),
+            u"performer_name": (u"%(performer_name)s",
+                                METADATA_PERFORMER_NAME),
+            u"composer_name": (u"%(composer_name)s",
+                               METADATA_COMPOSER_NAME),
+            u"conductor_name": (u"%(conductor_name)s",
+                                METADATA_CONDUCTOR_NAME),
+            u"media": (u"%(media)s",
+                       METADATA_MEDIA),
+            u"ISRC": (u"%(ISRC)s",
+                      METADATA_ISRC),
+            u"catalog": (u"%(catalog)s",
+                         METADATA_CATALOG),
+            u"copyright": (u"%(copyright)s",
+                           METADATA_COPYRIGHT),
+            u"publisher": (u"%(publisher)s",
+                           METADATA_PUBLISHER),
+            u"year": (u"%(year)s",
+                      METADATA_YEAR),
+            u"date": (u"%(date)s",
+                      METADATA_DATE),
+            u"album_number": (u"%(album_number)d",
+                              METADATA_ALBUM_NUMBER),
+            u"album_total": (u"%(album_total)d",
+                             METADATA_ALBUM_TOTAL),
+            u"comment": (u"%(comment)s",
+                         METADATA_COMMENT),
+            u"suffix": (u"%(suffix)s",
+                        METADATA_SUFFIX),
+            u"album_track_number": (u"%(album_track_number)s",
+                                    METADATA_ALBUM_TRACK_NUMBER),
+            u"basename": (u"%(basename)s",
+                          METADATA_BASENAME)}
 
 FORMAT_FIELDS = __format_fields__()
 FORMAT_FIELD_ORDER = (u"track_name",
@@ -239,6 +241,7 @@ FORMAT_FIELD_ORDER = (u"track_name",
                       u"album_track_number",
                       u"basename")
 
+
 def __default_quality__(audio_type):
     quality = DEFAULT_QUALITY.get(audio_type, "")
     try:
@@ -256,7 +259,7 @@ else:
     try:
         import multiprocessing
         MAX_JOBS = multiprocessing.cpucount()
-    except (ImportError,AttributeError):
+    except (ImportError, AttributeError):
         MAX_JOBS = 1
 
 
@@ -668,10 +671,10 @@ class VerboseMessenger:
 
         this appends a newline to that message"""
 
-        self.error(u"[Errno %d] %s: '%s'" % \
-                       (oserror.errno,
-                        oserror.strerror.decode('utf-8', 'replace'),
-                        Filename(oserror.filename)))
+        self.error(u"[Errno %d] %s: '%s'" %
+                   (oserror.errno,
+                    oserror.strerror.decode('utf-8', 'replace'),
+                    Filename(oserror.filename)))
 
     def warning(self, s):
         """displays a warning message unicode string to stderr
@@ -728,11 +731,9 @@ class VerboseMessenger:
         """
 
         if (sys.stdout.isatty()):
-            sys.stdout.write((
-                    # move cursor to column 0
-                    u"\u001B[0G" +
-                    # clear everything after cursor
-                    u"\u001B[0K").encode(IO_ENCODING))
+            sys.stdout.write((u"\u001B[0G" +  # move cursor to column 0
+                              # clear everything after cursor
+                              u"\u001B[0K").encode(IO_ENCODING))
             sys.stdout.flush()
 
     def ansi_uplines(self, lines):
@@ -961,6 +962,7 @@ class SingleProgressDisplay(ProgressDisplay):
             self.update_row(0, current, total)
             self.refresh()
             self.last_updated = now
+
 
 class ReplayGainProgressDisplay(ProgressDisplay):
     """a specialized ProgressDisplay for handling ReplayGain application"""
@@ -1199,8 +1201,11 @@ def file_type(file):
     the AudioFile class is not guaranteed to be available"""
 
     header = file.read(37)
-    if ((header[4:8] == "ftyp") and
-        (header[8:12] in ('mp41', 'mp42', 'M4A ', 'M4B '))):
+    if ((header[4:8] == "ftyp") and (header[8:12] in ('mp41',
+                                                      'mp42',
+                                                      'M4A ',
+                                                      'M4B '))):
+
         #possibly ALAC or M4A
 
         from .bitstream import BitstreamReader
@@ -1257,14 +1262,15 @@ def file_type(file):
          mode_extension,
          copy,
          original,
-         emphasis) = BitstreamReader(StringIO(header), 0).parse(
-            "11u 2u 2u 1u 4u 2u 1u 1u 2u 2u 1u 1u 2u")
-        if ((frame_sync == 0x7FF) and
-            (mpeg_id == 3) and
-            (layer_description == 1) and
-            (bitrate != 0xF) and
-            (sample_rate != 3) and
-            (emphasis != 2)):
+         emphasis) = BitstreamReader(
+             StringIO(header), 0).parse("11u 2u 2u 1u 4u 2u 1u " +
+                                        "1u 2u 2u 1u 1u 2u")
+        if (((frame_sync == 0x7FF) and
+             (mpeg_id == 3) and
+             (layer_description == 1) and
+             (bitrate != 0xF) and
+             (sample_rate != 3) and
+             (emphasis != 2))):
             #MP3s are MPEG-1, Layer-III
             return MP3Audio
         elif ((frame_sync == 0x7FF) and
@@ -1281,14 +1287,14 @@ def file_type(file):
             return None
     elif (header[0:4] == "OggS"):
         #possibly Ogg FLAC, Ogg Vorbis or Ogg Opus
-         if (header[0x1C:0x21] == "\x7FFLAC"):
-             return OggFlacAudio
-         elif (header[0x1C:0x23] == "\x01vorbis"):
-             return VorbisAudio
-         elif (header[0x1C:0x26] == "OpusHead\x01"):
-             return OpusAudio
-         else:
-             return None
+        if (header[0x1C:0x21] == "\x7FFLAC"):
+            return OggFlacAudio
+        elif (header[0x1C:0x23] == "\x01vorbis"):
+            return VorbisAudio
+        elif (header[0x1C:0x26] == "OpusHead\x01"):
+            return OpusAudio
+        else:
+            return None
     elif (header[0:5] == "ajkg\x02"):
         return ShortenAudio
     elif (header[0:4] == "wvpk"):
@@ -1333,13 +1339,13 @@ def file_type(file):
                  copy,
                  original,
                  emphasis) = BitstreamReader(file, 0).parse(
-                    "3u 2u 2u 1u 4u 2u 1u 1u 2u 2u 1u 1u 2u")
-                if ((frame_sync == 0x7) and
-                    (mpeg_id == 3) and
-                    (layer_description == 1) and
-                    (bitrate != 0xF) and
-                    (sample_rate != 3) and
-                    (emphasis != 2)):
+                     "3u 2u 2u 1u 4u 2u 1u 1u 2u 2u 1u 1u 2u")
+                if (((frame_sync == 0x7) and
+                     (mpeg_id == 3) and
+                     (layer_description == 1) and
+                     (bitrate != 0xF) and
+                     (sample_rate != 3) and
+                     (emphasis != 2))):
                     #MP3s are MPEG-1, Layer-III
                     return MP3Audio
                 elif ((frame_sync == 0x7) and
@@ -1383,8 +1389,7 @@ def open(filename):
     f = file(filename, "rb")
     try:
         audio_class = file_type(f)
-        if ((audio_class is not None) and
-            (audio_class.has_binaries(BIN))):
+        if ((audio_class is not None) and audio_class.has_binaries(BIN)):
             return audio_class(filename)
         else:
             raise UnsupportedFile(filename)
@@ -2007,8 +2012,8 @@ class ReorderedPCMReader:
         else:
             self.channel_mask = channel_mask
 
-        if ((self.channel_mask != 0) and
-            (len(ChannelMask(self.channel_mask)) != self.channels)):
+        if (((self.channel_mask != 0) and
+             (len(ChannelMask(self.channel_mask)) != self.channels))):
             #channel_mask is defined but has a different number of channels
             #than the channel count attribute
             from .text import ERR_CHANNEL_COUNT_MASK_MISMATCH
@@ -2065,7 +2070,7 @@ class RemaskedPCMReader:
                                      [None] * (channel_count -
                                                pcmreader.channels))
 
-        from .pcm import from_list,from_channels
+        from .pcm import (from_list, from_channels)
         self.blank_channel = from_list([],
                                        1,
                                        self.pcmreader.bits_per_sample,
@@ -2087,7 +2092,6 @@ class RemaskedPCMReader:
                                     if c is not None else
                                     self.blank_channel)
                                    for c in self.__channels__])
-
 
     def close(self):
         self.pcmreader.close()
@@ -2183,9 +2187,9 @@ def pcm_cmp(pcmreader1, pcmreader2):
     the readers must be closed separately
     """
 
-    if ((pcmreader1.sample_rate != pcmreader2.sample_rate) or
-        (pcmreader1.channels != pcmreader2.channels) or
-        (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample)):
+    if (((pcmreader1.sample_rate != pcmreader2.sample_rate) or
+         (pcmreader1.channels != pcmreader2.channels) or
+         (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample))):
         return False
 
     reader1 = BufferedPCMReader(pcmreader1)
@@ -2214,9 +2218,9 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
     (which permits us to store just one big blob of memory at a time)
     """
 
-    if ((pcmreader1.sample_rate != pcmreader2.sample_rate) or
-        (pcmreader1.channels != pcmreader2.channels) or
-        (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample)):
+    if (((pcmreader1.sample_rate != pcmreader2.sample_rate) or
+         (pcmreader1.channels != pcmreader2.channels) or
+         (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample))):
         return False
 
     import cStringIO
@@ -2245,14 +2249,14 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
     may raise IOError or ValueError if problems occur
     when reading PCM streams"""
 
-    if ((pcmreader1.sample_rate != pcmreader2.sample_rate) or
-        (pcmreader1.channels != pcmreader2.channels) or
-        (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample)):
+    if (((pcmreader1.sample_rate != pcmreader2.sample_rate) or
+         (pcmreader1.channels != pcmreader2.channels) or
+         (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample))):
         return 0
 
-    if ((pcmreader1.channel_mask != 0) and
-        (pcmreader2.channel_mask != 0) and
-        (pcmreader1.channel_mask != pcmreader2.channel_mask)):
+    if (((pcmreader1.channel_mask != 0) and
+         (pcmreader2.channel_mask != 0) and
+         (pcmreader1.channel_mask != pcmreader2.channel_mask))):
         return 0
 
     frame_number = 0
@@ -2521,7 +2525,7 @@ def PCMConverter(pcmreader,
             if (pcmreader.channels > 2):
                 #reduce channel count through downmixing
                 #followed by averaging
-                from .pcmconverter import Averager,Downmixer
+                from .pcmconverter import (Averager, Downmixer)
                 pcmreader = Averager(Downmixer(pcmreader))
             else:
                 #pcmreader.channels == 2
@@ -2570,12 +2574,12 @@ def resampled_frame_count(initial_frame_count,
     if (initial_sample_rate == new_sample_rate):
         return initial_frame_count
     else:
-        from decimal import Decimal,ROUND_DOWN
+        from decimal import (Decimal, ROUND_DOWN)
         new_frame_count = ((Decimal(initial_frame_count) *
                             Decimal(new_sample_rate)) /
                            Decimal(initial_sample_rate))
-        return int(new_frame_count.quantize(
-                Decimal("1."), rounding=ROUND_DOWN))
+        return int(new_frame_count.quantize(Decimal("1."),
+                                            rounding=ROUND_DOWN))
 
 
 def applicable_replay_gain(tracks):
@@ -2594,8 +2598,7 @@ def applicable_replay_gain(tracks):
         return False
 
     channels = set([track.channels() for track in tracks])
-    if ((len(channels) > 1) or
-        (list(channels)[0] not in (1, 2))):
+    if ((len(channels) > 1) or (list(channels)[0] not in (1, 2))):
         return False
 
     return True
@@ -2643,9 +2646,9 @@ def calculate_replay_gain(tracks, progress=None):
             output_channels = pcm.channels
             output_channel_mask = pcm.channel_mask
 
-        if ((pcm.channels != output_channels) or
-            (pcm.channel_mask != output_channel_mask) or
-            (pcm.sample_rate) != target_rate):
+        if (((pcm.channels != output_channels) or
+             (pcm.channel_mask != output_channel_mask) or
+             (pcm.sample_rate) != target_rate)):
             pcm = PCMConverter(pcm,
                                target_rate,
                                output_channels,
@@ -2785,24 +2788,24 @@ class MetaData:
                        METADATA_ALBUM_TOTAL,
                        METADATA_COMMENT)
 
-    FIELD_NAMES = {"track_name":METADATA_TRACK_NAME,
-                   "track_number":METADATA_TRACK_NUMBER,
-                   "track_total":METADATA_TRACK_TOTAL,
-                   "album_name":METADATA_ALBUM_NAME,
-                   "artist_name":METADATA_ARTIST_NAME,
-                   "performer_name":METADATA_PERFORMER_NAME,
-                   "composer_name":METADATA_COMPOSER_NAME,
-                   "conductor_name":METADATA_CONDUCTOR_NAME,
-                   "media":METADATA_MEDIA,
-                   "ISRC":METADATA_ISRC,
-                   "catalog":METADATA_CATALOG,
-                   "copyright":METADATA_COPYRIGHT,
-                   "publisher":METADATA_PUBLISHER,
-                   "year":METADATA_YEAR,
-                   "date":METADATA_DATE,
-                   "album_number":METADATA_ALBUM_NUMBER,
-                   "album_total":METADATA_ALBUM_TOTAL,
-                   "comment":METADATA_COMMENT}
+    FIELD_NAMES = {"track_name": METADATA_TRACK_NAME,
+                   "track_number": METADATA_TRACK_NUMBER,
+                   "track_total": METADATA_TRACK_TOTAL,
+                   "album_name": METADATA_ALBUM_NAME,
+                   "artist_name": METADATA_ARTIST_NAME,
+                   "performer_name": METADATA_PERFORMER_NAME,
+                   "composer_name": METADATA_COMPOSER_NAME,
+                   "conductor_name": METADATA_CONDUCTOR_NAME,
+                   "media": METADATA_MEDIA,
+                   "ISRC": METADATA_ISRC,
+                   "catalog": METADATA_CATALOG,
+                   "copyright": METADATA_COPYRIGHT,
+                   "publisher": METADATA_PUBLISHER,
+                   "year": METADATA_YEAR,
+                   "date": METADATA_DATE,
+                   "album_number": METADATA_ALBUM_NUMBER,
+                   "album_total": METADATA_ALBUM_TOTAL,
+                   "comment": METADATA_COMMENT}
 
     def __init__(self,
                  track_name=None,
@@ -2877,10 +2880,10 @@ class MetaData:
             self.__dict__['__images__'] = list()
 
     def __repr__(self):
+        fields = ["%s=%s" % (field, repr(getattr(self, field)))
+                  for field in MetaData.FIELDS]
         return ("MetaData(%s)" % (
-                ",".join(["%s"] * (len(MetaData.FIELDS))))) % \
-                tuple(["%s=%s" % (field, repr(getattr(self, field)))
-                       for field in MetaData.FIELDS])
+                ",".join(["%s"] * (len(MetaData.FIELDS))))) % tuple(fields)
 
     def __delattr__(self, field):
         if (field in self.FIELDS):
@@ -2997,8 +3000,8 @@ class MetaData:
 
     def __eq__(self, metadata):
         for attr in MetaData.FIELDS:
-            if ((not hasattr(metadata, attr)) or
-                (getattr(self, attr) != getattr(metadata, attr))):
+            if ((not hasattr(metadata, attr)) or (getattr(self, attr) !=
+                                                  getattr(metadata, attr))):
                 return False
         else:
             return True
@@ -3199,11 +3202,15 @@ class Image:
                 4: "Other"}.get(self.type, "Other")
 
     def __repr__(self):
-        return ("Image(mime_type=%s,width=%s,height=%s,color_depth=%s," +
-                "color_count=%s,description=%s,type=%s,...)") % \
-                (repr(self.mime_type), repr(self.width), repr(self.height),
-                 repr(self.color_depth), repr(self.color_count),
-                 repr(self.description), repr(self.type))
+        fields = ["%s=%s" % (attr, getattr(self, attr))
+                  for attr in ["mime_type",
+                               "width",
+                               "height",
+                               "color_depth",
+                               "color_count",
+                               "description",
+                               "type"]]
+        return "Image(%s)" % (",".join(fields))
 
     def __unicode__(self):
         return u"%s (%d\u00D7%d,'%s')" % \
@@ -3241,8 +3248,8 @@ class Image:
             for attr in ["data", "mime_type", "width", "height",
                          "color_depth", "color_count", "description",
                          "type"]:
-                if ((not hasattr(image, attr)) or
-                    (getattr(self, attr) != getattr(image, attr))):
+                if ((not hasattr(image, attr)) or (getattr(self, attr) !=
+                                                   getattr(image, attr))):
                     return False
             else:
                 return True
@@ -3322,7 +3329,7 @@ class UnsupportedTracknameField(Exception):
 
         messenger.error(ERR_UNKNOWN_FIELD % (self.field,))
         messenger.info(LAB_SUPPORTED_FIELDS)
-        for field in sorted(MetaData.FIELDS + \
+        for field in sorted(MetaData.FIELDS +
                             ("album_track_number", "suffix")):
             if (field == 'track_number'):
                 messenger.info(u"%(track_number)2.2d")
@@ -3330,6 +3337,7 @@ class UnsupportedTracknameField(Exception):
                 messenger.info(u"%%(%s)s" % (field))
 
         messenger.info(u"%(basename)s")
+
 
 class InvalidFilenameFormat(Exception):
     """raised by AudioFile.track_name()
@@ -3528,10 +3536,9 @@ class AudioFile:
         if (metadata is not None):
             return metadata.track_number
         else:
+            basename = os.path.basename(self.filename)
             try:
-                return int(re.findall(
-                        r'\d{2,3}',
-                        os.path.basename(self.filename))[0]) % 100
+                return int(re.findall(r'\d{2,3}', basename)[0]) % 100
             except IndexError:
                 return None
 
@@ -3545,10 +3552,9 @@ class AudioFile:
         if (metadata is not None):
             return metadata.album_number
         else:
+            basename = os.path.basename(self.filename)
             try:
-                long_track_number = int(re.findall(
-                        r'\d{3}',
-                        os.path.basename(self.filename))[0])
+                long_track_number = int(re.findall(r'\d{3}', basename)[0])
                 return long_track_number / 100
             except IndexError:
                 return None
@@ -3591,17 +3597,16 @@ class AudioFile:
                                if track_metadata.album_total is not None
                                else 0)
             else:
+                basename = os.path.basename(file_path)
                 try:
-                    track_number = int(re.findall(
-                            r'\d{2,4}',
-                            os.path.basename(file_path))[0]) % 100
+                    track_number = int(re.findall(r'\d{2,4}',
+                                                  basename)[0]) % 100
                 except IndexError:
                     track_number = 0
 
                 try:
-                    album_number = int(re.findall(
-                            r'\d{2,4}',
-                            os.path.basename(file_path))[0]) / 100
+                    album_number = int(re.findall(r'\d{2,4}',
+                                                  basename)[0]) / 100
                 except IndexError:
                     album_number = 0
 
@@ -3626,8 +3631,8 @@ class AudioFile:
 
             if (track_metadata is not None):
                 for field in track_metadata.FIELDS:
-                    if ((field != "suffix") and
-                        (field not in MetaData.INTEGER_FIELDS)):
+                    if ((field != "suffix") and (field not in
+                                                 MetaData.INTEGER_FIELDS)):
                         if (getattr(track_metadata, field) is not None):
                             format_dict[field.decode('ascii')] = getattr(
                                 track_metadata,
@@ -3850,9 +3855,9 @@ class WaveContainer(AudioFile):
         the resulting object
         may raise EncodingError if some problem occurs during encoding"""
 
-        if (self.has_foreign_wave_chunks() and
-            hasattr(target_class, "from_wave") and
-            callable(target_class.from_wave)):
+        if ((self.has_foreign_wave_chunks() and
+             hasattr(target_class, "from_wave") and
+             callable(target_class.from_wave))):
             #transfer header and footer when performing PCM conversion
             (header, footer) = self.wave_header_footer()
             return target_class.from_wave(target_path,
@@ -3914,9 +3919,9 @@ class AiffContainer(AudioFile):
         the resulting object
         may raise EncodingError if some problem occurs during encoding"""
 
-        if (self.has_foreign_aiff_chunks() and
-            hasattr(target_class, "from_aiff") and
-            callable(target_class.from_aiff)):
+        if ((self.has_foreign_aiff_chunks() and
+             hasattr(target_class, "from_aiff") and
+             callable(target_class.from_aiff))):
             #transfer header and footer when performing PCM conversion
             (header, footer) = self.aiff_header_footer()
             return target_class.from_aiff(target_path,
@@ -4380,17 +4385,17 @@ class CDTrackLog(dict):
 
     #log format is similar to cdda2wav's
     def __str__(self):
+        fields = {"edge": self.get(2, 0),
+                  "atom": self.get(3, 0),
+                  "skip": self.get(6, 0),
+                  "drift": self.get(7, 0),
+                  "drop": self.get(10, 0),
+                  "dup": self.get(11, 0),
+                  "rderr": self.get(12, 0)}
         return ", ".join(["%%(%s)d %s" % (field, field)
                           for field in
                           ("rderr", "skip", "atom", "edge",
-                           "drop", "dup", "drift")]) % \
-                           {"edge": self.get(2, 0),
-                            "atom": self.get(3, 0),
-                            "skip": self.get(6, 0),
-                            "drift": self.get(7, 0),
-                            "drop": self.get(10, 0),
-                            "dup": self.get(11, 0),
-                            "rderr": self.get(12, 0)}
+                           "drop", "dup", "drift")]) % fields
 
 
 class CDTrackReader(PCMReader):
@@ -4516,8 +4521,8 @@ class CDTrackReaderAccurateRipCRC:
         if (self.prefix_0s > 0):
             #substitute frame samples for prefix 0s
             (substitute, remainder) = crc_frame.split(self.prefix_0s)
-            self.accuraterip_crc.update(pcm.from_list(
-                    [0] * len(substitute), 2, 16, True))
+            self.accuraterip_crc.update(
+                pcm.from_list([0] * len(substitute), 2, 16, True))
             self.prefix_0s -= substitute.frames
             crc_frame = remainder
 
@@ -4526,8 +4531,8 @@ class CDTrackReaderAccurateRipCRC:
             (remainder, substitute) = crc_frame.split(self.checksum_window)
             self.checksum_window -= remainder.frames
             self.accuraterip_crc.update(remainder)
-            self.accuraterip_crc.update(pcm.from_list(
-                    [0] * len(substitute), 2, 16, True))
+            self.accuraterip_crc.update(
+                pcm.from_list([0] * len(substitute), 2, 16, True))
         else:
             self.checksum_window -= crc_frame.frames
             self.accuraterip_crc.update(crc_frame)
@@ -4606,7 +4611,8 @@ def metadata_lookup(first_track_number, last_track_number,
         from urllib2 import HTTPError
         from xml.parsers.expat import ExpatError
         try:
-            matches.extend(musicbrainz.perform_lookup(
+            matches.extend(
+                musicbrainz.perform_lookup(
                     first_track_number=first_track_number,
                     last_track_number=last_track_number,
                     lead_out_offset=lead_out_offset,
@@ -4620,7 +4626,8 @@ def metadata_lookup(first_track_number, last_track_number,
         from . import freedb
         from urllib2 import HTTPError
         try:
-            matches.extend(freedb.perform_lookup(
+            matches.extend(
+                freedb.perform_lookup(
                     offsets=offsets,
                     total_length=total_length,
                     track_count=track_count,
@@ -4658,7 +4665,7 @@ def track_metadata_lookup(audiofiles,
     if no match can be found for the CD
     """
 
-    audiofiles.sort(lambda x,y: cmp(x.track_number(), y.track_number()))
+    audiofiles.sort(lambda x, y: cmp(x.track_number(), y.track_number()))
     track_frames = [f.cd_frames() for f in audiofiles]
     track_numbers = [f.track_number() for f in audiofiles]
 
@@ -5074,10 +5081,11 @@ class __ProgressQueueJob__:
             os.close(r3)
 
             try:
-                result = (True, function(*args,
-                                         progress=
-                                         __PollingProgress__(progress).progress,
-                                         **kwargs))
+                function_result = function(
+                    *args,
+                    progress=__PollingProgress__(progress).progress,
+                    **kwargs)
+                result = (True, function_result)
             except Exception, exception:
                 result = (False, exception)
 

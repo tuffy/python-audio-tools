@@ -1129,9 +1129,9 @@ read_residual(BitstreamReader* bs,
     if (add == 0) {
         u = base;
     } else {
-        unsigned p = LOG2(add);
-        int e = (1 << (p + 1)) - add - 1;
-        unsigned r = bs->read(bs, p);
+        const unsigned p = LOG2(add);
+        const int e = (1 << (p + 1)) - add - 1;
+        const unsigned r = bs->read(bs, p);
         if (r >= e) {
             u = base + (r * 2) - e + bs->read(bs, 1);
         } else {

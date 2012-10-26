@@ -5980,9 +5980,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    now that the player routines aren't as threaded as before.
    libcdio offers playback functions which should output audio directly
    but may not offer progress indicators
-** TODO Add volume control to low-level output players
-   It should be possible to adjust the volume from trackplay/cdplay
-   without adjusting the output data itself.
 ** TODO Add optional interactive modes to utilities
    Now that Urwid is being used for editxmcd, it might be helpful
    to add optional console-based interactive modes to the other tools.
@@ -5996,8 +5993,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE cd2track
 *** DONE cdplay
 **** DONE make player widget generic
-*** TODO coverdump
-*** TODO covertag
 *** TODO coverview
 **** TODO Update widget set?
      Although wxPython is available lots of places,
@@ -6009,7 +6004,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      Using the built-in PyObjC bridge on Mac OS is the most compatible
      solution, if it can be implemented without making a huge mess.
 *** DONE dvda2track
-*** TODO track2cd
 *** DONE track2track
 *** DONE trackcat
 *** DONE trackplay
@@ -6045,6 +6039,69 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     Having two different, slightly incompatible M4A implementations
     needlessly complicates things.
 ** TODO Ensure Python files are PEP8-compliant
+*** TODO executables
+    - [ ] audiotools-config
+    - [ ] cd2track
+    - [ ] cdinfo
+    - [ ] cdplay
+    - [ ] coverdump
+    - [ ] covertag
+    - [ ] coverview
+    - [ ] dvda2track
+    - [ ] dvdainfo
+    - [ ] track2cd
+    - [ ] track2track
+    - [ ] trackcat
+    - [ ] trackcmp
+    - [ ] trackinfo
+    - [ ] tracklength
+    - [ ] tracklint
+    - [ ] trackplay
+    - [ ] trackrename
+    - [ ] tracksplit
+    - [ ] tracktag
+    - [ ] trackverify
+*** TODO libraries
+    - [X] __init__.py
+    - [X] accuraterip.py
+    - [X] aiff.py
+    - [X] ape.py
+    - [X] au.py
+    - [X] cue.py
+    - [X] delta.py
+    - [X] dvda.py
+    - [X] flac.py
+    - [X] freedb.py
+    - [X] id3.py
+    - [X] id3v1.py
+    - [X] image.py
+    - [X] m4a.py
+    - [X] m4a_atoms.py
+    - [X] mp3.py
+    - [X] musicbrainz.py
+    - [X] ogg.py
+    - [X] opus.py
+    - [X] player.py
+    - [X] shn.py
+    - [X] text.py
+    - [X] toc.py
+    - [ ] ui.py
+    - [X] vorbis.py
+    - [X] vorbiscomment.py
+    - [X] wav.py
+    - [X] wavpack.py
+**** DONE py_decoders
+     - [X] __init__.py
+     - [X] alac.py
+     - [X] flac.py
+     - [X] shn.py
+     - [X] wavpack.py
+**** DONE py_encoders
+     - [X] __init__.py
+     - [X] alac.py
+     - [X] flac.py
+     - [X] shn.py
+     - [X] wavpack.py
 ** TODO Update version number to 2.19 final
 * TODO Finish version 2.20
 ** TODO Add internal Money's Audio codec
@@ -6256,6 +6313,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Remove WavePackAudio.BINARIES
 *** DONE Add more WavPack INVALIDFILE .verify() tests
 *** DONE Remove wvgain for ReplayGain application
+** TODO Add volume control to low-level output players
+   It should be possible to adjust the volume from trackplay/cdplay
+   without adjusting the output data itself.
 * TODO Finish version 3.0
 ** TODO Shift to Python 3
    This lengthy transition will have to wait

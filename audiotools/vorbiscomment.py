@@ -277,8 +277,8 @@ class VorbisComment(MetaData):
             #or none of them contain an integer,
             #so look for slashed TRACKNUMBER/DISCNUMBER values
             try:
-                slashed_key = {"track_total":u"TRACKNUMBER",
-                               "album_total":u"DISCNUMBER"}[attr]
+                slashed_key = {"track_total": u"TRACKNUMBER",
+                               "album_total": u"DISCNUMBER"}[attr]
                 new_slashed_values = self[slashed_key]
                 for i in xrange(len(new_slashed_values)):
                     #look for the first TRACKNUMBER/DISCNUMBER field
@@ -341,8 +341,8 @@ class VorbisComment(MetaData):
                 self[key] = []
 
                 if (len(orphaned_totals) > 0):
-                    total_key = {"track_number":u"TRACKTOTAL",
-                                 "album_number":u"DISCTOTAL"}[attr]
+                    total_key = {"track_number": u"TRACKTOTAL",
+                                 "album_number": u"DISCTOTAL"}[attr]
                     try:
                         #append new TRACKTOTAL/DISCTOTAL fields
                         self[total_key] = self[total_key] + orphaned_totals
@@ -353,9 +353,10 @@ class VorbisComment(MetaData):
                 #no TRACKNUMBER/DISCNUMBER fields to remove
                 pass
         elif ((attr == "track_total") or (attr == "album_total")):
-            slashed_key = {"track_total":u"TRACKNUMBER",
-                           "album_total":u"DISCNUMBER"}[attr]
+            slashed_key = {"track_total": u"TRACKNUMBER",
+                           "album_total": u"DISCNUMBER"}[attr]
             slashed_field = re.compile(r'(.*?)\s*/.*')
+
             def slash_filter(s):
                 match = slashed_field.match(s)
                 if (match is not None):
@@ -471,19 +472,19 @@ class VorbisComment(MetaData):
                         if (fix1 != value):
                             from .text import CLEAN_REMOVE_TRAILING_WHITESPACE
                             fixes_performed.append(
-                              CLEAN_REMOVE_TRAILING_WHITESPACE %
-                              {"field": key})
+                                CLEAN_REMOVE_TRAILING_WHITESPACE %
+                                {"field": key})
 
                         fix2 = fix1.lstrip()
                         if (fix2 != fix1):
                             from .text import CLEAN_REMOVE_LEADING_WHITESPACE
                             fixes_performed.append(
-                              CLEAN_REMOVE_LEADING_WHITESPACE %
-                              {"field": key})
+                                CLEAN_REMOVE_LEADING_WHITESPACE %
+                                {"field": key})
 
                         #integer fields also strip leading zeroes
-                        if ((attr == "track_number") or
-                            (attr == "album_number")):
+                        if (((attr == "track_number") or
+                             (attr == "album_number"))):
                             match = re.match(r'(.*?)\s*/\s*(.*)', fix2)
                             if (match is not None):
                                 #fix whitespace/zeroes
@@ -514,8 +515,8 @@ class VorbisComment(MetaData):
                             if (fix3 != fix2):
                                 from .text import CLEAN_REMOVE_LEADING_ZEROES
                                 fixes_performed.append(
-                                 CLEAN_REMOVE_LEADING_ZEROES %
-                                 {"field": key})
+                                    CLEAN_REMOVE_LEADING_ZEROES %
+                                    {"field": key})
                         else:
                             fix3 = fix2
 

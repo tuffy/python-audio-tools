@@ -60,8 +60,7 @@ def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
     total_size = 4 * 3   # 'RIFF' + size + 'WAVE'
 
     total_size += 4 * 2  # 'fmt ' + size
-    if ((pcmreader.channels <= 2) and
-        (pcmreader.bits_per_sample <= 16)):
+    if ((pcmreader.channels <= 2) and (pcmreader.bits_per_sample <= 16)):
         #classic fmt chunk
         fmt = "16u 16u 32u 32u 16u 16u"
         fmt_fields = (1,   # compression code
@@ -217,7 +216,7 @@ class EncodingParameters:
                         CorrelationParameters(3, 2, [0, 0], [[0] * 3,
                                                              [0] * 3]),
                         CorrelationParameters(17, 2, [0, 0], [[0] * 2,
-                                                                [0] * 2]),
+                                                              [0] * 2]),
                         CorrelationParameters(2, 2, [0, 0], [[0] * 2,
                                                              [0] * 2]),
                         CorrelationParameters(18, 2, [0, 0], [[0] * 2,
@@ -1266,8 +1265,8 @@ def write_bitstream(writer, channels, entropies):
     while (i < (len(channels) * len(channels[0]))):
         r = channels[i % len(channels)][i / len(channels)]
 
-        if ((entropies[0][0] < 2) and (entropies[1][0] < 2) and
-            unary_undefined(u_i_2, r_i_1.m)):
+        if (((entropies[0][0] < 2) and (entropies[1][0] < 2) and
+             unary_undefined(u_i_2, r_i_1.m))):
             if ((r_i_1.zeroes is not None) and (r_i_1.m is None)):
                 #in a block of zeroes
                 if (r == 0):

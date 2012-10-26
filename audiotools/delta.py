@@ -102,9 +102,8 @@ class UndoDB:
         self.cursor.execute(
             "INSERT INTO patch (patch_id, patch_data) VALUES (?, ?)",
             [None,
-             base64.b64encode(
-                    UndoDB.build_patch(file_data1,
-                                       file_data2)).decode('ascii')])
+             base64.b64encode(UndoDB.build_patch(file_data1,
+                                                 file_data2)).decode('ascii')])
         patch_id = self.cursor.lastrowid
         try:
             self.cursor.execute("""INSERT INTO source_file (

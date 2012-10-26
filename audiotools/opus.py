@@ -18,8 +18,9 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools import (AudioFile, InvalidFile)
-from .vorbis import VorbisAudio,VorbisChannelMask
+from .vorbis import (VorbisAudio, VorbisChannelMask)
 from .vorbiscomment import VorbisComment
+
 
 class InvalidOpus(InvalidFile):
     pass
@@ -37,8 +38,8 @@ class OpusAudio(VorbisAudio):
     DESCRIPTION = u"Opus Audio Codec"
     DEFAULT_COMPRESSION = "10"
     COMPRESSION_MODES = tuple(map(str, range(0, 11)))
-    COMPRESSION_DESCRIPTIONS = {"0":u"lowest quality, fastest encode",
-                                "10":u"best quality, slowest encode"}
+    COMPRESSION_DESCRIPTIONS = {"0": u"lowest quality, fastest encode",
+                                "10": u"best quality, slowest encode"}
     BINARIES = ("opusenc", "opusdec")
 
     def __init__(self, filename):
@@ -62,7 +63,7 @@ class OpusAudio(VorbisAudio):
                  page_sequence_number,
                  checksum,
                  segment_count) = ogg_reader.parse(
-                    "4b 8u 8u 64S 32u 32u 32u 8u")
+                     "4b 8u 8u 64S 32u 32u 32u 8u")
 
                 if (magic_number != 'OggS'):
                     from .text import ERR_OGG_INVALID_MAGIC_NUMBER
@@ -80,7 +81,7 @@ class OpusAudio(VorbisAudio):
                  input_sample_rate,
                  output_gain,
                  mapping_family) = ogg_reader.parse(
-                    "8b 8u 8u 16u 32u 16s 8u")
+                     "8b 8u 8u 16u 32u 16s 8u")
 
                 if (opushead != "OpusHead"):
                     from .text import ERR_OPUS_INVALID_TYPE
@@ -274,7 +275,7 @@ class OpusAudio(VorbisAudio):
                  end_of_stream,
                  granule_position,
                  page_segment_count) = ogg_stream.parse(
-                    "4b 8u 1p 1p 1u 5p 64S 32p 32p 32p 8u")
+                     "4b 8u 1p 1p 1u 5p 64S 32p 32p 32p 8u")
                 ogg_stream.skip_bytes(sum([ogg_stream.read(8) for i in
                                            xrange(page_segment_count)]))
 
@@ -311,11 +312,11 @@ class OpusAudio(VorbisAudio):
                                stderr=file(os.devnull, "a"))
 
         pcmreader = PCMReader(sub.stdout,
-                         sample_rate=self.sample_rate(),
-                         channels=self.channels(),
-                         channel_mask=int(self.channel_mask()),
-                         bits_per_sample=self.bits_per_sample(),
-                         process=sub)
+                              sample_rate=self.sample_rate(),
+                              channels=self.channels(),
+                              channel_mask=int(self.channel_mask()),
+                              bits_per_sample=self.bits_per_sample(),
+                              process=sub)
 
         if (self.channels() <= 2):
             return pcmreader
@@ -366,8 +367,8 @@ class OpusAudio(VorbisAudio):
         import subprocess
         import os
 
-        if ((compression is None) or
-            (compression not in cls.COMPRESSION_MODES)):
+        if (((compression is None) or
+             (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
         devnull = file(os.devnull, 'ab')

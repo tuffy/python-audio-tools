@@ -49,8 +49,8 @@ class WavPackDecoder:
             sub_blocks_data.mark()
             try:
                 for sub_block in sub_blocks(sub_blocks_data, sub_blocks_size):
-                    if ((sub_block.metadata_function == 7) and
-                        (sub_block.nondecoder_data == 1)):
+                    if (((sub_block.metadata_function == 7) and
+                         (sub_block.nondecoder_data == 1))):
                         self.sample_rate = sub_block.data.read(
                             sub_block.data_size() * 8)
                         break
@@ -63,8 +63,8 @@ class WavPackDecoder:
         self.bits_per_sample = [8, 16, 24, 32][block_header.bits_per_sample]
 
         if (block_header.initial_block and block_header.final_block):
-            if ((block_header.mono_output == 0) or
-                (block_header.false_stereo == 1)):
+            if (((block_header.mono_output == 0) or
+                 (block_header.false_stereo == 1))):
                 self.channels = 2
                 self.channel_mask = 0x3
             else:
@@ -74,8 +74,8 @@ class WavPackDecoder:
             #look for channel mask sub block
             sub_blocks_data.mark()
             for sub_block in sub_blocks(sub_blocks_data, sub_blocks_size):
-                if ((sub_block.metadata_function == 13) and
-                    (sub_block.nondecoder_data == 0)):
+                if (((sub_block.metadata_function == 13) and
+                     (sub_block.nondecoder_data == 0))):
                     self.channels = sub_block.data.read(8)
                     self.channel_mask = sub_block.data.read(
                         (sub_block.data_size() - 1) * 8)
@@ -105,10 +105,10 @@ class WavPackDecoder:
                             self.reader.substream(sub_blocks_size)
                         for sub_block in sub_blocks(sub_blocks_data,
                                                     sub_blocks_size):
-                            if ((sub_block.metadata_function == 6) and
-                                (sub_block.nondecoder_data == 1)):
-                                if (sub_block.data.read_bytes(16) !=
-                                    self.md5sum.digest()):
+                            if (((sub_block.metadata_function == 6) and
+                                 (sub_block.nondecoder_data == 1))):
+                                if ((sub_block.data.read_bytes(16) !=
+                                     self.md5sum.digest())):
                                     raise ValueError("invalid stream MD5 sum")
                     except (IOError, ValueError):
                         #no error if a block isn't found
@@ -135,8 +135,8 @@ class WavPackDecoder:
             if (block_header.final_block == 1):
                 break
 
-        if ((block_header.block_index + block_header.block_samples) >=
-            block_header.total_samples):
+        if ((block_header.block_index +
+             block_header.block_samples) >= block_header.total_samples):
             self.pcm_finished = True
 
         #combine channels of audio data into single block
@@ -208,11 +208,10 @@ class Block_Header:
 
     @classmethod
     def read(cls, reader):
-        return cls(*reader.parse(
-                "4b 32u 16u 8u 8u 32u 32u 32u" +
-                "2u 1u 1u 1u 1u 1u 1u 1u " +
-                "1u 1u 1u 1u 5u 5u 4u 2p 1u 1u 1p" +
-                "32u"))
+        return cls(*reader.parse("4b 32u 16u 8u 8u 32u 32u 32u" +
+                                 "2u 1u 1u 1u 1u 1u 1u 1u " +
+                                 "1u 1u 1u 1u 5u 5u 4u 2p 1u 1u 1p" +
+                                 "32u"))
 
 
 class Sub_Block:
@@ -301,7 +300,7 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
             if (metadata_function == 2):
                 (decorrelation_terms,
                  decorrelation_deltas) = read_decorrelation_terms(
-                    sub_block_size, actual_size_1_less, sub_block_data)
+                     sub_block_size, actual_size_1_less, sub_block_data)
                 decorrelation_terms_read = True
             if (metadata_function == 3):
                 if (not decorrelation_terms_read):
@@ -333,8 +332,8 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
                 extended_integers_read = True
             if (metadata_function == 10):
                 if (not entropies_read):
-                    raise ValueError(
-                      "bitstream sub block before entropy variables sub block")
+                    raise ValueError("bitstream sub block before " +
+                                     "entropy variables sub block")
                 residuals = read_bitstream(block_header, entropies,
                                            sub_block_data)
                 residuals_read = True
@@ -354,8 +353,7 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
         raise ValueError("bitstream sub block not found")
 
     if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
-        if (decorrelation_terms_read and
-            len(decorrelation_terms) > 0):
+        if (decorrelation_terms_read and len(decorrelation_terms) > 0):
             decorrelated = decorrelate_channels(residuals,
                                                 decorrelation_terms,
                                                 decorrelation_deltas,
@@ -371,8 +369,8 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
 
         channels_crc = calculate_crc(left_right)
         if (channels_crc != block_header.CRC):
-            raise ValueError("CRC mismatch (0x%8.8X != 0x%8.8X)" % \
-                                 (channels_crc, block_header.CRC))
+            raise ValueError("CRC mismatch (0x%8.8X != 0x%8.8X)" %
+                             (channels_crc, block_header.CRC))
 
         if (block_header.extended_size_integers == 1):
             un_shifted = undo_extended_integers(zero_bits,
@@ -384,8 +382,7 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
 
         return un_shifted
     else:
-        if (decorrelation_terms_read and
-            len(decorrelation_terms) > 0):
+        if (decorrelation_terms_read and len(decorrelation_terms) > 0):
             decorrelated = decorrelate_channels(residuals,
                                                 decorrelation_terms,
                                                 decorrelation_deltas,
@@ -396,8 +393,8 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
 
         channels_crc = calculate_crc(decorrelated)
         if (channels_crc != block_header.CRC):
-            raise ValueError("CRC mismatch (0x%8.8X != 0x%8.8X)" % \
-                                 (channels_crc, block_header.CRC))
+            raise ValueError("CRC mismatch (0x%8.8X != 0x%8.8X)" %
+                             (channels_crc, block_header.CRC))
 
         if (block_header.extended_size_integers == 1):
             un_shifted = undo_extended_integers(zero_bits,

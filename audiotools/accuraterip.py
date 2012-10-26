@@ -20,6 +20,7 @@
 
 from . import DiscID
 
+
 class AccurateRipDiscID:
     def __init__(self, offsets):
         """offsets is a list of CD track offsets, in CD sectors
@@ -40,8 +41,8 @@ class AccurateRipDiscID:
 
     def id3(self):
         return DiscID(
-            tracks=[y - x for (x,y) in zip(self.__offsets__,
-                                           self.__offsets__[1:])],
+            tracks=[y - x for (x, y) in zip(self.__offsets__,
+                                            self.__offsets__[1:])],
             offsets=[offset + 150 for offset in self.__offsets__[0:-1]],
             length=self.__offsets__[-1])
 
@@ -60,10 +61,10 @@ class AccurateRipDiscID:
 
     def db_filename(self):
         return ("dBAR-%(tracks)3.3d-%(id1)8.8x-%(id2)8.8x-%(id3)s.bin" %
-                {"tracks":self.track_count(),
-                 "id1":self.id1(),
-                 "id2":self.id2(),
-                 "id3":self.id3()})
+                {"tracks": self.track_count(),
+                 "id1": self.id1(),
+                 "id2": self.id2(),
+                 "id3": self.id3()})
 
     def url(self):
         id1 = self.id1()
@@ -152,7 +153,7 @@ class AccurateRipEntry:
 
 class AccurateRipTrackEntry:
     def __init__(self, confidence, crc, crc2):
-        self.confidence = confidence  #heh
+        self.confidence = confidence
         self.crc = crc
         self.crc2 = crc2
 
@@ -161,6 +162,7 @@ class AccurateRipTrackEntry:
             (self.confidence,
              self.crc,
              self.crc2)
+
 
 class AccurateRipTrackCRC:
     def __init__(self):

@@ -278,7 +278,7 @@ class Cuesheet:
 
     def __str__(self):
         return "\r\n".join(["%s %s" % (key, __attrib_str__(value))
-                            for key, value in self.attribs.items()] + \
+                            for key, value in self.attribs.items()] +
                            [str(track) for track in
                             sorted(self.tracks.values())])
 
@@ -400,9 +400,9 @@ class Track:
     def __str__(self):
         return ("  TRACK %2.2d %s\r\n" % (self.number, self.type)) + \
             "\r\n".join(["    %s %s" % (key, __attrib_str__(value))
-                         for key, value in self.attribs.items()] + \
-                        ["    INDEX %2.2d %2.2d:%2.2d:%2.2d" % \
-                             (k, v / 75 / 60, v / 75 % 60, v % 75)
+                         for key, value in self.attribs.items()] +
+                        ["    INDEX %2.2d %2.2d:%2.2d:%2.2d" %
+                         (k, v / 75 / 60, v / 75 % 60, v % 75)
                          for (k, v) in sorted(self.indexes.items())])
 
     def ISRC(self):

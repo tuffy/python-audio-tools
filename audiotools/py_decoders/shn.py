@@ -80,7 +80,7 @@ class SHNDecoder:
                              self.sample_rate,
                              bits_per_sample,
                              channel_mask) = parse_fmt(
-                                wave.substream(chunk_size))
+                                 wave.substream(chunk_size))
                             self.channel_mask = int(channel_mask)
                             return
                         else:
@@ -111,7 +111,7 @@ class SHNDecoder:
                              bits_per_sample,
                              self.sample_rate,
                              channel_mask) = parse_comm(
-                                aiff.substream(chunk_size))
+                                 aiff.substream(chunk_size))
                             self.channel_mask = int(channel_mask)
                             return
                         else:
@@ -185,8 +185,8 @@ class SHNDecoder:
         unshifted = []
         while (True):
             command = self.unsigned(2)
-            if ((0 <= command) and (command <= 3) or
-                (7 <= command) and (command <= 8)):
+            if (((0 <= command) and (command <= 3) or
+                 (7 <= command) and (command <= 8))):
                 #audio data commands
                 if (command == 0):    # DIFF0
                     samples.append(self.read_diff0(self.block_length,

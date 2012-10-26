@@ -70,8 +70,8 @@ def parse(lines):
             else:
                 if (track is not None):
                     track.lines.append(line)
-                    if (line.startswith('FILE') or
-                        line.startswith('AUDIOFILE')):
+                    if ((line.startswith('FILE') or
+                         line.startswith('AUDIOFILE'))):
                         if ('"' in line):
                             track.indexes = map(
                                 parse_timestamp,
@@ -187,17 +187,17 @@ class TOCFile:
                 data.write("ISRC \"%s\"\n" % (ISRCs[tracknum]))
 
             if (next is not None):
-                data.write("AUDIOFILE \"%s\" %s %s\n" % \
-                               (filename,
-                                build_timestamp(current[0]),
-                                build_timestamp(next[0] - current[0])))
+                data.write("AUDIOFILE \"%s\" %s %s\n" %
+                           (filename,
+                            build_timestamp(current[0]),
+                            build_timestamp(next[0] - current[0])))
             else:
-                data.write("AUDIOFILE \"%s\" %s\n" % \
-                               (filename,
-                                build_timestamp(current[0])))
+                data.write("AUDIOFILE \"%s\" %s\n" %
+                           (filename,
+                            build_timestamp(current[0])))
             if (len(current) > 1):
-                data.write("START %s\n" % \
-                               (build_timestamp(current[-1] - current[0])))
+                data.write("START %s\n" %
+                           (build_timestamp(current[-1] - current[0])))
 
             if (next is not None):
                 data.write("\n")

@@ -207,7 +207,8 @@ LAB_TRACK_X_OF_Y = u"track %2.1d / %d"
 LAB_CHOOSE_FILE = u"Choose an audio file"
 LAB_CHOOSE_DIRECTORY = u"Choose directory"
 LAB_ADD_FIELD = u"Add field"
-LAB_COVERVIEW_ABOUT = u"A viewer for displaying images embedded in audio files."
+LAB_COVERVIEW_ABOUT = \
+    u"A viewer for displaying images embedded in audio files."
 LAB_AUDIOTOOLS_URL = u"http://audiotools.sourceforge.net"
 LAB_BYTE_SIZE = u"%d bytes"
 LAB_DIMENSIONS = u"%d \u00D7 %d"
@@ -297,8 +298,10 @@ LAB_TRACKTAG_UPDATE_CONDUCTOR_NAME = u"the name of the conductor"
 LAB_TRACKTAG_UPDATE_ALBUM_NAME = u"the name of the album"
 LAB_TRACKTAG_UPDATE_CATALOG = u"the catalog number of the album"
 LAB_TRACKTAG_UPDATE_TRACK_NUMBER = u"the number of the track in the album"
-LAB_TRACKTAG_UPDATE_TRACK_TOTAL = u"the total number of tracks in the album"
-LAB_TRACKTAG_UPDATE_ALBUM_NUMBER = u"the number of the album in a set of albums"
+LAB_TRACKTAG_UPDATE_TRACK_TOTAL = \
+    u"the total number of tracks in the album"
+LAB_TRACKTAG_UPDATE_ALBUM_NUMBER = \
+    u"the number of the album in a set of albums"
 LAB_TRACKTAG_UPDATE_ALBUM_TOTAL = \
     u"the total number of albums in a set of albums"
 LAB_TRACKTAG_UPDATE_ISRC = u"the ISRC of the track"
@@ -557,7 +560,8 @@ ERR_GET_CDRDAO = u"please install \"cdrdao\" to burn CDs"
 ERR_NO_CDRECORD = u"unable to find \"cdrecord\" executable"
 ERR_GET_CDRECORD = u"please install \"cdrecord\" to burn CDs"
 ERR_SAMPLE_RATE_MISMATCH = u"all audio files must have the same sample rate"
-ERR_CHANNEL_COUNT_MISMATCH = u"all audio files must have the same channel count"
+ERR_CHANNEL_COUNT_MISMATCH = \
+    u"all audio files must have the same channel count"
 ERR_CHANNEL_MASK_MISMATCH = \
     u"all audio files must have the same channel assignment"
 ERR_BPS_MISMATCH = u"all audio files must have the same bits per sample"
@@ -584,7 +588,8 @@ ERR_OUTPUT_INVALID_FORMAT = u"output tracks must have valid format string"
 
 #Cleaning messages
 CLEAN_REMOVE_DUPLICATE_TAG = u"removed duplicate tag %(field)s"
-CLEAN_REMOVE_TRAILING_WHITESPACE = u"removed trailing whitespace from %(field)s"
+CLEAN_REMOVE_TRAILING_WHITESPACE = \
+    u"removed trailing whitespace from %(field)s"
 CLEAN_REMOVE_LEADING_WHITESPACE = u"removed leading whitespace from %(field)s"
 CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES = \
     u"removed leading whitespace/zeroes from %(field)s"

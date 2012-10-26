@@ -232,8 +232,8 @@ def parse_release(release, disc_id):
 
     #if multiple discs in <medium-list>,
     #populate album number and album total
-    if (medium_list.hasAttribute(u"count") and
-        (int(medium_list.getAttribute(u"count")) > 1)):
+    if ((medium_list.hasAttribute(u"count") and
+         (int(medium_list.getAttribute(u"count")) > 1))):
         album_total = int(medium_list.getAttribute(u"count"))
         try:
             album_number = int(text(get_node(medium, u"position")))

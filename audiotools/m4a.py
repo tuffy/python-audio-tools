@@ -310,7 +310,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                 (mp4a,
                  self.__channels__,
                  self.__bits_per_sample__) = stsd.parse(
-                    "32p 4b 48p 16p 16p 16p 4P 16u 16u 16p 16p 32p")
+                     "32p 4b 48p 16p 16p 16p 4P 16u 16u 16p 16p 32p")
             except IOError:
                 from .text import ERR_M4A_INVALID_MP4A
                 raise InvalidM4A(ERR_M4A_INVALID_MP4A)
@@ -445,8 +445,8 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         import subprocess
         import os
 
-        if ((compression is None) or
-            (compression not in cls.COMPRESSION_MODES)):
+        if ((compression is None) or (compression not in
+                                      cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
 
         if (pcmreader.channels > 2):
@@ -557,8 +557,8 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         #helpfully, aacgain is flag-for-flag compatible with mp3gain
         if ((len(track_names) > 0) and (BIN.can_execute(BIN['aacgain']))):
             devnull = file(os.devnull, 'ab')
-            sub = subprocess.Popen([BIN['aacgain'], '-k', '-q', '-r'] + \
-                                       track_names,
+            sub = subprocess.Popen([BIN['aacgain'], '-k', '-q', '-r'] +
+                                   track_names,
                                    stdout=devnull,
                                    stderr=devnull)
             sub.wait()
@@ -598,8 +598,8 @@ class M4AAudio_nero(M4AAudio_faac):
         from . import WaveAudio
         from . import __default_quality__
 
-        if ((compression is None) or
-            (compression not in cls.COMPRESSION_MODES)):
+        if ((compression is None) or (compression not in
+                                      cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
 
         tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -689,8 +689,7 @@ class M4AAudio_nero(M4AAudio_faac):
         finally:
             devnull.close()
 
-if (BIN.can_execute(BIN["neroAacEnc"]) and
-    BIN.can_execute(BIN["neroAacDec"])):
+if (BIN.can_execute(BIN["neroAacEnc"]) and BIN.can_execute(BIN["neroAacDec"])):
     M4AAudio = M4AAudio_nero
 else:
     M4AAudio = M4AAudio_faac
@@ -792,10 +791,10 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                  self.__maximum_k__,
                  self.__channels__,
                  self.__sample_rate__) = stsd.parse(
-                    #ignore much of the stuff in the "high" ALAC atom
-                    "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
-                    #and use the attributes in the "low" ALAC atom instead
-                    "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
+                     #ignore much of the stuff in the "high" ALAC atom
+                     "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
+                     #and use the attributes in the "low" ALAC atom instead
+                     "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
             except IOError:
                 from .text import ERR_ALAC_INVALID_ALAC
                 raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
@@ -852,43 +851,51 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
         from . import ChannelMask
 
-        return {1: ChannelMask.from_fields(front_center=True),
-                2: ChannelMask.from_fields(front_left=True,
-                                           front_right=True),
-                3: ChannelMask.from_fields(front_center=True,
-                                           front_left=True,
-                                           front_right=True),
-                4: ChannelMask.from_fields(front_center=True,
-                                           front_left=True,
-                                           front_right=True,
-                                           back_center=True),
-                5: ChannelMask.from_fields(front_center=True,
-                                           front_left=True,
-                                           front_right=True,
-                                           back_left=True,
-                                           back_right=True),
-                6: ChannelMask.from_fields(front_center=True,
-                                           front_left=True,
-                                           front_right=True,
-                                           back_left=True,
-                                           back_right=True,
-                                           low_frequency=True),
-                7: ChannelMask.from_fields(front_center=True,
-                                           front_left=True,
-                                           front_right=True,
-                                           back_left=True,
-                                           back_right=True,
-                                           back_center=True,
-                                           low_frequency=True),
-                8: ChannelMask.from_fields(front_center=True,
-                                           front_left_of_center=True,
-                                           front_right_of_center=True,
-                                           front_left=True,
-                                           front_right=True,
-                                           back_left=True,
-                                           back_right=True,
-                                           low_frequency=True)}.get(
-            self.channels(), ChannelMask(0))
+        return {
+            1: ChannelMask.from_fields(
+                front_center=True),
+            2: ChannelMask.from_fields(
+                front_left=True,
+                front_right=True),
+            3: ChannelMask.from_fields(
+                front_center=True,
+                front_left=True,
+                front_right=True),
+            4: ChannelMask.from_fields(
+                front_center=True,
+                front_left=True,
+                front_right=True,
+                back_center=True),
+            5: ChannelMask.from_fields(
+                front_center=True,
+                front_left=True,
+                front_right=True,
+                back_left=True,
+                back_right=True),
+            6: ChannelMask.from_fields(
+                front_center=True,
+                front_left=True,
+                front_right=True,
+                back_left=True,
+                back_right=True,
+                low_frequency=True),
+            7: ChannelMask.from_fields(
+                front_center=True,
+                front_left=True,
+                front_right=True,
+                back_left=True,
+                back_right=True,
+                back_center=True,
+                low_frequency=True),
+            8: ChannelMask.from_fields(
+                front_center=True,
+                front_left_of_center=True,
+                front_right_of_center=True,
+                front_left=True,
+                front_right=True,
+                back_left=True,
+                back_right=True,
+                low_frequency=True)}.get(self.channels(), ChannelMask(0))
 
     def cd_frames(self):
         """returns the total length of the track in CD frames
@@ -970,14 +977,17 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             (frame_sample_sizes,
              frame_byte_sizes,
              frame_file_offsets,
-             mdat_size) = (encode_alac if encoding_function is None
-                           else encoding_function)(
-                file=mdat_file,
-                pcmreader=BufferedPCMReader(pcmreader),
-                block_size=block_size,
-                initial_history=cls.INITIAL_HISTORY,
-                history_multiplier=cls.HISTORY_MULTIPLIER,
-                maximum_k=cls.MAXIMUM_K)
+             mdat_size) = (encode_alac if encoding_function is None else
+                           encoding_function)(file=mdat_file,
+                                              pcmreader=
+                                              BufferedPCMReader(pcmreader),
+                                              block_size=block_size,
+                                              initial_history=
+                                              cls.INITIAL_HISTORY,
+                                              history_multiplier=
+                                              cls.HISTORY_MULTIPLIER,
+                                              maximum_k=
+                                              cls.MAXIMUM_K)
         except (IOError, ValueError), err:
             raise EncodingError(str(err))
 
@@ -1196,7 +1206,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         return M4A_STSD_Atom(
             version=0,
             flags=0,
-            descriptions=[M4A_ALAC_Atom(
+            descriptions=[
+                M4A_ALAC_Atom(
                     reference_index=1,
                     qt_version=0,
                     qt_revision_level=0,

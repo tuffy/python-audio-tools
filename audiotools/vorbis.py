@@ -103,7 +103,7 @@ class VorbisAudio(AudioFile):
              blocksize0,
              blocksize1,
              framing) = ogg_reader.parse(
-                "8u 6b 32u 8u 32u 32u 32u 32u 4u 4u 1u")
+                 "8u 6b 32u 8u 32u 32u 32u 32u 4u 4u 1u")
 
             if (vorbis_type != 1):
                 from .text import ERR_VORBIS_INVALID_TYPE
@@ -193,7 +193,7 @@ class VorbisAudio(AudioFile):
                  end_of_stream,
                  granule_position,
                  page_segment_count) = ogg_stream.parse(
-                    "4b 8u 1p 1p 1u 5p 64S 32p 32p 32p 8u")
+                     "4b 8u 1p 1p 1u 5p 64S 32p 32p 32p 8u")
                 ogg_stream.skip_bytes(sum([ogg_stream.read(8) for i in
                                            xrange(page_segment_count)]))
 
@@ -266,8 +266,8 @@ class VorbisAudio(AudioFile):
         import subprocess
         import os
 
-        if ((compression is None) or
-            (compression not in cls.COMPRESSION_MODES)):
+        if (((compression is None) or
+             (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
         devnull = file(os.devnull, 'ab')
@@ -317,11 +317,12 @@ class VorbisAudio(AudioFile):
             try:
                 from . import ReorderedPCMReader
 
-                transfer_framelist_data(ReorderedPCMReader(
+                transfer_framelist_data(
+                    ReorderedPCMReader(
                         pcmreader,
                         [standard_channel_mask.channels().index(channel)
                          for channel in vorbis_channel_mask.channels()]),
-                                        sub.stdin.write)
+                    sub.stdin.write)
             except (IOError, ValueError), err:
                 sub.stdin.close()
                 sub.wait()
@@ -520,8 +521,7 @@ class VorbisAudio(AudioFile):
         if (progress is not None):
             progress(0, 1)
 
-        if ((len(track_names) > 0) and
-            BIN.can_execute(BIN['vorbisgain'])):
+        if ((len(track_names) > 0) and BIN.can_execute(BIN['vorbisgain'])):
             devnull = file(os.devnull, 'ab')
 
             sub = subprocess.Popen([BIN['vorbisgain'],
@@ -570,9 +570,11 @@ class VorbisAudio(AudioFile):
         vorbis_metadata = self.get_metadata()
 
         if ((vorbis_metadata is not None) and
-            (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN',
-                  'REPLAYGAIN_ALBUM_PEAK', 'REPLAYGAIN_ALBUM_GAIN']).issubset(
-                    vorbis_metadata.keys()))):  # we have ReplayGain data
+            (set(['REPLAYGAIN_TRACK_PEAK',
+                  'REPLAYGAIN_TRACK_GAIN',
+                  'REPLAYGAIN_ALBUM_PEAK',
+                  'REPLAYGAIN_ALBUM_GAIN']).issubset(vorbis_metadata.keys()))):
+            # we have ReplayGain data
             try:
                 return ReplayGain(
                     vorbis_metadata['REPLAYGAIN_TRACK_GAIN'][0][0:-len(" dB")],

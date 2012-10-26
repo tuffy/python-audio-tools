@@ -27,18 +27,18 @@ class ID3v1Comment(MetaData):
     #because plain ID3v1 tags don't support track number
     #which means it'll be impossible to "promote" a tag later on.
 
-    ID3v1_FIELDS = {"track_name":"__track_name__",
-                    "artist_name":"__artist_name__",
-                    "album_name":"__album_name__",
-                    "year":"__year__",
-                    "comment":"__comment__",
-                    "track_number":"__track_number__"}
+    ID3v1_FIELDS = {"track_name": "__track_name__",
+                    "artist_name": "__artist_name__",
+                    "album_name": "__album_name__",
+                    "year": "__year__",
+                    "comment": "__comment__",
+                    "track_number": "__track_number__"}
 
-    FIELD_LENGTHS = {"track_name":30,
-                     "artist_name":30,
-                     "album_name":30,
-                     "year":4,
-                     "comment":28}
+    FIELD_LENGTHS = {"track_name": 30,
+                     "artist_name": 30,
+                     "album_name": 30,
+                     "year": 4,
+                     "comment": 28}
 
     def __init__(self, track_name=chr(0) * 30,
                  artist_name=chr(0) * 30,
@@ -283,8 +283,8 @@ class ID3v1Comment(MetaData):
                                        {"field": name})
 
             #restore trailing NULL bytes
-            fields[init_attr] = fix2 + chr(0) * (self.FIELD_LENGTHS[init_attr] -
-                                                 len(fix2))
+            fields[init_attr] = (fix2 + chr(0) *
+                                 (self.FIELD_LENGTHS[init_attr] - len(fix2)))
 
         #copy non-text fields as-is
         fields["track_number"] = self.__track_number__

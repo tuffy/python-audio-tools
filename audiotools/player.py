@@ -208,8 +208,7 @@ class PlayerThread:
         import Queue
 
         while (True):
-            if ((self.state == PLAYER_STOPPED) or
-                (self.state == PLAYER_PAUSED)):
+            if (self.state in (PLAYER_STOPPED, PLAYER_PAUSED)):
                 (command, args) = self.command_queue.get(True)
                 if (command == "exit"):
                     self.audio_output.close()
@@ -380,8 +379,7 @@ class CDPlayerThread:
         import Queue
 
         while (True):
-            if ((self.state == PLAYER_STOPPED) or
-                (self.state == PLAYER_PAUSED)):
+            if (self.state in (PLAYER_STOPPED, PLAYER_PAUSED)):
                 (command, args) = self.command_queue.get(True)
                 if (command == "exit"):
                     self.audio_output.close()
@@ -417,6 +415,7 @@ class PCMConverter:
         self.buffer_size = (pcmreader.sample_rate *
                             pcmreader.channels *
                             (pcmreader.bits_per_sample / 8)) / 20
+
     def read(self):
         try:
             frame = self.pcmreader.read(self.buffer_size)

@@ -93,8 +93,7 @@ class MP3Audio(AudioFile):
              64000, 80000, 96000, 112000, 128000, 144000, 160000, None),
             #layer I
             (None, 32000, 48000, 56000, 64000, 80000, 96000, 112000,
-             128000, 144000, 160000, 176000, 192000, 224000, 256000, None),
-            ),
+             128000, 144000, 160000, 176000, 192000, 224000, 256000, None)),
         #MPEG-1
         (
             #reserved
@@ -107,9 +106,7 @@ class MP3Audio(AudioFile):
              128000, 160000, 192000, 224000, 256000, 320000, 384000, None),
             #layer I
             (None, 32000, 64000, 96000, 128000, 160000, 192000, 224000,
-             256000, 288000, 320000, 352000, 384000, 416000, 448000, None)
-            )
-        )
+             256000, 288000, 320000, 352000, 384000, 416000, 448000, None)))
 
     PCM_FRAMES_PER_MPEG_FRAME = (None, 1152, 1152, 384)
 
@@ -140,7 +137,7 @@ class MP3Audio(AudioFile):
              sample_rate,
              pad,
              channels) = BitstreamReader(mp3file, 0).parse(
-                "11u 2u 2u 1p 4u 2u 1u 1p 2u 6p")
+                 "11u 2u 2u 1p 4u 2u 1u 1p 2u 6p")
 
             self.__samplerate__ = self.SAMPLE_RATE[mpeg_id][sample_rate]
             if (self.__samplerate__ is None):
@@ -163,7 +160,7 @@ class MP3Audio(AudioFile):
                     BitstreamReader(
                         cStringIO.StringIO(
                             first_frame[first_frame.index("Xing"):
-                                            first_frame.index("Xing") + 160]),
+                                        first_frame.index("Xing") + 160]),
                         0).parse("32p 32p 32u 32p 832p")[0] *
                     self.PCM_FRAMES_PER_MPEG_FRAME[layer])
             else:
@@ -223,14 +220,14 @@ class MP3Audio(AudioFile):
                                stdout=subprocess.PIPE,
                                stderr=file(os.devnull, "a"))
 
-        return PCMReader(sub.stdout,
-                         sample_rate=self.sample_rate(),
-                         channels=self.channels(),
-                         bits_per_sample=16,
-                         channel_mask=int(ChannelMask.from_channels(
-                    self.channels())),
-                         process=sub,
-                         big_endian=BIG_ENDIAN)
+        return PCMReader(
+            sub.stdout,
+            sample_rate=self.sample_rate(),
+            channels=self.channels(),
+            bits_per_sample=16,
+            channel_mask=int(ChannelMask.from_channels(self.channels())),
+            process=sub,
+            big_endian=BIG_ENDIAN)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
@@ -254,18 +251,23 @@ class MP3Audio(AudioFile):
         import subprocess
         import os
 
-        if ((compression is None) or
-            (compression not in cls.COMPRESSION_MODES)):
+        if (((compression is None) or
+             (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
-        if ((pcmreader.channels > 2) or
-            (pcmreader.sample_rate not in (32000, 48000, 44100))):
+        if ((pcmreader.channels > 2) or (pcmreader.sample_rate not in
+                                         (32000, 48000, 44100))):
             from . import PCMConverter
 
             pcmreader = PCMConverter(
                 pcmreader,
-                sample_rate=[32000, 32000, 44100, 48000][bisect.bisect(
-                        [32000, 44100, 48000], pcmreader.sample_rate)],
+                sample_rate=[32000,
+                             32000,
+                             44100,
+                             48000][bisect.bisect([32000,
+                                                   44100,
+                                                   48000],
+                                                  pcmreader.sample_rate)],
                 channels=min(pcmreader.channels, 2),
                 channel_mask=ChannelMask.from_channels(
                     min(pcmreader.channels, 2)),
@@ -283,17 +285,17 @@ class MP3Audio(AudioFile):
         else:
             compression = ["--preset", str(compression)]
 
-        sub = subprocess.Popen([
-                BIN['lame'], "--quiet",
-                "-r",
-                "-s", str(decimal.Decimal(pcmreader.sample_rate) / 1000),
-                "--bitwidth", str(pcmreader.bits_per_sample),
-                "--signed", "--little-endian",
-                "-m", mode] + compression + ["-", filename],
-                               stdin=subprocess.PIPE,
-                               stdout=devnull,
-                               stderr=devnull,
-                               preexec_fn=ignore_sigint)
+        sub = subprocess.Popen(
+            [BIN['lame'], "--quiet",
+             "-r",
+             "-s", str(decimal.Decimal(pcmreader.sample_rate) / 1000),
+             "--bitwidth", str(pcmreader.bits_per_sample),
+             "--signed", "--little-endian",
+             "-m", mode] + compression + ["-", filename],
+            stdin=subprocess.PIPE,
+            stdout=devnull,
+            stderr=devnull,
+            preexec_fn=ignore_sigint)
 
         try:
             transfer_framelist_data(pcmreader, sub.stdin.write)
@@ -648,8 +650,8 @@ class MP3Audio(AudioFile):
 
         if ((len(track_names) > 0) and (BIN.can_execute(BIN['mp3gain']))):
             devnull = file(os.devnull, 'ab')
-            sub = subprocess.Popen([BIN['mp3gain'], '-f', '-k', '-q', '-r'] + \
-                                       track_names,
+            sub = subprocess.Popen([BIN['mp3gain'], '-f', '-k', '-q', '-r'] +
+                                   track_names,
                                    stdout=devnull,
                                    stderr=devnull)
             sub.wait()
@@ -739,19 +741,24 @@ class MP2Audio(MP3Audio):
         import subprocess
         import os
 
-        if ((compression is None) or
-            (compression not in cls.COMPRESSION_MODES)):
+        if (((compression is None) or
+             (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
-        if ((pcmreader.channels > 2) or
-            (pcmreader.sample_rate not in (32000, 48000, 44100)) or
-            (pcmreader.bits_per_sample != 16)):
+        if (((pcmreader.channels > 2) or
+             (pcmreader.sample_rate not in (32000, 48000, 44100)) or
+             (pcmreader.bits_per_sample != 16))):
             from . import PCMConverter
 
             pcmreader = PCMConverter(
                 pcmreader,
-                sample_rate=[32000, 32000, 44100, 48000][bisect.bisect(
-                        [32000, 44100, 48000], pcmreader.sample_rate)],
+                sample_rate=[32000,
+                             32000,
+                             44100,
+                             48000][bisect.bisect([32000,
+                                                   44100,
+                                                   48000],
+                                                  pcmreader.sample_rate)],
                 channels=min(pcmreader.channels, 2),
                 channel_mask=pcmreader.channel_mask,
                 bits_per_sample=16)

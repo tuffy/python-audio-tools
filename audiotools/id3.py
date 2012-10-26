@@ -168,9 +168,9 @@ class C_string:
 
 def __attrib_equals__(attributes, o1, o2):
     for attrib in attributes:
-        if ((not hasattr(o1, attrib)) or
-            (not hasattr(o2, attrib)) or
-            (getattr(o1, attrib) != getattr(o2, attrib))):
+        if (((not hasattr(o1, attrib)) or
+             (not hasattr(o2, attrib)) or
+             (getattr(o1, attrib) != getattr(o2, attrib)))):
             return False
     else:
         return True
@@ -195,7 +195,7 @@ def __number_pair__(current, total):
             return unslashed_format % (0,)
         else:
             return slashed_format % (0, total)
-    else: #current is not None
+    else:  # current is not None
         if (total is None):
             return unslashed_format % (current,)
         else:
@@ -1076,25 +1076,32 @@ class ID3v22Comment(MetaData):
             if (frame_id == chr(0) * 3):
                 break
             elif (frame_id == 'TXX'):
-                frames.append(cls.USER_TEXT_FRAME.parse(
+                frames.append(
+                    cls.USER_TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'WXX'):
-                frames.append(cls.USER_WEB_FRAME.parse(
+                frames.append(
+                    cls.USER_WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'COM'):
-                frames.append(cls.COMMENT_FRAME.parse(
+                frames.append(
+                    cls.COMMENT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'PIC'):
-                frames.append(cls.IMAGE_FRAME.parse(
+                frames.append(
+                    cls.IMAGE_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id.startswith('T')):
-                frames.append(cls.TEXT_FRAME.parse(
+                frames.append(
+                    cls.TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id.startswith('W')):
-                frames.append(cls.WEB_FRAME.parse(
+                frames.append(
+                    cls.WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             else:
-                frames.append(cls.RAW_FRAME.parse(
+                frames.append(
+                    cls.RAW_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
 
             total_size -= (6 + frame_size)
@@ -1279,8 +1286,7 @@ class ID3v22Comment(MetaData):
             delete_frame_id = self.ATTRIBUTE_MAP[attr]
             for frame in self:
                 if (frame.id == delete_frame_id):
-                    if ((attr == 'track_number') or
-                        (attr == 'album_number')):
+                    if ((attr == 'track_number') or (attr == 'album_number')):
                         import re
 
                         #if *_number field contains a slashed total
@@ -1304,8 +1310,8 @@ class ID3v22Comment(MetaData):
                         #if *_number is nonzero
                         _number = re.search(r'\d+',
                                             unicode(frame).split(u"/")[0])
-                        if ((_number is not None) and
-                            (int(_number.group(0)) != 0)):
+                        if (((_number is not None) and
+                             (int(_number.group(0)) != 0))):
                             #if field contains a slashed total
                             #remove slashed total from field
                             updated_frames.append(
@@ -1369,23 +1375,24 @@ class ID3v22Comment(MetaData):
 
         for (attr, key) in cls.ATTRIBUTE_MAP.items():
             value = getattr(metadata, attr)
-            if ((attr not in cls.INTEGER_FIELDS) and
-                (value is not None)):
+            if ((attr not in cls.INTEGER_FIELDS) and (value is not None)):
                 if (attr == 'comment'):
                     frames.append(cls.COMMENT_FRAME.converted(key, value))
                 else:
                     frames.append(cls.TEXT_FRAME.converted(key, value))
 
-        if ((metadata.track_number is not None) or
-            (metadata.track_total is not None)):
-            frames.append(cls.TEXT_FRAME.converted(
+        if (((metadata.track_number is not None) or
+             (metadata.track_total is not None))):
+            frames.append(
+                cls.TEXT_FRAME.converted(
                     cls.ATTRIBUTE_MAP["track_number"],
                     __number_pair__(metadata.track_number,
                                     metadata.track_total)))
 
-        if ((metadata.album_number is not None) or
-            (metadata.album_total is not None)):
-            frames.append(cls.TEXT_FRAME.converted(
+        if (((metadata.album_number is not None) or
+             (metadata.album_total is not None))):
+            frames.append(
+                cls.TEXT_FRAME.converted(
                     cls.ATTRIBUTE_MAP["album_number"],
                     __number_pair__(metadata.album_number,
                                     metadata.album_total)))
@@ -1394,7 +1401,8 @@ class ID3v22Comment(MetaData):
             frames.append(cls.IMAGE_FRAME.converted(cls.IMAGE_FRAME_ID, image))
 
         if (hasattr(cls, 'ITUNES_COMPILATION_ID')):
-            frames.append(cls.TEXT_FRAME.converted(
+            frames.append(
+                cls.TEXT_FRAME.converted(
                     cls.ITUNES_COMPILATION_ID, u'1'))
 
         return cls(frames)
@@ -1599,22 +1607,21 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
 
-
-
         actual_mime_type = Image.new(self.data, u"", 0).mime_type
         if (unicode(self.pic_mime_type) != actual_mime_type):
             from audiotools.text import (CLEAN_FIX_IMAGE_FIELDS)
             fixes_performed.append(CLEAN_FIX_IMAGE_FIELDS)
-            return ID3v23_APIC_Frame(C_string('ascii',
-                                              actual_mime_type.encode('ascii')),
-                                     self.pic_type,
-                                     self.pic_description,
-                                     self.data)
+            return ID3v23_APIC_Frame(
+                C_string('ascii', actual_mime_type.encode('ascii')),
+                self.pic_type,
+                self.pic_description,
+                self.data)
         else:
-            return ID3v23_APIC_Frame(self.pic_mime_type,
-                                     self.pic_type,
-                                     self.pic_description,
-                                     self.data)
+            return ID3v23_APIC_Frame(
+                self.pic_mime_type,
+                self.pic_type,
+                self.pic_description,
+                self.data)
 
 
 class ID3v23_COMM_Frame(ID3v22_COM_Frame):
@@ -1705,25 +1712,32 @@ class ID3v23Comment(ID3v22Comment):
             if (frame_id == chr(0) * 4):
                 break
             elif (frame_id == 'TXXX'):
-                frames.append(cls.USER_TEXT_FRAME.parse(
+                frames.append(
+                    cls.USER_TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'WXXX'):
-                frames.append(cls.USER_WEB_FRAME.parse(
+                frames.append(
+                    cls.USER_WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'COMM'):
-                frames.append(cls.COMMENT_FRAME.parse(
+                frames.append(
+                    cls.COMMENT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'APIC'):
-                frames.append(cls.IMAGE_FRAME.parse(
+                frames.append(
+                    cls.IMAGE_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id.startswith('T')):
-                frames.append(cls.TEXT_FRAME.parse(
+                frames.append(
+                    cls.TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id.startswith('W')):
-                frames.append(cls.WEB_FRAME.parse(
+                frames.append(
+                    cls.WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             else:
-                frames.append(cls.RAW_FRAME.parse(
+                frames.append(
+                    cls.RAW_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
 
             total_size -= (10 + frame_size)
@@ -1922,16 +1936,18 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
         if (unicode(self.pic_mime_type) != actual_mime_type):
             from audiotools.text import (CLEAN_FIX_IMAGE_FIELDS)
             fixes_performed.append(CLEAN_FIX_IMAGE_FIELDS)
-            return ID3v24_APIC_Frame(C_string('ascii',
-                                              actual_mime_type.encode('ascii')),
-                                     self.pic_type,
-                                     self.pic_description,
-                                     self.data)
+            return ID3v24_APIC_Frame(
+                C_string('ascii',
+                         actual_mime_type.encode('ascii')),
+                self.pic_type,
+                self.pic_description,
+                self.data)
         else:
-            return ID3v24_APIC_Frame(self.pic_mime_type,
-                                     self.pic_type,
-                                     self.pic_description,
-                                     self.data)
+            return ID3v24_APIC_Frame(
+                self.pic_mime_type,
+                self.pic_type,
+                self.pic_description,
+                self.data)
 
 
 class ID3v24_W___Frame(ID3v23_W___Frame):
@@ -2109,25 +2125,32 @@ class ID3v24Comment(ID3v23Comment):
             if (frame_id == chr(0) * 4):
                 break
             elif (frame_id == 'TXXX'):
-                frames.append(cls.USER_TEXT_FRAME.parse(
+                frames.append(
+                    cls.USER_TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'WXXX'):
-                frames.append(cls.USER_WEB_FRAME.parse(
+                frames.append(
+                    cls.USER_WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'COMM'):
-                frames.append(cls.COMMENT_FRAME.parse(
+                frames.append(
+                    cls.COMMENT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id == 'APIC'):
-                frames.append(cls.IMAGE_FRAME.parse(
+                frames.append(
+                    cls.IMAGE_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id.startswith('T')):
-                frames.append(cls.TEXT_FRAME.parse(
+                frames.append(
+                    cls.TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             elif (frame_id.startswith('W')):
-                frames.append(cls.WEB_FRAME.parse(
+                frames.append(
+                    cls.WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
             else:
-                frames.append(cls.RAW_FRAME.parse(
+                frames.append(
+                    cls.RAW_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
 
             total_size -= (10 + frame_size)
@@ -2184,8 +2207,8 @@ class ID3CommentPair(MetaData):
 
     def __getattr__(self, key):
         if (key in self.FIELDS):
-            if ((self.id3v2 is not None) and
-                (getattr(self.id3v2, key) is not None)):
+            if (((self.id3v2 is not None) and
+                 (getattr(self.id3v2, key) is not None))):
                 return getattr(self.id3v2, key)
             elif (self.id3v1 is not None):
                 return getattr(self.id3v1, key)

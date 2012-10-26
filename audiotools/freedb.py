@@ -78,10 +78,10 @@ def perform_lookup(offsets, total_length, track_count,
     #and get a list of category/disc id/title results
     #if any matches are found
     m = urlopen("http://%s:%d/~cddb/cddb.cgi" % (freedb_server, freedb_port),
-                urlencode({"hello": "user %s %s %s" % \
-                               (getfqdn(),
-                                "audiotools",
-                                VERSION),
+                urlencode({"hello": "user %s %s %s" %
+                           (getfqdn(),
+                            "audiotools",
+                            VERSION),
                            "proto": str(6),
                            "cmd": ("cddb query %(disc_id)s %(track_count)d " +
                                    "%(offsets)s %(seconds)d") %
@@ -135,10 +135,10 @@ def perform_lookup(offsets, total_length, track_count,
             sleep(1)  # add a slight delay to keep the server happy
             m = urlopen("http://%s:%d/~cddb/cddb.cgi" % (freedb_server,
                                                          freedb_port),
-                        urlencode({"hello": "user %s %s %s" % \
-                                       (getfqdn(),
-                                        "audiotools",
-                                        VERSION),
+                        urlencode({"hello": "user %s %s %s" %
+                                   (getfqdn(),
+                                    "audiotools",
+                                    VERSION),
                                    "proto": str(6),
                                    "cmd": ("cddb read %(category)s " +
                                            "%(disc_id)s") %

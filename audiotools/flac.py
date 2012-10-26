@@ -276,24 +276,27 @@ class FlacMetaData(MetaData):
                 block_list.append(
                     Flac_STREAMINFO.parse(reader.substream(block_length)))
             elif (block_type == 1):  # PADDING
-                block_list.append(Flac_PADDING.parse(
+                block_list.append(
+                    Flac_PADDING.parse(
                         reader.substream(block_length), block_length))
             elif (block_type == 2):  # APPLICATION
-                block_list.append(Flac_APPLICATION.parse(
+                block_list.append(
+                    Flac_APPLICATION.parse(
                         reader.substream(block_length), block_length))
             elif (block_type == 3):  # SEEKTABLE
                 block_list.append(
-                    Flac_SEEKTABLE.parse(reader.substream(block_length),
-                                         block_length / 18))
+                    Flac_SEEKTABLE.parse(
+                        reader.substream(block_length), block_length / 18))
             elif (block_type == 4):  # VORBIS_COMMENT
-                block_list.append(Flac_VORBISCOMMENT.parse(
+                block_list.append(
+                    Flac_VORBISCOMMENT.parse(
                         reader.substream(block_length)))
             elif (block_type == 5):  # CUESHEET
                 block_list.append(
                     Flac_CUESHEET.parse(reader.substream(block_length)))
             elif (block_type == 6):  # PICTURE
-                block_list.append(Flac_PICTURE.parse(
-                        reader.substream(block_length)))
+                block_list.append(
+                    Flac_PICTURE.parse(reader.substream(block_length)))
             elif ((block_type >= 7) and (block_type <= 126)):
                 from .text import ERR_FLAC_RESERVED_BLOCK
                 raise ValueError(ERR_FLAC_RESERVED_BLOCK % (block_type))
@@ -386,8 +389,8 @@ class Flac_STREAMINFO:
                      "bits_per_sample",
                      "total_samples",
                      "md5sum"]:
-            if ((not hasattr(block, attr)) or
-                (getattr(self, attr) != getattr(block, attr))):
+            if ((not hasattr(block, attr)) or (getattr(self, attr) !=
+                                               getattr(block, attr))):
                 return False
         else:
             return True
@@ -421,8 +424,8 @@ class Flac_STREAMINFO:
              u"              channels = %d" % (self.channels),
              u"       bits-per-sample = %d" % (self.bits_per_sample),
              u"         total samples = %d" % (self.total_samples),
-             u"               MD5 sum = %s" % (u"".join(
-                        ["%2.2X" % (ord(b)) for b in self.md5sum]))])
+             u"               MD5 sum = %s" %
+             (u"".join(["%2.2X" % (ord(b)) for b in self.md5sum]))])
 
     @classmethod
     def parse(cls, reader):
@@ -730,22 +733,22 @@ class Flac_PICTURE(Image):
 
         img = image_metrics(self.data)
 
-        if ((self.mime_type != img.mime_type) or
-            (self.width != img.width) or
-            (self.height != img.height) or
-            (self.color_depth != img.bits_per_pixel) or
-            (self.color_count != img.color_count)):
+        if (((self.mime_type != img.mime_type) or
+             (self.width != img.width) or
+             (self.height != img.height) or
+             (self.color_depth != img.bits_per_pixel) or
+             (self.color_count != img.color_count))):
             from .text import CLEAN_FIX_IMAGE_FIELDS
             fixes_performed.append(CLEAN_FIX_IMAGE_FIELDS)
-            return self.__class__.converted(Image(
-                    type=self.type,
-                    mime_type=img.mime_type,
-                    description=self.description,
-                    width=img.width,
-                    height=img.height,
-                    color_depth=img.bits_per_pixel,
-                    color_count=img.color_count,
-                    data=self.data))
+            return self.__class__.converted(
+                Image(type=self.type,
+                      mime_type=img.mime_type,
+                      description=self.description,
+                      width=img.width,
+                      height=img.height,
+                      color_depth=img.bits_per_pixel,
+                      color_count=img.color_count,
+                      data=self.data))
         else:
             return self
 
@@ -759,8 +762,8 @@ class Flac_APPLICATION:
 
     def __eq__(self, block):
         for attr in ["application_id", "data"]:
-            if ((not hasattr(block, attr)) or
-                (getattr(self, attr) != getattr(block, attr))):
+            if ((not hasattr(block, attr)) or (getattr(self, attr) !=
+                                               getattr(block, attr))):
                 return False
         else:
             return True
@@ -904,8 +907,8 @@ class Flac_CUESHEET:
                      "lead_in_samples",
                      "is_cdda",
                      "tracks"]:
-            if ((not hasattr(cuesheet, attr)) or
-                (getattr(self, attr) != getattr(cuesheet, attr))):
+            if ((not hasattr(cuesheet, attr)) or (getattr(self, attr) !=
+                                                  getattr(cuesheet, attr))):
                 return False
         else:
             return True
@@ -926,8 +929,8 @@ class Flac_CUESHEET:
 
         return linesep.decode('ascii').join(
             [u"  CUESHEET:",
-             u"     catalog number = %s" % \
-                 (self.catalog_number.decode('ascii', 'replace')),
+             u"     catalog number = %s" %
+             (self.catalog_number.decode('ascii', 'replace')),
              u"    lead-in samples = %d" % (self.lead_in_samples),
              u"            is CDDA = %d" % (self.is_cdda),
              u"%9s %5s %8s %13s %12s" % (u"track",
@@ -997,12 +1000,12 @@ class Flac_CUESHEET:
                     ISRC=ISRCs.get(i + 1, chr(0) * 12),
                     track_type=0,
                     pre_emphasis=0,
-                    index_points=[Flac_CUESHEET_index(
+                    index_points=[
+                        Flac_CUESHEET_index(
                             offset=(index - indexes[0]) * sample_rate / 75,
                             number=point_number + (1 if len(indexes) == 1
                                                    else 0))
-                                  for (point_number, index)
-                                  in enumerate(indexes)])
+                        for (point_number, index) in enumerate(indexes)])
                     for (i, indexes) in enumerate(sheet.indexes())] +
             # lead-out track
             [Flac_CUESHEET_track(offset=total_frames,
@@ -1115,8 +1118,8 @@ class Flac_CUESHEET_track:
                      "track_type",
                      "pre_emphasis",
                      "index_points"]:
-            if ((not hasattr(track, attr)) or
-                (getattr(self, attr) != getattr(track, attr))):
+            if ((not hasattr(track, attr)) or (getattr(self, attr) !=
+                                               getattr(track, attr))):
                 return False
         else:
             return True
@@ -1272,7 +1275,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             if (metadata is not None):
                 return ChannelMask(
                     int(metadata.get_block(
-                            Flac_VORBISCOMMENT.BLOCK_ID)[
+                        Flac_VORBISCOMMENT.BLOCK_ID)[
                             u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0], 16))
             else:
                 #proceed to generate channel mask
@@ -1475,7 +1478,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                         old_vorbiscomment[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"]
                 elif (u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in
                       new_vorbiscomment.keys()):
-                    new_vorbiscomment[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = []
+                    new_vorbiscomment[
+                        u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = []
 
                 old_metadata.replace_blocks(Flac_VORBISCOMMENT.BLOCK_ID,
                                             [new_vorbiscomment])
@@ -1577,7 +1581,8 @@ class FlacAudio(WaveContainer, AiffContainer):
         if (cuesheet is not None):
             metadata = self.get_metadata()
             if (metadata is not None):
-                metadata.add_block(Flac_CUESHEET.converted(
+                metadata.add_block(
+                    Flac_CUESHEET.converted(
                         cuesheet, self.total_frames(), self.sample_rate()))
                 self.update_metadata(metadata)
 
@@ -1632,56 +1637,56 @@ class FlacAudio(WaveContainer, AiffContainer):
         from . import BufferedPCMReader
         from . import __default_quality__
 
-        if ((compression is None) or
-            (compression not in cls.COMPRESSION_MODES)):
+        if ((compression is None) or (compression not in
+                                      cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
 
-        encoding_options = {"0": {"block_size": 1152,
-                                  "max_lpc_order": 0,
-                                  "min_residual_partition_order": 0,
-                                  "max_residual_partition_order": 3},
-                            "1": {"block_size": 1152,
-                                  "max_lpc_order": 0,
-                                  "adaptive_mid_side": True,
-                                  "min_residual_partition_order": 0,
-                                  "max_residual_partition_order": 3},
-                            "2": {"block_size": 1152,
-                                  "max_lpc_order": 0,
-                                  "exhaustive_model_search": True,
-                                  "min_residual_partition_order": 0,
-                                  "max_residual_partition_order": 3},
-                            "3": {"block_size": 4096,
-                                  "max_lpc_order": 6,
-                                  "min_residual_partition_order": 0,
-                                  "max_residual_partition_order": 4},
-                            "4": {"block_size": 4096,
-                                  "max_lpc_order": 8,
-                                  "adaptive_mid_side": True,
-                                  "min_residual_partition_order": 0,
-                                  "max_residual_partition_order": 4},
-                            "5": {"block_size": 4096,
-                                  "max_lpc_order": 8,
-                                  "mid_side": True,
-                                  "min_residual_partition_order": 0,
-                                  "max_residual_partition_order": 5},
-                            "6": {"block_size": 4096,
-                                  "max_lpc_order": 8,
-                                  "mid_side": True,
-                                  "min_residual_partition_order": 0,
-                                  "max_residual_partition_order": 6},
-                            "7": {"block_size": 4096,
-                                  "max_lpc_order": 8,
-                                  "mid_side": True,
-                                  "exhaustive_model_search": True,
-                                  "min_residual_partition_order": 0,
-                                  "max_residual_partition_order": 6},
-                            "8": {"block_size": 4096,
-                                  "max_lpc_order": 12,
-                                  "mid_side": True,
-                                  "exhaustive_model_search": True,
-                                  "min_residual_partition_order": 0,
-                                  "max_residual_partition_order": 6}}[
-            compression]
+        encoding_options = {
+            "0": {"block_size": 1152,
+                  "max_lpc_order": 0,
+                  "min_residual_partition_order": 0,
+                  "max_residual_partition_order": 3},
+            "1": {"block_size": 1152,
+                  "max_lpc_order": 0,
+                  "adaptive_mid_side": True,
+                  "min_residual_partition_order": 0,
+                  "max_residual_partition_order": 3},
+            "2": {"block_size": 1152,
+                  "max_lpc_order": 0,
+                  "exhaustive_model_search": True,
+                  "min_residual_partition_order": 0,
+                  "max_residual_partition_order": 3},
+            "3": {"block_size": 4096,
+                  "max_lpc_order": 6,
+                  "min_residual_partition_order": 0,
+                  "max_residual_partition_order": 4},
+            "4": {"block_size": 4096,
+                  "max_lpc_order": 8,
+                  "adaptive_mid_side": True,
+                  "min_residual_partition_order": 0,
+                  "max_residual_partition_order": 4},
+            "5": {"block_size": 4096,
+                  "max_lpc_order": 8,
+                  "mid_side": True,
+                  "min_residual_partition_order": 0,
+                  "max_residual_partition_order": 5},
+            "6": {"block_size": 4096,
+                  "max_lpc_order": 8,
+                  "mid_side": True,
+                  "min_residual_partition_order": 0,
+                  "max_residual_partition_order": 6},
+            "7": {"block_size": 4096,
+                  "max_lpc_order": 8,
+                  "mid_side": True,
+                  "exhaustive_model_search": True,
+                  "min_residual_partition_order": 0,
+                  "max_residual_partition_order": 6},
+            "8": {"block_size": 4096,
+                  "max_lpc_order": 12,
+                  "mid_side": True,
+                  "exhaustive_model_search": True,
+                  "min_residual_partition_order": 0,
+                  "max_residual_partition_order": 6}}[compression]
 
         if (pcmreader.channels > 8):
             raise UnsupportedChannelCount(filename, pcmreader.channels)
@@ -1698,16 +1703,16 @@ class FlacAudio(WaveContainer, AiffContainer):
                 channel_mask = 0
 
         elif (int(pcmreader.channel_mask) not in
-            (0x0001,    # 1ch - mono
-             0x0004,    # 1ch - mono
-             0x0003,    # 2ch - left, right
-             0x0007,    # 3ch - left, right, center
-             0x0033,    # 4ch - left, right, back left, back right
-             0x0603,    # 4ch - left, right, side left, side right
-             0x0037,    # 5ch - L, R, C, back left, back right
-             0x0607,    # 5ch - L, R, C, side left, side right
-             0x003F,    # 6ch - L, R, C, LFE, back left, back right
-             0x060F)):  # 6ch - L, R, C, LFE, side left, side right
+              (0x0001,    # 1ch - mono
+               0x0004,    # 1ch - mono
+               0x0003,    # 2ch - left, right
+               0x0007,    # 3ch - left, right, center
+               0x0033,    # 4ch - left, right, back left, back right
+               0x0603,    # 4ch - left, right, side left, side right
+               0x0037,    # 5ch - L, R, C, back left, back right
+               0x0607,    # 5ch - L, R, C, side left, side right
+               0x003F,    # 6ch - L, R, C, LFE, back left, back right
+               0x060F)):  # 6ch - L, R, C, LFE, side left, side right
             from . import UnsupportedChannelMask
 
             raise UnsupportedChannelMask(filename,
@@ -1717,10 +1722,10 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         try:
             offsets = (encode_flac if encoding_function is None
-                       else encoding_function)(
-                filename,
-                pcmreader=BufferedPCMReader(pcmreader),
-                **encoding_options)
+                       else encoding_function)(filename,
+                                               pcmreader=
+                                               BufferedPCMReader(pcmreader),
+                                               **encoding_options)
             flac = FlacAudio(filename)
             metadata = flac.get_metadata()
             assert(metadata is not None)
@@ -1728,18 +1733,19 @@ class FlacAudio(WaveContainer, AiffContainer):
             #generate SEEKTABLE from encoder offsets and add it to metadata
             seekpoint_interval = pcmreader.sample_rate * 10
 
-            metadata.add_block(flac.seektable(
+            metadata.add_block(
+                flac.seektable(
                     [(byte_offset,
                       pcm_frames) for byte_offset, pcm_frames in offsets],
                     seekpoint_interval))
 
             #if channels or bps is too high,
             #automatically generate and add channel mask
-            if (((pcmreader.channels > 2) or
-                 (pcmreader.bits_per_sample > 16)) and
-                (channel_mask != 0)):
-                metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)[
-                    u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
+            if ((((pcmreader.channels > 2) or
+                  (pcmreader.bits_per_sample > 16)) and
+                 (channel_mask != 0))):
+                vorbis = metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
+                vorbis[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
                     u"0x%.4X" % (channel_mask)]
 
             flac.update_metadata(metadata)
@@ -1920,11 +1926,13 @@ class FlacAudio(WaveContainer, AiffContainer):
                         fmt_found = True
                         if (chunk_size % 2):
                             #transfer padded chunk to APPLICATION block
-                            block_data.write_bytes(r.read_bytes(chunk_size + 1))
+                            block_data.write_bytes(
+                                r.read_bytes(chunk_size + 1))
                             header_len -= (chunk_size + 1)
                         else:
                             #transfer un-padded chunk to APPLICATION block
-                            block_data.write_bytes(r.read_bytes(chunk_size))
+                            block_data.write_bytes(
+                                r.read_bytes(chunk_size))
                             header_len -= chunk_size
 
                         blocks.append(
@@ -2007,8 +2015,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             raise EncodingError(ERR_WAV_TRUNCATED_DATA_CHUNK)
 
         #ensure total size of header + PCM + footer matches wav's header
-        if ((len(header) + data_bytes_written + len(footer)) !=
-            total_size):
+        if ((len(header) + data_bytes_written + len(footer)) != total_size):
             cls.__unlink__(filename)
             from .text import ERR_WAV_INVALID_SIZE
             raise EncodingError(ERR_WAV_INVALID_SIZE)
@@ -2163,11 +2170,13 @@ class FlacAudio(WaveContainer, AiffContainer):
                         comm_found = True
                         if (chunk_size % 2):
                             #transfer padded chunk to APPLICATION block
-                            block_data.write_bytes(r.read_bytes(chunk_size + 1))
+                            block_data.write_bytes(
+                                r.read_bytes(chunk_size + 1))
                             header_len -= (chunk_size + 1)
                         else:
                             #transfer un-padded chunk to APPLICATION block
-                            block_data.write_bytes(r.read_bytes(chunk_size))
+                            block_data.write_bytes(
+                                r.read_bytes(chunk_size))
                             header_len -= chunk_size
                         blocks.append(
                             Flac_APPLICATION("aiff", block_data.data()))
@@ -2249,8 +2258,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             raise EncodingError(ERR_AIFF_TRUNCATED_SSND_CHUNK)
 
         #ensure total size of header + PCM + footer matches aiff's header
-        if ((len(header) + ssnd_bytes_written + len(footer)) !=
-            total_size):
+        if ((len(header) + ssnd_bytes_written + len(footer)) != total_size):
             cls.__unlink__(filename)
             from .text import ERR_AIFF_INVALID_SIZE
             raise EncodingError(ERR_AIFF_INVALID_SIZE)
@@ -2283,9 +2291,9 @@ class FlacAudio(WaveContainer, AiffContainer):
         from . import AiffAudio
         from . import to_pcm_progress
 
-        if (self.has_foreign_wave_chunks() and
-            hasattr(target_class, "from_wave") and
-            callable(target_class.from_wave)):
+        if ((self.has_foreign_wave_chunks() and
+             hasattr(target_class, "from_wave") and
+             callable(target_class.from_wave))):
             return WaveContainer.convert(self,
                                          target_path,
                                          target_class,
@@ -2440,7 +2448,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                     Flac_VORBISCOMMENT.BLOCK_ID)
             else:
                 return None
-        except (IndexError,IOError):
+        except (IndexError, IOError):
             return None
 
         if (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN',
@@ -2508,10 +2516,10 @@ class FlacAudio(WaveContainer, AiffContainer):
                     (sync_code,
                      reserved1,
                      reserved2) = reader.parse(
-                        "14u 1u 1p 4p 4p 4p 3p 1u")
-                    if ((sync_code != 0x3FFE) or
-                        (reserved1 != 0) or
-                        (reserved2 != 0)):
+                         "14u 1u 1p 4p 4p 4p 3p 1u")
+                    if (((sync_code != 0x3FFE) or
+                         (reserved1 != 0) or
+                         (reserved2 != 0))):
                         return False
                 except IOError:
                     return False
@@ -2630,8 +2638,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                         fixes_performed.append(CLEAN_FLAC_POPULATE_MD5)
 
                     #fix missing WAVEFORMATEXTENSIBLE_CHANNEL_MASK
-                    if ((self.channels() > 2) or
-                        (self.bits_per_sample() > 16)):
+                    if (((self.channels() > 2) or
+                         (self.bits_per_sample() > 16))):
                         try:
                             vorbis_comment = metadata.get_block(
                                 Flac_VORBISCOMMENT.BLOCK_ID)
@@ -2639,8 +2647,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                             vorbis_comment = Flac_VORBISCOMMENT(
                                 [], u"Python Audio Tools %s" % (VERSION))
 
-                        if (u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" not in
-                            vorbis_comment.keys()):
+                        if ((u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" not in
+                             vorbis_comment.keys())):
                             from .text import CLEAN_FLAC_ADD_CHANNELMASK
                             fixes_performed.append(CLEAN_FLAC_ADD_CHANNELMASK)
                             vorbis_comment[
@@ -2827,7 +2835,7 @@ class OggFlacMetaData(FlacMetaData):
          bits_per_sample,
          total_samples,
          md5sum) = streaminfo_packet.parse(
-            "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
+             "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
 
         block_list = [Flac_STREAMINFO(minimum_block_size=minimum_block_size,
                                       maximum_block_size=maximum_block_size,
@@ -3134,7 +3142,7 @@ class OggFlacAudio(FlacAudio):
              self.__bitspersample__,
              self.__total_frames__,
              self.__md5__) = ogg_reader.parse(
-                "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
+                 "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
 
             if (packet_byte != 0x7F):
                 from .text import ERR_OGGFLAC_INVALID_PACKET_BYTE
@@ -3196,17 +3204,16 @@ class OggFlacAudio(FlacAudio):
         import subprocess
         import os
 
-        SUBSTREAM_SAMPLE_RATES = frozenset([
-                8000,  16000, 22050, 24000, 32000,
-                44100, 48000, 96000])
+        SUBSTREAM_SAMPLE_RATES = frozenset([8000,  16000, 22050, 24000, 32000,
+                                            44100, 48000, 96000])
         SUBSTREAM_BITS = frozenset([8, 12, 16, 20, 24])
 
-        if ((compression is None) or
-            (compression not in cls.COMPRESSION_MODES)):
+        if ((compression is None) or (compression not in
+                                      cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
 
-        if ((pcmreader.sample_rate in SUBSTREAM_SAMPLE_RATES) and
-            (pcmreader.bits_per_sample in SUBSTREAM_BITS)):
+        if (((pcmreader.sample_rate in SUBSTREAM_SAMPLE_RATES) and
+             (pcmreader.bits_per_sample in SUBSTREAM_BITS))):
             lax = []
         else:
             lax = ["--lax"]
@@ -3226,16 +3233,16 @@ class OggFlacAudio(FlacAudio):
                 channel_mask = 0
 
         elif (int(pcmreader.channel_mask) not in
-            (0x0001,    # 1ch - mono
-             0x0004,    # 1ch - mono
-             0x0003,    # 2ch - left, right
-             0x0007,    # 3ch - left, right, center
-             0x0033,    # 4ch - left, right, back left, back right
-             0x0603,    # 4ch - left, right, side left, side right
-             0x0037,    # 5ch - L, R, C, back left, back right
-             0x0607,    # 5ch - L, R, C, side left, side right
-             0x003F,    # 6ch - L, R, C, LFE, back left, back right
-             0x060F)):  # 6ch - L, R, C, LFE, side left, side right
+              (0x0001,    # 1ch - mono
+               0x0004,    # 1ch - mono
+               0x0003,    # 2ch - left, right
+               0x0007,    # 3ch - left, right, center
+               0x0033,    # 4ch - left, right, back left, back right
+               0x0603,    # 4ch - left, right, side left, side right
+               0x0037,    # 5ch - L, R, C, back left, back right
+               0x0607,    # 5ch - L, R, C, side left, side right
+               0x003F,    # 6ch - L, R, C, LFE, back left, back right
+               0x060F)):  # 6ch - L, R, C, LFE, side left, side right
             from . import UnsupportedChannelMask
 
             raise UnsupportedChannelMask(filename,
@@ -3245,7 +3252,7 @@ class OggFlacAudio(FlacAudio):
 
         devnull = file(os.devnull, 'ab')
 
-        sub = subprocess.Popen([BIN['flac']] + lax + \
+        sub = subprocess.Popen([BIN['flac']] + lax +
                                ["-s", "-f", "-%s" % (compression),
                                 "-V", "--ogg",
                                 "--endian=little",
@@ -3282,12 +3289,12 @@ class OggFlacAudio(FlacAudio):
 
         if (sub.wait() == 0):
             oggflac = OggFlacAudio(filename)
-            if (((pcmreader.channels > 2) or
-                 (pcmreader.bits_per_sample > 16)) and
-                (channel_mask != 0)):
+            if ((((pcmreader.channels > 2) or
+                  (pcmreader.bits_per_sample > 16)) and
+                 (channel_mask != 0))):
                 metadata = oggflac.get_metadata()
-                metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)[
-                    u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
+                vorbis = metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
+                vorbis[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
                     u"0x%.4X" % (channel_mask)]
                 oggflac.update_metadata(metadata)
             return oggflac

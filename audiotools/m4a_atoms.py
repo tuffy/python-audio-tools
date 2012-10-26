@@ -103,8 +103,8 @@ class M4A_Tree_Atom:
 
     def __eq__(self, atom):
         for attr in ["name", "leaf_atoms"]:
-            if ((not hasattr(atom, attr)) or
-                (getattr(self, attr) != getattr(atom, attr))):
+            if ((not hasattr(atom, attr)) or (getattr(self, attr) !=
+                                              getattr(atom, attr))):
                 return False
         else:
             return True
@@ -233,12 +233,11 @@ class M4A_Leaf_Atom:
 
     def __eq__(self, atom):
         for attr in ["name", "data"]:
-            if ((not hasattr(atom, attr)) or
-                (getattr(self, attr) != getattr(atom, attr))):
+            if ((not hasattr(atom, attr)) or (getattr(self, attr) !=
+                                              getattr(atom, attr))):
                 return False
         else:
             return True
-
 
     def __unicode__(self):
         #FIXME - should make this more informative, if possible
@@ -663,7 +662,8 @@ class M4A_DREF_Atom(M4A_Leaf_Atom):
         references = []
         for i in xrange(reference_count):
             (leaf_size, leaf_name) = reader.parse("32u 4b")
-            references.append(M4A_Leaf_Atom.parse(
+            references.append(
+                M4A_Leaf_Atom.parse(
                     leaf_name, leaf_size - 8,
                     reader.substream(leaf_size - 8), {}))
         return cls(version, flags, references)
@@ -944,7 +944,7 @@ class M4A_ALAC_Atom(M4A_Leaf_Atom):
          qt_compression_id,
          audio_packet_size,
          sample_rate) = reader.parse(
-            "6P 16u 16u 16u 4b 16u 16u 16u 16u 32u")
+             "6P 16u 16u 16u 4b 16u 16u 16u 16u 32u")
         (sub_alac_size, sub_alac_name) = reader.parse("32u 4b")
         sub_alac = M4A_SUB_ALAC_Atom.parse(sub_alac_name,
                                            sub_alac_size - 8,
@@ -1022,7 +1022,8 @@ class M4A_SUB_ALAC_Atom(M4A_Leaf_Atom):
         and dict of {"atom":handler} sub-parsers,
         returns an atom of this class"""
 
-        return cls(*reader.parse(
+        return cls(
+            *reader.parse(
                 "4P 32u 8p 8u 8u 8u 8u 8u 16u 32u 32u 32u"))
 
     def build(self, writer):
@@ -1257,7 +1258,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             else:
                 #atom not present, so append new parent and data sub-atom
                 self.ilst_atom().add_child(
-                    M4A_ILST_Leaf_Atom(ilst_leaf, [new_data_atom(attr, value)]))
+                    M4A_ILST_Leaf_Atom(ilst_leaf,
+                                       [new_data_atom(attr, value)]))
         else:
             #attribute is not an atom, so pass it through
             self.__dict__[attr] = value
@@ -1269,7 +1271,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
 
             if (attr in self.UNICODE_ATTRIB_TO_ILST):
                 ilst_atom.leaf_atoms = filter(
-                    lambda atom: atom.name != self.UNICODE_ATTRIB_TO_ILST[attr],
+                    lambda atom: atom.name !=
+                    self.UNICODE_ATTRIB_TO_ILST[attr],
                     ilst_atom)
             elif (attr == "track_number"):
                 if (self.track_total is None):
@@ -1360,40 +1363,46 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                        metadata.flags,
                        [leaf.copy() for leaf in metadata])
 
-        ilst_atoms = [M4A_ILST_Leaf_Atom(
+        ilst_atoms = [
+            M4A_ILST_Leaf_Atom(
                 cls.UNICODE_ATTRIB_TO_ILST[attrib],
-                [M4A_ILST_Unicode_Data_Atom(
-                        0, 1, value.encode('utf-8'))])
-                      for (attrib, value) in metadata.filled_fields()
-                      if (attrib in cls.UNICODE_ATTRIB_TO_ILST)]
+                [M4A_ILST_Unicode_Data_Atom(0, 1, value.encode('utf-8'))])
+            for (attrib, value) in metadata.filled_fields()
+            if (attrib in cls.UNICODE_ATTRIB_TO_ILST)]
 
-        if ((metadata.track_number is not None) or
-            (metadata.track_total is not None)):
-            ilst_atoms.append(M4A_ILST_Leaf_Atom(
+        if (((metadata.track_number is not None) or
+             (metadata.track_total is not None))):
+            ilst_atoms.append(
+                M4A_ILST_Leaf_Atom(
                     'trkn',
-                    [M4A_ILST_TRKN_Data_Atom(
-                            metadata.track_number if
-                            (metadata.track_number is not None) else 0,
-                            metadata.track_total if
-                            (metadata.track_total is not None) else 0)]))
+                    [M4A_ILST_TRKN_Data_Atom(metadata.track_number if
+                                             (metadata.track_number
+                                              is not None) else 0,
+                                             metadata.track_total if
+                                             (metadata.track_total
+                                              is not None) else 0)]))
 
-        if ((metadata.album_number is not None) or
-            (metadata.album_total is not None)):
-            ilst_atoms.append(M4A_ILST_Leaf_Atom(
+        if (((metadata.album_number is not None) or
+             (metadata.album_total is not None))):
+            ilst_atoms.append(
+                M4A_ILST_Leaf_Atom(
                     'disk',
-                    [M4A_ILST_DISK_Data_Atom(
-                            metadata.album_number if
-                            (metadata.album_number is not None) else 0,
-                            metadata.album_total if
-                            (metadata.album_total is not None) else 0)]))
+                    [M4A_ILST_DISK_Data_Atom(metadata.album_number if
+                                             (metadata.album_number
+                                              is not None) else 0,
+                                             metadata.album_total if
+                                             (metadata.album_total
+                                              is not None) else 0)]))
 
         if (len(metadata.front_covers()) > 0):
-            ilst_atoms.append(M4A_ILST_Leaf_Atom(
+            ilst_atoms.append(
+                M4A_ILST_Leaf_Atom(
                     'covr',
                     [M4A_ILST_COVR_Data_Atom.converted(
                             metadata.front_covers()[0])]))
 
-        ilst_atoms.append(M4A_ILST_Leaf_Atom(
+        ilst_atoms.append(
+            M4A_ILST_Leaf_Atom(
                 'cpil',
                 [M4A_Leaf_Atom('data',
                                '\x00\x00\x00\x15\x00\x00\x00\x00\x01')]))
@@ -1482,23 +1491,23 @@ class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
         and dict of {"atom":handler} sub-parsers,
         returns an atom of this class"""
 
-        return cls(name,
-                   parse_sub_atoms(
-                data_size, reader,
-                {"data": {"\xa9alb": M4A_ILST_Unicode_Data_Atom,
-                          "\xa9ART": M4A_ILST_Unicode_Data_Atom,
-                          "\xa9cmt": M4A_ILST_Unicode_Data_Atom,
-                          "cprt": M4A_ILST_Unicode_Data_Atom,
-                          "\xa9day": M4A_ILST_Unicode_Data_Atom,
-                          "\xa9grp": M4A_ILST_Unicode_Data_Atom,
-                          "\xa9nam": M4A_ILST_Unicode_Data_Atom,
-                          "\xa9too": M4A_ILST_Unicode_Data_Atom,
-                          "\xa9wrt": M4A_ILST_Unicode_Data_Atom,
-                          'aART': M4A_ILST_Unicode_Data_Atom,
-                          "covr": M4A_ILST_COVR_Data_Atom,
-                          "trkn": M4A_ILST_TRKN_Data_Atom,
-                          "disk": M4A_ILST_DISK_Data_Atom}.get(
-                        name, M4A_Leaf_Atom)}))
+        return cls(
+            name,
+            parse_sub_atoms(data_size, reader,
+                            {"data": {"\xa9alb": M4A_ILST_Unicode_Data_Atom,
+                                      "\xa9ART": M4A_ILST_Unicode_Data_Atom,
+                                      "\xa9cmt": M4A_ILST_Unicode_Data_Atom,
+                                      "cprt": M4A_ILST_Unicode_Data_Atom,
+                                      "\xa9day": M4A_ILST_Unicode_Data_Atom,
+                                      "\xa9grp": M4A_ILST_Unicode_Data_Atom,
+                                      "\xa9nam": M4A_ILST_Unicode_Data_Atom,
+                                      "\xa9too": M4A_ILST_Unicode_Data_Atom,
+                                      "\xa9wrt": M4A_ILST_Unicode_Data_Atom,
+                                      'aART': M4A_ILST_Unicode_Data_Atom,
+                                      "covr": M4A_ILST_COVR_Data_Atom,
+                                      "trkn": M4A_ILST_TRKN_Data_Atom,
+                                      "disk": M4A_ILST_DISK_Data_Atom
+                                      }.get(name, M4A_Leaf_Atom)}))
 
     def __unicode__(self):
         try:
@@ -1537,8 +1546,8 @@ class M4A_ILST_Unicode_Data_Atom(M4A_Leaf_Atom):
 
     def __eq__(self, atom):
         for attr in ["type", "flags", "data"]:
-            if ((not hasattr(atom, attr)) or
-                (getattr(self, attr) != getattr(atom, attr))):
+            if ((not hasattr(atom, attr)) or (getattr(self, attr) !=
+                                              getattr(atom, attr))):
                 return False
         else:
             return True
@@ -1593,8 +1602,8 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
 
     def __eq__(self, atom):
         for attr in ["track_number", "track_total"]:
-            if ((not hasattr(atom, attr)) or
-                (getattr(self, attr) != getattr(atom, attr))):
+            if ((not hasattr(atom, attr)) or (getattr(self, attr) !=
+                                              getattr(atom, attr))):
                 return False
         else:
             return True
@@ -1670,8 +1679,8 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
 
     def __eq__(self, atom):
         for attr in ["disk_number", "disk_total"]:
-            if ((not hasattr(atom, attr)) or
-                (getattr(self, attr) != getattr(atom, attr))):
+            if ((not hasattr(atom, attr)) or (getattr(self, attr) !=
+                                              getattr(atom, attr))):
                 return False
         else:
             return True
@@ -1846,7 +1855,7 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
          qt_manufacturer,
          qt_reserved_flags,
          qt_reserved_flags_mask) = reader.parse(
-            "8u 24u 4b 4b 4b 32u 32u")
+             "8u 24u 4b 4b 4b 32u 32u")
         component_name = reader.read_bytes(reader.read(8))
         return cls(version, flags, qt_type, qt_subtype,
                    qt_manufacturer, qt_reserved_flags,
@@ -1857,9 +1866,9 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
         """writes the atom to the given BitstreamWriter
         not including its 64-bit size / name header"""
 
-        writer.build("8u 24u 4b 4b 4b 32u 32u 8u %db %dP" % \
-                         (len(self.component_name),
-                          self.padding_size),
+        writer.build("8u 24u 4b 4b 4b 32u 32u 8u %db %dP" %
+                     (len(self.component_name),
+                      self.padding_size),
                      (self.version,
                       self.flags,
                       self.qt_type,

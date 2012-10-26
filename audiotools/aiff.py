@@ -21,6 +21,7 @@ from audiotools import (InvalidFile, PCMReader, AiffContainer)
 from .pcm import FrameList
 import struct
 
+
 def parse_ieee_extended(bitstream):
     """returns a parsed 80-bit IEEE extended value from BitstreamReader
     this is used to handle AIFF's sample rate field"""
@@ -461,7 +462,7 @@ class AiffAudio(AiffContainer):
                          self.__bits_per_sample__,
                          self.__sample_rate__,
                          self.__channel_mask__) = parse_comm(
-                            BitstreamReader(chunk.data(), 0))
+                             BitstreamReader(chunk.data(), 0))
                         break
                     except IOError:
                         continue
@@ -913,13 +914,13 @@ class AiffAudio(AiffContainer):
         may raise EncodingError if some problem occurs when
         encoding the input file"""
 
-        from . import (DecodingError,EncodingError,FRAMELIST_SIZE)
+        from . import (DecodingError, EncodingError, FRAMELIST_SIZE)
         from struct import unpack
 
         #ensure header validates correctly
         try:
             (total_size, ssnd_size) = validate_header(header)
-        except ValueError,err:
+        except ValueError, err:
             raise EncodingError(str(err))
 
         try:
@@ -946,7 +947,7 @@ class AiffAudio(AiffContainer):
                 validate_footer(footer, SSND_bytes_written)
                 #before writing it to disk
                 f.write(footer)
-            except ValueError,err:
+            except ValueError, err:
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
 

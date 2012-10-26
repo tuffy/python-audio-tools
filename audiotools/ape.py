@@ -84,8 +84,8 @@ class ApeTagItem:
 
     def __eq__(self, item):
         for attr in ["type", "read_only", "key", "data"]:
-            if ((not hasattr(item, attr)) or
-                (getattr(self, attr) != getattr(item, attr))):
+            if ((not hasattr(item, attr)) or (getattr(self, attr) !=
+                                              getattr(item, attr))):
                 return False
         else:
             return True
@@ -317,7 +317,8 @@ class ApeTag(MetaData):
                 if (track is not None):
                     track_number = int(track.group(0))
                     if ((track_number == 0) and
-                        (re.search(r'/.*?(\d+)', track_text) is not None)):
+                        (re.search(r'/.*?(\d+)',
+                                   track_text) is not None)):
                         #if track_total is nonzero and track_number is 0
                         #track_number is a placeholder
                         #so treat track_number as None
@@ -348,7 +349,8 @@ class ApeTag(MetaData):
                 if (media is not None):
                     album_number = int(media.group(0))
                     if ((album_number == 0) and
-                        (re.search(r'/.*?(\d+)', media_text) is not None)):
+                        (re.search(r'/.*?(\d+)',
+                                   media_text) is not None)):
                         #if album_total is nonzero and album_number is 0
                         #album_number is a placeholder
                         #so treat album_number as None
@@ -473,8 +475,8 @@ class ApeTag(MetaData):
                 track_number = re.search(r'\d+',
                                          self["Track"].data.split("/")[0])
                 #if track number is nonzero
-                if ((track_number is not None) and
-                    (int(track_number.group(0)) != 0)):
+                if (((track_number is not None) and
+                     (int(track_number.group(0)) != 0))):
                     #if "Track" field contains a slashed total
                     #remove slashed total from "Track" field
                     self['Track'].data = re.sub(r'\s*/.*',
@@ -482,7 +484,8 @@ class ApeTag(MetaData):
                                                 self['Track'].data)
                 else:
                     #if "Track" field contains a slashed total
-                    if (re.search(r'/\D*?\d+', self['Track'].data) is not None):
+                    if (re.search(r'/\D*?\d+',
+                                  self['Track'].data) is not None):
                         #remove "Track" field entirely
                         del(self['Track'])
             except KeyError:
@@ -507,8 +510,8 @@ class ApeTag(MetaData):
                 album_number = re.search(r'\d+',
                                          self["Media"].data.split("/")[0])
                 #if album number is nonzero
-                if ((album_number is not None) and
-                    (int(album_number.group(0)) != 0)):
+                if (((album_number is not None) and
+                     (int(album_number.group(0)) != 0))):
                     #if "Media" field contains a slashed total
                     #remove slashed total from "Media" field
                     self['Media'].data = re.sub(r'\s*/.*',
@@ -516,7 +519,8 @@ class ApeTag(MetaData):
                                                 self['Media'].data)
                 else:
                     #if "Media" field contains a slashed total
-                    if (re.search(r'/\D*?\d+', self['Media'].data) is not None):
+                    if (re.search(r'/\D*?\d+',
+                                  self['Media'].data) is not None):
                         #remove "Media" field entirely
                         del(self['Media'])
             except KeyError:
@@ -547,19 +551,19 @@ class ApeTag(MetaData):
         else:
             tags = cls([])
             for (field, key) in cls.ATTRIBUTE_MAP.items():
-                if ((field not in cls.INTEGER_FIELDS) and
-                    (getattr(metadata, field) is not None)):
-                    tags[key] = \
-                        cls.ITEM.string(key, unicode(getattr(metadata, field)))
+                if (((field not in cls.INTEGER_FIELDS) and
+                     (getattr(metadata, field) is not None))):
+                    tags[key] = cls.ITEM.string(
+                        key, unicode(getattr(metadata, field)))
 
-            if ((metadata.track_number is not None) or
-                (metadata.track_total is not None)):
+            if (((metadata.track_number is not None) or
+                 (metadata.track_total is not None))):
                 tags["Track"] = cls.ITEM.string(
                     "Track", __number_pair__(metadata.track_number,
                                              metadata.track_total))
 
-            if ((metadata.album_number is not None) or
-                (metadata.album_total is not None)):
+            if (((metadata.album_number is not None) or
+                 (metadata.album_total is not None))):
                 tags["Media"] = cls.ITEM.string(
                     "Media", __number_pair__(metadata.album_number,
                                              metadata.album_total))
@@ -725,7 +729,7 @@ class ApeTag(MetaData):
             if (tag.key.upper() in used_tags):
                 fixes_applied.append(
                     CLEAN_REMOVE_DUPLICATE_TAG %
-                    {"field":tag.key.decode('ascii')})
+                    {"field": tag.key.decode('ascii')})
             elif (tag.type == 0):
                 used_tags.add(tag.key.upper())
                 text = unicode(tag)
@@ -750,8 +754,7 @@ class ApeTag(MetaData):
                         (current, total) = fix2.split(u"/", 1)
                         current_int = re.search(r'\d+', current)
                         total_int = re.search(r'\d+', total)
-                        if ((current_int is None) and
-                            (total_int is None)):
+                        if ((current_int is None) and (total_int is None)):
                             #neither side contains an integer value
                             #so ignore it altogether
                             fix3 = fix2
@@ -1115,9 +1118,9 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
                 return (header.sample_rate,
                         header.number_of_channels,
                         header.bits_per_sample,
-                        ((header.total_frames - 1) * \
-                         header.blocks_per_frame) + \
-                         header.final_frame_blocks)
+                        ((header.total_frames - 1) *
+                         header.blocks_per_frame) +
+                        header.final_frame_blocks)
             else:                           # old-style APE file (obsolete)
                 header = cls.APE_HEADER_OLD.parse_stream(f)
 
@@ -1140,9 +1143,9 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
                 return (header.sample_rate,
                         header.number_of_channels,
                         bits_per_sample,
-                        ((header.total_frames - 1) * \
-                         blocks_per_frame) + \
-                         header.final_frame_blocks)
+                        ((header.total_frames - 1) *
+                         blocks_per_frame) +
+                        header.final_frame_blocks)
 
         finally:
             f.close()

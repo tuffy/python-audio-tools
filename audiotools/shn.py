@@ -94,8 +94,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         command = read_unsigned(reader, 2)
         if (command == 9):
             verbatim_bytes = "".join([chr(read_unsigned(reader, 8) & 0xFF)
-                                      for i in xrange(
-                        read_unsigned(reader, 5))])
+                                      for i in xrange(read_unsigned(reader,
+                                                                    5))])
             try:
                 wave = BitstreamReader(cStringIO.StringIO(verbatim_bytes), 1)
                 header = wave.read_bytes(12)
@@ -112,7 +112,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                              self.__sample_rate__,
                              bits_per_sample,
                              self.__channel_mask__) = parse_fmt(
-                                wave.substream(chunk_size))
+                                 wave.substream(chunk_size))
                         elif (chunk_id == 'data'):
                             self.__total_frames__ = \
                                 (chunk_size /
@@ -145,7 +145,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                              bits_per_sample,
                              self.__sample_rate__,
                              self.__channel_mask__) = parse_comm(
-                                aiff.substream(chunk_size))
+                                 aiff.substream(chunk_size))
                         elif (chunk_id == 'SSND'):
                             #subtract 8 bytes for "offset" and "block size"
                             self.__total_frames__ = \
@@ -356,7 +356,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         #ensure header is valid
         try:
             (total_size, data_size) = validate_header(header)
-        except ValueError,err:
+        except ValueError, err:
             raise EncodingError(str(err))
 
         counter = CounterPCMReader(pcmreader)
@@ -388,7 +388,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
             #ensure footer validates correctly
             try:
                 validate_footer(footer, data_bytes_written)
-            except ValueError,err:
+            except ValueError, err:
                 raise EncodingError(str(err))
 
             #ensure total size is correct
@@ -508,7 +508,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         #ensure header is valid
         try:
             (total_size, ssnd_size) = validate_header(header)
-        except ValueError,err:
+        except ValueError, err:
             raise EncodingError(str(err))
 
         counter = CounterPCMReader(pcmreader)
@@ -540,7 +540,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
             #ensure footer validates correctly
             try:
                 validate_footer(footer, ssnd_bytes_written)
-            except ValueError,err:
+            except ValueError, err:
                 raise EncodingError(str(err))
 
             #ensure total size is correct
@@ -573,9 +573,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
         from . import AiffAudio
         from . import to_pcm_progress
 
-        if (self.has_foreign_wave_chunks() and
-            hasattr(target_class, "from_wave") and
-            callable(target_class.from_wave)):
+        if ((self.has_foreign_wave_chunks() and
+             hasattr(target_class, "from_wave") and
+             callable(target_class.from_wave))):
             return WaveContainer.convert(self,
                                          target_path,
                                          target_class,

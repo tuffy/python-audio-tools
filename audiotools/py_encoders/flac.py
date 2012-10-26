@@ -213,8 +213,8 @@ def encode_flac_frame(writer, pcmreader, options, frame_number, frame):
                 average_subframe.copy(writer)
                 difference_subframe.copy(writer)
         else:
-            if ((left_subframe.bits() + right_subframe.bits()) <
-                (average_subframe.bits() + difference_subframe.bits())):
+            if (((left_subframe.bits() + right_subframe.bits()) <
+                 (average_subframe.bits() + difference_subframe.bits()))):
                 write_frame_header(writer, pcmreader, frame_number, frame, 0x1)
                 left_subframe.copy(writer)
                 right_subframe.copy(writer)
@@ -278,8 +278,8 @@ def write_frame_header(writer, pcmreader, frame_number, frame,
                            176400: 2,
                            192000: 3}.get(pcmreader.sample_rate, None)
     if (encoded_sample_rate is None):
-        if (((pcmreader.sample_rate % 1000) == 0) and
-            (pcmreader.sample_rate <= 255000)):
+        if ((((pcmreader.sample_rate % 1000) == 0) and
+             (pcmreader.sample_rate <= 255000))):
             encoded_sample_rate = 12
         elif (((pcmreader.sample_rate % 10) == 0) and
               (pcmreader.sample_rate <= 655350)):
@@ -405,8 +405,8 @@ def encode_subframe(writer, options, bits_per_sample, samples):
                                 qlp_coeffs,
                                 samples)
 
-            if ((bits_per_sample * len(samples)) <
-                min(fixed_subframe.bits(), lpc_subframe.bits())):
+            if (((bits_per_sample * len(samples)) <
+                 min(fixed_subframe.bits(), lpc_subframe.bits()))):
                 encode_verbatim_subframe(writer, wasted_bps,
                                          bits_per_sample, samples)
             elif (fixed_subframe.bits() < lpc_subframe.bits()):
@@ -414,8 +414,7 @@ def encode_subframe(writer, options, bits_per_sample, samples):
             else:
                 lpc_subframe.copy(writer)
         else:
-            if ((bits_per_sample * len(samples)) <
-                fixed_subframe.bits()):
+            if ((bits_per_sample * len(samples)) < fixed_subframe.bits()):
                 encode_verbatim_subframe(writer, wasted_bps,
                                          bits_per_sample, samples)
             else:
@@ -592,8 +591,8 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
                                                          windowed[lag:])])
                               for lag in xrange(0, options.max_lpc_order + 1)]
 
-    if ((len(autocorrelation_values) > 1) and
-        (set(autocorrelation_values) != set([0.0]))):
+    if ((len(autocorrelation_values) > 1) and (set(autocorrelation_values) !=
+                                               set([0.0]))):
 
         (lp_coefficients,
          error) = compute_lp_coefficients(autocorrelation_values)
@@ -608,8 +607,9 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
                                             bits_per_sample,
                                             error)
             (qlp_coeffs,
-             qlp_shift_needed) = quantize_coefficients(
-                options.qlp_precision, lp_coefficients, order)
+             qlp_shift_needed) = quantize_coefficients(options.qlp_precision,
+                                                       lp_coefficients,
+                                                       order)
 
             return (order, qlp_coeffs, qlp_shift_needed)
         else:
@@ -624,7 +624,7 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
             for order in xrange(1, options.max_lpc_order + 1):
                 (qlp_coeffs,
                  qlp_shift_needed) = quantize_coefficients(
-                    options.qlp_precision, lp_coefficients, order)
+                     options.qlp_precision, lp_coefficients, order)
 
                 subframe = BitstreamAccumulator(0)
                 encode_lpc_subframe(subframe, options,
@@ -657,7 +657,7 @@ def compute_lp_coefficients(autocorrelation):
 
         lp_coefficients.append([c1 - (ki * c2) for (c1, c2) in
                                 zip(lp_coefficients[i - 1],
-                                   reversed(lp_coefficients[i - 1]))] + [ki])
+                                    reversed(lp_coefficients[i - 1]))] + [ki])
         error.append(error[i - 1] * (1 - ki ** 2))
 
     return (lp_coefficients, error)

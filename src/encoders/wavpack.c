@@ -623,6 +623,8 @@ encode_block(BitstreamWriter* bs,
     if ((channels->len == 1) ||
         (parameters->try_false_stereo &&
          (channels->_[0]->equals(channels->_[0], channels->_[1])))) {
+        array_i* channel_0 = channels->_[0];
+
         if (channels->len == 1) {
             false_stereo = 0;
             effective_channel_count = 1;
@@ -631,49 +633,52 @@ encode_block(BitstreamWriter* bs,
             effective_channel_count = 1;
         }
 
-        /*calculate the maximum magnitude of channel_0 and channel_1*/
-        magnitude = maximum_magnitude(channels->_[0]);
+        /*calculate the maximum magnitude of channel_0 and channel*/
+        magnitude = maximum_magnitude(channel_0);
 
         /*calculate and apply any wasted least-significant bits*/
         if (parameters->try_wasted_bits) {
-            wasted_bps = wasted_bits(channels->_[0]);
+            wasted_bps = wasted_bits(channel_0);
             if (wasted_bps > 0) {
                 unsigned i;
-                shifted->append(shifted);
-                shifted->_[0]->resize(shifted->_[0], total_frames);
+                array_i* shifted_0 = shifted->append(shifted);
+                shifted_0->resize(shifted_0, total_frames);
                 for (i = 0; i < total_frames; i++) {
-                    a_append(shifted->_[0], channels->_[0]->_[i] >> wasted_bps);
+                    a_append(shifted_0, channel_0->_[i] >> wasted_bps);
                 }
             } else {
-                channels->_[0]->copy(channels->_[0], shifted->append(shifted));
+                channel_0->copy(channel_0, shifted->append(shifted));
             }
         } else {
             wasted_bps = 0;
-            channels->_[0]->copy(channels->_[0], shifted->append(shifted));
+            channel_0->copy(channel_0, shifted->append(shifted));
         }
 
         crc = calculate_crc(shifted);
     } else {
+        array_i* channel_0 = channels->_[0];
+        array_i* channel_1 = channels->_[1];
+
         false_stereo = 0;
         effective_channel_count = 2;
 
         /*calculate the maximum magnitude of channel_0 and channel_1*/
-        magnitude = MAX(maximum_magnitude(channels->_[0]),
-                        maximum_magnitude(channels->_[1]));
+        magnitude = MAX(maximum_magnitude(channel_0),
+                        maximum_magnitude(channel_1));
 
         /*calculate and apply any wasted least-significant bits*/
         if (parameters->try_wasted_bits) {
-            wasted_bps = MIN(wasted_bits(channels->_[0]),
-                             wasted_bits(channels->_[1]));
+            wasted_bps = MIN(wasted_bits(channel_0),
+                             wasted_bits(channel_1));
             if (wasted_bps > 0) {
                 unsigned i;
-                shifted->append(shifted);
-                shifted->append(shifted);
-                shifted->_[0]->resize(shifted->_[0], total_frames);
-                shifted->_[1]->resize(shifted->_[1], total_frames);
-                for (i = 0; i < channels->_[0]->len; i++) {
-                    a_append(shifted->_[0], channels->_[0]->_[i] >> wasted_bps);
-                    a_append(shifted->_[1], channels->_[1]->_[i] >> wasted_bps);
+                array_i* shifted_0 = shifted->append(shifted);
+                array_i* shifted_1 = shifted->append(shifted);
+                shifted_0->resize(shifted_0, total_frames);
+                shifted_1->resize(shifted_1, total_frames);
+                for (i = 0; i < channel_0->len; i++) {
+                    a_append(shifted_0, channel_0->_[i] >> wasted_bps);
+                    a_append(shifted_1, channel_1->_[i] >> wasted_bps);
                 }
             } else {
                 channels->copy(channels, shifted);

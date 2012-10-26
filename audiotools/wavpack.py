@@ -141,8 +141,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
         for (sub_header, nondecoder, data_size, data) in self.sub_blocks():
             if ((sub_header == 1) and nondecoder):
-                if (set(__riff_chunk_ids__(data_size, data)) !=
-                    set(['fmt ', 'data'])):
+                if (set(__riff_chunk_ids__(data_size,
+                                           data)) != set(['fmt ', 'data'])):
                     return True
             elif ((sub_header == 2) and nondecoder):
                 return True
@@ -198,14 +198,14 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         from . import EncodingError
         from . import __default_quality__
 
-        if ((compression is None) or
-            (compression not in cls.COMPRESSION_MODES)):
+        if (((compression is None) or
+             (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
         #ensure header is valid
         try:
             (total_size, data_size) = validate_header(header)
-        except ValueError,err:
+        except ValueError, err:
             raise EncodingError(str(err))
 
         counter = CounterPCMReader(pcmreader)
@@ -228,12 +228,11 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
             #ensure footer validates correctly
             try:
                 validate_footer(footer, data_bytes_written)
-            except ValueError,err:
+            except ValueError, err:
                 raise EncodingError(str(err))
 
             #ensure total size is correct
-            if ((len(header) + data_size + len(footer)) !=
-                total_size):
+            if ((len(header) + data_size + len(footer)) != total_size):
                 from .text import ERR_WAV_INVALID_SIZE
                 raise EncodingError(ERR_WAV_INVALID_SIZE)
 
@@ -327,7 +326,7 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
              initial_block,
              final_block,
              sample_rate) = reader.parse(
-                "4b 64p 32u 64p 2u 1u 8p 1u 1u 5p 5p 4u 37p")
+                 "4b 64p 32u 64p 2u 1u 8p 1u 1u 5p 5p 4u 37p")
 
             if (block_id != 'wvpk'):
                 from .text import ERR_WAVPACK_INVALID_HEADER
@@ -452,8 +451,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         from . import EncodingError
         from . import __default_quality__
 
-        if ((compression is None) or
-            (compression not in cls.COMPRESSION_MODES)):
+        if (((compression is None) or
+             (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
         try:
@@ -612,7 +611,8 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
         if ((metadata is not None) and ('Cuesheet' in metadata.keys())):
             try:
-                return cue.parse(cue.tokens(
+                return cue.parse(
+                    cue.tokens(
                         unicode(metadata['Cuesheet']).encode('utf-8',
                                                              'replace')))
             except cue.CueException:
@@ -640,8 +640,9 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         if (metadata is None):
             metadata = ApeTag.converted(MetaData())
 
-        metadata['Cuesheet'] = ApeTag.ITEM.string('Cuesheet',
-                                                  cue.Cuesheet.file(
+        metadata['Cuesheet'] = ApeTag.ITEM.string(
+            'Cuesheet',
+            cue.Cuesheet.file(
                 cuesheet,
                 os.path.basename(self.filename)).decode('ascii', 'replace'))
         self.update_metadata(metadata)

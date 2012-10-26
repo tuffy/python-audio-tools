@@ -60,15 +60,15 @@ class FlacDecoder:
                 #these are frame header lookup tables
                 #which vary slightly depending on STREAMINFO's values
                 self.BLOCK_SIZE = [self.maximum_block_size,
-                                    192,  576,  1152,
+                                   192,  576,  1152,
                                    2304, 4608,  None,  None,
-                                    256,  512,  1024,  2048,
+                                   256,  512,  1024,  2048,
                                    4096, 8192, 16384, 32768]
                 self.SAMPLE_RATE = [self.sample_rate,
                                     88200, 176400, 192000,
-                                     8000,  16000,  22050, 24000,
+                                    8000,  16000,  22050, 24000,
                                     32000,  44100,  48000, 96000,
-                                     None,   None,   None,  None]
+                                    None,   None,   None,  None]
                 self.BITS_PER_SAMPLE = [self.bits_per_sample,
                                         8, 12, None, 16, 20, 24, None]
 
@@ -100,7 +100,7 @@ class FlacDecoder:
          channel_assignment,
          bits_per_sample) = self.read_frame_header()
         channel_count = self.CHANNEL_COUNT[channel_assignment]
-        if (channel_count == None):
+        if (channel_count is None):
             raise ValueError("invalid channel assignment")
 
         #channel data will be a list of signed sample lists, one per channel
@@ -108,20 +108,17 @@ class FlacDecoder:
         channel_data = []
 
         for channel_number in xrange(channel_count):
-            if ((channel_assignment == 0x8) and
-                (channel_number == 1)):
+            if ((channel_assignment == 0x8) and (channel_number == 1)):
                 #for left-difference assignment
                 #the difference channel has 1 additional bit
                 channel_data.append(self.read_subframe(block_size,
                                                        bits_per_sample + 1))
-            elif ((channel_assignment == 0x9) and
-                  (channel_number == 0)):
+            elif ((channel_assignment == 0x9) and (channel_number == 0)):
                 #for difference-right assignment
                 #the difference channel has 1 additional bit
                 channel_data.append(self.read_subframe(block_size,
                                                        bits_per_sample + 1))
-            elif ((channel_assignment == 0xA) and
-                  (channel_number == 1)):
+            elif ((channel_assignment == 0xA) and (channel_number == 1)):
                 #for mid-side assignment
                 #the side channel has 1 additional bit
                 channel_data.append(self.read_subframe(block_size,
@@ -226,8 +223,7 @@ class FlacDecoder:
 
         #unpack the 3 bit bits-per-sample field
         #this never requires additional bits
-        if ((bits_per_sample_bits == 0x3) or
-            (bits_per_sample_bits == 0x7)):
+        if ((bits_per_sample_bits == 0x3) or (bits_per_sample_bits == 0x7)):
             raise ValueError("invalid bits per sample")
         else:
             bits_per_sample = self.BITS_PER_SAMPLE[bits_per_sample_bits]

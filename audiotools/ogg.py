@@ -199,7 +199,7 @@ class OggStreamReader:
          granule_position,
          serial_number,
          page_sequence_number) = self.reader.parse(
-            "4b 8u 1u 1u 1u 5p 64S 32u 32u")
+             "4b 8u 1u 1u 1u 5p 64S 32u 32u")
 
         #update checksum with placeholder value
         old_callback = self.reader.pop_callback()

@@ -504,13 +504,13 @@ class WaveAudio(WaveContainer):
                          self.__sample_rate__,
                          self.__bits_per_sample__,
                          self.__channel_mask__) = parse_fmt(
-                            BitstreamReader(chunk.data(), 1))
+                             BitstreamReader(chunk.data(), 1))
                         fmt_read = True
                         if (fmt_read and data_read):
                             break
                     except IOError:
                         continue
-                    except ValueError,err:
+                    except ValueError, err:
                         raise InvalidWave(str(err))
                 elif (chunk.id == "data"):
                     self.__data_size__ = chunk.size()
@@ -586,8 +586,8 @@ class WaveAudio(WaveContainer):
 
             #build a regular or extended fmt chunk
             #based on the reader's attributes
-            if ((pcmreader.channels <= 2) and
-                (pcmreader.bits_per_sample <= 16)):
+            if (((pcmreader.channels <= 2) and
+                 (pcmreader.bits_per_sample <= 16))):
                 fmt = "16u 16u 32u 32u 16u 16u"
                 fmt_fields = (1,   # compression code
                               pcmreader.channels,
@@ -599,12 +599,12 @@ class WaveAudio(WaveContainer):
                 if (pcmreader.channel_mask != 0):
                     channel_mask = pcmreader.channel_mask
                 else:
-                    channel_mask = {1:0x4,
-                                    2:0x3,
-                                    3:0x7,
-                                    4:0x33,
-                                    5:0x37,
-                                    6:0x3F}.get(pcmreader.channels, 0)
+                    channel_mask = {1: 0x4,
+                                    2: 0x3,
+                                    3: 0x7,
+                                    4: 0x33,
+                                    5: 0x37,
+                                    6: 0x3F}.get(pcmreader.channels, 0)
 
                 fmt = "16u 16u 32u 32u 16u 16u" + "16u 16u 32u 16b"
                 fmt_fields = (0xFFFE,   # compression code
@@ -690,8 +690,9 @@ class WaveAudio(WaveContainer):
     def total_frames(self):
         """returns the total PCM frames of the track as an integer"""
 
-        return self.__data_size__ / (self.__bits_per_sample__ / 8) / \
-               self.__channels__
+        return (self.__data_size__ /
+                (self.__bits_per_sample__ / 8) /
+                self.__channels__)
 
     def sample_rate(self):
         """returns the rate of the track's audio as an integer number of Hz"""
@@ -980,13 +981,13 @@ class WaveAudio(WaveContainer):
         may raise EncodingError if some problem occurs when
         encoding the input file"""
 
-        from . import (DecodingError,EncodingError,FRAMELIST_SIZE)
+        from . import (DecodingError, EncodingError, FRAMELIST_SIZE)
         from struct import unpack
 
         #ensure header validates correctly
         try:
             (total_size, data_size) = validate_header(header)
-        except ValueError,err:
+        except ValueError, err:
             raise EncodingError(str(err))
 
         try:
@@ -1014,7 +1015,7 @@ class WaveAudio(WaveContainer):
                 validate_footer(footer, data_bytes_written)
                 #before writing it to disk
                 f.write(footer)
-            except ValueError,err:
+            except ValueError, err:
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
 
@@ -1040,7 +1041,6 @@ class WaveAudio(WaveContainer):
         returns True if the file is okay
         raises an InvalidFile with an error message if there is
         some problem with the file"""
-
 
         #FIXME - have this call validate_header()/validate_footer()
         #in order to avoid redoing lots of work

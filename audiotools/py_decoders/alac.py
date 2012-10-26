@@ -58,10 +58,10 @@ class ALACDecoder:
              self.maximum_k,
              self.channels,
              self.sample_rate) = stsd.parse(
-                #ignore much of the stuff in the "high" ALAC atom
-                "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
-                #and use the attributes in the "low" ALAC atom instead
-                "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
+                 #ignore much of the stuff in the "high" ALAC atom
+                 "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
+                 #and use the attributes in the "low" ALAC atom instead
+                 "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
 
             self.channel_mask = {1: 0x0004,
                                  2: 0x0003,
@@ -216,10 +216,9 @@ class ALACDecoder:
 
             #optional uncompressed LSB values
             if (uncompressed_lsb_size > 0):
-                uncompressed_lsbs = [self.reader.read(
-                        uncompressed_lsb_size * 8)
-                                     for i in xrange(sample_count *
-                                                     channel_count)]
+                uncompressed_lsbs = [
+                    self.reader.read(uncompressed_lsb_size * 8)
+                    for i in xrange(sample_count * channel_count)]
             else:
                 uncompressed_lsbs = []
 
@@ -256,8 +255,8 @@ class ALACDecoder:
                     assert(len(channel) ==
                            len(uncompressed_lsbs[i::channel_count]))
                     channels.append([s << (uncompressed_lsb_size * 8) | l
-                                     for (s, l) in zip(
-                                channel, uncompressed_lsbs[i::channel_count])])
+                                     for (s, l) in zip(channel,
+                                                       uncompressed_lsbs[i::channel_count])])
                 return channels
             else:
                 return decorrelated_channels
