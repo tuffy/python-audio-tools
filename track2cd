@@ -32,9 +32,9 @@ MAX_CPUS = audiotools.MAX_JOBS
 
 def convert_to_wave(progress, audiofile, wave_filename):
     try:
-        if ((audiofile.sample_rate() == 44100) and
-            (audiofile.channels() == 2) and
-            (audiofile.bits_per_sample() == 16)):  # already CD quality
+        if (((audiofile.sample_rate() == 44100) and
+             (audiofile.channels() == 2) and
+             (audiofile.bits_per_sample() == 16))):  # already CD quality
             audiofile.convert(target_path=wave_filename,
                               target_class=audiotools.WaveAudio,
                               progress=progress)
@@ -114,8 +114,8 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_FILES_REQUIRED)
         sys.exit(1)
 
-    if ((len(audiofiles) == 1) and
-        (audiofiles[0].get_cuesheet() is not None)):
+    if (((len(audiofiles) == 1) and
+         (audiofiles[0].get_cuesheet() is not None))):
         #writing a single file with an embedded cuesheet
         #so extract its contents to wave/cue and call cdrdao
 
@@ -129,16 +129,17 @@ if (__name__ == '__main__'):
         temptoc = tempfile.NamedTemporaryFile(suffix='.toc')
         tempwav = tempfile.NamedTemporaryFile(suffix='.wav')
 
-        temptoc.write(audiotools.toc.TOCFile.file(
+        temptoc.write(
+            audiotools.toc.TOCFile.file(
                 cuesheet, os.path.basename(tempwav.name)))
         temptoc.flush()
 
         progress = audiotools.SingleProgressDisplay(
             msg, _.LAB_CONVERTING_FILE)
 
-        if ((audiofiles[0].sample_rate() == 44100) and
-            (audiofiles[0].channels() == 2) and
-            (audiofiles[0].bits_per_sample() == 16)):
+        if (((audiofiles[0].sample_rate() == 44100) and
+             (audiofiles[0].channels() == 2) and
+             (audiofiles[0].bits_per_sample() == 16))):
             #already CD quality, so no additional conversion necessary
             temptrack = audiotools.WaveAudio.from_pcm(
                 tempwav.name,
@@ -218,15 +219,15 @@ if (__name__ == '__main__'):
         temptoc = tempfile.NamedTemporaryFile(suffix='.toc')
         tempwav = tempfile.NamedTemporaryFile(suffix='.wav')
 
-        temptoc.write(audiotools.toc.TOCFile.file(
-                toc, os.path.basename(tempwav.name)))
+        temptoc.write(
+            audiotools.toc.TOCFile.file(toc, os.path.basename(tempwav.name)))
         temptoc.flush()
 
         input_frames = sum([af.total_frames() for af in audiofiles])
 
-        if ((audiofiles[0].sample_rate() == 44100) and
-            (audiofiles[0].channels() == 2) and
-            (audiofiles[0].bits_per_sample() == 16)):
+        if (((audiofiles[0].sample_rate() == 44100) and
+             (audiofiles[0].channels() == 2) and
+             (audiofiles[0].bits_per_sample() == 16))):
             pcmreader = \
                 audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles]))
             output_frames = input_frames
@@ -248,7 +249,8 @@ if (__name__ == '__main__'):
             msg, _.LAB_CONVERTING_FILE)
 
         try:
-            write_offset = int(audiotools.config.get_default(
+            write_offset = int(
+                audiotools.config.get_default(
                     "System", "cdrom_write_offset", "0"))
         except ValueError:
             write_offset = 0
@@ -257,18 +259,18 @@ if (__name__ == '__main__'):
             temptrack = audiotools.WaveAudio.from_pcm(
                 tempwav.name,
                 audiotools.PCMReaderProgress(
-                        pcmreader=pcmreader,
-                        total_frames=output_frames,
-                        progress=progress.update))
+                    pcmreader=pcmreader,
+                    total_frames=output_frames,
+                    progress=progress.update))
         else:
             temptrack = audiotools.WaveAudio.from_pcm(
                 tempwav.name,
                 audiotools.PCMReaderProgress(
-                        pcmreader=audiotools.PCMReaderWindow(pcmreader,
-                                                             write_offset,
-                                                             input_frames),
-                        total_frames=output_frames,
-                        progress=progress_update))
+                    pcmreader=audiotools.PCMReaderWindow(pcmreader,
+                                                         write_offset,
+                                                         input_frames),
+                    total_frames=output_frames,
+                    progress=progress_update))
 
         progress.clear()
 

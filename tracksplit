@@ -293,8 +293,8 @@ if (__name__ == '__main__'):
     cuesheet_ISRCs = cuesheet.ISRCs()
     for track_metadatas in metadata_choices:
         for metadata in track_metadatas:
-            if ((metadata.ISRC is None) and
-                (metadata.track_number in cuesheet_ISRCs.keys())):
+            if ((metadata.ISRC is None) and (metadata.track_number in
+                                             cuesheet_ISRCs.keys())):
                 metadata.ISRC = cuesheet_ISRCs[metadata.track_number].decode(
                     'ascii', 'replace')
 
@@ -327,7 +327,8 @@ if (__name__ == '__main__'):
     else:
         #pick choice without using GUI
         try:
-            output_tracks = list(audiotools.ui.process_output_options(
+            output_tracks = list(
+                audiotools.ui.process_output_options(
                     metadata_choices=metadata_choices,
                     input_filenames=[input_filename for i in
                                      xrange(output_track_count)],
@@ -355,10 +356,10 @@ if (__name__ == '__main__'):
                  (output_class,
                   output_filename,
                   output_quality,
-                  output_metadata))) in enumerate(
-            zip(cuesheet.pcm_lengths(audiofile.total_frames(),
-                                     audiofile.sample_rate()),
-                output_tracks)):
+                  output_metadata))
+             ) in enumerate(zip(cuesheet.pcm_lengths(audiofile.total_frames(),
+                                                     audiofile.sample_rate()),
+                                output_tracks)):
             try:
                 audiotools.make_dirs(str(output_filename))
             except OSError, err:
@@ -387,10 +388,10 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     #apply ReplayGain to split tracks, if requested
-    if (audiotools.ADD_REPLAYGAIN and
-        (options.add_replay_gain if (options.add_replay_gain is not None)
-         else output_class.lossless_replay_gain()) and
-        output_class.can_add_replay_gain(encoded_tracks)):
+    if ((audiotools.ADD_REPLAYGAIN and
+         (options.add_replay_gain if (options.add_replay_gain is not None)
+          else output_class.lossless_replay_gain()) and
+         output_class.can_add_replay_gain(encoded_tracks))):
         rg_progress = audiotools.ReplayGainProgressDisplay(
             msg, output_class.lossless_replay_gain())
         rg_progress.initial_message()

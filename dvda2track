@@ -260,8 +260,8 @@ if (__name__ == '__main__'):
     #track_start, track_total, album_number, album_total - if given
     for c in metadata_choices:
         for m in c:
-            if ((options.track_start is not None) and
-                (m.track_number is not None)):
+            if (((options.track_start is not None) and
+                 (m.track_number is not None))):
                 #track_number and track_start both start at 1
                 #so minus 1 to take care of the offset
                 m.track_number += (options.track_start - 1)
@@ -317,13 +317,14 @@ if (__name__ == '__main__'):
     else:
         #pick choice without using GUI
         try:
-            output_tracks = list(audiotools.ui.process_output_options(
+            output_tracks = list(
+                audiotools.ui.process_output_options(
                     metadata_choices=[limit(c, to_rip.keys())
                                       for c in metadata_choices],
                     input_filenames=[
                         audiotools.Filename("track-%d-%2.2d.dvda.wav" %
                                             (options.title, i))
-                                            for i in sorted(to_rip.keys())],
+                        for i in sorted(to_rip.keys())],
                     output_directory=options.dir,
                     format_string=options.format,
                     output_class=AudioType,
@@ -376,12 +377,13 @@ if (__name__ == '__main__'):
             encoded[-1].set_metadata(output_metadata)
             progress.clear()
 
-            msg.info(audiotools.output_progress(
+            msg.info(
+                audiotools.output_progress(
                     _.LAB_ENCODE % {
-                        "source":_.LAB_DVDA_TRACK %
-                        {"title_number":options.title,
-                         "track_number":i + 1},
-                        "destination":output_filename},
+                        "source": _.LAB_DVDA_TRACK %
+                        {"title_number": options.title,
+                         "track_number": i + 1},
+                        "destination": output_filename},
                     len(to_rip) - len(output_tracks),
                     len(to_rip)))
         else:
@@ -389,10 +391,10 @@ if (__name__ == '__main__'):
             audiotools.transfer_framelist_data(pcmreader, lambda f: f)
 
     #add ReplayGain to ripped tracks, if necessary
-    if (audiotools.ADD_REPLAYGAIN and
-        (options.add_replay_gain if (options.add_replay_gain is not None)
-         else output_class.lossless_replay_gain()) and
-        output_class.can_add_replay_gain(encoded)):
+    if ((audiotools.ADD_REPLAYGAIN and
+         (options.add_replay_gain if (options.add_replay_gain is not None)
+          else output_class.lossless_replay_gain()) and
+         output_class.can_add_replay_gain(encoded))):
         rg_progress = audiotools.ReplayGainProgressDisplay(
             msg, output_class.lossless_replay_gain())
         rg_progress.initial_message()

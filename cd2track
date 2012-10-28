@@ -255,10 +255,10 @@ if (__name__ == '__main__'):
                                tracks_to_rip),
             metadata_choices=[limit(c, tracks_to_rip)
                               for c in metadata_choices],
-            input_filenames=limit([
-                    audiotools.Filename("track%2.2d.cdda.wav" % (i + 1))
-                    for i in xrange(cd_track_count)],
-                                  tracks_to_rip),
+            input_filenames=limit(
+                [audiotools.Filename("track%2.2d.cdda.wav" % (i + 1))
+                 for i in xrange(cd_track_count)],
+                tracks_to_rip),
             output_directory=options.dir,
             format_string=options.format,
             output_class=AudioType,
@@ -279,13 +279,14 @@ if (__name__ == '__main__'):
     else:
         #pick options without using GUI
         try:
-            output_tracks = list(audiotools.ui.process_output_options(
+            output_tracks = list(
+                audiotools.ui.process_output_options(
                     metadata_choices=[limit(c, tracks_to_rip)
                                       for c in metadata_choices],
-                    input_filenames=limit([
-                            audiotools.Filename("track%2.2d.cdda.wav" % (i + 1))
-                            for i in xrange(cd_track_count)],
-                                          tracks_to_rip),
+                    input_filenames=limit(
+                        [audiotools.Filename("track%2.2d.cdda.wav" % (i + 1))
+                         for i in xrange(cd_track_count)],
+                        tracks_to_rip),
                     output_directory=options.dir,
                     format_string=options.format,
                     output_class=AudioType,
@@ -308,8 +309,9 @@ if (__name__ == '__main__'):
              (output_class,
               output_filename,
               output_quality,
-              output_metadata))) in enumerate(
-        zip(limit(cdda, tracks_to_rip), output_tracks)):
+              output_metadata))) in enumerate(zip(limit(cdda,
+                                                        tracks_to_rip),
+                                                  output_tracks)):
         try:
             audiotools.make_dirs(str(output_filename))
         except OSError, err:
@@ -320,7 +322,8 @@ if (__name__ == '__main__'):
             msg, unicode(output_filename))
 
         try:
-            encoded.append(output_class.from_pcm(
+            encoded.append(
+                output_class.from_pcm(
                     str(output_filename),
                     audiotools.PCMReaderProgress(
                         cd_track,
@@ -336,7 +339,8 @@ if (__name__ == '__main__'):
 
         rip_log[cd_track.track_number] = cd_track.rip_log
 
-        msg.info(audiotools.output_progress(
+        msg.info(
+            audiotools.output_progress(
                 _.LAB_CD2TRACK_PROGRESS %
                 {"track_number": cd_track.track_number,
                  "filename": output_filename}, i + 1, len(output_tracks)))
@@ -344,10 +348,10 @@ if (__name__ == '__main__'):
     cdda.close()
 
     #add ReplayGain to ripped tracks, if necessary
-    if (audiotools.ADD_REPLAYGAIN and
-        (options.add_replay_gain if (options.add_replay_gain is not None)
-         else output_class.lossless_replay_gain()) and
-        output_class.can_add_replay_gain(encoded)):
+    if ((audiotools.ADD_REPLAYGAIN and
+         (options.add_replay_gain if (options.add_replay_gain is not None)
+          else output_class.lossless_replay_gain()) and
+         output_class.can_add_replay_gain(encoded))):
         rg_progress = audiotools.ReplayGainProgressDisplay(
             msg, output_class.lossless_replay_gain())
         rg_progress.initial_message()

@@ -23,6 +23,7 @@ from decimal import Decimal
 import audiotools
 import audiotools.text as _
 
+
 def audio_files(msg, args):
     for audio_file in audiotools.open_files(filter(os.path.isfile, args),
                                             messenger=msg,
@@ -55,9 +56,9 @@ class FormatSummary:
         msg.output_column(u" ")
         format_length = int(self.total_length)
         msg.output_column(_.LAB_TRACKLENGTH %
-                          {"hours":format_length / (60 * 60),
-                           "minutes":(format_length / 60) % 60,
-                           "seconds":format_length % 60},
+                          {"hours": format_length / (60 * 60),
+                           "minutes": (format_length / 60) % 60,
+                           "seconds": format_length % 60},
                           True)
         msg.output_column(u" ")
         if (self.total_size > (2 ** 40)):

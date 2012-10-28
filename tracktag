@@ -52,11 +52,11 @@ if (audiotools.ui.AVAILABLE):
                 metadata_choices,
                 status)
 
-            urwid.Frame.__init__(self,
-                                 body=urwid.Pile([
-                        ("weight", 1, self.filler),
-                        ("fixed", 1, buttons)]),
-                                 footer=status)
+            urwid.Frame.__init__(
+                self,
+                body=urwid.Pile([("weight", 1, self.filler),
+                                 ("fixed", 1, buttons)]),
+                footer=status)
 
         def apply(self, button):
             self.__cancelled__ = False
@@ -88,79 +88,79 @@ else:
     urwid_present = False
 
 
-UPDATE_OPTIONS = {"track_name":("--name",
-                                _.LAB_TRACKTAG_UPDATE_TRACK_NAME),
-                  "artist_name":("--artist",
-                                 _.LAB_TRACKTAG_UPDATE_ARTIST_NAME),
-                  "performer_name":("--performer",
-                                    _.LAB_TRACKTAG_UPDATE_PERFORMER_NAME),
-                  "composer_name":("--composer",
-                                   _.LAB_TRACKTAG_UPDATE_COMPOSER_NAME),
-                  "conductor_name":("--conductor",
-                                    _.LAB_TRACKTAG_UPDATE_CONDUCTOR_NAME),
-                  "album_name":("--album",
-                                _.LAB_TRACKTAG_UPDATE_ALBUM_NAME),
-                  "catalog":("--catalog",
-                             _.LAB_TRACKTAG_UPDATE_CATALOG),
-                  "track_number":("--number",
-                                  _.LAB_TRACKTAG_UPDATE_TRACK_NUMBER),
-                  "track_total":("--track-total",
-                                 _.LAB_TRACKTAG_UPDATE_TRACK_TOTAL),
-                  "album_number":("--album-number",
-                                  _.LAB_TRACKTAG_UPDATE_ALBUM_NUMBER),
-                  "album_total":("--album-total",
-                                 _.LAB_TRACKTAG_UPDATE_ALBUM_TOTAL),
-                  "ISRC":("--ISRC",
-                          _.LAB_TRACKTAG_UPDATE_ISRC),
-                  "publisher":("--publisher",
-                               _.LAB_TRACKTAG_UPDATE_PUBLISHER),
-                  "media":("--media-type",
-                           _.LAB_TRACKTAG_UPDATE_MEDIA),
-                  "year":("--year",
-                          _.LAB_TRACKTAG_UPDATE_YEAR),
-                  "date":("--date",
-                          _.LAB_TRACKTAG_UPDATE_DATE),
-                  "copyright":("--copyright",
-                               _.LAB_TRACKTAG_UPDATE_COPYRIGHT),
-                  "comment":("--comment",
-                             _.LAB_TRACKTAG_UPDATE_COMMENT)}
+UPDATE_OPTIONS = {"track_name": ("--name",
+                                 _.LAB_TRACKTAG_UPDATE_TRACK_NAME),
+                  "artist_name": ("--artist",
+                                  _.LAB_TRACKTAG_UPDATE_ARTIST_NAME),
+                  "performer_name": ("--performer",
+                                     _.LAB_TRACKTAG_UPDATE_PERFORMER_NAME),
+                  "composer_name": ("--composer",
+                                    _.LAB_TRACKTAG_UPDATE_COMPOSER_NAME),
+                  "conductor_name": ("--conductor",
+                                     _.LAB_TRACKTAG_UPDATE_CONDUCTOR_NAME),
+                  "album_name": ("--album",
+                                 _.LAB_TRACKTAG_UPDATE_ALBUM_NAME),
+                  "catalog": ("--catalog",
+                              _.LAB_TRACKTAG_UPDATE_CATALOG),
+                  "track_number": ("--number",
+                                   _.LAB_TRACKTAG_UPDATE_TRACK_NUMBER),
+                  "track_total": ("--track-total",
+                                  _.LAB_TRACKTAG_UPDATE_TRACK_TOTAL),
+                  "album_number": ("--album-number",
+                                   _.LAB_TRACKTAG_UPDATE_ALBUM_NUMBER),
+                  "album_total": ("--album-total",
+                                  _.LAB_TRACKTAG_UPDATE_ALBUM_TOTAL),
+                  "ISRC": ("--ISRC",
+                           _.LAB_TRACKTAG_UPDATE_ISRC),
+                  "publisher": ("--publisher",
+                                _.LAB_TRACKTAG_UPDATE_PUBLISHER),
+                  "media": ("--media-type",
+                            _.LAB_TRACKTAG_UPDATE_MEDIA),
+                  "year": ("--year",
+                           _.LAB_TRACKTAG_UPDATE_YEAR),
+                  "date": ("--date",
+                           _.LAB_TRACKTAG_UPDATE_DATE),
+                  "copyright": ("--copyright",
+                                _.LAB_TRACKTAG_UPDATE_COPYRIGHT),
+                  "comment": ("--comment",
+                              _.LAB_TRACKTAG_UPDATE_COMMENT)}
 
-REMOVE_OPTIONS = {"track_name":("--remove-name",
-                                _.LAB_TRACKTAG_REMOVE_TRACK_NAME),
-                  "artist_name":("--remove-artist",
-                                 _.LAB_TRACKTAG_REMOVE_ARTIST_NAME),
-                  "performer_name":("--remove-performer",
-                                    _.LAB_TRACKTAG_REMOVE_PERFORMER_NAME),
-                  "composer_name":("--remove-composer",
-                                   _.LAB_TRACKTAG_REMOVE_COMPOSER_NAME),
-                  "conductor_name":("--remove-conductor",
-                                 _.LAB_TRACKTAG_REMOVE_CONDUCTOR_NAME),
-                  "album_name":("--remove-album",
-                                _.LAB_TRACKTAG_REMOVE_ALBUM_NAME),
-                  "catalog":("--remove-catalog",
-                             _.LAB_TRACKTAG_REMOVE_CATALOG),
-                  "track_number":("--remove-number",
-                                  _.LAB_TRACKTAG_REMOVE_TRACK_NUMBER),
-                  "track_total":("--remove-track-total",
-                                 _.LAB_TRACKTAG_REMOVE_TRACK_TOTAL),
-                  "album_number":("--remove-album-number",
-                                  _.LAB_TRACKTAG_REMOVE_ALBUM_NUMBER),
-                  "album_total":("--remove-album-total",
-                                 _.LAB_TRACKTAG_REMOVE_ALBUM_TOTAL),
-                  "ISRC":("--remove-ISRC",
-                          _.LAB_TRACKTAG_REMOVE_ISRC),
-                  "publisher":("--remove-publisher",
-                               _.LAB_TRACKTAG_REMOVE_PUBLISHER),
-                  "media":("--remove-media-type",
-                           _.LAB_TRACKTAG_REMOVE_MEDIA),
-                  "year":("--remove-year",
-                          _.LAB_TRACKTAG_REMOVE_YEAR),
-                  "date":("--remove-date",
-                          _.LAB_TRACKTAG_REMOVE_DATE),
-                  "copyright":("--remove-copyright",
-                               _.LAB_TRACKTAG_REMOVE_COPYRIGHT),
-                  "comment":("--remove-comment",
-                             _.LAB_TRACKTAG_REMOVE_COMMENT)}
+REMOVE_OPTIONS = {"track_name": ("--remove-name",
+                                 _.LAB_TRACKTAG_REMOVE_TRACK_NAME),
+                  "artist_name": ("--remove-artist",
+                                  _.LAB_TRACKTAG_REMOVE_ARTIST_NAME),
+                  "performer_name": ("--remove-performer",
+                                     _.LAB_TRACKTAG_REMOVE_PERFORMER_NAME),
+                  "composer_name": ("--remove-composer",
+                                    _.LAB_TRACKTAG_REMOVE_COMPOSER_NAME),
+                  "conductor_name": ("--remove-conductor",
+                                     _.LAB_TRACKTAG_REMOVE_CONDUCTOR_NAME),
+                  "album_name": ("--remove-album",
+                                 _.LAB_TRACKTAG_REMOVE_ALBUM_NAME),
+                  "catalog": ("--remove-catalog",
+                              _.LAB_TRACKTAG_REMOVE_CATALOG),
+                  "track_number": ("--remove-number",
+                                   _.LAB_TRACKTAG_REMOVE_TRACK_NUMBER),
+                  "track_total": ("--remove-track-total",
+                                  _.LAB_TRACKTAG_REMOVE_TRACK_TOTAL),
+                  "album_number": ("--remove-album-number",
+                                   _.LAB_TRACKTAG_REMOVE_ALBUM_NUMBER),
+                  "album_total": ("--remove-album-total",
+                                  _.LAB_TRACKTAG_REMOVE_ALBUM_TOTAL),
+                  "ISRC": ("--remove-ISRC",
+                           _.LAB_TRACKTAG_REMOVE_ISRC),
+                  "publisher": ("--remove-publisher",
+                                _.LAB_TRACKTAG_REMOVE_PUBLISHER),
+                  "media": ("--remove-media-type",
+                            _.LAB_TRACKTAG_REMOVE_MEDIA),
+                  "year": ("--remove-year",
+                           _.LAB_TRACKTAG_REMOVE_YEAR),
+                  "date": ("--remove-date",
+                           _.LAB_TRACKTAG_REMOVE_DATE),
+                  "copyright": ("--remove-copyright",
+                                _.LAB_TRACKTAG_REMOVE_COPYRIGHT),
+                  "comment": ("--remove-comment",
+                              _.LAB_TRACKTAG_REMOVE_COMMENT)}
 
 if (__name__ == '__main__'):
     #add an enormous number of options to the parser
@@ -360,7 +360,8 @@ if (__name__ == '__main__'):
             if (not options.interactive):
                 #if interactive mode not indicated,
                 #have user pick choice right away
-                metadata_choices = [audiotools.ui.select_metadata(
+                metadata_choices = [
+                    audiotools.ui.select_metadata(
                         metadata_choices, msg, options.use_default)]
             else:
                 #otherwise, add tracks' original metadatas
@@ -451,8 +452,9 @@ if (__name__ == '__main__'):
                     #merge new fields with old fields
                     field_updated = False
                     for (attr, value) in new_metadata.fields():
-                        if (getattr(old_metadata, attr) !=
-                            getattr(new_metadata, attr)):
+                        if (getattr(old_metadata,
+                                    attr) != getattr(new_metadata,
+                                                     attr)):
                             setattr(old_metadata, attr, value)
                             field_updated = True
 

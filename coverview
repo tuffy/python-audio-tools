@@ -24,11 +24,11 @@ import cStringIO
 import audiotools
 import audiotools.text as _
 
+
 #returns the dimensions of image_surface scaled to match the
 #display surface size, but without changing its aspect ratio
 def image_size(display_surface, image_surface):
-    display_ratio = float(display_surface[0]) / \
-                    float(display_surface[1])
+    display_ratio = float(display_surface[0]) / float(display_surface[1])
 
     image_ratio = float(image_surface[0]) / float(image_surface[1])
 
@@ -88,9 +88,9 @@ try:
                                         (self.full_pixbuf.get_width(),
                                          self.full_pixbuf.get_height()))
 
-            if ((self.scaled_thumbnail is None) or
-                (self.scaled_thumbnail.get_width() != image_width) or
-                (self.scaled_thumbnail.get_height() != image_height)):
+            if (((self.scaled_thumbnail is None) or
+                 (self.scaled_thumbnail.get_width() != image_width) or
+                 (self.scaled_thumbnail.get_height() != image_height))):
                 self.scaled_thumbnail = self.full_pixbuf.scale_simple(
                     image_width,
                     image_height,
@@ -118,7 +118,8 @@ try:
                                       str, str, str, str)
 
             self.list_widget = gtk.TreeView(self.list)
-            self.list_widget.append_column(gtk.TreeViewColumn(
+            self.list_widget.append_column(
+                gtk.TreeViewColumn(
                     None, gtk.CellRendererText(), text=0))
             self.list_widget.set_headers_visible(False)
             list_scroll = gtk.ScrolledWindow()
@@ -168,13 +169,13 @@ try:
 
             image_info_bar.pack_start(self.size_bits)
             image_info_bar.pack_start(gtk.VSeparator(),
-                expand=False, fill=False, padding=3)
+                                      expand=False, fill=False, padding=3)
             image_info_bar.pack_start(self.size_pixels)
             image_info_bar.pack_start(gtk.VSeparator(),
-                expand=False, fill=False, padding=3)
+                                      expand=False, fill=False, padding=3)
             image_info_bar.pack_start(self.bits)
             image_info_bar.pack_start(gtk.VSeparator(),
-                                    expand=False, fill=False, padding=3)
+                                      expand=False, fill=False, padding=3)
             image_info_bar.pack_start(self.type)
 
             self.statusbar = gtk.Statusbar()
@@ -389,8 +390,9 @@ Consult "man python" for further details.
             self.path.config(text=image.path)
             self.size_bits.config(text=_.LAB_BYTE_SIZE % (len(at_image.data)))
             self.size_pixels.config(text=_.LAB_DIMENSIONS % (at_image.width,
-                                                           at_image.height))
-            self.bits.config(text=_.LAB_BITS_PER_PIXEL % (at_image.color_depth))
+                                                             at_image.height))
+            self.bits.config(
+                text=_.LAB_BITS_PER_PIXEL % (at_image.color_depth))
             self.type.config(text=at_image.mime_type)
 
         def clear_image_data(self):
@@ -407,8 +409,8 @@ Consult "man python" for further details.
             Label(self, text="coverview",
                   font=("Helvetica", 48)).pack(side=TOP)
             Label(self,
-                  text="Python Audio Tools %s" % \
-                      (audiotools.VERSION)).pack(side=TOP)
+                  text="Python Audio Tools %s" %
+                  (audiotools.VERSION)).pack(side=TOP)
             Label(self,
                   text="(c) by Brian Langenberger",
                   font=("Helvetica", 10)).pack(side=TOP)

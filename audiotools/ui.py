@@ -86,7 +86,6 @@ try:
         else:
             return widget.focus_part
 
-
     class OutputFiller(urwid.Frame):
         """a class for selecting MetaData and populating output parameters
         for multiple input tracks"""
@@ -142,7 +141,8 @@ try:
             self.options_status = urwid.Text(u"")
 
             #setup a widget for populating metadata fields
-            metadata_buttons = urwid.Filler(urwid.Columns(
+            metadata_buttons = urwid.Filler(
+                urwid.Columns(
                     widget_list=[('weight', 1,
                                   urwid.Button(LAB_CANCEL_BUTTON,
                                                on_press=self.exit)),
@@ -281,7 +281,6 @@ try:
 
             return self.options.selected_options()[1]
 
-
     class SingleOutputFiller(urwid.Frame):
         """a class for selecting MetaData and populating output parameters
         for a single input track"""
@@ -326,14 +325,11 @@ try:
             #setup a widget for cancel/finish buttons
             output_buttons = urwid.Filler(
                 urwid.Columns(
-                    widget_list=[('weight', 1,
-                                  urwid.Button(
-                                LAB_CANCEL_BUTTON,
-                                on_press=self.exit)),
-                                 ('weight', 2,
-                                  urwid.Button(
-                                completion_label,
-                                on_press=self.complete))],
+                    widget_list=[
+                        ('weight', 1, urwid.Button(LAB_CANCEL_BUTTON,
+                                                   on_press=self.exit)),
+                        ('weight', 2, urwid.Button(completion_label,
+                                                   on_press=self.complete))],
                     dividechars=3,
                     focus_column=1))
 
@@ -349,11 +345,11 @@ try:
                 metadata_choices=[[m] for m in metadata_choices],
                 status=self.status)
 
-            body = urwid.Pile([
-                    ("weight", 1, self.metadata),
-                    ("fixed", 5, urwid.LineBox(self.options,
-                                               title=LAB_OUTPUT_OPTIONS)),
-                    ("fixed", 1, output_buttons)])
+            body = urwid.Pile(
+                [("weight", 1, self.metadata),
+                 ("fixed", 5, urwid.LineBox(self.options,
+                                            title=LAB_OUTPUT_OPTIONS)),
+                 ("fixed", 1, output_buttons)])
 
             #finish initialization
             urwid.Frame.__init__(self,
@@ -404,7 +400,6 @@ try:
                     output_quality,
                     list(self.metadata.populated_metadata())[0])
 
-
     class MetaDataFiller(urwid.Pile):
         """a class for selecting the MetaData to apply to tracks"""
 
@@ -450,13 +445,13 @@ try:
             if (len(metadata_choices) > 1):
                 #setup radio button for each possible match
                 matches = []
-                radios = [urwid.RadioButton(
-                        matches,
-                        (choice[0].album_name
-                         if (choice[0].album_name is not None)
-                         else u""),
-                        on_state_change=self.select_match,
-                        user_data=i)
+                radios = [urwid.RadioButton(matches,
+                                            (choice[0].album_name
+                                             if (choice[0].album_name
+                                                 is not None)
+                                             else u""),
+                                            on_state_change=self.select_match,
+                                            user_data=i)
                           for (i, choice) in enumerate(metadata_choices)]
                 for radio in radios:
                     radio._label.set_wrap_mode(urwid.CLIP)
@@ -512,7 +507,6 @@ try:
 
             for (track_id, metadata) in self.selected_match.metadata():
                 yield metadata
-
 
     class MetaDataEditor(urwid.Frame):
         """a class for editing MetaData values for a set of tracks"""
@@ -675,25 +669,25 @@ try:
 
                 #add new entries according to swivel's values
                 self.set_body(
-                    urwid.ListBox([
-                            urwid.Columns([(swivel.left_alignment,
-                                            swivel.left_width,
-                                            left_widget),
-                                           (swivel.right_alignment,
-                                            swivel.right_width,
-                                            right_widget)])
-                            for (left_widget,
-                                 right_widget) in swivel.rows()]))
+                    urwid.ListBox(
+                        [urwid.Columns([(swivel.left_alignment,
+                                         swivel.left_width,
+                                         left_widget),
+                                        (swivel.right_alignment,
+                                         swivel.right_width,
+                                         right_widget)])
+                         for (left_widget,
+                              right_widget) in swivel.rows()]))
 
                 #update header with swivel's values
-                self.set_header(urwid.Columns(
+                self.set_header(
+                    urwid.Columns(
                         [(swivel.left_alignment,
                           swivel.left_width,
                           urwid.Text(u"")),
                          (swivel.right_alignment,
                           swivel.right_width,
-                          LinkedWidgetHeader(
-                                    swivel.right_top_widget))]))
+                          LinkedWidgetHeader(swivel.right_top_widget))]))
             else:
                 pass
 
@@ -716,7 +710,6 @@ try:
             for track_id in self.track_ids:
                 yield (track_id,
                        self.metadata_edits[track_id].edited_metadata())
-
 
     class OrderedRadioButton(urwid.RadioButton):
         def __init__(self, ordered_group, group, label,
@@ -748,14 +741,12 @@ try:
             else:
                 return None
 
-
     class LinkedWidgetHeader(urwid.Columns):
         def __init__(self, widget):
             urwid.Columns.__init__(self,
                                    [("fixed", 3, urwid.Text(u"   ")),
                                     ("weight", 1, widget),
                                     ("fixed", 4, urwid.Text(u""))])
-
 
     class LinkedWidgetDivider(urwid.Columns):
         def __init__(self):
@@ -764,7 +755,6 @@ try:
                 [("fixed", 3, urwid.Text(u"\u2500\u2534\u2500")),
                  ("weight", 1, urwid.Divider(u"\u2500")),
                  ("fixed", 4, urwid.Text(u"\u2500" * 4))])
-
 
     class LinkedWidgets(urwid.Columns):
         def __init__(self, checkbox_group, linked_widget, unlinked_widget,
@@ -841,7 +831,6 @@ try:
                 setattr(self, field, widget)
                 self.checkbox_groups[field] = []
 
-
     class TrackMetaData:
         NEVER_LINK = frozenset(["track_name", "track_number", "ISRC"])
 
@@ -868,8 +857,10 @@ try:
                     linked_widget=getattr(base_metadata, field),
                     unlinked_widget=widget,
                     initially_linked=((field not in self.NEVER_LINK) and
-                                      (getattr(metadata, field) ==
-                                       getattr(base_metadata.metadata, field))))
+                                      (getattr(metadata,
+                                               field) ==
+                                       getattr(base_metadata.metadata,
+                                               field))))
 
                 setattr(self, field, linked_widget)
 
@@ -877,14 +868,14 @@ try:
             """returns a new MetaData object of the track's
             current value based on its widgets' values"""
 
-            return audiotools.MetaData(**dict(
-                    [(attr, value) for (attr, value) in
-                     [(attr, getattr(self, attr).value())
-                      for attr in audiotools.MetaData.FIELDS]
-                     if ((len(value) > 0) if
-                         (attr not in audiotools.MetaData.INTEGER_FIELDS) else
-                         (value > 0))]))
-
+            return audiotools.MetaData(
+                **dict([(attr, value) for (attr, value) in
+                        [(attr, getattr(self, attr).value())
+                         for attr in audiotools.MetaData.FIELDS]
+                        if ((len(value) > 0) if
+                            (attr not in
+                             audiotools.MetaData.INTEGER_FIELDS) else
+                            (value > 0))]))
 
     class Swivel:
         """this is a container for the objects of a swiveling operation"""
@@ -917,7 +908,6 @@ try:
                                                self.right_widgets):
                 yield (self.left_radios[left_id], right_widget)
 
-
     def tab_complete(path):
         """given a partially-completed directory path string
         returns a path string completed as far as possible
@@ -949,7 +939,6 @@ try:
             #base doesn't exist,
             #so we don't know how to complete the rest
             return path
-
 
     def tab_complete_file(path):
         """given a partially-completed file path string
@@ -985,7 +974,6 @@ try:
             #so we don't know how to complete the rest
             return path
 
-
     def pop_directory(path):
         """given a path string,
         returns a new path string with one directory removed if possible"""
@@ -1000,14 +988,12 @@ try:
         else:
             return base
 
-
     def split_at_cursor(edit):
         """returns a (prefix, suffix) unicode pair
         of text before and after the urwid.Edit widget's cursor"""
 
         return (edit.get_edit_text()[0:edit.edit_pos],
                 edit.get_edit_text()[edit.edit_pos:])
-
 
     class SelectButtons(urwid.Pile):
         def __init__(self, widget_list, focus_item=None, cancelled=None):
@@ -1026,7 +1012,6 @@ try:
             else:
                 return key
 
-
     class BottomLineBox(urwid.LineBox):
         """a LineBox that places its title at the bottom instead of the top"""
 
@@ -1040,39 +1025,31 @@ try:
             blcorner, brcorner = urwid.Text(blcorner), urwid.Text(brcorner)
 
             self.title_widget = urwid.Text(self.format_title(title))
-            self.tline_widget = urwid.Columns([
-                    tline,
-                    ('flow', self.title_widget),
-                    tline])
+            self.tline_widget = urwid.Columns(
+                [tline, ('flow', self.title_widget), tline])
 
-            top = urwid.Columns([
-                    ('fixed', 1, tlcorner),
-                    bline,
-                    ('fixed', 1, trcorner)
-                    ])
+            top = urwid.Columns(
+                [('fixed', 1, tlcorner), bline, ('fixed', 1, trcorner)])
 
-            middle = urwid.Columns([
-                    ('fixed', 1, lline),
-                    original_widget,
-                    ('fixed', 1, rline),
-                    ], box_columns = [0,2], focus_column=1)
+            middle = urwid.Columns(
+                [('fixed', 1, lline), original_widget, ('fixed', 1, rline)],
+                box_columns=[0, 2],
+                focus_column=1)
 
-            bottom = urwid.Columns([
-                    ('fixed', 1, blcorner),
-                    self.tline_widget,
-                    ('fixed', 1, brcorner)
-                    ])
+            bottom = urwid.Columns(
+                [('fixed', 1, blcorner),
+                 self.tline_widget,
+                 ('fixed', 1, brcorner)])
 
-            pile = urwid.Pile([('flow', top),
-                               middle,
-                               ('flow', bottom)], focus_item=1)
+            pile = urwid.Pile(
+                [('flow', top), middle, ('flow', bottom)], focus_item=1)
 
             urwid.WidgetDecoration.__init__(self, original_widget)
             urwid.WidgetWrap.__init__(self, pile)
 
-
     class SelectOneDialog(urwid.WidgetWrap):
         signals = ['close']
+
         def __init__(self, select_one, items, selected_value,
                      label=None):
             self.select_one = select_one
@@ -1101,7 +1078,6 @@ try:
             self.select_one.make_selection(label, value)
             self._emit("close")
 
-
     class SelectOne(urwid.PopUpLauncher):
         def __init__(self, items, selected_value=None, on_change=None,
                      user_data=None, label=None):
@@ -1117,13 +1093,15 @@ try:
 
             self.__select_button__ = urwid.Button(u"")
             self.__super.__init__(self.__select_button__)
-            urwid.connect_signal(self.original_widget, 'click',
+            urwid.connect_signal(
+                self.original_widget,
+                'click',
                 lambda button: self.open_pop_up())
 
             assert(len(items) > 0)
 
             self.__items__ = items
-            self.__selected_value__ = None  #set by make_selection, below
+            self.__selected_value__ = None  # set by make_selection, below
             self.__on_change__ = None
             self.__user_data__ = None
             self.__label__ = label
@@ -1146,16 +1124,18 @@ try:
                                      self.__items__,
                                      self.__selected_value__,
                                      self.__label__)
-            urwid.connect_signal(pop_up, 'close',
+            urwid.connect_signal(
+                pop_up,
+                'close',
                 lambda button: self.close_pop_up())
             return pop_up
 
         def get_pop_up_parameters(self):
-            return {'left':0,
-                    'top':1,
-                    'overlay_width':max([4 + len(i[0]) for i in
-                                         self.__items__]) + 2,
-                    'overlay_height':len(self.__items__) + 2}
+            return {'left': 0,
+                    'top': 1,
+                    'overlay_width': max([4 + len(i[0]) for i in
+                                          self.__items__]) + 2,
+                    'overlay_height': len(self.__items__) + 2}
 
         def make_selection(self, label, value):
             self.__select_button__.set_label(label)
@@ -1175,7 +1155,6 @@ try:
                                  value is selected_value][0],
                                 selected_value)
 
-
     class SelectDirectory(urwid.Columns):
         def __init__(self, initial_directory, on_change=None, user_data=None):
             self.edit = EditDirectory(initial_directory)
@@ -1194,7 +1173,6 @@ try:
 
         def get_directory(self):
             return self.edit.get_directory()
-
 
     class EditDirectory(urwid.Edit):
         def __init__(self, initial_directory):
@@ -1222,16 +1200,20 @@ try:
             if (key == 'tab'):
                 #only tab complete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
-                new_prefix = tab_complete(os.path.abspath(os.path.expanduser(
-                        prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
+                new_prefix = tab_complete(
+                    os.path.abspath(
+                        os.path.expanduser(
+                            prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
 
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
             elif (key == 'ctrl w'):
                 #only delete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
-                new_prefix = pop_directory(os.path.abspath(os.path.expanduser(
-                        prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
+                new_prefix = pop_directory(
+                    os.path.abspath(
+                        os.path.expanduser(
+                            prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
 
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
@@ -1253,7 +1235,6 @@ try:
             FS_ENCODING = audiotools.FS_ENCODING
             return self.get_edit_text().encode(FS_ENCODING)
 
-
     class BrowseDirectory(urwid.PopUpLauncher):
         def __init__(self, edit_directory):
             """edit_directory is an EditDirectory object"""
@@ -1272,15 +1253,16 @@ try:
             return pop_up
 
         def get_pop_up_parameters(self):
-            #FIXME - make these values dynamic base on edit_directory's location
-            return {'left':0,
-                    'top':1,
-                    'overlay_width':70,
-                    'overlay_height':20}
-
+            #FIXME - make these values dynamic
+            #based on edit_directory's location
+            return {'left': 0,
+                    'top': 1,
+                    'overlay_width': 70,
+                    'overlay_height': 20}
 
     class BrowseDirectoryDialog(urwid.WidgetWrap):
         signals = ['close']
+
         def __init__(self, edit_directory):
             """edit_directory is an EditDirectory object"""
 
@@ -1313,7 +1295,6 @@ try:
             self.edit_directory.set_directory(selected_directory)
             self._emit("close")
 
-
     class DirectoryBrowser(urwid.TreeListBox):
         def __init__(self, initial_directory,
                      directory_selected=None,
@@ -1337,7 +1318,8 @@ try:
             topnode = DirectoryNode(os.sep)
 
             for path_part in path_iter(
-                os.path.abspath(os.path.expanduser(initial_directory))):
+                os.path.abspath(
+                    os.path.expanduser(initial_directory))):
                 try:
                     if (path_part == "/"):
                         node = topnode
@@ -1383,7 +1365,6 @@ try:
             else:
                 return input
 
-
     class DirectoryWidget(urwid.TreeWidget):
         indent_cols = 1
 
@@ -1407,18 +1388,15 @@ try:
             else:
                 return node.get_key()
 
-
     class ErrorWidget(urwid.TreeWidget):
         indent_cols = 1
 
         def get_display_text(self):
             return ('error', u"(error/permission denied)")
 
-
     class ErrorNode(urwid.TreeNode):
         def load_widget(self):
             return ErrorWidget(self)
-
 
     class DirectoryNode(urwid.ParentNode):
         def __init__(self, path, parent=None):
@@ -1454,7 +1432,8 @@ try:
                 path = self.get_value()
                 for d in sorted(os.listdir(path)):
                     if ((not d.startswith(".")) and
-                        os.path.isdir(os.path.join(path, d))):
+                        os.path.isdir(
+                            os.path.join(path, d))):
                         dirs.append(d)
             except OSError, e:
                 depth = self.get_depth() + 1
@@ -1475,7 +1454,6 @@ try:
 
         def load_widget(self):
             return DirectoryWidget(self)
-
 
     class EditFilename(urwid.Edit):
         def __init__(self, initial_filename):
@@ -1504,7 +1482,8 @@ try:
                 #only tab complete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
                 new_prefix = tab_complete_file(
-                    os.path.abspath(os.path.expanduser(
+                    os.path.abspath(
+                        os.path.expanduser(
                             prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
 
                 self.set_edit_text(new_prefix + suffix)
@@ -1512,8 +1491,10 @@ try:
             elif (key == 'ctrl w'):
                 #only delete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
-                new_prefix = pop_directory(os.path.abspath(os.path.expanduser(
-                        prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
+                new_prefix = pop_directory(
+                    os.path.abspath(
+                        os.path.expanduser(
+                            prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
 
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
@@ -1529,7 +1510,6 @@ try:
             """returns selected filename as a plain string"""
 
             raise NotImplementedError()
-
 
     class BrowseFields(urwid.PopUpLauncher):
         def __init__(self, output_format):
@@ -1548,17 +1528,18 @@ try:
             return pop_up
 
         def get_pop_up_parameters(self):
-            return {'left':0,
-                    'top':1,
-                    'overlay_width':(max([len(label) + 4
-                                          for (string, label) in
-                                          audiotools.FORMAT_FIELDS.values()]) +
-                                     2),
-                    'overlay_height':len(audiotools.FORMAT_FIELDS.values()) + 2}
-
+            return {
+                'left': 0,
+                'top': 1,
+                'overlay_width': (max([len(label) + 4
+                                       for (string, label) in
+                                       audiotools.FORMAT_FIELDS.values()]) +
+                                  2),
+                'overlay_height': len(audiotools.FORMAT_FIELDS.values()) + 2}
 
     class BrowseFieldsDialog(urwid.WidgetWrap):
         signals = ['close']
+
         def __init__(self, output_format):
             from audiotools.text import (LAB_KEY_CANCEL,
                                          LAB_KEY_CLEAR_FORMAT,
@@ -1576,7 +1557,6 @@ try:
 
         def close(self):
             self._emit("close")
-
 
     class FieldsList(urwid.ListBox):
         def __init__(self, output_format, close):
@@ -1607,7 +1587,6 @@ try:
                 self.output_format.set_edit_text(u"")
             else:
                 return input
-
 
     class OutputOptions(urwid.Pile):
         """a widget for selecting the typical set of output options
@@ -1653,9 +1632,9 @@ try:
             self.metadatas = metadatas
             self.selected_class = audio_class
             self.selected_quality = quality
-            self.has_collisions = False  #set if input files same as output
-            self.has_duplicates = False  #set if any track names are duplicates
-            self.has_errors = False      #set if format string is invalid
+            self.has_collisions = False  # if input files same as output
+            self.has_duplicates = False  # if any track names are duplicates
+            self.has_errors = False      # if format string is invalid
 
             self.output_format = urwid.Edit(
                 edit_text=format_string.decode('utf-8'),
@@ -1695,39 +1674,39 @@ try:
                                              t.DESCRIPTION), t) for t in
                               audiotools.AVAILABLE_TYPES
                               if t.has_binaries(audiotools.BIN)],
-                             lambda x,y: cmp(x[0], y[0])),
+                             lambda x, y: cmp(x[0], y[0])),
                 selected_value=audio_class,
                 on_change=self.select_type,
                 label=LAB_OPTIONS_AUDIO_CLASS)
 
             self.select_type(audio_class, quality)
 
-            header = urwid.Pile([
-                    urwid.Columns([('fixed', 10,
-                                    urwid.Text(('label',
-                                                u"%s : " %
-                                                (LAB_OPTIONS_OUTPUT_DIRECTORY)),
-                                               align="right")),
-                                   ('weight', 1, self.output_directory)]),
-                    urwid.Columns([('fixed', 10,
-                                    urwid.Text(('label',
-                                                u"%s : " %
-                                                (LAB_OPTIONS_FILENAME_FORMAT)),
-                                               align="right")),
-                                   ('weight', 1, self.output_format),
-                                   ('fixed', 10, self.browse_fields)]),
-                    urwid.Columns([('fixed', 10,
-                                    urwid.Text(('label',
-                                                u"%s : " %
-                                                (LAB_OPTIONS_AUDIO_CLASS)),
-                                               align="right")),
-                                   ('weight', 1, self.output_type)]),
-                    urwid.Columns([('fixed', 10,
-                                    urwid.Text(('label',
-                                                u"%s : " %
-                                                (LAB_OPTIONS_AUDIO_QUALITY)),
-                                               align="right")),
-                                   ('weight', 1, self.output_quality)])])
+            header = urwid.Pile(
+                [urwid.Columns([('fixed', 10,
+                                 urwid.Text(('label',
+                                             u"%s : " %
+                                             (LAB_OPTIONS_OUTPUT_DIRECTORY)),
+                                            align="right")),
+                                ('weight', 1, self.output_directory)]),
+                 urwid.Columns([('fixed', 10,
+                                 urwid.Text(('label',
+                                             u"%s : " %
+                                             (LAB_OPTIONS_FILENAME_FORMAT)),
+                                            align="right")),
+                                ('weight', 1, self.output_format),
+                                ('fixed', 10, self.browse_fields)]),
+                 urwid.Columns([('fixed', 10,
+                                 urwid.Text(('label',
+                                             u"%s : " %
+                                             (LAB_OPTIONS_AUDIO_CLASS)),
+                                            align="right")),
+                                ('weight', 1, self.output_type)]),
+                 urwid.Columns([('fixed', 10,
+                                 urwid.Text(('label',
+                                             u"%s : " %
+                                             (LAB_OPTIONS_AUDIO_QUALITY)),
+                                            align="right")),
+                                ('weight', 1, self.output_quality)])])
 
             widgets = [('fixed', 6,
                         urwid.Filler(urwid.LineBox(
@@ -1835,8 +1814,8 @@ try:
                         track.set_text(unicode(filename))
                     else:
                         track.set_text(("duplicate", unicode(filename)))
-                if (self.output_tracks_frame.get_body() is not
-                    self.output_tracks_list):
+                if ((self.output_tracks_frame.get_body() is not
+                     self.output_tracks_list)):
                     self.output_tracks_frame.set_body(
                         self.output_tracks_list)
                 self.has_errors = False
@@ -1844,8 +1823,8 @@ try:
                     audiotools.InvalidFilenameFormat):
                 #if there's an error calling track_name,
                 #populate files list with an error message
-                if (self.output_tracks_frame.get_body() is not
-                    self.invalid_output_format):
+                if ((self.output_tracks_frame.get_body() is not
+                     self.invalid_output_format)):
                     self.output_tracks_frame.set_body(
                         self.invalid_output_format)
                 self.has_errors = True
@@ -1869,7 +1848,6 @@ try:
 
             self.metadatas = metadatas
             self.update_tracks()
-
 
     class SingleOutputOptions(urwid.ListBox):
         """a widget for selecting the typical set of output options
@@ -1906,39 +1884,45 @@ try:
                                              t.DESCRIPTION), t) for t in
                               audiotools.AVAILABLE_TYPES
                               if t.has_binaries(audiotools.BIN)],
-                             lambda x,y: cmp(x[0], y[0])),
+                             lambda x, y: cmp(x[0], y[0])),
                 selected_value=audio_class,
                 on_change=self.select_type,
                 label=LAB_OPTIONS_AUDIO_CLASS)
 
             self.select_type(audio_class, quality)
 
-            widgets = [urwid.Columns([
-                        ('fixed', 10, urwid.Text(('label',
-                                                  u"%s : " %
-                                                  (LAB_OPTIONS_OUTPUT)),
-                                                 align="right")),
-                        ('weight', 1, self.output_filename)]),
-                       urwid.Columns([('fixed', 10,
-                                       urwid.Text(('label',
-                                                   u"%s : " %
-                                                   (LAB_OPTIONS_AUDIO_CLASS)),
-                                                  align="right")),
-                                      ('weight', 1, self.output_type)]),
-                       urwid.Columns([('fixed', 10,
-                                       urwid.Text(('label',
-                                                   u"%s : " %
-                                                   (LAB_OPTIONS_AUDIO_QUALITY)),
-                                                  align="right")),
-                                      ('weight', 1, self.output_quality)])]
+            filename_widget = urwid.Columns(
+                [('fixed', 10, urwid.Text(('label',
+                                           u"%s : " %
+                                           (LAB_OPTIONS_OUTPUT)),
+                                          align="right")),
+                 ('weight', 1, self.output_filename)])
 
-            urwid.ListBox.__init__(self, widgets)
+            class_widget = urwid.Columns(
+                [('fixed', 10,
+                  urwid.Text(('label',
+                              u"%s : " %
+                              (LAB_OPTIONS_AUDIO_CLASS)),
+                             align="right")),
+                 ('weight', 1, self.output_type)])
+
+            quality_widget = urwid.Columns(
+                [('fixed', 10,
+                  urwid.Text(('label',
+                              u"%s : " %
+                              (LAB_OPTIONS_AUDIO_QUALITY)),
+                             align="right")),
+                 ('weight', 1, self.output_quality)])
+
+            urwid.ListBox.__init__(self, [filename_widget,
+                                          class_widget,
+                                          quality_widget])
 
         def set_metadata(self, metadata):
             """setting metadata allows output field to be populated
             by metadata fields"""
 
-            pass  #FIXME
+            pass  # FIXME
 
         def select_type(self, audio_class, default_quality=None):
             self.selected_class = audio_class
@@ -1979,7 +1963,6 @@ try:
                     self.output_filename.get_edit_text().decode(
                         audiotools.FS_ENCODING)))
 
-
     class MappedButton(urwid.Button):
         def __init__(self, label, on_press=None, user_data=None,
                      key_map={}):
@@ -1992,7 +1975,6 @@ try:
             return urwid.Button.keypress(self,
                                          size,
                                          self.__key_map__.get(key, key))
-
 
     class MappedRadioButton(urwid.RadioButton):
         def __init__(self, group, label, state='first True',
@@ -2009,7 +1991,6 @@ try:
             return urwid.RadioButton.keypress(self,
                                               size,
                                               self.__key_map__.get(key, key))
-
 
     class AudioProgressBar(urwid.ProgressBar):
         def __init__(self, normal, complete, sample_rate, current=0, done=100,
@@ -2031,7 +2012,6 @@ try:
                      (self.current / self.sample_rate) % 60)
             except ZeroDivisionError:
                 return LAB_TRACK_LENGTH % (0, 0)
-
 
     class PlayerGUI(urwid.Frame):
         def __init__(self, player, tracks, track_len):
@@ -2076,72 +2056,79 @@ try:
                                          METADATA_ALBUM_NAME,
                                          LAB_PLAY_TRACK]]) + 3
 
-            header = urwid.Pile([
-                    urwid.Columns([
-                            ('fixed',
-                             label_width,
-                             urwid.Text(('header',
-                                         u"%s : " % (METADATA_TRACK_NAME)),
-                                        align='right')),
-                            ('weight', 1, self.track_name)]),
-                    urwid.Columns([
-                            ('fixed',
-                             label_width,
-                             urwid.Text(('header',
-                                         u"%s : " % (METADATA_ARTIST_NAME)),
-                                        align='right')),
-                            ('weight', 1, self.artist_name)]),
-                    urwid.Columns([
-                            ('fixed',
-                             label_width,
-                             urwid.Text(('header',
-                                         u"%s : " % (METADATA_ALBUM_NAME)),
-                                        align='right')),
-                            ('weight', 1, self.album_name)]),
-                    urwid.Columns([
-                            ('fixed',
-                             label_width,
-                             urwid.Text(('header',
-                                         u"%s : " % (LAB_PLAY_TRACK)),
-                                        align='right')),
-                            ('weight', 1, self.tracknum)]),
-                    self.progress])
+            track_name_widget = urwid.Columns(
+                [('fixed',
+                  label_width,
+                  urwid.Text(('header',
+                              u"%s : " % (METADATA_TRACK_NAME)),
+                             align='right')),
+                 ('weight', 1, self.track_name)])
 
-            controls = urwid.Columns([
-                    ("weight", 1,
-                     urwid.Divider(u" ")),
-                    ("fixed", 12,
-                     MappedButton(LAB_PREVIOUS_BUTTON,
-                                  on_press=self.previous_track,
-                                  key_map={"tab":"right"})),
-                    ("fixed", 12,
-                     self.play_pause_button),
-                    ("fixed", 12,
-                     MappedButton(LAB_NEXT_BUTTON,
-                                  on_press=self.next_track,
-                                  key_map={"tab":"down"})),
-                    ("weight", 1,
-                     urwid.Divider(u" "))],
-                                    dividechars=4,
-                                    focus_column=2)
+            artist_name_widget = urwid.Columns(
+                [('fixed',
+                  label_width,
+                  urwid.Text(('header',
+                              u"%s : " % (METADATA_ARTIST_NAME)),
+                             align='right')),
+                 ('weight', 1, self.artist_name)])
+
+            album_name_widget = urwid.Columns(
+                [('fixed',
+                  label_width,
+                  urwid.Text(('header',
+                              u"%s : " % (METADATA_ALBUM_NAME)),
+                             align='right')),
+                 ('weight', 1, self.album_name)])
+
+            track_number_widget = urwid.Columns(
+                [('fixed',
+                  label_width,
+                  urwid.Text(('header',
+                              u"%s : " % (LAB_PLAY_TRACK)),
+                             align='right')),
+                 ('weight', 1, self.tracknum)])
+
+            header = urwid.Pile([track_name_widget,
+                                 artist_name_widget,
+                                 album_name_widget,
+                                 track_number_widget,
+                                 self.progress])
+
+            controls = urwid.Columns(
+                [("weight", 1,
+                  urwid.Divider(u" ")),
+                 ("fixed", 12,
+                  MappedButton(LAB_PREVIOUS_BUTTON,
+                               on_press=self.previous_track,
+                               key_map={"tab":"right"})),
+                 ("fixed", 12,
+                  self.play_pause_button),
+                 ("fixed", 12,
+                  MappedButton(LAB_NEXT_BUTTON,
+                               on_press=self.next_track,
+                               key_map={"tab":"down"})),
+                 ("weight", 1,
+                  urwid.Divider(u" "))],
+                dividechars=4,
+                focus_column=2)
 
             self.track_group = []
             self.track_list_widget = urwid.ListBox(
-                [urwid.Columns([("weight",
-                                 1,
-                                 MappedRadioButton(
-                                    group=self.track_group,
-                                    label=track_label,
-                                    user_data=user_data,
-                                    on_state_change=self.select_track,
-                                    key_map={'tab': 'down'})),
-                                ("fixed",
-                                 6,
-                                 urwid.Text(u"%2.1d:%2.2d" %
-                                            (seconds_length / 60,
-                                             seconds_length % 60),
-                                            align="right"))])
-                    for (track_label, seconds_length, user_data) in tracks])
+                [urwid.Columns(
+                    [("weight",
+                      1,
+                      MappedRadioButton(group=self.track_group,
+                                        label=track_label,
+                                        user_data=user_data,
+                                        on_state_change=self.select_track,
+                                        key_map={'tab': 'down'})),
+                     ("fixed",
+                      6,
+                      urwid.Text(u"%2.1d:%2.2d" %
+                                 (seconds_length / 60,
+                                  seconds_length % 60),
+                                 align="right"))])
+                 for (track_label, seconds_length, user_data) in tracks])
 
             status = ((LAB_PLAY_STATUS if (len(tracks) > 1) else
                        LAB_PLAY_STATUS_1) % {"count": len(tracks),
@@ -2268,7 +2255,6 @@ try:
         main_loop.set_alarm_at(tm=time.time() + 1,
                                callback=timer,
                                user_data=trackplay)
-
 
     def style():
         """returns a list of widget style tuples
@@ -2455,7 +2441,8 @@ def process_output_options(metadata_choices,
             __output__.add(output_filename)
             output_filenames.append(output_filename)
 
-    for (output_filename, metadata) in zip(output_filenames, selected_metadata):
+    for (output_filename, metadata) in zip(output_filenames,
+                                           selected_metadata):
         yield (output_class,
                output_filename,
                quality,
@@ -2545,9 +2532,9 @@ class PlayerTTY:
                                                          [], [], 1)
                 if (len(r_list) > 0):
                     char = os.read(stdin.fileno(), 1)
-                    if ((char == 'q') or
-                        (char == 'Q') or
-                        (char == '\x1B')):
+                    if (((char == 'q') or
+                         (char == 'Q') or
+                         (char == '\x1B'))):
                         self.playing_finished = True
                     elif (char == ' '):
                         self.toggle_play_pause()
@@ -2576,18 +2563,13 @@ class PlayerTTY:
         return (self.OUTPUT_FORMAT %
                 {"track_number": self.track_number,
                  "track_total": self.track_total,
-                 "sent_minutes":
-                     (frames_sent / self.sample_rate) / 60,
-                 "sent_seconds":
-                     (frames_sent / self.sample_rate) % 60,
-                 "total_minutes":
-                     (frames_total / self.sample_rate) / 60,
-                 "total_seconds":
-                     (frames_total / self.sample_rate) % 60,
+                 "sent_minutes": (frames_sent / self.sample_rate) / 60,
+                 "sent_seconds": (frames_sent / self.sample_rate) % 60,
+                 "total_minutes": (frames_total / self.sample_rate) / 60,
+                 "total_seconds": (frames_total / self.sample_rate) % 60,
                  "channels": self.channels,
                  "sample_rate": audiotools.khz(self.sample_rate),
                  "bits_per_sample": self.bits_per_sample})
-
 
 
 def not_available_message(msg):

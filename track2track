@@ -44,7 +44,8 @@ def convert(progress, source_audiofile, destination_filename,
         destination_audiofile.set_metadata(metadata)
     elif ((source_audiofile.track_number() is not None) or
           (source_audiofile.album_number() is not None)):
-        destination_audiofile.set_metadata(audiotools.MetaData(
+        destination_audiofile.set_metadata(
+            audiotools.MetaData(
                 track_number=source_audiofile.track_number(),
                 album_number=source_audiofile.album_number()))
     else:
@@ -257,8 +258,7 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_INVALID_JOINT)
         sys.exit(1)
 
-    if ((options.output is not None) and
-        (len(audiofiles) != 1)):
+    if ((options.output is not None) and (len(audiofiles) != 1)):
         msg.error(_.ERR_TRACK2TRACK_O_AND_MULTIPLE)
         sys.exit(1)
 
@@ -298,10 +298,10 @@ if (__name__ == '__main__'):
 
                 #and prepend metadata from existing files as an option, if any
                 if (track_metadatas != [None] * len(track_metadatas)):
-                    metadata_choices.insert(0,
-                                            [(m if m is not None
-                                              else audiotools.MetaData())
-                                              for m in track_metadatas])
+                    metadata_choices.insert(
+                        0,
+                        [(m if m is not None else audiotools.MetaData())
+                         for m in track_metadatas])
 
             if (options.interactive):
                 #pick options using interactive widget
@@ -361,13 +361,15 @@ if (__name__ == '__main__'):
                          (output_class,
                           output_filename,
                           output_quality,
-                          output_metadata)) in izip(
-                        iter(track_metadatas),
-                        output_widget.output_tracks()):
+                          output_metadata)
+                         ) in izip(iter(track_metadatas),
+                                   output_widget.output_tracks()):
                         if (current_metadata is not None):
                             for attr in audiotools.MetaData.FIELDS:
-                                original_value = getattr(current_metadata, attr)
-                                updated_value = getattr(output_metadata, attr)
+                                original_value = getattr(current_metadata,
+                                                         attr)
+                                updated_value = getattr(output_metadata,
+                                                        attr)
                                 if (original_value != updated_value):
                                     setattr(current_metadata,
                                             attr,
@@ -387,7 +389,8 @@ if (__name__ == '__main__'):
             else:
                 #pick options without using GUI
                 try:
-                    output_tracks = list(audiotools.ui.process_output_options(
+                    output_tracks = list(
+                        audiotools.ui.process_output_options(
                             metadata_choices=metadata_choices,
                             input_filenames=[audiotools.Filename(f.filename)
                                              for f in album_tracks],
@@ -423,9 +426,10 @@ if (__name__ == '__main__'):
                 queue.execute(
                     function=convert,
                     progress_text=unicode(output_filename),
-                    completion_output=_.LAB_ENCODE % \
-                        {"source":audiotools.Filename(audiofile.filename),
-                         "destination":output_filename},
+                    completion_output=
+                    (_.LAB_ENCODE %
+                     {"source": audiotools.Filename(audiofile.filename),
+                      "destination": output_filename}),
                     source_audiofile=audiofile,
                     destination_filename=str(output_filename),
                     destination_class=output_class,
@@ -442,10 +446,10 @@ if (__name__ == '__main__'):
         output_files = audiotools.open_files(queue.results.values())
 
         #add ReplayGain to converted files, if necessary
-        if (audiotools.ADD_REPLAYGAIN and
-            (options.add_replay_gain if (options.add_replay_gain is not None)
-             else output_class.lossless_replay_gain()) and
-            output_class.can_add_replay_gain(output_files)):
+        if ((audiotools.ADD_REPLAYGAIN and
+             (options.add_replay_gain if (options.add_replay_gain is not None)
+              else output_class.lossless_replay_gain()) and
+             output_class.can_add_replay_gain(output_files))):
             #separate encoded files by album_name and album_number
             for album in audiotools.group_tracks(output_files):
                 #add ReplayGain to groups of files
@@ -528,9 +532,8 @@ if (__name__ == '__main__'):
                     metadata=track_metadata)
             progress.clear()
 
-            msg.output(_.LAB_ENCODE %
-                       {"source":input_filename,
-                        "destination":output_filename})
+            msg.output(_.LAB_ENCODE % {"source": input_filename,
+                                       "destination": output_filename})
         except audiotools.EncodingError, err:
             progress.clear()
             msg.error(unicode(err))

@@ -255,8 +255,9 @@ if (__name__ == '__main__'):
         metadata_choices = [metadata]
     else:
         #perform CD lookup for existing files
-        metadata_choices = [merge_metadatas(choice) for choice in
-                            audiotools.track_metadata_lookup(
+        metadata_choices = [
+            merge_metadatas(choice) for choice in
+            audiotools.track_metadata_lookup(
                 audiofiles=audiofiles,
                 musicbrainz_server=options.musicbrainz_server,
                 musicbrainz_port=options.musicbrainz_port,

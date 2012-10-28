@@ -52,7 +52,7 @@ if (audiotools.ui.AVAILABLE):
 
         def select_track(self, radio_button, new_state, user_data,
                          auto_play=True):
-            if (new_state == True):
+            if (new_state):
                 (track, metadata) = user_data
 
                 if (metadata is not None):
@@ -78,7 +78,6 @@ if (audiotools.ui.AVAILABLE):
                 if (auto_play):
                     self.player.play()
                     self.play_pause_button.set_label(_.LAB_PAUSE_BUTTON)
-
 
     interactive_available = True
 else:
@@ -149,10 +148,10 @@ if (__name__ == '__main__'):
                  if player.available()],
         default=[player.NAME for player in audiotools.player.AUDIO_OUTPUT
                  if player.available()][0],
-        help=_.OPT_OUTPUT_PLAY % \
-            u", ".join([u"\"%s\"" % (player.NAME.decode('ascii'))
-                        for player in audiotools.player.AUDIO_OUTPUT
-                        if player.available()]))
+        help=(_.OPT_OUTPUT_PLAY %
+              u", ".join([u"\"%s\"" % (player.NAME.decode('ascii'))
+                          for player in audiotools.player.AUDIO_OUTPUT
+                          if player.available()])))
 
     parser.add_option(
         '-c', '--cdrom', action='store',
@@ -244,14 +243,15 @@ if (__name__ == '__main__'):
     if (options.interactive):
         #a track_number -> MetaData dictionary
         #where track_number typically starts from 1
-        metadata = dict([(m.track_number, m) for m in
-                         cdda.metadata_lookup(
-                    musicbrainz_server=options.musicbrainz_server,
-                    musicbrainz_port=options.musicbrainz_port,
-                    freedb_server=options.freedb_server,
-                    freedb_port=options.freedb_port,
-                    use_musicbrainz=options.use_musicbrainz,
-                    use_freedb=options.use_freedb)[0]])
+        metadata = dict(
+            [(m.track_number, m) for m in
+             cdda.metadata_lookup(
+                 musicbrainz_server=options.musicbrainz_server,
+                 musicbrainz_port=options.musicbrainz_port,
+                 freedb_server=options.freedb_server,
+                 freedb_port=options.freedb_port,
+                 use_musicbrainz=options.use_musicbrainz,
+                 use_freedb=options.use_freedb)[0]])
 
         cdplay = CDplayGUI(cdda=cdda,
                            metadata=metadata,

@@ -139,16 +139,16 @@ if (audiotools.ui.AVAILABLE):
                                            self.track_previews):
                     preview.set_text(unicode(path))
 
-                if (self.output_tracks_frame.get_body() is not
-                    self.output_tracks_list):
+                if ((self.output_tracks_frame.get_body() is not
+                     self.output_tracks_list)):
                     self.output_tracks_frame.set_body(
                         self.output_tracks_list)
                 self.has_errors = False
             except (audiotools.UnsupportedTracknameField,
                     audiotools.InvalidFilenameFormat):
                 #invalid filename string
-                if (self.output_tracks_frame.get_body() is not
-                    self.invalid_output_format):
+                if ((self.output_tracks_frame.get_body() is not
+                     self.invalid_output_format)):
                     self.output_tracks_frame.set_body(
                         self.invalid_output_format)
                 self.has_errors = True
@@ -234,7 +234,7 @@ if (__name__ == '__main__'):
         else:
             sys.exit(0)
     else:
-        to_rename = []  #a (old_name, new_name) tuple
+        to_rename = []  # a (old_name, new_name) tuple
         try:
             for track in audiofiles:
                 original_filename = audiotools.Filename(track.filename)
@@ -273,11 +273,11 @@ if (__name__ == '__main__'):
             shutil.move(str(original_filename), str(new_filename))
             msg.info(
                 audiotools.output_progress(
-                    _.LAB_ENCODE % {"source":original_filename,
-                                  "destination":new_filename},
+                    _.LAB_ENCODE % {"source": original_filename,
+                                    "destination": new_filename},
                     i + 1, len(to_rename)))
         except IOError, err:
             msg.error(_.ERR_RENAME %
-                      {"source":original_filename,
-                       "target":new_filename})
+                      {"source": original_filename,
+                       "target": new_filename})
             sys.exit(1)

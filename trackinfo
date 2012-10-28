@@ -62,13 +62,12 @@ if (__name__ == '__main__'):
                      'filename': audiotools.Filename(file.filename)})
         elif (options.show_percentage):
             try:
+                percentage = (float(os.path.getsize(file.filename) * 100) /
+                              (file.total_frames() * file.channels() *
+                               (file.bits_per_sample() / 8)))
                 msg.output(
                     _.LAB_TRACKINFO_PERCENTAGE %
-                    {'percentage':
-                         int(round(float(
-                           os.path.getsize(file.filename) * 100) /
-                                   (file.total_frames() * file.channels() *
-                                    (file.bits_per_sample() / 8)))),
+                    {'percentage': int(round(percentage)),
                      'filename': audiotools.Filename(file.filename)})
             except ZeroDivisionError:
                 msg.output(_.LAB_TRACKINFO_PERCENTAGE %
@@ -127,9 +126,9 @@ if (__name__ == '__main__'):
                         msg.output_column(u"")
                         msg.output_column(
                             _.LAB_TRACK_LENGTH % (pcm_length /
-                                                file.sample_rate() / 60,
-                                                pcm_length /
-                                                file.sample_rate() % 60),
+                                                  file.sample_rate() / 60,
+                                                  pcm_length /
+                                                  file.sample_rate() % 60),
                             True)
                         msg.output_column(u"")
                         if (ISRC is not None):
@@ -147,16 +146,16 @@ if (__name__ == '__main__'):
 
             channel_names = dict(
                 [(attr, audiotools.ChannelMask.MASK_TO_NAME[mask])
-                 for (attr,mask) in
+                 for (attr, mask) in
                  audiotools.ChannelMask.SPEAKER_TO_MASK.items()])
 
             if (file.channel_mask().defined()):
                 for (i, channel) in enumerate(file.channel_mask().channels()):
                     msg.output(_.LAB_TRACKINFO_CHANNEL %
-                               {"channel_number":i + 1,
-                                "channel_name":channel_names[channel]})
+                               {"channel_number": i + 1,
+                                "channel_name": channel_names[channel]})
             else:
                 for i in xrange(file.channels()):
                     msg.output(_.LAB_TRACKINFO_CHANNEL %
-                               {"channel_number":i + 1,
-                                "channel_name":_.LAB_TRACKINFO_UNDEFINED})
+                               {"channel_number": i + 1,
+                                "channel_name": _.LAB_TRACKINFO_UNDEFINED})

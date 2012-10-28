@@ -6039,29 +6039,29 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     Having two different, slightly incompatible M4A implementations
     needlessly complicates things.
 ** TODO Ensure Python files are PEP8-compliant
-*** TODO executables
-    - [ ] audiotools-config
-    - [ ] cd2track
-    - [ ] cdinfo
-    - [ ] cdplay
-    - [ ] coverdump
-    - [ ] covertag
-    - [ ] coverview
-    - [ ] dvda2track
-    - [ ] dvdainfo
-    - [ ] track2cd
-    - [ ] track2track
-    - [ ] trackcat
-    - [ ] trackcmp
-    - [ ] trackinfo
-    - [ ] tracklength
-    - [ ] tracklint
-    - [ ] trackplay
-    - [ ] trackrename
-    - [ ] tracksplit
-    - [ ] tracktag
-    - [ ] trackverify
-*** TODO libraries
+*** DONE executables
+    - [X] audiotools-config
+    - [X] cd2track
+    - [X] cdinfo
+    - [X] cdplay
+    - [X] coverdump
+    - [X] covertag
+    - [X] coverview
+    - [X] dvda2track
+    - [X] dvdainfo
+    - [X] track2cd
+    - [X] track2track
+    - [X] trackcat
+    - [X] trackcmp
+    - [X] trackinfo
+    - [X] tracklength
+    - [X] tracklint
+    - [X] trackplay
+    - [X] trackrename
+    - [X] tracksplit
+    - [X] tracktag
+    - [X] trackverify
+*** DONE libraries
     - [X] __init__.py
     - [X] accuraterip.py
     - [X] aiff.py
@@ -6085,7 +6085,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] shn.py
     - [X] text.py
     - [X] toc.py
-    - [ ] ui.py
+    - [X] ui.py
     - [X] vorbis.py
     - [X] vorbiscomment.py
     - [X] wav.py
@@ -6104,6 +6104,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] wavpack.py
 ** TODO Update version number to 2.19 final
 * TODO Finish version 2.20
+** TODO Remove track number guessing heuristics
+   Don't try to guess number from filename.
+   If a track number is needed, build it from the order
+   in which the files are submitted on the command line.
 ** TODO Add internal Money's Audio codec
    This needs to be assimilated with a native decoder/encoder.
    I've seen these out in the wild, but only rarely.

@@ -56,12 +56,13 @@ def display_defaults(config, msg):
     msg.divider_row([u" ", u"\u2500", u" ", u"\u2500", u" ", u"\u2500"])
 
     for audio_type in sorted(audiotools.AVAILABLE_TYPES,
-                             lambda x,y: cmp(x.NAME, y.NAME)):
+                             lambda x, y: cmp(x.NAME, y.NAME)):
         msg.new_row()
         msg.output_column(u"  ")
         options = []
-        if (config.get_default("System", "default_type", "wav") ==
-            audio_type.NAME):
+        if (config.get_default("System",
+                               "default_type",
+                               "wav") == audio_type.NAME):
             options.append(msg.UNDERLINE)
         if (audio_type.has_binaries(audiotools.BIN)):
             options.append(msg.FG_GREEN)
@@ -74,11 +75,12 @@ def display_defaults(config, msg):
             msg.output_column(u"")
         else:
             msg.output_column(
-                u", ".join([msg.ansi(b.decode('ascii'),
-                                     [msg.FG_GREEN if
-                                      audiotools.BIN.can_execute(
-                                    audiotools.BIN[b]) else msg.FG_RED])
-                            for b in audio_type.BINARIES]),
+                u", ".join(
+                    [msg.ansi(b.decode('ascii'),
+                              [msg.FG_GREEN if
+                               audiotools.BIN.can_execute(audiotools.BIN[b])
+                               else msg.FG_RED])
+                     for b in audio_type.BINARIES]),
                 True)
 
         msg.output_column(u" ")
@@ -122,29 +124,30 @@ def display_defaults(config, msg):
     msg.output(u"")
     msg.output(_.OPT_CAT_ID3)
 
-    display_option(msg,
-                   _.LAB_AT_CONFIG_ID3V2_VERSION,
-                   {"id3v2.2":_.LAB_AT_CONFIG_ID3V2_ID3V22,
-                    "id3v2.3":_.LAB_AT_CONFIG_ID3V2_ID3V23,
-                    "id3v2.4":_.LAB_AT_CONFIG_ID3V2_ID3V24,
-                    "none":_.LAB_AT_CONFIG_ID3V2_NONE}.get(
-            config.get_default("ID3",
-                               "id3v2",
-                               "id3v2.3")))
+    display_option(
+        msg,
+        _.LAB_AT_CONFIG_ID3V2_VERSION,
+        {"id3v2.2": _.LAB_AT_CONFIG_ID3V2_ID3V22,
+         "id3v2.3": _.LAB_AT_CONFIG_ID3V2_ID3V23,
+         "id3v2.4": _.LAB_AT_CONFIG_ID3V2_ID3V24,
+         "none": _.LAB_AT_CONFIG_ID3V2_NONE}.get(
+             config.get_default("ID3", "id3v2", "id3v2.3")))
 
-    display_option(msg,
-                   _.LAB_AT_CONFIG_ID3V2_PADDING,
-                   {True:_.LAB_AT_CONFIG_ID3V2_PADDING_YES,
-                    False:_.LAB_AT_CONFIG_ID3V2_PADDING_NO}.get(
-            config.getboolean_default("ID3", "pad", False)))
+    display_option(
+        msg,
+        _.LAB_AT_CONFIG_ID3V2_PADDING,
+        {True: _.LAB_AT_CONFIG_ID3V2_PADDING_YES,
+         False: _.LAB_AT_CONFIG_ID3V2_PADDING_NO}.get(
+             config.getboolean_default("ID3", "pad", False)))
 
-    display_option(msg,
-                   _.LAB_AT_CONFIG_ID3V1_VERSION,
-                   {"id3v1.1":_.LAB_AT_CONFIG_ID3V1_ID3V11,
-                    "none":_.LAB_AT_CONFIG_ID3V1_NONE}.get(
-            config.get_default("ID3",
-                               "id3v1",
-                               "id3v1.1")))
+    display_option(
+        msg,
+        _.LAB_AT_CONFIG_ID3V1_VERSION,
+        {"id3v1.1": _.LAB_AT_CONFIG_ID3V1_ID3V11,
+         "none": _.LAB_AT_CONFIG_ID3V1_NONE}.get(
+             config.get_default("ID3",
+                                "id3v1",
+                                "id3v1.1")))
 
     msg.output(u"")
     msg.output(_.OPT_CAT_CD_LOOKUP)
@@ -188,24 +191,26 @@ def display_defaults(config, msg):
     msg.output(u"")
     msg.output(_.OPT_CAT_SYSTEM)
 
-    display_option(msg,
-                   _.LAB_AT_CONFIG_DEFAULT_CDROM,
-                   config.get_default("System",
-                                      "cdrom",
-                                      "/dev/cdrom").decode(
-            audiotools.FS_ENCODING))
+    display_option(
+        msg,
+        _.LAB_AT_CONFIG_DEFAULT_CDROM,
+        config.get_default("System",
+                           "cdrom",
+                           "/dev/cdrom").decode(audiotools.FS_ENCODING))
 
-    display_option(msg,
-                   _.LAB_AT_CONFIG_CDROM_READ_OFFSET,
-                   unicode(config.getint_default("System",
-                                                 "cdrom_read_offset",
-                                                 0)))
+    display_option(
+        msg,
+        _.LAB_AT_CONFIG_CDROM_READ_OFFSET,
+        unicode(config.getint_default("System",
+                                      "cdrom_read_offset",
+                                      0)))
 
-    display_option(msg,
-                   _.LAB_AT_CONFIG_CDROM_WRITE_OFFSET,
-                   unicode(config.getint_default("System",
-                                                 "cdrom_write_offset",
-                                                 0)))
+    display_option(
+        msg,
+        _.LAB_AT_CONFIG_CDROM_WRITE_OFFSET,
+        unicode(config.getint_default("System",
+                                      "cdrom_write_offset",
+                                      0)))
 
     display_option(
         msg,
@@ -369,39 +374,39 @@ if (__name__ == '__main__'):
                     DEFAULT_TYPE = "wav"
 
                 audio_types = list(sorted(audiotools.TYPE_MAP.values(),
-                                          lambda x,y: cmp(x.NAME, y.NAME)))
+                                          lambda x, y: cmp(x.NAME, y.NAME)))
                 name_size = max(len(t.NAME) for t in audio_types)
                 default_format = []
 
                 format_rows = []
                 format_rows.append(
-                    urwid.Columns([
-                            ("fixed",
-                             len(audiotools.display_unicode(
-                                        _.LAB_AT_CONFIG_DEFAULT)),
-                             urwid.Text(("label", _.LAB_AT_CONFIG_DEFAULT))),
-                            ("fixed",
-                             len(audiotools.display_unicode(
-                                        _.LAB_AT_CONFIG_TYPE)),
-                             urwid.Text(("label", _.LAB_AT_CONFIG_TYPE))),
-                            ("fixed", 1, urwid.Text(u" ")),
-                            ("weight", 1,
-                             urwid.Text(("label",
-                                         _.LAB_AT_CONFIG_DEFAULT_QUALITY)))],
-                                  dividechars=1))
+                    urwid.Columns(
+                        [("fixed",
+                          len(audiotools.display_unicode(
+                              _.LAB_AT_CONFIG_DEFAULT)),
+                          urwid.Text(("label", _.LAB_AT_CONFIG_DEFAULT))),
+                         ("fixed",
+                          len(audiotools.display_unicode(
+                              _.LAB_AT_CONFIG_TYPE)),
+                          urwid.Text(("label", _.LAB_AT_CONFIG_TYPE))),
+                         ("fixed", 1, urwid.Text(u" ")),
+                         ("weight", 1,
+                          urwid.Text(("label",
+                                      _.LAB_AT_CONFIG_DEFAULT_QUALITY)))],
+                        dividechars=1))
                 format_rows.append(
-                    urwid.Columns([
-                            ("fixed",
-                             len(audiotools.display_unicode(
-                                        _.LAB_AT_CONFIG_DEFAULT)),
-                             urwid.Divider(u"\u2500")),
-                            ("fixed",
-                             len(audiotools.display_unicode(
-                                        _.LAB_AT_CONFIG_TYPE)),
-                             urwid.Divider(u"\u2500")),
-                            ("fixed", 1, urwid.Text(u" ")),
-                            ("weight", 1, urwid.Divider(u"\u2500"))],
-                                  dividechars=1))
+                    urwid.Columns(
+                        [("fixed",
+                          len(audiotools.display_unicode(
+                              _.LAB_AT_CONFIG_DEFAULT)),
+                          urwid.Divider(u"\u2500")),
+                         ("fixed",
+                          len(audiotools.display_unicode(
+                              _.LAB_AT_CONFIG_TYPE)),
+                          urwid.Divider(u"\u2500")),
+                         ("fixed", 1, urwid.Text(u" ")),
+                         ("weight", 1, urwid.Divider(u"\u2500"))],
+                        dividechars=1))
 
                 for audio_type in audio_types:
                     if (len(audio_type.COMPRESSION_MODES) < 2):
@@ -415,47 +420,47 @@ if (__name__ == '__main__'):
 
                         qualities = \
                             audiotools.ui.SelectOne(
-                            [(q.decode('ascii') if
-                              q not in audio_type.COMPRESSION_DESCRIPTIONS else
-                              u"%s - %s" % \
+                                [(q.decode('ascii') if
+                                  q not in
+                                  audio_type.COMPRESSION_DESCRIPTIONS else
+                                  u"%s - %s" %
                                   (q.decode('ascii'),
                                    audio_type.COMPRESSION_DESCRIPTIONS[q]),
-                              q) for q in
-                             audio_type.COMPRESSION_MODES],
-                            DEFAULT_QUALITY,
-                            on_change=self.change_quality,
-                            user_data=(config,
-                                       "Quality",
-                                       audio_type.NAME),
-                            label=_.LAB_OPTIONS_AUDIO_QUALITY)
+                                  q) for q in
+                                 audio_type.COMPRESSION_MODES],
+                                DEFAULT_QUALITY,
+                                on_change=self.change_quality,
+                                user_data=(config,
+                                           "Quality",
+                                           audio_type.NAME),
+                                label=_.LAB_OPTIONS_AUDIO_QUALITY)
                         no_modes = False
 
                     format_rows.append(
-                        urwid.Columns([
-                                ("fixed",
-                                 len(audiotools.display_unicode(
-                                            _.LAB_AT_CONFIG_DEFAULT)),
-                                 urwid.RadioButton(
-                                        default_format,
-                                        label=u"",
-                                        state=(audio_type.NAME ==
-                                               DEFAULT_TYPE),
-                                        on_state_change=self.change_choice,
-                                        user_data=(config,
-                                                   "System",
-                                                   "default_type",
-                                                   audio_type.NAME))),
-                                ("fixed",
-                                 len(audiotools.display_unicode(
-                                            _.LAB_AT_CONFIG_TYPE)),
-                                 urwid.Text(
-                                        markup=audio_type.NAME.decode('ascii'),
-                                        align="right")),
-                                ("fixed", 1,
-                                 urwid.Text(u" " if no_modes else u"-")),
-                                ("weight", 1, qualities)
-                                ],
-                                      dividechars=1))
+                        urwid.Columns(
+                            [("fixed",
+                              len(audiotools.display_unicode(
+                                  _.LAB_AT_CONFIG_DEFAULT)),
+                              urwid.RadioButton(
+                                  default_format,
+                                  label=u"",
+                                  state=(audio_type.NAME == DEFAULT_TYPE),
+                                  on_state_change=self.change_choice,
+                                  user_data=(config,
+                                             "System",
+                                             "default_type",
+                                             audio_type.NAME))),
+                             ("fixed",
+                              len(audiotools.display_unicode(
+                                  _.LAB_AT_CONFIG_TYPE)),
+                              urwid.Text(
+                                  markup=audio_type.NAME.decode('ascii'),
+                                  align="right")),
+                             ("fixed", 1,
+                              urwid.Text(u" " if no_modes else u"-")),
+                             ("weight", 1, qualities)
+                             ],
+                            dividechars=1))
 
                 format = urwid.Edit(
                     caption=("label",
@@ -530,7 +535,6 @@ if (__name__ == '__main__'):
             def change_boolean(self, checkbox, new_state, user_data):
                 (config, section, option) = user_data
                 config.set_default(section, option, new_state)
-
 
         class CDLookup(urwid.ListBox):
             def __init__(self, config):
@@ -638,7 +642,6 @@ if (__name__ == '__main__'):
                 except ValueError:
                     config.set_default(section, option, 0)
 
-
         class ID3(urwid.ListBox):
             def __init__(self, config):
                 default_id3v2_version = config.get_default("ID3",
@@ -654,20 +657,20 @@ if (__name__ == '__main__'):
                 id3v2_version_row = urwid.Columns(
                     [("fixed",
                       len(audiotools.display_unicode(
-                                    _.LAB_AT_CONFIG_ID3V2_VERSION)) + 3,
+                          _.LAB_AT_CONFIG_ID3V2_VERSION)) + 3,
                       urwid.Text(("label", u"%s : " %
                                   (_.LAB_AT_CONFIG_ID3V2_VERSION))))] +
                     [("weight",
                       1,
                       urwid.RadioButton(
-                                group=id3v2_version,
-                                label=radio_label,
-                                state=radio_value == default_id3v2_version,
-                                on_state_change=self.change_choice,
-                                user_data=(config,
-                                           "ID3",
-                                           "id3v2",
-                                           radio_value)))
+                          group=id3v2_version,
+                          label=radio_label,
+                          state=radio_value == default_id3v2_version,
+                          on_state_change=self.change_choice,
+                          user_data=(config,
+                                     "ID3",
+                                     "id3v2",
+                                     radio_value)))
                      for (radio_value, radio_label) in
                      [("id3v2.4", u"ID3v2.4"),
                       ("id3v2.3", u"ID3v2.3"),
@@ -678,43 +681,42 @@ if (__name__ == '__main__'):
                 id3v1_version_row = urwid.Columns(
                     [("fixed",
                       len(audiotools.display_unicode(
-                                    _.LAB_AT_CONFIG_ID3V1_VERSION)) + 3,
+                          _.LAB_AT_CONFIG_ID3V1_VERSION)) + 3,
                       urwid.Text(("label", u"%s : " %
                                  (_.LAB_AT_CONFIG_ID3V1_VERSION))))] +
                     [("weight",
                       1,
                       urwid.RadioButton(
-                                group=id3v1_version,
-                                label=radio_label,
-                                state=radio_value == default_id3v1_version,
-                                on_state_change=self.change_choice,
-                                user_data=(config,
-                                           "ID3",
-                                           "id3v1",
-                                           radio_value)))
+                          group=id3v1_version,
+                          label=radio_label,
+                          state=radio_value == default_id3v1_version,
+                          on_state_change=self.change_choice,
+                          user_data=(config,
+                                     "ID3",
+                                     "id3v1",
+                                     radio_value)))
                      for (radio_value, radio_label) in
                      [("id3v1.1", u"ID3v1.1"),
                       ("none", u"No ID3v1")]])
-
 
                 id3_padding = []
                 id3_pad_row = urwid.Columns(
                     [("fixed",
                       len(audiotools.display_unicode(
-                                    _.LAB_AT_CONFIG_ID3V2_PADDING)) + 3,
+                          _.LAB_AT_CONFIG_ID3V2_PADDING)) + 3,
                       urwid.Text(("label", u"%s : " %
                                   (_.LAB_AT_CONFIG_ID3V2_PADDING))))] +
                     [("weight",
                       1,
                       urwid.RadioButton(
-                                group=id3_padding,
-                                label=radio_label,
-                                state=radio_value == default_id3v2_padding,
-                                on_state_change=self.change_choice,
-                                user_data=(config,
-                                           "ID3",
-                                           "pad",
-                                           radio_value)))
+                          group=id3_padding,
+                          label=radio_label,
+                          state=radio_value == default_id3v2_padding,
+                          on_state_change=self.change_choice,
+                          user_data=(config,
+                                     "ID3",
+                                     "pad",
+                                     radio_value)))
                      for (radio_value, radio_label) in
                      [(True, _.LAB_AT_CONFIG_ID3V2_PADDING_YES),
                       (False, _.LAB_AT_CONFIG_ID3V2_PADDING_NO)]])
@@ -734,10 +736,10 @@ if (__name__ == '__main__'):
                 cdrom_device = urwid.Edit(
                     caption=("label",
                              u"%s : " % (_.LAB_AT_CONFIG_DEFAULT_CDROM)),
-                    edit_text=config.get_default("System",
-                                                 "cdrom",
-                                                 "/dev/cdrom").decode(
-                        audiotools.FS_ENCODING))
+                    edit_text=config.get_default(
+                        "System",
+                        "cdrom",
+                        "/dev/cdrom").decode(audiotools.FS_ENCODING))
                 urwid.connect_signal(cdrom_device,
                                      "change",
                                      self.change_text,
@@ -771,7 +773,6 @@ if (__name__ == '__main__'):
                                       "System",
                                       "cdrom_write_offset"))
 
-
                 urwid.ListBox.__init__(self,
                                        [cdrom_device,
                                         read_offset,
@@ -787,7 +788,6 @@ if (__name__ == '__main__'):
                     config.set_default(section, option, int(new_value))
                 except ValueError:
                     config.set_default(section, option, 0)
-
 
         class AudiotoolsConfig(urwid.Frame):
             def __init__(self, config):
@@ -812,18 +812,19 @@ if (__name__ == '__main__'):
                 verbosity_row = urwid.Columns(
                     [("fixed",
                       len(audiotools.display_unicode(
-                                    _.LAB_AT_CONFIG_VERBOSITY)) + 3,
+                          _.LAB_AT_CONFIG_VERBOSITY)) + 3,
                       urwid.Text(("label", u"%s : " %
                                   (_.LAB_AT_CONFIG_VERBOSITY))))] +
-                    [("weight", 1, urwid.RadioButton(
-                                group=verbosity,
-                                label=level.decode('ascii'),
-                                state=level == verbosity_level,
-                                on_state_change=self.change_choice,
-                                user_data=(config,
-                                           "Defaults",
-                                           "verbosity",
-                                           level)))
+                    [("weight", 1,
+                      urwid.RadioButton(
+                          group=verbosity,
+                          label=level.decode('ascii'),
+                          state=level == verbosity_level,
+                          on_state_change=self.change_choice,
+                          user_data=(config,
+                                     "Defaults",
+                                     "verbosity",
+                                     level)))
                      for level in audiotools.VERBOSITY_LEVELS])
 
                 cdrom_box = urwid.LineBox(CDROM(config),
@@ -852,8 +853,8 @@ if (__name__ == '__main__'):
                     self,
                     body=urwid.Pile(
                         [("weight", 1, option_widgets),
-                         ("fixed", 1, urwid.Filler(
-                                    urwid.Divider(div_char=u"\u2500"))),
+                         ("fixed", 1,
+                          urwid.Filler(urwid.Divider(div_char=u"\u2500"))),
                          ("fixed", 1, completion_buttons)]),
                     footer=self.status)
 
@@ -908,7 +909,6 @@ if (__name__ == '__main__'):
 
             def cancelled(self):
                 return self.__cancelled__
-
 
     parser = audiotools.OptionParser(
         usage=_.USAGE_AT_CONFIG,
@@ -1133,8 +1133,8 @@ if (__name__ == '__main__'):
                     msg.info(_.LAB_AT_CONFIG_FILE_WRITTEN %
                              (audiotools.Filename(configpath),))
                 except IOError, err:
-                    msg.error(
-                        _.ERR_OPEN_IOERROR % (audiotools.Filename(configpath),))
+                    msg.error(_.ERR_OPEN_IOERROR %
+                              (audiotools.Filename(configpath),))
                     sys.exit(1)
             else:
                 sys.exit(0)
@@ -1176,8 +1176,8 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
         #verify --joint is positive, if present
-        if ((options.system_maximum_jobs is not None) and
-            (options.system_maximum_jobs < 1)):
+        if (((options.system_maximum_jobs is not None) and
+             (options.system_maximum_jobs < 1))):
             msg.error(_.ERR_INVALID_JOINT)
             sys.exit(1)
 

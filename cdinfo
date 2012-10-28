@@ -59,9 +59,10 @@ if (__name__ == '__main__'):
     msg.new_row()
     msg.output_column(_.LAB_TOTAL_LENGTH, True)
     msg.output_column(u" : ")
-    msg.output_column(_.LAB_TRACK_LENGTH_FRAMES % (cdda.length() / 75 / 60,
-                                                 cdda.length() / 75 % 60,
-                                                 cdda.length()))
+    msg.output_column(
+        _.LAB_TRACK_LENGTH_FRAMES % (cdda.length() / 75 / 60,
+                                     cdda.length() / 75 % 60,
+                                     cdda.length()))
 
     msg.new_row()
     msg.output_column(_.LAB_FREEDB_ID, True)
@@ -89,18 +90,22 @@ if (__name__ == '__main__'):
     msg.new_row()
     msg.output_column(u"--")
     msg.output_column(u" ")
-    msg.output_column(u"-" * len(audiotools.display_unicode(_.LAB_CDINFO_LENGTH)))
+    msg.output_column(
+        u"-" * len(audiotools.display_unicode(_.LAB_CDINFO_LENGTH)))
     msg.output_column(u" ")
-    msg.output_column(u"-" * len(audiotools.display_unicode(_.LAB_CDINFO_FRAMES)))
+    msg.output_column(
+        u"-" * len(audiotools.display_unicode(_.LAB_CDINFO_FRAMES)))
     msg.output_column(u" ")
-    msg.output_column(u"-" * len(audiotools.display_unicode(_.LAB_CDINFO_OFFSET)))
+    msg.output_column(
+        u"-" * len(audiotools.display_unicode(_.LAB_CDINFO_OFFSET)))
 
     for track in tracks:
         msg.new_row()
         msg.output_column(unicode(track.track_number), True)
         msg.output_column(u" ")
-        msg.output_column(_.LAB_TRACK_LENGTH % (track.length() / 75 / 60,
-                                              track.length() / 75 % 60), True)
+        msg.output_column(
+            _.LAB_TRACK_LENGTH % (track.length() / 75 / 60,
+                                  track.length() / 75 % 60), True)
         msg.output_column(u" ")
         msg.output_column(unicode(track.length()))
         msg.output_column(u" ")

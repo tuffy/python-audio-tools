@@ -785,6 +785,8 @@ typedef struct BitstreamWriter_s {
                 unsigned int count,
                 uint64_t value);
 
+    /*writes the given value as "count" number of signed bits
+      to the current stream, up to 64 bits wide*/
     void
     (*write_signed_64)(struct BitstreamWriter_s* bs,
                        unsigned int count,
@@ -1138,6 +1140,7 @@ bw_close(BitstreamWriter* bs);
 
 
 /*adds a callback function, which is called on every byte written
+
   the function's arguments are the written byte and a generic
   pointer to some other data structure
  */
@@ -1181,13 +1184,13 @@ bw_abort(BitstreamWriter* bs);
   The basic call procudure is as follows:
 
   if (!setjmp(*bw_try(bs))) {
-    - perform reads here -
+    - perform writes here -
   } else {
-    - catch read exception here -
+    - catch write exception here -
   }
   bw_etry(bs);  - either way, pop handler off exception stack -
 
-  The idea being to avoid cluttering our read code with lots
+  The idea being to avoid cluttering our write code with lots
   and lots of error checking tests, but rather assign a spot
   for errors to go if/when they do occur.
  */

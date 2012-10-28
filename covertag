@@ -65,11 +65,16 @@ if (__name__ == '__main__'):
     img_group = audiotools.OptionGroup(parser, _.OPT_CAT_IMAGE)
 
     for (option, destination, helptext) in [
-        ('--front-cover', 'front_cover', _.OPT_TRACKTAG_FRONT_COVER),
-        ('--back-cover', 'back_cover', _.OPT_TRACKTAG_BACK_COVER),
-        ('--leaflet', 'leaflet', _.OPT_TRACKTAG_LEAFLET),
-        ('--media', 'media', _.OPT_TRACKTAG_MEDIA),
-        ('--other-image', 'other_image', _.OPT_TRACKTAG_OTHER_IMAGE)]:
+        ('--front-cover', 'front_cover',
+         _.OPT_TRACKTAG_FRONT_COVER),
+        ('--back-cover', 'back_cover',
+         _.OPT_TRACKTAG_BACK_COVER),
+        ('--leaflet', 'leaflet',
+         _.OPT_TRACKTAG_LEAFLET),
+        ('--media', 'media',
+         _.OPT_TRACKTAG_MEDIA),
+        ('--other-image', 'other_image',
+         _.OPT_TRACKTAG_OTHER_IMAGE)]:
         img_group.add_option(
             option,
             action='append',

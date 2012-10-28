@@ -53,8 +53,8 @@ def open_file(filename):
     f = open(filename, "rb")
     try:
         audio_class = audiotools.file_type(f)
-        if ((audio_class is not None) and
-            (audio_class.has_binaries(audiotools.BIN))):
+        if (((audio_class is not None) and
+             (audio_class.has_binaries(audiotools.BIN)))):
             class_name = audio_class.NAME
             try:
                 return audio_class(filename)
@@ -137,11 +137,11 @@ if (__name__ == '__main__'):
                       help=_.OPT_NO_SUMMARY)
 
     parser.add_option('-j', '--joint',
-        action='store',
-        type='int',
-        default=MAX_CPUS,
-        dest='max_processes',
-        help=_.OPT_JOINT)
+                      action='store',
+                      type='int',
+                      default=MAX_CPUS,
+                      dest='max_processes',
+                      help=_.OPT_JOINT)
 
     parser.add_option('-V', '--verbose',
                       action='store',
