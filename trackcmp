@@ -222,7 +222,7 @@ if (__name__ == '__main__'):
             for (album_number,
                  track_number) in sorted(list(files1_tracknumbers &
                                               files2_tracknumbers)):
-                progres_text = (
+                progress_text = (
                     _.LAB_TRACKCMP_CMP %
                     {"file1":
                         audiotools.Filename(

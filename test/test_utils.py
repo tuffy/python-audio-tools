@@ -4475,7 +4475,6 @@ class trackrename(UtilTest):
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
             ["new_file.flac",
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046-2.flac'.encode('utf-8')]):
-            print file_path,format_string
             if (os.path.isfile(file_path)):
                 os.unlink(file_path)
             if (os.path.isfile(format_string)):
@@ -4851,8 +4850,6 @@ class tracksplit(UtilTest):
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046-dir'.encode('utf-8')],
             ["%(track_number)d.%(suffix)s",  #check --format argument
              u'%(track_number)d - abc\xe0\xe7\xe8\u3041\u3044\u3046.%(suffix)s'.encode('utf-8')]):
-            print input_filename,cuesheet_file,output_directory,output_format
-
             if (os.path.isfile(input_filename)):
                 os.unlink(input_filename)
             if (os.path.isfile(cuesheet_file)):

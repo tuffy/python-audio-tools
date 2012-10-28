@@ -5973,6 +5973,70 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE encode_mdat
 *** DONE encode_wavpack
 *** DONE encode_shn
+** DONE Ensure Python files are PEP8-compliant
+*** DONE executables
+    - [X] audiotools-config
+    - [X] cd2track
+    - [X] cdinfo
+    - [X] cdplay
+    - [X] coverdump
+    - [X] covertag
+    - [X] coverview
+    - [X] dvda2track
+    - [X] dvdainfo
+    - [X] track2cd
+    - [X] track2track
+    - [X] trackcat
+    - [X] trackcmp
+    - [X] trackinfo
+    - [X] tracklength
+    - [X] tracklint
+    - [X] trackplay
+    - [X] trackrename
+    - [X] tracksplit
+    - [X] tracktag
+    - [X] trackverify
+*** DONE libraries
+    - [X] __init__.py
+    - [X] accuraterip.py
+    - [X] aiff.py
+    - [X] ape.py
+    - [X] au.py
+    - [X] cue.py
+    - [X] delta.py
+    - [X] dvda.py
+    - [X] flac.py
+    - [X] freedb.py
+    - [X] id3.py
+    - [X] id3v1.py
+    - [X] image.py
+    - [X] m4a.py
+    - [X] m4a_atoms.py
+    - [X] mp3.py
+    - [X] musicbrainz.py
+    - [X] ogg.py
+    - [X] opus.py
+    - [X] player.py
+    - [X] shn.py
+    - [X] text.py
+    - [X] toc.py
+    - [X] ui.py
+    - [X] vorbis.py
+    - [X] vorbiscomment.py
+    - [X] wav.py
+    - [X] wavpack.py
+**** DONE py_decoders
+     - [X] __init__.py
+     - [X] alac.py
+     - [X] flac.py
+     - [X] shn.py
+     - [X] wavpack.py
+**** DONE py_encoders
+     - [X] __init__.py
+     - [X] alac.py
+     - [X] flac.py
+     - [X] shn.py
+     - [X] wavpack.py
 ** TODO Handle multi-channel .opus files properly
 *** TODO Add unit tests
 ** TODO Have cdplay play properly
@@ -6038,70 +6102,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     wav files, at least it gets updated.
     Having two different, slightly incompatible M4A implementations
     needlessly complicates things.
-** TODO Ensure Python files are PEP8-compliant
-*** DONE executables
-    - [X] audiotools-config
-    - [X] cd2track
-    - [X] cdinfo
-    - [X] cdplay
-    - [X] coverdump
-    - [X] covertag
-    - [X] coverview
-    - [X] dvda2track
-    - [X] dvdainfo
-    - [X] track2cd
-    - [X] track2track
-    - [X] trackcat
-    - [X] trackcmp
-    - [X] trackinfo
-    - [X] tracklength
-    - [X] tracklint
-    - [X] trackplay
-    - [X] trackrename
-    - [X] tracksplit
-    - [X] tracktag
-    - [X] trackverify
-*** DONE libraries
-    - [X] __init__.py
-    - [X] accuraterip.py
-    - [X] aiff.py
-    - [X] ape.py
-    - [X] au.py
-    - [X] cue.py
-    - [X] delta.py
-    - [X] dvda.py
-    - [X] flac.py
-    - [X] freedb.py
-    - [X] id3.py
-    - [X] id3v1.py
-    - [X] image.py
-    - [X] m4a.py
-    - [X] m4a_atoms.py
-    - [X] mp3.py
-    - [X] musicbrainz.py
-    - [X] ogg.py
-    - [X] opus.py
-    - [X] player.py
-    - [X] shn.py
-    - [X] text.py
-    - [X] toc.py
-    - [X] ui.py
-    - [X] vorbis.py
-    - [X] vorbiscomment.py
-    - [X] wav.py
-    - [X] wavpack.py
-**** DONE py_decoders
-     - [X] __init__.py
-     - [X] alac.py
-     - [X] flac.py
-     - [X] shn.py
-     - [X] wavpack.py
-**** DONE py_encoders
-     - [X] __init__.py
-     - [X] alac.py
-     - [X] flac.py
-     - [X] shn.py
-     - [X] wavpack.py
 ** TODO Update version number to 2.19 final
 * TODO Finish version 2.20
 ** TODO Remove track number guessing heuristics
