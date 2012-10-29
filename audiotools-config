@@ -1122,6 +1122,7 @@ if (__name__ == '__main__'):
                 unhandled_input=widget.handle_text,
                 pop_ups=True)
             loop.run()
+            msg.ansi_clearscreen()
 
             #and apply options if widget isn't cancelled
             if (not widget.cancelled()):

@@ -424,6 +424,7 @@ if (__name__ == '__main__'):
                 audiotools.ui.style(),
                 unhandled_input=widget.handle_text)
             loop.run()
+            msg.ansi_clearscreen()
 
             if (not widget.cancelled()):
                 to_tag.append((album_tracks,

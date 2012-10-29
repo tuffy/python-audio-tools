@@ -826,6 +826,11 @@ class SilentMessenger(VerboseMessenger):
 
         pass
 
+    def ansi_clearscreen(self):
+        """clears the entire screen and moves cursor to upper left corner"""
+
+        pass
+
 
 class ProgressDisplay:
     """a class for displaying incremental progress updates to the screen"""

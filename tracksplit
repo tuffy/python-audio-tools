@@ -319,6 +319,7 @@ if (__name__ == '__main__'):
             unhandled_input=output_widget.handle_text,
             pop_ups=True)
         loop.run()
+        msg.ansi_clearscreen()
 
         if (not output_widget.cancelled()):
             output_tracks = list(output_widget.output_tracks())
