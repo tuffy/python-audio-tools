@@ -130,6 +130,7 @@ encoders_encode_flac(char *filename,
                      int exhaustive_model_search) {
     FILE* output_file;
     BitstreamWriter* output_stream;
+    uint64_t current_offset = 0;
     struct flac_context encoder;
     pcmreader* pcmreader;
     char version_string[0xFF];

@@ -1,6 +1,8 @@
 #ifndef MLPDEC2
 #define MLPDEC2
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 #include <stdint.h>
 #include "../bitstream.h"
 #include "../array.h"
@@ -280,8 +282,10 @@ rematrix_mlp_channels(array_ia* channels,
 void
 mlp_checkdata_callback(uint8_t byte, void* checkdata);
 
+#ifndef STANDALONE
 PyObject*
 mlp_python_exception(mlp_status mlp_status);
+#endif
 
 const char*
 mlp_python_exception_msg(mlp_status mlp_status);

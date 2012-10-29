@@ -1151,6 +1151,7 @@ mlp_checkdata_callback(uint8_t byte, void* checkdata)
     cd->crc = CRC8[(cd->final_crc = cd->crc ^ byte)];
 }
 
+#ifndef STANDALONE
 PyObject*
 mlp_python_exception(mlp_status mlp_status)
 {
@@ -1173,6 +1174,7 @@ mlp_python_exception(mlp_status mlp_status)
         return PyExc_ValueError;
     }
 }
+#endif
 
 const char*
 mlp_python_exception_msg(mlp_status mlp_status)
