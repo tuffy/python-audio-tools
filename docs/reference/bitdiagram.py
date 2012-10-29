@@ -155,7 +155,7 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
 
         if (self.style is not BLANK):
             if (self.style == SOLID):
-                pdf.setDash(1,0)
+                pdf.setDash()
             elif (self.style == DASHED):
                 pdf.setDash(6,6)
             elif (self.style == DOTTED):
@@ -280,7 +280,7 @@ class Line:
     def render(self, pdf):
         if (self.style is not BLANK):
             if (self.style == SOLID):
-                pdf.setDash(1,0)
+                pdf.setDash()
             elif (self.style == DASHED):
                 pdf.setDash(6,6)
             elif (self.style == DOTTED):

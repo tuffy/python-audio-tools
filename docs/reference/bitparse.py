@@ -173,7 +173,7 @@ class Chunk:
 
         pdf.setStrokeColorRGB(0.0, 0.0, 0.0, 1.0)
         #draw top and bottom borders
-        pdf.setDash(1, 0)
+        pdf.setDash()
         pdf.line(self.nw[0], self.nw[1],
                  self.ne[0], self.ne[1])
         pdf.line(self.sw[0], self.sw[1],
@@ -181,7 +181,7 @@ class Chunk:
 
         #draw left and right borders, if any
         if (self.w_border == BORDER_LINE):
-            pdf.setDash(1, 0)
+            pdf.setDash()
             pdf.line(self.nw[0], self.nw[1],
                      self.sw[0], self.sw[1])
         elif (self.w_border == BORDER_DOTTED):
@@ -190,7 +190,7 @@ class Chunk:
                      self.sw[0], self.sw[1])
 
         if (self.e_border == BORDER_LINE):
-            pdf.setDash(1, 0)
+            pdf.setDash()
             pdf.line(self.ne[0], self.ne[1],
                      self.se[0], self.se[1])
         elif (self.e_border == BORDER_DOTTED):
@@ -345,7 +345,7 @@ class TextChunk(Chunk):
 
         pdf.setStrokeColorRGB(0.0, 0.0, 0.0, 1.0)
         #drop top and bottom borders
-        pdf.setDash(1, 0)
+        pdf.setDash()
         pdf.line(self.nw[0], self.nw[1],
                  self.ne[0], self.ne[1])
         pdf.line(self.sw[0], self.sw[1],
@@ -353,7 +353,7 @@ class TextChunk(Chunk):
 
         #draw left and right borders, if any
         if (self.w_border == BORDER_LINE):
-            pdf.setDash(1, 0)
+            pdf.setDash()
             pdf.line(self.nw[0], self.nw[1],
                      self.sw[0], self.sw[1])
         elif (self.w_border == BORDER_DOTTED):
@@ -362,7 +362,7 @@ class TextChunk(Chunk):
                      self.sw[0], self.sw[1])
 
         if (self.e_border == BORDER_LINE):
-            pdf.setDash(1, 0)
+            pdf.setDash()
             pdf.line(self.ne[0], self.ne[1],
                      self.se[0], self.se[1])
         elif (self.e_border == BORDER_DOTTED):
@@ -492,7 +492,7 @@ class BytesChunk(Chunk):
 
         pdf.setStrokeColorRGB(0.0, 0.0, 0.0, 1.0)
         #draw top and bottom borders
-        pdf.setDash(1, 0)
+        pdf.setDash()
         pdf.line(self.nw[0], self.nw[1],
                  self.ne[0], self.ne[1])
         pdf.line(self.sw[0], self.sw[1],
@@ -500,7 +500,7 @@ class BytesChunk(Chunk):
 
         #draw left and right borders, if any
         if (self.w_border == BORDER_LINE):
-            pdf.setDash(1, 0)
+            pdf.setDash()
             pdf.line(self.nw[0], self.nw[1],
                      self.sw[0], self.sw[1])
         elif (self.w_border == BORDER_DOTTED):
@@ -509,7 +509,7 @@ class BytesChunk(Chunk):
                      self.sw[0], self.sw[1])
 
         if (self.e_border == BORDER_LINE):
-            pdf.setDash(1, 0)
+            pdf.setDash()
             pdf.line(self.ne[0], self.ne[1],
                      self.se[0], self.se[1])
         elif (self.e_border == BORDER_DOTTED):
