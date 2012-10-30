@@ -467,7 +467,7 @@ combine into 6 channels of PCM output as follows:
   }{
     $\text{\DECORRELATED}_0 \leftarrow \text{\RESIDUALS}_0$\;
   }
-\hyperref[wavpack:verify_crc]{  verify CRC of $\text{\DECORRELATED}_0$ against CRC in block header}\;
+  \hyperref[wavpack:verify_crc]{  verify CRC of $\text{\DECORRELATED}_0$ against CRC in block header}\;
   \eIf{extended integers have been read}{
     $\text{\UNSHIFTED}_0 \leftarrow$ \hyperref[wavpack:undo_extended_integers]{undo $\text{\DECORRELATED}_0$ channel extended integers}\;
   }{
@@ -1069,17 +1069,17 @@ $i \leftarrow 0$\;
   }
   $m_i \leftarrow \lfloor u_i \div 2\rfloor$\;
 }
-\uElseIf{$u_{i - 1} \bmod 2 = 1$}{
+\uElseIf{$u_{i - 1} \bmod 2 = 0$}{
+  $u_i \leftarrow \UNDEFINED$\;
+  $m_i \leftarrow 0$\;
+}
+\ElseIf{$u_{i - 1} \bmod 2 = 1$}{
   $u_i \leftarrow$ \UNARY with stop bit 0\;
   \If{$u_i = 16$}{
     $c_i \leftarrow$ read modified Elias gamma code\;
     $u_i \leftarrow u_i + c_i$\;
   }
   $m_i \leftarrow \lfloor u_i \div 2\rfloor + 1$\;
-}
-\ElseIf{$u_{i - 1} \bmod 2 = 0$}{
-  $u_i \leftarrow \UNDEFINED$\;
-  $m_i \leftarrow 0$\;
 }
 \BlankLine
 \Switch(\tcc*[f]{determine "base", "add" and new entropy values}){$m_i$}{

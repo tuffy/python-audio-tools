@@ -98,7 +98,7 @@ ApeTag
 
    ``read_only`` is a boolean set to ``True`` if the tag-item is read-only.
    ``key`` is an ASCII string.
-   ``data`` is a regular Python string (not unicode).
+   ``data`` is a regular Python string (not Unicode).
 
 .. method:: ApeTagItem.build()
 
@@ -118,7 +118,7 @@ ApeTag
 
 .. classmethod:: ApeTagItem.string(key, unicode)
 
-   A convenience classmethod which takes a key string and value unicode
+   A convenience classmethod which takes a key string and value Unicode
    and returns a populated :class:`ApeTagItem` object of the
    appropriate type.
 
@@ -187,7 +187,7 @@ FLAC
 
 .. method:: FlacMetaData.raw_info()
 
-   Returns this metadata as a human-readable unicode string.
+   Returns this metadata as a human-readable Unicode string.
 
 .. method:: FlacMetaData.size()
 
@@ -214,7 +214,7 @@ STREAMINFO
 
 .. method:: Flac_STREAMINFO.raw_info()
 
-   Returns this metadata block as a human-readable unicode string.
+   Returns this metadata block as a human-readable Unicode string.
 
 .. classmethod:: Flac_STREAMINFO.parse(reader)
 
@@ -248,7 +248,7 @@ PADDING
 
 .. method:: Flac_PADDING.raw_info()
 
-   Returns this metadata block as a human-readable unicode string.
+   Returns this metadata block as a human-readable Unicode string.
 
 .. classmethod:: Flac_PADDING.parse(reader)
 
@@ -283,7 +283,7 @@ APPLICATION
 
 .. method:: Flac_APPLICATION.raw_info()
 
-   Returns this metadata block as a human-readable unicode string.
+   Returns this metadata block as a human-readable Unicode string.
 
 .. classmethod:: Flac_APPLICATION.parse(reader)
 
@@ -319,7 +319,7 @@ SEEKTABLE
 
 .. method:: Flac_SEEKTABLE.raw_info()
 
-   Returns this metadata block as a human-readable unicode string.
+   Returns this metadata block as a human-readable Unicode string.
 
 .. classmethod:: Flac_SEEKTABLE.parse(reader)
 
@@ -342,15 +342,15 @@ SEEKTABLE
    and ``byte offset`` / ``PCM frame count`` values reordered
    to be incrementing.
    Any fixes performed are appended to the ``fixes_performed``
-   list as unicode strings.
+   list as Unicode strings.
 
 VORBISCOMMENT
 ^^^^^^^^^^^^^
 
 .. class:: Flac_VORBISCOMMENT(comment_strings, vendor_string)
 
-   ``comment_strings`` is a list of unicode strings
-   and ``vendor_string`` is a unicode string.
+   ``comment_strings`` is a list of Unicode strings
+   and ``vendor_string`` is a Unicode string.
 
    See :class:`VorbisComment` on how to map strings to attributes.
 
@@ -366,7 +366,7 @@ VORBISCOMMENT
 
 .. method:: Flac_VORBISCOMMENT.raw_info()
 
-   Returns this metadata block as a human-readable unicode string.
+   Returns this metadata block as a human-readable Unicode string.
 
 .. classmethod:: Flac_VORBISCOMMENT.parse(reader)
 
@@ -408,7 +408,7 @@ CUESHEET
 
 .. method:: Flac_CUESHEET.raw_info()
 
-   Returns this metadata block as a human-readable unicode string.
+   Returns this metadata block as a human-readable Unicode string.
 
 .. classmethod:: Flac_CUESHEET.parse(reader)
 
@@ -468,7 +468,7 @@ CUESHEET
 
 .. method:: Flac_CUESHEET_track.raw_info()
 
-   Returns this cuesheet track as a human-readable unicode string.
+   Returns this cuesheet track as a human-readable Unicode string.
 
 .. classmethod:: Flac_CUESHEET_track.parse(reader)
 
@@ -528,7 +528,7 @@ PICTURE
    20 Publisher/Studio logotype
    == ===================================
 
-   ``mime_type`` and ``description`` are unicode strings.
+   ``mime_type`` and ``description`` are Unicode strings.
    ``width`` and ``height`` are integer number of pixels.
    ``color_depth`` is an integer number of bits per pixel.
    ``color_count`` is an integer number of colors for images
@@ -548,7 +548,7 @@ PICTURE
 
 .. method:: Flac_IMAGE.raw_info()
 
-   Returns this metadata block as a human-readable unicode string.
+   Returns this metadata block as a human-readable Unicode string.
 
 .. classmethod:: Flac_IMAGE.parse(reader)
 
@@ -577,7 +577,7 @@ PICTURE
    metadata fields cleaned up according to the metrics
    of the contained raw image data.
    Any fixes are appended to the ``fixes_performed`` list
-   as unicode strings.
+   as Unicode strings.
 
 ID3v1
 -----
@@ -612,7 +612,7 @@ ID3v1
 
 .. method:: ID3v1Comment.raw_info()
 
-   Returns this metadata as a human-readable unicode string.
+   Returns this metadata as a human-readable Unicode string.
 
 .. classmethod:: ID3v1Comment.parse(mp3_file)
 
@@ -687,7 +687,7 @@ ID3v2.2 Frame
 
 .. method:: ID3v22Frame.raw_info()
 
-   Returns this frame as a human-readable unicode string.
+   Returns this frame as a human-readable Unicode string.
 
 .. classmethod:: ID3v22Frame.parse(frame_id, frame_size, reader)
 
@@ -711,7 +711,7 @@ ID3v2.2 Frame
    Returns a new :class:`ID3v22Frame` object that's been cleaned
    of any problems.
    Any fixes performed are appended to ``fixes_performed``
-   as unicode strings.
+   as Unicode strings.
 
 ID3v2.2 Text Frames
 ^^^^^^^^^^^^^^^^^^^
@@ -749,7 +749,7 @@ ID3v2.2 Text Frames
 
 .. classmethod:: ID3v22_T__Frame.converted(frame_id, unicode_string)
 
-   Given a 3 byte frame ID and unicode string,
+   Given a 3 byte frame ID and Unicode string,
    returns a new :class:`ID3v22_T__Frame` object.
 
 .. class:: ID3v22_TXX_Frame(encoding, description, data)
@@ -793,7 +793,7 @@ ID3v2.2 COM Frame
 
 .. classmethod:: ID3v22_COM_Frame.converted(frame_id, unicode_string)
 
-   Given a 3 byte ``"COM"`` frame ID and unicode string,
+   Given a 3 byte ``"COM"`` frame ID and Unicode string,
    returns a new :class:`ID3v22_COM_Frame` object.
 
 ID3v2.2 PIC Frame
@@ -914,7 +914,7 @@ ID3v2.3 Frame
 
 .. method:: ID3v23_Frame.raw_info()
 
-   Returns this frame as a human-readable unicode string.
+   Returns this frame as a human-readable Unicode string.
 
 .. classmethod:: ID3v23_Frame.parse(frame_id, frame_size, reader)
 
@@ -938,7 +938,7 @@ ID3v2.3 Frame
    Returns a new :class:`ID3v23_Frame` object that's been cleaned
    of any problems.
    Any fixes performed are appended to ``fixes_performed``
-   as unicode strings.
+   as Unicode strings.
 
 ID3v2.3 Text Frames
 ^^^^^^^^^^^^^^^^^^^
@@ -976,7 +976,7 @@ ID3v2.3 Text Frames
 
 .. classmethod:: ID3v23_T___Frame.converted(frame_id, unicode_string)
 
-   Given a 4 byte frame ID and unicode string,
+   Given a 4 byte frame ID and Unicode string,
    returns a new :class:`ID3v23_T___Frame` object.
 
 .. class:: ID3v23_TXXX_Frame(encoding, description, data)
@@ -1020,7 +1020,7 @@ ID3v2.3 COMM Frame
 
 .. classmethod:: ID3v23_COMM_Frame.converted(frame_id, unicode_string)
 
-   Given a 4 byte ``"COMM"`` frame ID and unicode string,
+   Given a 4 byte ``"COMM"`` frame ID and Unicode string,
    returns a new :class:`ID3v23_COMM_Frame` object.
 
 ID3v2.3 APIC Frame
@@ -1131,7 +1131,7 @@ ID3v2.4 Frame
 
 .. method:: ID3v24_Frame.raw_info()
 
-   Returns this frame as a human-readable unicode string.
+   Returns this frame as a human-readable Unicode string.
 
 .. classmethod:: ID3v24_Frame.parse(frame_id, frame_size, reader)
 
@@ -1155,7 +1155,7 @@ ID3v2.4 Frame
    Returns a new :class:`ID3v24_Frame` object that's been cleaned
    of any problems.
    Any fixes performed are appended to ``fixes_performed``
-   as unicode strings.
+   as Unicode strings.
 
 ID3v2.4 Text Frames
 ^^^^^^^^^^^^^^^^^^^
@@ -1195,7 +1195,7 @@ ID3v2.4 Text Frames
 
 .. classmethod:: ID3v24_T___Frame.converted(frame_id, unicode_string)
 
-   Given a 4 byte frame ID and unicode string,
+   Given a 4 byte frame ID and Unicode string,
    returns a new :class:`ID3v24_T___Frame` object.
 
 .. class:: ID3v24_TXXX_Frame(encoding, description, data)
@@ -1241,7 +1241,7 @@ ID3v2.4 COMM Frame
 
 .. classmethod:: ID3v24_COMM_Frame.converted(frame_id, unicode_string)
 
-   Given a 4 byte ``"COMM"`` frame ID and unicode string,
+   Given a 4 byte ``"COMM"`` frame ID and Unicode string,
    returns a new :class:`ID3v23_COMM_Frame` object.
 
 ID3v2.4 APIC Frame
@@ -1390,7 +1390,7 @@ M4A
 
 .. method:: M4A_META_Atom.raw_info()
 
-   Returns atom data as a human-readable unicode string.
+   Returns atom data as a human-readable Unicode string.
 
 .. classmethod:: M4A_META_Atom.parse(name, data_size, reader, parsers)
 
@@ -1430,7 +1430,7 @@ M4A Leaf Atom
 
 .. method:: M4A_Leaf_Atom.raw_info()
 
-   Returns atom data as a human-readable unicode string.
+   Returns atom data as a human-readable Unicode string.
 
 .. method:: M4A_Leaf_Atom.parse(name, size, reader, parsers)
 
@@ -1466,7 +1466,7 @@ M4A Tree Atom
 
 .. method:: M4A_Tree_Atom.raw_info()
 
-   Returns atom data as a human-readable unicode string.
+   Returns atom data as a human-readable Unicode string.
 
 .. method:: M4A_Tree_Atom.parse(name, data_size, reader, parsers)
 
@@ -1540,7 +1540,7 @@ and mapping them to Python values.
 
 .. method:: M4A_ILST_Leaf_Atom.__unicode__()
 
-   Returns the unicode value of this leaf's first ``data`` child atom.
+   Returns the Unicode value of this leaf's first ``data`` child atom.
 
    >>> nam = M4A_ILST_Leaf_Atom("\xa9nam",
    ...                          [M4A_ILST_Unicode_Data_Atom(0, 1, "Track Name")])
@@ -1569,7 +1569,7 @@ M4A ILST Unicode Data Atom
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This atom is a subclass of :class:`M4A_Leaf_Atom`
-specialized for holding unicode data.
+specialized for holding Unicode data.
 
 .. class:: M4A_ILST_Unicode_Data_Atom(type, flags, data)
 
@@ -1580,7 +1580,7 @@ specialized for holding unicode data.
 
 .. method:: M4A_ILST_Unicode_Data_Atom.__unicode__()
 
-   Returns the unicode value of this atom's data.
+   Returns the Unicode value of this atom's data.
 
    >>> nam = M4A_ILST_Unicode_Data_Atom(0, 1, "Track Name")
    >>> unicode(nam)
@@ -1636,8 +1636,8 @@ specialized for holding disc number data.
 
    Returns this atom's ``disc_total`` value.
 
-   >>> trkn = M4A_ILST_DISK_Data_Atom(3, 4)
-   >>> trkn.total()
+   >>> disk = M4A_ILST_DISK_Data_Atom(3, 4)
+   >>> disk.total()
    4
 
 M4A ILST Cover Art Atom
@@ -1663,8 +1663,8 @@ Vorbis Comment
 
    This is a VorbisComment_ tag used by FLAC, Ogg FLAC, Ogg Vorbis,
    Ogg Speex and other formats in the Ogg family.
-   ``comment_strings`` is a list of unicode strings.
-   ``vendor_string`` is a unicode string.
+   ``comment_strings`` is a list of Unicode strings.
+   ``vendor_string`` is a Unicode string.
    Once initialized, :class:`VorbisComment` can be manipulated like a
    regular Python dict in addition to its standard
    :class:`audiotools.MetaData` methods.

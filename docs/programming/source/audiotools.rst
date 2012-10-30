@@ -141,7 +141,7 @@ classes and functions upon which all of the other modules depend.
 
    If ``no_duplicates`` is ``False`` and ``warn_duplicates`` is ``True``,
    attempting to open the same file twice results in a
-   warning to ``messeger``, if present.
+   warning to ``messenger``, if present.
 
    ``opened_files``, if present, is a set of previously opened
    :class:`Filename` objects for the purpose of detecting duplicates.
@@ -268,7 +268,7 @@ Filename Objects
    or placed in sets.
 
    The purpose of Filename objects is for easier
-   conversion of raw string filename paths to unicode,
+   conversion of raw string filename paths to Unicode,
    and to make it easier to detect filenames
    which point to the same file on disk.
 
@@ -285,7 +285,7 @@ Filename Objects
 
 .. function:: Filename.__unicode__()
 
-   Returns a unicode string of the filename after being decoded
+   Returns a Unicode string of the filename after being decoded
    through :attr:`FS_ENCODING`.
 
 .. function:: Filename.__eq__(filename)
@@ -323,7 +323,7 @@ AudioFile Objects
 
 .. attribute:: AudioFile.DESCRIPTION
 
-   A longer, descriptive name for the audio type as a unicode string.
+   A longer, descriptive name for the audio type as a Unicode string.
    This is meant to be human-readable.
 
 .. attribute:: AudioFile.COMPRESSION_MODES
@@ -341,7 +341,7 @@ AudioFile Objects
 
 .. attribute:: AudioFile.COMPRESSION_DESCRIPTIONS
 
-   A dict of compression descriptions, as unicode strings.
+   A dict of compression descriptions, as Unicode strings.
    The key is a valid compression mode string.
    Not all compression modes need have a description;
    some may be left blank.
@@ -636,7 +636,7 @@ AudioFile Objects
 
    Cleans the audio file of known data and metadata problems.
    ``fixes_performed`` is a list-like object which is appended
-   with unicode strings of the fixes performed.
+   with Unicode strings of the fixes performed.
 
    ``output_filename`` is an optional string in which the fixed
    audio file is placed.
@@ -949,11 +949,11 @@ MetaData Objects
 
    ``fixes_performed`` is a list object with an append method.
    Text descriptions of the fixes performed are appended
-   to that list as unicode strings.
+   to that list as Unicode strings.
 
 .. method:: MetaData.raw_info()
 
-   Returns a unicode string of raw metadata information
+   Returns a Unicode string of raw metadata information
    with as little filtering as possible.
    This is meant to be useful for debugging purposes.
 
@@ -1738,7 +1738,7 @@ DVDATrack Objects
 
 .. data:: DVDATrack.titleset
 
-   An integer of this tracks's titleset, offset from 0.
+   An integer of this track's titleset, offset from 0.
 
 .. data:: DVDATrack.title
 
@@ -1830,7 +1830,7 @@ ExecProgressQueue Objects
 
    This class runs multiple jobs in parallel and displays their
    progress output to the given :class:`ProgressDisplay` object.
-   The optional ``total_progress_message`` argument is a unicode string
+   The optional ``total_progress_message`` argument is a Unicode string
    which displays an additional progress bar of the queue's total progress.
 
 .. attribute:: ExecProgressQueue.results
@@ -1858,14 +1858,14 @@ ExecProgressQueue Objects
    The executed function can then call that ``progress`` function
    at regular intervals to indicate its progress.
 
-   If given, ``progress_text`` is a unicode string to be displayed
+   If given, ``progress_text`` is a Unicode string to be displayed
    while the function is being executed.
 
    ``completion_output`` is displayed once the executed function is
    completed.
-   It can be either a unicode string or a function whose argument
+   It can be either a Unicode string or a function whose argument
    is the returned result of the executed function and which must
-   output either a unicode string or ``None``.
+   output either a Unicode string or ``None``.
    If ``None``, no output text is generated for the completed job.
 
 .. method:: ExecProgressQueue.run([max_processes])
@@ -2161,7 +2161,7 @@ ProgressDisplay Objects
 
    Adds a row of output to be displayed with progress indicated.
    ``row_id`` should be a unique identifier, typically an int.
-   ``output_line`` should be a unicode string indicating what
+   ``output_line`` should be a Unicode string indicating what
    we're displaying the progress of.
 
 .. method:: ProgressDisplay.update_row(row_id, current, total)
@@ -2193,7 +2193,7 @@ ProgressDisplay Objects
 
    This is a subclass of :class:`ProgressDisplay` used
    for generating only a single line of progress output.
-   As such, one only specifies a single row of unicode ``progress_text``
+   As such, one only specifies a single row of Unicode ``progress_text``
    at initialization time and can avoid the row management functions
    entirely.
 
@@ -2240,7 +2240,7 @@ ProgressDisplay Objects
 
    This is used by :class:`ProgressDisplay` and its subclasses
    for actual output generation.
-   ``row_id`` is a unique identifier and ``output_line`` is a unicode string.
+   ``row_id`` is a unique identifier and ``output_line`` is a Unicode string.
    It is not typically instantiated directly.
 
 .. method:: ProgressRow.update(current, total)
@@ -2249,7 +2249,7 @@ ProgressDisplay Objects
 
 .. method:: ProgressRow.unicode(width)
 
-   Returns the output line and its current progress as a unicode string,
+   Returns the output line and its current progress as a Unicode string,
    formatted to the given width in onscreen characters.
    Screen width can be determined from the :meth:`Messenger.terminal_size`
    method.
@@ -2257,11 +2257,11 @@ ProgressDisplay Objects
 display_unicode Objects
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-This class is for displaying portions of a unicode string to
+This class is for displaying portions of a Unicode string to
 the screen.
 The reason this is needed is because not all Unicode characters
 are the same width.
-So, for example, if one wishes to display a portion of a unicode string to
+So, for example, if one wishes to display a portion of a Unicode string to
 a screen that's 80 ASCII characters wide, one can't simply perform:
 
 >>> messenger.output(unicode_string[0:80])

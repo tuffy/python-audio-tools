@@ -6064,6 +6064,70 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] trackrename
    - [X] tracksplit
    - [X] tracktag
+** DONE Spellcheck programming documentation
+   - [X] audiotools.rst
+   - [X] audiotools_bitstream.rst
+   - [X] audiotools_cdio.rst
+   - [X] audiotools_cue.rst
+   - [X] audiotools_pcm.rst
+   - [X] audiotools_pcmconverter.rst
+   - [X] audiotools_player.rst
+   - [X] audiotools_replaygain.rst
+   - [X] audiotools_toc.rst
+   - [X] index.rst
+   - [X] metadata.rst
+** TODO Spellcheck reference documentation
+   - [ ] aiff.tex
+   - [ ] alac.tex
+   - [ ] ape.tex
+   - [ ] apev2.tex
+   - [ ] au.tex
+   - [ ] basics.tex
+   - [ ] dvda2.tex
+   - [ ] flac.tex
+   - [ ] freedb.tex
+   - [ ] introduction.tex
+   - [ ] license.tex
+   - [ ] m4a.tex
+   - [ ] mp3.tex
+   - [ ] musepack.tex
+   - [ ] musicbrainz.tex
+   - [ ] musicbrainz_mmd.tex
+   - [ ] ogg.tex
+   - [ ] oggflac.tex
+   - [ ] references.tex
+   - [ ] replaygain.tex
+   - [ ] shorten.tex
+   - [ ] speex.tex
+   - [ ] vorbis.tex
+   - [ ] wav.tex
+   - [ ] wavpack.tex
+** TODO Spellcheck manual pages
+   - [ ] audiotools-config.xml
+   - [ ] audiotools.cfg.xml
+   - [ ] cd2track.xml
+   - [ ] cdinfo.xml
+   - [ ] cdplay.xml
+   - [ ] coverdump.xml
+   - [ ] covertag.xml
+   - [ ] coverview.xml
+   - [ ] dvda2track.xml
+   - [ ] dvdainfo.xml
+   - [ ] track2cd.xml
+   - [ ] track2track.xml
+   - [ ] trackcat.xml
+   - [ ] trackcmp.xml
+   - [ ] trackinfo.xml
+   - [ ] tracklength.xml
+   - [ ] tracklint.xml
+   - [ ] trackplay.xml
+   - [ ] trackrename.xml
+   - [ ] tracksplit.xml
+   - [ ] tracktag.xml
+   - [ ] trackverify.xml
+** TODO Tweak reference documentation layout
+   Try harder to get pseudocode, file diagram,
+   bit diagram and example on same pair of pages.
 ** TODO Handle multi-channel .opus files properly
 *** TODO Add unit tests
 ** TODO Have cdplay play properly

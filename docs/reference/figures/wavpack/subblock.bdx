@@ -14,10 +14,11 @@
     <col start="7" end="7" width=".22" id="subblock_e">large sub block</col>
   </row>
   <row>
-    <col start="8" end="15/31" width=".5">sub block size</col>
-    <col width=".5" style="dashed"
+    <col start="8" end="15/31" width=".45">sub block size</col>
+    <col width=".45" style="dashed"
          start="(sub block size × 2) bytes"
          end="(sub block size × 2) bytes">sub block data</col>
+    <col width=".1" style="dashed" start="0" end="7">pad</col>
   </row>
   <line style="dotted">
     <start id="subblock" corner="sw"/>

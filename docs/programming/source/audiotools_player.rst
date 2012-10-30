@@ -19,7 +19,7 @@ Class             Output System
 ----------------- -----------------
 PulseAudioOutput  PulseAudio_
 OSSAudioOutput    OSS_
-PortAudioOutput   PortAudio_
+CoreAudioOutput   CoreAudio
 NULLAudioOutput   No output
 ================= =================
 
@@ -166,7 +166,7 @@ This is an abstract class used to implement audio output sinks.
    Why not simply have the :meth:`play` method perform PCM conversion itself
    instead of shifting it to :meth:`framelist_converter`?
    The reason is that conversion may be a relatively time-consuming task.
-   By shifting that process into a subthread, there's less chance
+   By shifting that process into a sub-thread, there's less chance
    that performing that work will cause playing to stutter
    while it completes.
 
