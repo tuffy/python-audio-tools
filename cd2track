@@ -22,6 +22,7 @@ import sys
 import os
 import audiotools
 import audiotools.ui
+import termios
 import audiotools.text as _
 
 
@@ -246,6 +247,10 @@ if (__name__ == '__main__'):
             except ValueError:
                 continue
 
+    if (len(limit(range(cd_track_count), tracks_to_rip)) == 0):
+        #no tracks selected to rip, so do nothing
+        sys.exit(0)
+
     #decide which metadata and output options use when extracting tracks
     if (options.interactive):
         #pick options using interactive widget
@@ -270,8 +275,14 @@ if (__name__ == '__main__'):
             audiotools.ui.style(),
             unhandled_input=output_widget.handle_text,
             pop_ups=True)
-        loop.run()
-        msg.ansi_clearscreen()
+        try:
+            loop.run()
+            msg.ansi_clearscreen()
+        except (termios.error, IOError):
+            msg.error(_.ERR_TERMIOS_ERROR)
+            msg.info(_.ERR_TERMIOS_SUGGESTION)
+            msg.info(audiotools.ui.xargs_suggestion(sys.argv))
+            sys.exit(1)
 
         if (not output_widget.cancelled()):
             output_tracks = list(output_widget.output_tracks())

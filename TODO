@@ -6051,19 +6051,19 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] trackrename
    - [X] tracksplit
    - [X] tracktag
-** TODO Have interactive modes detect termios.error at launch
+** DONE Have interactive modes detect termios.error at launch
    This seems to be caused mostly by opening interactive modes
    with arguments piped from xargs
-   - [ ] audiotools-config
-   - [ ] cd2track
+   - [X] audiotools-config
+   - [X] cd2track
    - [X] cdplay
-   - [ ] dvda2track
-   - [ ] track2track
-   - [ ] trackcat
+   - [X] dvda2track
+   - [X] track2track
+   - [X] trackcat
    - [X] trackplay
-   - [ ] trackrename
-   - [ ] tracksplit
-   - [ ] tracktag
+   - [X] trackrename
+   - [X] tracksplit
+   - [X] tracktag
 ** TODO Handle multi-channel .opus files properly
 *** TODO Add unit tests
 ** TODO Have cdplay play properly

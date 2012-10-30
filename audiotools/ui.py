@@ -2507,8 +2507,9 @@ class PlayerTTY:
         try:
             original_terminal_settings = termios.tcgetattr(0)
         except termios.error:
-            msg.error(_.ERR_TERMIOS_ERROR)
-            msg.info(_.ERR_TERMIOS_SUGGESTION)
+            from .text import (ERR_TERMIOS_ERROR, ERR_TERMIOS_SUGGESTION)
+            msg.error(ERR_TERMIOS_ERROR)
+            msg.info(ERR_TERMIOS_SUGGESTION)
             return 1
 
         output_line_len = 0
@@ -2582,3 +2583,20 @@ def not_available_message(msg):
     msg.error(ERR_URWID_REQUIRED)
     msg.output(ERR_GET_URWID1)
     msg.output(ERR_GET_URWID2)
+
+
+def xargs_suggestion(args):
+    """converts arguments to xargs-compatible suggestion
+    and returns unicode string"""
+
+    import os.path
+
+    #All command-line arguments start with "-"
+    #but not everything that starts with "-" is a command-line argument.
+    #However, since this is just a suggestion,
+    #users can be expected to figure it out.
+
+    return (u"xargs sh -c '%s %s \"%%@\" < /dev/tty'" %
+            (os.path.basename(args[0]).decode('utf-8'),
+             " ".join([arg.decode('utf-8') for arg in args[1:]
+                       if arg.startswith("-")])))

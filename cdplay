@@ -276,9 +276,10 @@ if (__name__ == '__main__'):
         try:
             loop.run()
             msg.ansi_clearscreen()
-        except termios.error:
+        except (termios.error, IOError):
             msg.error(_.ERR_TERMIOS_ERROR)
             msg.info(_.ERR_TERMIOS_SUGGESTION)
+            msg.info(audiotools.ui.xargs_suggestion(sys.argv))
             sys.exit(1)
     else:
         trackplay = CDplayTTY(cdda=cdda,

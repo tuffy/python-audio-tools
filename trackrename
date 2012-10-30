@@ -23,7 +23,7 @@ import audiotools
 import audiotools.ui
 import os.path
 import shutil
-
+import termios
 import audiotools.text as _
 
 
@@ -228,8 +228,16 @@ if (__name__ == '__main__'):
             audiotools.ui.style(),
             unhandled_input=widget.handle_text,
             pop_ups=True)
-        loop.run()
-        msg.ansi_clearscreen()
+
+        try:
+            loop.run()
+            msg.ansi_clearscreen()
+        except (termios.error, IOError):
+            msg.error(_.ERR_TERMIOS_ERROR)
+            msg.info(_.ERR_TERMIOS_SUGGESTION)
+            msg.info(audiotools.ui.xargs_suggestion(sys.argv))
+            sys.exit(1)
+
         if (not widget.cancelled()):
             to_rename = list(widget.to_rename())
         else:

@@ -549,7 +549,7 @@ ERR_GET_URWID1 = \
 ERR_GET_URWID2 = u"or your system's package manager."
 ERR_TERMIOS_ERROR = u"unable to get tty settings"
 ERR_TERMIOS_SUGGESTION = \
-    u"if piping arguments via xargs(1), try using its -o option"
+    u"if piping arguments via xargs(1), try:"
 ERR_NO_GUI = u"neither PyGTK nor Tkinter is available"
 ERR_NO_AUDIO_TS = \
     u"you must specify the DVD-Audio's AUDIO_TS directory with -A"
