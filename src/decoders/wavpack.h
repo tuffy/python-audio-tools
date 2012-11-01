@@ -331,7 +331,7 @@ decorrelate_2ch_pass(int decorrelation_term,
                      array_ia* decorrelated);
 
 static void
-undo_joint_stereo(const array_ia* mid_size, array_ia* left_right);
+undo_joint_stereo(const array_ia* mid_side, array_ia* left_right);
 
 static uint32_t
 calculate_crc(const array_ia* channels);

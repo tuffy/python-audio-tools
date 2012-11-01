@@ -972,114 +972,6 @@ AlbumMetaData Objects
    Returns a single :class:`MetaData` object containing all the
    fields that are consistent across this object's collection of MetaData.
 
-AlbumMetaDataFile Objects
--------------------------
-
-.. deprecated:: 2.18
-   Use :func:`metadata_lookup` instead.
-
-.. class:: AlbumMetaDataFile(album_name, artist_name, year, catalog, extra, track_metadata)
-
-   This is an abstract parent class to :class:`audiotools.XMCD` and
-   :class:`audiotools.MusicBrainzReleaseXML`.
-   It represents a collection of album metadata as generated
-   by the FreeDB or MusicBrainz services.
-   Modifying fields within an :class:`AlbumMetaDataFile`-compatible
-   object will modify its underlying representation and those
-   changes will be present when :meth:`to_string` is called
-   on the updated object.
-   Note that :class:`audiotools.XMCD` doesn't support the `catalog`
-   field while :class:`audiotools.MusicBrainzReleaseXML` doesn't
-   support the `extra` fields.
-
-.. data:: AlbumMetaDataFile.album_name
-
-   The album's name as a Unicode string.
-
-.. data:: AlbumMetaDataFile.artist_name
-
-   The album's artist's name as a Unicode string.
-
-.. data:: AlbumMetaDataFile.year
-
-   The album's release year as a Unicode string.
-
-.. data:: AlbumMetaDataFile.catalog
-
-   The album's catalog number as a Unicode string.
-
-.. data:: AlbumMetaDataFile.extra
-
-   The album's extra information as a Unicode string.
-
-.. method:: AlbumMetaDataFile.__len__()
-
-   The total number of tracks on the album.
-
-.. method:: AlbumMetaDataFile.to_string()
-
-   Returns the on-disk representation of the file as a binary string.
-
-.. classmethod:: AlbumMetaDataFile.from_string(string)
-
-   Given a binary string, returns an :class:`AlbumMetaDataFile` object
-   of the same class.
-   Raises :exc:`MetaDataFileException` if a parsing error occurs.
-
-.. method:: AlbumMetaDataFile.get_track(index)
-
-   Given a track index (starting from 0), returns a
-   (`track_name`, `track_artist`, `track_extra`) tuple of Unicode strings.
-   Raises :exc:`IndexError` if the requested track is out-of-bounds.
-
-.. method:: AlbumMetaDataFile.set_track(index, track_name, track_artist, track_extra)
-
-   Given a track index (starting from 0) and a set of Unicode strings,
-   sets the appropriate track information.
-   Raises :exc:`IndexError` if the requested track is out-of-bounds.
-
-.. classmethod:: AlbumMetaDataFile.from_tracks(tracks)
-
-   Given a set of :class:`AudioFile` objects, returns an
-   :class:`AlbumMetaDataFile` object of the same class.
-   All files are presumed to be from the same album.
-
-.. classmethod:: AlbumMetaDataFile.from_cuesheet(cuesheet, total_frames, sample_rate[, metadata])
-
-   Given a Cuesheet-compatible object with :meth:`catalog`,
-   :meth:`IRSCs`, :meth:`indexes` and :meth:`pcm_lengths` methods;
-   `total_frames` and `sample_rate` integers; and an optional
-   :class:`MetaData` object of the entire album's metadata,
-   returns an :class:`AlbumMetaDataFile` object of the same class
-   constructed from that data.
-
-.. method:: AlbumMetaDataFile.track_metadata(track_number)
-
-   Given a `track_number` (starting from 1), returns a
-   :class:`MetaData` object of that track's metadata.
-
-   Raises :exc:`IndexError` if the track is out-of-bounds.
-
-.. method:: AlbumMetaDataFile.get(track_number, default)
-
-   Given a `track_number` (starting from 1), returns a
-   :class:`MetaData` object of that track's metadata,
-   or returns `default` if that track is not present.
-
-.. method:: AlbumMetaDataFile.track_metadatas()
-
-   Returns an iterator over all the :class:`MetaData` objects
-   in this file.
-
-.. method:: AlbumMetaDataFile.metadata()
-
-   Returns a single :class:`MetaData` object of all consistent fields
-   in this file.
-   For example, if `album_name` is the same in all MetaData objects,
-   the returned object will have that `album_name` value.
-   If `track_name` differs, the returned object have a blank
-   `track_name` field.
-
 
 Image Objects
 -------------
@@ -1315,6 +1207,23 @@ BufferedPCMReader Objects
    passed from one routine to another.
    But on occasions when we need :class:`pcm.FrameList` objects
    to be of a particular size, this class can accomplish that.
+
+CounterPCMReader Objects
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. class:: CounterPCMReader(pcmreader)
+
+   This class wraps around an existing :class:`PCMReader` object
+   and keeps track of the number of bytes and frames written
+   upon each call to ``read``.
+
+.. attribute:: CounterPCMReader.frames_written
+
+   The number of PCM frames written thus far.
+
+.. method:: CounterPCMReader.bytes_written()
+
+   The number of bytes written thus far.
 
 ReorderedPCMReader Objects
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1635,9 +1544,10 @@ DVDAudio Objects
 
    This class is used to access a DVD-Audio.
    It contains a collection of titlesets.
-   Each titleset contains a list of :class:`DVDATitle` objects,
-   and each :class:`DVDATitle` contains a list of
-   :class:`DVDATrack` objects.
+   Each titleset contains a list of
+   :class:`audiotools.dvda.DVDATitle` objects,
+   and each :class:`audiotools.dvda.DVDATitle` contains a list of
+   :class:`audiotools.dvda.DVDATrack` objects.
    ``audio_ts_path`` is the path to the DVD-Audio's
    ``AUDIO_TS`` directory, such as ``/media/cdrom/AUDIO_TS``.
    ``device`` is the path to the DVD-Audio's mount device,
@@ -1655,122 +1565,6 @@ DVDAudio Objects
    contains a ``DVDAUDIO.MKB`` file, unprotection will be
    performed automatically if supported on the user's platform.
    Otherwise, the files are assumed to be unprotected.
-
-DVDATitle Objects
-^^^^^^^^^^^^^^^^^
-
-.. class:: DVDATitle(dvdaudio, titleset, title, pts_length, tracks)
-
-   This class represents a single DVD-Audio title.
-   ``dvdaudio`` is a :class:`DVDAudio` object.
-   ``titleset`` and ``title`` are integers indicating
-   this title's position in the DVD-Audio - both offset from 0.
-   ``pts_length`` is the the total length of the title in
-   PTS ticks (there are 90000 PTS ticks per second).
-   ``tracks`` is a list of :class:`DVDATrack` objects.
-
-   It is rarely instantiated directly; one usually
-   retrieves titles from the parent :class:`DVDAudio` object.
-
-.. data:: DVDATitle.dvdaudio
-
-   The parent :class:`DVDAudio` object.
-
-.. data:: DVDATitle.titleset
-
-   An integer of this title's titleset, offset from 0.
-
-.. data:: DVDATitle.title
-
-   An integer of this title's position within the titleset, offset from 0.
-
-.. data:: DVDATitle.pts_length
-
-   The length of this title in PTS ticks.
-
-.. data:: DVDATitle.tracks
-
-   A list of :class:`DVDATrack` objects.
-
-.. method:: DVDATitle.info()
-
-   Returns a (``sample_rate``, ``channels``, ``channel_mask``,
-   ``bits_per_sample``, ``type``) tuple of integers.
-   ``type`` is ``0xA0`` if the title is a PCM stream,
-   or ``0xA1`` if the title is an MLP stream.
-
-.. method:: DVDATitle.to_pcm()
-
-   Returns a :class:`PCMReader`-compatible object of this title's
-   entire data stream, which must be split into tracks
-   using its ``next_track()`` method to indicate the length of
-   the next track in the title.
-
-   >>> dvda = DVDAudio("/dev/cdrom")
-   >>> title = dvda[0][0]  # get the first title from the first titleset
-   >>> pcm = title.to_pcm()
-   >>> for track in title:
-   ...    pcm.next_track(track.pts_length)
-   ...    extracted = AudioFile.from_pcm(path, pcm)
-
-
-DVDATrack Objects
-^^^^^^^^^^^^^^^^^
-
-.. class:: DVDATrack(dvdaudio, titleset, title, track, first_pts, pts_length, first_sector, last_sector)
-
-   This class represents a single DVD-Audio track.
-   ``dvdaudio`` is a :class:`DVDAudio` object.
-   ``titleset``, ``title`` and ``track`` are integers indicating
-   this track's position in the DVD-Audio - all offset from 0.
-   ``first_pts`` is the track's first PTS value.
-   ``pts_length`` is the the total length of the track in PTS ticks.
-   ``first_sector`` and ``last_sector`` indicate the range of
-   sectors this track occupies.
-
-   It is also rarely instantiated directly;
-   one usually retrieves tracks from the parent
-   :class:`DVDATitle` object.
-
-.. data:: DVDATrack.dvdaudio
-
-   The parent :class:`DVDAudio` object.
-
-.. data:: DVDATrack.titleset
-
-   An integer of this track's titleset, offset from 0.
-
-.. data:: DVDATrack.title
-
-   An integer of this track's position within the titleset, offset from 0.
-
-.. data:: DVDATrack.track
-
-   An integer of this track's position within the title, offset from 0.
-
-.. data:: DVDATrack.first_pts
-
-   The track's first PTS index.
-
-.. data:: DVDATrack.pts_length
-
-   The length of this track in PTS ticks.
-
-.. data:: DVDATrack.first_sector
-
-   The first sector this track occupies.
-
-.. warning::
-
-   The track is *not* guaranteed to start at the beginning of
-   its first sector.
-   Although it begins within that sector, the track's start may be
-   offset some arbitrary number of bytes from the sector's start.
-
-.. data:: DVDATrack.last_sector
-
-   The last sector this track occupies.
-
 
 ExecQueue Objects
 -----------------
@@ -2311,3 +2105,95 @@ which would cause the string to wrap.
    u'\u30a1\u30a2\u30a3\u30a4\u30a5\u30a6\u30a7\u30a8\u30a9\u30aa\u30ab\u30ac\u30ad\u30ae\u30af\u30b0\u30b1\u30b2\u30b3\u30b4'
    >>> print repr(unicode(tail))
    u'\u30b5\u30b6\u30b7\u30b8\u30b9'
+
+Exceptions
+----------
+
+.. exception:: UnknownAudioType
+
+   Raised by :func:`filename_to_type` if the file's suffix is unknown.
+
+.. exception:: AmbiguousAudioType
+
+   Raised by :func:`filename_to_type` if the file's suffix
+   applies to more than one audio class.
+
+.. exception:: DecodingError
+
+   Raised by :class:`PCMReader`'s .close() method if
+   a helper subprocess exits with an error,
+   typically indicating a problem decoding the file.
+
+.. exception:: DuplicateFile
+
+   Raised by :func:`open_files` if the same file
+   is included more than once and ``no_duplicates`` is indicated.
+
+.. exception:: DuplicateOutputFile
+
+   Raised by :func:`audiotools.ui.process_output_options`
+   if the same output file is generated more than once.
+
+.. exception:: EncodingError
+
+   Raised by :meth:`AudioFile.from_pcm` and :meth:`AudioFile.convert`
+   if an error occurs when encoding an input file.
+   This includes errors from the input stream,
+   a problem writing the output file in the given location,
+   or EncodingError subclasses such as
+   :exc:`UnsupportedBitsPerSample` if the input stream
+   is formatted in a way the output class does not support.
+
+.. exception:: InvalidFile
+
+   Raised by :meth:`AudioFile.__init__` if the file
+   is invalid in some way.
+
+.. exception:: InvalidFilenameFormat
+
+   Raised by :meth:`AudioFile.track_name` if the format string
+   contains broken fields.
+
+.. exception:: InvalidImage
+
+   Raised by :meth:`Image.new` if the image cannot be parsed correctly.
+
+.. exception:: OutputFileIsInput
+
+   Raised by :func:`process_output_options` if an output file
+   is the same as any of the input files.
+
+.. exception:: SheetException
+
+   A parent exception of :exc:`audiotools.cue.CueException`
+   and :exc:`audiotools.toc.TOCException`,
+   to be raised by :func:`read_sheet` if a .toc or .cue file
+   is unable to be parsed correctly.
+
+.. exception:: UnsupportedBitsPerSample
+
+   Subclass of :exc:`EncodingError`, indicating
+   the input stream's bits-per-sample is not supported
+   by the output class.
+
+.. exception:: UnsupportedChannelCount
+
+   Subclass of :exc:`EncodingError`, indicating
+   the input stream's channel count is not supported
+   by the output class.
+
+.. exception:: UnsupportedChannelMask
+
+   Subclass of :exc:`EncodingError`, indicating
+   the input stream's channel mask is not supported
+   by the output class.
+
+.. exception:: UnsupportedFile
+
+   Raised by :func:`open` if the given file is not something
+   identifiable, or we do not have the installed binaries to support.
+
+.. exception:: UnsupportedTracknameField
+
+   Raised by :meth:`AudioFile.track_name` if a track name
+   field is not supported.

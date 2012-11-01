@@ -3062,9 +3062,9 @@ buf_reset(struct bs_buffer *stream)
 int
 buf_getc(struct bs_buffer *stream)
 {
-    if (stream->buffer_position < stream->buffer_size) {
+    if (stream->buffer_position < stream->buffer_size)
         return stream->buffer[stream->buffer_position++];
-    } else
+    else
         return EOF;
 }
 

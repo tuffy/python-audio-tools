@@ -4,7 +4,7 @@
   <author>Brian Langenberger</author>
   <section>1</section>
   <name>concatenate two or more audio tracks</name>
-  <title>Audio Concatenater</title>
+  <title>Audio Concatenator</title>
   <synopsis>[OPTIONS] &lt;track 1&gt; [track 2] [track 3] ...</synopsis>
   <description>
     trackcat combines the audio data from two or more audio tracks

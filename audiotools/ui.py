@@ -226,9 +226,9 @@ try:
                 if (i == 'esc'):
                     self.exit(None)
                 elif (i == 'f1'):
-                    self.metadata.selected_match.select_previous_item()
+                    self.metadata.select_previous_item()
                 elif (i == 'f2'):
-                    self.metadata.selected_match.select_next_item()
+                    self.metadata.select_next_item()
             else:
                 if (i == 'esc'):
                     self.previous(None)
@@ -379,9 +379,9 @@ try:
             if (i == 'esc'):
                 self.exit(None)
             elif (i == 'f1'):
-                self.metadata.selected_match.select_previous_item()
+                self.metadata.select_previous_item()
             elif (i == 'f2'):
-                self.metadata.selected_match.select_next_item()
+                self.metadata.select_next_item()
 
         def output_track(self):
             """returns (output_class,
@@ -501,9 +501,21 @@ try:
                 else:
                     self.status.set_text(u"")
 
+        def select_previous_item(self):
+            """selects the previous item (track or field)
+            if possible"""
+
+            self.selected_match.select_previous_item()
+
+        def select_next_item(self):
+            """selects the next item (track or field)
+            if possible"""
+
+            self.selected_match.select_next_item()
+
         def populated_metadata(self):
-            """yields a new, populated MetaData object per track
-            to be called once Urwid's main loop has completed"""
+            """yields a new, populated MetaData object per track,
+            depending on the current selection and its values."""
 
             for (track_id, metadata) in self.selected_match.metadata():
                 yield metadata
@@ -1504,12 +1516,12 @@ try:
         def set_filename(self, filename):
             """filename is a plain filename string to set"""
 
-            raise NotImplementedError()
+            self.set_edit_text(filename.decode(audiotools.FS_ENCODING))
 
         def get_filename(self):
             """returns selected filename as a plain string"""
 
-            raise NotImplementedError()
+            return self.get_edit_text().encode(audiotools.FS_ENCODING)
 
     class BrowseFields(urwid.PopUpLauncher):
         def __init__(self, output_format):
@@ -1959,9 +1971,7 @@ try:
 
             return (self.selected_class,
                     self.output_quality.selection(),
-                    audiotools.Filename(
-                    self.output_filename.get_edit_text().decode(
-                        audiotools.FS_ENCODING)))
+                    audiotools.Filename(self.output_filename.get_filename()))
 
     class MappedButton(urwid.Button):
         def __init__(self, label, on_press=None, user_data=None,
@@ -2059,7 +2069,7 @@ try:
             track_name_widget = urwid.Columns(
                 [('fixed',
                   label_width,
-                  urwid.Text(('header',
+                  urwid.Text(('label',
                               u"%s : " % (METADATA_TRACK_NAME)),
                              align='right')),
                  ('weight', 1, self.track_name)])
@@ -2067,7 +2077,7 @@ try:
             artist_name_widget = urwid.Columns(
                 [('fixed',
                   label_width,
-                  urwid.Text(('header',
+                  urwid.Text(('label',
                               u"%s : " % (METADATA_ARTIST_NAME)),
                              align='right')),
                  ('weight', 1, self.artist_name)])
@@ -2075,7 +2085,7 @@ try:
             album_name_widget = urwid.Columns(
                 [('fixed',
                   label_width,
-                  urwid.Text(('header',
+                  urwid.Text(('label',
                               u"%s : " % (METADATA_ALBUM_NAME)),
                              align='right')),
                  ('weight', 1, self.album_name)])
@@ -2083,7 +2093,7 @@ try:
             track_number_widget = urwid.Columns(
                 [('fixed',
                   label_width,
-                  urwid.Text(('header',
+                  urwid.Text(('label',
                               u"%s : " % (LAB_PLAY_TRACK)),
                              align='right')),
                  ('weight', 1, self.tracknum)])
@@ -2248,13 +2258,13 @@ try:
             self.player.close()
             raise urwid.ExitMainLoop()
 
-    def timer(main_loop, trackplay):
+    def timer(main_loop, playergui):
         import time
 
-        trackplay.update_status()
+        playergui.update_status()
         main_loop.set_alarm_at(tm=time.time() + 1,
                                callback=timer,
-                               user_data=trackplay)
+                               user_data=playergui)
 
     def style():
         """returns a list of widget style tuples
@@ -2264,7 +2274,10 @@ try:
                 ('label', 'default,bold', 'default'),
                 ('modified', 'default,bold', 'default', ''),
                 ('duplicate', 'light red', 'default'),
-                ('error', 'light red,bold', 'default')]
+                ('error', 'light red,bold', 'default'),
+                ('pg normal', 'white', 'black', 'standout'),
+                ('pg complete', 'white', 'dark blue'),
+                ('pg smooth', 'dark blue', 'black')]
 
 except ImportError:
     AVAILABLE = False

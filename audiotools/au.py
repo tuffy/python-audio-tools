@@ -182,12 +182,12 @@ class AuAudio(AudioFile):
         from . import FRAMELIST_SIZE
         from . import EncodingError
         from . import DecodingError
-        from . import InvalidFormat
 
         if (pcmreader.bits_per_sample not in (8, 16, 24)):
             from . import Filename
             from .text import ERR_UNSUPPORTED_BITS_PER_SAMPLE
-            raise InvalidFormat(
+            from . import UnsupportedBitsPerSample
+            raise UnsupportedBitsPerSample(
                 ERR_UNSUPPORTED_BITS_PER_SAMPLE %
                 {"target_filename": Filename(filename),
                  "bps": pcmreader.bits_per_sample})

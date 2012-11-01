@@ -1120,13 +1120,6 @@ class InvalidFile(Exception):
     pass
 
 
-class InvalidFormat(Exception):
-    """raised if an audio file cannot be created correctly from from_pcm()
-    due to having a PCM format unsupported by the output format"""
-
-    pass
-
-
 class EncodingError(IOError):
     """raised if an audio file cannot be created correctly from from_pcm()
     due to an error by the encoder"""
@@ -4868,10 +4861,6 @@ class ExecQueue2:
             for (reader, result) in self.__await_jobs__():
                 del(self.process_pool[reader])
             yield result
-
-
-class ProgressJobQueueComplete(Exception):
-    pass
 
 
 def output_progress(u, current, total):

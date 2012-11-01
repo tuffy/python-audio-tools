@@ -264,10 +264,7 @@ if (__name__ == '__main__'):
                                 False)
 
         loop = urwid.MainLoop(cdplay,
-                              [('header', 'default,bold', 'default', ''),
-                               ('pg normal', 'white', 'black', 'standout'),
-                               ('pg complete', 'white', 'dark blue'),
-                               ('pg smooth', 'dark blue', 'black')],
+                              audiotools.ui.style(),
                               unhandled_input=cdplay.handle_text)
         loop.set_alarm_at(tm=time.time() + 1,
                           callback=audiotools.ui.timer,

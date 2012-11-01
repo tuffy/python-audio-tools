@@ -19,6 +19,7 @@ Contents:
    audiotools_cdio.rst
    audiotools_cue.rst
    audiotools_toc.rst
+   audiotools_ui.rst
    audiotools_player.rst
    metadata.rst
 

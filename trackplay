@@ -214,10 +214,7 @@ if (__name__ == '__main__'):
                                     audiofiles[0].get_metadata()), False)
 
         loop = urwid.MainLoop(trackplay,
-                              [('header', 'default,bold', 'default', ''),
-                               ('pg normal', 'white', 'black', 'standout'),
-                               ('pg complete', 'white', 'dark blue'),
-                               ('pg smooth', 'dark blue', 'black')],
+                              audiotools.ui.style(),
                               unhandled_input=trackplay.handle_text)
 
         loop.set_alarm_at(tm=time.time() + 1,
