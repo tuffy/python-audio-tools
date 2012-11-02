@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col width=".333333" id="subframe">Subframe₀</col>
-    <col width=".333333">Subframe₁</col>
-    <col style="dashed" width=".333333">...</col>
+    <col width=".18">Frame Header</col>
+    <col width=".15">Subframe₀</col>
+    <col width=".15">Subframe₁</col>
+    <col width=".15" id="subframe">Subframe₂</col>
+    <col width=".15">Subframe₃</col>
+    <col width=".05" style="dashed">...</col>
+    <col width=".07" style="dashed">align</col>
+    <col width=".1" start="0" end="15" id="frame_e">CRC-16</col>
   </row>
   <spacer/>
   <row>

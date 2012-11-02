@@ -21,7 +21,7 @@ data types which we'll call \texttt{unsigned}, \texttt{signed} and
   \SetKwData{UNSIGNED}{unsigned}
   $\text{\UNSIGNED} \leftarrow$ read \texttt{unsigned}($c + 1$)\;
   \eIf(\tcc*[f]{positive}){$\UNSIGNED \bmod 2 = 0$}{
-    \Return $\lfloor\UNSIGNED \div 2\rfloor$\;
+    \Return $\UNSIGNED \div 2$\;
   }(\tcc*[f]{negative}){
     \Return $-\lfloor\UNSIGNED \div 2\rfloor - 1$\;
   }
@@ -155,6 +155,13 @@ The remaining fields are determined as follows:
     {\color{blue} 0} & {\color{green} 0} &
     {\color{blue} 0} \times 2 ^ {\color{fuchsia} 0} + {\color{green} 0} =
     \textbf{0} \\
+    \textsf{number of means} & \leftarrow & {\color{red} 0} &
+    {\color{orange} 3} &
+    {\color{red} 0} \times 2 ^ 2 + {\color{orange} 3} =
+    {\color{fuchsia} 3} &
+    {\color{blue} 0} & {\color{green} 4} &
+    {\color{blue} 0} \times 2 ^ {\color{fuchsia} 3} + {\color{green} 4} =
+    \textbf{4} \\
     \textsf{bytes to skip} & \leftarrow & {\color{red} 0} & {\color{orange} 0} &
     {\color{red} 0} \times 2 ^ 2 + {\color{orange} 0} = {\color{fuchsia} 0} &
     {\color{blue} 0} & {\color{green} 0} &
@@ -551,6 +558,40 @@ this \texttt{DIFF} command.
 
 \clearpage
 
+\subsection{Wrapping Samples}
+\label{shorten:wrap_samples}
+
+For any given channel, in order to process \texttt{DIFF} or
+\texttt{QLPC} $\text{command}_i$,
+one requires a certain number of negative-indexed samples.
+As an example, to process a \texttt{DIFF3},
+$\textsf{sample}_{(-3)}$, $\textsf{sample}_{(-2)}$ and $\textsf{sample}_{(-1)}$
+are required.
+These samples are ``wrapped around'' from the end of $\text{command}_{(i - 1)}$
+on the same channel.
+This is what the \VAR{samples to wrap} field in the Shorten header is for.
+It indicates how many samples must be wrapped from one command
+to the next.
+
+\subsection{Applying Left Shift to Samples}
+\label{shorten:apply_leftshift}
+\ALGORITHM{a list of samples for a given channel $c$, a left shift value}{a list of unshifted samples}
+\SetKwData{LEFTSHIFT}{left shift}
+\SetKwData{SAMPLES}{samples}
+\SetKwData{BLOCKLENGTH}{block length}
+\SetKwData{UNSHIFTED}{unshifted}
+\eIf{$\LEFTSHIFT = 0$}{
+  \Return $\text{\SAMPLES}_c$\tcc*{no change}
+}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
+    $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SAMPLES}_{c~i} \times 2 ^ {\LEFTSHIFT}$\;
+  }
+  \Return $\text{\UNSHIFTED}_{c}$\;
+}
+\EALGORITHM
+
+\clearpage
+
 \subsection{Reading \texttt{QLPC}}
 \label{shorten:read_qlpc}
 {\relsize{-1}
@@ -714,40 +755,6 @@ In this example:
 
 \clearpage
 
-\subsection{Wrapping Samples}
-\label{shorten:wrap_samples}
-
-For any given channel, in order to process \texttt{DIFF} or
-\texttt{QLPC} $\text{command}_i$,
-one requires a certain number of negative-indexed samples.
-As an example, to process a \texttt{DIFF3},
-$\textsf{sample}_{(-3)}$, $\textsf{sample}_{(-2)}$ and $\textsf{sample}_{(-1)}$
-are required.
-These samples are ``wrapped around'' from the end of $\text{command}_{(i - 1)}$
-on the same channel.
-This is what the \VAR{samples to wrap} field in the Shorten header is for.
-It indicates how many samples must be wrapped from one command
-to the next.
-
-\subsection{Applying Left Shift to Samples}
-\label{shorten:apply_leftshift}
-\ALGORITHM{a list of samples for a given channel $c$, a left shift value}{a list of unshifted samples}
-\SetKwData{LEFTSHIFT}{left shift}
-\SetKwData{SAMPLES}{samples}
-\SetKwData{BLOCKLENGTH}{block length}
-\SetKwData{UNSHIFTED}{unshifted}
-\eIf{$\LEFTSHIFT = 0$}{
-  \Return $\text{\SAMPLES}_c$\tcc*{no change}
-}{
-  \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
-    $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SAMPLES}_{c~i} \times 2 ^ {\LEFTSHIFT}$\;
-  }
-  \Return $\text{\UNSHIFTED}_{c}$\;
-}
-\EALGORITHM
-
-\clearpage
-
 \section{Shorten Encoding}
 As with decoding, one needs \texttt{unsigned}, \texttt{signed} and \texttt{long}
 functions:
@@ -870,77 +877,75 @@ $\LSB \rightarrow$ \WRITE $c$ unsigned bits\;
 
 \subsection{Writing Shorten Header}
 \label{shorten:write_header}
-{\relsize{-1}
-  \ALGORITHM{the input stream's bits-per-sample, sample signedness and endianness;\newline channel count and initial block size}{a Shorten header}
-  \SetKwData{BITSPERSAMPLE}{bits per sample}
-  \SetKwData{ENDIANNESS}{endianness}
-  \SetKwData{SIGNEDNESS}{signedness}
-  \SetKwData{CHANNELS}{channel count}
-  \SetKwData{BLOCKSIZE}{block size}
-  $\texttt{"ajkg"} \rightarrow$ \WRITE 4 bytes\;
-  $2 \rightarrow$ \WRITE 8 unsigned bits\;
-  \uIf{$\BITSPERSAMPLE = 8$}{
-    \eIf{$\SIGNEDNESS = signed$}{
-      write \texttt{long}(1)\tcc*[r]{signed, 8 bit}
-    }{
-      write \texttt{long}(2)\tcc*[r]{unsigned, 8 bit}
-    }
+\ALGORITHM{the input stream's bits-per-sample, sample signedness and endianness;\newline channel count and initial block size}{a Shorten header}
+\SetKwData{BITSPERSAMPLE}{bits per sample}
+\SetKwData{ENDIANNESS}{endianness}
+\SetKwData{SIGNEDNESS}{signedness}
+\SetKwData{CHANNELS}{channel count}
+\SetKwData{BLOCKSIZE}{block size}
+$\texttt{"ajkg"} \rightarrow$ \WRITE 4 bytes\;
+$2 \rightarrow$ \WRITE 8 unsigned bits\;
+\uIf{$\BITSPERSAMPLE = 8$}{
+  \eIf{$\SIGNEDNESS = signed$}{
+    write \texttt{long}(1)\tcc*[r]{signed, 8 bit}
+  }{
+    write \texttt{long}(2)\tcc*[r]{unsigned, 8 bit}
   }
-  \uElseIf{$\BITSPERSAMPLE = 16$}{
-    \eIf{$\SIGNEDNESS = signed$}{
-      \eIf{$\ENDIANNESS = big$}{
-        write \texttt{long}(3)\tcc*[r]{signed, 16 bit, big-endian}
-      }{
-        write \texttt{long}(5)\tcc*[r]{signed, 16 bit, little-endian}
-      }
-    }{
-      \eIf{$\ENDIANNESS = big$}{
-        write \texttt{long}(4)\tcc*[r]{unsigned, 16 bit, big-endian}
-      }{
-        write \texttt{long}(6)\tcc*[r]{unsigned, 16 bit, little-endian}
-      }
-    }
-
-  }
-  \Else{
-    unsupported number of bits per sample\;
-  }
-  write \texttt{long}(\CHANNELS)\;
-  write \texttt{long}(\BLOCKSIZE)\;
-  write \texttt{long}(0)\tcc*[r]{maximum LPC}
-  write \texttt{long}(0)\tcc*[r]{mean count}
-  write \texttt{long}(0)\tcc*[r]{bytes to skip}
-\EALGORITHM
 }
+\uElseIf{$\BITSPERSAMPLE = 16$}{
+  \eIf{$\SIGNEDNESS = signed$}{
+    \eIf{$\ENDIANNESS = big$}{
+      write \texttt{long}(3)\tcc*[r]{signed, 16 bit, big-endian}
+    }{
+      write \texttt{long}(5)\tcc*[r]{signed, 16 bit, little-endian}
+    }
+  }{
+    \eIf{$\ENDIANNESS = big$}{
+      write \texttt{long}(4)\tcc*[r]{unsigned, 16 bit, big-endian}
+    }{
+      write \texttt{long}(6)\tcc*[r]{unsigned, 16 bit, little-endian}
+    }
+  }
+
+}
+\Else{
+  unsupported number of bits per sample\;
+}
+write \texttt{long}(\CHANNELS)\;
+write \texttt{long}(\BLOCKSIZE)\;
+write \texttt{long}(0)\tcc*[r]{maximum LPC}
+write \texttt{long}(0)\tcc*[r]{mean count}
+write \texttt{long}(0)\tcc*[r]{bytes to skip}
+\EALGORITHM
+
+\clearpage
 
 \subsection{Calculating Wasted Bits per Sample}
 \label{shorten:calculate_wasted_bps}
-{\relsize{-1}
-  \ALGORITHM{a list of signed PCM samples}{an unsigned integer}
-  \SetKwData{WASTEDBPS}{wasted bps}
-  \SetKwData{SAMPLE}{sample}
-  \SetKwFunction{MIN}{min}
-  \SetKwFunction{WASTED}{wasted}
-  $\text{\WASTEDBPS} \leftarrow \infty$\tcc*[r]{maximum unsigned integer}
-  \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
-    $\text{\WASTEDBPS} \leftarrow \MIN(\WASTED(\text{\SAMPLE}_i)~,~\text{\WASTEDBPS})$\;
-  }
-  \eIf(\tcc*[f]{all samples are 0}){$\WASTEDBPS = \infty$}{
-    \Return 0\;
-  }{
-    \Return \WASTEDBPS\;
-  }
-  \EALGORITHM
-  where the \texttt{wasted} function is defined as:
-  \begin{equation*}
-    \texttt{wasted}(x) =
-    \begin{cases}
-      \infty & \text{if } x = 0 \\
-      0 & \text{if } x \bmod 2 = 1 \\
-      1 + \texttt{wasted}(x \div 2) & \text{if } x \bmod 2 = 0 \\
-    \end{cases}
-  \end{equation*}
+\ALGORITHM{a list of signed PCM samples}{an unsigned integer}
+\SetKwData{WASTEDBPS}{wasted bps}
+\SetKwData{SAMPLE}{sample}
+\SetKwFunction{MIN}{min}
+\SetKwFunction{WASTED}{wasted}
+$\text{\WASTEDBPS} \leftarrow \infty$\tcc*[r]{maximum unsigned integer}
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
+  $\text{\WASTEDBPS} \leftarrow \MIN(\WASTED(\text{\SAMPLE}_i)~,~\text{\WASTEDBPS})$\;
 }
+\eIf(\tcc*[f]{all samples are 0}){$\WASTEDBPS = \infty$}{
+  \Return 0\;
+}{
+  \Return \WASTEDBPS\;
+}
+\EALGORITHM
+where the \texttt{wasted} function is defined as:
+\begin{equation*}
+  \texttt{wasted}(x) =
+  \begin{cases}
+    \infty & \text{if } x = 0 \\
+    0 & \text{if } x \bmod 2 = 1 \\
+    1 + \texttt{wasted}(x \div 2) & \text{if } x \bmod 2 = 0 \\
+  \end{cases}
+\end{equation*}
 
 \clearpage
 
@@ -972,19 +977,31 @@ $\ENERGY \leftarrow 0$\;
   \While{$\BLOCKSIZE \times 2 ^ \text{\ENERGY} < \text{\SUM}_1$}{
     $\ENERGY \leftarrow \ENERGY + 1$\;
   }
-  \Return $(1~,~\ENERGY~,~\text{\DELTA}_{1~[0 \IDOTS \BLOCKSIZE]})$\;
+  \Return $\left\lbrace\begin{tabular}{l}
+  1 \\
+  \ENERGY \\
+  $\text{\DELTA}_{1~[0 \IDOTS \BLOCKSIZE]}$ \\
+  \end{tabular}\right.$\;
 }
 \uElseIf{$\text{\SUM}_2 < \text{\SUM}_3$}{
   \While{$\BLOCKSIZE \times 2 ^ \text{\ENERGY} < \text{\SUM}_2$}{
     $\ENERGY \leftarrow \ENERGY + 1$\;
   }
-  \Return $(2~,~\ENERGY~,~\text{\DELTA}_{2~[0 \IDOTS \BLOCKSIZE]})$\;
+  \Return $\left\lbrace\begin{tabular}{l}
+  2 \\
+  \ENERGY \\
+  $\text{\DELTA}_{2~[0 \IDOTS \BLOCKSIZE]}$ \\
+  \end{tabular}\right.$\;
 }
 \Else{
   \While{$\BLOCKSIZE \times 2 ^ \text{\ENERGY} < \text{\SUM}_3$}{
     $\ENERGY \leftarrow \ENERGY + 1$\;
   }
-  \Return $(3~,~\ENERGY~,~\text{\DELTA}_{3~[0 \IDOTS \BLOCKSIZE]})$\;
+  \Return $\left\lbrace\begin{tabular}{l}
+  3 \\
+  \ENERGY \\
+  $\text{\DELTA}_{3~[0 \IDOTS \BLOCKSIZE]}$ \\
+  \end{tabular}\right.$\;
 }
 \EALGORITHM
 \par
@@ -1031,7 +1048,7 @@ and as returned residuals.
 \noindent
 Since the $\textsf{sum}_3$ value of 42 is the smallest,
 we'll use a \texttt{DIFF3} command.
-The loop for calculation the energy value is:
+The loop for calculating the energy value is:
 \begin{align*}
 \text{(block size) } 15 \times 2 ^ 0 &< 42 \text{ ($\textsf{sum}_3$)} \\
 15 \times 2 ^ 1 &< 42 \\

@@ -7,11 +7,14 @@
   </row>
   <spacer/>
   <row>
-    <col width=".25" id="frame_s">Frame Header</col>
-    <col width=".25">Subframe₀</col>
-    <col width=".25">Subframe₁</col>
-    <col width=".1" style="dashed">...</col>
-    <col width=".15" style="dashed" id="frame_e">byte-align</col>
+    <col width=".18" id="frame_s">Frame Header</col>
+    <col width=".15">Subframe₀</col>
+    <col width=".15">Subframe₁</col>
+    <col width=".15">Subframe₂</col>
+    <col width=".15">Subframe₃</col>
+    <col width=".05" style="dashed">...</col>
+    <col width=".07" style="dashed">align</col>
+    <col width=".1" start="0" end="15" id="frame_e">CRC-16</col>
   </row>
   <spacer/>
   <row>

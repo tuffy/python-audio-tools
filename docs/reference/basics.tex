@@ -80,7 +80,7 @@ int x = 1;
 int y = 2;
 \end{Verbatim}
 Comparisons are performed using the usual math operators
-$<$, $\leq$, $=$, $\geq$, $>$.  So:
+$<$, $\leq$, $=$, $\neq$, $\geq$, $>$.  So:
 \par
 \noindent
 \begin{algorithm}[H]
@@ -467,7 +467,7 @@ $c$ & 7 & 5 & \texttt{\color{fuchsia}0 0 1 1 1} \\
   $\VALUE \rightarrow$ \WRITE $(n - 1)$ unsigned bits\;
 }(\tcc*[f]{negative value}){
   $1 \rightarrow$ \WRITE 1 unsigned bit\;
-  $2 ^ {n - 1} + \VALUE \rightarrow$ \WRITE $(n - 1)$ unsigned bits\;
+  $(2 ^ {n - 1} + \VALUE) \rightarrow$ \WRITE $(n - 1)$ unsigned bits\;
 }
 \EALGORITHM
 \par
@@ -507,7 +507,7 @@ Signed values are written as follows:
   $\VALUE \rightarrow$ \WRITE $(n - 1)$ unsigned bits\;
   $0 \rightarrow$ \WRITE 1 unsigned bit\;
 }(\tcc*[f]{negative value}){
-  $2 ^ {n - 1} + \VALUE \rightarrow$ \WRITE $(n - 1)$ unsigned bits\;
+  $(2 ^ {n - 1} + \VALUE) \rightarrow$ \WRITE $(n - 1)$ unsigned bits\;
   $1 \rightarrow$ \WRITE 1 unsigned bit\;
 }
 \EALGORITHM
@@ -572,7 +572,7 @@ results in $u = \texttt{[0, 1, 2, 3, 4]}$
 \SetKwData{VALUE}{value}
 \SetKwData{STOPBIT}{stop bit}
 \eIf{$\STOPBIT = 0$}{
-  $2 ^ \text{\VALUE} - 1 \rightarrow$ \WRITE \VALUE unsigned bits\;
+  $(2 ^ \text{\VALUE} - 1) \rightarrow$ \WRITE \VALUE unsigned bits\;
 }{
   $0 \rightarrow$ \WRITE \VALUE unsigned bits\;
 }
