@@ -56,6 +56,7 @@ figures/flac/cuesheet.pdf \
 figures/flac/cuesheet-example.pdf \
 figures/flac/fixed.pdf \
 figures/flac/fixed2.pdf \
+figures/flac/fixed-enc-example.pdf \
 figures/flac/fixed-parse.pdf \
 figures/flac/frame.pdf \
 figures/flac/frames.pdf \
@@ -81,6 +82,7 @@ figures/flac/residual-example3.pdf \
 figures/flac/residual-example4.pdf \
 figures/flac/residual-example5.pdf \
 figures/flac/residual-parse.pdf \
+figures/flac/residuals-enc-example.pdf \
 figures/flac/seektable.pdf \
 figures/flac/seektable-example.pdf \
 figures/flac/stream.pdf \

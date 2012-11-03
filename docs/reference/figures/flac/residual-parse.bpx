@@ -2,7 +2,7 @@
 <struct endianness="big">
   <field size="2" value="00b">coding</field>
   <field size="4" value="0000b">partition order</field>
-  <field size="4" value="0010b">Rice parameter</field>
+  <field size="4" value="0010b">Rice parameter₁</field>
   <field size="1" value="1b">MSB₀</field>
   <field size="2" value="11b">LSB₀</field>
   <field size="2" value="01b">MSB₁</field>

@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<struct endianness="big">
+  <field size="1" value="0">pad</field>
+  <field size="3" value="1">type</field>
+  <field size="3" value="1">order</field>
+  <field size="1" value="0">wasted</field>
+  <field size="16" value="18">warm-up sample₀</field>
+  <field size="43" value="0000000001001000000010011101101100010110011b">residual block</field>
+</struct>

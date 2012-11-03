@@ -1339,10 +1339,9 @@ during FLAC decoding, but performed in the opposite order.
 \SetKwFunction{LEN}{len}
 \SetKwFunction{MIN}{min}
 \SetKwFunction{BUILDSUBFRAME}{build subframe}
-\SetKwFunction{CALCMIDSIDE}{calculate mid-side}
 \eIf{$\CHANNELCOUNT = 2$ \AND (try mid-side \OR try adaptive mid-side)}{
   \begin{tabular}{rcl}
-    $(\AVERAGE~,~\DIFFERENCE)$ & $\leftarrow$ & \hyperref[flac:calc_midside]{calculate mid-side of $\text{\CHANNEL}_0$ and $\text{\CHANNEL}_1$} \\
+    $(\AVERAGE~,~\DIFFERENCE)$ & $\leftarrow$ & \hyperref[flac:calc_midside]{calculate average-difference of $\text{\CHANNEL}_0$ and $\text{\CHANNEL}_1$} \\
     \LEFTS & $\leftarrow$ & \hyperref[flac:encode_subframe]{encode $\text{\CHANNEL}_0$ as subframe at $\BPS$} \\
     \RIGHTS & $\leftarrow$ & \hyperref[flac:encode_subframe]{encode $\text{\CHANNEL}_1$ as subframe at $\BPS$} \\
     \AVGS & $\leftarrow$ &  \hyperref[flac:encode_subframe]{encode $\text{\AVERAGE}$ as subframe at $\BPS$} \\
@@ -1715,6 +1714,7 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
   $\VERBATIM \leftarrow$ \hyperref[flac:encode_verbatim_subframe]{build VERBATIM subframe from}
   $\left\lbrace\begin{tabular}{l}
   \SAMPLE \\
+  \BLOCKSIZE \\
   \BPS \\
   \WASTEDBPS \\
   \end{tabular}\right.$\;
@@ -1722,6 +1722,7 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
   $\FIXED \leftarrow$ \hyperref[flac:encode_fixed_subframe]{build FIXED subframe from}
   $\left\lbrace\begin{tabular}{l}
   \SAMPLE \\
+  \BLOCKSIZE \\
   \BPS \\
   \WASTEDBPS \\
   \end{tabular}\right.$\;
@@ -1733,10 +1734,11 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
       $\QLPSHIFT$ \\
       $\QLPCOEFFS$ \\
       \end{tabular}\right\rbrace \leftarrow$
-    \hyperref[flac:compute_lpc_params]{compute LPC parameters from \SAMPLE}\;
+    \hyperref[flac:compute_lpc_params]{compute LPC parameters from \SAMPLE and \BLOCKSIZE}\;
     $\text{\LPC} \leftarrow$ \hyperref[flac:encode_lpc_subframe]{build LPC subframe from}
     $\left\lbrace\begin{tabular}{l}
     \SAMPLE \\
+    \BLOCKSIZE \\
     \BPS \\
     \WASTEDBPS \\
     \ORDER \\
@@ -1778,6 +1780,9 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
 $\text{\WASTEDBPS} \leftarrow \infty$\tcc*[r]{maximum unsigned integer}
 \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
   $\text{\WASTEDBPS} \leftarrow \MIN(\WASTED(\text{\SAMPLE}_i)~,~\text{\WASTEDBPS})$\;
+  \If{$\text{\WASTEDBPS} = 0$}{
+    \Return 0\;
+  }
 }
 \eIf(\tcc*[f]{all samples are 0}){$\WASTEDBPS = \infty$}{
   \Return 0\;
@@ -1816,7 +1821,7 @@ $\text{\SAMPLE} \rightarrow$ \WRITE $(\BPS)$ signed bits\;
 
 \subsection{Encoding a VERBATIM Subframe}
 \label{flac:encode_verbatim_subframe}
-\ALGORITHM{signed subframe samples, subframe's bits per sample, wasted BPS}{a VERBATIM subframe}
+\ALGORITHM{signed subframe samples, block size, subframe's bits per sample, wasted BPS}{a VERBATIM subframe}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{SAMPLE}{sample}
 \SetKwData{BPS}{subframe's BPS}
@@ -1843,7 +1848,7 @@ $1 \rightarrow$ \WRITE 6 unsigned bits\tcc*[r]{subframe type}
 \subsection{Encoding a FIXED Subframe}
 \label{flac:encode_fixed_subframe}
 {\relsize{-1}
-\ALGORITHM{signed subframe samples, subframe's bits per sample, wasted BPS}{a FIXED subframe}
+\ALGORITHM{signed subframe samples, block size, subframe's bits per sample, wasted BPS}{a FIXED subframe}
 \SetKwData{BPS}{subframe's BPS}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{RESIDUAL}{residual}
@@ -1870,7 +1875,7 @@ choose subframe \ORDER such that $\text{\ERROR}_{\ORDER}$ is smallest\;
 use subframe \ORDER 0\;
 }
 \BlankLine
-\tcc{then return a FIXED subframe with that order}
+\tcc{then return a FIXED subframe with best order}
 $0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{pad}
 $1 \rightarrow$ \WRITE 3 unsigned bits\tcc*[r]{subframe type}
 $\text{\ORDER} \rightarrow$ \WRITE 3 unsigned bits\;
@@ -1883,7 +1888,7 @@ $\text{\ORDER} \rightarrow$ \WRITE 3 unsigned bits\;
 \For(\tcc*[f]{warm-up samples}){$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
   $\text{\SAMPLE}_i \rightarrow$ \WRITE $(\BPS)$ signed bits\;
 }
-\hyperref[flac:write_residual_block]{write encoded residual block based on $\text{\RESIDUAL}_{\ORDER}$'s signed values}\;
+\hyperref[flac:write_residual_block]{write encoded residual block based on $\text{\RESIDUAL}_{\ORDER}$, \BLOCKSIZE and \ORDER}\;
 \BlankLine
 \Return a FIXED subframe\;
 \EALGORITHM
@@ -1924,6 +1929,13 @@ Also note that if you remove the first $4 - \textsf{order}$ residuals
 and sum the absolute value of the remaining residuals,
 the result is the \VAR{total error} value
 used when calculating the best FIXED subframe order.
+\par
+Since $\textsf{total error}_1$'s value of 10 is the smallest,
+the best order for this FIXED subframe is 1.
+
+\begin{figure}[h]
+  \includegraphics{figures/flac/fixed-enc-example.pdf}
+\end{figure}
 
 \clearpage
 
@@ -1936,7 +1948,7 @@ used when calculating the best FIXED subframe order.
 \SetKwData{ORDER}{predictor order}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{PAORDER}{partition order}
-\SetKwData{PSIZE}{partition size}
+\SetKwData{PSIZE}{partitions size}
 \SetKwData{PSUM}{partition sum}
 \SetKwData{RICE}{Rice}
 \SetKwData{CODING}{coding method}
@@ -1948,14 +1960,20 @@ used when calculating the best FIXED subframe order.
 \SetKwFunction{SUM}{sum}
 \SetKwFunction{MAX}{max}
 \SetKw{BREAK}{break}
-\tcc{calculate best partition order and Rice parameters for that order}
+\tcc{generate set of partitions for each partition order}
 \For{$o \leftarrow \text{\MINPORDER}$ \emph{\KwTo}(\MAXPORDER + 1)}{
   \eIf{$(\BLOCKSIZE \bmod 2^{o}) = 0$}{
     $\left.\begin{tabular}{r}
       $\text{\RICE}_o$ \\
       $\text{\PARTITION}_o$ \\
       $\text{\PSIZE}_o$ \\
-    \end{tabular}\right\rbrace \leftarrow$ \hyperref[flac:write_residual_partition]{encode residual partition(s) with order $o$}\;
+    \end{tabular}\right\rbrace \leftarrow$ \hyperref[flac:write_residual_partition]{encode residual partitions from}
+    $\left\lbrace\begin{tabular}{l}
+    partition order $o$ \\
+    \textsf{predictor order} \\
+    \textsf{residual values} \\
+    \BLOCKSIZE \\
+    \end{tabular}\right.$
   }{
     \BREAK\;
   }
@@ -2006,10 +2024,10 @@ $o \rightarrow$ \WRITE 4 unsigned bits\;
 \subsubsection{Encoding Partitions}
 \label{flac:write_residual_partition}
 {\relsize{-1}
-\ALGORITHM{partition order $o$, predictor order, residual values, block size, maximum Rice parameter}{Rice parameter, residual partitions, total estimated size}
+\ALGORITHM{partition order $o$, predictor order, residual values, block size, maximum Rice parameter from encoding parameters}{Rice parameter, 1 or more residual partitions, total estimated size}
 \SetKwData{ORDER}{predictor order}
 \SetKwData{BLOCKSIZE}{block size}
-\SetKwData{PSIZE}{partition size}
+\SetKwData{PSIZE}{partitions size}
 \SetKwData{PLEN}{plength}
 \SetKwData{PARTITION}{partition}
 \SetKwData{RESIDUAL}{residual}
@@ -2060,76 +2078,47 @@ $\text{\PSIZE}$ \\
 \clearpage
 
 \subsubsection{Residual Encoding Example}
-Given a block size of 10 and the residuals \texttt{2, 6, -2, 0, -1, -2, 3, -1, -3}:
-\begin{align*}
-\intertext{for $\text{partition order} = 0$:}
-\textsf{partition}_{0~0} &\leftarrow \texttt{[2, 6, -2, 0, -1, -2, 3, -1, -3]} \\
-\text{partition sum}_{0~0} &\leftarrow 2 + 6 + 2 + 0 + 1 + 2 + 3 + 1 + 3 = 20 \\
-\textsf{Rice}_{0~0} &\leftarrow 1~~(9 \times 2 ^ 0 < 20~,~9 \times 2 ^ 1 < 20~,~9 \times 2 ^ 2 > 20) \\
-\intertext{which is encoded to $encoded~residuals_{0~0}$:
-\newline
-\includegraphics{figures/flac/residual-example1.pdf}}
-\intertext{for partition order (porder) = 1:}
-\textsf{partition}_{1~0} &\leftarrow \texttt{[2, 6, -2, 0]} \\
-\text{partition sum}_{1~0} &\leftarrow 2 + 6 + 2 + 0 = 10 \\
-\textsf{Rice}_{1~0} &\leftarrow 1~~(4 \times 2 ^ 0 < 10~,~4 \times 2 ^ 1 < 10~,~4 \times 2 ^ 2 > 10) \\
-\intertext{which is encoded to $encoded~residuals_{1~0}$:
-\newline
-\includegraphics{figures/flac/residual-example2.pdf}}
-\textsf{partition}_{1~1} &\leftarrow \texttt{[-1, -2, 3, -1, -3]} \\
-\text{partition sum}_{1~1} &\leftarrow 1 + 2 + 3 + 1 + 3 = 10 \\
-\textsf{Rice}_{1~1} &\leftarrow 1~~(4 \times 2 ^ 0 < 10~,~4 \times 2 ^ 1 < 10~,~4 \times 2 ^ 2 > 10) \\
-\intertext{which is encoded to $encoded~residuals_{1~1}$:
-\newline
-\includegraphics{figures/flac/residual-example3.pdf}}
-\end{align*}
+Given a set of residuals \texttt{[2, 6, -2, 0, -1, -2, 3, -1, -3]},
+block size of 10 and predictor order of 1:
+{\relsize{-1}
+  \begin{align*}
+  \intertext{$\text{partition order}~o = 0$:}
+  \textsf{plength}_{0~0} &\leftarrow 10 \div 2 ^ 0 - 1 = 9 \\
+  \textsf{partition}_{0~0} &\leftarrow \texttt{[2, 6, -2, 0, -1, -2, 3, -1, -3]} \\
+  \textsf{partition sum}_{0~0} &\leftarrow 2 + 6 + 2 + 0 + 1 + 2 + 3 + 1 + 3 = 20 \\
+  \textsf{Rice}_{0~0} &\leftarrow \textbf{1}~~(9 \times 2 ^ \textbf{1} < 20 \text{ and } 9 \times 2 ^ \textbf{2} > 20) \\
+  \textsf{partitions size}_0 &\leftarrow 0 + 4 + ((1 + 1) \times 9) + \left\lfloor\frac{20}{2 ^ 1 - 1}\right\rfloor - \left\lfloor\frac{9}{2}\right\rfloor = \textbf{38} \\
+  \intertext{$\text{partition order}~o = 1$:}
+  \textsf{plength}_{1~0} &\leftarrow 10 \div 2 ^ 1 - 1 = 4 \\
+  \textsf{partition}_{1~0} &\leftarrow \texttt{[2, 6, -2, 0]} \\
+  \textsf{partition sum}_{1~0} &\leftarrow 2 + 6 + 2 + 0 = 10 \\
+  \textsf{Rice}_{1~0} &\leftarrow \textbf{1}~~(4 \times 2 ^ \textbf{1} < 10 \text{ and } 4 \times 2 ^ \textbf{2} > 10) \\
+  \textsf{partitions size}_1 &\leftarrow 0 + 4 + ((1 + 1) \times 4) + \left\lfloor\frac{10}{2 ^ 1 - 1}\right\rfloor - \left\lfloor\frac{4}{2}\right\rfloor = \textbf{20} \\
+  \textsf{plength}_{1~1} &\leftarrow 10 \div 2 ^ 1 = 5 \\
+  \textsf{partition}_{1~1} &\leftarrow \texttt{[-1, -2, 3, -1, -3]} \\
+  \textsf{partition sum}_{1~1} &\leftarrow 1 + 2 + 3 + 1 + 3 = 10 \\
+  \textsf{Rice}_{1~1} &\leftarrow \textbf{0}~~(5 \times 2 ^ \textbf{0} < 10 \text{ and } 5 \times 2 ^ \textbf{1} = 10) \\
+  \textsf{partitions size}_1 &\leftarrow \textbf{20} + 4 + 5 + (10 \times
+  2) - \left\lfloor\frac{5}{2}\right\rfloor = \textbf{47}
+\end{align*}}
 \par
 \noindent
-Since partition order 0's 33 bits, + 4 bits for one partition header,
-is smaller than partition order 1's 17 bits + 16 bits + 8 bits
-for two partition headers, the ideal partition order for these residuals is 0.
+Since block size of $10 \bmod 2 ^ 2 \neq 0$, we stop at partition order 1
+because the list of residuals can't be divided equally into more partitions.
+And because $\textsf{partitions size}_0$ of 38 is smaller than
+$\textsf{partitions size}_1$ of 47, we use partition order 0
+to encode our residuals into a single partition with 9 residuals.
 
-\clearpage
-
-The 33 bit partition is packaged into a complete residual block
-in which:
-\newline
-\begin{tabular}{rl}
-$partition_{0~0}$ & $\leftarrow$ \texttt{2, 6, -2, 0, -1, -2, 3, -1, -3} \\
-$Rice_{0~0}$ & $\leftarrow 1$ \\
-partition order & $\leftarrow 0$ \\
-coding method & $\leftarrow 0$ \\
-\end{tabular}
 \begin{figure}[h]
-\includegraphics{figures/flac/residual-example4.pdf}
+  \includegraphics{figures/flac/residuals-enc-example.pdf}
 \end{figure}
-\par
-Finally, we package these residuals into a FIXED subframe in which:
-\newline
-\begin{tabular}{rl}
-predictor order & $\leftarrow 1$ \\
-$\text{warm-up sample}_0$ & $\leftarrow $ 18 \\
-\end{tabular}
-\begin{figure}[h]
-\includegraphics{figures/flac/residual-example5.pdf}
-\end{figure}
-\par
-\noindent
-Reducing our 10, 16-bit samples from a total of 160 bits
-down to only 67 bits - or about 40\% of their original size.
-
-\clearpage
-
-Add more residual encoding examples here.
-
-%%FIXME
 
 \clearpage
 
 \subsection{Computing Best LPC Parameters}
 \label{flac:compute_lpc_params}
 {\relsize{-1}
-\ALGORITHM{signed subframe samples, encoding parameters}{LPC parameters}
+\ALGORITHM{signed subframe samples, encoding parameters}{LPC order, QLP coefficients, QLP precision, QLP shift needed}
 \SetKwFunction{LEN}{len}
 \SetKw{AND}{and}
 \SetKw{NOT}{not}
@@ -2138,7 +2127,7 @@ Add more residual encoding examples here.
 \SetKwData{AUTOCORRELATIONS}{autocorrelation}
 \SetKwData{LPCOEFFS}{LP coefficients}
 \SetKwData{ERRORS}{error}
-\SetKwData{ORDER}{predictor order}
+\SetKwData{ORDER}{LPC order}
 \SetKwData{QLPCOEFFS}{QLP coefficients}
 \SetKwData{QLPPRECISION}{QLP precision}
 \SetKwData{QLPSHIFT}{QLP shift needed}
@@ -2156,28 +2145,57 @@ $\AUTOCORRELATIONS \leftarrow$ \hyperref[flac:autocorrelate]{autocorrelate \WIND
     $\LPCOEFFS$ \\
     $\ERRORS$ \\
   \end{tabular}\right\rbrace \leftarrow$ \hyperref[flac:compute_lp_coeffs]{compute LP coefficients from \AUTOCORRELATIONS}\;
-  %% $(\LPCOEFFS~,~\ERRORS)\leftarrow$ \hyperref[flac:compute_lp_coeffs]{compute LP coefficients from \AUTOCORRELATIONS}\;
   \BlankLine
   \eIf(\tcc*[f]{from encoding parameters}){\NOT exhaustive model search}{
     \tcc{estimate which set of LP coefficients is the smallest
       and return those}
-    $o \leftarrow$ \hyperref[flac:estimate_best_order]{estimate best order from \ERRORS, sample count and bits per sample}\;
-    $\text{\LPCPARAMS}_o \leftarrow$ \hyperref[flac:quantize_lp_coeffs]{quantize \LPCOEFFS at order $o$}\;
-    \Return $\text{\LPCPARAMS}_o$\;
+    $\ORDER \leftarrow$ \hyperref[flac:estimate_best_order]{estimate best order from \ERRORS, sample count and bits per sample}\;
+    $\left.\begin{tabular}{r}
+      \QLPCOEFFS \\
+      \QLPPRECISION \\
+      \QLPSHIFT \\
+    \end{tabular}\right\rbrace \leftarrow$
+    \hyperref[flac:quantize_lp_coeffs]{quantize \LPCOEFFS at \ORDER}\;
+    \Return $\left\lbrace\begin{tabular}{l}
+    \ORDER \\
+    \QLPCOEFFS \\
+    \QLPPRECISION \\
+    \QLPSHIFT \\
+    \end{tabular}\right.$\;
   }{
     \tcc{build a complete LPC subframe from each set of LP coefficients
     and return the parameters of the one which is smallest}
     \For{$o \leftarrow 1$ \emph{\KwTo}maximum LPC order + 1}{
-      $\text{\LPCPARAMS}_o \leftarrow$ \hyperref[flac:quantize_lp_coeffs]{quantize \LPCOEFFS at order $o$}\;
-      $\text{\LPCDATA}_o \leftarrow$ \hyperref[flac:encode_lpc_subframe]{build LPC subframe from $\text{\LPCPARAMS}_o$}\;
+      $\left.\begin{tabular}{r}
+        ${\QLPCOEFFS}_o$ \\
+        ${\QLPPRECISION}_o$ \\
+        ${\QLPSHIFT}_o$ \\
+      \end{tabular}\right\rbrace \leftarrow$
+      \hyperref[flac:quantize_lp_coeffs]{quantize \LPCOEFFS at order o}\;
+      $\text{\LPCDATA}_o \leftarrow$ \hyperref[flac:encode_lpc_subframe]{build LPC subframe from}
+      $\left\lbrace\begin{tabular}{l}
+      \SAMPLE \\
+      \textsf{block size} \\
+      \textsf{subframe's BPS} \\
+      \textsf{wasted BPS} \\
+      \ORDER $o$ \\
+      ${\QLPPRECISION}_o$ \\
+      ${\QLPSHIFT}_o$ \\
+      ${\QLPCOEFFS}_o$ \\
+      \end{tabular}\right.$\;
     }
-    choose predictor order $o$ whose $\text{\LPCDATA}_o$ block is smallest\;
+    choose \ORDER $o$ whose $\text{\LPCDATA}_o$ block is smallest\;
     \BlankLine
-    \Return $\text{\LPCPARAMS}_o$\;
+    \Return $\left\lbrace\begin{tabular}{l}
+    \ORDER $o$\\
+    ${\QLPCOEFFS}_o$ \\
+    ${\QLPPRECISION}_o$ \\
+    ${\QLPSHIFT}_o$ \\
+    \end{tabular}\right.$\;
   }
 }{
   \tcc{all samples are 0, so return very basic coefficients}
-  \Return $\text{\LPCPARAMS} \leftarrow \left\lbrace\begin{tabular}{rcl}
+  \Return $\left\lbrace\begin{tabular}{lcl}
   \ORDER & $\leftarrow$ & 1 \\
   \QLPCOEFFS & $\leftarrow$ & \texttt{[0]} \\
   \QLPPRECISION & $\leftarrow$ & 2 \\
@@ -2443,7 +2461,6 @@ With \textsf{autocorrelation} values: \texttt{[3455.53, 3130.76, 2590.90, 2055.8
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{MAXLPCORDER}{max LPC order}
 \SetKwData{HEADERBITS}{header bits}
-\SetKwData{BSIZE}{best subframe bits}
 \SetKwData{QLPPREC}{QLP precision}
 \SetKwData{BPS}{bits per sample}
 \SetKwData{BPR}{bits per residual}
@@ -2451,36 +2468,58 @@ With \textsf{autocorrelation} values: \texttt{[3455.53, 3130.76, 2590.90, 2055.8
 \SetKwData{ERRORSCALE}{error scale}
 \SetKwData{SUBFRAMEBITS}{subframe bits}
 \SetKwFunction{MAX}{max}
-\ERRORSCALE $\leftarrow \frac{\log_e(2) ^ 2}{\text{\BLOCKSIZE} \times 2}$\;
-\BSIZE $\leftarrow$ maximum floating point\;
+\ERRORSCALE $\leftarrow \frac{({\log_e 2}) ^ 2}{\text{\BLOCKSIZE} \times 2}$\;
 \For{$i \leftarrow 0$ \emph{\KwTo}\MAXLPCORDER}{
   $o \leftarrow i + 1$\tcc*[r]{current order}
   \uIf{$\text{\ERROR}_i > 0.0$}{
-    $\text{\HEADERBITS}_o \leftarrow \ORDER \times (\text{\BPS} + \text{\QLPPREC})$\;
-    $\text{\BPR}_o \leftarrow \MAX\left(\frac{\log_e(\text{\ERROR}_i \times \text{\ERRORSCALE})}{\log_e(2) \times 2}~,~0.0\right)$\;
-    $\text{\SUBFRAMEBITS}_o \leftarrow \text{\HEADERBITS}_o + \text{\BPR}_o \times (\text{\BLOCKSIZE} - \text{\ORDER})$\;
+    $\text{\HEADERBITS}_o \leftarrow o \times (\text{\BPS} + \text{\QLPPREC})$\;
+    $\text{\BPR}_o \leftarrow \MAX\left(\frac{\log_e(\text{\ERROR}_i \times \text{\ERRORSCALE})}{({\log_e 2}) \times 2}~,~0.0\right)$\;
+    $\text{\SUBFRAMEBITS}_o \leftarrow \text{\HEADERBITS}_o + \text{\BPR}_o \times (\text{\BLOCKSIZE} - o)$\;
   }
   \ElseIf{$\text{\ERROR}_i = 0.0$}{
     \Return $o$\;
   }
 }
 \BlankLine
-\Return $o$ such as $\text{\SUBFRAMEBITS}_o$ is smallest\;
+\Return LPC order $o$ such that $\text{\SUBFRAMEBITS}_o$ is smallest\;
 \EALGORITHM
 
 \clearpage
 
-Add estimating best order example here.
+\subsubsection{Estimating Best Order Example}
 
-%%FIXME
+Given the error values \texttt{[619.107, 521.530, 520.854]},
+a block size of 10, 16 bits per sample, a QLP precision of 12 and maximum LPC order of 3:
+\begin{align*}
+  \textsf{error scale} &\leftarrow \frac{({\log_e 2}) ^ 2}{10 \times 2} = 0.024 \\
+  i &\leftarrow 0 \\
+  o &\leftarrow 0 + 1 = 1 \\
+  \textsf{header bits}_1 &\leftarrow 1 \times (16 + 12) = 28 \\
+  \textsf{bits per residual}_1 &\leftarrow \frac{\log_e(619.107 \times 0.024)}{({\log_e 2}) \times 2} = 1.947 \\
+  \textsf{subframe bits}_1 &\leftarrow 28 + 1.947 \times (10 - 1) = \textbf{45.523} \\
+  i &\leftarrow 1 \\
+  o &\leftarrow 1 + 1 = 2 \\
+  \textsf{header bits}_2 &\leftarrow 2 \times (16 + 12) = 56 \\
+  \textsf{bits per residual}_2 &\leftarrow \frac{\log_e(521.530 \times 0.024)}{({\log_e 2}) \times 2} = 1.823 \\
+  \textsf{subframe bits}_2 &\leftarrow 56 + 1.823 \times (10 - 2) = \textbf{70.584} \\
+  i &\leftarrow 2 \\
+  o &\leftarrow 2 + 1 = 3 \\
+  \textsf{header bits}_3 &\leftarrow 3 \times (16 + 12) = 84 \\
+  \textsf{bits per residual}_3 &\leftarrow \frac{\log_e(520.854 \times 0.024)}{({\log_e 2}) \times 2} = 1.822 \\
+  \textsf{subframe bits}_3 &\leftarrow 84 + 1.822 \times (10 - 3) = \textbf{96.754} \\
+\end{align*}
+\par
+\noindent
+Since the $\textsf{subframe bits}_1$ value of 45.523 is the smallest,
+the best LPC order to use is 1.
 
 \clearpage
 
 \subsubsection{Quantizing LP Coefficients}
 \label{flac:quantize_lp_coeffs}
-\ALGORITHM{LP coefficients, a positive order value,\newline QLP precision from encoding parameters}{QLP coefficients as a list of integers,\newline QLP shift needed as a non-negative integer}
+\ALGORITHM{LPC order value, LP coefficients, QLP precision from encoding parameters}{QLP coefficients, QLP precision, QLP shift needed}
 \SetKwData{LPCOEFF}{LP coefficient}
-\SetKwData{QLPSHIFT}{QLP shift}
+\SetKwData{QLPSHIFT}{QLP shift needed}
 \SetKwData{QLPPREC}{QLP precision}
 \SetKwData{ORDER}{order}
 \SetKwData{QLPMAX}{QLP max}
@@ -2510,14 +2549,22 @@ $\ERROR \leftarrow 0.0$\;
     $\text{\QLPCOEFF}_i \leftarrow \MIN(\MAX(\ROUND(\ERROR)~,~\text{\QLPMIN})~,~\text{\QLPMAX})$\;
     $\ERROR \leftarrow \ERROR - \text{\QLPCOEFF}_i$\;
   }
-  \Return $(\QLPCOEFF~,~\QLPSHIFT)$\;
+  \Return $\left\lbrace\begin{tabular}{l}
+  \QLPCOEFF \\
+  \QLPPREC \\
+  \QLPSHIFT \\
+  \end{tabular}\right.$\;
 }(\tcc*[f]{negative shifts are not allowed, so shrink coefficients}){
   \For{$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
     $\ERROR \leftarrow \ERROR + \text{\LPCOEFF}_{\ORDER - 1~i} \div 2 ^ {-\text{\QLPSHIFT}}$\;
     $\text{\QLPCOEFF}_i \leftarrow \MIN(\MAX(\ROUND(\ERROR)~,~\text{\QLPMIN})~,~\text{\QLPMAX})$\;
     $\ERROR \leftarrow \ERROR - \text{\QLPCOEFF}_i$\;
   }
-  \Return $(\QLPCOEFF~,~0)$\;
+  \Return $\left\lbrace\begin{tabular}{l}
+  \QLPCOEFF \\
+  \QLPPREC \\
+  0 \\
+  \end{tabular}\right.$\;
 }
 \EALGORITHM
 
@@ -2558,15 +2605,15 @@ and are also used to calculate its residuals.
 
 \subsection{Encoding an LPC Subframe}
 \label{flac:encode_lpc_subframe}
-\ALGORITHM{signed subframe samples, subframe order, QLP coefficients, QLP precision, QLP shift needed, subframe's bits per sample, wasted BPS}{an LPC subframe}
-\SetKwData{ORDER}{predictor order}
+\ALGORITHM{signed samples, block size, subframe's bits per sample, wasted BPS, LPC order, QLP precision, QLP shift needed, QLP coefficients}{an LPC subframe}
+\SetKwData{ORDER}{LPC order}
 \SetKwData{BLOCKSIZE}{block size}
 \SetKwData{WASTEDBPS}{wasted BPS}
 \SetKwData{BPS}{bits per sample}
 \SetKwData{SAMPLE}{sample}
 \SetKwData{RESIDUAL}{residual}
 \SetKwData{QLPPREC}{QLP precision}
-\SetKwData{QLPSHIFT}{QLP shift}
+\SetKwData{QLPSHIFT}{QLP shift needed}
 \SetKwData{QLPCOEFF}{QLP coefficient}
 $0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{pad}
 $1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{subframe type}
@@ -2589,7 +2636,7 @@ $\text{\QLPSHIFT} \rightarrow$ \WRITE 5 signed bits\;
 \For(\tcc*[f]{calculate signed residuals}){$i \leftarrow 0$ \emph{\KwTo}$\BLOCKSIZE - \ORDER$}{
   $\text{\RESIDUAL}_i \leftarrow \text{\SAMPLE}_{i + \ORDER} - \left \lfloor \frac{\overset{\ORDER - 1}{\underset{j = 0}{\sum}} \text{\QLPCOEFF}_j \times \text{\SAMPLE}_{i + \ORDER - j - 1} }{2 ^ \text{\QLPSHIFT}} \right \rfloor$
 }
-write encoded residual block based on signed residual values\;
+\hyperref[flac:write_residual_block]{write encoded residual block based on \RESIDUAL, \BLOCKSIZE and \ORDER}\;
 \Return LPC subframe\;
 \EALGORITHM
 \begin{figure}[h]
@@ -2599,25 +2646,30 @@ write encoded residual block based on signed residual values\;
 \clearpage
 
 \subsubsection{LPC Subframe Residuals Calculation Example}
-\begin{tabular}{rl}
-\textsf{samples} : & \texttt{18, 20, 26, 24, 24, 23, 21, 24, 23, 20} \\
-\textsf{order} : & \texttt{3} \\
-\textsf{QLP precision} : &\texttt{12} \\
-\textsf{QLP shift} : & \texttt{10} \\
-\text{QLP coefficients} : & \texttt{1311, -454, 37} \\
-\end{tabular}
-\newline
-\begin{align*}
-\textsf{residual}_0 &\leftarrow 24 - \left\lfloor\frac{(1311 \times 26) + (-454 \times 20) + (37 \times 18)}{2 ^ {10}}\right\rfloor = -1 \\
-\textsf{residual}_1 &\leftarrow 24 - \left\lfloor\frac{(1311 \times 24) + (-454 \times 26) + (37 \times 20)}{2 ^ {10}}\right\rfloor = 5 \\
-\textsf{residual}_2 &\leftarrow 23 - \left\lfloor\frac{(1311 \times 24) + (-454 \times 24) + (37 \times 26)}{2 ^ {10}}\right\rfloor = 2 \\
-\textsf{residual}_3 &\leftarrow 21 - \left\lfloor\frac{(1311 \times 23) + (-454 \times 24) + (37 \times 24)}{2 ^ {10}}\right\rfloor = 2 \\
-\textsf{residual}_4 &\leftarrow 24 - \left\lfloor\frac{(1311 \times 21) + (-454 \times 23) + (37 \times 24)}{2 ^ {10}}\right\rfloor = 7 \\
-\textsf{residual}_5 &\leftarrow 23 - \left\lfloor\frac{(1311 \times 24) + (-454 \times 21) + (37 \times 23)}{2 ^ {10}}\right\rfloor = 1 \\
-\textsf{residual}_6 &\leftarrow 20 - \left\lfloor\frac{(1311 \times 23) + (-454 \times 24) + (37 \times 21)}{2 ^ {10}}\right\rfloor = 1
-\end{align*}
-Leading to a final set of 7 residual values: \texttt{-1, 5, 2, 2, 7, 1, 1}.
-Encoding them to a residual block, our final LPC subframe is:
+{\relsize{-1}
+  \begin{tabular}{rl}
+    \textsf{samples} : & \texttt{[18, 20, 26, 24, 24, 23, 21, 24, 23, 20]} \\
+    \textsf{block size} : & 10 \\
+    \textsf{subframe's bits per sample} : & 16 \\
+    \textsf{wasted BPS} : & 0 \\
+    \textsf{LPC order} : & \texttt{3} \\
+    \textsf{QLP precision} : &\texttt{12} \\
+    \textsf{QLP shift needed} : & \texttt{10} \\
+    \textsf{QLP coefficients} : & \texttt{[1311, -454, 37]} \\
+  \end{tabular}
+  \newline
+  \begin{align*}
+    \textsf{residual}_0 &\leftarrow 24 - \left\lfloor\frac{(1311 \times 26) + (-454 \times 20) + (37 \times 18)}{2 ^ {10}}\right\rfloor = -1 \\
+    \textsf{residual}_1 &\leftarrow 24 - \left\lfloor\frac{(1311 \times 24) + (-454 \times 26) + (37 \times 20)}{2 ^ {10}}\right\rfloor = 5 \\
+    \textsf{residual}_2 &\leftarrow 23 - \left\lfloor\frac{(1311 \times 24) + (-454 \times 24) + (37 \times 26)}{2 ^ {10}}\right\rfloor = 2 \\
+    \textsf{residual}_3 &\leftarrow 21 - \left\lfloor\frac{(1311 \times 23) + (-454 \times 24) + (37 \times 24)}{2 ^ {10}}\right\rfloor = 2 \\
+    \textsf{residual}_4 &\leftarrow 24 - \left\lfloor\frac{(1311 \times 21) + (-454 \times 23) + (37 \times 24)}{2 ^ {10}}\right\rfloor = 7 \\
+    \textsf{residual}_5 &\leftarrow 23 - \left\lfloor\frac{(1311 \times 24) + (-454 \times 21) + (37 \times 23)}{2 ^ {10}}\right\rfloor = 1 \\
+    \textsf{residual}_6 &\leftarrow 20 - \left\lfloor\frac{(1311 \times 23) + (-454 \times 24) + (37 \times 21)}{2 ^ {10}}\right\rfloor = 1
+  \end{align*}
+  Leading to a final set of 7 residual values: \texttt{[-1, 5, 2, 2, 7, 1, 1]}.
+  Encoding them to a residual block, our final LPC subframe is:
+}
 \begin{figure}[h]
 \includegraphics{figures/flac/lpc-parse2.pdf}
 \end{figure}
