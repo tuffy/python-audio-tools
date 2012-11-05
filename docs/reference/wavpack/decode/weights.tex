@@ -1,0 +1,104 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
+\subsection{Decode Decorrelation Weights}
+\label{wavpack:decode_decorrelation_weights}
+{\relsize{-1}
+\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, decorrelation terms count\footnote{from the decorrelation terms sub block, which must be read prior to this sub block}, \VAR{actual size 1 less} and \VAR{sub block size} values from sub block header, sub block data}{a list of signed weight integers per channel\footnote{$\text{weight}_{p~c}$ indicates weight value for decorrelation pass $p$, channel $c$}}
+\SetKwData{MONO}{mono output}
+\SetKwData{FALSESTEREO}{false stereo}
+\SetKwData{SUBBLOCKSIZE}{sub block size}
+\SetKwData{ACTUALSIZEONELESS}{actual size 1 less}
+\SetKwData{WEIGHTCOUNT}{weight count}
+\SetKwData{TERMCOUNT}{term count}
+\SetKwData{WEIGHTVAL}{weight value}
+\SetKwData{WEIGHT}{weight}
+\SetKw{AND}{and}
+\tcc{read as many 8 bit weight values as possible}
+\eIf{$\text{\ACTUALSIZEONELESS} = 0$}{
+  \WEIGHTCOUNT $\leftarrow \text{\SUBBLOCKSIZE} \times 2$\;
+}{
+ \WEIGHTCOUNT $\leftarrow \text{\SUBBLOCKSIZE} \times 2 - 1$\;
+}
+\For{$i \leftarrow 0$ \emph{\KwTo}\WEIGHTCOUNT}{
+  $\text{value}_i \leftarrow$ \READ 8 signed bits\;
+  $\text{\WEIGHTVAL}_i \leftarrow\begin{cases}
+\text{value}_i \times 2 ^ 3 + \left\lfloor\frac{\text{value}_i \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor & \text{if }\text{value}_i > 0 \\
+0 & \text{if }\text{value}_i = 0 \\
+\text{value}_i \times 2 ^ 3 & \text{if }\text{value}_i < 0
+\end{cases}$\;
+}
+\BlankLine
+\tcc{populate weight values by channel, in reverse order}
+\eIf(\tcc*[f]{two channels}){$\text{\MONO} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
+  \ASSERT $\lfloor\WEIGHTCOUNT \div 2\rfloor \leq \TERMCOUNT$\;
+  \For{$i \leftarrow 0$ \emph{\KwTo}$\lfloor\WEIGHTCOUNT \div 2\rfloor$}{
+    $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~0} \leftarrow \text{\WEIGHTVAL}_{i \times 2}$\;
+    $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~1} \leftarrow \text{\WEIGHTVAL}_{i \times 2 + 1}$\;
+  }
+  \For{$i \leftarrow \lfloor\WEIGHTCOUNT \div 2\rfloor$ \emph{\KwTo}\TERMCOUNT}{
+    $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~0} \leftarrow 0$\;
+    $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~1} \leftarrow 0$\;
+  }
+  \Return a \WEIGHT value per pass, per channel\;
+}(\tcc*[f]{one channel}){
+  \ASSERT $\WEIGHTCOUNT \leq \TERMCOUNT$\;
+  \For{$i \leftarrow 0$ \emph{\KwTo}\WEIGHTCOUNT}{
+    $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~0} \leftarrow \text{\WEIGHTVAL}_{i}$\;
+  }
+  \For{$i \leftarrow \WEIGHTCOUNT$ \emph{\KwTo}\TERMCOUNT}{
+    $\text{\WEIGHT}_{(\TERMCOUNT - i - 1)~0} \leftarrow 0$\;
+  }
+  \Return a \WEIGHT value per pass\;
+}
+\EALGORITHM
+}
+\begin{figure}[h]
+  \includegraphics{wavpack/figures/decorr_weights.pdf}
+\end{figure}
+
+\clearpage
+
+\subsubsection{Reading Decorrelation Weights Example}
+Given a 2 channel block containing 5 decorrelation terms:
+\begin{figure}[h]
+\includegraphics{wavpack/figures/decorr_weights_parse.pdf}
+\end{figure}
+\begin{center}
+{\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{r|r|>{$}r<{$}}
+$i$ & $\text{value}_i$ & \text{weight value}_i \\
+\hline
+0 & 6 & 6 \times 2 ^ 3 + \lfloor(6 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 48 \\
+1 & 6 & 6 \times 2 ^ 3 + \lfloor(6 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 48 \\
+2 & 6 & 6 \times 2 ^ 3 + \lfloor(6 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 48 \\
+3 & 6 & 6 \times 2 ^ 3 + \lfloor(6 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 48 \\
+4 & 4 & 4 \times 2 ^ 3 + \lfloor(4 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 32 \\
+5 & 4 & 4 \times 2 ^ 3 + \lfloor(4 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 32 \\
+6 & 6 & 6 \times 2 ^ 3 + \lfloor(6 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 48 \\
+7 & 6 & 6 \times 2 ^ 3 + \lfloor(6 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 48 \\
+8 & 2 & 2 \times 2 ^ 3 + \lfloor(2 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 16 \\
+9 & 3 & 3 \times 2 ^ 3 + \lfloor(3 \times 2 ^ 3 + 2 ^ 6) \div 2 ^ 7\rfloor = 24 \\
+\end{tabular}
+\renewcommand{\arraystretch}{1.0}
+}
+\end{center}
+\begin{center}
+\begin{tabular}{>{$}r<{$}||>{$}r<{$}}
+\text{weight}_{4~0} = \text{weight value}_0 = 48 &
+\text{weight}_{4~1} = \text{weight value}_1 = 48 \\
+\text{weight}_{3~0} = \text{weight value}_2 = 48 &
+\text{weight}_{3~1} = \text{weight value}_3 = 48 \\
+\text{weight}_{2~0} = \text{weight value}_4 = 32 &
+\text{weight}_{2~1} = \text{weight value}_5 = 32 \\
+\text{weight}_{1~0} = \text{weight value}_6 = 48 &
+\text{weight}_{1~1} = \text{weight value}_7 = 48 \\
+\text{weight}_{0~0} = \text{weight value}_8 = 16 &
+\text{weight}_{0~1} = \text{weight value}_9 = 24 \\
+\end{tabular}
+\end{center}

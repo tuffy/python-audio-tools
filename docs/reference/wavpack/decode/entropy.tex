@@ -1,0 +1,68 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
+\subsection{Decoding Entropy Variables}
+\label{wavpack:decode_entropy_variables}
+{\relsize{-1}
+\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, \VAR{sub block size}, \VAR{actual size 1 less}, sub block data}{2 lists of 3 signed entropy value integers\footnote{$\text{entropy}_{c~i}$ indicates the $i$th entropy of channel $c$}}
+\SetKwData{ENTROPY}{entropy}
+\SetKwFunction{EXP}{wv\_exp2}
+\SetKwData{MONO}{mono output}
+\SetKwData{FALSESTEREO}{false stereo}
+\SetKwData{ONELESS}{actual size 1 less}
+\SetKwData{SUBBLOCKSIZE}{sub block size}
+\SetKw{AND}{and}
+\ASSERT $\text{\ONELESS} = 0$\;
+\eIf(\tcc*[f]{2 channels}){$\text{\MONO} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
+  \ASSERT $\text{\SUBBLOCKSIZE} = 6$\;
+  $\text{\ENTROPY}_{0~0} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{0~1} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{0~2} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{1~0} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{1~1} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{1~2} \leftarrow \text{read \EXP value}$\;
+}(\tcc*[f]{1 channel}){
+  \ASSERT $\text{\SUBBLOCKSIZE} = 3$\;
+  $\text{\ENTROPY}_{0~0} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{0~1} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{0~2} \leftarrow \text{read \EXP value}$\;
+  $\text{\ENTROPY}_{1} \leftarrow \texttt{[0, 0, 0]}$\;
+}
+\Return $\text{\ENTROPY}_0$ list and $\text{\ENTROPY}_1$ list\;
+\EALGORITHM
+
+\begin{figure}[h]
+  \includegraphics{wavpack/figures/entropy_vars.pdf}
+\end{figure}
+
+\clearpage
+
+\subsubsection{Reading Entropy Variables Example}
+Given a 2 channel block containing the subframe:
+\begin{figure}[h]
+\includegraphics{wavpack/figures/entropy_vars_parse.pdf}
+\end{figure}
+\begin{center}
+{\relsize{-1}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{r|>{$}r<{$}|>{$}r<{$}}
+$i$ & \text{entropy}_{0~i} & \text{entropy}_{1~i} \\
+\hline
+0 &
+\lfloor \EXP(2018 \bmod{256}) \div 2 ^ {9 - \lfloor 2018 \div 2 ^ 8 \rfloor} \rfloor = 118 &
+\lfloor \EXP(2018 \bmod{256}) \div 2 ^ {9 - \lfloor 2018 \div 2 ^ 8 \rfloor} \rfloor = 118 \\
+1 &
+\lfloor \EXP(2203 \bmod{256}) \div 2 ^ {9 - \lfloor 2203 \div 2 ^ 8 \rfloor} \rfloor = 194 &
+\lfloor \EXP(2166 \bmod{256}) \div 2 ^ {9 - \lfloor 2166 \div 2 ^ 8 \rfloor} \rfloor = 176 \\
+2 &
+\EXP(2389 \bmod{256}) \times 2 ^ {\lfloor 2389 \div 2 ^ 8 \rfloor - 9} = 322 &
+\lfloor \EXP(2234 \bmod{256}) \div 2 ^ {9 - \lfloor 2234 \div 2 ^ 8 \rfloor} \rfloor = 212 \\
+\end{tabular}
+\renewcommand{\arraystretch}{1.0}
+}
+\end{center}

@@ -1,0 +1,828 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
+\section{WavPack Encoding}
+
+\ALGORITHM{PCM frames, Wave header\footnote{Everything between the file's start and the start of the \texttt{data} chunk's contents.  If one is encoding a WavPack from raw PCM input, this header will need to be generated.}, optional Wave footer\footnote{Everything between the end of the \texttt{data} chunk's contents and the file's end, if anything.}, encoding parameters:
+\newline
+{\relsize{-1}
+\begin{tabular}{rll}
+parameter & possible values & typical values \\
+\hline
+block size & a positive number of PCM frames & 22050 \\
+correlation passes & 0, 1, 2, 5, 10 or 16 & 5 \\
+\end{tabular}
+}
+}{an encoded WavPack file}
+\SetKwData{BLOCKSIZE}{block size}
+\SetKwData{BLOCKINDEX}{block index}
+\SetKwData{BLOCKSETCOUNT}{block count}
+\SetKwData{BLOCKSETCHANNELS}{block channels}
+\SetKwData{PASSES}{correlation passes}
+\SetKwData{PARAMS}{block params}
+\SetKwData{FIRST}{first}
+\SetKwData{LAST}{last}
+\SetKwData{BLOCK}{block}
+\SetKwData{CHANNELS}{channels}
+\SetKwData{CHANNEL}{channel}
+$(\text{\BLOCKSETCOUNT}~,~\text{\BLOCKSETCHANNELS}) \leftarrow$ \hyperref[wavpack:block_split]{determine block split}\;
+\For{$b \leftarrow 0$ \emph{\KwTo}\BLOCKSETCOUNT}{
+  $\text{\PARAMS}_{0~b} \leftarrow$ \hyperref[wavpack:initial_correlation_parameters]{determine initial correlation parameters and entropy variables from correlation passes and $\text{\BLOCKSETCHANNELS}_b$}\;
+}
+\BlankLine
+$\text{\BLOCKINDEX} \leftarrow 0$\;
+$s \leftarrow 0$\tcc*[r]{the number of block sets written}
+\While{PCM frames remain}{
+  $\text{\CHANNELS} \leftarrow$ take up to \BLOCKSIZE PCM frames from the input\;
+  update the stream's MD5 sum with that PCM data\;
+  $c \leftarrow 0$\;
+  \For(\tcc*[f]{blocks in each set}){$b \leftarrow 0$ \emph{\KwTo}\BLOCKSETCOUNT}{
+    \lIf{$b = 0$}{$\text{\FIRST} = 1$}
+    \lElse{$\text{\FIRST} = 0$}\;
+    \lIf{$b = \text{\BLOCKSETCOUNT} - 1$}{$\text{\LAST} = 1$}
+    \lElse{$\text{\LAST} = 0$}\;
+    \uIf{$\text{\BLOCKSETCHANNELS}_b = 1$}{
+      $(\text{\BLOCK}_{(s \times \text{\BLOCKSETCHANNELS}) + b}~,~\text{\PARAMS}_{(s + 1)~b}) \leftarrow$ \hyperref[wavpack:write_block]{write block}\newline
+      using $\text{\CHANNEL}_c$, \BLOCKINDEX, \FIRST, \LAST and $\text{\PARAMS}_{s~b}$\;
+      $c \leftarrow c + 1$\;
+    }
+    \ElseIf{$\text{\BLOCKSETCHANNELS}_b = 2$}{
+      $(\text{\BLOCK}_{(s \times \text{\BLOCKSETCHANNELS}) + b}~,~\text{\PARAMS}_{(s + 1)~b}) \leftarrow$ \hyperref[wavpack:write_block]{write block}\newline
+      using $\text{\CHANNEL}_c/\text{\CHANNEL}_{c + 1}$, \BLOCKINDEX, \FIRST, \LAST and $\text{\PARAMS}_{s~b}$\;
+      $c \leftarrow c + 2$\;
+    }
+  }
+  $s \leftarrow s + 1$\;
+  $\text{\BLOCKINDEX} \leftarrow \text{\BLOCKINDEX} + \text{PCM data's frame count}$\;
+}
+\BlankLine
+write final block containing optional \hyperref[wavpack:write_wave_header]{Wave footer} and \hyperref[wavpack:write_md5]{MD5 sum} sub blocks\;
+update Wave header's \texttt{data} chunk size, if generated from scratch\;
+update \VAR{total samples} field in all block headers with \BLOCKINDEX\;
+\EALGORITHM
+
+\clearpage
+
+\subsection{Determine Block Split}
+\label{wavpack:block_split}
+\ALGORITHM{input stream's channel assignment}{number of blocks per set, list of channel counts per block}
+\SetKwData{BLOCKCOUNT}{block count}
+\SetKwData{BLOCKCHANNELS}{block channels}
+\Switch(\tcc*[f]{split channels by left/right pairs}){channel assignment}{
+  \uCase{mono}{
+    $\text{\BLOCKCOUNT} \leftarrow 1$\;
+    $\text{\BLOCKCHANNELS} \leftarrow \texttt{[1]}$\;
+  }
+  \uCase{front left, front right}{
+    $\text{\BLOCKCOUNT} \leftarrow 1$\;
+    $\text{\BLOCKCHANNELS} \leftarrow \texttt{[2]}$\;
+  }
+  \uCase{front left, front right, front center}{
+    $\text{\BLOCKCOUNT} \leftarrow 2$\;
+    $\text{\BLOCKCHANNELS} \leftarrow \texttt{[2, 1]}$\;
+  }
+  \uCase{front left, front right, back left, back right}{
+    $\text{\BLOCKCOUNT} \leftarrow 2$\;
+    $\text{\BLOCKCHANNELS} \leftarrow \texttt{[2, 2]}$\;
+  }
+  \uCase{front left, front right, front center, back center}{
+    $\text{\BLOCKCOUNT} \leftarrow 3$\;
+    $\text{\BLOCKCHANNELS} \leftarrow \texttt{[2, 1, 1]}$\;
+  }
+  \uCase{front left, front right, front center, back left, back right}{
+    $\text{\BLOCKCOUNT} \leftarrow 3$\;
+    $\text{\BLOCKCHANNELS} \leftarrow \texttt{[2, 1, 2]}$\;
+  }
+  \uCase{front left, front right, front center, LFE, back left, back right}{
+    $\text{\BLOCKCOUNT} \leftarrow 4$\;
+    $\text{\BLOCKCHANNELS} \leftarrow \texttt{[2, 1, 1, 2]}$\;
+  }
+  \Other(\tcc*[f]{save them independently}){
+    $\text{\BLOCKCOUNT} \leftarrow$ channel count\;
+    $\text{\BLOCKCHANNELS} \leftarrow$ 1 per channel\;
+  }
+}
+\Return \BLOCKCOUNT and \BLOCKCHANNELS
+\EALGORITHM
+\vskip 1ex
+\par
+\noindent
+One could invent alternate channel splits for other obscure assignments.
+WavPack's only requirement is that all channels must be in
+Wave order\footnote{see page \pageref{wave_channel_assignment}}
+and each block must contain 1 or 2 channels.
+
+\begin{figure}[h]
+\includegraphics{wavpack/figures/block_channels.pdf}
+\end{figure}
+
+\begin{landscape}
+
+\subsection{Determine Correlation Parameters and Entropy Variables}
+\label{wavpack:initial_correlation_parameters}
+{\relsize{-1}
+\begin{description}
+\item[$\text{term}_{b~p}$] correlation term for block $b$, correlation pass $p$
+\item[$\text{delta}_{b~p}$] correlation delta for block $b$, correlation pass $p$
+\item[$\text{weight}_{b~p~c}$] correlation weight for block $b$, correlation pass $p$, channel $c$
+\item[$\text{sample}_{b~p~c~s}$] correlation sample $s$ for block $b$, correlation pass $p$, channel $c$
+\item[$\text{entropy}_{b~c~m}$] median $m$ for block $b$, channel $c$
+\end{description}
+\par
+\noindent
+We'll omit the block $b$ parameter since it will be the same
+throughout the block encode, but one must keep it in mind
+when transferring parameters from the block of one set of channels
+to the next block of those same channels.
+}
+\vskip .10in
+\par
+\noindent
+\ALGORITHM{correlation pass count, block's channel count of 1 or 2}{correlation term, delta, weights and samples for each pass; 3 entropy variables for each channel}
+{\relsize{-2}
+$\text{entropy}_0 \leftarrow \texttt{[0, 0, 0]}$\;
+$\text{entropy}_1 \leftarrow \texttt{[0, 0, 0]}$\;
+\BlankLine
+\If{$\text{channel count} = 1$}{
+\Switch{correlation pass count}{
+\uCase{1}{
+\begin{tabular}{r|rrrl}
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{samples}_{p~0}$ \\
+\hline
+0 & 18 & 2 & 0 & \texttt{[0, 0]} \\
+\end{tabular}
+}
+\uCase{2}{
+\begin{tabular}{r|rrrl}
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{samples}_{p~0}$ \\
+\hline
+0 & 17 & 2 & 0 & \texttt{[0, 0]} \\
+1 & 18 & 2 & 0 & \texttt{[0, 0]} \\
+\end{tabular}
+}
+\uCase(\tcc*[f]{one channel blocks don't use negative terms}){5, 10, or 16}{
+\begin{tabular}{r|rrrl}
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{samples}_{p~0}$ \\
+\hline
+0 & 3 & 2 & 0 & \texttt{[0, 0, 0]} \\
+1 & 17 & 2 & 0 & \texttt{[0, 0]} \\
+2 & 2 & 2 & 0 & \texttt{[0, 0]} \\
+3 & 18 & 2 & 0 & \texttt{[0, 0]} \\
+4 & 18 & 2 & 0 & \texttt{[0, 0]} \\
+\end{tabular}
+}}}}
+\EALGORITHM
+
+\clearpage
+
+\begin{algorithm}
+{\relsize{-2}
+\ElseIf{$\text{channel count} = 2$}{
+\Switch{correlation pass count}{
+\uCase{1}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~1}$ \\
+\hline
+0 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+\end{tabular}
+}
+\uCase{2}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~1}$ \\
+\hline
+0 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+1 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+\end{tabular}
+}
+\uCase{5}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~1}$ \\
+\hline
+0 & 3 & 2 & 48 & 48 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
+1 & 17 & 2 & 48 & 48 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+2 & 2 & 2 & 32 & 32 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+3 & 18 & 2 & 48 & 48 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+4 & 18 & 2 & 16 & 24 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+\end{tabular}
+}
+\uCase{10}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~1}$ \\
+\hline
+0 & 4 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0]} & \texttt{[0, 0, 0, 0]} \\
+1 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+2 & -1 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
+3 & 5 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0]} \\
+4 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
+5 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+6 & -2 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
+7 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+8 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+9 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+\end{tabular}
+}
+\Case{16}{
+\begin{tabular}{r|rrrrll}
+$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~1}$ \\
+\hline
+0 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+1 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+2 & -1 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
+3 & 8 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} \\
+4 & 6 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0]} \\
+5 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
+6 & 5 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0]} \\
+7 & 7 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0, 0]} \\
+8 & 4 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0]} & \texttt{[0, 0, 0, 0]} \\
+9 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+10 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+11 & -2 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
+12 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
+13 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+14 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+15 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+\end{tabular}
+}}}}
+\end{algorithm}
+
+\end{landscape}
+
+%% \subsection{Writing Block Set}
+%% {\relsize{-1}
+%% \ALGORITHM{PCM frames and their channel assignment, block index, encoding parameters}{one or more WavPack blocks}
+%% \SetKwData{CHANNEL}{channel}
+%% \SetKwData{FIRST}{first}
+%% \SetKwData{LAST}{last}
+%% \Switch(\tcc*[f]{split channels by left/right pairs}){channel assignment}{
+%%   \uCase{mono}{
+%%     \begin{tabular}{lrr}
+%%       write $\text{\CHANNEL}_0$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 1$ \\
+%%     \end{tabular}\;
+%%   }
+%%   \uCase{front left, front right}{
+%%     \begin{tabular}{lrr}
+%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 1$ \\
+%%     \end{tabular}\;
+%%   }
+%%   \uCase{front left, front right, front center}{
+%%     \begin{tabular}{lrr}
+%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+%%     \end{tabular}\;
+%%   }
+%%   \uCase{front left, front right, back left, back right}{
+%%     \begin{tabular}{lrr}
+%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_2/\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+%%     \end{tabular}\;
+%%   }
+%%   \uCase{front left, front right, front center, back center}{
+%%     \begin{tabular}{lrr}
+%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+%%     \end{tabular}\;
+%%   }
+%%   \uCase{front left, front right, front center, back left, back right}{
+%%     \begin{tabular}{lrr}
+%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_3/\text{\CHANNEL}_4$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+%%     \end{tabular}\;
+%%   }
+%%   \uCase{front left, front right, front center, LFE, back left, back right}{
+%%     \begin{tabular}{lrr}
+%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
+%%       write $\text{\CHANNEL}_4/\text{\CHANNEL}_5$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
+%%     \end{tabular}\;
+%%   }
+%%   \Other(\tcc*[f]{save them independently}){
+%%     \For{$i \leftarrow 0$ \emph{\KwTo}channel count}{
+%%       \lIf{$i = 0$}{$\text{\FIRST} = 1$}
+%%       \lElse{$\text{\FIRST} = 0$}\;
+%%       \lIf{$i = \text{channel count} - 1$}{$\text{\LAST} = 1$}
+%%       \lElse{$\text{\LAST} = 0$}\;
+%%       write $\text{\CHANNEL}_i$ to block\;
+%%     }
+%%   }
+%% }
+%% \Return set of encoded WavPack blocks\;
+%% \EALGORITHM
+
+
+%% \clearpage
+
+\subsection{Writing Block}
+\label{wavpack:write_block}
+{\relsize{-1}
+\ALGORITHM{1 or 2 channels of PCM frames, block index, first block, last block, encoding parameters from previous block}{a WavPack block, encoding parameters for next block}
+\SetKwData{CHANNEL}{channel}
+\SetKwData{MONO}{mono output}
+\SetKwData{FALSESTEREO}{false stereo}
+\SetKwData{MAGNITUDE}{magnitude}
+\SetKwData{WASTEDBPS}{wasted bps}
+\SetKwData{SHIFTED}{shifted}
+\SetKwData{CRC}{CRC}
+\SetKwData{CORRELATED}{correlated}
+\SetKwData{MID}{mid}
+\SetKwData{SIDE}{side}
+\SetKwData{TERMS}{terms}
+\SetKwData{DELTAS}{deltas}
+\SetKwData{WEIGHTS}{weights}
+\SetKwData{SAMPLES}{samples}
+\SetKwData{BITSTREAM}{bitstream}
+\SetKwData{ENTROPY}{entropy}
+\SetKw{OR}{or}
+\SetKwFunction{MAX}{max}
+\SetKwFunction{MIN}{min}
+\eIf(\tcc*[f]{1 channel block}){$\text{channel count} = 1$ \OR $\text{\CHANNEL}_0 = \text{\CHANNEL}_1$}{
+  \eIf{$\text{channel count} = 1$}{
+    $\text{\MONO} \leftarrow 1$\;
+    $\text{\FALSESTEREO} \leftarrow 0$\;
+  }{
+    $\text{\MONO} \leftarrow 0$\;
+    $\text{\FALSESTEREO} \leftarrow 1$\;
+  }
+  $\text{\MAGNITUDE} \leftarrow$ \hyperref[wavpack:maximum_magnitude]{maximum magnitude of $\text{\CHANNEL}_0$}\;
+  $\text{\WASTEDBPS} \leftarrow$ \hyperref[wavpack:wasted_bps]{wasted bps of $\text{\CHANNEL}_0$}\;
+  \eIf{$\text{\WASTEDBPS} > 0$}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}block size}{
+      $\text{\SHIFTED}_{0~i} \leftarrow \lfloor\text{\CHANNEL}_{0~i} \div 2 ^ \text{\WASTEDBPS}\rfloor$\;
+    }
+  }{
+    $\text{\SHIFTED}_0 \leftarrow \text{\CHANNEL}_0$\;
+  }
+  $\text{\CRC} \leftarrow$ \hyperref[wavpack:calc_crc]{calculate CRC of $\text{\SHIFTED}_0$}\;
+}(\tcc*[f]{2 channel block}){
+  $\text{\MONO} \leftarrow 0$\;
+  $\text{\FALSESTEREO} \leftarrow 0$\;
+  $\text{\MAGNITUDE} \leftarrow \hyperref[wavpack:maximum_magnitude]{\MAX(\text{maximum magnitude of \CHANNEL}_0~,~\text{maximum magnitude of \CHANNEL}_1)}$\;
+  $\text{\WASTEDBPS} \leftarrow \hyperref[wavpack:wasted_bps]{\MIN(\text{wasted bps of \CHANNEL}_0~,~\text{wasted bps of \CHANNEL}_1)}$\;
+  \eIf{$\text{\WASTEDBPS} > 0$}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}block size}{
+      $\text{\SHIFTED}_{0~i} \leftarrow \lfloor\text{\CHANNEL}_{0~i} \div 2 ^ \text{\WASTEDBPS}\rfloor$\;
+      $\text{\SHIFTED}_{1~i} \leftarrow \lfloor\text{\CHANNEL}_{1~i} \div 2 ^ \text{\WASTEDBPS}\rfloor$\;
+    }
+  }{
+    $\text{\SHIFTED}_0/\text{\SHIFTED}_1 \leftarrow \text{\CHANNEL}_0/\text{\CHANNEL}_1$\;
+  }
+  $\text{\CRC} \leftarrow$ \hyperref[wavpack:calc_crc]{calculate CRC of $\text{\SHIFTED}_0/\text{\SHIFTED}_1$}\;
+  $\text{\MID}/\text{\SIDE} \leftarrow$ \hyperref[wavpack:calc_joint_stereo]{convert $\text{\SHIFTED}_0/\text{\SHIFTED}_1$ to joint stereo}\;
+}
+\EALGORITHM
+}
+
+\begin{figure}[h]
+  \includegraphics{wavpack/figures/typical_block.pdf}
+\end{figure}
+
+\clearpage
+{\relsize{-1}
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\SetKwData{CHANNEL}{channel}
+\SetKwData{CORRELATED}{correlated}
+\SetKwData{SHIFTED}{shifted}
+\SetKwData{MID}{mid}
+\SetKwData{SIDE}{side}
+\SetKwData{SUBBLOCK}{sub block}
+\SetKwData{WASTEDBPS}{wasted bps}
+\SetKwData{BITSTREAM}{bitstream}
+\SetKwData{TERMS}{terms}
+\SetKwData{DELTAS}{deltas}
+\SetKwData{WEIGHTS}{weights}
+\SetKwData{SAMPLES}{samples}
+\SetKwData{ENTROPY}{entropy}
+\SetKw{NOT}{not}
+\SetKw{IN}{in}
+\SetKw{OR}{or}
+$i \leftarrow 0$\;
+\If{first block in file}{
+  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_wave_header]{wave header}\;
+  $i \leftarrow i + 1$\;
+}
+\If{$\text{decorrelation passes} > 0$}{
+  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_decorr_terms]{decorrelation terms sub block from \TERMS and \DELTAS}\;
+  $\text{\SUBBLOCK}_{i + 1} \leftarrow$ \hyperref[wavpack:write_decorr_weights]{decorrelation weights sub block from \WEIGHTS}\;
+  $\text{\SUBBLOCK}_{i + 2} \leftarrow$ \hyperref[wavpack:write_decorr_samples]{decorrelation samples sub block from \SAMPLES}\;
+  $i \leftarrow i + 3$\;
+}
+\If{$\text{\WASTEDBPS} > 0$}{
+  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_extended_integers]{extended integers}\;
+  $i \leftarrow i + 1$\;
+}
+\If{$\text{total channel count} > 2$}{
+  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_channel_info]{channel info}\;
+  $i \leftarrow i + 1$\;
+}
+\If{sample rate not defined in block header}{
+  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_sample_rate]{sample rate}\;
+  $i \leftarrow i + 1$\;
+}
+\eIf(\tcc*[f]{1 channel block}){$\text{channel count} = 1$ \OR $\text{\CHANNEL}_0 = \text{\CHANNEL}_1$}{
+  $(\text{\CORRELATED}_0~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ \hyperref[wavpack:correlate_channels]{correlate $\text{\SHIFTED}_0$\newline
+  with \TERMS, \DELTAS, \WEIGHTS and \SAMPLES from encoding parameters}\;
+  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_entropy]{entropy variables sub block from \ENTROPY}\;
+  $(\text{\BITSTREAM}~,~\text{\ENTROPY}') \leftarrow$ \hyperref[wavpack:write_bitstream]{calculate bitstream from $\text{\CORRELATED}_0$\newline
+  and $\text{\ENTROPY}$ from encoding parameters}\;
+  \BlankLine
+  $\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream sub block from \BITSTREAM\;
+}(\tcc*[f]{2 channel block}){
+  $(\text{\CORRELATED}_0/\text{\CORRELATED}_1~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ \hyperref[wavpack:correlate_channels]{correlate $\text{\MID}/\text{\SIDE}$\newline
+  with \TERMS, \DELTAS, \WEIGHTS and \SAMPLES from encoding parameters}\;
+  \BlankLine
+  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_entropy]{entropy variables sub block from \ENTROPY}\;
+  $(\text{\BITSTREAM}~,~\text{\ENTROPY}') \leftarrow$ \hyperref[wavpack:write_bitstream]{calculate bitstream from $\text{\CORRELATED}_0/\text{\CORRELATED}_0$\newline
+  and $\text{\ENTROPY}$ from encoding parameters}\;
+  $\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream sub block from \BITSTREAM\;
+}
+$i \leftarrow i + 2$\;
+\BlankLine
+\hyperref[wavpack:write_block_header]{write block header}\;
+\For{$j \leftarrow 0$ \emph{\KwTo}i}{
+  write $\text{\SUBBLOCK}_j$\;
+}
+\Return block data, $\text{\WEIGHTS}'$, $\text{\SAMPLES}'$ and $\text{\ENTROPY}'$
+\end{algorithm}
+}
+
+\clearpage
+
+\subsection{Calculating Maximum Magnitude}
+\label{wavpack:maximum_magnitude}
+{\relsize{-1}
+\ALGORITHM{a list of signed PCM samples for a single channel}{an unsigned integer}
+\SetKwData{MAXMAGNITUDE}{maximum magnitude}
+\SetKwData{SAMPLE}{sample}
+\SetKwFunction{MAX}{max}
+\SetKwFunction{BITS}{bits}
+$\text{\MAXMAGNITUDE} \leftarrow 0$\;
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
+  $\text{\MAXMAGNITUDE} \leftarrow \MAX(\BITS(|\text{\SAMPLE}_i|)~,~\text{\MAXMAGNITUDE})$\;
+}
+\Return \MAXMAGNITUDE\;
+\EALGORITHM
+where the \texttt{bits} function is defined as:
+\begin{equation*}
+\texttt{bits}(x) =
+\begin{cases}
+0 & \text{if } x = 0 \\
+1 + \texttt{bits}(\lfloor x \div 2 \rfloor) & \text{if } x > 0
+\end{cases}
+\end{equation*}
+}
+\subsubsection{Maximum Magnitude Example}
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{r|rrrrrrrrrr}
+$i$ & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
+\hline
+$\text{sample}_i$ & 0 & 16 & 31 & 44 & 54 & 61 & 64 & 63 & 58 & 49 \\
+$\texttt{bits}(|\text{sample}_i|)$ & 0 & 5 & 5 & 6 & 6 & 6 & 7 & 6 & 6 & 6
+\end{tabular}
+}
+\end{table}
+\par
+\noindent
+for a maximum magnitude of 7.
+
+\subsection{Calculating Wasted Bits Per Sample}
+\label{wavpack:wasted_bps}
+{\relsize{-1}
+\ALGORITHM{a list of signed PCM samples for a single channel}{an unsigned integer}
+\SetKwData{WASTEDBPS}{wasted bps}
+\SetKwData{SAMPLE}{sample}
+\SetKwFunction{MIN}{min}
+\SetKwFunction{WASTED}{wasted}
+$\text{\WASTEDBPS} \leftarrow \infty$\tcc*[r]{maximum unsigned integer}
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
+  $\text{\WASTEDBPS} \leftarrow \MIN(\WASTED(\text{\SAMPLE}_i)~,~\text{\WASTEDBPS})$\;
+}
+\eIf(\tcc*[f]{all samples are 0}){$\WASTEDBPS = \infty$}{
+  \Return 0\;
+}{
+  \Return \WASTEDBPS\;
+}
+\EALGORITHM
+where the \texttt{wasted} function is defined as:
+\begin{equation*}
+\texttt{wasted}(x) =
+\begin{cases}
+\infty & \text{if } x = 0 \\
+0 & \text{if } x \bmod 2 = 1 \\
+1 + \texttt{wasted}(x \div 2) & \text{if } x \bmod 2 = 0 \\
+\end{cases}
+\end{equation*}
+}
+\subsubsection{Wasted Bits Example}
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{r|rrrrrrrrrr}
+$i$ & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
+\hline
+$\text{sample}_i$ & 0 & 16 & 31 & 44 & 54 & 61 & 64 & 63 & 58 & 49 \\
+$\texttt{wasted}(\text{sample}_i)$ & $\infty$ & 4 & 0 & 2 & 1 & 0 & 6 & 0 & 1 & 0 \\
+\end{tabular}
+}
+\end{table}
+\par
+\noindent
+for a wasted bps of 0 (which is typical).
+
+\begin{landscape}
+
+\subsection{Calculating CRC}
+\label{wavpack:calc_crc}
+\ALGORITHM{one or two channels of signed audio samples}{an unsigned 32-bit CRC integer}
+\SetKwData{MONO}{mono output}
+\SetKwData{CRC}{CRC}
+\SetKwData{LCRC}{LCRC}
+\SetKwData{SCRC}{SCRC}
+\SetKwData{CHANNEL}{channel}
+$\text{\CRC}_{-1} \leftarrow \texttt{0xFFFFFFFF}$\;
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
+  \eIf{$\text{\MONO} = 0$}{
+    $\text{\LCRC}_i \leftarrow (3 \times \text{\CRC}_{i - 1}) + \text{\CHANNEL}_{0~i}$\tcc*[r]{calculate signed CRC of left channel}
+    $\text{\SCRC}_i \leftarrow (3 \times \text{\LCRC}_{i - 1}) + \text{\CHANNEL}_{1~i}$\tcc*[r]{calculate signed CRC of right channel}
+  }{
+    $\text{\SCRC}_i \leftarrow (3 \times \text{\CRC}_{i - 1}) + \text{\CHANNEL}_{0~i}$\tcc*[r]{calculate signed CRC of channel}
+  }
+  \BlankLine
+  \eIf(\tcc*[f]{convert signed CRC to unsigned, 32-bit integer}){$\text{\SCRC}_i \geq 0$}{
+    $\text{\CRC}_i \leftarrow \text{\SCRC}_i \bmod \texttt{0x100000000}$\;
+  }{
+    $\text{\CRC}_i \leftarrow (2 ^ {32} - (-\text{\SCRC}_i)) \bmod \texttt{0x100000000}$\;
+  }
+}
+\Return $\text{\CRC}_{\text{sample count} - 1}$\;
+\EALGORITHM
+
+\subsubsection{Checksum Calculation Example}
+{\relsize{-1}
+\begin{tabular}{|r|r|r||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
+$i$ & $\textsf{channel}_{0~i}$ & $\textsf{channel}_{1~i}$ & \textsf{LCRC}_i & \textsf{SCRC}_i & \textsf{CRC}_i \\
+\hline
+0 & 0 & 64 &
+(3 \times \texttt{0xFFFFFFFF}) + 0 = \texttt{0x2FFFFFFFD} &
+(3 \times \texttt{0x2FFFFFFFD}) + 64 = \texttt{0x900000037} &
+\texttt{0x00000037} \\
+1 & 16 & 62 &
+(3 \times \texttt{0x00000037}) + 16 = \texttt{0x000000B5} &
+(3 \times \texttt{0x000000B5}) + 62 = \texttt{0x0000025D} &
+\texttt{0x0000025D} \\
+2 & 31 & 56 &
+(3 \times \texttt{0x0000025D}) + 31 = \texttt{0x00000736} &
+(3 \times \texttt{0x00000736}) + 56 = \texttt{0x000015DA} &
+\texttt{0x000015DA} \\
+3 & 44 & 47 &
+(3 \times \texttt{0x000015DA}) + 44 = \texttt{0x000041BA} &
+(3 \times \texttt{0x000041BA}) + 47 = \texttt{0x0000C55D} &
+\texttt{0x0000C55D} \\
+4 & 54 & 34 &
+(3 \times \texttt{0x0000C55D}) + 54 = \texttt{0x0002504D} &
+(3 \times \texttt{0x0002504D}) + 34 = \texttt{0x0006F109} &
+\texttt{0x0006F109} \\
+5 & 61 & 20 &
+(3 \times \texttt{0x0006F109}) + 61 = \texttt{0x0014D358} &
+(3 \times \texttt{0x0014D358}) + 20 = \texttt{0x003E7A1C} &
+\texttt{0x003E7A1C} \\
+6 & 64 & 4 &
+(3 \times \texttt{0x003E7A1C}) + 64 = \texttt{0x00BB6E94} &
+(3 \times \texttt{0x00BB6E94}) + 4 = \texttt{0x02324BC0} &
+\texttt{0x02324BC0} \\
+7 & 63 & -12 &
+(3 \times \texttt{0x02324BC0}) + 63 = \texttt{0x0696E37F} &
+(3 \times \texttt{0x0696E37F}) - 12 = \texttt{0x13C4AA71} &
+\texttt{0x13C4AA71} \\
+8 & 58 & -27 &
+(3 \times \texttt{0x13C4AA71}) + 58 = \texttt{0x3B4DFF8D} &
+(3 \times \texttt{0x3B4DFF8D}) - 27 = \texttt{0xB1E9FE8C} &
+\texttt{0xB1E9FE8C} \\
+9 & 49 & -41 &
+(3 \times \texttt{0xB1E9FE8C}) + 49 = \texttt{0x215BDFBD5} &
+(3 \times \texttt{0x215BDFBD5}) - 41 = \texttt{0x64139F356} &
+\texttt{0x4139F356} \\
+\end{tabular}
+}
+\vskip 1em
+\par
+\noindent
+Resulting in a final CRC of \texttt{0x4139F356}
+
+\end{landscape}
+
+\subsection{Joint Stereo Conversion}
+\label{wavpack:calc_joint_stereo}
+\ALGORITHM{left and right channels of signed integers}{mid and side channels of signed integers}
+\SetKwData{LEFT}{left}
+\SetKwData{RIGHT}{right}
+\SetKwData{MID}{mid}
+\SetKwData{SIDE}{side}
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
+  $\text{\MID}_i \leftarrow \text{\LEFT}_i - \text{\RIGHT}_i$\;
+  $\text{\SIDE}_i \leftarrow \lfloor(\text{\LEFT}_i + \text{\RIGHT}_i) \div 2\rfloor$\;
+}
+\Return \MID and \SIDE channels\;
+\EALGORITHM
+
+\subsubsection{Joint Stereo Example}
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{|r|r|r||>{$}r<{$}|>{$}r<{$}|}
+$i$ & $\textsf{left}_i$ & $\textsf{right}_i$ & \textsf{mid}_i & \textsf{side}_i \\
+\hline
+0 & 0 & 64 & 0 - 64 = -64 & \lfloor(0 + 64) \div 2\rfloor = 32 \\
+1 & 16 & 62 & 16 - 62 = -46 & \lfloor(16 + 62) \div 2\rfloor = 39 \\
+2 & 31 & 56 & 31 - 56 = -25 & \lfloor(31 + 56) \div 2\rfloor = 43 \\
+3 & 44 & 47 & 44 - 47 = -3 & \lfloor(44 + 47) \div 2\rfloor = 45 \\
+4 & 54 & 34 & 54 - 34 = 20 & \lfloor(54 + 34) \div 2\rfloor = 44 \\
+5 & 61 & 20 & 61 - 20 = 41 & \lfloor(61 + 20) \div 2\rfloor = 40 \\
+6 & 64 & 4 & 64 - 4 = 60 & \lfloor(64 + 4) \div 2\rfloor = 34 \\
+7 & 63 & -12 & 63 - -12 = 75 & \lfloor(63 + -12) \div 2\rfloor = 25 \\
+8 & 58 & -27 & 58 - -27 = 85 & \lfloor(58 + -27) \div 2\rfloor = 15 \\
+9 & 49 & -41 & 49 - -41 = 90 & \lfloor(49 + -41) \div 2\rfloor = 4 \\
+\end{tabular}
+}
+\end{table}
+
+\clearpage
+
+\input{wavpack/encode/correlation}
+
+\clearpage
+
+\input{wavpack/encode/terms}
+
+\clearpage
+
+\input{wavpack/encode/weights}
+
+\clearpage
+
+\input{wavpack/encode/samples}
+
+\clearpage
+
+\input{wavpack/encode/entropy}
+
+\clearpage
+
+\input{wavpack/encode/bitstream}
+
+\clearpage
+
+\subsection{Writing RIFF WAVE Header and Footer}
+\label{wavpack:write_wave_header}
+\begin{figure}[h]
+  \includegraphics{wavpack/figures/pcm_sandwich.pdf}
+\end{figure}
+
+
+\subsection{Writing MD5 Sum}
+\label{wavpack:write_md5}
+MD5 sum is calculated as if the PCM data had been read from
+a wave file's \texttt{data} chunk.
+That is, the samples are converted to little-endian format
+and are signed if the stream's bits-per-sample is greater than 8.
+\begin{figure}[h]
+  \includegraphics{wavpack/figures/md5sum.pdf}
+\end{figure}
+
+\subsection{Writing Extended Integers}
+\label{wavpack:write_extended_integers}
+\begin{figure}[h]
+  \includegraphics{wavpack/figures/extended_integers.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Writing Channel Info}
+\label{wavpack:write_channel_info}
+\begin{figure}[h]
+  \includegraphics{wavpack/figures/channel_info.pdf}
+\end{figure}
+
+
+\subsection{Writing Sample Rate}
+\label{wavpack:write_sample_rate}
+\begin{figure}[h]
+  \includegraphics{wavpack/figures/sample_rate.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Writing Sub Block}
+{\relsize{-1}
+\ALGORITHM{metadata function, nondecoder data flag, sub block data}{sub block header data}
+\SetKwData{DATA}{sub block data}
+\SetKwFunction{LEN}{len}
+$\text{metadata function} \rightarrow$ \WRITE 5 unsigned bits\;
+$\text{nondecoder data} \rightarrow$ \WRITE 1 unsigned bit\;
+$\LEN(\text{\DATA}) \bmod 2 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{actual size 1 less}
+\eIf(\tcc*[f]{large block}){$\LEN(\text{\DATA}) > 255 \times 2$}{
+  $1 \rightarrow$ \WRITE 1 unsigned bit\;
+  $\lceil\LEN(\text{\DATA}) \div 2\rceil \rightarrow$ \WRITE 24 unsigned bits\;
+}{
+  $0 \rightarrow$ \WRITE 1 unsigned bit\;
+  $\lceil\LEN(\text{\DATA}) \div 2\rceil \rightarrow$ \WRITE 8 unsigned bits\;
+}
+write \DATA\;
+\If{$\LEN(\text{\DATA}) \bmod 2 = 1$}{
+  $0 \rightarrow$ \WRITE 8 unsigned bits\;
+}
+\EALGORITHM
+}
+
+\begin{figure}[h]
+\includegraphics{wavpack/figures/block_header2.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Writing Block Header}
+\label{wavpack:write_block_header}
+{\relsize{-1}
+\ALGORITHM{total sub blocks size, block index, block samples, bits per sample, channel count, joint stereo, correlation pass count, wasted BPS, initial block, final block, maximum magnitude, sample rate, false stereo, CRC}{block header data}
+\SetKwData{SUBBLOCKSSIZE}{sub blocks size}
+\SetKwData{BLOCKINDEX}{block index}
+\SetKwData{BLOCKSAMPLES}{block samples}
+\SetKwData{BITSPERSAMPLE}{bits per sample}
+\SetKwData{CHANNELCOUNT}{channel count}
+\SetKwData{PASSES}{correlation passes}
+\SetKwData{WASTEDBPS}{wasted BPS}
+\SetKwData{JOINTSTEREO}{joint stereo}
+\SetKwData{INITIALBLOCK}{initial block}
+\SetKwData{FINALBLOCK}{final block}
+\SetKwData{MAXMAGNITUDE}{maximum magnitude}
+\SetKwData{FALSESTEREO}{false stereo}
+$\texttt{"wvpk"} \rightarrow$ \WRITE 4 bytes\;
+$\SUBBLOCKSSIZE + 24 \rightarrow$ \WRITE 32 unsigned bits\;
+$\texttt{0x0410} \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{version}
+$0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{track number}
+$0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{index number}
+$\texttt{0xFFFFFFFF} \rightarrow$ \WRITE 32 unsigned bits\tcc*[r]{total samples placeholder}
+$\BLOCKINDEX \rightarrow$ \WRITE 32 unsigned bits\;
+$\BLOCKSAMPLES \rightarrow$ \WRITE 32 unsigned bits\;
+$\text{\BITSPERSAMPLE} \div 8 - 1 \rightarrow$ \WRITE 2 unsigned bits\;
+$2 - \text{\CHANNELCOUNT} \rightarrow$ \WRITE 1 unsigned bit\;
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{hybrid mode}
+\eIf(\tcc*[f]{joint stereo}){$\text{\CHANNELCOUNT} = 2$}{
+  $1 \rightarrow$ \WRITE 1 unsigned bit
+}{
+  $0 \rightarrow$ \WRITE 1 unsigned bit
+}
+\eIf(\tcc*[f]{cross channel decorrelation}){$\text{\PASSES} > 5$}{
+  $1 \rightarrow$ \WRITE 1 unsigned bit\;
+}{
+  $0 \rightarrow$ \WRITE 1 unsigned bit\;
+}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{hybrid noise shaping}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{floating point data}
+\eIf(\tcc*[f]{extended size integers}){$\WASTEDBPS > 0$}{
+  $1 \rightarrow$ \WRITE 1 unsigned bit\;
+}{
+  $0 \rightarrow$ \WRITE 1 unsigned bit\;
+}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{hybrid controls bitrate}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{hybrid noise balanced}
+$\INITIALBLOCK \rightarrow$ \WRITE 1 unsigned bit\;
+$\FINALBLOCK \rightarrow$ \WRITE 1 unsigned bit\;
+$0 \rightarrow$ \WRITE 5 unsigned bits\tcc*[r]{left shift data}
+$\MAXMAGNITUDE \rightarrow$ \WRITE 5 unsigned bits\;
+$\textit{encoded sample rate} \rightarrow$ \WRITE 4 unsigned bits\;
+\begin{tabular}{rr|rr|rr}
+  sample rate & \textit{encoded} &
+  sample rate & \textit{encoded} &
+  sample rate & \textit{encoded} \\
+  \hline
+  6000 Hz & \texttt{0} &
+  22050 Hz & \texttt{6} &
+  64000 Hz & \texttt{11} \\
+  8000 Hz & \texttt{1} &
+  24000 Hz & \texttt{7} &
+  88200 Hz & \texttt{12} \\
+  9600 Hz & \texttt{2} &
+  32000 Hz & \texttt{8} &
+  96000 Hz & \texttt{13} \\
+  11025 Hz & \texttt{3} &
+  44100 Hz & \texttt{9} &
+  192000 Hz & \texttt{14} \\
+  12000 Hz & \texttt{4} &
+  48000 Hz & \texttt{10} &
+  otherwise & \texttt{15} \\
+  16000 Hz & \texttt{5} \\
+\end{tabular} \\
+$0 \rightarrow$ \WRITE 2 unsigned bits\tcc*[r]{reserved}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{use IIR}
+$\FALSESTEREO \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{if $\text{channel}_0 = \text{channel}_1$}
+$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{reserved}
+$CRC \rightarrow$ \WRITE 32 unsigned bits\;
+\EALGORITHM
+}

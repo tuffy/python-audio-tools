@@ -1,0 +1,57 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
+\subsection{Writing Decorrelation Weights}
+\label{wavpack:write_decorr_weights}
+\ALGORITHM{a list of decorrelation weights per channel}{decorrelation weights sub block data}
+\SetKwData{WEIGHT}{weight}
+\SetKwFunction{STOREWEIGHT}{store\_weight}
+\SetKwData{KwDownTo}{downto}
+\For(\tcc*[f]{populate in reverse order}){$p \leftarrow \text{decorrelation pass count}$ \emph{\KwDownTo}0}{
+  $\texttt{\STOREWEIGHT}(\text{\WEIGHT}_{p~0}) \rightarrow$ \WRITE 8 signed bits\;
+  \If{$\text{channel count} = 2$}{
+    $\texttt{\STOREWEIGHT}(\text{\WEIGHT}_{p~1}) \rightarrow$ \WRITE 8 signed bits\;
+  }
+}
+\Return decorrelation weights sub block data\;
+\EALGORITHM
+\par
+\noindent
+where \texttt{store\_weight} is defined as:
+\begin{equation*}
+\texttt{store\_weight}(w) =
+\begin{cases}
+\left\lfloor\frac{\texttt{min}(w, 1024) - \lfloor(\texttt{min}(w,1024) + 2 ^ 6) \div 2 ^ 7\rfloor + 4}{2 ^ 3}\right\rfloor & \text{ if } w > 0 \\
+0 & \text{ if } w = 0 \\
+\left\lfloor \frac{\texttt{max}(w, -1024) + 4}{2 ^ 3} \right\rfloor & \text{ if } w < 0 \\
+\end{cases}
+\end{equation*}
+\begin{figure}[h]
+  \includegraphics{wavpack/figures/decorr_weights.pdf}
+\end{figure}
+\clearpage
+For example, given the decorrelation weight values:
+\begin{table}[h]
+\begin{tabular}{rrrrr}
+$p$ & $\textsf{weight}_{p~0}$ & $\textsf{weight}_{p~1}$ &
+$\texttt{store\_weight}(\textsf{weight}_{p~0})$ &
+$\texttt{store\_weight}(\textsf{weight}_{p~1})$ \\
+\hline
+0 & 16 & 24 & 2 & 3 \\
+1 & 48 & 48 & 6 & 6 \\
+2 & 32 & 32 & 4 & 4 \\
+3 & 48 & 48 & 6 & 6 \\
+4 & 48 & 48 & 6 & 6 \\
+\end{tabular}
+\end{table}
+\par
+\noindent
+the decorrelation weights subframe is written as:
+\begin{figure}[h]
+\includegraphics{wavpack/figures/decorr_weights_parse.pdf}
+\end{figure}

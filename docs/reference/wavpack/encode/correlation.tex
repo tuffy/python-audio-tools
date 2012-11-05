@@ -1,0 +1,616 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
+\subsection{Correlation Passes}
+\label{wavpack:correlate_channels}
+\ALGORITHM{a list of signed samples per channel; correlation terms, deltas, weights and samples}{a list of signed residuals per channel; correlation weights and samples for the next block}
+\SetKwData{PASS}{pass}
+\SetKwData{CHANNEL}{channel}
+\SetKwData{TERMCOUNT}{term count}
+\SetKwData{TERM}{term}
+\SetKwData{DELTA}{delta}
+\SetKwData{WEIGHT}{weight}
+\SetKwData{SAMPLES}{sample}
+\SetKw{KwDownTo}{downto}
+\eIf{$\text{channel count} = 1$}{
+  $\text{\PASS}_{-1~0} \leftarrow \text{\CHANNEL}_0$\;
+  \For(\tcc*[f]{perform passes in reverse order}){$i \leftarrow 0$ \emph{\KwTo}\TERMCOUNT}{
+    $p \leftarrow \TERMCOUNT - i - 1$\;
+    $\left.\begin{tabular}{r}
+      $\text{\PASS}_{i~0}$ \\
+      $\text{\WEIGHT}_{p~0}$ \\
+      $\text{\SAMPLES}_{p~0}$ \\
+    \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_1ch]{correlate 1 channel $\text{\PASS}_{i - 1}$} using $\left\lbrace\begin{tabular}{l}
+    $\text{\TERM}_{i}$ \\
+    $\text{\DELTA}_{i}$ \\
+    $\text{\WEIGHT}_{p~0}$ \\
+    $\text{\SAMPLES}_{p~0}$ \\
+    \end{tabular}\right.$\;
+  }
+  \Return $\text{\PASS}_{(\TERMCOUNT - 1)}$, updated $\text{\WEIGHT}$, updated $\text{\SAMPLES}$\;
+}{
+  $\text{\PASS}_{-1~0} \leftarrow \text{\CHANNEL}_0$\;
+  $\text{\PASS}_{-1~1} \leftarrow \text{\CHANNEL}_1$\;
+  \For(\tcc*[f]{perform passes in reverse order}){$i \leftarrow 0$ \emph{\KwTo}\TERMCOUNT}{
+    $p \leftarrow \TERMCOUNT - i - 1$\;
+    $\left.\begin{tabular}{r}
+      $\text{\PASS}_{i~0}$ \\
+      $\text{\PASS}_{i~1}$ \\
+      $\text{\WEIGHT}_{p~0}$ \\
+      $\text{\WEIGHT}_{p~1}$ \\
+      $\text{\SAMPLES}_{p~0}$ \\
+      $\text{\SAMPLES}_{p~1}$ \\
+    \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_2ch]{correlate 2 channel $\text{\PASS}_{i - 1}$} using $\left\lbrace\begin{tabular}{l}
+    $\text{\TERM}_{i}$ \\
+    $\text{\DELTA}_{i}$ \\
+    $\text{\WEIGHT}_{p~0}$ \\
+    $\text{\WEIGHT}_{p~1}$ \\
+    $\text{\SAMPLES}_{p~0}$ \\
+    $\text{\SAMPLES}_{p~1}$ \\
+    \end{tabular}\right.$\;
+  }
+  \Return $\text{\PASS}_{(\TERMCOUNT - 1)}$, updated $\text{\WEIGHT}$, updated $\text{\SAMPLES}$\;
+}
+\EALGORITHM
+
+\clearpage
+
+\subsection{1 Channel Correlation Pass}
+\label{wavpack:correlate_1ch}
+{\relsize{-1}
+\ALGORITHM{a list of signed uncorrelated samples; correlation term, delta, weight and samples}{a list of signed correlated samples; updated weight and sample values}
+\SetKwData{CORRELATED}{correlated}
+\SetKwData{DECORRELATED}{uncorrelated}
+\SetKwData{DECORRSAMPLE}{correlation sample}
+\SetKwData{WEIGHT}{weight}
+\SetKwData{DELTA}{delta}
+\SetKwData{TEMP}{temp}
+\SetKw{OR}{or}
+\SetKw{XOR}{xor}
+\SetKwFunction{APPLYWEIGHT}{apply\_weight}
+\SetKwFunction{UPDATEWEIGHT}{update\_weight}
+$\text{\WEIGHT}_0 \leftarrow$ decorrelation weight\;
+\BlankLine
+\uIf{$term = 18$}{
+  $\text{\DECORRELATED}_{-2} \leftarrow \text{\DECORRSAMPLE}_1$\;
+  $\text{\DECORRELATED}_{-1} \leftarrow \text{\DECORRSAMPLE}_0$\;
+  \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
+    $\text{\TEMP}_{i} \leftarrow \lfloor(3 \times \text{\DECORRELATED}_{i - 1} - \text{\DECORRELATED}_{i - 2}) \div 2 \rfloor$\;
+    $\text{\CORRELATED}_i \leftarrow \text{\DECORRELATED}_i - \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\TEMP}_{i})$\;
+    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\TEMP}_{i}~,~\text{\CORRELATED}_i~,~\DELTA)$\;
+  }
+  \Return $\left\lbrace\begin{tabular}{l}
+  \CORRELATED \\
+  $\text{\WEIGHT}_i$ \\
+  $\DECORRSAMPLE \leftarrow$ \texttt{[}$\text{\DECORRELATED}_{(i - 2)}$, $\text{\DECORRELATED}_{(i - 1)}$ \texttt{]} \\
+  \end{tabular}\right.$\;
+}
+\uElseIf{$term = 17$}{
+  $\text{\DECORRELATED}_{-2} \leftarrow \text{\DECORRSAMPLE}_1$\;
+  $\text{\DECORRELATED}_{-1} \leftarrow \text{\DECORRSAMPLE}_0$\;
+  \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
+    $\text{\TEMP}_{i} \leftarrow 2 \times \text{\DECORRELATED}_{i - 1} - \text{\DECORRELATED}_{i - 2}$\;
+    $\text{\CORRELATED}_i \leftarrow  \text{\DECORRELATED}_i - \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\TEMP}_{i})$\;
+    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\TEMP}_{i}~,~\text{\CORRELATED}_i~,~\DELTA)$\;
+  }
+  \Return $\left\lbrace\begin{tabular}{l}
+  \CORRELATED \\
+  $\text{\WEIGHT}_i$ \\
+  $\DECORRSAMPLE \leftarrow$ \texttt{[}$\text{\DECORRELATED}_{(i - 2)}$, $\text{\DECORRELATED}_{(i - 1)}$ \texttt{]} \\
+  \end{tabular}\right.$\;
+}
+\uElseIf{$1 \leq term \leq 8$}{
+  \For{$i \leftarrow 0$ \emph{\KwTo}term}{
+    $\text{\DECORRELATED}_{i - \text{term}} \leftarrow \text{\DECORRSAMPLE}_i$\;
+  }
+  \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
+    $\text{\CORRELATED}_i \leftarrow  \text{\DECORRELATED}_i - \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\DECORRELATED}_{i - \text{term}})$\;
+    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\DECORRELATED}_{i - \text{term}}~,~\text{\CORRELATED}_i~,~\DELTA)$\;
+  }
+  \Return $\left\lbrace\begin{tabular}{l}
+  \CORRELATED \\
+  $\text{\WEIGHT}_i$ \\
+  $\DECORRSAMPLE \leftarrow$ last $term$ \DECORRELATED samples \\
+  \end{tabular}\right.$\;
+}
+\Else{
+  invalid decorrelation term\;
+}
+\EALGORITHM
+\par
+\noindent
+\begin{align*}
+\intertext{where \texttt{apply\_weight} is defined as:}
+\texttt{apply\_weight}(weight~,~sample) &= \left\lfloor\frac{weight \times sample + 2 ^ 9}{2 ^ {10}}\right\rfloor \\
+\intertext{and \texttt{update\_weight} is defined as:}
+\texttt{update\_weight}(source~,~result~,~delta) &=
+\begin{cases}
+0 & \text{ if } source = 0 \text{ or } result = 0 \\
+delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
+-delta & \text{ if } (source \textbf{ xor } result) < 0
+\end{cases}
+\end{align*}
+}
+
+\clearpage
+
+\subsection{2 Channel Correlation Pass}
+\label{wavpack:correlate_2ch}
+{\relsize{-1}
+\ALGORITHM{2 lists of signed uncorrelated samples; correlation term and delta, 2 correlation weights, 2 lists of correlation samples}{2 lists of signed correlated samples; updated weight and sample values per channel}
+\SetKwData{TERM}{term}
+\SetKwData{DELTA}{delta}
+\SetKwData{CORRELATED}{correlated}
+\SetKwData{DECORRELATED}{uncorrelated}
+\SetKwData{DECORRSAMPLE}{correlation sample}
+\SetKwData{WEIGHT}{weight}
+\SetKw{OR}{or}
+\SetKw{XOR}{xor}
+\SetKwFunction{MIN}{min}
+\SetKwFunction{MAX}{max}
+\SetKwFunction{APPLYWEIGHT}{apply\_weight}
+\SetKwFunction{UPDATEWEIGHT}{update\_weight}
+\uIf{$(17 \leq \TERM \leq 18)$ \OR $(1 \leq \TERM \leq 8)$}{
+  $\left.\begin{tabular}{r}
+    $\text{\CORRELATED}_{0}$ \\
+    $\text{\WEIGHT}_{0}$ \\
+    $\text{\DECORRSAMPLE}_{0}$ \\
+  \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_1ch]{correlate 1 channel $\text{\DECORRELATED}_{0}$} using $\left\lbrace\begin{tabular}{l}
+  $\text{\TERM}$ \\
+  $\text{\DELTA}$ \\
+  $\text{\WEIGHT}_{0}$ \\
+  $\text{\DECORRSAMPLE}_{0}$ \\
+  \end{tabular}\right.$\;
+  $\left.\begin{tabular}{r}
+    $\text{\CORRELATED}_{1}$ \\
+    $\text{\WEIGHT}_{1}$ \\
+    $\text{\DECORRSAMPLE}_{1}$ \\
+  \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_1ch]{correlate 1 channel $\text{\DECORRELATED}_{1}$} using $\left\lbrace\begin{tabular}{l}
+  $\text{\TERM}$ \\
+  $\text{\DELTA}$ \\
+  $\text{\WEIGHT}_{1}$ \\
+  $\text{\DECORRSAMPLE}_{1}$ \\
+  \end{tabular}\right.$\;
+  \Return $\left\lbrace\begin{tabular}{l}
+  $\text{\CORRELATED}$ \\
+  $\text{\WEIGHT}$ \\
+  $\text{\DECORRSAMPLE}$ \\
+  \end{tabular}\right.$\;
+}
+\uElseIf{$-3 \leq \TERM \leq -1$}{
+  $\text{\WEIGHT}_{0~0} \leftarrow$ correlation weight 0\;
+  $\text{\WEIGHT}_{1~0} \leftarrow$ correlation weight 1\;
+  $\text{\DECORRELATED}_{0~-1} \leftarrow \text{\DECORRSAMPLE}_{1~0}$\;
+  $\text{\DECORRELATED}_{1~-1} \leftarrow \text{\DECORRSAMPLE}_{0~0}$\;
+  \uIf{$\TERM = -1$}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
+      $\text{\CORRELATED}_{0~i} \leftarrow  \text{\DECORRELATED}_{0~i} - \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~(i - 1)})$\;
+      $\text{\CORRELATED}_{1~i} \leftarrow \text{\DECORRELATED}_{1~i} - \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~i})$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~(i - 1)}~,~\text{\CORRELATED}_{0~i}~,~\DELTA)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~i}~,~\text{\CORRELATED}_{1~i}~,~\DELTA)$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
+    }
+  }
+  \uElseIf{$\TERM = -2$}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
+      $\text{\CORRELATED}_{0~i} \leftarrow \text{\DECORRELATED}_{0~i} - \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~i})$\;
+      $\text{\CORRELATED}_{1~i} \leftarrow \text{\DECORRELATED}_{1~i} - \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~({i - 1})})$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~i}~,~\text{\CORRELATED}_{0~i}~,~\DELTA)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~(i - 1)}~,~\text{\CORRELATED}_{1~i}~,~\DELTA)$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
+    }
+  }
+  \ElseIf{$\TERM = -3$}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
+      $\text{\CORRELATED}_{0~i} \leftarrow \text{\DECORRELATED}_{0~i} - \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~(i - 1)})$\;
+      $\text{\CORRELATED}_{1~i} \leftarrow \text{\DECORRELATED}_{1~i} - \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~(i - 1)})$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~(i - 1)}~,~\text{\CORRELATED}_{0~i}~,~\DELTA)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~(i - 1)}~,~\text{\CORRELATED}_{1~i}~,~\DELTA)$\;
+      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
+      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
+    }
+  }
+  \Return $\left\lbrace\begin{tabular}{l}
+  $\text{\CORRELATED}$ \\
+  $\text{\WEIGHT}_{0~i}$ \\
+  $\text{\WEIGHT}_{1~i}$ \\
+  $\text{\DECORRSAMPLE}_{0~0} \leftarrow \text{\DECORRELATED}_{1~i}$ \\
+  $\text{\DECORRSAMPLE}_{1~0} \leftarrow \text{\DECORRELATED}_{0~i}$ \\
+  \end{tabular}\right.$\;
+}
+\Else{
+  invalid decorrelation term\;
+}
+\EALGORITHM
+}
+
+\clearpage
+
+\subsection{Channel Correlation Example}
+\begin{figure}[h]
+{\relsize{-1}
+  \subfloat{
+    \begin{tabular}{|r|r|r|}
+      \multicolumn{3}{c}{Correlation Terms} \\
+      \hline
+      $p$ & $\textsf{term}_p$ & $\textsf{delta}_p$ \\
+      \hline
+      0 & 3 & 2 \\
+      1 & 17 & 2 \\
+      2 & 2 & 2 \\
+      3 & 18 & 2 \\
+      4 & 18 & 2 \\
+      \hline
+    \end{tabular}
+  }
+  \subfloat{
+    \begin{tabular}{|r|r|r|}
+      \multicolumn{3}{c}{Correlation Weights} \\
+      \hline
+      $p$ & $\textsf{weight}_{p~0}$ & $\textsf{weight}_{p~1}$ \\
+      \hline
+      0 & 16 & 24 \\
+      1 & 48 & 48 \\
+      2 & 32 & 32 \\
+      3 & 48 & 48 \\
+      4 & 48 & 48 \\
+      \hline
+    \end{tabular}
+  }
+  \subfloat{
+    \begin{tabular}{|r|r|r|}
+      \multicolumn{3}{c}{Correlation Samples} \\
+      \hline
+      $p$ & $\textsf{sample}_{p~0~s}$ & $\textsf{sample}_{p~1~s}$ \\
+      \hline
+      0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
+      1 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+      2 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+      3 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
+      4 & \texttt{[-73, -78]} & \texttt{[28, 26]} \\
+      \hline
+    \end{tabular}
+  }
+}
+\end{figure}
+\par
+\noindent
+we combine them into a single set of arguments for each correlation pass:
+\begin{table}[h]
+{\relsize{-1}
+  \begin{tabular}{|r|r|r|r|r|r|}
+    \hline
+    & $\textbf{pass}_0$ & $\textbf{pass}_1$ & $\textbf{pass}_2$ &
+    $\textbf{pass}_3$ & $\textbf{pass}_3$ \\
+    \hline
+    $\textsf{term}_p$ & 18 & 18 & 2 & 17 & 3 \\
+    $\textsf{delta}_p$ & 2 & 2 & 2 & 2 & 2 \\
+    $\textsf{weight}_{p~0}$ & 48 & 48 & 32 & 48 & 16 \\
+    $\textsf{sample}_{p~0~s}$ & \texttt{[-73, -78]} & \texttt{[0, 0]} &
+    \texttt{[0, 0]} & \texttt{[0, 0]} & \texttt{[0, 0, 0]} \\
+    $\textsf{weight}_{p~1}$ & 48 & 48 & 32 & 48 & 24 \\
+    $\textsf{sample}_{p~1~s}$ & \texttt{[28, 26]} & \texttt{[0, 0]} &
+    \texttt{[0, 0]} & \texttt{[0, 0]} & \texttt{[0, 0, 0]} \\
+    \hline
+  \end{tabular}
+}
+\end{table}
+\par
+\noindent
+which we apply to the residuals from the bitstream sub-block:
+\par
+\noindent
+{\relsize{-1}
+  \begin{tabular}{|r|r|r|r|r|r|}
+    \hline
+    $\textsf{channel}_{0~i}$ &
+    after $\textbf{pass}_0$ &
+    after $\textbf{pass}_1$ &
+    after $\textbf{pass}_2$ &
+    after $\textbf{pass}_3$ &
+    after $\textbf{pass}_4$ \\
+    \hline
+    -64 & -61 & -61 & -61 & -61 & -61 \\
+    -46 & -43 & -39 & -39 & -33 & -33 \\
+    -25 & -23 & -21 & -19 & -18 & -18 \\
+    -3 & -2 & -1 & 0 & 0 & 1 \\
+    20 & 20 & 20 & 21 & 20 & 20 \\
+    41 & 39 & 37 & 37 & 35 & 35 \\
+    60 & 57 & 54 & 53 & 50 & 50 \\
+    75 & 71 & 67 & 66 & 62 & 62 \\
+    85 & 80 & 75 & 73 & 68 & 68 \\
+    90 & 84 & 79 & 77 & 72 & 71 \\
+    \hline
+    \hline
+    $\textsf{channel}_{1~i}$ &
+    after $\textbf{pass}_0$ &
+    after $\textbf{pass}_1$ &
+    after $\textbf{pass}_2$ &
+    after $\textbf{pass}_3$ &
+    after $\textbf{pass}_4$ \\
+    \hline
+    32 & 31 & 31 & 31 & 31 & 31 \\
+    39 & 37 & 35 & 35 & 32 & 32 \\
+    43 & 41 & 39 & 38 & 36 & 36 \\
+    45 & 43 & 41 & 40 & 38 & 37 \\
+    44 & 41 & 39 & 38 & 36 & 35 \\
+    40 & 38 & 36 & 34 & 32 & 31 \\
+    34 & 32 & 30 & 28 & 26 & 25 \\
+    25 & 23 & 21 & 20 & 19 & 18 \\
+    15 & 14 & 13 & 12 & 11 & 10 \\
+    4 & 3 & 2 & 1 & 1 & 0 \\
+    \hline
+  \end{tabular}
+}
+\par
+\noindent
+Resulting in final correlated samples:
+\newline
+\begin{tabular}{rr}
+$\textsf{residual}_0$ : & \texttt{[-61,~-33,~-18,~~1,~20,~35,~50,~62,~68,~71]} \\
+$\textsf{residual}_1$ : & \texttt{[~31,~~32,~~36,~37,~35,~31,~25,~18,~10,~~0]} \\
+\end{tabular}
+
+\clearpage
+
+{\relsize{-2}
+\begin{tabular}{r||r|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}}
+& $i$ & \textsf{uncorrelated}_i & \textsf{temp}_i & \textsf{correlated}_i & \textsf{weight}_{i + 1} \\
+\hline
+%%START
+\multirow{10}{1em}{\begin{sideways}$\textbf{pass}_0$ - term 18\end{sideways}}
+& 0 & -64 &
+\lfloor(3 \times -73 + 78) \div 2\rfloor = -71 &
+-64 - \lfloor(48 \times -71 + 2 ^ 9) \div 2 ^ {10}\rfloor = -61 &
+48 + 2 = 50
+\\
+& 1 & -46 &
+\lfloor(3 \times -64 + 73) \div 2\rfloor = -60 &
+-46 - \lfloor(50 \times -60 + 2 ^ 9) \div 2 ^ {10}\rfloor = -43 &
+50 + 2 = 52
+\\
+& 2 & -25 &
+\lfloor(3 \times -46 + 64) \div 2\rfloor = -37 &
+-25 - \lfloor(52 \times -37 + 2 ^ 9) \div 2 ^ {10}\rfloor = -23 &
+52 + 2 = 54
+\\
+& 3 & -3 &
+\lfloor(3 \times -25 + 46) \div 2\rfloor = -15 &
+-3 - \lfloor(54 \times -15 + 2 ^ 9) \div 2 ^ {10}\rfloor = -2 &
+54 + 2 = 56
+\\
+& 4 & 20 &
+\lfloor(3 \times -3 + 25) \div 2\rfloor = 8 &
+20 - \lfloor(56 \times 8 + 2 ^ 9) \div 2 ^ {10}\rfloor = 20 &
+56 + 2 = 58
+\\
+& 5 & 41 &
+\lfloor(3 \times 20 + 3) \div 2\rfloor = 31 &
+41 - \lfloor(58 \times 31 + 2 ^ 9) \div 2 ^ {10}\rfloor = 39 &
+58 + 2 = 60
+\\
+& 6 & 60 &
+\lfloor(3 \times 41 - 20) \div 2\rfloor = 51 &
+60 - \lfloor(60 \times 51 + 2 ^ 9) \div 2 ^ {10}\rfloor = 57 &
+60 + 2 = 62
+\\
+& 7 & 75 &
+\lfloor(3 \times 60 - 41) \div 2\rfloor = 69 &
+75 - \lfloor(62 \times 69 + 2 ^ 9) \div 2 ^ {10}\rfloor = 71 &
+62 + 2 = 64
+\\
+& 8 & 85 &
+\lfloor(3 \times 75 - 60) \div 2\rfloor = 82 &
+85 - \lfloor(64 \times 82 + 2 ^ 9) \div 2 ^ {10}\rfloor = 80 &
+64 + 2 = 66
+\\
+& 9 & 90 &
+\lfloor(3 \times 85 - 75) \div 2\rfloor = 90 &
+90 - \lfloor(66 \times 90 + 2 ^ 9) \div 2 ^ {10}\rfloor = 84 &
+66 + 2 = 68
+\\
+\hline
+\hline
+\multirow{10}{1em}{\begin{sideways}$\textbf{pass}_1$ - term 18\end{sideways}}
+& 0 & -61 &
+\lfloor(3 \times 0 - 0) \div 2\rfloor = 0 &
+-61 - \lfloor(48 \times 0 + 2 ^ 9) \div 2 ^ {10}\rfloor = -61 &
+48 + 0 = 48
+\\
+& 1 & -43 &
+\lfloor(3 \times -61 - 0) \div 2\rfloor = -92 &
+-43 - \lfloor(48 \times -92 + 2 ^ 9) \div 2 ^ {10}\rfloor = -39 &
+48 + 2 = 50
+\\
+& 2 & -23 &
+\lfloor(3 \times -43 + 61) \div 2\rfloor = -34 &
+-23 - \lfloor(50 \times -34 + 2 ^ 9) \div 2 ^ {10}\rfloor = -21 &
+50 + 2 = 52
+\\
+& 3 & -2 &
+\lfloor(3 \times -23 + 43) \div 2\rfloor = -13 &
+-2 - \lfloor(52 \times -13 + 2 ^ 9) \div 2 ^ {10}\rfloor = -1 &
+52 + 2 = 54
+\\
+& 4 & 20 &
+\lfloor(3 \times -2 + 23) \div 2\rfloor = 8 &
+20 - \lfloor(54 \times 8 + 2 ^ 9) \div 2 ^ {10}\rfloor = 20 &
+54 + 2 = 56
+\\
+& 5 & 39 &
+\lfloor(3 \times 20 + 2) \div 2\rfloor = 31 &
+39 - \lfloor(56 \times 31 + 2 ^ 9) \div 2 ^ {10}\rfloor = 37 &
+56 + 2 = 58
+\\
+& 6 & 57 &
+\lfloor(3 \times 39 - 20) \div 2\rfloor = 48 &
+57 - \lfloor(58 \times 48 + 2 ^ 9) \div 2 ^ {10}\rfloor = 54 &
+58 + 2 = 60
+\\
+& 7 & 71 &
+\lfloor(3 \times 57 - 39) \div 2\rfloor = 66 &
+71 - \lfloor(60 \times 66 + 2 ^ 9) \div 2 ^ {10}\rfloor = 67 &
+60 + 2 = 62
+\\
+& 8 & 80 &
+\lfloor(3 \times 71 - 57) \div 2\rfloor = 78 &
+80 - \lfloor(62 \times 78 + 2 ^ 9) \div 2 ^ {10}\rfloor = 75 &
+62 + 2 = 64
+\\
+& 9 & 84 &
+\lfloor(3 \times 80 - 71) \div 2\rfloor = 84 &
+84 - \lfloor(64 \times 84 + 2 ^ 9) \div 2 ^ {10}\rfloor = 79 &
+64 + 2 = 66
+\\
+\hline
+\hline
+\multirow{10}{1em}{\begin{sideways}$\textbf{pass}_2$ - term 2\end{sideways}}
+& 0 & -61 & &
+-61 - \lfloor(32 \times 0 + 2 ^ 9) \div 2 ^ {10}\rfloor = -61 &
+32 + 0 = 32
+\\
+& 1 & -39 & &
+-39 - \lfloor(32 \times 0 + 2 ^ 9) \div 2 ^ {10}\rfloor = -39 &
+32 + 0 = 32
+\\
+& 2 & -21 & &
+-21 - \lfloor(32 \times -61 + 2 ^ 9) \div 2 ^ {10}\rfloor = -19 &
+32 + 2 = 34
+\\
+& 3 & -1 & &
+-1 - \lfloor(34 \times -39 + 2 ^ 9) \div 2 ^ {10}\rfloor = 0 &
+34 + 0 = 34
+\\
+& 4 & 20 & &
+20 - \lfloor(34 \times -21 + 2 ^ 9) \div 2 ^ {10}\rfloor = 21 &
+34 - 2 = 32
+\\
+& 5 & 37 & &
+37 - \lfloor(32 \times -1 + 2 ^ 9) \div 2 ^ {10}\rfloor = 37 &
+32 - 2 = 30
+\\
+& 6 & 54 & &
+54 - \lfloor(30 \times 20 + 2 ^ 9) \div 2 ^ {10}\rfloor = 53 &
+30 + 2 = 32
+\\
+& 7 & 67 & &
+67 - \lfloor(32 \times 37 + 2 ^ 9) \div 2 ^ {10}\rfloor = 66 &
+32 + 2 = 34
+\\
+& 8 & 75 & &
+75 - \lfloor(34 \times 54 + 2 ^ 9) \div 2 ^ {10}\rfloor = 73 &
+34 + 2 = 36
+\\
+& 9 & 79 & &
+79 - \lfloor(36 \times 67 + 2 ^ 9) \div 2 ^ {10}\rfloor = 77 &
+36 + 2 = 38
+\\
+\hline
+\hline
+\multirow{10}{1em}{\begin{sideways}$\textbf{pass}_3$ - term 17\end{sideways}}
+& 0 & -61 &
+2 \times 0 - 0 = 0 &
+-61 - \lfloor(48 \times 0 + 2 ^ 9) \div 2 ^ {10}\rfloor = -61 &
+48 + 0 = 48
+\\
+& 1 & -39 &
+2 \times -61 - 0 = -122 &
+-39 - \lfloor(48 \times -122 + 2 ^ 9) \div 2 ^ {10}\rfloor = -33 &
+48 + 2 = 50
+\\
+& 2 & -19 &
+2 \times -39 + 61 = -17 &
+-19 - \lfloor(50 \times -17 + 2 ^ 9) \div 2 ^ {10}\rfloor = -18 &
+50 + 2 = 52
+\\
+& 3 & 0 &
+2 \times -19 + 39 = 1 &
+0 - \lfloor(52 \times 1 + 2 ^ 9) \div 2 ^ {10}\rfloor = 0 &
+52 + 0 = 52
+\\
+& 4 & 21 &
+2 \times 0 + 19 = 19 &
+21 - \lfloor(52 \times 19 + 2 ^ 9) \div 2 ^ {10}\rfloor = 20 &
+52 + 2 = 54
+\\
+& 5 & 37 &
+2 \times 21 - 0 = 42 &
+37 - \lfloor(54 \times 42 + 2 ^ 9) \div 2 ^ {10}\rfloor = 35 &
+54 + 2 = 56
+\\
+& 6 & 53 &
+2 \times 37 - 21 = 53 &
+53 - \lfloor(56 \times 53 + 2 ^ 9) \div 2 ^ {10}\rfloor = 50 &
+56 + 2 = 58
+\\
+& 7 & 66 &
+2 \times 53 - 37 = 69 &
+66 - \lfloor(58 \times 69 + 2 ^ 9) \div 2 ^ {10}\rfloor = 62 &
+58 + 2 = 60
+\\
+& 8 & 73 &
+2 \times 66 - 53 = 79 &
+73 - \lfloor(60 \times 79 + 2 ^ 9) \div 2 ^ {10}\rfloor = 68 &
+60 + 2 = 62
+\\
+& 9 & 77 &
+2 \times 73 - 66 = 80 &
+77 - \lfloor(62 \times 80 + 2 ^ 9) \div 2 ^ {10}\rfloor = 72 &
+62 + 2 = 64
+\\
+\hline
+\hline
+\multirow{10}{1em}{\begin{sideways}$\textbf{pass}_4$ - term 3\end{sideways}}
+& 0 & -61 & &
+-61 - \lfloor(16 \times 0 + 2 ^ 9) \div 2 ^ {10}\rfloor = -61 &
+16 + 0 = 16
+\\
+& 1 & -33 & &
+-33 - \lfloor(16 \times 0 + 2 ^ 9) \div 2 ^ {10}\rfloor = -33 &
+16 + 0 = 16
+\\
+& 2 & -18 & &
+-18 - \lfloor(16 \times 0 + 2 ^ 9) \div 2 ^ {10}\rfloor = -18 &
+16 + 0 = 16
+\\
+& 3 & 0 & &
+0 - \lfloor(16 \times -61 + 2 ^ 9) \div 2 ^ {10}\rfloor = 1 &
+16 - 2 = 14
+\\
+& 4 & 20 & &
+20 - \lfloor(14 \times -33 + 2 ^ 9) \div 2 ^ {10}\rfloor = 20 &
+14 - 2 = 12
+\\
+& 5 & 35 & &
+35 - \lfloor(12 \times -18 + 2 ^ 9) \div 2 ^ {10}\rfloor = 35 &
+12 - 2 = 10
+\\
+& 6 & 50 & &
+50 - \lfloor(10 \times 0 + 2 ^ 9) \div 2 ^ {10}\rfloor = 50 &
+10 + 0 = 10
+\\
+& 7 & 62 & &
+62 - \lfloor(10 \times 20 + 2 ^ 9) \div 2 ^ {10}\rfloor = 62 &
+10 + 2 = 12
+\\
+& 8 & 68 & &
+68 - \lfloor(12 \times 35 + 2 ^ 9) \div 2 ^ {10}\rfloor = 68 &
+12 + 2 = 14
+\\
+& 9 & 72 & &
+72 - \lfloor(14 \times 50 + 2 ^ 9) \div 2 ^ {10}\rfloor = 71 &
+14 + 2 = 16
+\\
+%%END
+\end{tabular}
+}
+\begin{center}
+$\text{channel}_0$ correlation passes
+\end{center}

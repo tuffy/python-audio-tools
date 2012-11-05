@@ -1,0 +1,693 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
+\section{WavPack Decoding}
+
+\ALGORITHM{a WavPack encoded file}{PCM samples}
+\SetKwData{INDEX}{index}
+\SetKwData{SAMPLES}{samples}
+\SetKwData{TOTALSAMPLES}{total samples}
+\SetKwData{FINALBLOCK}{final block}
+\SetKwData{OUTPUTCHANNEL}{output channel}
+\SetKwData{BLOCKCHANNEL}{block channel}
+\SetKwData{BLOCKDATASIZE}{block data size}
+\Repeat{block header's $\text{\INDEX} + \text{\SAMPLES} >= \text{\TOTALSAMPLES}$}{
+  $c \leftarrow 0$\;
+  \Repeat{block header's $\text{\FINALBLOCK} = 1$}{
+    \hyperref[wavpack:read_block_header]{read block header}\;
+    read \BLOCKDATASIZE bytes of block data\;
+    \hyperref[wavpack:decode_block]{decode block header and block data to 1 or 2 channels of PCM data}\;
+    \eIf{2 channels}{
+      $\text{\OUTPUTCHANNEL}_c \leftarrow \text{\BLOCKCHANNEL}_0$\;
+      $\text{\OUTPUTCHANNEL}_{c + 1} \leftarrow \text{\BLOCKCHANNEL}_1$\;
+      $c \leftarrow c + 2$\;
+    }{
+      $\text{\OUTPUTCHANNEL}_c \leftarrow \text{\BLOCKCHANNEL}_0$\;
+      $c \leftarrow c + 1$\;
+    }
+  }
+  update stream MD5 sum with \OUTPUTCHANNEL data\;
+  \Return \OUTPUTCHANNEL data\;
+}
+\BlankLine
+\hyperref[wavpack:md5_sum]{attempt to read one additional block for MD5 sub block}\;
+\If{MD5 sub block found}{
+  \ASSERT sub block MD5 sum = stream MD5 sum\;
+}
+\EALGORITHM
+\par
+\noindent
+For example, four blocks with the following attributes:
+\begin{table}[h]
+\begin{tabular}{rrr}
+channel count & initial block & final block \\
+\hline
+2 & 1 & 0 \\
+1 & 0 & 0 \\
+1 & 0 & 0 \\
+2 & 0 & 1 \\
+\end{tabular}
+\end{table}
+\par
+\noindent
+combine into 6 channels of PCM output as follows:
+\begin{figure}[h]
+\includegraphics{wavpack/figures/block_channels.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Reading Block Header}
+\label{wavpack:read_block_header}
+{\relsize{-1}
+\ALGORITHM{a WavPack file stream}{block header fields}
+\SetKwData{BLOCKID}{block ID}
+\SetKwData{BLOCKSIZE}{block data size}
+\SetKwData{VERSION}{version}
+\SetKwData{TRACKNUMBER}{track number}
+\SetKwData{INDEXNUMBER}{index number}
+\SetKwData{TOTALSAMPLES}{total samples}
+\SetKwData{BLOCKINDEX}{block index}
+\SetKwData{BLOCKSAMPLES}{block samples}
+\SetKwData{BITSPERSAMPLE}{bits per sample}
+\SetKwData{MONOOUTPUT}{mono output}
+\SetKwData{HYBRIDMODE}{hybrid mode}
+\SetKwData{JOINTSTEREO}{joint stereo}
+\SetKwData{CHANNELDECORR}{channel decorrelation}
+\SetKwData{HYBRIDNOISESHAPING}{hybrid noise shaping}
+\SetKwData{FLOATINGPOINTDATA}{floating point data}
+\SetKwData{EXTENDEDSIZEINTEGERS}{extended size integers}
+\SetKwData{HYBRIDCONTROLSBITRATE}{hybrid controls bitrate}
+\SetKwData{HYBRIDNOISEBALANCED}{hybrid noise balanced}
+\SetKwData{INITIALBLOCK}{initial block}
+\SetKwData{FINALBLOCK}{final block}
+\SetKwData{LEFTSHIFTDATA}{left shift data}
+\SetKwData{MAXIMUMMAGNITUDE}{maximum magnitude}
+\SetKwData{SAMPLERATE}{sample rate}
+\SetKwData{USEIIR}{use IIR}
+\SetKwData{FALSESTEREO}{false stereo}
+\SetKwData{RESERVED}{reserved}
+\SetKwData{CRC}{CRC}
+\begin{tabular}{r>{$}c<{$}l}
+\BLOCKID & \leftarrow & \READ 4 bytes\; \\
+& & \ASSERT $\text{\BLOCKID} = \texttt{"wvpk"}$\; \\
+\BLOCKSIZE & \leftarrow & (\READ 32 unsigned bits) - 24\; \\
+\VERSION & \leftarrow & \READ 16 unsigned bits\; \\
+\TRACKNUMBER & \leftarrow & \READ 8 unsigned bits\; \\
+\INDEXNUMBER & \leftarrow & \READ 8 unsigned bits\; \\
+\TOTALSAMPLES & \leftarrow & \READ 32 unsigned bits\; \\
+\BLOCKINDEX & \leftarrow & \READ 32 unsigned bits\; \\
+\BLOCKSAMPLES & \leftarrow & \READ 32 unsigned bits\; \\
+\BITSPERSAMPLE & \leftarrow & $(\text{\READ 2 unsigned bits} + 1) \times 8$\; \\
+\MONOOUTPUT & \leftarrow & \READ 1 unsigned bit\; \\
+\HYBRIDMODE & \leftarrow & \READ 1 unsigned bit\; \\
+\JOINTSTEREO & \leftarrow & \READ 1 unsigned bit\; \\
+\CHANNELDECORR & \leftarrow & \READ 1 unsigned bit\; \\
+\HYBRIDNOISESHAPING & \leftarrow & \READ 1 unsigned bit\; \\
+\FLOATINGPOINTDATA & \leftarrow & \READ 1 unsigned bit\; \\
+\EXTENDEDSIZEINTEGERS & \leftarrow & \READ 1 unsigned bit\; \\
+\HYBRIDCONTROLSBITRATE & \leftarrow & \READ 1 unsigned bit\; \\
+\HYBRIDNOISEBALANCED & \leftarrow & \READ 1 unsigned bit\; \\
+\INITIALBLOCK & \leftarrow & \READ 1 unsigned bit\; \\
+\FINALBLOCK & \leftarrow & \READ 1 unsigned bit\; \\
+\LEFTSHIFTDATA & \leftarrow & \READ 5 unsigned bits\; \\
+\MAXIMUMMAGNITUDE & \leftarrow & \READ 5 unsigned bits\; \\
+\textit{encoded sample rate} & \leftarrow & \READ 4 unsigned bits\; \\
+& & \SKIP 2 bits\; \\
+\USEIIR & \leftarrow & \READ 1 unsigned bit\; \\
+\FALSESTEREO & \leftarrow & \READ 1 unsigned bit\; \\
+\RESERVED & \leftarrow & \READ 1 unsigned bit\; \\
+& & \ASSERT $\text{\RESERVED} = 0$\; \\
+\CRC & \leftarrow & \READ 32 unsigned bits\; \\
+\end{tabular}
+\EALGORITHM
+}
+{\relsize{-1}
+\begin{tabular}{rr}
+  \textit{encoded sample rate} & sample rate \\
+  \hline
+  \texttt{0} & 6000 Hz \\
+  \texttt{1} & 8000 Hz \\
+  \texttt{2} & 9600 Hz \\
+  \texttt{3} & 11025 Hz \\
+  \texttt{4} & 12000 Hz \\
+  \texttt{5} & 16000 Hz \\
+  \texttt{6} & 22050 Hz \\
+  \texttt{7} & 24000 Hz \\
+  \texttt{8} & 32000 Hz \\
+  \texttt{9} & 44100 Hz \\
+  \texttt{10} & 48000 Hz \\
+  \texttt{11} & 64000 Hz \\
+  \texttt{12} & 88200 Hz \\
+  \texttt{13} & 96000 Hz \\
+  \texttt{14} & 192000 Hz \\
+  \texttt{15} & reserved \\
+\end{tabular}
+}
+
+\clearpage
+
+\subsubsection{Reading Block Header Example}
+\begin{figure}[h]
+  \includegraphics[height=3.5in,keepaspectratio]{wavpack/figures/block_header_parse.pdf}
+\end{figure}
+
+{\relsize{-2}
+  \begin{tabular}{rrl}
+    field & value & meaning \\
+    \hline
+    \textbf{block ID} & \texttt{0x6B707677} & \texttt{"wvpk"} \\
+    \textbf{block data size} & \texttt{0x000000B2} & $178 - 24 = 154$ bytes \\
+    \textbf{version} & \texttt{0x0407} \\
+    \textbf{track number} & \texttt{0} \\
+    \textbf{index number} & \texttt{0} \\
+    \textbf{total samples} & \texttt{0x00000019} & 25 PCM frames \\
+    \textbf{block index} & \texttt{0x00000000} & 0 PCM frames \\
+    \textbf{block samples} & \texttt{0x00000019} & 25 PCM frames \\
+    \textbf{bits per sample} & \texttt{1} & 16 bits per sample \\
+    \textbf{mono output} & \texttt{0} & 2 channel block \\
+    \textbf{hybrid mode} & \texttt{0} & lossless data \\
+    \textbf{joint stereo} & \texttt{1} & channels stored in joint stereo \\
+    \textbf{channel decorrelation} & \texttt{1} & cross-channel decorrelation used \\
+    \textbf{hybrid noise shaping} & \texttt{0} \\
+    \textbf{floating point data} & \texttt{0} & samples stored as integers \\
+    \textbf{extended size integers} & \texttt{0} \\
+    \textbf{hybrid controls bitrate} & \texttt{0} \\
+    \textbf{hybrid noise balanced} & \texttt{0} \\
+    \textbf{initial block} & \texttt{1} & is initial block in sequence \\
+    \textbf{final block} & \texttt{1} & is final block in sequence \\
+    \textbf{left shift data} & \texttt{0} \\
+    \textbf{maximum magnitude} & \texttt{15} & 16 bits per sample output \\
+    \textbf{sample rate} & \texttt{9} & 44100 Hz \\
+    \textbf{reserved} & \texttt{0} \\
+    \textbf{use IIR} & \texttt{0} \\
+    \textbf{false stereo} & \texttt{0} & both channels are not identical \\
+    \textbf{reserved} & \texttt{0} \\
+    \textbf{CRC} & \texttt{0x22D25AD7} \\
+  \end{tabular}
+}
+
+\clearpage
+
+\subsection{Block Decoding}
+\label{wavpack:decode_block}
+{\relsize{-1}
+\ALGORITHM{block header, block data}{1 or 2 channels of PCM sample data}
+\SetKwData{METAFUNC}{metadata function}
+\SetKwData{NONDECODER}{nondecoder data}
+\SetKwData{ONELESS}{actual size 1 less}
+\SetKwData{BLOCKDATA}{block data size}
+\SetKwData{SUBBLOCKSIZE}{sub block size}
+\SetKwData{TERMS}{decorrelation terms}
+\SetKwData{DELTAS}{decorrelation deltas}
+\SetKwData{WEIGHTS}{decorrelation weights}
+\SetKwData{SAMPLES}{decorrelation samples}
+\SetKwData{ENTROPIES}{entropies}
+\SetKwData{RESIDUALS}{residuals}
+\SetKwData{ZEROES}{zero bits}
+\SetKwData{ONES}{one bits}
+\SetKwData{DUPES}{duplicate bits}
+\SetKw{AND}{and}
+\tcc{read decoding parameters from sub blocks}
+\While{$\text{\BLOCKDATA} > 0$}{
+  \tcc{read sub block header and data}
+  \METAFUNC $\leftarrow$ \READ 5 unsigned bits\;
+  \NONDECODER $\leftarrow$ \READ 1 unsigned bit\;
+  \ONELESS $\leftarrow$ \READ 1 unsigned bit\;
+  \textit{large sub block} $\leftarrow$ \READ 1 unsigned bit\;
+  \eIf{$\text{large sub block} = 0$}{
+    \SUBBLOCKSIZE $\leftarrow$ \READ 8 unsigned bits\;
+  }{
+    \SUBBLOCKSIZE $\leftarrow$ \READ 24 unsigned bits\;
+  }
+  \eIf{$\ONELESS = 0$}{
+    read $(\SUBBLOCKSIZE \times 2)$ bytes of sub block data\;
+  }{
+    read $(\SUBBLOCKSIZE \times 2) - 1$ bytes of sub block data\;
+    \SKIP 1 byte\;
+  }
+  \BlankLine
+  \tcc{decode audio-related sub blocks}
+  \If{$\text{\NONDECODER} = 0$}{
+    \Switch{\METAFUNC}{
+      \uCase{2}{
+        $\TERMS, \DELTAS \leftarrow$ \hyperref[wavpack:decode_decorrelation_terms]{decode decorrelation terms sub block}\;
+      }
+      \uCase{3}{
+        \ASSERT \TERMS have been read\;
+        $\WEIGHTS \leftarrow$ \hyperref[wavpack:decode_decorrelation_weights]{decode decorrelation weights sub block}\;
+      }
+      \uCase{4}{
+        \ASSERT \TERMS have been read\;
+        $\SAMPLES \leftarrow$ \hyperref[wavpack:decode_decorrelation_samples]{decode decorrelation samples sub block}\;
+      }
+      \uCase{5}{
+        $\ENTROPIES \leftarrow$ \hyperref[wavpack:decode_entropy_variables]{decode entropy variables sub block}\;
+      }
+      \uCase{9}{
+        $\ZEROES, \ONES, \DUPES \leftarrow$ \hyperref[wavpack:decode_extended_integers]{decode extended integers sub block}\;
+      }
+      \Case{10}{
+        \ASSERT \ENTROPIES have been read\;
+        $\RESIDUALS \leftarrow$ \hyperref[wavpack:decode_bitstream]{decode WavPack bitstream sub block}\;
+      }
+    }
+  }
+  \eIf{$\text{large sub block} = 0$}{
+    $\BLOCKDATA \leftarrow \BLOCKDATA - (2 + 2 \times \text{\SUBBLOCKSIZE})$
+  }{
+    $\BLOCKDATA \leftarrow \BLOCKDATA - (4 + 2 \times \text{\SUBBLOCKSIZE})$
+  }
+}
+\If{\TERMS have been read}{
+  \ASSERT \WEIGHTS, \SAMPLES have been read\;
+}
+\ASSERT \RESIDUALS have been read\;
+\EALGORITHM
+}
+
+\clearpage
+
+{\relsize{-1}
+\begin{algorithm}[H]
+\SetKwData{TERMS}{decorrelation terms}
+\SetKwData{MONOOUTPUT}{mono output}
+\SetKwData{FALSESTEREO}{false stereo}
+\SetKwData{JOINTSTEREO}{joint stereo}
+\SetKwData{EXTENDEDINTS}{extended integers}
+\SetKwData{RESIDUALS}{residuals}
+\SetKwData{DECORRELATED}{decorrelated}
+\SetKwData{LEFTRIGHT}{left/right}
+\SetKwData{UNSHIFTED}{unshifted}
+\SetKwFunction{LEN}{len}
+\SetKwFunction{UNDOEXTENDEDINTS}{undo\_extended\_integers}
+\SetKw{AND}{and}
+\DontPrintSemicolon
+\tcc{build PCM data from decoding parameters}
+\eIf(\tcc*[f]{2 channels of output}){$\text{\MONOOUTPUT} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
+  \eIf{\TERMS have been read \AND $\LEN(\TERMS) > 0$}{
+    $\text{\DECORRELATED}_0/\text{\DECORRELATED}_1 \leftarrow$ \hyperref[wavpack:decorrelate_channels]{decorrelate $\text{\RESIDUALS}_0/\text{\RESIDUALS}_1$}\;
+  }{
+    $\text{\DECORRELATED}_0/\text{\DECORRELATED}_1 \leftarrow \text{\RESIDUALS}_0/\text{\RESIDUALS}_1$\;
+  }
+  \eIf{$\text{\JOINTSTEREO} = 1$}{
+    $\LEFTRIGHT \leftarrow$ \hyperref[wavpack:undo_joint_stereo]{undo $\text{\DECORRELATED}_0/\text{\DECORRELATED}_1$ channels joint stereo}\;
+  }{
+    $\LEFTRIGHT \leftarrow \text{\DECORRELATED}_0/\text{\DECORRELATED}_1$\;
+  }
+  \hyperref[wavpack:verify_crc]{verify CRC of $\LEFTRIGHT$ against CRC in block header}\;
+  \eIf{extended integers have been read}{
+    $\text{\UNSHIFTED}_0/\text{\UNSHIFTED}_1 \leftarrow$ \hyperref[wavpack:undo_extended_integers]{undo \LEFTRIGHT channels extended integers}\;
+  }{
+    $\text{\UNSHIFTED}_0/\text{\UNSHIFTED}_1 \leftarrow \LEFTRIGHT$
+  }
+  \Return $\text{\UNSHIFTED}_0$ and $\text{\UNSHIFTED}_1$\;
+}(\tcc*[f]{1 or 2 channels of output}){
+  \eIf{\TERMS have been read \AND $\LEN(\TERMS) > 0$}{
+    $\text{\DECORRELATED}_0 \leftarrow$ \hyperref[wavpack:decorrelate_channels]{decorrelate $\text{\RESIDUALS}_0$}\;
+  }{
+    $\text{\DECORRELATED}_0 \leftarrow \text{\RESIDUALS}_0$\;
+  }
+  \hyperref[wavpack:verify_crc]{  verify CRC of $\text{\DECORRELATED}_0$ against CRC in block header}\;
+  \eIf{extended integers have been read}{
+    $\text{\UNSHIFTED}_0 \leftarrow$ \hyperref[wavpack:undo_extended_integers]{undo $\text{\DECORRELATED}_0$ channel extended integers}\;
+  }{
+    $\text{\UNSHIFTED}_0 \leftarrow \text{\DECORRELATED}_0$\;
+  }
+  \eIf{$\text{\FALSESTEREO} = 0$}{
+    \Return $\text{\UNSHIFTED}_0$\;
+  }{
+    \Return $\text{\UNSHIFTED}_0$ and $\text{\UNSHIFTED}_0$\tcc*[r]{duplicate channel}
+  }
+}
+\end{algorithm}
+}
+\begin{figure}[h]
+  \includegraphics{wavpack/figures/typical_block.pdf}
+\end{figure}
+
+%% \clearpage
+
+%% \subsection{Reading Sub Block Header}
+%% \ALGORITHM{block data}{metadata function integer, nondecoder data flag, \VAR{actual size 1 less} flag, sub block size}
+%% \SetKwData{METAFUNC}{metadata function}
+%% \SetKwData{NONDECODER}{nondecoder data}
+%% \SetKwData{SUBBLOCKSIZE}{sub block size}
+%% \SetKwData{ACTUALSIZEONELESS}{actual size 1 less}
+%% \METAFUNC $\leftarrow$ \READ 5 unsigned bits\;
+%% \NONDECODER $\leftarrow$ \READ 1 unsigned bit\;
+%% \ACTUALSIZEONELESS $\leftarrow$ \READ 1 unsigned bit\;
+%% \textit{large sub block} $\leftarrow$ \READ 1 unsigned bit\;
+%% \eIf{$\text{large sub block} = 0$}{
+%%   \SUBBLOCKSIZE $\leftarrow$ (\READ 8 unsigned bits) $\times 2$\;
+%% }{
+%%   \SUBBLOCKSIZE $\leftarrow$ (\READ 24 unsigned bits) $\times 2$\;
+%% }
+%% \Return (\METAFUNC , \NONDECODER , \ACTUALSIZEONELESS , \SUBBLOCKSIZE)\;
+%% \EALGORITHM
+
+%% \subsubsection{Reading Sub Block Header Example}
+%% \begin{figure}[h]
+%% \includegraphics{wavpack/figures/subblock_parse.pdf}
+%% \end{figure}
+%% \begin{table}[h]
+%% \begin{tabular}{r>{$}c<{$}l}
+%% metadata function & \leftarrow & 2 \\
+%% nondecoder data & \leftarrow & 0 \\
+%% actual size 1 less & \leftarrow & 1 \\
+%% large sub block & \leftarrow & 0 \\
+%% sub block size & \leftarrow & $3 \times 2 = 6$ bytes\;
+%% \end{tabular}
+%% \end{table}
+%% \par
+%% \noindent
+%% Note that although the total length of the sub block is
+%% 8 bytes (2 bytes for the header plus the 6 bytes indicated by
+%% \VAR{sub block size}),
+%% \VAR{actual size 1 less} indicates that only the first 5 bytes
+%% contain actual data and the final byte is padding.
+
+%% \clearpage
+
+%% \subsection{Reading Decoding Parameters}
+
+%% {\relsize{-1}
+%% \ALGORITHM{\VAR{metadata function}, \VAR{nondecoder data}, \VAR{actual size 1 less}, \VAR{sub block size} from sub block header; block header}{parameters required for block decoding}
+%% \SetKwData{METAFUNC}{metadata function}
+%% \SetKwData{NONDECODER}{nondecoder data}
+%% \eIf{$\text{\NONDECODER} = 0$}{
+%%   \Switch{\METAFUNC}{
+%%     \uCase{2}{
+%%       read decorrelation terms and deltas from decorrelation terms sub block\;
+%%       \Return list of signed decorrelation terms and list of unsigned deltas\;
+%%     }
+%%     \uCase{3}{
+%%       read decorrelation weights from decorrelation weights sub block\;
+%%       \Return signed decorrelation weight per channel per decorrelation term\;
+%%     }
+%%     \uCase{4}{
+%%       read decorrelation samples from decorrelation samples sub block\;
+%%       \Return list of signed decorrelation samples per channel per decorrelation term\;
+%%     }
+%%     \uCase{5}{
+%%       read 2 lists of 3 signed entropy variables\;
+%%       \Return 2 lists of signed entropy variables\;
+%%     }
+%%     \uCase{9}{
+%%       read zero bits, one bits and duplicate bits from extended integers sub block\;
+%%       \Return zero bits, one bits, duplicate bits values\;
+%%     }
+%%     \uCase{10}{
+%%       read WavPack bitstream\;
+%%       \Return list of signed residual values per channel\;
+%%     }
+%%     \Other{
+%%       skip sub block\;
+%%     }
+%%   }
+%% }{
+%%   skip sub block\;
+%% }
+%% \EALGORITHM
+%% }
+
+%% \subsubsection{The Decoding Parameters}
+%% These parameters will be populated by sub blocks during decoding.
+%% Once all the sub blocks have been read,
+%% they will be used to transform residual data
+%% into 1 or 2 channels of PCM data.
+%% \begin{description}
+%% \item[decorrelation terms] one signed integer from -3 to 18 per decorrelation pass
+%% \item[decorrelation deltas] one unsigned integer per decorrelation pass
+%% \item[decorrelation weights] one signed integer per decorrelation pass per channel
+%% \item[decorrelation samples] one list of signed integers per decorrelation pass per channel
+%% \item[entropy variables] two lists of three signed integers
+%% \item[zero bits/one bits/duplicate bits] three unsigned integers indicating extended integers
+%% \item[residuals] one list of signed integers per channel
+%% \end{description}
+
+%% \clearpage
+
+%% \subsubsection{Decorrelation Pass Parameters}
+%% The number of terms in the \VAR{decorrelation terms} sub block
+%% determines how many decorrelation passes will run over the
+%% block's residual data.
+%% Decorrelation weight and decorrelation samples parameters
+%% for those passes will be delivered in subsequent sub blocks.
+%% \par
+%% For example, given a 1 channel block
+%% containing a sub block with 5 decorrelation terms,
+%% decorrelation pass parameters may be laid out as follows:
+%% \begin{figure}[h]
+%% \includegraphics{wavpack/figures/decoding_params.pdf}
+%% \end{figure}
+%% \par
+%% \noindent
+%% Note that although the parameters are delivered in decrementing order
+%% ($\text{term}_4$ to $\text{term}_0$),
+%% the decorrelation passes are applied in incrementing order
+%% ($\text{term}_0$ to $\text{term}_4$).
+
+\clearpage
+
+\input{wavpack/decode/terms}
+
+\clearpage
+
+\input{wavpack/decode/weights}
+
+\clearpage
+
+\input{wavpack/decode/samples}
+
+\clearpage
+
+\input{wavpack/decode/entropy}
+
+\clearpage
+
+\input{wavpack/decode/bitstream}
+
+%% \begin{figure}[h]
+%% \includegraphics{wavpack/figures/residuals_parse2.pdf}
+%% \caption{2nd residual parsing example}
+%% \end{figure}
+
+\input{wavpack/decode/decorrelation}
+
+\clearpage
+
+\subsection{Undo Joint Stereo}
+\label{wavpack:undo_joint_stereo}
+\ALGORITHM{mid and side channels of signed sample data, in that order}{left and right channels of signed sample data, in that order}
+\SetKwData{MID}{mid}
+\SetKwData{SIDE}{side}
+\SetKwData{LEFT}{left}
+\SetKwData{RIGHT}{right}
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
+  $\text{\RIGHT}_i \leftarrow \text{\SIDE}_i - \lfloor\text{\MID}_i \div 2\rfloor$\;
+  $\text{\LEFT}_i \leftarrow \text{\MID}_i + \text{\RIGHT}_i$\;
+}
+\Return left and right channels\;
+\EALGORITHM
+
+\subsubsection{Joint Stereo Example}
+\begin{table}[h]
+\begin{tabular}{|r|r|r||>{$}r<{$}|>{$}r<{$}|}
+$i$ & $\textsf{mid}_i$ & $\textsf{side}_i$ & \textsf{right}_i & \textsf{left}_i \\
+\hline
+0 & -64 & 32 &
+32 - \lfloor-64 \div 2\rfloor = 64 &
+-64 + 64 = 0 \\
+1 & -46 & 39 &
+39 - \lfloor-46 \div 2\rfloor = 62 &
+-46 + 62 = 16 \\
+2 & -25 & 43 &
+43 - \lfloor-25 \div 2\rfloor = 56 &
+-25 + 56 = 31 \\
+3 & -3 & 45 &
+45 - \lfloor-3 \div 2\rfloor = 47 &
+-3 + 47 = 44 \\
+4 & 20 & 44 &
+44 - \lfloor20 \div 2\rfloor = 34 &
+20 + 34 = 54 \\
+5 & 41 & 40 &
+40 - \lfloor41 \div 2\rfloor = 20 &
+41 + 20 = 61 \\
+6 & 60 & 34 &
+34 - \lfloor60 \div 2\rfloor = 4 &
+60 + 4 = 64 \\
+7 & 75 & 25 &
+25 - \lfloor75 \div 2\rfloor = -12 &
+75 + -12 = 63 \\
+8 & 85 & 15 &
+15 - \lfloor85 \div 2\rfloor = -27 &
+85 + -27 = 58 \\
+9 & 90 & 4 &
+4 - \lfloor90 \div 2\rfloor = -41 &
+90 + -41 = 49 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{landscape}
+  \label{wavpack:verify_crc}
+\subsection{Checksum Calculation}
+\ALGORITHM{one or two channels of signed audio samples}{an unsigned 32-bit CRC integer}
+\SetKwData{MONO}{mono output}
+\SetKwData{CRC}{CRC}
+\SetKwData{LCRC}{LCRC}
+\SetKwData{SCRC}{SCRC}
+\SetKwData{CHANNEL}{channel}
+$\text{\CRC}_{-1} \leftarrow \texttt{0xFFFFFFFF}$\;
+\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
+  \eIf{$\text{\MONO} = 0$}{
+    $\text{\LCRC}_i \leftarrow (3 \times \text{\CRC}_{i - 1}) + \text{\CHANNEL}_{0~i}$\tcc*[r]{calculate signed CRC of left channel}
+    $\text{\SCRC}_i \leftarrow (3 \times \text{\LCRC}_{i - 1}) + \text{\CHANNEL}_{1~i}$\tcc*[r]{calculate signed CRC of right channel}
+  }{
+    $\text{\SCRC}_i \leftarrow (3 \times \text{\CRC}_{i - 1}) + \text{\CHANNEL}_{0~i}$\tcc*[r]{calculate signed CRC of channel}
+  }
+  \BlankLine
+  \eIf(\tcc*[f]{convert signed CRC to unsigned, 32-bit integer}){$\text{\SCRC}_i \geq 0$}{
+    $\text{\CRC}_i \leftarrow \text{\SCRC}_i \bmod \texttt{0x100000000}$\;
+  }{
+    $\text{\CRC}_i \leftarrow (2 ^ {32} - (-\text{\SCRC}_i)) \bmod \texttt{0x100000000}$\;
+  }
+}
+\Return $\text{\CRC}_{\text{sample count} - 1}$\;
+\EALGORITHM
+
+\subsubsection{Checksum Calculation Example}
+{\relsize{-1}
+\begin{tabular}{|r|r|r||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
+$i$ & $\textsf{channel}_{0~i}$ & $\textsf{channel}_{1~i}$ & \textsf{LCRC}_i & \text{SCRC}_i & \textsf{CRC}_i \\
+\hline
+0 & 0 & 64 &
+(3 \times \texttt{0xFFFFFFFF}) + 0 = \texttt{0x2FFFFFFFD} &
+(3 \times \texttt{0x2FFFFFFFD}) + 64 = \texttt{0x900000037} &
+\texttt{0x00000037} \\
+1 & 16 & 62 &
+(3 \times \texttt{0x00000037}) + 16 = \texttt{0x000000B5} &
+(3 \times \texttt{0x000000B5}) + 62 = \texttt{0x0000025D} &
+\texttt{0x0000025D} \\
+2 & 31 & 56 &
+(3 \times \texttt{0x0000025D}) + 31 = \texttt{0x00000736} &
+(3 \times \texttt{0x00000736}) + 56 = \texttt{0x000015DA} &
+\texttt{0x000015DA} \\
+3 & 44 & 47 &
+(3 \times \texttt{0x000015DA}) + 44 = \texttt{0x000041BA} &
+(3 \times \texttt{0x000041BA}) + 47 = \texttt{0x0000C55D} &
+\texttt{0x0000C55D} \\
+4 & 54 & 34 &
+(3 \times \texttt{0x0000C55D}) + 54 = \texttt{0x0002504D} &
+(3 \times \texttt{0x0002504D}) + 34 = \texttt{0x0006F109} &
+\texttt{0x0006F109} \\
+5 & 61 & 20 &
+(3 \times \texttt{0x0006F109}) + 61 = \texttt{0x0014D358} &
+(3 \times \texttt{0x0014D358}) + 20 = \texttt{0x003E7A1C} &
+\texttt{0x003E7A1C} \\
+6 & 64 & 4 &
+(3 \times \texttt{0x003E7A1C}) + 64 = \texttt{0x00BB6E94} &
+(3 \times \texttt{0x00BB6E94}) + 4 = \texttt{0x02324BC0} &
+\texttt{0x02324BC0} \\
+7 & 63 & -12 &
+(3 \times \texttt{0x02324BC0}) + 63 = \texttt{0x0696E37F} &
+(3 \times \texttt{0x0696E37F}) - 12 = \texttt{0x13C4AA71} &
+\texttt{0x13C4AA71} \\
+8 & 58 & -27 &
+(3 \times \texttt{0x13C4AA71}) + 58 = \texttt{0x3B4DFF8D} &
+(3 \times \texttt{0x3B4DFF8D}) - 27 = \texttt{0xB1E9FE8C} &
+\texttt{0xB1E9FE8C} \\
+9 & 49 & -41 &
+(3 \times \texttt{0xB1E9FE8C}) + 49 = \texttt{0x215BDFBD5} &
+(3 \times \texttt{0x215BDFBD5}) - 41 = \texttt{0x64139F356} &
+\texttt{0x4139F356} \\
+\end{tabular}
+}
+\vskip 1em
+\par
+\noindent
+Resulting in a final CRC of \texttt{0x4139F356}
+\end{landscape}
+
+\clearpage
+
+\subsection{Decode Extended Integers}
+\label{wavpack:decode_extended_integers}
+\ALGORITHM{sub block data}{\VAR{zero bits}, \VAR{one bits}, \VAR{duplicate bits} values as unsigned integers}
+\SetKwData{SENTS}{sent bits}
+\SetKwData{ZEROES}{zero bits}
+\SetKwData{ONES}{one bits}
+\SetKwData{DUPLICATES}{duplicate bits}
+\SENTS $\leftarrow$ \READ 8 unsigned bits\tcc*[r]{unused}
+\ZEROES $\leftarrow$ \READ 8 unsigned bits\;
+\ONES $\leftarrow$ \READ 8 unsigned bits\;
+\DUPLICATES $\leftarrow$ \READ 8 unsigned bits\;
+\Return \ZEROES, \ONES and \DUPLICATES\;
+\EALGORITHM
+
+\begin{figure}[h]
+  \includegraphics{wavpack/figures/extended_integers.pdf}
+\end{figure}
+
+\subsection{Undoing Extended Integers}
+\label{wavpack:undo_extended_integers}
+\ALGORITHM{\VAR{zero bits}, \VAR{one bits}, \VAR{duplicate bits} values; 1 or 2 channels of shifted PCM data}{1 or 2 channels of un-shifted PCM data}
+\SetKwData{ZEROES}{zero bits}
+\SetKwData{ONES}{one bits}
+\SetKwData{DUPLICATES}{duplicate bits}
+\SetKwData{SHIFTED}{shifted channel}
+\SetKwData{UNSHIFTED}{un-shifted channel}
+\For{$c \leftarrow 0$ \emph{\KwTo}channel count}{
+  \uIf{$\text{\ZEROES} > 0$}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
+      $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\ZEROES}}$\;
+    }
+  }
+  \uElseIf{$\text{\ONES} > 0$}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
+      $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\ONES}} + (2 ^ {\text{\ONES}} - 1)$\;
+    }
+  }
+  \uElseIf{$\text{\DUPLICATES} > 0$}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
+      \eIf{$\text{\SHIFTED}_{c~i} \bmod 2 = 0$}{
+        $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\DUPLICATES}}$\;
+      }{
+        $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\DUPLICATES}} + (2 ^ {\text{\DUPLICATES}} - 1)$\;
+      }
+    }
+  }
+  \Else{
+    $\text{\UNSHIFTED}_c \leftarrow \text{\SHIFTED}_c$\;
+  }
+}
+\Return \UNSHIFTED data\;
+\EALGORITHM
+
+\clearpage
+
+\subsection{MD5 Sum}
+\label{wavpack:md5_sum}
+The MD5 is the hash of all the PCM samples, on a PCM frame basis,
+in little-endian format and signed if the bits per sample is greater than 0.
+
+\begin{figure}[h]
+\includegraphics{wavpack/figures/md5sum.pdf}
+\end{figure}
+
+\subsection{RIFF WAVE Header and Footer}
+
+These sub-blocks are typically found in the first and last
+WavPack block, respectively.
+The header must always be present in the file while
+the footer is optional.
+
+\begin{figure}[h]
+\includegraphics{wavpack/figures/pcm_sandwich.pdf}
+\end{figure}

@@ -1,0 +1,162 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
+\subsection{Decoding Decorrelation Samples}
+\label{wavpack:decode_decorrelation_samples}
+{\relsize{-2}
+\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, decorrelation terms, sub block size and data}{a list of signed decorrelation sample lists per channel per decorrelation term\footnote{\relsize{-1}$\text{sample}_{p~c~s}$ indicates the $s$th sample of decorrelation pass $p$ for channel $c$}}
+\SetKwData{MONO}{mono output}
+\SetKwData{FALSESTEREO}{false stereo}
+\SetKwData{CHANNELS}{channel count}
+\SetKwData{SAMPLE}{sample}
+\SetKwData{TOTALSAMPLES}{sample count}
+\SetKwData{TERMCOUNT}{term count}
+\SetKwData{TERM}{term}
+\SetKwFunction{EXP}{wv\_exp2}
+\SetKw{KwDownTo}{downto}
+\SetKw{AND}{and}
+\eIf{$(\MONO = 0)$ \AND $(\FALSESTEREO = 0)$}{
+  $\CHANNELS \leftarrow 2$\;
+}{
+  $\CHANNELS \leftarrow 1$\;
+}
+\For{$p \leftarrow \TERMCOUNT$ \emph{\KwDownTo}0}{
+  \uIf(\tcc*[f]{2 samples per channel}){$17 \leq \text{\TERM}_p \leq 18$}{
+    \eIf{$\text{sub block bytes remaining} \geq (\CHANNELS \times 4)$}{
+      \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
+        $\text{\SAMPLE}_{p~c~0} \leftarrow \text{read \EXP value}$\;
+        $\text{\SAMPLE}_{p~c~1} \leftarrow \text{read \EXP value}$\;
+      }
+    }{
+      \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
+        $\text{\SAMPLE}_{p~c} \leftarrow \texttt{[0, 0]}$\;
+      }
+    }
+  }
+  \uElseIf(\tcc*[f]{"term" samples per channel}){$1 \leq \text{\TERM}_p \leq 8$}{
+    \eIf{$\text{sub block bytes remaining} \geq (\CHANNELS \times \text{\TERM}_p \times 2)$}{
+      \For{$s \leftarrow 0$ \emph{\KwTo}$\text{\TERM}_p$}{
+        \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
+          $\text{\SAMPLE}_{p~c~s} \leftarrow \text{read \EXP value}$\;
+        }
+      }
+    }{
+      \For{$s \leftarrow 0$ \emph{\KwTo}$\text{\TERM}_p$}{
+        \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
+          $\text{\SAMPLE}_{p~c~s} \leftarrow 0$\;
+        }
+      }
+    }
+  }
+  \ElseIf(\tcc*[f]{1 sample per channel}){$-3 \leq \text{\TERM}_p \leq -1$}{
+    \eIf{$\text{sub block bytes remaining} \geq 4$}{
+      $\text{\SAMPLE}_{p~0~0} \leftarrow \text{read \EXP value}$\;
+      $\text{\SAMPLE}_{p~1~0} \leftarrow \text{read \EXP value}$\;
+    }{
+      $\text{\SAMPLE}_{p~0~0} \leftarrow 0$\;
+      $\text{\SAMPLE}_{p~1~0} \leftarrow 0$\;
+    }
+  }
+}
+\Return $\text{\SAMPLE}$ lists per pass, per channel\;
+\EALGORITHM
+}
+\begin{figure}[h]
+  \includegraphics{wavpack/figures/decorr_samples.pdf}
+\end{figure}
+
+\clearpage
+
+\subsubsection{Reading wv\_exp2 Values}
+\label{wavpack_wvexp2}
+{\relsize{-1}
+\ALGORITHM{2 bytes of sub block data}{a signed value}
+\SetKwFunction{EXP}{wexp}
+$value \leftarrow$ \READ 16 signed bits\;
+\BlankLine
+\uIf{$-32768 \leq value < -2304$}{
+  \Return $-(\EXP(-value \bmod{256}) \times 2 ^ {\lfloor -value \div 2 ^ 8 \rfloor - 9})$\;
+}
+\uElseIf{$-2304 \leq value < 0$}{
+  \Return $-\lfloor \EXP(-value \bmod{256}) \div 2 ^ {9 - \lfloor -value \div 2 ^ 8 \rfloor} \rfloor$\;
+}
+\uElseIf{$0 \leq value \leq 2304$}{
+  \Return $\lfloor \EXP(value \bmod{256}) \div 2 ^ {9 - \lfloor value \div 2 ^ 8 \rfloor} \rfloor$\;
+}
+\ElseIf{$2304 < value \leq 32767$}{
+  \Return $\EXP(value \bmod{256}) \times 2 ^ {\lfloor value \div 2 ^ 8 \rfloor - 9}$\;
+}
+\EALGORITHM
+}
+\par
+\noindent
+where \texttt{wexp}(\textit{x}) is defined from the following table:
+\vskip .10in
+\par
+\noindent
+{\relsize{-3}\ttfamily
+\begin{tabular}{| c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c |}
+\hline
+& 0x?0 & 0x?1 & 0x?2 & 0x?3 & 0x?4 & 0x?5 & 0x?6 & 0x?7 & 0x?8 & 0x?9 & 0x?A & 0x?B & 0x?C & 0x?D & 0x?E & 0x?F \\
+\hline
+0x0? & 256 & 257 & 257 & 258 & 259 & 259 & 260 & 261 & 262 & 262 & 263 & 264 & 264 & 265 & 266 & 267 \\
+0x1? & 267 & 268 & 269 & 270 & 270 & 271 & 272 & 272 & 273 & 274 & 275 & 275 & 276 & 277 & 278 & 278 \\
+0x2? & 279 & 280 & 281 & 281 & 282 & 283 & 284 & 285 & 285 & 286 & 287 & 288 & 288 & 289 & 290 & 291 \\
+0x3? & 292 & 292 & 293 & 294 & 295 & 296 & 296 & 297 & 298 & 299 & 300 & 300 & 301 & 302 & 303 & 304 \\
+0x4? & 304 & 305 & 306 & 307 & 308 & 309 & 309 & 310 & 311 & 312 & 313 & 314 & 314 & 315 & 316 & 317 \\
+0x5? & 318 & 319 & 320 & 321 & 321 & 322 & 323 & 324 & 325 & 326 & 327 & 328 & 328 & 329 & 330 & 331 \\
+0x6? & 332 & 333 & 334 & 335 & 336 & 337 & 337 & 338 & 339 & 340 & 341 & 342 & 343 & 344 & 345 & 346 \\
+0x7? & 347 & 348 & 349 & 350 & 350 & 351 & 352 & 353 & 354 & 355 & 356 & 357 & 358 & 359 & 360 & 361 \\
+0x8? & 362 & 363 & 364 & 365 & 366 & 367 & 368 & 369 & 370 & 371 & 372 & 373 & 374 & 375 & 376 & 377 \\
+0x9? & 378 & 379 & 380 & 381 & 382 & 383 & 384 & 385 & 386 & 387 & 388 & 389 & 391 & 392 & 393 & 394 \\
+0xA? & 395 & 396 & 397 & 398 & 399 & 400 & 401 & 402 & 403 & 405 & 406 & 407 & 408 & 409 & 410 & 411 \\
+0xB? & 412 & 413 & 415 & 416 & 417 & 418 & 419 & 420 & 421 & 422 & 424 & 425 & 426 & 427 & 428 & 429 \\
+0xC? & 431 & 432 & 433 & 434 & 435 & 436 & 438 & 439 & 440 & 441 & 442 & 444 & 445 & 446 & 447 & 448 \\
+0xD? & 450 & 451 & 452 & 453 & 454 & 456 & 457 & 458 & 459 & 461 & 462 & 463 & 464 & 466 & 467 & 468 \\
+0xE? & 470 & 471 & 472 & 473 & 475 & 476 & 477 & 478 & 480 & 481 & 482 & 484 & 485 & 486 & 488 & 489 \\
+0xF? & 490 & 492 & 493 & 494 & 496 & 497 & 498 & 500 & 501 & 502 & 504 & 505 & 506 & 508 & 509 & 511 \\
+\hline
+\end{tabular}
+}
+
+\subsubsection{Reading Decorrelation Samples Example}
+Given a stereo block containing the sub-block:
+\begin{figure}[h]
+\includegraphics{wavpack/figures/decorr_samples_parse.pdf}
+\end{figure}
+\begin{center}
+{\relsize{-2}
+\begin{tabular}{r|r|r|>{$}r<{$}|>{$}r<{$}}
+$p$ & $\text{term}_p$ & $s$ &
+\text{sample}_{p~0~s} &
+\text{sample}_{p~1~s} \\
+\hline
+4 & 18 & 0 &
+-\lfloor \texttt{wexp}(1841 \bmod{256}) \div 2 ^ {9 - \lfloor 1841 \div 2 ^ 8 \rfloor} \rfloor = -73 &
+\lfloor \EXP(1487 \bmod{256}) \div 2 ^ {9 - \lfloor 1487 \div 2 ^ 8 \rfloor} \rfloor = 28 \\
+& & 1 &
+-\lfloor \EXP(1865 \bmod{256}) \div 2 ^ {9 - \lfloor 1865 \div 2 ^ 8 \rfloor} \rfloor = -78 &
+\lfloor \EXP(1459 \bmod{256}) \div 2 ^ {9 - \lfloor 1459 \div 2 ^ 8 \rfloor} \rfloor = 26 \\
+\hline
+3 & 18 & 0 & 0 & 0 \\
+& & 1 & 0 & 0 \\
+\hline
+2 & 2 & 0 & 0 & 0 \\
+& & 1 & 0 & 0 \\
+\hline
+1 & 17 & 0 & 0 & 0 \\
+& & 1 & 0 & 0 \\
+\hline
+0 & 3 & 0 & 0 & 0 \\
+& & 1 & 0 & 0 \\
+& & 2 & 0 & 0 \\
+\hline
+\end{tabular}
+\renewcommand{\arraystretch}{1.0}
+}
+\end{center}

@@ -49,54 +49,60 @@ figures/id3v24/w___.pdf \
 figures/id3v24/wxxx.pdf
 
 FLAC = \
-figures/flac/application.pdf \
-figures/flac/block_header.pdf \
-figures/flac/constant.pdf \
-figures/flac/cuesheet.pdf \
-figures/flac/cuesheet-example.pdf \
-figures/flac/fixed.pdf \
-figures/flac/fixed2.pdf \
-figures/flac/fixed-enc-example.pdf \
-figures/flac/fixed-parse.pdf \
-figures/flac/frame.pdf \
-figures/flac/frames.pdf \
-figures/flac/header-example.pdf \
-figures/flac/lag0.pdf \
-figures/flac/lag1.pdf \
-figures/flac/lag2.pdf \
-figures/flac/lag3.pdf \
-figures/flac/lpc.pdf \
-figures/flac/lpc2.pdf \
-figures/flac/lpc-parse.pdf \
-figures/flac/lpc-parse2.pdf \
-figures/flac/metadata.pdf \
-figures/flac/metadata-blocks.pdf \
-figures/flac/padding.pdf \
-figures/flac/picture.pdf \
-figures/flac/picture-example.pdf \
-figures/flac/read_utf8.pdf \
-figures/flac/residual.pdf \
-figures/flac/residual-example1.pdf \
-figures/flac/residual-example2.pdf \
-figures/flac/residual-example3.pdf \
-figures/flac/residual-example4.pdf \
-figures/flac/residual-example5.pdf \
-figures/flac/residual-parse.pdf \
-figures/flac/residuals-enc-example.pdf \
-figures/flac/seektable.pdf \
-figures/flac/seektable-example.pdf \
-figures/flac/stream.pdf \
-figures/flac/stream2.pdf \
-figures/flac/stream3.pdf \
-figures/flac/streaminfo.pdf \
-figures/flac/streaminfo-example.pdf \
-figures/flac/subframes.pdf \
-figures/flac/tukey.pdf \
-figures/flac/utf8.pdf \
-figures/flac/verbatim.pdf \
-figures/flac/vorbiscomment.pdf \
-figures/flac/vorbiscomment-example.pdf \
-figures/flac/write_utf8.pdf \
+flac/metadata.tex \
+flac/decode.tex \
+flac/encode.tex \
+flac/encode/fixed.tex \
+flac/encode/residual.tex \
+flac/encode/lpc.tex \
+flac/figures/application.pdf \
+flac/figures/block_header.pdf \
+flac/figures/constant.pdf \
+flac/figures/cuesheet.pdf \
+flac/figures/cuesheet-example.pdf \
+flac/figures/fixed.pdf \
+flac/figures/fixed2.pdf \
+flac/figures/fixed-enc-example.pdf \
+flac/figures/fixed-parse.pdf \
+flac/figures/frame.pdf \
+flac/figures/frames.pdf \
+flac/figures/header-example.pdf \
+flac/figures/lag0.pdf \
+flac/figures/lag1.pdf \
+flac/figures/lag2.pdf \
+flac/figures/lag3.pdf \
+flac/figures/lpc.pdf \
+flac/figures/lpc2.pdf \
+flac/figures/lpc-parse.pdf \
+flac/figures/lpc-parse2.pdf \
+flac/figures/metadata.pdf \
+flac/figures/metadata-blocks.pdf \
+flac/figures/padding.pdf \
+flac/figures/picture.pdf \
+flac/figures/picture-example.pdf \
+flac/figures/read_utf8.pdf \
+flac/figures/residual.pdf \
+flac/figures/residual-example1.pdf \
+flac/figures/residual-example2.pdf \
+flac/figures/residual-example3.pdf \
+flac/figures/residual-example4.pdf \
+flac/figures/residual-example5.pdf \
+flac/figures/residual-parse.pdf \
+flac/figures/residuals-enc-example.pdf \
+flac/figures/seektable.pdf \
+flac/figures/seektable-example.pdf \
+flac/figures/stream.pdf \
+flac/figures/stream2.pdf \
+flac/figures/stream3.pdf \
+flac/figures/streaminfo.pdf \
+flac/figures/streaminfo-example.pdf \
+flac/figures/subframes.pdf \
+flac/figures/tukey.pdf \
+flac/figures/utf8.pdf \
+flac/figures/verbatim.pdf \
+flac/figures/vorbiscomment.pdf \
+flac/figures/vorbiscomment-example.pdf \
+flac/figures/write_utf8.pdf \
 figures/oggflac_stream.pdf
 
 
@@ -129,39 +135,54 @@ figures/m4a/trkn.pdf \
 figures/m4a/trkn-example.pdf
 
 
-WAVPACK = figures/wavpack/block_channels.pdf \
-figures/wavpack/block_header.pdf \
-figures/wavpack/block_header2.pdf \
-figures/wavpack/block_header_parse.pdf \
-figures/wavpack/channel_info.pdf \
-figures/wavpack/decoding_params.pdf \
-figures/wavpack/decorr_samples.pdf \
-figures/wavpack/decorr_samples_encode.pdf \
-figures/wavpack/decorr_samples_parse.pdf \
-figures/wavpack/decorr_terms.pdf \
-figures/wavpack/decorr_weights.pdf \
-figures/wavpack/decorr_weights_parse.pdf \
-figures/wavpack/decorrelation0.pdf \
-figures/wavpack/decorrelation1.pdf \
-figures/wavpack/decorrelation2.pdf \
-figures/wavpack/decorrelation3.pdf \
-figures/wavpack/decorrelation4.pdf \
-figures/wavpack/decorrelation5.pdf \
-figures/wavpack/entropy_vars.pdf \
-figures/wavpack/entropy_vars_parse.pdf \
-figures/wavpack/extended_integers.pdf \
-figures/wavpack/md5sum.pdf \
-figures/wavpack/pcm_sandwich.pdf \
-figures/wavpack/residuals.pdf \
-figures/wavpack/residuals_parse.pdf \
-figures/wavpack/residuals_parse2.pdf \
-figures/wavpack/sample_rate.pdf \
-figures/wavpack/stream.pdf \
-figures/wavpack/subblock.pdf \
-figures/wavpack/subblock_header.pdf \
-figures/wavpack/subblock_parse.pdf \
-figures/wavpack/terms_parse.pdf \
-figures/wavpack/typical_block.pdf
+WAVPACK = \
+wavpack/decode.tex \
+wavpack/decode/terms.tex \
+wavpack/decode/weights.tex \
+wavpack/decode/samples.tex \
+wavpack/decode/entropy.tex \
+wavpack/decode/bitstream.tex \
+wavpack/decode/decorrelation.tex \
+wavpack/encode.tex \
+wavpack/encode/correlation.tex \
+wavpack/encode/terms.tex \
+wavpack/encode/weights.tex \
+wavpack/encode/samples.tex \
+wavpack/encode/entropy.tex \
+wavpack/encode/bitstream.tex \
+wavpack/figures/block_channels.pdf \
+wavpack/figures/block_header.pdf \
+wavpack/figures/block_header2.pdf \
+wavpack/figures/block_header_parse.pdf \
+wavpack/figures/channel_info.pdf \
+wavpack/figures/decoding_params.pdf \
+wavpack/figures/decorr_samples.pdf \
+wavpack/figures/decorr_samples_encode.pdf \
+wavpack/figures/decorr_samples_parse.pdf \
+wavpack/figures/decorr_terms.pdf \
+wavpack/figures/decorr_weights.pdf \
+wavpack/figures/decorr_weights_parse.pdf \
+wavpack/figures/decorrelation0.pdf \
+wavpack/figures/decorrelation1.pdf \
+wavpack/figures/decorrelation2.pdf \
+wavpack/figures/decorrelation3.pdf \
+wavpack/figures/decorrelation4.pdf \
+wavpack/figures/decorrelation5.pdf \
+wavpack/figures/entropy_vars.pdf \
+wavpack/figures/entropy_vars_parse.pdf \
+wavpack/figures/extended_integers.pdf \
+wavpack/figures/md5sum.pdf \
+wavpack/figures/pcm_sandwich.pdf \
+wavpack/figures/residuals.pdf \
+wavpack/figures/residuals_parse.pdf \
+wavpack/figures/residuals_parse2.pdf \
+wavpack/figures/sample_rate.pdf \
+wavpack/figures/stream.pdf \
+wavpack/figures/subblock.pdf \
+wavpack/figures/subblock_header.pdf \
+wavpack/figures/subblock_parse.pdf \
+wavpack/figures/terms_parse.pdf \
+wavpack/figures/typical_block.pdf
 
 SHORTEN = \
 shorten/decode.tex \
@@ -389,7 +410,7 @@ all: audioformats-letter.pdf audioformats-a4.pdf
 
 clean:
 	rm -f *.toc *.aux *.log *.out $(FIGURES)
-	rm -f figures/pcm.fig figures/flac/tukey.fig
+	rm -f figures/pcm.fig flac/figures/tukey.fig
 	rm -f audiotools-a4.tex audiotools-letter.tex
 
 audioformats-letter.pdf: audioformats-letter.tex $(CHAPTERS) $(FIGURES)
@@ -468,22 +489,22 @@ figures/pcm.pdf: figures/pcm.fig
 figures/pcm.fig: figures/pcm.plot
 	./figures/pcm.plot > $@
 
-figures/flac/tukey.pdf: figures/flac/tukey.fig
+flac/figures/tukey.pdf: flac/figures/tukey.fig
 	fig2dev -Z 3 -L pdf $< $@
 
-figures/flac/tukey.fig: figures/flac/tukey.plot
-	./figures/flac/tukey.plot > $@
+flac/figures/tukey.fig: flac/figures/tukey.plot
+	./flac/figures/tukey.plot > $@
 
-figures/flac/lag0.pdf: figures/flac/lag0.fig
+flac/figures/lag0.pdf: flac/figures/lag0.fig
 	fig2dev -Z 3.5 -L pdf $< $@
 
-figures/flac/lag1.pdf: figures/flac/lag1.fig
+flac/figures/lag1.pdf: flac/figures/lag1.fig
 	fig2dev -Z 3.5 -L pdf $< $@
 
-figures/flac/lag2.pdf: figures/flac/lag2.fig
+flac/figures/lag2.pdf: flac/figures/lag2.fig
 	fig2dev -Z 3.5 -L pdf $< $@
 
-figures/flac/lag3.pdf: figures/flac/lag3.fig
+flac/figures/lag3.pdf: flac/figures/lag3.fig
 	fig2dev -Z 3.5 -L pdf $< $@
 
 figures/freedb/sequence.pdf: figures/freedb/sequence.fig
@@ -560,52 +581,55 @@ figures/alac/residual-parse.pdf: figures/alac/residual-parse.bpx
 figures/alac/residual-build.pdf: figures/alac/residual-build.bpx
 	./bitparse.py -w 490 -b 24 -i $< -o $@
 
-# figures/wavpack/block_header_parse.pdf: figures/wavpack/block_header_parse.bpx
+# wavpack/figures/block_header_parse.pdf: wavpack/figures/block_header_parse.bpx
 # 	./bitparse.py -w 480 -b 24 -i $< -o $@
 
-figures/wavpack/decorrelation0.fig: figures/wavpack/decorrelation1.plot figures/wavpack/decorr_pass0.dat
-	./figures/wavpack/decorrelation0.plot > $@
+wavpack/figures/decorrelation0.fig: wavpack/figures/decorrelation1.plot wavpack/figures/decorr_pass0.dat
+	./wavpack/figures/decorrelation0.plot > $@
 
-figures/wavpack/decorrelation0.pdf: figures/wavpack/decorrelation0.fig
+wavpack/figures/decorrelation0.pdf: wavpack/figures/decorrelation0.fig
 	fig2dev -Z 3 -L pdf $< $@
 
-figures/wavpack/decorrelation1.fig: figures/wavpack/decorrelation1.plot figures/wavpack/decorr_pass1.dat
-	./figures/wavpack/decorrelation1.plot > $@
+wavpack/figures/decorrelation1.fig: wavpack/figures/decorrelation1.plot wavpack/figures/decorr_pass1.dat
+	./wavpack/figures/decorrelation1.plot > $@
 
-figures/wavpack/decorrelation1.pdf: figures/wavpack/decorrelation1.fig
+wavpack/figures/decorrelation1.pdf: wavpack/figures/decorrelation1.fig
 	fig2dev -Z 3 -L pdf $< $@
 
-figures/wavpack/decorrelation2.fig: figures/wavpack/decorrelation2.plot
-	./figures/wavpack/decorrelation2.plot > $@
+wavpack/figures/decorrelation2.fig: wavpack/figures/decorrelation2.plot
+	./wavpack/figures/decorrelation2.plot > $@
 
-figures/wavpack/decorrelation2.pdf: figures/wavpack/decorrelation2.fig
+wavpack/figures/decorrelation2.pdf: wavpack/figures/decorrelation2.fig
 	fig2dev -Z 3 -L pdf $< $@
 
-figures/wavpack/decorrelation3.fig: figures/wavpack/decorrelation3.plot
-	./figures/wavpack/decorrelation3.plot > $@
+wavpack/figures/decorrelation3.fig: wavpack/figures/decorrelation3.plot
+	./wavpack/figures/decorrelation3.plot > $@
 
-figures/wavpack/decorrelation3.pdf: figures/wavpack/decorrelation3.fig
+wavpack/figures/decorrelation3.pdf: wavpack/figures/decorrelation3.fig
 	fig2dev -Z 3 -L pdf $< $@
 
-figures/wavpack/decorrelation4.fig: figures/wavpack/decorrelation4.plot
-	./figures/wavpack/decorrelation4.plot > $@
+wavpack/figures/decorrelation4.fig: wavpack/figures/decorrelation4.plot
+	./wavpack/figures/decorrelation4.plot > $@
 
-figures/wavpack/decorrelation4.pdf: figures/wavpack/decorrelation4.fig
+wavpack/figures/decorrelation4.pdf: wavpack/figures/decorrelation4.fig
 	fig2dev -Z 3 -L pdf $< $@
 
-figures/wavpack/decorrelation5.fig: figures/wavpack/decorrelation5.plot
-	./figures/wavpack/decorrelation5.plot > $@
+wavpack/figures/decorrelation5.fig: wavpack/figures/decorrelation5.plot
+	./wavpack/figures/decorrelation5.plot > $@
 
-figures/wavpack/decorrelation5.pdf: figures/wavpack/decorrelation5.fig
+wavpack/figures/decorrelation5.pdf: wavpack/figures/decorrelation5.fig
 	fig2dev -Z 3 -L pdf $< $@
 
-figures/wavpack/residuals_parse.pdf: figures/wavpack/residuals_parse.bpx
+wavpack/figures/residuals_parse.pdf: wavpack/figures/residuals_parse.bpx
 	./bitparse.py -i $< -o $@ -b 24 -w 480
 
-figures/flac/utf8.pdf: figures/flac/utf8.bpx
+figures/wavpack/block_header_parse.pdf: figures/wavpack/block_header_parse.bpx
+	./bitparse.py -i $< -o $@ -b 24 -w 500
+
+flac/figures/utf8.pdf: flac/figures/utf8.bpx
 	./bitparse.py -i $< -o $@ -b 8 -w 170
 
-figures/flac/lpc-parse2.pdf: figures/flac/lpc-parse2.bpx
+flac/figures/lpc-parse2.pdf: flac/figures/lpc-parse2.bpx
 	./bitparse.py -i $< -o $@ -b 24 -w 480
 
 shorten/figures/filetype.pdf: shorten/figures/filetype.bpx
@@ -617,7 +641,7 @@ basics-info.tex: basics-info.m4 header.m4 footer.m4
 basics-info.pdf: basics-info.tex basics.tex $(BASICS)
 	python pdflatexbuild.py -halt-on-error $<
 
-figures/flac/cuesheet-example.pdf: figures/flac/cuesheet-example.bypx
+flac/figures/cuesheet-example.pdf: flac/figures/cuesheet-example.bypx
 	./byteparse.py --no-ascii --digits-per-row 20 -i $< -o $@
 
 figures/apev2/header-flags.pdf: figures/apev2/header-flags.bpx
