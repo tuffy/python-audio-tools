@@ -325,6 +325,7 @@ $\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $
 \ALGORITHM{1 or 2 channels of PCM frames, block index, first block, last block, encoding parameters from previous block}{a WavPack block, encoding parameters for next block}
 \SetKwData{CHANNEL}{channel}
 \SetKwData{MONO}{mono output}
+\SetKwData{JOINTSTEREO}{joint stereo}
 \SetKwData{FALSESTEREO}{false stereo}
 \SetKwData{MAGNITUDE}{magnitude}
 \SetKwData{WASTEDBPS}{wasted bps}
@@ -339,10 +340,12 @@ $\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $
 \SetKwData{SAMPLES}{samples}
 \SetKwData{BITSTREAM}{bitstream}
 \SetKwData{ENTROPY}{entropy}
+\SetKwData{SUBBLOCK}{sub block}
 \SetKw{OR}{or}
 \SetKwFunction{MAX}{max}
 \SetKwFunction{MIN}{min}
 \eIf(\tcc*[f]{1 channel block}){$\text{channel count} = 1$ \OR $\text{\CHANNEL}_0 = \text{\CHANNEL}_1$}{
+  $\text{\JOINTSTEREO} \leftarrow 0$\;
   \eIf{$\text{channel count} = 1$}{
     $\text{\MONO} \leftarrow 1$\;
     $\text{\FALSESTEREO} \leftarrow 0$\;
@@ -352,17 +355,18 @@ $\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $
   }
   $\text{\MAGNITUDE} \leftarrow$ \hyperref[wavpack:maximum_magnitude]{maximum magnitude of $\text{\CHANNEL}_0$}\;
   $\text{\WASTEDBPS} \leftarrow$ \hyperref[wavpack:wasted_bps]{wasted bps of $\text{\CHANNEL}_0$}\;
-  \eIf{$\text{\WASTEDBPS} > 0$}{
+  \uIf{$\text{\WASTEDBPS} > 0$}{
     \For{$i \leftarrow 0$ \emph{\KwTo}block size}{
       $\text{\SHIFTED}_{0~i} \leftarrow \lfloor\text{\CHANNEL}_{0~i} \div 2 ^ \text{\WASTEDBPS}\rfloor$\;
     }
-  }{
+  }
+  \lElse{
     $\text{\SHIFTED}_0 \leftarrow \text{\CHANNEL}_0$\;
   }
   $\text{\CRC} \leftarrow$ \hyperref[wavpack:calc_crc]{calculate CRC of $\text{\SHIFTED}_0$}\;
 }(\tcc*[f]{2 channel block}){
-  $\text{\MONO} \leftarrow 0$\;
-  $\text{\FALSESTEREO} \leftarrow 0$\;
+  $\text{\JOINTSTEREO} \leftarrow 1$\;
+  $\text{\MONO} \leftarrow \text{\FALSESTEREO} \leftarrow 0$\;
   $\text{\MAGNITUDE} \leftarrow \hyperref[wavpack:maximum_magnitude]{\MAX(\text{maximum magnitude of \CHANNEL}_0~,~\text{maximum magnitude of \CHANNEL}_1)}$\;
   $\text{\WASTEDBPS} \leftarrow \hyperref[wavpack:wasted_bps]{\MIN(\text{wasted bps of \CHANNEL}_0~,~\text{wasted bps of \CHANNEL}_1)}$\;
   \eIf{$\text{\WASTEDBPS} > 0$}{
@@ -371,38 +375,20 @@ $\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $
       $\text{\SHIFTED}_{1~i} \leftarrow \lfloor\text{\CHANNEL}_{1~i} \div 2 ^ \text{\WASTEDBPS}\rfloor$\;
     }
   }{
-    $\text{\SHIFTED}_0/\text{\SHIFTED}_1 \leftarrow \text{\CHANNEL}_0/\text{\CHANNEL}_1$\;
+    $\text{\SHIFTED}_0 \leftarrow \text{\CHANNEL}_0$\;
+    $\text{\SHIFTED}_1 \leftarrow \text{\CHANNEL}_1$\;
   }
-  $\text{\CRC} \leftarrow$ \hyperref[wavpack:calc_crc]{calculate CRC of $\text{\SHIFTED}_0/\text{\SHIFTED}_1$}\;
-  $\text{\MID}/\text{\SIDE} \leftarrow$ \hyperref[wavpack:calc_joint_stereo]{convert $\text{\SHIFTED}_0/\text{\SHIFTED}_1$ to joint stereo}\;
+  $\text{\CRC} \leftarrow$ \hyperref[wavpack:calc_crc]{calculate CRC of $\text{\SHIFTED}_0$ and $\text{\SHIFTED}_1$}\;
+  $\left.\begin{tabular}{r}
+    \MID \\
+    \SIDE \\
+  \end{tabular}\right\rbrace \leftarrow$
+  \hyperref[wavpack:calc_joint_stereo]{apply joint stereo}
+  $\left\lbrace\begin{tabular}{l}
+  $\text{\SHIFTED}_0$ \\
+  $\text{\SHIFTED}_1$ \\
+  \end{tabular}\right.$\;
 }
-\EALGORITHM
-}
-
-\begin{figure}[h]
-  \includegraphics{wavpack/figures/typical_block.pdf}
-\end{figure}
-
-\clearpage
-{\relsize{-1}
-\begin{algorithm}[H]
-\DontPrintSemicolon
-\SetKwData{CHANNEL}{channel}
-\SetKwData{CORRELATED}{correlated}
-\SetKwData{SHIFTED}{shifted}
-\SetKwData{MID}{mid}
-\SetKwData{SIDE}{side}
-\SetKwData{SUBBLOCK}{sub block}
-\SetKwData{WASTEDBPS}{wasted bps}
-\SetKwData{BITSTREAM}{bitstream}
-\SetKwData{TERMS}{terms}
-\SetKwData{DELTAS}{deltas}
-\SetKwData{WEIGHTS}{weights}
-\SetKwData{SAMPLES}{samples}
-\SetKwData{ENTROPY}{entropy}
-\SetKw{NOT}{not}
-\SetKw{IN}{in}
-\SetKw{OR}{or}
 $i \leftarrow 0$\;
 \If{first block in file}{
   $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_wave_header]{wave header}\;
@@ -426,30 +412,117 @@ $i \leftarrow 0$\;
   $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_sample_rate]{sample rate}\;
   $i \leftarrow i + 1$\;
 }
+\EALGORITHM
+}
+
+%% \begin{figure}[h]
+%%   \includegraphics{wavpack/figures/typical_block.pdf}
+%% \end{figure}
+
+\clearpage
+{\relsize{-1}
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\SetKwData{CHANNEL}{channel}
+\SetKwData{CORRELATED}{correlated}
+\SetKwData{SHIFTED}{shifted}
+\SetKwData{MID}{mid}
+\SetKwData{SIDE}{side}
+\SetKwData{SUBBLOCK}{sub block}
+\SetKwData{WASTEDBPS}{wasted bps}
+\SetKwData{BITSTREAM}{bitstream}
+\SetKwData{TERMS}{terms}
+\SetKwData{DELTAS}{deltas}
+\SetKwData{WEIGHTS}{weights}
+\SetKwData{SAMPLES}{samples}
+\SetKwData{ENTROPY}{entropy}
+\SetKw{NOT}{not}
+\SetKw{IN}{in}
+\SetKw{OR}{or}
 \eIf(\tcc*[f]{1 channel block}){$\text{channel count} = 1$ \OR $\text{\CHANNEL}_0 = \text{\CHANNEL}_1$}{
-  $(\text{\CORRELATED}_0~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ \hyperref[wavpack:correlate_channels]{correlate $\text{\SHIFTED}_0$\newline
-  with \TERMS, \DELTAS, \WEIGHTS and \SAMPLES from encoding parameters}\;
   $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_entropy]{entropy variables sub block from \ENTROPY}\;
-  $(\text{\BITSTREAM}~,~\text{\ENTROPY}') \leftarrow$ \hyperref[wavpack:write_bitstream]{calculate bitstream from $\text{\CORRELATED}_0$\newline
-  and $\text{\ENTROPY}$ from encoding parameters}\;
+  $\left.\begin{tabular}{r}
+    $\text{\CORRELATED}_0$ \\
+    $\text{\WEIGHTS}'$ \\
+    $\text{\SAMPLES}'$ \\
+  \end{tabular}\right\rbrace \leftarrow$
+  \hyperref[wavpack:correlate_channels]{correlate channel}
+  $\left\lbrace\begin{tabular}{l}
+  $\text{\SHIFTED}_0$ \\
+  \TERMS \\
+  \DELTAS \\
+  \WEIGHTS \\
+  \SAMPLES \\
+  \end{tabular}\right.$\;
+  $\left.\begin{tabular}{r}
+    \BITSTREAM \\
+    $\text{\ENTROPY}'$ \\
+  \end{tabular}\right\rbrace \leftarrow$
+  \hyperref[wavpack:write_bitstream]{calculate bitstream}
+  $\left\lbrace\begin{tabular}{l}
+  $\text{\CORRELATED}_0$ \\
+  $\text{\ENTROPY}$ \\
+  \end{tabular}\right.$\;
   \BlankLine
   $\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream sub block from \BITSTREAM\;
 }(\tcc*[f]{2 channel block}){
-  $(\text{\CORRELATED}_0/\text{\CORRELATED}_1~,~\text{\WEIGHTS}'~,~\text{\SAMPLES}') \leftarrow$ \hyperref[wavpack:correlate_channels]{correlate $\text{\MID}/\text{\SIDE}$\newline
-  with \TERMS, \DELTAS, \WEIGHTS and \SAMPLES from encoding parameters}\;
+    $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_entropy]{entropy variables sub block from \ENTROPY}\;
+  $\left.\begin{tabular}{r}
+    $\text{\CORRELATED}_0$ \\
+    $\text{\CORRELATED}_1$ \\
+    $\text{\WEIGHTS}'$ \\
+    $\text{\SAMPLES}'$ \\
+  \end{tabular}\right\rbrace \leftarrow$
+  \hyperref[wavpack:correlate_channels]{correlate channels}
+  $\left\lbrace\begin{tabular}{l}
+  \MID \\
+  \SIDE \\
+  \TERMS \\
+  \DELTAS \\
+  \WEIGHTS \\
+  \SAMPLES \\
+  \end{tabular}\right.$\;
+  $\left.\begin{tabular}{r}
+    \BITSTREAM \\
+    $\text{\ENTROPY}'$ \\
+  \end{tabular}\right\rbrace \leftarrow$
+  \hyperref[wavpack:write_bitstream]{calculate bitstream}
+  $\left\lbrace\begin{tabular}{l}
+  $\text{\CORRELATED}_0$ \\
+  $\text{\CORRELATED}_1$ \\
+  $\text{\ENTROPY}$ \\
+  \end{tabular}\right.$\;
   \BlankLine
-  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_entropy]{entropy variables sub block from \ENTROPY}\;
-  $(\text{\BITSTREAM}~,~\text{\ENTROPY}') \leftarrow$ \hyperref[wavpack:write_bitstream]{calculate bitstream from $\text{\CORRELATED}_0/\text{\CORRELATED}_0$\newline
-  and $\text{\ENTROPY}$ from encoding parameters}\;
   $\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream sub block from \BITSTREAM\;
 }
 $i \leftarrow i + 2$\;
 \BlankLine
-\hyperref[wavpack:write_block_header]{write block header}\;
+\hyperref[wavpack:write_block_header]{write block header to block data}
+$\left\lbrace\begin{tabular}{l}
+\textsf{total sub blocks size} \\
+\textsf{block index} \\
+\textsf{block samples} \\
+\textsf{bits per sample} \\
+\textsf{channel count} \\
+\textsf{joint stereo} \\
+\textsf{correlation pass count} \\
+\textsf{wasted bps} \\
+\textsf{initial block} \\
+\textsf{final block} \\
+\textsf{magnitude} \\
+\textsf{sample rate} \\
+\textsf{false stereo} \\
+\textsf{CRC} \\
+\end{tabular}\right.$\;
 \For{$j \leftarrow 0$ \emph{\KwTo}i}{
-  write $\text{\SUBBLOCK}_j$\;
+  write $\text{\SUBBLOCK}_j$ to block data\;
 }
-\Return block data, $\text{\WEIGHTS}'$, $\text{\SAMPLES}'$ and $\text{\ENTROPY}'$
+\Return $\left\lbrace\begin{tabular}{l}
+block data \\
+$\text{\WEIGHTS}'$ \\
+$\text{\SAMPLES}'$ \\
+$\text{\ENTROPY}'$ \\
+\end{tabular}\right.$
 \end{algorithm}
 }
 

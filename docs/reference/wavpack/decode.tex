@@ -232,11 +232,13 @@ combine into 6 channels of PCM output as follows:
     \SKIP 1 byte\;
   }
   \BlankLine
-  \tcc{decode audio-related sub blocks}
-  \If{$\text{\NONDECODER} = 0$}{
+  \If(\tcc*[f]{decode audio-related sub blocks}){$\text{\NONDECODER} = 0$}{
     \Switch{\METAFUNC}{
       \uCase{2}{
-        $\TERMS, \DELTAS \leftarrow$ \hyperref[wavpack:decode_decorrelation_terms]{decode decorrelation terms sub block}\;
+        $\left.\begin{tabular}{r}
+          \TERMS \\
+          \DELTAS \\
+          \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:decode_decorrelation_terms]{decode decorrelation terms sub block}\;
       }
       \uCase{3}{
         \ASSERT \TERMS have been read\;
@@ -250,11 +252,15 @@ combine into 6 channels of PCM output as follows:
         $\ENTROPIES \leftarrow$ \hyperref[wavpack:decode_entropy_variables]{decode entropy variables sub block}\;
       }
       \uCase{9}{
-        $\ZEROES, \ONES, \DUPES \leftarrow$ \hyperref[wavpack:decode_extended_integers]{decode extended integers sub block}\;
+        $\left.\begin{tabular}{r}
+          \ZEROES \\
+          \ONES \\
+          \DUPES \\
+          \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:decode_extended_integers]{decode extended integers sub block}\;
       }
       \Case{10}{
         \ASSERT \ENTROPIES have been read\;
-        $\RESIDUALS \leftarrow$ \hyperref[wavpack:decode_bitstream]{decode WavPack bitstream sub block}\;
+        $\RESIDUALS \leftarrow$ \hyperref[wavpack:decode_bitstream]{decode WavPack bitstream sub block using \ENTROPIES}\;
       }
     }
   }
@@ -265,7 +271,7 @@ combine into 6 channels of PCM output as follows:
   }
 }
 \If{\TERMS have been read}{
-  \ASSERT \WEIGHTS, \SAMPLES have been read\;
+  \ASSERT \WEIGHTS and \SAMPLES have been read\;
 }
 \ASSERT \RESIDUALS have been read\;
 \EALGORITHM
@@ -281,8 +287,13 @@ combine into 6 channels of PCM output as follows:
 \SetKwData{JOINTSTEREO}{joint stereo}
 \SetKwData{EXTENDEDINTS}{extended integers}
 \SetKwData{RESIDUALS}{residuals}
+\SetKwData{TERMS}{decorrelation terms}
+\SetKwData{DELTAS}{decorrelation deltas}
+\SetKwData{WEIGHTS}{decorrelation weights}
+\SetKwData{SAMPLES}{decorrelation samples}
 \SetKwData{DECORRELATED}{decorrelated}
-\SetKwData{LEFTRIGHT}{left/right}
+\SetKwData{LEFT}{left}
+\SetKwData{RIGHT}{right}
 \SetKwData{UNSHIFTED}{unshifted}
 \SetKwFunction{LEN}{len}
 \SetKwFunction{UNDOEXTENDEDINTS}{undo\_extended\_integers}
@@ -291,31 +302,70 @@ combine into 6 channels of PCM output as follows:
 \tcc{build PCM data from decoding parameters}
 \eIf(\tcc*[f]{2 channels of output}){$\text{\MONOOUTPUT} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
   \eIf{\TERMS have been read \AND $\LEN(\TERMS) > 0$}{
-    $\text{\DECORRELATED}_0/\text{\DECORRELATED}_1 \leftarrow$ \hyperref[wavpack:decorrelate_channels]{decorrelate $\text{\RESIDUALS}_0/\text{\RESIDUALS}_1$}\;
+    $\left.\begin{tabular}{r}
+      $\text{\DECORRELATED}_0$ \\
+      $\text{\DECORRELATED}_1$ \\
+    \end{tabular}\right\rbrace \leftarrow$
+    \hyperref[wavpack:decorrelate_channels]{decorrelate}
+    $\left\lbrace\begin{tabular}{l}
+    $\text{\RESIDUALS}_0$ \\
+    $\text{\RESIDUALS}_1$ \\
+    \TERMS \\
+    \DELTAS \\
+    \WEIGHTS \\
+    \SAMPLES \\
+    \end{tabular}\right.$\;
   }{
-    $\text{\DECORRELATED}_0/\text{\DECORRELATED}_1 \leftarrow \text{\RESIDUALS}_0/\text{\RESIDUALS}_1$\;
+    $\text{\DECORRELATED}_0 \leftarrow \text{\RESIDUALS}_0$\;
+    $\text{\DECORRELATED}_1 \leftarrow \text{\RESIDUALS}_1$\;
   }
   \eIf{$\text{\JOINTSTEREO} = 1$}{
-    $\LEFTRIGHT \leftarrow$ \hyperref[wavpack:undo_joint_stereo]{undo $\text{\DECORRELATED}_0/\text{\DECORRELATED}_1$ channels joint stereo}\;
+    $\left.\begin{tabular}{r}
+      \LEFT \\
+      \RIGHT \\
+      \end{tabular}\right\rbrace \leftarrow$
+    \hyperref[wavpack:undo_joint_stereo]{undo joint stereo}
+    $\left\lbrace\begin{tabular}{l}
+    $\text{\DECORRELATED}_0$ \\
+    $\text{\DECORRELATED}_1$ \\
+    \end{tabular}\right.$\;
   }{
-    $\LEFTRIGHT \leftarrow \text{\DECORRELATED}_0/\text{\DECORRELATED}_1$\;
+    $\LEFT \leftarrow \text{\DECORRELATED}_0$\;
+    $\RIGHT \leftarrow \text{\DECORRELATED}_1$\;
   }
-  \hyperref[wavpack:verify_crc]{verify CRC of $\LEFTRIGHT$ against CRC in block header}\;
+  \hyperref[wavpack:verify_crc]{verify CRC of \LEFT and \RIGHT against CRC in block header}\;
   \eIf{extended integers have been read}{
-    $\text{\UNSHIFTED}_0/\text{\UNSHIFTED}_1 \leftarrow$ \hyperref[wavpack:undo_extended_integers]{undo \LEFTRIGHT channels extended integers}\;
+    $\left.\begin{tabular}{r}
+      $\text{\UNSHIFTED}_0$ \\
+      $\text{\UNSHIFTED}_1$ \\
+    \end{tabular}\right\rbrace \leftarrow$
+    \hyperref[wavpack:undo_extended_integers]{undo extended integers}
+    $\left\lbrace\begin{tabular}{l}
+    \LEFT \\
+    \RIGHT \\
+    \end{tabular}\right.$\;
   }{
-    $\text{\UNSHIFTED}_0/\text{\UNSHIFTED}_1 \leftarrow \LEFTRIGHT$
+    $\text{\UNSHIFTED}_0 \leftarrow \LEFT$\;
+    $\text{\UNSHIFTED}_1 \leftarrow \RIGHT$\;
   }
   \Return $\text{\UNSHIFTED}_0$ and $\text{\UNSHIFTED}_1$\;
 }(\tcc*[f]{1 or 2 channels of output}){
   \eIf{\TERMS have been read \AND $\LEN(\TERMS) > 0$}{
-    $\text{\DECORRELATED}_0 \leftarrow$ \hyperref[wavpack:decorrelate_channels]{decorrelate $\text{\RESIDUALS}_0$}\;
+    $\text{\DECORRELATED}_0 \leftarrow$
+    \hyperref[wavpack:decorrelate_channels]{decorrelate}
+    $\left\lbrace\begin{tabular}{l}
+    $\text{\RESIDUALS}_0$ \\
+    \TERMS \\
+    \DELTAS \\
+    \WEIGHTS \\
+    \SAMPLES \\
+    \end{tabular}\right.$\;
   }{
     $\text{\DECORRELATED}_0 \leftarrow \text{\RESIDUALS}_0$\;
   }
   \hyperref[wavpack:verify_crc]{  verify CRC of $\text{\DECORRELATED}_0$ against CRC in block header}\;
   \eIf{extended integers have been read}{
-    $\text{\UNSHIFTED}_0 \leftarrow$ \hyperref[wavpack:undo_extended_integers]{undo $\text{\DECORRELATED}_0$ channel extended integers}\;
+    $\text{\UNSHIFTED}_0 \leftarrow$ \hyperref[wavpack:undo_extended_integers]{undo extended integers for} $\text{\DECORRELATED}_0$\;
   }{
     $\text{\UNSHIFTED}_0 \leftarrow \text{\DECORRELATED}_0$\;
   }
@@ -327,9 +377,9 @@ combine into 6 channels of PCM output as follows:
 }
 \end{algorithm}
 }
-\begin{figure}[h]
-  \includegraphics{wavpack/figures/typical_block.pdf}
-\end{figure}
+%% \begin{figure}[h]
+%%   \includegraphics{wavpack/figures/typical_block.pdf}
+%% \end{figure}
 
 %% \clearpage
 
@@ -473,10 +523,7 @@ combine into 6 channels of PCM output as follows:
 
 \input{wavpack/decode/bitstream}
 
-%% \begin{figure}[h]
-%% \includegraphics{wavpack/figures/residuals_parse2.pdf}
-%% \caption{2nd residual parsing example}
-%% \end{figure}
+\clearpage
 
 \input{wavpack/decode/decorrelation}
 
@@ -535,8 +582,9 @@ $i$ & $\textsf{mid}_i$ & $\textsf{side}_i$ & \textsf{right}_i & \textsf{left}_i 
 \end{tabular}
 \end{table}
 
-\begin{landscape}
-  \label{wavpack:verify_crc}
+\clearpage
+
+\label{wavpack:verify_crc}
 \subsection{Checksum Calculation}
 \ALGORITHM{one or two channels of signed audio samples}{an unsigned 32-bit CRC integer}
 \SetKwData{MONO}{mono output}
@@ -568,52 +616,52 @@ $\text{\CRC}_{-1} \leftarrow \texttt{0xFFFFFFFF}$\;
 $i$ & $\textsf{channel}_{0~i}$ & $\textsf{channel}_{1~i}$ & \textsf{LCRC}_i & \text{SCRC}_i & \textsf{CRC}_i \\
 \hline
 0 & 0 & 64 &
-(3 \times \texttt{0xFFFFFFFF}) + 0 = \texttt{0x2FFFFFFFD} &
-(3 \times \texttt{0x2FFFFFFFD}) + 64 = \texttt{0x900000037} &
-\texttt{0x00000037} \\
+(3 \times \texttt{FFFFFFFF}) + 0 = \texttt{2FFFFFFFD} &
+(3 \times \texttt{2FFFFFFFD}) + 64 = \texttt{900000037} &
+\texttt{00000037} \\
 1 & 16 & 62 &
-(3 \times \texttt{0x00000037}) + 16 = \texttt{0x000000B5} &
-(3 \times \texttt{0x000000B5}) + 62 = \texttt{0x0000025D} &
-\texttt{0x0000025D} \\
+(3 \times \texttt{00000037}) + 16 = \texttt{000000B5} &
+(3 \times \texttt{000000B5}) + 62 = \texttt{0000025D} &
+\texttt{0000025D} \\
 2 & 31 & 56 &
-(3 \times \texttt{0x0000025D}) + 31 = \texttt{0x00000736} &
-(3 \times \texttt{0x00000736}) + 56 = \texttt{0x000015DA} &
-\texttt{0x000015DA} \\
+(3 \times \texttt{0000025D}) + 31 = \texttt{00000736} &
+(3 \times \texttt{00000736}) + 56 = \texttt{000015DA} &
+\texttt{000015DA} \\
 3 & 44 & 47 &
-(3 \times \texttt{0x000015DA}) + 44 = \texttt{0x000041BA} &
-(3 \times \texttt{0x000041BA}) + 47 = \texttt{0x0000C55D} &
-\texttt{0x0000C55D} \\
+(3 \times \texttt{000015DA}) + 44 = \texttt{000041BA} &
+(3 \times \texttt{000041BA}) + 47 = \texttt{0000C55D} &
+\texttt{0000C55D} \\
 4 & 54 & 34 &
-(3 \times \texttt{0x0000C55D}) + 54 = \texttt{0x0002504D} &
-(3 \times \texttt{0x0002504D}) + 34 = \texttt{0x0006F109} &
-\texttt{0x0006F109} \\
+(3 \times \texttt{0000C55D}) + 54 = \texttt{0002504D} &
+(3 \times \texttt{0002504D}) + 34 = \texttt{0006F109} &
+\texttt{0006F109} \\
 5 & 61 & 20 &
-(3 \times \texttt{0x0006F109}) + 61 = \texttt{0x0014D358} &
-(3 \times \texttt{0x0014D358}) + 20 = \texttt{0x003E7A1C} &
-\texttt{0x003E7A1C} \\
+(3 \times \texttt{0006F109}) + 61 = \texttt{0014D358} &
+(3 \times \texttt{0014D358}) + 20 = \texttt{003E7A1C} &
+\texttt{003E7A1C} \\
 6 & 64 & 4 &
-(3 \times \texttt{0x003E7A1C}) + 64 = \texttt{0x00BB6E94} &
-(3 \times \texttt{0x00BB6E94}) + 4 = \texttt{0x02324BC0} &
-\texttt{0x02324BC0} \\
+(3 \times \texttt{003E7A1C}) + 64 = \texttt{00BB6E94} &
+(3 \times \texttt{00BB6E94}) + 4 = \texttt{02324BC0} &
+\texttt{02324BC0} \\
 7 & 63 & -12 &
-(3 \times \texttt{0x02324BC0}) + 63 = \texttt{0x0696E37F} &
-(3 \times \texttt{0x0696E37F}) - 12 = \texttt{0x13C4AA71} &
-\texttt{0x13C4AA71} \\
+(3 \times \texttt{02324BC0}) + 63 = \texttt{0696E37F} &
+(3 \times \texttt{0696E37F}) - 12 = \texttt{13C4AA71} &
+\texttt{13C4AA71} \\
 8 & 58 & -27 &
-(3 \times \texttt{0x13C4AA71}) + 58 = \texttt{0x3B4DFF8D} &
-(3 \times \texttt{0x3B4DFF8D}) - 27 = \texttt{0xB1E9FE8C} &
-\texttt{0xB1E9FE8C} \\
+(3 \times \texttt{13C4AA71}) + 58 = \texttt{3B4DFF8D} &
+(3 \times \texttt{3B4DFF8D}) - 27 = \texttt{B1E9FE8C} &
+\texttt{B1E9FE8C} \\
 9 & 49 & -41 &
-(3 \times \texttt{0xB1E9FE8C}) + 49 = \texttt{0x215BDFBD5} &
-(3 \times \texttt{0x215BDFBD5}) - 41 = \texttt{0x64139F356} &
-\texttt{0x4139F356} \\
+(3 \times \texttt{B1E9FE8C}) + 49 = \texttt{215BDFBD5} &
+(3 \times \texttt{215BDFBD5}) - 41 = \texttt{64139F356} &
+\texttt{4139F356} \\
+\hline
 \end{tabular}
 }
 \vskip 1em
 \par
 \noindent
 Resulting in a final CRC of \texttt{0x4139F356}
-\end{landscape}
 
 \clearpage
 
@@ -628,7 +676,11 @@ Resulting in a final CRC of \texttt{0x4139F356}
 \ZEROES $\leftarrow$ \READ 8 unsigned bits\;
 \ONES $\leftarrow$ \READ 8 unsigned bits\;
 \DUPLICATES $\leftarrow$ \READ 8 unsigned bits\;
-\Return \ZEROES, \ONES and \DUPLICATES\;
+\Return $\left\lbrace\begin{tabular}{l}
+\ZEROES \\
+\ONES \\
+\DUPLICATES \\
+\end{tabular}\right.$\;
 \EALGORITHM
 
 \begin{figure}[h]

@@ -8,4 +8,4 @@ set border 3
 set xtics nomirror
 set ytics nomirror
 
-plot "figures/wavpack/decorr_pass0.dat" title 'residual' with lines;
+plot "wavpack/figures/decorr_pass0.dat" title 'residual' with lines;

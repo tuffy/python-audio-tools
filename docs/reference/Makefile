@@ -629,7 +629,7 @@ wavpack/figures/decorrelation5.pdf: wavpack/figures/decorrelation5.fig
 wavpack/figures/residuals_parse.pdf: wavpack/figures/residuals_parse.bpx
 	./bitparse.py -i $< -o $@ -b 24 -w 480
 
-figures/wavpack/block_header_parse.pdf: figures/wavpack/block_header_parse.bpx
+wavpack/figures/block_header_parse.pdf: wavpack/figures/block_header_parse.bpx
 	./bitparse.py -i $< -o $@ -b 24 -w 500
 
 flac/figures/utf8.pdf: flac/figures/utf8.bpx

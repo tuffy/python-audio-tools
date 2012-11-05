@@ -8,4 +8,4 @@ set border 3
 set xtics nomirror
 set ytics nomirror
 
-plot "figures/wavpack/decorr_pass2.dat" title 'pass 2' with lines;
+plot "wavpack/figures/decorr_pass2.dat" title 'pass 2' with lines;
