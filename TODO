@@ -6133,9 +6133,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] samples
      - [X] entropy
      - [X] bitstream
-*** TODO ALAC
-**** TODO decode
-**** TODO encode
+*** DONE ALAC
+**** DONE decode
+**** DONE encode
+     - [X] atoms
+     - [X] lpc
+     - [X] residual
 *** TODO DVD-Audio
 **** TODO MLP decode
 ** TODO Tweak reference documentation layout

@@ -1,0 +1,370 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
+\subsection{Computing Residual Values}
+\label{alac:calculate_residuals}
+{\relsize{-1}
+\ALGORITHM{a list of signed PCM samples, 4 or 8 QLP coefficients, sample size}{a list of signed residual values}
+\SetKwFunction{SIGN}{sign}
+\SetKw{BREAK}{break}
+\SetKwData{SAMPLESIZE}{sample size}
+\SetKwData{SAMPLECOUNT}{sample count}
+\SetKwData{COEFFCOUNT}{coefficient count}
+\SetKwData{COEFF}{QLP coefficient}
+\SetKwData{ERROR}{error}
+\SetKwData{RESIDUAL}{residual}
+\SetKwData{SAMPLE}{sample}
+\SetKwData{BASESAMPLE}{base sample}
+\SetKwData{QLPSUM}{QLP sum}
+\SetKwData{DIFF}{diff}
+\SetKwData{SSIGN}{sign}
+\SetKwFunction{TRUNCATE}{truncate}
+$\text{\RESIDUAL}_0 \leftarrow \text{\SAMPLE}_0$\tcc*[r]{first sample always copied verbatim}
+\eIf{$\COEFFCOUNT < 31$}{
+  \For{$i \leftarrow 1$ \emph{\KwTo}$\COEFFCOUNT + 1$}{
+    $\text{\RESIDUAL}_i \leftarrow \TRUNCATE(\text{\SAMPLE}_i - \text{\SAMPLE}_{i - 1}~,~\SAMPLESIZE)$\;
+  }
+  \For{i $\leftarrow \text{\COEFFCOUNT} + 1$ \emph{\KwTo}\SAMPLECOUNT}{
+    $\text{\BASESAMPLE}_i \leftarrow \text{\SAMPLE}_{i - \COEFFCOUNT - 1}$\;
+    $\text{\QLPSUM}_i \leftarrow \overset{\COEFFCOUNT - 1}{\underset{j = 0}{\sum}} \text{\COEFF}_j \times (\text{\SAMPLE}_{i - j - 1} - \text{\BASESAMPLE}_i)$\;
+    $\text{\ERROR} \leftarrow \TRUNCATE\left(\text{\SAMPLE}_i - \text{\BASESAMPLE}_i - \left\lfloor\frac{\text{\QLPSUM}_i + 2 ^ 8}{2 ^ 9}\right\rfloor~,~\SAMPLESIZE \right)$\;
+    $\text{\RESIDUAL}_i \leftarrow \text{\ERROR}$\;
+    \BlankLine
+    \uIf(\tcc*[f]{modify QLP coefficients}){$\text{\ERROR} > 0$}{
+      \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\COEFFCOUNT}$}{
+        $\DIFF \leftarrow \text{\BASESAMPLE}_i - \text{\SAMPLE}_{i - \COEFFCOUNT + j}$\;
+        $\SSIGN \leftarrow \SIGN(\DIFF)$\;
+        $\text{\COEFF}_{\COEFFCOUNT - j - 1} \leftarrow \text{\COEFF}_{\COEFFCOUNT - j - 1} - \SSIGN$\;
+        $\text{\ERROR} \leftarrow \text{\ERROR} - \left\lfloor\frac{\DIFF \times \SSIGN}{2 ^ 9}\right\rfloor \times (j + 1)$\;
+        \If{$\text{\ERROR} \leq 0$}{
+          \BREAK\;
+        }
+      }
+    }
+    \ElseIf{$\text{\ERROR} < 0$}{
+      \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\COEFFCOUNT}$}{
+        $\DIFF \leftarrow \text{\BASESAMPLE}_i - \text{\SAMPLE}_{i - \COEFFCOUNT + j}$\;
+        $\SSIGN \leftarrow \SIGN(\DIFF)$\;
+        $\text{\COEFF}_{\COEFFCOUNT - j - 1} \leftarrow \text{\COEFF}_{\COEFFCOUNT - j - 1} + \SSIGN$\;
+        $\text{\ERROR} \leftarrow \text{\ERROR} - \left\lfloor\frac{\DIFF \times -\SSIGN}{2 ^ 9}\right\rfloor \times (j + 1)$\;
+        \If{$\text{\ERROR} \geq 0$}{
+          \BREAK\;
+        }
+      }
+    }
+  }
+}{
+  \For{$i \leftarrow 1$ \emph{\KwTo}\SAMPLECOUNT}{
+    $\text{\RESIDUAL}_i \leftarrow \TRUNCATE(\text{\SAMPLE}_i - \text{\SAMPLE}_{i - 1}~,~\SAMPLESIZE)$\;
+  }
+}
+\Return \RESIDUAL\;
+\EALGORITHM
+}
+\subsubsection{The \texttt{truncate} Function}
+{\relsize{-1}
+  \ALGORITHM{a signed sample, the maximum size of the sample in bits}{a truncated signed sample}
+  \SetKw{BAND}{bitwise and}
+  \SetKwData{SAMPLE}{sample}
+  \SetKwData{BITS}{bits}
+  \SetKwData{TRUNCATED}{truncated}
+  $\TRUNCATED \leftarrow \SAMPLE~\BAND~(2 ^ {\BITS} - 1)$\;
+  \eIf(\tcc*[f]{apply sign bit}){$(\TRUNCATED~\BAND~2 ^ {\BITS - 1}) \neq 0$}{
+    \Return $\TRUNCATED - 2 ^ {\BITS}$\;
+  }{
+    \Return \TRUNCATED\;
+  }
+  \EALGORITHM
+}
+
+\clearpage
+
+{\relsize{-1}
+\begin{equation*}
+\texttt{sign}(x) =
+\begin{cases}
+\texttt{ 1} & \text{if } x > 0 \\
+\texttt{ 0} & \text{if } x = 0 \\
+\texttt{-1} & \text{if } x < 0
+\end{cases}
+\end{equation*}
+}
+
+\subsubsection{Computing Residuals Example}
+{\relsize{-2}
+Given the samples
+\texttt{0, 16, 32, 44, 54, 61, 64, 63, 58, 49, 38, 24, 8, -8, -24},
+and the QLP coefficients
+\texttt{1170, -1088, 565, -161},
+the subframe's residuals are calculate as follows:
+\par
+\vskip .15in
+\noindent
+\begin{tabular}{r||r|r|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}}
+$i$ & $\textsf{sample}_i$ & $\textsf{base}_i$ & \textsf{QLP sum}_i & \textsf{residual}_i & \textsf{QLP coefficient}_{(i + 1)~j} \\
+\hline
+0 & 0 & & & 0 \\
+1 & 16 & & & 16 - 0 = 16 \\
+2 & 32 & & & 32 - 16 = 16 \\
+3 & 44 & & & 44 - 32 = 12 \\
+4 & 54 & & & 54 - 44 = 10 \\
+\hline
+5 & 61 & 0 & 1170 \times (54 - 0) \texttt{ +} & 61 - (\lfloor(30812 + 2 ^ 8) \div 2 ^ 9\rfloor + 0) = 1 & 1170 + 1 = 1171 \\
+& & & -1088 \times (44 - 0) \texttt{ +} & & -1088 + 1 = -1087 \\
+& & & 565 \times (32 - 0) \texttt{ +} & & 565 + 1 = 566 \\
+& & & -161 \times (16 - 0) \texttt{~~} & & -161 + 1 = -160 \\
+\hline
+6 & 64 & 16 & 1171 \times (61 - 16) \texttt{ +} & 64 - (\lfloor(24677 + 2 ^ 8) \div 2 ^ 9\rfloor + 16) = 0 & 1171 \\
+& & & -1087 \times (54 - 16) \texttt{ +} & & -1087 \\
+& & & 566 \times (44 - 16) \texttt{ +} & & 566 \\
+& & & -160 \times (32 - 16) \texttt{~~} & & -160 \\
+\hline
+7 & 63 & 32 & 1171 \times (64 - 32) \texttt{ +} & 63 - (\lfloor(16481 + 2 ^ 8) \div 2 ^ 9\rfloor + 32) = -1 & 1171 \\
+& & & -1087 \times (61 - 32) \texttt{ +} & & -1087 \\
+& & & 566 \times (54 - 32) \texttt{ +} & & 566 \\
+& & & -160 \times (44 - 32) \texttt{~~} & & -160 - 1 = -159 \\
+\hline
+8 & 58 & 44 & 1171 \times (63 - 44) \texttt{ +} & 58 - (\lfloor(8521 + 2 ^ 8) \div 2 ^ 9\rfloor + 44) = -3 & 1171 \\
+& & & -1087 \times (64 - 44) \texttt{ +} & & -1087 \\
+& & & 566 \times (61 - 44) \texttt{ +} & & 565 \\
+& & & -161 \times (54 - 44) \texttt{~~} & & -161 - 1 = -160 \\
+\hline
+9 & 49 & 54 & 1171 \times (58 - 54) \texttt{ +} & 49 - (\lfloor(-583 + 2 ^ 8) \div 2 ^ 9\rfloor + 54) = -4 & 1171 \\
+& & & -1087 \times (63 - 54) \texttt{ +} & & -1088 \\
+& & & 565 \times (64 - 54) \texttt{ +} & & -1087 - 1 = -1086 \\
+& & & -162 \times (61 - 54) \texttt{~~} & & -162 - 1 = -161 \\
+\hline
+10 & 38 & 61 & 1171 \times (49 - 61) \texttt{ +} & 38 - (\lfloor(-10149 + 2 ^ 8) \div 2 ^ 9\rfloor + 61) = -3 & 1171 \\
+& & & -1088 \times (58 - 61) \texttt{ +} & & -1088 \\
+& & & 564 \times (63 - 61) \texttt{ +} & & 563 \\
+& & & -163 \times (64 - 61) \texttt{~~} & & -163 - 1 = -162 \\
+\hline
+11 & 24 & 64 & 1171 \times (38 - 64) \texttt{ +} & 24 - (\lfloor(-17340 + 2 ^ 8) \div 2 ^ 9\rfloor + 64) = -6 & 1171 \\
+& & & -1088 \times (49 - 64) \texttt{ +} & & -1087 \\
+& & & 563 \times (58 - 64) \texttt{ +} & & -1088 + 1 = -1089 \\
+& & & -164 \times (63 - 64) \texttt{~~} & & -164 + 1 = -165 \\
+\hline
+12 & 8 & 63 & 1171 \times (24 - 63) \texttt{ +} & 8 - (\lfloor(-25575 + 2 ^ 8) \div 2 ^ 9\rfloor + 63) = -5 & 1171 \\
+& & & -1087 \times (38 - 63) \texttt{ +} & & -1086 \\
+& & & 564 \times (49 - 63) \texttt{ +} & & -1087 + 1 = -1088 \\
+& & & -163 \times (58 - 63) \texttt{~~} & & -163 + 1 = -164 \\
+\hline
+13 & -8 & 58 & 1171 \times (8 - 58) \texttt{ +} & -8 - (\lfloor(-31468 + 2 ^ 8) \div 2 ^ 9\rfloor + 58) = -5 & 1171 \\
+& & & -1086 \times (24 - 58) \texttt{ +} & & -1085 \\
+& & & 565 \times (38 - 58) \texttt{ +} & & -1086 + 1 = -1087 \\
+& & & -162 \times (49 - 58) \texttt{~~} & & -162 + 1 = -163 \\
+\hline
+14 & -24 & 49 & 1171 \times (-8 - 49) \texttt{ +} & -24 - (\lfloor(-34641 + 2 ^ 8) \div 2 ^ 9\rfloor + 49) = -5 & 1171 \\
+& & & -1085 \times (8 - 49) \texttt{ +} & & -1084 \\
+& & & 566 \times (24 - 49) \texttt{ +} & & -1085 + 1 = -1086 \\
+& & & -161 \times (38 - 49) \texttt{~~} & & -161 + 1 = -162 \\
+\hline
+\end{tabular}
+}
+
+\clearpage
+
+\subsection{Encoding Residual Block}
+\label{alac:write_residuals}
+\ALGORITHM{a list of signed residual values, sample size; initial history, history multiplier, maximum K from encoding options}{a block of residual data, or a \textit{residual overflow} exception}
+\SetKwData{RESIDUAL}{residual}
+\SetKwData{UNSIGNED}{unsigned}
+\SetKwData{SAMPLESIZE}{sample size}
+\SetKwData{HISTORY}{history}
+\SetKwData{HISTORYMULT}{history multiplier}
+\SetKwData{MAXIMUMK}{maximum K}
+\SetKwData{SIGNMODIFIER}{sign modifier}
+\SetKwData{ZEROES}{zeroes}
+\SetKw{RAISE}{raise}
+\SetKwFunction{MIN}{min}
+\SetKwFunction{WRITERESIDUAL}{write residual}
+\SetKw{AND}{and}
+\HISTORY $\leftarrow$ initial history\;
+\SIGNMODIFIER $\leftarrow 0$\;
+$i \leftarrow 0$\;
+\While{$i < \text{residual count}$}{
+  \eIf(\tcc*[f]{add sign bit}){$\text{\RESIDUAL}_i \geq 0$}{
+    $\text{\UNSIGNED}_i \leftarrow \text{\RESIDUAL}_i \times 2$\;
+  }{
+    $\text{\UNSIGNED}_i \leftarrow (-\text{\RESIDUAL}_i \times 2) - 1$\;
+  }
+  \If{$\text{\UNSIGNED}_i \geq 2 ^ \text{\SAMPLESIZE}$}{
+    \RAISE residual overflow exception\footnote{in this case, we should cease building a compressed frame and write an uncompressed frame instead}\;
+  }
+  $\kappa \leftarrow \MIN(\lfloor\log_2((\HISTORY \div 2 ^ 9) + 3)\rfloor~,~\MAXIMUMK)$\;
+  $\WRITERESIDUAL(\text{\UNSIGNED}_i - \SIGNMODIFIER~,~\kappa~,~\text{\SAMPLESIZE})$\;
+  $\SIGNMODIFIER \leftarrow 0$\;
+  \BlankLine
+  \eIf(\tcc*[f]{update history}){$\text{\UNSIGNED}_i \leq 65535$}{
+    $\HISTORY \leftarrow \HISTORY + (\text{\UNSIGNED}_i \times \HISTORYMULT) - \left\lfloor\frac{\HISTORY \times \HISTORYMULT}{2 ^ 9}\right\rfloor$\;
+    $i \leftarrow i + 1$\;
+    \BlankLine
+    \If(\tcc*[f]{handle 0 residuals}){$\HISTORY < 128$ \AND $i < \text{residual count}$}{
+      $\kappa \leftarrow \MIN(7 - \lfloor\log_2(\HISTORY)\rfloor + \lfloor(\HISTORY + 16) \div 2 ^ 6\rfloor~,~\MAXIMUMK)$\;
+      $\ZEROES \leftarrow 0$\;
+      \While{$i < \text{residual count}$ \AND $\text{\RESIDUAL}_i = 0$}{
+        $\ZEROES \leftarrow \ZEROES + 1$\;
+        $i \leftarrow i + 1$\;
+      }
+      $\WRITERESIDUAL(\ZEROES~,~\kappa~,~16)$\;
+      \If{$\ZEROES < 65535$}{
+        $\SIGNMODIFIER \leftarrow 1$\;
+      }
+      $\HISTORY \leftarrow 0$\;
+    }
+  }{
+    $i \leftarrow i + 1$\;
+    $\HISTORY \leftarrow 65535$\;
+  }
+}
+\Return encoded residual block\;
+\EALGORITHM
+
+\clearpage
+
+\subsubsection{Encoding Individual Residual}
+
+\ALGORITHM{an unsigned residual value, $\kappa$, sample size}{an individual encoded residual}
+\SetKwData{UNSIGNED}{unsigned}
+\SetKwData{MSB}{MSB}
+\SetKwData{LSB}{LSB}
+$\MSB \leftarrow \text{\UNSIGNED} \div 2 ^ \kappa - 1$\;
+$\LSB \leftarrow \text{\UNSIGNED} \bmod~2 ^ \kappa - 1$\;
+\eIf{$\MSB > 8$}{
+  $\texttt{0x1FF} \rightarrow$ \WRITE 9 unsigned bits\;
+  $\text{\UNSIGNED} \rightarrow$ \WRITE (sample size) unsigned bits\;
+}{
+  $\MSB \rightarrow$ \WUNARY with stop bit 0\;
+  \If{$\kappa > 1$}{
+    \eIf{$\LSB > 0$}{
+      $\LSB + 1 \rightarrow$ \WRITE $\kappa$ unsigned bits\;
+    }{
+      $0 \rightarrow$ \WRITE $(\kappa - 1)$ unsigned bits\;
+    }
+  }
+}
+\Return encoded residual data\;
+\EALGORITHM
+
+\begin{landscape}
+
+\subsubsection{Residual Encoding Example}
+\begin{table}[h]
+{\relsize{-1}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{r||r|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}}
+$i$ & $\textsf{residual}_i$ & \textsf{unsigned}_i & \kappa & \textsf{MSB}_i & \textsf{LSB}_i & \textsf{history}_{i + 1} \\
+\hline
+0 & \texttt{0} &
+\texttt{0} \times 2 = \texttt{0} &
+\lfloor\log_2(\frac{\texttt{10}}{2 ^ 9} + 3)\rfloor = \texttt{1} &
+0 \div 2 ^ 1 - 1 = 0 &
+ &
+\texttt{10} + (\texttt{0} \times \texttt{40}) - \left\lfloor\frac{\texttt{10} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{10} \\
+& $zeroes = 0$ &
+\multicolumn{2}{>{$}r<{$}|}{7 - \lfloor\log_2(10)\rfloor + \lfloor\frac{10 + 16}{2 ^ 6}\rfloor = 4} &
+0 \div 2 ^ 4 - 1 = 0 &
+0 \bmod~2 ^ 4 - 1 = 0 &
+\texttt{0} \\
+1 & \texttt{16} &
+\texttt{16} \times 2 = \texttt{32}\text{\symbolfootnotemark[2]} &
+\lfloor\log_2(\frac{\texttt{0}}{2 ^ 9} + 3)\rfloor = \texttt{1} &
+\multicolumn{2}{r|}{write \texttt{0x1FFF} in 9 unsigned bits} &
+\texttt{0} + (\texttt{32} \times \texttt{40}) - \left\lfloor\frac{\texttt{0} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{1280} \\
+& & & & \multicolumn{2}{r|}{write \texttt{31} in 16 unsigned bits} & \\
+2 & \texttt{16} &
+\texttt{16} \times 2 = \texttt{32} &
+\lfloor\log_2(\frac{\texttt{1280}}{2 ^ 9} + 3)\rfloor = \texttt{2} &
+\multicolumn{2}{r|}{write \texttt{0x1FFF} in 9 unsigned bits} &
+\texttt{1280} + (\texttt{32} \times \texttt{40}) - \left\lfloor\frac{\texttt{1280} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{2460} \\
+& & & & \multicolumn{2}{r|}{write \texttt{32} in 16 unsigned bits} & \\
+3 & \texttt{12} &
+\texttt{12} \times 2 = \texttt{24} &
+\lfloor\log_2(\frac{\texttt{2460}}{2 ^ 9} + 3)\rfloor = \texttt{2} &
+24 \div 2 ^ 2 - 1 = 8 &
+24 \bmod~2 ^ 2 - 1 = 0 &
+\texttt{2460} + (\texttt{24} \times \texttt{40}) - \left\lfloor\frac{\texttt{2460} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3228} \\
+4 & \texttt{10} &
+\texttt{10} \times 2 = \texttt{20} &
+\lfloor\log_2(\frac{\texttt{3228}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+20 \div 2 ^ 3 - 1 = 2 &
+20 \bmod~2 ^ 3 - 1 = 6 &
+\texttt{3228} + (\texttt{20} \times \texttt{40}) - \left\lfloor\frac{\texttt{3228} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3776} \\
+5 & \texttt{1} &
+\texttt{1} \times 2 = \texttt{2} &
+\lfloor\log_2(\frac{\texttt{3776}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+2 \div 2 ^ 3 - 1 = 0 &
+2 \bmod~2 ^ 3 - 1 = 2 &
+\texttt{3776} + (\texttt{2} \times \texttt{40}) - \left\lfloor\frac{\texttt{3776} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3561} \\
+6 & \texttt{0} &
+\texttt{0} \times 2 = \texttt{0} &
+\lfloor\log_2(\frac{\texttt{3561}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+0 \div 2 ^ 3 - 1 = 0 &
+0 \bmod~2 ^ 3 - 1 = 0 &
+\texttt{3561} + (\texttt{0} \times \texttt{40}) - \left\lfloor\frac{\texttt{3561} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3283} \\
+7 & \texttt{-1} &
+(\texttt{1} \times 2) - 1 = \texttt{1} &
+\lfloor\log_2(\frac{\texttt{3283}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+1 \div 2 ^ 3 - 1 = 0 &
+1 \bmod~2 ^ 3 - 1 = 1 &
+\texttt{3283} + (\texttt{1} \times \texttt{40}) - \left\lfloor\frac{\texttt{3283} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3067} \\
+8 & \texttt{-3} &
+(\texttt{3} \times 2) - 1 = \texttt{5} &
+\lfloor\log_2(\frac{\texttt{3067}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+5 \div 2 ^ 3 - 1 = 0 &
+5 \bmod~2 ^ 3 - 1 = 5 &
+\texttt{3067} + (\texttt{5} \times \texttt{40}) - \left\lfloor\frac{\texttt{3067} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3028} \\
+9 & \texttt{-4} &
+(\texttt{4} \times 2) - 1 = \texttt{7} &
+\lfloor\log_2(\frac{\texttt{3028}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+7 \div 2 ^ 3 - 1 = 1 &
+7 \bmod~2 ^ 3 - 1 = 0 &
+\texttt{3028} + (\texttt{7} \times \texttt{40}) - \left\lfloor\frac{\texttt{3028} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3072} \\
+10 & \texttt{-3} &
+(\texttt{3} \times 2) - 1 = \texttt{5} &
+\lfloor\log_2(\frac{\texttt{3072}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+5 \div 2 ^ 3 - 1 = 0 &
+5 \bmod~2 ^ 3 - 1 = 5 &
+\texttt{3072} + (\texttt{5} \times \texttt{40}) - \left\lfloor\frac{\texttt{3072} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3032} \\
+11 & \texttt{-6} &
+(\texttt{6} \times 2) - 1 = \texttt{11} &
+\lfloor\log_2(\frac{\texttt{3032}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+11 \div 2 ^ 3 - 1 = 1 &
+11 \bmod~2 ^ 3 - 1 = 4 &
+\texttt{3032} + (\texttt{11} \times \texttt{40}) - \left\lfloor\frac{\texttt{3032} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3236} \\
+12 & \texttt{-5} &
+(\texttt{5} \times 2) - 1 = \texttt{9} &
+\lfloor\log_2(\frac{\texttt{3236}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+9 \div 2 ^ 3 - 1 = 1 &
+9 \bmod~2 ^ 3 - 1 = 2 &
+\texttt{3236} + (\texttt{9} \times \texttt{40}) - \left\lfloor\frac{\texttt{3236} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3344} \\
+13 & \texttt{-5} &
+(\texttt{5} \times 2) - 1 = \texttt{9} &
+\lfloor\log_2(\frac{\texttt{3344}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+9 \div 2 ^ 3 - 1 = 1 &
+9 \bmod~2 ^ 3 - 1 = 2 &
+\texttt{3344} + (\texttt{9} \times \texttt{40}) - \left\lfloor\frac{\texttt{3344} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3443} \\
+14 & \texttt{-5} &
+(\texttt{5} \times 2) - 1 = \texttt{9} &
+\lfloor\log_2(\frac{\texttt{3443}}{2 ^ 9} + 3)\rfloor = \texttt{3} &
+9 \div 2 ^ 3 - 1 = 1 &
+9 \bmod~2 ^ 3 - 1 = 2 &
+\texttt{3443} + (\texttt{9} \times \texttt{40}) - \left\lfloor\frac{\texttt{3443} \times \texttt{40}}{2 ^ 9}\right\rfloor = \texttt{3535} \\
+\end{tabular}
+\renewcommand{\arraystretch}{1.0}
+}
+\end{table}
+\symbolfootnotetext[2]{written as $\texttt{32} - 1 = \texttt{31}$ due to sign modifier}
+
+\clearpage
+
+\begin{figure}[h]
+\includegraphics{alac/figures/residual-build.pdf}
+\end{figure}
+
+\end{landscape}

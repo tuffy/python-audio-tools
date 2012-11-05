@@ -1,0 +1,593 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
+\subsection{ALAC Atoms}
+\begin{wrapfigure}[6]{r}{1.5in}
+\includegraphics{alac/figures/atoms.pdf}
+\end{wrapfigure}
+We'll encode our ALAC file in iTunes order, which means
+it contains the \ATOM{ftyp}, \ATOM{moov}, \ATOM{free} and
+\ATOM{mdat} atoms, in that order.
+
+\subsubsection{the ftyp Atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & 32 \\
+atom type & 32 & `ftyp' (\texttt{0x66747970}) \\
+\hline
+major brand & 32 & `M4A ' (\texttt{0x4d344120}) \\
+major brand version & 32 & \texttt{0} \\
+compatible brand & 32 & `M4A ' (\texttt{0x4d344120}) \\
+compatible brand & 32 & `mp42' (\texttt{0x6d703432}) \\
+compatible brand & 32 & `isom' (\texttt{0x69736f6d}) \\
+compatible brand & 32 & \texttt{0x00000000} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{the moov Atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & \ATOM{mvhd} size + \ATOM{trak} size + \ATOM{udta} size + 8 \\
+atom type & 32 & `moov' (\texttt{0x6d6f6f76}) \\
+\hline
+\ATOM{mvhd} atom & \ATOM{mvhd} size & \ATOM{mvhd} data \\
+\ATOM{trak} atom & \ATOM{trak} size & \ATOM{trak} data \\
+\ATOM{udta} atom & \ATOM{udta} size & \ATOM{udta} data \\
+\hline
+\end{tabular}
+\end{table}
+
+\clearpage
+
+\subsubsection{the mvhd Atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & 108/120 \\
+atom type & 32 & `mvhd' (\texttt{0x6d766864}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+created date & 32/64 & creation date as Mac UTC \\
+modified date & 32/64 & modification date as Mac UTC \\
+time scale & 32 & sample rate \\
+duration & 32/64 & total PCM frames \\
+playback speed & 32 & \texttt{0x10000} \\
+user volume & 16 & \texttt{0x100} \\
+padding & 80 & \texttt{0x00000000000000000000} \\
+window geometry matrix a & 32 & \texttt{0x10000} \\
+window geometry matrix b & 32 & \texttt{0} \\
+window geometry matrix u & 32 & \texttt{0} \\
+window geometry matrix c & 32 & \texttt{0} \\
+window geometry matrix d & 32 & \texttt{0x10000} \\
+window geometry matrix v & 32 & \texttt{0} \\
+window geometry matrix x & 32 & \texttt{0} \\
+window geometry matrix y & 32 & \texttt{0} \\
+window geometry matrix w & 32 & \texttt{0x40000000} \\
+QuickTime preview & 64 & \texttt{0} \\
+QuickTime still poster & 32 & \texttt{0} \\
+QuickTime selection time & 64 & \texttt{0} \\
+QuickTime current time & 32 & \texttt{0} \\
+next track ID & 32 & \texttt{2} \\
+\hline
+\end{tabular}
+\end{table}
+
+If \VAR{version} is 0, \VAR{created date}, \VAR{modified date} and
+\VAR{duration} are 32 bit fields.
+Otherwise, they are 64 bit fields.
+The \VAR{created date} and \VAR{modified date} are seconds
+since the Macintosh Epoch, which is 00:00:00, January 1st, 1904.\footnote{Why 1904?  It's the first leap year of the 20th century.}
+To convert a Unix Epoch timestamp (seconds since January 1st, 1970) to
+a Macintosh Epoch, one needs to add 24,107 days -
+or \texttt{2082844800} seconds.
+
+\clearpage
+
+\subsubsection{the trak Atom}
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & \ATOM{tkhd} size + \ATOM{mdia} size + 8 \\
+atom type & 32 & `trak' (\texttt{0x7472616b}) \\
+\hline
+\ATOM{tkhd} atom & \ATOM{tkhd} size & \ATOM{tkhd} data \\
+\ATOM{mdia} atom & \ATOM{mdia} size & \ATOM{mdia} data \\
+\hline
+\end{tabular}
+
+\subsubsection{the tkhd Atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & 92/104 \\
+atom type & 32 & `tkhd' (\texttt{0x746b6864}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+padding & 20 & \texttt{0x000000} \\
+track in poster & 1 & \texttt{0} \\
+track in preview & 1 & \texttt{1} \\
+track in movie & 1 & \texttt{1} \\
+track enabled & 1 & \texttt{1} \\
+created date & 32/64 & creation date as Mac UTC \\
+modified date & 32/64 & modification date as Mac UTC \\
+track ID & 32 & \texttt{1} \\
+padding & 32 & \texttt{0x00000000} \\
+duration & 32/64 & total PCM frames \\
+padding & 64 & \texttt{0x0000000000000000} \\
+video layer & 16 & \texttt{0} \\
+QuickTime alternate & 16 & \texttt{0} \\
+volume & 16 & \texttt{0x1000} \\
+padding & 16 & \texttt{0x0000} \\
+video geometry matrix a & 32 & \texttt{0x10000} \\
+video geometry matrix b & 32 & \texttt{0} \\
+video geometry matrix u & 32 & \texttt{0} \\
+video geometry matrix c & 32 & \texttt{0} \\
+video geometry matrix d & 32 & \texttt{0x10000} \\
+video geometry matrix v & 32 & \texttt{0} \\
+video geometry matrix x & 32 & \texttt{0} \\
+video geometry matrix y & 32 & \texttt{0} \\
+video geometry matrix w & 32 & \texttt{0x40000000} \\
+video width & 32 & \texttt{0} \\
+video height & 32 & \texttt{0} \\
+\hline
+\end{tabular}
+\end{table}
+
+\clearpage
+
+\subsubsection{the mdia Atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & \ATOM{mdhd} size + \ATOM{hdlr} size + \ATOM{minf} size + 8 \\
+atom type & 32 & `mdia' (\texttt{0x6d646961}) \\
+\hline
+\ATOM{mdhd} atom & \ATOM{mdhd} size & \ATOM{mdhd} data \\
+\ATOM{hdlr} atom & \ATOM{hdlr} size & \ATOM{hdlr} data \\
+\ATOM{minf} atom & \ATOM{minf} size & \ATOM{minf} data \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{the mdhd Atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & 32/44 \\
+atom type & 32 & `mdhd' (\texttt{0x6d646864}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+created date & 32/64 & creation date as Mac UTC \\
+modified date & 32/64 & modification date as Mac UTC \\
+time scale & 32 & sample rate \\
+duration & 32/64 & total PCM frames \\
+padding & 1 & \texttt{0} \\
+language & 5 & \\
+language & 5 & language value as ISO 639-2 \\
+language & 5 & \\
+QuickTime quality & 16 & \texttt{0} \\
+\hline
+\end{tabular}
+\end{table}
+Note the three, 5-bit \VAR{language} fields.
+By adding 0x60 to each value and converting the result to ASCII characters,
+the result is an \href{http://www.loc.gov/standards/iso639-2/}{ISO 639-2}
+string of the file's language representation.
+For example, given the values \texttt{0x15}, \texttt{0x0E} and \texttt{0x04}:
+\begin{align*}
+\text{language}_0 &= \texttt{0x15} + \texttt{0x60} = \texttt{0x75} = \texttt{u} \\
+\text{language}_1 &= \texttt{0x0E} + \texttt{0x60} = \texttt{0x6E} = \texttt{n} \\
+\text{language}_2 &= \texttt{0x04} + \texttt{0x60} = \texttt{0x64} = \texttt{d}
+\end{align*}
+Which is the code `\texttt{und}', meaning `undetermined' - which is typical.
+
+\clearpage
+
+\subsubsection{the hdlr Atom}
+\label{alac_hdlr}
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & 33 + component \\
+atom type & 32 & `hdlr' (\texttt{0x68646c72}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+QuickTime type & 32 & \texttt{0x00000000} \\
+QuickTime subtype & 32 & `soun' (\texttt{0x736f756e}) \\
+QuickTime manufacturer & 32 & \texttt{0x00000000} \\
+QuickTime component reserved flags & 32 & \texttt{0x00000000} \\
+QuickTime component reserved flags mask & 32 & \texttt{0x00000000} \\
+component name length & 8 & \texttt{0x00} \\
+component name & component name length $\times$ 8 & \\
+\hline
+\end{tabular}
+
+
+\subsubsection{the minf Atom}
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & \ATOM{smhd} size + \ATOM{dinf} size + \ATOM{stbl} size + 8 \\
+atom type & 32 & `minf' (\texttt{0x6d696e66}) \\
+\hline
+\ATOM{smhd} atom & \ATOM{smhd} size & \ATOM{smhd} data \\
+\ATOM{dinf} atom & \ATOM{dinf} size & \ATOM{dinf} data \\
+\ATOM{stbl} atom & \ATOM{stbl} size & \ATOM{stbl} data \\
+\hline
+\end{tabular}
+
+\subsubsection{the smhd Atom}
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & 16 \\
+atom type & 32 & `smhd' (\texttt{0x736d6864}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+audio balance & 16 & \texttt{0x0000} \\
+padding & 16 & \texttt{0x0000} \\
+\hline
+\end{tabular}
+
+\subsubsection{the dinf Atom}
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & \ATOM{dref} size + 8 \\
+atom type & 32 & `dinf' (\texttt{0x64696e66}) \\
+\hline
+\ATOM{dref} atom & \ATOM{dref} size & \ATOM{dref} data \\
+\hline
+\end{tabular}
+
+\clearpage
+
+\subsubsection{the dref Atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & 28 \\
+atom type & 32 & `dref' (\texttt{0x64726566}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+number of references & 32 & \texttt{1} \\
+\hline
+\hline
+reference atom size & 32 & \texttt{12} \\
+reference atom type & 32 & `url ' (\texttt{0x75726c20}) \\
+reference atom data & 32 & \texttt{0x00000001} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{the stbl Atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & \ATOM{stsd} size + \ATOM{stts} size + \ATOM{stsc} size + \\
+& & \ATOM{stsz} size + \ATOM{stco} size + 8 \\
+atom type & 32 & `stbl' (\texttt{0x7374626c}) \\
+\hline
+\ATOM{stsd} atom & \ATOM{stsd} size & \ATOM{stsd} data \\
+\ATOM{stts} atom & \ATOM{stts} size & \ATOM{stts} data \\
+\ATOM{stsc} atom & \ATOM{stsc} size & \ATOM{stsc} data \\
+\ATOM{stsz} atom & \ATOM{stsz} size & \ATOM{stsz} data \\
+\ATOM{stco} atom & \ATOM{stco} size & \ATOM{stco} data \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{the stsd Atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & \ATOM{alac} size + 16 \\
+atom type & 32 & `stsd' (\texttt{0x73747364}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+number of descriptions & 32 & \texttt{1} \\
+\hline
+\ATOM{alac} atom & \ATOM{alac} size & \ATOM{alac} data \\
+\hline
+\end{tabular}
+\end{table}
+
+\clearpage
+
+\subsubsection{the alac Atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & 72 \\
+atom type & 32 & `alac' (\texttt{0x616c6163}) \\
+\hline
+reserved & 48 & \texttt{0x000000000000} \\
+reference index & 16 & \texttt{1} \\
+version & 16 & \texttt{0} \\
+revision level & 16 & \texttt{0} \\
+vendor & 32 & \texttt{0x00000000} \\
+channels & 16 & channel count \\
+bits per sample & 16 & bits per sample \\
+compression ID & 16 & \texttt{0} \\
+audio packet size & 16 & \texttt{0} \\
+sample rate & 32 & \texttt{0xAC440000} \\
+\hline
+\hline
+atom length & 32 & 36 \\
+atom type & 32 & `alac' (\texttt{0x616c6163}) \\
+\hline
+padding & 32 & \texttt{0x00000000} \\
+max samples per frame & 32 & largest number of PCM frames per ALAC frame \\
+padding & 8 & \texttt{0x00} \\
+sample size & 8 & bits per sample \\
+history multiplier & 8 & \texttt{40} \\
+initial history & 8 & \texttt{10} \\
+maximum K & 8 & \texttt{14} \\
+channels & 8 & channel count \\
+unknown & 16 & \texttt{0x00FF} \\
+max coded frame size & 32 & largest ALAC frame size, in bytes \\
+bitrate & 32 & $((\text{\ATOM{mdat} size} \times 8 ) \div (\text{total PCM frames} \div \text{sample rate}))$ \\
+sample rate & 32 & sample rate \\
+\hline
+\end{tabular}
+\end{table}
+The \VAR{history multiplier}, \VAR{initial history} and \VAR{maximum K}
+values are encode-time options, typically set to 40, 10 and 14,
+respectively.
+
+Note that the \VAR{bitrate} field can't be known in advance;
+we must fill that value with 0 for now and then
+return to this atom once encoding is completed
+and its size has been determined.
+
+\clearpage
+
+\subsubsection{the stts Atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & number of times $\times$ 8 + 16\\
+atom type & 32 & `stts' (\texttt{0x73747473}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+number of times & 32 & \\
+\hline
+frame count 1 & 32 & number of occurrences \\
+frame duration 1 & 32 & PCM frame count \\
+\hline
+\multicolumn{3}{|c|}{...} \\
+\hline
+\end{tabular}
+\end{table}
+This atom keeps track of how many different sizes of ALAC frames
+occur in the ALAC file, in PCM frames.
+It will typically have only two ``times'', the block size we're
+using for most of our samples and the final block size for
+any remaining samples.
+
+For example, let's imagine encoding a 1 minute audio file
+at 44100Hz with a block size of 4096 frames.
+This file has a total of 2,646,000 PCM frames ($60 \times 44100 = 2646000$).
+2,646,000 PCM frames divided by a 4096 block size means
+we have 645 ALAC frames of size 4096, and 1 ALAC frame of size 4080.
+
+Therefore:
+\begin{align*}
+\text{number of times} &= 2 \\
+\text{frame count}_1 &= 645 \\
+\text{frame duration}_1 &= 4096 \\
+\text{frame count}_2 &= 1 \\
+\text{frame duration}_2 &= 4080
+\end{align*}
+
+\subsubsection{the stsc Atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & entries $\times$ 12 + 16 \\
+atom type & 32 & `stsc' (\texttt{0x73747363}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+number of entries & 32 & \\
+\hline
+first chunk & 32 & \\
+ALAC frames per chunk & 32 & \\
+description index & 32 & \texttt{1} \\
+\hline
+\multicolumn{3}{|c|}{...} \\
+\hline
+\end{tabular}
+\end{table}
+
+This atom stores how many ALAC frames are in a given ``chunk''.
+In this instance a ``chunk'' represents an entry in
+the \ATOM{stco} atom table, used for seeking backwards and forwards
+through the file.
+\VAR{First chunk} is the starting offset of its frames-per-chunk
+value, beginning at 1.
+
+As an example, let's take a one minute, 44100Hz audio file
+that's been broken into 130 chunks
+(each with an entry in the \ATOM{stco} atom).
+Its \ATOM{stsc} entries would typically be:
+\begin{align*}
+\text{first chunk}_1 &= 1 \\
+\text{frames per chunk}_1 &= 5 \\
+\text{first chunk}_2 &= 130 \\
+\text{frames per chunk}_2 &= 1
+\end{align*}
+What this means is that chunks 1 through 129 have 5 ALAC frames each
+while chunk 130 has 1 ALAC frame.
+This is a total of 646 ALAC frames, which matches the contents of
+the \ATOM{stts} atom.
+
+\subsubsection{the stsz Atom}
+
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & sizes $\times$ 4 + 20 \\
+atom type & 32 & `stsz' (\texttt{0x7374737a}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+block byte size & 32 & \texttt{0x00000000} \\
+number of sizes & 32 & \\
+\hline
+frame size & 32 & \\
+\hline
+\multicolumn{3}{|c|}{...} \\
+\hline
+\end{tabular}
+
+This atom is a list of ALAC frame sizes, each in bytes.
+For example, our 646 frame file would have 646 corresponding
+\ATOM{stsz} entries.
+
+\subsubsection{the stco Atom}
+
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & offset $\times$ 4 + 16 \\
+atom type & 32 & `stco' (\texttt{0x7374636f}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+number of offsets & 32 & \\
+\hline
+frame offset & 32 & \\
+\hline
+\multicolumn{3}{|c|}{...} \\
+\hline
+\end{tabular}
+
+This atom is a list of absolute file offsets for each chunk, where
+each chunk is typically 5 ALAC frames large.
+
+\clearpage
+
+\subsubsection{the udta Atom}
+
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & \ATOM{meta} size + 8 \\
+atom type & 32 & `udta' (\texttt{0x75647461}) \\
+\hline
+\ATOM{meta} atom & \ATOM{meta} size & \ATOM{meta} data \\
+\hline
+\end{tabular}
+
+\subsubsection{the meta Atom}
+
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & \ATOM{hdlr} size + \ATOM{ilst} size + \ATOM{free} size + 12 \\
+atom type & 32 & `meta' (\texttt{0x6d657461}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+\hline
+\ATOM{hdlr} atom & \ATOM{hdlr} size & \ATOM{hdlr} data \\
+\ATOM{ilst} atom & \ATOM{ilst} size & \ATOM{ilst} data \\
+\ATOM{free} atom & \ATOM{free} size & \ATOM{free} data \\
+\hline
+\end{tabular}
+
+\subsubsection{the hdlr atom (revisited)}
+
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & 34 \\
+atom type & 32 & `hdlr' (\texttt{0x68646c72}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+QuickTime type & 32 & \texttt{0x00000000} \\
+QuickTime subtype & 32 & `mdir' (\texttt{0x6d646972}) \\
+QuickTime manufacturer & 32 & `appl' (\texttt{0x6170706c}) \\
+QuickTime component reserved flags & 32 & \texttt{0x00000000} \\
+QuickTime component reserved flags mask & 32 & \texttt{0x00000000} \\
+component name length & 8 & \texttt{0x00} \\
+component name & 0 & \\
+\hline
+\end{tabular}
+
+This atom is laid out identically to the ALAC file's primary
+\ATOM{hdlr} atom (described on page \pageref{alac_hdlr}).
+The only difference is the contents of its fields.
+
+\subsubsection{the ilst Atom}
+
+This atom is a collection of \ATOM{data} sub-atoms
+and is described on page \pageref{m4a_meta}.
+
+\subsubsection{the free Atom}
+
+These atoms are simple collection of NULL bytes which can easily be
+resized to make room for other atoms without rewriting the entire file.

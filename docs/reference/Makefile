@@ -196,21 +196,27 @@ shorten/figures/qlpc1.pdf \
 shorten/figures/stream.pdf \
 shorten/figures/verbatim.pdf
 
-ALAC = figures/alac/alac_atom.pdf \
-figures/alac/alac-atom-parse.pdf \
-figures/alac/atom.pdf \
-figures/alac/atoms.pdf \
-figures/alac/interlaced_frame.pdf \
-figures/alac/mdhd.pdf \
-figures/alac/mdhd-parse.pdf \
-figures/alac/noninterlaced_frame.pdf \
-figures/alac/residual-build.pdf \
-figures/alac/residual-parse.pdf \
-figures/alac/stream.pdf \
-figures/alac/subframe-build.pdf \
-figures/alac/subframe-parse.pdf \
-figures/alac/subframe_header.pdf \
-figures/alac/uncompressed_frame.pdf
+ALAC = \
+alac/decode.tex \
+alac/encode.tex \
+alac/encode/atoms.tex \
+alac/encode/lpc.tex \
+alac/encode/residual.tex \
+alac/figures/alac_atom.pdf \
+alac/figures/alac-atom-parse.pdf \
+alac/figures/atom.pdf \
+alac/figures/atoms.pdf \
+alac/figures/interlaced_frame.pdf \
+alac/figures/mdhd.pdf \
+alac/figures/mdhd-parse.pdf \
+alac/figures/noninterlaced_frame.pdf \
+alac/figures/residual-build.pdf \
+alac/figures/residual-parse.pdf \
+alac/figures/stream.pdf \
+alac/figures/subframe-build.pdf \
+alac/figures/subframe-parse.pdf \
+alac/figures/subframe_header.pdf \
+alac/figures/uncompressed_frame.pdf
 
 MLP = figures/mlp/channel_parameters.pdf \
 figures/mlp/codebook1.pdf \
@@ -519,7 +525,7 @@ figures/m4a/atoms.pdf: figures/m4a/atoms.fig
 figures/m4a/meta_atoms.pdf: figures/m4a/meta_atoms.fig
 	fig2dev -Z 3 -L pdf $< $@
 
-figures/alac/atoms.pdf: figures/alac/atoms.fig
+alac/figures/atoms.pdf: alac/figures/atoms.fig
 	fig2dev -Z 5 -L pdf $< $@
 
 figures/bitstream_bigendian.pdf: figures/bitstream_bigendian.fig
@@ -560,25 +566,25 @@ figures/m4a/meta.pdf: figures/m4a/meta.bdx
 figures/m4a/data.pdf: figures/m4a/data.bdx
 	./bitdiagram.py -w 306 -i $< -o $@
 
-figures/alac/atom.pdf: figures/m4a/atom.bdx
+alac/figures/atom.pdf: figures/m4a/atom.bdx
 	./bitdiagram.py -w 324 -i $< -o $@
 
-figures/alac/alac-atom-parse.pdf: figures/alac/alac-atom-parse.bpx
+alac/figures/alac-atom-parse.pdf: alac/figures/alac-atom-parse.bpx
 	./bitparse.py -w 480 -b 24 -i $< -o $@
 
-figures/alac/mdhd.pdf: figures/m4a/mdhd.bdx
+alac/figures/mdhd.pdf: figures/m4a/mdhd.bdx
 	./bitdiagram.py -i $< -o $@
 
-# figures/alac/subframe-parse.pdf: figures/alac/subframe-parse.bpx
+# alac/figures/subframe-parse.pdf: alac/figures/subframe-parse.bpx
 # 	./bitparse.py -w 500 -b 24 -i $< -o $@
 
-figures/alac/subframe-parse.pdf: figures/alac/subframe-parse.bpx
+alac/figures/subframe-parse.pdf: alac/figures/subframe-parse.bpx
 	./bitparse.py -w 432 -b 16 -i $< -o $@
 
-figures/alac/residual-parse.pdf: figures/alac/residual-parse.bpx
+alac/figures/residual-parse.pdf: alac/figures/residual-parse.bpx
 	./bitparse.py -w 490 -b 24 -i $< -o $@
 
-figures/alac/residual-build.pdf: figures/alac/residual-build.bpx
+alac/figures/residual-build.pdf: alac/figures/residual-build.bpx
 	./bitparse.py -w 490 -b 24 -i $< -o $@
 
 # wavpack/figures/block_header_parse.pdf: wavpack/figures/block_header_parse.bpx
