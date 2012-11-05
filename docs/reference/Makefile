@@ -163,14 +163,17 @@ figures/wavpack/subblock_parse.pdf \
 figures/wavpack/terms_parse.pdf \
 figures/wavpack/typical_block.pdf
 
-SHORTEN = figures/shorten/block1.pdf \
-figures/shorten/block2.pdf \
-figures/shorten/filetype.pdf \
-figures/shorten/header_parse.pdf \
-figures/shorten/qlpc.pdf \
-figures/shorten/qlpc1.pdf \
-figures/shorten/stream.pdf \
-figures/shorten/verbatim.pdf
+SHORTEN = \
+shorten/decode.tex \
+shorten/encode.tex \
+shorten/figures/block1.pdf \
+shorten/figures/block2.pdf \
+shorten/figures/filetype.pdf \
+shorten/figures/header_parse.pdf \
+shorten/figures/qlpc.pdf \
+shorten/figures/qlpc1.pdf \
+shorten/figures/stream.pdf \
+shorten/figures/verbatim.pdf
 
 ALAC = figures/alac/alac_atom.pdf \
 figures/alac/alac-atom-parse.pdf \
@@ -605,7 +608,7 @@ figures/flac/utf8.pdf: figures/flac/utf8.bpx
 figures/flac/lpc-parse2.pdf: figures/flac/lpc-parse2.bpx
 	./bitparse.py -i $< -o $@ -b 24 -w 480
 
-figures/shorten/filetype.pdf: figures/shorten/filetype.bpx
+shorten/figures/filetype.pdf: shorten/figures/filetype.bpx
 	./bitparse.py -w 140 -b 7 -i $< -o $@
 
 basics-info.tex: basics-info.m4 header.m4 footer.m4
