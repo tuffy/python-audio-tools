@@ -430,64 +430,64 @@ audioformats-a4.pdf: audioformats-a4.tex $(CHAPTERS) $(FIGURES)
 mp3_decode.pdf: mp3_decode.tex $(MP3)
 	python pdflatexbuild.py -halt-on-error $<
 
-flac-codec.tex: flac-codec.m4 header.m4 footer.m4
-	m4 -D PAPERSIZE=letterpaper $< > $@
+flac-codec.tex: flac-codec.template header.tex footer.tex
+	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
 
 flac-codec.pdf: flac-codec.tex flac.tex $(FLAC)
 	python pdflatexbuild.py -halt-on-error $<
 
-alac-codec.tex: alac-codec.m4 header.m4 footer.m4
-	m4 -D PAPERSIZE=letterpaper $< > $@
+alac-codec.tex: alac-codec.template header.tex footer.tex
+	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
 
 alac-codec.pdf: alac-codec.tex alac.tex $(ALAC)
 	python pdflatexbuild.py -halt-on-error $<
 
-wavpack-codec.tex: wavpack-codec.m4 header.m4 footer.m4
-	m4 -D PAPERSIZE=letterpaper $< > $@
+wavpack-codec.tex: wavpack-codec.template header.tex footer.tex
+	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
 
 wavpack-codec.pdf: wavpack-codec.tex wavpack.tex $(WAVPACK)
 	python pdflatexbuild.py -halt-on-error $<
 
-shorten-codec.tex: shorten-codec.m4 header.m4 footer.m4
-	m4 -D PAPERSIZE=letterpaper $< > $@
+shorten-codec.tex: shorten-codec.template header.tex footer.tex
+	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
 
 shorten-codec.pdf: shorten-codec.tex shorten.tex $(SHORTEN)
 	python pdflatexbuild.py -halt-on-error $<
 
-dvda-codec.tex: dvda-codec.m4 header.m4 footer.m4
-	m4 -D PAPERSIZE=letterpaper $< > $@
+dvda-codec.tex: dvda-codec.template header.tex footer.tex
+	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
 
 dvda-codec.pdf: dvda-codec.tex dvda2.tex $(DVDA)
 	python pdflatexbuild.py -halt-on-error $<
 
-mp3-codec.tex: mp3-codec.m4 header.m4 footer.m4
-	m4 -D PAPERSIZE=letterpaper $< > $@
+mp3-codec.tex: mp3-codec.template header.tex footer.tex
+	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
 
 mp3-codec.pdf: mp3-codec.tex mp3.tex $(MP3) $(ID3v22) $(ID3v23) $(ID3v24)
 
-ogg-codec.tex: ogg-codec.m4 header.m4 footer.m4
-	m4 -D PAPERSIZE=lettepaper $< > $@
+ogg-codec.tex: ogg-codec.template header.tex footer.tex
+	python simple-template.py -D PAPERSIZE=lettepaper $< > $@
 
 ogg-codec.pdf: ogg-codec.tex ogg.tex $(OGG)
 	python pdflatexbuild.py -halt-on-error $<
 
-vorbis-codec.tex: vorbis-codec.m4 header.m4 footer.m4
-	m4 -D PAPERSIZE=letterpaper $< > $@
+vorbis-codec.tex: vorbis-codec.template header.tex footer.tex
+	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
 
 vorbis-codec.pdf: vorbis-codec.tex vorbis.tex $(VORBIS)
 	python pdflatexbuild.py -halt-on-error $<
 
-ape-codec.tex: ape-codec.m4 header.m4 footer.m4
-	m4 -D PAPERSIZE=letterpaper $< > $@
+ape-codec.tex: ape-codec.template header.tex footer.tex
+	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
 
 ape-codec.pdf: ape-codec.tex ape.tex $(APE)
 	python pdflatexbuild.py -halt-on-error $<
 
-audioformats-letter.tex: audioformats.m4 header.m4 footer.m4
-	m4 -D PAPERSIZE=letterpaper $< > $@
+audioformats-letter.tex: audioformats.template header.tex footer.tex
+	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
 
-audioformats-a4.tex: audioformats.m4 header.m4 footer.m4
-	m4 -D PAPERSIZE=a4paper $< > $@
+audioformats-a4.tex: audioformats.template header.tex footer.tex
+	python simple-template.py -D PAPERSIZE=a4paper $< > $@
 
 figures/pcm.pdf: figures/pcm.fig
 	fig2dev -Z 3 -L pdf $< $@
@@ -641,7 +641,7 @@ flac/figures/lpc-parse2.pdf: flac/figures/lpc-parse2.bpx
 shorten/figures/filetype.pdf: shorten/figures/filetype.bpx
 	./bitparse.py -w 140 -b 7 -i $< -o $@
 
-basics-info.tex: basics-info.m4 header.m4 footer.m4
+basics-info.tex: basics-info.m4 header.tex footer.tex
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
 basics-info.pdf: basics-info.tex basics.tex $(BASICS)

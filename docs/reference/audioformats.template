@@ -1,4 +1,4 @@
-include(header.m4)
+<<file:header.tex>>
 \include{introduction}
 \include{basics}
 \include{wav}
@@ -22,4 +22,4 @@ include(header.m4)
 \include{musicbrainz}
 \include{musicbrainz_mmd}
 \include{replaygain}
-include(footer.m4)
+<<file:footer.tex>>

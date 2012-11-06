@@ -6139,7 +6139,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] atoms
      - [X] lpc
      - [X] residual
-*** TODO Remove m4 requirement
+*** DONE Remove m4 requirement
     This is massive overkill for what little we need it for,
     which is generating audioformats-_.tex and _-codec.tex files
     with header/footers included and paper size populated.

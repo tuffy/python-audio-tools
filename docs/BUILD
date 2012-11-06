@@ -7,8 +7,6 @@ Building the documentation PDFs requires the following:
   http://www.tug.org/texlive/
 * sphinx-build
   http://sphinx.pocoo.org/
-* m4
-  http://www.gnu.org/software/m4/
 * fig2dev
   http://www.xfig.org/
 * gnuplot
