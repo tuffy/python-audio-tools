@@ -196,28 +196,49 @@ $1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{not compressed}
 \SetKwData{PCMCOUNT}{PCM frame count}
 \SetKwData{CHANCOUNT}{channel count}
 \SetKwData{CHANNEL}{channel}
+\SetKwData{SHIFTED}{shifted}
 \SetKwData{FRAME}{frame}
 \SetKwData{BPS}{bits per sample}
 \SetKwData{HASLSBS}{uncompressed LSBs}
+\SetKwData{ISHIFT}{interlacing shift}
 \SetKwData{MINWEIGHT}{minimum leftweight}
 \SetKwData{MAXWEIGHT}{maximum leftweight}
 \SetKwData{LSB}{LSB}
 \eIf{$\text{\BPS} \leq 16$}{
   \HASLSBS $\leftarrow 0$\;
+  \LSB $\leftarrow$ \texttt{[]}\;
+  \For{$c \leftarrow 0$ \emph{\KwTo}\CHANCOUNT}{
+    $\text{\SHIFTED}_c \leftarrow \text{\CHANNEL}_c$\;
+  }
 }(\tcc*[f]{extract uncompressed LSBs}){
   \HASLSBS $\leftarrow (\text{\BPS} - 16) \div 8$\;
   \For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
     \For{$c \leftarrow 0$ \emph{\KwTo}\CHANCOUNT}{
-      $\text{\LSB}_{(i \times \CHANCOUNT) + c} \leftarrow \text{\CHANNEL}_{c~i} \bmod~2^{\text{\BPS} - 16}$\;
-      $\text{\CHANNEL}_{c~i} \leftarrow \left\lfloor\text{\CHANNEL}_{c~i} \div 2^{\text{\BPS} - 16}\right\rfloor$\;
+      $\text{\LSB}_{(i \times \CHANCOUNT) + c} \leftarrow (\text{\CHANNEL}_{c~i}) \bmod~2^{\text{\BPS} - 16}$\;
+      $\text{\SHIFTED}_{c~i} \leftarrow \left\lfloor(\text{\CHANNEL}_{c~i}) \div 2^{\text{\BPS} - 16}\right\rfloor$\;
     }
   }
 }
 \eIf{$\text{\CHANCOUNT} = 1$}{
-  \Return \hyperref[alac:write_non_interlaced_frame]{non-interlaced frame for $\text{\CHANNEL}_0$}\;
+  \Return \hyperref[alac:write_non_interlaced_frame]{non-interlaced frame}
+  $\left\lbrace\begin{tabular}{l}
+  $\text{\SHIFTED}_0$ \\
+  \HASLSBS \\
+  \LSB \\
+  \end{tabular}\right.$\;
 }{
+  \tcc{minimum/maximum leftweight, interlacing shift from encoding parameters}
   \For{l $\leftarrow \MINWEIGHT$ \emph{\KwTo}$\text{\MAXWEIGHT} + 1$}{
-    $\text{\FRAME}_l \leftarrow$ \hyperref[alac:write_interlaced_frame]{interlaced frame for $\text{\CHANNEL}_0~,~\text{\CHANNEL}_1$ with leftweight $l$}\;
+    $\text{\FRAME}_l \leftarrow$
+    \hyperref[alac:write_interlaced_frame]{interlaced frame}
+    $\left\lbrace\begin{tabular}{l}
+    $\text{\SHIFTED}_0$ \\
+    $\text{\SHIFTED}_1$ \\
+    \ISHIFT \\
+    leftweight $l$ \\
+    \HASLSBS \\
+    \LSB \\
+    \end{tabular}\right.$\;
   }
   \Return smallest $\text{\FRAME}_l$\;
 }
@@ -254,7 +275,15 @@ $0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{is compressed}
 $0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{interlacing shift}
 $0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{interlacing leftweight}
 \SAMPLESIZE $\leftarrow \text{\BPS} - (\text{uncompressed LSBs} \times 8)$\;
-\hyperref[alac:compute_qlp_coeffs]{compute $\text{\QLPCOEFF}_0$ and $\text{\RESIDUAL}_0$ for $\text{\CHANNEL}_0$ with \SAMPLESIZE}\;
+$\left.\begin{tabular}{r}
+$\text{\QLPCOEFF}_0$ \\
+$\text{\RESIDUAL}_0$ \\
+\end{tabular}\right\rbrace \leftarrow$
+\hyperref[alac:compute_qlp_coeffs]{compute QLP coefficient}
+$\left\lbrace\begin{tabular}{l}
+$\text{\CHANNEL}_0$ \\
+\SAMPLESIZE \\
+\end{tabular}\right.$\;
 \hyperref[alac:write_subframe_header]{write subframe header with $\text{\QLPCOEFF}_0$}\;
 \If{$\text{\UNCOMPRESSEDLSB} > 0$}{
   \For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
@@ -303,11 +332,37 @@ $0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{is compressed}
 $\text{\INTERLACINGSHIFT} \rightarrow$ \WRITE 8 unsigned bits\;
 $\text{\INTERLACINGLEFTWEIGHT} \rightarrow$ \WRITE 8 unsigned bits\;
 \BlankLine
-\hyperref[alac:correlate_channels]{correlate $(\text{\CHANNEL}_0~,~\text{\CHANNEL}_1)$ to $(\text{\CORRELATED}_0~,~\text{\CORRELATED}_1)$}\newline with \INTERLACINGSHIFT and \INTERLACINGLEFTWEIGHT\;
+$\left.\begin{tabular}{r}
+$\text{\CORRELATED}_0$ \\
+$\text{\CORRELATED}_1$ \\
+\end{tabular}\right\rbrace \leftarrow$
+\hyperref[alac:correlate_channels]{correlate channels}
+$\left\lbrace\begin{tabular}{l}
+$\text{\CHANNEL}_0$ \\
+$\text{\CHANNEL}_1$ \\
+\INTERLACINGSHIFT \\
+\INTERLACINGLEFTWEIGHT \\
+\end{tabular}\right.$\;
 \BlankLine
 \SAMPLESIZE $\leftarrow \text{\BPS} - (\text{uncompressed LSBs} \times 8) + 1$\;
-\hyperref[alac:compute_qlp_coeffs]{compute $\text{\QLPCOEFF}_0$ and $\text{\RESIDUAL}_0$ for $\text{\CORRELATED}_0$ with \SAMPLESIZE}\;
-\hyperref[alac:compute_qlp_coeffs]{compute $\text{\QLPCOEFF}_1$ and $\text{\RESIDUAL}_1$ for $\text{\CORRELATED}_1$ with \SAMPLESIZE}\;
+$\left.\begin{tabular}{r}
+$\text{\QLPCOEFF}_0$ \\
+$\text{\RESIDUAL}_0$ \\
+\end{tabular}\right\rbrace \leftarrow$
+\hyperref[alac:compute_qlp_coeffs]{compute QLP coefficient}
+$\left\lbrace\begin{tabular}{l}
+$\text{\CORRELATED}_0$ \\
+\SAMPLESIZE \\
+\end{tabular}\right.$\;
+$\left.\begin{tabular}{r}
+$\text{\QLPCOEFF}_1$ \\
+$\text{\RESIDUAL}_1$ \\
+\end{tabular}\right\rbrace \leftarrow$
+\hyperref[alac:compute_qlp_coeffs]{compute QLP coefficient}
+$\left\lbrace\begin{tabular}{l}
+$\text{\CORRELATED}_1$ \\
+\SAMPLESIZE \\
+\end{tabular}\right.$\;
 \hyperref[alac:write_subframe_header]{write subframe header with $\text{\QLPCOEFF}_0$}\;
 \hyperref[alac:write_subframe_header]{write subframe header with $\text{\QLPCOEFF}_1$}\;
 \BlankLine
@@ -324,11 +379,11 @@ $\text{\INTERLACINGLEFTWEIGHT} \rightarrow$ \WRITE 8 unsigned bits\;
 \EALGORITHM
 }
 
+\clearpage
+
 \begin{figure}[h]
   \includegraphics{alac/figures/interlaced_frame.pdf}
 \end{figure}
-
-\clearpage
 
 \subsubsection{Correlating Channels}
 \label{alac:correlate_channels}
@@ -350,6 +405,10 @@ $\text{\INTERLACINGLEFTWEIGHT} \rightarrow$ \WRITE 8 unsigned bits\;
     $\text{\CORRELATED}_{1~i} \leftarrow \text{\CHANNEL}_{1~i}$\;
   }
 }
+\Return $\left\lbrace\begin{tabular}{l}
+$\text{\CORRELATED}_0$ \\
+$\text{\CORRELATED}_1$ \\
+\end{tabular}\right.$
 \EALGORITHM
 \par
 \noindent

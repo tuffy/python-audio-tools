@@ -8,7 +8,7 @@
 
 \subsection{Computing QLP Coefficients and Residual}
 \label{alac:compute_qlp_coeffs}
-{\relsize{-1}
+{\relsize{-2}
 \ALGORITHM{a list of signed PCM samples, sample size, encoding parameters}{a list of 4 or 8 signed QLP coefficients, a block of residual data; or a \textit{residual overflow} exception}
 \SetKwData{SAMPLES}{subframe samples}
 \SetKwData{WINDOWED}{windowed}
@@ -29,15 +29,24 @@ $\AUTOCORRELATION \leftarrow$ \hyperref[alac:autocorrelate]{autocorrelate \WINDO
   $\text{\RESIDUALBLOCK}_3 \leftarrow$ \hyperref[alac:write_residuals]{encode residual block from $\text{\RESIDUAL}_3$ with \SAMPLESIZE}\;
   $\text{\RESIDUALBLOCK}_7 \leftarrow$ \hyperref[alac:write_residuals]{encode residual block from $\text{\RESIDUAL}_7$ with \SAMPLESIZE}\;
   \eIf{$\LEN(\text{\RESIDUALBLOCK}_3) < (\LEN(\text{\RESIDUALBLOCK}_7) + 64~bits)$}{
-    \Return ($\text{\QLPCOEFF}_3~,~\text{\RESIDUALBLOCK}_3$)\;
+    \Return $\left\lbrace\begin{tabular}{l}
+    $\text{\QLPCOEFF}_3$ \\
+    $\text{\RESIDUALBLOCK}_3$ \\
+    \end{tabular}\right.$\;
   }{
-    \Return ($\text{\QLPCOEFF}_7~,~\text{\RESIDUALBLOCK}_7$)\;
+    \Return $\left\lbrace\begin{tabular}{l}
+    $\text{\QLPCOEFF}_7$ \\
+    $\text{\RESIDUALBLOCK}_7$ \\
+    \end{tabular}\right.$\;
   }
 }(\tcc*[f]{all samples are 0}){
   \QLPCOEFF $\leftarrow$ \texttt{[0, 0, 0, 0]}\;
   $\text{\RESIDUAL} \leftarrow$ \hyperref[alac:calculate_residuals]{calculate residuals from $\text{\QLPCOEFF}$ and \SAMPLES}\;
   $\text{\RESIDUALBLOCK} \leftarrow$ \hyperref[alac:write_residuals]{encode residual block from $\text{\RESIDUAL}$ with \SAMPLESIZE}\;
-  \Return ($\text{\QLPCOEFF}~,~\text{\RESIDUALBLOCK}$)\;
+  \Return $\left\lbrace\begin{tabular}{l}
+    $\text{\QLPCOEFF}$ \\
+    $\text{\RESIDUALBLOCK}$ \\
+  \end{tabular}\right.$\;
 }
 \EALGORITHM
 }

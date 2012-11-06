@@ -6151,7 +6151,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Shorten
 *** DONE FLAC
 *** DONE WavPack
-*** TODO ALAC
+*** DONE ALAC
+*** TODO DVD-A
 ** TODO Handle multi-channel .opus files properly
 *** TODO Add unit tests
 ** TODO Have cdplay play properly

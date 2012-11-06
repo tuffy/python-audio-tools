@@ -157,7 +157,7 @@ byte-align file stream\;
 
 \subsection{Decoding ALAC Frame}
 \label{alac:decode_frame}
-{\relsize{-1}
+{\relsize{-2}
 \ALGORITHM{\texttt{mdat} atom data, channel count, decoding parameters from \texttt{alac} atom}{1 or 2 decoded channels of PCM data}
 \SetKwData{CHANNELCOUNT}{channel count}
 \SetKwData{SAMPLECOUNT}{sample count}
@@ -226,7 +226,17 @@ $\NOTCOMPRESSED \leftarrow$ \READ 1 unsigned bit\;
 \end{tabular}\right.$\;
   }
   \uIf{$(\CHANNELCOUNT = 2)$ \AND $(\INTERLACINGLEFTWEIGHT > 0)$}{
-    \hyperref[alac:decorrelate_channels]{decorrelate $\text{\SUBFRAME}_0$ and $\text{\SUBFRAME}_1$ to $\text{\CHANNEL}_0$ and $\text{\CHANNEL}_1$}\newline according to \INTERLACINGSHIFT and \INTERLACINGLEFTWEIGHT\;
+    $\left.\begin{tabular}{r}
+      $\text{\CHANNEL}_0$ \\
+      $\text{\CHANNEL}_1$ \\
+    \end{tabular}\right\rbrace \leftarrow$
+    \hyperref[alac:decorrelate_channels]{decorrelate channels}
+    $\left\lbrace\begin{tabular}{l}
+    $\text{\SUBFRAME}_0$ \\
+    $\text{\SUBFRAME}_1$ \\
+    \INTERLACINGSHIFT \\
+    \INTERLACINGLEFTWEIGHT \\
+    \end{tabular}\right.$\;
   }
   \lElse{\For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
       $\text{\CHANNEL}_c \leftarrow \text{\SUBFRAME}_c$\;
@@ -746,7 +756,10 @@ and how the next sample's \textsf{QLP coefficient} values are shifted.
   $\text{\RIGHT}_i \leftarrow \text{\SUBFRAME}_{0~i} - \left\lfloor\frac{\text{\SUBFRAME}_{1~i} \times \text{\LEFTWEIGHT}}{2 ^ \text{interlacing shift}}\right\rfloor$\;
   $\text{\LEFT}_i \leftarrow \text{\SUBFRAME}_{1~i} + \text{\RIGHT}_i$
 }
-\Return $(\LEFT~,~\RIGHT)$\;
+\Return $\left\lbrace\begin{tabular}{l}
+\LEFT \\
+\RIGHT \\
+\end{tabular}\right.$
 \EALGORITHM
 For example, given the $\textsf{subframe}_0$ samples of 14, 15, 19, 17, 18;
 the $\textsf{subframe}_1$ samples of 16, 17, 26, 25, 24,
