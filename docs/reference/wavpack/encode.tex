@@ -439,8 +439,8 @@ $i \leftarrow 0$\;
 \SetKw{NOT}{not}
 \SetKw{IN}{in}
 \SetKw{OR}{or}
+$\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_entropy]{entropy variables sub block from \ENTROPY}\;
 \eIf(\tcc*[f]{1 channel block}){$\text{channel count} = 1$ \OR $\text{\CHANNEL}_0 = \text{\CHANNEL}_1$}{
-  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_entropy]{entropy variables sub block from \ENTROPY}\;
   $\left.\begin{tabular}{r}
     $\text{\CORRELATED}_0$ \\
     $\text{\WEIGHTS}'$ \\
@@ -463,10 +463,7 @@ $i \leftarrow 0$\;
   $\text{\CORRELATED}_0$ \\
   $\text{\ENTROPY}$ \\
   \end{tabular}\right.$\;
-  \BlankLine
-  $\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream sub block from \BITSTREAM\;
 }(\tcc*[f]{2 channel block}){
-    $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_entropy]{entropy variables sub block from \ENTROPY}\;
   $\left.\begin{tabular}{r}
     $\text{\CORRELATED}_0$ \\
     $\text{\CORRELATED}_1$ \\
@@ -492,9 +489,8 @@ $i \leftarrow 0$\;
   $\text{\CORRELATED}_1$ \\
   $\text{\ENTROPY}$ \\
   \end{tabular}\right.$\;
-  \BlankLine
-  $\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream sub block from \BITSTREAM\;
 }
+$\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream sub block from \BITSTREAM\;
 $i \leftarrow i + 2$\;
 \BlankLine
 \hyperref[wavpack:write_block_header]{write block header to block data}
@@ -577,6 +573,9 @@ for a maximum magnitude of 7.
 $\text{\WASTEDBPS} \leftarrow \infty$\tcc*[r]{maximum unsigned integer}
 \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
   $\text{\WASTEDBPS} \leftarrow \MIN(\WASTED(\text{\SAMPLE}_i)~,~\text{\WASTEDBPS})$\;
+  \If{$\text{\WASTEDBPS} = 0$}{
+    \Return 0\;
+  }
 }
 \eIf(\tcc*[f]{all samples are 0}){$\WASTEDBPS = \infty$}{
   \Return 0\;
@@ -608,8 +607,6 @@ $\texttt{wasted}(\text{sample}_i)$ & $\infty$ & 4 & 0 & 2 & 1 & 0 & 6 & 0 & 1 & 
 \par
 \noindent
 for a wasted bps of 0 (which is typical).
-
-\begin{landscape}
 
 \subsection{Calculating CRC}
 \label{wavpack:calc_crc}
@@ -643,45 +640,45 @@ $\text{\CRC}_{-1} \leftarrow \texttt{0xFFFFFFFF}$\;
 $i$ & $\textsf{channel}_{0~i}$ & $\textsf{channel}_{1~i}$ & \textsf{LCRC}_i & \textsf{SCRC}_i & \textsf{CRC}_i \\
 \hline
 0 & 0 & 64 &
-(3 \times \texttt{0xFFFFFFFF}) + 0 = \texttt{0x2FFFFFFFD} &
-(3 \times \texttt{0x2FFFFFFFD}) + 64 = \texttt{0x900000037} &
-\texttt{0x00000037} \\
+(3 \times \texttt{FFFFFFFF}) + 0 = \texttt{2FFFFFFFD} &
+(3 \times \texttt{2FFFFFFFD}) + 64 = \texttt{900000037} &
+\texttt{00000037} \\
 1 & 16 & 62 &
-(3 \times \texttt{0x00000037}) + 16 = \texttt{0x000000B5} &
-(3 \times \texttt{0x000000B5}) + 62 = \texttt{0x0000025D} &
-\texttt{0x0000025D} \\
+(3 \times \texttt{00000037}) + 16 = \texttt{000000B5} &
+(3 \times \texttt{000000B5}) + 62 = \texttt{0000025D} &
+\texttt{0000025D} \\
 2 & 31 & 56 &
-(3 \times \texttt{0x0000025D}) + 31 = \texttt{0x00000736} &
-(3 \times \texttt{0x00000736}) + 56 = \texttt{0x000015DA} &
-\texttt{0x000015DA} \\
+(3 \times \texttt{0000025D}) + 31 = \texttt{00000736} &
+(3 \times \texttt{00000736}) + 56 = \texttt{000015DA} &
+\texttt{000015DA} \\
 3 & 44 & 47 &
-(3 \times \texttt{0x000015DA}) + 44 = \texttt{0x000041BA} &
-(3 \times \texttt{0x000041BA}) + 47 = \texttt{0x0000C55D} &
-\texttt{0x0000C55D} \\
+(3 \times \texttt{000015DA}) + 44 = \texttt{000041BA} &
+(3 \times \texttt{000041BA}) + 47 = \texttt{0000C55D} &
+\texttt{0000C55D} \\
 4 & 54 & 34 &
-(3 \times \texttt{0x0000C55D}) + 54 = \texttt{0x0002504D} &
-(3 \times \texttt{0x0002504D}) + 34 = \texttt{0x0006F109} &
-\texttt{0x0006F109} \\
+(3 \times \texttt{0000C55D}) + 54 = \texttt{0002504D} &
+(3 \times \texttt{0002504D}) + 34 = \texttt{0006F109} &
+\texttt{0006F109} \\
 5 & 61 & 20 &
-(3 \times \texttt{0x0006F109}) + 61 = \texttt{0x0014D358} &
-(3 \times \texttt{0x0014D358}) + 20 = \texttt{0x003E7A1C} &
-\texttt{0x003E7A1C} \\
+(3 \times \texttt{0006F109}) + 61 = \texttt{0014D358} &
+(3 \times \texttt{0014D358}) + 20 = \texttt{003E7A1C} &
+\texttt{003E7A1C} \\
 6 & 64 & 4 &
-(3 \times \texttt{0x003E7A1C}) + 64 = \texttt{0x00BB6E94} &
-(3 \times \texttt{0x00BB6E94}) + 4 = \texttt{0x02324BC0} &
-\texttt{0x02324BC0} \\
+(3 \times \texttt{003E7A1C}) + 64 = \texttt{00BB6E94} &
+(3 \times \texttt{00BB6E94}) + 4 = \texttt{02324BC0} &
+\texttt{02324BC0} \\
 7 & 63 & -12 &
-(3 \times \texttt{0x02324BC0}) + 63 = \texttt{0x0696E37F} &
-(3 \times \texttt{0x0696E37F}) - 12 = \texttt{0x13C4AA71} &
-\texttt{0x13C4AA71} \\
+(3 \times \texttt{02324BC0}) + 63 = \texttt{0696E37F} &
+(3 \times \texttt{0696E37F}) - 12 = \texttt{13C4AA71} &
+\texttt{13C4AA71} \\
 8 & 58 & -27 &
-(3 \times \texttt{0x13C4AA71}) + 58 = \texttt{0x3B4DFF8D} &
-(3 \times \texttt{0x3B4DFF8D}) - 27 = \texttt{0xB1E9FE8C} &
-\texttt{0xB1E9FE8C} \\
+(3 \times \texttt{13C4AA71}) + 58 = \texttt{3B4DFF8D} &
+(3 \times \texttt{3B4DFF8D}) - 27 = \texttt{B1E9FE8C} &
+\texttt{B1E9FE8C} \\
 9 & 49 & -41 &
-(3 \times \texttt{0xB1E9FE8C}) + 49 = \texttt{0x215BDFBD5} &
-(3 \times \texttt{0x215BDFBD5}) - 41 = \texttt{0x64139F356} &
-\texttt{0x4139F356} \\
+(3 \times \texttt{B1E9FE8C}) + 49 = \texttt{215BDFBD5} &
+(3 \times \texttt{215BDFBD5}) - 41 = \texttt{64139F356} &
+\texttt{4139F356} \\
 \end{tabular}
 }
 \vskip 1em
@@ -689,7 +686,7 @@ $i$ & $\textsf{channel}_{0~i}$ & $\textsf{channel}_{1~i}$ & \textsf{LCRC}_i & \t
 \noindent
 Resulting in a final CRC of \texttt{0x4139F356}
 
-\end{landscape}
+\clearpage
 
 \subsection{Joint Stereo Conversion}
 \label{wavpack:calc_joint_stereo}
@@ -702,7 +699,10 @@ Resulting in a final CRC of \texttt{0x4139F356}
   $\text{\MID}_i \leftarrow \text{\LEFT}_i - \text{\RIGHT}_i$\;
   $\text{\SIDE}_i \leftarrow \lfloor(\text{\LEFT}_i + \text{\RIGHT}_i) \div 2\rfloor$\;
 }
-\Return \MID and \SIDE channels\;
+\Return $\left\lbrace\begin{tabular}{l}
+\MID \\
+\SIDE \\
+\end{tabular}\right.$\;
 \EALGORITHM
 
 \subsubsection{Joint Stereo Example}

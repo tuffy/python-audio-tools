@@ -6150,7 +6150,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    bit diagram and example on same pair of pages.
 *** DONE Shorten
 *** DONE FLAC
-*** TODO WavPack
+*** DONE WavPack
 *** TODO ALAC
 ** TODO Handle multi-channel .opus files properly
 *** TODO Add unit tests

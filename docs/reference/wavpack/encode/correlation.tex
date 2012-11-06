@@ -6,8 +6,41 @@
 %171 Second Street, Suite 300,
 %San Francisco, California, 94105, USA.
 
-\subsection{Correlation Passes}
+\subsection{1 Channel Correlation Passes}
 \label{wavpack:correlate_channels}
+\ALGORITHM{a list of signed samples; correlation terms, deltas, weights and samples}{a list of signed residuals; correlation weights and samples for the next block}
+\SetKwData{PASS}{pass}
+\SetKwData{CHANNEL}{channel}
+\SetKwData{TERMCOUNT}{term count}
+\SetKwData{TERM}{term}
+\SetKwData{DELTA}{delta}
+\SetKwData{WEIGHT}{weight}
+\SetKwData{SAMPLES}{sample}
+\SetKw{KwDownTo}{downto}
+$\text{\PASS}_{-1~0} \leftarrow \text{\CHANNEL}_0$\;
+\For(\tcc*[f]{perform passes in reverse order}){$i \leftarrow 0$ \emph{\KwTo}\TERMCOUNT}{
+  $p \leftarrow \TERMCOUNT - i - 1$\;
+  $\left.\begin{tabular}{r}
+    $\text{\PASS}_{i}$ \\
+    $\text{\WEIGHT}'_{p~0}$ \\
+    $\text{\SAMPLES}'_{p~0}$ \\
+  \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_1ch]{correlate 1 channel}
+  $\left\lbrace\begin{tabular}{l}
+  $\text{\PASS}_{i - 1}$ \\
+  $\text{\TERM}_{i}$ \\
+  $\text{\DELTA}_{i}$ \\
+  $\text{\WEIGHT}_{p~0}$ \\
+  $\text{\SAMPLES}_{p~0}$ \\
+  \end{tabular}\right.$\;
+}
+\Return $\left\lbrace\begin{tabular}{l}
+$\text{\PASS}_{(\TERMCOUNT - 1)}$ \\
+$\text{\WEIGHT}'$ \\
+$\text{\SAMPLES}'$ \\
+\end{tabular}\right.$\;
+\EALGORITHM
+
+\subsection{2 Channel Correlation Passes}
 \ALGORITHM{a list of signed samples per channel; correlation terms, deltas, weights and samples}{a list of signed residuals per channel; correlation weights and samples for the next block}
 \SetKwData{PASS}{pass}
 \SetKwData{CHANNEL}{channel}
@@ -17,45 +50,34 @@
 \SetKwData{WEIGHT}{weight}
 \SetKwData{SAMPLES}{sample}
 \SetKw{KwDownTo}{downto}
-\eIf{$\text{channel count} = 1$}{
-  $\text{\PASS}_{-1~0} \leftarrow \text{\CHANNEL}_0$\;
-  \For(\tcc*[f]{perform passes in reverse order}){$i \leftarrow 0$ \emph{\KwTo}\TERMCOUNT}{
-    $p \leftarrow \TERMCOUNT - i - 1$\;
-    $\left.\begin{tabular}{r}
-      $\text{\PASS}_{i~0}$ \\
-      $\text{\WEIGHT}_{p~0}$ \\
-      $\text{\SAMPLES}_{p~0}$ \\
-    \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_1ch]{correlate 1 channel $\text{\PASS}_{i - 1}$} using $\left\lbrace\begin{tabular}{l}
-    $\text{\TERM}_{i}$ \\
-    $\text{\DELTA}_{i}$ \\
-    $\text{\WEIGHT}_{p~0}$ \\
-    $\text{\SAMPLES}_{p~0}$ \\
-    \end{tabular}\right.$\;
-  }
-  \Return $\text{\PASS}_{(\TERMCOUNT - 1)}$, updated $\text{\WEIGHT}$, updated $\text{\SAMPLES}$\;
-}{
-  $\text{\PASS}_{-1~0} \leftarrow \text{\CHANNEL}_0$\;
-  $\text{\PASS}_{-1~1} \leftarrow \text{\CHANNEL}_1$\;
-  \For(\tcc*[f]{perform passes in reverse order}){$i \leftarrow 0$ \emph{\KwTo}\TERMCOUNT}{
-    $p \leftarrow \TERMCOUNT - i - 1$\;
-    $\left.\begin{tabular}{r}
-      $\text{\PASS}_{i~0}$ \\
-      $\text{\PASS}_{i~1}$ \\
-      $\text{\WEIGHT}_{p~0}$ \\
-      $\text{\WEIGHT}_{p~1}$ \\
-      $\text{\SAMPLES}_{p~0}$ \\
-      $\text{\SAMPLES}_{p~1}$ \\
-    \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_2ch]{correlate 2 channel $\text{\PASS}_{i - 1}$} using $\left\lbrace\begin{tabular}{l}
-    $\text{\TERM}_{i}$ \\
-    $\text{\DELTA}_{i}$ \\
-    $\text{\WEIGHT}_{p~0}$ \\
-    $\text{\WEIGHT}_{p~1}$ \\
-    $\text{\SAMPLES}_{p~0}$ \\
-    $\text{\SAMPLES}_{p~1}$ \\
-    \end{tabular}\right.$\;
-  }
-  \Return $\text{\PASS}_{(\TERMCOUNT - 1)}$, updated $\text{\WEIGHT}$, updated $\text{\SAMPLES}$\;
+$\text{\PASS}_{-1~0} \leftarrow \text{\CHANNEL}_0$\;
+$\text{\PASS}_{-1~1} \leftarrow \text{\CHANNEL}_1$\;
+\For(\tcc*[f]{perform passes in reverse order}){$i \leftarrow 0$ \emph{\KwTo}\TERMCOUNT}{
+  $p \leftarrow \TERMCOUNT - i - 1$\;
+  $\left.\begin{tabular}{r}
+    $\text{\PASS}_{i~0}$ \\
+    $\text{\PASS}_{i~1}$ \\
+    $\text{\WEIGHT}'_{p~0}$ \\
+    $\text{\WEIGHT}'_{p~1}$ \\
+    $\text{\SAMPLES}'_{p~0}$ \\
+    $\text{\SAMPLES}'_{p~1}$ \\
+  \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_2ch]{correlate 2 channel}
+  $\left\lbrace\begin{tabular}{l}
+  $\text{\PASS}_{i - 1~0}$ \\
+  $\text{\PASS}_{i - 1~1}$ \\
+  $\text{\TERM}_{i}$ \\
+  $\text{\DELTA}_{i}$ \\
+  $\text{\WEIGHT}_{p~0}$ \\
+  $\text{\WEIGHT}_{p~1}$ \\
+  $\text{\SAMPLES}_{p~0}$ \\
+  $\text{\SAMPLES}_{p~1}$ \\
+  \end{tabular}\right.$\;
 }
+\Return $\left\lbrace\begin{tabular}{l}
+$\text{\PASS}_{(\TERMCOUNT - 1)}$ \\
+$\text{\WEIGHT}'$ \\
+$\text{\SAMPLES}'$ \\
+\end{tabular}\right.$\;
 \EALGORITHM
 
 \clearpage
@@ -158,9 +180,11 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
 \uIf{$(17 \leq \TERM \leq 18)$ \OR $(1 \leq \TERM \leq 8)$}{
   $\left.\begin{tabular}{r}
     $\text{\CORRELATED}_{0}$ \\
-    $\text{\WEIGHT}_{0}$ \\
-    $\text{\DECORRSAMPLE}_{0}$ \\
-  \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_1ch]{correlate 1 channel $\text{\DECORRELATED}_{0}$} using $\left\lbrace\begin{tabular}{l}
+    $\text{\WEIGHT}'_{0}$ \\
+    $\text{\DECORRSAMPLE}'_{0}$ \\
+  \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_1ch]{correlate 1 channel}
+  $\left\lbrace\begin{tabular}{l}
+  $\text{\DECORRELATED}_{0}$
   $\text{\TERM}$ \\
   $\text{\DELTA}$ \\
   $\text{\WEIGHT}_{0}$ \\
@@ -168,9 +192,11 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
   \end{tabular}\right.$\;
   $\left.\begin{tabular}{r}
     $\text{\CORRELATED}_{1}$ \\
-    $\text{\WEIGHT}_{1}$ \\
-    $\text{\DECORRSAMPLE}_{1}$ \\
-  \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_1ch]{correlate 1 channel $\text{\DECORRELATED}_{1}$} using $\left\lbrace\begin{tabular}{l}
+    $\text{\WEIGHT}'_{1}$ \\
+    $\text{\DECORRSAMPLE}'_{1}$ \\
+  \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_1ch]{correlate 1 channel}
+  $\left\lbrace\begin{tabular}{l}
+  $\text{\DECORRELATED}_{1}$
   $\text{\TERM}$ \\
   $\text{\DELTA}$ \\
   $\text{\WEIGHT}_{1}$ \\
@@ -178,8 +204,8 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
   \end{tabular}\right.$\;
   \Return $\left\lbrace\begin{tabular}{l}
   $\text{\CORRELATED}$ \\
-  $\text{\WEIGHT}$ \\
-  $\text{\DECORRSAMPLE}$ \\
+  $\text{\WEIGHT}'$ \\
+  $\text{\DECORRSAMPLE}'$ \\
   \end{tabular}\right.$\;
 }
 \uElseIf{$-3 \leq \TERM \leq -1$}{

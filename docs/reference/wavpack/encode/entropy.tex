@@ -25,3 +25,45 @@ $\WVLOG(\text{\ENTROPY}_{0~2}) \rightarrow$ \WRITE 16 signed bits\;
 \begin{figure}[h]
   \includegraphics{wavpack/figures/entropy_vars.pdf}
 \end{figure}
+
+\clearpage
+
+\subsubsection{Writing Entropy Variables Example}
+
+\begin{table}[h]
+{\relsize{-2}
+  \renewcommand{\arraystretch}{1.5}
+\begin{tabular}{r|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}}
+  $\text{entropy}_{c~i}$ & $a$ & $c$ & \text{value}_{c~i} \\
+  \hline
+  118 &
+  |118| + \lfloor |118| \div 2 ^ 9\rfloor = 118 &
+  \lfloor\log_2(118)\rfloor + 1 = 7 &
+  7 \times 2 ^ 8 + \texttt{wlog}((118 \times 2 ^ {9 - 7}) \bmod 256) = 2018 \\
+  194 &
+  |194| + \lfloor |194| \div 2 ^ 9\rfloor = 194 &
+  \lfloor\log_2(194)\rfloor + 1 = 8 &
+  8 \times 2 ^ 8 + \texttt{wlog}((194 \times 2 ^ {9 - 8}) \bmod 256) = 2202 \\
+  322 &
+  |322| + \lfloor |322| \div 2 ^ 9\rfloor = 322 &
+  \lfloor\log_2(322)\rfloor + 1 = 9 &
+  9 \times 2 ^ 8 + \LOG(\lfloor 322 \div 2 ^ {9 - 9}\rfloor \bmod 256) = 2389 \\
+  \hline
+  118 &
+  |118| + \lfloor |118| \div 2 ^ 9\rfloor = 118 &
+  \lfloor\log_2(118)\rfloor + 1 = 7 &
+  7 \times 2 ^ 8 + \texttt{wlog}((118 \times 2 ^ {9 - 7}) \bmod 256) = 2018 \\
+  176 &
+  |176| + \lfloor |176| \div 2 ^ 9\rfloor = 176 &
+  \lfloor\log_2(176)\rfloor + 1 = 8 &
+  8 \times 2 ^ 8 + \texttt{wlog}((176 \times 2 ^ {9 - 8}) \bmod 256) = 2166 \\
+  212 &
+  |212| + \lfloor |212| \div 2 ^ 9\rfloor = 212 &
+  \lfloor\log_2(212)\rfloor + 1 = 8 &
+  8 \times 2 ^ 8 + \texttt{wlog}((212 \times 2 ^ {9 - 8}) \bmod 256) = 2234 \\
+\end{tabular}
+}
+\end{table}
+\begin{figure}[h]
+  \includegraphics{wavpack/figures/entropy_vars_parse.pdf}
+\end{figure}
