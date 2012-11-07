@@ -4893,9 +4893,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] src/encoders/shn.c
    - [X] src/encoders/wavpack.c
 * TODO handle AIFF offset/block size in SSND chunk
-* TODO Add raop support
-  It'd be useful to have support for AirPlay devices
-  using the output routines from raop_play as a base.
 * TODO Assimilate external codecs
   More of a long-term plan than anything else.
   It would be best to have as few external program
@@ -6104,7 +6101,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] wavpack.tex
 ** DONE Spellcheck reference figures
 ** DONE Spellcheck manual pages
-** TODO Split reference documentation into sections by file
+** DONE Split reference documentation into sections by file
    That is, massive codecs should be split into individual
    .tex files by decode/encode sections and then subdivided
    further as necessary to keep them from getting too fragile/unweildy
@@ -6436,6 +6433,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Add volume control to low-level output players
    It should be possible to adjust the volume from trackplay/cdplay
    without adjusting the output data itself.
+** TODO Add raop support
+   It'd be useful to have support for AirPlay devices
+   using the output routines from raop_play as a base.
 * TODO Finish version 3.0
 ** TODO Shift to Python 3
    This lengthy transition will have to wait
