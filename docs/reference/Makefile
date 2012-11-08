@@ -372,6 +372,7 @@ $(WAVPACK) \
 $(APEV2) \
 $(APE) \
 $(MP3) \
+$(OGG) \
 $(ID3v22) \
 $(ID3v23) \
 $(ID3v24) \

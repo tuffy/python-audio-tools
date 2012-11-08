@@ -175,41 +175,37 @@ be re-adjusted in the \ATOM{stco} atom or the file may become unplayable.
 \parpic[r]{
 \includegraphics{figures/m4a/meta_atoms.pdf}
 }
-\includegraphics{figures/m4a/meta.pdf}
+\includegraphics[height=4in,keepaspectratio]{figures/m4a/meta.pdf}
 Text data atoms have a \VAR{type} of 1,
 which indicates that \VAR{data} is UTF-8 encoded text.
 Binary data atoms typically have a \VAR{type} of 0.
 \end{figure}
+\vskip .10in
+\par
+\noindent
+{\relsize{0}
+  \begin{tabular}{rl}
+  \texttt{alb} & album name \\
+  \texttt{ART} & track artist \\
+  \texttt{cmt} & comments \\
+  \texttt{covr} & cover image \\
+  \texttt{cpil} & compilation \\
+  \texttt{cprt} & copyright \\
+  \texttt{day} & year \\
+  \texttt{disk} & disc number \\
+  \texttt{gnre} & genre \\
+  \texttt{grp} & grouping \\
+  \texttt{----} & iTunes-specific \\
+  \texttt{nam} & track name \\
+  \texttt{rtng} & rating \\
+  \texttt{tmpo} & BMP \\
+  \texttt{too} & encoder \\
+  \texttt{trkn} & track number \\
+  \texttt{wrt} & composer \\
+  \end{tabular}
+}
 
 \clearpage
-
-\begin{table}[h]
-\begin{tabular}{|r|l||r|l||r|l|}
-\hline
-Atom & Description & Atom & Description & Atom & Description \\
-\hline
-\ATOM{alb} & Album Name &
-\ATOM{ART} & Track Artist &
-\ATOM{cmt} & Comments \\
-\ATOM{covr} & Cover Image &
-\ATOM{cpil} & Compilation &
-\ATOM{cprt} & Copyright \\
-\ATOM{day} & Year &
-\ATOM{disk} & Disc Number &
-\ATOM{gnre} & Genre \\
-\ATOM{grp} & Grouping &
-\ATOM{----} & iTunes-specific &
-\ATOM{nam} & Track Name \\
-\ATOM{rtng} & Rating &
-\ATOM{tmpo} & BMP &
-\ATOM{too} & Encoder \\
-\ATOM{trkn} & Track Number &
-\ATOM{wrt} & Composer &
-& \\
-\hline
-\end{tabular}
-\caption{Known \ATOM{ilst} sub-atoms}
-\end{table}
 
 \subsubsection{the trkn Sub-Atom}
 \ATOM{trkn} is a binary sub-atom of \ATOM{meta} which contains

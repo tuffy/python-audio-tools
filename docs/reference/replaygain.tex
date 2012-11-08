@@ -67,6 +67,8 @@ Thus, if the peak value of a stream is 0.9765625, no ReplayGain value
 should generate a multiplier higher than 1.024
 ($0.9765625 \times 1.024 = 1.0$).
 
+\clearpage
+
 \section{Calculating ReplayGain}
 
 As explained earlier, ReplayGain requires a peak and gain value
@@ -117,7 +119,7 @@ In purely mathematical terms, it looks like this:
 When filtering at the start of the stream, treat any samples
 before the beginning as 0.
 
-\pagebreak
+\clearpage
 
 \subsubsection{a filtering example}
 Let's assume we have a 44100Hz stream and our previous input and output
@@ -230,7 +232,7 @@ $\text{Butter}_i$ & & $\text{Butter Output Filter}_i$ & & result \\
 Therefore, $\text{Butter}_{100} = -0.24 - -0.71 = 0.47$
 , which is the next sample from the equal loudness filter.
 
-\pagebreak
+\clearpage
 
 \subsection{RMS Energy Blocks}
 The next step is to take our stream of filtered samples and convert
