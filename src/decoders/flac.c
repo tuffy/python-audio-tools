@@ -640,8 +640,7 @@ flacdec_read_constant_subframe(BitstreamReader* bitstream,
 {
     int32_t value = bitstream->read_signed(bitstream, bits_per_sample);
 
-    samples->reset(samples);
-    samples->mappend(samples, block_size, value);
+    samples->mset(samples, block_size, value);
 
     return OK;
 }
@@ -654,8 +653,7 @@ flacdec_read_verbatim_subframe(BitstreamReader* bitstream,
 {
     int32_t i;
 
-    samples->reset(samples);
-    samples->resize(samples, block_size);
+    samples->reset_for(samples, block_size);
 
     for (i = 0; i < block_size; i++)
         a_append(samples,
@@ -677,11 +675,8 @@ flacdec_read_fixed_subframe(BitstreamReader* bitstream,
     int* s_data;
     int* r_data;
 
-    residuals->reset(residuals);
-    samples->reset(samples);
-
     /*ensure that samples->data won't be realloc'ated*/
-    samples->resize(samples, block_size);
+    samples->reset_for(samples, block_size);
     s_data = samples->_;
 
     /*read "order" number of warm-up samples*/
@@ -758,9 +753,7 @@ flacdec_read_lpc_subframe(BitstreamReader* bitstream,
     flac_status error;
 
     qlp_coeffs->reset(qlp_coeffs);
-    residuals->reset(residuals);
-    samples->reset(samples);
-    samples->resize(samples, block_size);
+    samples->reset_for(samples, block_size);
     s_data = samples->_;
 
     /*read order number of warm-up samples*/
@@ -824,11 +817,9 @@ flacdec_read_residual(BitstreamReader* bitstream,
 
     unsigned int (*read)(struct BitstreamReader_s* bs, unsigned int count);
     unsigned int (*read_unary)(struct BitstreamReader_s* bs, int stop_bit);
-    void (*append)(array_i* array, int value);
 
     read = bitstream->read;
     read_unary = bitstream->read_unary;
-    append = residuals->append;
 
     residuals->reset(residuals);
 
@@ -861,21 +852,22 @@ flacdec_read_residual(BitstreamReader* bitstream,
             return ERR_INVALID_CODING_METHOD;
         }
 
+        residuals->resize_for(residuals, partition_samples);
         if (!escape_code) {
             for (;partition_samples; partition_samples--) {
                 msb = read_unary(bitstream, 1);
                 lsb = read(bitstream, rice_parameter);
                 value = (msb << rice_parameter) | lsb;
                 if (value & 1) {
-                    append(residuals, -(value >> 1) - 1);
+                    a_append(residuals, -(value >> 1) - 1);
                 } else {
-                    append(residuals, value >> 1);
+                    a_append(residuals, value >> 1);
                 }
             }
         } else {
             for (;partition_samples; partition_samples--) {
-                append(residuals,
-                       bitstream->read_signed(bitstream, escape_code));
+                a_append(residuals,
+                         bitstream->read_signed(bitstream, escape_code));
             }
         }
     }
@@ -895,8 +887,7 @@ flacdec_decorrelate_channels(uint8_t channel_assignment,
     int64_t mid;
     int32_t side;
 
-    framelist->reset(framelist);
-    framelist->resize(framelist, channel_count * block_size);
+    framelist->reset_for(framelist, channel_count * block_size);
     framelist_data = framelist->_;
     framelist->len = channel_count * block_size;
 

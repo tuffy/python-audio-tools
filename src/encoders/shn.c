@@ -240,8 +240,7 @@ encode_audio(BitstreamWriter* bs,
 
                 /*apply left shift to channel data*/
                 if (left_shift > 0) {
-                    shifted->reset(shifted);
-                    shifted->resize(shifted, channel->len);
+                    shifted->reset_for(shifted, channel->len);
                     for (i = 0; i < channel->len; i++)
                         a_append(shifted, channel->_[i] >> left_shift);
                 } else {
@@ -377,20 +376,23 @@ calculate_best_diff(const array_i* samples,
                      samples->_[0] - prev_samples->_[prev_samples->len - 1]);
         break;
     }
+    delta1->resize_for(delta1, samples->len - 1);
     for (i = 1; i < samples->len; i++)
-        delta1->append(delta1, samples->_[i] - samples->_[i - 1]);
+        a_append(delta1, samples->_[i] - samples->_[i - 1]);
     assert(delta1->len == (samples->len + 2));
 
     /*determine delta2 from delta1*/
     delta2 = deltas->append(deltas);
+    delta2->resize_for(delta2, delta1->len - 1);
     for (i = 1; i < delta1->len; i++)
-        delta2->append(delta2, delta1->_[i] - delta1->_[i - 1]);
+        a_append(delta2, delta1->_[i] - delta1->_[i - 1]);
     assert(delta2->len == (samples->len + 1));
 
     /*determine delta3 from delta2*/
     delta3 = deltas->append(deltas);
+    delta3->resize_for(delta3, delta2->len - 1);
     for (i = 1; i < delta2->len; i++)
-        delta3->append(delta3, delta2->_[i] - delta2->_[i - 1]);
+        a_append(delta3, delta2->_[i] - delta2->_[i - 1]);
     assert(delta3->len == samples->len);
 
     /*determine delta sums from non-negative deltas*/

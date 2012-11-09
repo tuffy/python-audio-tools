@@ -47,7 +47,9 @@ struct array_i_s* array_i_wrap(int* data, unsigned size, unsigned total_size)
 
     a->del = array_i_del;
     a->resize = array_i_resize;
+    a->resize_for = array_i_resize_for;
     a->reset = array_i_reset;
+    a->reset_for = array_i_reset_for;
     a->append = array_i_append;
     a->vappend = array_i_vappend;
     a->mappend = array_i_mappend;
@@ -98,6 +100,18 @@ ARRAY_RESIZE(array_i_resize, array_i, int)
 ARRAY_RESIZE(array_f_resize, array_f, double)
 ARRAY_RESIZE(array_o_resize, array_o, void*)
 
+
+#define ARRAY_RESIZE_FOR(FUNC_NAME, ARRAY_TYPE)                     \
+    void                                                            \
+    FUNC_NAME(ARRAY_TYPE *array, unsigned additional_items)         \
+    {                                                               \
+        array->resize(array, array->len + additional_items);        \
+    }
+ARRAY_RESIZE_FOR(array_i_resize_for, array_i);
+ARRAY_RESIZE_FOR(array_f_resize_for, array_f);
+ARRAY_RESIZE_FOR(array_o_resize_for, array_o);
+
+
 #define ARRAY_RESET(FUNC_NAME, ARRAY_TYPE)      \
     void                                        \
     FUNC_NAME(ARRAY_TYPE *array)                \
@@ -108,6 +122,17 @@ ARRAY_RESET(array_i_reset, array_i)
 ARRAY_RESET(array_f_reset, array_f)
 ARRAY_RESET(array_li_reset, array_li)
 ARRAY_RESET(array_lf_reset, array_lf)
+
+
+#define ARRAY_RESET_FOR(FUNC_NAME, ARRAY_TYPE)          \
+    void                                                \
+    FUNC_NAME(ARRAY_TYPE *array, unsigned minimum) {    \
+        array->reset(array);                            \
+        array->resize(array, minimum);                  \
+    }
+ARRAY_RESET_FOR(array_i_reset_for, array_i);
+ARRAY_RESET_FOR(array_f_reset_for, array_f);
+ARRAY_RESET_FOR(array_o_reset_for, array_o);
 
 
 #define ARRAY_APPEND(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
@@ -160,8 +185,7 @@ ARRAY_MAPPEND(array_f_mappend, array_f, double)
     {                                                               \
         va_list ap;                                                 \
                                                                     \
-        array->reset(array);                                        \
-        array->resize(array, count);                                \
+        array->reset_for(array, count);                             \
         va_start(ap, count);                                        \
         for (; count > 0; count--) {                                \
             const ARRAY_DATA_TYPE i = va_arg(ap, ARRAY_DATA_TYPE);  \
@@ -177,8 +201,7 @@ ARRAY_VSET(array_f_vset, array_f, double)
     void                                                                \
     FUNC_NAME(ARRAY_TYPE *array, unsigned count, ARRAY_DATA_TYPE value) \
     {                                                                   \
-        array->reset(array);                                            \
-        array->resize(array, count);                                    \
+        array->reset_for(array, count);                                 \
         for (; count > 0; count--) {                                    \
             array->_[array->len++] = value;                             \
         }                                                               \
@@ -190,7 +213,7 @@ ARRAY_MSET(array_f_mset, array_f, double)
     void                                                          \
     FUNC_NAME(ARRAY_TYPE *array, const ARRAY_TYPE *to_add)        \
     {                                                             \
-        array->resize(array, array->len + to_add->len);           \
+        array->resize_for(array, to_add->len);                    \
         memcpy(array->_ + array->len,                             \
                to_add->_,                                         \
                sizeof(ARRAY_DATA_TYPE) * to_add->len);            \
@@ -702,7 +725,9 @@ array_f* array_f_wrap(double* data, unsigned size, unsigned total_size)
 
     a->del = array_f_del;
     a->resize = array_f_resize;
+    a->resize_for = array_f_resize_for;
     a->reset = array_f_reset;
+    a->reset_for = array_f_reset_for;
     a->append = array_f_append;
     a->vappend = array_f_vappend;
     a->mappend = array_f_mappend;
@@ -1368,7 +1393,9 @@ array_o_new(void* (*copy)(void* obj),
 
     a->del = array_o_del;
     a->resize = array_o_resize;
+    a->resize_for = array_o_resize_for;
     a->reset = array_o_reset;
+    a->reset_for = array_o_reset_for;
     a->append = array_o_append;
     a->vappend = array_o_vappend;
     a->mappend = array_o_mappend;
@@ -1451,8 +1478,7 @@ void array_o_vset(struct array_o_s *array, unsigned count, ...)
     void* i;
     va_list ap;
 
-    array->reset(array);
-    array->resize(array, count);
+    array->reset_for(array, count);
     va_start(ap, count);
     for (; count > 0; count--) {
         i = va_arg(ap, void*);
@@ -1464,8 +1490,7 @@ void array_o_vset(struct array_o_s *array, unsigned count, ...)
 void
 array_o_mset(struct array_o_s *array, unsigned count, void* value)
 {
-    array->reset(array);
-    array->resize(array, count);
+    array->reset_for(array, count);
     for (; count > 0; count--) {
         array->_[array->len++] = array->copy_obj(value);
     }
@@ -1477,7 +1502,7 @@ array_o_extend(struct array_o_s *array, const struct array_o_s *to_add)
     unsigned i;
     const unsigned len = to_add->len;
 
-    array->resize(array, array->len + to_add->len);
+    array->resize_for(array, to_add->len);
 
     for (i = 0; i < len; i++) {
         array->_[array->len++] = array->copy_obj(to_add->_[i]);
@@ -1490,8 +1515,7 @@ array_o_copy(const struct array_o_s *array, struct array_o_s *copy)
     if (array != copy) {
         unsigned i;
 
-        copy->resize(copy, array->len);
-        copy->reset(copy);
+        copy->reset_for(copy, array->len);
         for (i = 0; i < array->len; i++) {
             copy->_[copy->len++] = array->copy_obj(array->_[i]);
         }
@@ -1506,8 +1530,7 @@ array_o_head(const struct array_o_s *array, unsigned count,
 
     if (head != array) {
         unsigned i;
-        head->resize(head, to_copy);
-        head->reset(head);
+        head->reset_for(head, to_copy);
         for (i = 0; i < to_copy; i++) {
             head->_[head->len++] = array->copy_obj(array->_[i]);
         }
@@ -1527,8 +1550,7 @@ array_o_tail(const struct array_o_s *array, unsigned count,
     if (tail != array) {
         unsigned i;
 
-        tail->resize(tail, to_copy);
-        tail->reset(tail);
+        tail->reset_for(tail, to_copy);
         for (i = array->len - to_copy; i < array->len; i++) {
             tail->_[tail->len++] = array->copy_obj(array->_[i]);
         }

@@ -1829,7 +1829,6 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         metadata = self.get_metadata()
         if (metadata is None):
-            #FIXME
             raise ValueError("no foreign RIFF chunks")
 
         #convert individual chunks into combined header and footer strings
@@ -1848,7 +1847,6 @@ class FlacAudio(WaveContainer, AiffContainer):
         if ((len(header) != 0) or (len(footer) != 0)):
             return ("".join(header), "".join(footer))
         else:
-            #FIXME
             raise ValueError("no foreign RIFF chunks")
 
     @classmethod
@@ -2065,7 +2063,6 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         metadata = self.get_metadata()
         if (metadata is None):
-            #FIXME
             raise ValueError("no foreign AIFF chunks")
 
         #convert individual chunks into combined header and footer strings
@@ -2084,7 +2081,6 @@ class FlacAudio(WaveContainer, AiffContainer):
         if ((len(header) != 0) or (len(footer) != 0)):
             return ("".join(header), "".join(footer))
         else:
-            #FIXME
             raise ValueError("no foreign AIFF chunks")
 
     @classmethod

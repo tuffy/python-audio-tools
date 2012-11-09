@@ -465,8 +465,7 @@ if (__name__ == '__main__'):
 
                 album_number = set([a.album_number() for a in album]).pop()
 
-                #FIXME - should pull ReplayGain text
-                #from elsewhere
+                #FIXME - should pull ReplayGain text from elsewhere
                 queue.execute(
                     output_class.add_replay_gain,
                     (u"%s ReplayGain%s" %

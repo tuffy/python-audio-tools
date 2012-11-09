@@ -1051,7 +1051,7 @@ apply_weight(int weight, int64_t sample)
     return (int)(((weight * sample) + 512) >> 10);
 }
 
-static int
+static inline int
 update_weight(int64_t source, int result, int delta)
 {
     if ((source == 0) || (result == 0)) {
@@ -1072,10 +1072,10 @@ correlate_1ch(array_i* correlated,
               array_i* samples)
 {
     unsigned i;
-    correlated->reset(correlated);
 
     if (term == 18) {
         array_i* uncorr = array_i_new();
+        correlated->reset_for(correlated, uncorr->len - 2);
 
         assert(samples->len == 2);
         uncorr->vappend(uncorr, 2, samples->_[1], samples->_[0]);
@@ -1083,8 +1083,8 @@ correlate_1ch(array_i* correlated,
 
         for (i = 2; i < uncorr->len; i++) {
             const int64_t temp = (3 * uncorr->_[i - 1] - uncorr->_[i - 2]) >> 1;
-            correlated->append(correlated,
-                               uncorr->_[i] - apply_weight(*weight, temp));
+            a_append(correlated,
+                     uncorr->_[i] - apply_weight(*weight, temp));
             *weight += update_weight(temp, correlated->_[i - 2], delta);
         }
 
@@ -1095,6 +1095,7 @@ correlate_1ch(array_i* correlated,
         uncorr->del(uncorr);
     } else if (term == 17) {
         array_i* uncorr = array_i_new();
+        correlated->reset_for(correlated, uncorr->len - 2);
 
         assert(samples->len == 2);
         uncorr->vappend(uncorr, 2, samples->_[1], samples->_[0]);
@@ -1102,8 +1103,8 @@ correlate_1ch(array_i* correlated,
 
         for (i = 2; i < uncorr->len; i++) {
             const int64_t temp = 2 * uncorr->_[i - 1] - uncorr->_[i - 2];
-            correlated->append(correlated,
-                               uncorr->_[i] - apply_weight(*weight, temp));
+            a_append(correlated,
+                     uncorr->_[i] - apply_weight(*weight, temp));
             *weight += update_weight(temp, correlated->_[i - 2], delta);
         }
 
@@ -1114,14 +1115,15 @@ correlate_1ch(array_i* correlated,
         uncorr->del(uncorr);
     } else if ((1 <= term) && (term <= 8)) {
         array_i* uncorr = array_i_new();
+        correlated->reset_for(correlated, uncorr->len - term);
 
         assert(samples->len == term);
         uncorr->extend(uncorr, samples);
         uncorr->extend(uncorr, uncorrelated);
 
         for (i = term; i < uncorr->len; i++) {
-            correlated->append(correlated, uncorr->_[i] -
-                               apply_weight(*weight, uncorr->_[i - term]));
+            a_append(correlated, uncorr->_[i] -
+                     apply_weight(*weight, uncorr->_[i - term]));
             *weight += update_weight(uncorr->_[i - term],
                                      correlated->_[i - term], delta);
         }
@@ -1162,6 +1164,8 @@ correlate_2ch(array_ia* correlated,
                       term, delta, &(weights->_[1]), samples->_[1]);
     } else if ((-3 <= term) && (term <= -1)) {
         array_ia* uncorr = array_ia_new();
+        array_i* correlated_0;
+        array_i* correlated_1;
         array_i* uncorr_0;
         array_i* uncorr_1;
         unsigned i;
@@ -1176,62 +1180,58 @@ correlate_2ch(array_ia* correlated,
         uncorr_1->extend(uncorr_1, uncorrelated->_[1]);
 
         correlated->reset(correlated);
-        correlated->append(correlated);
-        correlated->append(correlated);
+        correlated_0 = correlated->append(correlated);
+        correlated_1 = correlated->append(correlated);
+        correlated_0->resize(correlated_0, uncorr_0->len - 1);
+        correlated_1->resize(correlated_1, uncorr_0->len - 1);
 
         if (term == -1) {
             for (i = 1; i < uncorr_0->len; i++) {
-                array_i_append(correlated->_[0],
-                               uncorr_0->_[i] -
-                               apply_weight(weights->_[0],
-                                            uncorr_1->_[i - 1]));
-                array_i_append(correlated->_[1],
-                               uncorr_1->_[i] -
-                               apply_weight(weights->_[1],
-                                            uncorr_0->_[i]));
+                a_append(correlated_0,
+                         uncorr_0->_[i] -
+                         apply_weight(weights->_[0], uncorr_1->_[i - 1]));
+                a_append(correlated_1,
+                         uncorr_1->_[i] -
+                         apply_weight(weights->_[1], uncorr_0->_[i]));
                 weights->_[0] += update_weight(uncorr_1->_[i - 1],
-                                               correlated->_[0]->_[i - 1],
+                                               correlated_0->_[i - 1],
                                                delta);
                 weights->_[1] += update_weight(uncorr_0->_[i],
-                                               correlated->_[1]->_[i - 1],
+                                               correlated_1->_[i - 1],
                                                delta);
                 weights->_[0] = MAX(MIN(weights->_[0], 1024), -1024);
                 weights->_[1] = MAX(MIN(weights->_[1], 1024), -1024);
             }
         } else if (term == -2) {
             for (i = 1; i < uncorr_0->len; i++) {
-                array_i_append(correlated->_[0],
-                               uncorr_0->_[i] -
-                               apply_weight(weights->_[0],
-                                            uncorr_1->_[i]));
-                array_i_append(correlated->_[1],
-                               uncorr_1->_[i] -
-                               apply_weight(weights->_[1],
-                                            uncorr_0->_[i - 1]));
+                a_append(correlated_0,
+                         uncorr_0->_[i] -
+                         apply_weight(weights->_[0], uncorr_1->_[i]));
+                a_append(correlated_1,
+                         uncorr_1->_[i] -
+                         apply_weight(weights->_[1], uncorr_0->_[i - 1]));
                 weights->_[0] += update_weight(uncorr_1->_[i],
-                                               correlated->_[0]->_[i - 1],
+                                               correlated_0->_[i - 1],
                                                delta);
                 weights->_[1] += update_weight(uncorr_0->_[i - 1],
-                                               correlated->_[1]->_[i - 1],
+                                               correlated_1->_[i - 1],
                                                delta);
                 weights->_[0] = MAX(MIN(weights->_[0], 1024), -1024);
                 weights->_[1] = MAX(MIN(weights->_[1], 1024), -1024);
             }
         } else if (term == -3) {
             for (i = 1; i < uncorr_0->len; i++) {
-                array_i_append(correlated->_[0],
-                               uncorr_0->_[i] -
-                               apply_weight(weights->_[0],
-                                            uncorr_1->_[i - 1]));
-                array_i_append(correlated->_[1],
-                               uncorr_1->_[i] -
-                               apply_weight(weights->_[1],
-                                            uncorr_0->_[i - 1]));
+                a_append(correlated_0,
+                         uncorr_0->_[i] -
+                         apply_weight(weights->_[0], uncorr_1->_[i - 1]));
+                a_append(correlated_1,
+                         uncorr_1->_[i] -
+                         apply_weight(weights->_[1], uncorr_0->_[i - 1]));
                 weights->_[0] += update_weight(uncorr_1->_[i - 1],
-                                               correlated->_[0]->_[i - 1],
+                                               correlated_0->_[i - 1],
                                                delta);
                 weights->_[1] += update_weight(uncorr_0->_[i - 1],
-                                               correlated->_[1]->_[i - 1],
+                                               correlated_1->_[i - 1],
                                                delta);
                 weights->_[0] = MAX(MIN(weights->_[0], 1024), -1024);
                 weights->_[1] = MAX(MIN(weights->_[1], 1024), -1024);

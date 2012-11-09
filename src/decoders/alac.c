@@ -497,10 +497,9 @@ read_frame(decoders_ALACDecoder *self,
         /*if uncompressed LSBs, read a block of partial samples to prepend*/
         if (uncompressed_LSBs > 0) {
             LSBs = self->uncompressed_LSBs;
-            LSBs->reset(LSBs);
+            LSBs->reset_for(LSBs, channel_count * sample_count);
             for (i = 0; i < (channel_count * sample_count); i++)
-                LSBs->append(LSBs,
-                             mdat->read(mdat, uncompressed_LSBs * 8));
+                a_append(LSBs, mdat->read(mdat, uncompressed_LSBs * 8));
         }
 
         sample_size = (self->bits_per_sample -
@@ -645,8 +644,7 @@ read_residuals(BitstreamReader *bs,
     unsigned int zero_block_size;
     int i, j;
 
-    residuals->reset(residuals);
-    residuals->resize(residuals, residual_count);
+    residuals->reset_for(residuals, residual_count);
 
     for (i = 0; i < residual_count; i++) {
         /*get an unsigned residual based on "history"
@@ -686,8 +684,7 @@ read_residuals(BitstreamReader *bs,
 
                 /*ensure block of zeroes doesn't exceed
                   remaining residual count*/
-                zero_block_size = MIN(zero_block_size,
-                                      residual_count - i);
+                zero_block_size = MIN(zero_block_size, residual_count - i);
 
                 for (j = 0; j < zero_block_size; j++) {
                     a_append(residuals, 0);
@@ -775,8 +772,7 @@ decode_subframe(array_i* samples,
     int* residuals_data = residuals->_;
     int i = 0;
 
-    samples->reset(samples);
-    samples->resize(samples, MAX(qlp_coeff->len, residuals->len));
+    samples->reset_for(samples, MAX(qlp_coeff->len, residuals->len));
 
     /*first sample always copied verbatim*/
     a_append(samples, residuals_data[i++]);

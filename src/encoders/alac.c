@@ -286,7 +286,7 @@ extract_1ch(array_ia* frameset, unsigned channel, array_ia* pair)
 {
     pair->reset(pair);
     frameset->_[channel]->swap(frameset->_[channel],
-                                  pair->append(pair));
+                               pair->append(pair));
     return pair;
 }
 
@@ -786,8 +786,7 @@ compute_coefficients(struct alac_context* encoder,
         }
     } else {
         /*all samples are 0, so use a special case*/
-        qlp_coefficients->reset(qlp_coefficients);
-        qlp_coefficients->mappend(qlp_coefficients, 4, 0);
+        qlp_coefficients->mset(qlp_coefficients, 4, 0);
 
         calculate_residuals(samples, sample_size,
                             qlp_coefficients, residual_values4);
@@ -810,8 +809,7 @@ window_signal(struct alac_context* encoder,
     unsigned window2;
 
     if (tukey_window->len != samples->len) {
-        tukey_window->resize(tukey_window, samples->len);
-        tukey_window->reset(tukey_window);
+        tukey_window->reset_for(tukey_window, samples->len);
 
         window1 = (unsigned)(alpha * (N - 1)) / 2;
         window2 = (unsigned)((N - 1) * (1.0 - (alpha / 2.0)));
@@ -834,8 +832,7 @@ window_signal(struct alac_context* encoder,
         }
     }
 
-    windowed_signal->resize(windowed_signal, samples->len);
-    windowed_signal->reset(windowed_signal);
+    windowed_signal->reset_for(windowed_signal, samples->len);
     for (n = 0; n < N; n++) {
         a_append(windowed_signal, samples->_[n] * tukey_window->_[n]);
     }
@@ -974,8 +971,7 @@ calculate_residuals(const array_i* samples,
     const unsigned coeff_count = qlp_coefficients->len;
 
     qlp_coefficients->copy(qlp_coefficients, coefficients);
-    residuals->reset(residuals);
-    residuals->resize(residuals, samples->len);
+    residuals->reset_for(residuals, samples->len);
 
     /*first sample always copied verbatim*/
     a_append(residuals, samples->_[i++]);

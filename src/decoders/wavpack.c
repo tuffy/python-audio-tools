@@ -1236,17 +1236,17 @@ decorrelate_1ch_pass(int decorrelation_term,
 
     decorrelated->reset(decorrelated);
 
-
     switch (decorrelation_term) {
     case 18:
         decorrelation_samples->copy(decorrelation_samples, decorrelated);
         decorrelated->reverse(decorrelated);
+        decorrelated->resize_for(decorrelated, correlated->len);
         for (i = 0; i < correlated->len; i++) {
             const int64_t temp =
                 (3 * decorrelated->_[i + 1] - decorrelated->_[i]) >> 1;
-            decorrelated->append(decorrelated,
-                                 apply_weight(decorrelation_weight, temp) +
-                                 correlated->_[i]);
+            a_append(decorrelated,
+                     apply_weight(decorrelation_weight, temp) +
+                     correlated->_[i]);
             decorrelation_weight += update_weight(temp,
                                                   correlated->_[i],
                                                   decorrelation_delta);
@@ -1256,12 +1256,13 @@ decorrelate_1ch_pass(int decorrelation_term,
     case 17:
         decorrelation_samples->copy(decorrelation_samples, decorrelated);
         decorrelated->reverse(decorrelated);
+        decorrelated->resize_for(decorrelated, correlated->len);
         for (i = 0; i < correlated->len; i++) {
             const int64_t temp =
                 2 * decorrelated->_[i + 1] - decorrelated->_[i];
-            decorrelated->append(decorrelated,
-                                 apply_weight(decorrelation_weight, temp) +
-                                 correlated->_[i]);
+            a_append(decorrelated,
+                     apply_weight(decorrelation_weight, temp) +
+                     correlated->_[i]);
             decorrelation_weight += update_weight(temp,
                                                   correlated->_[i],
                                                   decorrelation_delta);
@@ -1277,17 +1278,16 @@ decorrelate_1ch_pass(int decorrelation_term,
     case 2:
     case 1:
         decorrelation_samples->copy(decorrelation_samples, decorrelated);
+        decorrelated->resize_for(decorrelated, correlated->len);
         for (i = 0; i < correlated->len; i++) {
-            decorrelated->append(decorrelated,
-                                 apply_weight(decorrelation_weight,
-                                              decorrelated->_[i]) +
-                                 correlated->_[i]);
+            a_append(decorrelated,
+                     apply_weight(decorrelation_weight,
+                                  decorrelated->_[i]) + correlated->_[i]);
             decorrelation_weight += update_weight(decorrelated->_[i],
                                                   correlated->_[i],
                                                   decorrelation_delta);
         }
-        decorrelated->de_head(decorrelated, decorrelation_term,
-                              decorrelated);
+        decorrelated->de_head(decorrelated, decorrelation_term, decorrelated);
         return OK;
     default:
         return INVALID_DECORRELATION_TERM;
@@ -1341,16 +1341,18 @@ decorrelate_2ch_pass(int decorrelation_term,
         decorr_1 = decorrelated->append(decorrelated);
         decorr_0->extend(decorr_0, samples_1);
         decorr_1->extend(decorr_1, samples_0);
+        decorr_0->resize_for(decorr_0, corr_0->len);
+        decorr_1->resize_for(decorr_1, corr_1->len);
 
         switch (decorrelation_term) {
         case -1:
             for (i = 0; i < corr_0->len; i++) {
-                decorr_0->append(decorr_0,
-                                 apply_weight(weight_0, decorr_1->_[i]) +
-                                 corr_0->_[i]);
-                decorr_1->append(decorr_1,
-                                 apply_weight(weight_1, decorr_0->_[i + 1]) +
-                                 corr_1->_[i]);
+                a_append(decorr_0,
+                         apply_weight(weight_0, decorr_1->_[i]) +
+                         corr_0->_[i]);
+                a_append(decorr_1,
+                         apply_weight(weight_1, decorr_0->_[i + 1]) +
+                         corr_1->_[i]);
                 weight_0 += update_weight(decorr_1->_[i],
                                           corr_0->_[i],
                                           decorrelation_delta);
@@ -1363,12 +1365,12 @@ decorrelate_2ch_pass(int decorrelation_term,
             break;
         case -2:
             for (i = 0; i < corr_0->len; i++) {
-                decorr_1->append(decorr_1,
-                                 apply_weight(weight_1, decorr_0->_[i]) +
-                                 corr_1->_[i]);
-                decorr_0->append(decorr_0,
-                                 apply_weight(weight_0, decorr_1->_[i + 1]) +
-                                 corr_0->_[i]);
+                a_append(decorr_1,
+                         apply_weight(weight_1, decorr_0->_[i]) +
+                         corr_1->_[i]);
+                a_append(decorr_0,
+                         apply_weight(weight_0, decorr_1->_[i + 1]) +
+                         corr_0->_[i]);
                 weight_1 += update_weight(decorr_0->_[i],
                                           corr_1->_[i],
                                           decorrelation_delta);
@@ -1381,12 +1383,12 @@ decorrelate_2ch_pass(int decorrelation_term,
             break;
         case -3:
             for (i = 0; i < corr_0->len; i++) {
-                decorr_0->append(decorr_0,
-                                 apply_weight(weight_0, decorr_1->_[i]) +
-                                 corr_0->_[i]);
-                decorr_1->append(decorr_1,
-                                 apply_weight(weight_1, decorr_0->_[i]) +
-                                 corr_1->_[i]);
+                a_append(decorr_0,
+                         apply_weight(weight_0, decorr_1->_[i]) +
+                         corr_0->_[i]);
+                a_append(decorr_1,
+                         apply_weight(weight_1, decorr_0->_[i]) +
+                         corr_1->_[i]);
                 weight_0 += update_weight(decorr_1->_[i],
                                           corr_0->_[i],
                                           decorrelation_delta);

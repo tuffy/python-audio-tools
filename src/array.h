@@ -52,8 +52,7 @@
   "array" is evaluated twice, while "value" is evaluated only once
   this presumes array has been resized in advance for additional items:
 
-  array->reset(array);
-  array->resize(array, count);
+  array->reset_for(array, count);
   for (i = 0; i < count; i++)
       a_append(array, data[i]);
 
@@ -81,9 +80,18 @@ struct array_i_s {
       if necessary*/
     void (*resize)(struct array_i_s *array, unsigned minimum);
 
+    /*resizes the array to fit "additional_items" number of new items,
+      if necessary*/
+    void (*resize_for)(struct array_i_s *array, unsigned additional_items);
+
     /*deletes any data in the array and resets its contents
       so that it can be re-populated with new data*/
     void (*reset)(struct array_i_s *array);
+
+    /*deletes any data in the array,
+      resizes its contents to fit "minimum" number of items,
+      and resets it contents so it can be re-populated with new data*/
+    void (*reset_for)(struct array_i_s *array, unsigned minimum);
 
     /*appends a single value to the array*/
     void (*append)(struct array_i_s *array, int value);
@@ -177,7 +185,9 @@ struct array_i_s* array_i_wrap(int* data, unsigned size, unsigned total_size);
 
 void array_i_del(struct array_i_s *array);
 void array_i_resize(struct array_i_s *array, unsigned minimum);
+void array_i_resize_for(struct array_i_s *array, unsigned additional_items);
 void array_i_reset(struct array_i_s *array);
+void array_i_reset_for(struct array_i_s *array, unsigned minimum);
 void array_i_append(struct array_i_s *array, int value);
 void array_i_vappend(struct array_i_s *array, unsigned count, ...);
 void array_i_mappend(struct array_i_s *array, unsigned count, int value);
@@ -327,9 +337,18 @@ struct array_f_s {
       if necessary*/
     void (*resize)(struct array_f_s *array, unsigned minimum);
 
+    /*resizes the array to fit "additional_items" number of new items,
+      if necessary*/
+    void (*resize_for)(struct array_f_s *array, unsigned additional_items);
+
     /*deletes any data in the array and resets its contents
       so that it can be re-populated with new data*/
     void (*reset)(struct array_f_s *array);
+
+    /*deletes any data in the array,
+      resizes its contents to fit "minimum" number of items,
+      and resets it contents so it can be re-populated with new data*/
+    void (*reset_for)(struct array_f_s *array, unsigned minimum);
 
     /*appends a single value to the array*/
     void (*append)(struct array_f_s *array, double value);
@@ -424,7 +443,9 @@ struct array_f_s* array_f_wrap(double* data, unsigned size,
 
 void array_f_del(struct array_f_s *array);
 void array_f_resize(struct array_f_s *array, unsigned minimum);
+void array_f_resize_for(struct array_f_s *array, unsigned additional_items);
 void array_f_reset(struct array_f_s *array);
+void array_f_reset_for(struct array_f_s *array, unsigned minimum);
 void array_f_append(struct array_f_s *array, double value);
 void array_f_vappend(struct array_f_s *array, unsigned count, ...);
 void array_f_mappend(struct array_f_s *array, unsigned count, double value);
@@ -1050,9 +1071,18 @@ struct array_o_s {
       if necessary*/
     void (*resize)(struct array_o_s *array, unsigned minimum);
 
+    /*resizes the array to fit "additional_items" number of new items,
+      if necessary*/
+    void (*resize_for)(struct array_o_s *array, unsigned additional_items);
+
     /*deletes any data in the array and resets its contents
       so that it can be re-populated with new data*/
     void (*reset)(struct array_o_s *array);
+
+    /*deletes any data in the array,
+      resizes its contents to fit "minimum" number of items,
+      and resets it contents so it can be re-populated with new data*/
+    void (*reset_for)(struct array_o_s *array, unsigned minimum);
 
     /*appends a single value to the array*/
     void (*append)(struct array_o_s *array, void* value);
@@ -1132,7 +1162,9 @@ struct array_o_s* array_o_new(void* (*copy)(void* obj),
                               void (*print)(void* obj, FILE* output));
 void array_o_del(struct array_o_s *array);
 void array_o_resize(struct array_o_s *array, unsigned minimum);
+void array_o_resize_for(struct array_o_s *array, unsigned additional_items);
 void array_o_reset(struct array_o_s *array);
+void array_o_reset_for(struct array_o_s *array, unsigned minimum);
 void array_o_append(struct array_o_s *array, void* value);
 void array_o_vappend(struct array_o_s *array, unsigned count, ...);
 void array_o_mappend(struct array_o_s *array, unsigned count, void* value);

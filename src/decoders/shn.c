@@ -340,11 +340,11 @@ read_diff0(BitstreamReader* bs, unsigned block_length,
     const unsigned energy = read_unsigned(bs, ENERGY_SIZE);
     unsigned i;
 
-    samples->reset(samples);
+    samples->reset_for(samples, block_length);
 
     for (i = 0; i < block_length; i++) {
         const int residual = read_signed(bs, energy);
-        samples->append(samples, residual + offset);
+        a_append(samples, residual + offset);
     }
 }
 
@@ -366,9 +366,10 @@ read_diff1(BitstreamReader* bs, unsigned block_length,
     energy = read_unsigned(bs, ENERGY_SIZE);
 
     /*process the residuals to samples*/
+    samples->resize_for(samples, block_length);
     for (i = 1; i < (block_length + 1); i++) {
         const int residual = read_signed(bs, energy);
-        samples->append(samples, samples->_[i - 1] + residual);
+        a_append(samples, samples->_[i - 1] + residual);
     }
 
     /*truncate samples to block length*/
@@ -393,10 +394,11 @@ read_diff2(BitstreamReader* bs, unsigned block_length,
     energy = read_unsigned(bs, ENERGY_SIZE);
 
     /*process the residuals to samples*/
+    samples->resize_for(samples, block_length);
     for (i = 2; i < (block_length + 2); i++) {
         const int residual = read_signed(bs, energy);
-        samples->append(samples,
-                        (2 * samples->_[i - 1]) - samples->_[i - 2] + residual);
+        a_append(samples,
+                 (2 * samples->_[i - 1]) - samples->_[i - 2] + residual);
     }
 
     /*truncate samples to block length*/
@@ -421,11 +423,12 @@ read_diff3(BitstreamReader* bs, unsigned block_length,
     energy = read_unsigned(bs, ENERGY_SIZE);
 
     /*process the residuals to samples*/
+    samples->resize_for(samples, block_length);
     for (i = 3; i < (block_length + 3); i++) {
         const int residual = read_signed(bs, energy);
-        samples->append(samples,
-                        (3 * (samples->_[i - 1] - samples->_[i - 2])) +
-                        samples->_[i - 3] + residual);
+        a_append(samples,
+                 (3 * (samples->_[i - 1] - samples->_[i - 2])) +
+                 samples->_[i - 3] + residual);
     }
 
     /*truncate samples to block length*/
@@ -477,9 +480,9 @@ read_qlpc(BitstreamReader* bs, unsigned block_length,
         }
 
         /*reapply offset to unoffset samples*/
-        samples->reset(samples);
+        samples->reset_for(samples, unoffset_samples->len);
         for (i = 0; i < unoffset_samples->len; i++) {
-            samples->append(samples, unoffset_samples->_[i] + offset);
+            a_append(samples, unoffset_samples->_[i] + offset);
         }
 
         /*deallocate temporary arrays before returning successfully*/

@@ -254,8 +254,8 @@ correlate_channels(array_ia* correlated_samples,
 static int
 apply_weight(int weight, int64_t sample);
 
-static int
-update_weight(int64_t source, int result, int delta);
+/* static int */
+/* update_weight(int64_t source, int result, int delta); */
 
 static void
 correlate_1ch(array_i* correlated,

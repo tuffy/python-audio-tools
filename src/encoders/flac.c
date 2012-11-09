@@ -695,8 +695,7 @@ flacenc_write_subframe(BitstreamWriter* bs,
         if (wasted_bps > 0) {
             unsigned i;
 
-            subframe_samples->resize(subframe_samples, samples->len);
-            subframe_samples->reset(subframe_samples);
+            subframe_samples->reset_for(subframe_samples, samples->len);
             for (i = 0; i < samples->len; i++)
                 a_append(subframe_samples, samples->_[i] >> wasted_bps);
         } else {
@@ -922,8 +921,7 @@ flacenc_next_fixed_order(const array_i* order, array_i* next_order)
     int* order_data = order->_;
 
     assert(order_size > 1);
-    next_order->resize(next_order, order_size - 1);
-    next_order->reset(next_order);
+    next_order->reset_for(next_order, order_size - 1);
     for (i = 1; i < order_size; i++) {
         a_append(next_order, order_data[i] - order_data[i - 1]);
     }
@@ -998,8 +996,7 @@ flacenc_encode_lpc_subframe(BitstreamWriter* bs,
         bs->write_signed(bs, qlp_precision, qlp_coefficients->_[i]);
 
     /*calculate signed residuals*/
-    lpc_residual->reset(lpc_residual);
-    lpc_residual->resize(lpc_residual, samples->len - order);
+    lpc_residual->reset_for(lpc_residual, samples->len - order);
     for (i = 0; i < samples->len - order; i++) {
         accumulator = 0;
         for (j = 0; j < order; j++)
@@ -1123,8 +1120,7 @@ flacenc_best_lpc_coefficients(struct flac_context* encoder,
         }
     } else {
         /*use a set of dummy coefficients*/
-        qlp_coefficients->reset(qlp_coefficients);
-        qlp_coefficients->vappend(qlp_coefficients, 1, 1);
+        qlp_coefficients->vset(qlp_coefficients, 1, 1);
         *qlp_precision = 2;
         *qlp_shift_needed = 0;
     }
@@ -1143,8 +1139,7 @@ flacenc_window_signal(struct flac_context* encoder,
     unsigned window2;
 
     if (tukey_window->len != samples->len) {
-        tukey_window->resize(tukey_window, samples->len);
-        tukey_window->reset(tukey_window);
+        tukey_window->reset_for(tukey_window, samples->len);
 
         window1 = (unsigned)(alpha * (N - 1)) / 2;
         window2 = (unsigned)((N - 1) * (1.0 - (alpha / 2.0)));
@@ -1167,8 +1162,7 @@ flacenc_window_signal(struct flac_context* encoder,
         }
     }
 
-    windowed_signal->resize(windowed_signal, samples->len);
-    windowed_signal->reset(windowed_signal);
+    windowed_signal->reset_for(windowed_signal, samples->len);
     for (n = 0; n < N; n++) {
         a_append(windowed_signal, samples->_[n] * tukey_window->_[n]);
     }
@@ -1527,10 +1521,8 @@ flacenc_average_difference(const array_ia* samples,
 
     assert(samples->_[0]->len == samples->_[1]->len);
 
-    average->reset(average);
-    average->resize(average, sample_count);
-    difference->reset(difference);
-    difference->resize(difference, sample_count);
+    average->reset_for(average, sample_count);
+    difference->reset_for(difference, sample_count);
 
     channel0 = samples->_[0]->_;
     channel1 = samples->_[1]->_;

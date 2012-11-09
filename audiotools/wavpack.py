@@ -169,7 +169,6 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
         if (head is not None):
             return (head, tail if tail is not None else "")
         else:
-            #FIXME
             raise ValueError("no wave header found")
 
     @classmethod
