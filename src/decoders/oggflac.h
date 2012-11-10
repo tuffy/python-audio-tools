@@ -3,8 +3,11 @@
 #include "../bitstream.h"
 #include "../array.h"
 #include "ogg.h"
-#define OGG_FLAC
+#ifndef STANDALONE
+#define STANDALONE
 #include "flac.h"
+#undef STANDALONE
+#endif
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data

@@ -1,4 +1,6 @@
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 #include <stdint.h>
 #include "../bitstream.h"
 #include "../array.h"
@@ -72,7 +74,7 @@ typedef enum {OK,
               ERR_INVALID_FIXED_ORDER,
               ERR_INVALID_SUBFRAME_TYPE} flac_status;
 
-#ifndef OGG_FLAC
+#ifndef STANDALONE
 typedef struct {
     PyObject_HEAD
 
@@ -252,7 +254,9 @@ flacdec_decorrelate_channels(uint8_t channel_assignment,
 const char*
 FlacDecoder_strerror(flac_status error);
 
-#ifndef OGG_FLAC
+uint32_t read_utf8(BitstreamReader *stream);
+
+#ifndef STANDALONE
 
 flac_status
 FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
@@ -260,8 +264,6 @@ FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
 
 int
 FlacDecoder_verify_okay(decoders_FlacDecoder *self);
-
-uint32_t read_utf8(BitstreamReader *stream);
 
 #ifdef IS_PY3K
 
@@ -332,12 +334,12 @@ PyTypeObject decoders_FlacDecoderType = {
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
     "FlacDecoder objects",     /* tp_doc */
-    0,                     /* tp_traverse */
-    0,                     /* tp_clear */
-    0,                     /* tp_richcompare */
-    0,                     /* tp_weaklistoffset */
-    0,                     /* tp_iter */
-    0,                     /* tp_iternext */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
     FlacDecoder_methods,       /* tp_methods */
     0,                         /* tp_members */
     FlacDecoder_getseters,     /* tp_getset */

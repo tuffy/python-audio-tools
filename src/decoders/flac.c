@@ -20,6 +20,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#ifndef STANDALONE
 int
 FlacDecoder_init(decoders_FlacDecoder *self,
                  PyObject *args, PyObject *kwds)
@@ -122,60 +123,6 @@ FlacDecoder_new(PyTypeObject *type,
     self = (decoders_FlacDecoder *)type->tp_alloc(type, 0);
 
     return (PyObject *)self;
-}
-
-int
-flacdec_read_metadata(BitstreamReader *bitstream,
-                      struct flac_STREAMINFO *streaminfo)
-{
-    unsigned int last_block;
-    unsigned int block_type;
-    unsigned int block_length;
-
-    if (!setjmp(*br_try(bitstream))) {
-        if (bitstream->read(bitstream, 32) != 0x664C6143u) {
-            PyErr_SetString(PyExc_ValueError, "not a FLAC file");
-            br_etry(bitstream);
-            return 1;
-        }
-
-        do {
-            last_block = bitstream->read(bitstream, 1);
-            block_type = bitstream->read(bitstream, 7);
-            block_length = bitstream->read(bitstream, 24);
-
-            if (block_type == 0) {
-                streaminfo->minimum_block_size =
-                    bitstream->read(bitstream, 16);
-                streaminfo->maximum_block_size =
-                    bitstream->read(bitstream, 16);
-                streaminfo->minimum_frame_size =
-                    bitstream->read(bitstream, 24);
-                streaminfo->maximum_frame_size =
-                    bitstream->read(bitstream, 24);
-                streaminfo->sample_rate =
-                    bitstream->read(bitstream, 20);
-                streaminfo->channels =
-                    bitstream->read(bitstream, 3) + 1;
-                streaminfo->bits_per_sample =
-                    bitstream->read(bitstream, 5) + 1;
-                streaminfo->total_samples =
-                    bitstream->read_64(bitstream, 36);
-
-                bitstream->read_bytes(bitstream, streaminfo->md5sum, 16);
-            } else {
-                bitstream->skip(bitstream, block_length * 8);
-            }
-        } while (!last_block);
-
-        br_etry(bitstream);
-        return 0;
-    } else {
-        PyErr_SetString(PyExc_IOError,
-                        "EOF while reading STREAMINFO block");
-        br_etry(bitstream);
-        return 1;
-    }
 }
 
 static PyObject*
@@ -393,10 +340,110 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
 
     PyEval_RestoreThread(thread_state);
     return offsets;
- error:
+error:
     Py_XDECREF(offsets);
     br_etry(self->bitstream);
     return NULL;
+}
+
+flac_status
+FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
+                          PyObject *framelist)
+{
+    PyObject *string = PyObject_CallMethod(framelist,
+                                           "to_bytes","ii",
+                                           0,
+                                           1);
+    char *string_buffer;
+    Py_ssize_t length;
+
+    if (string != NULL) {
+        if (PyString_AsStringAndSize(string, &string_buffer, &length) == 0) {
+            audiotools__MD5Update(&(self->md5),
+                                  (unsigned char *)string_buffer,
+                                  length);
+            Py_DECREF(string);
+            return OK;
+        } else {
+            Py_DECREF(string);
+            return ERROR;
+        }
+    } else {
+        return ERROR;
+    }
+}
+
+int
+FlacDecoder_verify_okay(decoders_FlacDecoder *self)
+{
+    unsigned char stream_md5sum[16];
+    const static unsigned char blank_md5sum[16] = {0, 0, 0, 0, 0, 0, 0, 0,
+                                                   0, 0, 0, 0, 0, 0, 0, 0};
+
+    audiotools__MD5Final(stream_md5sum, &(self->md5));
+
+    return ((memcmp(self->streaminfo.md5sum, blank_md5sum, 16) == 0) ||
+            (memcmp(stream_md5sum, self->streaminfo.md5sum, 16) == 0));
+}
+
+#endif
+
+int
+flacdec_read_metadata(BitstreamReader *bitstream,
+                      struct flac_STREAMINFO *streaminfo)
+{
+    unsigned int last_block;
+    unsigned int block_type;
+    unsigned int block_length;
+
+    if (!setjmp(*br_try(bitstream))) {
+        if (bitstream->read(bitstream, 32) != 0x664C6143u) {
+#ifndef STANDALONE
+            PyErr_SetString(PyExc_ValueError, "not a FLAC file");
+#endif
+            br_etry(bitstream);
+            return 1;
+        }
+
+        do {
+            last_block = bitstream->read(bitstream, 1);
+            block_type = bitstream->read(bitstream, 7);
+            block_length = bitstream->read(bitstream, 24);
+
+            if (block_type == 0) {
+                streaminfo->minimum_block_size =
+                    bitstream->read(bitstream, 16);
+                streaminfo->maximum_block_size =
+                    bitstream->read(bitstream, 16);
+                streaminfo->minimum_frame_size =
+                    bitstream->read(bitstream, 24);
+                streaminfo->maximum_frame_size =
+                    bitstream->read(bitstream, 24);
+                streaminfo->sample_rate =
+                    bitstream->read(bitstream, 20);
+                streaminfo->channels =
+                    bitstream->read(bitstream, 3) + 1;
+                streaminfo->bits_per_sample =
+                    bitstream->read(bitstream, 5) + 1;
+                streaminfo->total_samples =
+                    bitstream->read_64(bitstream, 36);
+
+                bitstream->read_bytes(bitstream, streaminfo->md5sum, 16);
+            } else {
+                bitstream->skip(bitstream, block_length * 8);
+            }
+        } while (!last_block);
+
+        br_etry(bitstream);
+        return 0;
+    } else {
+#ifndef STANDALONE
+        PyErr_SetString(PyExc_IOError,
+                        "EOF while reading STREAMINFO block");
+#endif
+        br_etry(bitstream);
+        return 1;
+    }
 }
 
 flac_status
@@ -880,95 +927,63 @@ void
 flacdec_decorrelate_channels(uint8_t channel_assignment,
                              const array_ia* subframes,
                              array_i* framelist) {
-    int* framelist_data;
     unsigned i,j;
-    unsigned channel_count = subframes->len;
-    unsigned block_size = subframes->_[0]->len;
+    const unsigned channel_count = subframes->len;
+    const unsigned block_size = subframes->_[0]->len;
     int64_t mid;
     int32_t side;
 
     framelist->reset_for(framelist, channel_count * block_size);
-    framelist_data = framelist->_;
-    framelist->len = channel_count * block_size;
 
     switch (channel_assignment) {
     case 0x8:
         /*left-difference*/
+        assert(subframes->len == 2);
+        assert(subframes->_[0]->len == subframes->_[1]->len);
         for (i = 0; i < block_size; i++) {
-            framelist_data[i * 2] = subframes->_[0]->_[i];
-            framelist_data[i * 2 + 1] = (subframes->_[0]->_[i] -
-                                         subframes->_[1]->_[i]);
+            a_append(framelist, subframes->_[0]->_[i]);
+            a_append(framelist, (subframes->_[0]->_[i] -
+                                 subframes->_[1]->_[i]));
         }
         break;
     case 0x9:
         /*difference-right*/
+        assert(subframes->len == 2);
+        assert(subframes->_[0]->len == subframes->_[1]->len);
         for (i = 0; i < block_size; i++) {
-            framelist_data[i * 2] = (subframes->_[0]->_[i] +
-                                     subframes->_[1]->_[i]);
-            framelist_data[i * 2 + 1] = subframes->_[1]->_[i];
+            a_append(framelist, (subframes->_[0]->_[i] +
+                                 subframes->_[1]->_[i]));
+            a_append(framelist, subframes->_[1]->_[i]);
         }
         break;
     case 0xA:
         /*mid-side*/
+        assert(subframes->len == 2);
+        assert(subframes->_[0]->len == subframes->_[1]->len);
         for (i = 0; i < block_size; i++) {
             mid = subframes->_[0]->_[i];
             side = subframes->_[1]->_[i];
             mid = (mid << 1) | (side & 1);
-            framelist_data[i * 2] = (int)((mid + side) >> 1);
-            framelist_data[i * 2 + 1] = (int)((mid - side) >> 1);
+            a_append(framelist, (int)((mid + side) >> 1));
+            a_append(framelist, (int)((mid - side) >> 1));
         }
         break;
     default:
         /*independent*/
+#ifndef NDEBUG
+        for (j = 0; j < channel_count; j++) {
+            assert(subframes->_[0]->len == subframes->_[j]->len);
+        }
+#endif
         for (i = 0; i < block_size; i++) {
             for (j = 0; j < channel_count; j++) {
-                framelist_data[i * channel_count + j] =
-                    subframes->_[j]->_[i];
+                a_append(framelist, subframes->_[j]->_[i]);
             }
         }
         break;
     }
 }
 
-flac_status
-FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
-                          PyObject *framelist)
-{
-    PyObject *string = PyObject_CallMethod(framelist,
-                                           "to_bytes","ii",
-                                           0,
-                                           1);
-    char *string_buffer;
-    Py_ssize_t length;
-
-    if (string != NULL) {
-        if (PyString_AsStringAndSize(string, &string_buffer, &length) == 0) {
-            audiotools__MD5Update(&(self->md5),
-                                  (unsigned char *)string_buffer,
-                                  length);
-            Py_DECREF(string);
-            return OK;
-        } else {
-            Py_DECREF(string);
-            return ERROR;
-        }
-    } else {
-        return ERROR;
-    }
-}
-
-int
-FlacDecoder_verify_okay(decoders_FlacDecoder *self)
-{
-    unsigned char stream_md5sum[16];
-    const static unsigned char blank_md5sum[16] = {0, 0, 0, 0, 0, 0, 0, 0,
-                                                   0, 0, 0, 0, 0, 0, 0, 0};
-
-    audiotools__MD5Final(stream_md5sum, &(self->md5));
-
-    return ((memcmp(self->streaminfo.md5sum, blank_md5sum, 16) == 0) ||
-            (memcmp(stream_md5sum, self->streaminfo.md5sum, 16) == 0));
-}
 
 const char*
 FlacDecoder_strerror(flac_status error)
@@ -1011,11 +1026,195 @@ FlacDecoder_strerror(flac_status error)
 uint32_t
 read_utf8(BitstreamReader *stream)
 {
-    uint32_t total_bytes = stream->read_unary(stream, 0);
-    uint32_t value = stream->read(stream, 7 - total_bytes);
+    unsigned total_bytes = stream->read_unary(stream, 0);
+    unsigned value = stream->read(stream, 7 - total_bytes);
     for (;total_bytes > 1; total_bytes--) {
         value = (value << 6) | (stream->read(stream, 8) & 0x3F);
     }
 
     return value;
 }
+
+#ifdef STANDALONE
+#include <string.h>
+#include <errno.h>
+
+int main(int argc, char* argv[]) {
+    FILE* file;
+    BitstreamReader* reader;
+    struct flac_STREAMINFO streaminfo;
+    uint64_t remaining_frames;
+
+    array_i* qlp_coeffs;
+    array_i* residuals;
+    array_ia* subframe_data;
+    array_i* framelist_data;
+
+    FrameList_int_to_char_converter converter;
+    unsigned char *output_data;
+    unsigned output_data_size;
+
+    audiotools__MD5Context md5;
+    unsigned char stream_md5sum[16];
+    const static unsigned char blank_md5sum[16] = {0, 0, 0, 0, 0, 0, 0, 0,
+                                                   0, 0, 0, 0, 0, 0, 0, 0};
+
+    if (argc < 2) {
+        fprintf(stderr, "*** Usage: %s <file.flac>\n", argv[0]);
+        return 1;
+    }
+
+    /*open input file for reading*/
+    if ((file = fopen(argv[1], "rb")) == NULL) {
+        fprintf(stderr, "*** %s: %s\n", argv[1], strerror(errno));
+        return 1;
+    } else {
+        /*open bitstream and setup temporary arrays/buffers*/
+        reader = br_open(file, BS_BIG_ENDIAN);
+        qlp_coeffs = array_i_new();
+        residuals = array_i_new();
+        subframe_data = array_ia_new();
+        framelist_data = array_i_new();
+
+        output_data = malloc(1);
+        output_data_size = 1;
+    }
+
+    /*read initial metadata blocks*/
+    if (flacdec_read_metadata(reader, &streaminfo)) {
+        fprintf(stderr, "*** Error reading streaminfo\n");
+        goto error;
+    } else {
+        remaining_frames = streaminfo.total_samples;
+    }
+
+    /*initialize the output MD5 sum*/
+    audiotools__MD5Init(&md5);
+
+    /*setup a framelist converter function*/
+    converter = FrameList_get_int_to_char_converter(streaminfo.bits_per_sample,
+                                                    0,
+                                                    1);
+
+    while (remaining_frames) {
+        unsigned pcm_size;
+
+        qlp_coeffs->reset(qlp_coeffs);
+        residuals->reset(residuals);
+        subframe_data->reset(subframe_data);
+        framelist_data->reset(framelist_data);
+
+        if (!setjmp(*br_try(reader))) {
+            flac_status error;
+            struct flac_frame_header frame_header;
+            unsigned channel;
+            uint32_t crc16 = 0;
+
+            /*add callback for CRC16 calculation*/
+            br_add_callback(reader, (bs_callback_func)flac_crc16, &crc16);
+
+            /*read frame header*/
+            if ((error = flacdec_read_frame_header(reader,
+                                                   &streaminfo,
+                                                   &frame_header)) != OK) {
+                br_pop_callback(reader, NULL);
+                br_etry(reader);
+                fprintf(stderr, "*** Error: %s\n", FlacDecoder_strerror(error));
+                goto error;
+            }
+
+            /*read 1 subframe per channels*/
+            for (channel = 0; channel < frame_header.channel_count; channel++)
+                if ((error =
+                     flacdec_read_subframe(
+                         reader,
+                         qlp_coeffs,
+                         residuals,
+                         (unsigned)MIN(frame_header.block_size,
+                                       remaining_frames),
+                         flacdec_subframe_bits_per_sample(&frame_header,
+                                                          channel),
+                         subframe_data->append(subframe_data))) != OK) {
+                    br_pop_callback(reader, NULL);
+                    br_etry(reader);
+                    fprintf(stderr, "*** Error: %s\n",
+                            FlacDecoder_strerror(error));
+                    goto error;
+                }
+
+            /*handle difference channels, if any*/
+            flacdec_decorrelate_channels(frame_header.channel_assignment,
+                                         subframe_data,
+                                         framelist_data);
+
+            /*check CRC-16*/
+            reader->byte_align(reader);
+            reader->read(reader, 16);
+            br_pop_callback(reader, NULL);
+            if (crc16 != 0) {
+                br_etry(reader);
+                fprintf(stderr, "*** Error: invalid checksum in frame\n");
+                goto error;
+            }
+
+            /*decrement remaining frames*/
+            remaining_frames -= frame_header.block_size;
+
+            br_etry(reader);
+        } else {
+            /*handle I/O error during read*/
+            br_pop_callback(reader, NULL);
+            br_etry(reader);
+            fprintf(stderr, "*** I/O Error reading frame\n");
+            goto error;
+        }
+
+        /*convert framelist to string*/
+        pcm_size = (streaminfo.bits_per_sample / 8) * framelist_data->len;
+        if (pcm_size > output_data_size) {
+            output_data_size = pcm_size;
+            output_data = realloc(output_data, output_data_size);
+        }
+        FrameList_samples_to_char(output_data,
+                                  framelist_data->_,
+                                  converter,
+                                  framelist_data->len,
+                                  streaminfo.bits_per_sample);
+
+        /*update MD5 sum*/
+        audiotools__MD5Update(&md5, output_data, pcm_size);
+
+        /*output framelist as string to stdout*/
+        fwrite(output_data, sizeof(unsigned char), pcm_size, stdout);
+    }
+
+    /*verify MD5 sum*/
+    audiotools__MD5Final(stream_md5sum, &md5);
+
+    if (!((memcmp(streaminfo.md5sum, blank_md5sum, 16) == 0) ||
+          (memcmp(stream_md5sum, streaminfo.md5sum, 16) == 0))) {
+        fprintf(stderr, "*** MD5 mismatch at end of stream\n");
+        goto error;
+    }
+
+    reader->close(reader);
+    qlp_coeffs->del(qlp_coeffs);
+    residuals->del(residuals);
+    subframe_data->del(subframe_data);
+    framelist_data->del(framelist_data);
+
+    free(output_data);
+
+    return 0;
+error:
+    reader->close(reader);
+    qlp_coeffs->del(qlp_coeffs);
+    residuals->del(residuals);
+    subframe_data->del(subframe_data);
+    framelist_data->del(framelist_data);
+
+    free(output_data);
+
+    return 1;
+}
+#endif

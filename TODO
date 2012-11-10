@@ -6155,10 +6155,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] letter
    - [X] A4
 ** TODO run codecs through valgrind
+   Try to ensure there's no hidden bugs in the low-level C code.
 *** TODO decoders
     Will need to assemble standalone decoders for this.
     - [ ] alac
-    - [ ] flac
+    - [X] flac
     - [ ] mlp
     - [ ] oggflac
     - [ ] shorten

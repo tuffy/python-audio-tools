@@ -6,6 +6,9 @@ FLAGS = -Wall -g
 
 all: flacenc alacenc wvenc huffman bitstream
 
+flacdec: $(OBJS) decoders/flac.c decoders/flac.h flac_crc.o md5.o pcmconv.o
+	$(CC) $(FLAGS) -o flacdec decoders/flac.c $(OBJS) flac_crc.o md5.o pcmconv.o -DSTANDALONE
+
 flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_crc.o md5.o pcmconv.o
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) md5.o flac_crc.o pcmconv.o -DSTANDALONE -lm
 
