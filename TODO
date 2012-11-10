@@ -6154,6 +6154,20 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Pages should start/end properly at letter and A4 paper sizes.
    - [X] letter
    - [X] A4
+** TODO run codecs through valgrind
+*** TODO decoders
+    Will need to assemble standalone decoders for this.
+    - [ ] alac
+    - [ ] flac
+    - [ ] mlp
+    - [ ] oggflac
+    - [ ] shorten
+    - [ ] wavpack
+*** TODO encoders
+    - [ ] alac
+    - [ ] flac
+    - [ ] shorten
+    - [ ] wavpack
 ** TODO Handle multi-channel .opus files properly
 *** TODO Add unit tests
 ** TODO Have cdplay play properly

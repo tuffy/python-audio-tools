@@ -804,16 +804,10 @@ flacdec_read_residual(BitstreamReader* bitstream,
                       uint32_t block_size,
                       array_i* residuals)
 {
-    uint32_t coding_method = bitstream->read(bitstream, 2);
-    uint32_t partition_order = bitstream->read(bitstream, 4);
-    int total_partitions = 1 << partition_order;
-    int partition;
-    uint32_t rice_parameter;
-    uint32_t escape_code;
-    uint32_t partition_samples;
-    int32_t msb;
-    int32_t lsb;
-    int32_t value;
+    const unsigned coding_method = bitstream->read(bitstream, 2);
+    const unsigned partition_order = bitstream->read(bitstream, 4);
+    const unsigned total_partitions = 1 << partition_order;
+    unsigned partition;
 
     unsigned int (*read)(struct BitstreamReader_s* bs, unsigned int count);
     unsigned int (*read_unary)(struct BitstreamReader_s* bs, int stop_bit);
@@ -825,10 +819,16 @@ flacdec_read_residual(BitstreamReader* bitstream,
 
     /*read 2^partition_order number of partitions*/
     for (partition = 0; partition < total_partitions; partition++) {
+        int partition_samples;
+        unsigned rice_parameter;
+        unsigned escape_code;
+
         /*each partition after the first contains
           block_size / (2 ^ partition_order) number of residual values*/
         if (partition == 0) {
-            partition_samples = (block_size / (1 << partition_order)) - order;
+            partition_samples = (int)(block_size /
+                                      (1 << partition_order)) - order;
+            partition_samples = MAX(partition_samples, 0);
         } else {
             partition_samples = block_size / (1 << partition_order);
         }
@@ -855,13 +855,13 @@ flacdec_read_residual(BitstreamReader* bitstream,
         residuals->resize_for(residuals, partition_samples);
         if (!escape_code) {
             for (;partition_samples; partition_samples--) {
-                msb = read_unary(bitstream, 1);
-                lsb = read(bitstream, rice_parameter);
-                value = (msb << rice_parameter) | lsb;
+                const unsigned msb = read_unary(bitstream, 1);
+                const unsigned lsb = read(bitstream, rice_parameter);
+                const unsigned value = (msb << rice_parameter) | lsb;
                 if (value & 1) {
-                    a_append(residuals, -(value >> 1) - 1);
+                    a_append(residuals, -((int)value >> 1) - 1);
                 } else {
-                    a_append(residuals, value >> 1);
+                    a_append(residuals, (int)value >> 1);
                 }
             }
         } else {

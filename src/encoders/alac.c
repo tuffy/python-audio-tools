@@ -200,14 +200,14 @@ ALACEncoder_encode_alac(char *filename,
 #else
 
     pcmreader->del(pcmreader);
-    output->free(output);
+    output->close(output);
     free_encoder(&encoder);
     channels->del(channels);
 
     return 0;
  error:
     pcmreader->del(pcmreader);
-    output->free(output);
+    output->close(output);
     free_encoder(&encoder);
     channels->del(channels);
 

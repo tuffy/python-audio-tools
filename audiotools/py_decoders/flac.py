@@ -119,8 +119,8 @@ class FlacDecoder:
                 channel_data.append(self.read_subframe(block_size,
                                                        bits_per_sample + 1))
             elif ((channel_assignment == 0xA) and (channel_number == 1)):
-                #for mid-side assignment
-                #the side channel has 1 additional bit
+                #for average-difference assignment
+                #the difference channel has 1 additional bit
                 channel_data.append(self.read_subframe(block_size,
                                                        bits_per_sample + 1))
             else:
@@ -308,33 +308,29 @@ class FlacDecoder:
             return residuals
         elif (order == 1):
             for residual in residuals:
-                samples.append(
-                    samples[-1] +
-                    residual)
+                samples.append(samples[-1] +
+                               residual)
             return samples
         elif (order == 2):
             for residual in residuals:
-                samples.append(
-                    (2 * samples[-1]) -
-                    samples[-2] +
-                    residual)
+                samples.append((2 * samples[-1]) -
+                               samples[-2] +
+                               residual)
             return samples
         elif (order == 3):
             for residual in residuals:
-                samples.append(
-                    (3 * samples[-1]) -
-                    (3 * samples[-2]) +
-                    samples[-3] +
-                    residual)
+                samples.append((3 * samples[-1]) -
+                               (3 * samples[-2]) +
+                               samples[-3] +
+                               residual)
             return samples
         elif (order == 4):
             for residual in residuals:
-                samples.append(
-                    (4 * samples[-1]) -
-                    (6 * samples[-2]) +
-                    (4 * samples[-3]) -
-                    samples[-4] +
-                    residual)
+                samples.append((4 * samples[-1]) -
+                               (6 * samples[-2]) +
+                               (4 * samples[-3]) -
+                               samples[-4] +
+                               residual)
             return samples
         else:
             raise ValueError("unsupported FIXED subframe order")

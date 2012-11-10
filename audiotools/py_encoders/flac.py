@@ -586,61 +586,63 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
                 zip(samples, tukey_window(len(samples), 0.5))]
 
     #compute autocorrelation values
-    #FIXME - ensure max_lpc_order > sample count
-    autocorrelation_values = [sum([x * y for x, y in zip(windowed,
-                                                         windowed[lag:])])
-                              for lag in xrange(0, options.max_lpc_order + 1)]
+    if (len(samples) > (options.max_lpc_order + 1)):
+        autocorrelation_values = [
+            sum([x * y for x, y in zip(windowed, windowed[lag:])])
+        for lag in xrange(0, options.max_lpc_order + 1)]
 
-    if ((len(autocorrelation_values) > 1) and (set(autocorrelation_values) !=
-                                               set([0.0]))):
+        if ((len(autocorrelation_values) > 1) and
+            (set(autocorrelation_values) !=
+             set([0.0]))):
+            (lp_coefficients,
+             error) = compute_lp_coefficients(autocorrelation_values)
 
-        (lp_coefficients,
-         error) = compute_lp_coefficients(autocorrelation_values)
+            if (not options.exhaustive_model_search):
+                #if not performing exhaustive model search,
+                #estimate which set of LP coefficients is best
+                #and return those
 
-        if (not options.exhaustive_model_search):
-            #if not performing exhaustive model search,
-            #estimate which set of LP coefficients is best
-            #and return those
-
-            order = estimate_best_lpc_order(options,
-                                            len(samples),
-                                            bits_per_sample,
-                                            error)
-            (qlp_coeffs,
-             qlp_shift_needed) = quantize_coefficients(options.qlp_precision,
-                                                       lp_coefficients,
-                                                       order)
-
-            return (order, qlp_coeffs, qlp_shift_needed)
-        else:
-            #if performing exhaustive model search,
-            #build LPC subframe from each set of LP coefficients
-            #and return the one that is smallest
-
-            best_subframe_size = 2 ** 32
-            best_order = None
-            best_coeffs = None
-            best_shift_needed = None
-            for order in xrange(1, options.max_lpc_order + 1):
+                order = estimate_best_lpc_order(options,
+                                                len(samples),
+                                                bits_per_sample,
+                                                error)
                 (qlp_coeffs,
                  qlp_shift_needed) = quantize_coefficients(
-                     options.qlp_precision, lp_coefficients, order)
+                    options.qlp_precision,
+                    lp_coefficients,
+                    order)
 
-                subframe = BitstreamAccumulator(0)
-                encode_lpc_subframe(subframe, options,
-                                    wasted_bps, bits_per_sample,
-                                    order, options.qlp_precision,
-                                    qlp_shift_needed, qlp_coeffs, samples)
-                if (subframe.bits() < best_subframe_size):
-                    best_subframe_size = subframe.bits()
-                    best_order = order
-                    best_coeffs = qlp_coeffs
-                    best_shift_needed = qlp_shift_needed
+                return (order, qlp_coeffs, qlp_shift_needed)
+            else:
+                #if performing exhaustive model search,
+                #build LPC subframe from each set of LP coefficients
+                #and return the one that is smallest
 
-            return (best_order, best_coeffs, best_shift_needed)
+                best_subframe_size = 2 ** 32
+                best_order = None
+                best_coeffs = None
+                best_shift_needed = None
+                for order in xrange(1, options.max_lpc_order + 1):
+                    (qlp_coeffs,
+                     qlp_shift_needed) = quantize_coefficients(
+                         options.qlp_precision, lp_coefficients, order)
+
+                    subframe = BitstreamAccumulator(0)
+                    encode_lpc_subframe(subframe, options,
+                                        wasted_bps, bits_per_sample,
+                                        order, options.qlp_precision,
+                                        qlp_shift_needed, qlp_coeffs, samples)
+                    if (subframe.bits() < best_subframe_size):
+                        best_subframe_size = subframe.bits()
+                        best_order = order
+                        best_coeffs = qlp_coeffs
+                        best_shift_needed = qlp_shift_needed
+
+                return (best_order, best_coeffs, best_shift_needed)
+        else:
+            return (1, [0], 0)
     else:
         return (1, [0], 0)
-
 
 def compute_lp_coefficients(autocorrelation):
     maximum_lpc_order = len(autocorrelation) - 1

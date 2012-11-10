@@ -1075,12 +1075,12 @@ correlate_1ch(array_i* correlated,
 
     if (term == 18) {
         array_i* uncorr = array_i_new();
-        correlated->reset_for(correlated, uncorr->len - 2);
 
         assert(samples->len == 2);
         uncorr->vappend(uncorr, 2, samples->_[1], samples->_[0]);
         uncorr->extend(uncorr, uncorrelated);
 
+        correlated->reset_for(correlated, uncorr->len - 2);
         for (i = 2; i < uncorr->len; i++) {
             const int64_t temp = (3 * uncorr->_[i - 1] - uncorr->_[i - 2]) >> 1;
             a_append(correlated,
@@ -1095,12 +1095,12 @@ correlate_1ch(array_i* correlated,
         uncorr->del(uncorr);
     } else if (term == 17) {
         array_i* uncorr = array_i_new();
-        correlated->reset_for(correlated, uncorr->len - 2);
 
         assert(samples->len == 2);
         uncorr->vappend(uncorr, 2, samples->_[1], samples->_[0]);
         uncorr->extend(uncorr, uncorrelated);
 
+        correlated->reset_for(correlated, uncorr->len - 2);
         for (i = 2; i < uncorr->len; i++) {
             const int64_t temp = 2 * uncorr->_[i - 1] - uncorr->_[i - 2];
             a_append(correlated,
@@ -1115,12 +1115,12 @@ correlate_1ch(array_i* correlated,
         uncorr->del(uncorr);
     } else if ((1 <= term) && (term <= 8)) {
         array_i* uncorr = array_i_new();
-        correlated->reset_for(correlated, uncorr->len - term);
 
         assert(samples->len == term);
         uncorr->extend(uncorr, samples);
         uncorr->extend(uncorr, uncorrelated);
 
+        correlated->reset_for(correlated, uncorr->len - term);
         for (i = term; i < uncorr->len; i++) {
             a_append(correlated, uncorr->_[i] -
                      apply_weight(*weight, uncorr->_[i - term]));
