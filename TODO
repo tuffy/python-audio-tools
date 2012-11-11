@@ -6163,12 +6163,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [ ] mlp
     - [ ] oggflac
     - [ ] shorten
-    - [ ] wavpack
+    - [X] wavpack
 *** TODO encoders
     - [ ] alac
-    - [ ] flac
+    - [X] flac
     - [ ] shorten
-    - [ ] wavpack
+    - [X] wavpack
 ** TODO Handle multi-channel .opus files properly
 *** TODO Add unit tests
 ** TODO Have cdplay play properly

@@ -83,6 +83,7 @@ struct wavpack_encoder_context {
         array_ia* shifted;
         array_ia* mid_side;
         array_ia* correlated;
+        array_ia* correlation_temp;
         BitstreamWriter* sub_block;
         BitstreamWriter* sub_blocks;
     } cache;
@@ -249,7 +250,8 @@ correlate_channels(array_ia* correlated_samples,
                    array_i* deltas,
                    array_ia* weights,
                    array_iaa* samples,
-                   unsigned channel_count);
+                   unsigned channel_count,
+                   array_ia* temp);
 
 static int
 apply_weight(int weight, int64_t sample);
@@ -263,7 +265,8 @@ correlate_1ch(array_i* correlated,
               int term,
               int delta,
               int* weight,
-              array_i* samples);
+              array_i* samples,
+              array_i* temp);
 
 static void
 correlate_2ch(array_ia* correlated,
@@ -271,7 +274,8 @@ correlate_2ch(array_ia* correlated,
               int term,
               int delta,
               array_i* weights,
-              array_ia* samples);
+              array_ia* samples,
+              array_ia* temp);
 
 static void
 write_entropy_variables(BitstreamWriter* bs,

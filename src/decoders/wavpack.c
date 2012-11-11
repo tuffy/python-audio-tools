@@ -1,5 +1,6 @@
 #include "wavpack.h"
 #include "../pcmconv.h"
+#include <string.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -20,11 +21,17 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#ifndef STANDALONE
 int
 WavPackDecoder_init(decoders_WavPackDecoder *self,
                     PyObject *args, PyObject *kwds) {
-    struct block_header header;
     char* filename;
+#else
+int
+WavPackDecoder_init(decoders_WavPackDecoder *self,
+                    char* filename) {
+#endif
+    struct block_header header;
     status error;
 
     self->filename = NULL;
@@ -42,11 +49,13 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->entropies = array_ia_new();
     self->residuals = array_ia_new();
     self->decorrelated = array_ia_new();
+    self->correlated = array_ia_new();
     self->left_right = array_ia_new();
     self->un_shifted = array_ia_new();
     self->block_data = br_substream_new(BS_LITTLE_ENDIAN);
     self->sub_block_data = br_substream_new(BS_LITTLE_ENDIAN);
 
+#ifndef STANDALONE
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
@@ -61,6 +70,13 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     } else {
         self->bitstream = br_open(self->file, BS_LITTLE_ENDIAN);
     }
+#else
+    if ((self->file = fopen(filename, "rb")) == NULL) {
+        return -1;
+    } else {
+        self->bitstream = br_open(self->file, BS_LITTLE_ENDIAN);
+    }
+#endif
 
     self->filename = strdup(filename);
 
@@ -74,7 +90,9 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
       sample_rate, bits_per_sample, channels, and channel_mask*/
     self->bitstream->mark(self->bitstream); /*beginning of stream*/
     if ((error = read_block_header(self->bitstream, &header)) != OK) {
+#ifndef STANDALONE
         PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
+#endif
         self->bitstream->unmark(self->bitstream);
         return -1;
     }
@@ -92,12 +110,16 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
             self->bitstream->unmark(self->bitstream); /*after block header*/
             break;
         case SUB_BLOCK_NOT_FOUND:
+#ifndef STANDALONE
             PyErr_SetString(PyExc_ValueError, "sample rate undefined");
+#endif
             self->bitstream->unmark(self->bitstream); /*after block header*/
             self->bitstream->unmark(self->bitstream); /*beginning of stream*/
             return -1;
         default:
+#ifndef STANDALONE
             PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
+#endif
             self->bitstream->unmark(self->bitstream); /*after block header*/
             self->bitstream->unmark(self->bitstream); /*beginning of stream*/
             return -1;
@@ -128,12 +150,16 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
             self->bitstream->unmark(self->bitstream); /*after block header*/
             break;
         case SUB_BLOCK_NOT_FOUND:
+#ifndef STANDALONE
             PyErr_SetString(PyExc_ValueError, "channel count/mask undefined");
+#endif
             self->bitstream->unmark(self->bitstream); /*after block header*/
             self->bitstream->unmark(self->bitstream); /*beginning of stream*/
             return -1;
         default:
+#ifndef STANDALONE
             PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
+#endif
             self->bitstream->unmark(self->bitstream); /*after block header*/
             self->bitstream->unmark(self->bitstream); /*beginning of stream*/
             return -1;
@@ -158,12 +184,15 @@ WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
     self->entropies->del(self->entropies);
     self->residuals->del(self->residuals);
     self->decorrelated->del(self->decorrelated);
+    self->correlated->del(self->correlated);
     self->left_right->del(self->left_right);
     self->un_shifted->del(self->un_shifted);
     self->block_data->close(self->block_data);
     self->sub_block_data->close(self->sub_block_data);
 
+#ifndef STANDALONE
     Py_XDECREF(self->audiotools_pcm);
+#endif
 
     if (self->filename != NULL)
         free(self->filename);
@@ -171,9 +200,12 @@ WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
     if (self->bitstream != NULL)
         self->bitstream->close(self->bitstream);
 
+#ifndef STANDALONE
     self->ob_type->tp_free((PyObject*)self);
+#endif
 }
 
+#ifndef STANDALONE
 static PyObject*
 WavPackDecoder_new(PyTypeObject *type,
                    PyObject *args, PyObject *kwds) {
@@ -221,7 +253,6 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     PyObject* framelist;
 
     channels_data->reset(channels_data);
-
 
     if (self->remaining_pcm_samples > 0) {
         do {
@@ -314,6 +345,60 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     }
 }
 
+PyObject*
+wavpack_exception(status error)
+{
+    switch (error) {
+    case IO_ERROR:
+        return PyExc_IOError;
+    case OK:
+    case INVALID_BLOCK_ID:
+    case INVALID_RESERVED_BIT:
+    case EXCESSIVE_DECORRELATION_PASSES:
+    case INVALID_DECORRELATION_TERM:
+    case DECORRELATION_TERMS_MISSING:
+    case DECORRELATION_WEIGHTS_MISSING:
+    case DECORRELATION_SAMPLES_MISSING:
+    case ENTROPY_VARIABLES_MISSING:
+    case RESIDUALS_MISSING:
+    case EXCESSIVE_DECORRELATION_WEIGHTS:
+    case INVALID_ENTROPY_VARIABLE_COUNT:
+    case BLOCK_DATA_CRC_MISMATCH:
+    case EXTENDED_INTEGERS_MISSING:
+    default:
+        return PyExc_ValueError;
+    }
+}
+
+int
+WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,
+                             PyObject *framelist)
+{
+    PyObject *string_obj;
+    char *string_buffer;
+    Py_ssize_t length;
+    int sign = self->bits_per_sample >= 16;
+
+    if ((string_obj =
+         PyObject_CallMethod(framelist, "to_bytes","ii", 0, sign)) != NULL) {
+        if (PyString_AsStringAndSize(string_obj,
+                                     &string_buffer,
+                                     &length) == 0) {
+            audiotools__MD5Update(&(self->md5),
+                                  (unsigned char *)string_buffer,
+                                  length);
+            Py_DECREF(string_obj);
+            return 0;
+        } else {
+            Py_DECREF(string_obj);
+            return 1;
+        }
+    } else {
+        return 1;
+    }
+}
+#endif
+
 const char*
 wavpack_strerror(status error)
 {
@@ -350,31 +435,6 @@ wavpack_strerror(status error)
         return "block data CRC mismatch";
     default:
         return "unspecified error";
-    }
-}
-
-PyObject*
-wavpack_exception(status error)
-{
-    switch (error) {
-    case IO_ERROR:
-        return PyExc_IOError;
-    case OK:
-    case INVALID_BLOCK_ID:
-    case INVALID_RESERVED_BIT:
-    case EXCESSIVE_DECORRELATION_PASSES:
-    case INVALID_DECORRELATION_TERM:
-    case DECORRELATION_TERMS_MISSING:
-    case DECORRELATION_WEIGHTS_MISSING:
-    case DECORRELATION_SAMPLES_MISSING:
-    case ENTROPY_VARIABLES_MISSING:
-    case RESIDUALS_MISSING:
-    case EXCESSIVE_DECORRELATION_WEIGHTS:
-    case INVALID_ENTROPY_VARIABLE_COUNT:
-    case BLOCK_DATA_CRC_MISMATCH:
-    case EXTENDED_INTEGERS_MISSING:
-    default:
-        return PyExc_ValueError;
     }
 }
 
@@ -562,7 +622,8 @@ decode_block(decoders_WavPackDecoder* decoder,
                                  decorrelation_weights,
                                  decorrelation_samples,
                                  residuals,
-                                 decorrelated);
+                                 decorrelated,
+                                 decoder->correlated);
         } else {
             residuals->swap(residuals, decorrelated);
         }
@@ -605,7 +666,8 @@ decode_block(decoders_WavPackDecoder* decoder,
                                  decorrelation_weights,
                                  decorrelation_samples,
                                  residuals,
-                                 decorrelated);
+                                 decorrelated,
+                                 decoder->correlated);
         } else {
             residuals->swap(residuals, decorrelated);
         }
@@ -678,6 +740,19 @@ read_decorrelation_terms(const struct sub_block* sub_block,
     return OK;
 }
 
+static inline int
+pop_decorrelation_weight(BitstreamReader *sub_block)
+{
+    const int value = sub_block->read_signed(sub_block, 8);
+    if (value > 0) {
+        return (value << 3) + (((value << 3) + (1 << 6)) >> 7);
+    } else if (value == 0) {
+        return 0;
+    } else {
+        return (value << 3);
+    }
+}
+
 static status
 read_decorrelation_weights(const struct block_header* block_header,
                            const struct sub_block* sub_block,
@@ -686,7 +761,6 @@ read_decorrelation_weights(const struct block_header* block_header,
 {
     unsigned i;
     unsigned weight_count;
-    array_i* weight_values = array_i_new();
 
     if (sub_block->actual_size_1_less == 0) {
         weight_count = sub_block->size * 2;
@@ -694,31 +768,19 @@ read_decorrelation_weights(const struct block_header* block_header,
         weight_count = sub_block->size * 2 - 1;
     }
 
-    for (i = 0; i < weight_count; i++) {
-        int value = sub_block->data->read_signed(sub_block->data, 8);
-        if (value > 0) {
-            weight_values->append(weight_values,
-                                  (value << 3) +
-                                  (((value << 3) + (1 << 6)) >> 7));
-        } else if (value == 0) {
-            weight_values->append(weight_values, 0);
-        } else {
-            weight_values->append(weight_values, value << 3);
-        }
-    }
-
     weights->reset(weights);
 
     if ((block_header->mono_output == 0) && (block_header->false_stereo == 0)) {
         /*two channels*/
         if ((weight_count / 2) > term_count) {
-            weight_values->del(weight_values);
             return EXCESSIVE_DECORRELATION_WEIGHTS;
         }
         for (i = 0; i < weight_count / 2; i++) {
             array_i* weights_pass = weights->append(weights);
-            weights_pass->append(weights_pass, weight_values->_[i * 2]);
-            weights_pass->append(weights_pass, weight_values->_[i * 2 + 1]);
+            weights_pass->append(weights_pass,
+                                 pop_decorrelation_weight(sub_block->data));
+            weights_pass->append(weights_pass,
+                                 pop_decorrelation_weight(sub_block->data));
         }
         for (; i < term_count; i++) {
             array_i* weights_pass = weights->append(weights);
@@ -726,18 +788,17 @@ read_decorrelation_weights(const struct block_header* block_header,
         }
 
         weights->reverse(weights);
-        weight_values->del(weight_values);
         return OK;
     } else {
         /*one channel*/
         if (weight_count > term_count) {
-            weight_values->del(weight_values);
             return EXCESSIVE_DECORRELATION_WEIGHTS;
         }
 
         for (i = 0; i < weight_count; i++) {
             array_i* weights_pass = weights->append(weights);
-            weights_pass->append(weights_pass, weight_values->_[i]);
+            weights_pass->append(weights_pass,
+                                 pop_decorrelation_weight(sub_block->data));
         }
         for (; i < term_count; i++) {
             array_i* weights_pass = weights->append(weights);
@@ -745,7 +806,6 @@ read_decorrelation_weights(const struct block_header* block_header,
         }
 
         weights->reverse(weights);
-        weight_values->del(weight_values);
         return OK;
     }
 }
@@ -1152,11 +1212,13 @@ decorrelate_channels(const array_i* decorrelation_terms,
                      const array_ia* decorrelation_weights,
                      const array_iaa* decorrelation_samples,
                      const array_ia* residuals,
-                     array_ia* decorrelated)
+                     array_ia* decorrelated,
+                     array_ia* correlated)
 {
     status status;
     unsigned pass;
-    array_ia* correlated = array_ia_new();
+
+    correlated->reset(correlated);
 
     if (residuals->len == 1) {
         residuals->copy(residuals, decorrelated);
@@ -1172,7 +1234,6 @@ decorrelate_channels(const array_i* decorrelation_terms,
                               decorrelation_samples->_[pass]->_[0],
                               correlated->_[0],
                               decorrelated->_[0])) != OK) {
-                correlated->del(correlated);
                 return status;
             }
         }
@@ -1192,7 +1253,6 @@ decorrelate_channels(const array_i* decorrelation_terms,
                               decorrelation_samples->_[pass]->_[1],
                               correlated,
                               decorrelated)) != OK) {
-                correlated->del(correlated);
                 return status;
             }
         }
@@ -1201,7 +1261,6 @@ decorrelate_channels(const array_i* decorrelation_terms,
         abort();
     }
 
-    correlated->del(correlated);
     return OK;
 }
 
@@ -1714,30 +1773,146 @@ undo_extended_integers(const struct extended_integers* params,
     }
 }
 
-int
-WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,
-                             PyObject *framelist)
-{
-    PyObject *string_obj;
-    char *string_buffer;
-    Py_ssize_t length;
-    int sign = self->bits_per_sample >= 16;
+#ifdef STANDALONE
+int main(int argc, char* argv[]) {
+    decoders_WavPackDecoder decoder;
+    unsigned bytes_per_sample;
+    unsigned char *output_data;
+    unsigned output_data_size;
+    FrameList_int_to_char_converter converter;
 
-    if ((string_obj =
-         PyObject_CallMethod(framelist, "to_bytes","ii", 0, sign)) != NULL) {
-        if (PyString_AsStringAndSize(string_obj,
-                                     &string_buffer,
-                                     &length) == 0) {
-            audiotools__MD5Update(&(self->md5),
-                                  (unsigned char *)string_buffer,
-                                  length);
-            Py_DECREF(string_obj);
-            return 0;
-        } else {
-            Py_DECREF(string_obj);
-            return 1;
-        }
-    } else {
+    struct block_header block_header;
+    struct sub_block md5_sub_block;
+    unsigned char sub_block_md5sum[16];
+    unsigned char stream_md5sum[16];
+
+    if (argc < 2) {
+        fprintf(stderr, "*** Usage: %s <file.wv>\n", argv[0]);
         return 1;
     }
+
+    /*initialize reader object*/
+    if (WavPackDecoder_init(&decoder, argv[1])) {
+        fprintf(stderr, "*** Error initializing WavPack decoder\n");
+        return 1;
+    } else {
+        bytes_per_sample = decoder.bits_per_sample / 8;
+        output_data = malloc(1);
+        output_data_size = 1;
+        converter = FrameList_get_int_to_char_converter(
+            decoder.bits_per_sample, 0, 1);
+    }
+
+    while (decoder.remaining_pcm_samples) {
+        BitstreamReader* bs = decoder.bitstream;
+        array_ia* channels_data = decoder.channels_data;
+        status error;
+        BitstreamReader* block_data = decoder.block_data;
+        unsigned pcm_size;
+        unsigned channel;
+        unsigned frame;
+
+        channels_data->reset(channels_data);
+
+        do {
+            /*read block header*/
+            if ((error = read_block_header(bs, &block_header)) != OK) {
+                fprintf(stderr, "*** Error: %s\n",
+                        wavpack_strerror(error));
+                goto error;
+            }
+
+            /*FIXME - ensure block header is consistent
+              with the starting block header*/
+
+            br_substream_reset(block_data);
+
+            /*read block data*/
+            if (!setjmp(*br_try(bs))) {
+                bs->substream_append(bs, block_data,
+                                     block_header.block_size - 24);
+                br_etry(bs);
+            } else {
+                br_etry(bs);
+                fprintf(stderr, "I/O error reading block data");
+                goto error;
+            }
+
+            /*decode block to 1 or 2 channels of PCM data*/
+            if ((error = decode_block(&decoder,
+                                      &block_header,
+                                      block_data,
+                                      block_header.block_size - 24,
+                                      channels_data)) != OK) {
+                fprintf(stderr, "*** Error: %s\n",
+                        wavpack_strerror(error));
+                goto error;
+            }
+        } while (block_header.final_block == 0);
+
+        /*deduct frame count from total remaining*/
+        decoder.remaining_pcm_samples -= MIN(channels_data->_[0]->len,
+                                             decoder.remaining_pcm_samples);
+
+        /*convert all channels to single PCM string*/
+        pcm_size = (bytes_per_sample *
+                    channels_data->len *
+                    channels_data->_[0]->len);
+        if (pcm_size > output_data_size) {
+            output_data_size = pcm_size;
+            output_data = realloc(output_data, output_data_size);
+        }
+        for (channel = 0; channel < channels_data->len; channel++) {
+            const array_i* channel_data = channels_data->_[channel];
+            for (frame = 0; frame < channel_data->len; frame++) {
+                converter(channel_data->_[frame],
+                          output_data +
+                          ((frame * channels_data->len) + channel) *
+                          bytes_per_sample);
+            }
+        }
+
+        /*update stream's MD5 sum with framelist data*/
+        audiotools__MD5Update(&(decoder.md5), output_data, pcm_size);
+
+        /*output PCM string to stdout*/
+        fwrite(output_data, sizeof(unsigned char), pcm_size, stdout);
+    }
+
+    /*check for final MD5 sub block, if present*/
+    md5_sub_block.data = decoder.sub_block_data;
+
+    /*check for final MD5 block, which may not be present*/
+    if ((read_block_header(decoder.bitstream, &block_header) == OK) &&
+        (find_sub_block(&block_header,
+                        decoder.bitstream,
+                        6, 1, &md5_sub_block) == OK) &&
+        (sub_block_data_size(&md5_sub_block) == 16)) {
+
+        /*have valid MD5 block, so check it*/
+        md5_sub_block.data->read_bytes(md5_sub_block.data,
+                                       (uint8_t*)sub_block_md5sum,
+                                       16);
+
+        audiotools__MD5Final(stream_md5sum, &(decoder.md5));
+
+        if (memcmp(sub_block_md5sum, stream_md5sum, 16)) {
+            fprintf(stderr, "*** MD5 mismatch at end of stream\n");
+            goto error;
+        }
+    }
+
+    /*deallocate reader object*/
+    WavPackDecoder_dealloc(&decoder);
+    free(output_data);
+
+    return 0;
+
+error:
+    /*deallocate reader object*/
+    WavPackDecoder_dealloc(&decoder);
+    free(output_data);
+
+    return 1;
 }
+#endif

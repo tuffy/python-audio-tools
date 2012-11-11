@@ -352,6 +352,8 @@ struct pcmreader_s* open_pcmreader(FILE* file,
 
     pcmreader->buffer_size = 1;
     pcmreader->buffer = malloc(pcmreader->buffer_size);
+    pcmreader->callback_buffer_size = 1;
+    pcmreader->callback_buffer = malloc(pcmreader->callback_buffer_size);
     pcmreader->buffer_converter =
         FrameList_get_char_to_int_converter(pcmreader->bits_per_sample,
                                             pcmreader->big_endian,
@@ -386,7 +388,7 @@ int pcmreader_read(struct pcmreader_s* reader,
     struct pcmreader_callback *callback;
     FrameList_int_to_char_converter callback_converter;
 
-    uint8_t* callback_buffer;
+
 
     if (reader->buffer_size < bytes_to_read) {
         reader->buffer_size = bytes_to_read;
@@ -422,23 +424,25 @@ int pcmreader_read(struct pcmreader_s* reader,
     for (callback = reader->callbacks;
          callback != NULL;
          callback = callback->next) {
+        if (reader->callback_buffer_size < bytes_read) {
+            reader->callback_buffer_size = bytes_read;
+            reader->callback_buffer = realloc(reader->callback_buffer,
+                                              bytes_read);
+        }
+
         callback_converter =
             FrameList_get_int_to_char_converter(reader->bits_per_sample,
                                                 !callback->little_endian,
                                                 callback->is_signed);
 
-        callback_buffer = malloc(bytes_read);
-
         for (byte = 0; byte < bytes_read; byte += reader->bytes_per_sample) {
             callback_converter(reader->buffer_converter(reader->buffer + byte),
-                               callback_buffer + byte);
+                               reader->callback_buffer + byte);
         }
 
         callback->callback(callback->user_data,
-                           (unsigned char*)callback_buffer,
+                           (unsigned char*)reader->callback_buffer,
                            (unsigned long)bytes_read);
-
-        free(callback_buffer);
     }
 
     return 0;
@@ -462,6 +466,7 @@ void pcmreader_del(struct pcmreader_s* reader)
 
     /*free temporary buffer*/
     free(reader->buffer);
+    free(reader->callback_buffer);
 
     /*free pcmreader struct*/
     free(reader);

@@ -159,6 +159,8 @@ typedef struct pcmreader_s {
 
     unsigned buffer_size;
     uint8_t* buffer;
+    unsigned callback_buffer_size;
+    uint8_t* callback_buffer;
     FrameList_char_to_int_converter buffer_converter;
 
     struct pcmreader_callback* callbacks;

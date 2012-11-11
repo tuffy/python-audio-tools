@@ -277,6 +277,7 @@ init_context(struct wavpack_encoder_context* context,
     context->cache.shifted = array_ia_new();
     context->cache.mid_side = array_ia_new();
     context->cache.correlated = array_ia_new();
+    context->cache.correlation_temp = array_ia_new();
     context->cache.sub_block = bw_open_recorder(BS_LITTLE_ENDIAN);
     context->cache.sub_blocks = bw_open_recorder(BS_LITTLE_ENDIAN);
 
@@ -309,6 +310,7 @@ free_context(struct wavpack_encoder_context* context)
     context->cache.shifted->del(context->cache.shifted);
     context->cache.mid_side->del(context->cache.mid_side);
     context->cache.correlated->del(context->cache.correlated);
+    context->cache.correlation_temp->del(context->cache.correlation_temp);
     context->cache.sub_block->close(context->cache.sub_block);
     context->cache.sub_blocks->close(context->cache.sub_blocks);
 
@@ -607,6 +609,7 @@ encode_block(BitstreamWriter* bs,
     array_ia* shifted = context->cache.shifted;
     array_ia* mid_side = context->cache.mid_side;
     array_ia* correlated = context->cache.correlated;
+    array_ia* correlation_temp = context->cache.correlation_temp;
     BitstreamWriter* sub_blocks = context->cache.sub_blocks;
     BitstreamWriter* sub_block = context->cache.sub_block;
     uint32_t crc;
@@ -784,7 +787,8 @@ encode_block(BitstreamWriter* bs,
                                parameters->deltas,
                                parameters->weights,
                                parameters->samples,
-                               1);
+                               1,
+                               correlation_temp);
         } else {
             shifted->copy(shifted, correlated);
         }
@@ -797,7 +801,8 @@ encode_block(BitstreamWriter* bs,
                                parameters->deltas,
                                parameters->weights,
                                parameters->samples,
-                               2);
+                               2,
+                               correlation_temp);
         } else {
             mid_side->copy(mid_side, correlated);
         }
@@ -992,7 +997,8 @@ correlate_channels(array_ia* correlated_samples,
                    array_i* deltas,
                    array_ia* weights,
                    array_iaa* samples,
-                   unsigned channel_count)
+                   unsigned channel_count,
+                   array_ia* temp)
 {
     unsigned pass;
     unsigned total;
@@ -1003,37 +1009,40 @@ correlate_channels(array_ia* correlated_samples,
     assert(uncorrelated_samples->len == channel_count);
 
     if (channel_count == 1) {
-        array_i* input_channel = array_i_new();
-        array_i* output_channel = array_i_new();
-        input_channel->swap(input_channel, uncorrelated_samples->_[0]);
+        array_i* input_channel = uncorrelated_samples->_[0];
+        array_i* output_channel;
+        array_i* temp_channel;
+        correlated_samples->reset(correlated_samples);
+        output_channel = correlated_samples->append(correlated_samples);
+        temp->reset(temp);
+        temp_channel = temp->append(temp);
+
         for (pass = terms->len - 1,total = terms->len;
-             total > 0; pass--,total--) {
+             total > 0;
+             pass--,total--) {
             correlate_1ch(output_channel,
                           input_channel,
                           terms->_[pass],
                           deltas->_[pass],
                           &(weights->_[pass]->_[0]),
-                          samples->_[pass]->_[0]);
+                          samples->_[pass]->_[0],
+                          temp_channel);
 
             if (total > 1) {
                 input_channel->swap(input_channel, output_channel);
             }
         }
-
-        correlated_samples->reset(correlated_samples);
-        output_channel->swap(output_channel,
-                             correlated_samples->append(correlated_samples));
-        input_channel->del(input_channel);
-        output_channel->del(output_channel);
     } else if (channel_count == 2) {
         for (pass = terms->len - 1,total = terms->len;
-             total > 0; pass--,total--) {
+             total > 0;
+             pass--,total--) {
             correlate_2ch(correlated_samples,
                           uncorrelated_samples,
                           terms->_[pass],
                           deltas->_[pass],
                           weights->_[pass],
-                          samples->_[pass]);
+                          samples->_[pass],
+                          temp);
             if (total > 1) {
                 uncorrelated_samples->swap(uncorrelated_samples,
                                            correlated_samples);
@@ -1069,13 +1078,15 @@ correlate_1ch(array_i* correlated,
               int term,
               int delta,
               int* weight,
-              array_i* samples)
+              array_i* samples,
+              array_i* temp)
 {
     unsigned i;
+    array_i* uncorr = temp;
+
+    uncorr->reset(uncorr);
 
     if (term == 18) {
-        array_i* uncorr = array_i_new();
-
         assert(samples->len == 2);
         uncorr->vappend(uncorr, 2, samples->_[1], samples->_[0]);
         uncorr->extend(uncorr, uncorrelated);
@@ -1091,11 +1102,7 @@ correlate_1ch(array_i* correlated,
         /*round-trip the final 2 uncorrelated samples for the next block*/
         samples->_[1] = uncorr->_[uncorr->len - 2];
         samples->_[0] = uncorr->_[uncorr->len - 1];
-
-        uncorr->del(uncorr);
     } else if (term == 17) {
-        array_i* uncorr = array_i_new();
-
         assert(samples->len == 2);
         uncorr->vappend(uncorr, 2, samples->_[1], samples->_[0]);
         uncorr->extend(uncorr, uncorrelated);
@@ -1111,11 +1118,7 @@ correlate_1ch(array_i* correlated,
         /*round-trip the final 2 uncorrelated samples for the next block*/
         samples->_[1] = uncorr->_[uncorr->len - 2];
         samples->_[0] = uncorr->_[uncorr->len - 1];
-
-        uncorr->del(uncorr);
     } else if ((1 <= term) && (term <= 8)) {
-        array_i* uncorr = array_i_new();
-
         assert(samples->len == term);
         uncorr->extend(uncorr, samples);
         uncorr->extend(uncorr, uncorrelated);
@@ -1130,8 +1133,6 @@ correlate_1ch(array_i* correlated,
 
         /*round-trip the final "terms" uncorrelated samples for the next block*/
         uncorrelated->tail(uncorrelated, term, samples);
-
-        uncorr->del(uncorr);
     } else {
         /*invalid correlation term*/
         assert(0);
@@ -1146,34 +1147,44 @@ correlate_2ch(array_ia* correlated,
               int term,
               int delta,
               array_i* weights,
-              array_ia* samples)
+              array_ia* samples,
+              array_ia* temp)
 {
+    array_ia* uncorr = temp;
+
     assert(uncorrelated->len == 2);
     assert(uncorrelated->_[0]->len == uncorrelated->_[1]->len);
     assert(weights->len == 2);
     assert(samples->len == 2);
+    uncorr->reset(uncorr);
 
     if (((17 <= term) && (term <= 18)) ||
         ((1 <= term) && (term <= 8))) {
         correlated->reset(correlated);
         correlate_1ch(correlated->append(correlated),
                       uncorrelated->_[0],
-                      term, delta, &(weights->_[0]), samples->_[0]);
+                      term,
+                      delta,
+                      &(weights->_[0]),
+                      samples->_[0],
+                      temp->append(temp));
         correlate_1ch(correlated->append(correlated),
                       uncorrelated->_[1],
-                      term, delta, &(weights->_[1]), samples->_[1]);
+                      term,
+                      delta,
+                      &(weights->_[1]),
+                      samples->_[1],
+                      temp->append(temp));
     } else if ((-3 <= term) && (term <= -1)) {
-        array_ia* uncorr = array_ia_new();
         array_i* correlated_0;
         array_i* correlated_1;
-        array_i* uncorr_0;
-        array_i* uncorr_1;
+        array_i* uncorr_0 = uncorr->append(uncorr);
+        array_i* uncorr_1 = uncorr->append(uncorr);
         unsigned i;
 
         assert(samples->_[0]->len == 1);
         assert(samples->_[1]->len == 1);
-        uncorr_0 = uncorr->append(uncorr);
-        uncorr_1 = uncorr->append(uncorr);
+
         uncorr_0->extend(uncorr_0, samples->_[1]);
         uncorr_0->extend(uncorr_0, uncorrelated->_[0]);
         uncorr_1->extend(uncorr_1, samples->_[0]);
@@ -1244,8 +1255,6 @@ correlate_2ch(array_ia* correlated,
         /*round-trip the final uncorrelated sample for the next block*/
         samples->_[1]->_[0] = uncorr_0->_[uncorr_0->len - 1];
         samples->_[0]->_[0] = uncorr_1->_[uncorr_1->len - 1];
-
-        uncorr->del(uncorr);
     } else {
         /*invalid correlation term*/
         assert(0);

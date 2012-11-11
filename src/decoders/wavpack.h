@@ -1,4 +1,6 @@
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 #include <stdint.h>
 #include "../bitstream.h"
 #include "../array.h"
@@ -50,9 +52,11 @@ typedef enum {WV_DECORR_TERMS      = 0x2,
               WV_MD5               = 0x26} wv_metadata_function;
 
 typedef struct {
+#ifndef STANDALONE
     PyObject_HEAD
 
     PyObject* audiotools_pcm;
+#endif
 
     FILE* file;
     char* filename;
@@ -78,10 +82,12 @@ typedef struct {
     array_ia* entropies;
     array_ia* residuals;
     array_ia* decorrelated;
+    array_ia* correlated;
     array_ia* left_right;
     array_ia* un_shifted;
 } decoders_WavPackDecoder;
 
+#ifndef STANDALONE
 /*the WavPackDecoder.__init__() method*/
 int
 WavPackDecoder_init(decoders_WavPackDecoder *self,
@@ -138,9 +144,6 @@ static PyObject*
 WavPackDecoder_new(PyTypeObject *type,
                    PyObject *args, PyObject *kwds);
 
-const char*
-wavpack_strerror(status error);
-
 PyObject*
 wavpack_exception(status error);
 
@@ -185,6 +188,21 @@ PyTypeObject decoders_WavPackDecoderType = {
     0,                         /* tp_alloc */
     WavPackDecoder_new,        /* tp_new */
 };
+
+int
+WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,
+                             PyObject *framelist);
+#else
+int
+WavPackDecoder_init(decoders_WavPackDecoder *self,
+                    char* filename);
+
+void
+WavPackDecoder_dealloc(decoders_WavPackDecoder *self);
+#endif
+
+const char*
+wavpack_strerror(status error);
 
 struct block_header {
     /*block ID                                    32 bits*/
@@ -310,7 +328,9 @@ decorrelate_channels(const array_i* decorrelation_terms,
                      const array_ia* decorrelation_weights,
                      const array_iaa* decorrelation_samples,
                      const array_ia* residuals,
-                     array_ia* decorrelated);
+                     array_ia* decorrelated,
+                     array_ia* correlated  /*a temporary buffer*/
+                     );
 
 static status
 decorrelate_1ch_pass(int decorrelation_term,
@@ -377,7 +397,3 @@ static void
 undo_extended_integers(const struct extended_integers* params,
                        const array_ia* extended_integers,
                        array_ia* un_extended_integers);
-
-int
-WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,
-                             PyObject *framelist);
