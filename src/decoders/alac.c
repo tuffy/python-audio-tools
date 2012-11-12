@@ -1,5 +1,6 @@
 #include "alac.h"
 #include "../pcmconv.h"
+#include <string.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -20,6 +21,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#ifndef STANDALONE
 int
 ALACDecoder_init(decoders_ALACDecoder *self,
                  PyObject *args, PyObject *kwds)
@@ -106,94 +108,6 @@ ALACDecoder_dealloc(decoders_ALACDecoder *self)
     self->ob_type->tp_free((PyObject*)self);
 }
 
-static int
-parse_decoding_parameters(decoders_ALACDecoder *self)
-{
-    BitstreamReader* mdia_atom = br_substream_new(BS_BIG_ENDIAN);
-    BitstreamReader* stsd_atom = br_substream_new(BS_BIG_ENDIAN);
-    BitstreamReader* mdhd_atom = br_substream_new(BS_BIG_ENDIAN);
-    uint32_t mdia_atom_size;
-    uint32_t stsd_atom_size;
-    uint32_t mdhd_atom_size;
-    unsigned int total_frames;
-
-    /*find the mdia atom, which is the parent to stsd and mdhd*/
-    if (find_sub_atom(self->bitstream, mdia_atom, &mdia_atom_size,
-                      "moov", "trak", "mdia", NULL)) {
-        PyErr_SetString(PyExc_ValueError, "unable to find mdia atom");
-        goto error;
-    } else {
-        /*mark the mdia atom so we can parse
-          two different trees from it*/
-        mdia_atom->mark(mdia_atom);
-    }
-
-    /*find the stsd atom, which contains the alac atom*/
-    if (find_sub_atom(mdia_atom, stsd_atom, &stsd_atom_size,
-                      "minf", "stbl", "stsd", NULL)) {
-        mdia_atom->unmark(mdia_atom);
-        PyErr_SetString(PyExc_ValueError, "unable to find sdsd atom");
-        goto error;
-    }
-
-    /*parse the alac atom, which contains lots of crucial decoder details*/
-    switch (read_alac_atom(stsd_atom,
-                           &(self->max_samples_per_frame),
-                           &(self->bits_per_sample),
-                           &(self->history_multiplier),
-                           &(self->initial_history),
-                           &(self->maximum_k),
-                           &(self->channels),
-                           &(self->sample_rate))) {
-    case 1:
-        mdia_atom->unmark(mdia_atom);
-        PyErr_SetString(PyExc_IOError, "I/O error reading alac atom");
-        goto error;
-    case 2:
-        mdia_atom->unmark(mdia_atom);
-        PyErr_SetString(PyExc_ValueError, "invalid alac atom");
-        goto error;
-    default:
-        break;
-    }
-
-    /*find the mdhd atom*/
-    mdia_atom->rewind(mdia_atom);
-    if (find_sub_atom(mdia_atom, mdhd_atom, &mdhd_atom_size,
-                      "mdhd", NULL)) {
-        mdia_atom->unmark(mdia_atom);
-        PyErr_SetString(PyExc_ValueError, "unable to find mdhd atom");
-        goto error;
-    } else {
-        mdia_atom->unmark(mdia_atom);
-    }
-
-    /*parse the mdhd atom, which contains our total frame count*/
-    switch (read_mdhd_atom(mdhd_atom, &total_frames)) {
-    case 1:
-        PyErr_SetString(PyExc_IOError, "I/O error reading mdhd atom");
-        goto error;
-    case 2:
-        PyErr_SetString(PyExc_ValueError, "invalid mdhd atom");
-        goto error;
-    default:
-        self->remaining_frames = total_frames;
-        break;
-    }
-
-    mdia_atom->close(mdia_atom);
-    stsd_atom->close(stsd_atom);
-    mdhd_atom->close(mdhd_atom);
-
-    return 0;
-
- error:
-    mdia_atom->close(mdia_atom);
-    stsd_atom->close(stsd_atom);
-    mdhd_atom->close(mdhd_atom);
-    return -1;
-}
-
 PyObject*
 ALACDecoder_new(PyTypeObject *type,
                 PyObject *args, PyObject *kwds)
@@ -247,7 +161,6 @@ ALACDecoder_channel_mask(decoders_ALACDecoder *self, void *closure)
         return Py_BuildValue("I", 0x0000);
     }
 }
-
 
 static PyObject*
 ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
@@ -312,6 +225,183 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
         PyErr_SetString(PyExc_IOError, "EOF during frame reading");
         return NULL;
     }
+}
+
+static PyObject*
+ALACDecoder_close(decoders_ALACDecoder* self, PyObject *args)
+{
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+#else
+#include <errno.h>
+
+int
+ALACDecoder_init(decoders_ALACDecoder *self, char *filename)
+{
+    unsigned i;
+
+    self->frameset_channels = array_ia_new();
+    self->frame_channels = array_ia_new();
+    self->uncompressed_LSBs = array_i_new();
+    self->residuals = array_i_new();
+
+    for (i = 0; i < MAX_CHANNELS; i++) {
+        self->subframe_headers[i].qlp_coeff = array_i_new();
+    }
+
+    if ((self->file = fopen(filename, "rb")) == NULL) {
+        fprintf(stderr, "*** %s: %s\n", filename, strerror(errno));
+        return -1;
+    } else {
+        self->bitstream = br_open(self->file, BS_BIG_ENDIAN);
+    }
+    self->filename = strdup(filename);
+
+    self->bitstream->mark(self->bitstream);
+
+    if (parse_decoding_parameters(self)) {
+        self->bitstream->unmark(self->bitstream);
+        return -1;
+    } else {
+        self->bitstream->rewind(self->bitstream);
+    }
+
+    /*seek to the 'mdat' atom, which contains the ALAC stream*/
+    if (seek_mdat(self->bitstream) == ERROR) {
+        self->bitstream->unmark(self->bitstream);
+        fprintf(stderr, "Unable to locate 'mdat' atom in stream\n");
+        return -1;
+    } else {
+        self->bitstream->unmark(self->bitstream);
+    }
+
+    return 0;
+}
+
+void
+ALACDecoder_dealloc(decoders_ALACDecoder *self)
+{
+    int i;
+
+    if (self->filename != NULL)
+        free(self->filename);
+
+    if (self->bitstream != NULL)
+        /*this closes self->file also*/
+        self->bitstream->close(self->bitstream);
+
+    for (i = 0; i < MAX_CHANNELS; i++)
+        self->subframe_headers[i].qlp_coeff->del(
+            self->subframe_headers[i].qlp_coeff);
+
+    self->frameset_channels->del(self->frameset_channels);
+    self->frame_channels->del(self->frame_channels);
+    self->uncompressed_LSBs->del(self->uncompressed_LSBs);
+    self->residuals->del(self->residuals);
+}
+#endif
+
+static int
+parse_decoding_parameters(decoders_ALACDecoder *self)
+{
+    BitstreamReader* mdia_atom = br_substream_new(BS_BIG_ENDIAN);
+    BitstreamReader* stsd_atom = br_substream_new(BS_BIG_ENDIAN);
+    BitstreamReader* mdhd_atom = br_substream_new(BS_BIG_ENDIAN);
+    uint32_t mdia_atom_size;
+    uint32_t stsd_atom_size;
+    uint32_t mdhd_atom_size;
+    unsigned int total_frames;
+
+    /*find the mdia atom, which is the parent to stsd and mdhd*/
+    if (find_sub_atom(self->bitstream, mdia_atom, &mdia_atom_size,
+                      "moov", "trak", "mdia", NULL)) {
+#ifndef STANDALONE
+        PyErr_SetString(PyExc_ValueError, "unable to find mdia atom");
+#endif
+        goto error;
+    } else {
+        /*mark the mdia atom so we can parse
+          two different trees from it*/
+        mdia_atom->mark(mdia_atom);
+    }
+
+    /*find the stsd atom, which contains the alac atom*/
+    if (find_sub_atom(mdia_atom, stsd_atom, &stsd_atom_size,
+                      "minf", "stbl", "stsd", NULL)) {
+        mdia_atom->unmark(mdia_atom);
+#ifndef STANDALONE
+        PyErr_SetString(PyExc_ValueError, "unable to find sdsd atom");
+#endif
+        goto error;
+    }
+
+    /*parse the alac atom, which contains lots of crucial decoder details*/
+    switch (read_alac_atom(stsd_atom,
+                           &(self->max_samples_per_frame),
+                           &(self->bits_per_sample),
+                           &(self->history_multiplier),
+                           &(self->initial_history),
+                           &(self->maximum_k),
+                           &(self->channels),
+                           &(self->sample_rate))) {
+    case 1:
+        mdia_atom->unmark(mdia_atom);
+#ifndef STANDALONE
+        PyErr_SetString(PyExc_IOError, "I/O error reading alac atom");
+#endif
+        goto error;
+    case 2:
+        mdia_atom->unmark(mdia_atom);
+#ifndef STANDALONE
+        PyErr_SetString(PyExc_ValueError, "invalid alac atom");
+#endif
+        goto error;
+    default:
+        break;
+    }
+
+    /*find the mdhd atom*/
+    mdia_atom->rewind(mdia_atom);
+    if (find_sub_atom(mdia_atom, mdhd_atom, &mdhd_atom_size,
+                      "mdhd", NULL)) {
+        mdia_atom->unmark(mdia_atom);
+#ifndef STANDALONE
+        PyErr_SetString(PyExc_ValueError, "unable to find mdhd atom");
+#endif
+        goto error;
+    } else {
+        mdia_atom->unmark(mdia_atom);
+    }
+
+    /*parse the mdhd atom, which contains our total frame count*/
+    switch (read_mdhd_atom(mdhd_atom, &total_frames)) {
+    case 1:
+#ifndef STANDALONE
+        PyErr_SetString(PyExc_IOError, "I/O error reading mdhd atom");
+#endif
+        goto error;
+    case 2:
+#ifndef STANDALONE
+        PyErr_SetString(PyExc_ValueError, "invalid mdhd atom");
+#endif
+        goto error;
+    default:
+        self->remaining_frames = total_frames;
+        break;
+    }
+
+    mdia_atom->close(mdia_atom);
+    stsd_atom->close(stsd_atom);
+    mdhd_atom->close(mdhd_atom);
+
+    return 0;
+
+error:
+    mdia_atom->close(mdia_atom);
+    stsd_atom->close(stsd_atom);
+    mdhd_atom->close(mdhd_atom);
+    return -1;
 }
 
 static void
@@ -556,13 +646,6 @@ read_frame(decoders_ALACDecoder *self,
 
         return OK;
     }
-}
-
-static PyObject*
-ALACDecoder_close(decoders_ALACDecoder* self, PyObject *args)
-{
-    Py_INCREF(Py_None);
-    return Py_None;
 }
 
 static status
@@ -962,6 +1045,8 @@ find_sub_atom(BitstreamReader* parent,
         /*otherwise, return the found atom*/
         child_atom->substream_append(child_atom, sub_atom, child_atom_size);
         *sub_atom_size = child_atom_size;
+        child_atom->close(child_atom);
+        parent_atom->close(parent_atom);
         va_end(ap);
         return 0;
     }
@@ -1040,3 +1125,113 @@ alacdec_ValueError(decoders_ALACDecoder *decoder, char* message)
     decoder->error_message = message;
     return ERROR;
 }
+
+#ifdef STANDALONE
+int main(int argc, char* argv[]) {
+    decoders_ALACDecoder decoder;
+    unsigned channel_count;
+    BitstreamReader* mdat;
+    array_ia* frameset_channels;
+    unsigned frame;
+    unsigned channel;
+    unsigned bytes_per_sample;
+    FrameList_int_to_char_converter converter;
+    unsigned char* output_data;
+    unsigned output_data_size;
+    unsigned pcm_size;
+
+    if (argc < 2) {
+        fprintf(stderr, "*** Usage: %s <file.m4a>\n", argv[0]);
+        return 1;
+    }
+
+    if (ALACDecoder_init(&decoder, argv[1])) {
+        fprintf(stderr, "*** Error: unable to initialize ALAC file\n");
+        ALACDecoder_dealloc(&decoder);
+        return 1;
+    } else {
+        mdat = decoder.bitstream;
+        frameset_channels = decoder.frameset_channels;
+        output_data = malloc(1);
+        output_data_size = 1;
+        bytes_per_sample = decoder.bits_per_sample / 8;
+        converter = FrameList_get_int_to_char_converter(
+            decoder.bits_per_sample, 0, 1);
+    }
+
+    while (decoder.remaining_frames) {
+        if (!setjmp(*br_try(mdat))) {
+            frameset_channels->reset(frameset_channels);
+
+            /*get initial frame's channel count*/
+            channel_count = mdat->read(mdat, 3) + 1;
+            while (channel_count != 8) {
+                /*read a frame from the frameset into "channels"*/
+                if (read_frame(&decoder,
+                               mdat,
+                               frameset_channels,
+                               channel_count) != OK) {
+                    br_etry(mdat);
+                    fprintf(stderr, "*** Error: %s", decoder.error_message);
+                    goto error;
+                } else {
+                    /*ensure all frames have the same sample count*/
+                    /*FIXME*/
+
+                    /*read the channel count of the next frame
+                      in the frameset, if any*/
+                    channel_count = mdat->read(mdat, 3) + 1;
+                }
+            }
+
+            /*once all the frames in the frameset are read,
+              byte-align the output stream*/
+            mdat->byte_align(mdat);
+            br_etry(mdat);
+
+            /*decrement the remaining sample count*/
+            decoder.remaining_frames -= MIN(decoder.remaining_frames,
+                                            frameset_channels->_[0]->len);
+
+            /*convert ALAC channel assignment to
+              standard audiotools assignment*/
+            alac_order_to_wave_order(frameset_channels);
+
+            /*finally, build and return framelist string from the sample data*/
+            pcm_size = (bytes_per_sample *
+                        frameset_channels->len *
+                        frameset_channels->_[0]->len);
+            if (pcm_size > output_data_size) {
+                output_data_size = pcm_size;
+                output_data = realloc(output_data, output_data_size);
+            }
+            for (channel = 0; channel < frameset_channels->len; channel++) {
+                const array_i* channel_data = frameset_channels->_[channel];
+                for (frame = 0; frame < channel_data->len; frame++) {
+                    converter(channel_data->_[frame],
+                              output_data +
+                              ((frame * frameset_channels->len) + channel) *
+                              bytes_per_sample);
+                }
+            }
+
+            fwrite(output_data, sizeof(unsigned char), pcm_size, stdout);
+        } else {
+            br_etry(mdat);
+            fprintf(stderr, "*** Error: EOF during frame reading\n");
+            goto error;
+        }
+    }
+
+    ALACDecoder_dealloc(&decoder);
+    free(output_data);
+
+    return 0;
+
+error:
+    ALACDecoder_dealloc(&decoder);
+    free(output_data);
+
+    return 1;
+}
+#endif

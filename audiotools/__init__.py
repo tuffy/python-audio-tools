@@ -1625,10 +1625,10 @@ class AmbiguousAudioType(UnknownAudioType):
 
     def error_msg(self, messenger):
         from .text import (ERR_AMBIGUOUS_AUDIO_TYPE,
-                           LAB_USE_T_OPTION)
+                           LAB_T_OPTIONS)
 
         messenger.error(ERR_AMBIGUOUS_AUDIO_TYPE % (self.suffix,))
-        messenger.info(LAB_USE_T_OPTION %
+        messenger.info(LAB_T_OPTIONS %
                        (u" or ".join([u"\"%s\"" % (t.NAME.decode('ascii'))
                                       for t in self.type_list])))
 

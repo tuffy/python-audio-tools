@@ -1,4 +1,6 @@
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 #include <stdint.h>
 #include "../bitstream.h"
 #include "../array.h"
@@ -32,7 +34,9 @@ struct alac_subframe_header {
 };
 
 typedef struct {
+#ifndef STANDALONE
     PyObject_HEAD
+#endif
 
     char* filename;
     FILE* file;
@@ -56,8 +60,10 @@ typedef struct {
     array_i* residuals;
     struct alac_subframe_header subframe_headers[MAX_CHANNELS];
 
+#ifndef STANDALONE
     /*a framelist generator*/
     PyObject* audiotools_pcm;
+#endif
 
     /*a place to store error messages to be bubbled-up to the interpreter*/
     char* error_message;
@@ -65,6 +71,7 @@ typedef struct {
 
 typedef enum {OK, ERROR} status;
 
+#ifndef STANDALONE
 /*the ALACDecoder.sample_rate attribute getter*/
 static PyObject*
 ALACDecoder_sample_rate(decoders_ALACDecoder *self, void *closure);
@@ -93,67 +100,6 @@ ALACDecoder_close(decoders_ALACDecoder* self, PyObject *args);
 int
 ALACDecoder_init(decoders_ALACDecoder *self,
                  PyObject *args, PyObject *kwds);
-
-static int
-parse_decoding_parameters(decoders_ALACDecoder *self);
-
-/*walks through the open QuickTime stream looking for the 'mdat' atom
-  or returns ERROR if one cannot be found*/
-static status
-seek_mdat(BitstreamReader* alac_stream);
-
-/*swaps the ALAC-ordered set of channels to Wave order,
-  depending on the number of ALAC-ordered channels*/
-static void
-alac_order_to_wave_order(array_ia* alac_ordered);
-
-/*appends 1 or 2 channels worth of data from the current bitstream
-  to the "samples" arrays
-  returns OK on success
-  or returns ERROR and sets self->error_message if some problem occurs*/
-static status
-read_frame(decoders_ALACDecoder *self,
-           BitstreamReader *mdat,
-           array_ia* frameset_channels,
-           unsigned channel_count);
-
-/*reads "subframe header" from the current bitstream*/
-static void
-read_subframe_header(BitstreamReader *bs,
-                     struct alac_subframe_header *subframe_header);
-
-/*reads a block of residuals from the current bitstream*/
-static void
-read_residuals(BitstreamReader *bs,
-               array_i* residuals,
-               unsigned int residual_count,
-               unsigned int sample_size,
-               unsigned int initial_history,
-               unsigned int history_multiplier,
-               unsigned int maximum_k);
-
-/*reads an unsigned residual from the current bitstream*/
-static unsigned
-read_residual(BitstreamReader *bs,
-              unsigned int lsb_count,
-              unsigned int sample_size);
-
-/*decodes the given residuals, QLP coefficient values and shift needed
-  to the given samples*/
-static void
-decode_subframe(array_i* samples,
-                unsigned sample_size,
-                array_i* residuals,
-                array_i* qlp_coeff,
-                uint8_t qlp_shift_needed);
-
-/*decorrelates 2 channels, in-place*/
-static void
-decorrelate_channels(array_i* left,
-                     array_i* right,
-                     unsigned interlacing_shift,
-                     unsigned interlacing_leftweight);
-
 
 PyGetSetDef ALACDecoder_getseters[] = {
     {"sample_rate",
@@ -223,6 +169,68 @@ PyTypeObject decoders_ALACDecoderType = {
     0,                         /* tp_alloc */
     ALACDecoder_new,           /* tp_new */
 };
+
+#endif
+
+static int
+parse_decoding_parameters(decoders_ALACDecoder *self);
+
+/*walks through the open QuickTime stream looking for the 'mdat' atom
+  or returns ERROR if one cannot be found*/
+static status
+seek_mdat(BitstreamReader* alac_stream);
+
+/*swaps the ALAC-ordered set of channels to Wave order,
+  depending on the number of ALAC-ordered channels*/
+static void
+alac_order_to_wave_order(array_ia* alac_ordered);
+
+/*appends 1 or 2 channels worth of data from the current bitstream
+  to the "samples" arrays
+  returns OK on success
+  or returns ERROR and sets self->error_message if some problem occurs*/
+static status
+read_frame(decoders_ALACDecoder *self,
+           BitstreamReader *mdat,
+           array_ia* frameset_channels,
+           unsigned channel_count);
+
+/*reads "subframe header" from the current bitstream*/
+static void
+read_subframe_header(BitstreamReader *bs,
+                     struct alac_subframe_header *subframe_header);
+
+/*reads a block of residuals from the current bitstream*/
+static void
+read_residuals(BitstreamReader *bs,
+               array_i* residuals,
+               unsigned int residual_count,
+               unsigned int sample_size,
+               unsigned int initial_history,
+               unsigned int history_multiplier,
+               unsigned int maximum_k);
+
+/*reads an unsigned residual from the current bitstream*/
+static unsigned
+read_residual(BitstreamReader *bs,
+              unsigned int lsb_count,
+              unsigned int sample_size);
+
+/*decodes the given residuals, QLP coefficient values and shift needed
+  to the given samples*/
+static void
+decode_subframe(array_i* samples,
+                unsigned sample_size,
+                array_i* residuals,
+                array_i* qlp_coeff,
+                uint8_t qlp_shift_needed);
+
+/*decorrelates 2 channels, in-place*/
+static void
+decorrelate_channels(array_i* left,
+                     array_i* right,
+                     unsigned interlacing_shift,
+                     unsigned interlacing_leftweight);
 
 /*returns 0 if the given sub atom name is found in the parent
   and sets "sub_atom" to that atom data and "sub_atom_size" to its size
