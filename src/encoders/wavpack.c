@@ -89,7 +89,7 @@ encoders_encode_wavpack(PyObject *dummy,
 #else
 void
 encoders_encode_wavpack(char *filename,
-                        FILE *pcmdata,
+                        pcmreader* pcmreader,
                         unsigned block_size,
                         int try_false_stereo,
                         int try_wasted_bits,
@@ -97,7 +97,6 @@ encoders_encode_wavpack(char *filename,
                         unsigned correlation_passes) {
     FILE *file;
     BitstreamWriter *stream;
-    pcmreader* pcmreader;
     struct wavpack_encoder_context context;
     array_ia* pcm_frames;
     array_ia* block_frames;
@@ -108,12 +107,9 @@ encoders_encode_wavpack(char *filename,
     context.wave.header_data = NULL;
     context.wave.footer_data = NULL;
 
+    /*FIXME - check for error here*/
     file = fopen(filename, "wb");
     stream = bw_open(file, BS_LITTLE_ENDIAN);
-    if ((pcmreader =
-         open_pcmreader(pcmdata, 44100, 2, 0x3, 16, 0, 1)) == NULL) {
-        return;
-    }
 
 #endif
 
@@ -1891,8 +1887,171 @@ write_wave_header(BitstreamWriter* bs, const pcmreader* pcmreader,
 }
 
 #ifdef STANDALONE
+#include <getopt.h>
+#include <errno.h>
+
+static unsigned
+count_bits(unsigned value)
+{
+    unsigned bits = 0;
+    while (value) {
+        bits += value & 0x1;
+        value >>= 1;
+    }
+    return bits;
+}
+
 int main(int argc, char *argv[]) {
-    encoders_encode_wavpack(argv[1], stdin, 22050, 1, 1, 1, 16);
+    char* output_file = NULL;
+    unsigned channels = 2;
+    unsigned channel_mask = 0x3;
+    unsigned sample_rate = 44100;
+    unsigned bits_per_sample = 16;
+
+    unsigned block_size = 22050;
+    unsigned correlation_passes = 5;
+    int false_stereo = 0;
+    int wasted_bits = 0;
+    int joint_stereo = 0;
+
+    char c;
+    const static struct option long_opts[] = {
+        {"help",                    no_argument,       NULL, 'h'},
+        {"channels",                required_argument, NULL, 'c'},
+        {"channel-mask",            required_argument, NULL, 'm'},
+        {"sample-rate",             required_argument, NULL, 'r'},
+        {"bits-per-sample",         required_argument, NULL, 'b'},
+        {"block-size",              required_argument, NULL, 'B'},
+        {"correlation-passes",      required_argument, NULL, 'p'},
+        {"false-stereo",            no_argument,       NULL, 'f'},
+        {"wasted-bits",             no_argument,       NULL, 'w'},
+        {"joint-stereo",            no_argument,       NULL, 'j'}};
+    const static char* short_opts = "-hc:m:r:b:B:p:fwj";
+
+    while ((c = getopt_long(argc,
+                            argv,
+                            short_opts,
+                            long_opts,
+                            NULL)) != -1) {
+        switch (c) {
+        case 1:
+            if (output_file == NULL) {
+                output_file = optarg;
+            } else {
+                printf("only one output file allowed\n");
+                return 1;
+            }
+            break;
+        case 'c':
+            if (((channels = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --channel \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'm':
+            if (((channel_mask = strtoul(optarg, NULL, 16)) == 0) && errno) {
+                printf("invalid --channel-mask \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'r':
+            if (((sample_rate = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --sample-rate \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'b':
+            if (((bits_per_sample = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --bits-per-sample \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'B':
+            if (((block_size = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --block-size \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'p':
+            if (((correlation_passes =
+                  strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --correlation_passes \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'f':
+            false_stereo = 1;
+            break;
+        case 'w':
+            wasted_bits = 1;
+            break;
+        case 'j':
+            joint_stereo = 1;
+            break;
+        case 'h': /*fallthrough*/
+        case ':':
+        case '?':
+            printf("*** Usage: wvenc [options] <output.wv>\n");
+            printf("-c, --channels=#          number of input channels\n");
+            printf("-m, --channel-mask=#      channel mask as hex value\n");
+            printf("-r, --sample_rate=#       input sample rate in Hz\n");
+            printf("-b, --bits-per-sample=#   bits per input sample\n");
+            printf("\n");
+            printf("-B, --block-size=#              block size\n");
+            printf("-p, --correlation_passes=#      "
+                   "number of correlation passes\n");
+            printf("-f, --false-stereo              check for false stereo\n");
+            printf("-w, --wasted-bits               check for wasted bits");
+            printf("-j, --joint-stereo              use joint stereo\n");
+            return 0;
+        default:
+            break;
+        }
+    }
+    if (output_file == NULL) {
+        printf("exactly 1 output file required\n");
+        return 1;
+    }
+
+    assert(channels > 0);
+    assert((bits_per_sample == 8) ||
+           (bits_per_sample == 16) ||
+           (bits_per_sample == 24));
+    assert(sample_rate > 0);
+    assert((correlation_passes == 0) ||
+           (correlation_passes == 1) ||
+           (correlation_passes == 2) ||
+           (correlation_passes == 5) ||
+           (correlation_passes == 10) ||
+           (correlation_passes == 16));
+    assert(count_bits(channel_mask) == channels);
+
+    printf("Encoding from stdin using parameters:\n");
+    printf("channels        %u\n", channels);
+    printf("channel mask    0x%X\n", channel_mask);
+    printf("sample rate     %u\n", sample_rate);
+    printf("bits per sample %u\n", bits_per_sample);
+    printf("little-endian, signed samples\n");
+    printf("\n");
+    printf("block size         %u\n", block_size);
+    printf("correlation_passes %u\n", correlation_passes);
+    printf("false stereo       %d\n", false_stereo);
+    printf("wasted bits        %d\n", wasted_bits);
+    printf("joint stereo       %d\n", joint_stereo);
+
+    encoders_encode_wavpack(output_file,
+                            open_pcmreader(stdin,
+                                           sample_rate,
+                                           channels,
+                                           channel_mask,
+                                           bits_per_sample,
+                                           0,
+                                           1),
+                            block_size,
+                            false_stereo,
+                            wasted_bits,
+                            joint_stereo,
+                            correlation_passes);
     return 0;
 }
 

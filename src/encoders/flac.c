@@ -120,7 +120,7 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
 int
 encoders_encode_flac(char *filename,
-                     FILE *input,
+                     pcmreader* pcmreader,
                      unsigned block_size,
                      unsigned max_lpc_order,
                      unsigned min_residual_partition_order,
@@ -132,7 +132,6 @@ encoders_encode_flac(char *filename,
     BitstreamWriter* output_stream;
     uint64_t current_offset = 0;
     struct flac_context encoder;
-    pcmreader* pcmreader;
     char version_string[0xFF];
     audiotools__MD5Context md5sum;
     array_ia* samples;
@@ -153,9 +152,8 @@ encoders_encode_flac(char *filename,
     encoder.options.no_fixed_subframes = 0;
     encoder.options.no_lpc_subframes = 0;
 
+    /*FIXME - check for invalid output file*/
     output_file = fopen(filename, "wb");
-    /*FIXME - assume CD quality for now*/
-    pcmreader = open_pcmreader(input, 44100, 2, 0x3, 16, 0, 1);
 
 #endif
 
@@ -1639,12 +1637,174 @@ flacenc_abs_sum(const array_li* data)
 }
 
 #ifdef STANDALONE
+#include <getopt.h>
+#include <errno.h>
 
 int main(int argc, char *argv[]) {
-    encoders_encode_flac(argv[1],
-                         stdin,
-                         4096, 12, 0, 6, 1, 1, 1);
+    char* output_file = NULL;
+    unsigned channels = 2;
+    unsigned sample_rate = 44100;
+    unsigned bits_per_sample = 16;
 
-    return 0;
+    unsigned block_size = 4096;
+    unsigned max_lpc_order = 12;
+    unsigned min_partition_order = 0;
+    unsigned max_partition_order = 6;
+    int mid_side = 0;
+    int adaptive_mid_side = 0;
+    int exhaustive_model_search = 0;
+
+    char c;
+    const static struct option long_opts[] = {
+        {"help",                    no_argument,       NULL, 'h'},
+        {"channels",                required_argument, NULL, 'c'},
+        {"sample-rate",             required_argument, NULL, 'r'},
+        {"bits-per-sample",         required_argument, NULL, 'b'},
+        {"block-size",              required_argument, NULL, 'B'},
+        {"max-lpc-order",           required_argument, NULL, 'l'},
+        {"min-partition-order",     required_argument, NULL, 'P'},
+        {"max-partition-order",     required_argument, NULL, 'R'},
+        {"mid-side",                no_argument,       NULL, 'm'},
+        {"adaptive-mid-side",       no_argument,       NULL, 'M'},
+        {"exhaustive-model-search", no_argument,       NULL, 'e'},
+        {NULL, no_argument, NULL, 0}
+    };
+    const static char* short_opts = "-hc:r:b:B:l:P:R:mMe";
+
+    while ((c = getopt_long(argc,
+                            argv,
+                            short_opts,
+                            long_opts,
+                            NULL)) != -1) {
+        switch (c) {
+        case 1:
+            if (output_file == NULL) {
+                output_file = optarg;
+            } else {
+                printf("only one output file allowed\n");
+                return 1;
+            }
+            break;
+        case 'c':
+            if (((channels = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --channel \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'r':
+            if (((sample_rate = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --sample-rate \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'b':
+            if (((bits_per_sample = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --bits-per-sample \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'B':
+            if (((block_size = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --block-size \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'l':
+            if (((max_lpc_order = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --max-lpc-order \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'P':
+            if (((min_partition_order =
+                  strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --min-partition-order \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'R':
+            if (((max_partition_order =
+                  strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --max-partition-order \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'm':
+            mid_side = 1;
+            break;
+        case 'M':
+            adaptive_mid_side = 1;
+            break;
+        case 'e':
+            exhaustive_model_search = 1;
+            break;
+        case 'h': /*fallthrough*/
+        case ':':
+        case '?':
+            printf("*** Usage: flacenc [options] <output.flac>\n");
+            printf("-c, --channels=#          number of input channels\n");
+            printf("-r, --sample_rate=#       input sample rate in Hz\n");
+            printf("-b, --bits-per-sample=#   bits per input sample\n");
+            printf("\n");
+            printf("-B, --block-size=#              block size\n");
+            printf("-l, --max-lpc-order=#           maximum LPC order\n");
+            printf("-P, --min-partition-order=#     minimum partition order\n");
+            printf("-R, --max-partition-order=#     maximum partition order\n");
+            printf("-m, --mid-side                  use mid-side encoding\n");
+            printf("-M, --adaptive-mid-side         "
+                   "use adaptive mid-side encoding\n");
+            printf("-m, --mid-side                  use mid-side encoding\n");
+            printf("-e, --exhaustive-model-search   "
+                   "search for best subframe exhaustively\n");
+            return 0;
+        default:
+            break;
+        }
+    }
+    if (output_file == NULL) {
+        printf("exactly 1 output file required\n");
+        return 1;
+    }
+
+    assert((channels > 0) && (channels <= 8));
+    assert((bits_per_sample == 8) ||
+           (bits_per_sample == 16) ||
+           (bits_per_sample == 24));
+    assert(sample_rate > 0);
+
+    printf("Encoding from stdin using parameters:\n");
+    printf("channels        %u\n", channels);
+    printf("sample rate     %u\n", sample_rate);
+    printf("bits per sample %u\n", bits_per_sample);
+    printf("little-endian, signed samples\n");
+    printf("\n");
+    printf("block size              %u\n", block_size);
+    printf("max LPC order           %u\n", max_lpc_order);
+    printf("min partition order     %u\n", min_partition_order);
+    printf("max partition order     %u\n", max_partition_order);
+    printf("mid side                %d\n", mid_side);
+    printf("adaptive mid side       %d\n", adaptive_mid_side);
+    printf("exhaustive model search %d\n", exhaustive_model_search);
+
+    if (encoders_encode_flac(output_file,
+                             open_pcmreader(stdin,
+                                            sample_rate,
+                                            channels,
+                                            0,
+                                            bits_per_sample,
+                                            0,
+                                            1),
+                             block_size,
+                             max_lpc_order,
+                             min_partition_order,
+                             max_partition_order,
+                             mid_side,
+                             adaptive_mid_side,
+                             exhaustive_model_search)) {
+        return 0;
+    } else {
+        fprintf(stderr, "*** Error encoding FLAC file \"%s\"\n", output_file);
+        return 1;
+    }
 }
 #endif
