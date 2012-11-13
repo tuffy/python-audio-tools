@@ -1,5 +1,7 @@
 #include "shn.h"
 #include "../pcmconv.h"
+#include <string.h>
+#include <math.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -20,6 +22,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#ifndef STANDALONE
 PyObject*
 SHNDecoder_new(PyTypeObject *type,
                PyObject *args, PyObject *kwds)
@@ -38,7 +41,6 @@ SHNDecoder_init(decoders_SHNDecoder *self,
     char* filename;
     FILE* fp;
 
-    self->filename = NULL;
     self->bitstream = NULL;
     self->stream_finished = 0;
 
@@ -57,8 +59,6 @@ SHNDecoder_init(decoders_SHNDecoder *self,
     if (!PyArg_ParseTuple(args, "s", &filename))
         return -1;
 
-    self->filename = strdup(filename);
-
     /*open the shn file*/
     if ((fp = fopen(filename, "rb")) == NULL) {
         self->bitstream = NULL;
@@ -69,68 +69,21 @@ SHNDecoder_init(decoders_SHNDecoder *self,
     }
 
     /*read Shorten header for basic info*/
-    if (!setjmp(*br_try(self->bitstream))) {
-        uint8_t magic_number[4];
-        unsigned version;
-        unsigned i;
-
-        self->bitstream->parse(self->bitstream, "4b 8u",
-                               magic_number,
-                               &version);
-        if (memcmp(magic_number, "ajkg", 4)) {
-            PyErr_SetString(PyExc_ValueError, "invalid magic number");
-            br_etry(self->bitstream);
-            return -1;
-        }
-        if (version != 2) {
-            PyErr_SetString(PyExc_ValueError, "invalid Shorten version");
-            br_etry(self->bitstream);
-            return -1;
-        }
-
-        self->header.file_type = read_long(self->bitstream);
-        self->header.channels = read_long(self->bitstream);
-        self->block_length = read_long(self->bitstream);
-        self->header.max_LPC = read_long(self->bitstream);
-        self->header.mean_count = read_long(self->bitstream);
-        self->bitstream->skip_bytes(self->bitstream,
-                                    read_long(self->bitstream));
-
-        if ((1 <= self->header.file_type) && (self->header.file_type <= 2)) {
-            self->bits_per_sample = 8;
-            self->signed_samples = (self->header.file_type == 1);
-        } else if ((3 <= self->header.file_type) &&
-                   (self->header.file_type <= 6)) {
-            self->bits_per_sample = 16;
-            self->signed_samples = ((self->header.file_type == 3) ||
-                                    (self->header.file_type == 5));
-        } else {
-            PyErr_SetString(PyExc_ValueError, "unsupported Shorten file type");
-            br_etry(self->bitstream);
-            return -1;
-        }
-
-        for (i = 0; i < self->header.channels; i++) {
-            array_i* means = self->means->append(self->means);
-            means->mset(means, self->header.mean_count, 0);
-            self->previous_samples->append(self->previous_samples);
-        }
-
-        /*process first instruction for wave/aiff header, if present*/
-        if (process_header(self->bitstream,
-                           &(self->sample_rate), &(self->channel_mask))) {
-            br_etry(self->bitstream);
-            return -1;
-        }
-
-        br_etry(self->bitstream);
-
-        return 0;
-    } else {
-        /*read error in Shorten header*/
-        br_etry(self->bitstream);
+    switch (read_shn_header(self, self->bitstream)) {
+    case INVALID_MAGIC_NUMBER:
+        PyErr_SetString(PyExc_ValueError, "invalid magic number");
+        return -1;
+    case INVALID_SHORTEN_VERSION:
+        PyErr_SetString(PyExc_ValueError, "invalid Shorten version");
+        return -1;
+    case UNSUPPORTED_FILE_TYPE:
+        PyErr_SetString(PyExc_ValueError, "unsupported Shorten file type");
+        return -1;
+    case IOERROR:
         PyErr_SetString(PyExc_IOError, "I/O error reading Shorten header");
         return -1;
+    default:
+        return 0;
     }
 }
 
@@ -149,9 +102,6 @@ SHNDecoder_dealloc(decoders_SHNDecoder *self)
     if (self->bitstream != NULL) {
         self->bitstream->close(self->bitstream);
     }
-
-    if (self->filename != NULL)
-        free(self->filename);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -191,11 +141,7 @@ SHNDecoder_channel_mask(decoders_SHNDecoder *self, void *closure)
 PyObject*
 SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
 {
-    unsigned c = 0;
     PyThreadState *thread_state = NULL;
-
-    self->samples->reset(self->samples);
-    self->unshifted->reset(self->unshifted);
 
     if (self->stream_finished) {
         return empty_FrameList(self->audiotools_pcm,
@@ -204,6 +150,207 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
     }
 
     thread_state = PyEval_SaveThread();
+    self->unshifted->reset(self->unshifted);
+
+    switch (read_framelist(self, self->unshifted)) {
+    case OK:
+        PyEval_RestoreThread(thread_state);
+        return array_ia_to_FrameList(self->audiotools_pcm,
+                                     self->unshifted,
+                                     self->bits_per_sample);
+    case END_OF_STREAM:
+        PyEval_RestoreThread(thread_state);
+        return empty_FrameList(self->audiotools_pcm,
+                               self->header.channels,
+                               self->bits_per_sample);
+    case UNKNOWN_COMMAND:
+        PyEval_RestoreThread(thread_state);
+        PyErr_SetString(PyExc_ValueError,
+                        "unknown command in Shorten stream");
+        return NULL;
+    case IOERROR:
+        PyEval_RestoreThread(thread_state);
+        PyErr_SetString(PyExc_IOError, "I/O error reading Shorten file");
+        return NULL;
+    default:
+        /*shouldn't get here*/
+        PyEval_RestoreThread(thread_state);
+        PyErr_SetString(PyExc_ValueError,
+                        "unknown value from read_framelist()");
+        return NULL;
+    }
+}
+
+static PyObject*
+SHNDecoder_pcm_split(decoders_SHNDecoder* self, PyObject *args)
+{
+    if (!setjmp(*br_try(self->bitstream))) {
+        array_i* header = self->pcm_header;
+        array_i* footer = self->pcm_footer;
+        array_i* current = header;
+        uint8_t* header_s;
+        uint8_t* footer_s;
+        PyObject* tuple;
+
+        unsigned command;
+        unsigned i;
+
+        header->reset(header);
+        footer->reset(footer);
+
+        /*walk through file, processing all commands*/
+        do {
+            unsigned energy;
+            unsigned LPC_count;
+            unsigned verbatim_size;
+
+            command = read_unsigned(self->bitstream, COMMAND_SIZE);
+
+            switch (command) {
+            case FN_DIFF0:
+            case FN_DIFF1:
+            case FN_DIFF2:
+            case FN_DIFF3:
+                /*all the DIFF commands have the same structure*/
+                energy = read_unsigned(self->bitstream, ENERGY_SIZE);
+                for (i = 0; i < self->block_length; i++) {
+                    skip_signed(self->bitstream, energy);
+                }
+                current = footer;
+                break;
+            case FN_QUIT:
+                self->stream_finished = 1;
+                break;
+            case FN_BLOCKSIZE:
+                self->block_length = read_long(self->bitstream);
+                break;
+            case FN_BITSHIFT:
+                skip_unsigned(self->bitstream, SHIFT_SIZE);
+                break;
+            case FN_QLPC:
+                energy = read_unsigned(self->bitstream, ENERGY_SIZE);
+                LPC_count = read_unsigned(self->bitstream, LPC_COUNT_SIZE);
+                for (i = 0; i < LPC_count; i++) {
+                    skip_signed(self->bitstream, LPC_COEFF_SIZE);
+                }
+                for (i = 0; i < self->block_length; i++) {
+                    skip_signed(self->bitstream, energy);
+                }
+                current = footer;
+                break;
+            case FN_ZERO:
+                current = footer;
+                break;
+            case FN_VERBATIM:
+                /*any VERBATIM commands have their data appended
+                  to header or footer*/
+                verbatim_size = read_unsigned(self->bitstream,
+                                              VERBATIM_CHUNK_SIZE);
+                for (i = 0; i < verbatim_size; i++) {
+                    current->append(current,
+                                    read_unsigned(self->bitstream,
+                                                  VERBATIM_BYTE_SIZE));
+                }
+                break;
+            }
+        } while (command != FN_QUIT);
+
+        br_etry(self->bitstream);
+
+        /*once all commands have been processed,
+          transform the bytes in header and footer to strings*/
+        header_s = malloc(sizeof(uint8_t) * header->len);
+        for (i = 0; i < header->len; i++)
+            header_s[i] = (uint8_t)(header->_[i] & 0xFF);
+
+        footer_s = malloc(sizeof(uint8_t) * footer->len);
+        for (i = 0; i < footer->len; i++)
+            footer_s[i] = (uint8_t)(footer->_[i] & 0xFF);
+
+        /*generate a tuple from the strings*/
+        tuple = Py_BuildValue("(s#s#)",
+                              header_s, header->len,
+                              footer_s, footer->len);
+
+        /*deallocate temporary space before returning tuple*/
+        free(header_s);
+        free(footer_s);
+
+        return tuple;
+    } else {
+        br_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading Shorten file");
+        return NULL;
+    }
+}
+#endif
+
+static status
+read_shn_header(decoders_SHNDecoder* self, BitstreamReader* reader)
+{
+    if (!setjmp(*br_try(reader))) {
+        uint8_t magic_number[4];
+        unsigned version;
+        unsigned i;
+
+        reader->parse(reader, "4b 8u", magic_number, &version);
+        if (memcmp(magic_number, "ajkg", 4)) {
+            br_etry(reader);
+            return INVALID_MAGIC_NUMBER;
+        }
+        if (version != 2) {
+            br_etry(reader);
+            return INVALID_SHORTEN_VERSION;
+        }
+
+        self->header.file_type = read_long(reader);
+        self->header.channels = read_long(reader);
+        self->block_length = read_long(reader);
+        self->left_shift = 0;
+        self->header.max_LPC = read_long(reader);
+        self->header.mean_count = read_long(reader);
+        reader->skip_bytes(reader, read_long(reader));
+
+        if ((1 <= self->header.file_type) && (self->header.file_type <= 2)) {
+            self->bits_per_sample = 8;
+            self->signed_samples = (self->header.file_type == 1);
+        } else if ((3 <= self->header.file_type) &&
+                   (self->header.file_type <= 6)) {
+            self->bits_per_sample = 16;
+            self->signed_samples = ((self->header.file_type == 3) ||
+                                    (self->header.file_type == 5));
+        } else {
+            br_etry(reader);
+            return UNSUPPORTED_FILE_TYPE;
+        }
+
+        for (i = 0; i < self->header.channels; i++) {
+            array_i* means = self->means->append(self->means);
+            means->mset(means, self->header.mean_count, 0);
+            self->previous_samples->append(self->previous_samples);
+        }
+
+        /*process first instruction for wave/aiff header, if present*/
+        process_iff_header(reader,
+                           &(self->sample_rate),
+                           &(self->channel_mask));
+
+        br_etry(reader);
+
+        return OK;
+    } else {
+        /*read error in Shorten header*/
+        br_etry(reader);
+        return IOERROR;
+    }
+}
+
+static status
+read_framelist(decoders_SHNDecoder* self, array_ia* framelist)
+{
+    unsigned c = 0;
+
+    self->samples->reset(self->samples);
 
     if (!setjmp(*br_try(self->bitstream))) {
         while (1) {
@@ -216,28 +363,39 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
                 array_i* means = self->means->_[c];
                 array_i* previous_samples = self->previous_samples->_[c];
                 array_i* samples = self->samples->append(self->samples);
-                array_i* unshifted = self->unshifted->append(self->unshifted);
+                array_i* unshifted = framelist->append(framelist);
 
                 switch (command) {
                 case FN_DIFF0:
-                    read_diff0(self->bitstream, self->block_length, means,
+                    read_diff0(self->bitstream,
+                               self->block_length,
+                               means,
                                samples);
                     break;
                 case FN_DIFF1:
-                    read_diff1(self->bitstream, self->block_length,
-                               previous_samples, samples);
+                    read_diff1(self->bitstream,
+                               self->block_length,
+                               previous_samples,
+                               samples);
                     break;
                 case FN_DIFF2:
-                    read_diff2(self->bitstream, self->block_length,
-                               previous_samples, samples);
+                    read_diff2(self->bitstream,
+                               self->block_length,
+                               previous_samples,
+                               samples);
                     break;
                 case FN_DIFF3:
-                    read_diff3(self->bitstream, self->block_length,
-                               previous_samples, samples);
+                    read_diff3(self->bitstream,
+                               self->block_length,
+                               previous_samples,
+                               samples);
                     break;
                 case FN_QLPC:
-                    read_qlpc(self->bitstream, self->block_length,
-                              previous_samples, means, samples);
+                    read_qlpc(self->bitstream,
+                              self->block_length,
+                              previous_samples,
+                              means,
+                              samples);
                     break;
                 case FN_ZERO:
                     samples->mset(samples, self->block_length, 0);
@@ -257,9 +415,9 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
                 /*apply any left shift to channel*/
                 if (self->left_shift) {
                     unsigned i;
+                    unshifted->resize_for(unshifted, samples->len);
                     for (i = 0; i < samples->len; i++)
-                        unshifted->append(unshifted,
-                                          samples->_[i] << self->left_shift);
+                        a_append(unshifted, samples->_[i] << self->left_shift);
                 } else {
                     samples->copy(samples, unshifted);
                 }
@@ -275,14 +433,10 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
                 /*move on to next channel*/
                 c++;
 
-                /*once all channels are constructed,
-                  return a complete set of PCM frames*/
+                /*return OK once all channels are constructed*/
                 if (c == self->header.channels) {
                     br_etry(self->bitstream);
-                    PyEval_RestoreThread(thread_state);
-                    return array_ia_to_FrameList(self->audiotools_pcm,
-                                                 self->unshifted,
-                                                 self->bits_per_sample);
+                    return OK;
                 }
             } else if (((FN_QUIT <= command) && (command <= FN_BITSHIFT)) ||
                        (command == FN_VERBATIM)) {
@@ -294,11 +448,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
                 case FN_QUIT:
                     self->stream_finished = 1;
                     br_etry(self->bitstream);
-                    PyEval_RestoreThread(thread_state);
-                    return empty_FrameList(self->audiotools_pcm,
-                                           self->header.channels,
-                                           self->bits_per_sample);
-                    break;
+                    return END_OF_STREAM;
                 case FN_BLOCKSIZE:
                     self->block_length = read_long(self->bitstream);
                     break;
@@ -318,17 +468,12 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
             } else {
                 /*unknown command*/
                 br_etry(self->bitstream);
-                PyEval_RestoreThread(thread_state);
-                PyErr_SetString(PyExc_ValueError,
-                                "unknown command in Shorten stream");
-                return NULL;
+                return UNKNOWN_COMMAND;
             }
         }
     } else {
         br_etry(self->bitstream);
-        PyEval_RestoreThread(thread_state);
-        PyErr_SetString(PyExc_IOError, "I/O error reading Shorten file");
-        return NULL;
+        return IOERROR;
     }
 }
 
@@ -508,109 +653,6 @@ shnmean(const array_i* values)
     return ((int)(values->len / 2) + values->sum(values)) / (int)(values->len);
 }
 
-static PyObject*
-SHNDecoder_pcm_split(decoders_SHNDecoder* self, PyObject *args)
-{
-    if (!setjmp(*br_try(self->bitstream))) {
-        array_i* header = self->pcm_header;
-        array_i* footer = self->pcm_footer;
-        array_i* current = header;
-        uint8_t* header_s;
-        uint8_t* footer_s;
-        PyObject* tuple;
-
-        unsigned command;
-        unsigned i;
-
-        header->reset(header);
-        footer->reset(footer);
-
-        /*walk through file, processing all commands*/
-        do {
-            unsigned energy;
-            unsigned LPC_count;
-            unsigned verbatim_size;
-
-            command = read_unsigned(self->bitstream, COMMAND_SIZE);
-
-            switch (command) {
-            case FN_DIFF0:
-            case FN_DIFF1:
-            case FN_DIFF2:
-            case FN_DIFF3:
-                /*all the DIFF commands have the same structure*/
-                energy = read_unsigned(self->bitstream, ENERGY_SIZE);
-                for (i = 0; i < self->block_length; i++) {
-                    skip_signed(self->bitstream, energy);
-                }
-                current = footer;
-                break;
-            case FN_QUIT:
-                self->stream_finished = 1;
-                break;
-            case FN_BLOCKSIZE:
-                self->block_length = read_long(self->bitstream);
-                break;
-            case FN_BITSHIFT:
-                skip_unsigned(self->bitstream, SHIFT_SIZE);
-                break;
-            case FN_QLPC:
-                energy = read_unsigned(self->bitstream, ENERGY_SIZE);
-                LPC_count = read_unsigned(self->bitstream, LPC_COUNT_SIZE);
-                for (i = 0; i < LPC_count; i++) {
-                    skip_signed(self->bitstream, LPC_COEFF_SIZE);
-                }
-                for (i = 0; i < self->block_length; i++) {
-                    skip_signed(self->bitstream, energy);
-                }
-                current = footer;
-                break;
-            case FN_ZERO:
-                current = footer;
-                break;
-            case FN_VERBATIM:
-                /*any VERBATIM commands have their data appended
-                  to header or footer*/
-                verbatim_size = read_unsigned(self->bitstream,
-                                              VERBATIM_CHUNK_SIZE);
-                for (i = 0; i < verbatim_size; i++) {
-                    current->append(current,
-                                    read_unsigned(self->bitstream,
-                                                  VERBATIM_BYTE_SIZE));
-                }
-                break;
-            }
-        } while (command != FN_QUIT);
-
-        br_etry(self->bitstream);
-
-        /*once all commands have been processed,
-          transform the bytes in header and footer to strings*/
-        header_s = malloc(sizeof(uint8_t) * header->len);
-        for (i = 0; i < header->len; i++)
-            header_s[i] = (uint8_t)(header->_[i] & 0xFF);
-
-        footer_s = malloc(sizeof(uint8_t) * footer->len);
-        for (i = 0; i < footer->len; i++)
-            footer_s[i] = (uint8_t)(footer->_[i] & 0xFF);
-
-        /*generate a tuple from the strings*/
-        tuple = Py_BuildValue("(s#s#)",
-                              header_s, header->len,
-                              footer_s, footer->len);
-
-        /*deallocate temporary space before returning tuple*/
-        free(header_s);
-        free(footer_s);
-
-        return tuple;
-    } else {
-        br_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error reading Shorten file");
-        return NULL;
-    }
-}
-
 static unsigned
 read_unsigned(BitstreamReader* bs, unsigned count)
 {
@@ -651,9 +693,10 @@ skip_signed(BitstreamReader* bs, unsigned int count)
     bs->skip(bs, count + 1);
 }
 
-static int
-process_header(BitstreamReader* bs,
-               unsigned* sample_rate, unsigned* channel_mask)
+static void
+process_iff_header(BitstreamReader* bs,
+                   unsigned* sample_rate,
+                   unsigned* channel_mask)
 {
     unsigned command;
 
@@ -675,7 +718,7 @@ process_header(BitstreamReader* bs,
                 bs->rewind(bs);
                 bs->unmark(bs);
                 br_etry(bs);
-                return 0;
+                return;
             } else {
                 verbatim->rewind(verbatim);
             }
@@ -687,7 +730,7 @@ process_header(BitstreamReader* bs,
                 bs->rewind(bs);
                 bs->unmark(bs);
                 br_etry(bs);
-                return 0;
+                return;
             } else {
                 verbatim->rewind(verbatim);
             }
@@ -701,7 +744,7 @@ process_header(BitstreamReader* bs,
             *sample_rate = 44100;
             *channel_mask = 0;
             br_etry(bs);
-            return 0;
+            return;
         } else {
             /*VERBATIM isn't the first command
               so rewind and set some dummy values*/
@@ -710,13 +753,15 @@ process_header(BitstreamReader* bs,
             *sample_rate = 44100;
             *channel_mask = 0;
             br_etry(bs);
-            return 0;
+            return;
         }
     } else {
+        /*wrap IFF chunk reader in try block
+          to unmark the stream prior to bubbling up
+          the read exception to read_shn_header()*/
         bs->unmark(bs);
         br_etry(bs);
         br_abort(bs);
-        return 0; /*won't get here*/
     }
 }
 
@@ -954,3 +999,135 @@ read_ieee_extended(BitstreamReader* bs)
             return f;
     }
 }
+
+#ifdef STANDALONE
+#include <errno.h>
+
+int main(int argc, char* argv[]) {
+    decoders_SHNDecoder decoder;
+    FILE* file;
+    array_ia* framelist;
+    unsigned output_data_size;
+    unsigned char* output_data;
+    unsigned bytes_per_sample;
+    FrameList_int_to_char_converter converter;
+
+    if (argc < 2) {
+        fprintf(stderr, "*** Usage: %s <file.shn>\n", argv[0]);
+        return 1;
+    }
+    if ((file = fopen(argv[1], "rb")) == NULL) {
+        fprintf(stderr, "*** %s: %s\n", argv[1], strerror(errno));
+        return 1;
+    } else {
+        decoder.bitstream = br_open(file, BS_BIG_ENDIAN);
+        decoder.stream_finished = 0;
+
+        decoder.means = array_ia_new();
+        decoder.previous_samples = array_ia_new();
+
+        decoder.samples = array_ia_new();
+        decoder.unshifted = array_ia_new();
+        decoder.pcm_header = array_i_new();
+        decoder.pcm_footer = array_i_new();
+
+        framelist = array_ia_new();
+
+        output_data_size = 1;
+        output_data = malloc(output_data_size);
+    }
+
+    /*read Shorten header for basic info*/
+    switch (read_shn_header(&decoder, decoder.bitstream)) {
+    case INVALID_MAGIC_NUMBER:
+        fprintf(stderr, "invalid magic number");
+        goto error;
+    case INVALID_SHORTEN_VERSION:
+        fprintf(stderr, "invalid Shorten version");
+        goto error;
+    case UNSUPPORTED_FILE_TYPE:
+        fprintf(stderr, "unsupported Shorten file type");
+        goto error;
+    case IOERROR:
+        fprintf(stderr, "I/O error reading Shorten header");
+        goto error;
+    default:
+        bytes_per_sample = decoder.bits_per_sample / 8;
+        converter = FrameList_get_int_to_char_converter(
+            decoder.bits_per_sample, 0, 1);
+        break;
+    }
+
+    while (!decoder.stream_finished) {
+        unsigned pcm_size;
+        unsigned channel;
+        unsigned frame;
+
+        framelist->reset(framelist);
+        /*decode set of commands into a single framelist*/
+        switch (read_framelist(&decoder, framelist)) {
+        case OK:
+            /*convert framelist to string and output it to stdout*/
+            pcm_size = (bytes_per_sample *
+                        framelist->len *
+                        framelist->_[0]->len);
+            if (pcm_size > output_data_size) {
+                output_data_size = pcm_size;
+                output_data = realloc(output_data, output_data_size);
+            }
+            for (channel = 0; channel < framelist->len; channel++) {
+                const array_i* channel_data = framelist->_[channel];
+                for (frame = 0; frame < channel_data->len; frame++) {
+                    converter(channel_data->_[frame],
+                              output_data +
+                              ((frame * framelist->len) + channel) *
+                              bytes_per_sample);
+                }
+            }
+
+            fwrite(output_data, sizeof(unsigned char), pcm_size, stdout);
+            break;
+        case END_OF_STREAM:
+            /*automatically sets stream_finished to true*/
+            break;
+        case UNKNOWN_COMMAND:
+            fprintf(stderr, "unknown command in Shorten stream");
+            goto error;
+        case IOERROR:
+            fprintf(stderr, "I/O error reading Shorten file");
+            goto error;
+        default:
+            /*shouldn't get here*/
+            fprintf(stderr, "unknown value from read_framelist()");
+            goto error;
+        }
+    }
+
+    decoder.bitstream->close(decoder.bitstream);
+
+    decoder.means->del(decoder.means);
+    decoder.previous_samples->del(decoder.previous_samples);
+    decoder.samples->del(decoder.samples);
+    decoder.unshifted->del(decoder.unshifted);
+    decoder.pcm_header->del(decoder.pcm_header);
+    decoder.pcm_footer->del(decoder.pcm_footer);
+    framelist->del(framelist);
+    free(output_data);
+
+    return 0;
+
+error:
+    decoder.bitstream->close(decoder.bitstream);
+
+    decoder.means->del(decoder.means);
+    decoder.previous_samples->del(decoder.previous_samples);
+    decoder.samples->del(decoder.samples);
+    decoder.unshifted->del(decoder.unshifted);
+    decoder.pcm_header->del(decoder.pcm_header);
+    decoder.pcm_footer->del(decoder.pcm_footer);
+    framelist->del(framelist);
+    free(output_data);
+
+    return 1;
+}
+#endif

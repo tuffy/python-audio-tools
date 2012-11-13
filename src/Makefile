@@ -3,7 +3,7 @@
 VERSION = "2.19beta1"
 OBJS = array.o pcm.o bitstream.o
 FLAGS = -Wall -g
-BINARIES = flacdec wvdec flacenc alacenc wvenc huffman bitstream
+BINARIES = alacdec flacdec wvdec shndec flacenc alacenc wvenc huffman bitstream
 
 all: $(BINARIES)
 
@@ -15,6 +15,9 @@ wvdec: $(OBJS) decoders/wavpack.c decoders/wavpack.h md5.o pcmconv.o
 
 alacdec: $(OBJS) decoders/alac.c decoders/alac.h pcmconv.o
 	$(CC) $(FLAGS) -o alacdec decoders/alac.c $(OBJS) pcmconv.o -DSTANDALONE
+
+shndec: $(OBJS) decoders/shn.c decoders/shn.h pcmconv.o
+	$(CC) $(FLAGS) -o shndec decoders/shn.c $(OBJS) pcmconv.o -DSTANDALONE -lm
 
 flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_crc.o md5.o pcmconv.o
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) md5.o flac_crc.o pcmconv.o -DSTANDALONE -lm

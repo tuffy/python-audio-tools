@@ -1,4 +1,6 @@
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 #include <stdint.h>
 #include "../bitstream.h"
 #include "../array.h"
@@ -22,7 +24,13 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-typedef enum {OK, ERROR} status;
+typedef enum {OK,
+              END_OF_STREAM,
+              IOERROR,
+              UNKNOWN_COMMAND,
+              INVALID_MAGIC_NUMBER,
+              INVALID_SHORTEN_VERSION,
+              UNSUPPORTED_FILE_TYPE} status;
 
 #define COMMAND_SIZE 2
 #define ENERGY_SIZE 3
@@ -48,9 +56,10 @@ enum {FN_DIFF0     = 0,
       FN_VERBATIM  = 9};
 
 typedef struct {
+#ifndef STANDALONE
     PyObject_HEAD
+#endif
 
-    char* filename;
     BitstreamReader* bitstream;
 
     /*fixed fields from the Shorten header*/
@@ -82,10 +91,13 @@ typedef struct {
     array_i* pcm_header;
     array_i* pcm_footer;
 
+#ifndef STANDALONE
     /*a framelist generator*/
     PyObject* audiotools_pcm;
+#endif
 } decoders_SHNDecoder;
 
+#ifndef STANDALONE
 PyObject*
 SHNDecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
@@ -186,6 +198,18 @@ PyTypeObject decoders_SHNDecoderType = {
     0,                         /* tp_alloc */
     SHNDecoder_new,            /* tp_new */
 };
+#endif
+
+static status
+read_shn_header(decoders_SHNDecoder* self, BitstreamReader* reader);
+
+static void
+process_iff_header(BitstreamReader* bs,
+                   unsigned* sample_rate,
+                   unsigned* channel_mask);
+
+static status
+read_framelist(decoders_SHNDecoder* self, array_ia* framelist);
 
 /*given a list of samples and a set of means for the given channel,
   reads a DIFF0 command and sets samples to "block_length" values*/
@@ -220,10 +244,6 @@ read_qlpc(BitstreamReader* bs, unsigned block_length,
 
 static int
 shnmean(const array_i* values);
-
-static int
-process_header(BitstreamReader* bs,
-               unsigned* sample_rate, unsigned* channel_mask);
 
 /*reads the contents of a VERBATIM command
   into a substream for parsing*/
