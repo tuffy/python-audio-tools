@@ -1,3 +1,6 @@
+#ifndef STANDALONE
+#include <Python.h>
+#endif
 #include "shn.h"
 
 /********************************************************
@@ -19,6 +22,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#ifndef STANDALONE
 PyObject*
 encoders_encode_shn(PyObject *dummy,
                     PyObject *args, PyObject *keywds)
@@ -105,7 +109,7 @@ encoders_encode_shn(PyObject *dummy,
     for (i = 0; i < header_size; i++)
         write_unsigned(writer, VERBATIM_BYTE_SIZE, (uint8_t)header_data[i]);
 
-    /*process PCM frames */
+    /*process PCM frames*/
     if (encode_audio(writer, pcmreader, signed_samples, block_size))
         goto error;
 
@@ -120,7 +124,7 @@ encoders_encode_shn(PyObject *dummy,
     /*issue QUIT command*/
     write_unsigned(writer, COMMAND_SIZE, FN_QUIT);
 
-    /*pad output (non including header) to a multiple of 4 bytes*/
+    /*pad output (not including header) to a multiple of 4 bytes*/
     writer->byte_align(writer);
     while ((bytes_written % 4) != 0) {
         writer->write(writer, 8, 0);
@@ -138,6 +142,7 @@ encoders_encode_shn(PyObject *dummy,
 
     return NULL;
 }
+#endif
 
 static void
 write_header(BitstreamWriter* bs,
@@ -482,3 +487,229 @@ write_long(BitstreamWriter* bs, unsigned value)
         write_unsigned(bs, LSBs, value);
     }
 }
+
+#ifdef STANDALONE
+#include <getopt.h>
+#include <errno.h>
+#include <string.h>
+
+int main(int argc, char* argv[]) {
+    char* output_filename = NULL;
+    unsigned channels = 2;
+    unsigned sample_rate = 44100;
+    unsigned bits_per_sample = 16;
+
+    unsigned block_size = 256;
+    BitstreamWriter* header = bw_open_recorder(BS_BIG_ENDIAN);
+    BitstreamWriter* footer = bw_open_recorder(BS_BIG_ENDIAN);
+
+    pcmreader* pcmreader;
+    FILE *output_file;
+    BitstreamWriter* writer;
+    unsigned bytes_written = 0;
+
+    char c;
+    const static struct option long_opts[] = {
+        {"help",                    no_argument,       NULL, 'h'},
+        {"channels",                required_argument, NULL, 'c'},
+        {"sample-rate",             required_argument, NULL, 'r'},
+        {"bits-per-sample",         required_argument, NULL, 'b'},
+        {"block-size",              required_argument, NULL, 'B'},
+        {"header",                  required_argument, NULL, 'H'},
+        {"footer",                  required_argument, NULL, 'F'},
+        {NULL,                      no_argument,       NULL,  0}
+    };
+    const static char* short_opts = "-hc:r:b:B:H:F:";
+
+    while ((c = getopt_long(argc,
+                            argv,
+                            short_opts,
+                            long_opts,
+                            NULL)) != -1) {
+        FILE* f;
+
+        switch (c) {
+        case 1:
+            if (output_filename == NULL) {
+                output_filename = optarg;
+            } else {
+                printf("only one output file allowed\n");
+                return 1;
+            }
+            break;
+        case 'c':
+            if (((channels = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --channel \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'r':
+            if (((sample_rate = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --sample-rate \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'b':
+            if (((bits_per_sample = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --bits-per-sample \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'B':
+            if (((block_size = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --block-size \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'H':
+            bw_reset_recorder(header);
+            if ((f = fopen(optarg, "rb")) != NULL) {
+                uint8_t bytes[4096];
+                size_t byte_count;
+                byte_count = fread(bytes, sizeof(uint8_t), 4096, f);
+                while (byte_count > 0) {
+                    header->write_bytes(header,
+                                        bytes,
+                                        (unsigned int)byte_count);
+                    byte_count = fread(bytes, sizeof(uint8_t), 4096, f);
+                }
+                fclose(f);
+            } else {
+                fprintf(stderr, "*** Error: %s: %s\n",
+                        optarg, strerror(errno));
+                goto error;
+            }
+            break;
+        case 'F':
+            bw_reset_recorder(footer);
+            if ((f = fopen(optarg, "rb")) != NULL) {
+                uint8_t bytes[4096];
+                size_t byte_count;
+                byte_count = fread(bytes, sizeof(uint8_t), 4096, f);
+                while (byte_count > 0) {
+                    footer->write_bytes(footer,
+                                        bytes,
+                                        (unsigned int)byte_count);
+                    byte_count = fread(bytes, sizeof(uint8_t), 4096, f);
+                }
+                fclose(f);
+            } else {
+                fprintf(stderr, "*** Error: %s: %s\n",
+                        optarg, strerror(errno));
+                goto error;
+            }
+            break;
+        case 'h': /*fallthrough*/
+        case ':':
+        case '?':
+            printf("*** Usage: shnenc [options] <output.shn>\n");
+            printf("-c, --channels=#          number of input channels\n");
+            printf("-r, --sample_rate=#       input sample rate in Hz\n");
+            printf("-b, --bits-per-sample=#   bits per input sample\n");
+            printf("\n");
+            printf("-B, --block-size=#              block size\n");
+            printf("-H, --header=<filename>         header data\n");
+            printf("-F, --footer=<filename>         footer data\n");
+            goto exit;
+        default:
+            break;
+        }
+    }
+    if (output_filename == NULL) {
+        printf("exactly 1 output file required\n");
+        return 1;
+    }
+
+    assert(channels > 0);
+    assert((bits_per_sample == 8) ||
+           (bits_per_sample == 16));
+    assert(sample_rate > 0);
+
+    printf("Encoding from stdin using parameters:\n");
+    printf("channels        %u\n", channels);
+    printf("sample rate     %u\n", sample_rate);
+    printf("bits per sample %u\n", bits_per_sample);
+    printf("little-endian, signed samples\n");
+    printf("\n");
+    printf("block size      %u\n", block_size);
+    printf("header size     %u bytes\n", header->bytes_written(header));
+    printf("footer size     %u bytes\n", footer->bytes_written(footer));
+
+    /*open pcmreader on stdin*/
+    pcmreader = open_pcmreader(stdin,
+                               sample_rate,
+                               channels,
+                               0,
+                               bits_per_sample,
+                               0,
+                               1);
+
+    /*open given filename for writing*/
+    if ((output_file = fopen(output_filename, "wb")) == NULL) {
+        fprintf(stderr, "*** %s: %s\n", output_filename, strerror(errno));
+        pcmreader->close(pcmreader);
+        goto error;
+    } else {
+        writer = bw_open(output_file, BS_BIG_ENDIAN);
+    }
+
+    /*write magic number and version*/
+    writer->build(writer, "4b 8u", "ajkg", 2);
+
+    bw_add_callback(writer, byte_counter, &bytes_written);
+
+    /*write Shorten header*/
+    write_header(writer,
+                 pcmreader->bits_per_sample,
+                 0,
+                 1,
+                 pcmreader->channels,
+                 block_size);
+
+    /*issue initial VERBATIM command with header data*/
+    write_unsigned(writer, COMMAND_SIZE, FN_VERBATIM);
+    write_unsigned(writer, VERBATIM_SIZE, header->bytes_written(header));
+    while (header->bytes_written(header))
+        write_unsigned(writer,
+                       VERBATIM_BYTE_SIZE,
+                       (uint8_t)buf_getc(header->output.buffer));
+
+    /*process PCM frames*/
+    if (encode_audio(writer, pcmreader, 1, block_size))
+        goto error;
+
+    /*if there's footer data, issue a VERBATIM command for it*/
+    if (footer->bytes_written(footer)) {
+        write_unsigned(writer, COMMAND_SIZE, FN_VERBATIM);
+        write_unsigned(writer, VERBATIM_SIZE, footer->bytes_written(footer));
+        while (footer->bytes_written(footer))
+            write_unsigned(writer,
+                           VERBATIM_BYTE_SIZE,
+                           (uint8_t)buf_getc(footer->output.buffer));
+    }
+
+    /*issue QUIT command*/
+    write_unsigned(writer, COMMAND_SIZE, FN_QUIT);
+
+    /*pad output (not including header) to a multiple of 4 bytes*/
+    writer->byte_align(writer);
+    while ((bytes_written % 4) != 0) {
+        writer->write(writer, 8, 0);
+    }
+
+    /*deallocate temporary buffers and close files*/
+    pcmreader->close(pcmreader);
+    pcmreader->del(pcmreader);
+    writer->close(writer);
+
+exit:
+    header->close(header);
+    footer->close(footer);
+    return 0;
+
+error:
+    header->close(header);
+    footer->close(footer);
+    return 1;
+}
+#endif

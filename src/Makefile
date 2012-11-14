@@ -25,8 +25,8 @@ flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_crc.o md5.o pcmconv.o
 alacenc: $(OBJS) encoders/alac.c encoders/alac.h pcmconv.o
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c pcmconv.o $(OBJS) -DSTANDALONE -lm
 
-shnenc: $(OBJS) encoders/shn.c encoders/shn.h
-	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o shnenc encoders/shn.c $(OBJS) -DSTANDALONE -lm
+shnenc: $(OBJS) encoders/shn.c encoders/shn.h pcmconv.o
+	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o shnenc encoders/shn.c pcmconv.o $(OBJS) -DSTANDALONE -lm
 
 wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o pcmconv.o
 	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c md5.o pcmconv.o $(OBJS) -DSTANDALONE

@@ -1667,7 +1667,7 @@ int main(int argc, char *argv[]) {
         {"mid-side",                no_argument,       NULL, 'm'},
         {"adaptive-mid-side",       no_argument,       NULL, 'M'},
         {"exhaustive-model-search", no_argument,       NULL, 'e'},
-        {NULL, no_argument, NULL, 0}
+        {NULL,                      no_argument,       NULL,  0}
     };
     const static char* short_opts = "-hc:r:b:B:l:P:R:mMe";
 
