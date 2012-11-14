@@ -3,7 +3,9 @@
 VERSION = "2.19beta1"
 OBJS = array.o pcm.o bitstream.o
 FLAGS = -Wall -g
-BINARIES = alacdec flacdec wvdec shndec flacenc alacenc wvenc huffman bitstream
+BINARIES = alacdec flacdec shndec wvdec \
+alacenc flacenc shnenc wvenc \
+huffman bitstream
 
 all: $(BINARIES)
 
@@ -37,8 +39,8 @@ wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o pcmconv.o
 dvdadec: dvda/dvda.c dvda/dvda.h bitstream.o
 	$(CC) $(FLAGS) -o dvdadec dvda/dvda.c bitstream.o -DSTANDALONE
 
-huffman: huffman.c huffman.h
-	$(CC) $(FLAGS) -o huffman huffman.c -DSTANDALONE -DEXECUTABLE -ljansson
+huffman: huffman.c huffman.h parson.o
+	$(CC) $(FLAGS) -o huffman huffman.c parson.o -DSTANDALONE -DEXECUTABLE
 
 clean:
 	rm -f $(BINARIES) *.o
@@ -66,3 +68,6 @@ huffman.o: huffman.c huffman.h
 
 bitstream: bitstream.c bitstream.h huffman.o
 	$(CC) $(FLAGS) bitstream.c huffman.o -DEXECUTABLE -o $@
+
+parson.o: parson.c parson.h
+	$(CC) $(FLAGS) -c parson.c

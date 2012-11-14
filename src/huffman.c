@@ -419,13 +419,13 @@ int compile_huffman_table(struct br_huffman_table (**table)[][0x200],
 
 #ifdef EXECUTABLE
 
-#include <jansson.h>
+#include "parson.h"
 #include <getopt.h>
 
 struct huffman_frequency* json_to_frequencies(const char* path,
                                               unsigned int* total_frequencies);
 
-struct huffman_frequency parse_json_pair(json_t* bit_list, json_t* value);
+struct huffman_frequency parse_json_pair(JSON_Array* bit_list, double value);
 
 int main(int argc, char* argv[]) {
     /*option handling variables*/
@@ -533,48 +533,53 @@ int main(int argc, char* argv[]) {
 
 struct huffman_frequency* json_to_frequencies(const char* path,
                                               unsigned int* total_frequencies) {
-    json_error_t error;
-    json_t* input = json_load_file(path, 0, &error);
+    JSON_Value* file;
+    JSON_Array* input;
     size_t input_size;
     int o;
     size_t i;
     struct huffman_frequency* frequencies;
 
-    if (input == NULL) {
-        fprintf(stderr, "%s %d: %s\n", error.source, error.line, error.text);
+    if ((file = json_parse_file(path)) == NULL) {
+        fprintf(stderr, "error parsing input .json file \"%s\"\n", path);
         exit(1);
+    } else {
+        input = json_value_get_array(file);
+        if (input == NULL) {
+            fprintf(stderr, "JSON file isn't an array of items\n");
+            exit(1);
+        }
     }
 
-    input_size = json_array_size(input);
+    input_size = json_array_get_count(input);
 
-    frequencies = malloc(sizeof(struct huffman_frequency) *
-                         (input_size / 2));
+    frequencies = malloc(sizeof(struct huffman_frequency) * (input_size / 2));
 
     *total_frequencies = input_size / 2;
     for (i = o = 0; i < input_size; i += 2,o++) {
-        frequencies[o] = parse_json_pair(json_array_get(input, i),
-                                         json_array_get(input, i + 1));
+        frequencies[o] = parse_json_pair(json_array_get_array(input, i),
+                                         json_array_get_number(input, i + 1));
     }
 
-    json_decref(input);
+    json_value_free(file);
 
     return frequencies;
 }
 
-struct huffman_frequency parse_json_pair(json_t* bit_list, json_t* value) {
+struct huffman_frequency parse_json_pair(JSON_Array* bit_list, double value) {
     struct huffman_frequency frequency;
     size_t i;
 
     frequency.bits = 0;
     frequency.length = 0;
 
-    for (i = 0; i < json_array_size(bit_list); i++) {
+    for (i = 0; i < json_array_get_count(bit_list); i++) {
         frequency.bits = ((frequency.bits << 1) |
-                          json_integer_value(json_array_get(bit_list, i)));
+                          (int)(json_array_get_number(bit_list, i)));
         frequency.length++;
     }
 
-    frequency.value = json_integer_value(value);
+    frequency.value = (int)(value);
 
     return frequency;
 }

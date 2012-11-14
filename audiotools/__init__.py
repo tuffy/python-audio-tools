@@ -4743,7 +4743,6 @@ class ExecQueue:
 
         #as processes end, keep adding new ones to the pool
         #until we run out of queued jobs
-
         while (len(self.todo) > 0):
             try:
                 (pid, return_value) = os.waitpid(0, 0)
