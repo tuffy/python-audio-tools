@@ -6171,7 +6171,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] wavpack
 *** TODO Update standalone encoders to take command-line arguments
     This would make them easier to memory test.
-    - [ ] alac
+    - [X] alac
     - [X] flac
     - [ ] shorten
     - [X] wavpack

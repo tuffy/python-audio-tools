@@ -96,7 +96,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
 int
 ALACEncoder_encode_alac(char *filename,
-                        FILE *input,
+                        pcmreader* pcmreader,
                         int block_size,
                         int initial_history,
                         int history_multiplier,
@@ -104,7 +104,6 @@ ALACEncoder_encode_alac(char *filename,
 {
     FILE *output_file;
     BitstreamWriter *output = NULL;
-    pcmreader *pcmreader;
     struct alac_context encoder;
     array_ia* channels = array_ia_new();
     unsigned frame_file_offset;
@@ -118,10 +117,8 @@ ALACEncoder_encode_alac(char *filename,
     encoder.options.minimum_interlacing_leftweight = 0;
     encoder.options.maximum_interlacing_leftweight = 4;
 
+    /*FIXME - make sure this opens correctly*/
     output_file = fopen(filename, "wb");
-    /*assume CD quality for now*/
-    pcmreader = open_pcmreader(input, 44100, 2, 0x3, 16, 0, 1);
-
     encoder.bits_per_sample = pcmreader->bits_per_sample;
 
     /*convert file object to bitstream writer*/
@@ -1144,22 +1141,7 @@ write_subframe_header(BitstreamWriter *bs,
     }
 }
 
-#ifdef STANDALONE
-int main(int argc, char *argv[]) {
-    if (ALACEncoder_encode_alac(argv[1],
-                                stdin,
-                                4096,
-                                10,
-                                40,
-                                14)) {
-        fprintf(stderr, "Error during encoding\n");
-        return 1;
-    } else {
-        return 0;
-    }
-}
-#else
-
+#ifndef STANDALONE
 PyObject
 *alac_log_output(struct alac_context *encoder)
 {
@@ -1213,5 +1195,166 @@ PyObject
     Py_XDECREF(file_offset_list);
     return NULL;
 }
+#else
+#include <getopt.h>
+#include <errno.h>
 
+static unsigned
+count_bits(unsigned value)
+{
+    unsigned bits = 0;
+    while (value) {
+        bits += value & 0x1;
+        value >>= 1;
+    }
+    return bits;
+}
+
+int main(int argc, char *argv[]) {
+    char* output_file = NULL;
+    unsigned channels = 2;
+    unsigned channel_mask = 0x3;
+    unsigned sample_rate = 44100;
+    unsigned bits_per_sample = 16;
+
+    int block_size = 4096;
+    int initial_history = 10;
+    int history_multiplier = 40;
+    int maximum_k = 14;
+
+    char c;
+    const static struct option long_opts[] = {
+        {"help",                    no_argument,       NULL, 'h'},
+        {"channels",                required_argument, NULL, 'c'},
+        {"sample-rate",             required_argument, NULL, 'r'},
+        {"bits-per-sample",         required_argument, NULL, 'b'},
+        {"block-size",              required_argument, NULL, 'B'},
+        {"initial-history",         required_argument, NULL, 'I'},
+        {"history-multiplier",      required_argument, NULL, 'M'},
+        {"maximum-K",               required_argument, NULL, 'K'},
+        {NULL,                      no_argument, NULL, 0}};
+    const static char* short_opts = "-hc:r:b:B:M:K:";
+
+    while ((c = getopt_long(argc,
+                            argv,
+                            short_opts,
+                            long_opts,
+                            NULL)) != -1) {
+        switch (c) {
+        case 1:
+            if (output_file == NULL) {
+                output_file = optarg;
+            } else {
+                printf("only one output file allowed\n");
+                return 1;
+            }
+            break;
+        case 'c':
+            if (((channels = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --channel \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'm':
+            if (((channel_mask = strtoul(optarg, NULL, 16)) == 0) && errno) {
+                printf("invalid --channel-mask \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'r':
+            if (((sample_rate = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --sample-rate \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'b':
+            if (((bits_per_sample = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --bits-per-sample \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'B':
+            if (((block_size = strtol(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --block-size \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'I':
+            if (((initial_history = strtol(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --initial-history \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'M':
+            if (((history_multiplier =
+                  strtol(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --history-multiplier \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'K':
+            if (((maximum_k = strtol(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --maximum-K \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'h': /*fallthrough*/
+        case ':':
+        case '?':
+            printf("*** Usage: alacenc [options] <output.m4a>\n");
+            printf("-c, --channels=#          number of input channels\n");
+            printf("-r, --sample_rate=#       input sample rate in Hz\n");
+            printf("-b, --bits-per-sample=#   bits per input sample\n");
+            printf("\n");
+            printf("-B, --block-size=#              block size\n");
+            printf("-I, --initial-history=#         initial history\n");
+            printf("-M, --history-multiplier=#      history multiplier\n");
+            printf("-K, --maximum-K=#     maximum K\n");
+            return 0;
+        default:
+            break;
+        }
+    }
+    if (output_file == NULL) {
+        printf("exactly 1 output file required\n");
+        return 1;
+    }
+
+    assert(channels > 0);
+    assert((bits_per_sample == 8) ||
+           (bits_per_sample == 16) ||
+           (bits_per_sample == 24));
+    assert(sample_rate > 0);
+    assert(count_bits(channel_mask) == channels);
+
+    printf("Encoding from stdin using parameters:\n");
+    printf("channels        %u\n", channels);
+    printf("channel mask    0x%X\n", channel_mask);
+    printf("sample rate     %u\n", sample_rate);
+    printf("bits per sample %u\n", bits_per_sample);
+    printf("little-endian, signed samples\n");
+    printf("\n");
+    printf("block size         %d\n", block_size);
+    printf("initial history    %d\n", initial_history);
+    printf("history multiplier %d\n", history_multiplier);
+    printf("maximum K          %d\n", maximum_k);
+
+    if (ALACEncoder_encode_alac(output_file,
+                                open_pcmreader(stdin,
+                                               sample_rate,
+                                               channels,
+                                               channel_mask,
+                                               bits_per_sample,
+                                               0,
+                                               1),
+                                block_size,
+                                initial_history,
+                                history_multiplier,
+                                maximum_k)) {
+        fprintf(stderr, "Error during encoding\n");
+        return 1;
+    } else {
+        return 0;
+    }
+}
 #endif

@@ -136,7 +136,7 @@ encoders_encode_shn(PyObject *dummy,
     pcmreader->del(pcmreader);
     writer->close(writer);
 
-    return 0;
+    return NULL;
 }
 
 static void
