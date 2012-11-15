@@ -1035,7 +1035,7 @@ read_utf8(BitstreamReader *stream)
     return value;
 }
 
-#ifdef STANDALONE
+#ifdef EXECUTABLE
 #include <string.h>
 #include <errno.h>
 

@@ -1,3 +1,7 @@
+#ifdef STANDALONE
+#include <string.h>
+#include <errno.h>
+#endif
 #include "oggflac.h"
 #include "../common/flac_crc.h"
 #include "../pcmconv.h"
@@ -21,6 +25,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#ifndef STANDALONE
 PyObject*
 OggFlacDecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     decoders_OggFlacDecoder *self;
@@ -264,65 +269,6 @@ OggFlacDecoder_close(decoders_OggFlacDecoder *self, PyObject *args) {
 }
 
 int
-oggflac_read_streaminfo(BitstreamReader *packet,
-                        struct flac_STREAMINFO *streaminfo,
-                        uint16_t *header_packets) {
-    int i;
-
-    if (!setjmp(*br_try(packet))) {
-        if (packet->read(packet, 8) != 0x7F) {
-            PyErr_SetString(PyExc_ValueError, "invalid packet byte");
-            goto error;
-        }
-        if (packet->read_64(packet, 32) != 0x464C4143) {
-            PyErr_SetString(PyExc_ValueError, "invalid Ogg signature");
-            goto error;
-        }
-        if (packet->read(packet, 8) != 1) {
-            PyErr_SetString(PyExc_ValueError, "invalid major version");
-            goto error;
-        }
-        if (packet->read(packet, 8) != 0) {
-            PyErr_SetString(PyExc_ValueError, "invalid minor version");
-            goto error;
-        }
-        *header_packets = packet->read(packet, 16);
-        if (packet->read_64(packet, 32) != 0x664C6143) {
-            PyErr_SetString(PyExc_ValueError, "invalid fLaC signature");
-            goto error;
-        }
-        packet->read(packet, 1); /*last block*/
-        if (packet->read(packet, 7) != 0) {
-            PyErr_SetString(PyExc_ValueError, "invalid block type");
-            goto error;
-        }
-        packet->read(packet, 24); /*block length*/
-
-        streaminfo->minimum_block_size = packet->read(packet, 16);
-        streaminfo->maximum_block_size = packet->read(packet, 16);
-        streaminfo->minimum_frame_size = packet->read(packet, 24);
-        streaminfo->maximum_frame_size = packet->read(packet, 24);
-        streaminfo->sample_rate = packet->read(packet, 20);
-        streaminfo->channels = packet->read(packet, 3) + 1;
-        streaminfo->bits_per_sample = packet->read(packet, 5) + 1;
-        streaminfo->total_samples = packet->read_64(packet, 36);
-        for (i = 0; i < 16; i++) {
-            streaminfo->md5sum[i] = packet->read(packet, 8);
-        }
-    } else {
-        PyErr_SetString(PyExc_IOError,
-                        "EOF while reading STREAMINFO block");
-        goto error;
-    }
-
-    br_etry(packet);
-    return 1;
- error:
-    br_etry(packet);
-    return 0;
-}
-
-int
 OggFlacDecoder_update_md5sum(decoders_OggFlacDecoder *self,
                              PyObject *framelist) {
     PyObject *string = PyObject_CallMethod(framelist,
@@ -359,3 +305,267 @@ OggFlacDecoder_verify_okay(decoders_OggFlacDecoder *self) {
     return ((memcmp(self->streaminfo.md5sum, blank_md5sum, 16) == 0) ||
             (memcmp(stream_md5sum, self->streaminfo.md5sum, 16) == 0));
 }
+#endif
+
+int
+oggflac_read_streaminfo(BitstreamReader *packet,
+                        struct flac_STREAMINFO *streaminfo,
+                        uint16_t *header_packets) {
+    int i;
+
+    if (!setjmp(*br_try(packet))) {
+        if (packet->read(packet, 8) != 0x7F) {
+#ifndef STANDALONE
+            PyErr_SetString(PyExc_ValueError, "invalid packet byte");
+#endif
+            goto error;
+        }
+        if (packet->read_64(packet, 32) != 0x464C4143) {
+#ifndef STANDALONE
+            PyErr_SetString(PyExc_ValueError, "invalid Ogg signature");
+#endif
+            goto error;
+        }
+        if (packet->read(packet, 8) != 1) {
+#ifndef STANDALONE
+            PyErr_SetString(PyExc_ValueError, "invalid major version");
+#endif
+            goto error;
+        }
+        if (packet->read(packet, 8) != 0) {
+#ifndef STANDALONE
+            PyErr_SetString(PyExc_ValueError, "invalid minor version");
+#endif
+            goto error;
+        }
+        *header_packets = packet->read(packet, 16);
+        if (packet->read_64(packet, 32) != 0x664C6143) {
+#ifndef STANDALONE
+            PyErr_SetString(PyExc_ValueError, "invalid fLaC signature");
+#endif
+            goto error;
+        }
+        packet->read(packet, 1); /*last block*/
+        if (packet->read(packet, 7) != 0) {
+#ifndef STANDALONE
+            PyErr_SetString(PyExc_ValueError, "invalid block type");
+#endif
+            goto error;
+        }
+        packet->read(packet, 24); /*block length*/
+
+        streaminfo->minimum_block_size = packet->read(packet, 16);
+        streaminfo->maximum_block_size = packet->read(packet, 16);
+        streaminfo->minimum_frame_size = packet->read(packet, 24);
+        streaminfo->maximum_frame_size = packet->read(packet, 24);
+        streaminfo->sample_rate = packet->read(packet, 20);
+        streaminfo->channels = packet->read(packet, 3) + 1;
+        streaminfo->bits_per_sample = packet->read(packet, 5) + 1;
+        streaminfo->total_samples = packet->read_64(packet, 36);
+        for (i = 0; i < 16; i++) {
+            streaminfo->md5sum[i] = packet->read(packet, 8);
+        }
+    } else {
+#ifndef STANDALONE
+        PyErr_SetString(PyExc_IOError, "EOF while reading STREAMINFO block");
+#endif
+        goto error;
+    }
+
+    br_etry(packet);
+    return 1;
+error:
+    br_etry(packet);
+    return 0;
+}
+
+#ifdef STANDALONE
+int main(int argc, char* argv[]) {
+    FILE* ogg_file;
+    OggReader* ogg_stream = NULL;
+    BitstreamReader* packet = NULL;
+    struct flac_STREAMINFO streaminfo;
+    uint16_t header_packets;
+    array_i* residuals = NULL;
+    array_i* qlp_coeffs = NULL;
+    array_ia* subframe_data = NULL;
+    array_i* framelist_data = NULL;
+    ogg_status result;
+    uint16_t crc16 = 0;
+
+    FrameList_int_to_char_converter converter;
+    unsigned pcm_size;
+    unsigned output_data_size = 1;
+    uint8_t* output_data = NULL;
+
+    audiotools__MD5Context md5;
+    unsigned char stream_md5sum[16];
+    const static unsigned char blank_md5sum[16] = {0, 0, 0, 0, 0, 0, 0, 0,
+                                                   0, 0, 0, 0, 0, 0, 0, 0};
+
+    if (argc < 2) {
+        fprintf(stderr, "*** Usage: %s <file.oga>\n", argv[0]);
+        return 1;
+    }
+
+    /*open input file for reading*/
+    if ((ogg_file = fopen(argv[1], "rb")) == NULL) {
+        fprintf(stderr, "*** %s: %s\n", argv[1], strerror(errno));
+        return 1;
+    } else {
+        /*open bitstream and setup temporary arrays/buffers*/
+        ogg_stream = oggreader_open(ogg_file);
+        packet = br_substream_new(BS_BIG_ENDIAN);
+        subframe_data = array_ia_new();
+        residuals = array_i_new();
+        qlp_coeffs = array_i_new();
+        framelist_data = array_i_new();
+        output_data = malloc(output_data_size);
+    }
+
+    /*the first packet should be the FLAC's STREAMINFO*/
+    if ((result = oggreader_next_packet(ogg_stream, packet)) == OGG_OK) {
+        if (!oggflac_read_streaminfo(packet, &streaminfo, &header_packets)) {
+            goto error;
+        } else {
+            converter = FrameList_get_int_to_char_converter(
+                streaminfo.bits_per_sample, 0, 1);
+        }
+    } else {
+        fprintf(stderr, "*** Error: %s\n", ogg_strerror(result));
+        goto error;
+    }
+
+    /*skip subsequent header packets*/
+    for (; header_packets > 0; header_packets--) {
+        if ((result = oggreader_next_packet(ogg_stream, packet)) != OGG_OK) {
+            fprintf(stderr, "*** Error: %s\n", ogg_strerror(result));
+            goto error;
+        }
+    }
+
+    /*initialize the output MD5 sum*/
+    audiotools__MD5Init(&md5);
+
+    /*add callback for CRC16 calculation*/
+    br_add_callback(packet, (bs_callback_func)flac_crc16, &crc16);
+
+    /*decode the next FrameList from the stream*/
+    result = oggreader_next_packet(ogg_stream, packet);
+
+    while (result != OGG_STREAM_FINISHED) {
+        if (result == OGG_OK) {
+            flac_status flac_status;
+            struct flac_frame_header frame_header;
+            unsigned channel;
+
+            subframe_data->reset(subframe_data);
+
+            if (!setjmp(*br_try(packet))) {
+                /*read frame header*/
+                if ((flac_status =
+                     flacdec_read_frame_header(packet,
+                                               &streaminfo,
+                                               &frame_header)) != OK) {
+                    fprintf(stderr, "*** Error: %s\n",
+                            FlacDecoder_strerror(flac_status));
+                    br_etry(packet);
+                    goto error;
+                }
+
+                /*read 1 subframe per channel*/
+                for (channel = 0;
+                     channel < frame_header.channel_count;
+                     channel++)
+                    if ((flac_status = flacdec_read_subframe(
+                        packet,
+                        qlp_coeffs,
+                        residuals,
+                        frame_header.block_size,
+                        flacdec_subframe_bits_per_sample(&frame_header,
+                                                         channel),
+                        subframe_data->append(subframe_data))) != OK) {
+                        fprintf(stderr, "*** Error: %s\n",
+                                FlacDecoder_strerror(flac_status));
+                        br_etry(packet);
+                        goto error;
+                    }
+
+                br_etry(packet);
+            } else {
+                br_etry(packet);
+                fprintf(stderr, "*** I/O Error reading FLAC frame\n");
+                goto error;
+            }
+
+            /*handle difference channels, if any*/
+            flacdec_decorrelate_channels(frame_header.channel_assignment,
+                                         subframe_data,
+                                         framelist_data);
+
+            /*check CRC-16*/
+            packet->byte_align(packet);
+            packet->read(packet, 16);
+            if (crc16 != 0) {
+                fprintf(stderr, "*** Error: invalid checksum in frame\n");
+                goto error;
+            }
+
+            /*turn FrameList into string of output*/
+            pcm_size = (streaminfo.bits_per_sample / 8) * framelist_data->len;
+            if (pcm_size > output_data_size) {
+                output_data_size = pcm_size;
+                output_data = realloc(output_data, output_data_size);
+            }
+            FrameList_samples_to_char(output_data,
+                                      framelist_data->_,
+                                      converter,
+                                      framelist_data->len,
+                                      streaminfo.bits_per_sample);
+
+            /*update MD5 sum*/
+            audiotools__MD5Update(&md5, output_data, pcm_size);
+
+            /*output string to stdout*/
+            fwrite(output_data, sizeof(unsigned char), pcm_size, stdout);
+
+            result = oggreader_next_packet(ogg_stream, packet);
+        } else {
+            /*some error reading Ogg stream*/
+            fprintf(stderr, "*** Error: %s\n", ogg_strerror(result));
+            goto error;
+        }
+    }
+
+    /*Ogg stream is finished so verify stream's MD5 sum*/
+    audiotools__MD5Final(stream_md5sum, &md5);
+
+    if (!((memcmp(streaminfo.md5sum, blank_md5sum, 16) == 0) ||
+          (memcmp(stream_md5sum, streaminfo.md5sum, 16) == 0))) {
+        fprintf(stderr, "*** MD5 mismatch at end of stream\n");
+        goto error;
+    }
+
+    /*close streams, temporary buffers*/
+    oggreader_close(ogg_stream);
+    packet->close(packet);
+    subframe_data->del(subframe_data);
+    residuals->del(residuals);
+    qlp_coeffs->del(qlp_coeffs);
+    framelist_data->del(framelist_data);
+    free(output_data);
+
+    return 0;
+
+error:
+    oggreader_close(ogg_stream);
+    packet->close(packet);
+    subframe_data->del(subframe_data);
+    residuals->del(residuals);
+    qlp_coeffs->del(qlp_coeffs);
+    framelist_data->del(framelist_data);
+    free(output_data);
+
+    return 1;
+}
+#endif

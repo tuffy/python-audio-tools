@@ -1,4 +1,6 @@
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 #include <stdint.h>
 #include "../bitstream.h"
 #include "../array.h"
@@ -7,6 +9,8 @@
 #define STANDALONE
 #include "flac.h"
 #undef STANDALONE
+#else
+#include "flac.h"
 #endif
 
 /********************************************************
@@ -28,6 +32,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#ifndef STANDALONE
 typedef struct {
     PyObject_HEAD
 
@@ -137,12 +142,14 @@ PyTypeObject decoders_OggFlacDecoderType = {
 };
 
 int
-oggflac_read_streaminfo(BitstreamReader *bitstream,
-                        struct flac_STREAMINFO *streaminfo,
-                        uint16_t *header_packets);
-int
 OggFlacDecoder_update_md5sum(decoders_OggFlacDecoder *self,
                              PyObject *framelist);
 
 int
 OggFlacDecoder_verify_okay(decoders_OggFlacDecoder *self);
+#endif
+
+int
+oggflac_read_streaminfo(BitstreamReader *bitstream,
+                        struct flac_STREAMINFO *streaminfo,
+                        uint16_t *header_packets);

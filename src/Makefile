@@ -3,14 +3,17 @@
 VERSION = "2.19beta1"
 OBJS = array.o pcm.o bitstream.o
 FLAGS = -Wall -g
-BINARIES = alacdec flacdec shndec wvdec \
-alacenc flacenc shnenc wvenc \
+BINARIES = alacdec flacdec oggflacdec shndec wvdec \
+alacenc flacenc oggflacdec shnenc wvenc \
 huffman bitstream
 
 all: $(BINARIES)
 
 flacdec: $(OBJS) decoders/flac.c decoders/flac.h flac_crc.o md5.o pcmconv.o
-	$(CC) $(FLAGS) -o flacdec decoders/flac.c $(OBJS) flac_crc.o md5.o pcmconv.o -DSTANDALONE
+	$(CC) $(FLAGS) -o flacdec decoders/flac.c $(OBJS) flac_crc.o md5.o pcmconv.o -DSTANDALONE -DEXECUTABLE
+
+oggflacdec: $(OBJS) decoders/oggflac.c decoders/oggflac.h flac.o flac_crc.o md5.o pcmconv.o ogg.o ogg_crc.o
+	$(CC) $(FLAGS) -o oggflacdec decoders/oggflac.c $(OBJS) flac.o flac_crc.o md5.o pcmconv.o ogg.o ogg_crc.o -DSTANDALONE
 
 wvdec: $(OBJS) decoders/wavpack.c decoders/wavpack.h md5.o pcmconv.o
 	$(CC) $(FLAGS) -o wvdec decoders/wavpack.c $(OBJS) md5.o pcmconv.o -DSTANDALONE
@@ -59,6 +62,15 @@ bitstream.o: bitstream.c bitstream.h
 
 md5.o: common/md5.c common/md5.h
 	$(CC) $(FLAGS) -c common/md5.c -DSTANDALONE
+
+flac.o: decoders/flac.c decoders/flac.h
+	$(CC) $(FLAGS) -c decoders/flac.c -DSTANDALONE
+
+ogg.o: decoders/ogg.c decoders/ogg.h
+	$(CC) $(FLAGS) -c decoders/ogg.c -DSTANDALONE
+
+ogg_crc.o: common/ogg_crc.c common/ogg_crc.h
+	$(CC) $(FLAGS) -c common/ogg_crc.c -DSTANDALONE
 
 flac_crc.o: common/flac_crc.c common/flac_crc.h
 	$(CC) $(FLAGS) -c common/flac_crc.c -DSTANDALONE
