@@ -342,13 +342,6 @@ class OpusAudio(VorbisAudio):
         at the given filename with the specified compression level
         and returns a new AudioFile-compatible object
 
-        for example, to encode the FlacAudio file "file.flac" from "file.wav"
-        at compression level "5":
-
-        >>> flac = FlacAudio.from_pcm("file.flac",
-        ...                           WaveAudio("file.wav").to_pcm(),
-        ...                           "5")
-
         may raise EncodingError if some problem occurs when
         encoding the input file.  This includes an error
         in the input stream, a problem writing the output file,
@@ -364,6 +357,8 @@ class OpusAudio(VorbisAudio):
         from . import DecodingError
         from . import UnsupportedChannelMask
         from . import __default_quality__
+        from .vorbis import VorbisChannelMask
+        from . import ChannelMask
         import subprocess
         import os
 
@@ -385,18 +380,57 @@ class OpusAudio(VorbisAudio):
                                stdout=devnull,
                                stderr=devnull)
 
-        try:
-            transfer_framelist_data(pcmreader, sub.stdin.write)
-        except (IOError, ValueError), err:
-            sub.stdin.close()
-            sub.wait()
-            cls.__unlink__(filename)
-            raise EncodingError(str(err))
-        except Exception, err:
-            sub.stdin.close()
-            sub.wait()
-            cls.__unlink__(filename)
-            raise err
+        if ((pcmreader.channels <= 2) or (int(pcmreader.channel_mask) == 0)):
+            try:
+                transfer_framelist_data(pcmreader, sub.stdin.write)
+            except (IOError, ValueError), err:
+                sub.stdin.close()
+                sub.wait()
+                cls.__unlink__(filename)
+                raise EncodingError(str(err))
+            except Exception, err:
+                sub.stdin.close()
+                sub.wait()
+                cls.__unlink__(filename)
+                raise err
+        elif (pcmreader.channels <= 8):
+            if (int(pcmreader.channel_mask) in
+                (0x7,      # FR, FC, FL
+                 0x33,     # FR, FL, BR, BL
+                 0x37,     # FR, FC, FL, BL, BR
+                 0x3f,     # FR, FC, FL, BL, BR, LFE
+                 0x70f,    # FL, FC, FR, SL, SR, BC, LFE
+                 0x63f)):  # FL, FC, FR, SL, SR, BL, BR, LFE
+
+                standard_channel_mask = ChannelMask(pcmreader.channel_mask)
+                vorbis_channel_mask = VorbisChannelMask(standard_channel_mask)
+            else:
+                raise UnsupportedChannelMask(filename,
+                                             int(pcmreader.channel_mask))
+
+            try:
+                from . import ReorderedPCMReader
+
+                transfer_framelist_data(
+                    ReorderedPCMReader(
+                        pcmreader,
+                        [standard_channel_mask.channels().index(channel)
+                         for channel in vorbis_channel_mask.channels()]),
+                    sub.stdin.write)
+            except (IOError, ValueError), err:
+                sub.stdin.close()
+                sub.wait()
+                cls.__unlink__(filename)
+                raise EncodingError(str(err))
+            except Exception, err:
+                sub.stdin.close()
+                sub.wait()
+                cls.__unlink__(filename)
+                raise err
+
+        else:
+            raise UnsupportedChannelMask(filename,
+                                         int(pcmreader.channel_mask))
 
         sub.stdin.close()
 

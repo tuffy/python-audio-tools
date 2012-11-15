@@ -6154,6 +6154,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Pages should start/end properly at letter and A4 paper sizes.
    - [X] letter
    - [X] A4
+** DONE Handle multi-channel .opus files properly
+*** DONE Add unit tests
 ** TODO run codecs through valgrind
    Try to ensure there's no hidden bugs in the low-level C code.
 *** TODO decoders
@@ -6175,8 +6177,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] flac
     - [X] shorten
     - [X] wavpack
-** TODO Handle multi-channel .opus files properly
-*** TODO Add unit tests
 ** TODO Have cdplay play properly
    Using the ripping routines for playback doesn't work well
    now that the player routines aren't as threaded as before.
