@@ -1,4 +1,6 @@
 #include "aob.h"
+#include <string.h>
+#include <math.h>
 #include <dirent.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -30,6 +32,7 @@
 #define PCM_CODEC_ID 0xA0
 #define MLP_CODEC_ID 0xA1
 
+#ifndef STANDALONE
 PyObject*
 DVDA_Title_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     decoders_DVDA_Title *self;
@@ -52,6 +55,15 @@ DVDA_Title_init(decoders_DVDA_Title *self, PyObject *args, PyObject *kwds) {
     unsigned titleset;
     unsigned start_sector;
     unsigned end_sector;
+#else
+int
+    DVDA_Title_init(decoders_DVDA_Title *self,
+                    char* audio_ts,
+                    unsigned titleset,
+                    unsigned start_sector,
+                    unsigned end_sector)
+{
+#endif
     char* cdrom = NULL;
 
     self->sector_reader = NULL;
@@ -73,6 +85,7 @@ DVDA_Title_init(decoders_DVDA_Title *self, PyObject *args, PyObject *kwds) {
     self->codec_framelist = array_ia_new();
     self->output_framelist = array_ia_new();
 
+#ifndef STANDALONE
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
@@ -84,19 +97,23 @@ DVDA_Title_init(decoders_DVDA_Title *self, PyObject *args, PyObject *kwds) {
                                      &end_sector,
                                      &cdrom))
         return -1;
+#endif
 
     /*setup a sector reader according to AUDIO_TS and cdrom device*/
     if ((self->sector_reader = open_sector_reader(audio_ts,
                                                   titleset,
                                                   cdrom)) == NULL) {
+#ifndef STANDALONE
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, audio_ts);
+#endif
         return -1;
     }
 
     /*setup a packet reader according to start and end sector
       this packet reader will be shared by all returned DVDA_Tracks*/
     self->packet_reader = open_packet_reader(self->sector_reader,
-                                             start_sector, end_sector);
+                                             start_sector,
+                                             end_sector);
 
     return 0;
 }
@@ -120,11 +137,14 @@ DVDA_Title_dealloc(decoders_DVDA_Title *self) {
     self->codec_framelist->del(self->codec_framelist);
     self->output_framelist->del(self->output_framelist);
 
+#ifndef STANDALONE
     Py_XDECREF(self->audiotools_pcm);
 
     self->ob_type->tp_free((PyObject*)self);
+#endif
 }
 
+#ifndef STANDALONE
 static PyObject*
 DVDA_Title_sample_rate(decoders_DVDA_Title *self, void *closure)
 {
@@ -154,7 +174,6 @@ DVDA_Title_pcm_frames(decoders_DVDA_Title *self, void *closure)
 {
     return Py_BuildValue("I", self->pcm_frames_remaining);
 }
-
 static PyObject*
 DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
 {
@@ -180,6 +199,25 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
                         "I/O error reading initialization packet");
         return NULL;
     }
+#else
+int
+DVDA_Title_next_track(decoders_DVDA_Title *self, unsigned PTS_ticks)
+{
+    DVDA_Packet next_packet;
+    struct bs_buffer* packet_data = self->packet_data;
+    unsigned i;
+
+    if (self->pcm_frames_remaining) {
+        fprintf(stderr, "current track has not been exhausted\n");
+        return 0;
+    }
+
+    if (read_audio_packet(self->packet_reader,
+                          &next_packet, packet_data)) {
+        fprintf(stderr, "I/O error reading initialization packet\n");
+        return 0;
+    }
+#endif
 
     if (next_packet.codec_ID == PCM_CODEC_ID) {
         /*if the packet is PCM, initialize Title's stream attributes
@@ -191,7 +229,8 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
             dvda_bits_per_sample(next_packet.PCM.group_1_bps);
         self->sample_rate =
             dvda_sample_rate(next_packet.PCM.group_1_rate);
-        self->channel_assignment = next_packet.PCM.channel_assignment;
+        self->channel_assignment =
+            next_packet.PCM.channel_assignment;
         self->channel_count =
             dvda_channel_count(next_packet.PCM.channel_assignment);
         self->channel_mask =
@@ -273,8 +312,12 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
         }
 
     } else {
+#ifndef STANDALONE
         PyErr_SetString(PyExc_ValueError, "unknown codec ID");
         return NULL;
+#else
+        return 0;
+#endif
     }
 
     /*convert PTS ticks to PCM frames based on sample rate*/
@@ -289,10 +332,15 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, PyObject *args)
             self->codec_framelist->append(self->codec_framelist);
     }
 
+#ifndef STANDALONE
     Py_INCREF(Py_None);
     return Py_None;
+#else
+    return 1;
+#endif
 }
 
+#ifndef STANDALONE
 static PyObject*
 DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
 {
@@ -371,6 +419,7 @@ DVDA_Title_close(decoders_DVDA_Title *self, PyObject *args)
     Py_INCREF(Py_None);
     return Py_None;
 }
+#endif
 
 
 static char*
@@ -851,3 +900,150 @@ dvda_channel_mask(unsigned encoded)
     default: return 0;
     }
 }
+
+#ifdef STANDALONE
+int main(int argc, char* argv[]) {
+    decoders_DVDA_Title title;
+    char* audio_ts;
+    unsigned titleset;
+    unsigned start_sector;
+    unsigned end_sector;
+    unsigned pts_ticks;
+
+    DVDA_Packet next_packet;
+    struct bs_buffer* packet_data;
+    mlp_status mlp_status;
+
+    unsigned output_data_size = 1;
+    uint8_t* output_data;
+
+    unsigned bytes_per_sample;
+    FrameList_int_to_char_converter converter;
+
+    if (argc < 6) {
+        fprintf(stderr, "*** Usage: %s <AUDIO_TS> <titleset> "
+                "<start sector> <end sector> <PTS ticks>\n", argv[0]);
+        return 1;
+    } else {
+        audio_ts = argv[1];
+        titleset = strtoul(argv[2], NULL, 10);
+        start_sector = strtoul(argv[3], NULL, 10);
+        end_sector = strtoul(argv[4], NULL, 10);
+        pts_ticks = strtoul(argv[5], NULL, 10);
+    }
+
+    if (DVDA_Title_init(&title, audio_ts, titleset,
+                        start_sector, end_sector)) {
+        fprintf(stderr, "*** Error: unable to initialize DVDA title\n");
+        return 1;
+    } else {
+        packet_data = title.packet_data;
+        output_data = malloc(output_data_size);
+    }
+
+    if (!DVDA_Title_next_track(&title, pts_ticks)) {
+        fprintf(stderr, "*** Error getting next track\n");
+        goto error;
+    } else {
+        bytes_per_sample = title.bits_per_sample / 8;
+        converter = FrameList_get_int_to_char_converter(
+            title.bits_per_sample, 0, 1);
+    }
+
+    fprintf(stderr, "frames remaining: %u\n", title.pcm_frames_remaining);
+
+    while (title.pcm_frames_remaining) {
+        unsigned pcm_size;
+        unsigned channel;
+        unsigned frame;
+
+        /*build FrameList from PCM or MLP packet data*/
+        switch (title.frame_codec) {
+        case PCM:
+            /*if not enough bytes in buffer, read another packet*/
+            while (aobpcm_packet_empty(&(title.pcm_decoder), title.frames)) {
+                if (read_audio_packet(title.packet_reader,
+                                      &next_packet, packet_data)) {
+                    fprintf(stderr, "I/O Error reading PCM packet\n");
+                    goto error;
+                }
+
+                /*FIXME - ensure packet has same format as PCM*/
+
+                buf_append(packet_data, title.frames);
+            }
+
+            /*FIXME - make this thread friendly*/
+            read_aobpcm(&(title.pcm_decoder),
+                        title.frames,
+                        title.codec_framelist);
+            break;
+        case MLP:
+            /*if not enough bytes in buffer, read another packet*/
+            while (mlp_packet_empty(title.mlp_decoder)) {
+                if (read_audio_packet(title.packet_reader,
+                                      &next_packet, packet_data)) {
+                    fprintf(stderr, "I/O Error reading MLP packet\n");
+                    goto error;
+                }
+
+                /*FIXME - ensure packet has same format as MLP*/
+
+                buf_append(packet_data, title.frames);
+            }
+
+            /*FIXME - make this thread friendly*/
+            if ((mlp_status = read_mlp_frames(title.mlp_decoder,
+                                              title.codec_framelist)) != OK) {
+                fprintf(stderr, "*** MLP Error: %s\n",
+                        mlp_python_exception_msg(mlp_status));
+                goto error;
+            }
+        }
+
+        /*account for framelists larger than frames remaining*/
+        title.codec_framelist->cross_split(
+            title.codec_framelist,
+            MIN(title.pcm_frames_remaining, title.codec_framelist->_[0]->len),
+            title.output_framelist,
+            title.codec_framelist);
+
+        /*deduct output FrameList's PCM frames from remaining count*/
+        title.pcm_frames_remaining -= title.output_framelist->_[0]->len;
+
+        /*convert framelist data to string*/
+        pcm_size = (bytes_per_sample *
+                    title.output_framelist->len *
+                    title.output_framelist->_[0]->len);
+
+        if (pcm_size > output_data_size) {
+            output_data_size = pcm_size;
+            output_data = realloc(output_data, output_data_size);
+        }
+        for (channel = 0; channel < title.output_framelist->len; channel++) {
+            const array_i* channel_data = title.output_framelist->_[channel];
+            for (frame = 0; frame < channel_data->len; frame++) {
+                converter(channel_data->_[frame],
+                          output_data +
+                          ((frame * title.output_framelist->len) + channel) *
+                          bytes_per_sample);
+            }
+        }
+
+        /*output framelist data to stdout*/
+        fwrite(output_data, sizeof(unsigned char), pcm_size, stdout);
+    }
+
+
+    DVDA_Title_dealloc(&title);
+    free(output_data);
+
+    return 0;
+
+error:
+    DVDA_Title_dealloc(&title);
+    free(output_data);
+
+    return 0;
+}
+#endif

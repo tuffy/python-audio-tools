@@ -1,4 +1,6 @@
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 #include "../array.h"
 #include "../bitstream.h"
 #include "aobpcm.h"
@@ -35,7 +37,9 @@ typedef enum {PCM, MLP} DVDA_Codec;
 /*a title in a given titleset
   this generates DVDA_Track objects which are actual decoders*/
 typedef struct {
+#ifndef STANDALONE
     PyObject_HEAD
+#endif
 
     /*an AOB sector reader*/
     struct DVDA_Sector_Reader_s* sector_reader;
@@ -69,15 +73,18 @@ typedef struct {
     /*a FrameList to be returned by calls to read()*/
     array_ia* output_framelist;
 
+#ifndef STANDALONE
     /*a FrameList generator*/
     PyObject* audiotools_pcm;
+#endif
 } decoders_DVDA_Title;
-
-static PyObject*
-DVDA_Title_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
 void
 DVDA_Title_dealloc(decoders_DVDA_Title *self);
+
+#ifndef STANDALONE
+static PyObject*
+DVDA_Title_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
 int
 DVDA_Title_init(decoders_DVDA_Title *self, PyObject *args, PyObject *kwds);
@@ -171,7 +178,7 @@ PyTypeObject decoders_DVDA_Title_Type = {
     0,                         /* tp_alloc */
     DVDA_Title_new,            /* tp_new */
 };
-
+#endif
 
 /*given a path to the AUDIO_TS directory
   and a filename to search for, in upper case,

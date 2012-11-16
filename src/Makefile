@@ -36,6 +36,9 @@ shnenc: $(OBJS) encoders/shn.c encoders/shn.h pcmconv.o
 wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o pcmconv.o
 	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c md5.o pcmconv.o $(OBJS) -DSTANDALONE
 
+aobdec: decoders/aob.c decoders/aob.h $(OBJS) mlp.o aobpcm.o pcmconv.o
+	$(CC) $(FLAGS) -o aobdec decoders/aob.c $(OBJS) mlp.o aobpcm.o pcmconv.o -DSTANDALONE
+
 # mlpdec: decoders/mlp.c decoders/mlp.h array.o bitstream.o
 # 	$(CC) $(FLAGS) -o mlpdec decoders/mlp.c array.o bitstream.o -DSTANDALONE
 
@@ -65,6 +68,12 @@ md5.o: common/md5.c common/md5.h
 
 flac.o: decoders/flac.c decoders/flac.h
 	$(CC) $(FLAGS) -c decoders/flac.c -DSTANDALONE
+
+mlp.o: decoders/mlp.c decoders/mlp.h
+	$(CC) $(FLAGS) -c decoders/mlp.c -DSTANDALONE
+
+aobpcm.o: decoders/aobpcm.c decoders/aobpcm.h
+	$(CC) $(FLAGS) -c decoders/aobpcm.c -DSTANDALONE
 
 ogg.o: decoders/ogg.c decoders/ogg.h
 	$(CC) $(FLAGS) -c decoders/ogg.c -DSTANDALONE

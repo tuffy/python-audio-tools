@@ -1,6 +1,8 @@
 #ifndef AOBPCM2
 #define AOBPCM2
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 #include <stdint.h>
 #include "../bitstream.h"
 #include "../array.h"
