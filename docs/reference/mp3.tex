@@ -377,17 +377,6 @@ with the ``/'' character, indicating the field's total number.
 For example, a \texttt{TRK} of ``3/5'' means the track is number
 3 out of a total of 5.
 
-\subsubsection{User-Defined Text Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v22/txx.pdf}
-\end{figure}
-\par
-\noindent
-This frame is for user-defined text information.
-\VAR{description} is a NULL-terminated string indicating
-what the frame is for.
-\VAR{encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
-
 \subsubsection{Text Frame Example}
 \begin{figure}[h]
   \includegraphics{figures/id3v22/t__-example.pdf}
@@ -399,6 +388,17 @@ encoding : & \texttt{0} (Latin-1) \\
 text : & \texttt{"some track name"}
 \end{tabular}
 \end{table}
+
+\subsubsection{User-Defined Text Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v22/txx.pdf}
+\end{figure}
+\par
+\noindent
+This frame is for user-defined text information.
+\VAR{description} is a NULL-terminated string indicating
+what the frame is for.
+\VAR{encoding} is 0 for Latin-1 encoding, 1 for UCS-2 encoding.
 
 \clearpage
 
@@ -544,35 +544,6 @@ description : & \texttt{"Description"} \\
 
 \clearpage
 
-\subsubsection{COMM Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v23/comm.pdf}
-\end{figure}
-\par
-\noindent
-This frame supports a lengthy string of comment text.
-\VAR{encoding} is 0 for Latin-1, 1 for UCS-2.
-\VAR{language} is a 3 byte ASCII string.
-\VAR{description} is a NULL-terminated string
-containing a short description of the comment.
-Note that for UCS-2 comments, the NULL terminator is 2 bytes.
-The remainder of the frame is the comment text itself.
-
-\subsubsection{COMM Frame Example}
-\begin{figure}[h]
-  \includegraphics{figures/id3v23/comm-example.pdf}
-\end{figure}
-\begin{table}[h]
-\begin{tabular}{rl}
-encoding : & \texttt{0} (Latin-1) \\
-language : & \texttt{"eng"} \\
-description : & \texttt{""} (empty string) \\
-comment text : & \texttt{"Comment Text"} \\
-\end{tabular}
-\end{table}
-
-\clearpage
-
 \subsubsection{Text Frames}
 \begin{figure}[h]
   \includegraphics{figures/id3v23/t___.pdf}
@@ -666,6 +637,35 @@ This frame contains an embedded file (i.e. a ``general encapsulated object'').
 Latin-1 or UCS-2 encoded strings, if \VAR{encoding} is 0 or 1,
 respectively.
 \VAR{encapsulated object} is binary file data.
+
+\clearpage
+
+\subsubsection{COMM Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v23/comm.pdf}
+\end{figure}
+\par
+\noindent
+This frame supports a lengthy string of comment text.
+\VAR{encoding} is 0 for Latin-1, 1 for UCS-2.
+\VAR{language} is a 3 byte ASCII string.
+\VAR{description} is a NULL-terminated string
+containing a short description of the comment.
+Note that for UCS-2 comments, the NULL terminator is 2 bytes.
+The remainder of the frame is the comment text itself.
+
+\subsubsection{COMM Frame Example}
+\begin{figure}[h]
+  \includegraphics{figures/id3v23/comm-example.pdf}
+\end{figure}
+\begin{table}[h]
+\begin{tabular}{rl}
+encoding : & \texttt{0} (Latin-1) \\
+language : & \texttt{"eng"} \\
+description : & \texttt{""} (empty string) \\
+comment text : & \texttt{"Comment Text"} \\
+\end{tabular}
+\end{table}
 
 \clearpage
 
@@ -812,36 +812,6 @@ which indicates the frame's data size is:
 
 \clearpage
 
-\subsubsection{COMM Frame}
-\begin{figure}[h]
-\includegraphics{figures/id3v24/comm.pdf}
-\end{figure}
-\par
-\noindent
-This frame supports a lengthy string of comment text.
-\VAR{encoding} determines the encoding of the NULL-terminated
-\VAR{description} field and \VAR{comment text} field.
-Valid encodings are \texttt{0} for Latin-1,
-\texttt{1} for UTF-16,
-\texttt{2} for UTF-16BE
-and \texttt{3} for UTF-8.
-\VAR{language} is a 3 byte ASCII string.
-
-\subsubsection{COMM Frame Example}
-\begin{figure}[h]
-\includegraphics{figures/id3v24/comm-example.pdf}
-\end{figure}
-\begin{table}[h]
-\begin{tabular}{rl}
-encoding : & \texttt{0} (Latin-1) \\
-language : & \texttt{"eng"} \\
-description : & \texttt{""} (empty string) \\
-comment text : & \texttt{"Comment Text"} \\
-\end{tabular}
-\end{table}
-
-\clearpage
-
 \subsubsection{Text Frames}
 \begin{figure}[h]
   \includegraphics{figures/id3v24/t___.pdf}
@@ -933,6 +903,36 @@ This frame is for user-defined text information.
 2 for UTF-16BE encoding and 3 for UTF-8 encoding.
 \VAR{description} is a NULL-terminated string indicating
 what the frame is for.
+
+\clearpage
+
+\subsubsection{COMM Frame}
+\begin{figure}[h]
+\includegraphics{figures/id3v24/comm.pdf}
+\end{figure}
+\par
+\noindent
+This frame supports a lengthy string of comment text.
+\VAR{encoding} determines the encoding of the NULL-terminated
+\VAR{description} field and \VAR{comment text} field.
+Valid encodings are \texttt{0} for Latin-1,
+\texttt{1} for UTF-16,
+\texttt{2} for UTF-16BE
+and \texttt{3} for UTF-8.
+\VAR{language} is a 3 byte ASCII string.
+
+\subsubsection{COMM Frame Example}
+\begin{figure}[h]
+\includegraphics{figures/id3v24/comm-example.pdf}
+\end{figure}
+\begin{table}[h]
+\begin{tabular}{rl}
+encoding : & \texttt{0} (Latin-1) \\
+language : & \texttt{"eng"} \\
+description : & \texttt{""} (empty string) \\
+comment text : & \texttt{"Comment Text"} \\
+\end{tabular}
+\end{table}
 
 \clearpage
 

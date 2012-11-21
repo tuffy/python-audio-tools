@@ -315,9 +315,8 @@ ReplayGain_title_gain(replaygain_ReplayGain *self, PyObject *args)
             GAIN_NOT_ENOUGH_SAMPLES) {
             return Py_BuildValue("(d,d)", title_gain, title_peak);
         } else {
-            PyErr_SetString(PyExc_ValueError,
-                            "Not enough samples to perform calculation");
-            return NULL;
+            title_gain = 0.0;
+            return Py_BuildValue("(d,d)", title_gain, title_peak);
         }
     }
 }

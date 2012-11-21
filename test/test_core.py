@@ -3363,19 +3363,13 @@ class TestReplayGain(unittest.TestCase):
                           audiotools.replaygain.ReplayGain,
                           200000)
 
-        #check for invalid channel count
+        #check for a very small sample count
         rg = audiotools.replaygain.ReplayGain(44100)
 
-        self.assertRaises(ValueError,
-                          rg.title_gain,
-                          audiotools.PCMReader(StringIO(""),
-                                               44100, 4, 0x33, 16))
-
-        #check for not enough samples
-        self.assertRaises(ValueError,
-                          rg.title_gain,
-                          audiotools.PCMReader(StringIO("0123"),
-                                               44100, 2, 0x3, 16))
+        self.assertEqual(
+            rg.title_gain(audiotools.PCMReader(StringIO(""),
+                                               44100, 2, 0x3, 16)),
+            (0.0, 0.0))
         self.assertRaises(ValueError, rg.album_gain)
 
         #check for no tracks
