@@ -382,26 +382,29 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
                         #this is theoretically possible
                         #with very old .wav files,
                         #but shouldn't happen in practice
-                        self.__channel_mask__ = {
-                            1: ChannelMask.from_fields(
-                                front_center=True),
-                            2: ChannelMask.from_fields(
-                                front_left=True, front_right=True),
-                            3: ChannelMask.from_fields(
-                                front_left=True, front_right=True,
-                                front_center=True),
-                            4: ChannelMask.from_fields(
-                                front_left=True, front_right=True,
-                                back_left=True, back_right=True),
-                            5: ChannelMask.from_fields(
-                                front_left=True, front_right=True,
-                                back_left=True, back_right=True,
-                                front_center=True),
-                            6: ChannelMask.from_fields(
-                                front_left=True, front_right=True,
-                                back_left=True, back_right=True,
-                                front_center=True, low_frequency=True)
-                            }.get(self.__channels__, ChannelMask(0))
+                        self.__channel_mask__ = \
+                            {1: ChannelMask.from_fields(front_center=True),
+                             2: ChannelMask.from_fields(front_left=True,
+                                                        front_right=True),
+                             3: ChannelMask.from_fields(front_left=True,
+                                                        front_right=True,
+                                                        front_center=True),
+                             4: ChannelMask.from_fields(front_left=True,
+                                                        front_right=True,
+                                                        back_left=True,
+                                                        back_right=True),
+                             5: ChannelMask.from_fields(front_left=True,
+                                                        front_right=True,
+                                                        back_left=True,
+                                                        back_right=True,
+                                                        front_center=True),
+                             6: ChannelMask.from_fields(front_left=True,
+                                                        front_right=True,
+                                                        back_left=True,
+                                                        back_right=True,
+                                                        front_center=True,
+                                                        low_frequency=True)
+                             }.get(self.__channels__, ChannelMask(0))
                     elif (compression_code == 0xFFFE):
                         fmt.skip(128)
                         mask = fmt.read(32)

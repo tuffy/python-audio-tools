@@ -255,8 +255,9 @@ class ALACDecoder:
                     assert(len(channel) ==
                            len(uncompressed_lsbs[i::channel_count]))
                     channels.append([s << (uncompressed_lsb_size * 8) | l
-                                     for (s, l) in zip(channel,
-                                                       uncompressed_lsbs[i::channel_count])])
+                                     for (s, l) in
+                                     zip(channel,
+                                         uncompressed_lsbs[i::channel_count])])
                 return channels
             else:
                 return decorrelated_channels

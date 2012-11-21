@@ -1399,7 +1399,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 M4A_ILST_Leaf_Atom(
                     'covr',
                     [M4A_ILST_COVR_Data_Atom.converted(
-                            metadata.front_covers()[0])]))
+                        metadata.front_covers()[0])]))
 
         ilst_atoms.append(
             M4A_ILST_Leaf_Atom(

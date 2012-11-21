@@ -1080,38 +1080,35 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             "moov",
             [cls.__mvhd_atom__(pcmreader, create_date, total_pcm_frames),
              M4A_Tree_Atom(
-                    "trak",
-                    [cls.__tkhd_atom__(create_date, total_pcm_frames),
-                     M4A_Tree_Atom(
-                            "mdia",
-                            [cls.__mdhd_atom__(pcmreader,
-                                               create_date,
-                                               total_pcm_frames),
-                             cls.__hdlr_atom__(),
-                             M4A_Tree_Atom(
-                                    "minf",
-                                    [cls.__smhd_atom__(),
-                                     M4A_Tree_Atom(
-                                            "dinf",
-                                            [cls.__dref_atom__()]),
-                                     M4A_Tree_Atom(
-                                            "stbl",
-                                            [cls.__stsd_atom__(
-                                                    pcmreader,
-                                                    mdat_size,
-                                                    frame_sample_sizes,
-                                                    frame_byte_sizes),
-                                             cls.__stts_atom__(
-                                                    stts_frame_counts),
-                                             cls.__stsc_atom__(
-                                                    chunks),
-                                             cls.__stsz_atom__(
-                                                    frame_byte_sizes),
-                                             cls.__stco_atom__(
-                                                    chunks)])])])]),
-             M4A_Tree_Atom(
-                    "udta",
-                    [cls.__meta_atom__()])])
+                 "trak",
+                 [cls.__tkhd_atom__(create_date, total_pcm_frames),
+                  M4A_Tree_Atom(
+                      "mdia",
+                      [cls.__mdhd_atom__(pcmreader,
+                                         create_date,
+                                         total_pcm_frames),
+                       cls.__hdlr_atom__(),
+                       M4A_Tree_Atom("minf",
+                                     [cls.__smhd_atom__(),
+                                      M4A_Tree_Atom(
+                                          "dinf",
+                                          [cls.__dref_atom__()]),
+                                      M4A_Tree_Atom(
+                                          "stbl",
+                                          [cls.__stsd_atom__(
+                                              pcmreader,
+                                              mdat_size,
+                                              frame_sample_sizes,
+                                              frame_byte_sizes),
+                                           cls.__stts_atom__(
+                                               stts_frame_counts),
+                                           cls.__stsc_atom__(
+                                               chunks),
+                                           cls.__stsz_atom__(
+                                               frame_byte_sizes),
+                                           cls.__stco_atom__(
+                                               chunks)])])])]),
+             M4A_Tree_Atom("udta", [cls.__meta_atom__()])])
 
     @classmethod
     def __mvhd_atom__(cls, pcmreader, create_date, total_pcm_frames):
@@ -1282,10 +1279,9 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 M4A_Tree_Atom(
                     "ilst",
                     [M4A_ILST_Leaf_Atom(
-                            '\xa9too',
-                            [M4A_ILST_Unicode_Data_Atom(
-                                    0, 1,
-                                    "Python Audio Tools %s" % (VERSION))])]),
+                        '\xa9too',
+                        [M4A_ILST_Unicode_Data_Atom(
+                            0, 1, "Python Audio Tools %s" % (VERSION))])]),
                 M4A_FREE_Atom(1024)])
 
     @classmethod

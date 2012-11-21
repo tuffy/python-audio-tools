@@ -589,7 +589,7 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
     if (len(samples) > (options.max_lpc_order + 1)):
         autocorrelation_values = [
             sum([x * y for x, y in zip(windowed, windowed[lag:])])
-        for lag in xrange(0, options.max_lpc_order + 1)]
+            for lag in xrange(0, options.max_lpc_order + 1)]
 
         if ((len(autocorrelation_values) > 1) and
             (set(autocorrelation_values) !=
@@ -608,9 +608,9 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
                                                 error)
                 (qlp_coeffs,
                  qlp_shift_needed) = quantize_coefficients(
-                    options.qlp_precision,
-                    lp_coefficients,
-                    order)
+                     options.qlp_precision,
+                     lp_coefficients,
+                     order)
 
                 return (order, qlp_coeffs, qlp_shift_needed)
             else:
@@ -643,6 +643,7 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
             return (1, [0], 0)
     else:
         return (1, [0], 0)
+
 
 def compute_lp_coefficients(autocorrelation):
     maximum_lpc_order = len(autocorrelation) - 1
