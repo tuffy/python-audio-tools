@@ -974,48 +974,49 @@ class AiffAudio(AiffContainer):
         raises an InvalidFile with an error message if there is
         some problem with the file"""
 
-        from .text import (ERR_AIFF_MULTIPLE_COMM_CHUNKS,
-                           ERR_AIFF_PREMATURE_SSND_CHUNK,
-                           ERR_AIFF_MULTIPLE_SSND_CHUNKS,
-                           ERR_AIFF_TRUNCATED_CHUNK,
-                           ERR_AIFF_NO_COMM_CHUNK,
-                           ERR_AIFF_NO_SSND_CHUNK)
+        from . import CounterPCMReader
+        from . import transfer_framelist_data
+        from . import to_pcm_progress
 
-        #FIXME - update this to use the header/footer validation routines
+        try:
+            (header, footer) = self.aiff_header_footer()
+        except IOError, err:
+            raise InvalidAIFF(unicode(err))
+        except ValueError, err:
+            raise InvalidAIFF(unicode(err))
 
-        #AIFF chunk verification is likely to be so fast
-        #that individual calls to progress() are
-        #a waste of time.
+        #ensure header is valid
+        try:
+            (total_size, data_size) = validate_header(header)
+        except ValueError, err:
+            raise InvalidAIFF(unicode(err))
 
-        COMM_found = False
-        SSND_found = False
+        #ensure "ssnd" chunk has all its data
+        counter = CounterPCMReader(to_pcm_progress(self, progress))
+        try:
+            transfer_framelist_data(counter, lambda f: f)
+        except IOError:
+            from .text import ERR_AIFF_TRUNCATED_SSND_CHUNK
+            raise InvalidAIFF(ERR_AIFF_TRUNCATED_SSND_CHUNK)
 
-        for chunk in self.chunks():
-            if (chunk.id == "COMM"):
-                if (not COMM_found):
-                    COMM_found = True
-                else:
-                    raise InvalidAIFF(ERR_AIFF_MULTIPLE_COMM_CHUNKS)
+        data_bytes_written = counter.bytes_written()
 
-            elif (chunk.id == "SSND"):
-                if (not COMM_found):
-                    raise InvalidAIFF(ERR_AIFF_PREMATURE_SSND_CHUNK)
-                elif (SSND_found):
-                    raise InvalidAIFF(ERR_AIFF_MULTIPLE_SSND_CHUNKS)
-                else:
-                    SSND_found = True
+        #ensure output data size matches the "ssnd" chunk's size
+        if (data_size != data_bytes_written):
+            from .text import ERR_AIFF_TRUNCATED_SSND_CHUNK
+            raise InvalidAIFF(ERR_AIFF_TRUNCATED_SSND_CHUNK)
 
-            if (not chunk.verify()):
-                raise InvalidAIFF(ERR_AIFF_TRUNCATED_CHUNK %
-                                  (chunk.id.decode('ascii'),))
+        #ensure footer validates correctly
+        try:
+            validate_footer(footer, data_bytes_written)
+        except ValueError, err:
+            from .text import ERR_AIFF_INVALID_SIZE
+            raise InvalidAIFF(ERR_AIFF_INVALID_SIZE)
 
-        if (not COMM_found):
-            raise InvalidAIFF(ERR_AIFF_NO_COMM_CHUNK)
-        if (not SSND_found):
-            raise InvalidAIFF(ERR_AIFF_NO_SSND_CHUNK)
-
-        if (progress is not None):
-            progress(1, 1)
+        #ensure total size is correct
+        if ((len(header) + data_size + len(footer)) != total_size):
+            from .text import ERR_AIFF_INVALID_SIZE
+            raise InvalidAIFF(ERR_AIFF_INVALID_SIZE)
 
         return True
 

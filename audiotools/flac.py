@@ -1814,7 +1814,13 @@ class FlacAudio(WaveContainer, AiffContainer):
 
     def wave_header_footer(self):
         """returns (header, footer) tuple of strings
-        containing all data before and after the PCM stream"""
+        containing all data before and after the PCM stream
+
+        may raise ValueError if there's a problem with
+        the header or footer data
+        may raise IOError if there's a problem reading
+        header or footer data from the file
+        """
 
         from .wav import pad_data
 

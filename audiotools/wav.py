@@ -391,8 +391,7 @@ class WaveReader(PCMReader):
             while (True):
                 (chunk_id, chunk_size) = wave_reader.parse("4b 32u")
                 if (chunk_id == 'data'):
-                    self.wave = __capped_stream_reader__(self.file,
-                                                         chunk_size)
+                    self.wave = __capped_stream_reader__(self.file, chunk_size)
                     self.data_chunk_length = chunk_size
                     break
                 else:
@@ -1042,50 +1041,49 @@ class WaveAudio(WaveContainer):
         raises an InvalidFile with an error message if there is
         some problem with the file"""
 
-        #FIXME - have this call validate_header()/validate_footer()
-        #in order to avoid redoing lots of work
+        from . import CounterPCMReader
+        from . import transfer_framelist_data
+        from . import to_pcm_progress
 
-        #RIFF WAVE chunk verification is likely to be so fast
-        #that individual calls to progress() are
-        #a waste of time.
-        if (progress is not None):
-            progress(0, 1)
+        try:
+            (header, footer) = self.wave_header_footer()
+        except IOError, err:
+            raise InvalidWave(unicode(err))
+        except ValueError, err:
+            raise InvalidWave(unicode(err))
 
-        fmt_found = False
-        data_found = False
+        #ensure header is valid
+        try:
+            (total_size, data_size) = validate_header(header)
+        except ValueError, err:
+            raise InvalidWave(unicode(err))
 
-        for chunk in self.chunks():
-            if (chunk.id == "fmt "):
-                if (not fmt_found):
-                    fmt_found = True
-                else:
-                    from .text import ERR_WAV_MULTIPLE_FMT
-                    raise InvalidWave(ERR_WAV_MULTIPLE_FMT)
+        #ensure "data" chunk has all its data
+        counter = CounterPCMReader(to_pcm_progress(self, progress))
+        try:
+            transfer_framelist_data(counter, lambda f: f)
+        except IOError:
+            from .text import ERR_WAV_TRUNCATED_DATA_CHUNK
+            raise InvalidWave(ERR_WAV_TRUNCATED_DATA_CHUNK)
 
-            elif (chunk.id == "data"):
-                if (not fmt_found):
-                    from .text import ERR_WAV_PREMATURE_DATA
-                    raise InvalidWave(ERR_WAV_PREMATURE_DATA)
-                elif (data_found):
-                    from .text import ERR_WAV_MULTIPLE_DATA
-                    raise InvalidWave(ERR_WAV_MULTIPLE_DATA)
-                else:
-                    data_found = True
+        data_bytes_written = counter.bytes_written()
 
-            if (not chunk.verify()):
-                from .text import ERR_WAV_TRUNCATED_CHUNK
-                raise InvalidWave(ERR_WAV_TRUNCATED_CHUNK %
-                                  (chunk.id.decode('ascii')))
+        #ensure output data size matches the "data" chunk's size
+        if (data_size != data_bytes_written):
+            from .text import ERR_WAV_TRUNCATED_DATA_CHUNK
+            raise InvalidWave(ERR_WAV_TRUNCATED_DATA_CHUNK)
 
-        if (not fmt_found):
-            from .text import ERR_WAV_NO_FMT_CHUNK
-            raise InvalidWave(ERR_WAV_NO_FMT_CHUNK)
-        if (not data_found):
-            from .text import ERR_WAV_NO_DATA_CHUNK
-            raise InvalidWave(ERR_WAV_NO_DATA_CHUNK)
+        #ensure footer validates correctly
+        try:
+            validate_footer(footer, data_bytes_written)
+        except ValueError, err:
+            from .text import ERR_WAV_INVALID_SIZE
+            raise InvalidWave(ERR_WAV_INVALID_SIZE)
 
-        if (progress is not None):
-            progress(1, 1)
+        #ensure total size is correct
+        if ((len(header) + data_size + len(footer)) != total_size):
+            from .text import ERR_WAV_INVALID_SIZE
+            raise InvalidWave(ERR_WAV_INVALID_SIZE)
 
         return True
 

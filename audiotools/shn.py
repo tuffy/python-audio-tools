@@ -299,26 +299,22 @@ class ShortenAudio(WaveContainer, AiffContainer):
         """returns (header, footer) tuple of strings
         containing all data before and after the PCM stream
 
-        if self.has_foreign_wave_chunks() is False,
-        may raise ValueError if the file has no header and footer
-        for any reason"""
+        may raise ValueError if there's a problem with
+        the header or footer data
+        may raise IOError if there's a problem reading
+        header or footer data from the file"""
 
         from . import decoders
         from . import bitstream
         import cStringIO
 
-        try:
-            (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()
-            header = bitstream.BitstreamReader(cStringIO.StringIO(head), 1)
-            (RIFF, SIZE, WAVE) = header.parse("4b 32u 4b")
-            if ((RIFF != 'RIFF') or (WAVE != 'WAVE')):
-                #FIXME
-                raise ValueError("invalid wave header")
-            else:
-                return (head, tail)
-        except IOError:
-            #FIXME
+        (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()
+        header = bitstream.BitstreamReader(cStringIO.StringIO(head), 1)
+        (RIFF, SIZE, WAVE) = header.parse("4b 32u 4b")
+        if ((RIFF != 'RIFF') or (WAVE != 'WAVE')):
             raise ValueError("invalid wave header")
+        else:
+            return (head, tail)
 
     @classmethod
     def from_wave(cls, filename, header, pcmreader, footer, compression=None,
@@ -459,18 +455,13 @@ class ShortenAudio(WaveContainer, AiffContainer):
         from . import bitstream
         import cStringIO
 
-        try:
-            (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()
-            header = bitstream.BitstreamReader(cStringIO.StringIO(head), 0)
-            (FORM, SIZE, AIFF) = header.parse("4b 32u 4b")
-            if ((FORM != 'FORM') or (AIFF != 'AIFF')):
-                #FIXME
-                raise ValueError("invalid AIFF header")
-            else:
-                return (head, tail)
-        except IOError:
-            #FIXME
+        (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()
+        header = bitstream.BitstreamReader(cStringIO.StringIO(head), 0)
+        (FORM, SIZE, AIFF) = header.parse("4b 32u 4b")
+        if ((FORM != 'FORM') or (AIFF != 'AIFF')):
             raise ValueError("invalid AIFF header")
+        else:
+            return (head, tail)
 
     @classmethod
     def from_aiff(cls, filename, header, pcmreader, footer, compression=None,

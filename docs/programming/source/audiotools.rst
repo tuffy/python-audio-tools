@@ -675,10 +675,10 @@ This is accomplished by implementing three additional methods.
    where ``header`` is everything before the PCM data
    and ``footer`` is everything after the PCM data.
 
-   If :meth:`WaveContainer.has_foreign_wave_chunks` returns ``False``,
-   this may raise :exc:`ValueError` if the file has no header and footer
-   for any reason.
-   Otherwise, it will always return two strings.
+   May raise :exc:`ValueError` if there's a problem
+   with the header or footer data, such as invalid chunk IDs.
+   May raise :exc:`IOError` if there's a problem
+   reading the header or footer data from the file.
 
 .. classmethod:: WaveContainer.from_wave(filename, header, pcmreader, footer[, compression])
 
@@ -715,10 +715,10 @@ This is accomplished by implementing three additional methods.
    where ``header`` is everything before the PCM data
    and ``footer`` is everything after the PCM data.
 
-   If :meth:`WaveContainer.has_foreign_aiff_chunks` returns ``False``,
-   this may raise :exc:`ValueError` if the file has no header and footer
-   for any reason.
-   Otherwise, it will always return two strings.
+   May raise :exc:`ValueError` if there's a problem
+   with the header or footer data, such as invalid chunk IDs.
+   May raise :exc:`IOError` if there's a problem
+   reading the header or footer data from the file.
 
 .. classmethod:: AiffContainer.from_aiff(filename, header, pcmreader, footer[, compression])
 
