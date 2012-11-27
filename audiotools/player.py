@@ -18,6 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
+import cPickle
+
 (RG_NO_REPLAYGAIN, RG_TRACK_GAIN, RG_ALBUM_GAIN) = range(3)
 
 
@@ -36,17 +38,71 @@ class Player:
         next_track_callback is a function with no arguments
         which is called by the player when the current track is finished"""
 
-        import Queue
+        self.__closed__ = True
+
+        import os
+        import sys
+        import mmap
         import threading
 
-        self.command_queue = Queue.Queue()
-        self.worker = PlayerThread(audio_output,
-                                   self.command_queue,
-                                   replay_gain)
-        self.thread = threading.Thread(target=self.worker.run,
-                                       args=(next_track_callback,))
-        self.thread.daemon = True
-        self.thread.start()
+        def call_next_track(response_f):
+            while (True):
+                try:
+                    result = cPickle.load(response_f)
+                    next_track_callback()
+                except (IOError, EOFError):
+                    break
+
+        #2, 64-bit fields of progress data
+        self.__progress__ = mmap.mmap(-1, 16)
+
+        #for sending commands from player to child process
+        (command_r, command_w) = os.pipe()
+
+        #for receiving "next track" indicator from child process
+        (response_r, response_w) = os.pipe()
+
+        self.__pid__ = os.fork()
+        if (self.__pid__ > 0):
+            #parent
+            os.close(command_r)
+            os.close(response_w)
+
+            self.command_queue = os.fdopen(command_w, "wb")
+
+            thread = threading.Thread(target=call_next_track,
+                                      args=(os.fdopen(response_r, "rb"),))
+            thread.daemon = True
+            thread.start()
+
+            self.__closed__ = False
+        else:
+            #child
+            os.close(command_w)
+            os.close(response_r)
+            devnull = open(os.devnull, "r+b")
+            os.dup2(devnull.fileno(), sys.stdin.fileno())
+            os.dup2(devnull.fileno(), sys.stdout.fileno())
+            os.dup2(devnull.fileno(), sys.stderr.fileno())
+            try:
+                PlayerProcess(
+                    audio_output=audio_output,
+                    command_file=os.fdopen(command_r, "rb"),
+                    next_track_file=os.fdopen(response_w, "wb"),
+                    progress_file=self.__progress__,
+                    replay_gain=replay_gain).run()
+            finally:
+                sys.exit(0)
+
+    def __del__(self):
+        if (self.__pid__ > 0):
+            import os
+
+            if (not self.__closed__):
+                self.close()
+
+            self.command_queue.close()
+            os.waitpid(self.__pid__, 0)
 
     def open(self, track):
         """opens the given AudioFile for playing
@@ -54,12 +110,14 @@ class Player:
         stops playing the current file, if any"""
 
         self.track = track
-        self.command_queue.put(("open", [track]))
+        cPickle.dump(("open", [track]), self.command_queue)
+        self.command_queue.flush()
 
     def play(self):
         """begins or resumes playing an opened AudioFile, if any"""
 
-        self.command_queue.put(("play", []))
+        cPickle.dump(("play", []), self.command_queue)
+        self.command_queue.flush()
 
     def set_replay_gain(self, replay_gain):
         """sets the given ReplayGain level to apply during playback
@@ -68,55 +126,73 @@ class Player:
         replayGain cannot be applied mid-playback
         one must stop() and play() a file for it to take effect"""
 
-        self.command_queue.put(("set_replay_gain", [replay_gain]))
+        cPickle.dump(("set_replay_gain", [replay_gain]), self.command_queue)
+        self.command_queue.flush()
 
     def pause(self):
         """pauses playback of the current file
 
         playback may be resumed with play() or toggle_play_pause()"""
 
-        self.command_queue.put(("pause", []))
+        cPickle.dump(("pause", []), self.command_queue)
+        self.command_queue.flush()
 
     def toggle_play_pause(self):
         """pauses the file if playing, play the file if paused"""
 
-        self.command_queue.put(("toggle_play_pause", []))
+        cPickle.dump(("toggle_play_pause", []), self.command_queue)
+        self.command_queue.flush()
 
     def stop(self):
         """stops playback of the current file
 
         if play() is called, playback will start from the beginning"""
 
-        self.command_queue.put(("stop", []))
+        cPickle.dump(("stop", []), self.command_queue)
+        self.command_queue.flush()
 
     def close(self):
         """closes the player for playback
 
         the player thread is halted and the AudioOutput is closed"""
 
-        self.command_queue.put(("exit", []))
+        cPickle.dump(("exit", []), self.command_queue)
+        self.command_queue.flush()
+        self.__closed__ = True
 
     def progress(self):
         """returns a (pcm_frames_played, pcm_frames_total) tuple
 
         this indicates the current playback status in PCM frames"""
 
-        return (self.worker.frames_played, self.worker.total_frames)
+        import struct
+
+        self.__progress__.seek(0, 0)
+        (frames_played,
+         total_frames) = struct.unpack(">QQ", self.__progress__.read(16))
+
+        return (frames_played, total_frames)
 
 
 (PLAYER_STOPPED, PLAYER_PAUSED, PLAYER_PLAYING) = range(3)
 
 
-class PlayerThread:
-    """the Player class' subthread
+class PlayerProcess:
+    """the Player class' subprocess
 
     this should not be instantiated directly;
     player will do so automatically"""
 
-    def __init__(self, audio_output, command_queue,
+    def __init__(self,
+                 audio_output,
+                 command_file,
+                 next_track_file,
+                 progress_file,
                  replay_gain=RG_NO_REPLAYGAIN):
         self.audio_output = audio_output
-        self.command_queue = command_queue
+        self.command_file = command_file
+        self.next_track_file = next_track_file
+        self.progress_file = progress_file
         self.replay_gain = replay_gain
 
         self.track = None
@@ -124,12 +200,14 @@ class PlayerThread:
         self.frames_played = 0
         self.total_frames = 0
         self.state = PLAYER_STOPPED
+        self.set_progress(self.frames_played, self.total_frames)
 
     def open(self, track):
         self.stop()
         self.track = track
         self.frames_played = 0
         self.total_frames = track.total_frames()
+        self.set_progress(self.frames_played, self.total_frames)
 
     def pause(self):
         if (self.state == PLAYER_PLAYING):
@@ -180,6 +258,7 @@ class PlayerThread:
                     self.audio_output.framelist_converter())
                 self.frames_played = 0
                 self.state = PLAYER_PLAYING
+                self.set_progress(self.frames_played, self.total_frames)
             elif (self.state == PLAYER_PAUSED):
                 self.audio_output.resume()
                 self.state = PLAYER_PLAYING
@@ -203,39 +282,58 @@ class PlayerThread:
             self.pcmconverter = None
         self.frames_played = 0
         self.state = PLAYER_STOPPED
+        self.set_progress(self.frames_played, self.total_frames)
 
-    def run(self, next_track_callback=lambda: None):
-        import Queue
+    def run(self):
+        import select
 
         while (True):
             if (self.state in (PLAYER_STOPPED, PLAYER_PAUSED)):
-                (command, args) = self.command_queue.get(True)
+                (command, args) = cPickle.load(self.command_file)
                 if (command == "exit"):
                     self.audio_output.close()
                     return
                 else:
                     getattr(self, command)(*args)
             else:
-                try:
-                    (command, args) = self.command_queue.get_nowait()
+                (r_list,
+                 w_list,
+                 x_list) = select.select([self.command_file],
+                                         [],
+                                         [],
+                                         0)
+                if (len(r_list)):
+                    (command, args) = cPickle.load(self.command_file)
                     if (command == "exit"):
                         self.audio_output.close()
                         return
                     else:
                         getattr(self, command)(*args)
-                except Queue.Empty:
+                else:
                     if (self.frames_played < self.total_frames):
                         (data, frames) = self.pcmconverter.read()
                         if (frames > 0):
                             self.audio_output.play(data)
                             self.frames_played += frames
                             if (self.frames_played >= self.total_frames):
-                                next_track_callback()
+                                cPickle.dump(None, self.next_track_file)
+                                self.next_track_file.flush()
                         else:
                             self.frames_played = self.total_frames
-                            next_track_callback()
+                            cPickle.dump(None, self.next_track_file)
+                            self.next_track_file.flush()
+
+                        self.set_progress(self.frames_played,
+                                          self.total_frames)
                     else:
                         self.stop()
+
+    def set_progress(self, current, total):
+        import struct
+
+        self.progress_file.seek(0, 0)
+        self.progress_file.write(struct.pack(">QQ", current, total))
+        self.progress_file.flush()
 
 
 class CDPlayer:
