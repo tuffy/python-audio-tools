@@ -3811,31 +3811,44 @@ class FlacFileTest(TestForeignAiffChunks,
                              ("flac-nomask2.flac", 0x3F),
                              ("flac-nomask3.flac", 0x3),
                              ("flac-nomask4.flac", 0x3)]:
-            track = audiotools.open(path)
-            fixes = []
-            self.assertEqual(track.clean(fixes), None)
-            self.assertEqual(fixes,
-                             [CLEAN_FLAC_ADD_CHANNELMASK])
-            temp = tempfile.NamedTemporaryFile(suffix=".flac")
+            no_blocks_file = tempfile.NamedTemporaryFile(suffix=".flac")
             try:
-                fixes = []
-                track.clean(fixes, temp.name)
-                self.assertEqual(
-                    fixes,
-                    [CLEAN_FLAC_ADD_CHANNELMASK])
-                new_track = audiotools.open(temp.name)
-                self.assertEqual(new_track.channel_mask(),
-                                 track.channel_mask())
-                self.assertEqual(int(new_track.channel_mask()), mask)
-                metadata = new_track.get_metadata()
+                no_blocks_file.write(open(path, "rb").read())
+                no_blocks_file.flush()
+                track = audiotools.open(no_blocks_file.name)
+                metadata = track.get_metadata()
+                for block_id in range(1, 7):
+                    metadata.replace_blocks(block_id, [])
+                track.update_metadata(metadata)
 
-                self.assertEqual(
-                    metadata.get_block(
-                        audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)[
-                        u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0],
-                    u"0x%.4X" % (mask))
+                for track in [audiotools.open(path),
+                              audiotools.open(no_blocks_file.name)]:
+                    fixes = []
+                    self.assertEqual(track.clean(fixes), None)
+                    self.assertEqual(fixes, [CLEAN_FLAC_ADD_CHANNELMASK])
+
+                    temp = tempfile.NamedTemporaryFile(suffix=".flac")
+                    try:
+                        fixes = []
+                        track.clean(fixes, temp.name)
+                        self.assertEqual(
+                            fixes,
+                            [CLEAN_FLAC_ADD_CHANNELMASK])
+                        new_track = audiotools.open(temp.name)
+                        self.assertEqual(new_track.channel_mask(),
+                                         track.channel_mask())
+                        self.assertEqual(int(new_track.channel_mask()), mask)
+                        metadata = new_track.get_metadata()
+
+                        self.assertEqual(
+                            metadata.get_block(
+                                audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)[
+                                u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0],
+                            u"0x%.4X" % (mask))
+                    finally:
+                        temp.close()
             finally:
-                temp.close()
+                no_blocks_file.close()
 
         #check bad seekpoint destinations
         track = audiotools.open("flac-seektable.flac")

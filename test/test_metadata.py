@@ -3604,8 +3604,13 @@ class FlacMetaData(MetaDataTest):
                                      CLEAN_REMOVE_EMPTY_TAG,
                                      CLEAN_FIX_IMAGE_FIELDS,
                                      CLEAN_FLAC_REMOVE_SEEKPOINTS,
-                                     CLEAN_FLAC_REORDER_SEEKPOINTS,
-                                     )
+                                     CLEAN_FLAC_REORDER_SEEKPOINTS)
+        #check no blocks
+        metadata = audiotools.FlacMetaData([])
+        results = []
+        cleaned = metadata.clean(results)
+        self.assertEqual(metadata, cleaned)
+        self.assertEqual(results, [])
 
         #check trailing whitespace
         metadata = audiotools.FlacMetaData([
@@ -3976,6 +3981,22 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                     temp2 = tempfile.NamedTemporaryFile(
                         suffix="." + input_class.SUFFIX)
                     try:
+                        #ensure file with no metadata blocks
+                        #has metadata set correctly
+                        track2 = output_class.from_pcm(
+                            temp2.name,
+                            test_streams.Sine16_Stereo(66150, 44100,
+                                                       8820.0, 0.70,
+                                                       4410.0, 0.29, 1.0))
+                        metadata = track2.get_metadata()
+                        for block_id in range(1, 7):
+                            metadata.replace_blocks(block_id, [])
+                        track2.update_metadata(metadata)
+                        self.assert_(track2.replay_gain() is None)
+
+                        output_class.add_replay_gain([track2.filename])
+                        self.assert_(track2.replay_gain() is not None)
+
                         track2 = output_class.from_pcm(
                             temp2.name,
                             test_streams.Sine16_Stereo(66150, 44100,
@@ -4013,7 +4034,10 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
 
     @METADATA_FLAC
     def test_getattr(self):
-        #track_number grabs the first available integer
+        #track_number grabs the first available integer, if any
+        self.assertEqual(
+            audiotools.FlacMetaData([]).track_number, None)
+
         self.assertEqual(
             audiotools.FlacMetaData([
                     audiotools.flac.Flac_VORBISCOMMENT(
@@ -4060,7 +4084,10 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         u"vendor")]).track_number,
             10)
 
-        #album_number grabs the first available integer
+        #album_number grabs the first available integer, if any
+        self.assertEqual(
+            audiotools.FlacMetaData([]).album_number, None)
+
         self.assertEqual(
             audiotools.FlacMetaData([
                     audiotools.flac.Flac_VORBISCOMMENT(
@@ -4108,7 +4135,10 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
             20)
 
         #track_total grabs the first available TRACKTOTAL integer
-        #before falling back on slashed fields
+        #before falling back on slashed fields, if any
+        self.assertEqual(
+            audiotools.FlacMetaData([]).track_total, None)
+
         self.assertEqual(
             audiotools.FlacMetaData([
                     audiotools.flac.Flac_VORBISCOMMENT(
@@ -4156,7 +4186,10 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
             15)
 
         #album_total grabs the first available DISCTOTAL integer
-        #before falling back on slashed fields
+        #before falling back on slashed fields, if any
+        self.assertEqual(
+            audiotools.FlacMetaData([]).album_total, None)
+
         self.assertEqual(
             audiotools.FlacMetaData([
                     audiotools.flac.Flac_VORBISCOMMENT(
@@ -4215,25 +4248,27 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
     @METADATA_FLAC
     def test_setattr(self):
         #track_number adds new field if necessary
-        metadata = audiotools.FlacMetaData([
-                audiotools.flac.Flac_VORBISCOMMENT(
-                    [], u"vendor")])
-        self.assertEqual(metadata.track_number, None)
-        metadata.track_number = 11
-        self.assertEqual(metadata.get_block(4).comment_strings,
-                         [u"TRACKNUMBER=11"])
-        self.assertEqual(metadata.track_number, 11)
+        for metadata in [
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT([], u"vendor")]),
+            audiotools.FlacMetaData([])]:
 
-        metadata = audiotools.FlacMetaData([
-                audiotools.flac.Flac_VORBISCOMMENT(
-                    [u"TRACKNUMBER=blah"],
-                    u"vendor")])
-        self.assertEqual(metadata.track_number, None)
-        metadata.track_number = 11
-        self.assertEqual(metadata.get_block(4).comment_strings,
-                         [u"TRACKNUMBER=blah",
-                          u"TRACKNUMBER=11"])
-        self.assertEqual(metadata.track_number, 11)
+            self.assertEqual(metadata.track_number, None)
+            metadata.track_number = 11
+            self.assertEqual(metadata.get_block(4).comment_strings,
+                             [u"TRACKNUMBER=11"])
+            self.assertEqual(metadata.track_number, 11)
+
+            metadata = audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"TRACKNUMBER=blah"],
+                        u"vendor")])
+            self.assertEqual(metadata.track_number, None)
+            metadata.track_number = 11
+            self.assertEqual(metadata.get_block(4).comment_strings,
+                             [u"TRACKNUMBER=blah",
+                              u"TRACKNUMBER=11"])
+            self.assertEqual(metadata.track_number, 11)
 
         #track_number updates the first integer field
         #and leaves other junk in that field alone
@@ -4269,25 +4304,27 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         self.assertEqual(metadata.track_number, 11)
 
         #album_number adds new field if necessary
-        metadata = audiotools.FlacMetaData([
-                audiotools.flac.Flac_VORBISCOMMENT(
-                    [], u"vendor")])
-        self.assertEqual(metadata.album_number, None)
-        metadata.album_number = 3
-        self.assertEqual(metadata.get_block(4).comment_strings,
-                         [u"DISCNUMBER=3"])
-        self.assertEqual(metadata.album_number, 3)
+        for metadata in [
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT([], u"vendor")]),
+            audiotools.FlacMetaData([])]:
 
-        metadata = audiotools.FlacMetaData([
-                audiotools.flac.Flac_VORBISCOMMENT(
-                    [u"DISCNUMBER=blah"],
-                    u"vendor")])
-        self.assertEqual(metadata.album_number, None)
-        metadata.album_number = 3
-        self.assertEqual(metadata.get_block(4).comment_strings,
-                         [u"DISCNUMBER=blah",
-                          u"DISCNUMBER=3"])
-        self.assertEqual(metadata.album_number, 3)
+            self.assertEqual(metadata.album_number, None)
+            metadata.album_number = 3
+            self.assertEqual(metadata.get_block(4).comment_strings,
+                             [u"DISCNUMBER=3"])
+            self.assertEqual(metadata.album_number, 3)
+
+            metadata = audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"DISCNUMBER=blah"],
+                        u"vendor")])
+            self.assertEqual(metadata.album_number, None)
+            metadata.album_number = 3
+            self.assertEqual(metadata.get_block(4).comment_strings,
+                             [u"DISCNUMBER=blah",
+                              u"DISCNUMBER=3"])
+            self.assertEqual(metadata.album_number, 3)
 
         #album_number updates the first integer field
         #and leaves other junk in that field alone
@@ -4323,25 +4360,27 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         self.assertEqual(metadata.album_number, 3)
 
         #track_total adds new TRACKTOTAL field if necessary
-        metadata = audiotools.FlacMetaData([
-                audiotools.flac.Flac_VORBISCOMMENT(
-                    [], u"vendor")])
-        self.assertEqual(metadata.track_total, None)
-        metadata.track_total = 12
-        self.assertEqual(metadata.get_block(4).comment_strings,
-                         [u"TRACKTOTAL=12"])
-        self.assertEqual(metadata.track_total, 12)
+        for metadata in [
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT([], u"vendor")]),
+            audiotools.FlacMetaData([])]:
 
-        metadata = audiotools.FlacMetaData([
-                audiotools.flac.Flac_VORBISCOMMENT(
-                    [u"TRACKTOTAL=blah"],
-                    u"vendor")])
-        self.assertEqual(metadata.track_total, None)
-        metadata.track_total = 12
-        self.assertEqual(metadata.get_block(4).comment_strings,
-                         [u"TRACKTOTAL=blah",
-                          u"TRACKTOTAL=12"])
-        self.assertEqual(metadata.track_total, 12)
+            self.assertEqual(metadata.track_total, None)
+            metadata.track_total = 12
+            self.assertEqual(metadata.get_block(4).comment_strings,
+                             [u"TRACKTOTAL=12"])
+            self.assertEqual(metadata.track_total, 12)
+
+            metadata = audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"TRACKTOTAL=blah"],
+                        u"vendor")])
+            self.assertEqual(metadata.track_total, None)
+            metadata.track_total = 12
+            self.assertEqual(metadata.get_block(4).comment_strings,
+                             [u"TRACKTOTAL=blah",
+                              u"TRACKTOTAL=12"])
+            self.assertEqual(metadata.track_total, 12)
 
         #track_total updates first integer TRACKTOTAL field first if possible
         #including aliases
@@ -4399,25 +4438,27 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         self.assertEqual(metadata.track_total, 3)
 
         #album_total adds new DISCTOTAL field if necessary
-        metadata = audiotools.FlacMetaData([
-                audiotools.flac.Flac_VORBISCOMMENT(
-                    [], u"vendor")])
-        self.assertEqual(metadata.album_total, None)
-        metadata.album_total = 4
-        self.assertEqual(metadata.get_block(4).comment_strings,
-                         [u"DISCTOTAL=4"])
-        self.assertEqual(metadata.album_total, 4)
+        for metadata in [
+            audiotools.FlacMetaData([
+                audiotools.flac.Flac_VORBISCOMMENT([], u"vendor")]),
+            audiotools.FlacMetaData([])]:
 
-        metadata = audiotools.FlacMetaData([
-                audiotools.flac.Flac_VORBISCOMMENT(
-                    [u"DISCTOTAL=blah"],
-                    u"vendor")])
-        self.assertEqual(metadata.album_total, None)
-        metadata.album_total = 4
-        self.assertEqual(metadata.get_block(4).comment_strings,
-                         [u"DISCTOTAL=blah",
-                          u"DISCTOTAL=4"])
-        self.assertEqual(metadata.album_total, 4)
+            self.assertEqual(metadata.album_total, None)
+            metadata.album_total = 4
+            self.assertEqual(metadata.get_block(4).comment_strings,
+                             [u"DISCTOTAL=4"])
+            self.assertEqual(metadata.album_total, 4)
+
+            metadata = audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT(
+                        [u"DISCTOTAL=blah"],
+                        u"vendor")])
+            self.assertEqual(metadata.album_total, None)
+            metadata.album_total = 4
+            self.assertEqual(metadata.get_block(4).comment_strings,
+                             [u"DISCTOTAL=blah",
+                              u"DISCTOTAL=4"])
+            self.assertEqual(metadata.album_total, 4)
 
         #album_total updates DISCTOTAL field first if possible
         #including aliases
@@ -4476,6 +4517,12 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
 
         #other fields update the first match
         #while leaving the rest alone
+        metadata = audiotools.FlacMetaData([])
+        metadata.track_name = u"blah"
+        self.assertEqual(metadata.track_name, u"blah")
+        self.assertEqual(metadata.get_block(4).comment_strings,
+                         [u"TITLE=blah"])
+
         metadata = audiotools.FlacMetaData([
                 audiotools.flac.Flac_VORBISCOMMENT(
                     [u"TITLE=foo",
@@ -4490,24 +4537,26 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                           u"FOO=baz"])
 
         #setting field to an empty string is okay
-        metadata = audiotools.FlacMetaData([
-                audiotools.flac.Flac_VORBISCOMMENT(
-                    [], u"vendor")])
-        metadata.track_name = u""
-        self.assertEqual(metadata.track_name, u"")
-        self.assertEqual(metadata.get_block(4).comment_strings,
-                         [u"TITLE="])
+        for metadata in [
+            audiotools.FlacMetaData([
+                    audiotools.flac.Flac_VORBISCOMMENT([], u"vendor")]),
+            audiotools.FlacMetaData([])]:
+            metadata.track_name = u""
+            self.assertEqual(metadata.track_name, u"")
+            self.assertEqual(metadata.get_block(4).comment_strings,
+                             [u"TITLE="])
 
     @METADATA_FLAC
     def test_delattr(self):
         #deleting nonexistent field is okay
         for field in audiotools.MetaData.FIELDS:
-            metadata = audiotools.FlacMetaData([
-                    audiotools.flac.Flac_VORBISCOMMENT(
-                        [],
-                        u"vendor")])
-            delattr(metadata, field)
-            self.assertEqual(getattr(metadata, field), None)
+            for metadata in [
+                audiotools.FlacMetaData([
+                        audiotools.flac.Flac_VORBISCOMMENT([], u"vendor")]),
+                audiotools.FlacMetaData([])]:
+
+                delattr(metadata, field)
+                self.assertEqual(getattr(metadata, field), None)
 
         #deleting field removes all instances of it
         metadata = audiotools.FlacMetaData([
@@ -4542,6 +4591,10 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         self.assertEqual(metadata.track_name, None)
 
         #setting field to None is the same as deleting field
+        metadata = audiotools.FlacMetaData([])
+        metadata.track_name = None
+        self.assertEqual(metadata.track_name, None)
+
         metadata = audiotools.FlacMetaData([
                 audiotools.flac.Flac_VORBISCOMMENT(
                     [u"TITLE=track name"],

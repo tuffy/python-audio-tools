@@ -123,6 +123,8 @@ class FlacMetaData(MetaData):
                 vorbis_comment = self.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
             except IndexError:
                 #add VORBIS comment block if necessary
+                from . import VERSION
+
                 vorbis_comment = Flac_VORBISCOMMENT(
                     [], u"Python Audio Tools %s" % (VERSION))
 
@@ -2410,6 +2412,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                     comment = metadata.get_block(
                         Flac_VORBISCOMMENT.BLOCK_ID)
                 except IndexError:
+                    from . import VERSION
+
                     comment = Flac_VORBISCOMMENT(
                         [], u"Python Audio Tools %s" % (VERSION))
                     metadata.add_block(comment)
@@ -2504,7 +2508,6 @@ class FlacAudio(WaveContainer, AiffContainer):
         """
 
         import os.path
-        from . import VERSION
 
         def seektable_valid(seektable, metadata_offset, input_file):
             from .bitstream import BitstreamReader
@@ -2646,6 +2649,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                             vorbis_comment = metadata.get_block(
                                 Flac_VORBISCOMMENT.BLOCK_ID)
                         except IndexError:
+                            from . import VERSION
+
                             vorbis_comment = Flac_VORBISCOMMENT(
                                 [], u"Python Audio Tools %s" % (VERSION))
 
@@ -2894,7 +2899,13 @@ class OggFlacMetaData(FlacMetaData):
 
         packet.build(
             "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b",
-            (0x7F, "FLAC", 1, 0, len(valid_blocks), "fLaC", 0,
+            (0x7F,
+             "FLAC",
+             1,
+             0,
+             len(valid_blocks),
+             "fLaC",
+             0,
              format_size("16u 16u 24u 24u 20u 3u 5u 36U 16b") / 8,
              streaminfo.minimum_block_size,
              streaminfo.maximum_block_size,
@@ -2909,22 +2920,23 @@ class OggFlacMetaData(FlacMetaData):
 
         #FIXME - adjust non-STREAMINFO blocks to use fewer pages
 
-        #pack remaining metadata blocks into as few pages as possible
-        for (last_block, block) in iter_last(iter(valid_blocks)):
-
-            packet.reset()
-            if (not last_block):
-                packet.build("1u 7u 24u", (0, block.BLOCK_ID, block.size()))
-            else:
-                packet.build("1u 7u 24u", (1, block.BLOCK_ID, block.size()))
-
-            block.build(packet)
-            for (first_page, page_segments) in iter_first(
-                oggwriter.segments_to_pages(
-                    oggwriter.packet_to_segments(packet.data()))):
-                oggwriter.write_page(0 if first_page else -1,
-                                     page_segments,
-                                     0 if first_page else 1, 0, 0)
+        #pack remaining metadata blocks into as few pages as possible, if any
+        if (len(valid_blocks)):
+            for (last_block, block) in iter_last(iter(valid_blocks)):
+                packet.reset()
+                if (not last_block):
+                    packet.build("1u 7u 24u",
+                                 (0, block.BLOCK_ID, block.size()))
+                else:
+                    packet.build("1u 7u 24u",
+                                 (1, block.BLOCK_ID, block.size()))
+                block.build(packet)
+                for (first_page, page_segments) in iter_first(
+                    oggwriter.segments_to_pages(
+                        oggwriter.packet_to_segments(packet.data()))):
+                    oggwriter.write_page(0 if first_page else -1,
+                                         page_segments,
+                                         0 if first_page else 1, 0, 0)
 
 
 class __Counter__:
