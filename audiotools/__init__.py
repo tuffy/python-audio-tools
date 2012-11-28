@@ -4728,11 +4728,14 @@ class ExecQueue:
         if (pid > 0):  # parent
             return pid
         else:          # child
-            if (kwargs is not None):
-                function(*args, **kwargs)
-            else:
-                function(*args)
-            sys.exit(0)
+            try:
+                if (kwargs is not None):
+                    function(*args, **kwargs)
+                else:
+                    function(*args)
+            finally:
+                #avoid calling Python cleanup handlers
+                os._exit(0)
 
     def run(self, max_processes=1):
         """performs the queued functions in separate subprocesses
@@ -4808,11 +4811,14 @@ class ExecQueue2:
         else:          # child
             os.close(pipe_read)
             writer = os.fdopen(pipe_write, 'w')
-            if (kwargs is not None):
-                cPickle.dump(function(*args, **kwargs), writer)
-            else:
-                cPickle.dump(function(*args), writer)
-            sys.exit(0)
+            try:
+                if (kwargs is not None):
+                    cPickle.dump(function(*args, **kwargs), writer)
+                else:
+                    cPickle.dump(function(*args), writer)
+            finally:
+                #avoid calling Python cleanup handlers
+                os._exit(0)
 
     def __add_job__(self):
         """removes a queued function and adds it to our running pool"""
@@ -5099,7 +5105,8 @@ class __ProgressQueueJob__:
             result_pipe.flush()
             result_pipe.close()
             progress.close()
-            sys.exit(0)
+            #avoid calling Python cleanup handlers
+            os._exit(0)
 
     def is_completed(self):
         """returns True if the job is completed

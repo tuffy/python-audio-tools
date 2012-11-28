@@ -459,171 +459,19 @@ class Flac_STREAMINFO:
         return 34
 
 
-class Flac_VORBISCOMMENT(VorbisComment):
-    BLOCK_ID = 4
+class Flac_PADDING:
+    BLOCK_ID = 1
+
+    def __init__(self, length):
+        self.length = length
 
     def copy(self):
         """returns a duplicate of this metadata block"""
 
-        return Flac_VORBISCOMMENT(self.comment_strings[:],
-                                  self.vendor_string)
+        return Flac_PADDING(self.length)
 
     def __repr__(self):
-        return "Flac_VORBISCOMMENT(%s, %s)" % \
-            (repr(self.comment_strings), repr(self.vendor_string))
-
-    def raw_info(self):
-        """returns a human-readable version of this metadata block
-        as unicode"""
-
-        from os import linesep
-        from . import display_unicode
-
-        #align the text strings on the "=" sign, if any
-
-        if (len(self.comment_strings) > 0):
-            max_indent = max([len(display_unicode(comment.split(u"=", 1)[0]))
-                              for comment in self.comment_strings
-                              if u"=" in comment])
-        else:
-            max_indent = 0
-
-        comment_strings = []
-        for comment in self.comment_strings:
-            if (u"=" in comment):
-                comment_strings.append(
-                    u" " * (4 + max_indent -
-                            len(display_unicode(comment.split(u"=", 1)[0]))) +
-                    comment)
-            else:
-                comment_strings.append(u" " * 4 + comment)
-
-        return linesep.decode('ascii').join(
-            [u"  VORBIS_COMMENT:",
-             u"    %s" % (self.vendor_string)] +
-            comment_strings)
-
-    @classmethod
-    def converted(cls, metadata):
-        """converts a MetaData object to a Flac_VORBISCOMMENT object"""
-
-        if ((metadata is None) or (isinstance(metadata, Flac_VORBISCOMMENT))):
-            return metadata
-        else:
-            #make VorbisComment do all the work,
-            #then lift its data into a new Flac_VORBISCOMMENT
-            metadata = VorbisComment.converted(metadata)
-            return cls(metadata.comment_strings,
-                       metadata.vendor_string)
-
-    @classmethod
-    def parse(cls, reader):
-        """returns this metadata block from a BitstreamReader"""
-
-        reader.set_endianness(1)
-        vendor_string = reader.read_bytes(reader.read(32)).decode('utf-8',
-                                                                  'replace')
-        return cls([reader.read_bytes(reader.read(32)).decode('utf-8',
-                                                              'replace')
-                    for i in xrange(reader.read(32))], vendor_string)
-
-    def build(self, writer):
-        """writes this metadata block to a BitstreamWriter"""
-
-        writer.set_endianness(1)
-        vendor_string = self.vendor_string.encode('utf-8')
-        writer.build("32u%db" % (len(vendor_string)),
-                     (len(vendor_string), vendor_string))
-        writer.write(32, len(self.comment_strings))
-        for comment_string in self.comment_strings:
-            comment_string = comment_string.encode('utf-8')
-            writer.build("32u%db" % (len(comment_string)),
-                         (len(comment_string), comment_string))
-        writer.set_endianness(0)
-
-    def size(self):
-        """the size of this metadata block
-        not including the 4-byte block header"""
-
-        from operator import add
-
-        return (4 + len(self.vendor_string.encode('utf-8')) +
-                4 +
-                reduce(add, [4 + len(comment.encode('utf-8'))
-                             for comment in self.comment_strings], 0))
-
-
-class Flac_PICTURE(Image):
-    BLOCK_ID = 6
-
-    def __init__(self, picture_type, mime_type, description,
-                 width, height, color_depth, color_count, data):
-        self.__dict__["data"] = data
-        self.__dict__["mime_type"] = mime_type
-        self.__dict__["width"] = width
-        self.__dict__["height"] = height
-        self.__dict__["color_depth"] = color_depth
-        self.__dict__["color_count"] = color_count
-        self.__dict__["description"] = description
-        self.__dict__["picture_type"] = picture_type
-
-    def copy(self):
-        """returns a duplicate of this metadata block"""
-
-        return Flac_PICTURE(self.picture_type,
-                            self.mime_type,
-                            self.description,
-                            self.width,
-                            self.height,
-                            self.color_depth,
-                            self.color_count,
-                            self.data)
-
-    def __getattr__(self, key):
-        if (key == "type"):
-            #convert FLAC picture_type to Image type
-            #
-            # | Item         | FLAC Picture ID | Image type |
-            # |--------------+-----------------+------------|
-            # | Other        |               0 |          4 |
-            # | Front Cover  |               3 |          0 |
-            # | Back Cover   |               4 |          1 |
-            # | Leaflet Page |               5 |          2 |
-            # | Media        |               6 |          3 |
-
-            return {0: 4, 3: 0, 4: 1, 5: 2, 6: 3}.get(self.picture_type, 4)
-        else:
-            try:
-                return self.__dict__[key]
-            except KeyError:
-                raise AttributeError(key)
-
-    def __setattr__(self, key, value):
-        if (key == "type"):
-            #convert Image type to FLAC picture_type
-            #
-            # | Item         | Image type | FLAC Picture ID |
-            # |--------------+------------+-----------------|
-            # | Other        |          4 |               0 |
-            # | Front Cover  |          0 |               3 |
-            # | Back Cover   |          1 |               4 |
-            # | Leaflet Page |          2 |               5 |
-            # | Media        |          3 |               6 |
-
-            self.picture_type = {4: 0, 0: 3, 1: 4, 2: 5, 3: 6}.get(value, 0)
-        else:
-            self.__dict__[key] = value
-
-    def __repr__(self):
-        return ("Flac_PICTURE(%s)" %
-                ",".join(["%s=%s" % (key, repr(getattr(self, key)))
-                          for key in ["picture_type",
-                                      "mime_type",
-                                      "description",
-                                      "width",
-                                      "height",
-                                      "color_depth",
-                                      "color_count"]]))
+        return "Flac_PADDING(%d)" % (self.length)
 
     def raw_info(self):
         """returns a human-readable version of this metadata block
@@ -632,127 +480,26 @@ class Flac_PICTURE(Image):
         from os import linesep
 
         return linesep.decode('ascii').join(
-            [u"  PICTURE:",
-             u"    picture type = %d" % (self.picture_type),
-             u"       MIME type = %s" % (self.mime_type),
-             u"     description = %s" % (self.description),
-             u"           width = %d" % (self.width),
-             u"          height = %d" % (self.height),
-             u"     color depth = %d" % (self.color_depth),
-             u"     color count = %d" % (self.color_count),
-             u"           bytes = %d" % (len(self.data))])
+            [u"  PADDING:",
+             u"    length = %d" % (self.length)])
 
     @classmethod
-    def parse(cls, reader):
+    def parse(cls, reader, block_length):
         """returns this metadata block from a BitstreamReader"""
 
-        return cls(
-            picture_type=reader.read(32),
-            mime_type=reader.read_bytes(reader.read(32)).decode('ascii'),
-            description=reader.read_bytes(reader.read(32)).decode('utf-8'),
-            width=reader.read(32),
-            height=reader.read(32),
-            color_depth=reader.read(32),
-            color_count=reader.read(32),
-            data=reader.read_bytes(reader.read(32)))
+        reader.skip_bytes(block_length)
+        return cls(length=block_length)
 
     def build(self, writer):
         """writes this metadata block to a BitstreamWriter"""
 
-        writer.build("32u [ 32u%db ] [32u%db ] 32u 32u 32u 32u [ 32u%db ]" %
-                     (len(self.mime_type.encode('ascii')),
-                      len(self.description.encode('utf-8')),
-                      len(self.data)),
-                     (self.picture_type,
-                      len(self.mime_type.encode('ascii')),
-                      self.mime_type.encode('ascii'),
-                      len(self.description.encode('utf-8')),
-                      self.description.encode('utf-8'),
-                      self.width,
-                      self.height,
-                      self.color_depth,
-                      self.color_count,
-                      len(self.data),
-                      self.data))
+        writer.write_bytes(chr(0) * self.length)
 
     def size(self):
         """the size of this metadata block
         not including the 4-byte block header"""
 
-        from .bitstream import format_size
-
-        return format_size(
-            "32u [ 32u%db ] [32u%db ] 32u 32u 32u 32u [ 32u%db ]" %
-            (len(self.mime_type.encode('ascii')),
-             len(self.description.encode('utf-8')),
-             len(self.data))) / 8
-
-    @classmethod
-    def converted(cls, image):
-        """converts an Image object to a FlacPictureComment"""
-
-        return cls(
-            picture_type={4: 0, 0: 3, 1: 4, 2: 5, 3: 6}.get(image.type, 0),
-            mime_type=image.mime_type,
-            description=image.description,
-            width=image.width,
-            height=image.height,
-            color_depth=image.color_depth,
-            color_count=image.color_count,
-            data=image.data)
-
-    def type_string(self):
-        """returns the image's type as a human readable plain string
-
-        for example, an image of type 0 returns "Front Cover"
-        """
-
-        return {0: "Other",
-                1: "File icon",
-                2: "Other file icon",
-                3: "Cover (front)",
-                4: "Cover (back)",
-                5: "Leaflet page",
-                6: "Media",
-                7: "Lead artist / lead performer / soloist",
-                8: "Artist / Performer",
-                9: "Conductor",
-                10: "Band / Orchestra",
-                11: "Composer",
-                12: "Lyricist / Text writer",
-                13: "Recording Location",
-                14: "During recording",
-                15: "During performance",
-                16: "Movie / Video screen capture",
-                17: "A bright colored fish",
-                18: "Illustration",
-                19: "Band/Artist logotype",
-                20: "Publisher / Studio logotype"}.get(self.picture_type,
-                                                       "Other")
-
-    def clean(self, fixes_performed):
-        from .image import image_metrics
-
-        img = image_metrics(self.data)
-
-        if (((self.mime_type != img.mime_type) or
-             (self.width != img.width) or
-             (self.height != img.height) or
-             (self.color_depth != img.bits_per_pixel) or
-             (self.color_count != img.color_count))):
-            from .text import CLEAN_FIX_IMAGE_FIELDS
-            fixes_performed.append(CLEAN_FIX_IMAGE_FIELDS)
-            return self.__class__.converted(
-                Image(type=self.type,
-                      mime_type=img.mime_type,
-                      description=self.description,
-                      width=img.width,
-                      height=img.height,
-                      color_depth=img.bits_per_pixel,
-                      color_count=img.color_count,
-                      data=self.data))
-        else:
-            return self
+        return self.length
 
 
 class Flac_APPLICATION:
@@ -885,6 +632,100 @@ class Flac_SEEKTABLE:
             fixes_performed.append(CLEAN_FLAC_REORDER_SEEKPOINTS)
 
         return Flac_SEEKTABLE(ascending_order)
+
+
+class Flac_VORBISCOMMENT(VorbisComment):
+    BLOCK_ID = 4
+
+    def copy(self):
+        """returns a duplicate of this metadata block"""
+
+        return Flac_VORBISCOMMENT(self.comment_strings[:],
+                                  self.vendor_string)
+
+    def __repr__(self):
+        return "Flac_VORBISCOMMENT(%s, %s)" % \
+            (repr(self.comment_strings), repr(self.vendor_string))
+
+    def raw_info(self):
+        """returns a human-readable version of this metadata block
+        as unicode"""
+
+        from os import linesep
+        from . import display_unicode
+
+        #align the text strings on the "=" sign, if any
+
+        if (len(self.comment_strings) > 0):
+            max_indent = max([len(display_unicode(comment.split(u"=", 1)[0]))
+                              for comment in self.comment_strings
+                              if u"=" in comment])
+        else:
+            max_indent = 0
+
+        comment_strings = []
+        for comment in self.comment_strings:
+            if (u"=" in comment):
+                comment_strings.append(
+                    u" " * (4 + max_indent -
+                            len(display_unicode(comment.split(u"=", 1)[0]))) +
+                    comment)
+            else:
+                comment_strings.append(u" " * 4 + comment)
+
+        return linesep.decode('ascii').join(
+            [u"  VORBIS_COMMENT:",
+             u"    %s" % (self.vendor_string)] +
+            comment_strings)
+
+    @classmethod
+    def converted(cls, metadata):
+        """converts a MetaData object to a Flac_VORBISCOMMENT object"""
+
+        if ((metadata is None) or (isinstance(metadata, Flac_VORBISCOMMENT))):
+            return metadata
+        else:
+            #make VorbisComment do all the work,
+            #then lift its data into a new Flac_VORBISCOMMENT
+            metadata = VorbisComment.converted(metadata)
+            return cls(metadata.comment_strings,
+                       metadata.vendor_string)
+
+    @classmethod
+    def parse(cls, reader):
+        """returns this metadata block from a BitstreamReader"""
+
+        reader.set_endianness(1)
+        vendor_string = reader.read_bytes(reader.read(32)).decode('utf-8',
+                                                                  'replace')
+        return cls([reader.read_bytes(reader.read(32)).decode('utf-8',
+                                                              'replace')
+                    for i in xrange(reader.read(32))], vendor_string)
+
+    def build(self, writer):
+        """writes this metadata block to a BitstreamWriter"""
+
+        writer.set_endianness(1)
+        vendor_string = self.vendor_string.encode('utf-8')
+        writer.build("32u%db" % (len(vendor_string)),
+                     (len(vendor_string), vendor_string))
+        writer.write(32, len(self.comment_strings))
+        for comment_string in self.comment_strings:
+            comment_string = comment_string.encode('utf-8')
+            writer.build("32u%db" % (len(comment_string)),
+                         (len(comment_string), comment_string))
+        writer.set_endianness(0)
+
+    def size(self):
+        """the size of this metadata block
+        not including the 4-byte block header"""
+
+        from operator import add
+
+        return (4 + len(self.vendor_string.encode('utf-8')) +
+                4 +
+                reduce(add, [4 + len(comment.encode('utf-8'))
+                             for comment in self.comment_strings], 0))
 
 
 class Flac_CUESHEET:
@@ -1189,19 +1030,77 @@ class Flac_CUESHEET_index:
         writer.build("64U8u24p", (self.offset, self.number))
 
 
-class Flac_PADDING:
-    BLOCK_ID = 1
+class Flac_PICTURE(Image):
+    BLOCK_ID = 6
 
-    def __init__(self, length):
-        self.length = length
+    def __init__(self, picture_type, mime_type, description,
+                 width, height, color_depth, color_count, data):
+        self.__dict__["data"] = data
+        self.__dict__["mime_type"] = mime_type
+        self.__dict__["width"] = width
+        self.__dict__["height"] = height
+        self.__dict__["color_depth"] = color_depth
+        self.__dict__["color_count"] = color_count
+        self.__dict__["description"] = description
+        self.__dict__["picture_type"] = picture_type
 
     def copy(self):
         """returns a duplicate of this metadata block"""
 
-        return Flac_PADDING(self.length)
+        return Flac_PICTURE(self.picture_type,
+                            self.mime_type,
+                            self.description,
+                            self.width,
+                            self.height,
+                            self.color_depth,
+                            self.color_count,
+                            self.data)
+
+    def __getattr__(self, key):
+        if (key == "type"):
+            #convert FLAC picture_type to Image type
+            #
+            # | Item         | FLAC Picture ID | Image type |
+            # |--------------+-----------------+------------|
+            # | Other        |               0 |          4 |
+            # | Front Cover  |               3 |          0 |
+            # | Back Cover   |               4 |          1 |
+            # | Leaflet Page |               5 |          2 |
+            # | Media        |               6 |          3 |
+
+            return {0: 4, 3: 0, 4: 1, 5: 2, 6: 3}.get(self.picture_type, 4)
+        else:
+            try:
+                return self.__dict__[key]
+            except KeyError:
+                raise AttributeError(key)
+
+    def __setattr__(self, key, value):
+        if (key == "type"):
+            #convert Image type to FLAC picture_type
+            #
+            # | Item         | Image type | FLAC Picture ID |
+            # |--------------+------------+-----------------|
+            # | Other        |          4 |               0 |
+            # | Front Cover  |          0 |               3 |
+            # | Back Cover   |          1 |               4 |
+            # | Leaflet Page |          2 |               5 |
+            # | Media        |          3 |               6 |
+
+            self.picture_type = {4: 0, 0: 3, 1: 4, 2: 5, 3: 6}.get(value, 0)
+        else:
+            self.__dict__[key] = value
 
     def __repr__(self):
-        return "Flac_PADDING(%d)" % (self.length)
+        return ("Flac_PICTURE(%s)" %
+                ",".join(["%s=%s" % (key, repr(getattr(self, key)))
+                          for key in ["picture_type",
+                                      "mime_type",
+                                      "description",
+                                      "width",
+                                      "height",
+                                      "color_depth",
+                                      "color_count"]]))
 
     def raw_info(self):
         """returns a human-readable version of this metadata block
@@ -1210,26 +1109,127 @@ class Flac_PADDING:
         from os import linesep
 
         return linesep.decode('ascii').join(
-            [u"  PADDING:",
-             u"    length = %d" % (self.length)])
+            [u"  PICTURE:",
+             u"    picture type = %d" % (self.picture_type),
+             u"       MIME type = %s" % (self.mime_type),
+             u"     description = %s" % (self.description),
+             u"           width = %d" % (self.width),
+             u"          height = %d" % (self.height),
+             u"     color depth = %d" % (self.color_depth),
+             u"     color count = %d" % (self.color_count),
+             u"           bytes = %d" % (len(self.data))])
 
     @classmethod
-    def parse(cls, reader, block_length):
+    def parse(cls, reader):
         """returns this metadata block from a BitstreamReader"""
 
-        reader.skip_bytes(block_length)
-        return cls(length=block_length)
+        return cls(
+            picture_type=reader.read(32),
+            mime_type=reader.read_bytes(reader.read(32)).decode('ascii'),
+            description=reader.read_bytes(reader.read(32)).decode('utf-8'),
+            width=reader.read(32),
+            height=reader.read(32),
+            color_depth=reader.read(32),
+            color_count=reader.read(32),
+            data=reader.read_bytes(reader.read(32)))
 
     def build(self, writer):
         """writes this metadata block to a BitstreamWriter"""
 
-        writer.write_bytes(chr(0) * self.length)
+        writer.build("32u [ 32u%db ] [32u%db ] 32u 32u 32u 32u [ 32u%db ]" %
+                     (len(self.mime_type.encode('ascii')),
+                      len(self.description.encode('utf-8')),
+                      len(self.data)),
+                     (self.picture_type,
+                      len(self.mime_type.encode('ascii')),
+                      self.mime_type.encode('ascii'),
+                      len(self.description.encode('utf-8')),
+                      self.description.encode('utf-8'),
+                      self.width,
+                      self.height,
+                      self.color_depth,
+                      self.color_count,
+                      len(self.data),
+                      self.data))
 
     def size(self):
         """the size of this metadata block
         not including the 4-byte block header"""
 
-        return self.length
+        from .bitstream import format_size
+
+        return format_size(
+            "32u [ 32u%db ] [32u%db ] 32u 32u 32u 32u [ 32u%db ]" %
+            (len(self.mime_type.encode('ascii')),
+             len(self.description.encode('utf-8')),
+             len(self.data))) / 8
+
+    @classmethod
+    def converted(cls, image):
+        """converts an Image object to a FlacPictureComment"""
+
+        return cls(
+            picture_type={4: 0, 0: 3, 1: 4, 2: 5, 3: 6}.get(image.type, 0),
+            mime_type=image.mime_type,
+            description=image.description,
+            width=image.width,
+            height=image.height,
+            color_depth=image.color_depth,
+            color_count=image.color_count,
+            data=image.data)
+
+    def type_string(self):
+        """returns the image's type as a human readable plain string
+
+        for example, an image of type 0 returns "Front Cover"
+        """
+
+        return {0: "Other",
+                1: "File icon",
+                2: "Other file icon",
+                3: "Cover (front)",
+                4: "Cover (back)",
+                5: "Leaflet page",
+                6: "Media",
+                7: "Lead artist / lead performer / soloist",
+                8: "Artist / Performer",
+                9: "Conductor",
+                10: "Band / Orchestra",
+                11: "Composer",
+                12: "Lyricist / Text writer",
+                13: "Recording Location",
+                14: "During recording",
+                15: "During performance",
+                16: "Movie / Video screen capture",
+                17: "A bright colored fish",
+                18: "Illustration",
+                19: "Band/Artist logotype",
+                20: "Publisher / Studio logotype"}.get(self.picture_type,
+                                                       "Other")
+
+    def clean(self, fixes_performed):
+        from .image import image_metrics
+
+        img = image_metrics(self.data)
+
+        if (((self.mime_type != img.mime_type) or
+             (self.width != img.width) or
+             (self.height != img.height) or
+             (self.color_depth != img.bits_per_pixel) or
+             (self.color_count != img.color_count))):
+            from .text import CLEAN_FIX_IMAGE_FIELDS
+            fixes_performed.append(CLEAN_FIX_IMAGE_FIELDS)
+            return self.__class__.converted(
+                Image(type=self.type,
+                      mime_type=img.mime_type,
+                      description=self.description,
+                      width=img.width,
+                      height=img.height,
+                      color_depth=img.bits_per_pixel,
+                      color_count=img.color_count,
+                      data=self.data))
+        else:
+            return self
 
 
 class FlacAudio(WaveContainer, AiffContainer):

@@ -92,7 +92,8 @@ class Player:
                     progress_file=self.__progress__,
                     replay_gain=replay_gain).run()
             finally:
-                sys.exit(0)
+                #avoid calling Python cleanup handlers
+                os._exit(0)
 
     def __del__(self):
         if (self.__pid__ > 0):

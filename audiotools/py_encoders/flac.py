@@ -384,7 +384,8 @@ def encode_subframe(writer, options, bits_per_sample, samples):
         encode_fixed_subframe(fixed_subframe,
                               options,
                               wasted_bps,
-                              bits_per_sample, samples)
+                              bits_per_sample,
+                              samples)
 
         if (options.max_lpc_order > 0):
             (lpc_order,
@@ -439,7 +440,8 @@ def encode_verbatim_subframe(writer, wasted_bps, bits_per_sample, samples):
         writer.write(1, 0)
 
     #write frame data
-    writer.build(("%ds" % (bits_per_sample)) * len(samples), samples)
+    writer.build(("%ds" % (bits_per_sample - wasted_bps)) * len(samples),
+                 samples)
 
 
 def encode_fixed_subframe(writer, options, wasted_bps, bits_per_sample,
@@ -451,15 +453,18 @@ def encode_fixed_subframe(writer, options, wasted_bps, bits_per_sample,
     residuals = [samples]
     total_error = [sum(map(abs, residuals[-1][4:]))]
 
-    for order in xrange(1, 5):
-        residuals.append(next_order(residuals[-1]))
-        total_error.append(sum(map(abs, residuals[-1][4 - order:])))
+    if (len(samples) > 4):
+        for order in xrange(1, 5):
+            residuals.append(next_order(residuals[-1]))
+            total_error.append(sum(map(abs, residuals[-1][4 - order:])))
 
-    for order in xrange(4):
-        if (total_error[order] < min(total_error[order + 1:])):
-            break
+        for order in xrange(4):
+            if (total_error[order] < min(total_error[order + 1:])):
+                break
+        else:
+            order = 4
     else:
-        order = 4
+        order = 0
 
     #then write the subframe to disk
 
