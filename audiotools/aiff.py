@@ -368,8 +368,10 @@ class AiffReader(PCMReader):
         self.process = process
 
         from .bitstream import BitstreamReader
+        from . import __capped_stream_reader__
         from .text import (ERR_AIFF_NOT_AIFF,
-                           ERR_AIFF_INVALID_AIFF)
+                           ERR_AIFF_INVALID_AIFF,
+                           ERR_AIFF_NO_SSND_CHUNK)
 
         #build a capped reader for the ssnd chunk
         aiff_reader = BitstreamReader(aiff_file, 0)
@@ -385,42 +387,50 @@ class AiffReader(PCMReader):
                 if (chunk_id == 'SSND'):
                     #adjust for the SSND alignment
                     aiff_reader.skip(64)
+                    self.aiff = __capped_stream_reader__(self.file, chunk_size)
+                    self.ssnd_chunk_size = chunk_size - 8
                     break
                 else:
                     aiff_reader.skip_bytes(chunk_size)
                     if (chunk_size % 2):
                         aiff_reader.skip(8)
         except IOError:
-            self.read = self.read_error
+            raise InvalidAIFF(ERR_AIFF_NO_SSND_CHUNK)
 
     def read(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of PCM frames"""
 
-        #try to read at least one PCM frame
-        frames_read = min(max(pcm_frames, 1), self.remaining_frames)
-
-        if (frames_read > 0):
-            pcm_data = self.file.read(frames_read * self.bytes_per_frame)
-            if (len(pcm_data) < frames_read * self.bytes_per_frame):
-                raise IOError("ssnd chunk ends prematurely")
-            else:
-                framelist = FrameList(pcm_data,
-                                      self.channels,
-                                      self.bits_per_sample,
-                                      True, True)
-                self.remaining_frames -= framelist.frames
-                return framelist
-
+        #align bytes downward if an odd number is read in
+        bytes_per_frame = self.channels * (self.bits_per_sample / 8)
+        requested_frames = max(1, pcm_frames)
+        pcm_data = self.aiff.read(requested_frames * bytes_per_frame)
+        if ((len(pcm_data) == 0) and (self.ssnd_chunk_size > 0)):
+            from .text import ERR_AIFF_TRUNCATED_SSND_CHUNK
+            raise IOError(ERR_AIFF_TRUNCATED_SSND_CHUNK)
         else:
-            return FrameList("",
+            self.ssnd_chunk_size -= len(pcm_data)
+
+        try:
+            return FrameList(pcm_data,
                              self.channels,
                              self.bits_per_sample,
-                             True, True)
+                             True,
+                             True)
+        except ValueError:
+            from .text import ERR_AIFF_TRUNCATED_SSND_CHUNK
+            raise IOError(ERR_AIFF_TRUNCATED_SSND_CHUNK)
 
-    def read_error(self, pcm_frames):
-        """try to read a pcm.FrameList with the given number of PCM frames"""
+    def close(self):
+        """closes the stream for reading
 
-        raise IOError()
+        any subprocess is waited for also so for proper cleanup"""
+
+        self.file.close()
+        if (self.process is not None):
+            if (self.process.wait() != 0):
+                from . import DecodingError
+
+                raise DecodingError()
 
 
 class InvalidAIFF(InvalidFile):

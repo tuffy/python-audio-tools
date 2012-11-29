@@ -79,6 +79,9 @@ ALACDecoder_init(decoders_ALACDecoder *self,
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
+    /*mark stream as not closed and ready for reading*/
+    self->closed = 0;
+
     return 0;
 }
 
@@ -170,6 +173,11 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
     array_ia* frameset_channels = self->frameset_channels;
     PyThreadState *thread_state;
 
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
+        return NULL;
+    }
+
     /*return an empty framelist if total samples are exhausted*/
     if (self->remaining_frames == 0) {
         return empty_FrameList(self->audiotools_pcm,
@@ -230,6 +238,10 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
 static PyObject*
 ALACDecoder_close(decoders_ALACDecoder* self, PyObject *args)
 {
+    /*mark stream as closed so more calls to read()
+      generate ValueErrors*/
+    self->closed = 1;
+
     Py_INCREF(Py_None);
     return Py_None;
 }

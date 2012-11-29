@@ -36,6 +36,8 @@ typedef struct {
     double theta1;
     double theta2;
 
+    int closed;
+
     array_ia* buffer;
     PyObject* audiotools_pcm;
 } decoders_Sine_Mono;
@@ -151,6 +153,8 @@ typedef struct {
     double theta2;
     double fmult;
 
+    int closed;
+
     array_ia* buffer;
     PyObject* audiotools_pcm;
 } decoders_Sine_Stereo;
@@ -260,6 +264,8 @@ typedef struct {
 
     int max_value;
     int count;
+
+    int closed;
 
     array_ia* buffer;
     PyObject* audiotools_pcm;

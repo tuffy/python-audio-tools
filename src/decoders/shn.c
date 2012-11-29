@@ -83,6 +83,9 @@ SHNDecoder_init(decoders_SHNDecoder *self,
         PyErr_SetString(PyExc_IOError, "I/O error reading Shorten header");
         return -1;
     default:
+        /*mark stream as not closed and ready for reading*/
+        self->closed = 0;
+
         return 0;
     }
 }
@@ -109,6 +112,9 @@ SHNDecoder_dealloc(decoders_SHNDecoder *self)
 PyObject*
 SHNDecoder_close(decoders_SHNDecoder* self, PyObject *args)
 {
+    /*mark stream as closed so more calls to read() generate ValueErrors*/
+    self->closed = 1;
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -142,6 +148,11 @@ PyObject*
 SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
 {
     PyThreadState *thread_state = NULL;
+
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
+        return NULL;
+    }
 
     if (self->stream_finished) {
         return empty_FrameList(self->audiotools_pcm,

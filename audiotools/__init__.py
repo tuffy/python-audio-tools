@@ -1880,7 +1880,7 @@ class PCMReader:
         big_endian      - True if the file's samples are stored big-endian
 
         the process, signed and big_endian arguments are optional
-        pCMReader-compatible objects need only expose the
+        PCMReader-compatible objects need only expose the
         sample_rate, channels, channel_mask and bits_per_sample fields
         along with the read() and close() methods
         """
@@ -1917,6 +1917,8 @@ class PCMReader:
 
     def close(self):
         """closes the stream for reading
+
+        subsequent calls to read() raise ValueError
 
         any subprocess is waited for also so for proper cleanup
         may return DecodingError if a helper subprocess exits
@@ -2307,24 +2309,32 @@ class PCMCat(PCMReader):
     def read(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of frames"""
 
-        try:
-            s = self.first.read(pcm_frames)
-            if (len(s) > 0):
-                return s
-            else:
-                self.first.close()
+        s = self.first.read(pcm_frames)
+        while (len(s) == 0):
+            #current PCMReader exhausted, so close it
+            self.first.close()
+            try:
+                #and move on to the next reader in the queue
                 self.first = self.reader_queue.next()
-                return self.read(pcm_frames)
-        except StopIteration:
-            return pcm.from_list([],
-                                 self.channels,
-                                 self.bits_per_sample,
-                                 True)
+                s = self.first.read(pcm_frames)
+            except StopIteration:
+                #unless all readers are exhausted,
+                #at which point we return nothing but empty FrameLists
+                self.read = self.read_finished
+                return self.read_finished(pcm_frames)
+        else:
+            return s
+
+    def read_finished(self, pcm_frames):
+        return pcm.from_list([], self.channels, self.bits_per_sample, True)
+
+    def read_closed(self, pcm_frames):
+        raise ValueError()
 
     def close(self):
         """closes the stream for reading"""
 
-        pass
+        self.read = self.read_closed
 
 
 class BufferedPCMReader:
@@ -2346,7 +2356,6 @@ class BufferedPCMReader:
     def close(self):
         """closes the sub-pcmreader and frees our internal buffer"""
 
-        del(self.buffer)
         self.pcmreader.close()
 
     def read(self, pcm_frames):
@@ -2439,11 +2448,17 @@ class LimitedPCMReader:
             self.total_pcm_frames -= frame.frames
             return frame
         else:
-            return pcm.FrameList("", self.channels, self.bits_per_sample,
-                                 False, True)
+            return pcm.FrameList("",
+                                 self.channels,
+                                 self.bits_per_sample,
+                                 False,
+                                 True)
+
+    def read_closed(self, pcm_frames):
+        raise ValueError()
 
     def close(self):
-        self.total_pcm_frames = 0
+        self.read = self.read_closed
 
 
 def pcm_split(reader, pcm_lengths):
@@ -4372,8 +4387,12 @@ class PCMReaderWindow:
             return pcm.FrameList("", self.channels, self.bits_per_sample,
                                  False, True)
 
+    def read_closed(self, pcm_frames):
+        raise ValueError()
+
     def close(self):
         self.pcmreader.close()
+        self.read = self.read_closed
 
 
 class CDTrackLog(dict):
@@ -4481,11 +4500,13 @@ class CDTrackReader(PCMReader):
         #or at least 1 sector's worth, if "pcm_frames" is too small
         return self.__read_sectors__(max(pcm_frames / 588, 1))
 
+    def read_closed(self, pcm_frames):
+        raise ValueError()
+
     def close(self):
         """closes the CD track for reading"""
 
-        self.position = self.start
-        self.cursor_placed = False
+        self.read = self.read_closed
 
 
 class CDTrackReaderAccurateRipCRC:

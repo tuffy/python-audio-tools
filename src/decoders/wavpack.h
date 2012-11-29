@@ -72,6 +72,7 @@ typedef struct {
     int channels;
     int channel_mask;
     unsigned remaining_pcm_samples;
+    int closed;
 
     /*reusable buffers*/
     array_ia* channels_data;

@@ -304,7 +304,13 @@ int pcmreader_read(struct pcmreader_s* reader,
 
 void pcmreader_close(struct pcmreader_s* reader)
 {
-    /*FIXME*/
+    PyObject* result = PyObject_CallMethod(reader->pcmreader_obj,
+                                           "close", NULL);
+    if (result != NULL) {
+        Py_DECREF(result);
+    } else {
+        PyErr_Clear();
+    }
 }
 
 void pcmreader_del(struct pcmreader_s* reader)

@@ -33,7 +33,7 @@ from test import (parser, Variable_Reader, BLANK_PCM_Reader,
                   RANDOM_PCM_Reader,
                   EXACT_BLANK_PCM_Reader, SHORT_PCM_COMBINATIONS,
                   MD5_Reader, FrameCounter,
-                  MiniFrameReader, Combinations,
+                  MiniFrameReader, Combinations, Possibilities,
                   TEST_COVER1, TEST_COVER2, TEST_COVER3, HUGE_BMP)
 
 
@@ -51,6 +51,96 @@ for section in parser.sections():
         else:
             vars()["%s_%s" % (section.upper(),
                               option.upper())] = lambda function: do_nothing
+
+
+class PCMReader(unittest.TestCase):
+    @LIB_PCM
+    def test_pcm(self):
+        from audiotools.pcm import from_list
+
+        #try reading lots of bps/signed/endianness combinations
+        for bps in [8, 16, 24]:
+            for big_endian in [True, False]:
+                for signed in [True, False]:
+                    reader = audiotools.PCMReader(
+                        cStringIO.StringIO(
+                            from_list(range(-5, 5),
+                                      1,
+                                      bps,
+                                      True).to_bytes(big_endian, signed)),
+                        sample_rate=44100,
+                        channels=1,
+                        channel_mask=0x4,
+                        bits_per_sample=bps,
+                        signed=signed,
+                        big_endian=big_endian)
+
+                    self.assertEqual(reader.sample_rate, 44100)
+                    self.assertEqual(reader.channels, 1)
+                    self.assertEqual(reader.channel_mask, 0x4)
+                    self.assertEqual(reader.bits_per_sample, bps)
+
+                    #ensure the FrameList is read correctly
+                    f = reader.read((bps / 8) * 10)
+                    self.assertEqual(len(f), 10)
+                    self.assertEqual(list(f), range(-5, 5))
+
+                    #ensure subsequent reads return empty FrameLists
+                    for i in xrange(10):
+                        f = reader.read((bps / 8) * 10)
+                        self.assertEqual(len(f), 0)
+
+                    #ensure closing the stream raises ValueErrors
+                    #on subsequent reads
+                    reader.close()
+
+                    self.assertRaises(ValueError, reader.read, (bps / 8) * 10)
+
+
+class PCMCat(unittest.TestCase):
+    @LIB_PCM
+    def test_pcm(self):
+        from audiotools.pcm import from_list
+
+        reader = audiotools.PCMCat(
+            iter([audiotools.PCMReader(
+                        cStringIO.StringIO(
+                            from_list(samples, 1, 16, True).to_bytes(True,
+                                                                     True)),
+                        sample_rate=44100,
+                        channels=1,
+                        channel_mask=0x4,
+                        bits_per_sample=16,
+                        signed=True,
+                        big_endian=True)
+                  for samples in [range(-15, -5),
+                                  range(-5, 5),
+                                  range(5, 15)]]))
+
+        self.assertEqual(reader.sample_rate, 44100)
+        self.assertEqual(reader.channels, 1)
+        self.assertEqual(reader.channel_mask, 0x4)
+        self.assertEqual(reader.bits_per_sample, 16)
+
+        #ensure all the substreams are read correctly
+        samples = []
+        f = reader.read(2)
+        while (len(f) > 0):
+            samples.extend(list(f))
+            f = reader.read(2)
+
+        self.assertEqual(samples, range(-15, 15))
+
+        #ensure subsequent reads return empty FrameLists
+        for i in xrange(10):
+            f = reader.read(2)
+            self.assertEqual(len(f), 0)
+
+        #ensure closing the stream raises ValueErrors
+        #on subsequent reads
+        reader.close()
+
+        self.assertRaises(ValueError, reader.read, 2)
 
 
 class BufferedPCMReader(unittest.TestCase):
@@ -99,7 +189,7 @@ class BufferedPCMReader(unittest.TestCase):
                     self.assertEqual(reader2.bits_per_sample, bits_per_sample)
                     self.assertEqual(reader2.channel_mask, channel_mask)
 
-        #finally, ensure that random-sized reads also work okay
+        #ensure that random-sized reads also work okay
         total_frames = 4096 * 1000
         reader = audiotools.BufferedPCMReader(
             Variable_Reader(EXACT_BLANK_PCM_Reader(total_frames)))
@@ -108,6 +198,209 @@ class BufferedPCMReader(unittest.TestCase):
             frame = reader.read(frames)
             self.assertEqual(frame.frames, frames)
             total_frames -= frame.frames
+
+        #ensure reading after the stream has been exhausted
+        #results in empty FrameLists
+        reader = audiotools.BufferedPCMReader(
+            EXACT_BLANK_PCM_Reader(44100))
+        f = reader.read(4096)
+        while (len(f) > 0):
+            f = reader.read(4096)
+
+        self.assertEqual(len(f), 0)
+
+        for i in xrange(10):
+            f = reader.read(4096)
+            self.assertEqual(len(f), 0)
+
+        #and ensure reading after the stream is closed
+        #raises a ValueError
+        reader.close()
+
+        self.assertRaises(ValueError,
+                          reader.read,
+                          4096)
+
+
+class LimitedPCMReader(unittest.TestCase):
+    @LIB_PCM
+    def test_pcm(self):
+        from audiotools.pcm import from_list
+
+        main_reader = audiotools.PCMReader(
+            cStringIO.StringIO(
+                from_list(range(-50, 50), 1, 16, True).to_bytes(True, True)),
+            sample_rate=44100,
+            channels=1,
+            channel_mask=0x4,
+            bits_per_sample=16,
+            signed=True,
+            big_endian=True)
+
+        total_samples = []
+        for pcm_frames in [10, 20, 30, 40]:
+            reader_samples = []
+            reader = audiotools.LimitedPCMReader(main_reader, pcm_frames)
+            self.assertEqual(reader.sample_rate, 44100)
+            self.assertEqual(reader.channels, 1)
+            self.assertEqual(reader.channel_mask, 0x4)
+            self.assertEqual(reader.bits_per_sample, 16)
+
+            f = reader.read(2)
+            while (len(f) > 0):
+                reader_samples.extend(list(f))
+                f = reader.read(2)
+
+            self.assertEqual(len(reader_samples), pcm_frames)
+
+            total_samples.extend(reader_samples)
+
+            #ensure subsequent reads return empty FrameLists
+            for i in xrange(10):
+                self.assertEqual(len(reader.read(2)), 0)
+
+            #ensure closing the substream raises ValueErrors
+            #on subsequent reads
+            #(note that this doesn't close the main reader)
+            reader.close()
+
+            self.assertRaises(ValueError, reader.read, 2)
+
+        self.assertEqual(total_samples, range(-50, 50))
+
+        #ensure subsequent reads of main reader return empty FrameLists
+        for i in xrange(10):
+            self.assertEqual(len(main_reader.read(2)), 0)
+
+        #ensure closing the substream raises ValueErrors
+        #on subsequent reads
+        main_reader.close()
+
+        self.assertRaises(ValueError, main_reader.read, 2)
+
+
+class PCMReaderWindow(unittest.TestCase):
+    @LIB_PCM
+    def test_pcm(self):
+        from audiotools.pcm import from_list
+
+        for initial_offset in range(-5, 5):
+            for pcm_frames in range(5, 15):
+                main_reader = audiotools.PCMReader(
+                    cStringIO.StringIO(
+                        from_list(range(1, 11),
+                                  1,
+                                  16,
+                                  True).to_bytes(True, True)),
+                    sample_rate=44100,
+                    channels=1,
+                    channel_mask=0x4,
+                    bits_per_sample=16,
+                    signed=True,
+                    big_endian=True)
+
+                reader = audiotools.PCMReaderWindow(main_reader,
+                                                    initial_offset,
+                                                    pcm_frames)
+
+                self.assertEqual(reader.sample_rate,
+                                 main_reader.sample_rate)
+                self.assertEqual(reader.channels,
+                                 main_reader.channels)
+                self.assertEqual(reader.channel_mask,
+                                 main_reader.channel_mask)
+                self.assertEqual(reader.bits_per_sample,
+                                 main_reader.bits_per_sample)
+
+                #ensure reads generate the proper window of samples
+                samples = []
+                f = reader.read(2)
+                while (len(f) > 0):
+                    samples.extend(list(f))
+                    f = reader.read(2)
+
+                self.assertEqual(len(samples), pcm_frames)
+
+                target_samples = range(1, 11)
+                if (initial_offset < 0):
+                    #negative offsets pad window with 0s
+                    target_samples = (([0] * abs(initial_offset)) +
+                                      target_samples)
+                elif (initial_offset > 0):
+                    #positive offsets remove samples from window
+                    target_samples = target_samples[initial_offset:]
+
+                if (len(target_samples) < pcm_frames):
+                    #window longer than samples gets padded with 0s
+                    target_samples += [0] * (pcm_frames - len(target_samples))
+                elif (len(target_samples) > pcm_frames):
+                    #window shorder than samples truncates samples
+                    target_samples = target_samples[0:pcm_frames]
+
+                self.assertEqual(samples, target_samples)
+
+                #ensure subsequent reads return empty FrameLists
+                for i in xrange(10):
+                    self.assertEqual(len(reader.read(2)), 0)
+
+                #ensure closing the PCMReaderWindow
+                #generates ValueErrors on subsequent reads
+                reader.close()
+
+                self.assertRaises(ValueError, reader.read, 2)
+
+                #ensure closing the PCMReaderWindow
+                #closes the main PCMReader also
+                self.assertRaises(ValueError, main_reader.read, 2)
+
+
+class Sines(unittest.TestCase):
+    @LIB_PCM
+    def test_pcm(self):
+        for stream in [
+            test_streams.Generate01(44100),
+            test_streams.Generate02(44100),
+            test_streams.Generate03(44100),
+            test_streams.Generate04(44100),
+
+            test_streams.Sine8_Mono(200000, 48000,
+                                    441.0, 0.50, 441.0, 0.49),
+            test_streams.Sine8_Stereo(200000, 48000,
+                                      441.0, 0.50, 441.0, 0.49, 1.0),
+            test_streams.Sine16_Mono(200000, 48000,
+                                     441.0, 0.50, 441.0, 0.49),
+            test_streams.Sine16_Stereo(200000, 48000,
+                                       441.0, 0.50, 441.0, 0.49, 1.0),
+            test_streams.Sine24_Mono(200000, 48000,
+                                     441.0, 0.50, 441.0, 0.49),
+            test_streams.Sine24_Stereo(200000, 48000,
+                                       441.0, 0.50, 441.0, 0.49, 1.0),
+            test_streams.Simple_Sine(200000, 44100, 0x3F, 16,
+                                     (6400, 10000),
+                                     (11520, 15000),
+                                     (16640, 20000),
+                                     (21760, 25000),
+                                     (26880, 30000),
+                                     (30720, 35000)),
+
+            test_streams.fsd16([1, -1], 100),
+
+            test_streams.WastedBPS16(1000)]:
+
+            #read the base data from the stream
+            f = stream.read(4096)
+            while (len(f) > 0):
+                f = stream.read(4096)
+
+            #ensure subsequent reads return empty FrameLists
+            for i in xrange(10):
+                self.assertEqual(len(stream.read(4096)), 0)
+
+            #ensure subsequent reads on a closed stream
+            #raises ValueError
+            stream.close()
+
+            self.assertRaises(ValueError, stream.read, 4096)
 
 
 class CDDA(unittest.TestCase):
@@ -118,13 +411,10 @@ class CDDA(unittest.TestCase):
         self.cue = os.path.join(self.temp_dir, "Test.CUE")
 
         bin_file = open(self.bin, "wb")
-        # self.reader = MD5_Reader(EXACT_BLANK_PCM_Reader(69470436))
         self.reader = test_streams.Sine16_Stereo(69470436, 44100,
                                                  441.0, 0.50,
                                                  4410.0, 0.49, 1.0)
-        audiotools.transfer_framelist_data(
-
-            self.reader, bin_file.write)
+        audiotools.transfer_framelist_data(self.reader, bin_file.write)
         bin_file.close()
 
         f = open(self.cue, "w")
@@ -164,11 +454,34 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
         cdda = audiotools.CDDA(self.cue)
         self.assertEqual(len(cdda), 4)
         checksum = md5()
-        audiotools.transfer_framelist_data(
-            audiotools.PCMCat(iter(cdda)),
-            checksum.update)
+        audiotools.transfer_framelist_data(audiotools.PCMCat(iter(cdda)),
+                                           checksum.update)
         self.assertEqual(self.reader.hexdigest(),
                          checksum.hexdigest())
+
+    @LIB_CORE
+    def test_cdda_pcm(self):
+        cdda = audiotools.CDDA(self.cue)
+
+        for track in cdda:
+            #ensure all track data reads correctly
+            track_frames = track.length() * 588
+            total_frames = 0
+            f = track.read(4096)
+            while (len(f) > 0):
+                total_frames += f.frames
+                f = track.read(4096)
+            self.assertEqual(total_frames, track_frames)
+
+            #ensure further reads return empty FrameLists
+            for i in xrange(10):
+                self.assertEqual(len(track.read(4096)), 0)
+
+            #ensure closing the reader raises ValueErrors
+            #on subsequent reads
+            track.close()
+
+            self.assertRaises(ValueError, track.read, 4096)
 
     @LIB_CORE
     def test_cdda_positive_offset(self):
@@ -467,15 +780,15 @@ class ImageHugeBMP(ImageJPEG):
 
 
 class PCMConverter(unittest.TestCase):
-    @LIB_CORE
+    @LIB_PCM
     def setUp(self):
         self.tempwav = tempfile.NamedTemporaryFile(suffix=".wav")
 
-    @LIB_CORE
+    @LIB_PCM
     def tearDown(self):
         self.tempwav.close()
 
-    @LIB_CORE
+    @LIB_PCM
     def test_conversions(self):
         for ((i_sample_rate,
               i_channels,
@@ -501,11 +814,13 @@ class PCMConverter(unittest.TestCase):
                                       bits_per_sample=i_bits_per_sample,
                                       channel_mask=i_channel_mask)
 
-            converter = audiotools.PCMConverter(reader,
-                                                sample_rate=o_sample_rate,
-                                                channels=o_channels,
-                                                bits_per_sample=o_bits_per_sample,
-                                                channel_mask=o_channel_mask)
+            converter = audiotools.PCMConverter(
+                reader,
+                sample_rate=o_sample_rate,
+                channels=o_channels,
+                bits_per_sample=o_bits_per_sample,
+                channel_mask=o_channel_mask)
+
             wave = audiotools.WaveAudio.from_pcm(self.tempwav.name, converter)
             converter.close()
 
@@ -517,102 +832,57 @@ class PCMConverter(unittest.TestCase):
                 (decimal.Decimal(wave.cd_frames()) / 75).to_integral(),
                 5)
 
+    @LIB_PCM
+    def test_pcm(self):
+        for (in_sample_rate,
+             (in_channels,
+              in_channel_mask),
+             in_bits_per_sample) in Possibilities([44100, 96000],
+                                                  [(1, 0x4),
+                                                   (2, 0x3),
+                                                   (4, 0x33)],
+                                                  [16, 24]):
+            for (out_sample_rate,
+                 (out_channels,
+                  out_channel_mask),
+                 out_bits_per_sample) in Possibilities([44100, 96000],
+                                                       [(1, 0x4),
+                                                        (2, 0x3),
+                                                        (4, 0x33)],
+                                                       [16, 24]):
 
-class LimitedPCMReader(unittest.TestCase):
-    @LIB_CORE
-    def test_read(self):
-        reader = audiotools.BufferedPCMReader(BLANK_PCM_Reader(1))
-        counter1 = FrameCounter(2, 16, 44100)
-        counter2 = FrameCounter(2, 16, 44100)
-        audiotools.transfer_framelist_data(
-            audiotools.LimitedPCMReader(reader, 4100), counter1.update)
-        audiotools.transfer_framelist_data(
-            audiotools.LimitedPCMReader(reader, 40000), counter2.update)
-        self.assertEqual(counter1.value, 4100 * 4)
-        self.assertEqual(counter2.value, 40000 * 4)
+                main_reader = BLANK_PCM_Reader(
+                    length=1,
+                    sample_rate=in_sample_rate,
+                    channels=in_channels,
+                    bits_per_sample=in_bits_per_sample,
+                    channel_mask=in_channel_mask)
 
+                reader = audiotools.PCMConverter(
+                    pcmreader=main_reader,
+                    sample_rate=out_sample_rate,
+                    channels=out_channels,
+                    channel_mask=out_channel_mask,
+                    bits_per_sample=out_bits_per_sample)
 
-class PCMCat(unittest.TestCase):
-    @LIB_CORE
-    def test_read(self):
-        reader1 = BLANK_PCM_Reader(1)
-        reader2 = BLANK_PCM_Reader(2)
-        reader3 = BLANK_PCM_Reader(3)
-        counter = FrameCounter(2, 16, 44100)
-        cat = audiotools.PCMCat(iter([reader1, reader2, reader3]))
-        self.assertEqual(cat.sample_rate, 44100)
-        self.assertEqual(cat.bits_per_sample, 16)
-        self.assertEqual(cat.channels, 2)
-        self.assertEqual(cat.channel_mask, 0x3)
-        audiotools.transfer_framelist_data(cat, counter.update)
-        self.assertEqual(int(counter), 6)
+                #read contents of converted stream
+                f = reader.read(4096)
+                while (len(f) > 0):
+                    f = reader.read(4096)
 
+                #ensure subsequent reads return empty FrameLists
+                for i in xrange(10):
+                    self.assertEqual(len(reader.read(4096)), 0)
 
-class PCMReaderWindow(unittest.TestCase):
-    @LIB_CORE
-    def setUp(self):
-        self.channels = [range(0, 20),
-                         range(20, 0, -1)]
+                #ensure closing stream raises ValueErrors
+                #on subsequent reads
+                reader.close()
 
-    def __test_reader__(self, pcmreader, channels):
-        framelist = pcmreader.read(1024)
-        output_channels = [[] for i in xrange(len(channels))]
-        while (len(framelist) > 0):
-            for c in xrange(framelist.channels):
-                output_channels[c].extend(framelist.channel(c))
-            framelist = pcmreader.read(1024)
-        self.assertEqual(channels, output_channels)
+                self.assertRaises(ValueError, reader.read, 4096)
 
-    @LIB_CORE
-    def test_basic(self):
-        self.__test_reader__(MiniFrameReader(self.channels,
-                                             44100, 3, 16),
-                             [range(0, 20), range(20, 0, -1)])
-
-        self.__test_reader__(audiotools.PCMReaderWindow(
-                MiniFrameReader(self.channels, 44100, 3, 16), 0, 20),
-                             [range(0, 20), range(20, 0, -1)])
-
-    @LIB_CORE
-    def test_crop(self):
-        self.__test_reader__(audiotools.PCMReaderWindow(
-                MiniFrameReader(self.channels, 44100, 3, 16), 0, 15),
-                             [range(0, 15), range(20, 5, -1)])
-
-        self.__test_reader__(audiotools.PCMReaderWindow(
-                MiniFrameReader(self.channels, 44100, 3, 16), 5, 15),
-                             [range(5, 20), range(15, 0, -1)])
-
-        self.__test_reader__(audiotools.PCMReaderWindow(
-                MiniFrameReader(self.channels, 44100, 3, 16), 5, 10),
-                             [range(5, 15), range(15, 5, -1)])
-
-    @LIB_CORE
-    def test_extend(self):
-        self.__test_reader__(audiotools.PCMReaderWindow(
-                MiniFrameReader(self.channels, 44100, 3, 16), -5, 25),
-                             [[0] * 5 + range(0, 20),
-                              [0] * 5 + range(20, 0, -1)])
-
-        self.__test_reader__(audiotools.PCMReaderWindow(
-                MiniFrameReader(self.channels, 44100, 3, 16), 0, 25),
-                             [range(0, 20) + [0] * 5,
-                              range(20, 0, -1) + [0] * 5])
-
-        self.__test_reader__(audiotools.PCMReaderWindow(
-                MiniFrameReader(self.channels, 44100, 3, 16), -5, 20),
-                             [[0] * 5 + range(0, 15),
-                              [0] * 5 + range(20, 5, -1)])
-
-        self.__test_reader__(audiotools.PCMReaderWindow(
-                MiniFrameReader(self.channels, 44100, 3, 16), -5, 15),
-                             [[0] * 5 + range(0, 10),
-                              [0] * 5 + range(20, 10, -1)])
-
-        self.__test_reader__(audiotools.PCMReaderWindow(
-                MiniFrameReader(self.channels, 44100, 3, 16), -5, 30),
-                             [[0] * 5 + range(0, 20) + [0] * 5,
-                              [0] * 5 + range(20, 0, -1) + [0] * 5])
+                #ensure main reader is also closed
+                #when converter is closed
+                self.assertRaises(ValueError, main_reader.read, 4096)
 
 
 class Test_ReplayGain(unittest.TestCase):
@@ -3414,6 +3684,43 @@ class TestReplayGain(unittest.TestCase):
             (gain, peak) = gain.title_gain(reader)
             self.assert_(gain < -4.0)
             self.assert_(peak > .90)
+
+    @LIB_REPLAYGAIN
+    def test_pcm(self):
+        import audiotools.replaygain
+
+        gain = audiotools.replaygain.ReplayGain(44100)
+        (gain, peak) = gain.title_gain(
+            test_streams.Sine16_Stereo(44100, 44100,
+                                       441.0, 0.50,
+                                       4410.0, 0.49, 1.0))
+
+        main_reader = test_streams.Sine16_Stereo(44100, 44100,
+                                       441.0, 0.50,
+                                       4410.0, 0.49, 1.0)
+
+        reader = audiotools.replaygain.ReplayGainReader(main_reader,
+                                                        gain,
+                                                        peak)
+
+        #read FrameLists from ReplayGainReader
+        f = reader.read(4096)
+        while (len(f) > 0):
+            f = reader.read(4096)
+
+        #ensure subsequent reads return empty FrameLists
+        for i in xrange(10):
+            self.assertEqual(len(reader.read(4096)), 0)
+
+        #ensure closing the ReplayGainReader raises ValueError
+        #on subsequent reads
+        reader.close()
+
+        self.assertRaises(ValueError, reader.read, 4096)
+
+        #ensure wrapped reader is also closed
+        self.assertRaises(ValueError, main_reader.read, 4096)
+
 
     @LIB_REPLAYGAIN
     def test_reader(self):

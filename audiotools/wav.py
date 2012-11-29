@@ -431,7 +431,7 @@ class WaveReader(PCMReader):
 
         any subprocess is waited for also so for proper cleanup"""
 
-        self.wave.close()
+        self.file.close()
         if (self.process is not None):
             if (self.process.wait() != 0):
                 from . import DecodingError

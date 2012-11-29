@@ -46,6 +46,7 @@ typedef struct {
     unsigned int channels;
     unsigned int bits_per_sample;
 
+    int closed;
     unsigned int remaining_frames;
 
     /*a bunch of decoding fields pulled from the stream's 'alac' atom*/

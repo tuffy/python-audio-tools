@@ -80,8 +80,11 @@ class BLANK_PCM_Reader:
             return audiotools.pcm.FrameList(
                 "", self.channels, self.bits_per_sample, True, True)
 
+    def read_error(self, pcm_frames):
+        raise ValueError("unable to read closed stream")
+
     def close(self):
-        pass
+        self.read = self.read_error
 
     def reset(self):
         self.total_frames = self.original_frames

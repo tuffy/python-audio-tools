@@ -74,6 +74,8 @@ Sine_Mono_init(decoders_Sine_Mono* self, PyObject *args, PyObject *kwds) {
     self->delta2 = 2 * M_PI / (self->sample_rate / f2);
     self->theta1 = 0.0l;
 
+    self->closed = 0;
+
     return 0;
 }
 
@@ -103,6 +105,11 @@ Sine_Mono_read(decoders_Sine_Mono* self, PyObject* args) {
     int ia;
     array_i* buffer1;
 
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
+        return NULL;
+    }
+
     if (!PyArg_ParseTuple(args, "i", &requested_frames))
         return NULL;
 
@@ -130,7 +137,7 @@ Sine_Mono_read(decoders_Sine_Mono* self, PyObject* args) {
 
 static PyObject*
 Sine_Mono_close(decoders_Sine_Mono* self, PyObject* args) {
-    self->remaining_pcm_frames = 0;
+    self->closed = 1;
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -140,6 +147,7 @@ static PyObject*
 Sine_Mono_reset(decoders_Sine_Mono* self, PyObject* args) {
     self->remaining_pcm_frames = self->total_pcm_frames;
     self->theta1 = self->theta2 = 0.0l;
+    self->closed = 0;
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -215,6 +223,8 @@ Sine_Stereo_init(decoders_Sine_Stereo* self, PyObject *args, PyObject *kwds) {
     self->delta2 = 2 * M_PI / (self->sample_rate / f2);
     self->theta1 = self->theta2 = 0.0l;
 
+    self->closed = 0;
+
     return 0;
 }
 
@@ -243,6 +253,11 @@ Sine_Stereo_read(decoders_Sine_Stereo* self, PyObject* args) {
     int ia;
     array_i* buffer1;
     array_i* buffer2;
+
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
+        return NULL;
+    }
 
     if (!PyArg_ParseTuple(args, "i", &requested_frames))
         return NULL;
@@ -276,7 +291,7 @@ Sine_Stereo_read(decoders_Sine_Stereo* self, PyObject* args) {
 
 static PyObject*
 Sine_Stereo_close(decoders_Sine_Stereo* self, PyObject* args) {
-    self->remaining_pcm_frames = 0;
+    self->closed = 1;
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -286,6 +301,7 @@ static PyObject*
 Sine_Stereo_reset(decoders_Sine_Stereo* self, PyObject* args) {
     self->remaining_pcm_frames = self->total_pcm_frames;
     self->theta1 = self->theta2 = 0.0l;
+    self->closed = 0;
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -351,6 +367,8 @@ Sine_Simple_init(decoders_Sine_Simple* self, PyObject *args, PyObject *kwds) {
     self->remaining_pcm_frames = self->total_pcm_frames;
     self->i = 0;
 
+    self->closed = 0;
+
     return 0;
 }
 
@@ -380,6 +398,12 @@ Sine_Simple_read(decoders_Sine_Simple* self, PyObject* args) {
     double d;
     int ia;
 
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
+        return NULL;
+    }
+
+
     if (!PyArg_ParseTuple(args, "i", &requested_frames))
         return NULL;
 
@@ -406,7 +430,7 @@ Sine_Simple_read(decoders_Sine_Simple* self, PyObject* args) {
 
 static PyObject*
 Sine_Simple_close(decoders_Sine_Simple* self, PyObject* args) {
-    self->remaining_pcm_frames = 0;
+    self->closed = 1;
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -416,6 +440,7 @@ static PyObject*
 Sine_Simple_reset(decoders_Sine_Simple* self, PyObject* args) {
     self->i = 0;
     self->remaining_pcm_frames = self->total_pcm_frames;
+    self->closed = 0;
 
     Py_INCREF(Py_None);
     return Py_None;

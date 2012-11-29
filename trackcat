@@ -334,6 +334,6 @@ if (__name__ == '__main__'):
     except audiotools.EncodingError, err:
         msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
         sys.exit(1)
-    except audiotools.InvalidFormat, err:
+    except audiotools.InvalidFilenameFormat, err:
         msg.error(unicode(err))
         sys.exit(1)

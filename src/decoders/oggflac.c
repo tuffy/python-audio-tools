@@ -114,6 +114,9 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
+    /*mark stream as not closed and ready for reading*/
+    self->closed = 0;
+
     return 0;
 }
 
@@ -145,6 +148,11 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
     int channel;
     PyObject *framelist;
     PyThreadState *thread_state;
+
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
+        return NULL;
+    }
 
     self->subframe_data->reset(self->subframe_data);
 
@@ -261,8 +269,10 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
 }
 
 static PyObject*
-OggFlacDecoder_close(decoders_OggFlacDecoder *self, PyObject *args) {
-    /*FIXME*/
+OggFlacDecoder_close(decoders_OggFlacDecoder *self, PyObject *args)
+{
+    /*mark stream as closed so more calls to read() generate ValueErrors*/
+    self->closed = 1;
 
     Py_INCREF(Py_None);
     return Py_None;

@@ -171,6 +171,9 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->bitstream->rewind(self->bitstream);
     self->bitstream->unmark(self->bitstream); /*beginning of stream*/
 
+    /*mark stream as not closed and ready for reading*/
+    self->closed = 0;
+
     return 0;
 }
 
@@ -238,6 +241,9 @@ WavPackDecoder_channel_mask(decoders_WavPackDecoder *self, void *closure) {
 
 static PyObject*
 WavPackDecoder_close(decoders_WavPackDecoder* self, PyObject *args) {
+    /*mark stream as closed so more calls to read() generate ValueErrors*/
+    self->closed = 1;
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -251,6 +257,11 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     BitstreamReader* block_data = self->block_data;
     PyThreadState *thread_state;
     PyObject* framelist;
+
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
+        return NULL;
+    }
 
     channels_data->reset(channels_data);
 

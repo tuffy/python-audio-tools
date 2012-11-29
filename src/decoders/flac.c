@@ -84,6 +84,9 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
+    /*mark stream as not closed and ready for reading*/
+    self->closed = 0;
+
     return 0;
 }
 
@@ -91,7 +94,10 @@ PyObject*
 FlacDecoder_close(decoders_FlacDecoder* self,
                   PyObject *args)
 {
-    self->remaining_samples = 0;
+    /*mark stream as closed so more calls to read()
+      generate ValueErrors*/
+    self->closed = 1;
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -158,6 +164,11 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
     PyObject* framelist;
     PyThreadState *thread_state;
     flac_status error;
+
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
+        return NULL;
+    }
 
     self->subframe_data->reset(self->subframe_data);
 

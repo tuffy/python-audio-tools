@@ -95,6 +95,9 @@ typedef struct {
     /*a framelist generator*/
     PyObject* audiotools_pcm;
 #endif
+
+    /*a marker to indicate the stream has been explicitly closed*/
+    int closed;
 } decoders_SHNDecoder;
 
 #ifndef STANDALONE

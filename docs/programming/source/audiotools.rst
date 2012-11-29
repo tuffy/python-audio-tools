@@ -1109,6 +1109,10 @@ PCMReader Objects
    It may even return FrameLists larger than requested.
    However, it must always return a non-empty FrameList until the
    end of the PCM stream is reached.
+
+   Once the end of the stream is reached, subsequent calls
+   will return empty FrameLists.
+
    May raise :exc:`IOError` if there is a problem reading the
    source file, or :exc:`ValueError` if the source file has
    some sort of error.
@@ -1118,6 +1122,10 @@ PCMReader Objects
    Closes the audio stream.
    If any subprocesses were used for audio decoding, they will also be
    closed and waited for their process to finish.
+
+   Subsequent calls to :meth:`PCMReader.read` will
+   raise :exc:`ValueError` exceptions once the stream is closed.
+
    May raise a :exc:`DecodingError`, typically indicating that
    a helper subprocess used for decoding has exited with an error.
 

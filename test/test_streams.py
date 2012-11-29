@@ -33,8 +33,11 @@ class FrameListReader:
         (framelist, self.framelist) = self.framelist.split(pcm_frames)
         return framelist
 
+    def read_closed(self, pcm_frames):
+        raise ValueError()
+
     def close(self):
-        pass
+        self.read = self.read_closed
 
 
 class MD5Reader:
@@ -359,6 +362,9 @@ class WastedBPS16:
         self.md5.update(framelist.to_bytes(False, True))
         return framelist
 
+    def read_closed(self, pcm_frames):
+        raise ValueError()
+
     def reset(self):
         self.i = 0
         self.pcm_frames = self.total_frames
@@ -371,7 +377,7 @@ class WastedBPS16:
         return self.md5.hexdigest()
 
     def close(self):
-        self.pcm_frames = 0
+        self.read = self.read_closed
 
     def __repr__(self):
         return "WastedBPS(%s)" % (repr(self.pcm_frames))

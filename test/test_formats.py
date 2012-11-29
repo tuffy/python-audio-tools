@@ -801,6 +801,42 @@ class AudioFileTest(unittest.TestCase):
                 track_file3.close()
 
     @FORMAT_AUDIOFILE
+    def test_read_after_eof(self):
+        if (self.audio_class is audiotools.AudioFile):
+            return None
+
+        #build basic file
+        temp_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            #build a generic file of silence
+            temp_track = self.audio_class.from_pcm(
+                temp_file.name,
+                EXACT_SILENCE_PCM_Reader(44100))
+
+            #read all the PCM frames from the file
+            pcmreader = temp_track.to_pcm()
+            f = pcmreader.read(4000)
+            while (len(f) > 0):
+                f = pcmreader.read(4000)
+
+            self.assertEqual(len(f), 0)
+
+            #then ensure subsequent reads return blank FrameList objects
+            #without triggering an error
+            for i in xrange(10):
+                f = pcmreader.read(4000)
+                self.assertEqual(len(f), 0)
+
+            pcmreader.close()
+
+            self.assertRaises(ValueError,
+                              pcmreader.read,
+                              4000)
+        finally:
+            temp_file.close()
+
+    @FORMAT_AUDIOFILE
     def test_invalid_from_pcm(self):
         if (self.audio_class is audiotools.AudioFile):
             return
@@ -1901,7 +1937,7 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
 
                 #then, check that a truncated ssnd chunk raises an exception
                 #at read-time
-                for i in xrange(0x2F, len(aiff_data)):
+                for i in xrange(0x37, len(aiff_data)):
                     temp.seek(0, 0)
                     temp.write(aiff_data[0:i])
                     temp.flush()
