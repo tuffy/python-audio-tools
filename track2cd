@@ -228,8 +228,7 @@ if (__name__ == '__main__'):
         if (((audiofiles[0].sample_rate() == 44100) and
              (audiofiles[0].channels() == 2) and
              (audiofiles[0].bits_per_sample() == 16))):
-            pcmreader = \
-                audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles]))
+            pcmreader = audiotools.PCMCat([af.to_pcm() for af in audiofiles])
             output_frames = input_frames
         else:
             #this presumes a cuesheet and non-CD audio
@@ -237,7 +236,7 @@ if (__name__ == '__main__'):
             #envision a case in which this happens
             pcmreader = audiotools.PCMConverter(
                 pcmreader=audiotools.PCMCat(
-                    iter([af.to_pcm() for af in audiofiles])),
+                    [af.to_pcm() for af in audiofiles]),
                 sample_rate=44100,
                 channels=2,
                 channel_mask=0x3,

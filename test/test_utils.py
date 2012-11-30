@@ -298,8 +298,7 @@ class cd2track(UtilTest):
                 self.stream.reset()
                 self.assert_(
                     audiotools.pcm_frame_cmp(
-                        audiotools.PCMCat(iter([t.to_pcm()
-                                                for t in output_tracks])),
+                        audiotools.PCMCat([t.to_pcm() for t in output_tracks]),
                         self.stream) is None)
 
                 #make sure metadata fits our expectations
@@ -1788,10 +1787,10 @@ class trackcat(UtilTest):
             self.assertEqual(new_track.total_frames(), 793800)
             self.assert_(audiotools.pcm_frame_cmp(
                     new_track.to_pcm(),
-                    audiotools.PCMCat(iter([track.to_pcm() for track in
-                                            [self.track1,
-                                             self.track2,
-                                             self.track3]]))) is None)
+                    audiotools.PCMCat([track.to_pcm() for track in
+                                       [self.track1,
+                                        self.track2,
+                                        self.track3]])) is None)
 
             #check that metadata is merged properly
             metadata = new_track.get_metadata()
@@ -1861,7 +1860,7 @@ class trackcat(UtilTest):
 
             self.assertEqual(
                 audiotools.pcm_frame_cmp(
-                    audiotools.PCMCat(iter([t.to_pcm() for t in tracks])),
+                    audiotools.PCMCat([t.to_pcm() for t in tracks]),
                     audiotools.open(output_path).to_pcm()), None)
 
             for input_filename in input_filenames:
@@ -4686,8 +4685,7 @@ class tracksplit(UtilTest):
                 self.stream.reset()
                 self.assert_(
                     audiotools.pcm_frame_cmp(
-                        audiotools.PCMCat(iter([t.to_pcm()
-                                                for t in output_tracks])),
+                        audiotools.PCMCat([t.to_pcm() for t in output_tracks]),
                         self.stream) is None)
 
                 #make sure metadata fits our expectations
@@ -4799,8 +4797,7 @@ class tracksplit(UtilTest):
                 self.stream.reset()
                 self.assert_(
                     audiotools.pcm_frame_cmp(
-                        audiotools.PCMCat(iter([t.to_pcm()
-                                                for t in output_tracks])),
+                        audiotools.PCMCat([t.to_pcm() for t in output_tracks]),
                         self.stream) is None)
 
                 #make sure metadata fits our expectations
@@ -4887,7 +4884,7 @@ class tracksplit(UtilTest):
             self.assertEqual(
                 audiotools.pcm_frame_cmp(
                     track.to_pcm(),
-                    audiotools.PCMCat(iter([t.to_pcm() for t in tracks]))),
+                    audiotools.PCMCat([t.to_pcm() for t in tracks])),
                 None)
 
             if (os.path.isfile(input_filename)):

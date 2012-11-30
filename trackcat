@@ -319,7 +319,7 @@ if (__name__ == '__main__'):
         encoded = output_class.from_pcm(
             str(output_filename),
             audiotools.PCMReaderProgress(
-                audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles])),
+                audiotools.PCMCat([af.to_pcm() for af in audiofiles]),
                 sum([af.total_frames() for af in audiofiles]),
                 progress.update),
             output_quality)

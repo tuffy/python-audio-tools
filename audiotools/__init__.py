@@ -2281,49 +2281,65 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
     return None
 
 
-class PCMCat(PCMReader):
+class PCMCat:
     """a PCMReader for concatenating several PCMReaders"""
 
     def __init__(self, pcmreaders):
-        """pcmreaders is an iterator of PCMReader objects
+        """pcmreaders is a list of PCMReader objects
 
-        note that this currently does no error checking
-        to ensure reads have the same sample_rate, channels,
-        bits_per_sample or channel mask!
-        one must perform that check prior to building a PCMCat
-        """
+        all must have the same stream attributes"""
 
-        self.reader_queue = pcmreaders
-
-        try:
-            self.first = self.reader_queue.next()
-        except StopIteration:
+        self.pcmreaders = list(pcmreaders)
+        if (len(self.pcmreaders) == 0):
             from .text import ERR_NO_PCMREADERS
             raise ValueError(ERR_NO_PCMREADERS)
 
-        self.sample_rate = self.first.sample_rate
-        self.channels = self.first.channels
-        self.channel_mask = self.first.channel_mask
-        self.bits_per_sample = self.first.bits_per_sample
+        if (len(set([r.sample_rate for r in self.pcmreaders])) != 1):
+            from .text import ERR_SAMPLE_RATE_MISMATCH
+            raise ValueError(ERR_SAMPLE_RATE_MISMATCH)
+        if (len(set([r.channels for r in self.pcmreaders])) != 1):
+            from .text import ERR_CHANNEL_COUNT_MISMATCH
+            raise ValueError(ERR_CHANNEL_COUNT_MISMATCH)
+        if (len(set([r.bits_per_sample for r in self.pcmreaders])) != 1):
+            from .text import ERR_BPS_MISMATCH
+            raise ValueError(ERR_BPS_MISMATCH)
+
+        self.__index__ = 0
+        reader = self.pcmreaders[self.__index__]
+        self.__read__ = reader.read
+
+        self.sample_rate = reader.sample_rate
+        self.channels = reader.channels
+        self.channel_mask = reader.channel_mask
+        self.bits_per_sample = reader.bits_per_sample
 
     def read(self, pcm_frames):
-        """try to read a pcm.FrameList with the given number of frames"""
+        """try to read a pcm.FrameList with the given number of frames
 
-        s = self.first.read(pcm_frames)
-        while (len(s) == 0):
-            #current PCMReader exhausted, so close it
-            self.first.close()
+        raises ValueError if any of the streams is mismatched"""
+
+        #read a FrameList from the current PCMReader
+        framelist = self.__read__(pcm_frames)
+
+        #while the FrameList is empty
+        while (len(framelist) == 0):
+            #move on to the next PCMReader in the queue, if any
+            self.__index__ += 1
             try:
-                #and move on to the next reader in the queue
-                self.first = self.reader_queue.next()
-                s = self.first.read(pcm_frames)
-            except StopIteration:
-                #unless all readers are exhausted,
-                #at which point we return nothing but empty FrameLists
+                reader = self.pcmreaders[self.__index__]
+                self.__read__ = reader.read
+
+                #and read a FrameList from the new PCMReader
+                framelist = self.__read__(pcm_frames)
+            except IndexError:
+                #if no PCMReaders remain, have all further reads
+                #return empty FrameList objects
+                #and return an empty FrameList object
                 self.read = self.read_finished
                 return self.read_finished(pcm_frames)
         else:
-            return s
+            #otherwise, return the filled FrameList
+            return framelist
 
     def read_finished(self, pcm_frames):
         return pcm.from_list([], self.channels, self.bits_per_sample, True)
@@ -2335,6 +2351,8 @@ class PCMCat(PCMReader):
         """closes the stream for reading"""
 
         self.read = self.read_closed
+        for reader in self.pcmreaders:
+            reader.close()
 
 
 class BufferedPCMReader:
@@ -2357,6 +2375,7 @@ class BufferedPCMReader:
         """closes the sub-pcmreader and frees our internal buffer"""
 
         self.pcmreader.close()
+        self.read = self.read_closed
 
     def read(self, pcm_frames):
         """reads the given number of PCM frames
@@ -2378,6 +2397,9 @@ class BufferedPCMReader:
         (output, self.buffer) = self.buffer.split(pcm_frames)
 
         return output
+
+    def read_closed(self, pcm_frames):
+        raise ValueError()
 
 
 class CounterPCMReader:

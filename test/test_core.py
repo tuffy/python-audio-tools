@@ -102,21 +102,69 @@ class PCMCat(unittest.TestCase):
     def test_pcm(self):
         from audiotools.pcm import from_list
 
-        reader = audiotools.PCMCat(
-            iter([audiotools.PCMReader(
-                        cStringIO.StringIO(
-                            from_list(samples, 1, 16, True).to_bytes(True,
-                                                                     True)),
-                        sample_rate=44100,
-                        channels=1,
-                        channel_mask=0x4,
-                        bits_per_sample=16,
-                        signed=True,
-                        big_endian=True)
-                  for samples in [range(-15, -5),
-                                  range(-5, 5),
-                                  range(5, 15)]]))
+        #ensure mismatched streams raise ValueError at init time
+        audiotools.PCMCat([audiotools.PCMReader(cStringIO.StringIO(""),
+                                                sample_rate=44100,
+                                                channels=1,
+                                                channel_mask=0x4,
+                                                bits_per_sample=16)])
 
+        self.assertRaises(ValueError,
+                          audiotools.PCMCat,
+                          [audiotools.PCMReader(cStringIO.StringIO(""),
+                                                sample_rate=96000,
+                                                channels=1,
+                                                channel_mask=0x4,
+                                                bits_per_sample=16),
+                           audiotools.PCMReader(cStringIO.StringIO(""),
+                                                sample_rate=44100,
+                                                channels=1,
+                                                channel_mask=0x4,
+                                                bits_per_sample=16)])
+
+        self.assertRaises(ValueError,
+                          audiotools.PCMCat,
+                          [audiotools.PCMReader(cStringIO.StringIO(""),
+                                                sample_rate=44100,
+                                                channels=2,
+                                                channel_mask=0x3,
+                                                bits_per_sample=16),
+                           audiotools.PCMReader(cStringIO.StringIO(""),
+                                                sample_rate=44100,
+                                                channels=1,
+                                                channel_mask=0x4,
+                                                bits_per_sample=16)])
+
+        self.assertRaises(ValueError,
+                          audiotools.PCMCat,
+                          [audiotools.PCMReader(cStringIO.StringIO(""),
+                                                sample_rate=44100,
+                                                channels=1,
+                                                channel_mask=0x4,
+                                                bits_per_sample=24),
+                           audiotools.PCMReader(cStringIO.StringIO(""),
+                                                sample_rate=44100,
+                                                channels=1,
+                                                channel_mask=0x4,
+                                                bits_per_sample=16)])
+
+        main_readers = [audiotools.PCMReader(
+                cStringIO.StringIO(
+                    from_list(samples, 1, 16, True).to_bytes(True,
+                                                             True)),
+                sample_rate=44100,
+                channels=1,
+                channel_mask=0x4,
+                bits_per_sample=16,
+                signed=True,
+                big_endian=True)
+                        for samples in [range(-15, -5),
+                                        range(-5, 5),
+                                        range(5, 15)]]
+
+        reader = audiotools.PCMCat(main_readers)
+
+        #ensure PCMCat's stream attributes match first reader's
         self.assertEqual(reader.sample_rate, 44100)
         self.assertEqual(reader.channels, 1)
         self.assertEqual(reader.channel_mask, 0x4)
@@ -133,14 +181,22 @@ class PCMCat(unittest.TestCase):
 
         #ensure subsequent reads return empty FrameLists
         for i in xrange(10):
-            f = reader.read(2)
-            self.assertEqual(len(f), 0)
+            self.assertEqual(len(reader.read(2)), 0)
+
+        #main readers should not yet be closed
+        for r in main_readers:
+            for i in xrange(10):
+                self.assertEqual(len(r.read(2)), 0)
 
         #ensure closing the stream raises ValueErrors
         #on subsequent reads
         reader.close()
 
         self.assertRaises(ValueError, reader.read, 2)
+
+        #sub readers should also be closed by PCMCat's close()
+        for r in main_readers:
+            self.assertRaises(ValueError, r.read, 2)
 
 
 class BufferedPCMReader(unittest.TestCase):

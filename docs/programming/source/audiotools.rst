@@ -1256,16 +1256,12 @@ PCMCat Objects
 
 .. class:: PCMCat(pcmreaders)
 
-   This class wraps around an iterable group of :class:`PCMReader` objects
+   This class wraps around a list of :class:`PCMReader` objects
    and concatenates their output into a single output stream.
 
-.. warning::
-
-   :class:`PCMCat` does not check that its input :class:`PCMReader` objects
-   all have the same sample rate, channels, channel mask or bits-per-sample.
-   Mixing incompatible readers is likely to trigger undesirable behavior
-   from any sort of processing - which often assumes data will be in a
-   consistent format.
+   If any of the readers has different attributes
+   from the first reader in the stream, :exc:`ValueError` is raised
+   at init-time.
 
 PCMReaderWindow Objects
 ^^^^^^^^^^^^^^^^^^^^^^^
