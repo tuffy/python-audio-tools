@@ -38,7 +38,7 @@ trackcmp testdisc3 testdisc1
 rm -fv testdisc1.flac testdisc2.flac
 
 echo "Adding album cover"
-tracktag --front-cover=testcover.png testdisc2/*01*.wv
+covertag --front-cover=testcover.png testdisc2/*01*.wv
 
 echo "Checking album cover"
 mkdir -v "covers"
