@@ -94,7 +94,7 @@
   <examples>
     <example>
       <description>
-        Extract all of the tracks from \fI/dev/cdrom\fR as FLAC files
+        Extract all of the tracks from /dev/cdrom as FLAC files
         at the default quality:
       </description>
       <command>

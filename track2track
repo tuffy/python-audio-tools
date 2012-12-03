@@ -43,15 +43,6 @@ def convert(progress, source_audiofile, destination_filename,
 
     if (metadata is not None):
         destination_audiofile.set_metadata(metadata)
-    elif ((source_audiofile.track_number() is not None) or
-          (source_audiofile.album_number() is not None)):
-        destination_audiofile.set_metadata(
-            audiotools.MetaData(
-                track_number=source_audiofile.track_number(),
-                album_number=source_audiofile.album_number()))
-    else:
-        #don't set any metadata
-        pass
 
     existing_cuesheet = source_audiofile.get_cuesheet()
     if (existing_cuesheet is not None):
@@ -463,7 +454,9 @@ if (__name__ == '__main__'):
                 #add ReplayGain to groups of files
                 #belonging to the same album
 
-                album_number = set([a.album_number() for a in album]).pop()
+                album_number = set([(m.album_number if m is not None else None)
+                                    for m in
+                                    [f.get_metadata() for f in album]]).pop()
 
                 #FIXME - should pull ReplayGain text from elsewhere
                 queue.execute(

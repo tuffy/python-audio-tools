@@ -2095,10 +2095,10 @@ class trackcmp(UtilTest):
                               self.match_dir1, self.mismatch_dir2]),
             1)
         self.__check_info__(
-            os.path.join(self.mismatch_dir2,
-                         "track %2.2d" % (3)) +
-            u" : " +
-            LAB_TRACKCMP_MISSING)
+            LAB_TRACKCMP_MISSING % {
+                "filename":audiotools.Filename(os.path.basename(
+                        "03.%s" % (self.type.SUFFIX))),
+                "directory":audiotools.Filename(self.mismatch_dir2)})
 
         for i in xrange(1, 3):
             self.__check_info__(
@@ -2122,10 +2122,10 @@ class trackcmp(UtilTest):
                               self.match_dir1, self.mismatch_dir3]),
             1)
         self.__check_info__(
-            os.path.join(self.match_dir1,
-                         "track %2.2d" % (4)) +
-            u" : " +
-            LAB_TRACKCMP_MISSING)
+            LAB_TRACKCMP_MISSING % {
+                "filename":audiotools.Filename(
+                    "04.%s" % (self.type.SUFFIX)),
+                "directory":audiotools.Filename(self.match_dir1)})
 
         for i in xrange(1, 4):
             self.__check_info__(

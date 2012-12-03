@@ -57,22 +57,13 @@ class Results:
         self.failures = 0
         self.msg = messenger
 
-    def missing(self, directory, track_number, album_number):
+    def missing(self, filename, directory):
         self.failures += 1
-        track_name = (("track %2.2d" %
-                       (track_number
-                        if track_number is not None else 0))
-                      if album_number is None else
-                      ("album %d track %2.2d" % (album_number,
-                                                 track_number
-                                                 if track_number is not None
-                                                 else 0)))
+
         self.msg.info(
-            unicode(
-                audiotools.Filename(
-                    os.path.join(directory, track_name))) +
-            u" : " +
-            self.msg.ansi(_.LAB_TRACKCMP_MISSING,
+            self.msg.ansi(_.LAB_TRACKCMP_MISSING %
+                          {"filename":filename,
+                           "directory":audiotools.Filename(directory)},
                           [self.msg.FG_RED]))
         sys.stdout.flush()
 
@@ -187,57 +178,103 @@ if (__name__ == '__main__'):
 
         elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):
             #comparing two directories
+
+            to_compare = []
             results = Results(msg)
 
-            files1 = audiotools.open_files(
-                [os.path.join(args[0], f) for f in os.listdir(args[0])
-                 if os.path.isfile(os.path.join(args[0], f))],
-                messenger=msg)
-            files2 = audiotools.open_files(
-                [os.path.join(args[1], f) for f in os.listdir(args[1])
-                 if os.path.isfile(os.path.join(args[1], f))],
-                messenger=msg)
+            files1 = dict([(f.filename, f) for f in
+                           audiotools.open_files(
+                        [path for path in [os.path.join(args[0], f) for f in
+                                           os.listdir(args[0])] if
+                         os.path.isfile(path)],
+                        sorted=False,
+                        messenger=msg)])
 
-            files1_map = dict([((f.album_number(), f.track_number()), f)
-                               for f in files1])
-            files2_map = dict([((f.album_number(), f.track_number()), f)
-                               for f in files2])
+            files2 = dict([(f.filename, f) for f in
+                           audiotools.open_files(
+                        [path for path in [os.path.join(args[1], f) for f in
+                                           os.listdir(args[1])] if
+                         os.path.isfile(path)],
+                        sorted=False,
+                        messenger=msg)])
 
-            files1_tracknumbers = set(files1_map.keys())
-            files2_tracknumbers = set(files2_map.keys())
+            #first, attempt to match files by their stream characteristics
+            streams1 = {}
+            streams2 = {}
+
+            for (files, streams) in [(files1, streams1),
+                                     (files2, streams2)]:
+                for f in files.values():
+                    streams.setdefault((f.bits_per_sample(),
+                                        f.channels(),
+                                        f.sample_rate(),
+                                        f.total_frames()), []).append(f)
+
+            #anything with matching specs
+            #and only a single possible match per directory
+            #is queued for comparison
+            for specs in set(streams1.keys()) & set(streams2.keys()):
+                if ((len(streams1[specs]) == 1) and
+                    (len(streams2[specs]) == 1)):
+                    file1 = streams1[specs][0]
+                    file2 = streams2[specs][0]
+
+                    #remove matched files from lists
+                    del(files1[file1.filename])
+                    del(files2[file2.filename])
+
+                    #queue up comparison job
+                    to_compare.append((file1, file2))
+
+            #then, attempt to match leftover files by metadata
+            #such as album_number and track_number
+            metadatas1 = {}
+            metadatas2 = {}
+
+            for (files, metadatas) in [(files1, metadatas1),
+                                       (files2, metadatas2)]:
+                for f in files.values():
+                    m = f.get_metadata()
+                    if (m is not None):
+                        metadatas.setdefault((m.track_number,
+                                              m.album_number), []).append(f)
+                    else:
+                        metadatas.setdefault((None,
+                                              None), []).append(f)
+
+            for metadata in set(metadatas1.keys()) & set(metadatas2.keys()):
+                if ((len(metadatas1[metadata]) == 1) and
+                    (len(metadatas2[metadata]) == 1)):
+                    file1 = metadatas1[metadata][0]
+                    file2 = metadatas2[metadata][0]
+
+                    #remove matched files from lists
+                    del(files1[file1.filename])
+                    del(files2[file2.filename])
+
+                    #queue up comparison job
+                    to_compare.append((file1, file2))
+
+            #anything left over is marked as a missing file
+            for (files, directory) in [(files1, args[1]), (files2, args[0])]:
+                for filename in files.keys():
+                    results.missing(audiotools.Filename(filename).basename(),
+                                    directory)
 
             queue = audiotools.ExecProgressQueue(
                 audiotools.ProgressDisplay(msg))
 
-            for (album_number,
-                 track_number) in sorted(list(files1_tracknumbers -
-                                              files2_tracknumbers)):
-                results.missing(args[1], track_number, album_number)
+            to_compare.sort(lambda f1,f2: cmp(f1[0], f2[0]))
 
-            for (album_number,
-                 track_number) in sorted(list(files2_tracknumbers -
-                                              files1_tracknumbers)):
-                results.missing(args[0], track_number, album_number)
-
-            for (album_number,
-                 track_number) in sorted(list(files1_tracknumbers &
-                                              files2_tracknumbers)):
-                progress_text = (
-                    _.LAB_TRACKCMP_CMP %
-                    {"file1":
-                        audiotools.Filename(
-                            files1_map[(album_number,
-                                        track_number)].filename),
-                     "file2":
-                        audiotools.Filename(
-                            files2_map[(album_number,
-                                        track_number)].filename)})
+            for (track1, track2) in to_compare:
                 queue.execute(
                     function=cmp_files,
-                    progress_text=progress_text,
+                    progress_text=_.LAB_TRACKCMP_CMP %
+                    {"file1": audiotools.Filename(track1.filename),
+                     "file2": audiotools.Filename(track2.filename)},
                     completion_output=results.cmp_result,
-                    audiofile1=files1_map[(album_number, track_number)],
-                    audiofile2=files2_map[(album_number, track_number)])
+                    audiofile1=track1,
+                    audiofile2=track2)
 
             queue.run(options.max_processes)
 

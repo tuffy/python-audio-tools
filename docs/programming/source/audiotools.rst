@@ -154,6 +154,14 @@ classes and functions upon which all of the other modules depend.
    search of that directory.
    ``sorted``, and ``messenger`` work as in :func:`open_files`.
 
+.. function:: sorted_tracks(audiofiles)
+
+   Given a list of :class:`AudioFile` objects,
+   returns a new list of those objects sorted by
+   album number and track number, if present.
+   If album number and track number aren't present,
+   objects are sorted by base filename.
+
 .. function:: group_tracks(audiofiles)
 
    Given an iterable collection of :class:`AudioFile`-compatible objects,
@@ -529,22 +537,6 @@ AudioFile Objects
    to the one provided to :meth:`convert`.
    That is, it takes a two integer argument function which is called
    at regular intervals to indicate the status of verification.
-
-.. method:: AudioFile.track_number()
-
-   Returns this audio file's track number as a non-negative integer.
-   This method first checks the file's metadata values.
-   If unable to find one, it then tries to determine a track number
-   from the track's filename.
-   If that method is also unsuccessful, it returns 0.
-
-.. method:: AudioFile.album_number()
-
-   Returns this audio file's album number as a non-negative integer.
-   This method first checks the file's metadata values.
-   If unable to find metadata,
-   it then tries to determine an album number from the track's filename.
-   If that method is also unsuccessful, it returns 0.
 
 .. classmethod:: AudioFile.track_name(file_path[, track_metadata[, format[, suffix]]])
 

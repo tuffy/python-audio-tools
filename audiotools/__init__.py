@@ -131,7 +131,7 @@ MUSICBRAINZ_PORT = config.getint_default("MusicBrainz", "port", 80)
 ADD_REPLAYGAIN = config.getboolean_default("ReplayGain", "add_by_default",
                                            True)
 
-VERSION = "2.19"
+VERSION = "2.20alpha1"
 
 DEFAULT_FILENAME_FORMAT = '%(track_number)2.2d - %(track_name)s.%(suffix)s'
 FILENAME_FORMAT = config.get_default("Filenames", "format",
@@ -1504,9 +1504,77 @@ class Filename(tuple):
         return self[0].decode(FS_ENCODING, "replace")
 
 
-#takes a list of filenames
-#returns a list of AudioFile objects, sorted by track_number()
-#any unsupported files are filtered out
+def sorted_tracks(audiofiles):
+    """given a list of AudioFile objects
+    returns a list of them sorted
+    by track_number and album_number, if found
+    """
+
+    def cmp_by_track_number(track1, track_number1,
+                            track2, track_number2):
+        if ((track_number1 is not None) and (track_number2 is not None)):
+            #both track numbers are present
+            return cmp(track_number1, track_number2)
+        elif ((track_number1 is None) and (track_number2 is None)):
+            #neither track number is present,
+            #so compare by base filename
+            import os.path
+
+            return cmp(os.path.basename(track1.filename),
+                       os.path.basename(track2.filename))
+        else:
+            #one track number is missing,
+            #so track without number comes first
+            return (-1 if (track_number1 is None) else 1)
+
+    def by_audiofile(pair1, pair2):
+        (track1, metadata1) = pair1
+        (track2, metadata2) = pair2
+        if ((metadata1 is not None) and (metadata2 is not None)):
+            #both Metadata objects are present
+            if ((metadata1.album_number is not None) and
+                (metadata2.album_number is not None)):
+                #both album numbers are present
+                result = cmp(metadata1.album_number, metadata2.album_number)
+                if (result == 0):
+                    #both album numbers are the same,
+                    #so compare by track numbers (if any)
+                    return cmp_by_track_number(track1, metadata1.track_number,
+                                               track2, metadata2.track_number)
+                else:
+                    return result
+            elif ((metadata1.album_number is None) and
+                  (metadata2.album_number is None)):
+                #neither album number is present,
+                #so compare by track numbers (if any)
+                return cmp_by_track_number(track1, metadata1.track_number,
+                                           track2, metadata2.track_number)
+            else:
+                #one album number is missing,
+                #so track without album number comes first
+                return (-1 if (metadata1.album_number is None) else 1)
+        elif ((metadata1 is None) and (metadata2 is None)):
+            #both Metadata objects are missing,
+            #so compare by base filename
+            import os.path
+
+            return cmp(os.path.basename(track1.filename),
+                       os.path.basename(track2.filename))
+        else:
+            #one Metadata object is missing,
+            #so track without Metadata comes first
+            return (-1 if (metadata1 is None) else 1)
+
+    #perform work on a private copy
+    tracks = zip(audiofiles[:], [f.get_metadata() for f in audiofiles])
+
+    #sort tracks by (AudioFile, Metadata) pairs
+    tracks.sort(by_audiofile)
+
+    #remove Metadata and return only AudioFile objects
+    return [t[0] for t in tracks]
+
+
 def open_files(filename_list, sorted=True, messenger=None,
                no_duplicates=False, warn_duplicates=False,
                opened_files=None):
@@ -1535,7 +1603,7 @@ def open_files(filename_list, sorted=True, messenger=None,
     if (opened_files is None):
         opened_files = set([])
 
-    toreturn = []
+    to_return = []
 
     for filename in map(Filename, filename_list):
         try:
@@ -1547,7 +1615,7 @@ def open_files(filename_list, sorted=True, messenger=None,
             else:
                 opened_files.add(filename)
 
-            toreturn.append(open(str(filename)))
+            to_return.append(open(str(filename)))
         except UnsupportedFile:
             pass
         except IOError, err:
@@ -1557,16 +1625,9 @@ def open_files(filename_list, sorted=True, messenger=None,
             if (messenger is not None):
                 messenger.error(unicode(err))
 
-    if (sorted):
-        toreturn.sort(lambda x, y: cmp((x.album_number(), x.track_number()),
-                                       (y.album_number(), y.track_number())))
-    return toreturn
+    return (sorted_tracks(to_return) if sorted else to_return)
 
 
-#takes a root directory
-#iterates recursively over any and all audio files in it
-#optionally sorted by directory name and track_number()
-#any unsupported files are filtered out
 def open_directory(directory, sorted=True, messenger=None):
     """yields an AudioFile via a recursive search of directory
 
@@ -1595,10 +1656,11 @@ def group_tracks(tracks):
     collection = {}
     for track in tracks:
         metadata = track.get_metadata()
-        collection.setdefault(
-            (track.album_number(),
-             metadata.album_name
-             if metadata is not None else None), []).append(track)
+        if (metadata is not None):
+            collection.setdefault((metadata.album_number,
+                                   metadata.album_name), []).append(track)
+        else:
+            collection.setdefault(None, []).append(track)
 
     for key in sorted(collection.keys()):
         yield collection[key]
@@ -3561,39 +3623,6 @@ class AudioFile:
         except OSError:
             pass
 
-    def track_number(self):
-        """returns this track's number as an integer
-
-        this first checks MetaData and then makes a guess from the filename
-        if neither yields a good result, returns None"""
-
-        metadata = self.get_metadata()
-        if (metadata is not None):
-            return metadata.track_number
-        else:
-            basename = os.path.basename(self.filename)
-            try:
-                return int(re.findall(r'\d{2,3}', basename)[0]) % 100
-            except IndexError:
-                return None
-
-    def album_number(self):
-        """returns this track's album number as an integer
-
-        this first checks MetaData and then makes a guess from the filename
-        if neither yields a good result, returns 0"""
-
-        metadata = self.get_metadata()
-        if (metadata is not None):
-            return metadata.album_number
-        else:
-            basename = os.path.basename(self.filename)
-            try:
-                long_track_number = int(re.findall(r'\d{3}', basename)[0])
-                return long_track_number / 100
-            except IndexError:
-                return None
-
     @classmethod
     def track_name(cls, file_path, track_metadata=None, format=None,
                    suffix=None):
@@ -3617,7 +3646,6 @@ class AudioFile:
         if (suffix is None):
             suffix = cls.SUFFIX
         try:
-            #prefer track_number and album_number from MetaData, if available
             if (track_metadata is not None):
                 track_number = (track_metadata.track_number
                                 if track_metadata.track_number is not None
@@ -3632,19 +3660,8 @@ class AudioFile:
                                if track_metadata.album_total is not None
                                else 0)
             else:
-                basename = os.path.basename(file_path)
-                try:
-                    track_number = int(re.findall(r'\d{2,4}',
-                                                  basename)[0]) % 100
-                except IndexError:
-                    track_number = 0
-
-                try:
-                    album_number = int(re.findall(r'\d{2,4}',
-                                                  basename)[0]) / 100
-                except IndexError:
-                    album_number = 0
-
+                track_number = 0
+                album_number = 0
                 track_total = 0
                 album_total = 0
 
@@ -3986,17 +4003,15 @@ class AiffContainer(AudioFile):
 class DummyAudioFile(AudioFile):
     """a placeholder AudioFile object with external data"""
 
-    def __init__(self, length, metadata, track_number=0):
+    def __init__(self, length, metadata):
         """fields are as follows:
 
         length       - the dummy track's length, in CD frames
         metadata     - a MetaData object
-        track_number - the track's number on CD, starting from 1
         """
 
         self.__length__ = length
         self.__metadata__ = metadata
-        self.__track_number__ = track_number
 
         AudioFile.__init__(self, "")
 
@@ -4011,11 +4026,6 @@ class DummyAudioFile(AudioFile):
         each CD frame is 1/75th of a second"""
 
         return self.__length__
-
-    def track_number(self):
-        """returns this track's number as an integer"""
-
-        return self.__track_number__
 
     def sample_rate(self):
         """returns 44100"""
@@ -4718,9 +4728,10 @@ def track_metadata_lookup(audiofiles,
     if no match can be found for the CD
     """
 
-    audiofiles.sort(lambda x, y: cmp(x.track_number(), y.track_number()))
+    audiofiles = sorted_tracks(audiofiles)
     track_frames = [f.cd_frames() for f in audiofiles]
-    track_numbers = [f.track_number() for f in audiofiles]
+    track_numbers = [(m.track_number if m is not None else None)
+                     for m in [f.get_metadata() for f in audiofiles]]
 
     return metadata_lookup(
         first_track_number=(min(track_numbers)
