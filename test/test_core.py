@@ -1195,6 +1195,117 @@ class Test_open_files(unittest.TestCase):
                          [t.filename for t in [track1, track2, track3]])
 
 
+class Test_sorted_tracks(unittest.TestCase):
+    @LIB_CORE
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+
+    @LIB_CORE
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.dir)
+
+    def __clean__(self):
+        for f in os.listdir(self.dir):
+            os.unlink(os.path.join(self.dir, f))
+
+    def __no_metadata__(self, filename_number):
+        return audiotools.WaveAudio.from_pcm(
+            os.path.join(self.dir, "%2.2d.wav" % (filename_number)),
+            BLANK_PCM_Reader(1))
+
+    def __metadata__(self, filename_number,
+                     track_number=None, album_number=None):
+        track = audiotools.FlacAudio.from_pcm(
+            os.path.join(self.dir, "%2.2d.flac" % (filename_number)),
+            BLANK_PCM_Reader(1))
+        track.set_metadata(audiotools.MetaData(track_number=track_number,
+                                               album_number=album_number))
+        return track
+
+    def __test_order__(self, sorted_tracks):
+        from random import shuffle
+
+        self.assert_(len(sorted_tracks) > 1)
+
+        shuffled_tracks = sorted_tracks[:]
+        while ([f.filename for f in shuffled_tracks] ==
+               [f.filename for f in sorted_tracks]):
+            shuffle(shuffled_tracks)
+
+        self.assertNotEqual([f.filename for f in shuffled_tracks],
+                            [f.filename for f in sorted_tracks])
+
+        reordered_tracks = audiotools.sorted_tracks(shuffled_tracks)
+
+        self.assertEqual([f.filename for f in reordered_tracks],
+                         [f.filename for f in sorted_tracks])
+
+    @LIB_CORE
+    def test_sort(self):
+        #tracks without metadata come before tracks with metadata
+        self.__clean__()
+        self.__test_order__([self.__no_metadata__(1),
+                             self.__metadata__(2, 2),
+                             self.__metadata__(3, 3)])
+
+        self.__clean__()
+        self.__test_order__([self.__no_metadata__(3),
+                             self.__metadata__(1, 1),
+                             self.__metadata__(2, 2)])
+
+        self.__clean__()
+        self.__test_order__([self.__no_metadata__(3),
+                             self.__no_metadata__(10),
+                             self.__metadata__(1, 1),
+                             self.__metadata__(2, 2)])
+
+        #tracks without metadata are sorted by filename
+        self.__clean__()
+        self.__test_order__([self.__no_metadata__(1),
+                             self.__no_metadata__(2),
+                             self.__no_metadata__(3)])
+
+        self.__clean__()
+        self.__test_order__([self.__no_metadata__(1),
+                             self.__no_metadata__(2),
+                             self.__no_metadata__(10),
+                             self.__no_metadata__(11)])
+
+        #tracks without album numbers come before tracks with album numbers
+        self.__clean__()
+        self.__test_order__([self.__metadata__(3, 3),
+                             self.__metadata__(2, 1, 1),
+                             self.__metadata__(1, 2, 1)])
+
+        self.__clean__()
+        self.__test_order__([self.__metadata__(4, 3),
+                             self.__metadata__(3, 4),
+                             self.__metadata__(2, 1, 1),
+                             self.__metadata__(1, 2, 1)])
+
+        #tracks without album numbers are sorted by track number (if any)
+        self.__clean__()
+        self.__test_order__([self.__metadata__(3),
+                             self.__metadata__(2, 1),
+                             self.__metadata__(1, 2)])
+
+        self.__clean__()
+        self.__test_order__([self.__metadata__(3, 1),
+                             self.__metadata__(2, 2),
+                             self.__metadata__(1, 3)])
+
+        #tracks with album numbers are sorted by album number
+        #and then by track number (if any)
+        self.__clean__()
+        self.__test_order__([self.__metadata__(5),
+                             self.__metadata__(4, 1, 1),
+                             self.__metadata__(3, 2, 1),
+                             self.__metadata__(2, 1, 2),
+                             self.__metadata__(1, 2, 2)])
+
+
 class Test_pcm_frame_cmp(unittest.TestCase):
     @LIB_CORE
     def test_pcm_frame_cmp(self):

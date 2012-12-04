@@ -2143,6 +2143,53 @@ class trackcmp(UtilTest):
                     LAB_TRACKCMP_OK,
                     i, 3))
 
+        #check several files against CD image of those files
+        audio_format = audiotools.FlacAudio
+        lengths = [44100, 88200, 176400]
+        image_file = tempfile.NamedTemporaryFile(
+            suffix="." + audio_format.SUFFIX)
+        track_files = [tempfile.NamedTemporaryFile(
+                suffix="." + audio_format.SUFFIX) for l in lengths]
+        try:
+            image = audio_format.from_pcm(
+                image_file.name,
+                test_streams.Sine16_Stereo(sum(lengths), 44100,
+                                           441.0, 0.50,
+                                           4410.0, 0.49,
+                                           1.0))
+            tracks = [audio_format.from_pcm(track_file.name, reader)
+                      for (track_file, reader) in
+                      zip(track_files,
+                          audiotools.pcm_split(image.to_pcm(), lengths))]
+
+            for (i, track) in enumerate(tracks):
+                track.set_metadata(audiotools.MetaData(track_number=i + 1))
+
+            from random import shuffle
+
+            shuffled = tracks[:]
+            shuffle(shuffled)
+
+            for order in [[track.filename for track in tracks],
+                          [track.filename for track in reversed(tracks)],
+                          [track.filename for track in shuffled]]:
+                self.assertEqual(
+                    self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
+                                      image.filename] + order), 0)
+                for (i, track) in enumerate(tracks):
+                    self.__check_output__(
+                        audiotools.output_progress(
+                            LAB_TRACKCMP_CMP %
+                            {"file1":audiotools.Filename(image.filename),
+                             "file2":audiotools.Filename(track.filename)} +
+                            u" : " +
+                            LAB_TRACKCMP_OK,
+                            i + 1, len(tracks)))
+        finally:
+            image_file.close()
+            for track_file in track_files:
+                track_file.close()
+
     @UTIL_TRACKCMP
     def test_unicode(self):
         for (file1, file2) in Possibilities(

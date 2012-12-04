@@ -404,14 +404,9 @@ class AudioFileTest(unittest.TestCase):
                              (u"/f\u00f3o/bar/tr\u00e1ck").encode(
                     audiotools.FS_ENCODING)]:
 
-                if (metadata is None):
-                    album_number = 0
-                    track_number = 1
-                    album_track_number = u"01"
-                else:
-                    album_number = 0
-                    track_number = 0
-                    album_track_number = u"00"
+                album_number = 0
+                track_number = 0
+                album_track_number = u"00"
 
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "01",
@@ -423,14 +418,9 @@ class AudioFileTest(unittest.TestCase):
                                    u"album_track_number": album_track_number}
                                   ).encode('utf-8'))
 
-                if (metadata is None):
-                    album_number = 0
-                    track_number = 23
-                    album_track_number = u"23"
-                else:
-                    album_number = 0
-                    track_number = 0
-                    album_track_number = u"00"
+                album_number = 0
+                track_number = 0
+                album_track_number = u"00"
 
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "track23",
@@ -442,14 +432,9 @@ class AudioFileTest(unittest.TestCase):
                                    u"album_track_number": album_track_number}
                                   ).encode('utf-8'))
 
-                if (metadata is None):
-                    album_number = 1
-                    track_number = 23
-                    album_track_number = u"123"
-                else:
-                    album_number = 0
-                    track_number = 0
-                    album_track_number = u"00"
+                album_number = 0
+                track_number = 0
+                album_track_number = u"00"
 
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "track123",
@@ -461,14 +446,9 @@ class AudioFileTest(unittest.TestCase):
                                    u"album_track_number": album_track_number}
                                   ).encode('utf-8'))
 
-                if (metadata is None):
-                    album_number = 45
-                    track_number = 67
-                    album_track_number = u"4567"
-                else:
-                    album_number = 0
-                    track_number = 0
-                    album_track_number = u"00"
+                album_number = 0
+                track_number = 0
+                album_track_number = u"00"
 
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "4567",

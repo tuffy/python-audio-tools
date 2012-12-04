@@ -327,8 +327,7 @@ if (__name__ == '__main__'):
         tracks = audiofiles[0:-1]
 
         #all tracks should have the same album number and track total
-        tracks.sort(lambda t1, t2: cmp(t1.track_number(),
-                                       t2.track_number()))
+        tracks = audiotools.sorted_tracks(tracks)
 
         cd_data = audiotools.BufferedPCMReader(cd_image.to_pcm())
         for (i, track) in enumerate(tracks):
