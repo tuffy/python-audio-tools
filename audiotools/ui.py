@@ -129,77 +129,54 @@ try:
             #ensure file path count is equal to metadata track count
             assert(len(metadata_choices[0]) == len(input_filenames))
 
+            #ensure input filenames are Filename objects
             for f in input_filenames:
                 assert(isinstance(f, audiotools.Filename))
 
-            from audiotools.text import (LAB_CANCEL_BUTTON,
-                                         LAB_NEXT_BUTTON,
-                                         LAB_PREVIOUS_BUTTON)
+            from audiotools.text import LAB_CANCEL_BUTTON
 
             #setup status bars for output messages
             self.metadata_status = urwid.Text(u"")
             self.options_status = urwid.Text(u"")
 
             #setup a widget for populating metadata fields
-            metadata_buttons = urwid.Filler(
-                urwid.Columns(
-                    widget_list=[('weight', 1,
-                                  urwid.Button(LAB_CANCEL_BUTTON,
-                                               on_press=self.exit)),
-                                 ('weight', 2,
-                                  urwid.Button(LAB_NEXT_BUTTON,
-                                               on_press=self.next))],
-                    dividechars=3,
-                    focus_column=1))
-
             self.metadata = MetaDataFiller(track_labels,
                                            metadata_choices,
                                            self.metadata_status)
-            self.metadata_frame = urwid.Pile(
-                [("weight", 1, self.metadata),
-                 ("fixed", 1, metadata_buttons)])
 
             #setup a widget for populating output parameters
-            options_buttons = urwid.Filler(
-                urwid.Columns(
-                    widget_list=[('weight', 1,
-                                  urwid.Button(LAB_PREVIOUS_BUTTON,
-                                               on_press=self.previous)),
-                                 ('weight', 2,
-                                  urwid.Button(completion_label,
-                                               on_press=self.complete))],
-                    dividechars=3,
-                    focus_column=1))
-
             self.options = OutputOptions(
                 output_dir=output_directory,
                 format_string=format_string,
                 audio_class=output_class,
                 quality=quality,
                 input_filenames=input_filenames,
-                metadatas=[None for t in input_filenames],
-                extra_widgets=[("fixed", 1, options_buttons)])
-
-            self.options.set_focus(options_buttons)
+                metadatas=[None for t in input_filenames])
 
             #finish initialization
+            self.wizard = Wizard([self.metadata,
+                                  self.options],
+                                 urwid.Button(LAB_CANCEL_BUTTON,
+                                              on_press=self.exit),
+                                 urwid.Button(completion_label,
+                                               on_press=self.complete),
+                                 self.page_changed)
+
             urwid.Frame.__init__(self,
-                                 body=self.metadata_frame,
+                                 body=self.wizard,
                                  footer=self.metadata_status)
+
+        def page_changed(self, new_page):
+            if (new_page is self.metadata):
+                self.set_footer(self.metadata_status)
+            elif (new_page is self.options):
+                self.options.set_metadatas(
+                    list(self.metadata.populated_metadata()))
+                self.set_footer(self.options_status)
 
         def exit(self, button):
             self.__cancelled__ = True
             raise urwid.ExitMainLoop()
-
-        def previous(self, button):
-            self.set_body(self.metadata_frame)
-            self.set_footer(self.metadata_status)
-
-        def next(self, button):
-            self.options.set_metadatas(
-                list(self.metadata.populated_metadata()))
-            self.set_body(self.options)
-            self.set_footer(self.options_status)
 
         def complete(self, button):
             if (self.options.has_collisions):
@@ -222,16 +199,11 @@ try:
             return self.__cancelled__
 
         def handle_text(self, i):
-            if (self.get_body() is self.metadata_frame):
-                if (i == 'esc'):
-                    self.exit(None)
-                elif (i == 'f1'):
+            if (self.get_footer() is self.metadata_status):
+                if (i == 'f1'):
                     self.metadata.select_previous_item()
                 elif (i == 'f2'):
                     self.metadata.select_next_item()
-            else:
-                if (i == 'esc'):
-                    self.previous(None)
 
         def output_tracks(self):
             """yields (output_class,
@@ -258,28 +230,6 @@ try:
                        output_filename,
                        quality,
                        metadata)
-
-        def output_directory(self):
-            """returns the currently selected output directory
-            as a plain string"""
-
-            return self.options.output_directory.get_directory()
-
-        def format_string(self):
-            """returns the current format string
-            as a plain, UTF-8 encoded string"""
-
-            return self.options.output_format.get_edit_text().encode('utf-8')
-
-        def output_class(self):
-            """returns the current AudioFile-compatible output class"""
-
-            return self.options.selected_options()[0]
-
-        def quality(self):
-            """returns the current quality string"""
-
-            return self.options.selected_options()[1]
 
     class SingleOutputFiller(urwid.Frame):
         """a class for selecting MetaData and populating output parameters
@@ -1972,6 +1922,62 @@ try:
             return (self.selected_class,
                     self.output_quality.selection(),
                     audiotools.Filename(self.output_filename.get_filename()))
+
+    class Wizard(urwid.Frame):
+        def __init__(self, pages, cancel_button, completion_button,
+                     page_changed=None):
+            """pages is a list of widgets
+            cancel_button and completion_button are Button objects
+            to be placed at either end of the set of pages
+
+            page_changed(new_page) is an optional callback
+            when the current page is changed"""
+
+            assert(len(pages) > 0)
+
+            from audiotools.text import (LAB_PREVIOUS_BUTTON,
+                                         LAB_NEXT_BUTTON)
+
+            self.__body_pages__ = []
+            for (i, widget) in enumerate(pages):
+                if (i == 0):
+                    previous_button = cancel_button
+                else:
+                    previous_button = urwid.Button(
+                        LAB_PREVIOUS_BUTTON,
+                        on_press=self.set_page,
+                        user_data=(i - 1,
+                                   pages[i - 1],
+                                   page_changed))
+
+                if (i == (len(pages) - 1)):
+                    next_button = completion_button
+                else:
+                    next_button = urwid.Button(
+                        LAB_NEXT_BUTTON,
+                        on_press=self.set_page,
+                        user_data=(i + 1,
+                                   pages[i + 1],
+                                   page_changed))
+
+                metadata_buttons = urwid.Filler(
+                    urwid.Columns(widget_list=[('weight', 1, previous_button),
+                                               ('weight', 2, next_button)],
+                                  dividechars=3,
+                                  focus_column=1))
+
+                self.__body_pages__.append(urwid.Pile(
+                        [("weight", 1, widget),
+                         ("fixed", 1, metadata_buttons)],
+                        focus_item=1))
+
+            urwid.Frame.__init__(self, body=self.__body_pages__[0])
+
+        def set_page(self, button, user_data):
+            (page_widget_index, base_widget, page_changed) = user_data
+            self.set_body(self.__body_pages__[page_widget_index])
+            if (page_changed is not None):
+                page_changed(base_widget)
 
     class MappedButton(urwid.Button):
         def __init__(self, label, on_press=None, user_data=None,
