@@ -23,6 +23,8 @@ import os
 import os.path
 import select
 import cPickle
+from operator import concat
+from itertools import izip
 import audiotools
 import audiotools.ui
 import audiotools.text as _
@@ -49,6 +51,153 @@ def convert(progress, source_audiofile, destination_filename,
         destination_audiofile.set_cuesheet(existing_cuesheet)
 
     return destination_filename
+
+
+if (audiotools.ui.AVAILABLE):
+    urwid = audiotools.ui.urwid
+
+    class MultiOutputFiller(audiotools.ui.OutputFiller):
+        def __init__(self,
+                     track_labels,
+                     metadata_choices,
+                     input_filenames,
+                     output_directory,
+                     format_string,
+                     output_class,
+                     quality,
+                     completion_label=u"Apply"):
+            """track_labels[a][t]
+            is a unicode string per album "a", per track "t"
+
+            metadata_choices[a][c][t]
+            is a MetaData object per album "a", per choice "c", per track "t"
+            must have same album count as track_labels
+            and each album's choice must have the same number of tracks
+            (but may have different number of choices)
+
+            input_filenames[a][t]
+            is a Filename object per album "a", per track "t"
+
+            output_directory is a string of the default output dir
+
+            format_string is a UTF-8 encoded format string
+
+            output_class is the default AudioFile-compatible class
+
+            quality is a string of the default output quality to use
+            """
+
+            self.__cancelled__ = True
+
+            #ensure there's at least one album
+            assert(len(track_labels) > 0)
+
+            #ensure album count is consistent
+            assert(len(track_labels) ==
+                   len(metadata_choices) ==
+                   len(input_filenames))
+
+            #ensure track count is consistent
+            for (labels, filenames) in zip(track_labels, input_filenames):
+                assert(len(labels) == len(filenames))
+
+            #ensure there's at least one track
+            assert(len(track_labels[0]) > 0)
+
+            #ensure there's at least one set of choices per album
+            #and all have the same number of tracks
+            for (a, choice_labels) in zip(metadata_choices,
+                                          track_labels):
+                assert(len(a) > 0)
+                for c in a:
+                    assert(len(c) == len(choice_labels))
+
+            #ensure all input filenames are Filename objects
+            for a in input_filenames:
+                for f in a:
+                    assert(isinstance(f, audiotools.Filename))
+
+            #setup status bars for output messages
+            self.metadatas_status = [urwid.Text(u"") for m in track_labels]
+            self.options_status = urwid.Text(u"")
+
+            #setup widgets for populated metadata fields
+            self.metadatas = [
+                audiotools.ui.MetaDataFiller(labels, choices, status)
+                for (labels, choices, status) in zip(track_labels,
+                                                     metadata_choices,
+                                                     self.metadatas_status)]
+
+            #setup a widget for populating output parameters
+            self.options = audiotools.ui.OutputOptions(
+                output_dir=output_directory,
+                format_string=format_string,
+                audio_class=output_class,
+                quality=quality,
+                input_filenames=reduce(concat, input_filenames),
+                metadatas=[None for f in reduce(concat, input_filenames)])
+
+            #finish initialization
+            from audiotools.text import LAB_CANCEL_BUTTON
+
+            self.wizard = audiotools.ui.Wizard(
+                self.metadatas + [self.options],
+                urwid.Button(LAB_CANCEL_BUTTON, on_press=self.exit),
+                urwid.Button(completion_label, on_press=self.complete),
+                self.page_changed)
+
+            urwid.Frame.__init__(self,
+                                 body=self.wizard,
+                                 footer=self.metadatas_status[0])
+
+        def page_changed(self, new_page):
+            try:
+                #one of the metadata pages is selected
+                index = self.metadatas.index(new_page)
+                self.set_footer(self.metadatas_status[index])
+            except ValueError:
+                #the final options page is selected
+                self.options.set_metadatas(
+                    reduce(concat, [list(m.populated_metadata())
+                                    for m in self.metadatas]))
+                self.set_footer(self.options_status)
+
+        def handle_text(self, i):
+            try:
+                #one of the metadata pages is selected
+                index = self.metadatas_status.index(self.get_footer())
+                if (i == 'f1'):
+                    self.metadatas[index].select_previous_item()
+                elif (i == 'f2'):
+                    self.metadatas[index].select_next_item()
+            except ValueError:
+                #the final options page is selected
+                pass
+
+        def output_tracks(self):
+            """yields (output_class,
+                       output_filename,
+                       output_quality,
+                       output_metadata) tuple for each input audio file
+
+            output_metadata is a newly created MetaData object"""
+
+            from itertools import izip
+
+            (audiofile_class,
+             quality,
+             output_filenames) = self.options.selected_options()
+
+            output_filenames = iter(output_filenames)
+
+            for widget in self.metadatas:
+                for (metadata,
+                     output_filename) in izip(widget.populated_metadata(),
+                                              output_filenames):
+                    yield (audiofile_class,
+                           output_filename,
+                           quality,
+                           metadata)
 
 
 if (__name__ == '__main__'):
@@ -262,143 +411,171 @@ if (__name__ == '__main__'):
 
         #split tracks by album only if metadata lookups are required
         if (options.metadata_lookup):
-            albums_iter = audiotools.iter_last(
-                audiotools.group_tracks(audiofiles))
+            albums_iter = audiotools.group_tracks(audiofiles)
         else:
-            albums_iter = iter([(True, audiofiles)])
+            albums_iter = iter([audiofiles])
 
-        for (last_album, album_tracks) in albums_iter:
-            format = (audiotools.FILENAME_FORMAT if
-                      options.format is None else
-                      options.format)
+        filename_format = (audiotools.FILENAME_FORMAT if
+                           options.format is None else
+                           options.format)
+
+        #input_tracks[a][t] is an AudioFile object
+        #per album "a", per track "t"
+        input_tracks = []
+
+        #input_metadatas[a][t] is a MetaData object (or None)
+        #per album "a", per track "t"
+        input_metadatas = []
+
+        #track_labels[a][t] is a unicode string per album "a", per track "t"
+        track_labels = []
+
+        #metadata_choices[a][c][t] is a MetaData object
+        #per album "a", per choice "c", per track "t"
+        metadata_choices = []
+
+        #input_filenames[a][t] is a Filename object
+        #per album "a", per track "t"
+        input_filenames = []
+
+        for album_tracks in albums_iter:
+            input_tracks.append(album_tracks)
 
             track_metadatas = [f.get_metadata() for f in album_tracks]
+            input_metadatas.append(track_metadatas)
+
+            filenames = [audiotools.Filename(f.filename) for f in album_tracks]
+            track_labels.append([unicode(f.basename()) for f in filenames])
+            input_filenames.append(filenames)
 
             if (not options.metadata_lookup):
                 #pull metadata from existing files, if any
-                metadata_choices = [[f.get_metadata() for f in album_tracks]]
+                metadata_choices.append([[f.get_metadata() for f in
+                                          album_tracks]])
             else:
                 #perform CD lookup for existing files
-                metadata_choices = audiotools.track_metadata_lookup(
-                    audiofiles=album_tracks,
-                    musicbrainz_server=options.musicbrainz_server,
-                    musicbrainz_port=options.musicbrainz_port,
-                    freedb_server=options.freedb_server,
-                    freedb_port=options.freedb_port,
-                    use_musicbrainz=options.use_musicbrainz,
-                    use_freedb=options.use_freedb)
+                metadata_choices.append(audiotools.track_metadata_lookup(
+                        audiofiles=album_tracks,
+                        musicbrainz_server=options.musicbrainz_server,
+                        musicbrainz_port=options.musicbrainz_port,
+                        freedb_server=options.freedb_server,
+                        freedb_port=options.freedb_port,
+                        use_musicbrainz=options.use_musicbrainz,
+                        use_freedb=options.use_freedb))
 
                 #and prepend metadata from existing files as an option, if any
                 if (track_metadatas != [None] * len(track_metadatas)):
-                    metadata_choices.insert(
+                    metadata_choices[-1].insert(
                         0,
                         [(m if m is not None else audiotools.MetaData())
                          for m in track_metadatas])
 
-            if (options.interactive):
-                #pick options using interactive widget
+                #avoid performing too many lookups in a row too quickly
+                from time import sleep
+                sleep(1)
 
-                #if previous widget has been used,
-                #pull default options from it
-                if (previous_output_widget is None):
-                    output_directory = options.dir
-                    format_string = format
-                    output_class = AudioType
-                    quality = options.quality
+        #a list of (audiofile,
+        #           output_class,
+        #           output_filename,
+        #           output_quality,
+        #           output_metadata) tuples to be executed
+        conversion_jobs = []
+
+        if (options.interactive):
+            #pick options using interactive widget
+
+            output_widget = MultiOutputFiller(
+                track_labels=track_labels,
+                metadata_choices=metadata_choices,
+                input_filenames=input_filenames,
+                output_directory=options.dir,
+                format_string=filename_format,
+                output_class=AudioType,
+                quality=options.quality,
+                completion_label=(_.LAB_TRACK2TRACK_APPLY if
+                                  (sum(map(len, input_tracks)) != 1)
+                                  else _.LAB_TRACK2TRACK_APPLY_1))
+
+            loop = audiotools.ui.urwid.MainLoop(
+                output_widget,
+                audiotools.ui.style(),
+                unhandled_input=output_widget.handle_text,
+                pop_ups=True)
+            try:
+                loop.run()
+                msg.ansi_clearscreen()
+            except (termios.error, IOError):
+                msg.error(_.ERR_TERMIOS_ERROR)
+                msg.info(_.ERR_TERMIOS_SUGGESTION)
+                msg.info(audiotools.ui.xargs_suggestion(sys.argv))
+                sys.exit(1)
+
+            if (output_widget.cancelled()):
+                sys.exit(0)
+
+            for (input_track,
+                 current_metadata,
+                 (output_class,
+                  output_filename,
+                  output_quality,
+                  output_metadata)) in izip(iter(reduce(concat,
+                                                        input_tracks)),
+                                            iter(reduce(concat,
+                                                        input_metadatas)),
+                                            output_widget.output_tracks()):
+                #merge current track metadata (if any)
+                #with metadata returned from widget
+                if (current_metadata is not None):
+                    for attr in audiotools.MetaData.FIELDS:
+                        original_value = getattr(current_metadata, attr)
+                        updated_value = getattr(output_metadata, attr)
+                        if (original_value != updated_value):
+                            setattr(current_metadata, attr, updated_value)
+                    #and queue up conversion job to be executed
+                    conversion_jobs.append((input_track,
+                                            output_class,
+                                            output_filename,
+                                            output_quality,
+                                            current_metadata))
                 else:
-                    output_directory = \
-                        previous_output_widget.output_directory()
-                    format_string = \
-                        previous_output_widget.format_string()
-                    output_class = \
-                        previous_output_widget.output_class()
-                    quality = \
-                        previous_output_widget.quality()
+                    #or simply queue up conversion job to be executed
+                    #using only new metadata
+                    conversion_jobs.append((input_track,
+                                            output_class,
+                                            output_filename,
+                                            output_quality,
+                                            output_metadata))
 
-                #execute output widget per album's worth of tracks
-                output_widget = audiotools.ui.OutputFiller(
-                    track_labels=[
-                        unicode(audiotools.Filename(f.filename).basename())
-                        for f in album_tracks],
-                    metadata_choices=metadata_choices,
-                    input_filenames=[audiotools.Filename(f.filename)
-                                     for f in album_tracks],
-                    output_directory=output_directory,
-                    format_string=format_string,
-                    output_class=output_class,
-                    quality=quality,
-                    completion_label=((_.LAB_TRACK2TRACK_APPLY if
-                                       (len(album_tracks) != 1) else
-                                       _.LAB_TRACK2TRACK_APPLY_1)
-                                      if last_album
-                                      else _.LAB_TRACK2TRACK_NEXT))
-
-                loop = audiotools.ui.urwid.MainLoop(
-                    output_widget,
-                    audiotools.ui.style(),
-                    unhandled_input=output_widget.handle_text,
-                    pop_ups=True)
+        else:
+            #pick options without using GUI
+            for (album_tracks,
+                 album_metadata_choices,
+                 album_filenames) in zip(input_tracks,
+                                         metadata_choices,
+                                         input_filenames):
                 try:
-                    loop.run()
-                    msg.ansi_clearscreen()
-                except (termios.error, IOError):
-                    msg.error(_.ERR_TERMIOS_ERROR)
-                    msg.info(_.ERR_TERMIOS_SUGGESTION)
-                    msg.info(audiotools.ui.xargs_suggestion(sys.argv))
-                    sys.exit(1)
+                    output_tracks = audiotools.ui.process_output_options(
+                        metadata_choices=album_metadata_choices,
+                        input_filenames=album_filenames,
+                        output_directory=options.dir,
+                        format_string=filename_format,
+                        output_class=AudioType,
+                        quality=options.quality,
+                        msg=msg,
+                        use_default=options.use_default)
 
-                previous_output_widget = output_widget
-
-                #any cancellation quits the entire transcode
-                if (not output_widget.cancelled()):
-                    from itertools import izip
-
-                    #merge input track metadata
-                    #with new metadata returned from widget
-                    output_tracks = []
-                    for (current_metadata,
+                    #queue jobs to be executed
+                    for (album_track,
                          (output_class,
                           output_filename,
                           output_quality,
-                          output_metadata)
-                         ) in izip(iter(track_metadatas),
-                                   output_widget.output_tracks()):
-                        if (current_metadata is not None):
-                            for attr in audiotools.MetaData.FIELDS:
-                                original_value = getattr(current_metadata,
-                                                         attr)
-                                updated_value = getattr(output_metadata,
-                                                        attr)
-                                if (original_value != updated_value):
-                                    setattr(current_metadata,
-                                            attr,
-                                            updated_value)
-                            else:
-                                output_tracks.append((output_class,
-                                                      output_filename,
-                                                      output_quality,
-                                                      current_metadata))
-                        else:
-                            output_tracks.append((output_class,
-                                                  output_filename,
-                                                  output_quality,
-                                                  output_metadata))
-                else:
-                    sys.exit(0)
-            else:
-                #pick options without using GUI
-                try:
-                    output_tracks = list(
-                        audiotools.ui.process_output_options(
-                            metadata_choices=metadata_choices,
-                            input_filenames=[audiotools.Filename(f.filename)
-                                             for f in album_tracks],
-                            output_directory=options.dir,
-                            format_string=format,
-                            output_class=AudioType,
-                            quality=options.quality,
-                            msg=msg,
-                            use_default=options.use_default))
+                          output_metadata)) in izip(album_tracks,
+                                                    output_tracks):
+                        conversion_jobs.append((album_track,
+                                                output_class,
+                                                output_filename,
+                                                output_quality,
+                                                output_metadata))
                 except audiotools.UnsupportedTracknameField, err:
                     err.error_msg(msg)
                     sys.exit(1)
@@ -408,32 +585,32 @@ if (__name__ == '__main__'):
                     msg.error(unicode(err))
                     sys.exit(1)
 
-            #queue jobs to be executed
-            for (audiofile, (output_class,
-                             output_filename,
-                             output_quality,
-                             output_metadata)) in zip(album_tracks,
-                                                      output_tracks):
-                #try to create subdirectories in advance
-                #so as to bail out as early as possible
-                try:
-                    audiotools.make_dirs(str(output_filename))
-                except OSError:
-                    msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
-                    sys.exit(1)
+        #queue conversion jobs to ProgressQueue
+        for (audiofile,
+             output_class,
+             output_filename,
+             output_quality,
+             output_metadata) in conversion_jobs:
+            #try to create subdirectories in advance
+            #so to bail out early if there's an error creating one
+            try:
+                audiotools.make_dirs(str(output_filename))
+            except OSError:
+                msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
+                sys.exit(1)
 
-                queue.execute(
-                    function=convert,
-                    progress_text=unicode(output_filename),
-                    completion_output=
-                    (_.LAB_ENCODE %
-                     {"source": audiotools.Filename(audiofile.filename),
-                      "destination": output_filename}),
-                    source_audiofile=audiofile,
-                    destination_filename=str(output_filename),
-                    destination_class=output_class,
-                    compression=output_quality,
-                    metadata=output_metadata)
+            queue.execute(
+                function=convert,
+                progress_text=unicode(output_filename),
+                completion_output=
+                (_.LAB_ENCODE %
+                 {"source": audiotools.Filename(audiofile.filename),
+                  "destination": output_filename}),
+                source_audiofile=audiofile,
+                destination_filename=str(output_filename),
+                destination_class=output_class,
+                compression=output_quality,
+                metadata=output_metadata)
 
         #perform actual track conversion
         try:

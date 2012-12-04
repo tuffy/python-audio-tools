@@ -6196,6 +6196,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    in which the files are submitted on the command line.
 *** DONE track_number()
 *** DONE album_number()
+** TODO Update track2track/tracktag to use better option filler widget
+   cd2track, dvda2track and tracksplit always work with one album
+   at a time, pretty much by definition.
+   track2track may handle multiple albums simultaneously
+   and currently makes mutiple calls to urwid to work.
+   A better approach is to have all the metadata lookups
+   performed first, multiple metadata edit screens,
+   and a single output options/preview screen.
 ** TODO Make decoder streams seekable
    PCMReader.seek(pcm_frames) -> pcm_frames skipped
    could seek to the closest position in the stream to the given frames
@@ -6207,14 +6215,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO decoders.FlacDecoder
 *** TODO decoders.SHNDecoder
 *** TODO decoders.WavPackDecoder
-** TODO Update track2track to use better option filler widget
-   cd2track, dvda2track and tracksplit always work with one album
-   at a time, pretty much by definition.
-   track2track may handle multiple albums simultaneously
-   and currently makes mutiple calls to urwid to work.
-   A better approach is to have all the metadata lookups
-   performed first, multiple metadata edit screens,
-   and a single output options/preview screen.
 ** TODO Deprecate little-used / poorly-tested bits
    Although there's a risk of annoying people by taking out
    stuff they might be using, some utilities and formats
