@@ -146,16 +146,18 @@ if (audiotools.ui.AVAILABLE):
                 urwid.Button(completion_label, on_press=self.complete),
                 self.page_changed)
 
+            self.__current_page__ = self.metadatas[0]
+
             urwid.Frame.__init__(self,
                                  body=self.wizard,
                                  footer=self.metadatas_status[0])
 
         def page_changed(self, new_page):
-            try:
+            self.__current_page__ = new_page
+            if (hasattr(new_page, "status")):
                 #one of the metadata pages is selected
-                index = self.metadatas.index(new_page)
-                self.set_footer(self.metadatas_status[index])
-            except ValueError:
+                self.set_footer(new_page.status)
+            else:
                 #the final options page is selected
                 self.options.set_metadatas(
                     reduce(concat, [list(m.populated_metadata())
@@ -163,16 +165,12 @@ if (audiotools.ui.AVAILABLE):
                 self.set_footer(self.options_status)
 
         def handle_text(self, i):
-            try:
-                #one of the metadata pages is selected
-                index = self.metadatas_status.index(self.get_footer())
-                if (i == 'f1'):
-                    self.metadatas[index].select_previous_item()
-                elif (i == 'f2'):
-                    self.metadatas[index].select_next_item()
-            except ValueError:
-                #the final options page is selected
-                pass
+            if ((i == "f1") and hasattr(self.__current_page__,
+                                        "select_previous_item")):
+                self.__current_page__.select_previous_item()
+            elif ((i == "f2") and (hasattr(self.__current_page__,
+                                           "select_next_item"))):
+                self.__current_page__.select_next_item()
 
         def output_tracks(self):
             """yields (output_class,

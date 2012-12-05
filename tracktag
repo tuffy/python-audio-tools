@@ -31,34 +31,47 @@ if (audiotools.ui.AVAILABLE):
     urwid = audiotools.ui.urwid
 
     class Tracktag(urwid.Frame):
-        def __init__(self, tracks, metadata_choices, final_album=True):
+        def __init__(self, tracks, metadata_choices):
+            """tracks[a][t] is an AudioFile object
+            per album "a" and track "t"
+
+            metadata_choices[a][c][t] is a MetaData object
+            per album "a", choice "c" and track "t"
+            """
+
             self.__cancelled__ = True
-            status = urwid.Text(u"")
 
-            buttons = urwid.Filler(
-                urwid.Columns(
-                    widget_list=[('weight', 1,
-                                  urwid.Button(_.LAB_CANCEL_BUTTON,
-                                               on_press=self.exit)),
-                                 ('weight', 2,
-                                  urwid.Button(_.LAB_APPLY_BUTTON
-                                               if final_album
-                                               else _.LAB_TRACK2TRACK_NEXT,
-                                               on_press=self.apply))],
-                    dividechars=3,
-                    focus_column=1))
+            assert(len(tracks) == len(metadata_choices))
+            for (album_tracks, choices) in zip(tracks, metadata_choices):
+                for choice in choices:
+                    assert(len(album_tracks) == len(choice))
 
-            self.filler = audiotools.ui.MetaDataFiller(
-                [unicode(audiotools.Filename(t.filename).basename())
-                 for t in tracks],
-                metadata_choices,
-                status)
+            self.metadatas_status = [urwid.Text(u"") for a in tracks]
+            self.metadatas = [
+                audiotools.ui.MetaDataFiller(
+                    [unicode(audiotools.Filename(t.filename).basename())
+                     for t in tracks],
+                    choices,
+                    status) for (tracks, choices, status) in
+                zip(tracks, metadata_choices, self.metadatas_status)]
 
-            urwid.Frame.__init__(
-                self,
-                body=urwid.Pile([("weight", 1, self.filler),
-                                 ("fixed", 1, buttons)]),
-                footer=status)
+            wizard = audiotools.ui.Wizard(
+                pages=self.metadatas,
+                completion_button=urwid.Button(_.LAB_APPLY_BUTTON,
+                                               on_press=self.apply),
+                cancel_button=urwid.Button(_.LAB_CANCEL_BUTTON,
+                                           on_press=self.exit),
+                page_changed=self.page_changed)
+
+            self.__current_filler__ = self.metadatas[0]
+
+            urwid.Frame.__init__(self,
+                                 body=wizard,
+                                 footer=self.metadatas_status[0])
+
+        def page_changed(self, filler):
+            self.__current_filler__ = filler
+            self.set_footer(filler.status)
 
         def apply(self, button):
             self.__cancelled__ = False
@@ -72,19 +85,19 @@ if (audiotools.ui.AVAILABLE):
             return self.__cancelled__
 
         def handle_text(self, i):
-            if (i == 'esc'):
-                self.exit(None)
-            elif (i == 'f1'):
-                self.filler.selected_match.select_previous_item()
+            if (i == 'f1'):
+                self.__current_filler__.selected_match.select_previous_item()
             elif (i == 'f2'):
-                self.filler.selected_match.select_next_item()
+                self.__current_filler__.selected_match.select_next_item()
 
         def populated_metadata(self):
-            """yields a new, populated MetaData object per track
+            """for each album,
+            yields a list of new populated MetaData objects per track
             to be called once Urwid's main loop has completed"""
 
-            for (track_id, metadata) in self.filler.selected_match.metadata():
-                yield metadata
+            for metadatas in self.metadatas:
+                yield [metadata for (track_id, metadata) in
+                       metadatas.selected_match.metadata()]
 
 else:
     urwid_present = False
@@ -334,67 +347,65 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_1_FILE_REQUIRED)
         sys.exit(1)
 
-    if (not options.metadata_lookup):
-        #if not performing metadata lookup,
-        #build fresh MetaData objects
-        #and tag them all simultaneously
-        input_albums = [(tracks,
-                         [t.get_metadata() for t in tracks],
-                         [[audiotools.MetaData() for t in tracks]])]
+    #album_tracks[a][t]
+    #is an AudioFile object per album "a", per track "t"
+    #of the files to be updated
+    album_tracks = []
+
+    #album_current_metadatas[a][t]
+    #is a MetaData object per album "a", per track "t"
+    #of the current track metadata
+    album_current_metadatas = []
+
+    #album_metadata_choices[a][c][t]
+    #is a MetaData object per album "a", per choice "", per "track"
+    album_metadata_choices = []
+
+    if (options.metadata_lookup):
+        #split tracks by album and perform lookup for each
+        for album in audiotools.group_tracks(tracks):
+            album_tracks.append(album)
+
+            album_current_metadatas.append([t.get_metadata() for t in album])
+
+            album_metadata_choices.append(
+                audiotools.track_metadata_lookup(
+                    audiofiles=album,
+                    musicbrainz_server=options.musicbrainz_server,
+                    musicbrainz_port=options.musicbrainz_port,
+                    freedb_server=options.freedb_server,
+                    freedb_port=options.freedb_port,
+                    use_musicbrainz=options.use_musicbrainz,
+                    use_freedb=options.use_freedb))
+
+            #avoid performing too many lookups too quickly
+            from time import sleep
+            sleep(1)
     else:
-        #if performining metadata lookup,
-        #get initial metadata from CD lookup service
-        #for each album in set of tracks
-        #and tag them album-by-album
-        input_albums = []
-        for album_tracks in audiotools.group_tracks(tracks):
-            track_metadatas = [t.get_metadata() for t in album_tracks]
+        #treat tracks as single album and don't perform lookup
+        album_tracks.append(tracks)
+        album_current_metadatas.append([t.get_metadata() for t in tracks])
+        album_metadata_choices.append([[audiotools.MetaData() for t in tracks]])
 
-            metadata_choices = audiotools.track_metadata_lookup(
-                audiofiles=album_tracks,
-                musicbrainz_server=options.musicbrainz_server,
-                musicbrainz_port=options.musicbrainz_port,
-                freedb_server=options.freedb_server,
-                freedb_port=options.freedb_port,
-                use_musicbrainz=options.use_musicbrainz,
-                use_freedb=options.use_freedb)
-
-            if (not options.interactive):
-                #if interactive mode not indicated,
-                #have user pick choice right away
-                metadata_choices = [
-                    audiotools.ui.select_metadata(
-                        metadata_choices, msg, options.use_default)]
-            else:
-                #otherwise, add tracks' original metadatas
-                #to list of possibilities
-                metadata_choices.insert(0, track_metadatas)
-
-            input_albums.append((album_tracks,
-                                 track_metadatas,
-                                 metadata_choices))
-
-    #a list of (tracks, old_metadatas, new_metadatas) tuples
-    #to apply once all interactive widgets have finished
-    to_tag = []
-
-    for (last_album,
-         (album_tracks,
-          album_track_metadatas,
-          album_metadata_choices)) in audiotools.iter_last(iter(input_albums)):
-        #if not replacing all metadata
-        #merge metadata with that from original files, if any
-        #where new values take precedence over old ones
-        if (not options.replace):
-            for choice in album_metadata_choices:
-                for (new_metadata,
-                     old_metadata) in zip(choice, album_track_metadatas):
+    if (options.replace):
+        #ignore track metadata and treat choices as final metadata
+        pass
+    else:
+        #merge choice metadata with track metadata across all albums
+        for (current_metadatas,
+             metadata_choices) in zip(album_current_metadatas,
+                                      album_metadata_choices):
+            for choice in metadata_choices:
+                for (old_metadata,
+                     new_metadata) in zip(current_metadatas, choice):
                     if (old_metadata is not None):
                         for (attr, value) in new_metadata.empty_fields():
                             setattr(new_metadata, attr,
                                     getattr(old_metadata, attr))
 
-        for choice in album_metadata_choices:
+    #apply command-line arguments to all albums and choices
+    for album in album_metadata_choices:
+        for choice in album:
             for metadata in choice:
                 #apply field removal options across all metadata choices
                 for attr in audiotools.MetaData.FIELD_ORDER:
@@ -412,47 +423,53 @@ if (__name__ == '__main__'):
                                     audiotools.MetaData.INTEGER_FIELDS)
                                 else value)
 
-                #apply comment file across all metadata choices
+                #apply comment file across all metadata choices, if any
                 if (comment_file is not None):
                     metadata.comment = comment_file
 
-        if (options.interactive):
-            #if interactive mode indicated, edit metadata choices in widget
-            widget = Tracktag(album_tracks,
-                              album_metadata_choices,
-                              last_album)
-            loop = audiotools.ui.urwid.MainLoop(
-                widget,
-                audiotools.ui.style(),
-                unhandled_input=widget.handle_text)
-            try:
-                loop.run()
-                msg.ansi_clearscreen()
-            except (termios.error, IOError):
-                msg.error(_.ERR_TERMIOS_ERROR)
-                msg.info(_.ERR_TERMIOS_SUGGESTION)
-                msg.info(audiotools.ui.xargs_suggestion(sys.argv))
-                sys.exit(1)
+    if (options.interactive):
+        #run Tracktag widget and get single list of MetaData
+        #for each album's worth of tracks
+        widget = Tracktag(album_tracks, album_metadata_choices)
 
-            if (not widget.cancelled()):
-                to_tag.append((album_tracks,
-                               album_track_metadatas,
-                               list(widget.populated_metadata())))
-            else:
-                sys.exit(0)
+        loop = audiotools.ui.urwid.MainLoop(
+            widget,
+            audiotools.ui.style(),
+            unhandled_input=widget.handle_text)
+        try:
+            loop.run()
+            msg.ansi_clearscreen()
+        except (termios.error, IOError):
+            msg.error(_.ERR_TERMIOS_ERROR)
+            msg.info(_.ERR_TERMIOS_SUGGESTION)
+            msg.info(audiotools.ui.xargs_suggestion(sys.argv))
+            sys.exit(1)
+
+        if (not widget.cancelled()):
+            from itertools import izip
+
+            to_tag = map(tuple, izip(iter(album_tracks),
+                                     iter(album_current_metadatas),
+                                     widget.populated_metadata()))
         else:
-            #if interactive mode not indicated, use first choice
-            #since all other choices have been culled already
-            to_tag.append((album_tracks,
-                           album_track_metadatas,
-                           album_metadata_choices[0]))
+            sys.exit(0)
+    else:
+        #select choice for each album's worth of tracks
+        #and get a single list of MetaData for each
+        to_tag = map(tuple,
+                     zip(album_tracks,
+                         album_current_metadatas,
+                         [audiotools.ui.select_metadata(choices,
+                                                        msg,
+                                                        options.use_default)
+                          for choices in album_metadata_choices]))
 
     #once all final output metadata is set,
     #perform actual tagging
     for (album_tracks, old_metadatas, new_metadatas) in to_tag:
         if (not options.replace):
             #apply final metadata to tracks using update_metadata
-            #if no replacement
+            #if no full replacement
             for (old_metadata,
                  (track,
                   new_metadata)) in zip(old_metadatas,

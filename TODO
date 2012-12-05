@@ -6196,7 +6196,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    in which the files are submitted on the command line.
 *** DONE track_number()
 *** DONE album_number()
-** TODO Update track2track/tracktag to use better option filler widget
+** DONE Update track2track/tracktag to use better option filler widget
    cd2track, dvda2track and tracksplit always work with one album
    at a time, pretty much by definition.
    track2track may handle multiple albums simultaneously
