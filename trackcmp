@@ -264,7 +264,7 @@ if (__name__ == '__main__'):
             queue = audiotools.ExecProgressQueue(
                 audiotools.ProgressDisplay(msg))
 
-            to_compare.sort(lambda f1,f2: cmp(f1[0], f2[0]))
+            to_compare.sort(lambda f1,f2: cmp(f1[0].filename, f2[0].filename))
 
             for (track1, track2) in to_compare:
                 queue.execute(

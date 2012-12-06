@@ -312,14 +312,16 @@ br_open_external(void* user_data,
     FUNC_NAME(BitstreamReader* bs, unsigned int count)                  \
     {                                                                   \
         int context = bs->state;                                        \
-        unsigned int result;                                            \
-        int byte;                                                       \
-        struct bs_callback* callback;                                   \
         RETURN_TYPE accumulator = 0;                                    \
-        int output_size;                                                \
                                                                         \
         while (count > 0) {                                             \
+            unsigned int result;                                        \
+            int output_size;                                            \
+                                                                        \
             if (context == 0) {                                         \
+                int byte;                                               \
+                struct bs_callback* callback;                           \
+                                                                        \
                 if ((byte = BYTE_FUNC(BYTE_FUNC_ARG)) == EOF)           \
                     br_abort(bs);                                       \
                 context = NEW_CONTEXT(byte);                            \
@@ -350,15 +352,17 @@ br_open_external(void* user_data,
     FUNC_NAME(BitstreamReader* bs, unsigned int count)                  \
     {                                                                   \
         int context = bs->state;                                        \
-        unsigned int result;                                            \
-        int byte;                                                       \
-        struct bs_callback* callback;                                   \
         RETURN_TYPE accumulator = 0;                                    \
-        int output_size;                                                \
         int bit_offset = 0;                                             \
                                                                         \
         while (count > 0) {                                             \
+            unsigned int result;                                        \
+            int output_size;                                            \
+                                                                        \
             if (context == 0) {                                         \
+                int byte;                                               \
+                struct bs_callback* callback;                           \
+                                                                        \
                 if ((byte = BYTE_FUNC(BYTE_FUNC_ARG)) == EOF)           \
                     br_abort(bs);                                       \
                 context = NEW_CONTEXT(byte);                            \
@@ -479,18 +483,15 @@ void
 br_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    int output_size;
-    static uint8_t dummy[SKIP_BUFFER_SIZE];
-    unsigned int to_read;
 
     /*handle a common case where the input is byte-aligned,
       the count is an even number of bytes
       and there are no set callbacks to consider*/
     if ((context == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
         while (count > 0) {
+            unsigned int to_read;
+            static uint8_t dummy[SKIP_BUFFER_SIZE];
+
             to_read = MIN(SKIP_BUFFER_SIZE, count / 8);
             if (fread(dummy, sizeof(uint8_t), to_read, bs->input.file) !=
                 to_read)
@@ -500,7 +501,13 @@ br_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
         }
     } else {
         while (count > 0) {
+            unsigned int result;
+            int output_size;
+
             if (context == 0) {
+                int byte;
+                struct bs_callback* callback;
+
                 if ((byte = fgetc(bs->input.file)) == EOF)
                     br_abort(bs);
                 context = NEW_CONTEXT(byte);
@@ -527,18 +534,15 @@ void
 br_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    int output_size;
-    static uint8_t dummy[SKIP_BUFFER_SIZE];
-    unsigned int to_read;
 
     /*handle a common case where the input is byte-aligned,
       the count is an even number of bytes
       and there are no set callbacks to consider*/
     if ((context == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
         while (count > 0) {
+            unsigned int to_read;
+            static uint8_t dummy[SKIP_BUFFER_SIZE];
+
             to_read = MIN(SKIP_BUFFER_SIZE, count / 8);
             if (fread(dummy, sizeof(uint8_t), to_read, bs->input.file) !=
                 to_read)
@@ -548,7 +552,13 @@ br_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
         }
     } else {
         while (count > 0) {
+            unsigned int result;
+            int output_size;
+
             if (context == 0) {
+                int byte;
+                struct bs_callback* callback;
+
                 if ((byte = fgetc(bs->input.file)) == EOF)
                     br_abort(bs);
                 context = NEW_CONTEXT(byte);
@@ -575,10 +585,6 @@ void
 br_skip_bits_s_be(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    int output_size;
 
     /*handle a common case where the input is byte-aligned,
       the count is an even number of bytes
@@ -592,7 +598,13 @@ br_skip_bits_s_be(BitstreamReader* bs, unsigned int count)
         }
     } else {
         while (count > 0) {
+            unsigned int result;
+            int output_size;
+
             if (context == 0) {
+                int byte;
+                struct bs_callback* callback;
+
                 if ((byte = buf_getc(bs->input.substream)) == EOF)
                     br_abort(bs);
                 context = NEW_CONTEXT(byte);
@@ -619,11 +631,6 @@ void
 br_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    int output_size;
-    int bit_offset = 0;
 
     /*handle a common case where the input is byte-aligned,
       the count is an even number of bytes
@@ -636,8 +643,16 @@ br_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
             br_abort(bs);
         }
     } else {
+        int bit_offset = 0;
+
         while (count > 0) {
+            unsigned int result;
+            int output_size;
+
             if (context == 0) {
+                int byte;
+                struct bs_callback* callback;
+
                 if ((byte = buf_getc(bs->input.substream)) == EOF)
                     br_abort(bs);
                 context = NEW_CONTEXT(byte);
@@ -666,13 +681,15 @@ void
 br_skip_bits_e_be(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    int output_size;
 
     while (count > 0) {
+        unsigned int result;
+        int output_size;
+
         if (context == 0) {
+            int byte;
+            struct bs_callback* callback;
+
             if ((byte = ext_getc(bs->input.external)) == EOF)
                 br_abort(bs);
             context = NEW_CONTEXT(byte);
@@ -698,14 +715,16 @@ void
 br_skip_bits_e_le(BitstreamReader* bs, unsigned int count)
 {
     int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    int output_size;
     int bit_offset = 0;
 
     while (count > 0) {
+        unsigned int result;
+        int output_size;
+
         if (context == 0) {
+            int byte;
+            struct bs_callback* callback;
+
             if ((byte = ext_getc(bs->input.external)) == EOF)
                 br_abort(bs);
             context = NEW_CONTEXT(byte);
@@ -778,13 +797,14 @@ br_unread_bit_c(BitstreamReader* bs, int unread_bit)
     FUNC_NAME(BitstreamReader* bs, int stop_bit)                        \
     {                                                                   \
         int context = bs->state;                                        \
-        unsigned int result;                                            \
-        struct bs_callback* callback;                                   \
-        int byte;                                                       \
         unsigned int accumulator = 0;                                   \
+        unsigned int result;                                            \
                                                                         \
         do {                                                            \
             if (context == 0) {                                         \
+                int byte;                                               \
+                struct bs_callback* callback;                           \
+                                                                        \
                 if ((byte = BYTE_FUNC(BYTE_FUNC_ARG)) == EOF)           \
                     br_abort(bs);                                       \
                 context = NEW_CONTEXT(byte);                            \
@@ -830,11 +850,12 @@ br_read_unary_c(BitstreamReader* bs, int stop_bit)
     {                                                                   \
         int context = bs->state;                                        \
         unsigned int result;                                            \
-        struct bs_callback* callback;                                   \
-        int byte;                                                       \
                                                                         \
         do {                                                            \
             if (context == 0) {                                         \
+                int byte;                                               \
+                struct bs_callback* callback;                           \
+                                                                        \
                 if ((byte = BYTE_FUNC(BYTE_FUNC_ARG)) == EOF)           \
                     br_abort(bs);                                       \
                 context = NEW_CONTEXT(byte);                            \
@@ -877,16 +898,18 @@ br_skip_unary_c(BitstreamReader* bs, int stop_bit)
     {                                                                   \
         int context = bs->state;                                        \
         unsigned int result;                                            \
-        unsigned int value;                                             \
-        struct bs_callback* callback;                                   \
-        int byte;                                                       \
         int accumulator = 0;                                            \
         stop_bit *= 9;                                                  \
                                                                         \
         assert(maximum_bits > 0);                                       \
                                                                         \
         do {                                                            \
+            unsigned int value;                                         \
+                                                                        \
             if (context == 0) {                                         \
+                int byte;                                               \
+                struct bs_callback* callback;                           \
+                                                                        \
                 if ((byte = BYTE_FUNC(BYTE_FUNC_ARG)) == EOF)           \
                     br_abort(bs);                                       \
                 context = NEW_CONTEXT(byte);                            \
@@ -948,14 +971,14 @@ br_read_limited_unary_c(BitstreamReader* bs, int stop_bit, int maximum_bits)
     FUNC_NAME(BitstreamReader *bs,                                  \
               struct br_huffman_table table[][0x200])               \
     {                                                               \
-        struct br_huffman_table entry;                              \
         int node = 0;                                               \
         int context = bs->state;                                    \
-        struct bs_callback* callback;                               \
-        int byte;                                                   \
+        struct br_huffman_table entry = table[node][context];       \
                                                                     \
-        entry = table[node][context];                               \
         while (READ_HUFFMAN_CONTINUE(entry.context_node)) {         \
+            int byte;                                               \
+            struct bs_callback* callback;                           \
+                                                                    \
             if ((byte = BYTE_FUNC(BYTE_FUNC_ARG)) == EOF)           \
                 br_abort(bs);                                       \
             context = NEW_CONTEXT(byte);                            \
@@ -975,6 +998,7 @@ br_read_limited_unary_c(BitstreamReader* bs, int stop_bit, int maximum_bits)
 FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_f, fgetc, bs->input.file)
 FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_s, buf_getc, bs->input.substream)
 FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_e, ext_getc, bs->input.external)
+
 int
 br_read_huffman_code_c(BitstreamReader *bs,
                        struct br_huffman_table table[][0x200])
@@ -996,7 +1020,6 @@ br_read_bytes_f(struct BitstreamReader_s* bs,
                 unsigned int byte_count)
 {
     unsigned int i;
-    struct bs_callback* callback;
 
     if (bs->state == 0) {
         /*stream is byte-aligned, so perform optimized read*/
@@ -1004,6 +1027,7 @@ br_read_bytes_f(struct BitstreamReader_s* bs,
         /*fread bytes from file handle to output*/
         if (fread(bytes, sizeof(uint8_t), byte_count, bs->input.file) ==
             byte_count) {
+            struct bs_callback* callback;
             /*if sufficient bytes were read*/
 
             /*perform callbacks on the read bytes*/
@@ -1028,15 +1052,14 @@ br_read_bytes_s(struct BitstreamReader_s* bs,
                 unsigned int byte_count)
 {
     unsigned int i;
-    struct bs_buffer* buffer;
-    struct bs_callback* callback;
 
     if (bs->state == 0) {
         /*stream is byte-aligned, so perform optimized read*/
 
-        buffer = bs->input.substream;
+        struct bs_buffer* buffer = bs->input.substream;
 
         if (BUF_REMAINING_BYTES(buffer) >= byte_count) {
+            struct bs_callback* callback;
             /*the buffer has enough bytes to read*/
 
             /*so copy bytes from buffer to output*/
@@ -2036,17 +2059,12 @@ bw_open_accumulator(bs_endianness endianness)
     void                                                                \
     FUNC_NAME(BitstreamWriter* bs, unsigned int count, VALUE_TYPE value) \
     {                                                                   \
-        int bits_to_write;                                              \
-        VALUE_TYPE value_to_write;                                      \
-        unsigned int byte;                                              \
-        struct bs_callback* callback;                                   \
-                                                                        \
         /* assert(value < (1l << count));  */                           \
                                                                         \
         while (count > 0) {                                             \
             /*chop off up to 8 bits to write at a time*/                \
-            bits_to_write = count > 8 ? 8 : count;                      \
-            value_to_write = value >> (count - bits_to_write);          \
+            const int bits_to_write = count > 8 ? 8 : count;            \
+            const VALUE_TYPE value_to_write = value >> (count - bits_to_write); \
                                                                         \
             /*new data is added to the buffer least-significant first*/ \
             bs->buffer = (unsigned int)((bs->buffer << bits_to_write) | \
@@ -2057,6 +2075,9 @@ bw_open_accumulator(bs_endianness endianness)
             /*extract bits most-significant first*/                     \
             /*and remove them from the buffer*/                         \
             if (bs->buffer_size >= 8) {                                 \
+                unsigned int byte;                                      \
+                struct bs_callback* callback;                           \
+                                                                        \
                 byte = (bs->buffer >> (bs->buffer_size - 8)) & 0xFF;    \
                 if (BYTE_FUNC(byte, BYTE_FUNC_ARG) == EOF)              \
                     bw_abort(bs);                                       \
@@ -2078,17 +2099,12 @@ bw_open_accumulator(bs_endianness endianness)
     void                                                                \
     FUNC_NAME(BitstreamWriter* bs, unsigned int count, VALUE_TYPE value) \
     {                                                                   \
-        int bits_to_write;                                              \
-        VALUE_TYPE value_to_write;                                      \
-        unsigned int byte;                                              \
-        struct bs_callback* callback;                                   \
-                                                                        \
         /* assert(value < (int64_t)(1LL << count)); */                  \
                                                                         \
         while (count > 0) {                                             \
             /*chop off up to 8 bits to write at a time*/                \
-            bits_to_write = count > 8 ? 8 : count;                      \
-            value_to_write = value & ((1 << bits_to_write) - 1);        \
+            const int bits_to_write = count > 8 ? 8 : count;            \
+            const VALUE_TYPE value_to_write = value & ((1 << bits_to_write) - 1); \
                                                                         \
             /*new data is added to the buffer most-significant first*/  \
             bs->buffer |= (unsigned int)(value_to_write <<              \
@@ -2099,6 +2115,9 @@ bw_open_accumulator(bs_endianness endianness)
             /*extract bits least-significant first*/                    \
             /*and remove them from the buffer*/                         \
             if (bs->buffer_size >= 8) {                                 \
+                unsigned int byte;                                      \
+                struct bs_callback* callback;                           \
+                                                                        \
                 byte = bs->buffer & 0xFF;                               \
                 if (BYTE_FUNC(byte, BYTE_FUNC_ARG) == EOF)              \
                     bw_abort(bs);                                       \
