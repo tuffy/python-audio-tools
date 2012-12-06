@@ -110,6 +110,19 @@ next_read_huffman_state(struct br_huffman_table* state,
 static int
 bank_to_int(struct byte_bank bank);
 
+static struct bw_huffman_table*
+insert_bw_frequency(struct bw_huffman_table* table,
+                    unsigned int bits,
+                    unsigned int length,
+                    int value);
+
+
+/*returns a new set of bits of the same length
+  such that the least significant become the most significant
+  and vice versa*/
+static unsigned int
+swap_bits(unsigned int bits, unsigned int length);
+
 
 static int
 bank_to_int(struct byte_bank bank) {
@@ -401,10 +414,10 @@ transfer_huffman_tree(struct br_huffman_table (*table)[][0x200],
     }
 }
 
-int compile_huffman_table(struct br_huffman_table (**table)[][0x200],
-                          struct huffman_frequency* frequencies,
-                          unsigned int total_frequencies,
-                          bs_endianness endianness) {
+int compile_br_huffman_table(struct br_huffman_table (**table)[][0x200],
+                             struct huffman_frequency* frequencies,
+                             unsigned int total_frequencies,
+                             bs_endianness endianness) {
     int error = 0;
     struct huffman_node* tree;
     int total_rows;
@@ -415,6 +428,130 @@ int compile_huffman_table(struct br_huffman_table (**table)[][0x200],
     total_rows = compile_huffman_tree(table, tree, endianness);
     free_huffman_tree(tree);
     return total_rows;
+}
+
+typedef int (*qsort_cmp_func_t)(const void*, const void*);
+
+static
+int frequency_cmp(const struct huffman_frequency* f1,
+                  const struct huffman_frequency* f2)
+{
+    if (f1->length == f2->length) {
+        return 0;
+    } else if (f1->length < f2->length) {
+        return -1;
+    } else {
+        return 1;
+    }
+}
+
+int compile_bw_huffman_table(struct bw_huffman_table** table,
+                             struct huffman_frequency* frequencies,
+                             unsigned int total_frequencies,
+                             bs_endianness endianness)
+{
+    int error = 0;
+    struct huffman_node* tree;
+    unsigned int i;
+
+    *table = NULL;
+
+    /*ensure frequencies generate a value Huffman tree*/
+    tree = build_huffman_tree(frequencies, total_frequencies, &error);
+    if (tree == NULL) {
+        return error;
+    } else {
+        free_huffman_tree(tree);
+    }
+
+    /*sort frequencies in ascending order of bit count
+      to ensure the most common items are near the top of the tree*/
+    qsort(frequencies,
+          (size_t)total_frequencies,
+          sizeof(struct huffman_frequency),
+          (qsort_cmp_func_t)frequency_cmp);
+
+    /*for each frequency in the list*/
+    for (i = 0; i < total_frequencies; i++) {
+        /*insert a node into the binary tree
+          with the given value, bit count and bit value*/
+        *table = insert_bw_frequency(
+            *table,
+            (endianness == BS_BIG_ENDIAN) ?
+            frequencies[i].bits :
+            swap_bits(frequencies[i].bits, frequencies[i].length),
+            frequencies[i].length,
+            frequencies[i].value);
+    }
+
+    return 0;
+}
+
+static unsigned int
+swap_bits(unsigned int bits, unsigned int length){
+    unsigned int swapped = 0;
+
+    while (length--) {
+        const unsigned int lsb = bits & 1;
+        bits >>= 1;
+        swapped = (swapped << 1) | lsb;
+    }
+
+    return swapped;
+}
+
+static struct bw_huffman_table*
+insert_bw_frequency(struct bw_huffman_table* table,
+                    unsigned int bits,
+                    unsigned int length,
+                    int value)
+{
+    if (table == NULL) {
+        /*reached empty node, so generate binary tree leaf and return it*/
+        table = malloc(sizeof(struct bw_huffman_table));
+
+        table->value = value;
+        table->write_count = length;
+        table->write_value = bits;
+        table->left = NULL;
+        table->right = NULL;
+
+        return table;
+    } else {
+        /*reached non-empty node, so populate left or right side
+          and return current node*/
+        if (value < table->value) {
+            table->left = insert_bw_frequency(table->left,
+                                              bits,
+                                              length,
+                                              value);
+            return table;
+        } else if (value > table->value) {
+            table->right = insert_bw_frequency(table->right,
+                                               bits,
+                                               length,
+                                               value);
+            return table;
+        } else {
+            /*ignore values that occur multiple times
+
+              It's possible to specify a Huffman tree in which
+              the same value can be read in more than one way.
+              But when writing, there's no reason to use
+              the longer value.*/
+
+            return table;
+        }
+    }
+}
+
+void free_bw_huffman_table(struct bw_huffman_table* table)
+{
+    if (table != NULL) {
+        free_bw_huffman_table(table->left);
+        free_bw_huffman_table(table->right);
+        free(table);
+    }
 }
 
 #ifdef EXECUTABLE
@@ -484,8 +621,10 @@ int main(int argc, char* argv[]) {
 
     frequencies = json_to_frequencies(input_file, &total_frequencies);
 
-    total_rows = compile_huffman_table(&table, frequencies, total_frequencies,
-                                       little_endian);
+    total_rows = compile_br_huffman_table(&table,
+                                          frequencies,
+                                          total_frequencies,
+                                          little_endian);
     if (total_rows < 0)
         switch (total_rows) {
         case HUFFMAN_MISSING_LEAF:

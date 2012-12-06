@@ -744,6 +744,19 @@ struct bw_external_output {
                                 and the buffer is reset*/
 };
 
+/*this is a basic binary tree in which the most common values
+  (those with the smallest amount of bits to write)
+  occur at the top of the tree*/
+struct bw_huffman_table {
+    int value;
+
+    unsigned int write_count;
+    unsigned int write_value;
+
+    struct bw_huffman_table* left;
+    struct bw_huffman_table* right;
+};
+
 typedef struct BitstreamWriter_s {
     bw_type type;
 
@@ -807,6 +820,15 @@ typedef struct BitstreamWriter_s {
     (*write_unary)(struct BitstreamWriter_s* bs,
                    int stop_bit,
                    unsigned int value);
+
+    /*writes "value" is a Huffman code to the stream
+      where the code tree is defined from the given compiled table
+
+      returns 0 on success, or 1 if the code is not found in the table*/
+    int
+    (*write_huffman_code)(struct BitstreamWriter_s* bs,
+                          struct bw_huffman_table* table,
+                          int value);
 
     /*if the stream is not already byte-aligned,
       pad it with 0 bits until it is*/
@@ -1050,6 +1072,18 @@ void
 bw_write_unary_a(BitstreamWriter* bs, int stop_bit, unsigned int value);
 void
 bw_write_unary_c(BitstreamWriter* bs, int stop_bit, unsigned int value);
+
+
+/*bs->write_huffman_code(bs, table, value)  methods*/
+int
+bw_write_huffman(BitstreamWriter* bs,
+                 struct bw_huffman_table* table,
+                 int value);
+
+int
+bw_write_huffman_c(BitstreamWriter* bs,
+                   struct bw_huffman_table* table,
+                   int value);
 
 
 /*bs->byte_align(bs)  methods*/

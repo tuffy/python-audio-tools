@@ -1880,6 +1880,7 @@ bw_open(FILE *f, bs_endianness endianness)
 
     bs->write_bytes = bw_write_bytes_f;
     bs->write_unary = bw_write_unary_f_p_r;
+    bs->write_huffman_code = bw_write_huffman;
     bs->build = bw_build;
     bs->byte_align = bw_byte_align_f_p_r;
     bs->bits_written = bw_bits_written_f_p_c;
@@ -1934,6 +1935,7 @@ bw_open_external(void* user_data,
 
     bs->write_bytes = bw_write_bytes_e;
     bs->write_unary = bw_write_unary_f_p_r;
+    bs->write_huffman_code = bw_write_huffman;
     bs->build = bw_build;
     bs->byte_align = bw_byte_align_f_p_r;
     bs->bits_written = bw_bits_written_f_p_c;
@@ -1981,6 +1983,7 @@ bw_open_recorder(bs_endianness endianness)
 
     bs->write_bytes = bw_write_bytes_r;
     bs->write_unary = bw_write_unary_f_p_r;
+    bs->write_huffman_code = bw_write_huffman;
     bs->build = bw_build;
     bs->byte_align = bw_byte_align_f_p_r;
     bs->bits_written = bw_bits_written_r;
@@ -2014,6 +2017,7 @@ bw_open_accumulator(bs_endianness endianness)
     bs->write_64 = bw_write_bits64_a;
     bs->write_signed_64 = bw_write_signed_bits64_a;
     bs->write_unary = bw_write_unary_a;
+    bs->write_huffman_code = bw_write_huffman;
     bs->build = bw_build;
     bs->byte_align = bw_byte_align_a;
     bs->set_endianness = bw_set_endianness_a;
@@ -2364,6 +2368,38 @@ bw_write_unary_c(BitstreamWriter* bs, int stop_bit, unsigned int value)
 }
 
 
+int
+bw_write_huffman(BitstreamWriter* bs,
+                 struct bw_huffman_table* table,
+                 int value)
+{
+    while (table != NULL) {
+        if (value == table->value) {
+            bs->write(bs, table->write_count, table->write_value);
+            return 0;
+        } else if (value < table->value) {
+            table = table->left;
+        } else {
+            table = table->right;
+        }
+    }
+
+    /*walked outside of the Huffman table, so return error*/
+    return 1;
+}
+
+int
+bw_write_huffman_c(BitstreamWriter* bs,
+                   struct bw_huffman_table* table,
+                   int value)
+{
+    bw_abort(bs);
+
+    return 1;  /*won't get here*/
+}
+
+
+
 void
 bw_byte_align_f_p_r(BitstreamWriter* bs) {
     /*write enough 0 bits to completely fill the buffer
@@ -2605,6 +2641,7 @@ bw_close_methods(BitstreamWriter* bs)
     bs->write_signed = bw_write_signed_bits_c;
     bs->write_signed_64 = bw_write_signed_bits64_c;
     bs->write_unary = bw_write_unary_c;
+    bs->write_huffman_code = bw_write_huffman_c;
     bs->flush = bw_flush_r_a_c;
     bs->byte_align = bw_byte_align_c;
     bs->set_endianness = bw_set_endianness_c;
@@ -3511,6 +3548,10 @@ writer_perform_write_unary_1(BitstreamWriter* writer,
                              bs_endianness endianness);
 
 void
+writer_perform_huffman(BitstreamWriter* writer,
+                       bs_endianness endianness);
+
+void
 writer_perform_write_bytes(BitstreamWriter* writer,
                            bs_endianness endianness);
 
@@ -3594,8 +3635,8 @@ int main(int argc, char* argv[]) {
     }
 
     /*compile the Huffman tables*/
-    compile_huffman_table(&be_table, frequencies, 5, BS_BIG_ENDIAN);
-    compile_huffman_table(&le_table, frequencies, 5, BS_LITTLE_ENDIAN);
+    compile_br_huffman_table(&be_table, frequencies, 5, BS_BIG_ENDIAN);
+    compile_br_huffman_table(&le_table, frequencies, 5, BS_LITTLE_ENDIAN);
 
     /*write some test data to the temporary file*/
     fputc(0xB1, temp_file);
@@ -4479,8 +4520,9 @@ test_writer(bs_endianness endianness) {
                             writer_perform_write_signed_64,
                             writer_perform_write_unary_0,
                             writer_perform_write_unary_1,
+                            writer_perform_huffman,
                             writer_perform_write_bytes};
-    int total_checks = 6;
+    int total_checks = 7;
 
     align_check achecks_be[] = {{0, 0, 0, 0},
                                 {1, 1, 1, 0x80},
@@ -5040,6 +5082,66 @@ writer_perform_write_unary_1(BitstreamWriter* writer,
         break;
     }
 }
+
+void
+writer_perform_huffman(BitstreamWriter* writer,
+                       bs_endianness endianness)
+{
+    struct bw_huffman_table* table;
+    struct huffman_frequency frequencies[] = {{3, 2, 0},
+                                              {2, 2, 1},
+                                              {1, 2, 2},
+                                              {1, 3, 3},
+                                              {0, 3, 4}};
+    const unsigned int total_frequencies = 5;
+
+    assert(compile_bw_huffman_table(&table,
+                                    frequencies,
+                                    total_frequencies,
+                                    endianness) == 0);
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        writer->write_huffman_code(writer, table, 1);
+        writer->write_huffman_code(writer, table, 0);
+        writer->write_huffman_code(writer, table, 4);
+        writer->write_huffman_code(writer, table, 0);
+        writer->write_huffman_code(writer, table, 0);
+        writer->write_huffman_code(writer, table, 2);
+        writer->write_huffman_code(writer, table, 1);
+        writer->write_huffman_code(writer, table, 1);
+        writer->write_huffman_code(writer, table, 2);
+        writer->write_huffman_code(writer, table, 0);
+        writer->write_huffman_code(writer, table, 2);
+        writer->write_huffman_code(writer, table, 0);
+        writer->write_huffman_code(writer, table, 1);
+        writer->write_huffman_code(writer, table, 4);
+        writer->write_huffman_code(writer, table, 2);
+        break;
+    case BS_LITTLE_ENDIAN:
+        writer->write_huffman_code(writer, table, 1);
+        writer->write_huffman_code(writer, table, 3);
+        writer->write_huffman_code(writer, table, 1);
+        writer->write_huffman_code(writer, table, 0);
+        writer->write_huffman_code(writer, table, 2);
+        writer->write_huffman_code(writer, table, 1);
+        writer->write_huffman_code(writer, table, 0);
+        writer->write_huffman_code(writer, table, 0);
+        writer->write_huffman_code(writer, table, 1);
+        writer->write_huffman_code(writer, table, 0);
+        writer->write_huffman_code(writer, table, 1);
+        writer->write_huffman_code(writer, table, 2);
+        writer->write_huffman_code(writer, table, 4);
+        writer->write_huffman_code(writer, table, 3);
+        /*table makes us unable to generate single
+          trailing 1 bit, so we have to do it manually*/
+        writer->write(writer, 1, 1);
+        break;
+    }
+
+    free_bw_huffman_table(table);
+}
+
 
 void
 writer_perform_write_bytes(BitstreamWriter* writer,

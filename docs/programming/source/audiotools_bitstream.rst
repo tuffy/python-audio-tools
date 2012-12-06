@@ -292,6 +292,13 @@ into a larger binary file stream.
    bits to the stream followed by a ``0`` bit.
    May raise :exc:`IOError` if an error occurs writing the stream.
 
+.. method:: BitstreamWriter.write_huffman_code(huffman_tree, value)
+
+   Given a :class:`HuffmanTree` object and an integer value to write,
+   determines the proper output code and writes it to disk.
+   Raises :exc:`ValueError` if the integer value is not present
+   in the tree.
+
 .. method:: BitstreamWriter.byte_align()
 
    Writes ``0`` bits as necessary until the stream is aligned
@@ -414,6 +421,13 @@ bits or bytes, for possible output into a :class:`BitstreamWriter`.
    bits to the stream followed by a ``1`` bit.
    If ``stop_bit`` is ``0``, records ``value`` number of ``1``
    bits to the stream followed by a ``0`` bit.
+
+.. method:: BitstreamRecorder.write_huffman_code(huffman_tree, value)
+
+   Given a :class:`HuffmanTree` object and an integer value to write,
+   determines the proper output code and records it for writing.
+   Raises :exc:`ValueError` if the integer value is not present
+   in the tree.
 
 .. method:: BitstreamRecorder.byte_align()
 
@@ -582,6 +596,14 @@ The actual writes themselves are not recorded.
 
    Counts ``value`` number of bits, plus 1 additional stop bit.
 
+.. method:: BitstreamWriter.write_huffman_code(huffman_tree, value)
+
+   Given a :class:`HuffmanTree` object and an integer value to write,
+   determines the proper output code and calculates its size
+   when written to disk.
+   Raises :exc:`ValueError` if the integer value is not present
+   in the tree.
+
 .. method:: BitstreamAccumulator.byte_align()
 
    Counts ``0`` bits as necessary until the stream is aligned
@@ -648,7 +670,8 @@ The actual writes themselves are not recorded.
 HuffmanTree Objects
 -------------------
 
-This is a compiled Huffman tree for use by :class:`BitstreamReader`.
+This is a compiled Huffman tree for use by :class:`BitstreamReader`
+and :class:`BitstreamWriter`.
 
 .. class:: HuffmanTree([bits_list, value, ...], is_little_endian)
 
@@ -673,6 +696,8 @@ This is a compiled Huffman tree for use by :class:`BitstreamReader`.
    based on its ``is_little_endian`` value.
 
    The resulting object is passed to :meth:`BitstreamReader.read_huffman_code`
-   to read the next value from a stream.
+   to read the next value from a stream,
+   and to :meth:`BitstreamWriter.write_huffman_code`
+   to write a given value to the stream.
 
    May raise :exc:`ValueError` if the tree is incorrectly specified.

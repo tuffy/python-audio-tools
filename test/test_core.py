@@ -2898,7 +2898,8 @@ class Bitstream(unittest.TestCase):
                   self.__writer_perform_write_64__,
                   self.__writer_perform_write_signed_64__,
                   self.__writer_perform_write_unary_0__,
-                  self.__writer_perform_write_unary_1__]
+                  self.__writer_perform_write_unary_1__,
+                  self.__writer_perform_write_huffman__]
 
         #perform file-based checks
         for check in checks:
@@ -3154,6 +3155,48 @@ class Bitstream(unittest.TestCase):
             writer.unary(1, 2)
             writer.unary(1, 5)
             writer.unary(1, 0)
+
+    def __writer_perform_write_huffman__(self, writer, endianness):
+        from audiotools.bitstream import HuffmanTree
+
+        table = HuffmanTree([[1, 1], 0,
+                             [1, 0], 1,
+                             [0, 1], 2,
+                             [0, 0, 1], 3,
+                             [0, 0, 0], 4], endianness)
+
+        if (endianness == 0):
+            writer.write_huffman_code(table, 1)
+            writer.write_huffman_code(table, 0)
+            writer.write_huffman_code(table, 4)
+            writer.write_huffman_code(table, 0)
+            writer.write_huffman_code(table, 0)
+            writer.write_huffman_code(table, 2)
+            writer.write_huffman_code(table, 1)
+            writer.write_huffman_code(table, 1)
+            writer.write_huffman_code(table, 2)
+            writer.write_huffman_code(table, 0)
+            writer.write_huffman_code(table, 2)
+            writer.write_huffman_code(table, 0)
+            writer.write_huffman_code(table, 1)
+            writer.write_huffman_code(table, 4)
+            writer.write_huffman_code(table, 2)
+        else:
+            writer.write_huffman_code(table, 1)
+            writer.write_huffman_code(table, 3)
+            writer.write_huffman_code(table, 1)
+            writer.write_huffman_code(table, 0)
+            writer.write_huffman_code(table, 2)
+            writer.write_huffman_code(table, 1)
+            writer.write_huffman_code(table, 0)
+            writer.write_huffman_code(table, 0)
+            writer.write_huffman_code(table, 1)
+            writer.write_huffman_code(table, 0)
+            writer.write_huffman_code(table, 1)
+            writer.write_huffman_code(table, 2)
+            writer.write_huffman_code(table, 4)
+            writer.write_huffman_code(table, 3)
+            writer.write(1, 1)
 
     def __check_output_file__(self, temp_file):
         self.assertEqual(open(temp_file.name, "rb").read(), "\xB1\xED\x3B\xC1")

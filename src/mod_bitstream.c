@@ -330,7 +330,7 @@ BitstreamReader_read_huffman_code(bitstream_BitstreamReader *self,
 
     if (!setjmp(*br_try(self->bitstream))) {
         result = self->bitstream->read_huffman_code(self->bitstream,
-                                                    *(huffman_tree->table));
+                                                    *(huffman_tree->br_table));
 
         br_etry(self->bitstream);
         return Py_BuildValue("i", result);
@@ -738,7 +738,8 @@ BitstreamReader_dealloc(bitstream_BitstreamReader *self)
     if (self->bitstream != NULL) {
         /*DECREF all active callback data*/
         for (c_node = self->bitstream->callbacks;
-             c_node != NULL; c_node = c_node->next) {
+             c_node != NULL;
+             c_node = c_node->next) {
             Py_DECREF(c_node->data);
         }
 
@@ -792,7 +793,8 @@ HuffmanTree_init(bitstream_HuffmanTree *self, PyObject *args)
     /*most of this stuff is for converting Python objects
       to plain integers for use by compile_huffman_table*/
 
-    self->table = NULL;
+    self->br_table = NULL;
+    self->bw_table = NULL;
 
     if (!PyArg_ParseTuple(args, "Oi", &frequencies_list, &little_endian))
         return -1;
@@ -861,11 +863,33 @@ HuffmanTree_init(bitstream_HuffmanTree *self, PyObject *args)
         bits_list = value_obj = NULL;
     }
 
-    switch (compile_huffman_table(&(self->table),
-                                  frequencies,
-                                  (unsigned int)(list_length / 2),
-                                  little_endian ?
-                                  BS_LITTLE_ENDIAN : BS_BIG_ENDIAN)) {
+    switch (compile_br_huffman_table(&(self->br_table),
+                                     frequencies,
+                                     (unsigned int)(list_length / 2),
+                                     little_endian ?
+                                     BS_LITTLE_ENDIAN : BS_BIG_ENDIAN)) {
+    case HUFFMAN_MISSING_LEAF:
+        PyErr_SetString(PyExc_ValueError, "Huffman tree missing leaf");
+        goto error;
+    case HUFFMAN_DUPLICATE_LEAF:
+        PyErr_SetString(PyExc_ValueError, "Huffman tree has duplicate leaf");
+        goto error;
+    case HUFFMAN_ORPHANED_LEAF:
+        PyErr_SetString(PyExc_ValueError, "Huffman tree has orphaned leaf");
+        goto error;
+    case HUFFMAN_EMPTY_TREE:
+        PyErr_SetString(PyExc_ValueError, "Huffman tree is empty");
+        goto error;
+    default:
+        break;
+    }
+
+    switch (compile_bw_huffman_table(&(self->bw_table),
+                                     frequencies,
+                                     (unsigned int)(list_length / 2),
+                                     little_endian ?
+                                     BS_LITTLE_ENDIAN : BS_BIG_ENDIAN)) {
+    /*these shouldn't be triggered if compile_br_table succeeds*/
     case HUFFMAN_MISSING_LEAF:
         PyErr_SetString(PyExc_ValueError, "Huffman tree missing leaf");
         goto error;
@@ -896,8 +920,10 @@ HuffmanTree_init(bitstream_HuffmanTree *self, PyObject *args)
 void
 HuffmanTree_dealloc(bitstream_HuffmanTree *self)
 {
-    if (self->table != NULL)
-        free(self->table);
+    if (self->br_table != NULL)
+        free(self->br_table);
+
+    free_bw_huffman_table(self->bw_table);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -942,7 +968,8 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
 
           it is important that we leave that task
           to the file object itself*/
-        self->bitstream->close_internal_stream = bw_close_internal_stream_python_file;
+        self->bitstream->close_internal_stream =
+            bw_close_internal_stream_python_file;
     } else {
         self->bitstream = bw_open_external(self->file_obj,
                                            little_endian ?
@@ -1097,6 +1124,35 @@ BitstreamWriter_unary(bitstream_BitstreamWriter *self, PyObject *args)
         bw_etry(self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
+    }
+}
+
+static PyObject*
+BitstreamWriter_write_huffman_code(bitstream_BitstreamWriter *self,
+                                   PyObject *args)
+{
+    PyObject* huffman_tree_obj;
+    bitstream_HuffmanTree* huffman_tree;
+    int value;
+
+    if (!PyArg_ParseTuple(args, "Oi", &huffman_tree_obj, &value))
+        return NULL;
+
+    if (huffman_tree_obj->ob_type != &bitstream_HuffmanTreeType) {
+        PyErr_SetString(PyExc_TypeError, "argument must a HuffmanTree object");
+        return NULL;
+    }
+
+    huffman_tree = (bitstream_HuffmanTree*)huffman_tree_obj;
+
+    if (self->bitstream->write_huffman_code(self->bitstream,
+                                            huffman_tree->bw_table,
+                                            value)) {
+        PyErr_SetString(PyExc_ValueError, "invalid HuffmanTree value");
+        return NULL;
+    } else {
+        Py_INCREF(Py_None);
+        return Py_None;
     }
 }
 
@@ -1367,6 +1423,35 @@ BitstreamRecorder_unary(bitstream_BitstreamRecorder *self,
         bw_etry(self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
+    }
+}
+
+static PyObject*
+BitstreamRecorder_write_huffman_code(bitstream_BitstreamRecorder *self,
+                                     PyObject *args)
+{
+    PyObject* huffman_tree_obj;
+    bitstream_HuffmanTree* huffman_tree;
+    int value;
+
+    if (!PyArg_ParseTuple(args, "Oi", &huffman_tree_obj, &value))
+        return NULL;
+
+    if (huffman_tree_obj->ob_type != &bitstream_HuffmanTreeType) {
+        PyErr_SetString(PyExc_TypeError, "argument must a HuffmanTree object");
+        return NULL;
+    }
+
+    huffman_tree = (bitstream_HuffmanTree*)huffman_tree_obj;
+
+    if (self->bitstream->write_huffman_code(self->bitstream,
+                                            huffman_tree->bw_table,
+                                            value)) {
+        PyErr_SetString(PyExc_ValueError, "invalid HuffmanTree value");
+        return NULL;
+    } else {
+        Py_INCREF(Py_None);
+        return Py_None;
     }
 }
 
@@ -1991,6 +2076,35 @@ BitstreamAccumulator_unary(bitstream_BitstreamAccumulator *self,
         bw_etry(self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
+    }
+}
+
+static PyObject*
+BitstreamAccumulator_write_huffman_code(bitstream_BitstreamAccumulator *self,
+                                        PyObject *args)
+{
+    PyObject* huffman_tree_obj;
+    bitstream_HuffmanTree* huffman_tree;
+    int value;
+
+    if (!PyArg_ParseTuple(args, "Oi", &huffman_tree_obj, &value))
+        return NULL;
+
+    if (huffman_tree_obj->ob_type != &bitstream_HuffmanTreeType) {
+        PyErr_SetString(PyExc_TypeError, "argument must a HuffmanTree object");
+        return NULL;
+    }
+
+    huffman_tree = (bitstream_HuffmanTree*)huffman_tree_obj;
+
+    if (self->bitstream->write_huffman_code(self->bitstream,
+                                            huffman_tree->bw_table,
+                                            value)) {
+        PyErr_SetString(PyExc_ValueError, "invalid HuffmanTree value");
+        return NULL;
+    } else {
+        Py_INCREF(Py_None);
+        return Py_None;
     }
 }
 

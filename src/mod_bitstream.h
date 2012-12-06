@@ -285,7 +285,8 @@ PyTypeObject bitstream_BitstreamReaderType = {
 typedef struct {
     PyObject_HEAD
 
-    struct br_huffman_table (*table)[][0x200];
+    struct br_huffman_table (*br_table)[][0x200];
+    struct bw_huffman_table* bw_table;
 } bitstream_HuffmanTree;
 
 int
@@ -301,9 +302,9 @@ PyTypeObject bitstream_HuffmanTreeType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
     "bitstream.HuffmanTree",    /*tp_name*/
-    sizeof(bitstream_BitstreamReader), /*tp_basicsize*/
+    sizeof(bitstream_HuffmanTree), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
-    (destructor)BitstreamReader_dealloc, /*tp_dealloc*/
+    (destructor)HuffmanTree_dealloc, /*tp_dealloc*/
     0,                         /*tp_print*/
     0,                         /*tp_getattr*/
     0,                         /*tp_setattr*/
@@ -385,6 +386,10 @@ static PyObject*
 BitstreamWriter_unary(bitstream_BitstreamWriter *self, PyObject *args);
 
 static PyObject*
+BitstreamWriter_write_huffman_code(bitstream_BitstreamWriter *self,
+                                   PyObject *args);
+
+static PyObject*
 BitstreamWriter_byte_align(bitstream_BitstreamWriter *self, PyObject *args);
 
 static PyObject*
@@ -431,6 +436,11 @@ PyMethodDef BitstreamWriter_methods[] = {
      "where \"stop_bit\" must be 0 or 1\n"
      "writes value as the given number of not stop_bit values (1 or 0)\n"
      "followed by a stop_bit"},
+    {"write_huffman_code",
+    (PyCFunction)BitstreamWriter_write_huffman_code,
+     METH_VARARGS, "write_huffman_code(huffman_tree, value)\n"
+     "given a compiled HuffmanTree and int value,\n"
+     "writes that value to the stream"},
     {"byte_align", (PyCFunction)BitstreamWriter_byte_align, METH_NOARGS,
      "byte_align()\n"
      "pads the stream with 0 bits until the next whole byte"},
@@ -558,6 +568,10 @@ BitstreamRecorder_unary(bitstream_BitstreamRecorder *self,
                         PyObject *args);
 
 static PyObject*
+BitstreamRecorder_write_huffman_code(bitstream_BitstreamRecorder *self,
+                                     PyObject *args);
+
+static PyObject*
 BitstreamRecorder_byte_align(bitstream_BitstreamRecorder *self,
                              PyObject *args);
 
@@ -642,6 +656,11 @@ PyMethodDef BitstreamRecorder_methods[] = {
      "where \"stop_bit\" must be 0 or 1\n"
      "writes value as the given number of not stop_bit values (1 or 0)\n"
      "followed by a stop_bit"},
+    {"write_huffman_code",
+    (PyCFunction)BitstreamRecorder_write_huffman_code,
+     METH_VARARGS, "write_huffman_code(huffman_tree, value)\n"
+     "given a compiled HuffmanTree and int value,\n"
+     "writes that value to the stream"},
     {"byte_align", (PyCFunction)BitstreamRecorder_byte_align, METH_NOARGS,
      "byte_align()\n"
      "pads the stream with 0 bits until the next whole byte"},
@@ -796,6 +815,10 @@ BitstreamAccumulator_unary(bitstream_BitstreamAccumulator *self,
                            PyObject *args);
 
 static PyObject*
+BitstreamAccumulator_write_huffman_code(bitstream_BitstreamAccumulator *self,
+                                        PyObject *args);
+
+static PyObject*
 BitstreamAccumulator_byte_align(bitstream_BitstreamAccumulator *self,
                                 PyObject *args);
 
@@ -847,6 +870,11 @@ PyMethodDef BitstreamAccumulator_methods[] = {
      "where \"stop_bit\" must be 0 or 1\n"
      "writes value as the given number of not stop_bit values (1 or 0)\n"
      "followed by a stop_bit"},
+     {"write_huffman_code",
+     (PyCFunction)BitstreamAccumulator_write_huffman_code,
+     METH_VARARGS, "write_huffman_code(huffman_tree, value)\n"
+     "given a compiled HuffmanTree and int value,\n"
+     "writes that value to the stream"},
     {"byte_align", (PyCFunction)BitstreamAccumulator_byte_align, METH_NOARGS,
      "byte_align()\n"
      "pads the stream with 0 bits until the next whole byte"},

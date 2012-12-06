@@ -69,10 +69,10 @@ enum {
   or a negative value if there's an error
   (whose value is taken from the preceding enum)
 */
-int compile_huffman_table(struct br_huffman_table (**table)[][0x200],
-                          struct huffman_frequency* frequencies,
-                          unsigned int total_frequencies,
-                          bs_endianness endianness);
+int compile_br_huffman_table(struct br_huffman_table (**table)[][0x200],
+                             struct huffman_frequency* frequencies,
+                             unsigned int total_frequencies,
+                             bs_endianness endianness);
 
 
 /*The bitstream reader operates on jump tables that have been
@@ -119,7 +119,7 @@ int compile_huffman_table(struct br_huffman_table (**table)[][0x200],
   we compile them to a table with:
 
   struct br_huffman_table (*table)[][0x200];
-  compile_huffman_table(&table, frequencies, 4, BS_BIG_ENDIAN);
+  compile_br_huffman_table(&table, frequencies, 4, BS_BIG_ENDIAN);
 
   and call that table from the bitstream reader with:
 
@@ -132,7 +132,26 @@ int compile_huffman_table(struct br_huffman_table (**table)[][0x200],
   For real code, the "frequencies" array will be allocated at runtime
   but can be deallocated immediately once "table" has been compiled.
   In addition, real code will want to check the return value of
-  "compile_huffman_table" in case of an incorrectly specified Huffman tree.
+  "compile_br_huffman_table" in case of an incorrectly specified Huffman tree.
 */
+
+
+/*given a set of huffman_frequency values,
+  the total number of frequency values
+  and BS_BIG_ENDIAN or BS_LITTLE_ENDIAN,
+  compiles the Huffman tree into a binary tree
+  suitable for use by bitstream->write_huffman_code
+
+  the tree must be freed with free_bw_huffman_table when no longer needed
+
+  returns 0 on success,
+  or a negative value if there's an error
+*/
+int compile_bw_huffman_table(struct bw_huffman_table** table,
+                             struct huffman_frequency* frequencies,
+                             unsigned int total_frequencies,
+                             bs_endianness endianness);
+
+void free_bw_huffman_table(struct bw_huffman_table* table);
 
 #endif
