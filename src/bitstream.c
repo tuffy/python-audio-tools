@@ -489,10 +489,9 @@ br_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
       and there are no set callbacks to consider*/
     if ((context == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
         while (count > 0) {
-            unsigned int to_read;
+            const unsigned int to_read = MIN(SKIP_BUFFER_SIZE, count / 8);
             static uint8_t dummy[SKIP_BUFFER_SIZE];
 
-            to_read = MIN(SKIP_BUFFER_SIZE, count / 8);
             if (fread(dummy, sizeof(uint8_t), to_read, bs->input.file) !=
                 to_read)
                 br_abort(bs);
@@ -540,10 +539,9 @@ br_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
       and there are no set callbacks to consider*/
     if ((context == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
         while (count > 0) {
-            unsigned int to_read;
+            const unsigned int to_read = MIN(SKIP_BUFFER_SIZE, count / 8);
             static uint8_t dummy[SKIP_BUFFER_SIZE];
 
-            to_read = MIN(SKIP_BUFFER_SIZE, count / 8);
             if (fread(dummy, sizeof(uint8_t), to_read, bs->input.file) !=
                 to_read)
                 br_abort(bs);
