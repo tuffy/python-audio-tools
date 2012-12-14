@@ -1,0 +1,64 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
+\section{Format Stream}
+\subsection{Header}
+\begin{figure}[h]
+  \includegraphics{tta/figures/header.pdf}
+\end{figure}
+\par
+\noindent
+All fields are unsigned integers.
+
+\subsubsection{File Header Example}
+\begin{figure}[h]
+  \includegraphics{tta/figures/header-example.pdf}
+\end{figure}
+\begin{table}[h]
+  \begin{tabular}{rcl}
+    \textsf{signature} & : & \texttt{TTA1} \\
+    \textsf{format} & : & 1 \\
+    \textsf{channels} & : & 2 \\
+    \textsf{bits per sample} & : & 16 \\
+    \textsf{sample rate} & : & 44100 Hz \\
+    \textsf{total PCM frames} & : & 25 \\
+    \textsf{CRC32 block footer} & : & \texttt{0x629F613E} \\
+  \end{tabular}
+\end{table}
+
+\clearpage
+
+\subsection{Seektable}
+\begin{figure}[h]
+  \includegraphics{tta/figures/seektable.pdf}
+\end{figure}
+\par
+\noindent
+There is one unsigned seekpoint value per TTA frame
+and each seekpoint value is the total size of that frame in bytes.
+The total number of TTA frames in a file is:
+\begin{equation*}
+\textsf{TTA frame count} = \left\lceil\frac{\textsf{total PCM frames} \times 245}{\textsf{sample rate} \times 256}\right\rceil
+\end{equation*}
+\subsubsection{Seektable Example}
+Given a PCM frame count of 25 and a sample rate of 44100:
+\begin{equation*}
+\textsf{TTA frame count} = \left\lceil\frac{25 \times 245}{44100 \times 256}\right\rceil = 1
+\end{equation*}
+\begin{figure}[h]
+  \includegraphics{tta/figures/seektable-example.pdf}
+\end{figure}
+\begin{table}[h]
+  \begin{tabular}{rcl}
+    $\textsf{frame size}_0$ & : & 63 bytes \\
+    \textsf{CRC32 block footer} & : & \texttt{0x890C37EC} \\
+  \end{tabular}
+\end{table}
+\par
+\noindent
+Which indicates this file contains a single 63 byte TTA frame.

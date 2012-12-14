@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bytestruct>
+  <field label="signature">54544131</field>
+  <field label="format">0100</field>
+  <field label="channels">0200</field>
+  <field label="bps">1000</field>
+  <field label="sample rate">44AC0000</field>
+  <field label="PCM">19000000</field>
+  <field label="CRC32 block footer">3E619F62</field>
+</bytestruct>

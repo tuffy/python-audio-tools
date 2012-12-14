@@ -332,6 +332,13 @@ figures/ape/descriptor-example.pdf \
 figures/ape/header.pdf \
 figures/ape/header-example.pdf
 
+TTA = \
+tta/metadata.tex \
+tta/figures/header.pdf \
+tta/figures/header-example.pdf \
+tta/figures/seektable.pdf \
+tta/figures/seektable-example.pdf
+
 APEV2 = \
 figures/apev2/footer-example.pdf \
 figures/apev2/footer-flags.pdf \
@@ -482,6 +489,12 @@ ape-codec.tex: ape-codec.template header.tex footer.tex
 	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
 
 ape-codec.pdf: ape-codec.tex ape.tex $(APE)
+	python pdflatexbuild.py -halt-on-error $<
+
+tta-codec.tex: tta-codec.template header.tex footer.tex
+	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
+
+tta-codec.pdf: tta-codec.tex tta.tex $(TTA)
 	python pdflatexbuild.py -halt-on-error $<
 
 audioformats-letter.tex: audioformats.template header.tex footer.tex
