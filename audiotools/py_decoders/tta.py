@@ -44,63 +44,54 @@ class TTARice:
                                             self.sum0, self.sum1)
 
 
-class TTAFilter:
-    def __init__(self, shift, error=None):
-        self.shift = shift
-        self.round = (1 << (shift - 1))
-        self.error = 0
-        self.qm = [0] * 8
-        self.dx = [0] * 8
-        self.dl = [0] * 8
+def tta_filter(bps, residuals):
+    if (bps == 8):
+        shift = 10
+    elif (bps == 16):
+        shift = 9
+    elif (bps == 24):
+        shift = 10
+    round_ = (1 << (shift - 1))
 
-    def __repr__(self):
-        return "TTAFilter(%s, %s, %s, %s, %s, %s)" % (self.shift,
-                                                      self.round,
-                                                      self.error,
-                                                      self.qm,
-                                                      self.dx,
-                                                      self.dl)
+    filtered = []
 
-    def filter(self, i):
-        sum_ = self.round
+    qm = [0] * 8
+    dx = [0] * 8
+    dl = [0] * 8
 
-        #adjust qm based on current error value
-        if (self.error < 0):
-            self.qm = [qm - dx for (qm, dx) in zip(self.qm, self.dx)]
-        elif (self.error > 0):
-            self.qm = [qm + dx for (qm, dx) in zip(self.qm, self.dx)]
+    for i in xrange(0, len(residuals)):
+        if (i == 0):
+            filtered.append(residuals[i] + (round_ >> shift))
+        else:
+            if (residuals[i - 1] < 0):
+                qm = [m - x for (m, x) in zip(qm, dx)]
+            elif (residuals[i - 1] > 0):
+                qm = [m + x for (m, x) in zip(qm, dx)]
 
-        #update sum based on dl and qm
-        sum_ += sum([dl * qm for (dl, qm) in zip(self.dl, self.qm)])
+            sum_ = round_ + sum([l * m for (l, m) in zip(dl, qm)])
 
-        #set new error
-        self.error = i
+            filtered.append(residuals[i] + (sum_ >> shift))
 
-        #update value to be output
-        i += (sum_ >> self.shift)
+        dx = [dx[1],
+              dx[2],
+              dx[3],
+              dx[4],
+              1 if (dl[4] >= 0) else -1,
+              2 if (dl[5] >= 0) else -2,
+              2 if (dl[6] >= 0) else -2,
+              4 if (dl[7] >= 0) else -4]
 
-        #update dx
-        self.dx = [self.dx[1],
-                   self.dx[2],
-                   self.dx[3],
-                   self.dx[4],
-                   ((self.dl[4] >> 30) | 1),
-                   ((self.dl[5] >> 30) | 2) & ~1,
-                   ((self.dl[6] >> 30) | 2) & ~1,
-                   ((self.dl[7] >> 30) | 4) & ~3]
+        dl = [dl[1],
+              dl[2],
+              dl[3],
+              dl[4],
+              -dl[5] + (-dl[6] + (filtered[i] - dl[7])),
+              -dl[6] + (filtered[i] - dl[7]),
+              filtered[i] - dl[7],
+              filtered[i]]
 
-        #update dl
-        self.dl = [self.dl[1],
-                   self.dl[2],
-                   self.dl[3],
-                   self.dl[4],
-                   -self.dl[5] + (-self.dl[6] + (i - self.dl[7])),
-                   -self.dl[6] + (i - self.dl[7]),
-                   i - self.dl[7],
-                   i]
-
-        #return filtered value
-        return i
+    assert(len(filtered) == len(residuals))
+    return filtered
 
 
 class CRC32:
@@ -240,7 +231,10 @@ class TTADecoder:
         self.current_tta_frame += 1
 
         #setup Rice parameters for each channel
-        rice = [TTARice() for i in xrange(self.channels)]
+        k0 = [10] * self.channels
+        k1 = [10] * self.channels
+        sum0 = [2 ** 14] * self.channels
+        sum1 = [2 ** 14] * self.channels
 
         #list of unfiltered output for each channel
         unfiltered = [[] for i in xrange(self.channels)]
@@ -248,66 +242,52 @@ class TTADecoder:
         for f in xrange(pcm_frames):
             correlated = []
 
-            for (c, (ch_rice, ch_output)) in enumerate(zip(rice, unfiltered)):
+            for (c, ch_output) in enumerate(unfiltered):
                 #read most-significant bits
-                unary = frame_reader.unary(0)
-                if (unary == 0):
+                MSB = frame_reader.unary(0)
+                if (MSB == 0):
                     #read least-significant bits
-                    value = frame_reader.read(ch_rice.k0)
-
-                    #adjust sum0 and k0
-                    ch_rice.sum0 += (value - (ch_rice.sum0 >> 4))
-                    if ((ch_rice.k0 > 0) and
-                        (ch_rice.sum0 < (2 ** min(ch_rice.k0 + 4, 31)))):
-                        ch_rice.k0 -= 1
-                    elif (ch_rice.sum0 > (2 ** min(ch_rice.k0 + 5, 31))):
-                        ch_rice.k0 += 1
+                    unsigned = frame_reader.read(k0[c])
                 else:
                     #read least-significant bits
-                    lsb = frame_reader.read(ch_rice.k1)
-                    unshifted = ((unary - 1) << ch_rice.k1) + lsb
-                    value = unshifted + (1 << min(ch_rice.k0, 31))
+                    LSB = frame_reader.read(k1[c])
+                    unshifted = ((MSB - 1) << k1[c]) + LSB
+                    unsigned = unshifted + (1 << k0[c])
 
                     #adjust sum1 and k1
-                    ch_rice.sum1 += (unshifted - (ch_rice.sum1 >> 4))
-                    if ((ch_rice.k1 > 0) and
-                        (ch_rice.sum1 < (2 ** min(ch_rice.k1 + 4, 31)))):
-                        ch_rice.k1 -= 1
-                    elif (ch_rice.sum1 > (2 ** min(ch_rice.k1 + 5, 31))):
-                        ch_rice.k1 += 1
+                    sum1[c] += (unshifted - (sum1[c] >> 4))
+                    if (sum1[c] < (2 ** (k1[c] + 4))):
+                        k1[c] = max(k1[c] - 1, 0)
+                    elif (sum1[c] > (2 ** (k1[c] + 5))):
+                        k1[c] += 1
 
-                    #adjust sum0 and k0
-                    ch_rice.sum0 += (value - (ch_rice.sum0 >> 4))
-                    if ((ch_rice.k0 > 0) and
-                        (ch_rice.sum0 < (2 ** min(ch_rice.k0 + 4, 31)))):
-                        ch_rice.k0 -= 1
-                    elif (ch_rice.sum0 > (2 ** min(ch_rice.k0 + 5, 31))):
-                        ch_rice.k0 += 1
+                #adjust sum0 and k0
+                sum0[c] += (unsigned - (sum0[c] >> 4))
+                if (sum0[c] < (2 ** (k0[c] + 4))):
+                    k0[c] = max(k0[c] - 1, 0)
+                elif (sum0[c] > (2 ** (k0[c] + 5))):
+                    k0[c] += 1
 
                 #apply sign bit
-                if ((value % 2) == 1):
+                if ((unsigned % 2) == 1):
                     #positive
-                    ch_output.append((value + 1) / 2)
+                    ch_output.append((unsigned + 1) / 2)
                 else:
                     #negative
-                    ch_output.append(-(value / 2))
+                    ch_output.append(-(unsigned / 2))
 
         #check frame's trailing CRC32 now that reading is finished
         frame_reader.byte_align()
         frame_reader.pop_callback()
         frame_crc = frame_reader.read(32)
         if (int(crc) != frame_crc):
-            raise ValueError(
-                "CRC32 mismatch in seektable (0x%8.8X != 0x%8.8X)" %
-                (frame_crc, int(crc)))
+            raise ValueError("CRC32 mismatch in frame (0x%8.8X != 0x%8.8X)" %
+                             (frame_crc, int(crc)))
 
         #run hybrid filter on each channel
         filtered = []
         for unfiltered_ch in unfiltered:
-            ch_filter = TTAFilter({8:10,
-                                   16:9,
-                                   24:10}[self.bits_per_sample])
-            filtered.append(map(ch_filter.filter, unfiltered_ch))
+            filtered.append(tta_filter(self.bits_per_sample, unfiltered_ch))
 
         #run fixed order prediction on each channel
         predicted = []

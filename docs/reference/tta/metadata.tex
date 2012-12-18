@@ -7,6 +7,11 @@
 %San Francisco, California, 94105, USA.
 
 \section{Format Stream}
+
+%FIXME - add basic stream overview here
+
+\clearpage
+
 \subsection{Header}
 \begin{figure}[h]
   \includegraphics{tta/figures/header.pdf}
@@ -27,7 +32,7 @@ All fields are unsigned integers.
     \textsf{bits per sample} & : & 16 \\
     \textsf{sample rate} & : & 44100 Hz \\
     \textsf{total PCM frames} & : & 25 \\
-    \textsf{CRC32 block footer} & : & \texttt{0x629F613E} \\
+    \textsf{header CRC32} & : & \texttt{0x629F613E} \\
   \end{tabular}
 \end{table}
 
@@ -56,7 +61,7 @@ Given a PCM frame count of 25 and a sample rate of 44100:
 \begin{table}[h]
   \begin{tabular}{rcl}
     $\textsf{frame size}_0$ & : & 63 bytes \\
-    \textsf{CRC32 block footer} & : & \texttt{0x890C37EC} \\
+    \textsf{seektable CRC32} & : & \texttt{0x890C37EC} \\
   \end{tabular}
 \end{table}
 \par
@@ -66,7 +71,8 @@ Which indicates this file contains a single 63 byte TTA frame.
 \clearpage
 
 \subsection{CRC32 Calculation}
-The header, seektable and each True Audio frame is followed
+\label{tta:crc32}
+The header, seektable and each TTA frame is followed
 by a CRC32 with a checksum of the chunk's data.
 For each byte $b$ in the chunk, not including the 4 checksum bytes,
 the checksum is calculated as:

@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<diagram>
+  <row>
+    <col start="0" end="175" width=".30">Header</col>
+    <col start="176" width=".30">Seektable</col>
+    <col width=".133" id="frame">Frame₀</col>
+    <col width=".133">Frame₁</col>
+    <col width=".133" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col id="frame_s" width=".65">Residuals</col>
+    <col style="dashed" width=".1">align</col>
+    <col start="0" end="31" width=".25" id="frame_e">frame CRC32</col>
+  </row>
+  <line style="dotted">
+    <start id="frame" corner="sw"/>
+    <end id="frame_s" corner="nw"/>
+  </line>
+  <line style="dotted">
+    <start id="frame" corner="se"/>
+    <end id="frame_e" corner="ne"/>
+  </line>
+</diagram>

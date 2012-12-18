@@ -17,7 +17,7 @@
     <col start="64" end="79" width=".25">bits per sample</col>
     <col start="80" end="111" width=".25">sample rate</col>
     <col start="112" end="143" width=".25">total PCM frames</col>
-    <col start="144" end="175" width=".25">CRC32 block footer</col>
+    <col start="144" end="175" width=".25">header CRC32</col>
   </row>
   <line style="dotted">
     <start id="header" corner="sw"/>

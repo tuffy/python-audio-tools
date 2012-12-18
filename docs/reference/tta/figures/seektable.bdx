@@ -12,7 +12,7 @@
     <col start="0" end="31" width=".25" id="seektable_s">frame size₀</col>
     <col start="0" end="31" width=".25">frame size₁</col>
     <col width=".25" style="dashed">...</col>
-    <col start="0" end="31" width=".25" id="seektable_e">CRC32 block footer</col>
+    <col start="0" end="31" width=".25" id="seektable_e">seektable CRC32</col>
   </row>
   <line style="dotted">
     <start id="seektable" corner="sw"/>

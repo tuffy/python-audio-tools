@@ -1,0 +1,45 @@
+<?xml version="1.0" ?>
+<struct endianness="little">
+  <field size="5" value="01111b">MSB₀ ₀</field>
+  <field size="10" value="168">LSB₀ ₀</field>
+  <field size="7" value="0111111b">MSB₁ ₀</field>
+  <field size="10" value="432">LSB₁ ₀</field>
+  <field size="1" value="0">MSB₀ ₁</field>
+  <field size="10" value="530">LSB₀ ₁</field>
+  <field size="1" value="0">MSB₁ ₁</field>
+  <field size="10" value="463">LSB₁ ₁</field>
+  <field size="1" value="0">MSB₀ ₂</field>
+  <field size="10" value="532">LSB₀ ₂</field>
+  <field size="1" value="0">MSB₁ ₂</field>
+  <field size="10" value="865">LSB₁ ₂</field>
+  <field size="1" value="0">MSB₀ ₃</field>
+  <field size="10" value="586">LSB₀ ₃</field>
+  <field size="1" value="0">MSB₁ ₃</field>
+  <field size="10" value="537">LSB₁ ₃</field>
+  <field size="1" value="0">MSB₀ ₄</field>
+  <field size="10" value="512">LSB₀ ₄</field>
+  <field size="1" value="0">MSB₁ ₄</field>
+  <field size="10" value="625">LSB₁ ₄</field>
+  <field size="1" value="0">MSB₀ ₅</field>
+  <field size="10" value="436">LSB₀ ₅</field>
+  <field size="1" value="0">MSB₁ ₅</field>
+  <field size="10" value="565">LSB₁ ₅</field>
+  <field size="1" value="0">MSB₀ ₆</field>
+  <field size="10" value="348">LSB₀ ₆</field>
+  <field size="1" value="0">MSB₁ ₆</field>
+  <field size="10" value="545">LSB₁ ₆</field>
+  <field size="1" value="0">MSB₀ ₇</field>
+  <field size="9" value="316">LSB₀ ₇</field>
+  <field size="1" value="0">MSB₁ ₇</field>
+  <field size="10" value="575">LSB₁ ₇</field>
+  <field size="1" value="0">MSB₀ ₈</field>
+  <field size="9" value="300">LSB₀ ₈</field>
+  <field size="1" value="0">MSB₁ ₈</field>
+  <field size="10" value="579">LSB₁ ₈</field>
+  <field size="1" value="0">MSB₀ ₉</field>
+  <field size="9" value="356">LSB₀ ₉</field>
+  <field size="1" value="0">MSB₁ ₉</field>
+  <field size="10" value="627">LSB₁ ₉</field>
+  <field size="5" value="0">align</field>
+  <field size="32" value="0x383B8734">frame CRC32</field>
+</struct>

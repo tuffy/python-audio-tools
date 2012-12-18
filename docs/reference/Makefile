@@ -334,10 +334,13 @@ figures/ape/header-example.pdf
 
 TTA = \
 tta/metadata.tex \
+tta/decode.tex \
 tta/figures/header.pdf \
 tta/figures/header-example.pdf \
 tta/figures/seektable.pdf \
-tta/figures/seektable-example.pdf
+tta/figures/seektable-example.pdf \
+tta/figures/frames.pdf \
+tta/figures/residuals.pdf
 
 APEV2 = \
 figures/apev2/footer-example.pdf \
@@ -669,3 +672,6 @@ figures/apev2/header-flags.pdf: figures/apev2/header-flags.bpx
 
 figures/apev2/footer-flags.pdf: figures/apev2/footer-flags.bpx
 	./bitparse.py --bit-width=50 --bits-per-row=8 -i $< -o $@
+
+tta/figures/residuals.pdf: tta/figures/residuals.bpx
+	./bitparse.py -w 640 -b 32 -i $< -o $@
