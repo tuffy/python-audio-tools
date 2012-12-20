@@ -5,6 +5,6 @@
   <field label="channels">0200</field>
   <field label="bps">1000</field>
   <field label="sample rate">44AC0000</field>
-  <field label="PCM">19000000</field>
-  <field label="header CRC32">3E619F62</field>
+  <field label="PCM">0A000000</field>
+  <field label="header CRC32">4F993320</field>
 </bytestruct>

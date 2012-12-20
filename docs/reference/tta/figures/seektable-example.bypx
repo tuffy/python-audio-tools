@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <bytestruct>
-  <field label="frame size₀">3F000000</field>
-  <field label="seektable CRC32">EB370C89</field>
+  <field label="frame size₀">21000000</field>
+  <field label="seektable CRC32">4717CA39</field>
 </bytestruct>

@@ -27,23 +27,6 @@ def div_ceil(n, d):
     return n // d + (1 if ((n % d) != 0) else 0)
 
 
-def PRED(x, k):
-    #ensure x doesn't overflow here in C code
-    return ((x << k) - x) >> k
-
-
-class TTARice:
-    def __init__(self, k0=None, k1=None, sum0=None, sum1=None):
-        self.k0 = 10 if k0 is None else k0
-        self.k1 = 10 if k1 is None else k1
-        self.sum0 = (2 ** (10 + 4)) if sum0 is None else sum0
-        self.sum1 = (2 ** (10 + 4)) if sum1 is None else sum1
-
-    def __repr__(self):
-        return "TTARice(%s, %s, %s, %s)" % (self.k0, self.k1,
-                                            self.sum0, self.sum1)
-
-
 def tta_filter(bps, residuals):
     if (bps == 8):
         shift = 10
@@ -92,6 +75,24 @@ def tta_filter(bps, residuals):
 
     assert(len(filtered) == len(residuals))
     return filtered
+
+
+def fixed_predictor(bps, filtered):
+    if (bps == 8):
+        shift = 4
+    elif (bps == 16):
+        shift = 5
+    elif (bps == 24):
+        shift = 5
+
+    predicted = [filtered[0]]
+    for i in xrange(1, len(filtered)):
+        predicted.append(
+            filtered[i] +
+            (((predicted[i - 1] << shift) - predicted[i - 1]) >> shift))
+
+    assert(len(predicted) == len(filtered))
+    return predicted
 
 
 class CRC32:
@@ -287,21 +288,14 @@ class TTADecoder:
         #run hybrid filter on each channel
         filtered = []
         for unfiltered_ch in unfiltered:
-            filtered.append(tta_filter(self.bits_per_sample, unfiltered_ch))
+            filtered.append(
+                tta_filter(self.bits_per_sample, unfiltered_ch))
 
         #run fixed order prediction on each channel
         predicted = []
         for filtered_ch in filtered:
-            predicted_ch = [filtered_ch[0] +
-                            PRED(0, {8:4, 16: 5, 24: 5}[self.bits_per_sample])]
-
-            for current in filtered_ch[1:]:
-                predicted_ch.append(
-                    current +
-                    PRED(predicted_ch[-1],
-                         {8:4, 16: 5, 24: 5}[self.bits_per_sample]))
-
-            predicted.append(predicted_ch)
+            predicted.append(
+                fixed_predictor(self.bits_per_sample, filtered_ch))
 
         if (self.channels == 1):
             #send channel as-is
@@ -310,25 +304,53 @@ class TTADecoder:
                              self.bits_per_sample,
                              True)
         else:
-            def tta_div_round(n, d):
-                """n / d rounded toward 0"""
-
-                if (n >= 0):
-                    #round down
-                    return n // d
-                else:
-                    #round up
-                    return n // d + (1 if ((n % d) != 0) else 0)
-
             #decorrelate channels
-            decorrelated = [[l + (tta_div_round(n, 2))
-                             for (l, n) in zip(predicted[-1],
-                                               predicted[-2])]]
-            for ch in xrange(self.channels - 2, -1, -1):
-                decorrelated.insert(
-                    0,
-                    [d - c for (d,c) in zip(decorrelated[0],
-                                            predicted[ch])])
+
+            decorrelated = []
+
+            for c in reversed(range(self.channels)):
+                decorrelated_ch = []
+                if (c == (self.channels - 1)):
+                    for i in xrange(pcm_frames):
+                        if (predicted[c - 1][i] >= 0):
+                            decorrelated_ch.append(
+                                predicted[c][i] +
+                                (predicted[c - 1][i] // 2))
+                        else:
+                            decorrelated_ch.append(
+                                predicted[c][i] +
+                                div_ceil(predicted[c - 1][i], 2))
+                else:
+                    for i in xrange(pcm_frames):
+                        decorrelated_ch.append(
+                            decorrelated[-1][i] - predicted[c][i])
+                decorrelated.append(decorrelated_ch)
+
+            decorrelated.reverse()
+
+            if (self.channels == 2):
+                for (i, (predicted0,
+                         predicted1,
+                         decorrelated0,
+                         decorrelated1)) in enumerate(zip(predicted[0],
+                                                          predicted[1],
+                                                          decorrelated[0],
+                                                          decorrelated[1])):
+                    print "%d & %d & %d &" % (i, predicted0, predicted1)
+                    if (predicted0 >= 0):
+                        print "%(predicted1)d + \\lfloor%(predicted0)d \\div 2\\rfloor = %(decorrelated1)d &" % \
+                            {"predicted1":predicted1,
+                             "predicted0":predicted0,
+                             "decorrelated1":decorrelated1}
+                    else:
+                        print "%(predicted1)d + \\lceil%(predicted0)d \\div 2\\rceil = %(decorrelated1)d &" % \
+                            {"predicted1":predicted1,
+                             "predicted0":predicted0,
+                             "decorrelated1":decorrelated1}
+                    print "%(decorrelated1)d - %(predicted0)d = %(decorrelated0)d \\\\" % \
+                        {"decorrelated1":decorrelated1,
+                         "predicted0":predicted0,
+                         "decorrelated0":decorrelated0}
 
             #return all channels as single FrameList
             return from_channels([from_list(decorrelated_ch,

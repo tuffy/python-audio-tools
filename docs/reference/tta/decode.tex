@@ -122,10 +122,14 @@ The basic process for decoding a TTA file is as follows:
   \BlankLine
   \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
       $\text{\FILTERED}_c \leftarrow$ \hyperref[tta:hybridfilter]{run hybrid filter on $\text{\RESIDUAL}_c$}\;
-      $\text{\PREDICTED}_c \leftarrow$ run fixed order prediction on $\text{\FILTERED}_c$\;  %FIXME - add link
+      $\text{\PREDICTED}_c \leftarrow$ \hyperref[tta:fixedprediction]{run fixed order prediction on $\text{\FILTERED}_c$}\;
   }
-  $\text{\DECORRELATED} \leftarrow$ decorrelate $\text{\PREDICTED}$\;  %FIXME - add link
-  \Return \DECORRELATED\;
+  \eIf{$\CHANNELS = 1$}{
+    \Return \PREDICTED\;
+  }{
+      $\text{\DECORRELATED} \leftarrow$ \hyperref[tta:decorrelated]{decorrelate $\text{\PREDICTED}$}\;
+      \Return \DECORRELATED\;
+  }
   \EALGORITHM
 }
 
@@ -298,3 +302,188 @@ channel count is 2.
   \Return \FILTERED\;
   \EALGORITHM
 }
+
+\clearpage
+
+\subsubsection{Running Hybrid Filter Example}
+Given a \textsf{block size} of 10 and a 16 bits per sample stream:
+\begin{table}[h]
+  {\relsize{-1}
+    \begin{tabular}{r|rrrrrrrrrr}
+      $i$ & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
+      \hline
+      $\textsf{residual}_i$ & -2132 & -265 & -266 & -293 & -256 & -218 & -174 & -158 & -150 & -178 \\
+      \hline
+      $\textsf{qm}'_{0}$ & 0 & 0 & 0 & 0 & 0 & -2 & 1 & -2 & 1 & -2 \\
+      $\textsf{qm}'_{1}$ & 0 & 0 & 0 & 0 & -2 & 1 & -2 & 1 & -2 & -3 \\
+      $\textsf{qm}'_{2}$ & 0 & 0 & 0 & -2 & 1 & -2 & 1 & -2 & -3 & 0 \\
+      $\textsf{qm}'_{3}$ & 0 & 0 & -2 & 1 & -2 & 1 & -2 & -3 & 0 & 1 \\
+      $\textsf{qm}'_{4}$ & 0 & -2 & 1 & -2 & 1 & -2 & -3 & 0 & 1 & 2 \\
+      $\textsf{qm}'_{5}$ & 0 & -4 & 2 & -4 & 2 & -4 & -6 & -8 & -10 & -4 \\
+      $\textsf{qm}'_{6}$ & 0 & -4 & 2 & -4 & 2 & 4 & -2 & -4 & -6 & -8 \\
+      $\textsf{qm}'_{7}$ & 0 & -8 & 4 & 8 & 12 & 16 & 20 & 24 & 28 & 32 \\
+      \hline
+      $\textsf{sum}$ &  & 19444 & 2388 & 11258 & 6186 & 5400 & 2916 & 2805 & -3245 & -3942 \\
+      \hline
+      $\textsf{filtered}_i$ & -2132 & -228 & -262 & -272 & -244 & -208 & -169 & -153 & -157 & -186 \\
+      \hline
+      $\textsf{dx}'_{0}$ & 0 & 0 & 0 & 0 & 1 & -1 & 1 & -1 & 1 & 1 \\
+      $\textsf{dx}'_{1}$ & 0 & 0 & 0 & 1 & -1 & 1 & -1 & 1 & 1 & -1 \\
+      $\textsf{dx}'_{2}$ & 0 & 0 & 1 & -1 & 1 & -1 & 1 & 1 & -1 & -1 \\
+      $\textsf{dx}'_{3}$ & 0 & 1 & -1 & 1 & -1 & 1 & 1 & -1 & -1 & -1 \\
+      $\textsf{dx}'_{4}$ & 1 & -1 & 1 & -1 & 1 & 1 & -1 & -1 & -1 & 1 \\
+      $\textsf{dx}'_{5}$ & 2 & -2 & 2 & -2 & 2 & 2 & 2 & 2 & -2 & -2 \\
+      $\textsf{dx}'_{6}$ & 2 & -2 & 2 & -2 & -2 & 2 & 2 & 2 & 2 & -2 \\
+      $\textsf{dx}'_{7}$ & 4 & -4 & -4 & -4 & -4 & -4 & -4 & -4 & -4 & -4 \\
+      \hline
+      $\textsf{dl}'_{0}$ & 0 & 0 & 0 & 0 & -2132 & 6168 & -5974 & 1962 & 14 & -30 \\
+      $\textsf{dl}'_{1}$ & 0 & 0 & 0 & -2132 & 6168 & -5974 & 1962 & 14 & -30 & -5 \\
+      $\textsf{dl}'_{2}$ & 0 & 0 & -2132 & 6168 & -5974 & 1962 & 14 & -30 & -5 & -26 \\
+      $\textsf{dl}'_{3}$ & 0 & -2132 & 6168 & -5974 & 1962 & 14 & -30 & -5 & -26 & 3 \\
+      $\textsf{dl}'_{4}$ & -2132 & 6168 & -5974 & 1962 & 14 & -30 & -5 & -26 & 3 & -5 \\
+      $\textsf{dl}'_{5}$ & -2132 & 4036 & -1938 & 24 & 38 & 8 & 3 & -23 & -20 & -25 \\
+      $\textsf{dl}'_{6}$ & -2132 & 1904 & -34 & -10 & 28 & 36 & 39 & 16 & -4 & -29 \\
+      $\textsf{dl}'_{7}$ & -2132 & -228 & -262 & -272 & -244 & -208 & -169 & -153 & -157 & -186 \\
+    \end{tabular}
+  }
+\end{table}
+
+\clearpage
+
+\subsubsection{Running Fixed Order Prediction}
+\label{tta:fixedprediction}
+{\relsize{0}
+  \ALGORITHM{a list of filtered samples for a given channel, the frame's block size, the stream's bits per sample}{a list of predicted samples}
+  \SetKwData{BLOCKSIZE}{block size}
+  \SetKwData{BPS}{bits per sample}
+  \SetKwData{SHIFT}{shift}
+  \SetKwData{FILTERED}{filtered}
+  \SetKwData{PREDICTED}{predicted}
+  \Switch{\BPS}{
+    \uCase{8}{
+      $\SHIFT \leftarrow 4$\;
+    }
+    \uCase{16}{
+      $\SHIFT \leftarrow 5$\;
+    }
+    \Case{24}{
+      $\SHIFT \leftarrow 5$\;
+    }
+  }
+  \BlankLine
+  $\text{\PREDICTED}_0 \leftarrow \text{\FILTERED}_0$\;
+  \For{$i \leftarrow 1$ \emph{\KwTo}\BLOCKSIZE}{
+    $\text{\PREDICTED}_{i} \leftarrow \text{\FILTERED}_i + \left\lfloor\frac{(\text{\PREDICTED}_{i - 1} \times 2 ^ {\text{\SHIFT}}) - \text{\PREDICTED}_{i - 1}}{2 ^ {\text{\SHIFT}}}\right\rfloor$\;
+  }
+  \Return \PREDICTED\;
+  \EALGORITHM
+}
+
+\subsubsection{Fixed Order Prediction Example}
+Given a \textsf{block size} of 10 and a 16 bits per sample stream:
+\begin{table}[h]
+  {\relsize{0}
+    \renewcommand{\arraystretch}{1.5}
+    \begin{tabular}{r|r|>{$}r<{$}}
+      $i$ & $\textsf{filtered}_i$ & \textsf{predicted}_i \\
+      \hline
+      0 & -2132 & -2132 \\
+      1 & -228 &
+      -228 + \left\lfloor\frac{(-2132 \times 2 ^ {5}) + 2132}{2 ^ {5}}\right\rfloor = -2294
+      \\
+      2 & -262 &
+      -262 + \left\lfloor\frac{(-2294 \times 2 ^ {5}) + 2294}{2 ^ {5}}\right\rfloor = -2485
+      \\
+      3 & -272 &
+      -272 + \left\lfloor\frac{(-2485 \times 2 ^ {5}) + 2485}{2 ^ {5}}\right\rfloor = -2680
+      \\
+      4 & -244 &
+      -244 + \left\lfloor\frac{(-2680 \times 2 ^ {5}) + 2680}{2 ^ {5}}\right\rfloor = -2841
+      \\
+      5 & -208 &
+      -208 + \left\lfloor\frac{(-2841 \times 2 ^ {5}) + 2841}{2 ^ {5}}\right\rfloor = -2961
+      \\
+      6 & -169 &
+      -169 + \left\lfloor\frac{(-2961 \times 2 ^ {5}) + 2961}{2 ^ {5}}\right\rfloor = -3038
+      \\
+      7 & -153 &
+      -153 + \left\lfloor\frac{(-3038 \times 2 ^ {5}) + 3038}{2 ^ {5}}\right\rfloor = -3097
+      \\
+      8 & -157 &
+      -157 + \left\lfloor\frac{(-3097 \times 2 ^ {5}) + 3097}{2 ^ {5}}\right\rfloor = -3158
+      \\
+      9 & -186 &
+      -186 + \left\lfloor\frac{(-3158 \times 2 ^ {5}) + 3158}{2 ^ {5}}\right\rfloor = -3246
+      \\
+    \end{tabular}
+  }
+\end{table}
+
+\clearpage
+
+\subsubsection{Decorrelating Channels}
+\label{tta:decorrelated}
+\ALGORITHM{2 or more channels of predicted samples, the stream's block size and channel count}{2 or more channels of decorrelated samples}
+\SetKwData{PREDICTED}{predicted}
+\SetKwData{DECORRELATED}{decorrelated}
+\SetKwData{CHANNELS}{channels}
+\SetKwData{BLOCKSIZE}{block size}
+\SetKw{KwDownTo}{downto}
+\For{$c \leftarrow \CHANNELS$ \emph{\KwDownTo}0}{
+  \eIf{$c = (\CHANNELS - 1)$}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
+      \eIf(\tcc*[f]{round toward zero}){$\text{\PREDICTED}_{(c - 1)~i} \geq 0$}{
+        $\text{\DECORRELATED}_{c~i} \leftarrow \text{\PREDICTED}_{c~i} + \lfloor\text{\PREDICTED}_{(c - 1)~i} \div 2\rfloor$\;
+      }{
+        $\text{\DECORRELATED}_{c~i} \leftarrow \text{\PREDICTED}_{c~i} + \lceil\text{\PREDICTED}_{(c - 1)~i} \div 2\rceil$\;
+      }
+    }
+  }{
+    \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
+      $\text{\DECORRELATED}_{c~i} \leftarrow \text{\DECORRELATED}_{(c + 1)~i} - \text{\PREDICTED}_{c~i}$\;
+    }
+  }
+}
+\Return \DECORRELATED\;
+\EALGORITHM
+
+\subsubsection{Channel Decorrelation Example}
+\begin{table}[h]
+  {\relsize{0}
+   \renewcommand{\arraystretch}{1.5}
+   \begin{tabular}{r|r|r|>{$}r<{$}|>{$}r<{$}}
+     $i$ & $\textsf{predicted}_{0~i}$ & $\textsf{predicted}_{1~i}$ & \textsf{decorrelated}_{1~i} & \textsf{decorrelated}_{0~i} \\
+     \hline
+     0 & -2132 & -3288 &
+     -3288 + \lceil-2132 \div 2\rceil = -4354 &
+     -4354 + 2132 = -2222 \\
+     1 & -2294 & -2896 &
+     -2896 + \lceil-2294 \div 2\rceil = -4043 &
+     -4043 + 2294 = -1749 \\
+     2 & -2485 & -2505 &
+     -2505 + \lceil-2485 \div 2\rceil = -3747 &
+     -3747 + 2485 = -1262 \\
+     3 & -2680 & -2133 &
+     -2133 + \lceil-2680 \div 2\rceil = -3473 &
+     -3473 + 2680 = -793 \\
+     4 & -2841 & -1795 &
+     -1795 + \lceil-2841 \div 2\rceil = -3215 &
+     -3215 + 2841 = -374 \\
+     5 & -2961 & -1480 &
+     -1480 + \lceil-2961 \div 2\rceil = -2960 &
+     -2960 + 2961 = 1 \\
+     6 & -3038 & -1177 &
+     -1177 + \lceil-3038 \div 2\rceil = -2696 &
+     -2696 + 3038 = 342 \\
+     7 & -3097 & -867 &
+     -867 + \lceil-3097 \div 2\rceil = -2415 &
+     -2415 + 3097 = 682 \\
+     8 & -3158 & -542 &
+     -542 + \lceil-3158 \div 2\rceil = -2121 &
+     -2121 + 3158 = 1037 \\
+     9 & -3246 & -201 &
+     -201 + \lceil-3246 \div 2\rceil = -1824 &
+     -1824 + 3246 = 1422 \\
+   \end{tabular}
+  }
+\end{table}

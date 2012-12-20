@@ -31,8 +31,8 @@ All fields are unsigned integers.
     \textsf{channels} & : & 2 \\
     \textsf{bits per sample} & : & 16 \\
     \textsf{sample rate} & : & 44100 Hz \\
-    \textsf{total PCM frames} & : & 25 \\
-    \textsf{header CRC32} & : & \texttt{0x629F613E} \\
+    \textsf{total PCM frames} & : & 10 \\
+    \textsf{header CRC32} & : & \texttt{0x2033994F} \\
   \end{tabular}
 \end{table}
 
@@ -47,21 +47,24 @@ All fields are unsigned integers.
 There is one unsigned seekpoint value per TTA frame
 and each seekpoint value is the total size of that frame in bytes.
 The total number of TTA frames in a file is:
-\begin{equation*}
-\textsf{TTA frame count} = \left\lceil\frac{\textsf{total PCM frames} \times 245}{\textsf{sample rate} \times 256}\right\rceil
-\end{equation*}
+\begin{align*}
+\textsf{TTA frame count} &= \left\lceil\frac{\textsf{total PCM frames} \times 245}{\textsf{sample rate} \times 256}\right\rceil
+\intertext{and the size of each frame is:}
+\textsf{PCM frames per TTA frame} &= \left\lceil\frac{\textsf{sample rate} \times 256}{245}\right\rceil
+\intertext{except for the last TTA frame, which uses the remainder.}
+\end{align*}
 \subsubsection{Seektable Example}
 Given a PCM frame count of 25 and a sample rate of 44100:
 \begin{equation*}
-\textsf{TTA frame count} = \left\lceil\frac{25 \times 245}{44100 \times 256}\right\rceil = 1
+\textsf{TTA frame count} = \left\lceil\frac{10 \times 245}{44100 \times 256}\right\rceil = 1
 \end{equation*}
 \begin{figure}[h]
   \includegraphics{tta/figures/seektable-example.pdf}
 \end{figure}
 \begin{table}[h]
   \begin{tabular}{rcl}
-    $\textsf{frame size}_0$ & : & 63 bytes \\
-    \textsf{seektable CRC32} & : & \texttt{0x890C37EC} \\
+    $\textsf{frame size}_0$ & : & 33 bytes \\
+    \textsf{seektable CRC32} & : & \texttt{0x39CA1747} \\
   \end{tabular}
 \end{table}
 \par
@@ -165,15 +168,15 @@ where $\textsf{checksum}_{-1} = \texttt{0xFFFFFFFF}$ and
 \noindent
 The checksum matches if the $\textsf{checksum}_i \xor \texttt{0xFFFFFFFF}$
 equals the 32 bytes at the end of the chunk.
-For example, given the bytes: \texttt{[0x3F, 0x00, 0x00, 0x00]}
+For example, given the bytes: \texttt{[0x21, 0x00, 0x00, 0x00]}
 the checksum is calculated as:
 {\relsize{-1}
   \begin{align*}
-    \textsf{checksum}_0 = \texttt{CRC32}[(\texttt{0xFFFFFFFF} \xor \texttt{0x3F}) \bmod 256] \xor \lfloor\texttt{0xFFFFFFFF} \div 2 ^ 8\rfloor &= \texttt{0x9B9B3D4F} \\
-    \textsf{checksum}_1 = \texttt{CRC32}[(\texttt{0x9B9B3D4F} \xor \texttt{0x00}) \bmod 256] \xor \lfloor\texttt{0x9B9B3D4F} \div 2 ^ 8\rfloor &= \texttt{0xE6F8C73C} \\
-    \textsf{checksum}_2 = \texttt{CRC32}[(\texttt{0xE6F8C73C} \xor \texttt{0x00}) \bmod 256] \xor \lfloor\texttt{0xE6F8C73C} \div 2 ^ 8\rfloor &= \texttt{0x2F898440} \\
-    \textsf{checksum}_3 = \texttt{CRC32}[(\texttt{0x2F898440} \xor \texttt{0x00}) \bmod 256] \xor \lfloor\texttt{0x2F898440} \div 2 ^ 8\rfloor &= \texttt{0x76F3C814} \\
-    \texttt{0x76F3C814} \xor \texttt{0xFFFFFFFF} &= \texttt{0x890C37EB} \\
+    \textsf{checksum}_0 = \texttt{CRC32}[(\texttt{0xFFFFFFFF} \xor \texttt{0x21}) \bmod 256] \xor \lfloor\texttt{0xFFFFFFFF} \div 2 ^ 8\rfloor &= \texttt{0x6194002C} \\
+    \textsf{checksum}_1 = \texttt{CRC32}[(\texttt{0x6194002C} \xor \texttt{0x00}) \bmod 256] \xor \lfloor\texttt{0x6194002C} \div 2 ^ 8\rfloor &= \texttt{0x32B9F8E3} \\
+    \textsf{checksum}_2 = \texttt{CRC32}[(\texttt{0x32B9F8E3} \xor \texttt{0x00}) \bmod 256] \xor \lfloor\texttt{0x32B9F8E3} \div 2 ^ 8\rfloor &= \texttt{0x39310A3A} \\
+    \textsf{checksum}_3 = \texttt{CRC32}[(\texttt{0x39310A3A} \xor \texttt{0x00}) \bmod 256] \xor \lfloor\texttt{0x39310A3A} \div 2 ^ 8\rfloor &= \texttt{0xC635E8B8} \\
+    \texttt{0xC635E8B8} \xor \texttt{0xFFFFFFFF} &= \texttt{0x39CA1747} \\
   \end{align*}
 }
 \par
