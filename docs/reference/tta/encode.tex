@@ -1,0 +1,350 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
+\section{True Audio Encoding}
+
+The basic process for encoding a TTA file is as follows:
+\par
+\noindent
+\ALGORITHM{PCM frames, PCM frame count}{an encoded TTA file}
+\SetKwData{CHANNELS}{channels}
+\SetKwData{BPS}{bits per sample}
+\SetKwData{SAMPLERATE}{sample rate}
+\SetKwData{PCMFRAMES}{total PCM frames}
+\SetKwData{HEADERCRC}{header CRC32}
+\SetKwData{SEEKTABLECRC}{seektable CRC32}
+\SetKwData{FRAMESIZE}{TTA frame size}
+\SetKwData{BLOCKSIZE}{block size}
+\tcc{write header}
+\begin{tabular}{rcl}
+  \texttt{"TTA1"} & $\rightarrow$ & \WRITE 4 bytes\; \\
+  1 & $\rightarrow$ & \WRITE 16 unsigned bits\; \\
+  \CHANNELS & $\rightarrow$ & \WRITE 16 unsigned bits\; \\
+  \BPS & $\rightarrow$ & \WRITE 16 unsigned bits\; \\
+  \SAMPLERATE & $\rightarrow$ & \WRITE 32 unsigned bits\; \\
+  \PCMFRAMES & $\rightarrow$ & \WRITE 32 unsigned bits\; \\
+\end{tabular}\;
+$\HEADERCRC \leftarrow$ \hyperref[tta:crc32]{calculated CRC32 of first 18 header bytes}\;
+$\HEADERCRC \rightarrow$ \WRITE 32 unsigned bits\;
+\BlankLine
+\tcc{write placeholder seektable}
+\For{$i \leftarrow 0$ \emph{\KwTo}$\lceil(\text{\PCMFRAMES} \times 245) \div (\text{\SAMPLERATE} \times 256)\rceil$}{
+  $0 \rightarrow$ \WRITE 32 unsigned bits\;
+}
+$0 \rightarrow$ \WRITE 32 unsigned bits\;
+\BlankLine
+\tcc{write frames}
+$\BLOCKSIZE \leftarrow \lceil(\SAMPLERATE \times 256) \div 245\rceil$\;
+$i \leftarrow 0$\;
+\While{PCM frames remain}{
+  $\text{\FRAMESIZE}_i \leftarrow$ \hyperref[tta:encode_frame]{encode TTA frame from up to \BLOCKSIZE PCM frames}\;
+  $i \leftarrow i + 1$\;
+}
+\BlankLine
+\tcc{return to seektable and populate it with actual values}
+goto position \texttt{0x16} in file\;
+\For{$i \leftarrow 0$ \emph{\KwTo}$\lceil(\text{\PCMFRAMES} \times 245) \div (\text{\SAMPLERATE} \times 256)\rceil$}{
+  $\text{\FRAMESIZE}_i \rightarrow$ \WRITE 32 unsigned bits\;
+}
+$\SEEKTABLECRC \leftarrow$ \hyperref[tta:crc32]{calculated CRC32 of seektable bytes}\;
+$\SEEKTABLECRC \rightarrow$ \WRITE 32 unsigned bits\;
+\EALGORITHM
+
+\clearpage
+
+\subsection{Encoding a TTA Frame}
+\label{tta:encode_frame}
+{\relsize{-1}
+\ALGORITHM{input PCM frames, block size, channel count}{TTA frame data, the TTA's frame size in bytes}
+\SetKwData{FRAMECRC}{frame CRC32}
+\SetKwData{CHANNEL}{channel}
+\SetKwData{CORRELATED}{correlated}
+\SetKwData{CHANNELS}{channels}
+\SetKwData{PREDICTED}{predicted}
+\SetKwData{RESIDUAL}{residual}
+\SetKwData{UNSIGNED}{unsigned}
+\SetKwData{BLOCKSIZE}{block size}
+\eIf(\tcc*[f]{correlate channels}){$channels = 1$}{
+  $\text{\CORRELATED}_0 \leftarrow \text{\CHANNEL}_0$\;
+}{
+  $\text{\CORRELATED} \leftarrow$ \hyperref[tta:correlate]{correlate \CHANNEL}\;
+}
+\For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
+  $\text{\PREDICTED}_{c} \leftarrow$ \hyperref[tta:enc_fixed]{run fixed order prediction on $\text{\CORRELATED}_{c}$}\;
+  $\text{\RESIDUAL}_{c} \leftarrow$ \hyperref[tta:enc_hybrid]{run hybrid filter on $\text{\PREDICTED}_{c}$}\;
+}
+\For(\tcc*[f]{encode residuals}){$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
+  \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
+    \eIf{$\text{\RESIDUAL}_{c~i} \geq 0$}{
+      $\UNSIGNED = (\text{\RESIDUAL} \times 2) - 1$\;
+    }{
+      $\UNSIGNED = (-\text{\RESIDUAL}) \times 2$\;
+    }
+  }
+}
+byte-align the stream\;
+\BlankLine
+$\FRAMECRC \leftarrow$ \hyperref[tta:crc32]{calculated CRC32 of frame bytes}\;
+$\FRAMECRC \rightarrow$ \WRITE 32 unsigned bits\;
+\Return size of entire TTA frame in bytes\;
+\EALGORITHM
+}
+
+\clearpage
+
+\subsubsection{Correlating Channels}
+\label{tta:correlate}
+\ALGORITHM{2 or more channels of input, the stream's block size and channel count}{2 or more channels of correlated samples}
+\SetKwData{CHANNEL}{channel}
+\SetKwData{CORRELATED}{correlated}
+\SetKwData{CHANNELS}{channels}
+\SetKwData{BLOCKSIZE}{block size}
+\SetKwData{SUM}{sum}
+\SetKw{KwDownTo}{downto}
+\For{$c \leftarrow \CHANNELS$ \emph{\KwDownTo}0}{
+  \eIf{$c = (\CHANNELS - 1)$}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
+      $\text{\SUM}_i \leftarrow \text{\CHANNEL}_{c~i} + \text{\CHANNEL}_{(c - 1)~i}$\;
+      \eIf(\tcc*[f]{round away from zero}){$\text{\SUM}_i \geq 0$}{
+        $\text{\CORRELATED}_{c~i} \leftarrow \lceil\text{\SUM}_i \div 2\rceil$\;
+      }{
+        $\text{\CORRELATED}_{c~i} \leftarrow \lfloor\text{\SUM}_i \div 2\rfloor$\;
+      }
+    }
+  }{
+    \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
+      $\text{\CORRELATED}_{c~i} \leftarrow \text{\CHANNEL}_{(c + 1)~i} - \text{\CHANNEL}_{c~i}$\;
+    }
+  }
+}
+\Return \CORRELATED\;
+\EALGORITHM
+
+\subsubsection{Channel Correlation Example}
+Given a 2 channel stream with a block size of 10,
+channels may be correlated as follows:
+\begin{table}[h]
+  {\relsize{0}
+    \renewcommand{\arraystretch}{1.5}
+  \begin{tabular}{r|r|r||>{$}r<{$}|>{$}r<{$}}
+    $i$ & $\textsf{channel}_{0~i}$ & $\textsf{channel}_{1~i}$ &
+    \textsf{correlated}_{1~i} & \textsf{correlated}_{0~i} \\
+    \hline
+0 & -2222 & -4354 &
+\lfloor -6576 \div 2 \rfloor = -3288 &
+-4354 - -2222 = -2132 \\
+1 & -1749 & -4043 &
+\lfloor -5792 \div 2 \rfloor = -2896 &
+-4043 - -1749 = -2294 \\
+2 & -1262 & -3747 &
+\lfloor -5009 \div 2 \rfloor = -2505 &
+-3747 - -1262 = -2485 \\
+3 & -793 & -3473 &
+\lfloor -4266 \div 2 \rfloor = -2133 &
+-3473 - -793 = -2680 \\
+4 & -374 & -3215 &
+\lfloor -3589 \div 2 \rfloor = -1795 &
+-3215 - -374 = -2841 \\
+5 & 1 & -2960 &
+\lfloor -2959 \div 2 \rfloor = -1480 &
+-2960 - 1 = -2961 \\
+6 & 342 & -2696 &
+\lfloor -2354 \div 2 \rfloor = -1177 &
+-2696 - 342 = -3038 \\
+7 & 682 & -2415 &
+\lfloor -1733 \div 2 \rfloor = -867 &
+-2415 - 682 = -3097 \\
+8 & 1037 & -2121 &
+\lfloor -1084 \div 2 \rfloor = -542 &
+-2121 - 1037 = -3158 \\
+9 & 1422 & -1824 &
+\lfloor -402 \div 2 \rfloor = -201 &
+-1824 - 1422 = -3246 \\
+
+  \end{tabular}
+  }
+\end{table}
+
+\clearpage
+
+\subsubsection{Running Fixed Order Prediction}
+\label{tta:enc_fixed}
+\ALGORITHM{a list of correlated samples for a given channel, the frame's block size, the stream's bits per sample}{a list of predicted samples}
+  \SetKwData{BLOCKSIZE}{block size}
+  \SetKwData{BPS}{bits per sample}
+  \SetKwData{SHIFT}{shift}
+  \SetKwData{CORRELATED}{correlated}
+  \SetKwData{PREDICTED}{predicted}
+  \Switch{\BPS}{
+    \uCase{8}{
+      $\SHIFT \leftarrow 4$\;
+    }
+    \uCase{16}{
+      $\SHIFT \leftarrow 5$\;
+    }
+    \Case{24}{
+      $\SHIFT \leftarrow 5$\;
+    }
+  }
+  \BlankLine
+  $\text{\PREDICTED}_0 \leftarrow \text{\CORRELATED}_0$\;
+  \For{$i \leftarrow 1$ \emph{\KwTo}\BLOCKSIZE}{
+    $\text{\PREDICTED}_{i} \leftarrow \text{\CORRELATED}_i - \left\lfloor\frac{(\text{\CORRELATED}_{i - 1} \times 2 ^ {\text{\SHIFT}}) - \text{\CORRELATED}_{i - 1}}{2 ^ {\text{\SHIFT}}}\right\rfloor$\;
+  }
+  \Return \PREDICTED\;
+\EALGORITHM
+
+\subsubsection{Fixed Order Prediction Example}
+Given a set of correlated samples with a \textsf{block size} of 10
+and 16 bits per sample:
+\begin{table}[h]
+  {\renewcommand{\arraystretch}{1.5}
+  \begin{tabular}{r|r|>{$}r<{$}}
+    $i$ & $\textsf{correlated}_{i}$ & \textsf{predicted}_{i} \\
+    \hline
+    0 & -2132 & -2132 \\
+    1 & -2294 &
+    -2294 - \left\lfloor\frac{(-2132 \times 2 ^ {5}) + 2132}{2 ^ {5}}\right\rfloor = -228 \\
+    2 & -2485 &
+    -2485 - \left\lfloor\frac{(-2294 \times 2 ^ {5}) + 2294}{2 ^ {5}}\right\rfloor = -262 \\
+    3 & -2680 &
+    -2680 - \left\lfloor\frac{(-2485 \times 2 ^ {5}) + 2485}{2 ^ {5}}\right\rfloor = -272 \\
+    4 & -2841 &
+    -2841 - \left\lfloor\frac{(-2680 \times 2 ^ {5}) + 2680}{2 ^ {5}}\right\rfloor = -244 \\
+    5 & -2961 &
+    -2961 - \left\lfloor\frac{(-2841 \times 2 ^ {5}) + 2841}{2 ^ {5}}\right\rfloor = -208 \\
+    6 & -3038 &
+    -3038 - \left\lfloor\frac{(-2961 \times 2 ^ {5}) + 2961}{2 ^ {5}}\right\rfloor = -169 \\
+    7 & -3097 &
+    -3097 - \left\lfloor\frac{(-3038 \times 2 ^ {5}) + 3038}{2 ^ {5}}\right\rfloor = -153 \\
+    8 & -3158 &
+    -3158 - \left\lfloor\frac{(-3097 \times 2 ^ {5}) + 3097}{2 ^ {5}}\right\rfloor = -157 \\
+    9 & -3246 &
+    -3246 - \left\lfloor\frac{(-3158 \times 2 ^ {5}) + 3158}{2 ^ {5}}\right\rfloor = -186 \\
+  \end{tabular}
+  }
+\end{table}
+
+\clearpage
+
+\subsubsection{Running Hybrid Filter}
+\label{tta:enc_hybrid}
+{\relsize{-2}
+  \ALGORITHM{a list of predicted samples for a given channel, the frame's block size, the stream's bits per sample}{a list of residuals for the given channel}
+  \SetKwData{BLOCKSIZE}{block size}
+  \SetKwData{BPS}{bits per sample}
+  \SetKwData{SHIFT}{shift}
+  \SetKwData{ROUND}{round}
+  \SetKwData{QM}{qm}
+  \SetKwData{DX}{dx}
+  \SetKwData{DL}{dl}
+  \SetKwData{SUM}{sum}
+  \SetKwData{RESIDUAL}{residual}
+  \SetKwData{FILTERED}{filtered}
+  \SetKwData{PREDICTED}{predicted}
+  \Switch{\BPS}{
+    \uCase{8}{
+      $\SHIFT \leftarrow 10$\;
+    }
+    \uCase{16}{
+      $\SHIFT \leftarrow 9$\;
+    }
+    \Case{24}{
+      $\SHIFT \leftarrow 10$\;
+    }
+  }
+  \begin{tabular}{rcl}
+    \ROUND & $\leftarrow$ & $2 ^ {\SHIFT - 1}$ \\
+    \QM & $\leftarrow$ & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} \\
+    \DX & $\leftarrow$ & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} \\
+    \DL & $\leftarrow$ & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} \\
+  \end{tabular}\;
+  \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
+    \eIf{$i = 0$}{
+      $\text{\RESIDUAL}_0 \leftarrow \text{\PREDICTED}_0 + \lfloor\ROUND \div 2 ^ {\SHIFT}\rfloor$\;
+    }{
+      \uIf{$\text{\RESIDUAL}_{i - 1} < 0$}{
+        \For{$j \leftarrow 0$ \emph{\KwTo}8}{
+          $\text{\QM}'_j \leftarrow \text{\QM}_j - \text{\DX}_j$\;
+        }
+      }
+      \ElseIf{$\text{\RESIDUAL}_{i - 1} > 0$}{
+        \For{$j \leftarrow 0$ \emph{\KwTo}8}{
+          $\text{\QM}'_j \leftarrow \text{\QM}_j + \text{\DX}_j$\;
+        }
+      }
+      $\SUM \leftarrow \ROUND + \overset{7}{\underset{j = 0}{\sum}}\text{\DL}_j \times \text{\QM}'_j$\;
+      $\text{\RESIDUAL}_i \leftarrow \text{\PREDICTED}_i - \lfloor\SUM \div 2 ^ {\SHIFT}\rfloor$\;
+    }
+    \begin{tabular}{rcl}
+      $\text{\DX}'_0$ & $\leftarrow$ & $\text{\DX}_1$ \\
+      $\text{\DX}'_1$ & $\leftarrow$ & $\text{\DX}_2$ \\
+      $\text{\DX}'_2$ & $\leftarrow$ & $\text{\DX}_3$ \\
+      $\text{\DX}'_3$ & $\leftarrow$ & $\text{\DX}_4$ \\
+      $\text{\DX}'_4$ & $\leftarrow$ & \lIf{$\text{\DL}_4 \geq 0$}{1} \lElse{-1} \\
+      $\text{\DX}'_5$ & $\leftarrow$ & \lIf{$\text{\DL}_5 \geq 0$}{2} \lElse{-2} \\
+      $\text{\DX}'_6$ & $\leftarrow$ & \lIf{$\text{\DL}_6 \geq 0$}{2} \lElse{-2} \\
+      $\text{\DX}'_7$ & $\leftarrow$ & \lIf{$\text{\DL}_7 \geq 0$}{4} \lElse{-4} \\
+      $\text{\DL}'_0$ & $\leftarrow$ & $\text{\DL}_1$ \\
+      $\text{\DL}'_1$ & $\leftarrow$ & $\text{\DL}_2$ \\
+      $\text{\DL}'_2$ & $\leftarrow$ & $\text{\DL}_3$ \\
+      $\text{\DL}'_3$ & $\leftarrow$ & $\text{\DL}_4$ \\
+      $\text{\DL}'_4$ & $\leftarrow$ & $-\text{\DL}_5 + (-\text{\DL}_6 + (\text{\PREDICTED}_i - \text{\DL}_7))$ \\
+      $\text{\DL}'_5$ & $\leftarrow$ & $-\text{\DL}_6 + (\text{\PREDICTED}_i - \text{\DL}_7)$ \\
+      $\text{\DL}'_6$ & $\leftarrow$ & $\text{\PREDICTED}_i - \text{\DL}_7$ \\
+      $\text{\DL}'_7$ & $\leftarrow$ & $\text{\PREDICTED}_i$ \\
+    \end{tabular}\;
+  }
+  \Return \RESIDUAL\;
+  \EALGORITHM
+}
+
+\clearpage
+
+\subsubsection{Running Hybrid Filter Example}
+Given a \textsf{block size} of 10 and a 16 bits per sample stream:
+\begin{table}[h]
+  {\relsize{-1}
+    \begin{tabular}{r|rrrrrrrrrr}
+      $i$ & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
+      \hline
+      $\textsf{predicted}_i$ & -2132 & -228 & -262 & -272 & -244 & -208 & -169 & -153 & -157 & -186 \\
+      \hline
+      $\textsf{qm}'_{0}$ & 0 & 0 & 0 & 0 & 0 & -2 & 1 & -2 & 1 & -2 \\
+      $\textsf{qm}'_{1}$ & 0 & 0 & 0 & 0 & -2 & 1 & -2 & 1 & -2 & -3 \\
+      $\textsf{qm}'_{2}$ & 0 & 0 & 0 & -2 & 1 & -2 & 1 & -2 & -3 & 0 \\
+      $\textsf{qm}'_{3}$ & 0 & 0 & -2 & 1 & -2 & 1 & -2 & -3 & 0 & 1 \\
+      $\textsf{qm}'_{4}$ & 0 & -2 & 1 & -2 & 1 & -2 & -3 & 0 & 1 & 2 \\
+      $\textsf{qm}'_{5}$ & 0 & -4 & 2 & -4 & 2 & -4 & -6 & -8 & -10 & -4 \\
+      $\textsf{qm}'_{6}$ & 0 & -4 & 2 & -4 & 2 & 4 & -2 & -4 & -6 & -8 \\
+      $\textsf{qm}'_{7}$ & 0 & -8 & 4 & 8 & 12 & 16 & 20 & 24 & 28 & 32 \\
+      \hline
+      $\textsf{sum}$ &  & 19444 & 2388 & 11258 & 6186 & 5400 & 2916 & 2805 & -3245 & -3942 \\
+      \hline
+      $\textsf{residual}_i$ & -2132 & -265 & -266 & -293 & -256 & -218 & -174 & -158 & -150 & -178 \\
+      \hline
+      $\textsf{dx}'_{0}$ & 0 & 0 & 0 & 0 & 1 & -1 & 1 & -1 & 1 & 1 \\
+      $\textsf{dx}'_{1}$ & 0 & 0 & 0 & 1 & -1 & 1 & -1 & 1 & 1 & -1 \\
+      $\textsf{dx}'_{2}$ & 0 & 0 & 1 & -1 & 1 & -1 & 1 & 1 & -1 & -1 \\
+      $\textsf{dx}'_{3}$ & 0 & 1 & -1 & 1 & -1 & 1 & 1 & -1 & -1 & -1 \\
+      $\textsf{dx}'_{4}$ & 1 & -1 & 1 & -1 & 1 & 1 & -1 & -1 & -1 & 1 \\
+      $\textsf{dx}'_{5}$ & 2 & -2 & 2 & -2 & 2 & 2 & 2 & 2 & -2 & -2 \\
+      $\textsf{dx}'_{6}$ & 2 & -2 & 2 & -2 & -2 & 2 & 2 & 2 & 2 & -2 \\
+      $\textsf{dx}'_{7}$ & 4 & -4 & -4 & -4 & -4 & -4 & -4 & -4 & -4 & -4 \\
+      \hline
+      $\textsf{dl}'_{0}$ & 0 & 0 & 0 & 0 & -2132 & 6168 & -5974 & 1962 & 14 & -30 \\
+      $\textsf{dl}'_{1}$ & 0 & 0 & 0 & -2132 & 6168 & -5974 & 1962 & 14 & -30 & -5 \\
+      $\textsf{dl}'_{2}$ & 0 & 0 & -2132 & 6168 & -5974 & 1962 & 14 & -30 & -5 & -26 \\
+      $\textsf{dl}'_{3}$ & 0 & -2132 & 6168 & -5974 & 1962 & 14 & -30 & -5 & -26 & 3 \\
+      $\textsf{dl}'_{4}$ & -2132 & 6168 & -5974 & 1962 & 14 & -30 & -5 & -26 & 3 & -5 \\
+      $\textsf{dl}'_{5}$ & -2132 & 4036 & -1938 & 24 & 38 & 8 & 3 & -23 & -20 & -25 \\
+      $\textsf{dl}'_{6}$ & -2132 & 1904 & -34 & -10 & 28 & 36 & 39 & 16 & -4 & -29 \\
+      $\textsf{dl}'_{7}$ & -2132 & -228 & -262 & -272 & -244 & -208 & -169 & -153 & -157 & -186 \\
+    \end{tabular}
+  }
+\end{table}

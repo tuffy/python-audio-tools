@@ -95,6 +95,35 @@ def fixed_predictor(bps, filtered):
     return predicted
 
 
+def decorrelate(predicted):
+    channels = len(predicted)
+    pcm_frames = len(predicted[0])
+
+    decorrelated = []
+
+    for c in reversed(range(channels)):
+        decorrelated_ch = []
+        if (c == (channels - 1)):
+            for i in xrange(pcm_frames):
+                if (predicted[c - 1][i] >= 0):
+                    decorrelated_ch.append(
+                        predicted[c][i] +
+                        (predicted[c - 1][i] // 2))
+                else:
+                    decorrelated_ch.append(
+                        predicted[c][i] +
+                        div_ceil(predicted[c - 1][i], 2))
+        else:
+            for i in xrange(pcm_frames):
+                decorrelated_ch.append(
+                    decorrelated[-1][i] - predicted[c][i])
+        decorrelated.append(decorrelated_ch)
+
+    decorrelated.reverse()
+
+    return decorrelated
+
+
 class CRC32:
     TABLE = [0x00000000, 0x77073096, 0xee0e612c, 0x990951ba,
              0x076dc419, 0x706af48f, 0xe963a535, 0x9e6495a3,
@@ -169,6 +198,7 @@ class CRC32:
 
     def __int__(self):
         return self.crc ^ 0xFFFFFFFF
+
 
 class TTADecoder:
     def __init__(self, filename):
@@ -305,52 +335,11 @@ class TTADecoder:
                              True)
         else:
             #decorrelate channels
-
-            decorrelated = []
-
-            for c in reversed(range(self.channels)):
-                decorrelated_ch = []
-                if (c == (self.channels - 1)):
-                    for i in xrange(pcm_frames):
-                        if (predicted[c - 1][i] >= 0):
-                            decorrelated_ch.append(
-                                predicted[c][i] +
-                                (predicted[c - 1][i] // 2))
-                        else:
-                            decorrelated_ch.append(
-                                predicted[c][i] +
-                                div_ceil(predicted[c - 1][i], 2))
-                else:
-                    for i in xrange(pcm_frames):
-                        decorrelated_ch.append(
-                            decorrelated[-1][i] - predicted[c][i])
-                decorrelated.append(decorrelated_ch)
-
-            decorrelated.reverse()
-
-            if (self.channels == 2):
-                for (i, (predicted0,
-                         predicted1,
-                         decorrelated0,
-                         decorrelated1)) in enumerate(zip(predicted[0],
-                                                          predicted[1],
-                                                          decorrelated[0],
-                                                          decorrelated[1])):
-                    print "%d & %d & %d &" % (i, predicted0, predicted1)
-                    if (predicted0 >= 0):
-                        print "%(predicted1)d + \\lfloor%(predicted0)d \\div 2\\rfloor = %(decorrelated1)d &" % \
-                            {"predicted1":predicted1,
-                             "predicted0":predicted0,
-                             "decorrelated1":decorrelated1}
-                    else:
-                        print "%(predicted1)d + \\lceil%(predicted0)d \\div 2\\rceil = %(decorrelated1)d &" % \
-                            {"predicted1":predicted1,
-                             "predicted0":predicted0,
-                             "decorrelated1":decorrelated1}
-                    print "%(decorrelated1)d - %(predicted0)d = %(decorrelated0)d \\\\" % \
-                        {"decorrelated1":decorrelated1,
-                         "predicted0":predicted0,
-                         "decorrelated0":decorrelated0}
+            for ch in predicted:
+                print "predicted : %s" % (ch)
+            decorrelated = decorrelate(predicted)
+            for ch in decorrelated:
+                print "decorrelated : %s" % (ch)
 
             #return all channels as single FrameList
             return from_channels([from_list(decorrelated_ch,

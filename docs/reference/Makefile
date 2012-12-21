@@ -335,6 +335,7 @@ figures/ape/header-example.pdf
 TTA = \
 tta/metadata.tex \
 tta/decode.tex \
+tta/encode.tex \
 tta/figures/header.pdf \
 tta/figures/header-example.pdf \
 tta/figures/seektable.pdf \
