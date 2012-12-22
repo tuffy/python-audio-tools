@@ -109,8 +109,8 @@ def encode_tta(filename, pcmreader):
 def encode_tta_frame(writer, bits_per_sample, framelist):
     frame_crc = CRC32()
     counter = Counter()
-    writer.add_callback(frame_crc.update)
     writer.add_callback(counter.update)
+    writer.add_callback(frame_crc.update)
 
     #correlate channels
     if (len(framelist) == 1):
@@ -119,15 +119,52 @@ def encode_tta_frame(writer, bits_per_sample, framelist):
         correlated = correlate_channels([list(framelist.channel(i))
                                          for i in xrange(framelist.channels)])
 
+    residuals = []
     for correlated_ch in correlated:
         #run fixed order prediction
         predicted = fixed_predictor(bits_per_sample, correlated_ch)
 
         #run hybrid filter
-        residuals = tta_filter(bits_per_sample, predicted)
+        residuals.append(tta_filter(bits_per_sample, predicted))
+
+    #setup Rice parameters for each channel
+    k0 = [10] * framelist.channels
+    k1 = [10] * framelist.channels
+    sum0 = [2 ** 14] * framelist.channels
+    sum1 = [2 ** 14] * framelist.channels
 
     #encode residuals
-    #FIXME
+    for (i, pcm_frame) in enumerate(zip(*residuals)):
+        for (c, residual) in enumerate(pcm_frame):
+            #convert signed residual to unsigned
+            if (residual > 0):
+                unsigned = (residual * 2) - 1
+            else:
+                unsigned = (-residual) * 2
+
+            if (unsigned < (2 ** k0[c])):
+                writer.unary(0, 0)
+                writer.write(k0[c], unsigned)
+            else:
+                shifted = (unsigned - (2 ** k0[c]))
+
+                MSB = 1 + (shifted >> k1[c])
+                LSB = shifted - ((MSB - 1) << k1[c])
+                writer.unary(0, MSB)
+                writer.write(k1[c], LSB)
+
+                sum1[c] += (shifted - (sum1[c] >> 4))
+                if (sum1[c] < (2 ** (k1[c] + 4))):
+                    k1[c] = max(k1[c] - 1, 0)
+                elif (sum1[c] > (2 ** (k1[c] + 5))):
+                    k1[c] += 1
+
+            #adjust sum0 and k0
+            sum0[c] += unsigned - (sum0[c] >> 4)
+            if (sum0[c] < (2 ** (k0[c] + 4))):
+                k0[c] = max(k0[c] - 1, 0)
+            elif (sum0[c] > (2 ** (k0[c] + 5))):
+                k0[c] += 1
 
     #byte-align frame
     writer.byte_align()
@@ -147,21 +184,21 @@ def correlate_channels(framelist):
 
     correlated = []
 
-    for c in reversed(range(channels)):
+    for c in xrange(channels):
         correlated_ch = []
         if (c == (channels - 1)):
             for i in xrange(pcm_frames):
-                sum_ = framelist[c][i] + framelist[c - 1][i]
-                if (sum_ >= 0):
-                    correlated_ch.append(div_ceil(sum_, 2))
+                #round toward zero
+                if (correlated[c - 1][i] >= 0):
+                    correlated_ch.append(
+                        framelist[c][i] - (correlated[c - 1][i] // 2))
                 else:
-                    correlated_ch.append(sum_ // 2)
+                    correlated_ch.append(
+                        framelist[c][i] - div_ceil(correlated[c - 1][i], 2))
         else:
             for i in xrange(pcm_frames):
                 correlated_ch.append(framelist[c + 1][i] - framelist[c][i])
         correlated.append(correlated_ch)
-
-    correlated.reverse()
 
     return correlated
 

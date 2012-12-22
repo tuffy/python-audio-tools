@@ -67,8 +67,15 @@ $\SEEKTABLECRC \rightarrow$ \WRITE 32 unsigned bits\;
 \SetKwData{CHANNELS}{channels}
 \SetKwData{PREDICTED}{predicted}
 \SetKwData{RESIDUAL}{residual}
+\SetKwData{SHIFTED}{shifted}
 \SetKwData{UNSIGNED}{unsigned}
 \SetKwData{BLOCKSIZE}{block size}
+\SetKwData{KZ}{k0}
+\SetKwData{KO}{k1}
+\SetKwData{SUMZ}{sum0}
+\SetKwData{SUMO}{sum1}
+\SetKwData{MSB}{MSB}
+\SetKwData{LSB}{LSB}
 \eIf(\tcc*[f]{correlate channels}){$channels = 1$}{
   $\text{\CORRELATED}_0 \leftarrow \text{\CHANNEL}_0$\;
 }{
@@ -78,12 +85,41 @@ $\SEEKTABLECRC \rightarrow$ \WRITE 32 unsigned bits\;
   $\text{\PREDICTED}_{c} \leftarrow$ \hyperref[tta:enc_fixed]{run fixed order prediction on $\text{\CORRELATED}_{c}$}\;
   $\text{\RESIDUAL}_{c} \leftarrow$ \hyperref[tta:enc_hybrid]{run hybrid filter on $\text{\PREDICTED}_{c}$}\;
 }
+\BlankLine
+\For(\tcc*[f]{setup Rice parameters}){$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
+  $\text{\KZ}_c \leftarrow \text{\KO}_c \leftarrow 10$\;
+  $\text{\SUMZ}_c \leftarrow \text{\SUMO}_c \leftarrow 2 ^ {14}$\;
+}
 \For(\tcc*[f]{encode residuals}){$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
   \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
-    \eIf{$\text{\RESIDUAL}_{c~i} \geq 0$}{
+    \eIf{$\text{\RESIDUAL}_{c~i} > 0$}{
       $\UNSIGNED = (\text{\RESIDUAL} \times 2) - 1$\;
     }{
       $\UNSIGNED = (-\text{\RESIDUAL}) \times 2$\;
+    }
+    \eIf{$\UNSIGNED < 2 ^ {\text{\KZ}_c}$}{
+      $0 \rightarrow$ \WUNARY with stop bit 0\;
+      $\UNSIGNED \rightarrow$ \WRITE $\text{\KZ}_c$ unsigned bits\;
+    }{
+      $\SHIFTED \leftarrow \UNSIGNED - 2 ^ {\text{\KZ}_c}$\;
+      $\MSB \leftarrow 1 + \lfloor\SHIFTED \div 2 ^ {\text{\KO}_c}\rfloor$\;
+      $\LSB \leftarrow \SHIFTED - ((\MSB - 1) \times 2 ^ {\text{\KO}_c})$\;
+      $\MSB \rightarrow$ \WUNARY with stop bit 0\;
+      $\LSB \rightarrow$ \WRITE $\text{\KO}_c$ unsigned bits\;
+      $\text{\SUMO}'_c \leftarrow \text{\SUMO}_c + (\SHIFTED - \lfloor\text{\SUMO}_c \div 2 ^ 4\rfloor)$\;
+      \uIf{$\text{\SUMO}'_c < 2 ^ {\text{\KO}_c + 4}$}{
+        $\text{\KO}'_c \leftarrow \MAX(\text{\KO}_c - 1~,~0)$\;
+      }
+      \ElseIf{$\text{\SUMO}'_c > 2 ^ {\text{\KO}_c + 5}$}{
+        $\text{\KO}'_c \leftarrow \text{\KO}_c + 1$\;
+      }
+    }
+    $\text{\SUMZ}'_c \leftarrow \text{\SUMZ}_c + (\UNSIGNED - \lfloor\text{\SUMZ}_c \div 2 ^ 4\rfloor)$\;
+    \uIf{$\text{\SUMZ}'_c < 2 ^ {\text{\KZ}_c + 4}$}{
+      $\text{\KZ}'_c \leftarrow \MAX(\text{\KZ}_c - 1~,~0)$\;
+    }
+    \ElseIf{$\text{\SUMZ}'_c > 2 ^ {\text{\KZ}_c + 5}$}{
+      $\text{\KZ}'_c \leftarrow \text{\KZ}_c + 1$\;
     }
   }
 }
@@ -104,21 +140,14 @@ $\FRAMECRC \rightarrow$ \WRITE 32 unsigned bits\;
 \SetKwData{CORRELATED}{correlated}
 \SetKwData{CHANNELS}{channels}
 \SetKwData{BLOCKSIZE}{block size}
-\SetKwData{SUM}{sum}
-\SetKw{KwDownTo}{downto}
-\For{$c \leftarrow \CHANNELS$ \emph{\KwDownTo}0}{
-  \eIf{$c = (\CHANNELS - 1)$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
-      $\text{\SUM}_i \leftarrow \text{\CHANNEL}_{c~i} + \text{\CHANNEL}_{(c - 1)~i}$\;
-      \eIf(\tcc*[f]{round away from zero}){$\text{\SUM}_i \geq 0$}{
-        $\text{\CORRELATED}_{c~i} \leftarrow \lceil\text{\SUM}_i \div 2\rceil$\;
-      }{
-        $\text{\CORRELATED}_{c~i} \leftarrow \lfloor\text{\SUM}_i \div 2\rfloor$\;
-      }
-    }
+\For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
+  \eIf{$c < (\CHANNELS - 1)$}{
+    $\text{\CORRELATED}_{c~i} \leftarrow \text{\CHANNEL}_{(c + 1)~i} - \text{\CHANNEL}_{c~i}$\;
   }{
-    \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
-      $\text{\CORRELATED}_{c~i} \leftarrow \text{\CHANNEL}_{(c + 1)~i} - \text{\CHANNEL}_{c~i}$\;
+    \eIf(\tcc*[f]{round toward zero}){$\text{\CORRELATED}_{(c - 1)~i} \geq 0$}{
+      $\text{\CORRELATED}_{c~i} \leftarrow \text{\CHANNEL}_{c~i} - \lfloor\text{\CORRELATED}_{(c - 1)~i} \div 2\rfloor$\;
+    }{
+      $\text{\CORRELATED}_{c~i} \leftarrow \text{\CHANNEL}_{c~i} - \lceil\text{\CORRELATED}_{(c - 1)~i} \div 2\rceil$\;
     }
   }
 }
@@ -133,39 +162,38 @@ channels may be correlated as follows:
     \renewcommand{\arraystretch}{1.5}
   \begin{tabular}{r|r|r||>{$}r<{$}|>{$}r<{$}}
     $i$ & $\textsf{channel}_{0~i}$ & $\textsf{channel}_{1~i}$ &
-    \textsf{correlated}_{1~i} & \textsf{correlated}_{0~i} \\
+    \textsf{correlated}_{0~i} & \textsf{correlated}_{1~i} \\
     \hline
-0 & -2222 & -4354 &
-\lfloor -6576 \div 2 \rfloor = -3288 &
--4354 - -2222 = -2132 \\
-1 & -1749 & -4043 &
-\lfloor -5792 \div 2 \rfloor = -2896 &
--4043 - -1749 = -2294 \\
-2 & -1262 & -3747 &
-\lfloor -5009 \div 2 \rfloor = -2505 &
--3747 - -1262 = -2485 \\
-3 & -793 & -3473 &
-\lfloor -4266 \div 2 \rfloor = -2133 &
--3473 - -793 = -2680 \\
-4 & -374 & -3215 &
-\lfloor -3589 \div 2 \rfloor = -1795 &
--3215 - -374 = -2841 \\
-5 & 1 & -2960 &
-\lfloor -2959 \div 2 \rfloor = -1480 &
--2960 - 1 = -2961 \\
-6 & 342 & -2696 &
-\lfloor -2354 \div 2 \rfloor = -1177 &
--2696 - 342 = -3038 \\
-7 & 682 & -2415 &
-\lfloor -1733 \div 2 \rfloor = -867 &
--2415 - 682 = -3097 \\
-8 & 1037 & -2121 &
-\lfloor -1084 \div 2 \rfloor = -542 &
--2121 - 1037 = -3158 \\
-9 & 1422 & -1824 &
-\lfloor -402 \div 2 \rfloor = -201 &
--1824 - 1422 = -3246 \\
-
+    0 & -2222 & -4354 &
+    -4354 + 2222 = -2132 &
+    -4354 - \lceil -2132 \div 2\rceil = -3288 \\
+    1 & -1749 & -4043 &
+    -4043 + 1749 = -2294 &
+    -4043 - \lceil -2294 \div 2\rceil = -2896 \\
+    2 & -1262 & -3747 &
+    -3747 + 1262 = -2485 &
+    -3747 - \lceil -2485 \div 2\rceil = -2505 \\
+    3 & -793 & -3473 &
+    -3473 + 793 = -2680 &
+    -3473 - \lceil -2680 \div 2\rceil = -2133 \\
+    4 & -374 & -3215 &
+    -3215 + 374 = -2841 &
+    -3215 - \lceil -2841 \div 2\rceil = -1795 \\
+    5 & 1 & -2960 &
+    -2960 - 1 = -2961 &
+    -2960 - \lceil -2961 \div 2\rceil = -1480 \\
+    6 & 342 & -2696 &
+    -2696 - 342 = -3038 &
+    -2696 - \lceil -3038 \div 2\rceil = -1177 \\
+    7 & 682 & -2415 &
+    -2415 - 682 = -3097 &
+    -2415 - \lceil -3097 \div 2\rceil = -867 \\
+    8 & 1037 & -2121 &
+    -2121 - 1037 = -3158 &
+    -2121 - \lceil -3158 \div 2\rceil = -542 \\
+    9 & 1422 & -1824 &
+    -1824 - 1422 = -3246 &
+    -1824 - \lceil -3246 \div 2\rceil = -201 \\
   \end{tabular}
   }
 \end{table}
@@ -348,3 +376,63 @@ Given a \textsf{block size} of 10 and a 16 bits per sample stream:
     \end{tabular}
   }
 \end{table}
+
+\clearpage
+
+\subsubsection{Residual Encoding Example}
+Given a \texttt{block size} of 10 and a channel count of 2,
+residuals may be encoded as follows:
+\begin{table}[h]
+  {\relsize{-1}
+    \begin{tabular}{rrrrrrrr>{$}r<{$}rr}
+      $i$ & $c$ & $\textsf{k0}_{c}$ & $\textsf{sum0}_{c}$ &
+      $\textsf{k1}_{c}$ & $\textsf{sum1}_{c}$ &
+      $\textsf{residual}_{c~i}$ & $\textsf{unsigned}_{c~i}$ &
+      \textsf{shifted}_{c~i} & $\textsf{MSB}_{c~i}$ & $\textsf{LSB}_{c~i}$ \\
+      \hline
+      0 & 0 & 10 & 16384 & 10 & 16384 & -2132 & 4264 &
+      4264 - 2 ^ {10} = 3240 & 4 & 168 \\
+      0 & 1 & 10 & 16384 & 10 & 16384 & -3288 & 6576 &
+      6576 - 2 ^ {10} = 5552 & 6 & 432 \\
+      1 & 0 & 10 & 19624 & 10 & 18600 & -265 & 530 &
+      & 0 & 530 \\
+      1 & 1 & 10 & 21936 & 10 & 20912 & 232 & 463 &
+      & 0 & 463 \\
+      2 & 0 & 10 & 18928 & 10 & 18600 & -266 & 532 &
+      & 0 & 532 \\
+      2 & 1 & 10 & 21028 & 10 & 20912 & 433 & 865 &
+      & 0 & 865 \\
+      3 & 0 & 10 & 18277 & 10 & 18600 & -293 & 586 &
+      & 0 & 586 \\
+      3 & 1 & 10 & 20579 & 10 & 20912 & 269 & 537 &
+      & 0 & 537 \\
+      4 & 0 & 10 & 17721 & 10 & 18600 & -256 & 512 &
+      & 0 & 512 \\
+      4 & 1 & 10 & 19830 & 10 & 20912 & 313 & 625 &
+      & 0 & 625 \\
+      5 & 0 & 10 & 17126 & 10 & 18600 & -218 & 436 &
+      & 0 & 436 \\
+      5 & 1 & 10 & 19216 & 10 & 20912 & 283 & 565 &
+      & 0 & 565 \\
+      6 & 0 & 10 & 16492 & 10 & 18600 & -174 & 348 &
+      & 0 & 348 \\
+      6 & 1 & 10 & 18580 & 10 & 20912 & 273 & 545 &
+      & 0 & 545 \\
+      7 & 0 & 9 & 15810 & 10 & 18600 & -158 & 316 &
+      & 0 & 316 \\
+      7 & 1 & 10 & 17964 & 10 & 20912 & 288 & 575 &
+      & 0 & 575 \\
+      8 & 0 & 9 & 15138 & 10 & 18600 & -150 & 300 &
+      & 0 & 300 \\
+      8 & 1 & 10 & 17417 & 10 & 20912 & 290 & 579 &
+      & 0 & 579 \\
+      9 & 0 & 9 & 14492 & 10 & 18600 & -178 & 356 &
+      & 0 & 356 \\
+      9 & 1 & 10 & 16908 & 10 & 20912 & 314 & 627 &
+      & 0 & 627 \\
+    \end{tabular}
+  }
+\end{table}
+\begin{figure}[h]
+  \includegraphics[width=6in,keepaspectratio]{tta/figures/residuals.pdf}
+\end{figure}
