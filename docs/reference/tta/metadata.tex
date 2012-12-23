@@ -54,7 +54,7 @@ The total number of TTA frames in a file is:
 \intertext{except for the last TTA frame, which uses the remainder.}
 \end{align*}
 \subsubsection{Seektable Example}
-Given a PCM frame count of 25 and a sample rate of 44100:
+Given a PCM frame count of 10 and a sample rate of 44100:
 \begin{equation*}
 \textsf{TTA frame count} = \left\lceil\frac{10 \times 245}{44100 \times 256}\right\rceil = 1
 \end{equation*}
@@ -69,7 +69,7 @@ Given a PCM frame count of 25 and a sample rate of 44100:
 \end{table}
 \par
 \noindent
-Which indicates this file contains a single 63 byte TTA frame.
+Which indicates this file contains a single 33 byte TTA frame.
 
 \clearpage
 
