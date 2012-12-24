@@ -39,6 +39,9 @@ shnenc: $(OBJS) encoders/shn.c encoders/shn.h pcmconv.o
 wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o pcmconv.o
 	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c md5.o pcmconv.o $(OBJS) -DSTANDALONE
 
+ttaenc: $(OBJS) encoders/tta.c encoders/tta.h pcmconv.o 
+	$(CC) $(FLAGS) -o ttaenc encoders/tta.c pcmconv.o $(OBJS) -DSTANDALONE
+
 aobdec: decoders/aob.c decoders/aob.h $(OBJS) mlp.o aobpcm.o pcmconv.o
 	$(CC) $(FLAGS) -o aobdec decoders/aob.c $(OBJS) mlp.o aobpcm.o pcmconv.o -DSTANDALONE
 

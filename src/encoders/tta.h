@@ -57,7 +57,20 @@ fixed_prediction(array_i* channel,
 static void
 hybrid_filter(array_i* predicted,
               unsigned bits_per_sample,
-              array_i* filtered);
+              array_i* residual);
 
 static void
 tta_byte_counter(uint8_t byte, int* frame_size);
+
+#ifdef STANDALONE
+static void
+write_header(BitstreamWriter* output,
+             unsigned channels,
+             unsigned bits_per_sample,
+             unsigned sample_rate,
+             unsigned total_pcm_frames);
+
+static void
+write_seektable(BitstreamWriter* output,
+                array_i* frame_sizes);
+#endif

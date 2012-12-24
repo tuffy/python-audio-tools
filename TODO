@@ -6220,11 +6220,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Add C-based True Audio decoder
 **** DONE modify it for standalone use
 **** DONE ensure there's no memory errors or leaks
-*** TODO Add C-based True Audio encoder
-**** TODO modify it for standalone use
-**** TODO ensure there's no memory errors or leaks
+*** DONE Add C-based True Audio encoder
+**** DONE modify it for standalone use
+**** DONE ensure there's no memory errors or leaks
 *** TODO Add True Audio-specific unit tests
-*** TODO Tests encoder/decoder against reference
+*** TODO Test encoder/decoder against reference
 *** TODO Add True Audio detecter to file_type() function
 *** TODO Add True Audio AudioFile class
 *** TODO Ensure True Audio class passes all unit tests

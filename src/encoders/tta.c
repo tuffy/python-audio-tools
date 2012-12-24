@@ -27,6 +27,7 @@
 #define DIV_CEIL(x, y) ((x) / (y) + (((x) % (y)) ? 1 : 0))
 #endif
 
+#ifndef STANDALONE
 PyObject*
 encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
 {
@@ -110,6 +111,7 @@ error:
     /*return exception*/
     return NULL;
 }
+#endif
 
 
 static void
@@ -414,3 +416,213 @@ tta_byte_counter(uint8_t byte, int* frame_size)
 {
     *frame_size += 1;
 }
+
+#ifdef STANDALONE
+#include <getopt.h>
+#include <string.h>
+#include <errno.h>
+
+int main(int argc, char* argv[]) {
+    char* output_file = NULL;
+    unsigned channels = 2;
+    unsigned sample_rate = 44100;
+    unsigned bits_per_sample = 16;
+    unsigned total_pcm_frames = 0;
+
+    unsigned total_tta_frames;
+    unsigned block_size;
+
+    FILE* file;
+    BitstreamWriter* writer;
+    array_i* tta_frame_sizes;
+    pcmreader* pcmreader;
+    array_ia* framelist;
+    struct tta_cache cache;
+    unsigned written_pcm_frames = 0;
+
+    char c;
+    const static struct option long_opts[] = {
+        {"help",                    no_argument,       NULL, 'h'},
+        {"channels",                required_argument, NULL, 'c'},
+        {"sample-rate",             required_argument, NULL, 'r'},
+        {"bits-per-sample",         required_argument, NULL, 'b'},
+        {"total-pcm-frames",        required_argument, NULL, 'T'},
+        {NULL,                      no_argument,       NULL, 0}};
+    const static char* short_opts = "-hc:r:b:T:";
+
+    while ((c = getopt_long(argc,
+                            argv,
+                            short_opts,
+                            long_opts,
+                            NULL)) != -1) {
+        switch (c) {
+        case 1:
+            if (output_file == NULL) {
+                output_file = optarg;
+            } else {
+                printf("only one output file allowed\n");
+                return 1;
+            }
+            break;
+        case 'c':
+            if (((channels = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --channel \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'r':
+            if (((sample_rate = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --sample-rate \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'b':
+            if (((bits_per_sample = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --bits-per-sample \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'T':
+            if (((total_pcm_frames = strtoul(optarg, NULL, 10)) == 0) &&
+                errno) {
+                printf("invalid --total-pcm-frames \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'h': /*fallthrough*/
+        case ':':
+        case '?':
+            printf("*** Usage: ttaenc [options] <output.tta>\n");
+            printf("-c, --channels=#          number of input channels\n");
+            printf("-r, --sample_rate=#       input sample rate in Hz\n");
+            printf("-b, --bits-per-sample=#   bits per input sample\n");
+            printf("-T, --total-pcm-frames=#  total PCM frames of input\n");
+            return 0;
+        default:
+            break;
+        }
+    }
+    if (output_file == NULL) {
+        printf("exactly 1 output file required\n");
+        return 1;
+    }
+
+    assert(channels > 0);
+    assert((bits_per_sample == 8) ||
+           (bits_per_sample == 16) ||
+           (bits_per_sample == 24));
+    assert(sample_rate > 0);
+    assert(total_pcm_frames > 0);
+
+    printf("Encoding from stdin using parameters:\n");
+    printf("channels         %u\n", channels);
+    printf("sample rate      %u\n", sample_rate);
+    printf("bits-per-sample  %u\n", bits_per_sample);
+    printf("total PCM frames %u\n", total_pcm_frames);
+    printf("little-endian, signed samples\n");
+
+    total_tta_frames = (unsigned)DIV_CEIL((uint64_t)total_pcm_frames * 245,
+                                          (uint64_t)sample_rate * 256);
+    block_size = (unsigned)DIV_CEIL((uint64_t)sample_rate * 256, 245);
+
+    /*open output file for writing*/
+    if ((file = fopen(output_file, "wb")) == NULL) {
+        fprintf(stderr, "* %s: %s", output_file, strerror(errno));
+        return 1;
+    } else {
+        /*allocate temporary buffers*/
+        writer = bw_open(file, BS_LITTLE_ENDIAN);
+        tta_frame_sizes = array_i_new();
+        framelist = array_ia_new();
+        cache_init(&cache);
+    }
+
+    /*write TTA header*/
+    write_header(writer,
+                 channels,
+                 bits_per_sample,
+                 sample_rate,
+                 total_pcm_frames);
+
+    /*write placeholder seektable*/
+    tta_frame_sizes->mset(tta_frame_sizes, total_tta_frames, 0);
+    write_seektable(writer, tta_frame_sizes);
+    tta_frame_sizes->reset(tta_frame_sizes);
+
+    /*write frames from PCMReader*/
+    pcmreader = open_pcmreader(stdin,
+                               sample_rate,
+                               channels,
+                               0,
+                               bits_per_sample,
+                               0,
+                               1);
+    pcmreader->read(pcmreader, block_size, framelist);
+    while (framelist->_[0]->len) {
+        /*actual size may be different from requested block size*/
+        written_pcm_frames += framelist->_[0]->len;
+        tta_frame_sizes->append(tta_frame_sizes,
+                                encode_frame(writer,
+                                             &cache,
+                                             framelist,
+                                             bits_per_sample));
+        pcmreader->read(pcmreader, block_size, framelist);
+    }
+
+    /*ensure read frames are a match for --total-pcm-frames*/
+    assert(written_pcm_frames == total_pcm_frames);
+    assert(tta_frame_sizes->len == total_tta_frames);
+
+    /*go back and write proper seektable*/
+    fseek(file, 22, SEEK_SET);
+    write_seektable(writer, tta_frame_sizes);
+
+    /*deallocate temporary buffers*/
+    pcmreader->del(pcmreader);
+    tta_frame_sizes->del(tta_frame_sizes);
+    framelist->del(framelist);
+    cache_free(&cache);
+
+    /*close output file*/
+    writer->close(writer);
+
+    return 0;
+}
+
+static void
+write_header(BitstreamWriter* output,
+             unsigned channels,
+             unsigned bits_per_sample,
+             unsigned sample_rate,
+             unsigned total_pcm_frames)
+{
+    unsigned header_crc = 0xFFFFFFFF;
+    bw_add_callback(output, (bs_callback_func)tta_crc32, &header_crc);
+    output->build(output, "4b 16u 16u 16u 32u 32u",
+                  "TTA1",
+                  1,
+                  channels,
+                  bits_per_sample,
+                  sample_rate,
+                  total_pcm_frames);
+    bw_pop_callback(output, NULL);
+    output->write(output, 32, header_crc ^ 0xFFFFFFFF);
+}
+
+static void
+write_seektable(BitstreamWriter* output,
+                array_i* frame_sizes)
+{
+    unsigned i;
+    unsigned seektable_crc = 0xFFFFFFFF;
+    bw_add_callback(output, (bs_callback_func)tta_crc32, &seektable_crc);
+    for (i = 0; i < frame_sizes->len; i++) {
+        output->write(output, 32, frame_sizes->_[i]);
+    }
+    bw_pop_callback(output, NULL);
+    output->write(output, 32, seektable_crc ^ 0xFFFFFFFF);
+}
+
+
+#include "../common/tta_crc.c"
+#endif
