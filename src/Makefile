@@ -24,6 +24,9 @@ alacdec: $(OBJS) decoders/alac.c decoders/alac.h pcmconv.o
 shndec: $(OBJS) decoders/shn.c decoders/shn.h pcmconv.o
 	$(CC) $(FLAGS) -o shndec decoders/shn.c $(OBJS) pcmconv.o -DSTANDALONE -lm
 
+ttadec: $(OBJS) decoders/tta.c decoders/tta.h pcmconv.o
+	$(CC) $(FLAGS) -o ttadec decoders/tta.c $(OBJS) pcmconv.o -DSTANDALONE
+
 flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_crc.o md5.o pcmconv.o
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) md5.o flac_crc.o pcmconv.o -DSTANDALONE -lm
 

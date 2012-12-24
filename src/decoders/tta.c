@@ -1,6 +1,7 @@
 #include "tta.h"
 #include "../common/tta_crc.h"
 #include "../pcmconv.h"
+#include <string.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -27,6 +28,7 @@
 #define DIV_CEIL(x, y) ((x) / (y) + (((x) % (y)) ? 1 : 0))
 #endif
 
+#ifndef STANDALONE
 PyObject*
 TTADecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     decoders_TTADecoder *self;
@@ -251,6 +253,7 @@ TTADecoder_close(decoders_TTADecoder* self, PyObject *args)
     Py_INCREF(Py_None);
     return Py_None;
 }
+#endif
 
 static void
 init_cache(struct tta_cache *cache)
@@ -633,3 +636,172 @@ decorrelate_channels(array_ia* predicted,
     decorrelated->reverse(decorrelated);
     predicted->reverse(predicted);
 }
+
+#ifdef STANDALONE
+#include <errno.h>
+
+int main(int argc, char* argv[]) {
+    FILE* file;
+    BitstreamReader* bitstream;
+    BitstreamReader* frame;
+    struct tta_cache cache;
+    array_ia* framelist;
+    unsigned channels;
+    unsigned bits_per_sample;
+    unsigned sample_rate;
+    unsigned total_pcm_frames;
+    unsigned total_tta_frames;
+    unsigned current_tta_frame = 0;
+    unsigned block_size;
+    unsigned* seektable = NULL;
+    FrameList_int_to_char_converter converter;
+    unsigned output_data_size;
+    unsigned char* output_data;
+    unsigned bytes_per_sample;
+
+    /*open input file for reading*/
+    if ((file = fopen(argv[1], "rb")) == NULL) {
+        fprintf(stderr, "*** %s: %s\n", argv[1], strerror(errno));
+        return 1;
+    } else {
+        /*open bitstream and setup cache*/
+        bitstream = br_open(file, BS_LITTLE_ENDIAN);
+        frame = br_substream_new(BS_LITTLE_ENDIAN);
+        init_cache(&cache);
+        framelist = array_ia_new();
+        output_data_size = 1;
+        output_data = malloc(output_data_size);
+    }
+
+    /*read header*/
+    switch (read_header(bitstream,
+                        &channels,
+                        &bits_per_sample,
+                        &sample_rate,
+                        &total_pcm_frames)) {
+    default:
+        bytes_per_sample = bits_per_sample / 8;
+        break;
+    case INVALID_SIGNATURE:
+        fprintf(stderr, "invalid header signature\n");
+        goto error;
+    case UNSUPPORTED_FORMAT:
+        fprintf(stderr, "unsupported TTA format\n");
+        goto error;
+    case CRCMISMATCH:
+        fprintf(stderr, "CRC error reading header\n");
+        goto error;
+    case IOERROR:
+        fprintf(stderr, "I/O error reading header\n");
+        goto error;
+    }
+
+    /*determine the total number of TTA frames*/
+    total_tta_frames = (unsigned int)DIV_CEIL(
+        (uint64_t)(total_pcm_frames * 245),
+        (uint64_t)(sample_rate * 256));
+
+    /*determine the default block size*/
+    block_size = (unsigned int)DIV_CEIL((uint64_t)(sample_rate * 256), 245);
+
+    seektable = malloc(sizeof(unsigned int) * total_tta_frames);
+
+    /*read seektable*/
+    switch (read_seektable(bitstream,
+                           total_tta_frames,
+                           seektable)) {
+    default:
+        /*do nothing*/
+        break;
+    case CRCMISMATCH:
+        fprintf(stderr, "CRC error reading seektable\n");
+        goto error;
+    case IOERROR:
+        fprintf(stderr, "I/O error reading seektable\n");
+        goto error;
+    }
+
+    /*setup a framelist converter function*/
+    converter = FrameList_get_int_to_char_converter(bits_per_sample, 0, 1);
+
+    /*read TTA frames*/
+    while (total_pcm_frames) {
+        const unsigned frame_block_size = MIN(block_size, total_pcm_frames);
+        unsigned pcm_size;
+        unsigned c;
+        unsigned f;
+
+        br_substream_reset(frame);
+        if (!setjmp(*br_try(bitstream))) {
+            bitstream->substream_append(bitstream,
+                                        frame,
+                                        seektable[current_tta_frame++]);
+            br_etry(bitstream);
+        } else {
+            br_etry(bitstream);
+            fprintf(stderr, "I/O error reading frame\n");
+            goto error;
+        }
+
+        switch (read_frame(frame,
+                           &cache,
+                           frame_block_size,
+                           channels,
+                           bits_per_sample,
+                           framelist)) {
+        default:
+            /*convert framelist to string*/
+            pcm_size = (bits_per_sample / 8) * frame_block_size * channels;
+            if (pcm_size > output_data_size) {
+                output_data_size = pcm_size;
+                output_data = realloc(output_data, output_data_size);
+            }
+            for (c = 0; c < channels; c++) {
+                const array_i* channel_data = framelist->_[c];
+                for (f = 0; f < frame_block_size; f++) {
+                    converter(channel_data->_[f],
+                              output_data +
+                              ((f * channels) + c) *
+                              bytes_per_sample);
+                }
+            }
+
+            /*output framelist as string to stdout*/
+            fwrite(output_data, sizeof(unsigned char), pcm_size, stdout);
+
+            /*deduct block size from total*/
+            total_pcm_frames -= frame_block_size;
+            break;
+        case IOERROR:
+            fprintf(stderr, "I/O error during frame read\n");
+            goto error;
+        case CRCMISMATCH:
+            fprintf(stderr, "CRC mismatch reading frame\n");
+            goto error;
+        }
+    }
+
+    /*close bitstream and free cache*/
+    bitstream->close(bitstream);
+    frame->close(frame);
+    free(output_data);
+    free_cache(&cache);
+    framelist->del(framelist);
+    if (seektable != NULL)
+        free(seektable);
+
+    return 0;
+error:
+    bitstream->close(bitstream);
+    frame->close(frame);
+    free(output_data);
+    free_cache(&cache);
+    framelist->del(framelist);
+    if (seektable != NULL)
+        free(seektable);
+
+    return 1;
+}
+
+#include "../common/tta_crc.c"
+#endif

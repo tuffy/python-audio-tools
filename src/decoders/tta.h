@@ -41,6 +41,7 @@ struct tta_cache {
     array_ia* predicted;
 };
 
+#ifndef STANDALONE
 typedef struct {
     PyObject_HEAD
 
@@ -160,6 +161,7 @@ PyTypeObject decoders_TTADecoderType = {
     0,                         /* tp_alloc */
     TTADecoder_new,            /* tp_new */
   };
+#endif
 
 static void
 init_cache(struct tta_cache *cache);

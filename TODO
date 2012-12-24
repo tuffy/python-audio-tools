@@ -6217,9 +6217,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Add Python-based True Audio encoder
 *** DONE Document True Audio decoding
 *** DONE Document True Audio encoding
-*** TODO Add C-based True Audio decoder
-**** TODO modify it for standalone use
-**** TODO ensure there's no memory errors or leaks
+*** DONE Add C-based True Audio decoder
+**** DONE modify it for standalone use
+**** DONE ensure there's no memory errors or leaks
 *** TODO Add C-based True Audio encoder
 **** TODO modify it for standalone use
 **** TODO ensure there's no memory errors or leaks
