@@ -146,12 +146,16 @@ $\FRAMECRC \rightarrow$ \WRITE 32 unsigned bits\;
 \SetKwData{BLOCKSIZE}{block size}
 \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
   \eIf{$c < (\CHANNELS - 1)$}{
-    $\text{\CORRELATED}_{c~i} \leftarrow \text{\CHANNEL}_{(c + 1)~i} - \text{\CHANNEL}_{c~i}$\;
+    \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
+      $\text{\CORRELATED}_{c~i} \leftarrow \text{\CHANNEL}_{(c + 1)~i} - \text{\CHANNEL}_{c~i}$\;
+    }
   }{
-    \eIf(\tcc*[f]{round toward zero}){$\text{\CORRELATED}_{(c - 1)~i} \geq 0$}{
+    \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
+      \eIf(\tcc*[f]{round toward zero}){$\text{\CORRELATED}_{(c - 1)~i} \geq 0$}{
       $\text{\CORRELATED}_{c~i} \leftarrow \text{\CHANNEL}_{c~i} - \lfloor\text{\CORRELATED}_{(c - 1)~i} \div 2\rfloor$\;
-    }{
-      $\text{\CORRELATED}_{c~i} \leftarrow \text{\CHANNEL}_{c~i} - \lceil\text{\CORRELATED}_{(c - 1)~i} \div 2\rceil$\;
+      }{
+        $\text{\CORRELATED}_{c~i} \leftarrow \text{\CHANNEL}_{c~i} - \lceil\text{\CORRELATED}_{(c - 1)~i} \div 2\rceil$\;
+      }
     }
   }
 }

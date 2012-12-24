@@ -21,89 +21,32 @@ from audiotools.bitstream import BitstreamWriter
 from audiotools import BufferedPCMReader
 
 
-def write_header(writer,
-                 channels,
-                 bits_per_sample,
-                 sample_rate,
-                 total_pcm_frames):
-    """writes a TTA header to the given BitstreamWriter
-    with the given int attributes"""
-
-    crc = CRC32()
-    writer.add_callback(crc.update)
-    writer.build("4b 16u 16u 16u 32u 32u",
-                 ["TTA1",
-                  1,
-                  channels,
-                  bits_per_sample,
-                  sample_rate,
-                  total_pcm_frames])
-    writer.pop_callback()
-    writer.write(32, int(crc))
-
-
-def write_seektable(writer, frame_sizes):
-    """writes a TTA header to the given BitstreamWriter
-    where frame_sizes is a list of frame sizes, in bytes"""
-
-    crc = CRC32()
-    writer.add_callback(crc.update)
-    writer.build("32U" * len(frame_sizes), frame_sizes)
-    writer.pop_callback()
-    writer.write(32, int(crc))
-
-
 def div_ceil(n, d):
     """returns the ceiling of n divided by d as an int"""
 
     return n // d + (1 if ((n % d) != 0) else 0)
 
 
-def encode_tta(filename, pcmreader):
-    #FIXME - move much of this routine to TTAAudio.from_pcm()
-    #so that the encoder core doesn't have to work with temp files
+def encode_tta(file, pcmreader):
+    """given a file object and buffered PCMReader,
+    writes TTA frames to the writer
+    and returns a list of TTA frame lengths, in bytes"""
 
-    import tempfile
-    from audiotools import transfer_data
-
-    pcmreader = BufferedPCMReader(pcmreader)
-
+    writer = BitstreamWriter(file, True)
     block_size = div_ceil(pcmreader.sample_rate * 256, 245)
-    frames = tempfile.TemporaryFile()
-    frame_writer = BitstreamWriter(frames, True)
     frame_sizes = []
-    total_pcm_frames = 0
 
     #encode FrameLists from PCMReader to temporary space
     framelist = pcmreader.read(block_size)
     while (len(framelist) > 0):
-        total_pcm_frames += framelist.frames
-        frame_sizes.append(encode_tta_frame(frame_writer,
+        frame_sizes.append(encode_tta_frame(writer,
                                             pcmreader.bits_per_sample,
                                             framelist))
         framelist = pcmreader.read(block_size)
 
-    frame_writer.flush()
+    writer.flush()
 
-    file = open(filename, "wb")
-    writer = BitstreamWriter(file, True)
-
-    #write header to disk
-    write_header(writer,
-                 pcmreader.channels,
-                 pcmreader.bits_per_sample,
-                 pcmreader.sample_rate,
-                 total_pcm_frames)
-
-    #write seektable to disk
-    write_seektable(writer, frame_sizes)
-
-    #transfer TTA frames from temporary space to disk
-    frames.seek(0, 0)
-    transfer_data(frames.read, file.write)
-    frames.close()
-
-    file.close()
+    return frame_sizes
 
 
 def encode_tta_frame(writer, bits_per_sample, framelist):

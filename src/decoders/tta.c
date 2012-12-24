@@ -119,8 +119,7 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
 
     /*determine the default block size*/
     self->block_size = (unsigned int)DIV_CEIL(
-        (uint64_t)(self->header.sample_rate * 256),
-        245);
+        (uint64_t)(self->header.sample_rate * 256), 245);
 
     self->seektable = malloc(sizeof(unsigned int) * self->total_tta_frames);
 
@@ -516,7 +515,7 @@ hybrid_filter(array_i* residual,
         int f;
 
         if (i == 0) {
-            f = residual->_[i] + (round >> shift);
+            f = residual->_[0] + (round >> shift);
         } else {
             int64_t sum;
 
