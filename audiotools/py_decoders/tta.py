@@ -335,11 +335,7 @@ class TTADecoder:
                              True)
         else:
             #decorrelate channels
-            for ch in predicted:
-                print "predicted : %s" % (ch)
             decorrelated = decorrelate(predicted)
-            for ch in decorrelated:
-                print "decorrelated : %s" % (ch)
 
             #return all channels as single FrameList
             return from_channels([from_list(decorrelated_ch,

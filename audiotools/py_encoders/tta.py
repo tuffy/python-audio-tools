@@ -56,8 +56,8 @@ def encode_tta_frame(writer, bits_per_sample, framelist):
     writer.add_callback(frame_crc.update)
 
     #correlate channels
-    if (len(framelist) == 1):
-        correlated = list(framelist.frame(0))
+    if (framelist.channels == 1):
+        correlated = [list(framelist.channel(0))]
     else:
         correlated = correlate_channels([list(framelist.channel(i))
                                          for i in xrange(framelist.channels)])
@@ -124,6 +124,8 @@ def encode_tta_frame(writer, bits_per_sample, framelist):
 def correlate_channels(framelist):
     channels = len(framelist)
     pcm_frames = len(framelist[0])
+
+    assert(channels > 1)
 
     correlated = []
 

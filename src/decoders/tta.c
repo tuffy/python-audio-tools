@@ -407,7 +407,7 @@ read_frame(BitstreamReader* frame,
                     unsigned unshifted = ((MSB - 1) << k1->_[c]) + LSB;
                     u = unshifted + (1 << k0->_[c]);
                     sum1->_[c] += unshifted - (sum1->_[c] >> 4);
-                    if ((sum1->_[c] > 0) &&
+                    if ((k1->_[c] > 0) &&
                         (sum1->_[c] < (1 << (k1->_[c] + 4)))) {
                         k1->_[c] -= 1;
                     } else if (sum1->_[c] > (1 << (k1->_[c] + 5))) {
@@ -415,7 +415,7 @@ read_frame(BitstreamReader* frame,
                     }
                 }
                 sum0->_[c] += u - (sum0->_[c] >> 4);
-                if ((sum0->_[c] > 0) &&
+                if ((k0->_[c] > 0) &&
                     (sum0->_[c] < (1 << (k0->_[c] + 4)))) {
                     k0->_[c] -= 1;
                 } else if (sum0->_[c] > (1 << (k0->_[c] + 5))) {

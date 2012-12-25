@@ -5946,6 +5946,487 @@ class WavPackFileTest(TestForeignWaveChunks,
                 test_python_reader(g, **opts)
 
 
+class TTAFileTest(LosslessFileTest):
+    def setUp(self):
+        self.audio_class = audiotools.TrueAudio
+        self.suffix = "." + self.audio_class.SUFFIX
+
+        from audiotools.decoders import TTADecoder
+
+        self.decoder = TTADecoder
+        self.encode = audiotools.TrueAudio.from_pcm
+
+    @FORMAT_TTA
+    def test_init(self):
+        #check missing file
+        self.assertRaises(audiotools.tta.InvalidTTA,
+                          audiotools.TrueAudio,
+                          "/dev/null/foo")
+
+        #check invalid file
+        invalid_file = tempfile.NamedTemporaryFile(suffix=".tta")
+        try:
+            for c in "invalidstringxxx":
+                invalid_file.write(c)
+                invalid_file.flush()
+                self.assertRaises(audiotools.tta.InvalidTTA,
+                                  audiotools.TrueAudio,
+                                  invalid_file.name)
+        finally:
+            invalid_file.close()
+
+        #check some decoder errors
+        self.assertRaises(TypeError, self.decoder)
+
+        self.assertRaises(TypeError, self.decoder, None)
+
+        self.assertRaises(IOError, self.decoder, "/dev/null/foo")
+
+        self.assertRaises(IOError, self.decoder, "/dev/null", sample_rate=-1)
+
+    @FORMAT_TTA
+    def test_verify(self):
+        tta_data = open("trueaudio.tta", "rb").read()
+
+        self.assertEqual(audiotools.open("trueaudio.tta").verify(), True)
+
+        #try changing the file underfoot
+        temp = tempfile.NamedTemporaryFile(suffix=".tta")
+        try:
+            temp.write(tta_data)
+            temp.flush()
+            tta_file = audiotools.open(temp.name)
+            self.assertEqual(tta_file.verify(), True)
+
+            for i in xrange(0, len(tta_data)):
+                f = open(temp.name, "wb")
+                f.write(tta_data[0:i])
+                f.close()
+                self.assertRaises(audiotools.InvalidFile,
+                                  tta_file.verify)
+
+            for i in xrange(0x2A, len(tta_data)):
+                for j in xrange(8):
+                    new_data = list(tta_data)
+                    new_data[i] = chr(ord(new_data[i]) ^ (1 << j))
+                    f = open(temp.name, "wb")
+                    f.write("".join(new_data))
+                    f.close()
+                    self.assertRaises(audiotools.InvalidFile,
+                                      tta_file.verify)
+        finally:
+            temp.close()
+
+        #check a TTA file with a short header
+        temp = tempfile.NamedTemporaryFile(suffix=".tta")
+        try:
+            for i in xrange(0, 18):
+                temp.seek(0, 0)
+                temp.write(tta_data[0:i])
+                temp.flush()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                if (i < 4):
+                    self.assertEqual(
+                        audiotools.file_type(open(temp.name, "rb")),
+                        None)
+                self.assertRaises(IOError,
+                                  audiotools.decoders.TTADecoder,
+                                  temp.name, 1)
+        finally:
+            temp.close()
+
+        #check a TTA file that's been truncated
+        temp = tempfile.NamedTemporaryFile(suffix=".tta")
+        try:
+            for i in xrange(30, len(tta_data)):
+                temp.seek(0, 0)
+                temp.write(tta_data[0:i])
+                temp.flush()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                decoder = audiotools.open(temp.name).to_pcm()
+                self.assertNotEqual(decoder, None)
+                self.assertRaises(IOError,
+                                  audiotools.transfer_framelist_data,
+                                  decoder, lambda x: x)
+
+                self.assertRaises(audiotools.InvalidFile,
+                                  audiotools.open(temp.name).verify)
+        finally:
+            temp.close()
+
+        #check a TTA file with a single swapped bit
+        temp = tempfile.NamedTemporaryFile(suffix=".tta")
+        try:
+            for i in xrange(0x30, len(tta_data)):
+                for j in xrange(8):
+                    bytes = map(ord, tta_data[:])
+                    bytes[i] ^= (1 << j)
+                    temp.seek(0, 0)
+                    temp.write("".join(map(chr, bytes)))
+                    temp.flush()
+                    self.assertEqual(len(tta_data),
+                                     os.path.getsize(temp.name))
+
+                    decoders = audiotools.open(temp.name).to_pcm()
+                    try:
+                        self.assertRaises(ValueError,
+                                          audiotools.transfer_framelist_data,
+                                          decoders, lambda x: x)
+                    except IOError:
+                        #Randomly swapping bits may send the decoder
+                        #off the end of the stream before triggering
+                        #a CRC-16 error.
+                        #We simply need to catch that case and continue on.
+                        continue
+        finally:
+            temp.close()
+
+    def __stream_variations__(self):
+        for stream in [
+            test_streams.Sine8_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+            test_streams.Sine8_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+            test_streams.Sine8_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+            test_streams.Sine8_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+            test_streams.Sine8_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
+
+            test_streams.Sine8_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+            test_streams.Sine8_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+            test_streams.Sine8_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+            test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+            test_streams.Sine8_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+            test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+            test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+            test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+            test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+            test_streams.Sine8_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
+
+            test_streams.Sine16_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+            test_streams.Sine16_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+            test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+            test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+            test_streams.Sine16_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
+
+            test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+            test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+            test_streams.Sine16_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+            test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+            test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+            test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
+
+            test_streams.Sine24_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+            test_streams.Sine24_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+            test_streams.Sine24_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+            test_streams.Sine24_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+            test_streams.Sine24_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
+
+            test_streams.Sine24_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+            test_streams.Sine24_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+            test_streams.Sine24_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+            test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+            test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+            test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
+
+            test_streams.Simple_Sine(200000, 44100, 0x7, 8,
+                                     (25, 10000),
+                                     (50, 20000),
+                                     (120, 30000)),
+            test_streams.Simple_Sine(200000, 44100, 0x33, 8,
+                                     (25, 10000),
+                                     (50, 20000),
+                                     (75, 30000),
+                                     (65, 40000)),
+            test_streams.Simple_Sine(200000, 44100, 0x37, 8,
+                                     (25, 10000),
+                                     (35, 15000),
+                                     (45, 20000),
+                                     (50, 25000),
+                                     (55, 30000)),
+            test_streams.Simple_Sine(200000, 44100, 0x3F, 8,
+                                     (25, 10000),
+                                     (45, 15000),
+                                     (65, 20000),
+                                     (85, 25000),
+                                     (105, 30000),
+                                     (120, 35000)),
+
+            test_streams.Simple_Sine(200000, 44100, 0x7, 16,
+                                     (6400, 10000),
+                                     (12800, 20000),
+                                     (30720, 30000)),
+            test_streams.Simple_Sine(200000, 44100, 0x33, 16,
+                                     (6400, 10000),
+                                     (12800, 20000),
+                                     (19200, 30000),
+                                     (16640, 40000)),
+            test_streams.Simple_Sine(200000, 44100, 0x37, 16,
+                                     (6400, 10000),
+                                     (8960, 15000),
+                                     (11520, 20000),
+                                     (12800, 25000),
+                                     (14080, 30000)),
+            test_streams.Simple_Sine(200000, 44100, 0x3F, 16,
+                                     (6400, 10000),
+                                     (11520, 15000),
+                                     (16640, 20000),
+                                     (21760, 25000),
+                                     (26880, 30000),
+                                     (30720, 35000)),
+
+            test_streams.Simple_Sine(200000, 44100, 0x7, 24,
+                                     (1638400, 10000),
+                                     (3276800, 20000),
+                                     (7864320, 30000)),
+            test_streams.Simple_Sine(200000, 44100, 0x33, 24,
+                                     (1638400, 10000),
+                                     (3276800, 20000),
+                                     (4915200, 30000),
+                                     (4259840, 40000)),
+            test_streams.Simple_Sine(200000, 44100, 0x37, 24,
+                                     (1638400, 10000),
+                                     (2293760, 15000),
+                                     (2949120, 20000),
+                                     (3276800, 25000),
+                                     (3604480, 30000)),
+            test_streams.Simple_Sine(200000, 44100, 0x3F, 24,
+                                     (1638400, 10000),
+                                     (2949120, 15000),
+                                     (4259840, 20000),
+                                     (5570560, 25000),
+                                     (6881280, 30000),
+                                     (7864320, 35000))]:
+            yield stream
+
+    def __test_reader__(self, pcmreader):
+        if (not audiotools.BIN.can_execute(audiotools.BIN["tta"])):
+            self.assert_(
+                False,
+                "reference TrueAudio binary tta(1) required for this test")
+
+        temp_tta_file = tempfile.NamedTemporaryFile(suffix=".tta")
+        self.encode(temp_tta_file.name, pcmreader)
+
+        if ((pcmreader.bits_per_sample > 8) and (pcmreader.channels <= 6)):
+            #reference decoder doesn't like 8 bit .wav files?!
+            #or files with too many channels?
+            temp_wav_file = tempfile.NamedTemporaryFile(suffix=".wav")
+            sub = subprocess.Popen([audiotools.BIN["tta"],
+                                    "-d", temp_tta_file.name,
+                                    temp_wav_file.name],
+                                   stdout=open(os.devnull, "wb"),
+                                   stderr=open(os.devnull, "wb"))
+            self.assertEqual(sub.wait(), 0,
+                             "tta decode error on %s" % (repr(pcmreader)))
+        else:
+            temp_wav_file = None
+
+        tta = self.decoder(temp_tta_file.name)
+        self.assertEqual(tta.sample_rate, pcmreader.sample_rate)
+        self.assertEqual(tta.bits_per_sample, pcmreader.bits_per_sample)
+        self.assertEqual(tta.channels, pcmreader.channels)
+
+        md5sum = md5()
+        f = tta.read(audiotools.FRAMELIST_SIZE)
+        while (len(f) > 0):
+            md5sum.update(f.to_bytes(False, True))
+            f = tta.read(audiotools.FRAMELIST_SIZE)
+        tta.close()
+        self.assertEqual(md5sum.digest(), pcmreader.digest())
+        temp_tta_file.close()
+
+        if (temp_wav_file is not None):
+            wav_md5sum = md5()
+            audiotools.transfer_framelist_data(
+                audiotools.WaveAudio(temp_wav_file.name).to_pcm(),
+                wav_md5sum.update)
+            self.assertEqual(md5sum.digest(), wav_md5sum.digest())
+            temp_wav_file.close()
+
+    @FORMAT_TTA
+    def test_small_files(self):
+        for g in [test_streams.Generate01,
+                  test_streams.Generate02,
+                  test_streams.Generate03,
+                  test_streams.Generate04]:
+            gen = g(44100)
+            self.__test_reader__(gen)
+
+    @FORMAT_TTA
+    def test_full_scale_deflection(self):
+        for (bps, fsd) in [(8, test_streams.fsd8),
+                           (16, test_streams.fsd16),
+                           (24, test_streams.fsd24)]:
+            for pattern in [test_streams.PATTERN01,
+                            test_streams.PATTERN02,
+                            test_streams.PATTERN03,
+                            test_streams.PATTERN04,
+                            test_streams.PATTERN05,
+                            test_streams.PATTERN06,
+                            test_streams.PATTERN07]:
+                print "%s - %s - %s" % (bps, fsd, pattern)
+                self.__test_reader__(
+                    test_streams.MD5Reader(fsd(pattern, 100)))
+
+    @FORMAT_TTA
+    def test_wasted_bps(self):
+        self.__test_reader__(test_streams.WastedBPS16(1000))
+
+    @FORMAT_TTA
+    def test_silence(self):
+        for (channels, mask) in [
+            (1, audiotools.ChannelMask.from_channels(1)),
+            (2, audiotools.ChannelMask.from_channels(2)),
+            (4, audiotools.ChannelMask.from_fields(
+                    front_left=True,
+                    front_right=True,
+                    back_left=True,
+                    back_right=True)),
+            (8, audiotools.ChannelMask(0))]:
+            for bps in [8, 16, 24]:
+                self.__test_reader__(MD5_Reader(
+                        EXACT_SILENCE_PCM_Reader(
+                            pcm_frames=65536,
+                            sample_rate=44100,
+                            channels=channels,
+                            channel_mask=mask,
+                            bits_per_sample=bps)))
+    @FORMAT_TTA
+    def test_noise(self):
+        for (channels, mask) in [
+            (1, audiotools.ChannelMask.from_channels(1)),
+            (2, audiotools.ChannelMask.from_channels(2)),
+            (4, audiotools.ChannelMask.from_fields(
+                    front_left=True,
+                    front_right=True,
+                    back_left=True,
+                    back_right=True)),
+            (8, audiotools.ChannelMask(0))]:
+            for bps in [8, 16, 24]:
+                self.__test_reader__(
+                    MD5_Reader(EXACT_RANDOM_PCM_Reader(
+                            pcm_frames=65536,
+                            sample_rate=44100,
+                            channels=channels,
+                            channel_mask=mask,
+                            bits_per_sample=bps)))
+
+    @FORMAT_TTA
+    def test_sines(self):
+        self.assert_(False)
+        for g in self.__stream_variations__():
+            print repr(g)
+            self.__test_reader__(g)
+
+    @FORMAT_TTA
+    def test_multichannel(self):
+        def __permutations__(executables, options, total):
+            if (total == 0):
+                yield []
+            else:
+                for (executable, option) in zip(executables,
+                                                options):
+                    for permutation in __permutations__(executables,
+                                                         options,
+                                                         total - 1):
+                        yield [executable(**option)] + permutation
+
+
+        for (channels, mask) in [(2, 0x3), (3, 0x7), (4, 0x33),
+                                 (5, 0x3B), (6, 0x3F)]:
+            for readers in __permutations__([
+                    EXACT_BLANK_PCM_Reader,
+                    EXACT_RANDOM_PCM_Reader,
+                    test_streams.Sine16_Mono],
+                                                [
+                    {"pcm_frames": 100,
+                     "sample_rate": 44100,
+                     "channels": 1,
+                     "bits_per_sample": 16},
+                    {"pcm_frames": 100,
+                     "sample_rate": 44100,
+                     "channels": 1,
+                     "bits_per_sample": 16},
+                    {"pcm_frames": 100,
+                     "sample_rate": 44100,
+                     "f1": 441.0,
+                     "a1": 0.61,
+                     "f2": 661.5,
+                     "a2": 0.37}],
+                                            channels):
+                    self.__test_reader__(
+                        MD5_Reader(Join_Reader(readers, mask)))
+
+    @FORMAT_TTA
+    def test_fractional(self):
+        for pcm_frames in [46078, 46079, 46080, 46081, 46082]:
+            self.__test_reader__(
+                MD5_Reader(EXACT_RANDOM_PCM_Reader(
+                        pcm_frames=pcm_frames,
+                        sample_rate=44100,
+                        channels=2,
+                        bits_per_sample=16)))
+
+    @FORMAT_TTA
+    def test_python_codec(self):
+        def test_python_reader(pcmreader):
+            from audiotools.py_encoders import encode_tta
+
+            #encode file using Python-based encoder
+            temp_file = tempfile.NamedTemporaryFile(suffix=".tta")
+            self.encode(temp_file.name, pcmreader, encode_tta)
+
+            #verify contents of file decoded by
+            #Python-based decoder against contents decoded by
+            #C-based decoder
+            from audiotools.py_decoders import TTADecoder as TTADecoder1
+            from audiotools.decoders import TTADecoder as TTADecoder2
+
+            self.assertEqual(audiotools.pcm_frame_cmp(
+                    TTADecoder1(temp_file.name),
+                    TTADecoder2(temp_file.name)), None)
+
+            temp_file.close()
+
+
+        #test small files
+        for g in [test_streams.Generate01,
+                  test_streams.Generate02,
+                  test_streams.Generate03,
+                  test_streams.Generate04]:
+            test_python_reader(g(44100))
+
+        #test full-scale deflection
+        #FIXME
+        for (bps, fsd) in [(8, test_streams.fsd8),
+                           (16, test_streams.fsd16),
+                           (24, test_streams.fsd24)]:
+            for pattern in [test_streams.PATTERN01,
+                            test_streams.PATTERN02,
+                            test_streams.PATTERN03,
+                            test_streams.PATTERN04,
+                            test_streams.PATTERN05,
+                            test_streams.PATTERN06,
+                            test_streams.PATTERN07]:
+                print "%s : %s : %s" % (bps, fsd, pattern)
+                test_python_reader(fsd(pattern, 100))
+
+        #test sines
+        #FIXME
+
+        #test wasted BPS
+        #FIXME
+
+        #test fractional blocks
+        #FIXME
+
+
 class SineStreamTest(unittest.TestCase):
     @FORMAT_SINES
     def test_init(self):

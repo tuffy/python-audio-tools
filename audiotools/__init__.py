@@ -1369,6 +1369,8 @@ def file_type(file):
         else:
             #unknown file after ID3 tag
             return None
+    elif (header[0:4] == "TTA1"):
+        return TrueAudio
     else:
         return None
 
@@ -5218,6 +5220,7 @@ from .vorbis import VorbisAudio
 from .m4a import M4AAudio
 from .m4a import ALACAudio
 from .opus import OpusAudio
+from .tta import TrueAudio
 
 from .ape import ApeTag
 from .flac import FlacMetaData
@@ -5242,7 +5245,8 @@ AVAILABLE_TYPES = (FlacAudio,
                    ALACAudio,
                    WavPackAudio,
                    ShortenAudio,
-                   OpusAudio)
+                   OpusAudio,
+                   TrueAudio)
 
 TYPE_MAP = dict([(track_type.NAME, track_type)
                  for track_type in AVAILABLE_TYPES

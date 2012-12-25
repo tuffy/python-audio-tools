@@ -6217,16 +6217,18 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Add Python-based True Audio encoder
 *** DONE Document True Audio decoding
 *** DONE Document True Audio encoding
-*** DONE Add C-based True Audio decoder
+*** TODO Add C-based True Audio decoder
 **** DONE modify it for standalone use
 **** DONE ensure there's no memory errors or leaks
+**** TODO Make decoder thread-friendly
 *** DONE Add C-based True Audio encoder
 **** DONE modify it for standalone use
 **** DONE ensure there's no memory errors or leaks
+**** DONE make encoder thread-friendly
 *** TODO Add True Audio-specific unit tests
 *** TODO Test encoder/decoder against reference
-*** TODO Add True Audio detecter to file_type() function
-*** TODO Add True Audio AudioFile class
+*** DONE Add True Audio detecter to file_type() function
+*** DONE Add True Audio AudioFile class
 *** TODO Ensure True Audio class passes all unit tests
 ** TODO Make decoder streams seekable
    PCMReader.seek(pcm_frames) -> pcm_frames skipped

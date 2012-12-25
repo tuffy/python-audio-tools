@@ -71,11 +71,13 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
     if (pcmreader->read(pcmreader, block_size, framelist))
         goto error;
     while (framelist->_[0]->len) {
+        Py_BEGIN_ALLOW_THREADS
         frame_sizes->append(frame_sizes,
                             encode_frame(output,
                                          &cache,
                                          framelist,
                                          pcmreader->bits_per_sample));
+        Py_END_ALLOW_THREADS
         if (pcmreader->read(pcmreader, block_size, framelist))
             goto error;
     }
@@ -225,7 +227,7 @@ encode_frame(BitstreamWriter* output,
 
                 /*update k1 and sum1*/
                 sum1->_[c] += shifted - (sum1->_[c] >> 4);
-                if ((sum1->_[c] > 0) &&
+                if ((k1->_[c] > 0) &&
                     (sum1->_[c] < (1 << (k1->_[c] + 4)))) {
                     k1->_[c] -= 1;
                 } else if (sum1->_[c] > (1 << (k1->_[c] + 5))) {
@@ -235,7 +237,7 @@ encode_frame(BitstreamWriter* output,
 
             /*update k0 and sum0*/
             sum0->_[c] += u - (sum0->_[c] >> 4);
-            if ((sum0->_[c] > 0) &&
+            if ((k0->_[c] > 0) &&
                 (sum0->_[c] < (1 << (k0->_[c] + 4)))) {
                 k0->_[c] -= 1;
             } else if (sum0->_[c] > (1 << (k0->_[c] + 5))) {
