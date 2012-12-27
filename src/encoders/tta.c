@@ -59,8 +59,7 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
         return NULL;
     } else {
         /*initialize temporary buffers*/
-        block_size = (unsigned)DIV_CEIL(
-            (uint64_t)(pcmreader->sample_rate * 256), 245);
+        block_size = (pcmreader->sample_rate * 256) / 245;
         output = bw_open(output_file, BS_LITTLE_ENDIAN);
         framelist = array_ia_new();
         cache_init(&cache);
@@ -525,7 +524,7 @@ int main(int argc, char* argv[]) {
 
     total_tta_frames = (unsigned)DIV_CEIL((uint64_t)total_pcm_frames * 245,
                                           (uint64_t)sample_rate * 256);
-    block_size = (unsigned)DIV_CEIL((uint64_t)sample_rate * 256, 245);
+    block_size = (sample_rate * 256) / 245;
 
     /*open output file for writing*/
     if ((file = fopen(output_file, "wb")) == NULL) {

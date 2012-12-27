@@ -39,7 +39,7 @@ $\HEADERCRC \rightarrow$ \WRITE 32 unsigned bits\;
 $0 \rightarrow$ \WRITE 32 unsigned bits\;
 \BlankLine
 \tcc{write frames}
-$\BLOCKSIZE \leftarrow \lceil(\SAMPLERATE \times 256) \div 245\rceil$\;
+$\BLOCKSIZE \leftarrow \lfloor(\SAMPLERATE \times 256) \div 245\rfloor$\;
 $i \leftarrow 0$\;
 \While{PCM frames remain}{
   $\text{\FRAMESIZE}_i \leftarrow$ \hyperref[tta:encode_frame]{encode TTA frame from up to \BLOCKSIZE PCM frames}\;
@@ -315,6 +315,13 @@ and 16 bits per sample:
         }
       }
       $\SUM \leftarrow \ROUND + \overset{7}{\underset{j = 0}{\sum}}\text{\DL}_j \times \text{\QM}'_j$\;
+      \tcc{Due to a flaw in True Audio's hybrid filter reference implementation, sum's value must be truncated to a signed 32-bit integer.  This will result in larger files in some instances.}
+      \While{$\SUM \geq 2 ^ {31}$}{
+        $\SUM' \leftarrow \SUM - 2 ^ {32}$\;
+      }
+      \While{$\SUM < -2 ^ {31}$}{
+        $\SUM' \leftarrow \SUM + 2 ^ {32}$\;
+      }
       $\text{\RESIDUAL}_i \leftarrow \text{\PREDICTED}_i - \lfloor\SUM \div 2 ^ {\SHIFT}\rfloor$\;
     }
     \begin{tabular}{rcl}

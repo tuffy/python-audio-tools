@@ -50,7 +50,7 @@ The total number of TTA frames in a file is:
 \begin{align*}
 \textsf{TTA frame count} &= \left\lceil\frac{\textsf{total PCM frames} \times 245}{\textsf{sample rate} \times 256}\right\rceil
 \intertext{and the size of each frame is:}
-\textsf{PCM frames per TTA frame} &= \left\lceil\frac{\textsf{sample rate} \times 256}{245}\right\rceil
+\textsf{PCM frames per TTA frame} &= \left\lfloor\frac{\textsf{sample rate} \times 256}{245}\right\rfloor
 \intertext{except for the last TTA frame, which uses the remainder.}
 \end{align*}
 \subsubsection{Seektable Example}

@@ -53,6 +53,12 @@ def tta_filter(bps, residuals):
 
             sum_ = round_ + sum([l * m for (l, m) in zip(dl, qm)])
 
+            #truncate sum to a 32-bit signed integer
+            while (sum_ >= (2 ** 31)):
+                sum_ -= (2 ** 32)
+            while (sum_ < -(2 ** 31)):
+                sum_ += (2 ** 32)
+
             filtered.append(residuals[i] + (sum_ >> shift))
 
         dx = [dx[1],
@@ -227,7 +233,7 @@ class TTADecoder:
         total_tta_frames = div_ceil(self.total_pcm_frames * 245,
                                     self.sample_rate * 256)
 
-        self.pcm_frames_per_tta_frame = div_ceil(self.sample_rate * 256, 245)
+        self.pcm_frames_per_tta_frame = (self.sample_rate * 256) / 245
 
         #read the seektable
         crc = CRC32()

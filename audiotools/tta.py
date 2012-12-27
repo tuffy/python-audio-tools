@@ -19,6 +19,7 @@
 
 
 from . import (AudioFile, InvalidFile)
+from .ape import ApeTaggedAudio, ApeGainedAudio
 
 
 #######################
@@ -29,7 +30,7 @@ class InvalidTTA(InvalidFile):
     pass
 
 
-class TrueAudio(AudioFile):
+class TrueAudio(ApeTaggedAudio, ApeGainedAudio, AudioFile):
     """a True Audio file"""
 
     SUFFIX = "tta"
@@ -88,16 +89,6 @@ class TrueAudio(AudioFile):
         """returns True if this track's data is stored losslessly"""
 
         return True
-
-    def update_metadata(self, metadata):
-        """takes this track's current MetaData object
-        as returned by get_metadata() and sets this track's metadata
-        with any fields updated in that object
-
-        raises IOError if unable to write the file
-        """
-
-        raise NotImplementedError()
 
     def total_frames(self):
         """returns the total PCM frames of the track as an integer"""
@@ -192,6 +183,19 @@ class TrueAudio(AudioFile):
         file.close()
 
         return cls(filename)
+
+    @classmethod
+    def can_add_replay_gain(cls, audiofiles):
+        """given a list of audiofiles,
+        returns True if this class can add ReplayGain to those files
+        returns False if not"""
+
+        for audiofile in audiofiles:
+            if (not isinstance(audiofile, TrueAudio)):
+                return False
+        else:
+            return True
+
 
 
 def write_header(writer,

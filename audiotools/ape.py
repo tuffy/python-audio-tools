@@ -997,6 +997,84 @@ class ApeTaggedAudio:
             rewritten.close()
 
 
+class ApeGainedAudio:
+    @classmethod
+    def add_replay_gain(cls, filenames, progress=None):
+        """adds ReplayGain values to a list of filename strings
+
+        all the filenames must be of this AudioFile type
+        raises ValueError if some problem occurs during ReplayGain application
+        """
+
+        from . import open_files
+        from . import calculate_replay_gain
+
+        tracks = [track for track in open_files(filenames) if
+                  isinstance(track, cls)]
+
+        if (len(tracks) > 0):
+            for (track,
+                 track_gain,
+                 track_peak,
+                 album_gain,
+                 album_peak) in calculate_replay_gain(tracks, progress):
+                metadata = track.get_metadata()
+                if (metadata is None):
+                    metadata = ApeTag([])
+
+                metadata["replaygain_track_gain"] = ApeTagItem.string(
+                    "replaygain_track_gain",
+                    u"%+1.2f dB" % (track_gain))
+                metadata["replaygain_track_peak"] = ApeTagItem.string(
+                    "replaygain_track_peak",
+                    u"%1.6f" % (track_peak))
+                metadata["replaygain_album_gain"] = ApeTagItem.string(
+                    "replaygain_album_gain",
+                    u"%+1.2f dB" % (album_gain))
+                metadata["replaygain_album_peak"] = ApeTagItem.string(
+                    "replaygain_album_peak",
+                    u"%1.6f" % (album_peak))
+
+                track.update_metadata(metadata)
+
+    @classmethod
+    def supports_replay_gain(cls):
+        """returns True if this class supports ReplayGain"""
+
+        return True
+
+    @classmethod
+    def lossless_replay_gain(cls):
+        """returns True"""
+
+        return True
+
+    def replay_gain(self):
+        """returns a ReplayGain object of our ReplayGain values
+
+        returns None if we have no values"""
+
+        from . import ReplayGain
+
+        metadata = self.get_metadata()
+        if (metadata is None):
+            return None
+
+        if (set(['replaygain_track_gain', 'replaygain_track_peak',
+                 'replaygain_album_gain', 'replaygain_album_peak']).issubset(
+                metadata.keys())):  # we have ReplayGain data
+            try:
+                return ReplayGain(
+                    unicode(metadata['replaygain_track_gain'])[0:-len(" dB")],
+                    unicode(metadata['replaygain_track_peak']),
+                    unicode(metadata['replaygain_album_gain'])[0:-len(" dB")],
+                    unicode(metadata['replaygain_album_peak']))
+            except ValueError:
+                return None
+        else:
+            return None
+
+
 class ApeAudio(ApeTaggedAudio, AudioFile):
     """a Monkey's Audio file"""
 

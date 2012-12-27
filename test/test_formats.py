@@ -6270,7 +6270,6 @@ class TTAFileTest(LosslessFileTest):
                             test_streams.PATTERN05,
                             test_streams.PATTERN06,
                             test_streams.PATTERN07]:
-                print "%s - %s - %s" % (bps, fsd, pattern)
                 self.__test_reader__(
                     test_streams.MD5Reader(fsd(pattern, 100)))
 
@@ -6319,9 +6318,7 @@ class TTAFileTest(LosslessFileTest):
 
     @FORMAT_TTA
     def test_sines(self):
-        self.assert_(False)
         for g in self.__stream_variations__():
-            print repr(g)
             self.__test_reader__(g)
 
     @FORMAT_TTA
@@ -6376,23 +6373,49 @@ class TTAFileTest(LosslessFileTest):
     @FORMAT_TTA
     def test_python_codec(self):
         def test_python_reader(pcmreader):
+            if (not audiotools.BIN.can_execute(audiotools.BIN["tta"])):
+                self.assert_(
+                    False,
+                    "reference TrueAudio binary tta(1) required for this test")
+
             from audiotools.py_encoders import encode_tta
+            from audiotools.py_decoders import TTADecoder as TTADecoder1
+            from audiotools.decoders import TTADecoder as TTADecoder2
 
             #encode file using Python-based encoder
-            temp_file = tempfile.NamedTemporaryFile(suffix=".tta")
-            self.encode(temp_file.name, pcmreader, encode_tta)
+            temp_tta_file = tempfile.NamedTemporaryFile(suffix=".tta")
+            self.encode(temp_tta_file.name,
+                        pcmreader,
+                        encoding_function=encode_tta)
+
+            #verify against output of Python encoder
+            #against reference tta decoder
+            if ((pcmreader.bits_per_sample > 8) and (pcmreader.channels <= 6)):
+                #reference decoder doesn't like 8 bit .wav files?!
+                #or files with too many channels?
+                temp_wav_file = tempfile.NamedTemporaryFile(suffix=".wav")
+                sub = subprocess.Popen([audiotools.BIN["tta"],
+                                        "-d", temp_tta_file.name,
+                                        temp_wav_file.name],
+                                       stdout=open(os.devnull, "wb"),
+                                       stderr=open(os.devnull, "wb"))
+                self.assertEqual(sub.wait(), 0,
+                                 "tta decode error on %s" % (repr(pcmreader)))
+
+                self.assertEqual(audiotools.pcm_frame_cmp(
+                        TTADecoder2(temp_tta_file.name),
+                        audiotools.WaveAudio(temp_wav_file.name).to_pcm()),
+                                 None)
+                temp_wav_file.close()
 
             #verify contents of file decoded by
             #Python-based decoder against contents decoded by
             #C-based decoder
-            from audiotools.py_decoders import TTADecoder as TTADecoder1
-            from audiotools.decoders import TTADecoder as TTADecoder2
-
             self.assertEqual(audiotools.pcm_frame_cmp(
-                    TTADecoder1(temp_file.name),
-                    TTADecoder2(temp_file.name)), None)
+                    TTADecoder1(temp_tta_file.name),
+                    TTADecoder2(temp_tta_file.name)), None)
 
-            temp_file.close()
+            temp_tta_file.close()
 
 
         #test small files
@@ -6403,7 +6426,6 @@ class TTAFileTest(LosslessFileTest):
             test_python_reader(g(44100))
 
         #test full-scale deflection
-        #FIXME
         for (bps, fsd) in [(8, test_streams.fsd8),
                            (16, test_streams.fsd16),
                            (24, test_streams.fsd24)]:
@@ -6414,17 +6436,100 @@ class TTAFileTest(LosslessFileTest):
                             test_streams.PATTERN05,
                             test_streams.PATTERN06,
                             test_streams.PATTERN07]:
-                print "%s : %s : %s" % (bps, fsd, pattern)
                 test_python_reader(fsd(pattern, 100))
 
         #test sines
-        #FIXME
+        for g in [test_streams.Sine8_Mono(5000, 48000,
+                                          441.0, 0.50, 441.0, 0.49),
+                  test_streams.Sine8_Stereo(5000, 48000,
+                                            441.0, 0.50, 441.0, 0.49, 1.0),
+                  test_streams.Sine16_Mono(5000, 48000,
+                                           441.0, 0.50, 441.0, 0.49),
+                  test_streams.Sine16_Stereo(5000, 48000,
+                                             441.0, 0.50, 441.0, 0.49, 1.0),
+                  test_streams.Sine24_Mono(5000, 48000,
+                                           441.0, 0.50, 441.0, 0.49),
+                  test_streams.Sine24_Stereo(5000, 48000,
+                                             441.0, 0.50, 441.0, 0.49, 1.0),
+                  test_streams.Simple_Sine(5000, 44100, 0x7, 8,
+                                           (25, 10000),
+                                           (50, 20000),
+                                           (120, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x33, 8,
+                                           (25, 10000),
+                                           (50, 20000),
+                                           (75, 30000),
+                                           (65, 40000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x37, 8,
+                                           (25, 10000),
+                                           (35, 15000),
+                                           (45, 20000),
+                                           (50, 25000),
+                                           (55, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x3F, 8,
+                                           (25, 10000),
+                                           (45, 15000),
+                                           (65, 20000),
+                                           (85, 25000),
+                                           (105, 30000),
+                                           (120, 35000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x7, 16,
+                                           (6400, 10000),
+                                           (12800, 20000),
+                                           (30720, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x33, 16,
+                                           (6400, 10000),
+                                           (12800, 20000),
+                                           (19200, 30000),
+                                           (16640, 40000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x37, 16,
+                                           (6400, 10000),
+                                           (8960, 15000),
+                                           (11520, 20000),
+                                           (12800, 25000),
+                                           (14080, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x3F, 16,
+                                           (6400, 10000),
+                                           (11520, 15000),
+                                           (16640, 20000),
+                                           (21760, 25000),
+                                           (26880, 30000),
+                                           (30720, 35000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x7, 24,
+                                           (1638400, 10000),
+                                           (3276800, 20000),
+                                           (7864320, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x33, 24,
+                                           (1638400, 10000),
+                                           (3276800, 20000),
+                                           (4915200, 30000),
+                                           (4259840, 40000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x37, 24,
+                                           (1638400, 10000),
+                                           (2293760, 15000),
+                                           (2949120, 20000),
+                                           (3276800, 25000),
+                                           (3604480, 30000)),
+                  test_streams.Simple_Sine(5000, 44100, 0x3F, 24,
+                                           (1638400, 10000),
+                                           (2949120, 15000),
+                                           (4259840, 20000),
+                                           (5570560, 25000),
+                                           (6881280, 30000),
+                                           (7864320, 35000))]:
+            test_python_reader(g)
 
         #test wasted BPS
-        #FIXME
+        test_python_reader(test_streams.WastedBPS16(1000))
 
         #test fractional blocks
-        #FIXME
+        for pcm_frames in [46078, 46079, 46080, 46081, 46082]:
+            test_python_reader(
+                MD5_Reader(EXACT_RANDOM_PCM_Reader(
+                        pcm_frames=pcm_frames,
+                        sample_rate=44100,
+                        channels=2,
+                        bits_per_sample=16)))
 
 
 class SineStreamTest(unittest.TestCase):

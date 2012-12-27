@@ -83,7 +83,7 @@ The basic process for decoding a TTA file is as follows:
     $\text{\KZ}_c \leftarrow \text{\KO}_c \leftarrow 10$\;
     $\text{\SUMZ}_c \leftarrow \text{\SUMO}_c \leftarrow 2 ^ {14}$\;
   }
-  $\BLOCKSIZE \leftarrow \MIN(\lceil(\SAMPLERATE \times 256) \div 245\rceil~,~\PCMFRAMES)$\;
+  $\BLOCKSIZE \leftarrow \MIN(\lfloor(\SAMPLERATE \times 256) \div 245\rfloor~,~\PCMFRAMES)$\;
   \BlankLine
   \For(\tcc*[f]{decode residuals}){$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
     \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
@@ -278,6 +278,13 @@ channel count is 2.
         }
       }
       $\SUM \leftarrow \ROUND + \overset{7}{\underset{j = 0}{\sum}}\text{\DL}_j \times \text{\QM}'_j$\;
+      \tcc{Due to a flaw in True Audio's hybrid filter reference implementation, sum's value must be truncated to a signed 32-bit integer.  This will result in larger files in some instances.}
+      \While{$\SUM \geq 2 ^ {31}$}{
+        $\SUM' \leftarrow \SUM - 2 ^ {32}$\;
+      }
+      \While{$\SUM < -2 ^ {31}$}{
+        $\SUM' \leftarrow \SUM + 2 ^ {32}$\;
+      }
       $\text{\FILTERED}_i \leftarrow \text{\RESIDUAL}_i + \lfloor\SUM \div 2 ^ {\SHIFT}\rfloor$\;
     }
     \begin{tabular}{rcl}
