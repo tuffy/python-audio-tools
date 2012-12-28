@@ -112,13 +112,12 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
         return -1;
     }
 
-    /*determine the total number of TTA frames*/
-    self->total_tta_frames = (unsigned int)DIV_CEIL(
-        (uint64_t)(self->header.total_pcm_frames * 245),
-        (uint64_t)(self->header.sample_rate * 256));
-
     /*determine the default block size*/
     self->block_size = (self->header.sample_rate * 256) / 245;
+
+    /*determine the total number of TTA frames*/
+    self->total_tta_frames = DIV_CEIL(self->header.total_pcm_frames,
+                                      self->block_size);
 
     self->seektable = malloc(sizeof(unsigned int) * self->total_tta_frames);
 
@@ -694,13 +693,12 @@ int main(int argc, char* argv[]) {
         goto error;
     }
 
-    /*determine the total number of TTA frames*/
-    total_tta_frames = (unsigned int)DIV_CEIL(
-        (uint64_t)(total_pcm_frames * 245),
-        (uint64_t)(sample_rate * 256));
 
     /*determine the default block size*/
-    block_size = (unsigned int)DIV_CEIL((uint64_t)(sample_rate * 256), 245);
+    block_size = (sample_rate * 256) / 245;
+
+    /*determine the total number of TTA frames*/
+    total_tta_frames = DIV_CEIL(total_pcm_frames, block_size);
 
     seektable = malloc(sizeof(unsigned int) * total_tta_frames);
 

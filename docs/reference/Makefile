@@ -379,6 +379,7 @@ $(AIFF) \
 figures/au_stream.pdf \
 $(SHORTEN) \
 $(FLAC) \
+$(TTA) \
 $(WAVPACK) \
 $(APEV2) \
 $(APE) \
@@ -405,6 +406,7 @@ aiff.tex \
 au.tex \
 shorten.tex \
 flac.tex \
+tta.tex \
 wavpack.tex \
 apev2.tex \
 ape.tex \

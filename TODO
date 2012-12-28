@@ -6230,6 +6230,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Add True Audio detecter to file_type() function
 *** DONE Add True Audio AudioFile class
 *** TODO Ensure True Audio class passes all unit tests
+** TODO Support total_pcm_frames arguments during .convert()
+   Certain formats encode much easier if the total number of PCM frames
+   is known in advance, rather than using from_pcm() which can
+   take any number of PCM frames.
 ** TODO Make decoder streams seekable
    PCMReader.seek(pcm_frames) -> pcm_frames skipped
    could seek to the closest position in the stream to the given frames

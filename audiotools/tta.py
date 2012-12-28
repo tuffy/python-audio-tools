@@ -19,18 +19,24 @@
 
 
 from . import (AudioFile, InvalidFile)
-from .ape import ApeTaggedAudio, ApeGainedAudio
 
 
 #######################
 #True Audio
 #######################
 
+
+def div_ceil(n, d):
+    """returns the ceiling of n divided by d as an int"""
+
+    return n // d + (1 if ((n % d) != 0) else 0)
+
+
 class InvalidTTA(InvalidFile):
     pass
 
 
-class TrueAudio(ApeTaggedAudio, ApeGainedAudio, AudioFile):
+class TrueAudio(AudioFile):
     """a True Audio file"""
 
     SUFFIX = "tta"
@@ -38,28 +44,38 @@ class TrueAudio(ApeTaggedAudio, ApeGainedAudio, AudioFile):
     DESCRIPTION = u"True Audio"
 
     def __init__(self, filename):
+        from .id3 import skip_id3v2_comment
+
         self.filename = filename
 
         try:
-            #FIXME - skip ID3v2 header and record its size
             f = open(filename, "rb")
+            self.__stream_offset__ = skip_id3v2_comment(f)
 
             from .bitstream import BitstreamReader
             from .text import (ERR_TTA_INVALID_SIGNATURE,
                                ERR_TTA_INVALID_FORMAT)
+
+            reader = BitstreamReader(f, True)
 
             (signature,
              format_,
              self.__channels__,
              self.__bits_per_sample__,
              self.__sample_rate__,
-             self.__total_pcm_frames__) = BitstreamReader(f, True).parse(
+             self.__total_pcm_frames__) = reader.parse(
                 "4b 16u 16u 16u 32u 32u 32p")
 
             if (signature != "TTA1"):
                 raise InvalidTTA(ERR_TTA_INVALID_SIGNATURE)
             elif (format_ != 1):
                 raise InvalidTTA(ERR_TTA_INVALID_FORMAT)
+
+            self.__total_tta_frames__ = div_ceil(
+                self.__total_pcm_frames__ * 245,
+                self.__sample_rate__ * 256)
+            self.__frame_lengths__ = list(reader.parse(
+                    "32u" * self.__total_tta_frames__ + "32p"))
         except IOError, msg:
             raise InvalidTTA(str(msg))
 
@@ -110,8 +126,8 @@ class TrueAudio(ApeTaggedAudio, ApeGainedAudio, AudioFile):
         from . import PCMReaderError
 
         try:
-            #FIXME - support ID3v2 offset here
-            return decoders.TTADecoder(self.filename)
+            return decoders.TTADecoder(self.filename,
+                                       self.__stream_offset__)
         except (IOError, ValueError), msg:
             #This isn't likely unless the TTA file is modified
             #between when TrueAudio is instantiated
@@ -150,8 +166,14 @@ class TrueAudio(ApeTaggedAudio, ApeGainedAudio, AudioFile):
         from .bitstream import BitstreamWriter
         import tempfile
 
-        counter = CounterPCMReader(pcmreader)
+        #open output file right away
+        #so we can fail as soon as possible
+        try:
+            file = open(filename, "wb")
+        except IOError, err:
+            raise EncodingError(str(err))
 
+        counter = CounterPCMReader(pcmreader)
         frames = tempfile.TemporaryFile()
 
         #encode TTA frames to temporary file
@@ -160,9 +182,14 @@ class TrueAudio(ApeTaggedAudio, ApeGainedAudio, AudioFile):
                            else encoding_function)(frames,
                                                    BufferedPCMReader(counter))
         except (IOError, ValueError), err:
+            frames.close()
+            file.close()
+            cls.__unlink__(filename)
             raise EncodingError(str(err))
 
-        file = open(filename, "wb")
+        assert(len(frame_sizes) == div_ceil(counter.frames_written * 245,
+                                            pcmreader.sample_rate * 256))
+
         writer = BitstreamWriter(file, True)
 
         #write header to disk
@@ -184,6 +211,14 @@ class TrueAudio(ApeTaggedAudio, ApeGainedAudio, AudioFile):
 
         return cls(filename)
 
+    def data_size(self):
+        """returns the size of the file's data, in bytes,
+        calculated from its header and seektable"""
+
+        return (22 +                                     # header size
+                (len(self.__frame_lengths__) * 4) + 4 +  # seektable size
+                sum(self.__frame_lengths__))             # frames size
+
     @classmethod
     def can_add_replay_gain(cls, audiofiles):
         """given a list of audiofiles,
@@ -196,6 +231,357 @@ class TrueAudio(ApeTaggedAudio, ApeGainedAudio, AudioFile):
         else:
             return True
 
+    def get_metadata(self):
+        """returns a MetaData object, or None
+
+        raises IOError if unable to read the file"""
+
+        f = open(self.filename, "rb")
+
+        #first, attempt to find APEv2 comment at end of file
+        f.seek(-32, 2)
+        if (f.read(10) == "APETAGEX\xd0\x07"):
+            from . import ApeTag
+
+            return ApeTag.read(f)
+        else:
+            #then, look for ID3v2 comment at beginning of file
+            f.seek(0, 0)
+            if (f.read(3) == "ID3"):
+                from .id3 import read_id3v2_comment
+                try:
+                    id3v2 = read_id3v2_comment(self.filename)
+                except ValueError:
+                    id3v2 = None
+            else:
+                id3v2 = None
+
+            #and look for ID3v1 comment at end of file
+            try:
+                f.seek(-128, 2)
+                if (f.read(3) == "TAG"):
+                    from .id3v1 import ID3v1Comment
+                    try:
+                        id3v1 = ID3v1Comment.parse(f)
+                    except ValueError:
+                        id3v1 = None
+                else:
+                    id3v1 = None
+            except IOError:
+                id3v1 = None
+
+            #if both ID3v2 and ID3v1 are present, return a pair
+            if ((id3v2 is not None) and (id3v1 is not None)):
+                from .id3 import ID3CommentPair
+                return ID3CommentPair(id3v2, id3v1)
+            elif (id3v2 is not None):
+                return id3v2
+            else:
+                return id3v1
+
+    def set_metadata(self, metadata):
+        """takes a MetaData object and sets this track's metadata
+
+        this metadata includes track name, album name, and so on
+        raises IOError if unable to write the file"""
+
+        from .ape import ApeTag
+        from .bitstream import BitstreamWriter
+
+        if (metadata is None):
+            return
+        else:
+            new_metadata = ApeTag.converted(metadata)
+
+        #if current metadata is present and in a particular format
+        #set_metadata() should continue using that format
+        old_metadata = ApeTag.converted(self.get_metadata())
+        if (old_metadata is not None):
+            #transfer ReplayGain tags from old metadata to new metadata
+            for tag in ["replaygain_track_gain",
+                        "replaygain_track_peak",
+                        "replaygain_album_gain",
+                        "replaygain_album_peak"]:
+                try:
+                    #if old_metadata has tag, shift it over
+                    new_metadata[tag] = old_metadata[tag]
+                except KeyError:
+                    try:
+                        #otherwise, if new_metadata has tag, delete it
+                        del(new_metadata[tag])
+                    except KeyError:
+                        #if neither has tag, ignore it
+                        continue
+
+            #transfer Cuesheet from old metadata to new metadata
+            if ("Cuesheet" in old_metadata):
+                new_metadata["Cuesheet"] = old_metadata["Cuesheet"]
+            elif ("Cuesheet" in new_metadata):
+                del(new_metadata["Cuesheet"])
+
+            self.update_metadata(new_metadata)
+        else:
+            #delete ReplayGain tags from new metadata
+            for tag in ["replaygain_track_gain",
+                        "replaygain_track_peak",
+                        "replaygain_album_gain",
+                        "replaygain_album_peak"]:
+                try:
+                    del(new_metadata[tag])
+                except KeyError:
+                    continue
+
+            #delete Cuesheet from new metadata
+            if ("Cuesheet" in new_metadata):
+                del(new_metadata["Cuesheet"])
+
+            #no current metadata, so append a fresh APEv2 tag
+            f = file(self.filename, "ab")
+            new_metadata.build(BitstreamWriter(f, 1))
+            f.close()
+
+    def update_metadata(self, metadata):
+        """takes this track's current MetaData object
+        as returned by get_metadata() and sets this track's metadata
+        with any fields updated in that object
+
+        raises IOError if unable to write the file
+        """
+
+        if (metadata is None):
+            return
+
+        from .ape import ApeTag
+        from .id3 import ID3v2Comment
+        from .id3 import ID3CommentPair
+        from .id3v1 import ID3v1Comment
+
+        #ensure metadata is APEv2, ID3v2, ID3v1, or ID3CommentPair
+        if ((not isinstance(metadata, ApeTag)) and
+            (not isinstance(metadata, ID3v2Comment)) and
+            (not isinstance(metadata, ID3CommentPair)) and
+            (not isinstance(metadata, ID3v1Comment))):
+            from .text import ERR_FOREIGN_METADATA
+            raise ValueError(ERR_FOREIGN_METADATA)
+
+        current_metadata = self.get_metadata()
+
+        if (isinstance(metadata, ApeTag) and (current_metadata is None)):
+            #if new metadata is APEv2 and no current metadata,
+            #simply append APEv2 tag
+            from .bitstream import BitstreamWriter
+            f = open(self.filename, "ab")
+            metadata.build(BitstreamWriter(f, True))
+        elif (isinstance(metadata, ApeTag) and
+              isinstance(current_metadata, ApeTag) and
+              (metadata.total_size() > current_metadata.total_size())):
+            #if new metadata is APEv2, current metadata is APEv2
+            #and new metadata is larger,
+            #overwrite old tag with new tag
+            from .bitstream import BitstreamWriter
+            f = open(self.filename, "r+b")
+            f.seek(-current_metadata.total_size(), 2)
+            metadata.build(BitstreamWriter(f, True))
+        else:
+            from tempfile import TemporaryFile
+            from . import (transfer_data, LimitedFileReader)
+            from .id3 import skip_id3v2_comment
+
+            #otherwise, shift TTA file data to temporary space
+            temp_tta_data = TemporaryFile()
+            f = open(self.filename, "rb")
+            skip_id3v2_comment(f)
+            current_tta_data = LimitedFileReader(f, self.data_size())
+            transfer_data(current_tta_data.read, temp_tta_data.write)
+            f.close()
+
+            #and rebuild TTA with APEv2/ID3 tags in place
+            f = open(self.filename, "wb")
+            temp_tta_data.seek(0, 0)
+
+            if (isinstance(metadata, ApeTag)):
+                from .bitstream import BitstreamWriter
+                transfer_data(temp_tta_data.read, f.write)
+                metadata.build(BitstreamWriter(f, True))
+            elif (isinstance(metadata, ID3CommentPair)):
+                from .bitstream import BitstreamWriter
+                metadata.id3v2.build(BitstreamWriter(f, False))
+                transfer_data(temp_tta_data.read, f.write)
+                metadata.id3v1.build(f)
+            elif (isinstance(metadata, ID3v2Comment)):
+                from .bitstream import BitstreamWriter
+                metadata.build(BitstreamWriter(f, False))
+                transfer_data(temp_tta_data.read, f.write)
+            else:
+                transfer_data(temp_tta_data.read, f.write)
+                metadata.build(f)
+
+            f.close()
+            temp_tta_data.close()
+
+    def delete_metadata(self):
+        """deletes the track's MetaData
+
+        this removes or unsets tags as necessary in order to remove all data
+        raises IOError if unable to write the file"""
+
+        from tempfile import TemporaryFile
+        from . import (transfer_data, LimitedFileReader)
+        from .id3 import skip_id3v2_comment
+
+        #move only TTA data to temporary space
+        temp_tta_data = TemporaryFile()
+        f = open(self.filename, "rb")
+        skip_id3v2_comment(f)
+        current_tta_data = LimitedFileReader(f, self.data_size())
+        transfer_data(current_tta_data.read, temp_tta_data.write)
+        f.close()
+
+        #and overwrite original with no tags attached
+        f = open(self.filename, "wb")
+        temp_tta_data.seek(0, 0)
+        transfer_data(temp_tta_data.read, f.write)
+        f.close()
+        temp_tta_data.close()
+
+    def get_cuesheet(self):
+        """returns the embedded Cuesheet-compatible object, or None
+
+        raises IOError if a problem occurs when reading the file"""
+
+        import cue
+        from .ape import ApeTag
+
+        metadata = self.get_metadata()
+
+        if ((metadata is not None) and
+            isinstance(metadata, ApeTag) and
+            ('Cuesheet' in metadata.keys())):
+            try:
+                return cue.parse(
+                    cue.tokens(
+                        unicode(metadata['Cuesheet']).encode('utf-8',
+                                                             'replace')))
+            except cue.CueException:
+                #unlike FLAC, just because a cuesheet is embedded
+                #does not mean it is compliant
+                return None
+        else:
+            return None
+
+    def set_cuesheet(self, cuesheet):
+        """imports cuesheet data from a Cuesheet-compatible object
+
+        this are objects with catalog(), ISRCs(), indexes(), and pcm_lengths()
+        methods.  Raises IOError if an error occurs setting the cuesheet"""
+
+        import os.path
+        import cue
+        from . import MetaData
+        from .ape import ApeTag
+
+        if (cuesheet is None):
+            return
+
+        metadata = self.get_metadata()
+        if (metadata is None):
+            metadata = ApeTag([])
+        else:
+            metadata = ApeTag.converted(metadata)
+
+        metadata['Cuesheet'] = ApeTag.ITEM.string(
+            'Cuesheet',
+            cue.Cuesheet.file(
+                cuesheet,
+                os.path.basename(self.filename)).decode('ascii', 'replace'))
+        self.update_metadata(metadata)
+
+    @classmethod
+    def add_replay_gain(cls, filenames, progress=None):
+        """adds ReplayGain values to a list of filename strings
+
+        all the filenames must be of this AudioFile type
+        raises ValueError if some problem occurs during ReplayGain application
+        """
+
+        from . import open_files
+        from . import calculate_replay_gain
+        from .ape import ApeTag,ApeTagItem
+
+        tracks = [track for track in open_files(filenames) if
+                  isinstance(track, cls)]
+
+        #calculate ReplayGain for all TrueAudio tracks
+        if (len(tracks) > 0):
+            for (track,
+                 track_gain,
+                 track_peak,
+                 album_gain,
+                 album_peak) in calculate_replay_gain(tracks, progress):
+                metadata = track.get_metadata()
+
+                #convert current in each track metadata to APEv2
+                #or create new APEv2 tag if necessary
+                if (metadata is None):
+                    metadata = ApeTag()
+                else:
+                    metadata = ApeTag.converted(metadata)
+
+                #then update track with tagged metadata
+                metadata["replaygain_track_gain"] = ApeTagItem.string(
+                    "replaygain_track_gain",
+                    u"%+1.2f dB" % (track_gain))
+                metadata["replaygain_track_peak"] = ApeTagItem.string(
+                    "replaygain_track_peak",
+                    u"%1.6f" % (track_peak))
+                metadata["replaygain_album_gain"] = ApeTagItem.string(
+                    "replaygain_album_gain",
+                    u"%+1.2f dB" % (album_gain))
+                metadata["replaygain_album_peak"] = ApeTagItem.string(
+                    "replaygain_album_peak",
+                    u"%1.6f" % (album_peak))
+
+                track.update_metadata(metadata)
+
+    @classmethod
+    def supports_replay_gain(cls):
+        """returns True if this class supports ReplayGain"""
+
+        return True
+
+    @classmethod
+    def lossless_replay_gain(cls):
+        """returns True"""
+
+        return True
+
+    def replay_gain(self):
+        """returns a ReplayGain object of our ReplayGain values
+
+        returns None if we have no values"""
+
+        from .ape import ApeTag
+
+        #if current metadata is present and is in APEv2 format,
+        #return contents of "replaygain_" tags
+        metadata = self.get_metadata()
+        if ((metadata is not None) and
+            isinstance(metadata, ApeTag) and
+            set(['replaygain_track_gain', 'replaygain_track_peak',
+                 'replaygain_album_gain', 'replaygain_album_peak']).issubset(
+                metadata.keys())):
+            try:
+                from . import ReplayGain
+                return ReplayGain(
+                    unicode(metadata['replaygain_track_gain'])[0:-len(" dB")],
+                    unicode(metadata['replaygain_track_peak']),
+                    unicode(metadata['replaygain_album_gain'])[0:-len(" dB")],
+                    unicode(metadata['replaygain_album_peak']))
+            except ValueError:
+                return None
+        else:
+            #otherwise, return None
+            return None
 
 
 def write_header(writer,

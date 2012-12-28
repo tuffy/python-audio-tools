@@ -522,9 +522,9 @@ int main(int argc, char* argv[]) {
     printf("total PCM frames %u\n", total_pcm_frames);
     printf("little-endian, signed samples\n");
 
-    total_tta_frames = (unsigned)DIV_CEIL((uint64_t)total_pcm_frames * 245,
-                                          (uint64_t)sample_rate * 256);
     block_size = (sample_rate * 256) / 245;
+
+    total_tta_frames = DIV_CEIL(total_pcm_frames, block_size);
 
     /*open output file for writing*/
     if ((file = fopen(output_file, "wb")) == NULL) {

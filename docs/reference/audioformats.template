@@ -6,6 +6,7 @@
 \include{au}
 \include{shorten}
 \include{flac}
+\include{tta}
 \include{wavpack}
 \include{apev2}
 \include{ape}

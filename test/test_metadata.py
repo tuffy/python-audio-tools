@@ -1080,7 +1080,6 @@ class WavPackApeTagMetaData(MetaDataTest):
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 if (unicode(metadata['Track']) != u'1/2'):
-                    print repr(metadata)
                     self.assert_(False)
                 self.assertEqual(unicode(metadata['Track']), u'1/2')
                 del(metadata.track_total)
@@ -7142,3 +7141,232 @@ class OpusTagsTest(MetaDataTest):
     @METADATA_OPUS
     def test_supports_images(self):
         self.assertEqual(self.metadata_class.supports_images(), False)
+
+
+class TrueAudioTest(unittest.TestCase):
+    #True Audio supports APEv2, ID3v2 and ID3v1
+    #which makes the format much more complicated
+    #than if it supported only a single format.
+
+    def __base_metadatas__(self):
+        base_metadata = audiotools.MetaData(
+            track_name=u"Track Name",
+            album_name=u"Album Name",
+            artist_name=u"Artist Name",
+            track_number=1)
+
+        yield audiotools.ApeTag.converted(base_metadata)
+        yield audiotools.ID3v22Comment.converted(base_metadata)
+        yield audiotools.ID3v23Comment.converted(base_metadata)
+        yield audiotools.ID3v24Comment.converted(base_metadata)
+        yield audiotools.ID3CommentPair.converted(base_metadata)
+
+    @METADATA_TTA
+    def test_update(self):
+        import os
+
+        for base_metadata in self.__base_metadatas__():
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audiotools.TrueAudio.SUFFIX)
+            track = audiotools.TrueAudio.from_pcm(temp_file.name,
+                                                  BLANK_PCM_Reader(10))
+            temp_file_stat = os.stat(temp_file.name)[0]
+            try:
+                #update_metadata on file's internal metadata round-trips okay
+                track.update_metadata(base_metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Track Name")
+                metadata.track_name = u"Bar"
+                track.update_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assert_(metadata.__class__ is base_metadata.__class__)
+                self.assertEqual(metadata.track_name, u"Bar")
+
+                #update_metadata on unwritable file generates IOError
+                os.chmod(temp_file.name, 0)
+                self.assertRaises(IOError,
+                                  track.update_metadata,
+                                  base_metadata)
+                os.chmod(temp_file.name, temp_file_stat)
+
+                #update_metadata with foreign MetaData generates ValueError
+                self.assertRaises(ValueError,
+                                  track.update_metadata,
+                                  audiotools.MetaData(track_name=u"Foo"))
+
+                # #update_metadata with None makes no changes
+                track.update_metadata(None)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name, u"Bar")
+
+                if (isinstance(base_metadata, audiotools.ApeTag)):
+                    #replaygain strings not updated with set_metadata()
+                    #but can be updated with update_metadata()
+                    self.assertRaises(KeyError,
+                                      track.get_metadata().__getitem__,
+                                      "replaygain_track_gain")
+                    metadata["replaygain_track_gain"] = \
+                        audiotools.ape.ApeTagItem.string(
+                        "replaygain_track_gain", u"???")
+                    track.set_metadata(metadata)
+                    self.assertRaises(KeyError,
+                                      track.get_metadata().__getitem__,
+                                      "replaygain_track_gain")
+                    track.update_metadata(metadata)
+                    self.assertEqual(
+                        track.get_metadata()["replaygain_track_gain"],
+                        audiotools.ape.ApeTagItem.string(
+                            "replaygain_track_gain", u"???"))
+
+                    #cuesheet not updated with set_metadata()
+                    #but can be updated with update_metadata()
+                    metadata["Cuesheet"] = \
+                        audiotools.ape.ApeTagItem.string(
+                        "Cuesheet", u"???")
+                    track.set_metadata(metadata)
+                    self.assertRaises(KeyError,
+                                      track.get_metadata().__getitem__,
+                                      "Cuesheet")
+                    track.update_metadata(metadata)
+                    self.assertEqual(track.get_metadata()["Cuesheet"],
+                                     audiotools.ape.ApeTagItem.string(
+                            "Cuesheet", u"???"))
+            finally:
+                temp_file.close()
+
+
+
+    @METADATA_TTA
+    def test_delete(self):
+        #delete metadata clears out ID3v?, ID3v1, ApeTag and ID3CommentPairs
+
+        for metadata in self.__base_metadatas__():
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audiotools.TrueAudio.SUFFIX)
+            try:
+                track = audiotools.TrueAudio.from_pcm(temp_file.name,
+                                                      BLANK_PCM_Reader(1))
+
+                self.assertEqual(track.get_metadata(), None)
+                track.update_metadata(metadata)
+                self.assertNotEqual(track.get_metadata(), None)
+                track.delete_metadata()
+                self.assertEqual(track.get_metadata(), None)
+            finally:
+                temp_file.close()
+
+    @METADATA_TTA
+    def test_images(self):
+        #images work like either WavPack or MP3
+        #depending on which metadata is in place
+
+        for metadata in self.__base_metadatas__():
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audiotools.TrueAudio.SUFFIX)
+            try:
+                track = audiotools.TrueAudio.from_pcm(temp_file.name,
+                                                      BLANK_PCM_Reader(1))
+
+                self.assertEqual(metadata.images(), [])
+
+                image1 = audiotools.Image.new(TEST_COVER1,
+                                              u"Text 1", 0)
+                image2 = audiotools.Image.new(TEST_COVER2,
+                                              u"Text 2", 1)
+
+                track.set_metadata(metadata)
+                metadata = track.get_metadata()
+
+                #ensure that adding one image works
+                metadata.add_image(image1)
+                track.set_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.images(), [image1])
+
+                #ensure that adding a second image works
+                metadata.add_image(image2)
+                track.set_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.images(), [image1,
+                                                     image2])
+
+                #ensure that deleting the first image works
+                metadata.delete_image(image1)
+                track.set_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.images(), [image2])
+
+                metadata.delete_image(image2)
+                track.set_metadata(metadata)
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.images(), [])
+
+            finally:
+                temp_file.close()
+
+    @METADATA_TTA
+    def test_replay_gain(self):
+        #adding ReplayGain converts internal MetaData to APEv2
+        #but otherwise works like WavPack
+
+        import test_streams
+        for metadata in self.__base_metadatas__():
+            temp1 = tempfile.NamedTemporaryFile(
+                suffix="." + audiotools.TrueAudio.SUFFIX)
+            try:
+                track1 = audiotools.TrueAudio.from_pcm(
+                    temp1.name,
+                    test_streams.Sine16_Stereo(44100, 44100,
+                                               441.0, 0.50,
+                                               4410.0, 0.49, 1.0))
+                self.assert_(track1.replay_gain() is None,
+                             "ReplayGain present for class %s" % \
+                                 (audiotools.TrueAudio.NAME))
+                track1.update_metadata(metadata)
+                audiotools.TrueAudio.add_replay_gain([track1.filename])
+                self.assert_(isinstance(track1.get_metadata(),
+                                        audiotools.ApeTag))
+                self.assertEqual(track1.get_metadata().track_name,
+                                 u"Track Name")
+                self.assert_(track1.replay_gain() is not None,
+                             "ReplayGain not present for class %s" % \
+                                 (audiotools.TrueAudio.NAME))
+
+                temp2 = tempfile.NamedTemporaryFile(
+                    suffix="." + audiotools.TrueAudio.SUFFIX)
+                try:
+                    track2 = audiotools.TrueAudio.from_pcm(
+                        temp2.name,
+                        test_streams.Sine16_Stereo(66150, 44100,
+                                                   8820.0, 0.70,
+                                                   4410.0, 0.29, 1.0))
+
+                    #ensure that ReplayGain doesn't get ported
+                    #via set_metadata()
+                    self.assert_(track2.replay_gain() is None,
+                                 "ReplayGain present for class %s" % \
+                                     (audiotools.TrueAudio.NAME))
+                    track2.set_metadata(track1.get_metadata())
+                    self.assertEqual(track2.get_metadata().track_name,
+                                     u"Track Name")
+                    self.assert_(track2.replay_gain() is None,
+                            "ReplayGain present for class %s from %s" % \
+                                     (audiotools.TrueAudio.NAME,
+                                      audiotools.TrueAudio.NAME))
+
+                    #and if ReplayGain is already set,
+                    #ensure set_metadata() doesn't remove it
+                    audiotools.TrueAudio.add_replay_gain([track2.filename])
+                    old_replay_gain = track2.replay_gain()
+                    self.assert_(old_replay_gain is not None)
+                    track2.set_metadata(
+                        audiotools.MetaData(track_name=u"Bar"))
+                    self.assertEqual(track2.get_metadata().track_name,
+                                     u"Bar")
+                    self.assertEqual(track2.replay_gain(),
+                                     old_replay_gain)
+
+                finally:
+                    temp2.close()
+            finally:
+                temp1.close()

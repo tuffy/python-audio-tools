@@ -1303,7 +1303,7 @@ def file_type(file):
           (header[0:3] == "ID3") and
           (ord(header[3]) in (2, 3, 4))):
         #file contains ID3v2 tag
-        #so it may be MP3, MP2 or FLAC
+        #so it may be MP3, MP2, FLAC or TTA
 
         #determine sync-safe tag size and skip entire tag
         tag_size = 0
@@ -1364,6 +1364,12 @@ def file_type(file):
             #possibly FLAC file
             if (file.read(3) == "LaC"):
                 return FlacAudio
+            else:
+                return None
+        elif (b == "T"):
+            #possible TrueAudio file
+            if (file.read(2) == "TA"):
+                return TrueAudio
             else:
                 return None
         else:
@@ -2341,8 +2347,11 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
             frame_number += framelist1.frames
             framelist1 = reader1.read(FRAMELIST_SIZE)
             framelist2 = reader2.read(FRAMELIST_SIZE)
-
-    return None
+    else:
+        if ((len(framelist1) > 0) or (len(framelist2) > 0)):
+            return frame_number
+        else:
+            return None
 
 
 class PCMCat:
