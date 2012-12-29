@@ -523,7 +523,7 @@ class TrueAudio(AudioFile):
                 #convert current in each track metadata to APEv2
                 #or create new APEv2 tag if necessary
                 if (metadata is None):
-                    metadata = ApeTag()
+                    metadata = ApeTag([])
                 else:
                     metadata = ApeTag.converted(metadata)
 
