@@ -323,6 +323,7 @@ def block_parameters(channel_count, channel_mask, correlation_passes):
 def encode_wavpack(filename,
                    pcmreader,
                    block_size,
+                   total_pcm_frames=0,
                    false_stereo=False,
                    wasted_bits=False,
                    joint_stereo=False,
@@ -359,9 +360,16 @@ def encode_wavpack(filename,
             first_block = parameters is context.block_parameters[0]
             last_block = parameters is context.block_parameters[-1]
 
-            context.block_offsets.append(output_file.tell())
-            write_block(writer, context, channel_data, block_index,
-                        first_block, last_block, parameters)
+            if (total_pcm_frames > 0):
+                context.block_offsets.append(output_file.tell())
+            write_block(writer,
+                        context,
+                        channel_data,
+                        total_pcm_frames,
+                        block_index,
+                        first_block,
+                        last_block,
+                        parameters)
 
             c += parameters.channel_count
 
@@ -382,9 +390,12 @@ def encode_wavpack(filename,
         sub_block.write_bytes(context.wave_footer)
         write_sub_block(sub_blocks, WV_WAVE_FOOTER, 1, sub_block)
 
+    if (total_pcm_frames == 0):
+        context.block_offsets.append(output_file.tell())
     write_block_header(
         writer,
         sub_blocks.bytes(),
+        total_pcm_frames if (total_pcm_frames > 0) else 0xFFFFFFFF,
         0xFFFFFFFF,
         0,
         pcmreader.bits_per_sample,
@@ -418,8 +429,14 @@ def encode_wavpack(filename,
     writer.close()
 
 
-def write_block(writer, context, channels, block_index,
-                first_block, last_block, parameters):
+def write_block(writer,
+                context,
+                channels,
+                total_pcm_frames,
+                block_index,
+                first_block,
+                last_block,
+                parameters):
     """writer is a BitstreamWriter-compatible object
     context is an EncoderContext object
     channels[c][s] is sample "s" in channel "c"
@@ -589,6 +606,7 @@ def write_block(writer, context, channels, block_index,
     write_block_header(
         writer,
         sub_blocks.bytes(),
+        total_pcm_frames,
         block_index,
         len(channels[0]),
         context.pcmreader.bits_per_sample,
@@ -664,6 +682,7 @@ def joint_stereo(left, right):
 
 def write_block_header(writer,
                        sub_blocks_size,
+                       total_pcm_frames,
                        block_index,
                        block_samples,
                        bits_per_sample,
@@ -682,7 +701,7 @@ def write_block_header(writer,
     writer.write(16, 0x0410)                # version
     writer.write(8, 0)                      # track number
     writer.write(8, 0)                      # index number
-    writer.write(32, 0xFFFFFFFF)            # total samples
+    writer.write(32, total_pcm_frames)
     writer.write(32, block_index)
     writer.write(32, block_samples)
     writer.write(2, (bits_per_sample / 8) - 1)

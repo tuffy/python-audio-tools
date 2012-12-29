@@ -354,6 +354,70 @@ def parse_fmt(fmt):
         raise ValueError("unsupported WAVE compression")
 
 
+def wave_header(sample_rate,
+                channels,
+                channel_mask,
+                bits_per_sample,
+                total_pcm_frames):
+    """given a set of integer stream attributes,
+    returns header string of everything before a RIFF WAVE's PCM data
+
+    may raise ValueError if the total size of the file is too large"""
+
+    from .bitstream import (BitstreamRecorder, format_size)
+
+    header = BitstreamRecorder(True)
+
+    avg_bytes_per_second = sample_rate * channels * (bits_per_sample / 8)
+    block_align = channels * (bits_per_sample / 8)
+
+    #build a regular or extended fmt chunk
+    #based on the reader's attributes
+    if (((channels <= 2) and (bits_per_sample <= 16))):
+        fmt = "16u 16u 32u 32u 16u 16u"
+        fmt_fields = (1,   # compression code
+                      channels,
+                      sample_rate,
+                      avg_bytes_per_second,
+                      block_align,
+                      bits_per_sample)
+    else:
+        if (channel_mask == 0):
+            channel_mask = {1: 0x4,
+                            2: 0x3,
+                            3: 0x7,
+                            4: 0x33,
+                            5: 0x37,
+                            6: 0x3F}.get(channels, 0)
+        fmt = "16u 16u 32u 32u 16u 16u" + "16u 16u 32u 16b"
+        fmt_fields = (0xFFFE,   # compression code
+                      channels,
+                      sample_rate,
+                      avg_bytes_per_second,
+                      block_align,
+                      bits_per_sample,
+                      22,       # CB size
+                      bits_per_sample,
+                      channel_mask,
+                      '\x01\x00\x00\x00\x00\x00\x10\x00' +
+                      '\x80\x00\x00\xaa\x00\x38\x9b\x71'  # sub format
+                      )
+
+    data_size = (bits_per_sample / 8) * channels * total_pcm_frames
+    total_size = ((format_size("4b" + "4b 32u" + fmt + "4b 32u") / 8) +
+                  data_size + (data_size % 2))
+
+    if (total_size < (2 ** 32)):
+        header.build("4b 32u 4b", ("RIFF", total_size, "WAVE"))
+        header.build("4b 32u", ("fmt ", format_size(fmt) / 8))
+        header.build(fmt, fmt_fields)
+        header.build("4b 32u", ("data", data_size))
+
+        return header.data()
+    else:
+        raise ValueError("total size too large for wave file")
+
+
 class WaveReader(PCMReader):
     """a subclass of PCMReader for reading wave file contents"""
 
@@ -553,136 +617,80 @@ class WaveAudio(WaveContainer):
     #Takes a filename and PCMReader containing WAV data
     #builds a WAV from that data and returns a new WaveAudio object
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None):
+    def from_pcm(cls, filename, pcmreader,
+                 compression=None, total_pcm_frames=None):
         """encodes a new file from PCM data
 
-        takes a filename string, PCMReader object
-        and optional compression level string
+        takes a filename string, PCMReader object,
+        optional compression level string and
+        optional total_pcm_frames integer
         encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
         and returns a new WaveAudio object"""
 
-        from . import FRAMELIST_SIZE
         from . import EncodingError
         from . import DecodingError
-        from .bitstream import BitstreamWriter, format_size
+        from . import CounterPCMReader
+        from . import transfer_framelist_data
+
+        try:
+            header = wave_header(pcmreader.sample_rate,
+                                 pcmreader.channels,
+                                 pcmreader.channel_mask,
+                                 pcmreader.bits_per_sample,
+                                 total_pcm_frames if total_pcm_frames
+                                 is not None else 0)
+        except ValueError, err:
+            return EncodingError(str(err))
 
         try:
             f = file(filename, "wb")
-            wave = BitstreamWriter(f, 1)
         except IOError, err:
             raise EncodingError(str(err))
 
+        counter = CounterPCMReader(pcmreader)
+        f.write(header)
         try:
-            total_size = 0
-            data_size = 0
+            transfer_framelist_data(counter,
+                                    f.write,
+                                    pcmreader.bits_per_sample > 8,
+                                    False)
+        except (IOError, ValueError), err:
+            cls.__unlink__(filename)
+            raise EncodingError(str(err))
+        except Exception, err:
+            cls.__unlink__(filename)
+            raise err
 
-            avg_bytes_per_second = (pcmreader.sample_rate *
-                                    pcmreader.channels *
-                                    (pcmreader.bits_per_sample / 8))
-            block_align = (pcmreader.channels *
-                           (pcmreader.bits_per_sample / 8))
+        #handle odd-sized "data" chunks
+        if (counter.frames_written % 2):
+            f.write(chr(0))
 
-            #build a regular or extended fmt chunk
-            #based on the reader's attributes
-            if (((pcmreader.channels <= 2) and
-                 (pcmreader.bits_per_sample <= 16))):
-                fmt = "16u 16u 32u 32u 16u 16u"
-                fmt_fields = (1,   # compression code
-                              pcmreader.channels,
-                              pcmreader.sample_rate,
-                              avg_bytes_per_second,
-                              block_align,
-                              pcmreader.bits_per_sample)
-            else:
-                if (pcmreader.channel_mask != 0):
-                    channel_mask = pcmreader.channel_mask
-                else:
-                    channel_mask = {1: 0x4,
-                                    2: 0x3,
-                                    3: 0x7,
-                                    4: 0x33,
-                                    5: 0x37,
-                                    6: 0x3F}.get(pcmreader.channels, 0)
+        #close the PCM reader and flush our output
+        try:
+            pcmreader.close()
+        except DecodingError, err:
+            cls.__unlink__(filename)
+            raise EncodingError(err.error_message)
 
-                fmt = "16u 16u 32u 32u 16u 16u" + "16u 16u 32u 16b"
-                fmt_fields = (0xFFFE,   # compression code
-                              pcmreader.channels,
-                              pcmreader.sample_rate,
-                              avg_bytes_per_second,
-                              block_align,
-                              pcmreader.bits_per_sample,
-                              22,       # CB size
-                              pcmreader.bits_per_sample,
-                              channel_mask,
-                              '\x01\x00\x00\x00\x00\x00\x10\x00' +
-                              '\x80\x00\x00\xaa\x00\x38\x9b\x71'  # sub format
-                              )
-
-            #write out the basic headers first
-            #we'll be back later to clean up the sizes
-            wave.build("4b 32u 4b", ("RIFF", total_size, "WAVE"))
-            total_size += 4
-
-            wave.build("4b 32u", ('fmt ', format_size(fmt) / 8))
-            total_size += format_size("4b 32u") / 8
-
-            wave.build(fmt, fmt_fields)
-            total_size += format_size(fmt) / 8
-
-            wave.build("4b 32u", ('data', data_size))
-            total_size += format_size("4b 32u") / 8
-
-            #dump pcmreader's FrameLists into the file as little-endian
-            try:
-                framelist = pcmreader.read(FRAMELIST_SIZE)
-                while (len(framelist) > 0):
-                    if (framelist.bits_per_sample > 8):
-                        bytes = framelist.to_bytes(False, True)
-                    else:
-                        bytes = framelist.to_bytes(False, False)
-
-                    f.write(bytes)
-                    total_size += len(bytes)
-                    data_size += len(bytes)
-
-                    framelist = pcmreader.read(FRAMELIST_SIZE)
-            except (IOError, ValueError), err:
+        if (total_pcm_frames is not None):
+            #ensure written number of PCM frames
+            #matches total_pcm_frames argument
+            if (counter.frames_written != total_pcm_frames):
+                from .text import ERR_TOTAL_PCM_FRAMES_MISMATCH
                 cls.__unlink__(filename)
-                raise EncodingError(str(err))
-            except Exception, err:
-                cls.__unlink__(filename)
-                raise err
+                raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
+        else:
+            #go back and rewrite populated header
+            #with counted number of PCM frames
+            f.seek(0, 0)
+            f.write(wave_header(pcmreader.sample_rate,
+                                pcmreader.channels,
+                                pcmreader.channel_mask,
+                                pcmreader.bits_per_sample,
+                                counter.frames_written))
 
-            #handle odd-sized data chunks
-            if (data_size % 2):
-                wave.write(8, 0)
-                total_size += 1
-
-            #close the PCM reader and flush our output
-            try:
-                pcmreader.close()
-            except DecodingError, err:
-                cls.__unlink__(filename)
-                raise EncodingError(err.error_message)
-            f.flush()
-
-            if (total_size < (2 ** 32)):
-                #go back to the beginning the rewrite the header
-                f.seek(0, 0)
-                wave.build("4b 32u 4b", ("RIFF", total_size, "WAVE"))
-                wave.build("4b 32u", ('fmt ', format_size(fmt) / 8))
-                wave.build(fmt, fmt_fields)
-                wave.build("4b 32u", ('data', data_size))
-            else:
-                import os
-
-                os.unlink(filename)
-                #FIXME
-                raise EncodingError("PCM data too large for wave file")
-
-        finally:
-            f.close()
+        f.close()
 
         return WaveAudio(filename)
 

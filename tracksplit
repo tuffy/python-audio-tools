@@ -384,7 +384,8 @@ if (__name__ == '__main__'):
                         audiotools.LimitedPCMReader(total_pcm, pcm_frames),
                         pcm_frames,
                         progress.update),
-                    output_quality))
+                    output_quality,
+                    total_pcm_frames=pcm_frames))
             encoded_tracks[-1].set_metadata(output_metadata)
             progress.clear()
             msg.info(

@@ -377,7 +377,8 @@ if (__name__ == '__main__'):
                         audiotools.PCMReaderProgress(pcmreader,
                                                      pcm_frames,
                                                      progress.update),
-                        output_quality))
+                        output_quality,
+                        total_pcm_frames=pcm_frames))
             except audiotools.EncodingError, err:
                 msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
                 sys.exit(1)

@@ -341,7 +341,8 @@ if (__name__ == '__main__'):
                         cd_track,
                         cd_track.length() * (44100 / 75),
                         progress.update),
-                    output_quality))
+                    output_quality,
+                    total_pcm_frames=cd_track.length() * (44100 / 75)))
         except audiotools.EncodingError, err:
             msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
             sys.exit(1)

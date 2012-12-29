@@ -3588,14 +3588,20 @@ class AudioFile:
         raise NotImplementedError()
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None):
+    def from_pcm(cls, filename, pcmreader,
+                 compression=None,
+                 total_pcm_frames=None):
         """encodes a new file from PCM data
 
         takes a filename string, PCMReader object
-        and optional compression level string
+        optional compression level string,
+        and optional total_pcm_frames integer
         encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
         and returns a new AudioFile-compatible object
+
+        specifying total_pcm_frames, when the number is known in advance,
+        may allow the encoder to work more efficiently but is never required
 
         for example, to encode the FlacAudio file "file.flac" from "file.wav"
         at compression level "5":
@@ -3614,8 +3620,8 @@ class AudioFile:
 
         raise NotImplementedError()
 
-    def convert(self, target_path, target_class, compression=None,
-                progress=None):
+    def convert(self, target_path, target_class,
+                compression=None, progress=None):
         """encodes a new AudioFile from existing AudioFile
 
         take a filename string, target class and optional compression string
@@ -3623,9 +3629,12 @@ class AudioFile:
         the resulting object
         may raise EncodingError if some problem occurs during encoding"""
 
-        return target_class.from_pcm(target_path,
-                                     to_pcm_progress(self, progress),
-                                     compression)
+        return target_class.from_pcm(
+            target_path,
+            to_pcm_progress(self, progress),
+            compression,
+            total_pcm_frames=(self.total_frames() if self.lossless()
+                              else None))
 
     @classmethod
     def __unlink__(cls, filename):
@@ -3936,9 +3945,12 @@ class WaveContainer(AudioFile):
                                           compression)
         else:
             #perform standard PCM conversion instead
-            return target_class.from_pcm(target_path,
-                                         to_pcm_progress(self, progress),
-                                         compression)
+            return target_class.from_pcm(
+                target_path,
+                to_pcm_progress(self, progress),
+                compression,
+                total_pcm_frames=(self.total_frames() if self.lossless()
+                                  else None))
 
 
 class AiffContainer(AudioFile):
@@ -4006,9 +4018,12 @@ class AiffContainer(AudioFile):
                                           compression)
         else:
             #perform standard PCM conversion instead
-            return target_class.from_pcm(target_path,
-                                         to_pcm_progress(self, progress),
-                                         compression)
+            return target_class.from_pcm(
+                target_path,
+                to_pcm_progress(self, progress),
+                compression,
+                total_pcm_frames=(self.total_frames() if self.lossless()
+                                  else None))
 
 
 class DummyAudioFile(AudioFile):

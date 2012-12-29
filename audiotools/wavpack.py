@@ -440,18 +440,22 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         return self.__samplerate__
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None,
+    def from_pcm(cls, filename, pcmreader,
+                 compression=None,
+                 total_pcm_frames=None,
                  encoding_function=None):
         """encodes a new file from PCM data
 
-        takes a filename string, PCMReader object
-        and optional compression level string
+        takes a filename string, PCMReader object,
+        optional compression level string and
+        optional total_pcm_frames integer
         encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
         and returns a new WavPackAudio object"""
 
         from .encoders import encode_wavpack
         from . import BufferedPCMReader
+        from . import CounterPCMReader
         from . import EncodingError
         from . import __default_quality__
 
@@ -459,19 +463,32 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
              (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
+        counter = CounterPCMReader(pcmreader)
+
         try:
             (encode_wavpack if encoding_function is None
-             else encoding_function)(filename,
-                                     BufferedPCMReader(pcmreader),
-                                     **cls.__options__[compression])
-
-            return cls(filename)
+             else encoding_function)(
+                filename,
+                BufferedPCMReader(counter),
+                total_pcm_frames=(total_pcm_frames if
+                                  total_pcm_frames is not None else 0) ,
+                **cls.__options__[compression])
         except (ValueError, IOError), msg:
             cls.__unlink__(filename)
             raise EncodingError(str(msg))
         except Exception, err:
             cls.__unlink__(filename)
             raise err
+
+        #ensure actual total PCM frames matches argument, if any
+        if ((total_pcm_frames is not None) and
+            (counter.frames_written != total_pcm_frames)):
+            cls.__unlink__(filename)
+            from .text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+            raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
+
+        return cls(filename)
+
 
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""

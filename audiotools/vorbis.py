@@ -253,8 +253,16 @@ class VorbisAudio(AudioFile):
             return pcmreader
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None):
-        """returns a PCMReader object containing the track's PCM data"""
+    def from_pcm(cls, filename, pcmreader,
+                 compression=None, total_pcm_frames=None):
+        """encodes a new file from PCM data
+
+        takes a filename string, PCMReader object,
+        optional compression level string and
+        optional total_pcm_frames integer
+        encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new VorbisAudio object"""
 
         from . import transfer_framelist_data
         from . import BIN

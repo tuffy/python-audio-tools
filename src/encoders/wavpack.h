@@ -94,7 +94,8 @@ struct wavpack_encoder_context {
   and user-defined tunables*/
 static void
 init_context(struct wavpack_encoder_context* context,
-             unsigned channel_count, unsigned channel_mask,
+             unsigned channel_count,
+             unsigned channel_mask,
              int try_false_stereo,
              int try_wasted_bits,
              int try_joint_stereo,
@@ -177,6 +178,7 @@ add_block_offset(FILE* file, array_o* offsets);
 static void
 write_block_header(BitstreamWriter* bs,
                    unsigned sub_blocks_size,
+                   unsigned total_pcm_frames,
                    uint32_t block_index,
                    uint32_t block_samples,
                    unsigned bits_per_sample,
@@ -203,12 +205,16 @@ encode_block(BitstreamWriter* bs,
              const pcmreader* pcmreader,
              struct encoding_parameters* parameters,
              const array_ia* channels,
-             uint32_t block_index, int first_block, int last_block);
+             unsigned total_pcm_frames,
+             uint32_t block_index,
+             int first_block,
+             int last_block);
 
 static void
 encode_footer_block(BitstreamWriter* bs,
                     struct wavpack_encoder_context* context,
-                    const pcmreader* pcmreader);
+                    const pcmreader* pcmreader,
+                    unsigned total_pcm_frame);
 
 static void
 write_sub_block(BitstreamWriter* block,

@@ -425,11 +425,13 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
             process=sub)
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None):
+    def from_pcm(cls, filename, pcmreader,
+                 compression=None, total_pcm_frames=None):
         """encodes a new file from PCM data
 
-        takes a filename string, PCMReader object
-        and optional compression level string
+        takes a filename string, PCMReader object,
+        optional compression level string and optional
+        total_pcm_frames integer
         encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
         and returns a new M4AAudio object"""
@@ -582,11 +584,13 @@ class M4AAudio_nero(M4AAudio_faac):
     BINARIES = ("neroAacDec", "neroAacEnc")
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None):
+    def from_pcm(cls, filename, pcmreader,
+                 compression=None, total_pcm_frames=None):
         """encodes a new file from PCM data
 
-        takes a filename string, PCMReader object
-        and optional compression level string
+        takes a filename string, PCMReader object,
+        optional compression level string and
+        optional total_pcm_frames integer
         encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
         and returns a new M4AAudio object"""
@@ -928,12 +932,14 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                                   bits_per_sample=self.bits_per_sample())
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None,
+    def from_pcm(cls, filename, pcmreader,
+                 compression=None, total_pcm_frames=None,
                  block_size=4096, encoding_function=None):
         """encodes a new file from PCM data
 
-        takes a filename string, PCMReader object
-        and optional compression level string
+        takes a filename string, PCMReader object,
+        optional compression level string and
+        optional total_pcm_frames integer
         encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
         and returns a new ALACAudio object"""

@@ -462,13 +462,17 @@ AudioFile Objects
    May return a :class:`PCMReaderError` if an error occurs
    initializing the decoder.
 
-.. classmethod:: AudioFile.from_pcm(filename, pcmreader[, compression])
+.. classmethod:: AudioFile.from_pcm(filename, pcmreader[, compression][, total_pcm_frames])
 
-   Takes a filename string, :class:`PCMReader`-compatible object
-   and optional compression level string.
+   Takes a filename string, :class:`PCMReader`-compatible object,
+   optional compression level string and optional total_pcm_frames integer.
    Creates a new audio file as the same format as this audio class
    and returns a new :class:`AudioFile`-compatible object.
    Raises :exc:`EncodingError` if a problem occurs during encoding.
+
+   Specifying the total number of PCM frames to be encoded,
+   when the number is known in advance, may allow the encoder
+   to work more efficiently but is never required.
 
    In this example, we'll transcode ``track.flac`` to ``track.mp3``
    at the default compression level:

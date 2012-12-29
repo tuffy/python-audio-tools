@@ -211,12 +211,16 @@ class ShortenAudio(WaveContainer, AiffContainer):
                                   bits_per_sample=16)
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None,
-                 block_size=256, encoding_function=None):
+    def from_pcm(cls, filename, pcmreader,
+                 compression=None,
+                 total_pcm_frames=None,
+                 block_size=256,
+                 encoding_function=None):
         """encodes a new file from PCM data
 
-        takes a filename string, PCMReader object
-        and optional compression level string
+        takes a filename string, PCMReader object,
+        optional compression level string and
+        optional total_pcm_frames integer
         encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
         and returns a new ShortenAudio object"""
@@ -232,25 +236,42 @@ class ShortenAudio(WaveContainer, AiffContainer):
         if (pcmreader.bits_per_sample not in (8, 16)):
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
-        from . import WaveAudio
-        import tempfile
+        if (total_pcm_frames is not None):
+            from .wav import wave_header
 
-        f = tempfile.NamedTemporaryFile(suffix=".wav")
-        try:
-            w = WaveAudio.from_pcm(f.name, pcmreader)
-            (header, footer) = w.wave_header_footer()
             return cls.from_wave(filename,
-                                 header,
-                                 w.to_pcm(),
-                                 footer,
+                                 wave_header(pcmreader.sample_rate,
+                                             pcmreader.channels,
+                                             pcmreader.channel_mask,
+                                             pcmreader.bits_per_sample,
+                                             total_pcm_frames),
+                                 pcmreader,
+                                 chr(0) * (((pcmreader.bits_per_sample / 8) *
+                                            pcmreader.channels *
+                                            total_pcm_frames) % 2),
                                  compression,
                                  block_size,
                                  encoding_function)
-        finally:
-            if (os.path.isfile(f.name)):
-                f.close()
-            else:
-                f.close_called = True
+        else:
+            from . import WaveAudio
+            import tempfile
+
+            f = tempfile.NamedTemporaryFile(suffix=".wav")
+            try:
+                w = WaveAudio.from_pcm(f.name, pcmreader)
+                (header, footer) = w.wave_header_footer()
+                return cls.from_wave(filename,
+                                     header,
+                                     w.to_pcm(),
+                                     footer,
+                                     compression,
+                                     block_size,
+                                     encoding_function)
+            finally:
+                if (os.path.isfile(f.name)):
+                    f.close()
+                else:
+                    f.close_called = True
 
     def has_foreign_wave_chunks(self):
         """returns True if the audio file contains non-audio RIFF chunks
@@ -581,6 +602,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
                                          compression,
                                          progress)
         else:
-            return target_class.from_pcm(target_path,
-                                         to_pcm_progress(self, progress),
-                                         compression)
+            return target_class.from_pcm(
+                target_path,
+                to_pcm_progress(self, progress),
+                compression,
+                total_pcm_frames=self.total_frames())

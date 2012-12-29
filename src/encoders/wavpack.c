@@ -37,6 +37,7 @@ encoders_encode_wavpack(PyObject *dummy,
     unsigned i;
 
     unsigned block_size;
+    unsigned total_pcm_frames = 0;
     int try_false_stereo = 0;
     int try_wasted_bits = 0;
     int try_joint_stereo = 0;
@@ -46,6 +47,7 @@ encoders_encode_wavpack(PyObject *dummy,
                              "pcmreader",
                              "block_size",
 
+                             "total_pcm_frames",
                              "false_stereo",
                              "wasted_bits",
                              "joint_stereo",
@@ -61,13 +63,14 @@ encoders_encode_wavpack(PyObject *dummy,
 
     if (!PyArg_ParseTupleAndKeywords(args,
                                      keywds,
-                                     "sO&I|iiiIs#s#",
+                                     "sO&I|IiiiIs#s#",
                                      kwlist,
                                      &filename,
                                      pcmreader_converter,
                                      &pcmreader,
                                      &block_size,
 
+                                     &total_pcm_frames,
                                      &try_false_stereo,
                                      &try_wasted_bits,
                                      &try_joint_stereo,
@@ -103,6 +106,7 @@ encoders_encode_wavpack(char *filename,
     unsigned block;
     uint32_t block_index = 0;
     unsigned i;
+    unsigned total_pcm_frames = 0;
 
     context.wave.header_data = NULL;
     context.wave.footer_data = NULL;
@@ -140,8 +144,10 @@ encoders_encode_wavpack(char *filename,
 #endif
         /*split PCM frames into 1-2 channel blocks*/
         for (block = 0; block < context.blocks_per_set; block++) {
-            /*add a fresh block offset based on current file position*/
-            add_block_offset(file, context.offsets);
+            /*add a fresh block offset based on current file position
+              if the total number of PCM frames is unknown*/
+            if (total_pcm_frames == 0)
+                add_block_offset(file, context.offsets);
 
             pcm_frames->split(pcm_frames,
                               context.parameters[block].channel_count,
@@ -153,6 +159,7 @@ encoders_encode_wavpack(char *filename,
                          pcmreader,
                          &(context.parameters[block]),
                          block_frames,
+                         total_pcm_frames,
                          block_index,
                          block == 0,
                          block == (context.blocks_per_set - 1));
@@ -166,9 +173,11 @@ encoders_encode_wavpack(char *filename,
             goto error;
     }
 
-    /*add wave footer/MD5 sub-blocks to end of stream*/
-    add_block_offset(file, context.offsets);
-    encode_footer_block(stream, &context, pcmreader);
+    /*add wave footer/MD5 sub-blocks to end of stream
+      along with offset if the number of PCM frames is unknown*/
+    if (total_pcm_frames == 0)
+        add_block_offset(file, context.offsets);
+    encode_footer_block(stream, &context, pcmreader, total_pcm_frames);
 
     /*update generated wave header, if necessary*/
     if (context.wave.header_data == NULL) {
@@ -243,7 +252,8 @@ encoders_encode_wavpack(char *filename,
 
 static void
 init_context(struct wavpack_encoder_context* context,
-             unsigned channel_count, unsigned channel_mask,
+             unsigned channel_count,
+             unsigned channel_mask,
              int try_false_stereo,
              int try_wasted_bits,
              int try_joint_stereo,
@@ -534,6 +544,7 @@ add_block_offset(FILE* file, array_o* offsets)
 static void
 write_block_header(BitstreamWriter* bs,
                    unsigned sub_blocks_size,
+                   unsigned total_pcm_frames,
                    uint32_t block_index,
                    uint32_t block_samples,
                    unsigned bits_per_sample,
@@ -553,7 +564,7 @@ write_block_header(BitstreamWriter* bs,
     bs->write(bs, 16, WAVPACK_VERSION);
     bs->write(bs, 8, 0);              /*track number*/
     bs->write(bs, 8, 0);              /*index number*/
-    bs->write(bs, 32, 0xFFFFFFFF);    /*total samples placeholder*/
+    bs->write(bs, 32, total_pcm_frames);
     bs->write(bs, 32, block_index);
     bs->write(bs, 32, block_samples);
     bs->write(bs, 2, bits_per_sample / 8 - 1);
@@ -607,7 +618,10 @@ encode_block(BitstreamWriter* bs,
              const pcmreader* pcmreader,
              struct encoding_parameters* parameters,
              const array_ia* channels,
-             uint32_t block_index, int first_block, int last_block)
+             unsigned total_pcm_frames,
+             uint32_t block_index,
+             int first_block,
+             int last_block)
 {
     int false_stereo;
     unsigned effective_channel_count;
@@ -833,6 +847,8 @@ encode_block(BitstreamWriter* bs,
     /*finally, write block header using size of all sub blocks*/
     write_block_header(bs,
                        sub_blocks->bytes_written(sub_blocks),
+                       (total_pcm_frames > 0) ?
+                       total_pcm_frames : 0xFFFFFFFF,
                        block_index,
                        total_frames,
                        pcmreader->bits_per_sample,
@@ -1766,7 +1782,8 @@ apply_joint_stereo(const array_ia* left_right, array_ia* mid_side)
 static void
 encode_footer_block(BitstreamWriter* bs,
                     struct wavpack_encoder_context* context,
-                    const pcmreader* pcmreader)
+                    const pcmreader* pcmreader,
+                    unsigned total_pcm_frames)
 {
     BitstreamWriter* sub_blocks = context->cache.sub_blocks;
     BitstreamWriter* sub_block = context->cache.sub_block;
@@ -1791,6 +1808,7 @@ encode_footer_block(BitstreamWriter* bs,
 
     write_block_header(bs,
                        sub_blocks->bytes_written(sub_blocks),
+                       total_pcm_frames ? total_pcm_frames : 0xFFFFFFFF,
                        0xFFFFFFFF,  /*block index*/
                        0,           /*block samples*/
                        pcmreader->bits_per_sample,

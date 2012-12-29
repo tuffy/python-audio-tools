@@ -6230,10 +6230,72 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Add True Audio detecter to file_type() function
 *** DONE Add True Audio AudioFile class
 *** DONE Ensure True Audio class passes all unit tests
-** TODO Support total_pcm_frames arguments during .convert()
+** TODO Add optional total_pcm_frames argument to from_pcm()
    Certain formats encode much easier if the total number of PCM frames
-   is known in advance, rather than using from_pcm() which can
-   take any number of PCM frames.
+   is known in advance.  Adding a total_pcm_frames argument
+   allows encoders to make use of that info if it's available.
+*** DONE Update formats with total_pcm_frames argument
+**** DONE AudioFile
+     does nothing
+**** DONE ALACAudio
+     does nothing
+**** DONE AiffAudio
+     does nothing
+**** DONE AuAudio
+     does nothing
+**** DONE FlacAudio
+     does nothing
+**** DONE M4AAudio
+     does nothing
+**** DONE MP2Audio
+     does nothing
+**** DONE MP3Audio
+     does nothing
+**** DONE OggFlacAudio
+     does nothing
+**** DONE OpusAudio
+     does nothing
+**** DONE ShortenAudio
+     If total_pcm_frames argument is given to from_pcm(),
+     precalculate Wave header rather than use temporary file.
+     This shouldn't require updating the encode_shn function.
+**** DONE TrueAudio
+     If total_pcm_frames argument is given to from_pcm(),
+     fill header and temporary seektable rather than use temporary file.
+     This shouldn't require updating the encode_tta function.
+**** DONE VorbisAudio
+     does nothing
+**** DONE WavPackAudio
+     If total_pcm_frames argument is given to from_pcm(),
+     fill blocks during encoding rather than re-fill them afterward.
+     This will require minor update to encode_wavpack function.
+**** DONE WaveAudio
+     does nothing
+*** DONE Update convert() methods to call from_pcm() with argument
+    But only if the input file is lossless.
+**** DONE AudioFile
+**** DONE ALACAudio
+**** DONE AiffAudio
+**** DONE AuAudio
+**** DONE FlacAudio
+**** DONE M4AAudio
+**** DONE MP2Audio
+**** DONE MP3Audio
+**** DONE OggFlacAudio
+**** DONE OpusAudio
+**** DONE ShortenAudio
+**** DONE TrueAudio
+**** DONE VorbisAudio
+**** DONE WavPackAudio
+**** DONE WaveAudio
+*** DONE Update utilities to make use of total_pcm_frames argument
+**** DONE cd2track
+**** DONE dvda2track
+**** DONE trackcat
+**** DONE tracksplit
+*** DONE Document total_pcm_frames argument
+*** TODO Unit test calling formats with total_pcm_frames and without
+*** TODO Ensure all unit tests pass
 ** TODO Make decoder streams seekable
    PCMReader.seek(pcm_frames) -> pcm_frames skipped
    could seek to the closest position in the stream to the given frames

@@ -1623,12 +1623,15 @@ class FlacAudio(WaveContainer, AiffContainer):
                                   bits_per_sample=self.bits_per_sample())
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None,
+    def from_pcm(cls, filename, pcmreader,
+                 compression=None,
+                 total_pcm_frames=None,
                  encoding_function=None):
         """encodes a new file from PCM data
 
-        takes a filename string, PCMReader object
-        and optional compression level string
+        takes a filename string, PCMReader object,
+        optional compression level string and
+        optional total_pcm_frames integer
         encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
         and returns a new FlacAudio object"""
@@ -2312,9 +2315,11 @@ class FlacAudio(WaveContainer, AiffContainer):
                                          compression,
                                          progress)
         else:
-            return target_class.from_pcm(target_path,
-                                         to_pcm_progress(self, progress),
-                                         compression)
+            return target_class.from_pcm(
+                target_path,
+                to_pcm_progress(self, progress),
+                compression,
+                total_pcm_frames=self.total_frames())
 
     def bits_per_sample(self):
         """returns an integer number of bits-per-sample this track contains"""
@@ -3199,11 +3204,14 @@ class OggFlacAudio(FlacAudio):
                                   bits_per_sample=self.bits_per_sample())
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None):
+    def from_pcm(cls, filename, pcmreader,
+                 compression=None,
+                 total_pcm_frames=None):
         """encodes a new file from PCM data
 
-        takes a filename string, PCMReader object
-        and optional compression level string
+        takes a filename string, PCMReader object,
+        optional compression level string and
+        optional total_pcm_frames integer
         encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
         and returns a new OggFlacAudio object"""

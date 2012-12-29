@@ -230,11 +230,13 @@ class MP3Audio(AudioFile):
             big_endian=BIG_ENDIAN)
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None):
+    def from_pcm(cls, filename, pcmreader,
+                 compression=None, total_pcm_frames=None):
         """encodes a new file from PCM data
 
-        takes a filename string, PCMReader object
-        and optional compression level string
+        takes a filename string, PCMReader object,
+        optional compression level string and
+        optional total_pcm_frames integer
         encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
         and returns a new MP3Audio object"""
@@ -721,11 +723,13 @@ class MP2Audio(MP3Audio):
     BINARIES = ("mpg123", "twolame")
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None):
+    def from_pcm(cls, filename, pcmreader,
+                 compression=None, total_pcm_frames=None):
         """encodes a new file from PCM data
 
-        takes a filename string, PCMReader object
-        and optional compression level string
+        takes a filename string, PCMReader object,
+        optional compression level string and
+        optional total_pcm_frames integer
         encodes a new audio file from pcmreader's data
         at the given filename with the specified compression level
         and returns a new MP2Audio object"""

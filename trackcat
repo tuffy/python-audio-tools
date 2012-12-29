@@ -322,7 +322,8 @@ if (__name__ == '__main__'):
                 audiotools.PCMCat([af.to_pcm() for af in audiofiles]),
                 sum([af.total_frames() for af in audiofiles]),
                 progress.update),
-            output_quality)
+            output_quality,
+            total_pcm_frames=sum([af.total_frames() for af in audiofiles]))
 
         encoded.set_metadata(metadata)
 
