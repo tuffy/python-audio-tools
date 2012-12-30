@@ -360,7 +360,7 @@ def encode_wavpack(filename,
             first_block = parameters is context.block_parameters[0]
             last_block = parameters is context.block_parameters[-1]
 
-            if (total_pcm_frames > 0):
+            if (total_pcm_frames == 0):
                 context.block_offsets.append(output_file.tell())
             write_block(writer,
                         context,

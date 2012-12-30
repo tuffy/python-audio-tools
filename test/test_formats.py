@@ -882,13 +882,15 @@ class LosslessFileTest(AudioFileTest):
                         track = self.audio_class.from_pcm(
                             temp.name,
                             reader,
-                            total_pcm_frames=total_pcm_frames)
+                            total_pcm_frames=(total_pcm_frames * 10)
+                            if (total_pcm_frames is not None) else None)
                     else:
                         track = self.audio_class.from_pcm(
                             temp.name,
                             reader,
                             compression,
-                            total_pcm_frames=total_pcm_frames)
+                            total_pcm_frames=(total_pcm_frames * 10)
+                            if (total_pcm_frames is not None) else None)
                     checksum = md5()
                     audiotools.transfer_framelist_data(track.to_pcm(),
                                                        checksum.update)
@@ -900,13 +902,15 @@ class LosslessFileTest(AudioFileTest):
                         track = self.audio_class.from_pcm(
                             temp.name,
                             reader,
-                            total_pcm_frames=total_pcm_frames)
+                            total_pcm_frames=(total_pcm_frames * 10)
+                            if (total_pcm_frames is not None) else None)
                     else:
                         track = self.audio_class.from_pcm(
                             temp.name,
                             reader,
                             compression,
-                            total_pcm_frames=total_pcm_frames)
+                            total_pcm_frames=(total_pcm_frames * 10)
+                            if (total_pcm_frames is not None) else None)
                     checksum = md5()
                     audiotools.transfer_framelist_data(track.to_pcm(),
                                                        checksum.update)

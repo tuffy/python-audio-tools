@@ -6212,25 +6212,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    A better approach is to have all the metadata lookups
    performed first, multiple metadata edit screens,
    and a single output options/preview screen.
-** TODO Add internal True Audio codec
-*** DONE Add Python-based True Audio decoder
-*** DONE Add Python-based True Audio encoder
-*** DONE Document True Audio decoding
-*** DONE Document True Audio encoding
-*** TODO Add C-based True Audio decoder
-**** DONE modify it for standalone use
-**** DONE ensure there's no memory errors or leaks
-**** TODO Make decoder thread-friendly
-*** DONE Add C-based True Audio encoder
-**** DONE modify it for standalone use
-**** DONE ensure there's no memory errors or leaks
-**** DONE make encoder thread-friendly
-*** DONE Add True Audio-specific unit tests
-*** DONE Test encoder/decoder against reference
-*** DONE Add True Audio detecter to file_type() function
-*** DONE Add True Audio AudioFile class
-*** DONE Ensure True Audio class passes all unit tests
-** TODO Add optional total_pcm_frames argument to from_pcm()
+** DONE Add optional total_pcm_frames argument to from_pcm()
    Certain formats encode much easier if the total number of PCM frames
    is known in advance.  Adding a total_pcm_frames argument
    allows encoders to make use of that info if it's available.
@@ -6294,8 +6276,26 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE trackcat
 **** DONE tracksplit
 *** DONE Document total_pcm_frames argument
-*** TODO Unit test calling formats with total_pcm_frames and without
-*** TODO Ensure all unit tests pass
+*** DONE Unit test calling formats with total_pcm_frames and without
+*** DONE Ensure all unit tests pass
+** TODO Add internal True Audio codec
+*** DONE Add Python-based True Audio decoder
+*** DONE Add Python-based True Audio encoder
+*** DONE Document True Audio decoding
+*** DONE Document True Audio encoding
+*** TODO Add C-based True Audio decoder
+**** DONE modify it for standalone use
+**** DONE ensure there's no memory errors or leaks
+**** TODO Make decoder thread-friendly
+*** DONE Add C-based True Audio encoder
+**** DONE modify it for standalone use
+**** DONE ensure there's no memory errors or leaks
+**** DONE make encoder thread-friendly
+*** DONE Add True Audio-specific unit tests
+*** DONE Test encoder/decoder against reference
+*** DONE Add True Audio detecter to file_type() function
+*** DONE Add True Audio AudioFile class
+*** DONE Ensure True Audio class passes all unit tests
 ** TODO Make decoder streams seekable
    PCMReader.seek(pcm_frames) -> pcm_frames skipped
    could seek to the closest position in the stream to the given frames
@@ -6306,6 +6306,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO decoders.ALACDecoder
 *** TODO decoders.FlacDecoder
 *** TODO decoders.SHNDecoder
+*** TODO decoders.TTADecoder
 *** TODO decoders.WavPackDecoder
 ** TODO Deprecate little-used / poorly-tested bits
    Although there's a risk of annoying people by taking out
