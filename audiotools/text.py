@@ -164,7 +164,7 @@ RG_REPLAYGAIN_APPLIED = u"ReplayGain applied"
 
 #Labels
 LAB_ENCODE = u"%(source)s -> %(destination)s"
-LAB_PICTURE = u"Picture"
+LAB_PICTURE = u"picture"
 LAB_T_OPTIONS = u"Please use the -t option to specify %s"
 LAB_AVAILABLE_COMPRESSION_TYPES = u"Available quality modes for \"%s\":"
 LAB_AVAILABLE_FORMATS = u"Available output formats:"

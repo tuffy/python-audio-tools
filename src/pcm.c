@@ -304,20 +304,13 @@ PyObject
 int
 FrameList_equals(pcm_FrameList *a, pcm_FrameList *b)
 {
-    unsigned i;
-
-    if ((a->frames == b->frames) &&
-        (a->channels == b->channels) &&
-        (a->bits_per_sample == b->bits_per_sample) &&
-        (a->samples_length == b->samples_length)) {
-        for (i = 0; i < a->samples_length; i++) {
-            if (a->samples[i] != b->samples[i])
-                return 0;
-        }
-        return 1;
-    } else {
-        return 0;
-    }
+    return ((a->frames == b->frames) &&
+            (a->channels == b->channels) &&
+            (a->bits_per_sample == b->bits_per_sample) &&
+            (a->samples_length == b->samples_length) &&
+            (memcmp(a->samples,
+                    b->samples,
+                    sizeof(int) * a->samples_length) == 0));
 }
 
 PyObject*
@@ -980,7 +973,7 @@ PyTypeObject pcm_FloatFrameListType = {
     "FloatFrameList(float_list, channels)",  /* tp_doc */
     0,                         /* tp_traverse */
     0,                         /* tp_clear */
-    0,                         /* tp_richcompare */
+    (richcmpfunc)FloatFrameList_richcompare, /* tp_richcompare */
     0,                         /* tp_weaklistoffset */
     0,                         /* tp_iter */
     0,                         /* tp_iternext */
@@ -1098,6 +1091,49 @@ Py_ssize_t
 FloatFrameList_len(pcm_FloatFrameList *o)
 {
     return o->samples_length;
+}
+
+PyObject
+*FloatFrameList_richcompare(PyObject *a, PyObject *b, int op)
+{
+    switch (op) {
+    case Py_EQ:
+        if (FloatFrameList_CheckExact(a) &&
+            FloatFrameList_CheckExact(b) &&
+            FloatFrameList_equals((pcm_FloatFrameList*)a,
+                                  (pcm_FloatFrameList*)b)) {
+            Py_INCREF(Py_True);
+            return Py_True;
+        } else {
+            Py_INCREF(Py_False);
+            return Py_False;
+        }
+    case Py_NE:
+        if (FloatFrameList_CheckExact(a) &&
+            FloatFrameList_CheckExact(b) &&
+            FloatFrameList_equals((pcm_FloatFrameList*)a,
+                                  (pcm_FloatFrameList*)b)) {
+            Py_INCREF(Py_False);
+            return Py_False;
+        } else {
+            Py_INCREF(Py_True);
+            return Py_True;
+        }
+    default:
+        PyErr_SetString(PyExc_TypeError, "unsupported comparison");
+        return NULL;
+    }
+}
+
+int
+FloatFrameList_equals(pcm_FloatFrameList *a, pcm_FloatFrameList *b)
+{
+    return ((a->frames == b->frames) &&
+            (a->channels == b->channels) &&
+            (a->samples_length == b->samples_length) &&
+            (memcmp(a->samples,
+                    b->samples,
+                    sizeof(double) * a->samples_length) == 0));
 }
 
 PyObject*

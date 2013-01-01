@@ -186,6 +186,12 @@ Py_ssize_t
 FloatFrameList_len(pcm_FloatFrameList *o);
 
 PyObject*
+FloatFrameList_richcompare(PyObject *a, PyObject *b, int op);
+
+int
+FloatFrameList_equals(pcm_FloatFrameList *a, pcm_FloatFrameList *b);
+
+PyObject*
 FloatFrameList_GetItem(pcm_FloatFrameList *o, Py_ssize_t i);
 
 PyObject*
