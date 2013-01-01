@@ -49,10 +49,6 @@ PyMethodDef module_methods[] = {
     {"from_float_channels", (PyCFunction)FloatFrameList_from_channels,
      METH_VARARGS,
      "from_float_channels(floatframelist_list) -> FloatFrameList"},
-    {"__blank__", (PyCFunction)FrameList_blank,
-     METH_NOARGS, "__blank__() -> FrameList"},
-    {"__blank_float__", (PyCFunction)FloatFrameList_blank,
-     METH_NOARGS, "__blank_float()__ -> FloatFrameList"},
     {NULL}
 };
 
@@ -224,17 +220,6 @@ FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds)
     }
 
     return 0;
-}
-
-PyObject*
-FrameList_blank(PyObject *dummy, PyObject *args)
-{
-    pcm_FrameList *framelist = FrameList_create();
-    framelist->frames = framelist->channels = 0;
-    framelist->bits_per_sample = 8;
-    framelist->samples_length = 0;
-    framelist->samples = malloc(0);
-    return (PyObject*)framelist;
 }
 
 pcm_FrameList*
@@ -1063,16 +1048,6 @@ int
 FloatFrameList_CheckExact(PyObject *o)
 {
     return o->ob_type == &pcm_FloatFrameListType;
-}
-
-PyObject*
-FloatFrameList_blank(PyObject *dummy, PyObject *args)
-{
-    pcm_FloatFrameList *framelist = FloatFrameList_create();
-    framelist->frames = framelist->channels = 0;
-    framelist->samples_length = 0;
-    framelist->samples = malloc(0);
-    return (PyObject*)framelist;
 }
 
 PyObject*

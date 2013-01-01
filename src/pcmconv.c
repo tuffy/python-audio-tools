@@ -34,32 +34,31 @@ array_i_to_FrameList(PyObject* audiotools_pcm,
                      unsigned int channels,
                      unsigned int bits_per_sample)
 {
-    pcm_FrameList *framelist;
+    if ((samples->len % channels) == 0) {
+        pcm_FrameList *framelist;
 
-    framelist = (pcm_FrameList*)PyObject_CallMethod(audiotools_pcm,
-                                                    "__blank__", NULL);
-
-    if (framelist != NULL) {
-        if ((samples->len % channels) == 0) {
+        if ((framelist = (pcm_FrameList*)PyObject_CallMethod(
+             audiotools_pcm,
+             "FrameList",
+             "sIIii",
+             "", channels, bits_per_sample, 0, 0)) != NULL) {
             framelist->frames = samples->len / channels;
-            framelist->channels = channels;
-            framelist->bits_per_sample = bits_per_sample;
             framelist->samples_length = framelist->frames * framelist->channels;
             framelist->samples = realloc(framelist->samples,
                                          framelist->samples_length *
                                          sizeof(int));
 
-            memcpy(framelist->samples, samples->_,
+            memcpy(framelist->samples,
+                   samples->_,
                    framelist->samples_length * sizeof(int));
 
             return (PyObject*)framelist;
         } else {
-            Py_DECREF((PyObject*)framelist);
-            PyErr_SetString(PyExc_ValueError,
-                            "samples data not divisible by channel count");
             return NULL;
         }
     } else {
+        PyErr_SetString(PyExc_ValueError,
+                        "samples data not divisible by channel count");
         return NULL;
     }
 }
@@ -69,38 +68,43 @@ array_ia_to_FrameList(PyObject* audiotools_pcm,
                       array_ia* channels,
                       unsigned int bits_per_sample)
 {
-    unsigned c;
-    unsigned i;
+    const unsigned channel_count = channels->len;
+    unsigned pcm_frames;
     pcm_FrameList *framelist;
-    array_i* channel;
 
-    framelist = (pcm_FrameList*)PyObject_CallMethod(audiotools_pcm,
-                                                    "__blank__", NULL);
-    if (framelist != NULL) {
-        if (channels->len > 0) {
-            framelist->frames = channels->_[0]->len;
-            framelist->channels = channels->len;
-            framelist->bits_per_sample = bits_per_sample;
-            framelist->samples_length = (framelist->frames *
-                                         framelist->channels);
-            framelist->samples = realloc(framelist->samples,
-                                         framelist->samples_length *
-                                         sizeof(int));
+    /*ensure all channels are the same length*/
+    if (channel_count > 0) {
+        pcm_frames = channels->_[0]->len;
+        unsigned c;
 
-            for (c = 0; c < channels->len; c++) {
-                channel = channels->_[c];
-                if (channel->len == framelist->frames) {
-                    for (i = 0; i < framelist->frames; i++) {
-                        framelist->samples[(i * channels->len) + c] =
-                            channel->_[i];
-                    }
-                } else {
-                    /*return an error if there's a channel length mismatch*/
-                    Py_DECREF((PyObject*)framelist);
-                    PyErr_SetString(PyExc_ValueError,
-                                    "channel length mismatch");
-                    return NULL;
-                }
+        for (c = 1; c < channel_count; c++) {
+            if (channels->_[c]->len != pcm_frames) {
+                PyErr_SetString(PyExc_ValueError, "channel length mismatch");
+                return NULL;
+            }
+        }
+    } else {
+        pcm_frames = 0;
+    }
+
+    /*then populate framelist*/
+    if ((framelist = (pcm_FrameList*)PyObject_CallMethod(
+            audiotools_pcm,
+            "FrameList",
+            "sIIii",
+            "", channel_count, bits_per_sample, 0, 0)) != NULL) {
+        unsigned c;
+        unsigned i;
+
+        framelist->frames = pcm_frames;
+        framelist->samples_length = pcm_frames * channel_count;
+        framelist->samples = realloc(framelist->samples,
+                                     framelist->samples_length *
+                                     sizeof(int));
+        for (c = 0; c < channel_count; c++) {
+            const array_i* channel = channels->_[c];
+            for (i = 0; i < pcm_frames; i++) {
+                framelist->samples[(i * channel_count) + c] = channel->_[i];
             }
         }
 
@@ -115,19 +119,9 @@ empty_FrameList(PyObject* audiotools_pcm,
                 unsigned int channels,
                 unsigned int bits_per_sample)
 {
-    pcm_FrameList *framelist;
-
-    framelist = (pcm_FrameList*)PyObject_CallMethod(audiotools_pcm,
-                                                    "__blank__", NULL);
-
-    if (framelist != NULL) {
-        framelist->channels = channels;
-        framelist->bits_per_sample = bits_per_sample;
-
-        return (PyObject*)framelist;
-    } else {
-        return NULL;
-    }
+    return PyObject_CallMethod(
+        audiotools_pcm,
+        "FrameList", "sIIii", "", channels, bits_per_sample, 0, 0);
 }
 
 struct pcmreader_s*

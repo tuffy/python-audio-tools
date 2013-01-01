@@ -158,18 +158,17 @@ CDDA_read_sector(cdio_CDDAObject* self)
     pcm_FrameList *sector;
     PyThreadState *thread_state = NULL;
 
-    sector = (pcm_FrameList*)PyObject_CallMethod(self->pcm_module,
-                                                 "__blank__", NULL);
-    if (sector == NULL)
+    if ((sector = (pcm_FrameList*)PyObject_CallMethod(
+            self->pcm_module,
+            "FrameList", "sIIii", "", 2, 16, 0, 0)) == NULL) {
         return NULL;
+    }
 
     if (read_callback == NULL) {
         thread_state = PyEval_SaveThread();
     }
 
     sector->frames = 44100 / 75;
-    sector->channels = 2;
-    sector->bits_per_sample = 16;
     sector->samples_length = (sector->frames * sector->channels);
     sector->samples = realloc(sector->samples,
                               sector->samples_length * sizeof(int));
@@ -204,18 +203,18 @@ CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args)
     if (!PyArg_ParseTuple(args, "i", &sectors_to_read))
         return NULL;
 
-    sectors = (pcm_FrameList*)PyObject_CallMethod(self->pcm_module,
-                                                  "__blank__", NULL);
-    if (sectors == NULL)
+    if ((sectors = (pcm_FrameList*)PyObject_CallMethod(
+            self->pcm_module,
+            "FrameList",
+            "sIIii", "", 2, 16, 0, 0)) == NULL) {
         return NULL;
+    }
 
     if (read_callback == NULL) {
         thread_state = PyEval_SaveThread();
     }
 
     sectors->frames = sectors_to_read * (44100 / 75);
-    sectors->channels = 2;
-    sectors->bits_per_sample = 16;
     sectors->samples_length = (sectors->frames * sectors->channels);
     sectors->samples = realloc(sectors->samples,
                                sectors->samples_length * sizeof(int));

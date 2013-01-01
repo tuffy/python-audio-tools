@@ -68,9 +68,6 @@ int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds);
 pcm_FrameList*
 FrameList_create(void);
 
-PyObject*
-FrameList_blank(PyObject *dummy, PyObject *args);
-
 int
 FrameList_CheckExact(PyObject *o);
 
