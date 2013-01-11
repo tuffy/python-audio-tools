@@ -273,17 +273,26 @@ compile_huffman_tree(struct br_huffman_table (**table)[][0x200],
 
         *table = malloc(sizeof(struct br_huffman_table) * 1 * 0x200);
 
-        (**table)[0][0].context_node = 0;
+        /*first 2 nodes are a special case
+          since a context of 0 or 1 has no meaning*/
+        (**table)[0][0].continue_ = 0;
+        (**table)[0][0].node = 0;
+        (**table)[0][0].context = 0;
         (**table)[0][0].value = tree->v.leaf;
-        (**table)[0][1].context_node = 0;
+        (**table)[0][1].continue_ = 0;
+        (**table)[0][1].node = 0;
+        (**table)[0][1].context = 0;
         (**table)[0][1].value = tree->v.leaf;
+
         for (size = 1; size < (8 + 1); size++)
             for (value = 0; value < (1 << size); value++) {
                 bank.size = size;
                 bank.value = value;
                 bank_int = bank_to_int(bank);
 
-                (**table)[0][bank_int].context_node = bank_int;
+                (**table)[0][bank_int].continue_ = 0;
+                (**table)[0][bank_int].node = 0;
+                (**table)[0][bank_int].context = bank_int;
                 (**table)[0][bank_int].value = tree->v.leaf;
             }
 
@@ -304,9 +313,13 @@ populate_huffman_tree(struct huffman_node* tree,
     struct byte_bank bank;
 
     if (tree->type == NODE_TREE) {
-        tree->v.tree.jump_table[0].context_node = CONTINUE_READING;
+        tree->v.tree.jump_table[0].continue_ = 1;
+        tree->v.tree.jump_table[0].node = 0;
+        tree->v.tree.jump_table[0].context = 0;
         tree->v.tree.jump_table[0].value = 0;
-        tree->v.tree.jump_table[1].context_node = CONTINUE_READING;
+        tree->v.tree.jump_table[1].continue_ = 1;
+        tree->v.tree.jump_table[1].node = 0;
+        tree->v.tree.jump_table[1].context = 0;
         tree->v.tree.jump_table[1].value = 0;
 
         for (size = 1; size < (8 + 1); size++)
@@ -333,13 +346,16 @@ void next_read_huffman_state(struct br_huffman_table* state,
     if (tree->type == NODE_LEAF) {
         /*reached a leaf node,
           so return current byte bank, empty continue bit and value*/
-        state->context_node = bank_to_int(bank);
+        state->continue_ = 0;
+        state->node = 0;
+        state->context = bank_to_int(bank);
         state->value = tree->v.leaf;
     } else if (bank.size == 0) {
         /*exhausted byte bank,
           so return empty bank, set continue bit and current node*/
-        state->context_node = ((tree->v.tree.id << (BYTE_BANK_SIZE + 1)) |
-                               CONTINUE_READING);
+        state->continue_ = 1;
+        state->node = tree->v.tree.id;
+        state->context = 0;
         state->value = 0;
     } else if (endianness == BS_LITTLE_ENDIAN) {
         /*progress through bit stream in little endian order*/
@@ -650,8 +666,10 @@ int main(int argc, char* argv[]) {
         printf("  {\n");
 
         for (context = 0; context < 0x200; context++) {
-            printf("    {0x%X, %d}",
-                   (*table)[row][context].context_node,
+            printf("    {%d, %d, 0x%X, %d}",
+                   (*table)[row][context].continue_,
+                   (*table)[row][context].node,
+                   (*table)[row][context].context,
                    (*table)[row][context].value);
             if (context < (0x200 - 1))
                 printf(",\n");

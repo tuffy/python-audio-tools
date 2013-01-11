@@ -87,13 +87,16 @@ struct br_mark {
         uint32_t substream;
         uint32_t external;
     } position;
-    int state;
+    uint16_t state;
     struct br_mark *next;
 };
 
-/*a Huffman table entry indicating either a next node or final value*/
+/*a Huffman table entry indicating either a next node (if continue == 1)
+  or final value and new context (if continue == 0)*/
 struct br_huffman_table {
-    unsigned int context_node;
+    uint8_t continue_;
+    unsigned node;
+    uint16_t context;
     int value;
 };
 
@@ -123,7 +126,7 @@ typedef struct BitstreamReader_s {
         struct br_external_input* external;
     } input;
 
-    int state;
+    uint16_t state;
     struct bs_callback* callbacks;
     struct bs_exception* exceptions;
     struct br_mark* marks;
