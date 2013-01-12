@@ -362,7 +362,7 @@ br_open_external(void* user_data,
     {                                                                   \
         struct read_bits result = {0, 0, bs->state};                    \
         register RETURN_TYPE accumulator = 0;                           \
-        unsigned bit_offset = 0;                                        \
+        register unsigned bit_offset = 0;                               \
                                                                         \
         while (count > 0) {                                             \
             if (result.context == 0) {                                  \
@@ -427,7 +427,7 @@ br_read_signed_bits_be(BitstreamReader* bs, unsigned int count)
 int
 br_read_signed_bits_le(BitstreamReader* bs, unsigned int count)
 {
-    int unsigned_value = bs->read(bs, count - 1);
+    const int unsigned_value = bs->read(bs, count - 1);
 
     if (!bs->read(bs, 1)) {
         return unsigned_value;
@@ -469,7 +469,7 @@ br_read_signed_bits64_be(BitstreamReader* bs, unsigned int count)
 int64_t
 br_read_signed_bits64_le(BitstreamReader* bs, unsigned int count)
 {
-    int64_t unsigned_value = bs->read_64(bs, count - 1);
+    const int64_t unsigned_value = bs->read_64(bs, count - 1);
 
     if (!bs->read(bs, 1)) {
         return unsigned_value;
@@ -620,12 +620,10 @@ br_skip_bits_s_be(BitstreamReader* bs, unsigned int count)
 void
 br_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
 {
-    int context = bs->state;
-
     /*handle a common case where the input is byte-aligned,
       the count is an even number of bytes
       and there are no set callbacks to consider*/
-    if ((context == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
+    if ((bs->state == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
         count /= 8;
         if (count <= BUF_REMAINING_BYTES(bs->input.substream)) {
             bs->input.substream->buffer_position += count;
@@ -874,7 +872,7 @@ br_skip_unary_c(BitstreamReader* bs, int stop_bit)
         assert(maximum_bits > 0);                                       \
                                                                         \
         do {                                                            \
-            if (result.context == 0) {                                         \
+            if (result.context == 0) {                                  \
                 const int byte = BYTE_FUNC(BYTE_FUNC_ARG);              \
                 if (byte != EOF) {                                      \
                     struct bs_callback* callback;                       \
@@ -1028,7 +1026,9 @@ br_read_bytes_s(struct BitstreamReader_s* bs,
             /*the buffer has enough bytes to read*/
 
             /*so copy bytes from buffer to output*/
-            memcpy(bytes, buffer->buffer + buffer->buffer_position, byte_count);
+            memcpy(bytes,
+                   buffer->buffer + buffer->buffer_position,
+                   byte_count);
 
             /*perform callbacks on the read bytes*/
             for (callback = bs->callbacks;
@@ -1059,7 +1059,6 @@ br_read_bytes_e(struct BitstreamReader_s* bs,
                 unsigned int byte_count)
 {
     unsigned int i;
-
 
     if (bs->state == 0) {
         /*stream is byte-aligned, so perform optimized read*/
