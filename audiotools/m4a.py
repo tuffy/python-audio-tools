@@ -633,16 +633,12 @@ class M4AAudio_nero(M4AAudio_faac):
         import tempfile
         from . import EncodingError
         from . import PCMReaderError
-        from .wav import WaveReader
+        from .wav import TempWaveReader
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
             self.__to_wave__(f.name)
-            return WaveReader(wave_file=file(f.name, "rb"),
-                              sample_rate=self.sample_rate(),
-                              channels=self.channels(),
-                              channel_mask=int(self.channel_mask()),
-                              bits_per_sample=self.bits_per_sample())
+            return TempWaveReader(f)
         except EncodingError, err:
             return PCMReaderError(error_message=err.error_message,
                                   sample_rate=self.sample_rate(),

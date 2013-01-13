@@ -418,89 +418,133 @@ def wave_header(sample_rate,
         raise ValueError("total size too large for wave file")
 
 
-class WaveReader(PCMReader):
-    """a subclass of PCMReader for reading wave file contents"""
+class WaveReader:
+    """a PCMReader object for reading wave file contents"""
 
-    def __init__(self, wave_file,
-                 sample_rate, channels, channel_mask, bits_per_sample,
-                 process=None):
-        """wave_file should be a file-like stream of wave data
+    def __init__(self, wave_filename):
+        """wave_file should be a seekable file-like stream of wave data"""
 
-        sample_rate, channels, channel_mask and bits_per_sample are ints
-        if present, process is waited for when close() is called
-        """
-
-        self.file = wave_file
-        self.sample_rate = sample_rate
-        self.channels = channels
-        self.bits_per_sample = bits_per_sample
-        self.channel_mask = channel_mask
-
-        self.process = process
-
-        from . import __capped_stream_reader__
         from .bitstream import BitstreamReader
 
-        #build a capped reader for the data chunk
-        wave_reader = BitstreamReader(wave_file, 1)
+        self.file = open(wave_filename, "rb")
+
+        #ensure RIFF<size>WAVE header is ok
         try:
-            (riff, wave) = wave_reader.parse("4b 32p 4b")
-            if (riff != 'RIFF'):
-                from .text import ERR_WAV_NOT_WAVE
-                raise InvalidWave(ERR_WAV_NOT_WAVE)
-            elif (wave != 'WAVE'):
+            (riff,
+             total_size,
+             wave) = struct.unpack("<4sI4s", self.file.read(12))
+        except struct.error:
+            from .text import ERR_WAV_INVALID_WAVE
+            raise ValueError(ERR_WAV_INVALID_WAVE)
+
+        if (riff != 'RIFF'):
+            from .text import ERR_WAV_NOT_WAVE
+            raise ValueError(ERR_WAV_NOT_WAVE)
+        elif (wave != 'WAVE'):
+            from .text import ERR_WAV_INVALID_WAVE
+            raise ValueError(ERR_WAV_INVALID_WAVE)
+        else:
+            total_size -= 4
+            fmt_chunk_read = False
+
+        #walk through chunks until "data" chunk encountered
+        while (total_size > 0):
+            try:
+                (chunk_id,
+                 chunk_size) = struct.unpack("<4sI", self.file.read(8))
+            except struct.error:
                 from .text import ERR_WAV_INVALID_WAVE
-                raise InvalidWave(ERR_WAV_INVALID_WAVE)
+                raise ValueError(ERR_WAV_INVALID_WAVE)
+            if (not frozenset(chunk_id).issubset(WaveAudio.PRINTABLE_ASCII)):
+                from .text import ERR_WAV_INVALID_CHUNK
+                raise ValueError(ERR_WAV_INVALID_CHUNK)
+            else:
+                total_size -= 8
 
-            while (True):
-                (chunk_id, chunk_size) = wave_reader.parse("4b 32u")
-                if (chunk_id == 'data'):
-                    self.wave = __capped_stream_reader__(self.file, chunk_size)
-                    self.data_chunk_length = chunk_size
-                    break
+            if (chunk_id == "fmt "):
+                #when "fmt " chunk encountered,
+                #use it to populate PCMReader attributes
+                (self.channels,
+                 self.sample_rate,
+                 self.bits_per_sample,
+                 channel_mask) = parse_fmt(BitstreamReader(self.file, True))
+                self.channel_mask = int(channel_mask)
+                self.bytes_per_pcm_frame = ((self.bits_per_sample / 8) *
+                                            self.channels)
+                fmt_chunk_read = True
+            elif (chunk_id == "data"):
+                #when "data" chunk encountered,
+                #use its size to determine total PCM frames
+                #and ready PCMReader for reading
+                if (not fmt_chunk_read):
+                    from .text import ERR_WAV_PREMATURE_DATA
+                    raise ValueError(ERR_WAV_PREMATURE_DATA)
                 else:
-                    wave_reader.skip_bytes(chunk_size)
-                    if (chunk_size % 2):
-                        wave_reader.skip(8)
+                    self.total_pcm_frames = (chunk_size //
+                                             self.bytes_per_pcm_frame)
+                    self.remaining_pcm_frames = self.total_pcm_frames
+                    self.data_chunk_offset = self.file.tell()
+                    return
+            else:
+                #all other chunks are ignored
+                self.file.read(chunk_size)
 
-        except IOError:
+            if (chunk_size % 2):
+                if (len(self.file.read(1)) < 1):
+                    from .text import ERR_WAV_INVALID_CHUNK
+                    raise ValueError(ERR_WAV_INVALID_CHUNK)
+                total_size -= (chunk_size + 1)
+            else:
+                total_size -= chunk_size
+        else:
+            #raise an error if no "data" chunk is encountered
             from .text import ERR_WAV_NO_DATA_CHUNK
-            raise InvalidWave(ERR_WAV_NO_DATA_CHUNK)
+            raise ValueError(ERR_WAV_NO_DATA_CHUNK)
 
     def read(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of PCM frames"""
 
-        #align bytes downward if an odd number is read in
-        bytes_per_frame = self.channels * (self.bits_per_sample / 8)
-        requested_frames = max(1, pcm_frames)
-        pcm_data = self.wave.read(requested_frames * bytes_per_frame)
-        if ((len(pcm_data) == 0) and (self.data_chunk_length > 0)):
+        #try to read requested PCM frames or remaining frames
+        requested_pcm_frames = min(pcm_frames, self.remaining_pcm_frames)
+        requested_bytes = (self.bytes_per_pcm_frame *
+                           requested_pcm_frames)
+        pcm_data = self.file.read(requested_bytes)
+
+        #raise exception if "data" chunk exhausted early
+        if (len(pcm_data) < requested_bytes):
             from .text import ERR_WAV_TRUNCATED_DATA_CHUNK
             raise IOError(ERR_WAV_TRUNCATED_DATA_CHUNK)
         else:
-            self.data_chunk_length -= len(pcm_data)
+            self.remaining_pcm_frames -= requested_pcm_frames
 
-        try:
+            #return parsed chunk
             return FrameList(pcm_data,
                              self.channels,
                              self.bits_per_sample,
                              False,
                              self.bits_per_sample != 8)
-        except ValueError:
-            from .text import ERR_WAV_TRUNCATED_DATA_CHUNK
-            raise IOError(ERR_WAV_TRUNCATED_DATA_CHUNK)
+
+    def seek(self, pcm_frame_offset):
+        """tries to seek to the given PCM frame offset
+        returns the total amount of frames actually seeked over"""
+
+        #ensure one doesn't walk off the end of the file
+        pcm_frame_offset = min(pcm_frame_offset,
+                               self.total_pcm_frames)
+
+        #position file in "data" chunk
+        self.file.seek(self.data_chunk_offset +
+                       (pcm_frame_offset *
+                        self.bytes_per_pcm_frame), 0)
+        self.remaining_pcm_frames = (self.total_pcm_frames -
+                                     pcm_frame_offset)
+
+        return pcm_frame_offset
 
     def close(self):
-        """closes the stream for reading
-
-        any subprocess is waited for also so for proper cleanup"""
+        """closes the stream for reading"""
 
         self.file.close()
-        if (self.process is not None):
-            if (self.process.wait() != 0):
-                from . import DecodingError
-
-                raise DecodingError()
 
 
 class TempWaveReader(WaveReader):
@@ -511,13 +555,7 @@ class TempWaveReader(WaveReader):
 
         its contents are used to populate the rest of the fields"""
 
-        wave = WaveAudio(tempfile.name)
-        WaveReader.__init__(self,
-                            tempfile,
-                            sample_rate=wave.sample_rate(),
-                            channels=wave.channels(),
-                            channel_mask=int(wave.channel_mask()),
-                            bits_per_sample=wave.bits_per_sample())
+        WaveReader.__init__(self, tempfile.name)
         self.tempfile = tempfile
 
     def close(self):
@@ -608,11 +646,7 @@ class WaveAudio(WaveContainer):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        return WaveReader(file(self.filename, 'rb'),
-                          sample_rate=self.sample_rate(),
-                          channels=self.channels(),
-                          bits_per_sample=self.bits_per_sample(),
-                          channel_mask=int(self.channel_mask()))
+        return WaveReader(self.filename)
 
     #Takes a filename and PCMReader containing WAV data
     #builds a WAV from that data and returns a new WaveAudio object

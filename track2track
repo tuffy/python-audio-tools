@@ -35,8 +35,7 @@ MAX_CPUS = audiotools.MAX_JOBS
 
 
 def convert(progress, source_audiofile, destination_filename,
-            destination_class, compression,
-            metadata):
+            destination_class, compression, metadata):
     destination_audiofile = source_audiofile.convert(
         destination_filename,
         destination_class,

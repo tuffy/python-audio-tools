@@ -43,6 +43,12 @@
       new tracks are created.  All other text is left as-is.
       If this option is omitted, a default format string is used.
     </option>
+    <option short="j" long="joint" arg="processes">
+      The maximum number of tracks to convert at one time.
+      If one has multiple CPUs or CPU cores, allowing
+      tracksplit(1)
+      to use all of them simultaneously can greatly increase encoding speed.
+    </option>
   </options>
   <options category="CD lookup">
     <option long="musicbrainz-server" arg="hostname">

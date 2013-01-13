@@ -6303,11 +6303,21 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
    This could dramatically improve the performance of
    PCMReaderWindow and enable more stream features down the line.
+*** TODO AiffAudio
+*** TODO AuAudio
+*** TODO WaveAudio
 *** TODO decoders.ALACDecoder
 *** TODO decoders.FlacDecoder
 *** TODO decoders.SHNDecoder
 *** TODO decoders.TTADecoder
 *** TODO decoders.WavPackDecoder
+*** TODO Update other PCMReader-compatible objects
+    If seeking isn't supported, either have .seek() return None
+    or have no seek method at all.
+    The former approach is more consistent and easier to document.
+    The latter approach is easier to implement.
+*** TODO Update unit tests
+*** TODO Update documentation
 ** TODO Deprecate little-used / poorly-tested bits
    Although there's a risk of annoying people by taking out
    stuff they might be using, some utilities and formats
