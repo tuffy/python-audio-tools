@@ -38,6 +38,12 @@ struct flac_STREAMINFO {
     unsigned char md5sum[16];     /*128 bits*/
 };
 
+struct flac_SEEKPOINT {
+    uint64_t sample_number;       /*64 bits*/
+    uint64_t byte_offset;         /*64 bits*/
+    unsigned samples;             /*16 bits*/
+};
+
 struct flac_frame_header {
     uint8_t blocking_strategy;
     uint32_t block_size;
@@ -84,10 +90,12 @@ typedef struct {
     int channel_mask;
 
     struct flac_STREAMINFO streaminfo;
+    array_o* seektable;
     uint64_t remaining_samples;
     int closed;
 
     audiotools__MD5Context md5;
+    int perform_validation;
     int stream_finalized;
 
     /*temporary buffers we don't want to reallocate each time*/
@@ -121,6 +129,9 @@ static PyObject*
 FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args);
 
 static PyObject*
+FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args);
+
+static PyObject*
 FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args);
 
 /*the FlacDecoder.close() method*/
@@ -148,6 +159,8 @@ PyMethodDef FlacDecoder_methods[] = {
     {"read", (PyCFunction)FlacDecoder_read,
      METH_VARARGS,
      "Reads the given number of PCM frames from the FLAC file, if possible"},
+    {"seek", (PyCFunction)FlacDecoder_seek,
+     METH_VARARGS, "Tries to seek to the given PCM frames offset"},
     {"offsets", (PyCFunction)FlacDecoder_offsets,
      METH_NOARGS, "Returns a list of (offset, PCM frame count) values"},
     {"close", (PyCFunction)FlacDecoder_close,
@@ -162,13 +175,15 @@ static PyObject*
 FlacDecoder_new(PyTypeObject *type,
                 PyObject *args, PyObject *kwds);
 
-/*reads the STREAMINFO block and skips any other metadata blocks,
+/*reads the STREAMINFO and SEEKTABLE blocks,
+  skips any other metadata blocks,
   placing our internal stream at the first FLAC frame
 
   returns 0 on success, 1 on failure with PyErr set*/
 int
 flacdec_read_metadata(BitstreamReader *bitstream,
-                      struct flac_STREAMINFO *streaminfo);
+                      struct flac_STREAMINFO *streaminfo,
+                      array_o* seektable);
 #endif
 
 /*reads a FLAC frame header from the sync code to the CRC-8
@@ -256,6 +271,12 @@ const char*
 FlacDecoder_strerror(flac_status error);
 
 uint32_t read_utf8(BitstreamReader *stream);
+
+struct flac_SEEKPOINT*
+seekpoint_copy(struct flac_SEEKPOINT* seekpoint);
+
+void
+seekpoint_print(struct flac_SEEKPOINT* seekpoint, FILE* output);
 
 #ifndef STANDALONE
 

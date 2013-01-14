@@ -528,6 +528,10 @@ class WaveReader:
         """tries to seek to the given PCM frame offset
         returns the total amount of frames actually seeked over"""
 
+        if (pcm_frame_offset < 0):
+            from .text import ERR_NEGATIVE_SEEK
+            raise ValueError(ERR_NEGATIVE_SEEK)
+
         #ensure one doesn't walk off the end of the file
         pcm_frame_offset = min(pcm_frame_offset,
                                self.total_pcm_frames)

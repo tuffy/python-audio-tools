@@ -729,6 +729,78 @@ class AudioFileTest(unittest.TestCase):
         #and ensure invalid files aren't left lying around
         self.assert_(not os.path.isfile(dummy_filename))
 
+    @FORMAT_AUDIOFILE
+    def test_seek(self):
+        from hashlib import md5
+        from random import randrange
+
+        if (self.audio_class is audiotools.AudioFile):
+            return
+
+        total_pcm_frames = 44100 * 60 * 3
+
+        #create a slightly long file
+        temp_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            temp_track = self.audio_class.from_pcm(
+                temp_file.name,
+                EXACT_SILENCE_PCM_Reader(total_pcm_frames),
+                total_pcm_frames=total_pcm_frames)
+
+            #get a PCMReader of our format
+            pcmreader = temp_track.to_pcm()
+
+            #ensure format is seekable
+            if (not (hasattr(pcmreader, "seek") and
+                     (callable(pcmreader.seek)))):
+                return
+
+            #hash its data when read to end
+            raw_data = md5()
+            audiotools.transfer_framelist_data(pcmreader, raw_data.update)
+
+            #seeking to negative values should raise ValueError
+            self.assertRaises(ValueError,
+                              pcmreader.seek,
+                              -1)
+
+            #seeking to offset 0 should always work
+            #(since it's a very basic rewind)
+            self.assertEqual(pcmreader.seek(0), 0)
+
+            #hash its data again and ensure a match
+            rewound_raw_data = md5()
+            audiotools.transfer_framelist_data(pcmreader,
+                                               rewound_raw_data.update)
+            self.assertEqual(raw_data.digest(), rewound_raw_data.digest())
+
+            #try a bunch of random seeks
+            #and ensure the offset is always <= the seeked value
+            for i in xrange(60):
+                position = randrange(0, total_pcm_frames)
+                actual_position = pcmreader.seek(position)
+                self.assert_(actual_position <= position)
+
+                #if lossless, ensure seeking works as advertised
+                #by comparing stream to file window
+                self.assertEqual(
+                    audiotools.pcm_frame_cmp(
+                        pcmreader,
+                        audiotools.PCMReaderWindow(
+                            EXACT_SILENCE_PCM_Reader(total_pcm_frames),
+                            actual_position,
+                            total_pcm_frames - actual_position)),
+                    None)
+
+            #seeking to some huge value should work
+            #even if its position doesn't get to the end of the file
+            self.assert_(pcmreader.seek(2 ** 31) <= (2 ** 31))
+            self.assert_(pcmreader.seek(2 ** 34) <= (2 ** 34))
+            self.assert_(pcmreader.seek(2 ** 38) <= (2 ** 38))
+        finally:
+            temp_file.close()
+
     #FIXME
     @FORMAT_AUDIOFILE_PLACEHOLDER
     def test_cuesheet(self):

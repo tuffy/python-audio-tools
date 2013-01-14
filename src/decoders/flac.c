@@ -31,6 +31,11 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     self->filename = NULL;
     self->file = NULL;
     self->bitstream = NULL;
+
+    self->seektable = array_o_new((ARRAY_COPY_FUNC)seekpoint_copy,
+                                  free,
+                                  (ARRAY_PRINT_FUNC)seekpoint_print);
+
     self->subframe_data = array_ia_new();
     self->residuals = array_i_new();
     self->qlp_coeffs = array_i_new();
@@ -68,8 +73,11 @@ FlacDecoder_init(decoders_FlacDecoder *self,
 
     self->filename = strdup(filename);
 
-    /*read the STREAMINFO block and setup the total number of samples to read*/
-    if (flacdec_read_metadata(self->bitstream, &(self->streaminfo))) {
+    /*read the STREAMINFO block, SEEKTABLE block
+      and setup the total number of samples to read*/
+    if (flacdec_read_metadata(self->bitstream,
+                              &(self->streaminfo),
+                              self->seektable)) {
         self->streaminfo.channels = 0;
         return -1;
     }
@@ -78,11 +86,15 @@ FlacDecoder_init(decoders_FlacDecoder *self,
 
     /*initialize the output MD5 sum*/
     audiotools__MD5Init(&(self->md5));
+    self->perform_validation = 1;
     self->stream_finalized = 0;
 
     /*setup a framelist generator function*/
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
+
+    /*place mark at beginning of stream in case seeking is needed*/
+    self->bitstream->mark(self->bitstream);
 
     /*mark stream as not closed and ready for reading*/
     self->closed = 0;
@@ -105,6 +117,7 @@ FlacDecoder_close(decoders_FlacDecoder* self,
 void
 FlacDecoder_dealloc(decoders_FlacDecoder *self)
 {
+
     self->subframe_data->del(self->subframe_data);
     self->residuals->del(self->residuals);
     self->qlp_coeffs->del(self->qlp_coeffs);
@@ -114,8 +127,15 @@ FlacDecoder_dealloc(decoders_FlacDecoder *self)
     if (self->filename != NULL)
         free(self->filename);
 
-    if (self->bitstream != NULL)
+    if (self->bitstream != NULL) {
+        /*clear out seek mark, if present*/
+        if (self->bitstream->marks != NULL)
+            self->bitstream->unmark(self->bitstream);
+
         self->bitstream->close(self->bitstream);
+    }
+
+    self->seektable->del(self->seektable);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -278,6 +298,65 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
 }
 
 static PyObject*
+FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
+{
+    long long seeked_offset;
+
+    const array_o* seektable = self->seektable;
+    uint64_t pcm_frames_offset = 0;
+    uint64_t byte_offset = 0;
+    unsigned i;
+
+    if (!PyArg_ParseTuple(args, "L", &seeked_offset))
+        return NULL;
+
+    if (seeked_offset < 0) {
+        PyErr_SetString(PyExc_ValueError, "cannot seek to negative value");
+        return NULL;
+    }
+
+    self->stream_finalized = 0;
+
+    /*find latest seekpoint whose first sample is <= seeked_offset
+      or 0 if there are no seekpoints in the seektable*/
+    for (i = 0; i < seektable->len; i++) {
+        struct flac_SEEKPOINT* seekpoint = seektable->_[i];
+        if (seekpoint->sample_number <= seeked_offset) {
+            pcm_frames_offset = seekpoint->sample_number;
+            byte_offset = seekpoint->byte_offset;
+        } else {
+            break;
+        }
+    }
+
+    /*position bitstream to indicated value in file*/
+    self->bitstream->rewind(self->bitstream);
+    while (byte_offset) {
+        /*perform this in chunks in case seeked distance
+          is longer than a "long" taken by fseek*/
+        const uint64_t seek = MIN(byte_offset, LONG_MAX);
+        fseek(self->file, (long)seek, SEEK_CUR);
+        byte_offset -= seek;
+    }
+
+    /*reset stream's total remaining frames*/
+    self->remaining_samples = (self->streaminfo.total_samples -
+                               pcm_frames_offset);
+
+    if (pcm_frames_offset == 0) {
+        /*if pcm_frames_offset is 0, reset MD5 validation*/
+        audiotools__MD5Init(&(self->md5));
+        self->perform_validation = 1;
+    } else {
+        /*otherwise, disable MD5 validation altogether at end of stream*/
+        self->perform_validation = 0;
+    }
+
+    /*return actual PCM frames position in file*/
+    return Py_BuildValue("K", pcm_frames_offset);
+}
+
+static PyObject*
 FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
 {
     int channel;
@@ -361,53 +440,62 @@ flac_status
 FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
                           PyObject *framelist)
 {
-    PyObject *string = PyObject_CallMethod(framelist,
-                                           "to_bytes","ii",
-                                           0,
-                                           1);
-    char *string_buffer;
-    Py_ssize_t length;
+    if (self->perform_validation) {
+        PyObject *string = PyObject_CallMethod(framelist,
+                                               "to_bytes","ii",
+                                               0,
+                                               1);
+        char *string_buffer;
+        Py_ssize_t length;
 
-    if (string != NULL) {
-        if (PyString_AsStringAndSize(string, &string_buffer, &length) == 0) {
-            audiotools__MD5Update(&(self->md5),
-                                  (unsigned char *)string_buffer,
-                                  length);
-            Py_DECREF(string);
-            return OK;
+        if (string != NULL) {
+            if (PyString_AsStringAndSize(string,
+                                         &string_buffer,
+                                         &length) == 0) {
+                audiotools__MD5Update(&(self->md5),
+                                      (unsigned char *)string_buffer,
+                                      length);
+                Py_DECREF(string);
+                return OK;
+            } else {
+                Py_DECREF(string);
+                return ERROR;
+            }
         } else {
-            Py_DECREF(string);
             return ERROR;
         }
     } else {
-        return ERROR;
+        return OK;
     }
 }
 
 int
 FlacDecoder_verify_okay(decoders_FlacDecoder *self)
 {
-    unsigned char stream_md5sum[16];
-    const static unsigned char blank_md5sum[16] = {0, 0, 0, 0, 0, 0, 0, 0,
-                                                   0, 0, 0, 0, 0, 0, 0, 0};
+    if (self->perform_validation) {
+        unsigned char stream_md5sum[16];
+        const static unsigned char blank_md5sum[16] = {0, 0, 0, 0, 0, 0, 0, 0,
+                                                       0, 0, 0, 0, 0, 0, 0, 0};
 
-    audiotools__MD5Final(stream_md5sum, &(self->md5));
+        audiotools__MD5Final(stream_md5sum, &(self->md5));
 
-    return ((memcmp(self->streaminfo.md5sum, blank_md5sum, 16) == 0) ||
-            (memcmp(stream_md5sum, self->streaminfo.md5sum, 16) == 0));
+        return ((memcmp(self->streaminfo.md5sum, blank_md5sum, 16) == 0) ||
+                (memcmp(stream_md5sum, self->streaminfo.md5sum, 16) == 0));
+    } else {
+        return 1;
+    }
 }
 
 #endif
 
 int
 flacdec_read_metadata(BitstreamReader *bitstream,
-                      struct flac_STREAMINFO *streaminfo)
+                      struct flac_STREAMINFO *streaminfo,
+                      array_o *seektable)
 {
-    unsigned int last_block;
-    unsigned int block_type;
-    unsigned int block_length;
-
     if (!setjmp(*br_try(bitstream))) {
+        unsigned last_block;
+
         if (bitstream->read(bitstream, 32) != 0x664C6143u) {
 #ifndef STANDALONE
             PyErr_SetString(PyExc_ValueError, "not a FLAC file");
@@ -418,10 +506,11 @@ flacdec_read_metadata(BitstreamReader *bitstream,
 
         do {
             last_block = bitstream->read(bitstream, 1);
-            block_type = bitstream->read(bitstream, 7);
-            block_length = bitstream->read(bitstream, 24);
+            const unsigned block_type = bitstream->read(bitstream, 7);
+            const unsigned block_length = bitstream->read(bitstream, 24);
 
-            if (block_type == 0) {
+            switch (block_type) {
+            case 0:   /*STREAMINFO*/
                 streaminfo->minimum_block_size =
                     bitstream->read(bitstream, 16);
                 streaminfo->maximum_block_size =
@@ -440,8 +529,27 @@ flacdec_read_metadata(BitstreamReader *bitstream,
                     bitstream->read_64(bitstream, 36);
 
                 bitstream->read_bytes(bitstream, streaminfo->md5sum, 16);
-            } else {
+                break;
+            case 3: /*SEEKTABLE*/
+                {
+                    unsigned seekpoints = block_length / 18;
+                    seektable->reset_for(seektable, seekpoints);
+
+                    for (; seekpoints > 0; seekpoints--) {
+                        struct flac_SEEKPOINT seekpoint;
+                        seekpoint.sample_number =
+                            bitstream->read_64(bitstream, 64);
+                        seekpoint.byte_offset =
+                            bitstream->read_64(bitstream, 64);
+                        seekpoint.samples =
+                            bitstream->read(bitstream, 16);
+                        seektable->append(seektable, &seekpoint);
+                    }
+                }
+                break;
+            default:  /*all other blocks*/
                 bitstream->skip(bitstream, block_length * 8);
+                break;
             }
         } while (!last_block);
 
@@ -449,8 +557,7 @@ flacdec_read_metadata(BitstreamReader *bitstream,
         return 0;
     } else {
 #ifndef STANDALONE
-        PyErr_SetString(PyExc_IOError,
-                        "EOF while reading STREAMINFO block");
+        PyErr_SetString(PyExc_IOError, "EOF while reading metadata");
 #endif
         br_etry(bitstream);
         return 1;
@@ -1046,6 +1153,30 @@ read_utf8(BitstreamReader *stream)
     return value;
 }
 
+struct flac_SEEKPOINT*
+seekpoint_copy(struct flac_SEEKPOINT* seekpoint)
+{
+    struct flac_SEEKPOINT* new_seekpoint =
+        malloc(sizeof(struct flac_SEEKPOINT));
+
+    new_seekpoint->sample_number = seekpoint->sample_number;
+    new_seekpoint->byte_offset = seekpoint->byte_offset;
+    new_seekpoint->samples = seekpoint->samples;
+
+    return new_seekpoint;
+}
+
+void
+seekpoint_print(struct flac_SEEKPOINT* seekpoint, FILE* output)
+{
+    fprintf(output,
+            "seekpoint(%llu, %llX, %u)",
+            seekpoint->sample_number,
+            seekpoint->byte_offset,
+            seekpoint->samples);
+}
+
+
 #ifdef EXECUTABLE
 #include <string.h>
 #include <errno.h>
@@ -1054,6 +1185,7 @@ int main(int argc, char* argv[]) {
     FILE* file;
     BitstreamReader* reader;
     struct flac_STREAMINFO streaminfo;
+    array_o* seektable;
     uint64_t remaining_frames;
 
     array_i* qlp_coeffs;
@@ -1082,6 +1214,9 @@ int main(int argc, char* argv[]) {
     } else {
         /*open bitstream and setup temporary arrays/buffers*/
         reader = br_open(file, BS_BIG_ENDIAN);
+        seektable = array_o_new((ARRAY_COPY_FUNC)seekpoint_copy,
+                                free,
+                                (ARRAY_PRINT_FUNC)seekpoint_print);
         qlp_coeffs = array_i_new();
         residuals = array_i_new();
         subframe_data = array_ia_new();
@@ -1092,7 +1227,7 @@ int main(int argc, char* argv[]) {
     }
 
     /*read initial metadata blocks*/
-    if (flacdec_read_metadata(reader, &streaminfo)) {
+    if (flacdec_read_metadata(reader, &streaminfo, seektable)) {
         fprintf(stderr, "*** Error reading streaminfo\n");
         goto error;
     } else {
@@ -1209,6 +1344,7 @@ int main(int argc, char* argv[]) {
     }
 
     reader->close(reader);
+    seektable->del(seektable);
     qlp_coeffs->del(qlp_coeffs);
     residuals->del(residuals);
     subframe_data->del(subframe_data);
@@ -1219,6 +1355,7 @@ int main(int argc, char* argv[]) {
     return 0;
 error:
     reader->close(reader);
+    seektable->del(seektable);
     qlp_coeffs->del(qlp_coeffs);
     residuals->del(residuals);
     subframe_data->del(subframe_data);
