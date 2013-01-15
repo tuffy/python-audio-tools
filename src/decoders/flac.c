@@ -307,6 +307,11 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
     uint64_t byte_offset = 0;
     unsigned i;
 
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot seek closed stream");
+        return NULL;
+    }
+
     if (!PyArg_ParseTuple(args, "L", &seeked_offset))
         return NULL;
 

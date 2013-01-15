@@ -777,7 +777,7 @@ class AudioFileTest(unittest.TestCase):
 
             #try a bunch of random seeks
             #and ensure the offset is always <= the seeked value
-            for i in xrange(60):
+            for i in xrange(10):
                 position = randrange(0, total_pcm_frames)
                 actual_position = pcmreader.seek(position)
                 self.assert_(actual_position <= position)
@@ -795,9 +795,20 @@ class AudioFileTest(unittest.TestCase):
 
             #seeking to some huge value should work
             #even if its position doesn't get to the end of the file
-            self.assert_(pcmreader.seek(2 ** 31) <= (2 ** 31))
-            self.assert_(pcmreader.seek(2 ** 34) <= (2 ** 34))
-            self.assert_(pcmreader.seek(2 ** 38) <= (2 ** 38))
+            for value in [2 ** 31, 2 ** 34, 2 ** 38]:
+                seeked = pcmreader.seek(value)
+                self.assert_(seeked <= value, "%s > %s" % (seeked, value))
+
+            #a PCMReader that's closed should raise ValueError
+            #whenever seek is called
+            pcmreader.close()
+            self.assertRaises(ValueError,
+                              pcmreader.seek,
+                              0)
+            for i in xrange(10):
+                self.assertRaises(ValueError,
+                                  pcmreader.seek,
+                                  randrange(0, total_pcm_frames))
         finally:
             temp_file.close()
 

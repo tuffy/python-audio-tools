@@ -84,6 +84,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->bits_per_sample = 0;
     self->channels = 0;
     self->channel_mask = 0;
+    self->total_pcm_frames = 0;
     self->remaining_pcm_samples = 0;
 
     /*read initial block to populate
@@ -166,6 +167,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
         }
     }
 
+    self->total_pcm_frames = header.total_samples;
     self->remaining_pcm_samples = header.total_samples;
 
     self->bitstream->rewind(self->bitstream);
@@ -357,6 +359,85 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
 }
 
 PyObject*
+WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args)
+{
+    long long seeked_offset;
+    fpos_t candidate_offset;
+    unsigned best_pcm_offset;
+    fpos_t best_byte_offset;
+    status status;
+    struct block_header header;
+
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot seek closed stream");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTuple(args, "L", &seeked_offset))
+        return NULL;
+
+    if (seeked_offset < 0) {
+        PyErr_SetString(PyExc_ValueError, "cannot seek to negative value");
+        return NULL;
+    }
+
+    /*go to beginning of file*/
+    fseek(self->file, 0, SEEK_SET);
+    fgetpos(self->file, &candidate_offset);
+    best_pcm_offset = 0;
+    best_byte_offset = candidate_offset;
+
+    /*find latest block such that block index <= seeked_offset*/
+    status = read_block_header(self->bitstream, &header);
+    while (status == OK) {
+        /*candidate blocks must have initial bit set
+          and have more than 0 samples
+          (don't seek to multi-channel continuation blocks
+           MD5 blocks or ones with RIFF WAVE footers)*/
+        if (header.initial_block && header.block_samples) {
+            if (header.block_index <= seeked_offset) {
+                /*update new best candidate block*/
+                best_pcm_offset = header.block_index;
+                best_byte_offset = candidate_offset;
+
+                /*move on to next block in file*/
+                fseek(self->file, header.block_size - 24, SEEK_CUR);
+                fgetpos(self->file, &candidate_offset);
+                status = read_block_header(self->bitstream, &header);
+            } else {
+                /*block index is greater than seeked offset,
+                  so stop looking for additional blocks*/
+                break;
+            }
+        } else {
+            /*a continuation block or one with no samples,
+              so automatically move on to next block - if any*/
+            fseek(self->file, header.block_size - 24, SEEK_CUR);
+            fgetpos(self->file, &candidate_offset);
+            status = read_block_header(self->bitstream, &header);
+        }
+    }
+
+    /*rewind to start of candidate block*/
+    fsetpos(self->file, &best_byte_offset);
+
+    /*reset stream's total remaining frames*/
+    self->remaining_pcm_samples = self->total_pcm_frames - best_pcm_offset;
+
+    if (best_pcm_offset == 0) {
+        /*if returned to start of stream, reset MD5 validation*/
+        audiotools__MD5Init(&(self->md5));
+        self->md5sum_checked = 0;
+    } else {
+        /*otherwise, disable MD5 validation altogether at end of stream*/
+        self->md5sum_checked = 1;
+    }
+
+    /*return actual PCM frames position in file*/
+    return Py_BuildValue("I", best_pcm_offset);
+}
+
+PyObject*
 wavpack_exception(status error)
 {
     switch (error) {
@@ -385,27 +466,32 @@ int
 WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,
                              PyObject *framelist)
 {
-    PyObject *string_obj;
-    char *string_buffer;
-    Py_ssize_t length;
-    int sign = self->bits_per_sample >= 16;
+    if (!self->md5sum_checked) {
+        PyObject *string_obj;
+        char *string_buffer;
+        Py_ssize_t length;
+        int sign = self->bits_per_sample >= 16;
 
-    if ((string_obj =
-         PyObject_CallMethod(framelist, "to_bytes","ii", 0, sign)) != NULL) {
-        if (PyString_AsStringAndSize(string_obj,
-                                     &string_buffer,
-                                     &length) == 0) {
-            audiotools__MD5Update(&(self->md5),
-                                  (unsigned char *)string_buffer,
-                                  length);
-            Py_DECREF(string_obj);
-            return 0;
+        if ((string_obj =
+             PyObject_CallMethod(framelist,
+                                 "to_bytes", "ii", 0, sign)) != NULL) {
+            if (PyString_AsStringAndSize(string_obj,
+                                         &string_buffer,
+                                         &length) == 0) {
+                audiotools__MD5Update(&(self->md5),
+                                      (unsigned char *)string_buffer,
+                                      length);
+                Py_DECREF(string_obj);
+                return 0;
+            } else {
+                Py_DECREF(string_obj);
+                return 1;
+            }
         } else {
-            Py_DECREF(string_obj);
             return 1;
         }
     } else {
-        return 1;
+        return 0;
     }
 }
 #endif

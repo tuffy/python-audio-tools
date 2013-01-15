@@ -33,6 +33,22 @@ struct alac_subframe_header {
     array_i* qlp_coeff;
 };
 
+struct alac_stts {
+    unsigned frame_count;
+    unsigned frame_duration;
+};
+
+struct alac_stsc {
+    unsigned first_chunk;
+    unsigned ALAC_frames_per_chunk;
+    unsigned description_index;
+};
+
+struct alac_seektable {
+    unsigned pcm_frames_offset;
+    unsigned absolute_file_offset;
+};
+
 typedef struct {
 #ifndef STANDALONE
     PyObject_HEAD
@@ -47,6 +63,7 @@ typedef struct {
     unsigned int bits_per_sample;
 
     int closed;
+    unsigned int total_frames;
     unsigned int remaining_frames;
 
     /*a bunch of decoding fields pulled from the stream's 'alac' atom*/
@@ -54,6 +71,9 @@ typedef struct {
     unsigned int history_multiplier;
     unsigned int initial_history;
     unsigned int maximum_k;
+
+    /*a compiled seektable from the three seektable atoms*/
+    array_o* seektable;
 
     array_ia* frameset_channels;
     array_ia* frame_channels;
@@ -65,12 +85,17 @@ typedef struct {
     /*a framelist generator*/
     PyObject* audiotools_pcm;
 #endif
-
-    /*a place to store error messages to be bubbled-up to the interpreter*/
-    char* error_message;
 } decoders_ALACDecoder;
 
-typedef enum {OK, ERROR} status;
+typedef enum {OK,
+              IO_ERROR,
+              INVALID_UNUSED_BITS,
+              INVALID_ALAC_ATOM,
+              INVALID_MDHD_ATOM,
+              MDIA_NOT_FOUND,
+              STSD_NOT_FOUND,
+              MDHD_NOT_FOUND,
+              INVALID_SEEKTABLE} status;
 
 #ifndef STANDALONE
 /*the ALACDecoder.sample_rate attribute getter*/
@@ -92,6 +117,9 @@ ALACDecoder_channel_mask(decoders_ALACDecoder *self, void *closure);
 /*the ALACDecoder.read() method*/
 static PyObject*
 ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args);
+
+static PyObject*
+ALACDecoder_seek(decoders_ALACDecoder* self, PyObject *args);
 
 /*the ALACDecoder.close() method*/
 static PyObject*
@@ -118,6 +146,8 @@ PyMethodDef ALACDecoder_methods[] = {
     {"read", (PyCFunction)ALACDecoder_read,
      METH_VARARGS,
      "Reads the given number of PCM frames from the ALAC file, if possible"},
+    {"seek", (PyCFunction)ALACDecoder_seek,
+     METH_VARARGS, "Seeks to the given PCM offset"},
     {"close", (PyCFunction)ALACDecoder_close,
      METH_NOARGS, "Closes the ALAC decoder stream"},
     {NULL}
@@ -128,6 +158,9 @@ ALACDecoder_dealloc(decoders_ALACDecoder *self);
 
 PyObject*
 ALACDecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+
+PyObject*
+alac_exception(status status);
 
 PyTypeObject decoders_ALACDecoderType = {
     PyObject_HEAD_INIT(NULL)
@@ -173,10 +206,14 @@ PyTypeObject decoders_ALACDecoderType = {
 
 #endif
 
-static int
+const char*
+alac_strerror(status status);
+
+static status
 parse_decoding_parameters(decoders_ALACDecoder *self);
 
-/*walks through the open QuickTime stream looking for the 'mdat' atom
+/*given a rewound BitstreamReader,
+  walks through the open QuickTime stream looking for the 'mdat' atom
   or returns ERROR if one cannot be found*/
 static status
 seek_mdat(BitstreamReader* alac_stream);
@@ -254,10 +291,7 @@ find_sub_atom(BitstreamReader* parent,
 void
 swap_readers(BitstreamReader** a, BitstreamReader** b);
 
-/*returns 0 if the atom is read successfully,
-  1 on an I/O error,
-  2 if there's a parsing error*/
-int
+status
 read_alac_atom(BitstreamReader* stsd_atom,
                unsigned int* max_samples_per_frame,
                unsigned int* bits_per_sample,
@@ -267,15 +301,45 @@ read_alac_atom(BitstreamReader* stsd_atom,
                unsigned int* channels,
                unsigned int* sample_rate);
 
-/*returns 0 if the atom is read successfully,
-  1 on an I/O error,
-  2 if the version is unsupported*/
-int
+status
 read_mdhd_atom(BitstreamReader* mdhd_atom,
                unsigned int* total_frames);
 
-/*sets the decoder's error_message to message and returns ERROR status
-  this does not make calls to Python which makes it safe to use
-  while threading is allowed elsewhere*/
-status
-alacdec_ValueError(decoders_ALACDecoder *decoder, char* message);
+static struct alac_stts*
+alac_stts_copy(struct alac_stts* stts);
+
+static void
+alac_stts_print(struct alac_stts* stts, FILE* output);
+
+/*reads a list of alac_stts structs from the "stts" atom
+  to "block_sizes"*/
+static status
+read_stts_atom(BitstreamReader* stts_atom, array_o* block_sizes);
+
+static struct alac_stsc*
+alac_stsc_copy(struct alac_stsc* stsc);
+
+static void
+alac_stsc_print(struct alac_stsc* stsc, FILE* output);
+
+/*reads a list of alac_stsc structs from the "stsc" atom
+  to "chunk_sizes"*/
+static status
+read_stsc_atom(BitstreamReader* stsc_atom, array_o* chunk_sizes);
+
+/*reads a list of chunk offsets from the "stco" atom
+  to "chunk_offsets"*/
+static status
+read_stco_atom(BitstreamReader* stco_atom, array_u* chunk_offsets);
+
+static struct alac_seektable*
+alac_seektable_copy(struct alac_seektable *entry);
+
+static void
+alac_seektable_print(struct alac_seektable *entry, FILE *output);
+
+static status
+populate_seektable(array_o* block_sizes,
+                   array_o* chunk_sizes,
+                   array_u* chunk_offsets,
+                   array_o* seektable);

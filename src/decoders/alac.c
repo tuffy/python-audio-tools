@@ -28,12 +28,17 @@ ALACDecoder_init(decoders_ALACDecoder *self,
 {
     char *filename;
     static char *kwlist[] = {"filename", NULL};
+    status status;
     unsigned i;
 
     self->filename = NULL;
     self->file = NULL;
     self->bitstream = NULL;
     self->audiotools_pcm = NULL;
+
+    self->seektable = array_o_new((ARRAY_COPY_FUNC)alac_seektable_copy,
+                                  free,
+                                  (ARRAY_PRINT_FUNC)alac_seektable_print);
 
     self->frameset_channels = array_ia_new();
     self->frame_channels = array_ia_new();
@@ -58,7 +63,8 @@ ALACDecoder_init(decoders_ALACDecoder *self,
 
     self->bitstream->mark(self->bitstream);
 
-    if (parse_decoding_parameters(self)) {
+    if ((status = parse_decoding_parameters(self)) != OK) {
+        PyErr_SetString(alac_exception(status), alac_strerror(status));
         self->bitstream->unmark(self->bitstream);
         return -1;
     } else {
@@ -66,13 +72,19 @@ ALACDecoder_init(decoders_ALACDecoder *self,
     }
 
     /*seek to the 'mdat' atom, which contains the ALAC stream*/
-    if (seek_mdat(self->bitstream) == ERROR) {
+    if (seek_mdat(self->bitstream) == IO_ERROR) {
         self->bitstream->unmark(self->bitstream);
-        PyErr_SetString(PyExc_ValueError,
+        PyErr_SetString(PyExc_IOError,
                         "Unable to locate 'mdat' atom in stream");
         return -1;
     } else {
         self->bitstream->unmark(self->bitstream);
+        /*if seektable is empty, populate it with a single
+          entry containing the offset to the start of mdat*/
+        if (self->seektable->len == 0) {
+            struct alac_seektable entry = {0, (unsigned)ftell(self->file)};
+            self->seektable->append(self->seektable, &entry);
+        }
     }
 
     /*setup a framelist generator function*/
@@ -100,6 +112,8 @@ ALACDecoder_dealloc(decoders_ALACDecoder *self)
     for (i = 0; i < MAX_CHANNELS; i++)
         self->subframe_headers[i].qlp_coeff->del(
             self->subframe_headers[i].qlp_coeff);
+
+    self->seektable->del(self->seektable);
 
     self->frameset_channels->del(self->frameset_channels);
     self->frame_channels->del(self->frame_channels);
@@ -193,12 +207,16 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
         /*get initial frame's channel count*/
         channel_count = mdat->read(mdat, 3) + 1;
         while (channel_count != 8) {
+            status status;
+
             /*read a frame from the frameset into "channels"*/
-            if (read_frame(self, mdat,
-                           frameset_channels, channel_count) != OK) {
+            if ((status = read_frame(self,
+                                     mdat,
+                                     frameset_channels,
+                                     channel_count)) != OK) {
                 br_etry(mdat);
                 PyEval_RestoreThread(thread_state);
-                PyErr_SetString(PyExc_ValueError, self->error_message);
+                PyErr_SetString(alac_exception(status), alac_strerror(status));
                 return NULL;
             } else {
                 /*ensure all frames have the same sample count*/
@@ -236,6 +254,53 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
 }
 
 static PyObject*
+ALACDecoder_seek(decoders_ALACDecoder* self, PyObject *args)
+{
+    long long seeked_offset;
+    struct alac_seektable *best_offset = NULL;
+    unsigned i;
+
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot seek closed stream");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTuple(args, "L", &seeked_offset))
+        return NULL;
+
+    if (seeked_offset < 0) {
+        PyErr_SetString(PyExc_ValueError, "cannot seek to negative value");
+        return NULL;
+    }
+
+    /*walk through seektable and find the latest offset
+      whose PCM index is <= the seeked offset*/
+    for (i = 0; i < self->seektable->len; i++) {
+        struct alac_seektable *offset = self->seektable->_[i];
+        if (offset->pcm_frames_offset <= seeked_offset) {
+            best_offset = offset;
+        } else {
+            break;
+        }
+    }
+
+    if (best_offset == NULL) {
+        PyErr_SetString(PyExc_ValueError, "no offset found in seektable");
+        return NULL;
+    }
+
+    /*update the remaining frames value based on the latest offset*/
+    self->remaining_frames = (self->total_frames -
+                              best_offset->pcm_frames_offset);
+
+    /*seek to the absolute position in file*/
+    fseek(self->file, (long)(best_offset->absolute_file_offset), SEEK_SET);
+
+    /*return the latest offset seeked to*/
+    return Py_BuildValue("I", best_offset->pcm_frames_offset);
+}
+
+static PyObject*
 ALACDecoder_close(decoders_ALACDecoder* self, PyObject *args)
 {
     /*mark stream as closed so more calls to read()
@@ -245,13 +310,40 @@ ALACDecoder_close(decoders_ALACDecoder* self, PyObject *args)
     Py_INCREF(Py_None);
     return Py_None;
 }
+
+PyObject*
+alac_exception(status status)
+{
+    switch (status) {
+    case IO_ERROR:
+        return PyExc_IOError;
+    case INVALID_UNUSED_BITS:
+    case INVALID_ALAC_ATOM:
+    case INVALID_MDHD_ATOM:
+    case MDIA_NOT_FOUND:
+    case STSD_NOT_FOUND:
+    case MDHD_NOT_FOUND:
+    case INVALID_SEEKTABLE:
+        return PyExc_ValueError;
+    default:
+        /*this shouldn't happen*/
+        return PyExc_ValueError;
+    }
+}
+
 #else
+
 #include <errno.h>
 
 int
 ALACDecoder_init(decoders_ALACDecoder *self, char *filename)
 {
     unsigned i;
+    status status;
+
+    self->seektable = array_o_new((ARRAY_COPY_FUNC)alac_seektable_copy,
+                                  free,
+                                  (ARRAY_PRINT_FUNC)alac_seektable_print);
 
     self->frameset_channels = array_ia_new();
     self->frame_channels = array_ia_new();
@@ -272,7 +364,8 @@ ALACDecoder_init(decoders_ALACDecoder *self, char *filename)
 
     self->bitstream->mark(self->bitstream);
 
-    if (parse_decoding_parameters(self)) {
+    if ((status = parse_decoding_parameters(self)) != OK) {
+        fprintf(stderr, "*** Error: %s\n", alac_strerror(status));
         self->bitstream->unmark(self->bitstream);
         return -1;
     } else {
@@ -280,7 +373,7 @@ ALACDecoder_init(decoders_ALACDecoder *self, char *filename)
     }
 
     /*seek to the 'mdat' atom, which contains the ALAC stream*/
-    if (seek_mdat(self->bitstream) == ERROR) {
+    if (seek_mdat(self->bitstream) == IO_ERROR) {
         self->bitstream->unmark(self->bitstream);
         fprintf(stderr, "Unable to locate 'mdat' atom in stream\n");
         return -1;
@@ -307,6 +400,8 @@ ALACDecoder_dealloc(decoders_ALACDecoder *self)
         self->subframe_headers[i].qlp_coeff->del(
             self->subframe_headers[i].qlp_coeff);
 
+    self->seektable->del(self->seektable);
+
     self->frameset_channels->del(self->frameset_channels);
     self->frame_channels->del(self->frame_channels);
     self->uncompressed_LSBs->del(self->uncompressed_LSBs);
@@ -314,107 +409,295 @@ ALACDecoder_dealloc(decoders_ALACDecoder *self)
 }
 #endif
 
-static int
+const char*
+alac_strerror(status status)
+{
+    switch (status) {
+    case IO_ERROR:
+        return "I/O Errror";
+    case INVALID_UNUSED_BITS:
+        return "invalid unused bits";
+    case INVALID_ALAC_ATOM:
+        return "invalid alac atom";
+    case INVALID_MDHD_ATOM:
+        return "invalid mdhd atom";
+    case MDIA_NOT_FOUND:
+        return "mdia atom not found";
+    case STSD_NOT_FOUND:
+        return "stsd atom not found";
+    case MDHD_NOT_FOUND:
+        return "mdhd atom not found";
+    case INVALID_SEEKTABLE:
+        return "invalid seektable entries";
+    default:
+        /*this shouldn't happen*/
+        return "no error";
+    }
+}
+
+static status
 parse_decoding_parameters(decoders_ALACDecoder *self)
 {
     BitstreamReader* mdia_atom = br_substream_new(BS_BIG_ENDIAN);
-    BitstreamReader* stsd_atom = br_substream_new(BS_BIG_ENDIAN);
-    BitstreamReader* mdhd_atom = br_substream_new(BS_BIG_ENDIAN);
+    BitstreamReader* atom = br_substream_new(BS_BIG_ENDIAN);
+    array_o* block_sizes = array_o_new((ARRAY_COPY_FUNC)alac_stts_copy,
+                                       free,
+                                       (ARRAY_PRINT_FUNC)alac_stts_print);
+    array_o* chunk_sizes = array_o_new((ARRAY_COPY_FUNC)alac_stsc_copy,
+                                       free,
+                                       (ARRAY_PRINT_FUNC)alac_stsc_print);
+    array_u* chunk_offsets = array_u_new();
     uint32_t mdia_atom_size;
-    uint32_t stsd_atom_size;
-    uint32_t mdhd_atom_size;
-    unsigned int total_frames;
+    uint32_t atom_size;
+    int stts_found;
+    int stsc_found;
+    int stco_found;
+    status status = OK;
 
     /*find the mdia atom, which is the parent to stsd and mdhd*/
     if (find_sub_atom(self->bitstream, mdia_atom, &mdia_atom_size,
                       "moov", "trak", "mdia", NULL)) {
-#ifndef STANDALONE
-        PyErr_SetString(PyExc_ValueError, "unable to find mdia atom");
-#endif
+        status = MDIA_NOT_FOUND;
         goto error;
     } else {
         /*mark the mdia atom so we can parse
-          two different trees from it*/
+          several different trees from it*/
         mdia_atom->mark(mdia_atom);
     }
 
-    /*find the stsd atom, which contains the alac atom*/
-    if (find_sub_atom(mdia_atom, stsd_atom, &stsd_atom_size,
+    /*find and parse the alac atom,
+      which contains lots of crucial decoder details*/
+    br_substream_reset(atom);
+    if (find_sub_atom(mdia_atom, atom, &atom_size,
                       "minf", "stbl", "stsd", NULL)) {
-        mdia_atom->unmark(mdia_atom);
-#ifndef STANDALONE
-        PyErr_SetString(PyExc_ValueError, "unable to find sdsd atom");
-#endif
+        status = STSD_NOT_FOUND;
+        goto error;
+    } else if ((status = read_alac_atom(atom,
+                                        &(self->max_samples_per_frame),
+                                        &(self->bits_per_sample),
+                                        &(self->history_multiplier),
+                                        &(self->initial_history),
+                                        &(self->maximum_k),
+                                        &(self->channels),
+                                        &(self->sample_rate))) != OK) {
         goto error;
     }
 
-    /*parse the alac atom, which contains lots of crucial decoder details*/
-    switch (read_alac_atom(stsd_atom,
-                           &(self->max_samples_per_frame),
-                           &(self->bits_per_sample),
-                           &(self->history_multiplier),
-                           &(self->initial_history),
-                           &(self->maximum_k),
-                           &(self->channels),
-                           &(self->sample_rate))) {
-    case 1:
-        mdia_atom->unmark(mdia_atom);
-#ifndef STANDALONE
-        PyErr_SetString(PyExc_IOError, "I/O error reading alac atom");
-#endif
-        goto error;
-    case 2:
-        mdia_atom->unmark(mdia_atom);
-#ifndef STANDALONE
-        PyErr_SetString(PyExc_ValueError, "invalid alac atom");
-#endif
-        goto error;
-    default:
-        break;
-    }
-
-    /*find the mdhd atom*/
+    /*find and parse the mdhd atom, which contains our total frame count*/
     mdia_atom->rewind(mdia_atom);
-    if (find_sub_atom(mdia_atom, mdhd_atom, &mdhd_atom_size,
+    br_substream_reset(atom);
+    if (find_sub_atom(mdia_atom, atom, &atom_size,
                       "mdhd", NULL)) {
-        mdia_atom->unmark(mdia_atom);
-#ifndef STANDALONE
-        PyErr_SetString(PyExc_ValueError, "unable to find mdhd atom");
-#endif
+        status = MDHD_NOT_FOUND;
+        goto error;
+    } else if ((status = read_mdhd_atom(atom,
+                                        &(self->total_frames))) != OK) {
         goto error;
     } else {
-        mdia_atom->unmark(mdia_atom);
+        self->remaining_frames = self->total_frames;
     }
 
-    /*parse the mdhd atom, which contains our total frame count*/
-    switch (read_mdhd_atom(mdhd_atom, &total_frames)) {
-    case 1:
-#ifndef STANDALONE
-        PyErr_SetString(PyExc_IOError, "I/O error reading mdhd atom");
-#endif
-        goto error;
-    case 2:
-#ifndef STANDALONE
-        PyErr_SetString(PyExc_ValueError, "invalid mdhd atom");
-#endif
-        goto error;
-    default:
-        self->remaining_frames = total_frames;
-        break;
+    /*if any seektable atoms aren't found or are invalid,
+      skip building the seektable entirely
+      and populate it with a single entry
+      that rewinds to the start of the mdat atom*/
+
+    /*find and parse the stts atom, which contains our block sizes*/
+    mdia_atom->rewind(mdia_atom);
+    br_substream_reset(atom);
+    stts_found = (!find_sub_atom(mdia_atom, atom, &atom_size,
+                                 "minf", "stbl", "stts", NULL) &&
+                  (read_stts_atom(atom, block_sizes) == OK));
+
+    /*find and parse the stsc atom, which contains our chunk sizes*/
+    mdia_atom->rewind(mdia_atom);
+    br_substream_reset(atom);
+    stsc_found = (!find_sub_atom(mdia_atom, atom, &atom_size,
+                                 "minf", "stbl", "stsc", NULL) &&
+                  (read_stsc_atom(atom, chunk_sizes) == OK));
+
+    /*parse the stco atom, which contains our chunk offsets*/
+    mdia_atom->rewind(mdia_atom);
+    br_substream_reset(atom);
+    stco_found = (!find_sub_atom(mdia_atom, atom, &atom_size,
+                                 "minf", "stbl", "stco", NULL) &&
+                  (read_stco_atom(atom, chunk_offsets) == OK));
+
+    if (stts_found && stsc_found && stco_found) {
+        /*ensure total number of PCM frames in stts
+          (based on block size and frame count)
+          matches the total number of PCM frames in the alac atom*/
+        unsigned frame_sizes_sum = 0;
+        unsigned i;
+        for (i = 0; i < block_sizes->len; i++) {
+            const struct alac_stts *stts = block_sizes->_[i];
+            frame_sizes_sum += (stts->frame_count * stts->frame_duration);
+        }
+        if (frame_sizes_sum != self->total_frames) {
+            status = INVALID_SEEKTABLE;
+            goto error;
+        }
+
+        /*once all the component seektable atoms are parsed,
+          assemble them into a complete seektable*/
+        if ((status = populate_seektable(block_sizes,
+                                         chunk_sizes,
+                                         chunk_offsets,
+                                         self->seektable)) != OK)
+            goto error;
     }
 
-    mdia_atom->close(mdia_atom);
-    stsd_atom->close(stsd_atom);
-    mdhd_atom->close(mdhd_atom);
-
-    return 0;
+    status = OK;
 
 error:
+    /*perform cleanup of temporary buffers and arrays*/
+    if (mdia_atom->marks != NULL)
+        mdia_atom->unmark(mdia_atom);
     mdia_atom->close(mdia_atom);
-    stsd_atom->close(stsd_atom);
-    mdhd_atom->close(mdhd_atom);
-    return -1;
+    atom->close(atom);
+    block_sizes->del(block_sizes);
+    chunk_sizes->del(chunk_sizes);
+    chunk_offsets->del(chunk_offsets);
+
+    return status;
 }
+
+static status
+populate_seektable(array_o* block_sizes,
+                   array_o* chunk_sizes,
+                   array_u* chunk_offsets,
+                   array_o* seektable)
+{
+    unsigned i;
+    array_u* frame_sizes = array_u_new();
+    array_lu* frame_sizes_l = array_lu_new();
+    array_lu* chunk_frames = array_lu_new();
+    array_u* chunk_lengths = array_u_new();
+    unsigned pcm_frames_offset = 0;
+    status status = OK;
+
+    /*expand the frame count/frame duration atom
+      into a single list of ALAC frame sizes, in PCM frames
+      then link to it for easier tearing apart*/
+    for (i = 0; i < block_sizes->len; i++) {
+        struct alac_stts *stts = block_sizes->_[i];
+        frame_sizes->mappend(frame_sizes,
+                             stts->frame_count,
+                             stts->frame_duration);
+    }
+    frame_sizes->link(frame_sizes, frame_sizes_l);
+    /*ensure there's at least one frame_sizes entry*/
+    if (frame_sizes->len == 0) {
+        status = INVALID_SEEKTABLE;
+        goto error;
+    }
+
+    /*ensure there's at least one chunk_sizes entry*/
+    if (chunk_sizes->len == 0) {
+        status = INVALID_SEEKTABLE;
+        goto error;
+    }
+
+    for (i = 0; i < chunk_sizes->len; i++) {
+        struct alac_stsc *stsc = chunk_sizes->_[i];
+
+        if ((i + 1) < chunk_sizes->len) {
+            /*if there's a next chunk size,
+              pull "ALAC_frames_per_chunk" ALAC frames from frame_sizes
+              for all chunks between this size and the next size*/
+            struct alac_stsc *next_stsc = chunk_sizes->_[i + 1];
+            unsigned j;
+            for (j = stsc->first_chunk; j < next_stsc->first_chunk; j++) {
+                frame_sizes_l->split(frame_sizes_l,
+                                     stsc->ALAC_frames_per_chunk,
+                                     chunk_frames,
+                                     frame_sizes_l);
+                /*ensure chunk_frames has the requested number of ALAC frames*/
+                if (chunk_frames->len == stsc->ALAC_frames_per_chunk) {
+                    chunk_lengths->append(chunk_lengths,
+                                          chunk_frames->sum(chunk_frames));
+                } else {
+                    status = INVALID_SEEKTABLE;
+                    goto error;
+                }
+            }
+        } else {
+            /*if there's no next size,
+              all remaining chunks are the size of this one*/
+            while (frame_sizes_l->len > 0) {
+                frame_sizes_l->split(frame_sizes_l,
+                                     stsc->ALAC_frames_per_chunk,
+                                     chunk_frames,
+                                     frame_sizes_l);
+                /*ensure chunk_frames has the requested number of ALAC frames*/
+                if (chunk_frames->len == stsc->ALAC_frames_per_chunk) {
+                    chunk_lengths->append(chunk_lengths,
+                                          chunk_frames->sum(chunk_frames));
+                } else {
+                    status = INVALID_SEEKTABLE;
+                    goto error;
+                }
+            }
+        }
+    }
+
+    /*ensure number of chunk_lengths equals number of chunk_offsets*/
+    if (chunk_lengths->len != chunk_offsets->len) {
+        status = INVALID_SEEKTABLE;
+        goto error;
+    }
+
+    seektable->reset_for(seektable, chunk_lengths->len);
+    for (i = 0; i < chunk_lengths->len; i++) {
+        struct alac_seektable entry = {pcm_frames_offset,
+                                       chunk_offsets->_[i]};
+        seektable->append(seektable, &entry);
+        pcm_frames_offset += chunk_lengths->_[i];
+    }
+
+error:
+    frame_sizes->del(frame_sizes);
+    frame_sizes_l->del(frame_sizes_l);
+    chunk_frames->del(chunk_frames);
+    chunk_lengths->del(chunk_lengths);
+
+    return status;
+}
+
+static struct alac_stts*
+alac_stts_copy(struct alac_stts* stts)
+{
+    struct alac_stts* new_stts = malloc(sizeof(struct alac_stts));
+    new_stts->frame_count = stts->frame_count;
+    new_stts->frame_duration = stts->frame_duration;
+    return new_stts;
+}
+
+static void
+alac_stts_print(struct alac_stts* stts, FILE* output)
+{
+    fprintf(output, "STTS(%u, %u)", stts->frame_count, stts->frame_duration);
+}
+
+static struct alac_stsc*
+alac_stsc_copy(struct alac_stsc* stsc)
+{
+    struct alac_stsc* new_stsc = malloc(sizeof(struct alac_stsc));
+    new_stsc->first_chunk = stsc->first_chunk;
+    new_stsc->ALAC_frames_per_chunk = stsc->ALAC_frames_per_chunk;
+    new_stsc->description_index = stsc->description_index;
+    return new_stsc;
+}
+
+static void
+alac_stsc_print(struct alac_stsc* stsc, FILE* output)
+{
+    fprintf(output, "STSC(%u, %u, %u)",
+            stsc->first_chunk,
+            stsc->ALAC_frames_per_chunk,
+            stsc->description_index);
+}
+
 
 static void
 alac_order_to_wave_order(array_ia* alac_ordered)
@@ -538,7 +821,7 @@ read_frame(decoders_ALACDecoder *self,
 
     /*read frame header*/
     if (mdat->read(mdat, 16) != 0) {
-        return alacdec_ValueError(self, "invalid unused bits");
+        return INVALID_UNUSED_BITS;
     }
     has_sample_count = mdat->read(mdat, 1);
     uncompressed_LSBs = mdat->read(mdat, 2);
@@ -676,7 +959,7 @@ seek_mdat(BitstreamReader* alac_stream)
         return OK;
     } else {
         br_etry(alac_stream);
-        return ERROR;
+        return IO_ERROR;
     }
 }
 
@@ -1072,7 +1355,7 @@ swap_readers(BitstreamReader** a, BitstreamReader** b)
     *b = c;
 }
 
-int
+status
 read_alac_atom(BitstreamReader* stsd_atom,
                unsigned int* max_samples_per_frame,
                unsigned int* bits_per_sample,
@@ -1099,16 +1382,16 @@ read_alac_atom(BitstreamReader* stsd_atom,
         br_etry(stsd_atom);
 
         if (memcmp(alac1, "alac", 4) || memcmp(alac2, "alac", 4))
-            return 2;
+            return INVALID_ALAC_ATOM;
         else
-            return 0;
+            return OK;
     } else {
         br_etry(stsd_atom);
-        return 1;
+        return IO_ERROR;
     }
 }
 
-int
+status
 read_mdhd_atom(BitstreamReader* mdhd_atom,
                unsigned int* total_frames)
 {
@@ -1120,23 +1403,97 @@ read_mdhd_atom(BitstreamReader* mdhd_atom,
         if (version == 0) {
             mdhd_atom->parse(mdhd_atom, "32p 32p 32p 32u 2P 16p", total_frames);
             br_etry(mdhd_atom);
-            return 0;
+            return OK;
         } else {
             br_etry(mdhd_atom);
-            return 2;
+            return INVALID_MDHD_ATOM;
         }
     } else {
         br_etry(mdhd_atom);
-        return 1;
+        return IO_ERROR;
     }
 }
 
-status
-alacdec_ValueError(decoders_ALACDecoder *decoder, char* message)
+static status
+read_stts_atom(BitstreamReader* stts_atom, array_o* block_sizes)
 {
-    decoder->error_message = message;
-    return ERROR;
+    if (!setjmp(*br_try(stts_atom))) {
+        unsigned times;
+        stts_atom->parse(stts_atom, "8p 24p 32u", &times);
+        block_sizes->reset_for(block_sizes, times);
+        for (;times > 0; times--) {
+            struct alac_stts alac_stts;
+            stts_atom->parse(stts_atom, "32u 32u",
+                             &(alac_stts.frame_count),
+                             &(alac_stts.frame_duration));
+            block_sizes->append(block_sizes, &alac_stts);
+        }
+        br_etry(stts_atom);
+        return OK;
+    } else {
+        br_etry(stts_atom);
+        return IO_ERROR;
+    }
 }
+
+static status
+read_stsc_atom(BitstreamReader* stsc_atom, array_o* chunk_sizes)
+{
+    if (!setjmp(*br_try(stsc_atom))) {
+        unsigned entries;
+        stsc_atom->parse(stsc_atom, "8p 24p 32u", &entries);
+        chunk_sizes->reset_for(chunk_sizes, entries);
+        for (;entries > 0; entries--) {
+            struct alac_stsc alac_stsc;
+            stsc_atom->parse(stsc_atom, "32u 32u 32u",
+                             &(alac_stsc.first_chunk),
+                             &(alac_stsc.ALAC_frames_per_chunk),
+                             &(alac_stsc.description_index));
+            chunk_sizes->append(chunk_sizes, &alac_stsc);
+        }
+        br_etry(stsc_atom);
+        return OK;
+    } else {
+        br_etry(stsc_atom);
+        return IO_ERROR;
+    }
+}
+
+static status
+read_stco_atom(BitstreamReader* stco_atom, array_u* chunk_offsets)
+{
+    if (!setjmp(*br_try(stco_atom))) {
+        unsigned offsets;
+        stco_atom->parse(stco_atom, "8p 24p 32u", &offsets);
+        chunk_offsets->reset_for(chunk_offsets, offsets);
+        for (;offsets > 0; offsets--) {
+            a_append(chunk_offsets, stco_atom->read(stco_atom, 32));
+        }
+        br_etry(stco_atom);
+        return OK;
+    } else {
+        br_etry(stco_atom);
+        return IO_ERROR;
+    }
+}
+
+static struct alac_seektable*
+alac_seektable_copy(struct alac_seektable *entry)
+{
+    struct alac_seektable *new_entry = malloc(sizeof(struct alac_seektable));
+    new_entry->pcm_frames_offset = entry->pcm_frames_offset;
+    new_entry->absolute_file_offset = entry->absolute_file_offset;
+    return new_entry;
+}
+
+static void
+alac_seektable_print(struct alac_seektable *entry, FILE *output)
+{
+    fprintf(output, "seektable(%u, 0x%X)",
+            entry->pcm_frames_offset,
+            entry->absolute_file_offset);
+}
+
 
 #ifdef STANDALONE
 int main(int argc, char* argv[]) {
@@ -1178,13 +1535,15 @@ int main(int argc, char* argv[]) {
             /*get initial frame's channel count*/
             channel_count = mdat->read(mdat, 3) + 1;
             while (channel_count != 8) {
+                status status;
+
                 /*read a frame from the frameset into "channels"*/
-                if (read_frame(&decoder,
-                               mdat,
-                               frameset_channels,
-                               channel_count) != OK) {
+                if ((status = read_frame(&decoder,
+                                         mdat,
+                                         frameset_channels,
+                                         channel_count)) != OK) {
                     br_etry(mdat);
-                    fprintf(stderr, "*** Error: %s", decoder.error_message);
+                    fprintf(stderr, "*** Error: %s", alac_strerror(status));
                     goto error;
                 } else {
                     /*ensure all frames have the same sample count*/

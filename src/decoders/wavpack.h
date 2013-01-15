@@ -71,6 +71,7 @@ typedef struct {
     int bits_per_sample;
     int channels;
     int channel_mask;
+    unsigned total_pcm_frames;
     unsigned remaining_pcm_samples;
     int closed;
 
@@ -122,17 +123,20 @@ PyGetSetDef WavPackDecoder_getseters[] = {
     {NULL}
 };
 
-/*the WavPackDecoder.close() method*/
 static PyObject*
 WavPackDecoder_close(decoders_WavPackDecoder* self, PyObject *args);
 
 PyObject*
 WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args);
 
+PyObject*
+WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args);
 
 PyMethodDef WavPackDecoder_methods[] = {
     {"read", (PyCFunction)WavPackDecoder_read,
      METH_VARARGS, "Returns a decoded frame"},
+    {"seek", (PyCFunction)WavPackDecoder_seek,
+     METH_VARARGS, "Tries to seek to the given PCM frames offset"},
     {"close", (PyCFunction)WavPackDecoder_close,
      METH_NOARGS, "Closes the stream"},
     {NULL}

@@ -85,6 +85,7 @@ struct array_i_s* array_i_wrap(int* data, unsigned size, unsigned total_size)
     }
 ARRAY_DEL(array_i_del, array_i)
 ARRAY_DEL(array_f_del, array_f)
+ARRAY_DEL(array_u_del, array_u)
 
 #define ARRAY_RESIZE(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
     void                                                          \
@@ -98,6 +99,7 @@ ARRAY_DEL(array_f_del, array_f)
     }
 ARRAY_RESIZE(array_i_resize, array_i, int)
 ARRAY_RESIZE(array_f_resize, array_f, double)
+ARRAY_RESIZE(array_u_resize, array_u, unsigned)
 ARRAY_RESIZE(array_o_resize, array_o, void*)
 
 
@@ -107,9 +109,10 @@ ARRAY_RESIZE(array_o_resize, array_o, void*)
     {                                                               \
         array->resize(array, array->len + additional_items);        \
     }
-ARRAY_RESIZE_FOR(array_i_resize_for, array_i);
-ARRAY_RESIZE_FOR(array_f_resize_for, array_f);
-ARRAY_RESIZE_FOR(array_o_resize_for, array_o);
+ARRAY_RESIZE_FOR(array_i_resize_for, array_i)
+ARRAY_RESIZE_FOR(array_f_resize_for, array_f)
+ARRAY_RESIZE_FOR(array_u_resize_for, array_u)
+ARRAY_RESIZE_FOR(array_o_resize_for, array_o)
 
 
 #define ARRAY_RESET(FUNC_NAME, ARRAY_TYPE)      \
@@ -120,8 +123,10 @@ ARRAY_RESIZE_FOR(array_o_resize_for, array_o);
     }
 ARRAY_RESET(array_i_reset, array_i)
 ARRAY_RESET(array_f_reset, array_f)
+ARRAY_RESET(array_u_reset, array_u)
 ARRAY_RESET(array_li_reset, array_li)
 ARRAY_RESET(array_lf_reset, array_lf)
+ARRAY_RESET(array_lu_reset, array_lu)
 
 
 #define ARRAY_RESET_FOR(FUNC_NAME, ARRAY_TYPE)          \
@@ -130,9 +135,10 @@ ARRAY_RESET(array_lf_reset, array_lf)
         array->reset(array);                            \
         array->resize(array, minimum);                  \
     }
-ARRAY_RESET_FOR(array_i_reset_for, array_i);
-ARRAY_RESET_FOR(array_f_reset_for, array_f);
-ARRAY_RESET_FOR(array_o_reset_for, array_o);
+ARRAY_RESET_FOR(array_i_reset_for, array_i)
+ARRAY_RESET_FOR(array_f_reset_for, array_f)
+ARRAY_RESET_FOR(array_u_reset_for, array_u)
+ARRAY_RESET_FOR(array_o_reset_for, array_o)
 
 
 #define ARRAY_APPEND(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
@@ -146,6 +152,7 @@ ARRAY_RESET_FOR(array_o_reset_for, array_o);
     }
 ARRAY_APPEND(array_i_append, array_i, int)
 ARRAY_APPEND(array_f_append, array_f, double)
+ARRAY_APPEND(array_u_append, array_u, unsigned)
 
 
 #define ARRAY_VAPPEND(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
@@ -165,6 +172,7 @@ ARRAY_APPEND(array_f_append, array_f, double)
     }
 ARRAY_VAPPEND(array_i_vappend, array_i, int)
 ARRAY_VAPPEND(array_f_vappend, array_f, double)
+ARRAY_VAPPEND(array_u_vappend, array_u, unsigned)
 
 
 #define ARRAY_MAPPEND(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
@@ -178,6 +186,8 @@ ARRAY_VAPPEND(array_f_vappend, array_f, double)
     }
 ARRAY_MAPPEND(array_i_mappend, array_i, int)
 ARRAY_MAPPEND(array_f_mappend, array_f, double)
+ARRAY_MAPPEND(array_u_mappend, array_u, unsigned)
+
 
 #define ARRAY_VSET(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
     void                                                   \
@@ -195,6 +205,7 @@ ARRAY_MAPPEND(array_f_mappend, array_f, double)
     }
 ARRAY_VSET(array_i_vset, array_i, int)
 ARRAY_VSET(array_f_vset, array_f, double)
+ARRAY_VSET(array_u_vset, array_u, unsigned)
 
 
 #define ARRAY_MSET(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
@@ -208,6 +219,8 @@ ARRAY_VSET(array_f_vset, array_f, double)
     }
 ARRAY_MSET(array_i_mset, array_i, int)
 ARRAY_MSET(array_f_mset, array_f, double)
+ARRAY_MSET(array_u_mset, array_u, unsigned)
+
 
 #define ARRAY_EXTEND(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
     void                                                          \
@@ -221,6 +234,7 @@ ARRAY_MSET(array_f_mset, array_f, double)
     }
 ARRAY_EXTEND(array_i_extend, array_i, int)
 ARRAY_EXTEND(array_f_extend, array_f, double)
+ARRAY_EXTEND(array_u_extend, array_u, unsigned)
 
 #define ARRAY_EQUALS(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE) \
     int                                                            \
@@ -236,8 +250,10 @@ ARRAY_EXTEND(array_f_extend, array_f, double)
     }
 ARRAY_EQUALS(array_i_equals, array_i, int)
 ARRAY_EQUALS(array_f_equals, array_f, double)
+ARRAY_EQUALS(array_u_equals, array_u, unsigned)
 ARRAY_EQUALS(array_li_equals, array_li, int)
 ARRAY_EQUALS(array_lf_equals, array_lf, double)
+ARRAY_EQUALS(array_lu_equals, array_lu, unsigned)
 
 
 #define ARRAY_I_MIN(FUNC_NAME, ARRAY_TYPE) \
@@ -305,6 +321,8 @@ ARRAY_I_SUM(array_li_sum, array_li)
     }
 ARRAY_COPY(array_i_copy, array_i, int)
 ARRAY_COPY(array_f_copy, array_f, double)
+ARRAY_COPY(array_u_copy, array_u, unsigned)
+
 
 #define ARRAY_L_COPY(FUNC_NAME, ARRAY_TYPE, TARGET_TYPE, ARRAY_DATA_TYPE) \
     void                                                                \
@@ -317,6 +335,7 @@ ARRAY_COPY(array_f_copy, array_f, double)
     }
 ARRAY_L_COPY(array_li_copy, array_li, array_i, int)
 ARRAY_L_COPY(array_lf_copy, array_lf, array_f, double)
+ARRAY_L_COPY(array_lu_copy, array_lu, array_u, unsigned)
 
 
 #define ARRAY_LINK(FUNC_NAME, ARRAY_TYPE, ARRAY_LINK_TYPE) \
@@ -328,8 +347,10 @@ ARRAY_L_COPY(array_lf_copy, array_lf, array_f, double)
     }
 ARRAY_LINK(array_i_link, array_i, array_li)
 ARRAY_LINK(array_f_link, array_f, array_lf)
+ARRAY_LINK(array_u_link, array_u, array_lu)
 ARRAY_LINK(array_li_link, array_li, array_li)
 ARRAY_LINK(array_lf_link, array_lf, array_lf)
+ARRAY_LINK(array_lu_link, array_lu, array_lu)
 
 
 #define ARRAY_SWAP(FUNC_NAME, ARRAY_TYPE)                  \
@@ -349,6 +370,7 @@ ARRAY_LINK(array_lf_link, array_lf, array_lf)
     }
 ARRAY_SWAP(array_i_swap, array_i)
 ARRAY_SWAP(array_f_swap, array_f)
+ARRAY_SWAP(array_u_swap, array_u)
 ARRAY_SWAP(array_o_swap, array_o)
 ARRAY_SWAP(array_ia_swap, array_ia)
 ARRAY_SWAP(array_fa_swap, array_fa)
@@ -375,6 +397,8 @@ ARRAY_SWAP(array_faa_swap, array_faa)
     }
 ARRAY_HEAD(array_i_head, array_i, int)
 ARRAY_HEAD(array_f_head, array_f, double)
+ARRAY_HEAD(array_u_head, array_u, unsigned)
+
 
 #define ARRAY_DE_HEAD(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE)        \
     void                                                             \
@@ -397,6 +421,8 @@ ARRAY_HEAD(array_f_head, array_f, double)
     }
 ARRAY_DE_HEAD(array_i_de_head, array_i, int)
 ARRAY_DE_HEAD(array_f_de_head, array_f, double)
+ARRAY_DE_HEAD(array_u_de_head, array_u, unsigned)
+
 
 #define ARRAY_TAIL(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE)     \
     void                                                                \
@@ -417,6 +443,8 @@ ARRAY_DE_HEAD(array_f_de_head, array_f, double)
     }
 ARRAY_TAIL(array_i_tail, array_i, int)
 ARRAY_TAIL(array_f_tail, array_f, double)
+ARRAY_TAIL(array_u_tail, array_u, unsigned)
+
 
 #define ARRAY_DE_TAIL(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE)   \
     void                                                             \
@@ -437,6 +465,8 @@ ARRAY_TAIL(array_f_tail, array_f, double)
     }
 ARRAY_DE_TAIL(array_i_de_tail, array_i, int)
 ARRAY_DE_TAIL(array_f_de_tail, array_f, double)
+ARRAY_DE_TAIL(array_u_de_tail, array_u, unsigned)
+
 
 #define ARRAY_SPLIT(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE)             \
     void                                                                \
@@ -486,6 +516,7 @@ ARRAY_DE_TAIL(array_f_de_tail, array_f, double)
     }
 ARRAY_SPLIT(array_i_split, array_i, int)
 ARRAY_SPLIT(array_f_split, array_f, double)
+ARRAY_SPLIT(array_u_split, array_u, unsigned)
 
 #define ARRAY_SLICE(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE, ARRAY_NEW)  \
     void                                                                \
@@ -527,6 +558,8 @@ ARRAY_SPLIT(array_f_split, array_f, double)
     }
 ARRAY_SLICE(array_i_slice, array_i, int, array_i_new)
 ARRAY_SLICE(array_f_slice, array_f, double, array_f_new)
+ARRAY_SLICE(array_u_slice, array_u, unsigned, array_u_new)
+
 
 #define ARRAY_REVERSE(FUNC_NAME, ARRAY_TYPE, ARRAY_DATA_TYPE)   \
     void                                                        \
@@ -546,6 +579,7 @@ ARRAY_SLICE(array_f_slice, array_f, double, array_f_new)
     }
 ARRAY_REVERSE(array_i_reverse, array_i, int)
 ARRAY_REVERSE(array_f_reverse, array_f, double)
+ARRAY_REVERSE(array_u_reverse, array_u, unsigned)
 ARRAY_REVERSE(array_ia_reverse, array_ia, array_i*);
 ARRAY_REVERSE(array_fa_reverse, array_fa, array_f*);
 ARRAY_REVERSE(array_lia_reverse, array_lia, array_li*);
@@ -615,6 +649,7 @@ struct array_li_s* array_li_new(void)
     }
 ARRAY_L_DEL(array_li_del, array_li)
 ARRAY_L_DEL(array_lf_del, array_lf)
+ARRAY_L_DEL(array_lu_del, array_lu)
 
 #define ARRAY_L_SWAP(FUNC_NAME, ARRAY_TYPE)         \
     void                                            \
@@ -630,7 +665,7 @@ ARRAY_L_DEL(array_lf_del, array_lf)
     }
 ARRAY_L_SWAP(array_li_swap, array_li)
 ARRAY_L_SWAP(array_lf_swap, array_lf)
-
+ARRAY_L_SWAP(array_lu_swap, array_lu)
 
 #define ARRAY_L_HEAD(FUNC_NAME, ARRAY_TYPE)                             \
     void                                                                \
@@ -643,6 +678,7 @@ ARRAY_L_SWAP(array_lf_swap, array_lf)
     }
 ARRAY_L_HEAD(array_li_head, array_li)
 ARRAY_L_HEAD(array_lf_head, array_lf)
+ARRAY_L_HEAD(array_lu_head, array_lu)
 
 #define ARRAY_L_DE_HEAD(FUNC_NAME, ARRAY_TYPE)                          \
     void                                                                \
@@ -658,6 +694,7 @@ ARRAY_L_HEAD(array_lf_head, array_lf)
     }
 ARRAY_L_DE_HEAD(array_li_de_head, array_li)
 ARRAY_L_DE_HEAD(array_lf_de_head, array_lf)
+ARRAY_L_DE_HEAD(array_lu_de_head, array_lu)
 
 #define ARRAY_L_TAIL(FUNC_NAME, ARRAY_TYPE)                             \
     void                                                                \
@@ -670,6 +707,7 @@ ARRAY_L_DE_HEAD(array_lf_de_head, array_lf)
     }
 ARRAY_L_TAIL(array_li_tail, array_li)
 ARRAY_L_TAIL(array_lf_tail, array_lf)
+ARRAY_L_TAIL(array_lu_tail, array_lu)
 
 #define ARRAY_L_DE_TAIL(FUNC_NAME, ARRAY_TYPE)                          \
     void                                                                \
@@ -680,6 +718,7 @@ ARRAY_L_TAIL(array_lf_tail, array_lf)
     }
 ARRAY_L_DE_TAIL(array_li_de_tail, array_li)
 ARRAY_L_DE_TAIL(array_lf_de_tail, array_lf)
+ARRAY_L_DE_TAIL(array_lu_de_tail, array_lu)
 
 #define ARRAY_L_SPLIT(FUNC_NAME, ARRAY_TYPE)             \
     void                                                 \
@@ -707,6 +746,7 @@ ARRAY_L_DE_TAIL(array_lf_de_tail, array_lf)
     }
 ARRAY_L_SPLIT(array_li_split, array_li)
 ARRAY_L_SPLIT(array_lf_split, array_lf)
+ARRAY_L_SPLIT(array_lu_split, array_lu)
 
 array_f* array_f_new(void)
 {
@@ -864,6 +904,160 @@ struct array_lf_s* array_lf_new(void)
 
     return array;
 }
+
+
+struct array_u_s* array_u_new(void)
+{
+    unsigned* data = malloc(sizeof(unsigned) * 1);
+
+    return array_u_wrap(data, 0, 1);
+}
+
+struct array_u_s* array_u_wrap(unsigned* data,
+                               unsigned size, unsigned total_size)
+{
+    struct array_u_s* a = malloc(sizeof(struct array_u_s));
+    a->_ = data;
+    a->len = size;
+    a->total_size = total_size;
+
+    a->del = array_u_del;
+    a->resize = array_u_resize;
+    a->resize_for = array_u_resize_for;
+    a->reset = array_u_reset;
+    a->reset_for = array_u_reset_for;
+    a->append = array_u_append;
+    a->vappend = array_u_vappend;
+    a->mappend = array_u_mappend;
+    a->vset = array_u_vset;
+    a->mset = array_u_mset;
+    a->extend = array_u_extend;
+    a->equals = array_u_equals;
+    a->min = array_u_min;
+    a->max = array_u_max;
+    a->sum = array_u_sum;
+    a->copy = array_u_copy;
+    a->link = array_u_link;
+    a->swap = array_u_swap;
+    a->head = array_u_head;
+    a->tail = array_u_tail;
+    a->de_head = array_u_de_head;
+    a->de_tail = array_u_de_tail;
+    a->split = array_u_split;
+    a->slice = array_u_slice;
+    a->reverse = array_u_reverse;
+    a->sort = array_u_sort;
+    a->print = array_u_print;
+
+    return a;
+}
+
+struct array_lu_s* array_lu_new(void)
+{
+    struct array_lu_s* array = malloc(sizeof(struct array_lu_s));
+    array->_ = NULL;
+    array->len = 0;
+
+    array->del = array_lu_del;
+    array->reset = array_lu_reset;
+    array->equals = array_lu_equals;
+    array->min = array_lu_min;
+    array->max = array_lu_max;
+    array->sum = array_lu_sum;
+    array->copy = array_lu_copy;
+    array->link = array_lu_link;
+    array->swap = array_lu_swap;
+    array->head = array_lu_head;
+    array->tail = array_lu_tail;
+    array->de_head = array_lu_de_head;
+    array->de_tail = array_lu_de_tail;
+    array->split = array_lu_split;
+    array->print = array_lu_print;
+
+    return array;
+}
+
+#define ARRAY_U_MIN(FUNC_NAME, ARRAY_TYPE) \
+    int                                    \
+    FUNC_NAME(const ARRAY_TYPE *array)     \
+    {                                      \
+        unsigned min = UINT_MAX;           \
+        unsigned i;                        \
+                                           \
+        assert(array->_ != NULL);          \
+        for (i = 0; i < array->len; i++)   \
+            if (array->_[i] < min)         \
+                min = array->_[i];         \
+                                           \
+        return min;                        \
+    }
+ARRAY_U_MIN(array_u_min, array_u)
+ARRAY_U_MIN(array_lu_min, array_lu)
+
+#define ARRAY_U_MAX(FUNC_NAME, ARRAY_TYPE)      \
+    int                                          \
+    FUNC_NAME(const ARRAY_TYPE *array)           \
+    {                                            \
+        unsigned max = 0;                        \
+        unsigned i;                              \
+                                                 \
+        assert(array->_ != NULL);                \
+        for (i = 0; i < array->len; i++)         \
+            if (array->_[i] > max)               \
+                max = array->_[i];               \
+                                                 \
+        return max;                              \
+    }
+ARRAY_U_MAX(array_u_max, array_u)
+ARRAY_U_MAX(array_lu_max, array_lu)
+
+#define ARRAY_U_SUM(FUNC_NAME, ARRAY_TYPE) \
+    int                                         \
+    FUNC_NAME(const ARRAY_TYPE *array)          \
+    {                                           \
+        unsigned accumulator = 0;               \
+        const unsigned *data = array->_;        \
+        unsigned size = array->len;             \
+        unsigned i;                             \
+                                                \
+        assert(array->_ != NULL);               \
+        for (i = 0; i < size; i++)              \
+            accumulator += data[i];             \
+                                                \
+        return accumulator;                     \
+    }
+ARRAY_U_SUM(array_u_sum, array_u)
+ARRAY_U_SUM(array_lu_sum, array_lu)
+
+int array_unsigned_cmp(const void *x, const void *y)
+{
+    return *(unsigned*)x - *(unsigned*)y;
+}
+
+void array_u_sort(array_u *array)
+{
+    qsort(array->_, (size_t)(array->len), sizeof(unsigned),
+          array_unsigned_cmp);
+}
+
+#define ARRAY_U_PRINT(FUNC_NAME, ARRAY_TYPE)            \
+    void                                                \
+    FUNC_NAME(const ARRAY_TYPE *array, FILE* output)    \
+    {                                                   \
+        unsigned i;                                     \
+                                                        \
+        putc('[', output);                              \
+        if (array->len == 1) {                          \
+            fprintf(output, "%u", array->_[0]);         \
+        } else if (array->len > 1) {                    \
+            for (i = 0; i < array->len - 1; i++)        \
+                fprintf(output, "%u, ", array->_[i]);   \
+            fprintf(output, "%u", array->_[i]);         \
+        }                                               \
+        putc(']', output);                              \
+    }
+ARRAY_U_PRINT(array_u_print, array_u)
+ARRAY_U_PRINT(array_lu_print, array_lu)
 
 
 struct array_ia_s*
