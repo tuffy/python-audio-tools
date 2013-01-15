@@ -422,7 +422,7 @@ class WaveReader:
     """a PCMReader object for reading wave file contents"""
 
     def __init__(self, wave_filename):
-        """wave_file should be a seekable file-like stream of wave data"""
+        """wave_filename is a string"""
 
         from .bitstream import BitstreamReader
 

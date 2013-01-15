@@ -31,43 +31,75 @@ class InvalidAU(InvalidFile):
 #######################
 
 
-class AuReader(PCMReader):
-    """a subclass of PCMReader for reading Sun AU file contents"""
+class AuReader:
+    def __init__(self, au_filename):
+        from .bitstream import BitstreamReader
+        from .text import (ERR_AU_INVALID_HEADER,
+                           ERR_AU_UNSUPPORTED_FORMAT)
 
-    def __init__(self, au_file, data_size,
-                 sample_rate, channels, channel_mask, bits_per_sample):
-        """au_file is a file, data_size is an integer byte count
+        self.file = open(au_filename, "rb")
+        (magic_number,
+         self.data_offset,
+         data_size,
+         encoding_format,
+         self.sample_rate,
+         self.channels) = BitstreamReader(self.file, 0).parse(
+             "4b 32u 32u 32u 32u 32u")
 
-        sample_rate, channels, channel_mask and bits_per_sample are ints
-        """
+        if (magic_number != '.snd'):
+            raise ValueError(ERR_AU_INVALID_HEADER)
+        try:
+            self.bits_per_sample = {2: 8, 3: 16, 4: 24}[encoding_format]
+        except KeyError:
+            raise ValueError(ERR_AU_UNSUPPORTED_FORMAT)
 
-        PCMReader.__init__(self,
-                           file=au_file,
-                           sample_rate=sample_rate,
-                           channels=channels,
-                           channel_mask=channel_mask,
-                           bits_per_sample=bits_per_sample)
-        self.data_size = data_size
-        self.bytes_per_frame = self.channels * self.bits_per_sample / 8
+        self.channel_mask = {1:0x4, 2:0x3}.get(self.channels, 0)
+        self.bytes_per_pcm_frame = ((self.bits_per_sample // 8) * self.channels)
+        self.total_pcm_frames = (data_size // self.bytes_per_pcm_frame)
+        self.remaining_pcm_frames = self.total_pcm_frames
 
     def read(self, pcm_frames):
-        """try to read a pcm.FrameList with the given number of PCM frames"""
+        #try to read requested PCM frames or remaining frames
+        requested_pcm_frames = min(pcm_frames, self.remaining_pcm_frames)
+        requested_bytes = (self.bytes_per_pcm_frame *
+                           requested_pcm_frames)
+        pcm_data = self.file.read(requested_bytes)
 
-        #align bytes downward if an odd number is read in
-        pcm_data = self.file.read(max(pcm_frames, 1) * self.bytes_per_frame)
-        if ((len(pcm_data) == 0) and (self.data_size > 0)):
-            raise IOError("data ends prematurely")
+        #raise exception if data block exhausted early
+        if (len(pcm_data) < requested_bytes):
+            from .text import ERR_AU_TRUNCATED_DATA
+            raise IOError(ERR_AU_TRUNCATED_DATA)
         else:
-            self.data_size -= len(pcm_data)
+            self.remaining_pcm_frames -= requested_pcm_frames
 
-        try:
+            #return parsed chunk
             return FrameList(pcm_data,
                              self.channels,
                              self.bits_per_sample,
                              True,
                              True)
-        except ValueError:
-            raise IOError("data ends prematurely")
+
+
+    def seek(self, pcm_frame_offset):
+        if (pcm_frame_offset < 0):
+            from .text import ERR_NEGATIVE_SEEK
+            raise ValueError(ERR_NEGATIVE_SEEK)
+
+        #ensure one doesn't walk off the end of the file
+        pcm_frame_offset = min(pcm_frame_offset,
+                               self.total_pcm_frames)
+
+        #position file in data block
+        self.file.seek(self.data_offset +
+                       (pcm_frame_offset *
+                        self.bytes_per_pcm_frame), 0)
+        self.remaining_pcm_frames = (self.total_pcm_frames -
+                                     pcm_frame_offset)
+
+        return pcm_frame_offset
+
+    def close(self):
+        self.file.close()
 
 
 class AuAudio(AudioFile):
@@ -144,15 +176,7 @@ class AuAudio(AudioFile):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        f = file(self.filename, 'rb')
-        f.seek(self.__data_offset__, 0)
-
-        return AuReader(au_file=f,
-                        data_size=self.__data_size__,
-                        sample_rate=self.sample_rate(),
-                        channels=self.channels(),
-                        channel_mask=int(self.channel_mask()),
-                        bits_per_sample=self.bits_per_sample())
+        return AuReader(self.filename)
 
     def pcm_split(self):
         """returns a pair of data strings before and after PCM data

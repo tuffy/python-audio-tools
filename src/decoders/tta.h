@@ -52,6 +52,7 @@ typedef struct {
         unsigned total_pcm_frames;
     } header;
 
+    unsigned remaining_pcm_frames;
     unsigned total_tta_frames;
     unsigned current_tta_frame;
     unsigned block_size;
@@ -85,6 +86,9 @@ static PyObject*
 TTADecoder_read(decoders_TTADecoder *self, PyObject *args);
 
 static PyObject*
+TTADecoder_seek(decoders_TTADecoder *self, PyObject *args);
+
+static PyObject*
 TTADecoder_close(decoders_TTADecoder *self, PyObject *args);
 
 static PyObject*
@@ -109,14 +113,14 @@ PyGetSetDef TTADecoder_getseters[] = {
 };
 
 PyMethodDef TTADecoder_methods[] = {
-    {"read",
-    (PyCFunction)TTADecoder_read,
+    {"read", (PyCFunction)TTADecoder_read,
      METH_VARARGS,
      "Reads the given number of PCM frames from the TTA file, if possible"},
+    {"seek", (PyCFunction)TTADecoder_seek,
+     METH_VARARGS, "Seeks to the given PCM frames offset"},
     {"close",
     (PyCFunction)TTADecoder_close,
-     METH_NOARGS,
-     "Closes the TTA decoder stream"},
+     METH_NOARGS, "Closes the TTA decoder stream"},
     {NULL}
 };
 

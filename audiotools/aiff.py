@@ -347,90 +347,138 @@ def parse_comm(comm):
             sample_rate, channel_mask)
 
 
-class AiffReader(PCMReader):
-    """a subclass of PCMReader for reading AIFF file contents"""
+class AiffReader:
+    """a PCMReader object for reading AIFF file contents"""
 
-    def __init__(self, aiff_file,
-                 sample_rate, channels, channel_mask, bits_per_sample,
-                 total_frames, process=None):
-        """aiff_file should be a file-like object of aiff data
-
-        sample_rate, channels, channel_mask and bits_per_sample are ints"""
-
-        self.file = aiff_file
-        self.sample_rate = sample_rate
-        self.channels = channels
-        self.channel_mask = channel_mask
-        self.bits_per_sample = bits_per_sample
-        self.remaining_frames = total_frames
-        self.bytes_per_frame = self.channels * self.bits_per_sample / 8
-
-        self.process = process
+    def __init__(self, aiff_filename):
+        """aiff_filename is a string"""
 
         from .bitstream import BitstreamReader
-        from . import __capped_stream_reader__
-        from .text import (ERR_AIFF_NOT_AIFF,
-                           ERR_AIFF_INVALID_AIFF,
-                           ERR_AIFF_NO_SSND_CHUNK)
 
-        #build a capped reader for the ssnd chunk
-        aiff_reader = BitstreamReader(aiff_file, 0)
+        self.file = open(aiff_filename, "rb")
+
+        #ensure FORM<size>AIFF header is ok
         try:
-            (form, aiff) = aiff_reader.parse("4b 32p 4b")
-            if (form != 'FORM'):
-                raise InvalidAIFF(ERR_AIFF_NOT_AIFF)
-            elif (aiff != 'AIFF'):
-                raise InvalidAIFF(ERR_AIFF_INVALID_AIFF)
+            (form,
+             total_size,
+             aiff) = struct.unpack(">4sI4s", self.file.read(12))
+        except struct.error:
+            from .text import ERR_AIFF_INVALID_AIFF
+            raise InvalidAIFF(ERR_AIFF_INVALID_AIFF)
 
-            while (True):
-                (chunk_id, chunk_size) = aiff_reader.parse("4b 32u")
-                if (chunk_id == 'SSND'):
-                    #adjust for the SSND alignment
-                    aiff_reader.skip(64)
-                    self.aiff = __capped_stream_reader__(self.file, chunk_size)
-                    self.ssnd_chunk_size = chunk_size - 8
-                    break
+        if (form != 'FORM'):
+            from .text import ERR_AIFF_NOT_AIFF
+            raise ValueError(ERR_AIFF_NOT_AIFF)
+        elif (aiff != 'AIFF'):
+            from .text import ERR_AIFF_INVALID_AIFF
+            raise ValueError(ERR_AIFF_INVALID_AIFF)
+        else:
+            total_size -= 4
+            comm_chunk_read = False
+
+        #walk through chunks until "SSND" chunk encountered
+        while (total_size > 0):
+            try:
+                (chunk_id,
+                 chunk_size) = struct.unpack(">4sI", self.file.read(8))
+            except struct.error:
+                from .text import ERR_AIFF_INVALID_AIFF
+                raise ValueError(ERR_AIFF_INVALID_AIFF)
+
+            if (not frozenset(chunk_id).issubset(AiffAudio.PRINTABLE_ASCII)):
+                from .text import ERR_AIFF_INVALID_CHUNK_ID
+                raise ValueError(ERR_AIFF_INVALID_CHUNK_ID)
+            else:
+                total_size -= 8
+
+            if (chunk_id == "COMM"):
+                #when "COMM" chunk encountered,
+                #use it to populate PCMReader attributes
+                (self.channels,
+                 self.total_pcm_frames,
+                 self.bits_per_sample,
+                 self.sample_rate,
+                 channel_mask) = parse_comm(BitstreamReader(self.file, False))
+                self.channel_mask = int(channel_mask)
+                self.bytes_per_pcm_frame = ((self.bits_per_sample / 8) *
+                                            self.channels)
+                self.remaining_pcm_frames = self.total_pcm_frames
+                comm_chunk_read = True
+            elif (chunk_id == "SSND"):
+                #when "SSND" chunk encountered,
+                #strip off the "offset" and "block_size" attributes
+                #and ready PCMReader for reading
+                if (not comm_chunk_read):
+                    from .text import ERR_AIFF_PREMATURE_SSND_CHUNK
+                    raise ValueError(ERR_AIFF_PREMATURE_SSND_CHUNK)
                 else:
-                    aiff_reader.skip_bytes(chunk_size)
-                    if (chunk_size % 2):
-                        aiff_reader.skip(8)
-        except IOError:
-            raise InvalidAIFF(ERR_AIFF_NO_SSND_CHUNK)
+                    self.file.read(8)
+                    self.ssnd_chunk_offset = self.file.tell()
+                    return
+            else:
+                #all other chunks are ignored
+                self.file.read(chunk_size)
+
+            if (chunk_size % 2):
+                if (len(self.file.read(1)) < 1):
+                    from .text import ERR_AIFF_INVALID_CHUNK
+                    raise ValueError(ERR_AIFF_INVALID_CHUNK)
+                total_size -= (chunk_size + 1)
+            else:
+                total_size -= chunk_size
+        else:
+            #raise an error if no "SSND" chunk is encountered
+            from .text import ERR_AIFF_NO_SSND_CHUNK
+            raise ValueError(ERR_AIFF_NO_SSND_CHUNK)
 
     def read(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of PCM frames"""
 
-        #align bytes downward if an odd number is read in
-        bytes_per_frame = self.channels * (self.bits_per_sample / 8)
-        requested_frames = max(1, pcm_frames)
-        pcm_data = self.aiff.read(requested_frames * bytes_per_frame)
-        if ((len(pcm_data) == 0) and (self.ssnd_chunk_size > 0)):
+        #try to read requested PCM frames or remaining frames
+        requested_pcm_frames = min(pcm_frames, self.remaining_pcm_frames)
+        requested_bytes = (self.bytes_per_pcm_frame *
+                           requested_pcm_frames)
+        pcm_data = self.file.read(requested_bytes)
+
+        #raise exception if "SSND" chunk exhausted early
+        if (len(pcm_data) < requested_bytes):
             from .text import ERR_AIFF_TRUNCATED_SSND_CHUNK
             raise IOError(ERR_AIFF_TRUNCATED_SSND_CHUNK)
         else:
-            self.ssnd_chunk_size -= len(pcm_data)
+            self.remaining_pcm_frames -= requested_pcm_frames
 
-        try:
+            #return parsed chunk
             return FrameList(pcm_data,
                              self.channels,
                              self.bits_per_sample,
                              True,
                              True)
-        except ValueError:
-            from .text import ERR_AIFF_TRUNCATED_SSND_CHUNK
-            raise IOError(ERR_AIFF_TRUNCATED_SSND_CHUNK)
+
+    def seek(self, pcm_frame_offset):
+        """tries to seek to the given PCM frame offset
+        returns the total amount of frames actually seeked over"""
+
+        if (pcm_frame_offset < 0):
+            from .text import ERR_NEGATIVE_SEEK
+            raise ValueError(ERR_NEGATIVE_SEEK)
+
+        #ensure one doesn't walk off the end of the file
+        pcm_frame_offset = min(pcm_frame_offset,
+                               self.total_pcm_frames)
+
+        #position file in "SSND" chunk
+        self.file.seek(self.ssnd_chunk_offset +
+                       (pcm_frame_offset *
+                        self.bytes_per_pcm_frame), 0)
+        self.remaining_pcm_frames = (self.total_pcm_frames -
+                                     pcm_frame_offset)
+
+        return pcm_frame_offset
 
     def close(self):
-        """closes the stream for reading
-
-        any subprocess is waited for also so for proper cleanup"""
+        """closes the stream for reading"""
 
         self.file.close()
-        if (self.process is not None):
-            if (self.process.wait() != 0):
-                from . import DecodingError
-
-                raise DecodingError()
 
 
 class InvalidAIFF(InvalidFile):
@@ -728,12 +776,7 @@ class AiffAudio(AiffContainer):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        return AiffReader(file(self.filename, 'rb'),
-                          sample_rate=self.sample_rate(),
-                          channels=self.channels(),
-                          bits_per_sample=self.bits_per_sample(),
-                          channel_mask=int(self.channel_mask()),
-                          total_frames=self.__total_sample_frames__)
+        return AiffReader(self.filename)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,

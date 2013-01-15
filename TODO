@@ -6301,13 +6301,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    could seek to the closest position in the stream to the given frames
    without going over, and return the current position in PCM frames.
 *** TODO Update decoders
-**** TODO AiffAudio
-**** TODO AuAudio
+**** DONE AiffAudio
+**** DONE AuAudio
 **** DONE WaveAudio
 **** DONE decoders.ALACDecoder
 **** DONE decoders.FlacDecoder
 **** TODO decoders.SHNDecoder
-**** TODO decoders.TTADecoder
+**** DONE decoders.TTADecoder
 **** DONE decoders.WavPackDecoder
 *** TODO Update other PCMReader-compatible objects
     If seeking isn't supported, either have .seek() return None

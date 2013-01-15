@@ -96,7 +96,7 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
                         &(self->header.sample_rate),
                         &(self->header.total_pcm_frames))) {
     default:
-        /*do nothing*/
+        self->remaining_pcm_frames = self->header.total_pcm_frames;
         break;
     case INVALID_SIGNATURE:
         PyErr_SetString(PyExc_ValueError, "invalid header signature");
@@ -139,6 +139,9 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
+    /*place a mark after the seektable for possible rewinding*/
+    self->bitstream->mark(self->bitstream);
+
     /*mark stream as not closed and ready for reading*/
     self->closed = 0;
 
@@ -152,8 +155,12 @@ TTADecoder_dealloc(decoders_TTADecoder *self) {
 
     free_cache(&(self->cache));
 
-    if (self->bitstream != NULL)
+    if (self->bitstream != NULL) {
+        if (self->bitstream->marks) {
+            self->bitstream->unmark(self->bitstream);
+        }
         self->bitstream->close(self->bitstream);
+    }
 
     self->frame->close(self->frame);
     self->framelist->del(self->framelist);
@@ -200,15 +207,15 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
         return NULL;
-    } else if (self->header.total_pcm_frames == 0) {
+    } else if (self->remaining_pcm_frames == 0) {
         return empty_FrameList(self->audiotools_pcm,
                                self->header.channels,
                                self->header.bits_per_sample);
     } else {
         const unsigned frame_size = self->seektable[self->current_tta_frame++];
-        const unsigned block_size = MIN(self->header.total_pcm_frames,
+        const unsigned block_size = MIN(self->remaining_pcm_frames,
                                         self->block_size);
-        self->header.total_pcm_frames -= block_size;
+        self->remaining_pcm_frames -= block_size;
 
         br_substream_reset(self->frame);
         if (!setjmp(*br_try(self->bitstream))) {
@@ -240,6 +247,58 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
             return NULL;
         }
     }
+}
+
+static PyObject*
+TTADecoder_seek(decoders_TTADecoder *self, PyObject *args)
+{
+    long long seeked_offset;
+    unsigned current_pcm_frame;
+
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot seek closed stream");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTuple(args, "L", &seeked_offset))
+        return NULL;
+
+    if (seeked_offset < 0) {
+        PyErr_SetString(PyExc_ValueError, "cannot seek to negative value");
+        return NULL;
+    }
+
+    /*rewind to start of TTA blocks*/
+    self->bitstream->rewind(self->bitstream);
+
+    /*skip frames until we reach the requested one
+      or run out of frames entirely
+      and adjust both current TTA frame and
+      remaining number of PCM frames according to new position*/
+    current_pcm_frame = 0;
+    self->current_tta_frame = 0;
+    self->remaining_pcm_frames = self->header.total_pcm_frames;
+
+    while ((current_pcm_frame + self->block_size) < seeked_offset) {
+        const unsigned block_size = MIN(self->remaining_pcm_frames,
+                                        self->block_size);
+        if (block_size > 0) {
+            const unsigned frame_size =
+                self->seektable[self->current_tta_frame];
+
+            fseek(self->bitstream->input.file, (long)frame_size, SEEK_CUR);
+
+            current_pcm_frame += block_size;
+            self->current_tta_frame++;
+            self->remaining_pcm_frames -= block_size;
+        } else {
+            /*no additional frames to seek to*/
+            break;
+        }
+    }
+
+    /*return PCM offset actually seeked to*/
+    return Py_BuildValue("I", current_pcm_frame);
 }
 
 PyObject*
@@ -646,7 +705,7 @@ int main(int argc, char* argv[]) {
     unsigned channels;
     unsigned bits_per_sample;
     unsigned sample_rate;
-    unsigned total_pcm_frames;
+    unsigned remaining_pcm_frames;
     unsigned total_tta_frames;
     unsigned current_tta_frame = 0;
     unsigned block_size;
@@ -675,7 +734,7 @@ int main(int argc, char* argv[]) {
                         &channels,
                         &bits_per_sample,
                         &sample_rate,
-                        &total_pcm_frames)) {
+                        &remaining_pcm_frames)) {
     default:
         bytes_per_sample = bits_per_sample / 8;
         break;
@@ -698,7 +757,7 @@ int main(int argc, char* argv[]) {
     block_size = (sample_rate * 256) / 245;
 
     /*determine the total number of TTA frames*/
-    total_tta_frames = DIV_CEIL(total_pcm_frames, block_size);
+    total_tta_frames = DIV_CEIL(remaining_pcm_frames, block_size);
 
     seektable = malloc(sizeof(unsigned int) * total_tta_frames);
 
@@ -721,8 +780,8 @@ int main(int argc, char* argv[]) {
     converter = FrameList_get_int_to_char_converter(bits_per_sample, 0, 1);
 
     /*read TTA frames*/
-    while (total_pcm_frames) {
-        const unsigned frame_block_size = MIN(block_size, total_pcm_frames);
+    while (remaining_pcm_frames) {
+        const unsigned frame_block_size = MIN(block_size, remaining_pcm_frames);
         unsigned pcm_size;
         unsigned c;
         unsigned f;
@@ -766,7 +825,7 @@ int main(int argc, char* argv[]) {
             fwrite(output_data, sizeof(unsigned char), pcm_size, stdout);
 
             /*deduct block size from total*/
-            total_pcm_frames -= frame_block_size;
+            remaining_pcm_frames -= frame_block_size;
             break;
         case IOERROR:
             fprintf(stderr, "I/O error during frame read\n");
