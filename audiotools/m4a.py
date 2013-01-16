@@ -970,95 +970,141 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         import time
         import tempfile
 
-        mdat_file = tempfile.TemporaryFile()
-
-        #perform encode_alac() on pcmreader to our output file
-        #which returns a tuple of output values
-        #which are various fields for the "alac" atom
-        try:
-            (frame_sample_sizes,
-             frame_byte_sizes,
-             frame_file_offsets,
-             mdat_size) = (encode_alac if encoding_function is None else
-                           encoding_function)(file=mdat_file,
-                                              pcmreader=
-                                              BufferedPCMReader(pcmreader),
-                                              block_size=block_size,
-                                              initial_history=
-                                              cls.INITIAL_HISTORY,
-                                              history_multiplier=
-                                              cls.HISTORY_MULTIPLIER,
-                                              maximum_k=
-                                              cls.MAXIMUM_K)
-        except (IOError, ValueError), err:
-            raise EncodingError(str(err))
-
-        #use the fields from encode_alac() to populate our ALAC atoms
-        create_date = long(time.time()) + 2082844800
-        total_pcm_frames = sum(frame_sample_sizes)
-
-        stts_frame_counts = {}
-        for sample_size in frame_sample_sizes:
-            stts_frame_counts.setdefault(sample_size, __counter__()).incr()
-        stts_frame_counts = dict([(k, int(v)) for (k, v)
-                                  in stts_frame_counts.items()])
-
-        offsets = frame_file_offsets[:]
-        chunks = []
-        for frames in at_a_time(len(frame_file_offsets), 5):
-            if (frames > 0):
-                chunks.append(offsets[0:frames])
-                offsets = offsets[frames:]
-        del(offsets)
-
-        #add the size of ftyp + moov + free to our absolute file offsets
-        pre_mdat_size = (8 + cls.__ftyp_atom__().size() +
-                         8 + cls.__moov_atom__(pcmreader,
-                                               create_date,
-                                               mdat_size,
-                                               total_pcm_frames,
-                                               frame_sample_sizes,
-                                               stts_frame_counts,
-                                               chunks,
-                                               frame_byte_sizes).size() +
-                         8 + cls.__free_atom__(0x1000).size())
-
-        chunks = [[chunk + pre_mdat_size for chunk in chunk_list]
-                  for chunk_list in chunks]
-
-        #then regenerate our live ftyp, moov and free atoms
-        #with actual data
         ftyp = cls.__ftyp_atom__()
-
-        moov = cls.__moov_atom__(pcmreader,
-                                 create_date,
-                                 mdat_size,
-                                 total_pcm_frames,
-                                 frame_sample_sizes,
-                                 stts_frame_counts,
-                                 chunks,
-                                 frame_byte_sizes)
-
         free = cls.__free_atom__(0x1000)
+        create_date = long(time.time()) + 2082844800
 
-        #build our complete output file
-        try:
-            f = file(filename, 'wb')
-            m4a_writer = BitstreamWriter(f, 0)
+        if (total_pcm_frames is not None):
+            total_alac_frames = ((total_pcm_frames // block_size) +
+                                 1 if (total_pcm_frames % block_size) else 0)
+
+            #build a set of placeholder atoms
+            #to stick at the start of the file
+            moov = cls.__moov_atom__(pcmreader,
+                                     create_date,
+                                     0,  #placeholder
+                                     0,  #placeholder
+                                     block_size,
+                                     total_pcm_frames,
+                                     [0] * total_alac_frames)
+
+            try:
+                f = file(filename, 'wb')
+                m4a_writer = BitstreamWriter(f, 0)
+                m4a_writer.build("32u 4b", (ftyp.size() + 8, ftyp.name))
+                ftyp.build(m4a_writer)
+                m4a_writer.build("32u 4b", (moov.size() + 8, moov.name))
+                moov.build(m4a_writer)
+                m4a_writer.build("32u 4b", (free.size() + 8, free.name))
+                free.build(m4a_writer)
+            except (IOError), err:
+                f.close()
+                self.__unlink__(filename)
+                raise EncodingError(str(err))
+
+            #encode the mdat atom based on encoding parameters
+            try:
+                (frame_byte_sizes,
+                 total_pcm_frames) = \
+                 (encode_alac if encoding_function is None else
+                  encoding_function)(file=f,
+                                     pcmreader=BufferedPCMReader(pcmreader),
+                                     block_size=block_size,
+                                     initial_history=cls.INITIAL_HISTORY,
+                                     history_multiplier=cls.HISTORY_MULTIPLIER,
+                                     maximum_k=cls.MAXIMUM_K)
+            except (IOError, ValueError), err:
+                f.close()
+                self.__unlink__(filename)
+                raise EncodingError(str(err))
+
+            assert(sum(frame_byte_sizes) > 0)
+
+            mdat_size = 8 + sum(frame_byte_sizes)
+            pre_mdat_size = (8 + ftyp.size() +
+                             8 + moov.size() +
+                             8 + free.size())
+
+            #go back and re-populate placeholder atoms
+            #with actual values
+            moov = cls.__moov_atom__(pcmreader,
+                                     create_date,
+                                     pre_mdat_size,
+                                     mdat_size,
+                                     block_size,
+                                     total_pcm_frames,
+                                     frame_byte_sizes)
+
+            f.seek(0, 0)
             m4a_writer.build("32u 4b", (ftyp.size() + 8, ftyp.name))
             ftyp.build(m4a_writer)
             m4a_writer.build("32u 4b", (moov.size() + 8, moov.name))
             moov.build(m4a_writer)
-            m4a_writer.build("32u 4b", (free.size() + 8, free.name))
-            free.build(m4a_writer)
-            mdat_file.seek(0, 0)
-            transfer_data(mdat_file.read, f.write)
-            mdat_file.close()
-        except (IOError), err:
-            mdat_file.close()
-            raise EncodingError(str(err))
+            f.close()
 
-        return cls(filename)
+            return cls(filename)
+        else:
+            mdat_file = tempfile.TemporaryFile()
+
+            #perform encode_alac() on pcmreader to our output file
+            #which returns a tuple of output values
+            #which are various fields for the "alac" atom
+            try:
+                (frame_byte_sizes,
+                 total_pcm_frames) = \
+                 (encode_alac if encoding_function is None else
+                  encoding_function)(file=mdat_file,
+                                     pcmreader=BufferedPCMReader(pcmreader),
+                                     block_size=block_size,
+                                     initial_history=cls.INITIAL_HISTORY,
+                                     history_multiplier=cls.HISTORY_MULTIPLIER,
+                                     maximum_k=cls.MAXIMUM_K)
+            except (IOError, ValueError), err:
+                raise EncodingError(str(err))
+
+            mdat_size = 8 + sum(frame_byte_sizes)
+
+            #use the fields from encode_alac() to populate our ALAC atoms
+            moov = cls.__moov_atom__(pcmreader,
+                                     create_date,
+                                     0,  #placeholder
+                                     mdat_size,
+                                     block_size,
+                                     total_pcm_frames,
+                                     frame_byte_sizes)
+
+            #add the size of ftyp + moov + free to our absolute file offsets
+            pre_mdat_size = (8 + ftyp.size() +
+                             8 + moov.size() +
+                             8 + free.size())
+
+            #then regenerate the moov atom with actual data
+            moov = cls.__moov_atom__(pcmreader,
+                                     create_date,
+                                     pre_mdat_size,
+                                     mdat_size,
+                                     block_size,
+                                     total_pcm_frames,
+                                     frame_byte_sizes)
+
+            #build our complete output file
+            try:
+                f = file(filename, 'wb')
+                m4a_writer = BitstreamWriter(f, 0)
+                m4a_writer.build("32u 4b", (ftyp.size() + 8, ftyp.name))
+                ftyp.build(m4a_writer)
+                m4a_writer.build("32u 4b", (moov.size() + 8, moov.name))
+                moov.build(m4a_writer)
+                m4a_writer.build("32u 4b", (free.size() + 8, free.name))
+                free.build(m4a_writer)
+                mdat_file.seek(0, 0)
+                transfer_data(mdat_file.read, f.write)
+                mdat_file.close()
+            except (IOError), err:
+                mdat_file.close()
+                raise EncodingError(str(err))
+
+            return cls(filename)
 
     @classmethod
     def __ftyp_atom__(cls):
@@ -1072,12 +1118,19 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
     @classmethod
     def __moov_atom__(cls, pcmreader,
                       create_date,
+                      mdat_offset,
                       mdat_size,
+                      block_size,
                       total_pcm_frames,
-                      frame_sample_sizes,
-                      stts_frame_counts,
-                      chunks,
                       frame_byte_sizes):
+        """pcmreader is a PCMReader object
+        create_date is the file's creation time, in the Apple epoch, as an int
+        mdat_offset is the number of bytes before the start of the mdat atom
+        mdat_size is the complete size of the mdat atom, in bytes
+        block_size is the requested size of each ALAC frame, in PCM frames
+        total_pcm_frames is the total size of the file, in PCM frames
+        """
+
         return M4A_Tree_Atom(
             "moov",
             [cls.__mvhd_atom__(pcmreader, create_date, total_pcm_frames),
@@ -1100,16 +1153,20 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                                           [cls.__stsd_atom__(
                                               pcmreader,
                                               mdat_size,
-                                              frame_sample_sizes,
+                                              block_size,
+                                              total_pcm_frames,
                                               frame_byte_sizes),
                                            cls.__stts_atom__(
-                                               stts_frame_counts),
+                                               total_pcm_frames,
+                                               block_size),
                                            cls.__stsc_atom__(
-                                               chunks),
+                                               total_pcm_frames,
+                                               block_size),
                                            cls.__stsz_atom__(
                                                frame_byte_sizes),
                                            cls.__stco_atom__(
-                                               chunks)])])])]),
+                                               mdat_offset,
+                                               frame_byte_sizes)])])])]),
              M4A_Tree_Atom("udta", [cls.__meta_atom__()])])
 
     @classmethod
@@ -1200,7 +1257,10 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                                                        "\x00\x00\x00\x01")])
 
     @classmethod
-    def __stsd_atom__(cls, pcmreader, mdat_size, frame_sample_sizes,
+    def __stsd_atom__(cls, pcmreader,
+                      mdat_size,
+                      block_size,
+                      total_pcm_frames,
                       frame_byte_sizes):
         return M4A_STSD_Atom(
             version=0,
@@ -1217,7 +1277,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                     audio_packet_size=0,
                     sample_rate=0xAC440000,  # regardless of actual sample rate
                     sub_alac=M4A_SUB_ALAC_Atom(
-                        max_samples_per_frame=max(frame_sample_sizes),
+                        max_samples_per_frame=block_size,
                         bits_per_sample=pcmreader.bits_per_sample,
                         history_multiplier=cls.HISTORY_MULTIPLIER,
                         initial_history=cls.INITIAL_HISTORY,
@@ -1225,26 +1285,41 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                         channels=pcmreader.channels,
                         unknown=0x00FF,
                         max_coded_frame_size=max(frame_byte_sizes),
-                        bitrate=((mdat_size * 8 * pcmreader.sample_rate) /
-                                 sum(frame_sample_sizes)),
+                        bitrate=((mdat_size * 8 * pcmreader.sample_rate) //
+                                 total_pcm_frames),
                         sample_rate=pcmreader.sample_rate))])
 
     @classmethod
-    def __stts_atom__(cls, stts_frame_counts):
+    def __stts_atom__(cls, total_pcm_frames, block_size):
+        #note that the first entry may have 0 items
+        #and the second may have a duration of 0 PCM frames
+        times = [(total_pcm_frames // block_size, block_size),
+                 (1, total_pcm_frames % block_size)]
+
         return M4A_STTS_Atom(
             version=0,
             flags=0,
-            times=[(int(stts_frame_counts[samples]), samples)
-                   for samples in reversed(sorted(stts_frame_counts.keys()))])
+            #filter invalid times entries
+            times=[t for t in times if ((t[0] > 0) and t[1] > 0)])
 
     @classmethod
-    def __stsc_atom__(cls, chunks):
+    def __stsc_atom__(cls, total_pcm_frames, block_size):
+        alac_frames = ((total_pcm_frames // block_size) +
+                       1 if (total_pcm_frames % block_size) else 0)
+        alac_frames_per_chunk = 5
+
+        if (alac_frames < alac_frames_per_chunk):
+            blocks = [(1, alac_frames, 1)]
+        else:
+            blocks = [(1, alac_frames_per_chunk, 1),
+                      (1 + (alac_frames // alac_frames_per_chunk),
+                       alac_frames % alac_frames_per_chunk,
+                       1)]
+
         return M4A_STSC_Atom(
             version=0,
             flags=0,
-            blocks=[(i + 1, current, 1) for (i, (current, previous))
-                    in enumerate(zip(map(len, chunks), [0] + map(len, chunks)))
-                    if (current != previous)])
+            blocks=blocks)
 
     @classmethod
     def __stsz_atom__(cls, frame_byte_sizes):
@@ -1255,11 +1330,19 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             block_sizes=frame_byte_sizes)
 
     @classmethod
-    def __stco_atom__(cls, chunks):
+    def __stco_atom__(cls, mdat_offset, frame_byte_sizes):
+        alac_frames_per_chunk = 5
+        frame_byte_sizes = frame_byte_sizes[:]
+        chunk_offsets = [mdat_offset + 8]
+        while (len(frame_byte_sizes) > 0):
+            chunk_size = sum(frame_byte_sizes[0:alac_frames_per_chunk])
+            chunk_offsets.append(chunk_offsets[-1] + chunk_size)
+            frame_byte_sizes = frame_byte_sizes[alac_frames_per_chunk:]
+
         return M4A_STCO_Atom(
             version=0,
             flags=0,
-            offsets=[chunk[0] for chunk in chunks])
+            offsets=chunk_offsets[0:-1])
 
     @classmethod
     def __meta_atom__(cls):

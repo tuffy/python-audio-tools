@@ -43,9 +43,8 @@ struct alac_context {
 
     unsigned bits_per_sample;
 
-    unsigned frame_byte_size;
-    unsigned mdat_byte_size;
-    array_ia* frame_log;
+    array_u* frame_sizes;
+    unsigned total_pcm_frames;
 
     array_i* LSBs;
     array_ia* channels_MSB;

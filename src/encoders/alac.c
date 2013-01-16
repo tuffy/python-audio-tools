@@ -47,7 +47,8 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     pcmreader* pcmreader;
     struct alac_context encoder;
     array_ia* channels = array_ia_new();
-    unsigned frame_file_offset;
+    unsigned frame_byte_size = 0;
+    fpos_t header_position;
 
     PyObject *log_output;
 
@@ -87,9 +88,6 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
         goto error;
     } else {
         output = bw_open(output_file, BS_BIG_ENDIAN);
-        bw_add_callback(output,
-                        byte_counter,
-                        &(encoder.mdat_byte_size));
     }
 
 #else
@@ -106,7 +104,8 @@ ALACEncoder_encode_alac(char *filename,
     BitstreamWriter *output = NULL;
     struct alac_context encoder;
     array_ia* channels = array_ia_new();
-    unsigned frame_file_offset;
+    unsigned frame_byte_size = 0;
+    fpos_t header_position;
 
     init_encoder(&encoder);
 
@@ -123,10 +122,12 @@ ALACEncoder_encode_alac(char *filename,
 
     /*convert file object to bitstream writer*/
     output = bw_open(output_file, BS_BIG_ENDIAN);
+#endif
+    fgetpos(output_file, &header_position);
+
     bw_add_callback(output,
                     byte_counter,
-                    &(encoder.mdat_byte_size));
-#endif
+                    &frame_byte_size);
 
     /*write placeholder mdat header*/
     output->write(output, 32, 0);
@@ -139,24 +140,15 @@ ALACEncoder_encode_alac(char *filename,
 #ifndef STANDALONE
         Py_BEGIN_ALLOW_THREADS
 #endif
-        /*log the number of PCM frames in each ALAC frameset*/
-        encoder.frame_log->_[LOG_SAMPLE_SIZE]->append(
-            encoder.frame_log->_[LOG_SAMPLE_SIZE],
-            channels->_[0]->len);
-
-        frame_file_offset = encoder.mdat_byte_size;
-
-        /*log each frameset's starting offset in the mdat atom*/
-        encoder.frame_log->_[LOG_FILE_OFFSET]->append(
-            encoder.frame_log->_[LOG_FILE_OFFSET],
-            frame_file_offset);
+        /*update the total number of PCM frames read thus far*/
+        encoder.total_pcm_frames += channels->_[0]->len;
+        frame_byte_size = 0;
 
         write_frameset(output, &encoder, channels);
 
-        /*log each frame's total size in bytes*/
-        encoder.frame_log->_[LOG_BYTE_SIZE]->append(
-            encoder.frame_log->_[LOG_BYTE_SIZE],
-            encoder.mdat_byte_size - frame_file_offset);
+        /*log each frameset's total size in bytes*/
+        encoder.frame_sizes->append(encoder.frame_sizes,
+                                    frame_byte_size);
 
 #ifndef STANDALONE
         Py_END_ALLOW_THREADS
@@ -168,8 +160,9 @@ ALACEncoder_encode_alac(char *filename,
 
     /*return to header and rewrite it with the actual value*/
     bw_pop_callback(output, NULL);
-    fseek(output_file, 0, 0);
-    output->write(output, 32, encoder.mdat_byte_size);
+    fsetpos(output_file, &header_position);
+    output->write(output, 32,
+                  encoder.frame_sizes->sum(encoder.frame_sizes) + 8);
 
     /*close and free allocated files/buffers,
       which varies depending on whether we're running standlone or not*/
@@ -215,13 +208,8 @@ ALACEncoder_encode_alac(char *filename,
 static void
 init_encoder(struct alac_context* encoder)
 {
-    encoder->frame_byte_size = 0;
-    encoder->mdat_byte_size = 0;
-
-    encoder->frame_log = array_ia_new();
-    encoder->frame_log->append(encoder->frame_log); /*LOG_SAMPLE_SIZE*/
-    encoder->frame_log->append(encoder->frame_log); /*LOG_BYTE_SIZE*/
-    encoder->frame_log->append(encoder->frame_log); /*LOG_FILE_OFFSET*/
+    encoder->frame_sizes = array_u_new();
+    encoder->total_pcm_frames = 0;
 
     encoder->LSBs = array_i_new();
     encoder->channels_MSB = array_ia_new();
@@ -251,7 +239,7 @@ init_encoder(struct alac_context* encoder)
 static void
 free_encoder(struct alac_context* encoder)
 {
-    encoder->frame_log->del(encoder->frame_log);
+    encoder->frame_sizes->del(encoder->frame_sizes);
 
     encoder->LSBs->del(encoder->LSBs);
     encoder->channels_MSB->del(encoder->channels_MSB);
@@ -1145,55 +1133,38 @@ write_subframe_header(BitstreamWriter *bs,
 PyObject
 *alac_log_output(struct alac_context *encoder)
 {
-    PyObject *sample_size_list = NULL;
-    PyObject *byte_size_list = NULL;
-    PyObject *file_offset_list = NULL;
+    PyObject *frame_byte_sizes = NULL;
     PyObject *to_return;
-    array_i* log;
     int i;
 
-    if ((sample_size_list = PyList_New(0)) == NULL)
-        goto error;
-    if ((byte_size_list = PyList_New(0)) == NULL)
-        goto error;
-    if ((file_offset_list = PyList_New(0)) == NULL)
-        goto error;
+    /*convert internal list of byte sizes to Python list of integer objects*/
+    if ((frame_byte_sizes = PyList_New(0)) == NULL)
+        return NULL;
 
-    log = encoder->frame_log->_[LOG_SAMPLE_SIZE];
-    for (i = 0; i < log->len; i++)
-        if (PyList_Append(sample_size_list,
-                          PyInt_FromLong(log->_[i])) == -1)
-            goto error;
+    for (i = 0; i < encoder->frame_sizes->len; i++) {
+        PyObject *frame_byte_size =
+            PyInt_FromLong((long)encoder->frame_sizes->_[i]);
+        if (frame_byte_size != NULL) {
+            if (PyList_Append(frame_byte_sizes, frame_byte_size) == 0) {
+                Py_DECREF(frame_byte_size);
+            } else {
+                Py_DECREF(frame_byte_size);
+                Py_DECREF(frame_byte_sizes);
+                return NULL;
+            }
+        } else {
+            Py_DECREF(frame_byte_sizes);
+            return NULL;
+        }
+    }
 
-    log = encoder->frame_log->_[LOG_BYTE_SIZE];
-    for (i = 0; i < log->len; i++)
-        if (PyList_Append(byte_size_list,
-                          PyInt_FromLong(log->_[i])) == -1)
-            goto error;
+    to_return = Py_BuildValue("(O,I)",
+                              frame_byte_sizes,
+                              encoder->total_pcm_frames);
 
-    log = encoder->frame_log->_[LOG_FILE_OFFSET];
-    for (i = 0; i < log->len; i++)
-        if (PyList_Append(file_offset_list,
-                          PyInt_FromLong(log->_[i])) == -1)
-            goto error;
-
-    to_return = Py_BuildValue("(O,O,O,i)",
-                              sample_size_list,
-                              byte_size_list,
-                              file_offset_list,
-                              encoder->mdat_byte_size);
-
-    Py_DECREF(sample_size_list);
-    Py_DECREF(byte_size_list);
-    Py_DECREF(file_offset_list);
+    Py_DECREF(frame_byte_sizes);
 
     return to_return;
-
- error:
-    Py_XDECREF(sample_size_list);
-    Py_XDECREF(byte_size_list);
-    Py_XDECREF(file_offset_list);
-    return NULL;
 }
 #else
 #include <getopt.h>
