@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".50">mdia length</col>
+    <col start="32" end="63" width=".50">`mdia'</col>
+  </row>
+  <row>
+    <col width=".333333">mdhd Atom</col>
+    <col width=".333333">hdlr Atom</col>
+    <col width=".333333" id="minf">minf Atom</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="31" width=".5" id="atom_s">minf length</col>
+    <col start="32" end="63" width=".5" id="atom_e">`minf'</col>
+  </row>
+  <row>
+    <col width=".333333">smhd Atom</col>
+    <col width=".333333">dinf Atom</col>
+    <col width=".333333">stbl Atom</col>
+  </row>
+  <line style="dotted">
+    <start corner="sw" id="minf"/>
+    <end corner="nw" id="atom_s"/>
+  </line>
+  <line style="dotted">
+    <start corner="se" id="minf"/>
+    <end corner="ne" id="atom_e"/>
+  </line>
+</diagram>

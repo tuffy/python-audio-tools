@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bytestruct>
+  <field label="length">00000020</field>
+  <field label="name">66747970</field>
+  <field label="major brand">4D344120</field>
+  <field label="major brand ver.">00000000</field>
+  <field label="compatible brand₀">4D344120</field>
+  <field label="compatible brand₁">6D703432</field>
+  <field label="compatible brand₂">69736F6D</field>
+  <field label="compatible brand₃">00000000</field>
+</bytestruct>

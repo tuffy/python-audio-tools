@@ -1,17 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
+    <row>
+    <col start="0" end="31" width=".50">stbl length</col>
+    <col start="32" end="63" width=".50">`stbl'</col>
+  </row>
   <row>
-    <col start="0" end="31" width=".5">stco length</col>
-    <col start="32" end="63" width=".5">`stco' (0x7374636F)</col>
+    <col width=".20">stsd Atom</col>
+    <col width=".20">stts Atom</col>
+    <col width=".20">stsc Atom</col>
+    <col width=".20">stsz Atom</col>
+    <col width=".20" id="stco">stco Atom</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="31" width=".5" id="atom_s">stco length</col>
+    <col start="32" end="63" width=".5" id="atom_e">`stco'</col>
   </row>
   <row>
     <col start="64" end="71" width=".25">version</col>
-    <col start="72" end="95" width=".25">flags (0x000000)</col>
-    <col start="96" end="127" width=".5">number of offsets</col>
+    <col start="72" end="95" width=".75">flags (0)</col>
+  </row>
+  <row>
+    <col start="96" end="127">number of offsets</col>
   </row>
   <row>
     <col start="128" end="159" width=".333333">offset₀</col>
     <col start="160" end="191" width=".333333">offset₁</col>
     <col start="192" style="dashed" width=".333333">...</col>
   </row>
+  <line style="dotted">
+    <start corner="sw" id="stco"/>
+    <end corner="nw" id="atom_s"/>
+  </line>
+  <line style="dotted">
+    <start corner="se" id="stco"/>
+    <end corner="ne" id="atom_e"/>
+  </line>
 </diagram>

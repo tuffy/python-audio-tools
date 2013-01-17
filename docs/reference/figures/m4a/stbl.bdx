@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".5">minf length</col>
+    <col start="32" end="63" width=".5">`minf'</col>
+  </row>
+  <row>
+    <col width=".333333">smhd Atom</col>
+    <col width=".333333">dinf Atom</col>
+    <col width=".333333" id="stbl">stbl Atom</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="31" width=".50" id="atom_s">stbl length</col>
+    <col start="32" end="63" width=".50" id="atom_e">`stbl'</col>
+  </row>
+  <row>
+    <col width=".20">stsd Atom</col>
+    <col width=".20">stts Atom</col>
+    <col width=".20">stsc Atom</col>
+    <col width=".20">stsz Atom</col>
+    <col width=".20">stco Atom</col>
+  </row>
+  <line style="dotted">
+    <start corner="sw" id="stbl"/>
+    <end corner="nw" id="atom_s"/>
+  </line>
+  <line style="dotted">
+    <start corner="se" id="stbl"/>
+    <end corner="ne" id="atom_e"/>
+  </line>
+</diagram>

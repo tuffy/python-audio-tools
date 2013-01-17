@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bytestruct>
+  <field label="length">00000020</field>
+  <field label="name">73747473</field>
+  <field label="ver.">00</field>
+  <field label="flags">000000</field>
+  <field label="times">00000002</field>
+  <field label="count₀">0000004A</field>
+  <field label="duration₀">00001000</field>
+  <field label="count₁">00000001</field>
+  <field label="duration₁">000006CC</field>
+</bytestruct>

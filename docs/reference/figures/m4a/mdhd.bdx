@@ -1,10 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".25">mdhd length</col>
-    <col start="32" end="63" width=".25">`mdhd'</col>
-    <col start="64" end="71" width=".20">version</col>
-    <col start="72" end="95" width=".30">flags (0)</col>
+    <col start="0" end="31" width=".5">mdia length</col>
+    <col start="32" end="63" width=".5">`mdia'</col>
+  </row>
+  <row>
+    <col width=".333333" id="mdhd">mdhd Atom</col>
+    <col width=".333333">hdlr Atom</col>
+    <col width=".333333">minf Atom</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="31" width=".50" id="atom_s">mdhd length</col>
+    <col start="32" end="63" width=".50" id="atom_e">`mdhd'</col>
+  </row>
+  <row>
+    <col start="64" end="71" width=".25">version</col>
+    <col start="72" end="95" width=".75">flags (0)</col>
   </row>
   <row>
     <col start="96" end="127/159" width=".5">created Mac UTC date</col>
@@ -15,8 +27,20 @@
     <col start="192/256" end="223/319" width=".5">PCM frame count</col>
   </row>
   <row>
-    <col start="224/320" end="224/320" width=".2">pad</col>
-    <col start="225/321" end="239/335" width=".3">language</col>
-    <col start="240/336" end="255/351" width=".5">quality</col>
+    <col start="224/320" end="224/320" width=".1">pad</col>
+    <col start="225/321" end="229/325" width=".3">language₀</col>
+    <col start="230/326" end="234/330" width=".3">language₁</col>
+    <col start="235/331" end="239/335" width=".3">language₂</col>
   </row>
+  <row>
+    <col start="240/336" end="255/351">quality</col>
+  </row>
+  <line style="dotted">
+    <start corner="sw" id="mdhd"/>
+    <end corner="nw" id="atom_s"/>
+  </line>
+  <line style="dotted">
+    <start corner="se" id="mdhd"/>
+    <end corner="ne" id="atom_e"/>
+  </line>
 </diagram>

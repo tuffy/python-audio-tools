@@ -112,25 +112,44 @@ figures/m4a/atom.pdf \
 figures/m4a/atom2.pdf \
 figures/m4a/atoms.pdf \
 figures/m4a/data.pdf \
+figures/m4a/dinf.pdf \
 figures/m4a/disk.pdf \
 figures/m4a/disk-example.pdf \
 figures/m4a/dref.pdf \
+figures/m4a/dref-example.pdf \
 figures/m4a/ftyp.pdf \
+figures/m4a/ftyp-example.pdf \
 figures/m4a/hdlr.pdf \
+figures/m4a/hdlr-example.pdf \
 figures/m4a/mdhd.pdf \
+figures/m4a/mdhd-example.pdf \
+figures/m4a/mdhd-example2.pdf \
+figures/m4a/mdia.pdf \
 figures/m4a/meta.pdf \
 figures/m4a/meta_atoms.pdf \
 figures/m4a/meta-example.pdf \
+figures/m4a/minf.pdf \
+figures/m4a/moov.pdf \
 figures/m4a/mp4a.pdf \
 figures/m4a/mvhd.pdf \
+figures/m4a/mvhd-example.pdf \
 figures/m4a/nam-example.pdf \
 figures/m4a/smhd.pdf \
+figures/m4a/smhd-example.pdf \
+figures/m4a/stbl.pdf \
 figures/m4a/stco.pdf \
+figures/m4a/stco-example.pdf \
 figures/m4a/stsc.pdf \
+figures/m4a/stsc-example.pdf \
 figures/m4a/stsd.pdf \
+figures/m4a/stsd-example.pdf \
 figures/m4a/stsz.pdf \
+figures/m4a/stsz-example.pdf \
 figures/m4a/stts.pdf \
+figures/m4a/stts-example.pdf \
 figures/m4a/tkhd.pdf \
+figures/m4a/tkhd-example.pdf \
+figures/m4a/trak.pdf \
 figures/m4a/trkn.pdf \
 figures/m4a/trkn-example.pdf
 
@@ -503,6 +522,12 @@ tta-codec.tex: tta-codec.template header.tex footer.tex
 tta-codec.pdf: tta-codec.tex tta.tex $(TTA)
 	python pdflatexbuild.py -halt-on-error $<
 
+m4a-atoms.tex: m4a-atoms.template header.tex footer.tex
+	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
+
+m4a-atoms.pdf: m4a-atoms.tex m4a.tex $(M4A)
+	python pdflatexbuild.py -halt-on-error $<
+
 audioformats-letter.tex: audioformats.template header.tex footer.tex
 	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
 
@@ -573,12 +598,6 @@ figures/vorbis/ordered_entries.pdf: figures/vorbis/ordered_entries.dot
 
 .dot.pdf:
 	dot -Tpdf $< -o $@
-
-figures/m4a/ftyp.pdf: figures/m4a/ftyp.bdx
-	./bitdiagram.py -w 270 -i $< -o $@
-
-figures/m4a/mvhd.pdf: figures/m4a/mvhd.bdx
-	./bitdiagram.py -w 270 -i $< -o $@
 
 figures/m4a/meta.pdf: figures/m4a/meta.bdx
 	./bitdiagram.py -w 306 -i $< -o $@

@@ -6317,6 +6317,50 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     The latter approach is easier to implement.
 *** DONE Add unit tests
 *** TODO Update documentation
+** TODO Better document M4A atoms
+   For each atom, indicate parent in bit diagram,
+   tell what it's for, have a hex diagram example
+   and show what those parsed values are.
+*** DONE ftyp
+*** TODO moov
+**** DONE mvhd
+**** TODO trak
+***** DONE tkhd
+***** TODO mdia
+****** DONE mdhd
+****** DONE hdlr
+****** TODO minf
+******* DONE smhd
+******* DONE dinf
+******** DONE dref
+******* TODO stbl
+******** DONE stsd
+******** DONE stts
+******** DONE stsc
+******** TODO stsz
+******** DONE stco
+**** TODO udta
+***** TODO meta
+*** TODO free
+*** TODO mdat
+** TODO Shift the classmethods from ALACAudio to the atoms themselves
+   It's better to have them as alternate constructors
+   much closer to the actual atom definitions.
+*** TODO __ftyp_atom__
+*** TODO __moov_atom__
+*** TODO __mvhd_atom__
+*** TODO __tkhd_atom__
+*** TODO __mdhd_atom__
+*** TODO __hdlr_atom__
+*** TODO __smhd_atom__
+*** TODO __dref_atom__
+*** TODO __stsd_atom__
+*** TODO __stts_atom__
+*** TODO __stsc_atom__
+*** TODO __stsz_atom__
+*** TODO __stco_atom__
+*** TODO __meta_atom__
+*** TODO __free_atom__
 ** TODO Deprecate little-used / poorly-tested bits
    Although there's a risk of annoying people by taking out
    stuff they might be using, some utilities and formats

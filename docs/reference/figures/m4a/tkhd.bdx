@@ -1,16 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".5">tkhd length</col>
-    <col start="32" end="63" width=".5">`tkhd' (0x746B6864)</col>
+    <col start="0" end="31" width=".50">trak length</col>
+    <col start="32" end="63" width=".50">`trak'</col>
   </row>
   <row>
-    <col start="64" end="71" width=".12">version</col>
-    <col start="72" end="91" width=".16">reserved (0)</col>
-    <col start="92" end="92" width=".18">track in poster</col>
-    <col start="93" end="93" width=".20">track in preview</col>
-    <col start="94" end="94" width=".17">track in movie</col>
-    <col start="95" end="95" width=".17">track enabled</col>
+    <col width=".5" id="tkhd">tkhd Atom</col>
+    <col width=".5">mdia Atom</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="31" width=".5" id="atom_s">tkhd length</col>
+    <col start="32" end="63" width=".5" id="atom_e">`tkhd'</col>
+  </row>
+  <row>
+    <col start="64" end="71" width=".125">version</col>
+    <col start="72" end="91" width=".15">reserved (0)</col>
+    <col start="92" end="92" width=".175">track in poster</col>
+    <col start="93" end="93" width=".2">track in preview</col>
+    <col start="94" end="94" width=".175">track in movie</col>
+    <col start="95" end="95" width=".175">track enabled</col>
   </row>
   <row>
     <col start="96" end="127/159" width=".5">created Mac UTC date</col>
@@ -47,4 +56,12 @@
     <col start="672/768" end="703/799" width=".375">video width</col>
     <col start="704/800" end="735/831" width=".375">video height</col>
   </row>
+  <line style="dotted">
+    <start corner="sw" id="tkhd"/>
+    <end corner="nw" id="atom_s"/>
+  </line>
+  <line style="dotted">
+    <start corner="se" id="tkhd"/>
+    <end corner="ne" id="atom_e"/>
+  </line>
 </diagram>

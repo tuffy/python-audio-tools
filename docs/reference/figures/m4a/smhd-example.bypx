@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bytestruct>
+  <field label="length">00000010</field>
+  <field label="name">736d6864</field>
+  <field label="ver.">00</field>
+  <field label="flags">000000</field>
+  <field label="balance">0000</field>
+  <field label="reserved">0000</field>
+</bytestruct>
