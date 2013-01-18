@@ -6212,6 +6212,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    A better approach is to have all the metadata lookups
    performed first, multiple metadata edit screens,
    and a single output options/preview screen.
+** DONE Simplify PCMReaderWindow
+   Split this into a PCMReaderHead and PCMReaderDeHead pair.
+
+   The former handles the "pcm_frames" argument,
+   either truncating a PCMReader or appending silence as needed.
+
+   The latter handles the "initial_offset" argument,
+   either chopping off frames or prepending silence as needed.
 ** TODO Add optional total_pcm_frames argument to from_pcm()
    Certain formats encode much easier if the total number of PCM frames
    is known in advance.  Adding a total_pcm_frames argument
@@ -6317,7 +6325,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     The latter approach is easier to implement.
 *** DONE Add unit tests
 *** TODO Update documentation
-** DONE Better document M4A atoms
+** TODO Better document M4A atoms
    For each atom, indicate parent in bit diagram,
    tell what it's for, have a hex diagram example
    and show what those parsed values are.
@@ -6343,14 +6351,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ***** DONE meta
 *** DONE free
 *** DONE mdat
-** TODO Simplify PCMReaderWindow
-   Split this into a PCMReaderHead and PCMReaderDeHead pair.
-
-   The former handles the "pcm_frames" argument,
-   either truncating a PCMReader or appending silence as needed.
-
-   The latter handles the "initial_offset" argument,
-   either chopping off frames or prepending silence as needed.
+*** TODO Add some tree diagrams to fill sections of whitespace
 ** TODO Shift the classmethods from ALACAudio to the atoms themselves
    It's better to have them as alternate constructors
    much closer to the actual atom definitions.

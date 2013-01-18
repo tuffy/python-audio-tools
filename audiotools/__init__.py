@@ -4355,95 +4355,132 @@ class CDDA:
                                use_freedb=use_freedb)
 
 
-class PCMReaderWindow:
-    """a class for cropping a PCMReader to a specific window of frames"""
+def PCMReaderWindow(pcmreader, initial_offset, pcm_frames):
+    if (initial_offset == 0):
+        return PCMReaderHead(pcmreader, pcm_frames)
+    else:
+        return PCMReaderHead(PCMReaderDeHead(pcmreader, initial_offset),
+                             pcm_frames)
 
-    def __init__(self, pcmreader, initial_offset, pcm_frames):
-        """initial_offset is how many frames to crop, and may be negative
-        pcm_frames is the total length of the window
 
-        if the window is outside the PCMReader's data
-        (that is, initial_offset is negative, or
-        pcm_frames is longer than the total stream)
-        those samples are padded with 0s"""
+class PCMReaderHead:
+    """a wrapper around PCMReader for trancating a stream's ending"""
+
+    def __init__(self, pcmreader, pcm_frames):
+        """pcmreader is a PCMReader object
+        pcm_frames is the total number of PCM frames in the stream
+
+        if pcm_frames is shorter than the pcmreader's stream,
+        the stream will be truncated
+
+        if pcm_frames is longer than the pcmreader's stream,
+        the stream will be extended with additional empty frames"""
+
+        if (pcm_frames < 0):
+            raise ValueError("invalid pcm_frames value")
 
         self.pcmreader = pcmreader
         self.sample_rate = pcmreader.sample_rate
         self.channels = pcmreader.channels
         self.channel_mask = pcmreader.channel_mask
         self.bits_per_sample = pcmreader.bits_per_sample
-
-        self.initial_offset = initial_offset
         self.pcm_frames = pcm_frames
 
     def read(self, pcm_frames):
         if (self.pcm_frames > 0):
-            if (self.initial_offset == 0):
-                #once the initial offset is accounted for,
-                #read a framelist from the pcmreader
-
-                framelist = self.pcmreader.read(pcm_frames)
-                if (framelist.frames <= self.pcm_frames):
-                    if (framelist.frames > 0):
-                        #return framelist if it has data
-                        #and is smaller than remaining frames
-                        self.pcm_frames -= framelist.frames
-                        return framelist
-                    else:
-                        #otherwise, pad remaining data with 0s
-                        framelist = pcm.from_list([0] *
-                                                  (self.pcm_frames) *
-                                                  self.channels,
-                                                  self.channels,
-                                                  self.bits_per_sample,
-                                                  True)
-                        self.pcm_frames = 0
-                        return framelist
-                else:
-                    #crop framelist to be smaller
-                    #if its data is larger than what remains to be read
-                    framelist = framelist.split(self.pcm_frames)[0]
-                    self.pcm_frames = 0
-                    return framelist
-
-            elif (self.initial_offset > 0):
-                #remove frames if initial offset is positive
-
-                #if initial_offset is large, read as many framelists as needed
-                framelist = self.pcmreader.read(pcm_frames)
-                while (self.initial_offset > framelist.frames):
-                    self.initial_offset -= framelist.frames
-                    framelist = self.pcmreader.read(pcm_frames)
-
-                (removed, framelist) = framelist.split(self.initial_offset)
-                self.initial_offset -= removed.frames
-                if (framelist.frames > 0):
-                    if (framelist.frames <= self.pcm_frames):
-                        self.pcm_frames -= framelist.frames
-                        return framelist
-                    else:
-                        (framelist, removed) = framelist.split(self.pcm_frames)
-                        self.pcm_frames = 0
-                        return framelist
-                else:
-                    #if the entire framelist is cropped,
-                    #return another one entirely
-                    return self.read(pcm_frames)
-            elif (self.initial_offset < 0):
-                #pad framelist with 0s if initial offset is negative
-                framelist = pcm.from_list([0] *
-                                          (-self.initial_offset) *
-                                          self.channels,
-                                          self.channels,
-                                          self.bits_per_sample,
-                                          True)
-                self.initial_offset = 0
-                self.pcm_frames -= framelist.frames
-                return framelist
+            #data left in window
+            #so try to read an additional frame from PCMReader
+            frame = self.pcmreader.read(pcm_frames)
+            if (frame.frames == 0):
+                #no additional data in PCMReader,
+                #so return empty frames leftover in window
+                #and close window
+                frame = pcm.from_list([0] * (self.pcm_frames * self.channels),
+                                      self.channels,
+                                      self.bits_per_sample,
+                                      True)
+                self.pcm_frames -= frame.frames
+                return frame
+            elif (frame.frames <= self.pcm_frames):
+                #frame is shorter than remaining window,
+                #so shrink window and return frame unaltered
+                self.pcm_frames -= frame.frames
+                return frame
+            else:
+                #frame is larger than remaining window,
+                #so cut off end of frame
+                #close window and return shrunk frame
+                frame = frame.split(self.pcm_frames)[0]
+                self.pcm_frames -= frame.frames
+                return frame
         else:
-            #once all frames have been sent, return empty framelists
-            return pcm.FrameList("", self.channels, self.bits_per_sample,
-                                 False, True)
+            #window exhausted, so return empty framelist
+            return pcm.FrameList("",
+                                 self.channels,
+                                 self.bits_per_sample,
+                                 True,
+                                 True)
+
+    def read_closed(self, pcm_frames):
+        raise ValueError()
+
+    def close(self):
+        self.pcmreader.close()
+        self.read = self.read_closed
+
+
+class PCMReaderDeHead:
+    """a wrapper around PCMReader for truncating a stream's beginning"""
+
+    def __init__(self, pcmreader, pcm_frames):
+        """pcmreader is a PCMReader object
+        pcm_frames is the total number of PCM frames to remove
+
+        if pcm_frames is positive, that amount of frames will be
+        removed from the beginning of the stream
+
+        if pcm_frames is negative, the stream will be padded
+        with that many PCM frames"""
+
+        self.pcmreader = pcmreader
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
+        self.bits_per_sample = pcmreader.bits_per_sample
+        self.pcm_frames = pcm_frames
+
+    def read(self, pcm_frames):
+        if (self.pcm_frames == 0):
+            #no truncation or padding, so return framelists as-is
+            return self.pcmreader.read(pcm_frames)
+        elif (self.pcm_frames > 0):
+            #remove PCM frames from beginning of stream
+            #until all truncation is accounted for
+            while (self.pcm_frames > 0):
+                frame = self.pcmreader.read(pcm_frames)
+                if (frame.frames == 0):
+                    #truncation longer than entire stream
+                    #so don't try to truncate it any further
+                    self.pcm_frames = 0
+                    return frame
+                elif (frame.frames <= self.pcm_frames):
+                    self.pcm_frames -= frame.frames
+                else:
+                    (head, tail) = frame.split(self.pcm_frames)
+                    self.pcm_frames -= head.frames
+                    assert(self.pcm_frames == 0)
+                    assert(tail.frames > 0)
+                    return tail
+        else:
+            #pad beginning of stream with empty PCM frames
+            frame = pcm.from_list([0] *
+                                  (-self.pcm_frames) * self.channels,
+                                  self.channels,
+                                  self.bits_per_sample,
+                                  True)
+            assert(frame.frames == -self.pcm_frames)
+            self.pcm_frames = 0
+            return frame
 
     def read_closed(self, pcm_frames):
         raise ValueError()
