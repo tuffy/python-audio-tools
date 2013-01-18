@@ -76,11 +76,14 @@ or NULL when compatible brand fields are exhausted.
 \end{figure}
 \par
 \noindent
-This is a container for \ATOM{mvhd}, \ATOM{trak} and \ATOM{udta} atoms.
+This is a container for \hyperref[atom:mvhd]{\ATOM{mvhd}},
+\hyperref[atom:trak]{\ATOM{trak}} and
+\hyperref[atom:udta]{\ATOM{udta}} atoms.
 
 \clearpage
 
 \subsection{the mvhd Atom}
+\label{atom:mvhd}
 \begin{figure}[h]
   \includegraphics{figures/m4a/mvhd.pdf}
 \end{figure}
@@ -136,14 +139,17 @@ and \VAR{duration} is the length of the file, in PCM frames.
 \clearpage
 
 \subsection{the trak Atom}
+\label{atom:trak}
 \begin{figure}[h]
   \includegraphics{figures/m4a/trak.pdf}
 \end{figure}
 \par
 \noindent
-This is a container for \ATOM{tkhd} and \ATOM{mdia} atoms.
+This is a container for \hyperref[atom:tkhd]{\ATOM{tkhd}} and
+\hyperref[atom:mdia]{\ATOM{mdia}} atoms.
 
 \subsection{the tkhd Atom}
+\label{atom:tkhd}
 \begin{figure}[h]
 \includegraphics{figures/m4a/tkhd.pdf}
 \end{figure}
@@ -196,14 +202,18 @@ If it is 1, they are 64-bit fields.
 \clearpage
 
 \subsection{the mdia Atom}
+\label{atom:mdia}
 \begin{figure}[h]
   \includegraphics{figures/m4a/mdia.pdf}
 \end{figure}
 \par
 \noindent
-This is a container for \ATOM{mdhd}, \ATOM{hdlr} and \ATOM{minf} atoms.
+This is a container for \hyperref[atom:mdhd]{\ATOM{mdhd}},
+\hyperref[atom:hdlr]{\ATOM{hdlr}} and
+\hyperref[atom:minf]{\ATOM{minf}} atoms.
 
 \subsection{the mdhd Atom}
+\label{atom:mdhd}
 \begin{figure}[h]
 \includegraphics{figures/m4a/mdhd.pdf}
 \end{figure}
@@ -250,7 +260,7 @@ undefined, which is typical.
 \clearpage
 
 \subsection{the hdlr Atom}
-
+\label{atom:hdlr}
 \begin{figure}[h]
 \includegraphics{figures/m4a/hdlr.pdf}
 \end{figure}
@@ -281,14 +291,18 @@ are integers.  The rest are ASCII strings.
 \clearpage
 
 \subsection{the minf Atom}
+\label{atom:minf}
 \begin{figure}[h]
   \includegraphics{figures/m4a/minf.pdf}
 \end{figure}
 \par
 \noindent
-This atom is a container for \ATOM{smhd}, \ATOM{dinf} and \ATOM{stbl} atoms.
+This atom is a container for \hyperref[atom:smhd]{\ATOM{smhd}},
+\hyperref[atom:dinf]{\ATOM{dinf}} and
+\hyperref[atom:stbl]{\ATOM{stbl}} atoms.
 
 \subsection{the smhd Atom}
+\label{atom:smhd}
 \begin{figure}[h]
   \includegraphics{figures/m4a/smhd.pdf}
 \end{figure}
@@ -309,15 +323,16 @@ This atom is a container for \ATOM{smhd}, \ATOM{dinf} and \ATOM{stbl} atoms.
 \clearpage
 
 \subsection{the dinf Atom}
+\label{atom:dinf}
 \begin{figure}[h]
   \includegraphics{figures/m4a/dinf.pdf}
 \end{figure}
 \par
 \noindent
-This atom is a container for the \ATOM{dref} atom.
+This atom is a container for the \hyperref[atom:dref]{\ATOM{dref}} atom.
 
 \subsection{the dref Atom}
-
+\label{atom:dref}
 \begin{figure}[h]
 \includegraphics{figures/m4a/dref.pdf}
 \end{figure}
@@ -338,17 +353,23 @@ This atom is a container for a number of reference atoms.
 \clearpage
 
 \subsection{the stbl Atom}
+\label{atom:stbl}
 \begin{figure}[h]
   \includegraphics{figures/m4a/stbl.pdf}
 \end{figure}
 \par
 \noindent
-This atom is a container for the \ATOM{stsd}, \ATOM{stts},
-\ATOM{stsc}, \ATOM{stsz} and \ATOM{stco} atoms.
+This atom is a container for the
+\hyperref[atom:stsd]{\ATOM{stsd}},
+\hyperref[atom:stts]{\ATOM{stts}},
+\hyperref[atom:stsc]{\ATOM{stsc}},
+\hyperref[atom:stsz]{\ATOM{stsz}} and
+\hyperref[atom:stco]{\ATOM{stco}} atoms.
 
 \clearpage
 
 \subsection{the stsd Atom}
+\label{atom:stsd}
 \begin{figure}[h]
 \includegraphics{figures/m4a/stsd.pdf}
 \end{figure}
@@ -386,6 +407,7 @@ and so forth.
 %% \clearpage
 
 \subsection{the stts Atom}
+\label{atom:stts}
 \begin{figure}[h]
   \includegraphics{figures/m4a/stts.pdf}
 \end{figure}
@@ -418,7 +440,7 @@ and 1 frame with 1740 PCM frames, for a total of 304844 PCM frames
 \clearpage
 
 \subsection{the stsc Atom}
-
+\label{atom:stsc}
 \begin{figure}[h]
   \includegraphics{figures/m4a/stsc.pdf}
 \end{figure}
@@ -451,6 +473,7 @@ have 5 M4A or ALAC frames.
 \clearpage
 
 \subsection{the stsz Atom}
+\label{atom:stsz}
 \begin{figure}[h]
   \includegraphics{figures/m4a/stsz.pdf}
 \end{figure}
@@ -549,6 +572,7 @@ with one size value per frame.
 \clearpage
 
 \subsection{the stco Atom}
+\label{atom:stco}
 \begin{figure}[h]
   \includegraphics{figures/m4a/stco.pdf}
 \end{figure}
@@ -590,15 +614,16 @@ which will be the start of frames in the \ATOM{mdat} atom.
 \clearpage
 
 \subsection{the utda Atom}
+\label{atom:udta}
 \begin{figure}[h]
   \includegraphics{figures/m4a/udta.pdf}
 \end{figure}
 \par
 \noindent
-This atom is a container for the \ATOM{meta} atom.
+This atom is a container for the \hyperref[atom:meta]{\ATOM{meta}} atom.
 
 \subsection{the meta Atom}
-\label{m4a_meta}
+\label{atom:meta}
 \begin{figure}[h]
   \includegraphics{figures/m4a/meta.pdf}
 \end{figure}
@@ -607,13 +632,17 @@ This atom is a container for the \ATOM{meta} atom.
 \end{wrapfigure}
 \par
 \noindent
-This atom is a container for \ATOM{hdlr}, \ATOM{ilst} and \ATOM{free} atoms.
+This atom is a container for
+\hyperref[atom:hdlr]{\ATOM{hdlr}},
+\hyperref[atom:ilst]{\ATOM{ilst}} and
+\hyperref[atom:free]{\ATOM{free}} atoms.
 Note that unlike other containers, \ATOM{meta} has \VAR{version}
 and \VAR{flags} fields prior to its sub-atoms.
 
 \clearpage
 
 \subsection{the ilst Atom}
+\label{atom:ilst}
 \begin{figure}[h]
   \includegraphics{figures/m4a/ilst.pdf}
 \end{figure}
@@ -714,6 +743,7 @@ the file's disc number and disc total.
 \clearpage
 
 \subsection{the free Atom}
+\label{atom:free}
 \begin{figure}[h]
   \includegraphics{figures/m4a/free.pdf}
 \end{figure}
