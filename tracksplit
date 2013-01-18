@@ -391,46 +391,78 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
     #perform actual track splitting and tagging
-    queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
-    pcm_frames_offset = 0
+    jobs = zip(cuesheet.pcm_lengths(audiofile.total_frames(),
+                                    audiofile.sample_rate()),
+               output_tracks)
 
-    for (i, (pcm_frames,
-             (output_class,
-              output_filename,
-              output_quality,
-              output_metadata))
-         ) in enumerate(zip(cuesheet.pcm_lengths(audiofile.total_frames(),
-                                                 audiofile.sample_rate()),
-                            output_tracks)):
+    if (options.max_processes > 1):
+        queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
+        pcm_frames_offset = 0
+
+        for (pcm_frames, (output_class,
+                          output_filename,
+                          output_quality,
+                          output_metadata)) in jobs:
+            try:
+                audiotools.make_dirs(str(output_filename))
+            except OSError, err:
+                msg.os_error(err)
+                sys.exit(1)
+
+            queue.execute(
+                function=split,
+                progress_text=unicode(output_filename),
+                completion_output=
+                (_.LAB_ENCODE %
+                 {"source": audiotools.Filename(audiofile.filename),
+                  "destination": output_filename}),
+                source_audiofile=audiofile,
+                destination_filename=output_filename,
+                destination_class=output_class,
+                compression=output_quality,
+                metadata=output_metadata,
+                pcm_frames_offset=pcm_frames_offset,
+                total_pcm_frames=pcm_frames)
+
+            pcm_frames_offset += pcm_frames
         try:
-            audiotools.make_dirs(str(output_filename))
-        except OSError, err:
-            msg.os_error(err)
+            queue.run(options.max_processes)
+        except audiotools.EncodingError, err:
+            msg.error(unicode(err))
             sys.exit(1)
 
-        queue.execute(
-            function=split,
-            progress_text=unicode(output_filename),
-            completion_output=
-            (_.LAB_ENCODE %
-             {"source": audiotools.Filename(audiofile.filename),
-              "destination": output_filename}),
-            source_audiofile=audiofile,
-            destination_filename=output_filename,
-            destination_class=output_class,
-            compression=output_quality,
-            metadata=output_metadata,
-            pcm_frames_offset=pcm_frames_offset,
-            total_pcm_frames=pcm_frames)
+        encoded_tracks = audiotools.open_files(queue.results.values())
+    else:
+        total_pcm = audiotools.BufferedPCMReader(audiofile.to_pcm())
+        encoded_tracks = []
+        for (i, (pcm_frames, (output_class,
+                              output_filename,
+                              output_quality,
+                              output_metadata))) in enumerate(jobs):
+            try:
+                audiotools.make_dirs(str(output_filename))
+            except OSError, err:
+                msg.os_error(err)
+                sys.exit(1)
 
-        pcm_frames_offset += pcm_frames
-    try:
-        queue.run(options.max_processes)
-    except audiotools.EncodingError, err:
-        msg.error(unicode(err))
-        sys.exit(1)
+            progress = audiotools.SingleProgressDisplay(
+                msg, unicode(output_filename))
 
-    encoded_tracks = audiotools.open_files(queue.results.values())
+            encoded_tracks.append(
+                output_class.from_pcm(
+                    str(output_filename),
+                    audiotools.PCMReaderProgress(
+                        audiotools.LimitedPCMReader(total_pcm, pcm_frames),
+                        pcm_frames,
+                        progress.update),
+                    output_quality,
+                    total_pcm_frames=pcm_frames))
+            encoded_tracks[-1].set_metadata(output_metadata)
+            progress.clear()
+            msg.info(
+                audiotools.output_progress(
+                    u"%s -> %s" % (input_filename, output_filename),
+                    i + 1, len(output_tracks)))
 
     #apply ReplayGain to split tracks, if requested
     if ((audiotools.ADD_REPLAYGAIN and
