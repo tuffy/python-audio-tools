@@ -1725,11 +1725,22 @@ class FlacAudio(WaveContainer, AiffContainer):
         else:
             channel_mask = int(pcmreader.channel_mask)
 
+        if (total_pcm_frames is not None):
+            expected_seekpoints = \
+                ((total_pcm_frames // (pcmreader.sample_rate * 10)) +
+                 (1 if (total_pcm_frames % (pcmreader.sample_rate * 10)) else
+                  0))
+            padding_size = 4096 + 4 + (expected_seekpoints * 18)
+        else:
+            padding_size = 4096
+
         try:
             offsets = (encode_flac if encoding_function is None
                        else encoding_function)(filename,
                                                pcmreader=
                                                BufferedPCMReader(pcmreader),
+                                               padding_size=
+                                               padding_size,
                                                **encoding_options)
             flac = FlacAudio(filename)
             metadata = flac.get_metadata()

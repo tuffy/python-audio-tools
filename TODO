@@ -6220,11 +6220,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
    The latter handles the "initial_offset" argument,
    either chopping off frames or prepending silence as needed.
-** TODO Add optional total_pcm_frames argument to from_pcm()
+** DONE Add optional total_pcm_frames argument to from_pcm()
    Certain formats encode much easier if the total number of PCM frames
    is known in advance.  Adding a total_pcm_frames argument
    allows encoders to make use of that info if it's available.
-*** TODO Update formats with total_pcm_frames argument
+*** DONE Update formats with total_pcm_frames argument
 **** DONE AudioFile
      does nothing
 **** DONE ALACAudio
@@ -6233,7 +6233,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      does nothing
 **** DONE AuAudio
      does nothing
-**** TODO FlacAudio
+**** DONE FlacAudio
      Allocates enough space for populated seektable
      on top of any leftover for VORBIS tags.
 **** DONE M4AAudio

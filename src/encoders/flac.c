@@ -63,6 +63,7 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
                              "disable_constant_subframes",
                              "disable_fixed_subframes",
                              "disable_lpc_subframes",
+                             "padding_size",
                              NULL};
     audiotools__MD5Context md5sum;
 
@@ -73,6 +74,7 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
     PyObject *offset = NULL;
 
     unsigned block_size = 0;
+    unsigned padding_size = DEFAULT_PADDING_SIZE;
 
     encoder.options.mid_side = 0;
     encoder.options.adaptive_mid_side = 0;
@@ -86,7 +88,7 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
     /*extract a filename, PCMReader-compatible object and encoding options:
       blocksize int*/
     if (!PyArg_ParseTupleAndKeywords(
-            args, keywds, "sO&IIII|iiiiiii",
+            args, keywds, "sO&IIII|iiiiiiiI",
             kwlist,
             &filename,
             pcmreader_converter,
@@ -102,7 +104,8 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
             &(encoder.options.no_verbatim_subframes),
             &(encoder.options.no_constant_subframes),
             &(encoder.options.no_fixed_subframes),
-            &(encoder.options.no_lpc_subframes)))
+            &(encoder.options.no_lpc_subframes),
+            &padding_size))
         return NULL;
 
     block_size = encoder.options.block_size;
@@ -135,6 +138,7 @@ encoders_encode_flac(char *filename,
     char version_string[0xFF];
     audiotools__MD5Context md5sum;
     array_ia* samples;
+    unsigned padding_size = DEFAULT_PADDING_SIZE;
 
     /*set user-defined encoding options*/
     encoder.options.block_size = block_size;
@@ -230,8 +234,8 @@ encoders_encode_flac(char *filename,
     /*write PADDING*/
     output_stream->write(output_stream, 1, 1);
     output_stream->write(output_stream, 7, 1);
-    output_stream->write(output_stream, 24, DEFAULT_PADDING_SIZE);
-    output_stream->write(output_stream, DEFAULT_PADDING_SIZE * 8, 0);
+    output_stream->write(output_stream, 24, padding_size);
+    output_stream->write(output_stream, padding_size * 8, 0);
 
     /*build frames until reader is empty,
       which updates STREAMINFO in the process*/
