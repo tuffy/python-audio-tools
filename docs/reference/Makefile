@@ -117,10 +117,13 @@ figures/m4a/disk.pdf \
 figures/m4a/disk-example.pdf \
 figures/m4a/dref.pdf \
 figures/m4a/dref-example.pdf \
+figures/m4a/free.pdf \
 figures/m4a/ftyp.pdf \
 figures/m4a/ftyp-example.pdf \
 figures/m4a/hdlr.pdf \
 figures/m4a/hdlr-example.pdf \
+figures/m4a/ilst.pdf \
+figures/m4a/mdat.pdf \
 figures/m4a/mdhd.pdf \
 figures/m4a/mdhd-example.pdf \
 figures/m4a/mdhd-example2.pdf \
@@ -151,7 +154,8 @@ figures/m4a/tkhd.pdf \
 figures/m4a/tkhd-example.pdf \
 figures/m4a/trak.pdf \
 figures/m4a/trkn.pdf \
-figures/m4a/trkn-example.pdf
+figures/m4a/trkn-example.pdf \
+figures/m4a/udta.pdf
 
 
 WAVPACK = \
@@ -598,9 +602,6 @@ figures/vorbis/ordered_entries.pdf: figures/vorbis/ordered_entries.dot
 
 .dot.pdf:
 	dot -Tpdf $< -o $@
-
-figures/m4a/meta.pdf: figures/m4a/meta.bdx
-	./bitdiagram.py -w 306 -i $< -o $@
 
 figures/m4a/data.pdf: figures/m4a/data.bdx
 	./bitdiagram.py -w 306 -i $< -o $@

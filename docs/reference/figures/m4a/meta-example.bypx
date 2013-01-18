@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <bytestruct>
-  <field label="meta size">000001b3</field>
+  <field label="meta length">000001b3</field>
   <field label="meta name">6d657461</field>
   <field label="ver.">00</field>
   <field label="flags">000000</field>
   <field label="hdlr atom">0000002168646c7200000000000000006d6469726170706c000000000000000000</field>
-  <field label="ilst size">00000186</field>
+  <field label="ilst length">00000186</field>
   <field label="ilst name">696c7374</field>
   <field label="nam atom" background-color="#FF000020">00000022a96e616d0000001a646174610000000100000000547261636b204e616d65</field>
   <field label="alb atom" background-color="#FF00FF20">00000022a9616c620000001a646174610000000100000000416c62756d204e616d65</field>

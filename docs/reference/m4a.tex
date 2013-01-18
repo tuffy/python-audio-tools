@@ -554,8 +554,8 @@ with one size value per frame.
 \end{figure}
 \par
 \noindent
-Offsets point to an absolute position to frames in
-the \ATOM{mdat} atom.
+Offsets point to an absolute position in the file,
+which will be the start of frames in the \ATOM{mdat} atom.
 \subsubsection{stco Atom Example}
 \begin{figure}[h]
   \includegraphics{figures/m4a/stco-example.pdf}
@@ -589,59 +589,76 @@ the \ATOM{mdat} atom.
 
 \clearpage
 
+\subsection{the utda Atom}
+\begin{figure}[h]
+  \includegraphics{figures/m4a/udta.pdf}
+\end{figure}
+\par
+\noindent
+This atom is a container for the \ATOM{meta} atom.
+
 \subsection{the meta Atom}
 \label{m4a_meta}
 \begin{figure}[h]
-\parpic[r]{
-\includegraphics{figures/m4a/meta_atoms.pdf}
-}
-\includegraphics[height=4in,keepaspectratio]{figures/m4a/meta.pdf}
-Text data atoms have a \VAR{type} of 1,
-which indicates that \VAR{data} is UTF-8 encoded text.
-Binary data atoms typically have a \VAR{type} of 0.
+  \includegraphics{figures/m4a/meta.pdf}
 \end{figure}
-\vskip .10in
+\begin{wrapfigure}[3]{r}{1.5in}
+  \includegraphics{figures/m4a/meta_atoms.pdf}
+\end{wrapfigure}
 \par
 \noindent
-{\relsize{0}
-  \begin{tabular}{rl}
-  \texttt{alb} & album name \\
-  \texttt{ART} & track artist \\
-  \texttt{cmt} & comments \\
-  \texttt{covr} & cover image \\
-  \texttt{cpil} & compilation \\
-  \texttt{cprt} & copyright \\
-  \texttt{day} & year \\
-  \texttt{disk} & disc number \\
-  \texttt{gnre} & genre \\
-  \texttt{grp} & grouping \\
-  \texttt{----} & iTunes-specific \\
-  \texttt{nam} & track name \\
-  \texttt{rtng} & rating \\
-  \texttt{tmpo} & BMP \\
-  \texttt{too} & encoder \\
-  \texttt{trkn} & track number \\
-  \texttt{wrt} & composer \\
+This atom is a container for \ATOM{hdlr}, \ATOM{ilst} and \ATOM{free} atoms.
+Note that unlike other containers, \ATOM{meta} has \VAR{version}
+and \VAR{flags} fields prior to its sub-atoms.
+
+\clearpage
+
+\subsection{the ilst Atom}
+\begin{figure}[h]
+  \includegraphics{figures/m4a/ilst.pdf}
+\end{figure}
+\par
+\noindent
+Text \ATOM{data} atoms have a \VAR{type} of 1
+and their names are often prefixed by the \texttt{0xA9} byte
+which indicates that the value of \VAR{metadata} is UTF-8 encoded text.
+Binary data atoms typically have a \VAR{type} of 0
+which indicates \VAR{metadata} is something else.
+\begin{table}[h]
+  \begin{tabular}{rlrl}
+    \textsf{atom name} & meaning & \textsf{atom name} & meaning \\
+    \hline
+    \texttt{alb} & album name & \texttt{ART} & track artist \\
+    \texttt{cmt} & comments & \texttt{covr} & cover image \\
+    \texttt{cpil} & compilation & \texttt{cprt} & copyright \\
+    \texttt{day} & year & \texttt{disk} & disc number \\
+    \texttt{gnre} & genre & \texttt{grp} & grouping \\
+    \texttt{----} & iTunes-specific & \texttt{nam} & track name \\
+    \texttt{rtng} & rating & \texttt{tmpo} & BMP \\
+    \texttt{too} & encoder & \texttt{trkn} & track number \\
+    \texttt{wrt} & composer \\
   \end{tabular}
-}
+\end{table}
 
 \clearpage
 
 \subsubsection{the trkn Sub-Atom}
-\ATOM{trkn} is a binary sub-atom of \ATOM{meta} which contains
-the track number.
 \begin{figure}[h]
 \includegraphics{figures/m4a/trkn.pdf}
 \end{figure}
+\par
+\noindent
+\ATOM{trkn} is a binary sub-atom of \ATOM{ilst} which contains
+the file's track number and track total.
 
 \subsubsection{the disk Sub-Atom}
-\ATOM{disk} is a binary sub-atom of \ATOM{meta} which contains
-the disc number.
-For example, if the track belongs to the first disc in a set of
-two discs, the sub-atom will contain that information.
 \begin{figure}[h]
 \includegraphics{figures/m4a/disk.pdf}
 \end{figure}
+\par
+\noindent
+\ATOM{disk} is a binary sub-atom of \ATOM{ilst} which contains
+the file's disc number and disc total.
 
 \clearpage
 
@@ -657,8 +674,9 @@ two discs, the sub-atom will contain that information.
 \par
 \noindent
 \begin{tabular}{rl}
-  type : & \texttt{1} (text) \\
-  data : & \texttt{"Track Name"} (UTF-8 encoded text) \\
+  \textsf{atom name} & \texttt{ nam} \\
+  \textsf{type} & 1 (text) \\
+  \textsf{metadata} & \texttt{"Track Name"} (UTF-8 encoded text) \\
 \end{tabular}
 
 \subsubsection{alb Atom Example}
@@ -666,8 +684,9 @@ two discs, the sub-atom will contain that information.
 \par
 \noindent
 \begin{tabular}{rl}
-  type : & \texttt{1} (text) \\
-  data : & \texttt{"Album Name"} (UTF-8 encoded text) \\
+  \textsf{atom name} & \texttt{ alb} \\
+  \textsf{type} & 1 (text) \\
+  \textsf{metadata} & \texttt{"Album Name"} (UTF-8 encoded text) \\
 \end{tabular}
 
 \subsubsection{trkn Atom Example}
@@ -675,9 +694,10 @@ two discs, the sub-atom will contain that information.
 \par
 \noindent
 \begin{tabular}{rl}
-  type : & \texttt{0} (binary) \\
-  track number : & \texttt{1} \\
-  total tracks : & \texttt{2} \\
+  \textsf{atom name} & \texttt{trkn} \\
+  \textsf{type} & 0 (binary) \\
+  \textsf{track number} : & \texttt{1} \\
+  \textsf{total tracks} : & \texttt{2} \\
 \end{tabular}
 
 \subsubsection{disk Atom Example}
@@ -685,7 +705,29 @@ two discs, the sub-atom will contain that information.
 \par
 \noindent
 \begin{tabular}{rl}
-  type : & \texttt{0} (binary) \\
-  disk number : & \texttt{3} \\
-  total disks : & \texttt{4} \\
+  \textsf{atom name} & \texttt{disk} \\
+  \textsf{type} & 0 (binary) \\
+  \textsf{track number} : & \texttt{3} \\
+  \textsf{total tracks} : & \texttt{4} \\
 \end{tabular}
+
+\clearpage
+
+\subsection{the free Atom}
+\begin{figure}[h]
+  \includegraphics{figures/m4a/free.pdf}
+\end{figure}
+\par
+\noindent
+This atom is a collection of NULL bytes which are easy
+to resize in order to accomodate more data
+in the \ATOM{meta} atom without having to change
+its size and rewrite the whole file.
+
+\subsection{the mdat Atom}
+\begin{figure}[h]
+  \includegraphics{figures/m4a/mdat.pdf}
+\end{figure}
+\par
+\noindent
+This atom is contains the file's audio data frames.

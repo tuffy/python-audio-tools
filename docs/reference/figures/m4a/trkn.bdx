@@ -1,15 +1,27 @@
-<?xml version="1.0" ?><diagram>
+<?xml version="1.0" ?>
+<diagram>
   <row>
-    <col end="31" start="0" width=".25">trkn length</col>
-    <col end="63" start="32" width=".25">`trkn'</col>
-    <col id="data" start="64" style="dashed" width=".50">data</col>
+    <col start="0" end="31" width=".5">ilst length</col>
+    <col start="32" end="63" width=".5">`ilst'</col>
   </row>
-  <row><blank/></row>
   <row>
-    <col end="31" id="data_len" start="0" width=".25">data length</col>
-    <col end="63" start="32" width=".25">`data'</col>
-    <col start="64" end="95" width=".25">type (0)</col>
-    <col start="96" end="127" width=".25" id="data_flags">reserved (0)</col>
+    <col width=".25">Atom₀</col>
+    <col width=".25" id="data_atom">Atom₁</col>
+    <col width=".25">Atom₂</col>
+    <col width=".25" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="31" width=".5" id="data_atom_s">trkn length (32)</col>
+    <col start="32" end="63" width=".5" id="data_atom_e">`trkn'</col>
+  </row>
+  <row>
+    <col start="0" end="31" width=".5">data length (24)</col>
+    <col start="32" end="63" width=".5">`data'</col>
+  </row>
+  <row>
+    <col start="64" end="95" width=".5">type (0)</col>
+    <col start="96" end="127" width=".5">reserved (0)</col>
   </row>
   <row>
     <col end="143" start="128" width=".25">NULL</col>
@@ -17,6 +29,12 @@
     <col end="175" start="160" width=".25">total tracks</col>
     <col end="191" start="176" width=".25">NULL</col>
   </row>
-  <line style="dotted"><start corner="sw" id="data"/><end corner="nw" id="data_len"/></line>
-  <line style="dotted"><start corner="se" id="data"/><end corner="ne" id="data_flags"/></line>
+  <line style="dotted">
+    <start corner="sw" id="data_atom"/>
+    <end corner="nw" id="data_atom_s"/>
+  </line>
+  <line style="dotted">
+    <start corner="se" id="data_atom"/>
+    <end corner="ne" id="data_atom_e"/>
+  </line>
 </diagram>

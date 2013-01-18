@@ -6317,32 +6317,40 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     The latter approach is easier to implement.
 *** DONE Add unit tests
 *** TODO Update documentation
-** TODO Better document M4A atoms
+** DONE Better document M4A atoms
    For each atom, indicate parent in bit diagram,
    tell what it's for, have a hex diagram example
    and show what those parsed values are.
 *** DONE ftyp
-*** TODO moov
+*** DONE moov
 **** DONE mvhd
-**** TODO trak
+**** DONE trak
 ***** DONE tkhd
-***** TODO mdia
+***** DONE mdia
 ****** DONE mdhd
 ****** DONE hdlr
-****** TODO minf
+****** DONE minf
 ******* DONE smhd
 ******* DONE dinf
 ******** DONE dref
-******* TODO stbl
+******* DONE stbl
 ******** DONE stsd
 ******** DONE stts
 ******** DONE stsc
-******** TODO stsz
+******** DONE stsz
 ******** DONE stco
-**** TODO udta
-***** TODO meta
-*** TODO free
-*** TODO mdat
+**** DONE udta
+***** DONE meta
+*** DONE free
+*** DONE mdat
+** TODO Simplify PCMReaderWindow
+   Split this into a PCMReaderHead and PCMReaderDeHead pair.
+
+   The former handles the "pcm_frames" argument,
+   either truncating a PCMReader or appending silence as needed.
+
+   The latter handles the "initial_offset" argument,
+   either chopping off frames or prepending silence as needed.
 ** TODO Shift the classmethods from ALACAudio to the atoms themselves
    It's better to have them as alternate constructors
    much closer to the actual atom definitions.

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".5">meta length</col>
+    <col start="32" end="63" width=".5">`meta'</col>
+  </row>
+  <row>
+    <col start="64" end="71" width=".25">version</col>
+    <col start="72" end="95" width=".75">flags (0)</col>
+  </row>
+  <row>
+    <col start="96" width=".333333">hdlr Atom</col>
+    <col width=".333333" id="ilst">ilst Atom</col>
+    <col width=".333333">free Atom</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="31" width=".5" id="atom_s">ilst length</col>
+    <col start="32" end="63" width=".5" id="atom_e">`ilst'</col>
+  </row>
+  <row>
+    <col width=".25" id="data_atom">Atom₀</col>
+    <col width=".25">Atom₁</col>
+    <col width=".25">Atom₂</col>
+    <col width=".25" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="31" width=".5" id="data_atom_s">atom length</col>
+    <col start="32" end="63" width=".5" id="data_atom_e">atom name</col>
+  </row>
+  <row>
+    <col start="0" end="31" width=".5">data length</col>
+    <col start="32" end="63" width=".5">`data'</col>
+  </row>
+  <row>
+    <col start="64" end="95" width=".5">type</col>
+    <col start="96" end="127" width=".5">reserved (0)</col>
+  </row>
+  <row>
+    <col start="128">metadata</col>
+  </row>
+  <line style="dotted">
+    <start corner="sw" id="ilst"/>
+    <end corner="nw" id="atom_s"/>
+  </line>
+  <line style="dotted">
+    <start corner="se" id="ilst"/>
+    <end corner="ne" id="atom_e"/>
+  </line>
+  <line style="dotted">
+    <start corner="sw" id="data_atom"/>
+    <end corner="nw" id="data_atom_s"/>
+  </line>
+  <line style="dotted">
+    <start corner="se" id="data_atom"/>
+    <end corner="ne" id="data_atom_e"/>
+  </line>
+</diagram>

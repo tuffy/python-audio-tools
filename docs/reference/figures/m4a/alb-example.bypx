@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <bytestruct>
-  <field label="alb size" background-color="#FF00FF20">00000022</field>
-  <field background-color="#FF00FF20">a9616c62</field>
-  <field label="data size" background-color="#FF00FF20">0000001a</field>
-  <field background-color="#FF00FF20">64617461</field>
+  <field label="atom length" background-color="#FF00FF20">00000022</field>
+  <field label="atom name" background-color="#FF00FF20">a9616c62</field>
+  <field label="data length" background-color="#FF00FF20">0000001a</field>
+  <field label="data name" background-color="#FF00FF20">64617461</field>
   <field label="type" background-color="#FF00FF20">00000001</field>
   <field label="reserved" background-color="#FF00FF20">00000000</field>
-  <field label="data" background-color="#FF00FF20">416c62756d204e616d65</field>
+  <field label="metadata" background-color="#FF00FF20">416c62756d204e616d65</field>
 </bytestruct>
