@@ -1305,16 +1305,17 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
     @classmethod
     def __stsc_atom__(cls, total_pcm_frames, block_size):
         alac_frames = ((total_pcm_frames // block_size) +
-                       1 if (total_pcm_frames % block_size) else 0)
+                       (1 if (total_pcm_frames % block_size) else 0))
         alac_frames_per_chunk = 5
 
         if (alac_frames < alac_frames_per_chunk):
             blocks = [(1, alac_frames, 1)]
         else:
-            blocks = [(1, alac_frames_per_chunk, 1),
-                      (1 + (alac_frames // alac_frames_per_chunk),
-                       alac_frames % alac_frames_per_chunk,
-                       1)]
+            blocks = [(1, alac_frames_per_chunk, 1)]
+            if (alac_frames % alac_frames_per_chunk):
+                blocks.append((1 + (alac_frames // alac_frames_per_chunk),
+                               alac_frames % alac_frames_per_chunk,
+                               1))
 
         return M4A_STSC_Atom(
             version=0,

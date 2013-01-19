@@ -75,14 +75,18 @@ initbitstream(void)
 static PyObject*
 BitstreamReader_read(bitstream_BitstreamReader *self, PyObject *args)
 {
-    unsigned int count;
+    int count;
     unsigned int result;
 
-    if (!PyArg_ParseTuple(args, "I", &count))
+    if (!PyArg_ParseTuple(args, "I", &count)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*br_try(self->bitstream))) {
-        result = self->bitstream->read(self->bitstream, count);
+        result = self->bitstream->read(self->bitstream, (unsigned)count);
         br_etry(self->bitstream);
         return Py_BuildValue("I", result);
     } else {
@@ -95,14 +99,18 @@ BitstreamReader_read(bitstream_BitstreamReader *self, PyObject *args)
 static PyObject*
 BitstreamReader_read64(bitstream_BitstreamReader *self, PyObject *args)
 {
-    unsigned int count;
+    int count;
     uint64_t result;
 
-    if (!PyArg_ParseTuple(args, "I", &count))
+    if (!PyArg_ParseTuple(args, "i", &count)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*br_try(self->bitstream))) {
-        result = self->bitstream->read_64(self->bitstream, count);
+        result = self->bitstream->read_64(self->bitstream, (unsigned)count);
         br_etry(self->bitstream);
         return Py_BuildValue("K", result);
     } else {
@@ -115,13 +123,17 @@ BitstreamReader_read64(bitstream_BitstreamReader *self, PyObject *args)
 static PyObject*
 BitstreamReader_skip(bitstream_BitstreamReader *self, PyObject *args)
 {
-    unsigned int count;
+    int count;
 
-    if (!PyArg_ParseTuple(args, "I", &count))
+    if (!PyArg_ParseTuple(args, "i", &count)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*br_try(self->bitstream))) {
-        self->bitstream->skip(self->bitstream, count);
+        self->bitstream->skip(self->bitstream, (unsigned)count);
         br_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;
@@ -135,13 +147,17 @@ BitstreamReader_skip(bitstream_BitstreamReader *self, PyObject *args)
 static PyObject*
 BitstreamReader_skip_bytes(bitstream_BitstreamReader *self, PyObject *args)
 {
-    unsigned int count;
+    int count;
 
-    if (!PyArg_ParseTuple(args, "I", &count))
+    if (!PyArg_ParseTuple(args, "i", &count)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "byte count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*br_try(self->bitstream))) {
-        self->bitstream->skip_bytes(self->bitstream, count);
+        self->bitstream->skip_bytes(self->bitstream, (unsigned)count);
         br_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;
@@ -183,14 +199,19 @@ BitstreamReader_unread(bitstream_BitstreamReader *self, PyObject *args)
 static PyObject*
 BitstreamReader_read_signed(bitstream_BitstreamReader *self, PyObject *args)
 {
-    unsigned int count;
+    int count;
     int result;
 
-    if (!PyArg_ParseTuple(args, "I", &count))
+    if (!PyArg_ParseTuple(args, "i", &count)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*br_try(self->bitstream))) {
-        result = self->bitstream->read_signed(self->bitstream, count);
+        result = self->bitstream->read_signed(self->bitstream,
+                                              (unsigned)count);
         br_etry(self->bitstream);
         return Py_BuildValue("i", result);
     } else {
@@ -203,14 +224,19 @@ BitstreamReader_read_signed(bitstream_BitstreamReader *self, PyObject *args)
 static PyObject*
 BitstreamReader_read_signed64(bitstream_BitstreamReader *self, PyObject *args)
 {
-    unsigned int count;
+    int count;
     int64_t result;
 
-    if (!PyArg_ParseTuple(args, "I", &count))
+    if (!PyArg_ParseTuple(args, "i", &count)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*br_try(self->bitstream))) {
-        result = self->bitstream->read_signed_64(self->bitstream, count);
+        result = self->bitstream->read_signed_64(self->bitstream,
+                                                 (unsigned)count);
         br_etry(self->bitstream);
         return Py_BuildValue("L", result);
     } else {
@@ -341,32 +367,72 @@ BitstreamReader_read_huffman_code(bitstream_BitstreamReader *self,
     }
 }
 
+#define BUFFER_SIZE 4096
+
 static PyObject*
 BitstreamReader_read_bytes(bitstream_BitstreamReader *self,
                            PyObject *args)
 {
-    PyObject* byte_string;
-    unsigned int byte_count;
+    int byte_count;
 
-    if (!PyArg_ParseTuple(args, "I", &byte_count))
+    if (!PyArg_ParseTuple(args, "i", &byte_count)) {
         return NULL;
-
-    if ((byte_string = PyString_FromStringAndSize(NULL, byte_count)) == NULL)
-        return NULL;
-
-    if (!setjmp(*br_try(self->bitstream))) {
-        self->bitstream->read_bytes(self->bitstream,
-                                    (uint8_t*)PyString_AsString(byte_string),
-                                    byte_count);
-        br_etry(self->bitstream);
-
-        return byte_string;
-    } else {
-        br_etry(self->bitstream);
-        Py_DECREF(byte_string);
-        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+    } else if (byte_count < 0) {
+        PyErr_SetString(PyExc_ValueError, "byte count must be >= 0");
         return NULL;
     }
+
+    if (byte_count <= BUFFER_SIZE) {
+        static uint8_t read_buffer[BUFFER_SIZE];
+
+        /*read the entire string using a single static buffer*/
+        if (!setjmp(*br_try(self->bitstream))) {
+            self->bitstream->read_bytes(self->bitstream,
+                                        read_buffer,
+                                        (unsigned)byte_count);
+            br_etry(self->bitstream);
+
+            return PyString_FromStringAndSize((char*)read_buffer,
+                                              (Py_ssize_t)byte_count);
+        } else {
+            br_etry(self->bitstream);
+            PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+            return NULL;
+        }
+    } else {
+        /*use multiple read buffers to fetch entire set of bytes*/
+        uint8_t* read_buffer = NULL;
+        Py_ssize_t buffer_size = 0;
+        PyObject* string_obj;
+
+        if (!setjmp(*br_try(self->bitstream))) {
+            while (byte_count > 0) {
+                const unsigned to_read = MIN(byte_count, BUFFER_SIZE);
+
+                read_buffer =
+                    realloc(read_buffer, (size_t)(buffer_size + to_read));
+
+                self->bitstream->read_bytes(self->bitstream,
+                                            read_buffer + buffer_size,
+                                            to_read);
+
+                buffer_size += to_read;
+                byte_count -= to_read;
+            }
+            br_etry(self->bitstream);
+
+            string_obj = PyString_FromStringAndSize((char *)read_buffer,
+                                                    buffer_size);
+            free(read_buffer);
+            return string_obj;
+        } else {
+            br_etry(self->bitstream);
+            PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+            free(read_buffer);
+            return NULL;
+        }
+    }
+
 }
 
 static PyObject*
@@ -493,11 +559,15 @@ static PyObject*
 BitstreamReader_substream_meth(bitstream_BitstreamReader *self, PyObject *args)
 {
     PyTypeObject *type = self->ob_type;
-    unsigned int bytes;
+    int bytes;
     bitstream_BitstreamReader *obj;
 
-    if (!PyArg_ParseTuple(args, "I", &bytes))
+    if (!PyArg_ParseTuple(args, "i", &bytes)) {
         return NULL;
+    } else if (bytes < 0) {
+        PyErr_SetString(PyExc_ValueError, "byte count must be >= 0");
+        return NULL;
+    }
 
     obj = (bitstream_BitstreamReader *)type->tp_alloc(type, 0);
     obj->file_obj = NULL;
@@ -508,7 +578,7 @@ BitstreamReader_substream_meth(bitstream_BitstreamReader *self, PyObject *args)
     if (!setjmp(*br_try(self->bitstream))) {
         self->bitstream->substream_append(self->bitstream,
                                           obj->bitstream,
-                                          bytes);
+                                          (uint32_t)bytes);
         br_etry(self->bitstream);
         return (PyObject *)obj;
     } else {
@@ -526,10 +596,14 @@ BitstreamReader_substream_append(bitstream_BitstreamReader *self,
 {
     PyObject *substream_obj;
     bitstream_BitstreamReader *substream;
-    unsigned int bytes;
+    int bytes;
 
-    if (!PyArg_ParseTuple(args, "OI", &substream_obj, &bytes))
+    if (!PyArg_ParseTuple(args, "Oi", &substream_obj, &bytes)) {
         return NULL;
+    } else if (bytes < 0) {
+        PyErr_SetString(PyExc_ValueError, "byte count must be >= 0");
+        return NULL;
+    }
 
     if (self->ob_type != substream_obj->ob_type) {
         PyErr_SetString(PyExc_TypeError,
@@ -547,7 +621,7 @@ BitstreamReader_substream_append(bitstream_BitstreamReader *self,
     if (!setjmp(*br_try(self->bitstream))) {
         self->bitstream->substream_append(self->bitstream,
                                           substream->bitstream,
-                                          bytes);
+                                          (uint32_t)bytes);
 
         br_etry(self->bitstream);
         Py_INCREF(Py_None);
@@ -685,13 +759,17 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
                      PyObject *args)
 {
     PyObject *file_obj;
-    unsigned int buffer_size = 4096;
+    int buffer_size = 4096;
 
     self->file_obj = NULL;
 
-    if (!PyArg_ParseTuple(args, "Oi|I", &file_obj, &(self->little_endian),
-                          &buffer_size))
+    if (!PyArg_ParseTuple(args, "Oi|i", &file_obj, &(self->little_endian),
+                          &buffer_size)) {
         return -1;
+    } else if (buffer_size <= 0) {
+        PyErr_SetString(PyExc_ValueError, "buffer_size must be > 0");
+        return -1;
+    }
 
     /*store a reference to the Python object so that it doesn't decref
       (and close) the file out from under us*/
@@ -943,14 +1021,18 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
 {
     PyObject *file_obj;
     int little_endian;
-    unsigned int buffer_size = 4096;
+    int buffer_size = 4096;
 
     self->file_obj = NULL;
     self->bitstream = NULL;
 
-    if (!PyArg_ParseTuple(args, "Oi|I", &file_obj, &little_endian,
-                          &buffer_size))
+    if (!PyArg_ParseTuple(args, "Oi|i", &file_obj, &little_endian,
+                          &buffer_size)) {
         return -1;
+    } else if (buffer_size <= 0) {
+        PyErr_SetString(PyExc_ValueError, "buffer_size must be > 0");
+        return -1;
+    }
 
     /*store a reference to the Python object so that it doesn't decref
       (and close) the file out from under us*/
@@ -1020,14 +1102,18 @@ BitstreamWriter_new(PyTypeObject *type, PyObject *args,
 static PyObject*
 BitstreamWriter_write(bitstream_BitstreamWriter *self, PyObject *args)
 {
-    unsigned int count;
+    int count;
     unsigned int value;
 
-    if (!PyArg_ParseTuple(args, "II", &count, &value))
+    if (!PyArg_ParseTuple(args, "iI", &count, &value)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write(self->bitstream, count, value);
+        self->bitstream->write(self->bitstream, (unsigned)count, value);
         bw_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;
@@ -1041,14 +1127,18 @@ BitstreamWriter_write(bitstream_BitstreamWriter *self, PyObject *args)
 static PyObject*
 BitstreamWriter_write_signed(bitstream_BitstreamWriter *self, PyObject *args)
 {
-    unsigned int count;
+    int count;
     int value;
 
-    if (!PyArg_ParseTuple(args, "Ii", &count, &value))
+    if (!PyArg_ParseTuple(args, "ii", &count, &value)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_signed(self->bitstream, count, value);
+        self->bitstream->write_signed(self->bitstream, (unsigned)count, value);
         bw_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;
@@ -1062,14 +1152,18 @@ BitstreamWriter_write_signed(bitstream_BitstreamWriter *self, PyObject *args)
 static PyObject*
 BitstreamWriter_write64(bitstream_BitstreamWriter *self, PyObject *args)
 {
-    unsigned int count;
+    int count;
     uint64_t value;
 
-    if (!PyArg_ParseTuple(args, "IK", &count, &value))
+    if (!PyArg_ParseTuple(args, "iK", &count, &value)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_64(self->bitstream, count, value);
+        self->bitstream->write_64(self->bitstream, (unsigned)count, value);
         bw_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;
@@ -1083,14 +1177,19 @@ BitstreamWriter_write64(bitstream_BitstreamWriter *self, PyObject *args)
 static PyObject*
 BitstreamWriter_write_signed64(bitstream_BitstreamWriter *self, PyObject *args)
 {
-    unsigned int count;
+    int count;
     int64_t value;
 
-    if (!PyArg_ParseTuple(args, "IL", &count, &value))
+    if (!PyArg_ParseTuple(args, "iL", &count, &value)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_signed_64(self->bitstream, count, value);
+        self->bitstream->write_signed_64(self->bitstream,
+                                         (unsigned)count, value);
         bw_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;
@@ -1315,14 +1414,18 @@ static PyObject*
 BitstreamRecorder_write(bitstream_BitstreamRecorder *self,
                         PyObject *args)
 {
-    unsigned int count;
+    int count;
     unsigned int value;
 
-    if (!PyArg_ParseTuple(args, "II", &count, &value))
+    if (!PyArg_ParseTuple(args, "iI", &count, &value)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write(self->bitstream, count, value);
+        self->bitstream->write(self->bitstream, (unsigned)count, value);
         bw_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;
@@ -1337,14 +1440,18 @@ static PyObject*
 BitstreamRecorder_write_signed(bitstream_BitstreamRecorder *self,
                                PyObject *args)
 {
-    unsigned int count;
+    int count;
     int value;
 
-    if (!PyArg_ParseTuple(args, "Ii", &count, &value))
+    if (!PyArg_ParseTuple(args, "ii", &count, &value)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_signed(self->bitstream, count, value);
+        self->bitstream->write_signed(self->bitstream, (unsigned)count, value);
         bw_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;
@@ -1359,14 +1466,18 @@ static PyObject*
 BitstreamRecorder_write64(bitstream_BitstreamRecorder *self,
                           PyObject *args)
 {
-    unsigned int count;
+    int count;
     uint64_t value;
 
-    if (!PyArg_ParseTuple(args, "IK", &count, &value))
+    if (!PyArg_ParseTuple(args, "iK", &count, &value)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_64(self->bitstream, count, value);
+        self->bitstream->write_64(self->bitstream, (unsigned)count, value);
         bw_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;
@@ -1381,14 +1492,19 @@ static PyObject*
 BitstreamRecorder_write_signed64(bitstream_BitstreamRecorder *self,
                                  PyObject *args)
 {
-    unsigned int count;
+    int count;
     int64_t value;
 
-    if (!PyArg_ParseTuple(args, "IL", &count, &value))
+    if (!PyArg_ParseTuple(args, "iL", &count, &value)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_signed_64(self->bitstream, count, value);
+        self->bitstream->write_signed_64(self->bitstream,
+                                         (unsigned)count, value);
         bw_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;
@@ -1658,11 +1774,15 @@ BitstreamRecorder_split(bitstream_BitstreamRecorder *self,
     PyObject* remainder_obj;
     BitstreamWriter* target;
     BitstreamWriter* remainder;
-    unsigned int total_bytes;
+    int total_bytes;
 
-    if (!PyArg_ParseTuple(args, "OOI",
-                          &target_obj, &remainder_obj, &total_bytes))
+    if (!PyArg_ParseTuple(args, "OOi",
+                          &target_obj, &remainder_obj, &total_bytes)) {
         return NULL;
+    } else if (total_bytes < 0) {
+        PyErr_SetString(PyExc_ValueError, "total_bytes must be >= 0");
+        return NULL;
+    }
 
     if (target_obj == Py_None) {
         target = NULL;
@@ -1968,14 +2088,18 @@ static PyObject*
 BitstreamAccumulator_write(bitstream_BitstreamAccumulator *self,
                            PyObject *args)
 {
-    unsigned int count;
+    int count;
     unsigned int value;
 
-    if (!PyArg_ParseTuple(args, "II", &count, &value))
+    if (!PyArg_ParseTuple(args, "iI", &count, &value)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write(self->bitstream, count, value);
+        self->bitstream->write(self->bitstream, (unsigned)count, value);
         bw_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;
@@ -1990,14 +2114,18 @@ static PyObject*
 BitstreamAccumulator_write_signed(bitstream_BitstreamAccumulator *self,
                                   PyObject *args)
 {
-    unsigned int count;
+    int count;
     int value;
 
-    if (!PyArg_ParseTuple(args, "Ii", &count, &value))
+    if (!PyArg_ParseTuple(args, "ii", &count, &value)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_signed(self->bitstream, count, value);
+        self->bitstream->write_signed(self->bitstream, (unsigned)count, value);
         bw_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;
@@ -2012,14 +2140,18 @@ static PyObject*
 BitstreamAccumulator_write64(bitstream_BitstreamAccumulator *self,
                              PyObject *args)
 {
-    unsigned int count;
+    int count;
     uint64_t value;
 
-    if (!PyArg_ParseTuple(args, "IK", &count, &value))
+    if (!PyArg_ParseTuple(args, "iK", &count, &value)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_64(self->bitstream, count, value);
+        self->bitstream->write_64(self->bitstream, (unsigned)count, value);
         bw_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;
@@ -2034,14 +2166,19 @@ static PyObject*
 BitstreamAccumulator_write_signed64(bitstream_BitstreamAccumulator *self,
                                     PyObject *args)
 {
-    unsigned int count;
+    int count;
     int64_t value;
 
-    if (!PyArg_ParseTuple(args, "IL", &count, &value))
+    if (!PyArg_ParseTuple(args, "iL", &count, &value)) {
         return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
 
     if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_signed_64(self->bitstream, count, value);
+        self->bitstream->write_signed_64(self->bitstream,
+                                         (unsigned)count, value);
         bw_etry(self->bitstream);
         Py_INCREF(Py_None);
         return Py_None;

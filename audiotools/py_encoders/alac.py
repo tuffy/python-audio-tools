@@ -71,36 +71,29 @@ def encode_mdat(file, pcmreader,
     pcmreader = BufferedPCMReader(pcmreader)
 
     mdat = BitstreamWriter(file, 0)
-    mdat_length = ByteCounter()
-    mdat.add_callback(mdat_length.update)
-
-    frame_sample_sizes = []
+    total_pcm_frames = 0
     frame_byte_sizes = []
-    frame_file_offsets = []
 
     #write placeholder mdat header
+    mdat_start = file.tell()
     mdat.write(32, 0)
     mdat.write_bytes("mdat")
 
     #read FrameList objects until stream is empty
     frame = pcmreader.read(block_size)
     while (len(frame) > 0):
-        frame_sample_sizes.append(frame.frames)
-        frame_file_offsets.append(int(mdat_length))
+        total_pcm_frames += frame.frames
+        frame_start = file.tell()
         encode_frameset(mdat, pcmreader, options, frame)
-        frame_byte_sizes.append(int(mdat_length) - frame_file_offsets[-1])
+        mdat.flush()
+        frame_byte_sizes.append(file.tell() - frame_start)
         frame = pcmreader.read(block_size)
 
     #finally, return to start of mdat and write actual length
-    mdat.byte_align()
-    mdat.pop_callback()
-    file.seek(0, 0)
-    mdat.write(32, int(mdat_length))
+    file.seek(mdat_start)
+    mdat.write(32, sum(frame_byte_sizes) + 8)
 
-    return (frame_sample_sizes,
-            frame_byte_sizes,
-            frame_file_offsets,
-            int(mdat_length))
+    return (frame_byte_sizes, total_pcm_frames)
 
 
 def encode_frameset(writer, pcmreader, options, frame):

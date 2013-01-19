@@ -543,8 +543,9 @@ parse_decoding_parameters(decoders_ALACDecoder *self)
         if ((status = populate_seektable(block_sizes,
                                          chunk_sizes,
                                          chunk_offsets,
-                                         self->seektable)) != OK)
+                                         self->seektable)) != OK) {
             goto error;
+        }
     }
 
     status = OK;
@@ -601,6 +602,11 @@ populate_seektable(array_o* block_sizes,
     for (i = 0; i < chunk_sizes->len; i++) {
         struct alac_stsc *stsc = chunk_sizes->_[i];
 
+        if (stsc->ALAC_frames_per_chunk == 0) {
+            status = INVALID_SEEKTABLE;
+            goto error;
+        }
+
         if ((i + 1) < chunk_sizes->len) {
             /*if there's a next chunk size,
               pull "ALAC_frames_per_chunk" ALAC frames from frame_sizes
@@ -624,6 +630,7 @@ populate_seektable(array_o* block_sizes,
         } else {
             /*if there's no next size,
               all remaining chunks are the size of this one*/
+
             while (frame_sizes_l->len > 0) {
                 frame_sizes_l->split(frame_sizes_l,
                                      stsc->ALAC_frames_per_chunk,

@@ -2364,9 +2364,25 @@ class Bitstream(unittest.TestCase):
         self.assertRaises(IOError, reader.read_bytes, 2)
         reader.rewind()
         self.assertRaises(IOError, reader.substream, 1)
+        reader.rewind()
+        self.assertRaises(ValueError, reader.read, -1)
+        reader.rewind()
+        self.assertRaises(ValueError, reader.read64, -1)
+        reader.rewind()
+        self.assertRaises(ValueError, reader.read_signed, -1)
+        reader.rewind()
+        self.assertRaises(ValueError, reader.read_signed64, -1)
+        reader.rewind()
+        self.assertRaises(ValueError, reader.skip, -1)
+        reader.rewind()
+        self.assertRaises(ValueError, reader.read_bytes, -2)
+        reader.rewind()
+        self.assertRaises(IOError, reader.read_bytes, 2 ** 30)
+        reader.rewind()
+        self.assertRaises(IOError, reader.substream, 2 ** 30)
+        reader.rewind()
 
         reader.unmark()
-
         reader.rewind()
         reader.unmark()
 
@@ -3040,6 +3056,8 @@ class Bitstream(unittest.TestCase):
             writer.write(3, 3)
             writer.write(19, 395743)
 
+        self.assertRaises(ValueError, writer.write, -1, 0)
+
     def __writer_perform_write_signed__(self, writer, endianness):
         if (endianness == 0):
             writer.write_signed(2, -2)
@@ -3053,6 +3071,8 @@ class Bitstream(unittest.TestCase):
             writer.write_signed(5, 13)
             writer.write_signed(3, 3)
             writer.write_signed(19, -128545)
+
+        self.assertRaises(ValueError, writer.write_signed, -1, 0)
 
     def __writer_perform_write_64__(self, writer, endianness):
         if (endianness == 0):
@@ -3068,6 +3088,8 @@ class Bitstream(unittest.TestCase):
             writer.write64(3, 3)
             writer.write64(19, 395743)
 
+        self.assertRaises(ValueError, writer.write64, -1, 0)
+
     def __writer_perform_write_signed_64__(self, writer, endianness):
         if (endianness == 0):
             writer.write_signed64(2, -2)
@@ -3081,6 +3103,8 @@ class Bitstream(unittest.TestCase):
             writer.write_signed64(5, 13)
             writer.write_signed64(3, 3)
             writer.write_signed64(19, -128545)
+
+        self.assertRaises(ValueError, writer.write_signed64, -1, 0)
 
     def __writer_perform_write_unary_0__(self, writer, endianness):
         if (endianness == 0):

@@ -1175,7 +1175,7 @@ void
 seekpoint_print(struct flac_SEEKPOINT* seekpoint, FILE* output)
 {
     fprintf(output,
-            "seekpoint(%llu, %llX, %u)",
+            "seekpoint(%lu, %lX, %u)",
             seekpoint->sample_number,
             seekpoint->byte_offset,
             seekpoint->samples);

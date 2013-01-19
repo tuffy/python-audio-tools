@@ -478,7 +478,7 @@ br_read_signed_bits64_le(BitstreamReader* bs, unsigned int count)
     }
 }
 
-#define SKIP_BUFFER_SIZE 4096
+#define BUFFER_SIZE 4096
 
 /*the skip_bits functions differ from the read_bits functions
   in that they have no accumulator
@@ -491,8 +491,8 @@ br_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
       and there are no set callbacks to consider*/
     if ((bs->state == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
         while (count > 0) {
-            const unsigned int to_read = MIN(SKIP_BUFFER_SIZE, count / 8);
-            static uint8_t dummy[SKIP_BUFFER_SIZE];
+            const unsigned int to_read = MIN(BUFFER_SIZE, count / 8);
+            static uint8_t dummy[BUFFER_SIZE];
 
             if (fread(dummy, sizeof(uint8_t), to_read, bs->input.file) !=
                 to_read)
@@ -537,8 +537,8 @@ br_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
       and there are no set callbacks to consider*/
     if ((bs->state == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
         while (count > 0) {
-            const unsigned int to_read = MIN(SKIP_BUFFER_SIZE, count / 8);
-            static uint8_t dummy[SKIP_BUFFER_SIZE];
+            const unsigned int to_read = MIN(BUFFER_SIZE, count / 8);
+            static uint8_t dummy[BUFFER_SIZE];
 
             if (fread(dummy, sizeof(uint8_t), to_read, bs->input.file) !=
                 to_read)
@@ -1586,40 +1586,51 @@ br_unmark_c(BitstreamReader* bs)
     return;
 }
 
-
 void
 br_substream_append_f(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
                       uint32_t bytes)
 {
-    uint8_t* extended_buffer;
-    struct bs_callback *callback;
-    uint32_t i;
-
     assert(substream->type == BR_SUBSTREAM);
 
     /*byte align the input stream*/
     stream->state = 0;
 
-    /*extend the output stream's current buffer to fit additional bytes*/
-    extended_buffer = buf_extend(substream->input.substream, bytes);
+    while (bytes) {
+        const uint32_t to_read = MIN(bytes, BUFFER_SIZE);
+        static uint8_t fread_buffer[BUFFER_SIZE];
 
-    /*read input stream to extended buffer*/
-    if (fread(extended_buffer, sizeof(uint8_t), bytes,
-              stream->input.file) != bytes)
-        /*abort if the amount of read bytes is insufficient*/
-        br_abort(stream);
+        if (fread(fread_buffer,
+                  sizeof(uint8_t),
+                  to_read,
+                  stream->input.file) == to_read) {
+            struct bs_callback *callback;
+            uint8_t* extended_buffer;
 
-    /*perform callbacks on bytes in extended buffer*/
-    for (callback = stream->callbacks;
-         callback != NULL;
-         callback = callback->next) {
-        for (i = 0; i < bytes; i++)
-            callback->callback(extended_buffer[i], callback->data);
+            /*perform callbacks on newly read bytes*/
+            for (callback = stream->callbacks;
+                 callback != NULL;
+                 callback = callback->next) {
+                uint32_t i;
+                for (i = 0; i < bytes; i++)
+                    callback->callback(fread_buffer[i], callback->data);
+            }
+
+            /*extend the output stream's current buffer to fit new data*/
+            extended_buffer = buf_extend(substream->input.substream, to_read);
+
+            /*transfer data from fread buffer to extended buffer*/
+            memcpy(extended_buffer, fread_buffer, to_read);
+
+            /*complete buffer extension*/
+            substream->input.substream->buffer_size += to_read;
+
+            bytes -= to_read;
+        } else {
+            /*abort if the amount of read bytes is insufficient*/
+            br_abort(stream);
+        }
     }
-
-    /*complete buffer extension*/
-    substream->input.substream->buffer_size += bytes;
 }
 
 void
@@ -1668,33 +1679,44 @@ br_substream_append_e(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
                       uint32_t bytes)
 {
-    uint8_t* extended_buffer;
-    struct bs_callback *callback;
-    unsigned bytes_read;
-    uint32_t i;
+    assert(substream->type == BR_SUBSTREAM);
 
     /*byte align the input stream*/
     stream->state = 0;
 
-    /*extend the output stream's current buffer to fit additional bytes*/
-    extended_buffer = buf_extend(substream->input.substream, bytes);
+    while (bytes) {
+        const uint32_t to_read = MIN(bytes, BUFFER_SIZE);
+        static uint8_t fread_buffer[BUFFER_SIZE];
 
-    /*read input stream to extended buffer*/
-    if ((bytes_read = ext_read(extended_buffer,
-                               (unsigned)bytes,
-                               stream->input.external)) != (unsigned)bytes) {
-        br_abort(stream);
-    } else {
-        /*advance the substream with additional data*/
-        substream->input.substream->buffer_size += bytes;
-    }
+        if (ext_read(fread_buffer,
+                     (unsigned)to_read,
+                     stream->input.external) == (unsigned)to_read) {
+            struct bs_callback *callback;
+            uint8_t* extended_buffer;
 
-    /*perform callbacks on bytes in extended buffer*/
-    for (callback = stream->callbacks;
-         callback != NULL;
-         callback = callback->next) {
-        for (i = 0; i < bytes; i++)
-            callback->callback(extended_buffer[i], callback->data);
+            /*perform callbacks on newly read bytes*/
+            for (callback = stream->callbacks;
+                 callback != NULL;
+                 callback = callback->next) {
+                uint32_t i;
+                for (i = 0; i < bytes; i++)
+                    callback->callback(fread_buffer[i], callback->data);
+            }
+
+            /*extend the output stream's current buffer to fit new data*/
+            extended_buffer = buf_extend(substream->input.substream, to_read);
+
+            /*transfer data from fread buffer to extended buffer*/
+            memcpy(extended_buffer, fread_buffer, to_read);
+
+            /*complete buffer extension*/
+            substream->input.substream->buffer_size += to_read;
+
+            bytes -= to_read;
+        } else {
+            /*abort if the amount of read bytes is insufficient*/
+            br_abort(stream);
+        }
     }
 }
 
@@ -4359,6 +4381,17 @@ void test_try(BitstreamReader* reader,
         br_etry(reader);
         reader->rewind(reader);
     }
+
+    /*ensure substream_append doesn't use all the RAM in the world
+      on a failed read which is very large*/
+    if (!setjmp(*br_try(reader))) {
+        reader->substream_append(reader, substream, 4294967295);
+        assert(0);
+    } else {
+        br_etry(reader);
+        reader->rewind(reader);
+    }
+
     substream->close(substream);
 
     reader->unmark(reader);
