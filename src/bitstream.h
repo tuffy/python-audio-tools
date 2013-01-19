@@ -62,21 +62,22 @@ struct bs_exception {
 
 /*bs_buffer can be thought of as a FIFO queue of byte data
 
-  buf_putc and other data writers append data to buffer
-  starting from "size", incrementing "total_size" as necessary to fit
+  buf_putc and other data writers append to "data"
+  starting from "window_end",
+  increasing the size of "data" and "data_size" as necessary to fit
 
-  buf_getc and other data readers pull data off buffer
-  starting from "position" and incrementing it to "size"
+  buf_getc and other data readers pull from the beginning of "data"
+  starting from "window_start" to "window_end"
 
-  "mark_in_progress" indicates whether "position" can go backwards
+  "mark_in_progress" indicates whether "window_start" can go backwards
   to point at previously read data
   if false, data writers may slide the window down and reuse the buffer
   if true, data writers may only append new data to the buffer*/
 struct bs_buffer {
-    uint8_t* buffer;
-    uint32_t buffer_size;
-    uint32_t buffer_total_size;
-    uint32_t buffer_position;
+    uint8_t* data;
+    uint32_t data_size;
+    uint32_t window_start;
+    uint32_t window_end;
     int mark_in_progress;
 };
 
@@ -347,7 +348,7 @@ br_substream_new(bs_endianness endianness);
 
 /*int read(void* user_data, struct bs_buffer* buffer)
   where "buffer" is where read output will be placed
-  using buf_putc, buf_extend, etc.
+  using buf_putc, buf_append, etc.
 
   note that "buffer" may already be holding data
   (especially if a mark is in place)
@@ -1259,7 +1260,8 @@ bw_ftell(BitstreamWriter* bs) {
 
 /*writes "total" number of bytes from "buffer" to "target"*/
 void
-bw_dump_bytes(BitstreamWriter* target, uint8_t* buffer, unsigned int total);
+bw_dump_bytes(BitstreamWriter* target,
+              const uint8_t* buffer, unsigned int total);
 
 /*given a BitstreamWriter recorder "source",
   writes all of its recorded output to "target"*/
@@ -1283,15 +1285,8 @@ bw_rec_split(BitstreamWriter* target,
              unsigned int total_bytes);
 
 /*clear the recorded output and reset for new output*/
-static inline void
-bw_reset_recorder(BitstreamWriter* bs)
-{
-    assert(bs->type == BW_RECORDER);
-
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    bs->output.buffer->buffer_size = 0;
-}
+void
+bw_reset_recorder(BitstreamWriter* bs);
 
 static inline void
 bw_reset_accumulator(BitstreamWriter* bs)
@@ -1311,7 +1306,7 @@ bw_maximize_recorder(BitstreamWriter* bs)
 
     bs->buffer = 0;
     bs->buffer_size = 0;
-    bs->output.buffer->buffer_size = INT_MAX;
+    bs->output.buffer->window_end = INT_MAX;
 }
 
 void
@@ -1322,6 +1317,17 @@ bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
  *                             bs_buffer                           *
  *******************************************************************/
 
+/*the number of bytes remaining to be read
+  b is evaluated twice*/
+#define BUF_WINDOW_SIZE(b) ((b)->window_end - (b)->window_start)
+
+/*the start of the buffer's data window as a uint8_t pointer
+  b is evaluated twice*/
+#define BUF_WINDOW_START(b) ((b)->data + (b)->window_start)
+
+/*the end of the buffers's data window as a uint8_t pointer
+  b is evaluated twice*/
+#define BUF_WINDOW_END(b) ((b)->data + (b)->window_end)
 
 /*returns a new bs_buffer struct which can be appended to and read from
 
@@ -1329,22 +1335,19 @@ bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
 struct bs_buffer*
 buf_new(void);
 
-/*returns a pointer to the new position in the buffer
-  where one can begin appending up to "data_size" bytes of new data
+/*resize buffer to fit at least "additional_bytes", if necessary*/
+void
+buf_resize(struct bs_buffer *stream, uint32_t additional_bytes);
 
-  update stream->buffer_size upon successfully populating the buffer
+/*appends "data_size" bytes from "data" to "stream" starting at "window_end"*/
+void
+buf_write(struct bs_buffer *stream, const uint8_t *data, uint32_t data_size);
 
-  For example:
-
-  uint8_t* new_data = buf_extend(buffer, 10);
-  if (fread(new_data, sizeof(uint8_t), 10, input_file) == 10)
-      buffer->buffer_size += 10;
-  else
-      //trigger error here
-
-*/
-uint8_t*
-buf_extend(struct bs_buffer *stream, uint32_t data_size);
+/*reads "data_size" bytes from "stream" to "data" starting at "window_start"
+  and returns the amount of bytes actually read
+  (which may be less than the amount requested)*/
+uint32_t
+buf_read(struct bs_buffer *stream, uint8_t *data, uint32_t data_size);
 
 /*makes target's data a duplicate of source's data
   target will have no marks in progress
@@ -1354,7 +1357,7 @@ buf_copy(const struct bs_buffer *source, struct bs_buffer *target);
 
 /*appends unconsumed data in "source" to "target"*/
 void
-buf_append(const struct bs_buffer *source, struct bs_buffer* target);
+buf_extend(const struct bs_buffer *source, struct bs_buffer* target);
 
 /*clears out the buffer for possible reuse
 
@@ -1387,7 +1390,7 @@ buf_close(struct bs_buffer *stream);
 
   int read(void* user_data, struct bs_buffer* buffer)
   where "buffer" is where read output will be placed
-  using buf_putc, buf_extend, etc.
+  using buf_putc, buf_append, etc.
 
   note that "buffer" may already be holding data
   (especially if a mark is in place)
@@ -1423,7 +1426,8 @@ ext_getc(struct br_external_input* stream);
 /*analagous to fread, except that all elements are 1 byte
   returns the total number of bytes read to the given "bytes" buffer*/
 unsigned
-ext_read(uint8_t* bytes, unsigned byte_count,
+ext_read(uint8_t* bytes,
+         unsigned byte_count,
          struct br_external_input* stream);
 
 void

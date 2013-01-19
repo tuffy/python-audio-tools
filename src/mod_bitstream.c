@@ -1683,10 +1683,8 @@ BitstreamRecorder_data(bitstream_BitstreamRecorder *self,
                        PyObject *args)
 {
     return PyString_FromStringAndSize(
-        (const char *)(self->bitstream->output.buffer->buffer +
-                       self->bitstream->output.buffer->buffer_position),
-        self->bitstream->output.buffer->buffer_size -
-        self->bitstream->output.buffer->buffer_position);
+        (char *)BUF_WINDOW_START(self->bitstream->output.buffer),
+        BUF_WINDOW_SIZE(self->bitstream->output.buffer));
 }
 
 static PyObject*
@@ -2391,9 +2389,7 @@ int br_read_python(void* user_data,
                                      (char**)&string,
                                      &string_size) != -1) {
             /*then append bytes to buffer and return success*/
-            uint8_t* appended = buf_extend(buffer, (uint32_t)string_size);
-            memcpy(appended, string, string_size);
-            buffer->buffer_size += (uint32_t)string_size;
+            buf_write(buffer, string, (uint32_t)string_size);
 
             return 0;
         } else {
@@ -2427,9 +2423,10 @@ int bw_write_python(void* user_data,
     PyObject* writer = (PyObject*)user_data;
     PyObject* write_result;
 
-    if ((write_result = PyObject_CallMethod(writer, "write", "s#",
-                                            buffer->buffer,
-                                            buffer->buffer_size)) != NULL) {
+    if ((write_result =
+         PyObject_CallMethod(writer, "write", "s#",
+                             BUF_WINDOW_START(buffer),
+                             BUF_WINDOW_SIZE(buffer))) != NULL) {
         Py_DECREF(write_result);
         return 0;
     } else {

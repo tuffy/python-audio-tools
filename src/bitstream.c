@@ -311,14 +311,9 @@ br_open_external(void* user_data,
     return bs;
 }
 
-/*the number of bytes remaining to be read
-  b is evaluated twice*/
-#define BUF_REMAINING_BYTES(b) ((b)->buffer_size - (b)->buffer_position)
-
 /*These are helper macros for unpacking the results
   of the various jump tables in a less error-prone fashion.*/
 #define NEW_CONTEXT(x) (0x100 | (x))
-
 
 #define FUNC_READ_BITS_BE(FUNC_NAME, RETURN_TYPE, BYTE_FUNC, BYTE_FUNC_ARG) \
     RETURN_TYPE                                                         \
@@ -583,8 +578,8 @@ br_skip_bits_s_be(BitstreamReader* bs, unsigned int count)
       and there are no set callbacks to consider*/
     if ((bs->state == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
         count /= 8;
-        if (count <= BUF_REMAINING_BYTES(bs->input.substream)) {
-            bs->input.substream->buffer_position += count;
+        if (count <= BUF_WINDOW_SIZE(bs->input.substream)) {
+            bs->input.substream->window_start += count;
         } else {
             br_abort(bs);
         }
@@ -625,8 +620,8 @@ br_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
       and there are no set callbacks to consider*/
     if ((bs->state == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
         count /= 8;
-        if (count <= BUF_REMAINING_BYTES(bs->input.substream)) {
-            bs->input.substream->buffer_position += count;
+        if (count <= BUF_WINDOW_SIZE(bs->input.substream)) {
+            bs->input.substream->window_start += count;
         } else {
             br_abort(bs);
         }
@@ -991,9 +986,8 @@ br_read_bytes_f(struct BitstreamReader_s* bs,
         if (fread(bytes, sizeof(uint8_t), byte_count, bs->input.file) ==
             byte_count) {
             struct bs_callback* callback;
-            /*if sufficient bytes were read*/
-
-            /*perform callbacks on the read bytes*/
+            /*if sufficient bytes were read
+              perform callbacks on the read bytes*/
             for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
@@ -1019,31 +1013,19 @@ br_read_bytes_s(struct BitstreamReader_s* bs,
     if (bs->state == 0) {
         /*stream is byte-aligned, so perform optimized read*/
 
-        struct bs_buffer* buffer = bs->input.substream;
-
-        if (BUF_REMAINING_BYTES(buffer) >= byte_count) {
+        /*buf_read bytes from buffer to output*/
+        if ((unsigned int)buf_read(bs->input.substream,
+                                   bytes,
+                                   (uint32_t)byte_count) == byte_count) {
             struct bs_callback* callback;
-            /*the buffer has enough bytes to read*/
-
-            /*so copy bytes from buffer to output*/
-            memcpy(bytes,
-                   buffer->buffer + buffer->buffer_position,
-                   byte_count);
-
-            /*perform callbacks on the read bytes*/
+            /*if sufficient bytes were read
+              perform callbacks on the read bytes*/
             for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 for (i = 0; i < byte_count; i++)
                     callback->callback(bytes[i], callback->data);
-
-            /*and increment buffer position*/
-            buffer->buffer_position += byte_count;
         } else {
-            /*the buffer has insufficient bytes,
-              so shift position to the end (as if we've read them all)
-              and raise an abort*/
-            buffer->buffer_position = buffer->buffer_size;
             br_abort(bs);
         }
     } else {
@@ -1058,8 +1040,6 @@ br_read_bytes_e(struct BitstreamReader_s* bs,
                 uint8_t* bytes,
                 unsigned int byte_count)
 {
-    unsigned int i;
-
     if (bs->state == 0) {
         /*stream is byte-aligned, so perform optimized read*/
 
@@ -1067,12 +1047,8 @@ br_read_bytes_e(struct BitstreamReader_s* bs,
 
         /*read as many bytes as possible from the buffer*/
         while (byte_count) {
-            const unsigned int to_read = MIN(BUF_REMAINING_BYTES(buffer),
-                                             byte_count);
+            const uint32_t amount_read = buf_read(buffer, bytes, byte_count);
             struct bs_callback* callback;
-
-            /*so copy bytes from buffer to output*/
-            memcpy(bytes, buffer->buffer + buffer->buffer_position, to_read);
 
             /*perform callbacks on the read bytes*/
             for (callback = bs->callbacks;
@@ -1080,29 +1056,21 @@ br_read_bytes_e(struct BitstreamReader_s* bs,
                  callback = callback->next) {
                 unsigned int i;
 
-                for (i = 0; i < to_read; i++)
+                for (i = 0; i < amount_read; i++)
                     callback->callback(bytes[i], callback->data);
             }
 
             /*and increment buffer position and output position*/
-            buffer->buffer_position += to_read;
-            bytes += to_read;
+            bytes += amount_read;
+            byte_count -= amount_read;
 
-            byte_count -= to_read;
             if (byte_count) {
                 /*if there's more bytes to read,
                   populate buffer with additional data*/
-                if (!buffer->mark_in_progress) {
-                    /*if the stream has no mark,
-                      reset the buffer prior to reading new data*/
-
-                    buffer->buffer_size = 0;
-                    buffer->buffer_position = 0;
-                }
 
                 if (bs->input.external->read(bs->input.external->user_data,
                                              buffer) ||
-                    (BUF_REMAINING_BYTES(buffer) == 0)) {
+                    (BUF_WINDOW_SIZE(buffer) == 0)) {
                     /*if a read error occurs
                       or the read adds no data to the buffer,
                       trigger an abort*/
@@ -1111,6 +1079,8 @@ br_read_bytes_e(struct BitstreamReader_s* bs,
             }
         }
     } else {
+        unsigned i;
+
         /*stream is not byte-aligned, so perform multiple reads*/
         for (i = 0; i < byte_count; i++)
             bytes[i] = bs->read(bs, 8);
@@ -1466,7 +1436,7 @@ br_mark_s(BitstreamReader* bs)
         bs->marks_used = bs->marks_used->next;
     }
 
-    mark->position.substream = bs->input.substream->buffer_position;
+    mark->position.substream = bs->input.substream->window_start;
     mark->state = bs->state;
     mark->next = bs->marks;
     bs->marks = mark;
@@ -1485,7 +1455,7 @@ br_mark_e(BitstreamReader* bs)
         bs->marks_used = bs->marks_used->next;
     }
 
-    mark->position.external = bs->input.external->buffer->buffer_position;
+    mark->position.external = bs->input.external->buffer->window_start;
     mark->state = bs->state;
     mark->next = bs->marks;
     bs->marks = mark;
@@ -1513,7 +1483,7 @@ void
 br_rewind_s(BitstreamReader* bs)
 {
     if (bs->marks != NULL) {
-        bs->input.substream->buffer_position = bs->marks->position.substream;
+        bs->input.substream->window_start = bs->marks->position.substream;
         bs->state = bs->marks->state;
     } else {
         fprintf(stderr, "No marks on stack to rewind!\n");
@@ -1524,7 +1494,7 @@ void
 br_rewind_e(BitstreamReader* bs)
 {
     if (bs->marks != NULL) {
-        bs->input.external->buffer->buffer_position =
+        bs->input.external->buffer->window_start =
             bs->marks->position.external;
         bs->state = bs->marks->state;
     } else {
@@ -1605,7 +1575,6 @@ br_substream_append_f(struct BitstreamReader_s *stream,
                   to_read,
                   stream->input.file) == to_read) {
             struct bs_callback *callback;
-            uint8_t* extended_buffer;
 
             /*perform callbacks on newly read bytes*/
             for (callback = stream->callbacks;
@@ -1616,14 +1585,8 @@ br_substream_append_f(struct BitstreamReader_s *stream,
                     callback->callback(fread_buffer[i], callback->data);
             }
 
-            /*extend the output stream's current buffer to fit new data*/
-            extended_buffer = buf_extend(substream->input.substream, to_read);
-
-            /*transfer data from fread buffer to extended buffer*/
-            memcpy(extended_buffer, fread_buffer, to_read);
-
-            /*complete buffer extension*/
-            substream->input.substream->buffer_size += to_read;
+            /*write new data to output buffer*/
+            buf_write(substream->input.substream, fread_buffer, to_read);
 
             bytes -= to_read;
         } else {
@@ -1638,40 +1601,36 @@ br_substream_append_s(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
                       uint32_t bytes)
 {
-    uint8_t* extended_buffer;
-    struct bs_callback *callback;
-    uint32_t i;
+    assert(substream->type = BR_SUBSTREAM);
 
-    /*byte align the input stream*/
-    stream->state = 0;
+    if (BUF_WINDOW_SIZE(stream->input.substream) >= bytes) {
+        struct bs_buffer *input = stream->input.substream;
+        const uint8_t *input_data = BUF_WINDOW_START(input);
+        struct bs_callback *callback;
 
-    /*abort if there's insufficient bytes remaining
-      in the input stream to pass to the output stream*/
-    if (BUF_REMAINING_BYTES(stream->input.substream) < bytes)
+        /*byte align the input stream*/
+        stream->state = 0;
+
+        /*transfer data from input stream's buffer to output stream's buffer*/
+        buf_write(substream->input.substream, input_data, bytes);
+
+        /*perform callbacks on read bytes*/
+        for (callback = stream->callbacks;
+             callback != NULL;
+             callback = callback->next) {
+            uint32_t i;
+
+            for (i = 0; i < bytes; i++)
+                callback->callback(input_data[i], callback->data);
+        }
+
+        /*remove bytes from input stream's buffer*/
+        input->window_start += bytes;
+    } else {
+        /*abort if there's insufficient bytes remaining
+          in the input stream to pass to the output stream*/
         br_abort(stream);
-
-    /*extend the output stream's current buffer to fit additional bytes*/
-    extended_buffer = buf_extend(substream->input.substream, bytes);
-
-    /*copy the requested bytes from the input buffer to the output buffer*/
-    memcpy(extended_buffer,
-           stream->input.substream->buffer +
-           stream->input.substream->buffer_position,
-           bytes);
-
-    /*advance the input buffer past the requested bytes*/
-    stream->input.substream->buffer_position += bytes;
-
-    /*perform callbacks on bytes in the extended buffer*/
-    for (callback = stream->callbacks;
-         callback != NULL;
-         callback = callback->next) {
-        for (i = 0; i < bytes; i++)
-            callback->callback(extended_buffer[i], callback->data);
     }
-
-    /*complete buffer extension*/
-    substream->input.substream->buffer_size += bytes;
 }
 
 void
@@ -1692,7 +1651,6 @@ br_substream_append_e(struct BitstreamReader_s *stream,
                      (unsigned)to_read,
                      stream->input.external) == (unsigned)to_read) {
             struct bs_callback *callback;
-            uint8_t* extended_buffer;
 
             /*perform callbacks on newly read bytes*/
             for (callback = stream->callbacks;
@@ -1703,14 +1661,8 @@ br_substream_append_e(struct BitstreamReader_s *stream,
                     callback->callback(fread_buffer[i], callback->data);
             }
 
-            /*extend the output stream's current buffer to fit new data*/
-            extended_buffer = buf_extend(substream->input.substream, to_read);
-
-            /*transfer data from fread buffer to extended buffer*/
-            memcpy(extended_buffer, fread_buffer, to_read);
-
-            /*complete buffer extension*/
-            substream->input.substream->buffer_size += to_read;
+            /*write new data to output buffer*/
+            buf_write(substream->input.substream, fread_buffer, to_read);
 
             bytes -= to_read;
         } else {
@@ -2604,8 +2556,8 @@ bw_bits_written_f_p_c(BitstreamWriter* bs)
 unsigned int
 bw_bits_written_r(BitstreamWriter* bs)
 {
-    return ((bs->output.buffer->buffer_size -
-             bs->output.buffer->buffer_position) * 8) + bs->buffer_size;
+    return ((bs->output.buffer->window_end -
+             bs->output.buffer->window_start) * 8) + bs->buffer_size;
 }
 
 unsigned int
@@ -2638,7 +2590,7 @@ bw_flush_e(BitstreamWriter* bs)
 {
     bs->output.external->write(bs->output.external->user_data,
                                bs->output.external->buffer);
-    bs->output.external->buffer->buffer_size = 0;
+    bs->output.external->buffer->window_end = 0;
     bs->output.external->flush(bs->output.external->user_data);
 }
 
@@ -2868,10 +2820,10 @@ bw_etry(BitstreamWriter *bs)
 
 
 void
-bw_dump_bytes(BitstreamWriter* target, uint8_t* buffer, unsigned int total) {
+bw_dump_bytes(BitstreamWriter* target,
+              const uint8_t* buffer, unsigned int total) {
     unsigned int i;
     struct bs_callback* callback;
-    uint8_t* target_buffer;
 
     if (bw_closed(target))
         bw_abort(target);
@@ -2892,9 +2844,7 @@ bw_dump_bytes(BitstreamWriter* target, uint8_t* buffer, unsigned int total) {
                 target->write(target, 8, buffer[i]);
             break;
         case BW_RECORDER:
-            target_buffer = buf_extend(target->output.buffer, total);
-            memcpy(target_buffer, buffer, total);
-            target->output.buffer->buffer_size += total;
+            buf_write(target->output.buffer, buffer, (uint32_t)total);
             break;
         case BW_ACCUMULATOR:
             target->output.accumulator += (total * 8);
@@ -2925,8 +2875,8 @@ bw_rec_copy(BitstreamWriter* target, BitstreamWriter* source)
 
     /*dump all the bytes from our internal buffer*/
     bw_dump_bytes(target,
-                  source->output.buffer->buffer,
-                  source->output.buffer->buffer_size);
+                  BUF_WINDOW_START(source->output.buffer),
+                  BUF_WINDOW_SIZE(source->output.buffer));
 
     /*then dump remaining bits (if any) with a partial write() call*/
     if (source->buffer_size > 0)
@@ -2941,20 +2891,15 @@ bw_rec_split(BitstreamWriter* target,
              BitstreamWriter* remaining,
              BitstreamWriter* source,
              unsigned int total_bytes) {
-    uint8_t* buffer;
-    uint32_t buffer_size;
-    unsigned int to_target;
-    unsigned int to_remaining;
+    const uint8_t* buffer = BUF_WINDOW_START(source->output.buffer);
+    const uint32_t buffer_size = BUF_WINDOW_SIZE(source->output.buffer);
+    const unsigned int to_target = MIN(total_bytes, buffer_size);
+    const unsigned int to_remaining = buffer_size - to_target;
 
     assert(source->type == BW_RECORDER);
 
     if (bw_closed(target) || bw_closed(remaining) || bw_closed(source))
         bw_abort(source);
-
-    buffer = source->output.buffer->buffer;
-    buffer_size = source->output.buffer->buffer_size;
-    to_target = MIN(total_bytes, buffer_size);
-    to_remaining = buffer_size - to_target;
 
     /*first, dump up to "total_bytes" from source to "target"
       if available*/
@@ -2976,14 +2921,25 @@ bw_rec_split(BitstreamWriter* target,
         } else {
             /*if remaining is the same as source,
               shift source's output buffer down*/
-            memmove(buffer, buffer + to_target, to_remaining);
-            source->output.buffer->buffer_size -= to_target;
+            memmove(BUF_WINDOW_START(remaining->output.buffer),
+                    buffer + to_target,
+                    to_remaining);
+            remaining->output.buffer->window_end -= to_target;
         }
     }
 
     return to_target;
 }
 
+void
+bw_reset_recorder(BitstreamWriter* bs)
+{
+    assert(bs->type == BW_RECORDER);
+
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    buf_reset(bs->output.buffer);
+}
 
 void
 bw_swap_records(BitstreamWriter* a, BitstreamWriter* b)
@@ -3010,69 +2966,57 @@ struct bs_buffer*
 buf_new(void)
 {
     struct bs_buffer* stream = malloc(sizeof(struct bs_buffer));
-    stream->buffer_size = 0;
-    stream->buffer_total_size = 1;
-    stream->buffer = malloc(stream->buffer_total_size);
-    stream->buffer_position = 0;
+    stream->data = malloc(1);
+    stream->data_size = 1;
+    stream->window_start = 0;
+    stream->window_end = 0;
     stream->mark_in_progress = 0;
     return stream;
 }
 
-uint8_t*
-buf_extend(struct bs_buffer *stream, uint32_t data_size)
+void
+buf_resize(struct bs_buffer *stream, uint32_t additional_bytes)
 {
-    uint32_t remaining_bytes;
-    uint8_t* extended_buffer;
-
-    remaining_bytes = stream->buffer_total_size - stream->buffer_size;
-
-    assert(stream->buffer_total_size >= stream->buffer_size);
-
-    if (stream->mark_in_progress) {
-        /*we need to be able to rewind to any point in the buffer
-          so it can only be extended if space is needed*/
-        if (data_size > remaining_bytes) {
-            while (data_size > remaining_bytes) {
-                stream->buffer_total_size *= 2;
-                remaining_bytes = (stream->buffer_total_size -
-                                   stream->buffer_size);
-            }
-            stream->buffer = realloc(stream->buffer, stream->buffer_total_size);
+    /*only perform resize if space actually needed*/
+    if (additional_bytes > (stream->data_size - stream->window_end)) {
+        if (!stream->mark_in_progress && stream->window_start) {
+            /*we don't need to rewind the buffer
+              so shift window down, if possible,
+              before extending buffer to add more space*/
+            memmove(stream->data,
+                    BUF_WINDOW_START(stream),
+                    BUF_WINDOW_SIZE(stream));
+            stream->window_end -= stream->window_start;
+            stream->window_start = 0;
         }
-    } else {
-        /*we don't need to rewind the buffer,
-          so bytes at the beginning can be discarded
-          if space is needed to extend it*/
-        if (data_size > remaining_bytes) {
-            if (data_size > (remaining_bytes + stream->buffer_position)) {
-                /*if there's not enough bytes to recycle,
-                  just extended the buffer outright*/
-                while (data_size >
-                       (remaining_bytes + stream->buffer_position)) {
-                    stream->buffer_total_size *= 2;
-                    remaining_bytes = (stream->buffer_total_size -
-                                       stream->buffer_size);
-                }
-                stream->buffer = realloc(stream->buffer,
-                                         stream->buffer_total_size);
-            } else {
-                /*if there are enough bytes to recycle,
-                  shift the buffer down and reuse them
-                  if the buffer position is incremented*/
-                if (stream->buffer_position > 0) {
-                    memmove(stream->buffer,
-                            stream->buffer + stream->buffer_position,
-                            stream->buffer_size - stream->buffer_position);
-                    stream->buffer_size -= stream->buffer_position;
-                    stream->buffer_position = 0;
-                }
+
+        if (additional_bytes > (stream->data_size - stream->window_end)) {
+            /*only reallocate more space if needed
+              but do so in multiples of 2*/
+            while (additional_bytes > (stream->data_size -
+                                       stream->window_end)) {
+                stream->data_size *= 2;
             }
+            stream->data = realloc(stream->data, stream->data_size);
         }
     }
+}
 
-    extended_buffer = stream->buffer + stream->buffer_size;
+void
+buf_write(struct bs_buffer *stream, const uint8_t* data, uint32_t data_size)
+{
+    buf_resize(stream, data_size);
+    memcpy(BUF_WINDOW_END(stream), data, (size_t)data_size);
+    stream->window_end += data_size;
+}
 
-    return extended_buffer;
+uint32_t
+buf_read(struct bs_buffer *stream, uint8_t *data, uint32_t data_size)
+{
+    const uint32_t to_read = MIN(data_size, BUF_WINDOW_SIZE(stream));
+    memcpy(data, BUF_WINDOW_START(stream), to_read);
+    stream->window_start += to_read;
+    return to_read;
 }
 
 void
@@ -3080,52 +3024,47 @@ buf_copy(const struct bs_buffer *source, struct bs_buffer *target)
 {
     assert(target->mark_in_progress == 0);
 
-    if (target->buffer_total_size < source->buffer_size) {
-        target->buffer_total_size = source->buffer_size;
-        target->buffer = realloc(target->buffer,
-                                 target->buffer_total_size * sizeof(uint8_t));
+    if (target->data_size < source->data_size) {
+        target->data_size = source->data_size;
+        target->data = realloc(target->data, target->data_size);
     }
 
-    memcpy(target->buffer, source->buffer, source->buffer_size);
-    target->buffer_size = source->buffer_size;
-    target->buffer_position = source->buffer_position;
+    memcpy(target->data, source->data, source->data_size);
+    target->window_start = source->window_start;
+    target->window_end = source->window_end;
 }
 
 void
-buf_append(const struct bs_buffer *source, struct bs_buffer* target)
+buf_extend(const struct bs_buffer *source, struct bs_buffer* target)
 {
-    const uint32_t to_write = source->buffer_size - source->buffer_position;
-    uint8_t* appended = buf_extend(target, to_write);
-    memcpy(appended, source->buffer + source->buffer_position, to_write);
-    target->buffer_size += to_write;
+    buf_write(target,
+              BUF_WINDOW_START(source),
+              BUF_WINDOW_SIZE(source));
 }
 
 void
 buf_reset(struct bs_buffer *stream)
 {
-    stream->buffer_size = 0;
-    stream->buffer_position = 0;
+    stream->window_start = stream->window_end = 0;
     stream->mark_in_progress = 0;
 }
 
 int
 buf_getc(struct bs_buffer *stream)
 {
-    if (stream->buffer_position < stream->buffer_size)
-        return stream->buffer[stream->buffer_position++];
+    if (stream->window_start < stream->window_end)
+        return stream->data[stream->window_start++];
     else
         return EOF;
 }
 
 int
 buf_putc(int i, struct bs_buffer *stream) {
-    if (stream->buffer_size >= stream->buffer_total_size) {
-        stream->buffer_total_size *= 2;
-        stream->buffer = realloc(stream->buffer,
-                                 sizeof(uint8_t) * stream->buffer_total_size);
+    if (stream->window_end >= stream->data_size) {
+        buf_resize(stream, 1);
     }
 
-    stream->buffer[stream->buffer_size++] = (uint8_t)i;
+    stream->data[stream->window_end++] = (uint8_t)i;
 
     return i;
 }
@@ -3133,8 +3072,7 @@ buf_putc(int i, struct bs_buffer *stream) {
 void
 buf_close(struct bs_buffer *stream)
 {
-    if (stream->buffer != NULL)
-        free(stream->buffer);
+    free(stream->data);
     free(stream);
 }
 
@@ -3163,10 +3101,10 @@ ext_getc(struct br_external_input* stream)
 {
     struct bs_buffer* buffer = stream->buffer;
 
-    if (buffer->buffer_position < buffer->buffer_size) {
+    if (buffer->window_start < buffer->window_end) {
         /*if there's enough bytes in the buffer,
           simply return the next byte in the buffer*/
-        return buffer->buffer[buffer->buffer_position++];
+        return buffer->data[buffer->window_start++];
     } else {
         /*otherwise, call the read() method on our reader object
           to get more bytes for our buffer*/
@@ -3174,16 +3112,14 @@ ext_getc(struct br_external_input* stream)
         if (!buffer->mark_in_progress) {
             /*if the stream has no mark,
               reset the empty buffer prior to reading new data*/
-
-            buffer->buffer_size = 0;
-            buffer->buffer_position = 0;
+            buf_reset(buffer);
         }
 
         if (!stream->read(stream->user_data, buffer)) {
             /*read successful,
               so return next byte in new buffer - if any*/
-            if (buffer->buffer_position < buffer->buffer_size) {
-                return buffer->buffer[buffer->buffer_position++];
+            if (buffer->window_start < buffer->window_end) {
+                return buffer->data[buffer->window_start++];
             } else {
                 return EOF;
             }
@@ -3195,33 +3131,24 @@ ext_getc(struct br_external_input* stream)
 }
 
 unsigned
-ext_read(uint8_t* bytes, unsigned byte_count,
+ext_read(uint8_t* bytes,
+         unsigned byte_count,
          struct br_external_input* stream)
 {
     struct bs_buffer* buffer = stream->buffer;
 
     /*if there's enough bytes in the buffer*/
-    if ((buffer->buffer_position + byte_count) < buffer->buffer_size) {
-        /*simply copy them directly to "bytes"*/
-        memcpy(bytes,
-               buffer->buffer + buffer->buffer_position,
-               byte_count);
+    if (byte_count <= BUF_WINDOW_SIZE(buffer)) {
+        /*simply copy them directly to "bytes"
+          and return the amount read*/
 
-        /*increment the buffer position*/
-        buffer->buffer_position += byte_count;
-
-        /*and return the amount read*/
-        return byte_count;
+        return (unsigned)buf_read(buffer, bytes, byte_count);
     } else {
-        uint32_t to_copy;
-
         /*otherwise, populate the buffer with read() calls*/
-        while ((buffer->buffer_position + byte_count) > buffer->buffer_size) {
-            const uint32_t old_size = buffer->buffer_size;
-            const uint32_t old_position = buffer->buffer_position;
+        while (byte_count > BUF_WINDOW_SIZE(buffer)) {
+            const uint32_t old_size = BUF_WINDOW_SIZE(buffer);
             if (!stream->read(stream->user_data, buffer)) {
-                if ((buffer->buffer_size == old_size) &&
-                    (buffer->buffer_position == old_position)) {
+                if (BUF_WINDOW_SIZE(buffer) == old_size) {
                     /*unless the data runs out*/
                     break;
                 } else {
@@ -3233,18 +3160,9 @@ ext_read(uint8_t* bytes, unsigned byte_count,
             }
         }
 
-        /*then copy as much of the buffer as possible to "bytes"*/
-        to_copy = MIN(BUF_REMAINING_BYTES(buffer), byte_count);
-
-        memcpy(bytes,
-               buffer->buffer + buffer->buffer_position,
-               to_copy);
-
-        /*increment the buffer position*/
-        buffer->buffer_position += to_copy;
-
-        /*and return the amount actually read*/
-        return to_copy;
+        /*read as much of the buffer as necessary to "bytes"
+          and return the amount actually read*/
+        return (unsigned)buf_read(buffer, bytes, (uint32_t)byte_count);
     }
 }
 
@@ -3290,17 +3208,17 @@ ext_putc(int i, struct bw_external_output* stream)
 {
     struct bs_buffer* buffer = stream->buffer;
 
-    if (buffer->buffer_size == stream->buffer_size) {
+    if (BUF_WINDOW_SIZE(buffer) == stream->buffer_size) {
+        /*internal buffer size has reached the stream's buffer size,
+          perform a write and reset the buffer before writing byte*/
         stream->write(stream->user_data, buffer);
-        buffer->buffer_size = 0;
-    }
-    if (buffer->buffer_size >= buffer->buffer_total_size) {
-        buffer->buffer_total_size *= 2;
-        buffer->buffer = realloc(buffer->buffer,
-                                 sizeof(uint8_t) * buffer->buffer_total_size);
+        buf_reset(buffer);
+    } else if (buffer->window_end >= buffer->data_size) {
+        buf_resize(buffer, 1);
     }
 
-    buffer->buffer[buffer->buffer_size++] = (uint8_t)i;
+    buffer->data[buffer->window_end++] = (uint8_t)i;
+
     return 0;
 }
 
@@ -3309,7 +3227,7 @@ ext_flush_w(struct bw_external_output* stream)
 {
     struct bs_buffer* buffer = stream->buffer;
     stream->write(stream->user_data, buffer);
-    buffer->buffer_size = 0;
+    buf_reset(buffer);
     stream->flush(stream->user_data);
 }
 
@@ -5713,14 +5631,14 @@ int ext_fread(void* user_data,
               struct bs_buffer* buffer)
 {
     const static uint32_t desired_size = 2;
-    const uint32_t bytes_read = (uint32_t)fread(buf_extend(buffer,
-                                                           desired_size),
+    uint8_t data[2];
+    const uint32_t bytes_read = (uint32_t)fread(data,
                                                 sizeof(uint8_t),
                                                 desired_size,
                                                 (FILE*)user_data);
 
     if (bytes_read > 0) {
-        buffer->buffer_size += bytes_read;
+        buf_write(buffer, data, bytes_read);
         return 0;
     } else {
         return 1;
@@ -5740,7 +5658,9 @@ void ext_ffree(void* user_data)
 int ext_fwrite(void* user_data,
                const struct bs_buffer* buffer)
 {
-    fwrite(buffer->buffer, sizeof(uint8_t), buffer->buffer_size,
+    fwrite(BUF_WINDOW_START(buffer),
+           sizeof(uint8_t),
+           BUF_WINDOW_SIZE(buffer),
            (FILE*)user_data);
 
     return 0;

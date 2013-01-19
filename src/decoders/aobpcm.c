@@ -52,8 +52,7 @@ int
 aobpcm_packet_empty(AOBPCMDecoder* decoder,
                     struct bs_buffer* packet)
 {
-    return (packet->buffer_size -
-            packet->buffer_position) < decoder->chunk_size;
+    return BUF_WINDOW_SIZE(packet) < decoder->chunk_size;
 }
 
 void
@@ -105,7 +104,7 @@ read_aobpcm(AOBPCMDecoder* decoder,
 
     assert(framelist->len == channels);
 
-    while ((packet->buffer_size - packet->buffer_position) >= chunk_size) {
+    while (BUF_WINDOW_SIZE(packet) >= chunk_size) {
         uint8_t unswapped[36];
         uint8_t* unswapped_ptr = unswapped;
         /*swap read bytes to proper order*/

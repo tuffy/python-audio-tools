@@ -242,7 +242,7 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, unsigned PTS_ticks)
                             self->bits_per_sample,
                             self->channel_count);
 
-        buf_append(packet_data, self->frames);
+        buf_extend(packet_data, self->frames);
 
     } else if (next_packet.codec_ID == MLP_CODEC_ID) {
         /*if the packet is MLP,
@@ -286,7 +286,7 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, unsigned PTS_ticks)
                 r->close(r);
 
                 buf_reset(self->frames);
-                buf_append(packet_data, self->frames);
+                buf_extend(packet_data, self->frames);
             } else {
                 /*if not, append packet data to any unconsumed data
                   and leave Title's stream attributes as they were*/
@@ -296,7 +296,7 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, unsigned PTS_ticks)
                 br_etry(r);
                 r->close(r);
 
-                buf_append(packet_data, self->frames);
+                buf_extend(packet_data, self->frames);
             }
         } else {
             /*if I/O error reading major sync,
@@ -308,7 +308,7 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, unsigned PTS_ticks)
             br_etry(r);
             r->close(r);
 
-            buf_append(packet_data, self->frames);
+            buf_extend(packet_data, self->frames);
         }
 
     } else {
@@ -368,7 +368,7 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
 
             /*FIXME - ensure packet has same format as PCM*/
 
-            buf_append(packet_data, self->frames);
+            buf_extend(packet_data, self->frames);
         }
 
         /*FIXME - make this thread friendly*/
@@ -385,7 +385,7 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
 
             /*FIXME - ensure packet has same format as MLP*/
 
-            buf_append(packet_data, self->frames);
+            buf_extend(packet_data, self->frames);
         }
 
         /*FIXME - make this thread friendly*/
@@ -605,9 +605,12 @@ read_sector(DVDA_Sector_Reader* reader,
 {
     if (reader->current.sector <= reader->end_sector) {
         DVDA_AOB* aob = reader->current.aob;
-        uint8_t* sector_data = buf_extend(sector, SECTOR_SIZE);
-        size_t bytes_read = fread(sector_data, sizeof(uint8_t), SECTOR_SIZE,
-                                  aob->file);
+        static uint8_t sector_data[SECTOR_SIZE];
+        const size_t bytes_read = fread(sector_data,
+                                        sizeof(uint8_t),
+                                        SECTOR_SIZE,
+                                        aob->file);
+        buf_write(sector, sector_data, (uint32_t)bytes_read);
 
         if (bytes_read == SECTOR_SIZE) {
             /*sector read successfully*/
@@ -621,8 +624,6 @@ read_sector(DVDA_Sector_Reader* reader,
 #endif
 
             /*then move on to next sector*/
-
-            sector->buffer_size += SECTOR_SIZE;
             reader->current.sector++;
             if (reader->current.sector > aob->end_sector) {
                 /*move on to next AOB in set, if any*/
@@ -693,7 +694,7 @@ read_audio_packet(DVDA_Packet_Reader* packets,
         struct bs_buffer* buffer = reader->input.substream;
         buf_reset(buffer);
         if (!read_sector(packets->sectors, buffer)) {
-            if (buffer->buffer_size == 0) {
+            if (BUF_WINDOW_SIZE(buffer) == 0) {
                 return 0;
             }
 
@@ -732,11 +733,10 @@ read_audio_packet(DVDA_Packet_Reader* packets,
                 }
 
                 /*read packets from sector until sector is empty*/
-                while (buffer->buffer_position < buffer->buffer_size) {
+                while (BUF_WINDOW_SIZE(buffer) > 0) {
                     unsigned start_code;
                     unsigned stream_id;
                     unsigned packet_length;
-                    uint8_t* packet_data_buf;
 
                     reader->parse(reader, "24u 8u 16u",
                                   &start_code, &stream_id, &packet_length);
@@ -776,11 +776,13 @@ read_audio_packet(DVDA_Packet_Reader* packets,
                         packet_length -= 3 + pad1_size + 4 + pad2_size;
 
                         buf_reset(packet_data);
-                        packet_data_buf = buf_extend(packet_data,
-                                                     packet_length);
-                        reader->read_bytes(reader,
-                                           packet_data_buf, packet_length);
-                        packet_data->buffer_size += packet_length;
+                        while (packet_length) {
+                            static uint8_t buffer[4096];
+                            const unsigned to_read = MIN(packet_length, 4096);
+                            reader->read_bytes(reader, buffer, to_read);
+                            buf_write(packet_data, buffer, to_read);
+                            packet_length -= to_read;
+                        }
 
                         audio_packet_found = 1;
                     } else {
@@ -970,7 +972,7 @@ int main(int argc, char* argv[]) {
 
                 /*FIXME - ensure packet has same format as PCM*/
 
-                buf_append(packet_data, title.frames);
+                buf_extend(packet_data, title.frames);
             }
 
             /*FIXME - make this thread friendly*/
@@ -989,7 +991,7 @@ int main(int argc, char* argv[]) {
 
                 /*FIXME - ensure packet has same format as MLP*/
 
-                buf_append(packet_data, title.frames);
+                buf_extend(packet_data, title.frames);
             }
 
             /*FIXME - make this thread friendly*/
