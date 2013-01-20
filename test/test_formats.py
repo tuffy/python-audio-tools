@@ -2241,7 +2241,7 @@ class ALACFileTest(LosslessFileTest):
         finally:
             temp.close()
 
-    def __test_reader__(self, pcmreader, block_size=4096):
+    def __test_reader__(self, pcmreader, total_pcm_frames, block_size=4096):
         if (not audiotools.BIN.can_execute(audiotools.BIN["alac"])):
             self.assert_(False,
                          "reference ALAC binary alac(1) required for this test")
@@ -2279,7 +2279,45 @@ class ALACFileTest(LosslessFileTest):
                           md5sum_reference.hexdigest(),
                           pcmreader.hexdigest()))
 
-    def __test_reader_nonalac__(self, pcmreader, block_size=4096):
+        #then, perform test again using from_pcm()
+        #with total_pcm_frames indicated
+        pcmreader.reset()
+
+        self.audio_class.from_pcm(temp_file.name,
+                                  pcmreader,
+                                  total_pcm_frames=total_pcm_frames,
+                                  block_size=block_size)
+
+        alac = audiotools.open(temp_file.name)
+        self.assert_(alac.total_frames() > 0)
+
+        #ensure the ALAC-encoded file
+        #has the same MD5 signature as pcmreader once decoded
+        md5sum_decoder = md5()
+        d = alac.to_pcm()
+        f = d.read(audiotools.FRAMELIST_SIZE)
+        while (len(f) > 0):
+            md5sum_decoder.update(f.to_bytes(False, True))
+            f = d.read(audiotools.FRAMELIST_SIZE)
+        d.close()
+        self.assertEqual(md5sum_decoder.digest(), pcmreader.digest())
+
+        #then compare our .to_pcm() output
+        #with that of the ALAC reference decoder
+        reference = subprocess.Popen([audiotools.BIN["alac"],
+                                      "-r", temp_file.name],
+                                     stdout=subprocess.PIPE)
+        md5sum_reference = md5()
+        audiotools.transfer_data(reference.stdout.read, md5sum_reference.update)
+        self.assertEqual(reference.wait(), 0)
+        self.assertEqual(md5sum_reference.digest(), pcmreader.digest(),
+                         "mismatch decoding %s from reference (%s != %s)" %
+                         (repr(pcmreader),
+                          md5sum_reference.hexdigest(),
+                          pcmreader.hexdigest()))
+
+    def __test_reader_nonalac__(self, pcmreader, total_pcm_frames,
+                                block_size=4096):
         #This is for multichannel testing
         #since alac(1) doesn't handle them yet.
         #Unfortunately, it relies only on our built-in decoder
@@ -2288,6 +2326,27 @@ class ALACFileTest(LosslessFileTest):
         temp_file = tempfile.NamedTemporaryFile(suffix=".alac")
         self.audio_class.from_pcm(temp_file.name,
                                   pcmreader,
+                                  block_size=block_size)
+
+        alac = audiotools.open(temp_file.name)
+        self.assert_(alac.total_frames() > 0)
+
+        #first, ensure the ALAC-encoded file
+        #has the same MD5 signature as pcmreader once decoded
+        md5sum_decoder = md5()
+        d = alac.to_pcm()
+        f = d.read(audiotools.FRAMELIST_SIZE)
+        while (len(f) > 0):
+            md5sum_decoder.update(f.to_bytes(False, True))
+            f = d.read(audiotools.FRAMELIST_SIZE)
+        d.close()
+        self.assertEqual(md5sum_decoder.digest(), pcmreader.digest())
+
+        #perform test again with total_pcm_frames indicated
+        pcmreader.reset()
+        self.audio_class.from_pcm(temp_file.name,
+                                  pcmreader,
+                                  total_pcm_frames=total_pcm_frames,
                                   block_size=block_size)
 
         alac = audiotools.open(temp_file.name)
@@ -2447,10 +2506,11 @@ class ALACFileTest(LosslessFileTest):
     @FORMAT_ALAC
     def test_small_files(self):
         for g in [test_streams.Generate01,
-                  test_streams.Generate02,
-                  test_streams.Generate03,
+                  test_streams.Generate02]:
+            self.__test_reader__(g(44100), 1, block_size=1152)
+        for g in [test_streams.Generate03,
                   test_streams.Generate04]:
-            self.__test_reader__(g(44100), block_size=1152)
+            self.__test_reader__(g(44100), 5, block_size=1152)
 
     @FORMAT_ALAC
     def test_full_scale_deflection(self):
@@ -2465,19 +2525,21 @@ class ALACFileTest(LosslessFileTest):
                             test_streams.PATTERN07]:
                 self.__test_reader__(
                     test_streams.MD5Reader(fsd(pattern, 100)),
+                    len(pattern) * 100,
                     block_size=1152)
 
     @FORMAT_ALAC
     def test_sines(self):
         for g in self.__stream_variations__():
-            self.__test_reader__(g, block_size=1152)
+            self.__test_reader__(g, 200000, block_size=1152)
 
         for g in self.__multichannel_stream_variations__():
-            self.__test_reader_nonalac__(g, block_size=1152)
+            self.__test_reader_nonalac__(g, 200000, block_size=1152)
 
     @FORMAT_ALAC
     def test_wasted_bps(self):
         self.__test_reader__(test_streams.WastedBPS16(1000),
+                             1000,
                              block_size=1152)
 
     @FORMAT_ALAC
@@ -2489,6 +2551,7 @@ class ALACFileTest(LosslessFileTest):
             self.__test_reader__(test_streams.MD5Reader(
                     test_streams.FrameListReader(noise,
                                                  44100, 1, 16)),
+                                 len(noise),
                                  block_size=block_size)
 
     @FORMAT_ALAC
@@ -2506,6 +2569,7 @@ class ALACFileTest(LosslessFileTest):
                                 channels=channels,
                                 channel_mask=mask,
                                 bits_per_sample=bps)),
+                        65536,
                         block_size=blocksize)
 
     @FORMAT_ALAC
@@ -2517,6 +2581,7 @@ class ALACFileTest(LosslessFileTest):
                         sample_rate=44100,
                         channels=2,
                         bits_per_sample=16)),
+                pcm_frames,
                 block_size=block_size)
 
         for pcm_frames in [31, 32, 33, 34, 35, 2046, 2047, 2048, 2049, 2050]:
@@ -2542,6 +2607,7 @@ class ALACFileTest(LosslessFileTest):
     def test_frame_header_variations(self):
         self.__test_reader__(test_streams.Sine16_Mono(200000, 96000,
                                                       441.0, 0.61, 661.5, 0.37),
+                             200000,
                              block_size=16)
 
         #The alac(1) decoder I'm using as a reference can't handle
@@ -2557,19 +2623,22 @@ class ALACFileTest(LosslessFileTest):
 
         self.__test_reader__(test_streams.Sine16_Mono(200000, 9,
                                                       441.0, 0.61, 661.5, 0.37),
+                             200000,
                              block_size=1152)
 
         self.__test_reader__(test_streams.Sine16_Mono(200000, 90,
                                                       441.0, 0.61, 661.5, 0.37),
+                             200000,
                              block_size=1152)
 
         self.__test_reader__(test_streams.Sine16_Mono(200000, 90000,
                                                       441.0, 0.61, 661.5, 0.37),
+                             200000,
                              block_size=1152)
 
     @FORMAT_ALAC
     def test_python_codec(self):
-        def test_python_reader(pcmreader, block_size=4096):
+        def test_python_reader(pcmreader, total_pcm_frames, block_size=4096):
             #ALAC doesn't really have encoding options worth mentioning
             from audiotools.py_encoders import encode_mdat
 
@@ -2591,14 +2660,34 @@ class ALACFileTest(LosslessFileTest):
                     ALACDecoder1(temp_file.name),
                     ALACDecoder2(temp_file.name)), None)
 
+            #test from_pcm() with total_pcm_frames indicated
+            pcmreader.reset()
+            audiotools.ALACAudio.from_pcm(
+                temp_file.name,
+                pcmreader,
+                total_pcm_frames=total_pcm_frames,
+                block_size=block_size,
+                encoding_function=encode_mdat)
+
+            #verify contents of file decoded by
+            #Python-based decoder against contents decoded by
+            #C-based decoder
+            from audiotools.py_decoders import ALACDecoder as ALACDecoder1
+            from audiotools.decoders import ALACDecoder as ALACDecoder2
+
+            self.assertEqual(audiotools.pcm_frame_cmp(
+                    ALACDecoder1(temp_file.name),
+                    ALACDecoder2(temp_file.name)), None)
+
             temp_file.close()
 
         #test small files
         for g in [test_streams.Generate01,
-                  test_streams.Generate02,
-                  test_streams.Generate03,
+                  test_streams.Generate02]:
+            test_python_reader(g(44100), 1, block_size=1152)
+        for g in [test_streams.Generate03,
                   test_streams.Generate04]:
-            test_python_reader(g(44100), block_size=1152)
+            test_python_reader(g(44100), 5, block_size=1152)
 
         #test full scale deflection
         for (bps, fsd) in [(16, test_streams.fsd16),
@@ -2610,7 +2699,9 @@ class ALACFileTest(LosslessFileTest):
                             test_streams.PATTERN05,
                             test_streams.PATTERN06,
                             test_streams.PATTERN07]:
-                test_python_reader(fsd(pattern, 100), block_size=1152)
+                test_python_reader(fsd(pattern, 100),
+                                   len(pattern) * 100,
+                                   block_size=1152)
 
         #test sines
         for g in [test_streams.Sine16_Mono(5000, 48000,
@@ -2629,7 +2720,7 @@ class ALACFileTest(LosslessFileTest):
                                              441.0, 0.50, 441.0, 0.49, 1.0),
                   test_streams.Sine24_Stereo(5000, 96000,
                                              441.0, 0.50, 882.0, 0.49, 1.0)]:
-            test_python_reader(g, block_size=1152)
+            test_python_reader(g, 5000, block_size=1152)
 
         for g in [test_streams.Simple_Sine(5000, 44100, 0x0007, 16,
                                            (6400, 10000),
@@ -2710,10 +2801,11 @@ class ALACFileTest(LosslessFileTest):
                                            (7864320, 35000),
                                            (7000000, 40000),
                                            (6000000, 45000))]:
-            test_python_reader(g, block_size=1152)
+            test_python_reader(g, 5000, block_size=1152)
 
         #test wasted BPS
         test_python_reader(test_streams.WastedBPS16(1000),
+                           1000,
                            block_size=1152)
 
         #test block sizes
@@ -2721,10 +2813,11 @@ class ALACFileTest(LosslessFileTest):
 
         for block_size in [16, 17, 18, 19, 20, 21, 22, 23, 24,
                            25, 26, 27, 28, 29, 30, 31, 32, 33]:
-            test_python_reader(test_streams.MD5Reader(
-                    test_streams.FrameListReader(noise,
-                                                 44100, 1, 16)),
-                               block_size=block_size)
+            test_python_reader(
+                test_streams.MD5Reader(
+                    test_streams.FrameListReader(noise, 44100, 1, 16)),
+                len(noise),
+                block_size=block_size)
 
         #test noise
         for (channels, mask) in [
@@ -2740,6 +2833,7 @@ class ALACFileTest(LosslessFileTest):
                             channels=channels,
                             channel_mask=mask,
                             bits_per_sample=bps),
+                        4097,
                         block_size=blocksize)
 
         #test fractional
@@ -2756,27 +2850,32 @@ class ALACFileTest(LosslessFileTest):
                         sample_rate=44100,
                         channels=2,
                         bits_per_sample=16),
+                                   frame_count,
                                    block_size=block_size)
 
         #test frame header variations
         test_python_reader(
             test_streams.Sine16_Mono(5000, 96000,
                                      441.0, 0.61, 661.5, 0.37),
+            5000,
             block_size=16)
 
         test_python_reader(
             test_streams.Sine16_Mono(5000, 9,
                                      441.0, 0.61, 661.5, 0.37),
+            5000,
             block_size=1152)
 
         test_python_reader(
             test_streams.Sine16_Mono(5000, 90,
                                      441.0, 0.61, 661.5, 0.37),
+            5000,
             block_size=1152)
 
         test_python_reader(
             test_streams.Sine16_Mono(5000, 90000,
                                      441.0, 0.61, 661.5, 0.37),
+            5000,
             block_size=1152)
 
 
@@ -4739,7 +4838,8 @@ class ShortenFileTest(TestForeignWaveChunks,
     def __test_reader__(self, pcmreader, **encode_options):
         if (not audiotools.BIN.can_execute(audiotools.BIN["shorten"])):
             self.assert_(False,
-                         "reference Shorten binary shorten(1) required for this test")
+                         "reference Shorten binary shorten(1) " +
+                         "required for this test")
 
         temp_file = tempfile.NamedTemporaryFile(suffix=".shn")
 
@@ -4794,7 +4894,6 @@ class ShortenFileTest(TestForeignWaveChunks,
                 audiotools.WaveAudio(temp_wav_file2.name).to_pcm()),
                          None)
 
-        temp_file.close()
         temp_wav_file1.close()
         temp_wav_file2.close()
 
@@ -4922,7 +5021,7 @@ class ShortenFileTest(TestForeignWaveChunks,
 
     @FORMAT_SHORTEN
     def test_python_codec(self):
-        def test_python_reader(pcmreader, block_size=256):
+        def test_python_reader(pcmreader, total_pcm_frames, block_size=256):
             from audiotools.py_encoders import encode_shn
 
             temp_file = tempfile.NamedTemporaryFile(suffix=".shn")
@@ -4939,15 +5038,29 @@ class ShortenFileTest(TestForeignWaveChunks,
                 SHNDecoder1(temp_file.name),
                 SHNDecoder2(temp_file.name)), None)
 
+            #try test again, this time with total_pcm_frames indicated
+            pcmreader.reset()
+            audiotools.ShortenAudio.from_pcm(
+                temp_file.name,
+                pcmreader,
+                total_pcm_frames=total_pcm_frames,
+                block_size=block_size,
+                encoding_function=encode_shn)
+
+            self.assertEqual(audiotools.pcm_frame_cmp(
+                SHNDecoder1(temp_file.name),
+                SHNDecoder2(temp_file.name)), None)
+
             temp_file.close()
 
         #test small files
         for g in [test_streams.Generate01,
-                  test_streams.Generate02,
-                  test_streams.Generate03,
+                  test_streams.Generate02]:
+            test_python_reader(g(44100), 1, block_size=256)
+
+        for g in [test_streams.Generate03,
                   test_streams.Generate04]:
-            gen = g(44100)
-            test_python_reader(gen, block_size=256)
+            test_python_reader(g(44100), 5, block_size=256)
 
         #test full scale deflection
         for (bps, fsd) in [(8, test_streams.fsd8),
@@ -4960,7 +5073,9 @@ class ShortenFileTest(TestForeignWaveChunks,
                             test_streams.PATTERN06,
                             test_streams.PATTERN07]:
                 stream = test_streams.MD5Reader(fsd(pattern, 100))
-                test_python_reader(stream, block_size=256)
+                test_python_reader(stream,
+                                   len(pattern) * 100,
+                                   block_size=256)
 
         #test sines
         for g in [test_streams.Sine8_Mono(5000, 48000,
@@ -5015,7 +5130,7 @@ class ShortenFileTest(TestForeignWaveChunks,
                                            (21760, 25000),
                                            (26880, 30000),
                                            (30720, 35000))]:
-            test_python_reader(g, block_size=256)
+            test_python_reader(g, 5000, block_size=256)
 
         #test block sizes
         noise = struct.unpack(">32h", os.urandom(64))
@@ -5024,6 +5139,7 @@ class ShortenFileTest(TestForeignWaveChunks,
                            256, 1024]:
             test_python_reader(
                 test_streams.FrameListReader(noise, 44100, 1, 16),
+                len(noise),
                 block_size=block_size)
 
         #test noise
@@ -5045,6 +5161,7 @@ class ShortenFileTest(TestForeignWaveChunks,
                             channels=channels,
                             channel_mask=mask,
                             bits_per_sample=bps),
+                        5000,
                         block_size=block_size)
 
 
@@ -5636,12 +5753,14 @@ class WavPackFileTest(TestForeignWaveChunks,
                                      (7864320, 35000))]:
             yield stream
 
-    def __test_reader__(self, pcmreader, **encode_options):
+    def __test_reader__(self, pcmreader, total_pcm_frames, **encode_options):
         if (not audiotools.BIN.can_execute(audiotools.BIN["wvunpack"])):
             self.assert_(False,
-                         "reference WavPack binary wvunpack(1) required for this test")
+                         "reference WavPack binary wvunpack(1) " +
+                         "required for this test")
 
         temp_file = tempfile.NamedTemporaryFile(suffix=".wv")
+
         self.encode(temp_file.name,
                     audiotools.BufferedPCMReader(pcmreader),
                     **encode_options)
@@ -5669,17 +5788,51 @@ class WavPackFileTest(TestForeignWaveChunks,
             f = wavpack.read(audiotools.FRAMELIST_SIZE)
         wavpack.close()
         self.assertEqual(md5sum.digest(), pcmreader.digest())
+
+        #perform test again with total_pcm_frames indicated
+        pcmreader.reset()
+
+        self.encode(temp_file.name,
+                    audiotools.BufferedPCMReader(pcmreader),
+                    total_pcm_frames=total_pcm_frames,
+                    **encode_options)
+
+        sub = subprocess.Popen([audiotools.BIN["wvunpack"],
+                                "-vmq", temp_file.name],
+                               stdout=open(os.devnull, "wb"),
+                               stderr=open(os.devnull, "wb"))
+
+        self.assertEqual(sub.wait(), 0,
+                         "wvunpack decode error on %s with options %s" % \
+                             (repr(pcmreader),
+                              repr(encode_options)))
+
+        wavpack = self.decoder(temp_file.name)
+        self.assertEqual(wavpack.sample_rate, pcmreader.sample_rate)
+        self.assertEqual(wavpack.bits_per_sample, pcmreader.bits_per_sample)
+        self.assertEqual(wavpack.channels, pcmreader.channels)
+        self.assertEqual(wavpack.channel_mask, pcmreader.channel_mask)
+
+        md5sum = md5()
+        f = wavpack.read(audiotools.FRAMELIST_SIZE)
+        while (len(f) > 0):
+            md5sum.update(f.to_bytes(False, True))
+            f = wavpack.read(audiotools.FRAMELIST_SIZE)
+        wavpack.close()
+        self.assertEqual(md5sum.digest(), pcmreader.digest())
+
         temp_file.close()
 
     @FORMAT_WAVPACK
     def test_small_files(self):
         for opts in self.encode_opts:
             for g in [test_streams.Generate01,
-                      test_streams.Generate02,
-                      test_streams.Generate03,
+                      test_streams.Generate02]:
+                self.__test_reader__(g(44100), 1, **opts)
+            for g in [test_streams.Generate03,
                       test_streams.Generate04]:
-                gen = g(44100)
-                self.__test_reader__(gen, **opts)
+                self.__test_reader__(g(44100), 5, **opts)
+
 
     @FORMAT_WAVPACK
     def test_full_scale_deflection(self):
@@ -5695,12 +5848,16 @@ class WavPackFileTest(TestForeignWaveChunks,
                                 test_streams.PATTERN06,
                                 test_streams.PATTERN07]:
                     self.__test_reader__(
-                        test_streams.MD5Reader(fsd(pattern, 100)), **opts)
+                        test_streams.MD5Reader(fsd(pattern, 100)),
+                        len(pattern) * 100,
+                        **opts)
 
     @FORMAT_WAVPACK
     def test_wasted_bps(self):
         for opts in self.encode_opts:
-            self.__test_reader__(test_streams.WastedBPS16(1000), **opts)
+            self.__test_reader__(test_streams.WastedBPS16(1000),
+                                 1000,
+                                 **opts)
 
     @FORMAT_WAVPACK
     def test_blocksizes(self):
@@ -5718,6 +5875,7 @@ class WavPackFileTest(TestForeignWaveChunks,
                 self.__test_reader__(test_streams.MD5Reader(
                         test_streams.FrameListReader(noise,
                                                      44100, 1, 16)),
+                                     len(noise),
                                      **opts_copy)
 
     @FORMAT_WAVPACK
@@ -5746,6 +5904,7 @@ class WavPackFileTest(TestForeignWaveChunks,
                                     channels=channels,
                                     channel_mask=mask,
                                     bits_per_sample=bps)),
+                            65536,
                             **opts_copy)
 
     @FORMAT_WAVPACK
@@ -5773,6 +5932,7 @@ class WavPackFileTest(TestForeignWaveChunks,
                                     channels=channels,
                                     channel_mask=mask,
                                     bits_per_sample=bps)),
+                            65536,
                             **opts_copy)
 
     @FORMAT_WAVPACK
@@ -5784,6 +5944,7 @@ class WavPackFileTest(TestForeignWaveChunks,
                         sample_rate=44100,
                         channels=2,
                         bits_per_sample=16)),
+                pcm_frames,
                 block_size=block_size,
                 correlation_passes=5,
                 false_stereo=False,
@@ -5857,6 +6018,7 @@ class WavPackFileTest(TestForeignWaveChunks,
                                                 channels):
                     joined = MD5_Reader(Join_Reader(readers, mask))
                     self.__test_reader__(joined,
+                                         100,
                                          block_size=44100,
                                          false_stereo=false_stereo,
                                          joint_stereo=joint_stereo,
@@ -5867,7 +6029,7 @@ class WavPackFileTest(TestForeignWaveChunks,
     def test_sines(self):
         for opts in self.encode_opts:
             for g in self.__stream_variations__():
-                self.__test_reader__(g, **opts)
+                self.__test_reader__(g, 200000, **opts)
 
     @FORMAT_WAVPACK
     def test_option_variations(self):
@@ -5884,6 +6046,7 @@ class WavPackFileTest(TestForeignWaveChunks,
                                                            441.0,
                                                            0.49,
                                                            1.0),
+                                200000,
                                 block_size=block_size,
                                 false_stereo=false_stereo,
                                 wasted_bits=wasted_bits,
@@ -5892,13 +6055,32 @@ class WavPackFileTest(TestForeignWaveChunks,
 
     @FORMAT_WAVPACK
     def test_python_codec(self):
-        def test_python_reader(pcmreader, **encode_options):
+        def test_python_reader(pcmreader, total_pcm_frames, **encode_options):
             from audiotools.py_encoders import encode_wavpack
 
             #encode file using Python-based encoder
             temp_file = tempfile.NamedTemporaryFile(suffix=".wv")
+
             encode_wavpack(temp_file.name,
                            audiotools.BufferedPCMReader(pcmreader),
+                           **encode_options)
+
+            #verify contents of file decoded by
+            #Python-based decoder against contents decoded by
+            #C-based decoder
+            from audiotools.py_decoders import WavPackDecoder as WavPackDecoder1
+            from audiotools.decoders import WavPackDecoder as WavPackDecoder2
+
+            self.assertEqual(audiotools.pcm_frame_cmp(
+                    WavPackDecoder1(temp_file.name),
+                    WavPackDecoder2(temp_file.name)), None)
+
+            #redo test with total_pcm_frames indicated
+            pcmreader.reset()
+
+            encode_wavpack(temp_file.name,
+                           audiotools.BufferedPCMReader(pcmreader),
+                           total_pcm_frames=total_pcm_frames,
                            **encode_options)
 
             #verify contents of file decoded by
@@ -5916,11 +6098,11 @@ class WavPackFileTest(TestForeignWaveChunks,
         #test small files
         for opts in self.encode_opts:
             for g in [test_streams.Generate01,
-                      test_streams.Generate02,
-                      test_streams.Generate03,
+                      test_streams.Generate02]:
+                test_python_reader(g(44100), 1, **opts)
+            for g in [test_streams.Generate03,
                       test_streams.Generate04]:
-                gen = g(44100)
-                test_python_reader(gen, **opts)
+                test_python_reader(g(44100), 5, **opts)
 
         #test full scale deflection
         for opts in self.encode_opts:
@@ -5934,11 +6116,15 @@ class WavPackFileTest(TestForeignWaveChunks,
                                 test_streams.PATTERN05,
                                 test_streams.PATTERN06,
                                 test_streams.PATTERN07]:
-                    test_python_reader(fsd(pattern, 100), **opts)
+                    test_python_reader(fsd(pattern, 100),
+                                       len(pattern) * 100,
+                                       **opts)
 
         #test wasted BPS
         for opts in self.encode_opts:
-            test_python_reader(test_streams.WastedBPS16(1000), **opts)
+            test_python_reader(test_streams.WastedBPS16(1000),
+                               1000,
+                               **opts)
 
         #test block sizes
         noise = struct.unpack(">32h", os.urandom(64))
@@ -5955,6 +6141,7 @@ class WavPackFileTest(TestForeignWaveChunks,
                 test_python_reader(
                     test_streams.FrameListReader(noise,
                                                  44100, 1, 16),
+                    len(noise),
                     **opts_copy)
 
         #test silence
@@ -5971,6 +6158,7 @@ class WavPackFileTest(TestForeignWaveChunks,
                         channels=channels,
                         channel_mask=mask,
                         bits_per_sample=16),
+                    4096,
                     **opts_copy)
 
         #test noise
@@ -5987,6 +6175,7 @@ class WavPackFileTest(TestForeignWaveChunks,
                         channels=channels,
                         channel_mask=mask,
                         bits_per_sample=16),
+                    4096,
                     **opts_copy)
 
         #test fractional
@@ -6004,6 +6193,7 @@ class WavPackFileTest(TestForeignWaveChunks,
                         sample_rate=44100,
                         channels=2,
                         bits_per_sample=16),
+                                   pcm_frames,
                                    block_size=block_size,
                                    correlation_passes=5,
                                    false_stereo=False,
@@ -6092,7 +6282,7 @@ class WavPackFileTest(TestForeignWaveChunks,
                                                (5570560, 25000),
                                                (6881280, 30000),
                                                (7864320, 35000))]:
-                test_python_reader(g, **opts)
+                test_python_reader(g, 5000, **opts)
 
 
 class TTAFileTest(LosslessFileTest):
@@ -6353,7 +6543,7 @@ class TTAFileTest(LosslessFileTest):
                                      (7864320, 35000))]:
             yield stream
 
-    def __test_reader__(self, pcmreader):
+    def __test_reader__(self, pcmreader, total_pcm_frames):
         if (not audiotools.BIN.can_execute(audiotools.BIN["tta"])):
             self.assert_(
                 False,
@@ -6361,6 +6551,47 @@ class TTAFileTest(LosslessFileTest):
 
         temp_tta_file = tempfile.NamedTemporaryFile(suffix=".tta")
         self.encode(temp_tta_file.name, pcmreader)
+
+        if ((pcmreader.bits_per_sample > 8) and (pcmreader.channels <= 6)):
+            #reference decoder doesn't like 8 bit .wav files?!
+            #or files with too many channels?
+            temp_wav_file = tempfile.NamedTemporaryFile(suffix=".wav")
+            sub = subprocess.Popen([audiotools.BIN["tta"],
+                                    "-d", temp_tta_file.name,
+                                    temp_wav_file.name],
+                                   stdout=open(os.devnull, "wb"),
+                                   stderr=open(os.devnull, "wb"))
+            self.assertEqual(sub.wait(), 0,
+                             "tta decode error on %s" % (repr(pcmreader)))
+        else:
+            temp_wav_file = None
+
+        tta = self.decoder(temp_tta_file.name)
+        self.assertEqual(tta.sample_rate, pcmreader.sample_rate)
+        self.assertEqual(tta.bits_per_sample, pcmreader.bits_per_sample)
+        self.assertEqual(tta.channels, pcmreader.channels)
+
+        md5sum = md5()
+        f = tta.read(audiotools.FRAMELIST_SIZE)
+        while (len(f) > 0):
+            md5sum.update(f.to_bytes(False, True))
+            f = tta.read(audiotools.FRAMELIST_SIZE)
+        tta.close()
+        self.assertEqual(md5sum.digest(), pcmreader.digest())
+
+        if (temp_wav_file is not None):
+            wav_md5sum = md5()
+            audiotools.transfer_framelist_data(
+                audiotools.WaveAudio(temp_wav_file.name).to_pcm(),
+                wav_md5sum.update)
+            self.assertEqual(md5sum.digest(), wav_md5sum.digest())
+            temp_wav_file.close()
+
+        #perform test again with total_pcm_frames indicated
+        pcmreader.reset()
+        self.encode(temp_tta_file.name,
+                    pcmreader,
+                    total_pcm_frames=total_pcm_frames)
 
         if ((pcmreader.bits_per_sample > 8) and (pcmreader.channels <= 6)):
             #reference decoder doesn't like 8 bit .wav files?!
@@ -6398,14 +6629,16 @@ class TTAFileTest(LosslessFileTest):
             self.assertEqual(md5sum.digest(), wav_md5sum.digest())
             temp_wav_file.close()
 
+
+
     @FORMAT_TTA
     def test_small_files(self):
         for g in [test_streams.Generate01,
-                  test_streams.Generate02,
-                  test_streams.Generate03,
+                  test_streams.Generate02]:
+            self.__test_reader__(g(44100), 1)
+        for g in [test_streams.Generate03,
                   test_streams.Generate04]:
-            gen = g(44100)
-            self.__test_reader__(gen)
+            self.__test_reader__(g(44100), 5)
 
     @FORMAT_TTA
     def test_full_scale_deflection(self):
@@ -6420,11 +6653,12 @@ class TTAFileTest(LosslessFileTest):
                             test_streams.PATTERN06,
                             test_streams.PATTERN07]:
                 self.__test_reader__(
-                    test_streams.MD5Reader(fsd(pattern, 100)))
+                    test_streams.MD5Reader(fsd(pattern, 100)),
+                    len(pattern) * 100)
 
     @FORMAT_TTA
     def test_wasted_bps(self):
-        self.__test_reader__(test_streams.WastedBPS16(1000))
+        self.__test_reader__(test_streams.WastedBPS16(1000), 1000)
 
     @FORMAT_TTA
     def test_silence(self):
@@ -6444,7 +6678,8 @@ class TTAFileTest(LosslessFileTest):
                             sample_rate=44100,
                             channels=channels,
                             channel_mask=mask,
-                            bits_per_sample=bps)))
+                            bits_per_sample=bps)),
+                                     65536)
     @FORMAT_TTA
     def test_noise(self):
         for (channels, mask) in [
@@ -6463,12 +6698,13 @@ class TTAFileTest(LosslessFileTest):
                             sample_rate=44100,
                             channels=channels,
                             channel_mask=mask,
-                            bits_per_sample=bps)))
+                            bits_per_sample=bps)),
+                    65536)
 
     @FORMAT_TTA
     def test_sines(self):
         for g in self.__stream_variations__():
-            self.__test_reader__(g)
+            self.__test_reader__(g, 200000)
 
     @FORMAT_TTA
     def test_multichannel(self):
@@ -6507,7 +6743,8 @@ class TTAFileTest(LosslessFileTest):
                      "a2": 0.37}],
                                             channels):
                     self.__test_reader__(
-                        MD5_Reader(Join_Reader(readers, mask)))
+                        MD5_Reader(Join_Reader(readers, mask)),
+                        100)
 
     @FORMAT_TTA
     def test_fractional(self):
@@ -6517,11 +6754,12 @@ class TTAFileTest(LosslessFileTest):
                         pcm_frames=pcm_frames,
                         sample_rate=44100,
                         channels=2,
-                        bits_per_sample=16)))
+                        bits_per_sample=16)),
+                pcm_frames)
 
     @FORMAT_TTA
     def test_python_codec(self):
-        def test_python_reader(pcmreader):
+        def test_python_reader(pcmreader, pcm_frames):
             if (not audiotools.BIN.can_execute(audiotools.BIN["tta"])):
                 self.assert_(
                     False,
@@ -6533,8 +6771,44 @@ class TTAFileTest(LosslessFileTest):
 
             #encode file using Python-based encoder
             temp_tta_file = tempfile.NamedTemporaryFile(suffix=".tta")
+
             self.encode(temp_tta_file.name,
                         pcmreader,
+                        encoding_function=encode_tta)
+
+            #verify against output of Python encoder
+            #against reference tta decoder
+            if ((pcmreader.bits_per_sample > 8) and (pcmreader.channels <= 6)):
+                #reference decoder doesn't like 8 bit .wav files?!
+                #or files with too many channels?
+                temp_wav_file = tempfile.NamedTemporaryFile(suffix=".wav")
+                sub = subprocess.Popen([audiotools.BIN["tta"],
+                                        "-d", temp_tta_file.name,
+                                        temp_wav_file.name],
+                                       stdout=open(os.devnull, "wb"),
+                                       stderr=open(os.devnull, "wb"))
+                self.assertEqual(sub.wait(), 0,
+                                 "tta decode error on %s" % (repr(pcmreader)))
+
+                self.assertEqual(audiotools.pcm_frame_cmp(
+                        TTADecoder2(temp_tta_file.name),
+                        audiotools.WaveAudio(temp_wav_file.name).to_pcm()),
+                                 None)
+                temp_wav_file.close()
+
+            #verify contents of file decoded by
+            #Python-based decoder against contents decoded by
+            #C-based decoder
+            self.assertEqual(audiotools.pcm_frame_cmp(
+                    TTADecoder1(temp_tta_file.name),
+                    TTADecoder2(temp_tta_file.name)), None)
+
+            #perform tests again with total_pcm_frames indicated
+            pcmreader.reset()
+
+            self.encode(temp_tta_file.name,
+                        pcmreader,
+                        total_pcm_frames=pcm_frames,
                         encoding_function=encode_tta)
 
             #verify against output of Python encoder
@@ -6569,10 +6843,11 @@ class TTAFileTest(LosslessFileTest):
 
         #test small files
         for g in [test_streams.Generate01,
-                  test_streams.Generate02,
-                  test_streams.Generate03,
+                  test_streams.Generate02]:
+            test_python_reader(g(44100), 1)
+        for g in [test_streams.Generate03,
                   test_streams.Generate04]:
-            test_python_reader(g(44100))
+            test_python_reader(g(44100), 5)
 
         #test full-scale deflection
         for (bps, fsd) in [(8, test_streams.fsd8),
@@ -6585,7 +6860,7 @@ class TTAFileTest(LosslessFileTest):
                             test_streams.PATTERN05,
                             test_streams.PATTERN06,
                             test_streams.PATTERN07]:
-                test_python_reader(fsd(pattern, 100))
+                test_python_reader(fsd(pattern, 100), len(pattern) * 100)
 
         #test sines
         for g in [test_streams.Sine8_Mono(5000, 48000,
@@ -6666,10 +6941,10 @@ class TTAFileTest(LosslessFileTest):
                                            (5570560, 25000),
                                            (6881280, 30000),
                                            (7864320, 35000))]:
-            test_python_reader(g)
+            test_python_reader(g, 5000)
 
         #test wasted BPS
-        test_python_reader(test_streams.WastedBPS16(1000))
+        test_python_reader(test_streams.WastedBPS16(1000), 1000)
 
         #test fractional blocks
         for pcm_frames in [46078, 46079, 46080, 46081, 46082]:
@@ -6678,7 +6953,8 @@ class TTAFileTest(LosslessFileTest):
                         pcm_frames=pcm_frames,
                         sample_rate=44100,
                         channels=2,
-                        bits_per_sample=16)))
+                        bits_per_sample=16)),
+                pcm_frames)
 
 
 class SineStreamTest(unittest.TestCase):

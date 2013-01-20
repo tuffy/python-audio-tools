@@ -21,6 +21,7 @@ class FrameListReader:
                                                   channels,
                                                   bits_per_sample,
                                                   True)
+        self.samples = samples[:]
         self.sample_rate = sample_rate
         self.channels = channels
         if (channel_mask is None):
@@ -32,6 +33,12 @@ class FrameListReader:
     def read(self, pcm_frames):
         (framelist, self.framelist) = self.framelist.split(pcm_frames)
         return framelist
+
+    def reset(self):
+        self.framelist = audiotools.pcm.from_list(self.samples,
+                                                  self.channels,
+                                                  self.bits_per_sample,
+                                                  True)
 
     def read_closed(self, pcm_frames):
         raise ValueError()

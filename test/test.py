@@ -233,11 +233,17 @@ class Join_Reader:
         self.channel_mask = channel_mask
         self.sample_rate = pcm_readers[0].sample_rate
         self.bits_per_sample = pcm_readers[0].bits_per_sample
+        self.pcm_readers = pcm_readers
         self.readers = map(audiotools.BufferedPCMReader, pcm_readers)
 
     def read(self, pcm_frames):
         return audiotools.pcm.from_channels(
             [r.read(pcm_frames) for r in self.readers])
+
+    def reset(self):
+        for r in self.pcm_readers:
+            r.reset()
+        self.readers = map(audiotools.BufferedPCMReader, self.pcm_readers)
 
     def close(self):
         for r in self.readers:

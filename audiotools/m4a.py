@@ -976,7 +976,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
         if (total_pcm_frames is not None):
             total_alac_frames = ((total_pcm_frames // block_size) +
-                                 1 if (total_pcm_frames % block_size) else 0)
+                                 (1 if (total_pcm_frames % block_size) else 0))
 
             #build a set of placeholder atoms
             #to stick at the start of the file
@@ -1005,7 +1005,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             #encode the mdat atom based on encoding parameters
             try:
                 (frame_byte_sizes,
-                 total_pcm_frames) = \
+                 actual_pcm_frames) = \
                  (encode_alac if encoding_function is None else
                   encoding_function)(file=f,
                                      pcmreader=BufferedPCMReader(pcmreader),
@@ -1018,6 +1018,9 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 self.__unlink__(filename)
                 raise EncodingError(str(err))
 
+            if (actual_pcm_frames != total_pcm_frames):
+                from .text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+                raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
             assert(sum(frame_byte_sizes) > 0)
 
             mdat_size = 8 + sum(frame_byte_sizes)

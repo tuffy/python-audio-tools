@@ -705,12 +705,6 @@ class WaveAudio(WaveContainer):
             f.write(chr(0))
 
         #close the PCM reader and flush our output
-        try:
-            pcmreader.close()
-        except DecodingError, err:
-            cls.__unlink__(filename)
-            raise EncodingError(err.error_message)
-
         if (total_pcm_frames is not None):
             #ensure written number of PCM frames
             #matches total_pcm_frames argument

@@ -395,7 +395,7 @@ def encode_wavpack(filename,
     write_block_header(
         writer,
         sub_blocks.bytes(),
-        total_pcm_frames if (total_pcm_frames > 0) else 0xFFFFFFFF,
+        (total_pcm_frames if (total_pcm_frames > 0) else 0xFFFFFFFF),
         0xFFFFFFFF,
         0,
         pcmreader.bits_per_sample,
@@ -425,6 +425,9 @@ def encode_wavpack(filename,
     for block_offset in context.block_offsets:
         output_file.seek(block_offset + 12, 0)
         writer.write(32, block_index)
+
+    if (total_pcm_frames > 0):
+        assert(block_index == total_pcm_frames)
 
     writer.close()
 

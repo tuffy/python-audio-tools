@@ -6220,7 +6220,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
    The latter handles the "initial_offset" argument,
    either chopping off frames or prepending silence as needed.
-** TODO Adjust BitstreamReader to better handle huge byte counts
+** DONE Adjust BitstreamReader to better handle huge byte counts
    These are typically done in error and shouldn't eat up
    all the RAM in the world before failing.
 *** DONE Update functions
@@ -6235,8 +6235,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X]  BitstreamReader_read_bytes
     - [X]  BitstreamReader_substream_meth
     - [X]  BitstreamReader_substream_append
-*** TODO turn the current buf_append into buf_extend
-*** TODO Replace buf_extend with buf_append
+*** DONE turn the current buf_append into buf_extend
+*** DONE Replace buf_extend with buf_append
 ** TODO Add optional total_pcm_frames argument to from_pcm()
    Certain formats encode much easier if the total number of PCM frames
    is known in advance.  Adding a total_pcm_frames argument
@@ -6304,10 +6304,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Document total_pcm_frames argument
 *** DONE Unit test calling formats with total_pcm_frames and without
 *** TODO Add unit tests with total_pcm_frames and without per encoder
-    - [ ]  ALACAudio.from_pcm()
+    - [X]  ALACAudio.from_pcm()
     - [ ]  FlacAudio.from_pcm()
-    - [ ]  ShnAudio.from_pcm()
-    - [ ]  TTAAudio.from_pcm()
+    - [X]  ShnAudio.from_pcm()
+    - [X]  TTAAudio.from_pcm()
     - [ ]  WavPackAudio.from_pcm()
 ** TODO Add internal True Audio codec
 *** DONE Add Python-based True Audio decoder
