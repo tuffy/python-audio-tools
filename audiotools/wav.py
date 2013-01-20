@@ -505,7 +505,9 @@ class WaveReader:
         """try to read a pcm.FrameList with the given number of PCM frames"""
 
         #try to read requested PCM frames or remaining frames
-        requested_pcm_frames = min(pcm_frames, self.remaining_pcm_frames)
+        requested_pcm_frames = min(max(pcm_frames, 1),
+                                   self.remaining_pcm_frames)
+
         requested_bytes = (self.bytes_per_pcm_frame *
                            requested_pcm_frames)
         pcm_data = self.file.read(requested_bytes)

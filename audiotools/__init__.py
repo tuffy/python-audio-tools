@@ -1963,6 +1963,7 @@ class PCMReader:
         self.process = process
         self.signed = signed
         self.big_endian = big_endian
+        self.bytes_per_frame = self.channels * (self.bits_per_sample / 8)
 
     def read(self, pcm_frames):
         """try to read the given number of PCM frames from the stream
@@ -1977,56 +1978,53 @@ class PCMReader:
         or ValueError if the input file has some sort of error
         """
 
-        return pcm.FrameList(
-            self.file.read(max(pcm_frames, 1) *
-                           self.channels * (self.bits_per_sample / 8)),
+        framelist = pcm.FrameList(
+            self.file.read(max(pcm_frames, 1) * self.bytes_per_frame),
             self.channels,
             self.bits_per_sample,
             self.big_endian,
             self.signed)
+        if (framelist.frames > 0):
+            return framelist
+        elif (self.process is not None):
+            if (self.process.wait() == 0):
+                return framelist
+            else:
+                raise ValueError(u"subprocess exited with error")
+        else:
+            return framelist
 
     def close(self):
         """closes the stream for reading
 
-        subsequent calls to read() raise ValueError
-
-        any subprocess is waited for also so for proper cleanup
-        may return DecodingError if a helper subprocess exits
-        with an error status"""
+        subsequent calls to read() raise ValueError"""
 
         self.file.close()
 
-        if (self.process is not None):
-            if (self.process.wait() != 0):
-                raise DecodingError(u"subprocess exited with error")
 
-
-class PCMReaderError(PCMReader):
-    """a dummy PCMReader which automatically raises DecodingError
+class PCMReaderError:
+    """a dummy PCMReader which automatically raises ValueError
 
     this is to be returned by an AudioFile's to_pcm() method
-    if some error occurs when initializing a decoder
-    an encoder's from_pcm() method will then catch the DecodingError
-    at close()-time and propogate an EncodingError"""
+    if some error occurs when initializing a decoder"""
 
     def __init__(self, error_message,
                  sample_rate, channels, channel_mask, bits_per_sample):
-        PCMReader.__init__(self, None, sample_rate, channels, channel_mask,
-                           bits_per_sample)
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.channel_mask = channel_mask
+        self.bits_per_sample = bits_per_sample
         self.error_message = error_message
 
     def read(self, pcm_frames):
-        """always returns an empty framelist"""
+        """always raises a ValueError"""
 
-        return pcm.from_list([],
-                             self.channels,
-                             self.bits_per_sample,
-                             True)
+        raise ValueError(self.error_message)
 
     def close(self):
-        """always raises DecodingError"""
+        """does nothing"""
 
-        raise DecodingError(self.error_message)
+        pass
 
 
 def to_pcm_progress(audiofile, progress):
@@ -4471,6 +4469,8 @@ class PCMReaderDeHead:
                     assert(self.pcm_frames == 0)
                     assert(tail.frames > 0)
                     return tail
+            else:
+                return self.pcmreader.read(pcm_frames)
         else:
             #pad beginning of stream with empty PCM frames
             frame = pcm.from_list([0] *

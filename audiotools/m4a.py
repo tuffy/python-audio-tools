@@ -416,13 +416,12 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                                 self.filename],
                                stdout=subprocess.PIPE,
                                stderr=devnull)
-        return PCMReader(
-            sub.stdout,
-            sample_rate=self.sample_rate(),
-            channels=self.channels(),
-            channel_mask=int(self.channel_mask()),
-            bits_per_sample=self.bits_per_sample(),
-            process=sub)
+        return PCMReader(sub.stdout,
+                         sample_rate=self.sample_rate(),
+                         channels=self.channels(),
+                         channel_mask=int(self.channel_mask()),
+                         bits_per_sample=self.bits_per_sample(),
+                         process=sub)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
@@ -990,6 +989,9 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
             try:
                 f = file(filename, 'wb')
+            except IOError, err:
+                raise EncodingError(str(err))
+            try:
                 m4a_writer = BitstreamWriter(f, 0)
                 m4a_writer.build("32u 4b", (ftyp.size() + 8, ftyp.name))
                 ftyp.build(m4a_writer)

@@ -6309,6 +6309,19 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X]  ShnAudio.from_pcm()
     - [X]  TTAAudio.from_pcm()
     - [ ]  WavPackAudio.from_pcm()
+** TODO Have process-based decoders exit when data runs out
+   That is, have PCMReader's .read() call subprocess.wait()
+   when the framelists end rather than waiting for .close()
+   to be called (which typically isn't).
+   If the wait fails, have it raise an exception at that point.
+*** DONE Update process-based formats
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OpusAudio
+*** DONE Update documentation
+*** TODO Ensure unit tests pass
+** TODO Add bs_buffer-specific unit tests to bitstream.c
 ** TODO Add internal True Audio codec
 *** DONE Add Python-based True Audio decoder
 *** DONE Add Python-based True Audio encoder

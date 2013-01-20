@@ -2979,7 +2979,7 @@ buf_resize(struct bs_buffer *stream, uint32_t additional_bytes)
 {
     /*only perform resize if space actually needed*/
     if (additional_bytes > (stream->data_size - stream->window_end)) {
-        if (!stream->mark_in_progress && stream->window_start) {
+        if ((stream->window_start > 0) && !stream->mark_in_progress) {
             /*we don't need to rewind the buffer
               so shift window down, if possible,
               before extending buffer to add more space*/
@@ -2988,17 +2988,23 @@ buf_resize(struct bs_buffer *stream, uint32_t additional_bytes)
                     BUF_WINDOW_SIZE(stream));
             stream->window_end -= stream->window_start;
             stream->window_start = 0;
-        }
 
-        if (additional_bytes > (stream->data_size - stream->window_end)) {
-            /*only reallocate more space if needed
-              but do so in multiples of 2*/
+            if (additional_bytes > (stream->data_size - stream->window_end)) {
+                /*only perform resizing if space still needed
+                  after shifting the window down*/
+                while (additional_bytes > (stream->data_size -
+                                           stream->window_end)) {
+                    stream->data_size *= 2;
+                }
+            }
+        } else {
             while (additional_bytes > (stream->data_size -
                                        stream->window_end)) {
                 stream->data_size *= 2;
             }
-            stream->data = realloc(stream->data, stream->data_size);
         }
+
+        stream->data = realloc(stream->data, stream->data_size);
     }
 }
 

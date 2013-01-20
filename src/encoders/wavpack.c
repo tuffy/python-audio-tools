@@ -220,7 +220,6 @@ encoders_encode_wavpack(char *filename,
 
     /*close open file handles and deallocate temporary space*/
     free_context(&context);
-    pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
     stream->close(stream);
     pcm_frames->del(pcm_frames);
@@ -236,7 +235,6 @@ encoders_encode_wavpack(char *filename,
  error:
     /*close open file handles and deallocate temporary space*/
     free_context(&context);
-    pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
     stream->close(stream);
     pcm_frames->del(pcm_frames);

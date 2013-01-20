@@ -1122,21 +1122,17 @@ PCMReader Objects
    Subsequent calls to :meth:`PCMReader.read` will
    raise :exc:`ValueError` exceptions once the stream is closed.
 
-   May raise a :exc:`DecodingError`, typically indicating that
-   a helper subprocess used for decoding has exited with an error.
-
 PCMReaderError Objects
 ^^^^^^^^^^^^^^^^^^^^^^
 
 .. class:: PCMReaderError(error_message, sample_rate, channels, channel_mask, bits_per_sample)
 
    This is a subclass of :class:`PCMReader` which always returns empty
-   :class:`pcm.FrameList` objects and always raises a :class:`DecodingError`
-   with the given ``error_message`` when closed.
+   always raises a :class:`ValueError` when its read method is called.
    The purpose of this is to postpone error generation so that
    all encoding errors, even those caused by unsuccessful decoding,
    are restricted to the :meth:`from_pcm` classmethod
-   which can then propagate the :class:`DecodingError` error message
+   which can then propagate an :class:`EncodingError` error message
    to the user.
 
 PCMConverter Objects
