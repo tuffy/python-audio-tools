@@ -72,7 +72,7 @@ if (__name__ == '__main__'):
             except ZeroDivisionError:
                 msg.output(_.LAB_TRACKINFO_PERCENTAGE %
                            {'percentage': "0",
-                            'filenam': audiotools.Filename(file.filename)})
+                            'filename': audiotools.Filename(file.filename)})
         else:
             msg.output(
                 _.LAB_TRACKINFO_ATTRIBS %
