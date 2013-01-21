@@ -1,7 +1,6 @@
 #ifndef ARRAY2_H
 #define ARRAY2_H
 
-#include <stdint.h>
 #include <stdarg.h>
 #include <stdio.h>
 

@@ -32,8 +32,6 @@ typedef int Py_ssize_t;
 #endif
 #endif
 
-#include <stdint.h>
-
 /******************
   FrameList Object
 *******************/

@@ -424,12 +424,16 @@ CDImage_read_sector(cdio_CDImage* self) {
 
 static PyObject*
 CDImage_read_sectors(cdio_CDImage* self, PyObject *args) {
-    uint32_t sectors_to_read;
+    int sectors_to_read;
     uint8_t* data;
     PyObject* to_return;
 
-    if (!PyArg_ParseTuple(args, "I", &sectors_to_read))
+    if (!PyArg_ParseTuple(args, "i", &sectors_to_read)) {
         return NULL;
+    } else if (sectors_to_read < 0) {
+        PyErr_SetString(PyExc_ValueError, "sectors to read must be >= 0");
+        return NULL;
+    }
 
     data = malloc(CDIO_CD_FRAMESIZE_RAW * sectors_to_read);
     switch (cdio_read_audio_sectors(self->image,

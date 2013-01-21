@@ -27,9 +27,9 @@
 #define MAX_CHANNELS 8
 
 struct alac_subframe_header {
-    uint8_t prediction_type;
-    uint8_t qlp_shift_needed;
-    uint8_t rice_modifier;
+    unsigned prediction_type;
+    unsigned qlp_shift_needed;
+    unsigned rice_modifier;
     array_i* qlp_coeff;
 };
 
@@ -276,7 +276,7 @@ decorrelate_channels(array_i* left,
   returns 1 if the sub atom is not found in the parent*/
 int
 find_atom(BitstreamReader* parent,
-          BitstreamReader* sub_atom, uint32_t* sub_atom_size,
+          BitstreamReader* sub_atom, unsigned* sub_atom_size,
           const char* sub_atom_name);
 
 /*returns 0 if the given sub atom path is found in the parent
@@ -285,7 +285,7 @@ find_atom(BitstreamReader* parent,
   returns 1 if the sub atom path is not found in the parent*/
 int
 find_sub_atom(BitstreamReader* parent,
-              BitstreamReader* sub_atom, uint32_t* sub_atom_size,
+              BitstreamReader* sub_atom, unsigned* sub_atom_size,
               ...);
 
 void

@@ -6321,6 +6321,42 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] OpusAudio
 *** DONE Update documentation
 *** TODO Ensure unit tests pass
+** DONE Reduce stdint usage in bitstream library
+   Try to limit stdint variables to places
+   where it's necessary, like read_64 and read_bytes
+*** DONE Convert state/context to state_t
+**** DONE Update br_huffman_table
+**** DONE Update BitstreamReader
+**** DONE struct read_bits
+**** DONE struct unread_bit
+**** DONE struct read_unary
+**** DONE struct read_limited_unary
+*** DONE Update jump table structures
+**** DONE read_bits
+**** DONE unread_bit
+**** DONE read_unary
+**** DONE read_limited_unary
+*** DONE Update br_huffman_table
+**** DONE Update continue_ to int
+*** DONE Update bs_buffer
+**** DONE unsigned data_size
+**** DONE unsigned window_start
+**** DONE unsigned window_end
+**** DONE buf_resize()
+**** DONE buf_write()
+**** DONE buf_read()
+*** DONE Update br_mark
+**** DONE unsigned substream
+**** DONE unsigned external
+*** DONE Update substream_append()
+**** DONE br_substream_append_f
+**** DONE br_substream_append_s
+**** DONE br_substream_append_e
+**** DONE br_substream_append_c
+*** DONE Update bw_external_output
+**** DONE buffer_size
+**** DONE bw_open_external()
+**** DONE ext_open_w()
 ** TODO Add bs_buffer-specific unit tests to bitstream.c
 ** TODO Add internal True Audio codec
 *** DONE Add Python-based True Audio decoder

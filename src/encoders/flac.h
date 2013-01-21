@@ -46,13 +46,13 @@ struct flac_encoding_options {
 };
 
 struct flac_STREAMINFO {
-    unsigned int minimum_block_size;  /* 16 bits*/
-    unsigned int maximum_block_size;  /* 16 bits*/
-    unsigned int minimum_frame_size;  /* 24 bits*/
-    unsigned int maximum_frame_size;  /* 24 bits*/
-    unsigned int sample_rate;         /* 20 bits*/
-    unsigned int channels;            /*  3 bits*/
-    unsigned int bits_per_sample;     /*  5 bits*/
+    unsigned minimum_block_size;      /* 16 bits*/
+    unsigned maximum_block_size;      /* 16 bits*/
+    unsigned minimum_frame_size;      /* 24 bits*/
+    unsigned maximum_frame_size;      /* 24 bits*/
+    unsigned sample_rate;             /* 20 bits*/
+    unsigned channels;                /*  3 bits*/
+    unsigned bits_per_sample;         /*  5 bits*/
     uint64_t total_samples;           /* 36 bits*/
     unsigned char md5sum[16];         /*128 bits*/
 };
@@ -92,16 +92,6 @@ struct flac_context {
     array_lia* residual_partitions;
     array_lia* best_residual_partitions;
     array_li* remaining_residuals;
-};
-
-struct flac_frame_header {
-    uint8_t blocking_strategy;
-    uint32_t block_size;
-    uint32_t sample_rate;
-    uint8_t channel_assignment;
-    uint8_t channel_count;
-    uint8_t bits_per_sample;
-    uint64_t frame_number;
 };
 
 typedef enum {FLAC_SUBFRAME_CONSTANT,

@@ -668,8 +668,6 @@ correlate_channels(const array_ia* channels,
     array_i* correlated0;
     array_i* correlated1;
     unsigned frame_count;
-    unsigned i;
-    int64_t leftweight;
 
     assert(channels->len == 2);
     assert(channels->_[0]->len == channels->_[1]->len);
@@ -685,14 +683,14 @@ correlate_channels(const array_ia* channels,
     correlated1->resize(correlated1, frame_count);
 
     if (interlacing_leftweight > 0) {
+        unsigned i;
+
         for (i = 0; i < frame_count; i++) {
-            leftweight = channel0->_[i] - channel1->_[i];
+            int64_t leftweight = channel0->_[i] - channel1->_[i];
             leftweight *= interlacing_leftweight;
             leftweight >>= interlacing_shift;
-            a_append(correlated0,
-                     channel1->_[i] + (int)leftweight);
-            a_append(correlated1,
-                     channel0->_[i] - channel1->_[i]);
+            a_append(correlated0, channel1->_[i] + (int)leftweight);
+            a_append(correlated1, channel0->_[i] - channel1->_[i]);
         }
     } else {
         channel0->copy(channel0, correlated0);
@@ -787,17 +785,15 @@ window_signal(struct alac_context* encoder,
               array_f* windowed_signal)
 {
     array_f* tukey_window = encoder->tukey_window;
-    unsigned N = samples->len;
+    const unsigned N = samples->len;
     unsigned n;
-    double alpha = 0.5;
-    unsigned window1;
-    unsigned window2;
 
     if (tukey_window->len != samples->len) {
-        tukey_window->reset_for(tukey_window, samples->len);
+        const double alpha = 0.5;
+        unsigned window1 = (unsigned)(alpha * (N - 1)) / 2;
+        unsigned window2 = (unsigned)((N - 1) * (1.0 - (alpha / 2.0)));
 
-        window1 = (unsigned)(alpha * (N - 1)) / 2;
-        window2 = (unsigned)((N - 1) * (1.0 - (alpha / 2.0)));
+        tukey_window->reset_for(tukey_window, samples->len);
 
         for (n = 0; n < N; n++) {
             if (n <= window1) {
@@ -828,13 +824,13 @@ autocorrelate(const array_f* windowed_signal,
               array_f* autocorrelation_values)
 {
     unsigned lag;
-    unsigned i;
-    double accumulator;
 
     autocorrelation_values->reset(autocorrelation_values);
 
     for (lag = 0; lag <= MAX_LPC_ORDER; lag++) {
-        accumulator = 0.0;
+        double accumulator = 0.0;
+        unsigned i;
+
         assert((windowed_signal->len - lag) > 0);
         for (i = 0; i < windowed_signal->len - lag; i++)
             accumulator += (windowed_signal->_[i] *
@@ -848,10 +844,8 @@ compute_lp_coefficients(const array_f* autocorrelation_values,
                         array_fa* lp_coefficients)
 {
     unsigned i;
-    unsigned j;
     array_f* lp_coeff;
     double k;
-    double q;
     /*no exceptions occur here, so it's okay to allocate temp space*/
     array_f* lp_error = array_f_new();
 
@@ -867,7 +861,9 @@ compute_lp_coefficients(const array_f* autocorrelation_values,
                      autocorrelation_values->_[0] * (1.0 - (k * k)));
 
     for (i = 1; i < MAX_LPC_ORDER; i++) {
-        q = autocorrelation_values->_[i + 1];
+        double q = autocorrelation_values->_[i + 1];
+        unsigned j;
+
         for (j = 0; j < i; j++)
             q -= (lp_coefficients->_[i - 1]->_[j] *
                   autocorrelation_values->_[i - j]);
@@ -894,24 +890,18 @@ quantize_coefficients(const array_fa* lp_coefficients,
                       array_i* qlp_coefficients)
 {
     array_f* lp_coeffs = lp_coefficients->_[order - 1];
-    int qlp_max;
-    int qlp_min;
-    double error;
-    int error_i;
+    const int qlp_max = (1 << 15) - 1;
+    const int qlp_min = -(1 << 15);
+    double error = 0.0;
     unsigned i;
 
     assert(lp_coeffs->len == order);
 
     qlp_coefficients->reset(qlp_coefficients);
 
-    qlp_max = (1 << 15) - 1;
-    qlp_min = -(1 << 15);
-
-    error = 0.0;
-
     for (i = 0; i < order; i++) {
         error += (lp_coeffs->_[i] * (1 << 9));
-        error_i = (int)round(error);
+        const int error_i = (int)round(error);
         qlp_coefficients->append(qlp_coefficients,
                                  MIN(MAX(error_i, qlp_min), qlp_max));
         error -= (double)error_i;

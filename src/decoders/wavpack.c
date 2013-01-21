@@ -1364,7 +1364,7 @@ decorrelate_channels(const array_i* decorrelation_terms,
 static inline int
 apply_weight(int weight, int64_t sample)
 {
-    int64_t temp = (int64_t)weight * sample + (1 << 9);
+    const int64_t temp = (int64_t)weight * sample + (1 << 9);
     return (int)(temp >> 10);
 }
 

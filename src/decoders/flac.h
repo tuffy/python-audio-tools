@@ -27,15 +27,15 @@
 *******************************************************/
 
 struct flac_STREAMINFO {
-    uint16_t minimum_block_size;  /*16  bits*/
-    uint16_t maximum_block_size;  /*16  bits*/
-    uint32_t minimum_frame_size;  /*24  bits*/
-    uint32_t maximum_frame_size;  /*24  bits*/
-    uint32_t sample_rate;         /*20  bits*/
-    uint8_t channels;             /*3   bits*/
-    uint8_t bits_per_sample;      /*5   bits*/
+    unsigned minimum_block_size;  /*16  bits*/
+    unsigned maximum_block_size;  /*16  bits*/
+    unsigned minimum_frame_size;  /*24  bits*/
+    unsigned maximum_frame_size;  /*24  bits*/
+    unsigned sample_rate;         /*20  bits*/
+    unsigned channels;            /*3   bits*/
+    unsigned bits_per_sample;     /*5   bits*/
     uint64_t total_samples;       /*36  bits*/
-    unsigned char md5sum[16];     /*128 bits*/
+    uint8_t md5sum[16];           /*128 bits*/
 };
 
 struct flac_SEEKPOINT {
@@ -45,13 +45,13 @@ struct flac_SEEKPOINT {
 };
 
 struct flac_frame_header {
-    uint8_t blocking_strategy;
-    uint32_t block_size;
-    uint32_t sample_rate;
-    uint8_t channel_assignment;
-    uint8_t channel_count;
-    uint8_t bits_per_sample;
-    uint64_t frame_number;
+    unsigned blocking_strategy;
+    unsigned block_size;
+    unsigned sample_rate;
+    unsigned channel_assignment;
+    unsigned channel_count;
+    unsigned bits_per_sample;
+    unsigned frame_number;
 };
 
 typedef enum {FLAC_SUBFRAME_CONSTANT,
@@ -61,8 +61,8 @@ typedef enum {FLAC_SUBFRAME_CONSTANT,
 
 struct flac_subframe_header {
     flac_subframe_type type;
-    uint8_t order;
-    uint8_t wasted_bits_per_sample;
+    unsigned order;
+    unsigned wasted_bits_per_sample;
 };
 
 typedef enum {OK,
@@ -216,8 +216,8 @@ flac_status
 flacdec_read_subframe(BitstreamReader* bitstream,
                       array_i* qlp_coeffs,
                       array_i* residuals,
-                      unsigned int block_size,
-                      unsigned int bits_per_sample,
+                      unsigned block_size,
+                      unsigned bits_per_sample,
                       array_i* samples);
 
 /*the following four functions are called by FlacDecoder_read_subframe
@@ -226,31 +226,31 @@ flacdec_read_subframe(BitstreamReader* bitstream,
   and, for fixed and lpc, an "order" argument - also from the subframe header*/
 flac_status
 flacdec_read_constant_subframe(BitstreamReader* bitstream,
-                               uint32_t block_size,
-                               uint8_t bits_per_sample,
+                               unsigned block_size,
+                               unsigned bits_per_sample,
                                array_i* samples);
 
 flac_status
 flacdec_read_verbatim_subframe(BitstreamReader* bitstream,
-                               uint32_t block_size,
-                               uint8_t bits_per_sample,
+                               unsigned block_size,
+                               unsigned bits_per_sample,
                                array_i* samples);
 
 flac_status
 flacdec_read_fixed_subframe(BitstreamReader* bitstream,
                             array_i* residuals,
-                            uint8_t order,
-                            uint32_t block_size,
-                            uint8_t bits_per_sample,
+                            unsigned order,
+                            unsigned block_size,
+                            unsigned bits_per_sample,
                             array_i* samples);
 
 flac_status
 flacdec_read_lpc_subframe(BitstreamReader* bitstream,
                           array_i* qlp_coeffs,
                           array_i* residuals,
-                          uint8_t order,
-                          uint32_t block_size,
-                          uint8_t bits_per_sample,
+                          unsigned order,
+                          unsigned block_size,
+                          unsigned bits_per_sample,
                           array_i* samples);
 
 /*reads a chunk of residuals with the given "order" and "block_size"
@@ -258,25 +258,22 @@ flacdec_read_lpc_subframe(BitstreamReader* bitstream,
   and places the result in "residuals"*/
 flac_status
 flacdec_read_residual(BitstreamReader* bitstream,
-                      uint8_t order,
-                      uint32_t block_size,
+                      unsigned order,
+                      unsigned block_size,
                       array_i* residuals);
 
 void
-flacdec_decorrelate_channels(uint8_t channel_assignment,
+flacdec_decorrelate_channels(unsigned channel_assignment,
                              const array_ia* subframes,
                              array_i* framelist);
 
 const char*
 FlacDecoder_strerror(flac_status error);
 
-uint32_t read_utf8(BitstreamReader *stream);
+unsigned read_utf8(BitstreamReader *stream);
 
 struct flac_SEEKPOINT*
 seekpoint_copy(struct flac_SEEKPOINT* seekpoint);
-
-void
-seekpoint_print(struct flac_SEEKPOINT* seekpoint, FILE* output);
 
 #ifndef STANDALONE
 

@@ -969,13 +969,10 @@ flacenc_encode_lpc_subframe(BitstreamWriter* bs,
                             const array_i* samples)
 {
     array_i* lpc_residual = encoder->lpc_residual;
-    unsigned order;
-    int64_t accumulator;
+    const unsigned order = qlp_coefficients->len;
     unsigned i;
-    unsigned j;
 
-    assert(qlp_coefficients->len > 0);
-    order = qlp_coefficients->len;
+    assert(order > 0);
 
     bs->write(bs, 1, 0);               /*pad*/
     bs->write(bs, 1, 1);               /*subframe type*/
@@ -1000,7 +997,8 @@ flacenc_encode_lpc_subframe(BitstreamWriter* bs,
     /*calculate signed residuals*/
     lpc_residual->reset_for(lpc_residual, samples->len - order);
     for (i = 0; i < samples->len - order; i++) {
-        accumulator = 0;
+        int64_t accumulator = 0;
+        unsigned j;
         for (j = 0; j < order; j++)
             accumulator += ((int64_t)qlp_coefficients->_[j] *
                             (int64_t)samples->_[i + order - j - 1]);
@@ -1134,17 +1132,15 @@ flacenc_window_signal(struct flac_context* encoder,
                       array_f* windowed_signal)
 {
     array_f* tukey_window = encoder->tukey_window;
-    unsigned N = samples->len;
+    const unsigned N = samples->len;
+    const double alpha = 0.5;
     unsigned n;
-    double alpha = 0.5;
-    unsigned window1;
-    unsigned window2;
 
     if (tukey_window->len != samples->len) {
-        tukey_window->reset_for(tukey_window, samples->len);
+        const unsigned window1 = (unsigned)(alpha * (N - 1)) / 2;
+        const unsigned window2 = (unsigned)((N - 1) * (1.0 - (alpha / 2.0)));
 
-        window1 = (unsigned)(alpha * (N - 1)) / 2;
-        window2 = (unsigned)((N - 1) * (1.0 - (alpha / 2.0)));
+        tukey_window->reset_for(tukey_window, samples->len);
 
         for (n = 0; n < N; n++) {
             if (n <= window1) {
@@ -1176,13 +1172,13 @@ flacenc_autocorrelate(unsigned max_lpc_order,
                       array_f* autocorrelation_values)
 {
     unsigned lag;
-    unsigned i;
-    double accumulator;
 
     autocorrelation_values->reset(autocorrelation_values);
 
     for (lag = 0; lag <= max_lpc_order; lag++) {
-        accumulator = 0.0;
+        double accumulator = 0.0;
+        unsigned i;
+
         assert((windowed_signal->len - lag) > 0);
         for (i = 0; i < windowed_signal->len - lag; i++)
             accumulator += (windowed_signal->_[i] *
@@ -1198,10 +1194,8 @@ flacenc_compute_lp_coefficients(unsigned max_lpc_order,
                                 array_f* lp_error)
 {
     unsigned i;
-    unsigned j;
     array_f* lp_coeff;
     double k;
-    double q;
 
     assert(autocorrelation_values->len == (max_lpc_order + 1));
 
@@ -1215,7 +1209,9 @@ flacenc_compute_lp_coefficients(unsigned max_lpc_order,
                      autocorrelation_values->_[0] * (1.0 - (k * k)));
 
     for (i = 1; i < max_lpc_order; i++) {
-        q = autocorrelation_values->_[i + 1];
+        double q = autocorrelation_values->_[i + 1];
+        unsigned j;
+
         for (j = 0; j < i; j++)
             q -= (lp_coefficients->_[i - 1]->_[j] *
                   autocorrelation_values->_[i - j]);
@@ -1241,24 +1237,21 @@ flacenc_estimate_best_lpc_order(unsigned bits_per_sample,
                                 unsigned block_size,
                                 const array_f* lp_error)
 {
-    double error_scale = (M_LN2 * M_LN2) / ((double)block_size * 2.0);
+    const double error_scale = (M_LN2 * M_LN2) / ((double)block_size * 2.0);
     unsigned best_order = 0;
     double best_subframe_bits = DBL_MAX;
-    unsigned header_bits;
-    double bits_per_residual;
-    double estimated_subframe_bits;
     unsigned i;
-    unsigned order;
 
     assert(block_size > 0);
 
     for (i = 0; i < max_lpc_order; i++) {
-        order = i + 1;
+        const unsigned order = i + 1;
         if (lp_error->_[i] > 0.0) {
-            header_bits = order * (bits_per_sample + qlp_precision);
-            bits_per_residual = MAX(log(lp_error->_[i] * error_scale) /
-                                    (M_LN2 * 2), 0.0);
-            estimated_subframe_bits =
+            const unsigned header_bits =
+                order * (bits_per_sample + qlp_precision);
+            const double bits_per_residual =
+                MAX(log(lp_error->_[i] * error_scale) / (M_LN2 * 2), 0.0);
+            const double estimated_subframe_bits =
                 (header_bits + bits_per_residual * (block_size - order));
 
             if (estimated_subframe_bits < best_subframe_bits) {
@@ -1537,13 +1530,13 @@ flacenc_average_difference(const array_ia* samples,
 
 void
 write_utf8(BitstreamWriter* bs, unsigned int value) {
-    unsigned int total_bytes = 0;
-    int shift;
-
     if (value <= 0x7F) {
         /*1 byte only*/
         bs->write(bs, 8, value);
     } else {
+        unsigned int total_bytes = 0;
+        int shift;
+
         /*more than 1 byte*/
 
         if (value <= 0x7FF) {
@@ -1586,12 +1579,11 @@ unsigned
 flacenc_max_wasted_bits_per_sample(const array_i* samples)
 {
     unsigned i;
-    int sample;
-    unsigned wasted_bits;
     unsigned wasted_bits_per_sample = INT_MAX;
 
     for (i = 0; i < samples->len; i++) {
-        sample = samples->_[i];
+        unsigned wasted_bits;
+        int sample = samples->_[i];
         if (sample != 0) {
             for (wasted_bits = 0;
                  ((sample & 1) == 0) && (sample != 0);
@@ -1614,11 +1606,9 @@ flacenc_max_wasted_bits_per_sample(const array_i* samples)
 int
 flacenc_all_identical(const array_i* samples)
 {
-    int first;
-    unsigned i;
-
     if (samples->len > 1) {
-        first = samples->_[0];
+        const int first = samples->_[0];
+        unsigned i;
         for (i = 1; i < samples->len; i++)
             if (samples->_[i] != first)
                 return 0;
@@ -1632,7 +1622,7 @@ flacenc_all_identical(const array_i* samples)
 uint64_t
 flacenc_abs_sum(const array_li* data)
 {
-    uint64_t accumulator = 0;
+    register uint64_t accumulator = 0;
     unsigned i;
     for (i = 0; i < data->len; i++)
         accumulator += abs(data->_[i]);

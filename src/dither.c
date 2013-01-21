@@ -36,7 +36,7 @@ read_os_random(PyObject* os_module,
         /*convert Python object to string and length*/
         if (PyString_AsStringAndSize(string, &buffer_s, &buffer_len) != -1) {
             /*extend buffer for additional data*/
-            buf_write(buffer, (uint8_t*)buffer_s, (uint32_t)buffer_len);
+            buf_write(buffer, (uint8_t*)buffer_s, (unsigned)buffer_len);
 
             /*DECREF Python object and return OK*/
             Py_DECREF(string);

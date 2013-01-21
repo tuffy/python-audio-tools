@@ -22,27 +22,27 @@
 *******************************************************/
 
 struct read_bits {
-    uint8_t value_size;
-    uint8_t value;
-    uint16_t context;
+    unsigned value_size;
+    unsigned value;
+    state_t state;
 };
 
 struct unread_bit {
-    uint8_t limit_reached;
-    uint16_t context;
+    int limit_reached;
+    state_t state;
 };
 
 struct read_unary {
-    uint8_t continue_;
-    uint8_t value;
-    uint16_t context;
+    int continue_;
+    unsigned value;
+    state_t state;
 };
 
 struct read_limited_unary {
-    unsigned continue_     : 7;
-    unsigned limit_reached : 1;
-    uint8_t value;
-    uint16_t context;
+    int continue_;
+    int limit_reached;
+    unsigned value;
+    state_t state;
 };
 
 const struct read_bits read_bits_table[0x200][8] =
@@ -313,7 +313,7 @@ br_open_external(void* user_data,
 
 /*These are helper macros for unpacking the results
   of the various jump tables in a less error-prone fashion.*/
-#define NEW_CONTEXT(x) (0x100 | (x))
+#define NEW_STATE(x) (0x100 | (x))
 
 #define FUNC_READ_BITS_BE(FUNC_NAME, RETURN_TYPE, BYTE_FUNC, BYTE_FUNC_ARG) \
     RETURN_TYPE                                                         \
@@ -323,11 +323,11 @@ br_open_external(void* user_data,
         register RETURN_TYPE accumulator = 0;                           \
                                                                         \
         while (count > 0) {                                             \
-            if (result.context == 0) {                                  \
+            if (result.state == 0) {                                    \
                 const int byte = BYTE_FUNC(BYTE_FUNC_ARG);              \
                 if (byte != EOF) {                                      \
                     struct bs_callback* callback;                       \
-                    result.context = NEW_CONTEXT(byte);                 \
+                    result.state = NEW_STATE(byte);                     \
                     for (callback = bs->callbacks;                      \
                          callback != NULL;                              \
                          callback = callback->next)                     \
@@ -339,7 +339,7 @@ br_open_external(void* user_data,
             }                                                           \
                                                                         \
             result =                                                    \
-                read_bits_table[result.context][MIN(count, 8) - 1];     \
+                read_bits_table[result.state][MIN(count, 8) - 1];       \
                                                                         \
             accumulator =                                               \
                 ((accumulator << result.value_size) | result.value);    \
@@ -347,7 +347,7 @@ br_open_external(void* user_data,
             count -= result.value_size;                                 \
         }                                                               \
                                                                         \
-        bs->state = result.context;                                     \
+        bs->state = result.state;                                       \
         return accumulator;                                             \
     }
 
@@ -360,11 +360,11 @@ br_open_external(void* user_data,
         register unsigned bit_offset = 0;                               \
                                                                         \
         while (count > 0) {                                             \
-            if (result.context == 0) {                                  \
+            if (result.state == 0) {                                    \
                 const int byte = BYTE_FUNC(BYTE_FUNC_ARG);              \
                 if (byte != EOF) {                                      \
                     struct bs_callback* callback;                       \
-                    result.context = NEW_CONTEXT(byte);                 \
+                    result.state = NEW_STATE(byte);                     \
                     for (callback = bs->callbacks;                      \
                          callback != NULL;                              \
                          callback = callback->next)                     \
@@ -376,7 +376,7 @@ br_open_external(void* user_data,
             }                                                           \
                                                                         \
             result =                                                    \
-                read_bits_table_le[result.context][MIN(count, 8) - 1];  \
+                read_bits_table_le[result.state][MIN(count, 8) - 1];    \
                                                                         \
             accumulator |=                                              \
                 ((RETURN_TYPE)(result.value) << bit_offset);            \
@@ -385,7 +385,7 @@ br_open_external(void* user_data,
             bit_offset += result.value_size;                            \
         }                                                               \
                                                                         \
-        bs->state = result.context;                                     \
+        bs->state = result.state;                                       \
         return accumulator;                                             \
     }
 
@@ -499,11 +499,11 @@ br_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
         struct read_bits result = {0, 0, bs->state};
 
         while (count > 0) {
-            if (result.context == 0) {
+            if (result.state == 0) {
                 const int byte = fgetc(bs->input.file);
                 if (byte != EOF) {
                     struct bs_callback* callback;
-                    result.context = NEW_CONTEXT(byte);
+                    result.state = NEW_STATE(byte);
                     for (callback = bs->callbacks;
                          callback != NULL;
                          callback = callback->next)
@@ -515,12 +515,12 @@ br_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
             }
 
             result =
-                read_bits_table[result.context][MIN(count, 8) - 1];
+                read_bits_table[result.state][MIN(count, 8) - 1];
 
             count -= result.value_size;
         }
 
-        bs->state = result.context;
+        bs->state = result.state;
     }
 }
 
@@ -545,11 +545,11 @@ br_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
         struct read_bits result = {0, 0, bs->state};
 
         while (count > 0) {
-            if (result.context == 0) {
+            if (result.state == 0) {
                 const int byte = fgetc(bs->input.file);
                 if (byte != EOF) {
                     struct bs_callback* callback;
-                    result.context = NEW_CONTEXT(byte);
+                    result.state = NEW_STATE(byte);
                     for (callback = bs->callbacks;
                          callback != NULL;
                          callback = callback->next)
@@ -561,12 +561,12 @@ br_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
             }
 
             result =
-                read_bits_table_le[result.context][MIN(count, 8) - 1];
+                read_bits_table_le[result.state][MIN(count, 8) - 1];
 
             count -= result.value_size;
         }
 
-        bs->state = result.context;
+        bs->state = result.state;
     }
 }
 
@@ -587,11 +587,11 @@ br_skip_bits_s_be(BitstreamReader* bs, unsigned int count)
         struct read_bits result = {0, 0, bs->state};
 
         while (count > 0) {
-            if (result.context == 0) {
+            if (result.state == 0) {
                 const int byte = buf_getc(bs->input.substream);
                 if (byte != EOF) {
                     struct bs_callback* callback;
-                    result.context = NEW_CONTEXT(byte);
+                    result.state = NEW_STATE(byte);
                     for (callback = bs->callbacks;
                          callback != NULL;
                          callback = callback->next)
@@ -603,12 +603,12 @@ br_skip_bits_s_be(BitstreamReader* bs, unsigned int count)
             }
 
             result =
-                read_bits_table[result.context][MIN(count, 8) - 1];
+                read_bits_table[result.state][MIN(count, 8) - 1];
 
             count -= result.value_size;
         }
 
-        bs->state = result.context;
+        bs->state = result.state;
     }
 }
 
@@ -629,11 +629,11 @@ br_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
         struct read_bits result = {0, 0, bs->state};
 
         while (count > 0) {
-            if (result.context == 0) {
+            if (result.state == 0) {
                 const int byte = buf_getc(bs->input.substream);
                 if (byte != EOF) {
                     struct bs_callback* callback;
-                    result.context = NEW_CONTEXT(byte);
+                    result.state = NEW_STATE(byte);
                     for (callback = bs->callbacks;
                          callback != NULL;
                          callback = callback->next)
@@ -645,12 +645,12 @@ br_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
             }
 
             result =
-                read_bits_table_le[result.context][MIN(count, 8) - 1];
+                read_bits_table_le[result.state][MIN(count, 8) - 1];
 
             count -= result.value_size;
         }
 
-        bs->state = result.context;
+        bs->state = result.state;
     }
 }
 
@@ -660,11 +660,11 @@ br_skip_bits_e_be(BitstreamReader* bs, unsigned int count)
     struct read_bits result = {0, 0, bs->state};
 
     while (count > 0) {
-        if (result.context == 0) {
+        if (result.state == 0) {
             const int byte = ext_getc(bs->input.external);
             if (byte != EOF) {
                 struct bs_callback* callback;
-                result.context = NEW_CONTEXT(byte);
+                result.state = NEW_STATE(byte);
                 for (callback = bs->callbacks;
                      callback != NULL;
                      callback = callback->next)
@@ -676,12 +676,12 @@ br_skip_bits_e_be(BitstreamReader* bs, unsigned int count)
         }
 
         result =
-            read_bits_table[result.context][MIN(count, 8) - 1];
+            read_bits_table[result.state][MIN(count, 8) - 1];
 
         count -= result.value_size;
     }
 
-    bs->state = result.context;
+    bs->state = result.state;
 }
 
 void
@@ -690,11 +690,11 @@ br_skip_bits_e_le(BitstreamReader* bs, unsigned int count)
     struct read_bits result = {0, 0, bs->state};
 
     while (count > 0) {
-        if (result.context == 0) {
+        if (result.state == 0) {
             const int byte = ext_getc(bs->input.external);
             if (byte != EOF) {
                 struct bs_callback* callback;
-                result.context = NEW_CONTEXT(byte);
+                result.state = NEW_STATE(byte);
                 for (callback = bs->callbacks;
                      callback != NULL;
                      callback = callback->next)
@@ -706,12 +706,12 @@ br_skip_bits_e_le(BitstreamReader* bs, unsigned int count)
         }
 
         result =
-            read_bits_table_le[result.context][MIN(count, 8) - 1];
+            read_bits_table_le[result.state][MIN(count, 8) - 1];
 
         count -= result.value_size;
     }
 
-    bs->state = result.context;
+    bs->state = result.state;
 }
 
 void
@@ -740,7 +740,7 @@ br_unread_bit_be(BitstreamReader* bs, int unread_bit)
 {
     struct unread_bit result = unread_bit_table[bs->state][unread_bit];
     assert(result.limit_reached == 0);
-    bs->state = result.context;
+    bs->state = result.state;
 }
 
 void
@@ -748,7 +748,7 @@ br_unread_bit_le(BitstreamReader* bs, int unread_bit)
 {
     struct unread_bit result = unread_bit_table_le[bs->state][unread_bit];
     assert(result.limit_reached == 0);
-    bs->state = result.context;
+    bs->state = result.state;
 }
 
 void
@@ -766,11 +766,11 @@ br_unread_bit_c(BitstreamReader* bs, int unread_bit)
         register unsigned accumulator = 0;                              \
                                                                         \
         do {                                                            \
-            if (result.context == 0) {                                  \
+            if (result.state == 0) {                                    \
                 const int byte = BYTE_FUNC(BYTE_FUNC_ARG);              \
                 if (byte != EOF) {                                      \
                     struct bs_callback* callback;                       \
-                    result.context = NEW_CONTEXT(byte);                 \
+                    result.state = NEW_STATE(byte);                     \
                     for (callback = bs->callbacks;                      \
                          callback != NULL;                              \
                          callback = callback->next)                     \
@@ -781,12 +781,12 @@ br_unread_bit_c(BitstreamReader* bs, int unread_bit)
                 }                                                       \
             }                                                           \
                                                                         \
-            result = UNARY_TABLE[result.context][stop_bit];             \
+            result = UNARY_TABLE[result.state][stop_bit];               \
                                                                         \
             accumulator += result.value;                                \
         } while (result.continue_);                                     \
                                                                         \
-        bs->state = result.context;                                     \
+        bs->state = result.state;                                       \
         return accumulator;                                             \
     }
 
@@ -815,11 +815,11 @@ br_read_unary_c(BitstreamReader* bs, int stop_bit)
     {                                                                   \
         struct read_unary result = {0, 0, bs->state};                   \
         do {                                                            \
-            if (result.context == 0) {                                  \
+            if (result.state == 0) {                                    \
                 const int byte = BYTE_FUNC(BYTE_FUNC_ARG);              \
                 if (byte != EOF) {                                      \
                     struct bs_callback* callback;                       \
-                    result.context = NEW_CONTEXT(byte);                 \
+                    result.state = NEW_STATE(byte);                     \
                     for (callback = bs->callbacks;                      \
                          callback != NULL;                              \
                          callback = callback->next)                     \
@@ -830,10 +830,10 @@ br_read_unary_c(BitstreamReader* bs, int stop_bit)
                 }                                                       \
             }                                                           \
                                                                         \
-            result = UNARY_TABLE[result.context][stop_bit];             \
+            result = UNARY_TABLE[result.state][stop_bit];               \
         } while (result.continue_);                                     \
                                                                         \
-        bs->state = result.context;                                     \
+        bs->state = result.state;                                       \
     }
 FUNC_SKIP_UNARY(br_skip_unary_f_be,
                 fgetc, bs->input.file, read_unary_table)
@@ -867,11 +867,11 @@ br_skip_unary_c(BitstreamReader* bs, int stop_bit)
         assert(maximum_bits > 0);                                       \
                                                                         \
         do {                                                            \
-            if (result.context == 0) {                                  \
+            if (result.state == 0) {                                    \
                 const int byte = BYTE_FUNC(BYTE_FUNC_ARG);              \
                 if (byte != EOF) {                                      \
                     struct bs_callback* callback;                       \
-                    result.context = NEW_CONTEXT(byte);                 \
+                    result.state = NEW_STATE(byte);                     \
                     for (callback = bs->callbacks;                      \
                          callback != NULL;                              \
                          callback = callback->next)                     \
@@ -882,14 +882,14 @@ br_skip_unary_c(BitstreamReader* bs, int stop_bit)
                 }                                                       \
             }                                                           \
                                                                         \
-            result = UNARY_TABLE[result.context][stop_bit +             \
+            result = UNARY_TABLE[result.state][stop_bit +               \
                                                  MIN(maximum_bits, 8)]; \
                                                                         \
             accumulator += result.value;                                \
             maximum_bits -= result.value;                               \
         } while (result.continue_);                                     \
                                                                         \
-        bs->state = result.context;                                     \
+        bs->state = result.state;                                       \
                                                                         \
         if (result.limit_reached) {                                     \
             /*maximum_bits reached*/                                    \
@@ -936,7 +936,7 @@ br_read_limited_unary_c(BitstreamReader* bs, int stop_bit, int maximum_bits)
             const int byte = BYTE_FUNC(BYTE_FUNC_ARG);              \
             if (byte != EOF) {                                      \
                 struct bs_callback* callback;                       \
-                const uint16_t context = NEW_CONTEXT(byte);         \
+                const state_t state = NEW_STATE(byte);              \
                                                                     \
                 for (callback = bs->callbacks;                      \
                      callback != NULL;                              \
@@ -944,13 +944,13 @@ br_read_limited_unary_c(BitstreamReader* bs, int stop_bit, int maximum_bits)
                      callback->callback((uint8_t)byte,              \
                                         callback->data);            \
                                                                     \
-                entry = table[entry.node][context];                 \
+                entry = table[entry.node][state];                   \
             } else {                                                \
                 br_abort(bs);                                       \
             }                                                       \
         }                                                           \
                                                                     \
-        bs->state = entry.context;                                  \
+        bs->state = entry.state;                                    \
         return entry.value;                                         \
     }
 FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_f, fgetc, bs->input.file)
@@ -1016,7 +1016,7 @@ br_read_bytes_s(struct BitstreamReader_s* bs,
         /*buf_read bytes from buffer to output*/
         if ((unsigned int)buf_read(bs->input.substream,
                                    bytes,
-                                   (uint32_t)byte_count) == byte_count) {
+                                   byte_count) == byte_count) {
             struct bs_callback* callback;
             /*if sufficient bytes were read
               perform callbacks on the read bytes*/
@@ -1047,7 +1047,7 @@ br_read_bytes_e(struct BitstreamReader_s* bs,
 
         /*read as many bytes as possible from the buffer*/
         while (byte_count) {
-            const uint32_t amount_read = buf_read(buffer, bytes, byte_count);
+            const unsigned amount_read = buf_read(buffer, bytes, byte_count);
             struct bs_callback* callback;
 
             /*perform callbacks on the read bytes*/
@@ -1559,7 +1559,7 @@ br_unmark_c(BitstreamReader* bs)
 void
 br_substream_append_f(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
-                      uint32_t bytes)
+                      unsigned bytes)
 {
     assert(substream->type == BR_SUBSTREAM);
 
@@ -1567,7 +1567,7 @@ br_substream_append_f(struct BitstreamReader_s *stream,
     stream->state = 0;
 
     while (bytes) {
-        const uint32_t to_read = MIN(bytes, BUFFER_SIZE);
+        const unsigned to_read = MIN(bytes, BUFFER_SIZE);
         static uint8_t fread_buffer[BUFFER_SIZE];
 
         if (fread(fread_buffer,
@@ -1580,7 +1580,7 @@ br_substream_append_f(struct BitstreamReader_s *stream,
             for (callback = stream->callbacks;
                  callback != NULL;
                  callback = callback->next) {
-                uint32_t i;
+                unsigned i;
                 for (i = 0; i < bytes; i++)
                     callback->callback(fread_buffer[i], callback->data);
             }
@@ -1599,7 +1599,7 @@ br_substream_append_f(struct BitstreamReader_s *stream,
 void
 br_substream_append_s(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
-                      uint32_t bytes)
+                      unsigned bytes)
 {
     assert(substream->type = BR_SUBSTREAM);
 
@@ -1618,7 +1618,7 @@ br_substream_append_s(struct BitstreamReader_s *stream,
         for (callback = stream->callbacks;
              callback != NULL;
              callback = callback->next) {
-            uint32_t i;
+            unsigned i;
 
             for (i = 0; i < bytes; i++)
                 callback->callback(input_data[i], callback->data);
@@ -1636,7 +1636,7 @@ br_substream_append_s(struct BitstreamReader_s *stream,
 void
 br_substream_append_e(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
-                      uint32_t bytes)
+                      unsigned bytes)
 {
     assert(substream->type == BR_SUBSTREAM);
 
@@ -1644,7 +1644,7 @@ br_substream_append_e(struct BitstreamReader_s *stream,
     stream->state = 0;
 
     while (bytes) {
-        const uint32_t to_read = MIN(bytes, BUFFER_SIZE);
+        const unsigned to_read = MIN(bytes, BUFFER_SIZE);
         static uint8_t fread_buffer[BUFFER_SIZE];
 
         if (ext_read(fread_buffer,
@@ -1656,7 +1656,7 @@ br_substream_append_e(struct BitstreamReader_s *stream,
             for (callback = stream->callbacks;
                  callback != NULL;
                  callback = callback->next) {
-                uint32_t i;
+                unsigned i;
                 for (i = 0; i < bytes; i++)
                     callback->callback(fread_buffer[i], callback->data);
             }
@@ -1675,7 +1675,7 @@ br_substream_append_e(struct BitstreamReader_s *stream,
 void
 br_substream_append_c(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
-                      uint32_t bytes)
+                      unsigned bytes)
 {
     br_abort(stream);
 }
@@ -1857,7 +1857,7 @@ bw_open(FILE *f, bs_endianness endianness)
 BitstreamWriter*
 bw_open_external(void* user_data,
                  bs_endianness endianness,
-                 uint32_t buffer_size,
+                 unsigned buffer_size,
                  int (*write)(void* user_data,
                               const struct bs_buffer* buffer),
                  void (*flush)(void* user_data),
@@ -2844,7 +2844,7 @@ bw_dump_bytes(BitstreamWriter* target,
                 target->write(target, 8, buffer[i]);
             break;
         case BW_RECORDER:
-            buf_write(target->output.buffer, buffer, (uint32_t)total);
+            buf_write(target->output.buffer, buffer, total);
             break;
         case BW_ACCUMULATOR:
             target->output.accumulator += (total * 8);
@@ -2892,9 +2892,9 @@ bw_rec_split(BitstreamWriter* target,
              BitstreamWriter* source,
              unsigned int total_bytes) {
     const uint8_t* buffer = BUF_WINDOW_START(source->output.buffer);
-    const uint32_t buffer_size = BUF_WINDOW_SIZE(source->output.buffer);
-    const unsigned int to_target = MIN(total_bytes, buffer_size);
-    const unsigned int to_remaining = buffer_size - to_target;
+    const unsigned buffer_size = BUF_WINDOW_SIZE(source->output.buffer);
+    const unsigned to_target = MIN(total_bytes, buffer_size);
+    const unsigned to_remaining = buffer_size - to_target;
 
     assert(source->type == BW_RECORDER);
 
@@ -2975,7 +2975,7 @@ buf_new(void)
 }
 
 void
-buf_resize(struct bs_buffer *stream, uint32_t additional_bytes)
+buf_resize(struct bs_buffer *stream, unsigned additional_bytes)
 {
     /*only perform resize if space actually needed*/
     if (additional_bytes > (stream->data_size - stream->window_end)) {
@@ -3009,17 +3009,17 @@ buf_resize(struct bs_buffer *stream, uint32_t additional_bytes)
 }
 
 void
-buf_write(struct bs_buffer *stream, const uint8_t* data, uint32_t data_size)
+buf_write(struct bs_buffer *stream, const uint8_t* data, unsigned data_size)
 {
     buf_resize(stream, data_size);
     memcpy(BUF_WINDOW_END(stream), data, (size_t)data_size);
     stream->window_end += data_size;
 }
 
-uint32_t
-buf_read(struct bs_buffer *stream, uint8_t *data, uint32_t data_size)
+unsigned
+buf_read(struct bs_buffer *stream, uint8_t *data, unsigned data_size)
 {
-    const uint32_t to_read = MIN(data_size, BUF_WINDOW_SIZE(stream));
+    const unsigned to_read = MIN(data_size, BUF_WINDOW_SIZE(stream));
     memcpy(data, BUF_WINDOW_START(stream), to_read);
     stream->window_start += to_read;
     return to_read;
@@ -3152,7 +3152,7 @@ ext_read(uint8_t* bytes,
     } else {
         /*otherwise, populate the buffer with read() calls*/
         while (byte_count > BUF_WINDOW_SIZE(buffer)) {
-            const uint32_t old_size = BUF_WINDOW_SIZE(buffer);
+            const unsigned old_size = BUF_WINDOW_SIZE(buffer);
             if (!stream->read(stream->user_data, buffer)) {
                 if (BUF_WINDOW_SIZE(buffer) == old_size) {
                     /*unless the data runs out*/
@@ -3168,7 +3168,7 @@ ext_read(uint8_t* bytes,
 
         /*read as much of the buffer as necessary to "bytes"
           and return the amount actually read*/
-        return (unsigned)buf_read(buffer, bytes, (uint32_t)byte_count);
+        return (unsigned)buf_read(buffer, bytes, byte_count);
     }
 }
 
@@ -3188,7 +3188,7 @@ ext_free(struct br_external_input* stream)
 
 struct bw_external_output*
 ext_open_w(void* user_data,
-           uint32_t buffer_size,
+           unsigned buffer_size,
            int (*write)(void* user_data,
                         const struct bs_buffer* buffer),
            void (*flush)(void* user_data),
@@ -5636,9 +5636,9 @@ validate_edge_recorder_le(BitstreamWriter* recorder)
 int ext_fread(void* user_data,
               struct bs_buffer* buffer)
 {
-    const static uint32_t desired_size = 2;
+    const static unsigned desired_size = 2;
     uint8_t data[2];
-    const uint32_t bytes_read = (uint32_t)fread(data,
+    const unsigned bytes_read = (unsigned)fread(data,
                                                 sizeof(uint8_t),
                                                 desired_size,
                                                 (FILE*)user_data);

@@ -35,6 +35,8 @@
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
+/*a jump table state value which must be at least 9 bits wide*/
+typedef int state_t;
 
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_SUBSTREAM, BR_EXTERNAL} br_type;
@@ -75,9 +77,9 @@ struct bs_exception {
   if true, data writers may only append new data to the buffer*/
 struct bs_buffer {
     uint8_t* data;
-    uint32_t data_size;
-    uint32_t window_start;
-    uint32_t window_end;
+    unsigned data_size;
+    unsigned window_start;
+    unsigned window_end;
     int mark_in_progress;
 };
 
@@ -85,19 +87,19 @@ struct bs_buffer {
 struct br_mark {
     union {
         fpos_t file;
-        uint32_t substream;
-        uint32_t external;
+        unsigned substream;
+        unsigned external;
     } position;
-    uint16_t state;
+    state_t state;
     struct br_mark *next;
 };
 
 /*a Huffman table entry indicating either a next node (if continue == 1)
   or final value and new context (if continue == 0)*/
 struct br_huffman_table {
-    uint8_t continue_;
+    int continue_;
     unsigned node;
-    uint16_t context;
+    state_t state;
     int value;
 };
 
@@ -127,7 +129,7 @@ typedef struct BitstreamReader_s {
         struct br_external_input* external;
     } input;
 
-    uint16_t state;
+    state_t state;
     struct bs_callback* callbacks;
     struct bs_exception* exceptions;
     struct br_mark* marks;
@@ -312,7 +314,7 @@ typedef struct BitstreamReader_s {
     void
     (*substream_append)(struct BitstreamReader_s* bs,
                         struct BitstreamReader_s* substream,
-                        uint32_t bytes);
+                        unsigned bytes);
 } BitstreamReader;
 
 
@@ -636,19 +638,19 @@ br_unmark_c(BitstreamReader* bs);
 void
 br_substream_append_f(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
-                      uint32_t bytes);
+                      unsigned bytes);
 void
 br_substream_append_s(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
-                      uint32_t bytes);
+                      unsigned bytes);
 void
 br_substream_append_e(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
-                      uint32_t bytes);
+                      unsigned bytes);
 void
 br_substream_append_c(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
-                      uint32_t bytes);
+                      unsigned bytes);
 
 
 /*unattached, BitstreamReader functions*/
@@ -743,7 +745,7 @@ struct bw_external_output {
     void (*free)(void* user_data);
 
     struct bs_buffer* buffer; /*where ext_putc places its data*/
-    uint32_t buffer_size;     /*when buffer_size is reached,
+    unsigned buffer_size;     /*when buffer_size is reached,
                                 write() is called to dump data
                                 and the buffer is reset*/
 };
@@ -976,7 +978,7 @@ bw_open(FILE *f, bs_endianness endianness);
 BitstreamWriter*
 bw_open_external(void* user_data,
                  bs_endianness endianness,
-                 uint32_t buffer_size,
+                 unsigned buffer_size,
                  int (*write)(void* user_data,
                               const struct bs_buffer* buffer),
                  void (*flush)(void* user_data),
@@ -1337,17 +1339,17 @@ buf_new(void);
 
 /*resize buffer to fit at least "additional_bytes", if necessary*/
 void
-buf_resize(struct bs_buffer *stream, uint32_t additional_bytes);
+buf_resize(struct bs_buffer *stream, unsigned additional_bytes);
 
 /*appends "data_size" bytes from "data" to "stream" starting at "window_end"*/
 void
-buf_write(struct bs_buffer *stream, const uint8_t *data, uint32_t data_size);
+buf_write(struct bs_buffer *stream, const uint8_t *data, unsigned data_size);
 
 /*reads "data_size" bytes from "stream" to "data" starting at "window_start"
   and returns the amount of bytes actually read
   (which may be less than the amount requested)*/
-uint32_t
-buf_read(struct bs_buffer *stream, uint8_t *data, uint32_t data_size);
+unsigned
+buf_read(struct bs_buffer *stream, uint8_t *data, unsigned data_size);
 
 /*makes target's data a duplicate of source's data
   target will have no marks in progress
@@ -1472,7 +1474,7 @@ typedef void (*EXT_FLUSH)(void* user_data);
 
 struct bw_external_output*
 ext_open_w(void* user_data,
-           uint32_t buffer_size,
+           unsigned buffer_size,
            int (*write)(void* user_data, const struct bs_buffer* buffer),
            void (*flush)(void* user_data),
            void (*close)(void* user_data),

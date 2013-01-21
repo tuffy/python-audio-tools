@@ -33,7 +33,7 @@ encoders_encode_wavpack(PyObject *dummy,
     array_ia* pcm_frames;
     array_ia* block_frames;
     unsigned block;
-    uint32_t block_index = 0;
+    unsigned block_index = 0;
     unsigned i;
 
     unsigned block_size;
@@ -104,7 +104,7 @@ encoders_encode_wavpack(char *filename,
     array_ia* pcm_frames;
     array_ia* block_frames;
     unsigned block;
-    uint32_t block_index = 0;
+    unsigned block_index = 0;
     unsigned i;
     unsigned total_pcm_frames = 0;
 
@@ -543,8 +543,8 @@ static void
 write_block_header(BitstreamWriter* bs,
                    unsigned sub_blocks_size,
                    unsigned total_pcm_frames,
-                   uint32_t block_index,
-                   uint32_t block_samples,
+                   unsigned block_index,
+                   unsigned block_samples,
                    unsigned bits_per_sample,
                    unsigned channel_count,
                    int joint_stereo,
@@ -617,7 +617,7 @@ encode_block(BitstreamWriter* bs,
              struct encoding_parameters* parameters,
              const array_ia* channels,
              unsigned total_pcm_frames,
-             uint32_t block_index,
+             unsigned block_index,
              int first_block,
              int last_block)
 {
@@ -625,7 +625,7 @@ encode_block(BitstreamWriter* bs,
     unsigned effective_channel_count;
     unsigned magnitude;
     unsigned wasted_bps;
-    uint32_t total_frames;
+    unsigned total_frames;
     array_ia* shifted = context->cache.shifted;
     array_ia* mid_side = context->cache.mid_side;
     array_ia* correlated = context->cache.correlated;
@@ -1681,7 +1681,7 @@ write_egc(BitstreamWriter* bs, unsigned v)
     if (v <= 1) {
         bs->write_unary(bs, 0, v);
     } else {
-        unsigned t = LOG2(v) + 1;
+        const unsigned t = LOG2(v) + 1;
         bs->write_unary(bs, 0, t);
         bs->write(bs, t - 1, v % (1 << (t - 1)));
     }
@@ -2029,7 +2029,7 @@ int main(int argc, char *argv[]) {
             printf("-p, --correlation_passes=#      "
                    "number of correlation passes\n");
             printf("-f, --false-stereo              check for false stereo\n");
-            printf("-w, --wasted-bits               check for wasted bits");
+            printf("-w, --wasted-bits               check for wasted bits\n");
             printf("-j, --joint-stereo              use joint stereo\n");
             return 0;
         default:

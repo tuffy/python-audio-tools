@@ -375,6 +375,7 @@ BitstreamReader_read_bytes(bitstream_BitstreamReader *self,
 {
     int byte_count;
 
+
     if (!PyArg_ParseTuple(args, "i", &byte_count)) {
         return NULL;
     } else if (byte_count < 0) {
@@ -401,34 +402,32 @@ BitstreamReader_read_bytes(bitstream_BitstreamReader *self,
         }
     } else {
         /*use multiple read buffers to fetch entire set of bytes*/
-        uint8_t* read_buffer = NULL;
-        Py_ssize_t buffer_size = 0;
+        struct bs_buffer* read_buffer = buf_new();
         PyObject* string_obj;
 
         if (!setjmp(*br_try(self->bitstream))) {
             while (byte_count > 0) {
                 const unsigned to_read = MIN(byte_count, BUFFER_SIZE);
 
-                read_buffer =
-                    realloc(read_buffer, (size_t)(buffer_size + to_read));
-
+                buf_resize(read_buffer, to_read);
                 self->bitstream->read_bytes(self->bitstream,
-                                            read_buffer + buffer_size,
+                                            BUF_WINDOW_END(read_buffer),
                                             to_read);
-
-                buffer_size += to_read;
+                read_buffer->window_end += to_read;
                 byte_count -= to_read;
             }
             br_etry(self->bitstream);
 
-            string_obj = PyString_FromStringAndSize((char *)read_buffer,
-                                                    buffer_size);
-            free(read_buffer);
+            string_obj = PyString_FromStringAndSize(
+                (char *)BUF_WINDOW_START(read_buffer),
+                (Py_ssize_t)BUF_WINDOW_SIZE(read_buffer));
+
+            buf_close(read_buffer);
             return string_obj;
         } else {
             br_etry(self->bitstream);
+            buf_close(read_buffer);
             PyErr_SetString(PyExc_IOError, "I/O error reading stream");
-            free(read_buffer);
             return NULL;
         }
     }
@@ -578,7 +577,7 @@ BitstreamReader_substream_meth(bitstream_BitstreamReader *self, PyObject *args)
     if (!setjmp(*br_try(self->bitstream))) {
         self->bitstream->substream_append(self->bitstream,
                                           obj->bitstream,
-                                          (uint32_t)bytes);
+                                          (unsigned)bytes);
         br_etry(self->bitstream);
         return (PyObject *)obj;
     } else {
@@ -621,7 +620,7 @@ BitstreamReader_substream_append(bitstream_BitstreamReader *self,
     if (!setjmp(*br_try(self->bitstream))) {
         self->bitstream->substream_append(self->bitstream,
                                           substream->bitstream,
-                                          (uint32_t)bytes);
+                                          (unsigned)bytes);
 
         br_etry(self->bitstream);
         Py_INCREF(Py_None);
@@ -2389,7 +2388,7 @@ int br_read_python(void* user_data,
                                      (char**)&string,
                                      &string_size) != -1) {
             /*then append bytes to buffer and return success*/
-            buf_write(buffer, string, (uint32_t)string_size);
+            buf_write(buffer, string, (unsigned)string_size);
 
             return 0;
         } else {

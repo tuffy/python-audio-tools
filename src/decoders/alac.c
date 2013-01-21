@@ -447,8 +447,8 @@ parse_decoding_parameters(decoders_ALACDecoder *self)
                                        free,
                                        (ARRAY_PRINT_FUNC)alac_stsc_print);
     array_u* chunk_offsets = array_u_new();
-    uint32_t mdia_atom_size;
-    uint32_t atom_size;
+    unsigned mdia_atom_size;
+    unsigned atom_size;
     int stts_found;
     int stsc_found;
     int stco_found;
@@ -870,9 +870,8 @@ read_frame(decoders_ALACDecoder *self,
         unsigned i;
         unsigned sample_size;
         array_i* LSBs = NULL;
-        array_i* residuals = self->residuals;
+
         array_ia* frame_channels = self->frame_channels;
-        array_i* channel_data;
 
         frame_channels->reset(frame_channels);
 
@@ -901,6 +900,7 @@ read_frame(decoders_ALACDecoder *self,
         /*read a residual block per channel
           and calculate the subframe's samples*/
         for (channel = 0; channel < channel_count; channel++) {
+            array_i* residuals = self->residuals;
             residuals->reset(residuals);
             read_residuals(mdat,
                            residuals,
@@ -930,7 +930,7 @@ read_frame(decoders_ALACDecoder *self,
         /*if uncompressed LSBs, prepend partial samples to output*/
         if (uncompressed_LSBs > 0) {
             for (channel = 0; channel < channel_count; channel++) {
-                channel_data = frame_channels->_[channel];
+                array_i* channel_data = frame_channels->_[channel];
                 for (i = 0; i < sample_count; i++) {
                     channel_data->_[i] = ((channel_data->_[i] <<
                                            uncompressed_LSBs * 8) |
@@ -1025,8 +1025,6 @@ read_residuals(BitstreamReader *bs,
 {
     int history = initial_history;
     unsigned int sign_modifier = 0;
-    unsigned int unsigned_residual;
-    unsigned int zero_block_size;
     int i, j;
 
     residuals->reset_for(residuals, residual_count);
@@ -1034,7 +1032,7 @@ read_residuals(BitstreamReader *bs,
     for (i = 0; i < residual_count; i++) {
         /*get an unsigned residual based on "history"
           and on "sample_size" as a last resort*/
-        unsigned_residual = read_residual(
+        const unsigned unsigned_residual = read_residual(
             bs,
             MIN(LOG2((history >> 9) + 3), maximum_k),
             sample_size) + sign_modifier;
@@ -1060,7 +1058,7 @@ read_residuals(BitstreamReader *bs,
         /*if history gets too small, we may have a block of 0 samples
           which can be compressed more efficiently*/
         if ((history < 128) && ((i + 1) < residual_count)) {
-            zero_block_size = read_residual(
+            unsigned zero_block_size = read_residual(
                 bs,
                 MIN(7 - LOG2(history) + ((history + 16) / 64), maximum_k),
                 16);
@@ -1093,11 +1091,10 @@ read_residual(BitstreamReader *bs,
               unsigned int k,
               unsigned int sample_size)
 {
-    int msb;
-    unsigned int lsb;
+    const int msb = bs->read_limited_unary(bs, 0, RICE_THRESHOLD + 1);
 
     /*read a unary 0 value to a maximum of RICE_THRESHOLD (8)*/
-    if ((msb = bs->read_limited_unary(bs, 0, RICE_THRESHOLD + 1)) == -1) {
+    if (msb == -1) {
         /*we've exceeded the maximum number of 1 bits,
           so return an unencoded value*/
         return bs->read(bs, sample_size);
@@ -1106,7 +1103,7 @@ read_residual(BitstreamReader *bs,
         return (unsigned int)msb;
     } else {
         /*read a set of least-significant bits*/
-        lsb = bs->read(bs, k);
+        const unsigned lsb = bs->read(bs, k);
         if (lsb > 1) {
             /*if > 1, combine with MSB and return*/
             return (msb * ((1 << k) - 1)) + (lsb - 1);
@@ -1243,19 +1240,15 @@ decorrelate_channels(array_i* left,
                      unsigned interlacing_shift,
                      unsigned interlacing_leftweight)
 {
-    unsigned size = left->len;
+    const unsigned size = left->len;
     unsigned i;
-    int64_t leftweight;
-    int ch0_s;
-    int ch1_s;
-    int left_s;
-    int right_s;
 
     for (i = 0; i < size; i++) {
-        ch0_s = left->_[i];
-        ch1_s = right->_[i];
-
-        leftweight = ch1_s * (int)interlacing_leftweight;
+        const int ch0_s = left->_[i];
+        const int ch1_s = right->_[i];
+        int64_t leftweight = ch1_s * (int)interlacing_leftweight;
+        int left_s;
+        int right_s;
         leftweight >>= interlacing_shift;
         right_s = ch0_s - (int)leftweight;
         left_s = ch1_s + right_s;
@@ -1267,14 +1260,12 @@ decorrelate_channels(array_i* left,
 
 int
 find_atom(BitstreamReader* parent,
-          BitstreamReader* sub_atom, uint32_t* sub_atom_size,
+          BitstreamReader* sub_atom, unsigned* sub_atom_size,
           const char* sub_atom_name)
 {
-    uint32_t atom_size;
-    uint8_t atom_name[4];
-
     if (!setjmp(*br_try(parent))) {
-        atom_size = parent->read(parent, 32);
+        unsigned atom_size = parent->read(parent, 32);
+        uint8_t atom_name[4];
         parent->read_bytes(parent, atom_name, 4);
         while (memcmp(atom_name, sub_atom_name, 4)) {
             parent->skip_bytes(parent, atom_size - 8);
@@ -1295,14 +1286,11 @@ find_atom(BitstreamReader* parent,
 
 int
 find_sub_atom(BitstreamReader* parent,
-              BitstreamReader* sub_atom, uint32_t* sub_atom_size,
+              BitstreamReader* sub_atom, unsigned* sub_atom_size,
               ...)
 {
     va_list ap;
     char* sub_atom_name;
-    BitstreamReader* parent_atom;
-    BitstreamReader* child_atom;
-    uint32_t child_atom_size;
 
     va_start(ap, sub_atom_size);
 
@@ -1313,8 +1301,9 @@ find_sub_atom(BitstreamReader* parent,
         return 1;
     } else {
         /*at least 1 sub-atom*/
-        parent_atom = br_substream_new(BS_BIG_ENDIAN);
-        child_atom = br_substream_new(BS_BIG_ENDIAN);
+        BitstreamReader* parent_atom = br_substream_new(BS_BIG_ENDIAN);
+        BitstreamReader* child_atom = br_substream_new(BS_BIG_ENDIAN);
+        unsigned child_atom_size;
 
         /*first, try to find the sub-atom from our original parent*/
         if (find_atom(parent, child_atom, &child_atom_size, sub_atom_name)) {
@@ -1372,20 +1361,27 @@ read_alac_atom(BitstreamReader* stsd_atom,
                unsigned int* channels,
                unsigned int* sample_rate)
 {
-    unsigned int stsd_version;
-    unsigned int stsd_descriptions;
-    uint8_t alac1[4];
-    uint8_t alac2[4];
-
     if (!setjmp(*br_try(stsd_atom))) {
+        unsigned int stsd_version;
+        unsigned int stsd_descriptions;
+        uint8_t alac1[4];
+        uint8_t alac2[4];
+
         stsd_atom->parse(stsd_atom,
                          "8u 24p 32u"
                          "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P"
                          "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u",
-                         &stsd_version, &stsd_descriptions, alac1, alac2,
-                         max_samples_per_frame, bits_per_sample,
-                         history_multiplier, initial_history,
-                         maximum_k, channels, sample_rate);
+                         &stsd_version,
+                         &stsd_descriptions,
+                         alac1,
+                         alac2,
+                         max_samples_per_frame,
+                         bits_per_sample,
+                         history_multiplier,
+                         initial_history,
+                         maximum_k,
+                         channels,
+                         sample_rate);
         br_etry(stsd_atom);
 
         if (memcmp(alac1, "alac", 4) || memcmp(alac2, "alac", 4))
@@ -1402,9 +1398,9 @@ status
 read_mdhd_atom(BitstreamReader* mdhd_atom,
                unsigned int* total_frames)
 {
-    unsigned int version;
-
     if (!setjmp(*br_try(mdhd_atom))) {
+        unsigned int version;
+
         mdhd_atom->parse(mdhd_atom, "8u 24p", &version);
 
         if (version == 0) {
