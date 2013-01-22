@@ -159,8 +159,8 @@ encode_frame(BitstreamWriter* output,
     array_i* sum1 = cache->sum1;
     array_ia* residual = cache->residual;
 
-    bw_add_callback(output, (bs_callback_func)tta_byte_counter, &frame_size);
-    bw_add_callback(output, (bs_callback_func)tta_crc32, &frame_crc);
+    bw_add_callback(output, (bs_callback_f)tta_byte_counter, &frame_size);
+    bw_add_callback(output, (bs_callback_f)tta_crc32, &frame_crc);
 
     cache->predicted->reset(cache->predicted);
     residual->reset(residual);
@@ -598,7 +598,7 @@ write_header(BitstreamWriter* output,
              unsigned total_pcm_frames)
 {
     unsigned header_crc = 0xFFFFFFFF;
-    bw_add_callback(output, (bs_callback_func)tta_crc32, &header_crc);
+    bw_add_callback(output, (bs_callback_f)tta_crc32, &header_crc);
     output->build(output, "4b 16u 16u 16u 32u 32u",
                   "TTA1",
                   1,
@@ -616,7 +616,7 @@ write_seektable(BitstreamWriter* output,
 {
     unsigned i;
     unsigned seektable_crc = 0xFFFFFFFF;
-    bw_add_callback(output, (bs_callback_func)tta_crc32, &seektable_crc);
+    bw_add_callback(output, (bs_callback_f)tta_crc32, &seektable_crc);
     for (i = 0; i < frame_sizes->len; i++) {
         output->write(output, 32, frame_sizes->_[i]);
     }

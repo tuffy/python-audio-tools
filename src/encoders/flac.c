@@ -421,7 +421,7 @@ flacenc_write_frame_header(BitstreamWriter *bs,
     unsigned bits_per_sample_bits;
     int crc8 = 0;
 
-    bw_add_callback(bs, (bs_callback_func)flac_crc8, &crc8);
+    bw_add_callback(bs, (bs_callback_f)flac_crc8, &crc8);
 
     /*determine the block size bits from the given amount of samples*/
     switch (block_size) {
@@ -527,7 +527,7 @@ flacenc_write_frame(BitstreamWriter* bs,
     unsigned channel;
     int crc16 = 0;
 
-    bw_add_callback(bs, (bs_callback_func)flac_crc16, &crc16);
+    bw_add_callback(bs, (bs_callback_f)flac_crc16, &crc16);
 
     if ((encoder->streaminfo.channels == 2) &&
         ((encoder->options.mid_side || encoder->options.adaptive_mid_side))) {

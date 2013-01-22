@@ -252,10 +252,9 @@ br_open_buffer(struct bs_buffer* buffer, bs_endianness endianness)
 BitstreamReader*
 br_open_external(void* user_data,
                  bs_endianness endianness,
-                 int (*read)(void* user_data,
-                             struct bs_buffer* buffer),
-                 void (*close)(void* user_data),
-                 void (*free)(void* user_data))
+                 ext_read_f read,
+                 ext_close_f close,
+                 ext_free_f free)
 {
     BitstreamReader *bs = malloc(sizeof(BitstreamReader));
     bs->type = BR_EXTERNAL;
@@ -657,61 +656,91 @@ br_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
 void
 br_skip_bits_e_be(BitstreamReader* bs, unsigned int count)
 {
-    struct read_bits result = {0, 0, bs->state};
+    /*handle common case where input is byte-aligned,
+      the count is an even number of bytes
+      and there are no set callbacks to consider*/
+    if ((bs->state == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
+        while (count > 0) {
+            const unsigned int to_read = MIN(BUFFER_SIZE, count / 8);
+            static uint8_t dummy[BUFFER_SIZE];
 
-    while (count > 0) {
-        if (result.state == 0) {
-            const int byte = ext_getc(bs->input.external);
-            if (byte != EOF) {
-                struct bs_callback* callback;
-                result.state = NEW_STATE(byte);
-                for (callback = bs->callbacks;
-                     callback != NULL;
-                     callback = callback->next)
-                     callback->callback((uint8_t)byte,
-                                        callback->data);
-            } else {
+            if (ext_fread(dummy, to_read, bs->input.external) != to_read)
                 br_abort(bs);
+            else
+                count -= (to_read * 8);
+        }
+    } else {
+        struct read_bits result = {0, 0, bs->state};
+
+        while (count > 0) {
+            if (result.state == 0) {
+                const int byte = ext_getc(bs->input.external);
+                if (byte != EOF) {
+                    struct bs_callback* callback;
+                    result.state = NEW_STATE(byte);
+                    for (callback = bs->callbacks;
+                         callback != NULL;
+                         callback = callback->next)
+                         callback->callback((uint8_t)byte,
+                                            callback->data);
+                } else {
+                    br_abort(bs);
+                }
             }
+
+            result =
+                read_bits_table[result.state][MIN(count, 8) - 1];
+
+            count -= result.value_size;
         }
 
-        result =
-            read_bits_table[result.state][MIN(count, 8) - 1];
-
-        count -= result.value_size;
+        bs->state = result.state;
     }
-
-    bs->state = result.state;
 }
 
 void
 br_skip_bits_e_le(BitstreamReader* bs, unsigned int count)
 {
-    struct read_bits result = {0, 0, bs->state};
+    /*handle common case where input is byte-aligned,
+      the count is an even number of bytes
+      and there are no set callbacks to consider*/
+    if ((bs->state == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
+        while (count > 0) {
+            const unsigned int to_read = MIN(BUFFER_SIZE, count / 8);
+            static uint8_t dummy[BUFFER_SIZE];
 
-    while (count > 0) {
-        if (result.state == 0) {
-            const int byte = ext_getc(bs->input.external);
-            if (byte != EOF) {
-                struct bs_callback* callback;
-                result.state = NEW_STATE(byte);
-                for (callback = bs->callbacks;
-                     callback != NULL;
-                     callback = callback->next)
-                     callback->callback((uint8_t)byte,
-                                        callback->data);
-            } else {
+            if (ext_fread(dummy, to_read, bs->input.external) != to_read)
                 br_abort(bs);
+            else
+                count -= (to_read * 8);
+        }
+    } else {
+        struct read_bits result = {0, 0, bs->state};
+
+        while (count > 0) {
+            if (result.state == 0) {
+                const int byte = ext_getc(bs->input.external);
+                if (byte != EOF) {
+                    struct bs_callback* callback;
+                    result.state = NEW_STATE(byte);
+                    for (callback = bs->callbacks;
+                         callback != NULL;
+                         callback = callback->next)
+                         callback->callback((uint8_t)byte,
+                                            callback->data);
+                } else {
+                    br_abort(bs);
+                }
             }
+
+            result =
+                read_bits_table_le[result.state][MIN(count, 8) - 1];
+
+            count -= result.value_size;
         }
 
-        result =
-            read_bits_table_le[result.state][MIN(count, 8) - 1];
-
-        count -= result.value_size;
+        bs->state = result.state;
     }
-
-    bs->state = result.state;
 }
 
 void
@@ -724,11 +753,9 @@ br_skip_bits_c(BitstreamReader* bs, unsigned int count)
 void
 br_skip_bytes(BitstreamReader* bs, unsigned int count)
 {
-    unsigned int bytes_to_skip;
-
     /*try to generate large, byte-aligned chunks of bit skips*/
     while (count > 0) {
-        bytes_to_skip = MIN(0x10000000, count);
+        const unsigned bytes_to_skip = MIN(0x10000000, count);
         bs->skip(bs, bytes_to_skip * 8);
         count -= bytes_to_skip;
     }
@@ -862,7 +889,6 @@ br_skip_unary_c(BitstreamReader* bs, int stop_bit)
     {                                                                   \
         struct read_limited_unary result = {0, 0, 0, bs->state};        \
         register int accumulator = 0;                                   \
-        stop_bit *= 9;                                                  \
                                                                         \
         assert(maximum_bits > 0);                                       \
                                                                         \
@@ -882,8 +908,8 @@ br_skip_unary_c(BitstreamReader* bs, int stop_bit)
                 }                                                       \
             }                                                           \
                                                                         \
-            result = UNARY_TABLE[result.state][stop_bit +               \
-                                                 MIN(maximum_bits, 8)]; \
+            result = UNARY_TABLE[result.state][(stop_bit * 9) +         \
+                                               MIN(maximum_bits, 8)];   \
                                                                         \
             accumulator += result.value;                                \
             maximum_bits -= result.value;                               \
@@ -1043,40 +1069,21 @@ br_read_bytes_e(struct BitstreamReader_s* bs,
     if (bs->state == 0) {
         /*stream is byte-aligned, so perform optimized read*/
 
-        struct bs_buffer* buffer = bs->input.external->buffer;
-
-        /*read as many bytes as possible from the buffer*/
-        while (byte_count) {
-            const unsigned amount_read = buf_read(buffer, bytes, byte_count);
+        /*ext_fread bytes from handle to putput*/
+        if (ext_fread(bytes, byte_count, bs->input.external) == byte_count) {
             struct bs_callback* callback;
-
-            /*perform callbacks on the read bytes*/
+            /*if sufficient bytes were read
+              perform callbacks on the read bytes*/
             for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next) {
-                unsigned int i;
+                unsigned i;
 
-                for (i = 0; i < amount_read; i++)
+                for (i = 0; i < byte_count; i++)
                     callback->callback(bytes[i], callback->data);
             }
-
-            /*and increment buffer position and output position*/
-            bytes += amount_read;
-            byte_count -= amount_read;
-
-            if (byte_count) {
-                /*if there's more bytes to read,
-                  populate buffer with additional data*/
-
-                if (bs->input.external->read(bs->input.external->user_data,
-                                             buffer) ||
-                    (BUF_WINDOW_SIZE(buffer) == 0)) {
-                    /*if a read error occurs
-                      or the read adds no data to the buffer,
-                      trigger an abort*/
-                    br_abort(bs);
-                }
-            }
+        } else {
+            br_abort(bs);
         }
     } else {
         unsigned i;
@@ -1436,11 +1443,11 @@ br_mark_s(BitstreamReader* bs)
         bs->marks_used = bs->marks_used->next;
     }
 
-    mark->position.substream = bs->input.substream->window_start;
+    buf_set_rewindable(bs->input.substream, 1);
+    buf_getpos(bs->input.substream, &(mark->position.substream));
     mark->state = bs->state;
     mark->next = bs->marks;
     bs->marks = mark;
-    bs->input.substream->mark_in_progress = 1;
 }
 
 void
@@ -1455,11 +1462,11 @@ br_mark_e(BitstreamReader* bs)
         bs->marks_used = bs->marks_used->next;
     }
 
-    mark->position.external = bs->input.external->buffer->window_start;
+    buf_set_rewindable(bs->input.external->buffer, 1);
+    buf_getpos(bs->input.external->buffer, &(mark->position.external));
     mark->state = bs->state;
     mark->next = bs->marks;
     bs->marks = mark;
-    bs->input.external->buffer->mark_in_progress = 1;
 }
 
 void
@@ -1483,7 +1490,7 @@ void
 br_rewind_s(BitstreamReader* bs)
 {
     if (bs->marks != NULL) {
-        bs->input.substream->window_start = bs->marks->position.substream;
+        buf_setpos(bs->input.substream, bs->marks->position.substream);
         bs->state = bs->marks->state;
     } else {
         fprintf(stderr, "No marks on stack to rewind!\n");
@@ -1494,14 +1501,12 @@ void
 br_rewind_e(BitstreamReader* bs)
 {
     if (bs->marks != NULL) {
-        bs->input.external->buffer->window_start =
-            bs->marks->position.external;
+        buf_setpos(bs->input.external->buffer, bs->marks->position.external);
         bs->state = bs->marks->state;
     } else {
         fprintf(stderr, "No marks on stack to rewind!\n");
     }
 }
-
 
 void
 br_rewind_c(BitstreamReader* bs)
@@ -1530,7 +1535,7 @@ br_unmark_s(BitstreamReader* bs)
         bs->marks = mark->next;
         mark->next = bs->marks_used;
         bs->marks_used = mark;
-        bs->input.substream->mark_in_progress = (bs->marks != NULL);
+        buf_set_rewindable(bs->input.substream, bs->marks != NULL);
     } else {
         fprintf(stderr, "No marks on stack to remove!\n");
     }
@@ -1544,7 +1549,7 @@ br_unmark_e(BitstreamReader* bs)
         bs->marks = mark->next;
         mark->next = bs->marks_used;
         bs->marks_used = mark;
-        bs->input.external->buffer->mark_in_progress = (bs->marks != NULL);
+        buf_set_rewindable(bs->input.external->buffer, bs->marks != NULL);
     } else {
         fprintf(stderr, "No marks on stack to remove!\n");
     }
@@ -1561,16 +1566,22 @@ br_substream_append_f(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
                       unsigned bytes)
 {
+    struct bs_buffer *output;
     assert(substream->type == BR_SUBSTREAM);
+    output = substream->input.substream;
 
     /*byte align the input stream*/
     stream->state = 0;
 
     while (bytes) {
         const unsigned to_read = MIN(bytes, BUFFER_SIZE);
-        static uint8_t fread_buffer[BUFFER_SIZE];
+        uint8_t *output_buffer;
+        /*make sure to resize *before* getting window_end
+          in case realloc moves the buffer data*/
+        buf_resize(output, to_read);
+        output_buffer = BUF_WINDOW_END(output);
 
-        if (fread(fread_buffer,
+        if (fread(output_buffer,
                   sizeof(uint8_t),
                   to_read,
                   stream->input.file) == to_read) {
@@ -1582,12 +1593,11 @@ br_substream_append_f(struct BitstreamReader_s *stream,
                  callback = callback->next) {
                 unsigned i;
                 for (i = 0; i < bytes; i++)
-                    callback->callback(fread_buffer[i], callback->data);
+                    callback->callback(output_buffer[i], callback->data);
             }
 
-            /*write new data to output buffer*/
-            buf_write(substream->input.substream, fread_buffer, to_read);
-
+            /*increment window_end to accomodate new data*/
+            output->window_end += to_read;
             bytes -= to_read;
         } else {
             /*abort if the amount of read bytes is insufficient*/
@@ -1638,18 +1648,24 @@ br_substream_append_e(struct BitstreamReader_s *stream,
                       struct BitstreamReader_s *substream,
                       unsigned bytes)
 {
+    struct bs_buffer *output;
     assert(substream->type == BR_SUBSTREAM);
+    output = substream->input.substream;
 
     /*byte align the input stream*/
     stream->state = 0;
 
     while (bytes) {
         const unsigned to_read = MIN(bytes, BUFFER_SIZE);
-        static uint8_t fread_buffer[BUFFER_SIZE];
+        uint8_t *output_buffer;
+        /*make sure to resize *before* getting window_end
+          in case realloc moves the buffer data*/
+        buf_resize(output, to_read);
+        output_buffer = BUF_WINDOW_END(output);
 
-        if (ext_read(fread_buffer,
-                     (unsigned)to_read,
-                     stream->input.external) == (unsigned)to_read) {
+        if (ext_fread(output_buffer,
+                      to_read,
+                      stream->input.external) == to_read) {
             struct bs_callback *callback;
 
             /*perform callbacks on newly read bytes*/
@@ -1658,12 +1674,11 @@ br_substream_append_e(struct BitstreamReader_s *stream,
                  callback = callback->next) {
                 unsigned i;
                 for (i = 0; i < bytes; i++)
-                    callback->callback(fread_buffer[i], callback->data);
+                    callback->callback(output_buffer[i], callback->data);
             }
 
-            /*write new data to output buffer*/
-            buf_write(substream->input.substream, fread_buffer, to_read);
-
+            /*increment window_end to accomodate new data*/
+            output->window_end += to_read;
             bytes -= to_read;
         } else {
             /*abort if the amount of read bytes is insufficient*/
@@ -1682,7 +1697,7 @@ br_substream_append_c(struct BitstreamReader_s *stream,
 
 
 void
-br_add_callback(BitstreamReader *bs, bs_callback_func callback, void *data)
+br_add_callback(BitstreamReader *bs, bs_callback_f callback, void *data)
 {
     struct bs_callback *callback_node;
 
@@ -1858,17 +1873,20 @@ BitstreamWriter*
 bw_open_external(void* user_data,
                  bs_endianness endianness,
                  unsigned buffer_size,
-                 int (*write)(void* user_data,
-                              const struct bs_buffer* buffer),
-                 void (*flush)(void* user_data),
-                 void (*close)(void* user_data),
-                 void (*free)(void* user_data))
+                 ext_write_f write,
+                 ext_flush_f flush,
+                 ext_close_f close,
+                 ext_free_f free)
 {
     BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
     bs->type = BW_EXTERNAL;
 
-    bs->output.external = ext_open_w(user_data, buffer_size,
-                                     write, flush, close, free);
+    bs->output.external = ext_open_w(user_data,
+                                     buffer_size,
+                                     write,
+                                     flush,
+                                     close,
+                                     free);
     bs->buffer_size = 0;
     bs->buffer = 0;
 
@@ -2234,13 +2252,39 @@ void
 bw_write_bytes_f(BitstreamWriter* bs, const uint8_t* bytes,
                  unsigned int count)
 {
-    unsigned int i;
-    struct bs_callback* callback;
+    unsigned i;
 
     if (bs->buffer_size == 0) {
+        struct bs_callback* callback;
+
         /*stream is byte aligned, so perform optimized write*/
         if (fwrite(bytes, sizeof(uint8_t), count, bs->output.file) != count)
             bw_abort(bs);
+
+        /*perform callbacks on the written bytes*/
+        for (callback = bs->callbacks;
+             callback != NULL;
+             callback = callback->next)
+            for (i = 0; i < count; i++)
+                callback->callback(bytes[i], callback->data);
+    } else {
+        /*stream is not byte-aligned, so perform multiple writes*/
+        for (i = 0; i < count; i++)
+            bs->write(bs, 8, bytes[i]);
+    }
+}
+
+void
+bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes,
+                 unsigned int count)
+{
+    unsigned i;
+
+    if (bs->buffer_size == 0) {
+        struct bs_callback* callback;
+
+        /*stream is byte aligned, so perform optimized write*/
+        buf_write(bs->output.buffer, bytes, count);
 
         /*perform callbacks on the written bytes*/
         for (callback = bs->callbacks;
@@ -2261,26 +2305,31 @@ bw_write_bytes_e(BitstreamWriter* bs, const uint8_t* bytes,
 {
     unsigned int i;
 
-    for (i = 0; i < count; i++)
-        bs->write(bs, 8, bytes[i]);
-}
+    if (bs->buffer_size == 0) {
+        struct bw_external_output *output = bs->output.external;
+        struct bs_buffer *buffer = output->buffer;
+        struct bs_callback* callback;
 
+        /*stream is byte aligned, so performed optimized write(s)*/
+        buf_write(buffer, bytes, count);
 
-void
-bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes,
-                 unsigned int count)
-{
-    unsigned int i;
+        /*then flush internal buffer while it is too large*/
+        while (BUF_WINDOW_SIZE(buffer) >= output->buffer_size) {
+            /*perform callbacks on the written bytes*/
+            for (callback = bs->callbacks;
+                 callback != NULL;
+                 callback = callback->next)
+                 for (i = 0; i < count; i++)
+                     callback->callback(BUF_WINDOW_START(buffer)[i],
+                                        callback->data);
 
-    /*byte writing to a recorder
-      is implemented as a series of individual writes
-      rather than a single record containing one big write
-
-      since this is a relatively rare operation,
-      it's best to keep it simple
-      rather than make a mess of split_record()*/
-    for (i = 0; i < count; i++)
-        bs->write(bs, 8, bytes[i]);
+            output->write(output->user_data, buffer, output->buffer_size);
+        }
+    } else {
+        /*stream is not byte-aligned, so perform multiple writes*/
+        for (i = 0; i < count; i++)
+            bs->write(bs, 8, bytes[i]);
+    }
 }
 
 void
@@ -2556,8 +2605,7 @@ bw_bits_written_f_p_c(BitstreamWriter* bs)
 unsigned int
 bw_bits_written_r(BitstreamWriter* bs)
 {
-    return ((bs->output.buffer->window_end -
-             bs->output.buffer->window_start) * 8) + bs->buffer_size;
+    return (BUF_WINDOW_SIZE(bs->output.buffer) * 8) + bs->buffer_size;
 }
 
 unsigned int
@@ -2588,10 +2636,7 @@ bw_flush_r_a_c(BitstreamWriter* bs)
 void
 bw_flush_e(BitstreamWriter* bs)
 {
-    bs->output.external->write(bs->output.external->user_data,
-                               bs->output.external->buffer);
-    bs->output.external->buffer->window_end = 0;
-    bs->output.external->flush(bs->output.external->user_data);
+    ext_flush_w(bs->output.external);
 }
 
 
@@ -2633,7 +2678,7 @@ void
 bw_close_internal_stream_e(BitstreamWriter* bs)
 {
     /*flush pending data*/
-    bw_flush_e(bs);
+    ext_flush_w(bs->output.external);
 
     /*call .close() method*/
     ext_close_w(bs->output.external);
@@ -2723,7 +2768,7 @@ bw_close(BitstreamWriter* bs)
 
 
 void
-bw_add_callback(BitstreamWriter *bs, bs_callback_func callback, void *data)
+bw_add_callback(BitstreamWriter *bs, bs_callback_f callback, void *data)
 {
     struct bs_callback *callback_node = malloc(sizeof(struct bs_callback));
     callback_node->callback = callback;
@@ -2942,6 +2987,17 @@ bw_reset_recorder(BitstreamWriter* bs)
 }
 
 void
+bw_maximize_recorder(BitstreamWriter* bs)
+{
+    assert(bs->type == BW_RECORDER);
+
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    /*FIXME - check if this is the best way to handle this*/
+    bs->output.buffer->window_end = INT_MAX;
+}
+
+void
 bw_swap_records(BitstreamWriter* a, BitstreamWriter* b)
 {
     BitstreamWriter c;
@@ -2961,7 +3017,6 @@ bw_swap_records(BitstreamWriter* a, BitstreamWriter* b)
     b->buffer = c.buffer;
 }
 
-
 struct bs_buffer*
 buf_new(void)
 {
@@ -2970,7 +3025,7 @@ buf_new(void)
     stream->data_size = 1;
     stream->window_start = 0;
     stream->window_end = 0;
-    stream->mark_in_progress = 0;
+    stream->rewindable = 0;
     return stream;
 }
 
@@ -2979,13 +3034,14 @@ buf_resize(struct bs_buffer *stream, unsigned additional_bytes)
 {
     /*only perform resize if space actually needed*/
     if (additional_bytes > (stream->data_size - stream->window_end)) {
-        if ((stream->window_start > 0) && !stream->mark_in_progress) {
+        if ((stream->window_start > 0) && !stream->rewindable) {
             /*we don't need to rewind the buffer
-              so shift window down, if possible,
-              before extending buffer to add more space*/
-            memmove(stream->data,
-                    BUF_WINDOW_START(stream),
-                    BUF_WINDOW_SIZE(stream));
+              so shift window down before extending buffer to add more space*/
+            if (BUF_WINDOW_SIZE(stream)) {
+                memmove(stream->data,
+                        BUF_WINDOW_START(stream),
+                        BUF_WINDOW_SIZE(stream));
+            }
             stream->window_end -= stream->window_start;
             stream->window_start = 0;
 
@@ -3028,7 +3084,7 @@ buf_read(struct bs_buffer *stream, uint8_t *data, unsigned data_size)
 void
 buf_copy(const struct bs_buffer *source, struct bs_buffer *target)
 {
-    assert(target->mark_in_progress == 0);
+    assert(target->rewindable == 0);
 
     if (target->data_size < source->data_size) {
         target->data_size = source->data_size;
@@ -3052,7 +3108,7 @@ void
 buf_reset(struct bs_buffer *stream)
 {
     stream->window_start = stream->window_end = 0;
-    stream->mark_in_progress = 0;
+    stream->rewindable = 0;
 }
 
 int
@@ -3066,13 +3122,31 @@ buf_getc(struct bs_buffer *stream)
 
 int
 buf_putc(int i, struct bs_buffer *stream) {
-    if (stream->window_end >= stream->data_size) {
+    if (stream->window_end == stream->data_size) {
         buf_resize(stream, 1);
     }
 
     stream->data[stream->window_end++] = (uint8_t)i;
 
     return i;
+}
+
+void
+buf_getpos(struct bs_buffer *stream, unsigned *pos)
+{
+    *pos = stream->window_start;
+}
+
+void
+buf_setpos(struct bs_buffer *stream, unsigned pos)
+{
+    stream->window_start = pos;
+}
+
+void
+buf_set_rewindable(struct bs_buffer *stream, int rewindable)
+{
+    stream->rewindable = rewindable;
 }
 
 void
@@ -3106,29 +3180,15 @@ int
 ext_getc(struct br_external_input* stream)
 {
     struct bs_buffer* buffer = stream->buffer;
-
-    if (buffer->window_start < buffer->window_end) {
-        /*if there's enough bytes in the buffer,
-          simply return the next byte in the buffer*/
-        return buffer->data[buffer->window_start++];
+    const int byte = buf_getc(buffer);
+    if (byte != EOF) {
+        /*if the internal buffer isn't empty, simply return the next byte*/
+        return byte;
     } else {
-        /*otherwise, call the read() method on our reader object
-          to get more bytes for our buffer*/
-
-        if (!buffer->mark_in_progress) {
-            /*if the stream has no mark,
-              reset the empty buffer prior to reading new data*/
-            buf_reset(buffer);
-        }
-
+        /*otherwise, try to refill the buffer first*/
         if (!stream->read(stream->user_data, buffer)) {
-            /*read successful,
-              so return next byte in new buffer - if any*/
-            if (buffer->window_start < buffer->window_end) {
-                return buffer->data[buffer->window_start++];
-            } else {
-                return EOF;
-            }
+            /*read successful, so return next byte in buffer (if any)*/
+            return buf_getc(buffer);
         } else {
             /*read unsuccessful, so return EOF*/
             return EOF;
@@ -3137,9 +3197,9 @@ ext_getc(struct br_external_input* stream)
 }
 
 unsigned
-ext_read(uint8_t* bytes,
-         unsigned byte_count,
-         struct br_external_input* stream)
+ext_fread(uint8_t* bytes,
+          unsigned byte_count,
+          struct br_external_input* stream)
 {
     struct bs_buffer* buffer = stream->buffer;
 
@@ -3153,22 +3213,20 @@ ext_read(uint8_t* bytes,
         /*otherwise, populate the buffer with read() calls*/
         while (byte_count > BUF_WINDOW_SIZE(buffer)) {
             const unsigned old_size = BUF_WINDOW_SIZE(buffer);
-            if (!stream->read(stream->user_data, buffer)) {
-                if (BUF_WINDOW_SIZE(buffer) == old_size) {
-                    /*unless the data runs out*/
-                    break;
-                } else {
-                    continue;
-                }
+            if (!stream->read(stream->user_data, buffer) &&
+                (BUF_WINDOW_SIZE(buffer) > old_size)) {
+                /*as long as the reads are successful
+                  and the buffer continues to grow*/
+                continue;
             } else {
-                /*or there is a read error*/
+                /*otherwise, stop reading and return what we have*/
                 break;
             }
         }
 
-        /*read as much of the buffer as necessary to "bytes"
+        /*read as much of the buffer as necessary/possible to "bytes"
           and return the amount actually read*/
-        return (unsigned)buf_read(buffer, bytes, byte_count);
+        return buf_read(buffer, bytes, byte_count);
     }
 }
 
@@ -3189,11 +3247,10 @@ ext_free(struct br_external_input* stream)
 struct bw_external_output*
 ext_open_w(void* user_data,
            unsigned buffer_size,
-           int (*write)(void* user_data,
-                        const struct bs_buffer* buffer),
-           void (*flush)(void* user_data),
-           void (*close)(void* user_data),
-           void (*free)(void* user_data))
+           ext_write_f write,
+           ext_flush_f flush,
+           ext_close_f close,
+           ext_free_f free)
 {
     struct bw_external_output* output =
         malloc(sizeof(struct bw_external_output));
@@ -3214,16 +3271,16 @@ ext_putc(int i, struct bw_external_output* stream)
 {
     struct bs_buffer* buffer = stream->buffer;
 
-    if (BUF_WINDOW_SIZE(buffer) == stream->buffer_size) {
-        /*internal buffer size has reached the stream's buffer size,
-          perform a write and reset the buffer before writing byte*/
-        stream->write(stream->user_data, buffer);
-        buf_reset(buffer);
-    } else if (buffer->window_end >= buffer->data_size) {
-        buf_resize(buffer, 1);
-    }
+    /*add byte to internal buffer*/
+    buf_putc(i, buffer);
 
-    buffer->data[buffer->window_end++] = (uint8_t)i;
+    /*then flush internal buffer while it is too large*/
+    while (BUF_WINDOW_SIZE(buffer) >= stream->buffer_size) {
+        /*internal buffer size has reached or exceeded stream's buffer size,
+          so perform writes to clear out the buffer*/
+
+        stream->write(stream->user_data, buffer, stream->buffer_size);
+    }
 
     return 0;
 }
@@ -3232,8 +3289,9 @@ void
 ext_flush_w(struct bw_external_output* stream)
 {
     struct bs_buffer* buffer = stream->buffer;
-    stream->write(stream->user_data, buffer);
-    buf_reset(buffer);
+    while (BUF_WINDOW_SIZE(buffer) > 0) {
+        stream->write(stream->user_data, buffer, BUF_WINDOW_SIZE(buffer));
+    }
     stream->flush(stream->user_data);
 }
 
@@ -3497,17 +3555,17 @@ typedef void (*write_check)(BitstreamWriter*, bs_endianness);
 void
 check_output_file(void);
 
-int ext_fread(void* user_data,
-              struct bs_buffer* buffer);
+int ext_fread_test(FILE* user_data, struct bs_buffer* buffer);
 
-void ext_fclose(void* user_data);
+void ext_fclose_test(FILE* user_data);
 
-void ext_ffree(void* user_data);
+void ext_ffree_test(FILE* user_data);
 
-int ext_fwrite(void* user_data,
-               const struct bs_buffer* buffer);
+int ext_fwrite_test(FILE* user_data,
+                    struct bs_buffer* buffer,
+                    unsigned buffer_size);
 
-void ext_fflush(void* user_data);
+void ext_fflush_test(FILE* user_data);
 
 
 typedef struct {
@@ -3533,6 +3591,8 @@ void func_add_one(uint8_t byte, int* value);
 void func_add_two(uint8_t byte, int* value);
 void func_mult_three(uint8_t byte, int* value);
 
+void test_buffer();
+
 int main(int argc, char* argv[]) {
     int fd;
     FILE* temp_file;
@@ -3549,6 +3609,7 @@ int main(int argc, char* argv[]) {
                                               {0, 3, 4}};
     struct br_huffman_table (*be_table)[][0x200];
     struct br_huffman_table (*le_table)[][0x200];
+    struct bs_buffer* buf;
 
     new_action.sa_handler = sigabort_cleanup;
     sigemptyset(&new_action.sa_mask);
@@ -3600,7 +3661,9 @@ int main(int argc, char* argv[]) {
     /*test a big-endian stream using external functions*/
     reader = br_open_external(temp_file,
                               BS_BIG_ENDIAN,
-                              ext_fread, ext_fclose, ext_ffree);
+                              (ext_read_f)ext_fread_test,
+                              (ext_close_f)ext_fclose_test,
+                              (ext_free_f)ext_ffree_test);
     test_big_endian_reader(reader, be_table);
     test_try(reader, be_table);
     test_callbacks_reader(reader, 14, 18, be_table, 14);
@@ -3625,7 +3688,9 @@ int main(int argc, char* argv[]) {
     /*test a little-endian stream using external functions*/
     reader = br_open_external(temp_file,
                               BS_LITTLE_ENDIAN,
-                              ext_fread, ext_fclose, ext_ffree);
+                              (ext_read_f)ext_fread_test,
+                              (ext_close_f)ext_fclose_test,
+                              (ext_free_f)ext_ffree_test);
     test_little_endian_reader(reader, le_table);
     test_try(reader, le_table);
     test_callbacks_reader(reader, 14, 18, le_table, 13);
@@ -3729,6 +3794,17 @@ int main(int argc, char* argv[]) {
     test_edge_cases();
 
     fclose(temp_file);
+
+    /*test buffer that's not rewindable*/
+    buf = buf_new();
+    test_buffer(buf);
+    buf_close(buf);
+
+    /*then test buffer that is rewindable*/
+    buf = buf_new();
+    buf_set_rewindable(buf, 1);
+    test_buffer(buf);
+    buf_close(buf);
 
     return 0;
 }
@@ -4335,7 +4411,7 @@ void test_callbacks_reader(BitstreamReader* reader,
     struct bs_callback saved_callback;
 
     reader->mark(reader);
-    br_add_callback(reader, (bs_callback_func)byte_counter, &byte_count);
+    br_add_callback(reader, (bs_callback_f)byte_counter, &byte_count);
 
     /*a single callback*/
     byte_count = 0;
@@ -4352,7 +4428,7 @@ void test_callbacks_reader(BitstreamReader* reader,
 
     /*two callbacks*/
     byte_count = 0;
-    br_add_callback(reader, (bs_callback_func)byte_counter, &byte_count);
+    br_add_callback(reader, (bs_callback_f)byte_counter, &byte_count);
     for (i = 0; i < 8; i++)
         reader->read(reader, 4);
     assert(byte_count == 8);
@@ -4375,7 +4451,7 @@ void test_callbacks_reader(BitstreamReader* reader,
     byte_count = 0;
     reader->read(reader, 8);
     assert(byte_count == 1);
-    br_add_callback(reader, (bs_callback_func)byte_counter, &byte_count);
+    br_add_callback(reader, (bs_callback_f)byte_counter, &byte_count);
     reader->read(reader, 8);
     reader->read(reader, 8);
     br_pop_callback(reader, NULL);
@@ -4535,25 +4611,24 @@ test_writer(bs_endianness endianness) {
         writer = bw_open_external(output_file,
                                   endianness,
                                   2,
-                                  ext_fwrite,
-                                  ext_fflush,
-                                  ext_fclose,
-                                  ext_ffree);
+                                  (ext_write_f)ext_fwrite_test,
+                                  (ext_flush_f)ext_fflush_test,
+                                  (ext_close_f)ext_fclose_test,
+                                  (ext_free_f)ext_ffree_test);
         checks[i](writer, endianness);
         writer->flush(writer);
         check_output_file();
         writer->free(writer);
-        fclose(output_file);
     }
 
     output_file = fopen(temp_filename, "wb");
     writer = bw_open_external(output_file,
                               endianness,
                               2,
-                              ext_fwrite,
-                              ext_fflush,
-                              ext_fclose,
-                              ext_ffree);
+                              (ext_write_f)ext_fwrite_test,
+                              (ext_flush_f)ext_fflush_test,
+                              (ext_close_f)ext_fclose_test,
+                              (ext_free_f)ext_ffree_test);
     test_writer_close_errors(writer);
     writer->set_endianness(writer, endianness == BS_BIG_ENDIAN ?
                            BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
@@ -4684,9 +4759,9 @@ test_writer(bs_endianness endianness) {
         sums[2] = 1;
         output_file = fopen(temp_filename, "wb");
         writer = bw_open(output_file, endianness);
-        bw_add_callback(writer, (bs_callback_func)func_add_one, &(sums[0]));
-        bw_add_callback(writer, (bs_callback_func)func_add_two, &(sums[1]));
-        bw_add_callback(writer, (bs_callback_func)func_mult_three, &(sums[2]));
+        bw_add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
+        bw_add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
+        bw_add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
         checks[i](writer, endianness);
         writer->close(writer);
         assert(sums[0] == 4);
@@ -4699,9 +4774,9 @@ test_writer(bs_endianness endianness) {
         sums[0] = sums[1] = 0;
         sums[2] = 1;
         writer = bw_open_recorder(endianness);
-        bw_add_callback(writer, (bs_callback_func)func_add_one, &(sums[0]));
-        bw_add_callback(writer, (bs_callback_func)func_add_two, &(sums[1]));
-        bw_add_callback(writer, (bs_callback_func)func_mult_three, &(sums[2]));
+        bw_add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
+        bw_add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
+        bw_add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
         checks[i](writer, endianness);
         writer->close(writer);
         assert(sums[0] == 4);
@@ -4714,9 +4789,9 @@ test_writer(bs_endianness endianness) {
         sums[0] = sums[1] = 0;
         sums[2] = 1;
         writer = bw_open_accumulator(endianness);
-        bw_add_callback(writer, (bs_callback_func)func_add_one, &(sums[0]));
-        bw_add_callback(writer, (bs_callback_func)func_add_two, &(sums[1]));
-        bw_add_callback(writer, (bs_callback_func)func_mult_three, &(sums[2]));
+        bw_add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
+        bw_add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
+        bw_add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
         checks[i](writer, endianness);
         writer->close(writer);
 
@@ -4736,13 +4811,13 @@ test_writer(bs_endianness endianness) {
         writer = bw_open_external(output_file,
                                   endianness,
                                   2,
-                                  ext_fwrite,
-                                  ext_fflush,
-                                  ext_fclose,
-                                  ext_ffree);
-        bw_add_callback(writer, (bs_callback_func)func_add_one, &(sums[0]));
-        bw_add_callback(writer, (bs_callback_func)func_add_two, &(sums[1]));
-        bw_add_callback(writer, (bs_callback_func)func_mult_three, &(sums[2]));
+                                  (ext_write_f)ext_fwrite_test,
+                                  (ext_flush_f)ext_fflush_test,
+                                  (ext_close_f)ext_fclose_test,
+                                  (ext_free_f)ext_ffree_test);
+        bw_add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
+        bw_add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
+        bw_add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
         checks[i](writer, endianness);
         writer->close(writer);
         assert(sums[0] == 4);
@@ -5176,10 +5251,10 @@ void check_alignment_e(const align_check* check,
     BitstreamWriter* bw = bw_open_external(f,
                                            endianness,
                                            4096,
-                                           ext_fwrite,
-                                           ext_fflush,
-                                           ext_fclose,
-                                           ext_ffree);
+                                           (ext_write_f)ext_fwrite_test,
+                                           (ext_flush_f)ext_fflush_test,
+                                           (ext_close_f)ext_fclose_test,
+                                           (ext_free_f)ext_ffree_test);
     BitstreamReader* br;
     struct stat s;
 
@@ -5633,15 +5708,15 @@ validate_edge_recorder_le(BitstreamWriter* recorder)
     fclose(input_file);
 }
 
-int ext_fread(void* user_data,
-              struct bs_buffer* buffer)
+int ext_fread_test(FILE* user_data,
+                   struct bs_buffer* buffer)
 {
     const static unsigned desired_size = 2;
     uint8_t data[2];
     const unsigned bytes_read = (unsigned)fread(data,
                                                 sizeof(uint8_t),
-                                                desired_size,
-                                                (FILE*)user_data);
+                                                (size_t)desired_size,
+                                                user_data);
 
     if (bytes_read > 0) {
         buf_write(buffer, data, bytes_read);
@@ -5651,30 +5726,34 @@ int ext_fread(void* user_data,
     }
 }
 
-void ext_fclose(void* user_data)
+void ext_fclose_test(FILE* user_data)
 {
-    fclose((FILE*)user_data);
+    fclose(user_data);
 }
 
-void ext_ffree(void* user_data)
+void ext_ffree_test(FILE* user_data)
 {
     return;
 }
 
-int ext_fwrite(void* user_data,
-               const struct bs_buffer* buffer)
+int ext_fwrite_test(FILE* user_data,
+                    struct bs_buffer* buffer,
+                    unsigned buffer_size)
 {
-    fwrite(BUF_WINDOW_START(buffer),
-           sizeof(uint8_t),
-           BUF_WINDOW_SIZE(buffer),
-           (FILE*)user_data);
+    while (BUF_WINDOW_SIZE(buffer) >= buffer_size) {
+        fwrite(BUF_WINDOW_START(buffer),
+               sizeof(uint8_t),
+               buffer_size,
+               user_data);
+        buffer->window_start += buffer_size;
+    }
 
     return 0;
 }
 
-void ext_fflush(void* user_data)
+void ext_fflush_test(FILE* user_data)
 {
-    fflush((FILE*)user_data);
+    fflush(user_data);
 }
 
 void func_add_one(uint8_t byte, int* value)
@@ -5692,5 +5771,122 @@ void func_mult_three(uint8_t byte, int* value)
     *value *= 3;
 }
 
+void test_buffer(struct bs_buffer *buf)
+{
+    struct bs_buffer *buf2 = buf_new();
+    uint8_t temp1[4] = {1, 2, 3, 4};
+    uint8_t temp2[4];
+    unsigned i;
+
+    /*ensure reads from an empty buffer return nothing*/
+    assert(BUF_WINDOW_SIZE(buf) == 0);
+    assert(buf_getc(buf) == EOF);
+    assert(buf_getc(buf) == EOF);
+    assert(buf_read(buf, temp1, 1) == 0);
+
+    /*try some simple buf_putc/buf_getc pairs*/
+    buf_putc(1, buf);
+    buf_putc(2, buf);
+    assert(buf_getc(buf) == 1);
+    buf_putc(3, buf);  /*may shift window down to make room*/
+    assert(buf_getc(buf) == 2);
+    assert(buf_getc(buf) == 3);
+    assert(BUF_WINDOW_SIZE(buf) == 0);
+
+    /*try some simple buf_write/buf_read pairs*/
+    for (i = 0; i < 5; i++) {
+        buf_write(buf, temp1, i);
+        assert(BUF_WINDOW_SIZE(buf) == i);
+        assert(memcmp(BUF_WINDOW_START(buf), temp1, i) == 0);
+        assert(buf_read(buf, temp2, i) == i);
+        assert(memcmp(temp1, temp2, (size_t)i) == 0);
+        assert(BUF_WINDOW_SIZE(buf) == 0);
+    }
+
+    /*try a low-level resize using buf_resize() and BUF_WINDOW_END*/
+    buf_putc(0, buf);
+    buf_resize(buf, 4);
+    memcpy(BUF_WINDOW_END(buf), temp1, 4);
+    buf->window_end += 4;
+    for (i = 0; i < 5; i++) {
+        assert(buf_getc(buf) == i);
+    }
+    assert(BUF_WINDOW_SIZE(buf) == 0);
+
+    /*try a buf_extend to combine a couple of buffers*/
+    for (i = 0; i < 4; i++) {
+        buf_putc(i, buf);
+    }
+    buf_extend(buf, buf2);
+    buf_reset(buf);
+    for (i = 4; i < 8; i++) {
+        buf_putc(i, buf);
+    }
+    buf_extend(buf, buf2);
+    assert(BUF_WINDOW_SIZE(buf2) == 8);
+    for (i = 0; i < 8; i++) {
+        assert(buf_getc(buf2) == i);
+    }
+
+    /*ensure buf_copy works like it should*/
+    buf_reset(buf);
+    for (i = 0; i < 4; i++) {
+        buf_putc(i, buf);
+    }
+    assert(buf_getc(buf) == 0);
+    buf_copy(buf, buf2);
+    for (i = 1; i < 4; i++) {
+        assert(buf_getc(buf) == i);
+    }
+    for (i = 1; i < 4; i++) {
+        assert(buf_getc(buf2) == i);
+    }
+
+    /*toggle rewindability and test buf_getpos/buf_setpos*/
+    buf_reset(buf);
+    if (!buf->rewindable) {
+        unsigned pos;
+
+        buf_set_rewindable(buf, 1);
+
+        buf_getpos(buf, &pos);
+        /*new calls to putc must always append to buffer*/
+        for (i = 0; i < 10; i++) {
+            buf_putc(i, buf);
+        }
+        for (i = 0; i < 10; i++) {
+            assert(buf_getc(buf) == i);
+        }
+        for (i = 10; i < 20; i++) {
+            buf_putc(i, buf);
+        }
+        for (i = 10; i < 20; i++) {
+            assert(buf_getc(buf) == i);
+        }
+        /*rewinding should always be possible*/
+        buf_setpos(buf, pos);
+        for (i = 0; i < 20; i++) {
+            assert(buf_getc(buf) == i);
+        }
+
+        buf_set_rewindable(buf, 0);
+    } else {
+        const unsigned data_size = buf->data_size;
+
+        buf_set_rewindable(buf, 0);
+
+        /*no matter how many new bytes are added,
+          the window size shouldn't get any larger*/
+        for (i = 0; i < 10000; i++) {
+            buf_putc(i % 256, buf);
+            assert(buf_getc(buf) == (i % 256));
+            assert(buf->data_size == data_size);
+        }
+
+        buf_set_rewindable(buf, 1);
+    }
+
+    buf_close(buf2);
+}
 
 #endif

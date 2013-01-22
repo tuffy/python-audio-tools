@@ -349,7 +349,7 @@ read_header(BitstreamReader* bitstream,
 
         /*read the file header*/
         br_add_callback(bitstream,
-                        (bs_callback_func)tta_crc32,
+                        (bs_callback_f)tta_crc32,
                         &header_crc);
         bitstream->parse(bitstream,
                          "4b 16u 16u 16u 32u 32u",
@@ -395,7 +395,7 @@ read_seektable(BitstreamReader* bitstream,
 
         /*read the seektable*/
         br_add_callback(bitstream,
-                        (bs_callback_func)tta_crc32,
+                        (bs_callback_f)tta_crc32,
                         &seektable_crc);
         for (i = 0; i < total_tta_frames; i++) {
             seektable[i] = bitstream->read(bitstream, 32);
@@ -447,7 +447,7 @@ read_frame(BitstreamReader* frame,
     }
 
     /*read residuals from bitstream*/
-    br_add_callback(frame, (bs_callback_func)tta_crc32, &frame_crc);
+    br_add_callback(frame, (bs_callback_f)tta_crc32, &frame_crc);
 
     if (!setjmp(*br_try(frame))) {
         unsigned i;

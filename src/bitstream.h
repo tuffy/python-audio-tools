@@ -38,6 +38,9 @@
 /*a jump table state value which must be at least 9 bits wide*/
 typedef int state_t;
 
+/*a FIFO of byte data, defined below*/
+struct bs_buffer;
+
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_SUBSTREAM, BR_EXTERNAL} br_type;
 typedef enum {BW_FILE, BW_EXTERNAL, BW_RECORDER, BW_ACCUMULATOR} bw_type;
@@ -45,7 +48,19 @@ typedef enum {BS_INST_UNSIGNED, BS_INST_SIGNED, BS_INST_UNSIGNED64,
               BS_INST_SIGNED64, BS_INST_SKIP, BS_INST_SKIP_BYTES,
               BS_INST_BYTES, BS_INST_ALIGN} bs_instruction;
 
-typedef void (*bs_callback_func)(uint8_t, void*);
+typedef void (*bs_callback_f)(uint8_t, void*);
+
+/*casts for inserting functions with non-void pointers into ext_open*/
+typedef int (*ext_read_f)(void* user_data, struct bs_buffer* buffer);
+typedef void (*ext_close_f)(void* user_data);
+typedef void (*ext_free_f)(void* user_data);
+
+/*casts for inserting functions with non-void pointers into ext_open_w*/
+typedef int (*ext_write_f)(void* user_data,
+                           struct bs_buffer* buffer,
+                           unsigned buffer_size);
+typedef void (*ext_flush_f)(void* user_data);
+
 
 /*a stackable callback function,
   used by BitstreamReader and BitstreamWriter*/
@@ -60,27 +75,6 @@ struct bs_callback {
 struct bs_exception {
     jmp_buf env;
     struct bs_exception *next;
-};
-
-/*bs_buffer can be thought of as a FIFO queue of byte data
-
-  buf_putc and other data writers append to "data"
-  starting from "window_end",
-  increasing the size of "data" and "data_size" as necessary to fit
-
-  buf_getc and other data readers pull from the beginning of "data"
-  starting from "window_start" to "window_end"
-
-  "mark_in_progress" indicates whether "window_start" can go backwards
-  to point at previously read data
-  if false, data writers may slide the window down and reuse the buffer
-  if true, data writers may only append new data to the buffer*/
-struct bs_buffer {
-    uint8_t* data;
-    unsigned data_size;
-    unsigned window_start;
-    unsigned window_end;
-    int mark_in_progress;
 };
 
 /*a mark on the BitstreamReader's stream which can be rewound to*/
@@ -658,7 +652,7 @@ br_substream_append_c(struct BitstreamReader_s *stream,
 
 /*adds the given callback to BitstreamReader's callback stack*/
 void
-br_add_callback(BitstreamReader *bs, bs_callback_func callback, void *data);
+br_add_callback(BitstreamReader *bs, bs_callback_f callback, void *data);
 
 /*explicitly passes "byte" to the set callbacks,
   as if the byte were read from the input stream*/
@@ -738,11 +732,10 @@ br_substream_reset(struct BitstreamReader_s *substream);
 
 struct bw_external_output {
     void* user_data;
-    int (*write)(void* user_data,
-                 const struct bs_buffer* buffer);
-    void (*flush)(void* user_data);
-    void (*close)(void* user_data);
-    void (*free)(void* user_data);
+    ext_write_f write;
+    ext_flush_f flush;
+    ext_close_f close;
+    ext_free_f free;
 
     struct bs_buffer* buffer; /*where ext_putc places its data*/
     unsigned buffer_size;     /*when buffer_size is reached,
@@ -954,10 +947,10 @@ typedef struct BitstreamWriter_s {
 BitstreamWriter*
 bw_open(FILE *f, bs_endianness endianness);
 
-/*int write(void* user_data, const struct bs_buffer* buffer)
-  where "buffer" is the data to be written
-  whose maximum size is indicated at ext_open_w init time
-
+/*int write(const uint8_t *data, unsigned data_size, void *user_data)
+  where "data" is the bytes to be written,
+  "data_size" is the amount of bytes to write
+  and "user_data" is some function-specific pointer
   returns 0 on a successful write, 1 on a write error
 
   void flush(void* user_data)
@@ -979,11 +972,10 @@ BitstreamWriter*
 bw_open_external(void* user_data,
                  bs_endianness endianness,
                  unsigned buffer_size,
-                 int (*write)(void* user_data,
-                              const struct bs_buffer* buffer),
-                 void (*flush)(void* user_data),
-                 void (*close)(void* user_data),
-                 void (*free)(void* user_data));
+                 ext_write_f write,
+                 ext_flush_f flush,
+                 ext_close_f close,
+                 ext_free_f free);
 
 BitstreamWriter*
 bw_open_recorder(bs_endianness endianness);
@@ -1185,7 +1177,7 @@ bw_close(BitstreamWriter* bs);
   pointer to some other data structure
  */
 void
-bw_add_callback(BitstreamWriter* bs, bs_callback_func callback, void *data);
+bw_add_callback(BitstreamWriter* bs, bs_callback_f callback, void *data);
 
 /*removes the most recently added callback, if any
   if "callback" is not NULL, the popped callback's data is copied to it
@@ -1301,15 +1293,8 @@ bw_reset_accumulator(BitstreamWriter* bs)
 /*set the recorded output to the maximum possible size
   as recorded by bs->bits_written(bs)
   as a placeholder value to be filled later*/
-static inline void
-bw_maximize_recorder(BitstreamWriter* bs)
-{
-    assert(bs->type == BW_RECORDER);
-
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    bs->output.buffer->window_end = INT_MAX;
-}
+void
+bw_maximize_recorder(BitstreamWriter* bs);
 
 void
 bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
@@ -1318,6 +1303,27 @@ bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
 /*******************************************************************
  *                             bs_buffer                           *
  *******************************************************************/
+
+ /*bs_buffer can be thought of as a FIFO queue of byte data
+
+  buf_putc and other data writers append to "data"
+  starting from "window_end",
+  increasing the size of "data" and "data_size" as necessary to fit
+
+  buf_getc and other data readers pull from the beginning of "data"
+  starting from "window_start" to "window_end"
+
+  "rewindable" indicates whether "window_start" can go backwards
+  to point at previously read data
+  if false, data writers may slide the window down and reuse the buffer
+  if true, data writers may only append new data to the buffer*/
+struct bs_buffer {
+    uint8_t* data;
+    unsigned data_size;
+    unsigned window_start;
+    unsigned window_end;
+    int rewindable;
+};
 
 /*the number of bytes remaining to be read
   b is evaluated twice*/
@@ -1375,6 +1381,27 @@ buf_getc(struct bs_buffer *stream);
 int
 buf_putc(int i, struct bs_buffer *stream);
 
+/*gets the current position of the buffer to "pos"
+
+  Note that subsequent calls to buf_putc/buf_write/buf_resize
+  may render the position invalid if the window's current position
+  is shifted down!
+
+  Call buf_rewindable() to disable shifting out old data
+  to disable rewinding in those cases.*/
+void
+buf_getpos(struct bs_buffer *stream, unsigned *pos);
+
+/*sets the current position of the buffer in "pos"*/
+void
+buf_setpos(struct bs_buffer *stream, unsigned pos);
+
+/*if rewindable is true, the buffer's window can't be moved down
+  to fit more data and can only be appended to
+  if false, old data can be discarded as space is needed*/
+void
+buf_set_rewindable(struct bs_buffer *stream, int rewindable);
+
 /*deallocates buffer struct*/
 void
 buf_close(struct bs_buffer *stream);
@@ -1392,13 +1419,7 @@ buf_close(struct bs_buffer *stream);
 
   int read(void* user_data, struct bs_buffer* buffer)
   where "buffer" is where read output will be placed
-  using buf_putc, buf_append, etc.
-
-  note that "buffer" may already be holding data
-  (especially if a mark is in place)
-  so new data read to the buffer should be appended
-  rather than replacing what's already there
-
+  using buf_putc, buf_write, etc.
   returns 0 on a successful read, 1 on a read error
 
 
@@ -1410,15 +1431,8 @@ buf_close(struct bs_buffer *stream);
   called when the stream is deallocated
 */
 struct br_external_input*
-ext_open(void* user_data,
-         int (*read)(void* user_data, struct bs_buffer* buffer),
-         void (*close)(void* user_data),
-         void (*free)(void* user_data));
+ext_open(void* user_data, ext_read_f read, ext_close_f close, ext_free_f free);
 
-/*casts for inserting functions with non-void pointers into ext_open*/
-typedef int (*EXT_READ)(void* user_data, struct bs_buffer* buffer);
-typedef void (*EXT_CLOSE)(void* user_data);
-typedef void (*EXT_FREE)(void* user_data);
 
 /*analagous to fgetc, returns EOF at the end of stream
   or if some exception occurs when fetching from the reader object*/
@@ -1428,9 +1442,9 @@ ext_getc(struct br_external_input* stream);
 /*analagous to fread, except that all elements are 1 byte
   returns the total number of bytes read to the given "bytes" buffer*/
 unsigned
-ext_read(uint8_t* bytes,
-         unsigned byte_count,
-         struct br_external_input* stream);
+ext_fread(uint8_t* bytes,
+          unsigned byte_count,
+          struct br_external_input* stream);
 
 void
 ext_close(struct br_external_input* stream);
@@ -1446,10 +1460,10 @@ ext_free(struct br_external_input* stream);
   and returns a FILE-like struct which be written on a byte-by-byte basis
   that will call C functions to flush its internal buffer as needed
 
-  int write(void* user_data, const struct bs_buffer* buffer)
-  where "buffer" is the data to be written
-  whose maximum size is indicated at ext_open_w init time
-
+  int write(const uint8_t *data, unsigned data_size, void *user_data)
+  where "data" is the bytes to be written,
+  "data_size" is the amount of bytes to write
+  and "user_data" is some function-specific pointer
   returns 0 on a successful write, 1 on a write error
 
   void flush(void* user_data)
@@ -1468,17 +1482,13 @@ ext_free(struct br_external_input* stream);
   deallocates anything in user_data, if necessary
 */
 
-/*casts for inserting functions with non-void pointers into ext_open_w*/
-typedef int (*EXT_WRITE)(void* user_data, const struct bs_buffer* buffer);
-typedef void (*EXT_FLUSH)(void* user_data);
-
 struct bw_external_output*
 ext_open_w(void* user_data,
            unsigned buffer_size,
-           int (*write)(void* user_data, const struct bs_buffer* buffer),
-           void (*flush)(void* user_data),
-           void (*close)(void* user_data),
-           void (*free)(void* user_data));
+           ext_write_f write,
+           ext_flush_f flush,
+           ext_close_f close,
+           ext_free_f free);
 
 int
 ext_putc(int i, struct bw_external_output* stream);

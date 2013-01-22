@@ -29,7 +29,7 @@ read_os_random(PyObject* os_module,
 
     /*call os.urandom() and retrieve a Python object*/
     if ((string = PyObject_CallMethod(os_module,
-                                      "urandom", "(i)", 4096)) != NULL) {
+                                      "urandom", "i", 4096)) != NULL) {
         char *buffer_s;
         Py_ssize_t buffer_len;
 
@@ -78,9 +78,9 @@ open_dither(void)
     if ((os_module = PyImport_ImportModule("os")) != NULL) {
         return br_open_external(os_module,
                                 BS_BIG_ENDIAN,
-                                (EXT_READ)read_os_random,
-                                (EXT_CLOSE)close_os_random,
-                                (EXT_FREE)free_os_random);
+                                (ext_read_f)read_os_random,
+                                (ext_close_f)close_os_random,
+                                (ext_free_f)free_os_random);
     } else {
         return NULL;
     }

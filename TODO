@@ -6357,7 +6357,21 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE buffer_size
 **** DONE bw_open_external()
 **** DONE ext_open_w()
-** TODO Add bs_buffer-specific unit tests to bitstream.c
+** DONE Add bs_buffer-specific unit tests to bitstream.c
+   - [X] buf_resize
+   - [X] buf_write
+   - [X] buf_read
+   - [X] buf_copy
+   - [X] buf_extend
+   - [X] buf_reset
+   - [X] buf_getc
+   - [X] buf_putc
+   - [X] buf_getpos
+   - [X] buf_setpos
+   - [X] buf_set_rewindable
+   - [X] BUF_WINDOW_SIZE
+   - [X] BUF_WINDOW_START
+   - [X] BUF_WINDOW_END
 ** TODO Add internal True Audio codec
 *** DONE Add Python-based True Audio decoder
 *** DONE Add Python-based True Audio encoder
@@ -6423,6 +6437,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE free
 *** DONE mdat
 *** TODO Add some tree diagrams to fill sections of whitespace
+** TODO Overhaul exception handling
+   A lot of our exceptions are used haphazardly
+   mixing strings with unicode and aren't as well documented as they
+   should be.
+
+   It'd be a good idea to ensure every function/method that
+   throws an exception has that documented,
+   internal exceptions themselves are documented
+   with what they're for and what they take as values,
+   and make sure they get caught correctly where they're supposed to.
 ** TODO Shift the classmethods from ALACAudio to the atoms themselves
    It's better to have them as alternate constructors
    much closer to the actual atom definitions.

@@ -217,7 +217,7 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
 
     if (!setjmp(*br_try(self->bitstream))) {
         /*add callback for CRC16 calculation*/
-        br_add_callback(self->bitstream, (bs_callback_func)flac_crc16, &crc16);
+        br_add_callback(self->bitstream, (bs_callback_f)flac_crc16, &crc16);
 
         /*read frame header*/
         if ((error = flacdec_read_frame_header(self->bitstream,
@@ -578,7 +578,7 @@ flacdec_read_frame_header(BitstreamReader *bitstream,
     unsigned sample_rate_bits;
     uint8_t crc8 = 0;
 
-    br_add_callback(bitstream, (bs_callback_func)flac_crc8, &crc8);
+    br_add_callback(bitstream, (bs_callback_f)flac_crc8, &crc8);
 
     /*read and verify sync code*/
     if (bitstream->read(bitstream, 14) != 0x3FFE) {
@@ -1255,7 +1255,7 @@ int main(int argc, char* argv[]) {
             uint16_t crc16 = 0;
 
             /*add callback for CRC16 calculation*/
-            br_add_callback(reader, (bs_callback_func)flac_crc16, &crc16);
+            br_add_callback(reader, (bs_callback_f)flac_crc16, &crc16);
 
             /*read frame header*/
             if ((error = flacdec_read_frame_header(reader,

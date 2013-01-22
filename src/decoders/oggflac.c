@@ -108,7 +108,7 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
     audiotools__MD5Init(&(self->md5));
 
     /*add callback for CRC16 calculation*/
-    br_add_callback(self->packet, (bs_callback_func)flac_crc16, &(self->crc16));
+    br_add_callback(self->packet, (bs_callback_f)flac_crc16, &(self->crc16));
 
     /*setup a framelist generator function*/
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
@@ -458,7 +458,7 @@ int main(int argc, char* argv[]) {
     audiotools__MD5Init(&md5);
 
     /*add callback for CRC16 calculation*/
-    br_add_callback(packet, (bs_callback_func)flac_crc16, &crc16);
+    br_add_callback(packet, (bs_callback_f)flac_crc16, &crc16);
 
     /*decode the next FrameList from the stream*/
     result = oggreader_next_packet(ogg_stream, packet);
