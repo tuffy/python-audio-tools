@@ -702,9 +702,10 @@ flacdec_read_subframe(BitstreamReader* bitstream,
     unsigned i;
     flac_status error = OK;
 
-    if (flacdec_read_subframe_header(bitstream,
-                                     &subframe_header) == ERROR)
-        return ERROR;
+    if (flacdec_read_subframe_header(
+            bitstream,
+            &subframe_header) == ERR_INVALID_SUBFRAME_TYPE)
+        return ERR_INVALID_SUBFRAME_TYPE;
 
     /*account for wasted bits-per-sample*/
     if (subframe_header.wasted_bits_per_sample > 0)
