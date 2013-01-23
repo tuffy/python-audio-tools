@@ -1076,7 +1076,7 @@ flacenc_best_lpc_coefficients(struct flac_context* encoder,
 
             array_i* best_coeffs = array_i_new();
             int best_shift_needed = 0;
-            unsigned best_bits = INT_MAX;
+            unsigned best_bits = UINT_MAX;
 
             /*otherwise, build LPC subframe from each set of LP coefficients*/
             for (order = 1; order <= encoder->options.max_lpc_order; order++) {

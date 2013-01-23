@@ -442,6 +442,7 @@ write_compressed_frame(BitstreamWriter *bs,
     unsigned leftweight;
     BitstreamWriter *interlaced_frame = encoder->interlaced_frame;
     BitstreamWriter *best_interlaced_frame = encoder->best_interlaced_frame;
+    unsigned best_interlaced_frame_bits = UINT_MAX;
 
     if (encoder->bits_per_sample <= 16) {
         /*no uncompressed least-significant bits*/
@@ -456,8 +457,6 @@ write_compressed_frame(BitstreamWriter *bs,
                                        channels);
         } else {
             /*attempt all the interlacing leftweight combinations*/
-            bw_maximize_recorder(best_interlaced_frame);
-
             for (leftweight = encoder->options.minimum_interlacing_leftweight;
                  leftweight <= encoder->options.maximum_interlacing_leftweight;
                  leftweight++) {
@@ -469,12 +468,11 @@ write_compressed_frame(BitstreamWriter *bs,
                                        INTERLACING_SHIFT,
                                        leftweight,
                                        channels);
-                if (interlaced_frame->bits_written(
-                        interlaced_frame) <
-                    best_interlaced_frame->bits_written(
-                        best_interlaced_frame)) {
-                    bw_swap_records(interlaced_frame,
-                                    best_interlaced_frame);
+                if (interlaced_frame->bits_written(interlaced_frame) <
+                    best_interlaced_frame_bits) {
+                    best_interlaced_frame_bits =
+                        interlaced_frame->bits_written(interlaced_frame);
+                    bw_swap_records(interlaced_frame, best_interlaced_frame);
                 }
             }
 
@@ -513,7 +511,6 @@ write_compressed_frame(BitstreamWriter *bs,
                                        channels_MSB);
         } else {
             /*attempt all the interlacing leftweight combinations*/
-            bw_maximize_recorder(best_interlaced_frame);
 
             for (leftweight = encoder->options.minimum_interlacing_leftweight;
                  leftweight <= encoder->options.maximum_interlacing_leftweight;
@@ -526,12 +523,11 @@ write_compressed_frame(BitstreamWriter *bs,
                                        INTERLACING_SHIFT,
                                        leftweight,
                                        channels_MSB);
-                if (interlaced_frame->bits_written(
-                        interlaced_frame) <
-                    best_interlaced_frame->bits_written(
-                        best_interlaced_frame)) {
-                    bw_swap_records(interlaced_frame,
-                                    best_interlaced_frame);
+                if (interlaced_frame->bits_written(interlaced_frame) <
+                    best_interlaced_frame_bits) {
+                    best_interlaced_frame_bits =
+                        interlaced_frame->bits_written(interlaced_frame);
+                    bw_swap_records(interlaced_frame, best_interlaced_frame);
                 }
             }
 

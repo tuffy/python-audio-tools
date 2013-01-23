@@ -1252,12 +1252,6 @@ bw_reset_accumulator(BitstreamWriter* bs)
     bs->output.accumulator = 0;
 }
 
-/*set the recorded output to the maximum possible size
-  as recorded by bs->bits_written(bs)
-  as a placeholder value to be filled later*/
-void
-bw_maximize_recorder(BitstreamWriter* bs);
-
 void
 bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
 

@@ -2976,17 +2976,6 @@ bw_reset_recorder(BitstreamWriter* bs)
 }
 
 void
-bw_maximize_recorder(BitstreamWriter* bs)
-{
-    assert(bs->type == BW_RECORDER);
-
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    /*FIXME - check if this is the best way to handle this*/
-    bs->output.buffer->window_end = INT_MAX;
-}
-
-void
 bw_swap_records(BitstreamWriter* a, BitstreamWriter* b)
 {
     BitstreamWriter c;
