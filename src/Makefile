@@ -93,8 +93,14 @@ flac_crc.o: common/flac_crc.c common/flac_crc.h
 huffman.o: huffman.c huffman.h
 	$(CC) $(FLAGS) -c huffman.c -DSTANDALONE
 
-bitstream: bitstream.c bitstream.h huffman.o
-	$(CC) $(FLAGS) bitstream.c huffman.o -DEXECUTABLE -o $@
+buffer.o: buffer.c buffer.h
+	$(CC) $(FLAGS) -c buffer.c
+
+func_io.o: func_io.c func_io.h
+	$(CC) $(FLAGS) -c func_io.c
+
+bitstream: bitstream.c bitstream.h huffman.o buffer.o func_io.o
+	$(CC) $(FLAGS) bitstream.c huffman.o buffer.o func_io.o -DEXECUTABLE -o $@
 
 parson.o: parson.c parson.h
 	$(CC) $(FLAGS) -c parson.c

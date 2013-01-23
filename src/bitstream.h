@@ -8,6 +8,8 @@
 #include <setjmp.h>
 #include <stdarg.h>
 #include <limits.h>
+#include "buffer.h"
+#include "func_io.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -38,9 +40,6 @@
 /*a jump table state value which must be at least 9 bits wide*/
 typedef int state_t;
 
-/*a FIFO of byte data, defined below*/
-struct bs_buffer;
-
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_SUBSTREAM, BR_EXTERNAL} br_type;
 typedef enum {BW_FILE, BW_EXTERNAL, BW_RECORDER, BW_ACCUMULATOR} bw_type;
@@ -49,18 +48,6 @@ typedef enum {BS_INST_UNSIGNED, BS_INST_SIGNED, BS_INST_UNSIGNED64,
               BS_INST_BYTES, BS_INST_ALIGN} bs_instruction;
 
 typedef void (*bs_callback_f)(uint8_t, void*);
-
-/*casts for inserting functions with non-void pointers into ext_open*/
-typedef int (*ext_read_f)(void* user_data, struct bs_buffer* buffer);
-typedef void (*ext_close_f)(void* user_data);
-typedef void (*ext_free_f)(void* user_data);
-
-/*casts for inserting functions with non-void pointers into ext_open_w*/
-typedef int (*ext_write_f)(void* user_data,
-                           struct bs_buffer* buffer,
-                           unsigned buffer_size);
-typedef void (*ext_flush_f)(void* user_data);
-
 
 /*a stackable callback function,
   used by BitstreamReader and BitstreamWriter*/
@@ -95,18 +82,6 @@ struct br_huffman_table {
     unsigned node;
     state_t state;
     int value;
-};
-
-/*an external function input stream containing the input object
-  and cached bytes*/
-struct br_external_input {
-    void* user_data;
-    int (*read)(void* user_data,
-                struct bs_buffer* buffer);
-    void (*close)(void* user_data);
-    void (*free)(void* user_data);
-
-    struct bs_buffer* buffer;
 };
 
 /*******************************************************************
@@ -730,19 +705,6 @@ br_substream_reset(struct BitstreamReader_s *substream);
  *                          BitstreamWriter                        *
  *******************************************************************/
 
-struct bw_external_output {
-    void* user_data;
-    ext_write_f write;
-    ext_flush_f flush;
-    ext_close_f close;
-    ext_free_f free;
-
-    struct bs_buffer* buffer; /*where ext_putc places its data*/
-    unsigned buffer_size;     /*when buffer_size is reached,
-                                write() is called to dump data
-                                and the buffer is reset*/
-};
-
 /*this is a basic binary tree in which the most common values
   (those with the smallest amount of bits to write)
   occur at the top of the tree*/
@@ -1298,210 +1260,6 @@ bw_maximize_recorder(BitstreamWriter* bs);
 
 void
 bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
-
-
-/*******************************************************************
- *                             bs_buffer                           *
- *******************************************************************/
-
- /*bs_buffer can be thought of as a FIFO queue of byte data
-
-  buf_putc and other data writers append to "data"
-  starting from "window_end",
-  increasing the size of "data" and "data_size" as necessary to fit
-
-  buf_getc and other data readers pull from the beginning of "data"
-  starting from "window_start" to "window_end"
-
-  "rewindable" indicates whether "window_start" can go backwards
-  to point at previously read data
-  if false, data writers may slide the window down and reuse the buffer
-  if true, data writers may only append new data to the buffer*/
-struct bs_buffer {
-    uint8_t* data;
-    unsigned data_size;
-    unsigned window_start;
-    unsigned window_end;
-    int rewindable;
-};
-
-/*the number of bytes remaining to be read
-  b is evaluated twice*/
-#define BUF_WINDOW_SIZE(b) ((b)->window_end - (b)->window_start)
-
-/*the start of the buffer's data window as a uint8_t pointer
-  b is evaluated twice*/
-#define BUF_WINDOW_START(b) ((b)->data + (b)->window_start)
-
-/*the end of the buffers's data window as a uint8_t pointer
-  b is evaluated twice*/
-#define BUF_WINDOW_END(b) ((b)->data + (b)->window_end)
-
-/*returns a new bs_buffer struct which can be appended to and read from
-
-  it must be closed with buf_close() when no longer needed*/
-struct bs_buffer*
-buf_new(void);
-
-/*resize buffer to fit at least "additional_bytes", if necessary*/
-void
-buf_resize(struct bs_buffer *stream, unsigned additional_bytes);
-
-/*appends "data_size" bytes from "data" to "stream" starting at "window_end"*/
-void
-buf_write(struct bs_buffer *stream, const uint8_t *data, unsigned data_size);
-
-/*reads "data_size" bytes from "stream" to "data" starting at "window_start"
-  and returns the amount of bytes actually read
-  (which may be less than the amount requested)*/
-unsigned
-buf_read(struct bs_buffer *stream, uint8_t *data, unsigned data_size);
-
-/*makes target's data a duplicate of source's data
-  target will have no marks in progress
-  since they would no longer be valid*/
-void
-buf_copy(const struct bs_buffer *source, struct bs_buffer *target);
-
-/*appends unconsumed data in "source" to "target"*/
-void
-buf_extend(const struct bs_buffer *source, struct bs_buffer* target);
-
-/*clears out the buffer for possible reuse
-
-  resets the position, size and any marks in progress*/
-void
-buf_reset(struct bs_buffer *stream);
-
-/*analagous to fgetc, returns EOF at the end of buffer*/
-int
-buf_getc(struct bs_buffer *stream);
-
-/*analagous to fputc*/
-int
-buf_putc(int i, struct bs_buffer *stream);
-
-/*gets the current position of the buffer to "pos"
-
-  Note that subsequent calls to buf_putc/buf_write/buf_resize
-  may render the position invalid if the window's current position
-  is shifted down!
-
-  Call buf_rewindable() to disable shifting out old data
-  to disable rewinding in those cases.*/
-void
-buf_getpos(struct bs_buffer *stream, unsigned *pos);
-
-/*sets the current position of the buffer in "pos"*/
-void
-buf_setpos(struct bs_buffer *stream, unsigned pos);
-
-/*if rewindable is true, the buffer's window can't be moved down
-  to fit more data and can only be appended to
-  if false, old data can be discarded as space is needed*/
-void
-buf_set_rewindable(struct bs_buffer *stream, int rewindable);
-
-/*deallocates buffer struct*/
-void
-buf_close(struct bs_buffer *stream);
-
-
-/*******************************************************************
- *                     External function reader                    *
- *******************************************************************/
-
-/*takes a user_data pointer and three functions
-  and returns a FILE-like struct which can be read on a byte-by-byte basis
-  via the ext_getc function
-  that will call the "read" function to fetch additional data as needed
-
-
-  int read(void* user_data, struct bs_buffer* buffer)
-  where "buffer" is where read output will be placed
-  using buf_putc, buf_write, etc.
-  returns 0 on a successful read, 1 on a read error
-
-
-  void close(void* user_data)
-  called when the stream is closed
-
-
-  void free(void* user_data)
-  called when the stream is deallocated
-*/
-struct br_external_input*
-ext_open(void* user_data, ext_read_f read, ext_close_f close, ext_free_f free);
-
-
-/*analagous to fgetc, returns EOF at the end of stream
-  or if some exception occurs when fetching from the reader object*/
-int
-ext_getc(struct br_external_input* stream);
-
-/*analagous to fread, except that all elements are 1 byte
-  returns the total number of bytes read to the given "bytes" buffer*/
-unsigned
-ext_fread(uint8_t* bytes,
-          unsigned byte_count,
-          struct br_external_input* stream);
-
-void
-ext_close(struct br_external_input* stream);
-
-void
-ext_free(struct br_external_input* stream);
-
-/*******************************************************************
- *                     External function writer                    *
- *******************************************************************/
-
-/*takes a user data pointer and four functions
-  and returns a FILE-like struct which be written on a byte-by-byte basis
-  that will call C functions to flush its internal buffer as needed
-
-  int write(const uint8_t *data, unsigned data_size, void *user_data)
-  where "data" is the bytes to be written,
-  "data_size" is the amount of bytes to write
-  and "user_data" is some function-specific pointer
-  returns 0 on a successful write, 1 on a write error
-
-  void flush(void* user_data)
-  flushes any pending data
-
-  note that high-level flushing will
-  perform ext_write() followed by ext_flush()
-  so the latter can be a no-op if necessary
-
-
-  void close(void* user_data)
-  closes the stream for further writing
-
-
-  void free(void* user_data)
-  deallocates anything in user_data, if necessary
-*/
-
-struct bw_external_output*
-ext_open_w(void* user_data,
-           unsigned buffer_size,
-           ext_write_f write,
-           ext_flush_f flush,
-           ext_close_f close,
-           ext_free_f free);
-
-int
-ext_putc(int i, struct bw_external_output* stream);
-
-void
-ext_flush_w(struct bw_external_output* stream);
-
-void
-ext_close_w(struct bw_external_output* stream);
-
-void
-ext_free_w(struct bw_external_output* stream);
-
 
 /*******************************************************************
  *                          format handlers                        *

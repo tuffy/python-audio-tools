@@ -40,19 +40,25 @@ pcmconvmodule = Extension('audiotools.pcmconverter',
                           sources=['src/pcmconverter.c',
                                    'src/pcmconv.c',
                                    'src/array.c',
-                                   'src/bitstream.c'])
+                                   'src/bitstream.c',
+                                   'src/buffer.c',
+                                   'src/func_io.c'])
 
 replaygainmodule = Extension('audiotools.replaygain',
                              sources=['src/replaygain.c',
                                       'src/pcmconv.c',
                                       'src/array.c',
-                                      'src/bitstream.c'])
+                                      'src/bitstream.c',
+                                      'src/buffer.c',
+                                      'src/func_io.c'])
 
 decoders_defines = [("VERSION", VERSION)]
 decoders_sources = ['src/array.c',
                     'src/pcmconv.c',
                     'src/common/md5.c',
                     'src/bitstream.c',
+                    'src/buffer.c',
+                    'src/func_io.c',
                     'src/huffman.c',
                     'src/decoders/flac.c',
                     'src/decoders/oggflac.c',
@@ -88,6 +94,8 @@ encodersmodule = Extension('audiotools.encoders',
                            sources=['src/array.c',
                                     'src/pcmconv.c',
                                     'src/bitstream.c',
+                                    'src/buffer.c',
+                                    'src/func_io.c',
                                     'src/common/md5.c',
                                     'src/encoders/flac.c',
                                     'src/common/flac_crc.c',
@@ -102,12 +110,16 @@ encodersmodule = Extension('audiotools.encoders',
 bitstreammodule = Extension('audiotools.bitstream',
                             sources=['src/mod_bitstream.c',
                                      'src/bitstream.c',
+                                     'src/buffer.c',
+                                     'src/func_io.c',
                                      'src/huffman.c'])
 
 verifymodule = Extension('audiotools.verify',
                          sources=['src/verify.c',
                                   'src/common/ogg_crc.c',
-                                  'src/bitstream.c'])
+                                  'src/bitstream.c',
+                                  'src/buffer.c',
+                                  'src/func_io.c'])
 
 output_sources = ['src/output.c']
 output_defines = []
