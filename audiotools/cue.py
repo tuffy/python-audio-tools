@@ -465,9 +465,5 @@ def read_cuesheet(filename):
         raise CueException(ERR_CUE_IOERROR)
     try:
         return parse(tokens(f.read()))
-        # if (not sheet.single_file_type()):
-        #     from .text import ERR_CUE_INVALID_FORMAT
-        #     raise CueException(ERR_CUE_INVALID_FORMAT)
-        # else:
     finally:
         f.close()

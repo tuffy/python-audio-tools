@@ -732,6 +732,11 @@ class Flac_CUESHEET:
     BLOCK_ID = 5
 
     def __init__(self, catalog_number, lead_in_samples, is_cdda, tracks):
+        """catalog_number is a 128 byte ASCII string, padded with NULLs
+        lead_in_samples is typically 2 seconds of samples
+        is_cdda is 1 if audio if from CDDA, 0 otherwise
+        tracks is a list of Flac_CHESHEET_track objects"""
+
         self.catalog_number = catalog_number
         self.lead_in_samples = lead_in_samples
         self.is_cdda = is_cdda
@@ -818,97 +823,72 @@ class Flac_CUESHEET:
         self.build(a)
         return a.bytes()
 
-    # @classmethod
-    # def converted(cls, sheet, total_frames, sample_rate=44100):
-    #     """converts a cuesheet compatible object to Flac_CUESHEET objects
+    @classmethod
+    def converted(cls, sheet, total_pcm_frames, sample_rate, is_cdda):
+        """given a Sheet object, total PCM frames and sample rate
+        returns a Flac_CUESHEET object from that data"""
 
-    #     a total_frames integer (in PCM frames) is also required
-    #     """
+        flac_tracks = []
 
-    #     if (sheet.catalog() is None):
-    #         catalog_number = chr(0) * 128
-    #     else:
-    #         catalog_number = sheet.catalog() + (chr(0) *
-    #                                             (128 - len(sheet.catalog())))
+        #add tracks from sheet
+        for track in sheet.tracks():
+            flac_track_indexes = []
+            flac_track_offset = 0
+            #add indexes from track
+            for (i, index) in enumerate(track.indexes()):
+                if (i == 0):
+                    #first index
+                    flac_track_offset = int(index.offset() * sample_rate)
 
-    #     ISRCs = sheet.ISRCs()
+                flac_track_indexes.append(
+                    Flac_CUESHEET_index(int(index.offset() * sample_rate) -
+                                        flac_track_offset,
+                                        index.number()))
 
-    #     return cls(
-    #         catalog_number=catalog_number,
-    #         lead_in_samples=sample_rate * 2,
-    #         is_cdda=1 if sample_rate == 44100 else 0,
-    #         tracks=[Flac_CUESHEET_track(
-    #                 offset=indexes[0] * sample_rate / 75,
-    #                 number=i + 1,
-    #                 ISRC=ISRCs.get(i + 1, chr(0) * 12),
-    #                 track_type=0,
-    #                 pre_emphasis=0,
-    #                 index_points=[
-    #                     Flac_CUESHEET_index(
-    #                         offset=(index - indexes[0]) * sample_rate / 75,
-    #                         number=point_number + (1 if len(indexes) == 1
-    #                                                else 0))
-    #                     for (point_number, index) in enumerate(indexes)])
-    #                 for (i, indexes) in enumerate(sheet.indexes())] +
-    #         # lead-out track
-    #         [Flac_CUESHEET_track(offset=total_frames,
-    #                              number=170,
-    #                              ISRC=chr(0) * 12,
-    #                              track_type=0,
-    #                              pre_emphasis=0,
-    #                              index_points=[])])
+            #pad ISRC value, if present and necessary
+            if (track.ISRC() is not None):
+                flac_track_isrc = \
+                    track.ISRC() + chr(0) * (12 - len(track.ISRC()))
+            else:
+                flac_track_isrc = chr(0) * 12
 
-    # def catalog(self):
-    #     """returns the cuesheet's catalog number as a plain string"""
+            flac_tracks.append(
+                Flac_CUESHEET_track(flac_track_offset,
+                                    track.number(),
+                                    flac_track_isrc,
+                                    (0 if track.audio() else 1),
+                                    0,
+                                    flac_track_indexes))
 
-    #     catalog_number = self.catalog_number.rstrip(chr(0))
+        #add lead-out track
+        flac_tracks.append(
+            Flac_CUESHEET_track(total_pcm_frames, 170, chr(0) * 12, 0, 0, []))
 
-    #     if (len(catalog_number) > 0):
-    #         return catalog_number
-    #     else:
-    #         return None
+        if (sheet.catalog() is None):
+            catalog_number = chr(0) * 128
+        else:
+            catalog_number = \
+                sheet.catalog() + (chr(0) * (128 - len(sheet.catalog())))
 
-    # def ISRCs(self):
-    #     """returns a dict of ISRC values as plain strings"""
-
-    #     return dict([(track.number, track.ISRC) for track in
-    #                  self.tracks
-    #                  if ((track.number != 170) and
-    #                      (len(track.ISRC.strip(chr(0))) > 0))])
-
-    # def indexes(self, sample_rate=44100):
-    #     """returns a list of (start, end) integer tuples"""
-
-    #     return [tuple([(index.offset + track.offset) * 75 / sample_rate
-    #                    for index in
-    #                    sorted(track.index_points,
-    #                           lambda i1, i2: cmp(i1.number, i2.number))])
-    #             for track in
-    #             sorted(self.tracks, lambda t1, t2: cmp(t1.number, t2.number))
-    #             if (track.number != 170)]
-
-    # def pcm_lengths(self, total_length, sample_rate):
-    #     """returns a list of PCM lengths for all cuesheet audio tracks
-
-    #     note that the total_length and sample_rate variables
-    #     are only for compatibility
-    #     as FLAC's CUESHEET blocks store sample counts directly
-    #     """
-
-    #     if (len(self.tracks) > 0):
-    #         return [(current.offset +
-    #                  max([i.offset for i in current.index_points] + [0])) -
-    #                 ((previous.offset +
-    #                   max([i.offset for i in previous.index_points] + [0])))
-    #                 for (previous, current) in
-    #                 zip(self.tracks, self.tracks[1:])]
-    #     else:
-    #         return []
+        #assume CDDA-standard 2 second lead-in
+        #and is CD audio if file's specs match CD audio
+        return cls(catalog_number,
+                   sample_rate * 2,
+                   (1 if is_cdda else 0),
+                   flac_tracks)
 
 
 class Flac_CUESHEET_track:
     def __init__(self, offset, number, ISRC, track_type, pre_emphasis,
                  index_points):
+        """offset is the track's first index point's offset
+        from the start of the stream, in PCM frames
+        number is the track number, typically starting from 1
+        ISRC is a 12 byte ASCII string, padded with NULLs
+        track_type is 0 for audio, 1 for non-audio
+        pre_emphasis is 0 for no, 1 for yes
+        index_points is a list of Flac_CUESHEET_index objects"""
+
         self.offset = offset
         self.number = number
         self.ISRC = ISRC
@@ -946,7 +926,7 @@ class Flac_CUESHEET_track:
                  u"yes" if self.track_type == 0 else u"no",
                  u"yes" if self.pre_emphasis == 1 else u"no",
                  self.offset,
-                 self.ISRC)
+                 self.ISRC.decode('ascii'))
         else:
             return u"%9.d %5s %8s %13.d" % \
                 (self.number,
@@ -997,6 +977,11 @@ class Flac_CUESHEET_track:
 
 class Flac_CUESHEET_index:
     def __init__(self, offset, number):
+        """offset is the index's offset from the track offset,
+        in PCM frames
+        number is the index's number typically starting from 1
+        (a number of 0 indicates a track pre-gap)"""
+
         self.offset = offset
         self.number = number
 
@@ -1575,19 +1560,22 @@ class FlacAudio(WaveContainer, AiffContainer):
             reader.skip_bytes(length)
 
     def set_cuesheet(self, cuesheet):
-        """imports cuesheet data from a Cuesheet-compatible object
+        """imports cuesheet data from a Sheet object
 
-        this are objects with catalog(), ISRCs(), indexes(), and pcm_lengths()
-        methods.  Raises IOError if an error occurs setting the cuesheet"""
+        Raises IOError if an error occurs setting the cuesheet"""
 
-        raise NotImplementedError()
-        # if (cuesheet is not None):
-        #     metadata = self.get_metadata()
-        #     if (metadata is not None):
-        #         metadata.add_block(
-        #             Flac_CUESHEET.converted(
-        #                 cuesheet, self.total_frames(), self.sample_rate()))
-        #         self.update_metadata(metadata)
+        if (cuesheet is not None):
+            metadata = self.get_metadata()
+            if (metadata is not None):
+                metadata.add_block(
+                    Flac_CUESHEET.converted(
+                        cuesheet,
+                        self.total_frames(),
+                        self.sample_rate(),
+                        (self.sample_rate() == 44100) and
+                        (self.channels() == 2) and
+                        (self.bits_per_sample() == 16)))
+                self.update_metadata(metadata)
 
     def get_cuesheet(self):
         """returns the embedded Sheet object, or None

@@ -266,18 +266,20 @@ if (__name__ == '__main__'):
             msg.error(_.ERR_TRACKSPLIT_NO_CUESHEET)
             sys.exit(1)
 
-    if (list(cuesheet.pcm_lengths(audiofile.total_frames(),
-                                  audiofile.sample_rate()))[-1] <= 0):
+    pcm_lengths = list(cuesheet.pcm_lengths(audiofile.total_frames(),
+                                            audiofile.sample_rate()))
+    if (pcm_lengths[-1] <= 0):
         msg.error(_.ERR_TRACKSPLIT_OVERLONG_CUESHEET)
         sys.exit(1)
 
-    output_track_count = len(list(cuesheet.indexes()))
+    output_track_count = len(pcm_lengths)
 
     #use cuesheet to query metadata services for metadata choices
     metadata_choices = audiotools.metadata_lookup(
         first_track_number=1,
         last_track_number=output_track_count,
-        offsets=[i[-1] + 150 for i in cuesheet.indexes()],
+        offsets=[int((t.index(1).offset() + 2) * 75) for t in
+                 cuesheet.tracks()],
         lead_out_offset=audiofile.cd_frames() + 150,
         total_length=audiofile.cd_frames(),
         musicbrainz_server=options.musicbrainz_server,
@@ -326,7 +328,8 @@ if (__name__ == '__main__'):
                 m.album_total = options.album_total
 
     #pull ISRC metadata from the cuesheet, if any
-    cuesheet_ISRCs = cuesheet.ISRCs()
+    cuesheet_ISRCs = dict([(t.number(), t.ISRC()) for t in cuesheet.tracks()
+                           if t.ISRC() is not None])
     for track_metadatas in metadata_choices:
         for metadata in track_metadatas:
             if ((metadata.ISRC is None) and (metadata.track_number in
@@ -391,9 +394,7 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
     #perform actual track splitting and tagging
-    jobs = zip(cuesheet.pcm_lengths(audiofile.total_frames(),
-                                    audiofile.sample_rate()),
-               output_tracks)
+    jobs = zip(pcm_lengths, output_tracks)
 
     if (options.max_processes > 1):
         queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))

@@ -6455,7 +6455,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [ ] TrueAudio
     - [ ] WavPackAudio
 *** TODO Update set_cuesheet methods
-    - [ ] FlacAudio
+    - [X] FlacAudio
     - [ ] TrueAudio
     - [ ] WavPackAudio
 *** TODO Update documentation
@@ -6464,6 +6464,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [ ] SheetTrack
     - [ ] SheetIndex
 *** TODO Update utilities using cuesheet interface
+    - [ ] track2cd
+    - [ ] trackcat
+    - [X] tracksplit
 *** TODO Update unit tests
 ** TODO Overhaul exception handling
    A lot of our exceptions are used haphazardly

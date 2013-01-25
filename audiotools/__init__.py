@@ -4129,6 +4129,20 @@ class Sheet:
 
         return self.__catalog_number__
 
+    def pcm_lengths(self, total_pcm_frames, sample_rate):
+        """given the stream's total PCM frames and sample rate,
+        returns an iterator of track lengths, in PCM frames"""
+
+        if (len(self.__tracks__) == 0):
+            return
+        else:
+            for (prev, track) in zip(self.__tracks__, self.__tracks__[1:]):
+                yield int((max([i.offset() for i in track.indexes()]) -
+                           max([i.offset() for i in prev.indexes()])) *
+                          sample_rate)
+            yield (total_pcm_frames -
+                   int(self.__tracks__[-1].index(1).offset() * sample_rate))
+
 
 class SheetTrack:
     def __init__(self, number, indexes, audio=True, ISRC=None):
