@@ -6444,12 +6444,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] Sheet
     - [X] SheetTrack
     - [X] SheetIndex
-*** TODO Update cue module
+*** DONE Update cue module
     - [X] read_cuesheet
-    - [ ] build_cuesheet
-*** TODO Update toc module
+    - [X] write_cuesheet
+*** DONE Update toc module
     - [X] read_tocfile
-    - [ ] build_tocfile
+    - [X] write_tocfile
 *** TODO Update get_cuesheet methods
     - [X] FlacAudio
     - [ ] TrueAudio

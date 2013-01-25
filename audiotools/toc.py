@@ -32,7 +32,7 @@ class TOCException(SheetException):
     pass
 
 
-def parse(lines):
+def __parse__(lines):
     """returns a TOCFile object from an iterator of lines
 
     raises TOCException if some problem occurs parsing the file"""
@@ -135,150 +135,6 @@ def parse(lines):
         return Sheet(cuesheet_tracks, cuesheet_catalog_number)
 
 
-# class TOCFile:
-#     """an object representing a TOC file"""
-
-#     def __init__(self):
-#         self.lines = []
-#         self.tracks = {}
-
-#     def __repr__(self):
-#         return "TOCFile(lines=%s,tracks=%s)" % (repr(self.lines),
-#                                                 repr(self.tracks))
-
-#     def catalog(self):
-#         """returns the cuesheet's CATALOG number as a plain string, or None
-
-#         if present, this value is typically a CD's UPC code"""
-
-#         import re
-
-#         for line in self.lines:
-#             if (line.startswith('CATALOG')):
-#                 result = re.search(r'"(.+)"', line)
-#                 if (result is not None):
-#                     return result.group(1)
-#                 else:
-#                     continue
-#         else:
-#             return None
-
-#     def indexes(self):
-#         """yields a set of index lists, one for each track in the file"""
-
-#         for track in sorted(self.tracks.values()):
-#             if (track.start != 0):
-#                 yield (track.indexes[0], track.indexes[0] + track.start)
-#             else:
-#                 yield (track.indexes[0],)
-
-#     def pcm_lengths(self, total_length, sample_rate):
-#         """yields a list of PCM lengths for all audio tracks within the file
-
-#         total_length is the length of the entire file in PCM frames"""
-
-#         previous = None
-
-#         for current in self.indexes():
-#             if (previous is None):
-#                 previous = current
-#             else:
-#                 track_length = ((max(current) - max(previous)) *
-#                                 sample_rate / 75)
-#                 total_length -= track_length
-#                 yield track_length
-#                 previous = current
-
-#         yield total_length
-
-#     def ISRCs(self):
-#         """returns a track_number->ISRC dict of all non-empty tracks"""
-
-#         return dict([(track.number, track.ISRC()) for track in
-#                      self.tracks.values() if track.ISRC() is not None])
-
-#     @classmethod
-#     def file(cls, sheet, filename):
-#         """constructs a new TOC file string from a compatible object
-
-#         sheet must have catalog(), indexes() and ISRCs() methods
-#         filename is a string to the filename the TOC file is created for
-#         although we don't care whether the filename points to a real file,
-#         other tools sometimes do
-#         """
-
-#         import cStringIO
-#         from . import build_timestamp
-
-#         catalog = sheet.catalog()        # a catalog string, or None
-#         indexes = list(sheet.indexes())  # a list of index tuples
-#         ISRCs = sheet.ISRCs()            # a track_number->ISRC dict
-
-#         data = cStringIO.StringIO()
-#         data.write("CD_DA\n\n")
-
-#         if ((catalog is not None) and (len(catalog) > 0)):
-#             data.write("CATALOG \"%s\"\n\n" % (catalog))
-
-#         for (i, (current, next)) in enumerate(zip(indexes,
-#                                                   indexes[1:] + [None])):
-#             tracknum = i + 1
-
-#             data.write("TRACK AUDIO\n")
-
-#             if (tracknum in ISRCs.keys()):
-#                 data.write("ISRC \"%s\"\n" % (ISRCs[tracknum]))
-
-#             if (next is not None):
-#                 data.write("AUDIOFILE \"%s\" %s %s\n" %
-#                            (filename,
-#                             build_timestamp(current[0]),
-#                             build_timestamp(next[0] - current[0])))
-#             else:
-#                 data.write("AUDIOFILE \"%s\" %s\n" %
-#                            (filename,
-#                             build_timestamp(current[0])))
-#             if (len(current) > 1):
-#                 data.write("START %s\n" %
-#                            (build_timestamp(current[-1] - current[0])))
-
-#             if (next is not None):
-#                 data.write("\n")
-
-#         return data.getvalue()
-
-
-# class Track:
-#     """a track inside a TOCFile object"""
-
-#     def __init__(self, number):
-#         self.number = number
-#         self.lines = []
-#         self.indexes = []
-#         self.start = 0
-
-#     def __cmp__(self, t):
-#         return cmp(self.number, t.number)
-
-#     def __repr__(self):
-#         return "Track(%s,lines=%s,indexes=%s,start=%s)" % \
-#             (repr(self.number), repr(self.lines),
-#              repr(self.indexes), repr(self.start))
-
-#     def ISRC(self):
-#         """returns the track's ISRC value, or None"""
-
-#         import re
-
-#         for line in self.lines:
-#             if (line.startswith('ISRC')):
-#                 match = re.search(r'"(.+)"', line)
-#                 if (match is not None):
-#                     return match.group(1)
-#         else:
-#             return None
-
-
 def read_tocfile(filename):
     """returns a TOCFile from a TOC filename on disk
 
@@ -290,6 +146,60 @@ def read_tocfile(filename):
     except IOError, msg:
         raise TOCException(str(msg))
     try:
-        return parse(iter(f.readlines()))
+        return __parse__(iter(f.readlines()))
     finally:
         f.close()
+
+
+def write_tocfile(sheet, filename, file):
+    """given a Sheet object and filename string,
+    writes a .toc file to the given file object"""
+
+    from . import build_timestamp
+
+    file.write("CD_DA\n\n")
+
+    if ((sheet.catalog() is not None) and (len(sheet.catalog()) > 0)):
+        file.write("CATALOG \"%s\"\n\n" % (sheet.catalog()))
+
+    tracks = list(sheet.tracks())
+
+    for (track, next_track) in zip(tracks, tracks[1:] + [None]):
+        file.write("TRACK AUDIO\n")
+
+        if (track.ISRC() is not None):
+            file.write("  ISRC \"%s\"\n" % (track.ISRC()))
+
+        track_indexes = list(track.indexes())
+        if (next_track is not None):
+            #total track length in fractions of seconds
+            track_length = (min([i.offset() for i in next_track.indexes()]) -
+                            min([i.offset() for i in track.indexes()]))
+
+            file.write("  AUDIOFILE \"%s\" %s %s\n" %
+                       (filename,
+                        build_timestamp(int(track_indexes[0].offset() * 75)),
+                        build_timestamp(int(track_length * 75))))
+        else:
+            file.write("  AUDIOFILE \"%s\" %s\n" %
+                       (filename,
+                        build_timestamp(int(track_indexes[0].offset() * 75))))
+
+        if (track_indexes[0].number() == 0):
+            #handle pre-gap track
+            #before any additional indexes
+            file.write("  START %s\n" %
+                       (build_timestamp(
+                        int((track_indexes[1].offset() -
+                             track_indexes[0].offset()) * 75))))
+            for index in track_indexes[2:]:
+                file.write("  INDEX %s\n" %
+                           (build_timestamp(int(index.offset()))))
+        else:
+            #handle any additional indexes
+            for index in track_indexes[1:]:
+                file.write("  INDEX %s\n" %
+                           (build_timestamp(int(index.offset()))))
+
+        if (next_track is not None):
+            file.write("\n")

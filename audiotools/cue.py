@@ -46,7 +46,7 @@ class CueException(SheetException):
     pass
 
 
-def tokens(cuedata):
+def __tokens__(cuedata):
     """yields (text, token, line) tuples from cuedata stream
 
     text is a plain string
@@ -126,7 +126,7 @@ def get_value(tokens, accept, error):
                             "line": line_number})
 
 
-def parse(tokens):
+def __parse__(tokens):
     """returns a Cuesheet object from the token iterator stream
 
     raises CueException if a parsing error occurs
@@ -303,155 +303,6 @@ def __attrib_str__(attrib):
         return "\"%s\"" % (attrib)
 
 
-# class Cuesheet:
-#     """an object representing a cuesheet file"""
-
-#     def __init__(self):
-#         self.attribs = {}
-#         self.tracks = {}
-
-#     def __repr__(self):
-#         return "Cuesheet(attribs=%s,tracks=%s)" % \
-#             (repr(self.attribs), repr(self.tracks))
-
-#     def __str__(self):
-#         return "\r\n".join(["%s %s" % (key, __attrib_str__(value))
-#                             for key, value in self.attribs.items()] +
-#                            [str(track) for track in
-#                             sorted(self.tracks.values())])
-
-#     def catalog(self):
-#         """returns the cuesheet's CATALOG number as a plain string, or None
-
-#         if present, this value is typically a CD's UPC code"""
-
-#         if ('CATALOG' in self.attribs):
-#             return str(self.attribs['CATALOG'])
-#         else:
-#             return None
-
-#     def single_file_type(self):
-#         """returns True if this cuesheet is formatted for a single file"""
-
-#         previous = -1
-#         for t in self.indexes():
-#             for index in t:
-#                 if (index <= previous):
-#                     return False
-#                 else:
-#                     previous = index
-#         else:
-#             return True
-
-#     def indexes(self):
-#         """yields a set of index lists, one for each track in the file"""
-
-#         for key in sorted(self.tracks.keys()):
-#             yield tuple(
-#                 [self.tracks[key].indexes[k]
-#                  for k in sorted(self.tracks[key].indexes.keys())])
-
-#     def pcm_lengths(self, total_length, sample_rate):
-#         """yields a list of PCM lengths for all audio tracks within the file
-
-#         total_length is the length of the entire file in PCM frames"""
-
-#         previous = None
-
-#         for key in sorted(self.tracks.keys()):
-#             current = self.tracks[key].indexes
-#             if (previous is None):
-#                 previous = current
-#             else:
-#                 track_length = ((current[max(current.keys())] -
-#                                  previous[max(previous.keys())]) *
-#                                 sample_rate / 75)
-#                 total_length -= track_length
-#                 yield track_length
-#                 previous = current
-
-#         yield total_length
-
-#     def ISRCs(self):
-#         """returns a track_number->ISRC dict of all non-empty tracks"""
-
-#         return dict([(track.number, track.ISRC()) for track in
-#                      self.tracks.values() if track.ISRC() is not None])
-
-#     @classmethod
-#     def file(cls, sheet, filename):
-#         """constructs a new cuesheet string from a compatible object
-
-#         sheet must have catalog(), indexes() and ISRCs() methods
-#         filename is a string to the filename the cuesheet is created for
-#         although we don't care whether the filename points to a real file,
-#         other tools sometimes do
-#         """
-
-#         import cStringIO
-#         from . import build_timestamp
-
-#         catalog = sheet.catalog()        # a catalog string, or None
-#         indexes = list(sheet.indexes())  # a list of index tuples
-#         ISRCs = sheet.ISRCs()            # a track_number->ISRC dict
-
-#         data = cStringIO.StringIO()
-
-#         if (catalog is not None):
-#             data.write("CATALOG %s\r\n" % (catalog))
-#         data.write("FILE \"%s\" WAVE\r\n" % (filename))
-
-#         for (i, current) in enumerate(indexes):
-#             tracknum = i + 1
-
-#             data.write("  TRACK %2.2d AUDIO\r\n" % (tracknum))
-
-#             if (tracknum in ISRCs.keys()):
-#                 data.write("    ISRC %s\r\n" % (ISRCs[tracknum]))
-
-#             for (j, index) in enumerate(current):
-#                 data.write("    INDEX %2.2d %s\r\n" % (j,
-#                                                        build_timestamp(index)))
-
-#         return data.getvalue()
-
-
-# class Track:
-#     """a track inside a Cuesheet object"""
-
-#     def __init__(self, number, type):
-#         """number is the track's number on disc, type is a string"""
-
-#         self.number = number
-#         self.type = type
-#         self.attribs = {}
-#         self.indexes = {}
-
-#     def __cmp__(self, t):
-#         return cmp(self.number, t.number)
-
-#     def __repr__(self):
-#         return "Track(%s,%s,attribs=%s,indexes=%s)" % \
-#             (repr(self.number), repr(self.type),
-#              repr(self.attribs), repr(self.indexes))
-
-#     def __str__(self):
-#         return ("  TRACK %2.2d %s\r\n" % (self.number, self.type)) + \
-#             "\r\n".join(["    %s %s" % (key, __attrib_str__(value))
-#                          for key, value in self.attribs.items()] +
-#                         ["    INDEX %2.2d %2.2d:%2.2d:%2.2d" %
-#                          (k, v / 75 / 60, v / 75 % 60, v % 75)
-#                          for (k, v) in sorted(self.indexes.items())])
-
-#     def ISRC(self):
-#         """returns the track's ISRC value, or None"""
-
-#         if ('ISRC' in self.attribs.keys()):
-#             return str(self.attribs['ISRC'])
-#         else:
-#             return None
-
-
 def read_cuesheet(filename):
     """returns a Cuesheet from a cuesheet filename on disk
 
@@ -464,6 +315,31 @@ def read_cuesheet(filename):
         from .text import ERR_CUE_IOERROR
         raise CueException(ERR_CUE_IOERROR)
     try:
-        return parse(tokens(f.read()))
+        return __parse__(__tokens__(f.read()))
     finally:
         f.close()
+
+
+def write_cuesheet(sheet, filename, file):
+    """given a Sheet object and filename string,
+    writes a .cue file to the given file object"""
+
+    from . import build_timestamp
+
+    if (sheet.catalog() is not None):
+        file.write("CATALOG %s\r\n" % (sheet.catalog()))
+
+    file.write("FILE \"%s\" WAVE\r\n" % (filename))
+
+    for track in sheet.tracks():
+        file.write("  TRACK %2.2d %s\r\n" %
+                   (track.number(),
+                    ("AUDIO" if track.audio() else "BINARY")))
+
+        if (track.ISRC() is not None):
+            file.write("    ISRC %s\r\n" % (track.ISRC()))
+
+        for index in track.indexes():
+            file.write("    INDEX %2.2d %s\r\n" %
+                       (index.number(),
+                        build_timestamp(int(index.offset() * 75))))
