@@ -132,6 +132,8 @@ def parse(tokens):
     raises CueException if a parsing error occurs
     """
 
+    from fractions import Fraction
+    from audiotools import Sheet, SheetTrack, SheetIndex
     from .text import (ERR_CUE_INVALID_TRACK_NUMBER,
                        ERR_CUE_INVALID_TRACK_TYPE,
                        ERR_CUE_EXCESS_DATA,
@@ -150,8 +152,16 @@ def parse(tokens):
         while (element != EOL):
             (token, element, line_number) = tokens.next()
 
-    cuesheet = Cuesheet()
-    track = None
+    cuesheet_tracks = []
+    cuesheet_catalog_number = None
+
+    track_number = None
+    track_indexes = []
+    track_audio = False
+    track_ISRC = None
+
+    index_number = 0
+    index_offset = 0
 
     try:
         while (True):
@@ -164,26 +174,41 @@ def parse(tokens):
 
                 #we're moving to a new track
                 elif (token == 'TRACK'):
-                    if (track is not None):
-                        cuesheet.tracks[track.number] = track
+                    if (track_number is not None):
+                        cuesheet_tracks.append(
+                            SheetTrack(track_number,
+                                       track_indexes,
+                                       track_audio,
+                                       track_ISRC))
 
-                    track = Track(get_value(tokens, NUMBER,
-                                            ERR_CUE_INVALID_TRACK_NUMBER),
-                                  get_value(tokens, TAG | STRING,
-                                            ERR_CUE_INVALID_TRACK_TYPE))
+                    track_number = get_value(tokens,
+                                             NUMBER,
+                                             ERR_CUE_INVALID_TRACK_NUMBER)
+                    track_indexes = []
+                    track_audio = (get_value(tokens,
+                                             TAG | STRING,
+                                             ERR_CUE_INVALID_TRACK_TYPE) ==
+                                   "AUDIO")
+                    track_ISRC = None
 
-                    get_value(tokens, EOL, "Excess data")
+                    get_value(tokens, EOL, ERR_CUE_EXCESS_DATA)
 
                 #if we haven't started on track data yet,
-                #add attributes to the main cue sheet
-                elif (track is None):
-                    if (token in ('CATALOG', 'CDTEXTFILE',
-                                  'PERFORMER', 'SONGWRITER',
+                #add catalog number to main track
+                #or ignore other values
+                elif (track_number is None):
+                    if (token in ('CATALOG',
+                                  'CDTEXTFILE',
+                                  'PERFORMER',
+                                  'SONGWRITER',
                                   'TITLE')):
-                        cuesheet.attribs[token] = get_value(
-                            tokens,
-                            STRING | TAG | NUMBER | ISRC,
-                            ERR_CUE_MISSING_VALUE)
+                        if (token == 'CATALOG'):
+                            cuesheet_catalog_number = get_value(
+                                tokens, STRING, ERR_CUE_MISSING_VALUE)
+                        else:
+                            get_value(tokens,
+                                      STRING | TAG | NUMBER | ISRC,
+                                      ERR_CUE_MISSING_VALUE)
 
                         get_value(tokens, EOL, ERR_CUE_EXCESS_DATA)
 
@@ -193,8 +218,6 @@ def parse(tokens):
                         filetype = get_value(tokens, STRING | TAG,
                                              ERR_CUE_MISSING_FILETYPE)
 
-                        cuesheet.attribs[token] = (filename, filetype)
-
                         get_value(tokens, EOL, ERR_CUE_EXCESS_DATA)
 
                     else:
@@ -203,37 +226,48 @@ def parse(tokens):
                                             "line": line_number})
                 #otherwise, we're adding data to the current track
                 else:
-                    if (token in ('ISRC', 'PERFORMER',
-                                  'SONGWRITER', 'TITLE')):
-                        track.attribs[token] = get_value(
-                            tokens,
-                            STRING | TAG | NUMBER | ISRC,
-                            "Missing value")
+                    if (token in ('ISRC',
+                                  'PERFORMER',
+                                  'SONGWRITER',
+                                  'TITLE')):
+                        if (token == 'ISRC'):
+                            track_ISRC = get_value(tokens,
+                                                   ISRC,
+                                                   ERR_CUE_MISSING_VALUE)
+                        else:
+                            get_value(tokens,
+                                      STRING | TAG | NUMBER | ISRC,
+                                      ERR_CUE_MISSING_VALUE)
 
                         get_value(tokens, EOL, ERR_CUE_INVALID_DATA)
 
                     elif (token == 'FLAGS'):
                         flags = []
-                        s = get_value(tokens, STRING | TAG | EOL,
+                        s = get_value(tokens,
+                                      STRING | TAG | EOL,
                                       ERR_CUE_INVALID_FLAG)
                         while (('\n' not in s) and ('\r' not in s)):
                             flags.append(s)
                             s = get_value(tokens, STRING | TAG | EOL,
                                           ERR_CUE_INVALID_FLAG)
-                        track.attribs[token] = ",".join(flags)
 
                     elif (token in ('POSTGAP', 'PREGAP')):
-                        track.attribs[token] = get_value(
-                            tokens, TIMESTAMP,
-                            ERR_CUE_INVALID_TIMESTAMP)
+                        get_value(tokens,
+                                  TIMESTAMP,
+                                  ERR_CUE_INVALID_TIMESTAMP)
                         get_value(tokens, EOL, ERR_CUE_EXCESS_DATA)
 
                     elif (token == 'INDEX'):
-                        index_number = get_value(tokens, NUMBER,
+                        index_number = get_value(tokens,
+                                                 NUMBER,
                                                  ERR_CUE_INVALID_INDEX_NUMBER)
-                        index_timestamp = get_value(tokens, TIMESTAMP,
-                                                    ERR_CUE_INVALID_TIMESTAMP)
-                        track.indexes[index_number] = index_timestamp
+                        index_offset = get_value(tokens,
+                                                 TIMESTAMP,
+                                                 ERR_CUE_INVALID_TIMESTAMP)
+
+                        track_indexes.append(
+                            SheetIndex(index_number,
+                                       Fraction(index_offset, 75)))
 
                         get_value(tokens, EOL, ERR_CUE_EXCESS_DATA)
 
@@ -249,9 +283,13 @@ def parse(tokens):
                 raise CueException(ERR_CUE_MISSING_TAG %
                                    (line_number,))
     except StopIteration:
-        if (track is not None):
-            cuesheet.tracks[track.number] = track
-        return cuesheet
+        if (track_number is not None):
+            cuesheet_tracks.append(SheetTrack(track_number,
+                                              track_indexes,
+                                              track_audio,
+                                              track_ISRC))
+
+        return Sheet(cuesheet_tracks, cuesheet_catalog_number)
 
 
 def __attrib_str__(attrib):
@@ -265,153 +303,153 @@ def __attrib_str__(attrib):
         return "\"%s\"" % (attrib)
 
 
-class Cuesheet:
-    """an object representing a cuesheet file"""
+# class Cuesheet:
+#     """an object representing a cuesheet file"""
 
-    def __init__(self):
-        self.attribs = {}
-        self.tracks = {}
+#     def __init__(self):
+#         self.attribs = {}
+#         self.tracks = {}
 
-    def __repr__(self):
-        return "Cuesheet(attribs=%s,tracks=%s)" % \
-            (repr(self.attribs), repr(self.tracks))
+#     def __repr__(self):
+#         return "Cuesheet(attribs=%s,tracks=%s)" % \
+#             (repr(self.attribs), repr(self.tracks))
 
-    def __str__(self):
-        return "\r\n".join(["%s %s" % (key, __attrib_str__(value))
-                            for key, value in self.attribs.items()] +
-                           [str(track) for track in
-                            sorted(self.tracks.values())])
+#     def __str__(self):
+#         return "\r\n".join(["%s %s" % (key, __attrib_str__(value))
+#                             for key, value in self.attribs.items()] +
+#                            [str(track) for track in
+#                             sorted(self.tracks.values())])
 
-    def catalog(self):
-        """returns the cuesheet's CATALOG number as a plain string, or None
+#     def catalog(self):
+#         """returns the cuesheet's CATALOG number as a plain string, or None
 
-        if present, this value is typically a CD's UPC code"""
+#         if present, this value is typically a CD's UPC code"""
 
-        if ('CATALOG' in self.attribs):
-            return str(self.attribs['CATALOG'])
-        else:
-            return None
+#         if ('CATALOG' in self.attribs):
+#             return str(self.attribs['CATALOG'])
+#         else:
+#             return None
 
-    def single_file_type(self):
-        """returns True if this cuesheet is formatted for a single file"""
+#     def single_file_type(self):
+#         """returns True if this cuesheet is formatted for a single file"""
 
-        previous = -1
-        for t in self.indexes():
-            for index in t:
-                if (index <= previous):
-                    return False
-                else:
-                    previous = index
-        else:
-            return True
+#         previous = -1
+#         for t in self.indexes():
+#             for index in t:
+#                 if (index <= previous):
+#                     return False
+#                 else:
+#                     previous = index
+#         else:
+#             return True
 
-    def indexes(self):
-        """yields a set of index lists, one for each track in the file"""
+#     def indexes(self):
+#         """yields a set of index lists, one for each track in the file"""
 
-        for key in sorted(self.tracks.keys()):
-            yield tuple(
-                [self.tracks[key].indexes[k]
-                 for k in sorted(self.tracks[key].indexes.keys())])
+#         for key in sorted(self.tracks.keys()):
+#             yield tuple(
+#                 [self.tracks[key].indexes[k]
+#                  for k in sorted(self.tracks[key].indexes.keys())])
 
-    def pcm_lengths(self, total_length, sample_rate):
-        """yields a list of PCM lengths for all audio tracks within the file
+#     def pcm_lengths(self, total_length, sample_rate):
+#         """yields a list of PCM lengths for all audio tracks within the file
 
-        total_length is the length of the entire file in PCM frames"""
+#         total_length is the length of the entire file in PCM frames"""
 
-        previous = None
+#         previous = None
 
-        for key in sorted(self.tracks.keys()):
-            current = self.tracks[key].indexes
-            if (previous is None):
-                previous = current
-            else:
-                track_length = ((current[max(current.keys())] -
-                                 previous[max(previous.keys())]) *
-                                sample_rate / 75)
-                total_length -= track_length
-                yield track_length
-                previous = current
+#         for key in sorted(self.tracks.keys()):
+#             current = self.tracks[key].indexes
+#             if (previous is None):
+#                 previous = current
+#             else:
+#                 track_length = ((current[max(current.keys())] -
+#                                  previous[max(previous.keys())]) *
+#                                 sample_rate / 75)
+#                 total_length -= track_length
+#                 yield track_length
+#                 previous = current
 
-        yield total_length
+#         yield total_length
 
-    def ISRCs(self):
-        """returns a track_number->ISRC dict of all non-empty tracks"""
+#     def ISRCs(self):
+#         """returns a track_number->ISRC dict of all non-empty tracks"""
 
-        return dict([(track.number, track.ISRC()) for track in
-                     self.tracks.values() if track.ISRC() is not None])
+#         return dict([(track.number, track.ISRC()) for track in
+#                      self.tracks.values() if track.ISRC() is not None])
 
-    @classmethod
-    def file(cls, sheet, filename):
-        """constructs a new cuesheet string from a compatible object
+#     @classmethod
+#     def file(cls, sheet, filename):
+#         """constructs a new cuesheet string from a compatible object
 
-        sheet must have catalog(), indexes() and ISRCs() methods
-        filename is a string to the filename the cuesheet is created for
-        although we don't care whether the filename points to a real file,
-        other tools sometimes do
-        """
+#         sheet must have catalog(), indexes() and ISRCs() methods
+#         filename is a string to the filename the cuesheet is created for
+#         although we don't care whether the filename points to a real file,
+#         other tools sometimes do
+#         """
 
-        import cStringIO
-        from . import build_timestamp
+#         import cStringIO
+#         from . import build_timestamp
 
-        catalog = sheet.catalog()        # a catalog string, or None
-        indexes = list(sheet.indexes())  # a list of index tuples
-        ISRCs = sheet.ISRCs()            # a track_number->ISRC dict
+#         catalog = sheet.catalog()        # a catalog string, or None
+#         indexes = list(sheet.indexes())  # a list of index tuples
+#         ISRCs = sheet.ISRCs()            # a track_number->ISRC dict
 
-        data = cStringIO.StringIO()
+#         data = cStringIO.StringIO()
 
-        if (catalog is not None):
-            data.write("CATALOG %s\r\n" % (catalog))
-        data.write("FILE \"%s\" WAVE\r\n" % (filename))
+#         if (catalog is not None):
+#             data.write("CATALOG %s\r\n" % (catalog))
+#         data.write("FILE \"%s\" WAVE\r\n" % (filename))
 
-        for (i, current) in enumerate(indexes):
-            tracknum = i + 1
+#         for (i, current) in enumerate(indexes):
+#             tracknum = i + 1
 
-            data.write("  TRACK %2.2d AUDIO\r\n" % (tracknum))
+#             data.write("  TRACK %2.2d AUDIO\r\n" % (tracknum))
 
-            if (tracknum in ISRCs.keys()):
-                data.write("    ISRC %s\r\n" % (ISRCs[tracknum]))
+#             if (tracknum in ISRCs.keys()):
+#                 data.write("    ISRC %s\r\n" % (ISRCs[tracknum]))
 
-            for (j, index) in enumerate(current):
-                data.write("    INDEX %2.2d %s\r\n" % (j,
-                                                       build_timestamp(index)))
+#             for (j, index) in enumerate(current):
+#                 data.write("    INDEX %2.2d %s\r\n" % (j,
+#                                                        build_timestamp(index)))
 
-        return data.getvalue()
+#         return data.getvalue()
 
 
-class Track:
-    """a track inside a Cuesheet object"""
+# class Track:
+#     """a track inside a Cuesheet object"""
 
-    def __init__(self, number, type):
-        """number is the track's number on disc, type is a string"""
+#     def __init__(self, number, type):
+#         """number is the track's number on disc, type is a string"""
 
-        self.number = number
-        self.type = type
-        self.attribs = {}
-        self.indexes = {}
+#         self.number = number
+#         self.type = type
+#         self.attribs = {}
+#         self.indexes = {}
 
-    def __cmp__(self, t):
-        return cmp(self.number, t.number)
+#     def __cmp__(self, t):
+#         return cmp(self.number, t.number)
 
-    def __repr__(self):
-        return "Track(%s,%s,attribs=%s,indexes=%s)" % \
-            (repr(self.number), repr(self.type),
-             repr(self.attribs), repr(self.indexes))
+#     def __repr__(self):
+#         return "Track(%s,%s,attribs=%s,indexes=%s)" % \
+#             (repr(self.number), repr(self.type),
+#              repr(self.attribs), repr(self.indexes))
 
-    def __str__(self):
-        return ("  TRACK %2.2d %s\r\n" % (self.number, self.type)) + \
-            "\r\n".join(["    %s %s" % (key, __attrib_str__(value))
-                         for key, value in self.attribs.items()] +
-                        ["    INDEX %2.2d %2.2d:%2.2d:%2.2d" %
-                         (k, v / 75 / 60, v / 75 % 60, v % 75)
-                         for (k, v) in sorted(self.indexes.items())])
+#     def __str__(self):
+#         return ("  TRACK %2.2d %s\r\n" % (self.number, self.type)) + \
+#             "\r\n".join(["    %s %s" % (key, __attrib_str__(value))
+#                          for key, value in self.attribs.items()] +
+#                         ["    INDEX %2.2d %2.2d:%2.2d:%2.2d" %
+#                          (k, v / 75 / 60, v / 75 % 60, v % 75)
+#                          for (k, v) in sorted(self.indexes.items())])
 
-    def ISRC(self):
-        """returns the track's ISRC value, or None"""
+#     def ISRC(self):
+#         """returns the track's ISRC value, or None"""
 
-        if ('ISRC' in self.attribs.keys()):
-            return str(self.attribs['ISRC'])
-        else:
-            return None
+#         if ('ISRC' in self.attribs.keys()):
+#             return str(self.attribs['ISRC'])
+#         else:
+#             return None
 
 
 def read_cuesheet(filename):
@@ -426,11 +464,10 @@ def read_cuesheet(filename):
         from .text import ERR_CUE_IOERROR
         raise CueException(ERR_CUE_IOERROR)
     try:
-        sheet = parse(tokens(f.read()))
-        if (not sheet.single_file_type()):
-            from .text import ERR_CUE_INVALID_FORMAT
-            raise CueException(ERR_CUE_INVALID_FORMAT)
-        else:
-            return sheet
+        return parse(tokens(f.read()))
+        # if (not sheet.single_file_type()):
+        #     from .text import ERR_CUE_INVALID_FORMAT
+        #     raise CueException(ERR_CUE_INVALID_FORMAT)
+        # else:
     finally:
         f.close()

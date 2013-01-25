@@ -4075,7 +4075,7 @@ class SheetException(ValueError):
 
 
 def read_sheet(filename):
-    """returns a TOCFile or Cuesheet object from filename
+    """returns Sheet-compatible object from a .cue or .toc file
 
     may raise a SheetException if the file cannot be parsed correctly"""
 
@@ -4087,6 +4087,140 @@ def read_sheet(filename):
         return toc.read_tocfile(filename)
     except SheetException:
         return cue.read_cuesheet(filename)
+
+
+class Sheet:
+    def __init__(self, sheet_tracks, catalog_number=None):
+        """takes a list of SheetTrack objects
+        and optional catalog_number plain string"""
+
+        self.__tracks__ = list(sheet_tracks)
+        self.__catalog_number__ = catalog_number
+
+    def __repr__(self):
+        return "Sheet(%s, %s)" % (repr(self.__tracks__),
+                                  repr(self.__catalog_number__))
+
+    def __eq__(self, sheet):
+        if not (hasattr(sheet, "catalog") and
+                callable(sheet.catalog) and
+                self.catalog() == sheet.catalog()):
+            return False
+        elif (hasattr(sheet, "tracks") and callable(sheet.tracks)):
+            return list(self.tracks()) == list(sheet.tracks())
+        else:
+            return False
+
+    def track(self, track_number):
+        """given a track_number (typically starting from 1),
+        returns a SheetTrack object or raises KeyError if not found"""
+
+        for track in self.tracks():
+            if (track_number == track.number()):
+                return track
+        else:
+            raise KeyError(track_number)
+
+    def tracks(self):
+        return iter(self.__tracks__)
+
+    def catalog(self):
+        """returns sheet's catalog number as a plain string, or None"""
+
+        return self.__catalog_number__
+
+
+class SheetTrack:
+    def __init__(self, number, indexes, audio=True, ISRC=None):
+        """number is the track's number (typically starts from 1)
+        indexes is a list of SheetIndex objects
+        audio is optional indicator that track contains audio data
+        ISRC is optional plain string of ISRC info"""
+
+        self.__number__ = number
+        self.__indexes__ = list(indexes)
+        self.__audio__ = audio
+        self.__ISRC__ = ISRC
+
+    def __repr__(self):
+        return "SheetTrack(%s, %s, %s, %s)" % (repr(self.__number__),
+                                               repr(self.__indexes__),
+                                               repr(self.__audio__),
+                                               repr(self.__ISRC__))
+
+    def __eq__(self, track):
+        for method in ["number", "audio", "ISRC"]:
+            if not (hasattr(track, method) and
+                    callable(getattr(track, method)) and
+                    getattr(self, method)() == getattr(track, method)()):
+                return False
+        else:
+            if (hasattr(track, "indexes") and callable(track.indexes)):
+                return list(self.indexes()) == list(track.indexes())
+            else:
+                return False
+
+    def index(self, index_number):
+        """given index number (typically starting from 1)
+        returns SheetIndex object or raises KeyError if not found"""
+
+        for index in self.indexes():
+            if (index_number == index.number()):
+                return index
+        else:
+            raise KeyError(index_number)
+
+    def indexes(self):
+        return iter(self.__indexes__)
+
+    def number(self):
+        """returns track's number as an integer"""
+
+        return self.__number__
+
+    def ISRC(self):
+        """returns track's ISRC value as plain string, or None"""
+
+        return self.__ISRC__
+
+    def audio(self):
+        """returns True if track contains audio data"""
+
+        return self.__audio__
+
+
+class SheetIndex:
+    def __init__(self, number, offset):
+        """number is the index's number, typically starting from 1
+        offset is the index's offset from the start of the stream
+        in seconds as a Fraction object"""
+
+        self.__number__ = number
+        self.__offset__ = offset
+
+    def __repr__(self):
+        return "SheetIndex(%s, %s)" % (repr(self.__number__),
+                                       repr(self.__offset__))
+
+    def __eq__(self, index):
+        for method in ["number", "offset"]:
+            if not (hasattr(index, method) and
+                    callable(getattr(index, method)) and
+                    getattr(self, method)() == getattr(index, method)()):
+                return False
+        else:
+            return True
+
+    def number(self):
+        """returns the index's number (typically starting from 1)"""
+
+        return self.__number__
+
+    def offset(self):
+        """returns the index's offset from the start of the stream
+        in seconds as a Fraction object"""
+
+        return self.__offset__
 
 
 def parse_timestamp(s):
