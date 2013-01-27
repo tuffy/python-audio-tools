@@ -3994,11 +3994,10 @@ class TestReplayGain(unittest.TestCase):
 
 
 class testcuesheet(unittest.TestCase):
-    @LIB_CORE
+    @LIB_CUESHEET
     def setUp(self):
         import audiotools.cue
 
-        self.sheet_class = audiotools.cue.Cuesheet
         self.test_sheets = [
 """eJydlt1q20AQRu8NfofFDxB2Zv/nTshyUBvHQVHa3rppKCbFDqmbtG/f3VqQzZjtxYKvPiOdz6Od
 Iw/dWiz727ZfCm1ArpZg57Mhhu1mve6uR7Hofm/vj82vb7tDe3j6I17kRQhPX/ViPmubsbnaXMYL
@@ -4025,42 +4024,60 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
                 tempsheetfile.close()
             yield sheet
 
-    @LIB_CORE
+    @LIB_CUESHEET
     def testreadsheet(self):
         for sheet in self.sheets():
-            self.assertEqual(isinstance(sheet, self.sheet_class), True)
             self.assertEqual(sheet.catalog(), '4580226563955')
-            self.assertEqual(sorted(sheet.ISRCs().items()),
-                             [(1, 'JPG750800183'),
-                              (2, 'JPG750800212'),
-                              (3, 'JPG750800214'),
-                              (4, 'JPG750800704'),
-                              (5, 'JPG750800705'),
-                              (6, 'JPG750800706'),
-                              (7, 'JPG750800707'),
-                              (8, 'JPG750800708'),
-                              (9, 'JPG750800219'),
-                              (10, 'JPG750800722'),
-                              (11, 'JPG750800709'),
-                              (12, 'JPG750800290'),
-                              (13, 'JPG750800218'),
-                              (14, 'JPG750800710'),
-                              (15, 'JPG750800217'),
-                              (16, 'JPG750800531'),
-                              (17, 'JPG750800225'),
-                              (18, 'JPG750800711'),
-                              (19, 'JPG750800180'),
-                              (20, 'JPG750800712'),
-                              (21, 'JPG750800713'),
-                              (22, 'JPG750800714')])
-            self.assertEqual(list(sheet.indexes()),
-                             [(0, ), (20885, ), (42189,  42411), (49242,  49473),
-                              (52754, ), (69656, ), (95428, ), (118271,  118430),
-                              (136968, ), (138433,  138567), (156412, ),
-                              (168864, ), (187716, ), (192245, 192373),
-                              (200347, ), (204985, ), (227336, ),
-                              (243382, 243549), (265893,  266032),
-                              (292606, 292942), (302893, 303123), (321611, )])
+            self.assertEqual([t.ISRC() for t in sheet.tracks()],
+                             ['JPG750800183',
+                              'JPG750800212',
+                              'JPG750800214',
+                              'JPG750800704',
+                              'JPG750800705',
+                              'JPG750800706',
+                              'JPG750800707',
+                              'JPG750800708',
+                              'JPG750800219',
+                              'JPG750800722',
+                              'JPG750800709',
+                              'JPG750800290',
+                              'JPG750800218',
+                              'JPG750800710',
+                              'JPG750800217',
+                              'JPG750800531',
+                              'JPG750800225',
+                              'JPG750800711',
+                              'JPG750800180',
+                              'JPG750800712',
+                              'JPG750800713',
+                              'JPG750800714'])
+
+
+            self.assertEqual([[int(i.offset() * 75) for i in t.indexes()]
+                              for t in sheet.tracks()],
+                             [[0, ],
+                              [20885, ],
+                              [42189,  42411],
+                              [49242,  49473],
+                              [52754, ],
+                              [69656, ],
+                              [95428, ],
+                              [118271,  118430],
+                              [136968, ],
+                              [138433,  138567],
+                              [156412, ],
+                              [168864, ],
+                              [187716, ],
+                              [192245, 192373],
+                              [200347, ],
+                              [204985, ],
+                              [227336, ],
+                              [243382, 243549],
+                              [265893, 266032],
+                              [292606, 292942],
+                              [302893, 303123],
+                              [321611, ]])
+
             self.assertEqual(list(sheet.pcm_lengths(191795016,
                                                     44100)),
                              [12280380, 12657288, 4152456, 1929228,
@@ -4070,7 +4087,7 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
                               9533244, 13220004, 15823080, 5986428,
                               10870944, 2687748])
 
-    @LIB_CORE
+    @LIB_CUESHEET
     def testconvertsheet(self):
         import audiotools.cue
         import audiotools.toc
@@ -4079,49 +4096,38 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
             #convert to CUE and test for equality
             temp_cue_file = tempfile.NamedTemporaryFile(suffix='.cue')
             try:
-                temp_cue_file.write(audiotools.cue.Cuesheet.file(
-                        sheet, os.path.basename(temp_cue_file.name)))
+                audiotools.cue.write_cuesheet(
+                    sheet,
+                    os.path.basename(temp_cue_file.name),
+                    temp_cue_file)
                 temp_cue_file.flush()
 
                 cue_sheet = audiotools.read_sheet(temp_cue_file.name)
 
-                self.assertEqual(sheet.catalog(), cue_sheet.catalog())
-                self.assertEqual(list(sheet.indexes()),
-                                 list(cue_sheet.indexes()))
-                self.assertEqual(list(sheet.pcm_lengths(191795016,
-                                                        44100)),
-                                 list(cue_sheet.pcm_lengths(191795016,
-                                                            44100)))
-                self.assertEqual(sorted(sheet.ISRCs().items()),
-                                 sorted(cue_sheet.ISRCs().items()))
+                self.assertEqual(sheet, cue_sheet)
             finally:
                 temp_cue_file.close()
 
             #convert to TOC and test for equality
             temp_toc_file = tempfile.NamedTemporaryFile(suffix='.toc')
             try:
-                temp_toc_file.write(audiotools.toc.TOCFile.file(
-                        sheet, os.path.basename(temp_toc_file.name)))
+                audiotools.toc.write_tocfile(
+                    sheet,
+                    os.path.basename(temp_toc_file.name),
+                    temp_toc_file)
                 temp_toc_file.flush()
 
                 toc_sheet = audiotools.read_sheet(temp_toc_file.name)
 
-                self.assertEqual(sheet.catalog(), toc_sheet.catalog())
-                self.assertEqual(list(sheet.indexes()),
-                                 list(toc_sheet.indexes()))
-                self.assertEqual(list(sheet.pcm_lengths(191795016,
-                                                        44100)),
-                                 list(toc_sheet.pcm_lengths(191795016,
-                                                            44100)))
-                self.assertEqual(sorted(sheet.ISRCs().items()),
-                                 sorted(toc_sheet.ISRCs().items()))
+                self.assertEqual(sheet, toc_sheet)
             finally:
                 temp_toc_file.close()
 
             #convert to embedded cuesheets and test for equality
             for audio_class in [audiotools.FlacAudio,
                                 audiotools.OggFlacAudio,
-                                audiotools.WavPackAudio]:
+                                audiotools.WavPackAudio,
+                                audiotools.TrueAudio]:
                 temp_file = tempfile.NamedTemporaryFile(
                     suffix="." + audio_class.SUFFIX)
                 try:
@@ -4130,27 +4136,17 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
                         EXACT_BLANK_PCM_Reader(191795016))
                     f.set_cuesheet(sheet)
                     f_sheet = audiotools.open(temp_file.name).get_cuesheet()
-                    self.assertNotEqual(f_sheet, None)
 
-                    self.assertEqual(sheet.catalog(), f_sheet.catalog())
-                    self.assertEqual(list(sheet.indexes()),
-                                     list(f_sheet.indexes()))
-                    self.assertEqual(list(sheet.pcm_lengths(191795016,
-                                                            44100)),
-                                     list(f_sheet.pcm_lengths(191795016,
-                                                              44100)))
-                    self.assertEqual(sorted(sheet.ISRCs().items()),
-                                     sorted(f_sheet.ISRCs().items()))
+                    self.assertEqual(sheet, f_sheet)
                 finally:
                     temp_file.close()
 
 
 class testtocsheet(testcuesheet):
-    @LIB_CORE
+    @LIB_CUESHEET
     def setUp(self):
         import audiotools.toc
 
-        self.sheet_class = audiotools.toc.TOCFile
         self.test_sheets = [
 """eJytlr1uG0EMhPt7isU9QExyf4/d4aTYShRJkM4IUglC0qULguT1Q15c7MJbspIhGPhmR8Mhl919
 Nw/DMq/z8fzsxhALEKWY/BTjOAxPT2799fj+0+GwXufls5tfd4fzcDq75Xz5pp+X6/6+/3J5mW+H
@@ -4180,9 +4176,8 @@ c0X3z/cu+lUE0ySfNZ5QgQgq82S0R8+9OWBChth3PkyTfJaJC/a+3YCk97Xn+b7/NdBFv1thmjB0
 
 
 class testflaccuesheet(testcuesheet):
-    @LIB_CORE
+    @LIB_CUESHEET
     def setUp(self):
-        self.sheet_class = audiotools.flac.Flac_CUESHEET
         self.suffix = '.flac'
         self.test_sheets = [
             audiotools.flac.Flac_CUESHEET(
@@ -4371,14 +4366,10 @@ class testflaccuesheet(testcuesheet):
                 metadata = tempflac.get_metadata()
                 metadata.replace_blocks(
                     audiotools.flac.Flac_CUESHEET.BLOCK_ID,
-                    [audiotools.flac.Flac_CUESHEET.converted(
-                            test_sheet,
-                            191795016)])
+                    [test_sheet])
                 tempflac.update_metadata(metadata)
 
-                sheet = audiotools.open(
-                    tempflacfile.name).get_metadata().get_block(
-                    audiotools.flac.Flac_CUESHEET.BLOCK_ID)
+                sheet = audiotools.open(tempflacfile.name).get_cuesheet()
             finally:
                 tempflacfile.close()
             yield sheet

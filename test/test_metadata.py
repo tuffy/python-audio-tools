@@ -4742,6 +4742,101 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
         self.assertEqual(metadata.get_block(4).comment_strings,
                          [u"DISCNUMBER= foo 2 bar"])
 
+    @METADATA_FLAC
+    def test_cuesheet(self):
+        self.assert_(audiotools.BIN.can_execute(audiotools.BIN["metaflac"]),
+                     "reference binary metaflac(1) required for this test")
+
+        from test import EXACT_SILENCE_PCM_Reader
+        from shutil import copy
+        from audiotools.cue import read_cuesheet_string
+        import subprocess
+
+        for (cuesheet_data,
+             total_pcm_frames,
+             sample_rate) in [("""QlpoOTFBWSZTWYIMBcQABa/fgEASUAF/8C8/38A+b9/gQAMLu5wAcANFNU0e/1SR6appgBNNDTJg
+JowmEpkQ0kSA0AAAAAAFPyqgAAAAAAAAARUjQmRoQyeUNDQ9ENPSBk0epBmZM0EmTJUkarNqVcqw
+AAACHhTQ9LkHp8bJpXVW5z1ACPCBHayccLhKd2uCqmUqfHBzjJlRBTOqga6wHvQYFypmgA6jLLIy
+CQVirFWEFYKxVUAAAAAAHd3d3fC9cq5+fpbtxAAAADgyTZljSTXEk0Lv/zSTRjGM5znOYAAAAbaK
+us0mTeXWUovVQ+UxEGaS8lxEHICGyCPtsCG0TCbbS0BDGpTSQ4TZJRkvQofn82OWOTbuAhabfRz5
+8xtDTcNpKFkCJmW34G0Sm86OFt8HQJNcYy29G9oabbSQ02DEI3eTQm1xT4VRjbb+WgIs3AISFCEU
+bjXKZ3xTUpixxlt6LSy0kmNiTG4STG1lpLWMlEq3UyO8JUwIsdpDG0oqAQNMgkmQmBskQxMWNFGM
+zIkJOUngSSEIJrBZmnrGrxlKTJhmkNVhJRVEkzim6nDlNvCUlTKlGcrsmTpxWcYqpOlo1UrOdalG
+rvetFk293ir1LvWVeG6UvKzrZNO9Vuh4uiSaefFTRGftAcYDfBB0ygO7YAx4+e5VLwGO+8R0Z94D
+kLhGRB2Kp5Wes6Dt8b1UoQYAO5BzAMwDIg8+srpQfaKqRgAz1IO8BqAck6DUA2gMpKg0oNKD00AM
+0qDWg5wG0BgIwkxKpyAcNuFn59oN/Lj+8rkGyIDzcBGNOQRuEcojXqoEdmMB0oMyDgg16EGX+mrs
+4VCNuH+LuSKcKEhBBgLiAA==""",
+                               160107696,
+                               44100),
+                              ("""QlpoOTFBWSZTWaL6WiIABDlfgEASUAF/8C8/38A+79/gQAKO2QFhUJKED9VE8j1QA9IBoBoMmT1H
+oNPRRpFT9U2o0ADTQAAAAGGhoAAANAAAAACKiaBqTJ6g2o0NGmmhk8oAASASJIBKqux5MvBbdmbb
+bbblQUVshcAjQCZ5SpqhAohGMIlkoworJxjmAQC4FHVME6aVIXo5xKl4ikNppgcdhwAABIFBhBRl
+GMIQWaBGVt083DNttttt/aEdhfeCOMEUcmP6CJznOc5znNttttvVZl/s4JFu26NtuQhCWA6VoLKV
+L7NqnHCo2xj5JUsTBghG4QfdSpOENlzY33TO35LyUqQHK9txjGPiSPwSRsY22YUcIo5xrjd8uys5
+yqyG22xvVAqAA1eu0m9sRlAfHS0AAkIzZrWkAWrpXi0ZkN9cRu7DTpIRVIrUlGGwxVZisDBrGtS8
+2GlciwMAOdJUmlSmMONA2wJF5pk5u5ZNZ0WJ8K+NYucYjmMbXMVRqcK3U3XZRTKmqNkYQ6gRaCNU
+EI5pAjT7ZwRTo7twLgCSxwFL8hsFMUTtBdlm2pE18GALWiQBNyJWCUgkUEu1m9aieEgWUASqaJaC
+ZMQSpEmCXgkihEtRLUTjsBKbgSSJmRLgS8EgKQjaC/QIxx0bdaEY4a8MNmGlCOjAEViRLiuEjd4i
+RsFOLLqs9oTFNuUEhoRIVon8ib80SiUac/NupEi/HHeLuSKcKEhRfS0RAA==""",
+                               119882616,
+                               44100),
+                              ("""QlpoOTFBWSZTWaM4xYoAA6vfgEASUAF/8C8/38A+bd/wQAJ87OdBAI0Ipp5GjSGgAAAAAAwkxEqN
+PUZAYR6hgjI0NGhiGmqn6oDQAGgADTJoyAYIpNTRMIpk09CZNPKMgxlGTyD1SQUJFUtR05YTGqhY
+QyRSyZmZi8R+iOupbUpFLYilprmmAILkgptvR2CwdwPLCoumwyKwVBhZktuzhxiCO7KzAAO5JJJJ
+IMzVEMyRWz1RsW3Oc7mQFnIWAELQIMq++QQfRLPQxYRjTSzicvuJAB7pZnvhMyCsNZKxNNpJIqIp
+EK4bjLYApEn8IALYlgtQg0kGnmQYwsILDDixrISQ81jfvoE0lu22vaDCUREIRBLCaLDi/HG+pSDS
+ErhEGhoaNdEkJIiCISCIgvrYYyqBwl23YQRQCSrCW1C0YkGgigjuCCM6ylTRasf6K4Qck1QV5DEJ
+C26JQNCphjas4cyMTIxQNUhhiUzOMiViQhO8gxUiaCCGM8Qed1TYSazDzPknOodVd6p1KTWsqtYn
+DbsK5dy7jWtPWpnj95B1uIPagT7MEF/XpRpwu/VngiG5G3fuVwO1XeL8EQ7e+ouzduRC1G5GKI+I
+uSNqNBeTxMsBdtiIWQI24i3o5ZI70bhcUedGpIuAuAvNejWRdQvIj8kYVimhEPRHuzz49XHgLdn7
+aYrtF1+qPBWf9pV+6vkr7bLlfP84o8vSLcLmLq5hZsr8+N4B1Z1/4u5IpwoSFGcYsUA=""",
+                               122513916,
+                               44100)]:
+            temp_flac1 = tempfile.NamedTemporaryFile(suffix=".flac")
+            temp_flac2 = tempfile.NamedTemporaryFile(suffix=".flac")
+            try:
+                #build a FLAC full of silence with the total number of frames
+                flac1 = audiotools.FlacAudio.from_pcm(
+                    temp_flac1.name,
+                    EXACT_SILENCE_PCM_Reader(total_pcm_frames),
+                    total_pcm_frames=total_pcm_frames)
+
+                #copy it to another temp file
+                copy(temp_flac1.name, temp_flac2.name)
+
+                #set_cuesheet() to first FLAC file
+                flac1.set_cuesheet(
+                    read_cuesheet_string(
+                        cuesheet_data.decode('base64').decode('bz2')))
+
+                #import cuesheet to first FLAC file with metaflac
+                #and get its CUESHEET block
+                temp_cue = tempfile.NamedTemporaryFile(suffix=".cue")
+                try:
+                    temp_cue.write(
+                        cuesheet_data.decode('base64').decode('bz2'))
+                    temp_cue.flush()
+
+                    self.assertEqual(
+                        subprocess.call([audiotools.BIN["metaflac"],
+                                         "--import-cuesheet-from",
+                                         temp_cue.name, temp_flac2.name]), 0)
+                finally:
+                    temp_cue.close()
+
+                flac2 = audiotools.FlacAudio(temp_flac2.name)
+
+                #ensure get_cuesheet() data matches
+                self.assertEqual(flac1.get_cuesheet(),
+                                 flac2.get_cuesheet())
+
+                #ensure CUESHEET blocks match in get_metadata()
+                self.assertEqual(flac1.get_metadata().get_block(5),
+                                 flac2.get_metadata().get_block(5))
+            finally:
+                temp_flac1.close()
+                temp_flac2.close()
+
 
 class M4AMetaDataTest(MetaDataTest):
     def setUp(self):

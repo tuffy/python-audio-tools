@@ -819,8 +819,9 @@ class Flac_CUESHEET:
         return a.bytes()
 
     @classmethod
-    def converted(cls, sheet, total_pcm_frames, sample_rate, is_cdda):
-        """given a Sheet object, total PCM frames and sample rate
+    def converted(cls, sheet, total_pcm_frames, sample_rate, is_cdda=True):
+        """given a Sheet object, total PCM frames, sample rate and
+        optional boolean indicating whether cuesheet is CD audio
         returns a Flac_CUESHEET object from that data"""
 
         flac_tracks = []

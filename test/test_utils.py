@@ -1806,13 +1806,14 @@ class trackcat(UtilTest):
                 (output_format is audiotools.FlacAudio)):
                 cuesheet = new_track.get_cuesheet()
                 self.assert_(cuesheet is not None)
-                self.assertEqual(cuesheet.ISRCs(),
-                                 {1: 'JPPI00652340',
-                                  2: 'JPPI00652349',
-                                  3: 'JPPI00652341'})
-                self.assertEqual(list(cuesheet.indexes()),
-                                 [(0,), (225, 375), (675, 825)])
-                self.assertEqual(cuesheet.pcm_lengths(793800, 44100),
+                self.assertEqual([t.ISRC() for t in cuesheet.tracks()],
+                                 ['JPPI00652340',
+                                  'JPPI00652349',
+                                  'JPPI00652341'])
+                self.assertEqual([[int(i.offset() * 75) for i in t.indexes()]
+                                  for t in cuesheet.tracks()],
+                                 [[0,], [225, 375], [675, 825]])
+                self.assertEqual(list(cuesheet.pcm_lengths(793800, 44100)),
                                  [220500, 264600, 308700])
 
     @UTIL_TRACKCAT
