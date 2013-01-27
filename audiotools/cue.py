@@ -47,7 +47,7 @@ class CueException(SheetException):
 
 
 def __tokens__(cuedata):
-    """yields (text, token, line) tuples from cuedata stream
+    """yields (text, token, line) tuples from cuedata string
 
     text is a plain string
     token is an integer such as TAG or NUMBER
@@ -203,8 +203,9 @@ def __parse__(tokens):
                                   'SONGWRITER',
                                   'TITLE')):
                         if (token == 'CATALOG'):
-                            cuesheet_catalog_number = get_value(
-                                tokens, STRING, ERR_CUE_MISSING_VALUE)
+                            cuesheet_catalog_number = str(get_value(
+                                tokens, STRING | NUMBER ,
+                                ERR_CUE_MISSING_VALUE))
                         else:
                             get_value(tokens,
                                       STRING | TAG | NUMBER | ISRC,
@@ -232,8 +233,13 @@ def __parse__(tokens):
                                   'TITLE')):
                         if (token == 'ISRC'):
                             track_ISRC = get_value(tokens,
-                                                   ISRC,
+                                                   ISRC | NUMBER,
                                                    ERR_CUE_MISSING_VALUE)
+                            if (isinstance(track_ISRC, int)):
+                                #these are usually all 0s
+                                #which isn't a valid ISRC
+                                #and doesn't need to be stored
+                                track_ISRC = None
                         else:
                             get_value(tokens,
                                       STRING | TAG | NUMBER | ISRC,
@@ -304,7 +310,7 @@ def __attrib_str__(attrib):
 
 
 def read_cuesheet(filename):
-    """returns a Cuesheet from a cuesheet filename on disk
+    """returns a Sheet from a cuesheet filename on disk
 
     raises CueException if some error occurs reading or parsing the file
     """
@@ -318,6 +324,14 @@ def read_cuesheet(filename):
         return __parse__(__tokens__(f.read()))
     finally:
         f.close()
+
+
+def read_cuesheet_string(cuesheet):
+    """given a plain string of cuesheet data returns a Sheet object
+
+    raises CueException if some error occurs parsing the file"""
+
+    return __parse__(__tokens__(cuesheet))
 
 
 def write_cuesheet(sheet, filename, file):

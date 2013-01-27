@@ -3771,17 +3771,16 @@ class AudioFile:
         return None
 
     def set_cuesheet(self, cuesheet):
-        """imports cuesheet data from a Cuesheet-compatible object
+        """imports cuesheet data from a Sheet object
 
-        this are objects with catalog(), ISRCs(), indexes(), and pcm_lengths()
-        methods.  Raises IOError if an error occurs setting the cuesheet"""
+        Raises IOError if an error occurs setting the cuesheet"""
 
         pass
 
     def get_cuesheet(self):
         """returns the embedded Cuesheet-compatible object, or None
 
-        raises IOError if a problem occurs when reading the file"""
+        Raises IOError if a problem occurs when reading the file"""
 
         return None
 
@@ -4090,6 +4089,9 @@ def read_sheet(filename):
 
 
 class Sheet:
+    """an object representing a CDDA layout
+    such as provided by a .cue or .toc file"""
+
     def __init__(self, sheet_tracks, catalog_number=None):
         """takes a list of SheetTrack objects
         and optional catalog_number plain string"""
@@ -4128,6 +4130,24 @@ class Sheet:
         """returns sheet's catalog number as a plain string, or None"""
 
         return self.__catalog_number__
+
+    def image_formatted(self):
+        """returns True if the cuesheet is formatted for a CD image
+        instead of for multiple individual tracks"""
+
+        #in a CD image, the initial index for each track
+        #should be ascending
+        first_indexes = [min([i.offset() for i in t.indexes()])
+                         for t in self.tracks()]
+
+        if (len(first_indexes) > 1):
+            for (prev, index) in zip(first_indexes, first_indexes[1:]):
+                if (index <= prev):
+                    return False
+            else:
+                return True
+        else:
+            return True
 
     def pcm_lengths(self, total_pcm_frames, sample_rate):
         """given the stream's total PCM frames and sample rate,
@@ -4175,7 +4195,7 @@ class SheetTrack:
                 return False
 
     def index(self, index_number):
-        """given index number (typically starting from 1)
+        """given index number (often starting from 1)
         returns SheetIndex object or raises KeyError if not found"""
 
         for index in self.indexes():

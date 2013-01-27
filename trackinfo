@@ -111,34 +111,53 @@ if (__name__ == '__main__'):
                     msg.output(u"")
                 cuesheet = file.get_cuesheet()
                 if (cuesheet is not None):
-                    ISRCs = cuesheet.ISRCs()
                     msg.output(_.LAB_TRACKINFO_CUESHEET)
+                    indexes = {}  # track_number -> {index_number -> offset}
+                    isrcs = {}    # track_number -> ISRC unicode
+                    index_numbers = set([])
+                    for track in cuesheet.tracks():
+                        track_indexes = {}
+                        for index in track.indexes():
+                            track_indexes[index.number()] = index.offset()
+                            index_numbers.add(index.number())
+                        indexes[track.number()] = track_indexes
+                        track_isrc = track.ISRC()
+                        if (track_isrc is not None):
+                            isrcs[track.number()] = \
+                                track_isrc.strip(chr(0)).decode('ascii',
+                                                                'replace')
+                        else:
+                            isrcs[track.number()] = u""
+
+                    index_numbers = list(index_numbers)
+                    index_numbers.sort()
                     msg.new_row()
                     msg.output_column(u"  ")
                     msg.output_column(_.LAB_TRACKINFO_CUESHEET_TRACK, True)
+                    for i in index_numbers:
+                        msg.output_column(u"  ")
+                        msg.output_column(
+                            _.LAB_TRACKINFO_CUESHEET_INDEX % (i), True)
                     msg.output_column(u"  ")
-                    msg.output_column(_.LAB_TRACKINFO_CUESHEET_LENGTH, True)
-                    msg.output_column(u"  ")
-                    msg.output_column(_.LAB_TRACKINFO_CUESHEET_ISRC)
-                    for (i, pcm_length) in enumerate(
-                        cuesheet.pcm_lengths(file.total_frames(),
-                                             file.sample_rate())):
-                        ISRC = ISRCs.get(i + 1, None)
+                    msg.output_column(_.LAB_TRACKINFO_CUESHEET_ISRC, True)
+
+                    for t in sorted(indexes.keys()):
                         msg.new_row()
                         msg.output_column(u"")
-                        msg.output_column(unicode(i + 1), True)
-                        msg.output_column(u"")
-                        msg.output_column(
-                            _.LAB_TRACK_LENGTH % (pcm_length /
-                                                  file.sample_rate() / 60,
-                                                  pcm_length /
-                                                  file.sample_rate() % 60),
-                            True)
-                        msg.output_column(u"")
-                        if (ISRC is not None):
-                            msg.output_column(ISRC.decode('ascii'))
-                        else:
+                        msg.output_column(unicode(t), True)
+                        track_indexes = indexes[t]
+                        for i in index_numbers:
                             msg.output_column(u"")
+                            if (i in track_indexes):
+                                index = track_indexes[i]
+                                msg.output_column(
+                                    audiotools.build_timestamp(
+                                        int(index * 75)).decode('ascii'))
+                            else:
+                                msg.output_column(u"")
+                        msg.output_column(u"")
+                        msg.output_column(isrcs[i])
+
                     msg.output_rows()
                     msg.output(u"")
             else:

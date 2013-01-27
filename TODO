@@ -6450,22 +6450,23 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Update toc module
     - [X] read_tocfile
     - [X] write_tocfile
-*** TODO Update get_cuesheet methods
+*** DONE Update get_cuesheet methods
     - [X] FlacAudio
-    - [ ] TrueAudio
-    - [ ] WavPackAudio
-*** TODO Update set_cuesheet methods
+    - [X] TrueAudio
+    - [X] WavPackAudio
+*** DONE Update set_cuesheet methods
     - [X] FlacAudio
-    - [ ] TrueAudio
-    - [ ] WavPackAudio
-*** TODO Update documentation
-    - [ ] read_sheet
-    - [ ] Sheet
-    - [ ] SheetTrack
-    - [ ] SheetIndex
-*** TODO Update utilities using cuesheet interface
-    - [ ] track2cd
-    - [ ] trackcat
+    - [X] TrueAudio
+    - [X] WavPackAudio
+*** DONE Update documentation
+    - [X] read_sheet
+    - [X] Sheet
+    - [X] SheetTrack
+    - [X] SheetIndex
+*** DONE Update utilities using cuesheet interface
+    - [X] track2cd
+    - [X] trackcat
+    - [X] trackinfo
     - [X] tracksplit
 *** TODO Update unit tests
 ** TODO Overhaul exception handling

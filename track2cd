@@ -39,7 +39,7 @@ def convert_to_wave(progress, audiofile, wave_filename):
                               target_class=audiotools.WaveAudio,
                               progress=progress)
 
-        else:                                      # convert to CD quality
+        else:                                        # convert to CD quality
             pcm = audiotools.PCMReaderProgress(
                 pcmreader=audiotools.PCMConverter(
                     audiofile.to_pcm(),
@@ -129,9 +129,7 @@ if (__name__ == '__main__'):
         temptoc = tempfile.NamedTemporaryFile(suffix='.toc')
         tempwav = tempfile.NamedTemporaryFile(suffix='.wav')
 
-        temptoc.write(
-            audiotools.toc.TOCFile.file(
-                cuesheet, os.path.basename(tempwav.name)))
+        audiotools.toc.write_tocfile(cuesheet, tempwav.name, temptoc)
         temptoc.flush()
 
         progress = audiotools.SingleProgressDisplay(
@@ -216,11 +214,14 @@ if (__name__ == '__main__'):
             msg.error(unicode(err))
             sys.exit(1)
 
+        if (not toc.image_formatted()):
+            msg.error(_.ERR_CUE_INVALID_FORMAT)
+            sys.exit(1)
+
         temptoc = tempfile.NamedTemporaryFile(suffix='.toc')
         tempwav = tempfile.NamedTemporaryFile(suffix='.wav')
 
-        temptoc.write(
-            audiotools.toc.TOCFile.file(toc, os.path.basename(tempwav.name)))
+        audiotools.toc.write_tocfile(toc, tempwav.name, temptoc)
         temptoc.flush()
 
         input_frames = sum([af.total_frames() for af in audiofiles])

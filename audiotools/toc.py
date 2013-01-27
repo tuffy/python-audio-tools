@@ -41,6 +41,7 @@ def __parse__(lines):
     from fractions import Fraction
     from audiotools import parse_timestamp, Sheet, SheetTrack, SheetIndex
 
+    CATALOG = re.compile(r'CATALOG\s*"(.*?)"')
     AUDIOFILE = re.compile(
         r'(AUDIO)?FILE\s*".*?"\s*(\d+:\d+:\d+|\d+)\s*(\d+:\d+:\d+|\d+)?')
     ISRC = re.compile(r'ISRC\s*"(.*)"')
@@ -122,6 +123,11 @@ def __parse__(lines):
                 if (isrc is not None):
                     #add ISRC to track
                     track_ISRC = isrc.group(1)
+            else:
+                catalog = CATALOG.match(line)
+                if (catalog is not None):
+                    cuesheet_catalog_number = catalog.group(1)
+                    continue
 
     except StopIteration:
         if (track_number is not None):

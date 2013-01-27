@@ -780,13 +780,8 @@ class Flac_CUESHEET:
              u"     catalog number = %s" %
              (self.catalog_number.decode('ascii', 'replace')),
              u"    lead-in samples = %d" % (self.lead_in_samples),
-             u"            is CDDA = %d" % (self.is_cdda),
-             u"%9s %5s %8s %13s %12s" % (u"track",
-                                         u"audio",
-                                         u"pre-emph",
-                                         u"offset",
-                                         u"ISRC")] +
-            [track.raw_info() for track in self.tracks])
+             u"            is CDDA = %d" % (self.is_cdda)] +
+            [track.raw_info(4) for track in self.tracks])
 
     @classmethod
     def parse(cls, reader):
@@ -917,22 +912,23 @@ class Flac_CUESHEET_track:
                                       "pre_emphasis",
                                       "index_points"]]))
 
-    def raw_info(self):
+    def raw_info(self, indent):
         """returns a human-readable version of this track as unicode"""
 
-        if (len(self.ISRC.strip(chr(0))) > 0):
-            return u"%9.d %5s %8s %13.d %12s" % \
-                (self.number,
-                 u"yes" if self.track_type == 0 else u"no",
-                 u"yes" if self.pre_emphasis == 1 else u"no",
-                 self.offset,
-                 self.ISRC.decode('ascii'))
-        else:
-            return u"%9.d %5s %8s %13.d" % \
-                (self.number,
-                 u"yes" if self.track_type == 0 else u"no",
-                 u"yes" if self.pre_emphasis == 1 else u"no",
-                 self.offset)
+        from os import linesep
+
+        lines = [((u"track  : %(number)3.d  " +
+                  u"offset : %(offset)9.d  " +
+                  u"ISRC : %(ISRC)s") %
+                 {"number":self.number,
+                  "offset":self.offset,
+                  "type":self.track_type,
+                  "pre_emphasis":self.pre_emphasis,
+                  "ISRC":self.ISRC.strip(chr(0)).decode('ascii', 'replace')})
+                 ] + [i.raw_info(1) for i in self.index_points]
+
+        return linesep.decode('ascii').join(
+            [u" " * indent + line for line in lines])
 
     def __eq__(self, track):
         for attr in ["offset",
@@ -1014,6 +1010,10 @@ class Flac_CUESHEET_index:
 
         writer.build("64U8u24p", (self.offset, self.number))
 
+    def raw_info(self, indent):
+        return ((u" " * indent) +
+                u"index : %3.2d  offset : %9.9s" %
+                (self.number, u"+%d" % (self.offset)))
 
 class Flac_PICTURE(Image):
     BLOCK_ID = 6
@@ -1580,7 +1580,7 @@ class FlacAudio(WaveContainer, AiffContainer):
     def get_cuesheet(self):
         """returns the embedded Sheet object, or None
 
-        raises IOError if a problem occurs when reading the file"""
+        Raises IOError if a problem occurs when reading the file"""
 
         def convert_track(track):
             """converts Flac_CUESHEET_track object to SheetTrack object"""

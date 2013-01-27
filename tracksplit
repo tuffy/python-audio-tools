@@ -266,6 +266,10 @@ if (__name__ == '__main__'):
             msg.error(_.ERR_TRACKSPLIT_NO_CUESHEET)
             sys.exit(1)
 
+    if (not cuesheet.image_formatted()):
+        msg.error(_.ERR_CUE_INVALID_FORMAT)
+        sys.exit(1)
+
     pcm_lengths = list(cuesheet.pcm_lengths(audiofile.total_frames(),
                                             audiofile.sample_rate()))
     if (pcm_lengths[-1] <= 0):

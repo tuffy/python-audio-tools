@@ -490,18 +490,13 @@ class TrueAudio(AudioFile):
         raises IOError if a problem occurs when reading the file"""
 
         import cue
-        from .ape import ApeTag
 
         metadata = self.get_metadata()
 
-        if ((metadata is not None) and
-            isinstance(metadata, ApeTag) and
-            ('Cuesheet' in metadata.keys())):
+        if ((metadata is not None) and ('Cuesheet' in metadata.keys())):
             try:
-                return cue.parse(
-                    cue.tokens(
-                        unicode(metadata['Cuesheet']).encode('utf-8',
-                                                             'replace')))
+                return cue.read_cuesheet_string(
+                    unicode(metadata['Cuesheet']).encode('utf-8', 'replace'))
             except cue.CueException:
                 #unlike FLAC, just because a cuesheet is embedded
                 #does not mean it is compliant
@@ -510,15 +505,15 @@ class TrueAudio(AudioFile):
             return None
 
     def set_cuesheet(self, cuesheet):
-        """imports cuesheet data from a Cuesheet-compatible object
+        """imports cuesheet data from a Sheet object
 
-        this are objects with catalog(), ISRCs(), indexes(), and pcm_lengths()
-        methods.  Raises IOError if an error occurs setting the cuesheet"""
+        Raises IOError if an error occurs setting the cuesheet"""
 
         import os.path
-        import cue
-        from . import MetaData
+        import cStringIO
+        from . import (MetaData, Filename, FS_ENCODING)
         from .ape import ApeTag
+        from .cue import write_cuesheet
 
         if (cuesheet is None):
             return
@@ -526,14 +521,16 @@ class TrueAudio(AudioFile):
         metadata = self.get_metadata()
         if (metadata is None):
             metadata = ApeTag([])
-        else:
-            metadata = ApeTag.converted(metadata)
+
+        cuesheet_data = cStringIO.StringIO()
+        write_cuesheet(cuesheet,
+                       str(Filename(self.filename).basename()),
+                       cuesheet_data)
 
         metadata['Cuesheet'] = ApeTag.ITEM.string(
             'Cuesheet',
-            cue.Cuesheet.file(
-                cuesheet,
-                os.path.basename(self.filename)).decode('ascii', 'replace'))
+            cuesheet_data.getvalue().decode(FS_ENCODING, 'replace'))
+
         self.update_metadata(metadata)
 
     @classmethod

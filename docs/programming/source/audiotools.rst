@@ -251,9 +251,10 @@ classes and functions upon which all of the other modules depend.
 
 .. function:: read_sheet(filename)
 
-   Reads a Cuesheet-compatible file such as :class:`toc.TOCFile` or
-   :class:`cue.Cuesheet` or raises :exc:`SheetException` if
-   the file cannot be opened, identified or parsed correctly.
+   Given a ``.cue`` or ``.toc`` filename, returns a :class:`Sheet`
+   of that file's cuesheet data.
+   May raise :exc:`SheetException` if the file cannot be read
+   or parsed correctly.
 
 .. function:: to_pcm_progress(audiofile, progress)
 
@@ -615,18 +616,16 @@ AudioFile Objects
 
 .. method:: AudioFile.set_cuesheet(cuesheet)
 
-   Takes a cuesheet-compatible object with :meth:`catalog`,
-   :meth:`IRSCs`, :meth:`indexes` and :meth:`pcm_lengths` methods
-   and sets this audio file's embedded cuesheet to those values, if possible.
-   Raises :exc:`IOError` if this :class:`AudioFile` supports embedded
-   cuesheets but some error occurred when writing the file.
+   Given a :class:`Sheet` object, embeds a cuesheet in the track.
+   This is for tracks which represent a whole CD image
+   and wish to store track break data internally.
+   May raise :exc:`IOError` if an error occurs writing the file.
 
 .. method:: AudioFile.get_cuesheet()
 
-   Returns a cuesheet-compatible object with :meth:`catalog`,
-   :meth:`IRSCs`, :meth:`indexes` and :meth:`pcm_lengths` methods
-   or ``None`` if no cuesheet is embedded.
-   Raises :exc:`IOError` if some error occurs when reading the file.
+   Returns a :class:`Sheet` object of a track's embedded cuesheet,
+   or ``None`` if the track contains no cuesheet.
+   May raise :exc:`IOError` if an error occurs reading the file.
 
 .. method:: AudioFile.clean(fixes_performed[, output_filename])
 
@@ -1532,6 +1531,115 @@ CDTrackLog Objects
    Its :meth:`__str__` method will return a human-readable
    collection of error statistics comparable to what's
    returned by the cdda2wav program.
+
+Cuesheets
+---------
+
+Sheet Objects
+^^^^^^^^^^^^^
+
+These objects represent a CDDA layout such as provided
+by a ``.cue`` or ``.toc`` file.
+This can be used to recreate the exact layout of the disc
+when burning a set of tracks back to CD.
+
+.. class:: Sheet(sheet_tracks[, catalog_number])
+
+   ``sheet_tracks`` is a list of :class:`SheetTrack` objects,
+   one per track on the CD.
+   ``catalog_number`` is an optional catalog number string.
+
+.. method:: Sheet.catalog()
+
+   Returns the sheet's catalog number as a plain string,
+   or ``None`` if it has no catalog number.
+
+.. method:: Sheet.tracks()
+
+   Returns an iterator of all the :class:`SheetTrack` objects
+   in the sheet.
+
+.. method:: Sheet.track(track_number)
+
+   Given a ``track_number`` integer (typically starting from 1)
+   returns the :class:`SheetTrack` object of that track
+   or raises :exc:`KeyError` if the track number is not found
+   in the cuesheet.
+
+.. method:: Sheet.image_formatted()
+
+   Returns ``True`` if the sheet is properly formatted for CD images.
+
+.. method:: Sheet.pcm_lengths(total_pcm_frames, sample_rate)
+
+   Given a stream's total number of PCM frames and sample rate,
+   iterates over a set of track length integers, in PCM frames,
+   for each track in the sheet.
+
+   The lengths are measured from the current track's maximum index offset
+   to the next track's maximum index offset,
+   except for the final track which is measured from its maximum index offset
+   to the end of the stream.
+
+SheetTrack Objects
+^^^^^^^^^^^^^^^^^^
+
+These objects represent a track on a given cuesheet.
+
+.. class:: SheetTrack(number, indexes[, audio][, ISRC])
+
+   ``number`` is the track's number on the CD, typically starting from 1.
+   ``indexes`` is a list of :class:`SheetIndex` objects
+   for each index in the track.
+   ``audio`` is ``True`` if the track contains audio data,
+   ``False`` if it contains binary data.
+   If omitted, it's assumed to be ``True``.
+   ``ISRC``, if given, is a plain string of the track's ISRC information.
+
+.. method:: SheetTrack.indexes()
+
+   Returns an iterator of all the :class:`SheetIndex` objects
+   in the track.
+
+.. method:: SheetTrack.index(index_number)
+
+   Given a ``index_number`` integer (often starting from 1)
+   returns the :class:`SheetIndex` object of that index
+   or raises :exc:`KeyError` if the index is not found
+   in the track.
+
+.. method:: SheetTrack.number()
+
+   Returns the number of the track as an integer.
+
+.. method:: SheetTrack.ISRC()
+
+   Returns the ISRC of the track as a plain string, or ``None``.
+
+.. method:: SheetTrack.audio()
+
+   Returns ``True`` if the track contains audio data.
+
+SheetIndex Objects
+^^^^^^^^^^^^^^^^^^
+
+.. class:: SheetIndex(number, offset)
+
+   ``number`` is the number of the index in the track,
+   often starting from 1.
+   A number of 0 indicates a pre-gap index.
+   ``offset`` is the index's offset from the start of the
+   stream as a :class:`Fraction` number of seconds
+   (from the standard library's ``fractions`` module).
+
+.. method:: SheetIndex.number()
+
+   Returns the track's index as an integer.
+
+.. method:: SheetIndex.offset()
+
+   Returns the track's offset from the start of the stream
+   as a :class:`Fraction` number of seconds.
 
 DVDAudio Objects
 ----------------

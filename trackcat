@@ -200,7 +200,17 @@ if (__name__ == '__main__'):
     if (options.cuesheet is not None):
         try:
             cuesheet = audiotools.read_sheet(options.cuesheet)
-            #FIXME - ensure cuesheet is long enough to be embedded
+
+            #ensure cuesheet will embed properly
+            if (not cuesheet.image_formatted()):
+                msg.error(_.ERR_CUE_INVALID_FORMAT)
+                sys.exit(1)
+            elif (list(cuesheet.pcm_lengths(
+                        sum([f.total_frames()
+                             for f in audiofiles]),
+                        audiofiles[0].sample_rate()))[-1] < 0):
+                msg.error(_.ERR_TRACKSPLIT_OVERLONG_CUESHEET)
+                sys.exit(1)
 
             opened_files.add(audiotools.Filename(options.cuesheet))
         except audiotools.SheetException, err:
