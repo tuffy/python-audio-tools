@@ -66,9 +66,6 @@ dvdadec: dvda/dvda.c dvda/dvda.h bitstream.a
 huffman: huffman.c huffman.h parson.o
 	$(CC) $(FLAGS) -o huffman huffman.c parson.o -DSTANDALONE -DEXECUTABLE
 
-array.o: array.c array.h
-	$(CC) $(FLAGS) -c array.c -DSTANDALONE
-
 pcm.o: pcm.c pcm.h
 	$(CC) $(FLAGS) -c pcm.c -DSTANDALONE
 
@@ -113,6 +110,9 @@ bitstream.a: bitstream.o huffman.o buffer.o func_io.o
 
 bitstream: bitstream.c bitstream.h huffman.o buffer.o func_io.o
 	$(CC) $(FLAGS) bitstream.c huffman.o buffer.o func_io.o -DEXECUTABLE -o $@
+
+array: array.c array.h
+	$(CC) $(FLAGS) array.c -DEXECUTABLE -o $@
 
 parson.o: parson.c parson.h
 	$(CC) $(FLAGS) -c parson.c

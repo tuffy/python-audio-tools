@@ -83,7 +83,7 @@ void TYPE##_resize(TYPE *array, unsigned minimum)               \
         array->total_size = minimum;                            \
         array->_ = realloc(array->_,                            \
                            sizeof(CONTENT_TYPE) * minimum);     \
-        }                                                       \
+    }                                                           \
 }                                                               \
                                                                 \
 void TYPE##_resize_for(TYPE *array, unsigned additional_items)  \
@@ -293,7 +293,7 @@ void TYPE##_de_head(const TYPE *array, unsigned count, TYPE *tail)   \
 void TYPE##_de_tail(const TYPE *array, unsigned count, TYPE *head)   \
 {                                                                    \
     unsigned to_copy;                                                \
-    count = MAX(count, array->len);                                  \
+    count = MIN(count, array->len);                                  \
     to_copy = array->len - count;                                    \
                                                                      \
     if (head != array) {                                             \
@@ -531,8 +531,8 @@ void LINK_TYPE##_de_head(const LINK_TYPE *array, unsigned count, LINK_TYPE *tail
                                                                     \
 void LINK_TYPE##_de_tail(const LINK_TYPE *array, unsigned count, LINK_TYPE *head) \
 {                                                                   \
-    assert(array->_ != NULL);                                       \
-    head->len = array->len - MAX(count, array->len);                \
+    head->_ = array->_;                                             \
+    head->len = array->len - MIN(count, array->len);                \
 }                                                                   \
                                                                     \
 void LINK_TYPE##_split(const LINK_TYPE *array, unsigned count,      \
@@ -1316,3 +1316,1549 @@ array_o_print(const struct array_o_s *array, FILE* output)
     }
     putc(']', output);
 }
+
+/*****************************************************************
+ BEGIN UNIT TESTS
+ *****************************************************************/
+
+#ifdef EXECUTABLE
+
+void test_i_array(const int *data, unsigned data_len,
+                  int data_min, int data_max, int data_sum,
+                  const int *sorted_data);
+
+void test_li_array(const array_i* parent,
+                   int data_min, int data_max, int data_sum);
+
+void test_ia_array(unsigned arrays, int start, int increment, unsigned total);
+
+void test_iaa_array(unsigned arrays, unsigned sub_arrays,
+                    int start, int increment, unsigned total);
+
+int main(int argc, char *argv[]) {
+    int data[] = {5, 4, 3, 2, 1};
+    int sorted_data[] = {1, 2, 3, 4, 5};
+
+    test_i_array(data, 5, 1, 5, 15, sorted_data);
+    test_ia_array(5, 0, 1, 20);
+    test_iaa_array(2, 3, 0, 1, 4);
+
+    return 0;
+}
+
+void test_i_array(const int *data, unsigned data_len,
+                  int data_min, int data_max, int data_sum,
+                  const int *sorted_data)
+{
+    array_i* a;
+    array_i* b;
+    unsigned i;
+
+    assert(data_len >= 3);
+
+    /*test resize*/
+    a = array_i_new();
+    assert(a->len == 0);
+    assert(a->total_size > 0);
+    a->resize(a, 10);
+    assert(a->len == 0);
+    assert(a->total_size >= 10);
+    a->resize(a, 20);
+    assert(a->len == 0);
+    assert(a->total_size >= 20);
+    a->del(a);
+
+    /*test resize_for*/
+    a = array_i_new();
+    assert(a->len == 0);
+    assert(a->total_size > 0);
+    a->resize_for(a, 10);
+    assert(a->len == 0);
+    assert(a->total_size >= 10);
+    for (i = 0; i < 10; i++)
+        a_append(a, data[0]);
+    a->resize_for(a, 10);
+    assert(a->len == 10);
+    assert(a->total_size >= 20);
+    a->del(a);
+
+    /*test reset*/
+    a = array_i_new();
+    a->resize(a, 10);
+    for (i = 0; i < 10; i++)
+        a_append(a, data[0]);
+    assert(a->len == 10);
+    a->reset(a);
+    assert(a->len == 0);
+    a->del(a);
+
+    /*test reset_for*/
+    a = array_i_new();
+    a->resize(a, 10);
+    for (i = 0; i < 10; i++)
+        a_append(a, data[0]);
+    assert(a->len == 10);
+    assert(a->total_size >= 10);
+    a->reset_for(a, 20);
+    assert(a->len == 0);
+    assert(a->total_size >= 20);
+    a->del(a);
+
+    /*test append*/
+    a = array_i_new();
+    for (i = 0; i < data_len; i++)
+        a->append(a, data[i]);
+    for (i = 0; i < data_len; i++)
+        assert(a->_[i] == data[i]);
+    a->del(a);
+
+    /*test vappend*/
+    a = array_i_new();
+    a->vappend(a, 1, data[0]);
+    assert(a->_[0] == data[0]);
+    a->vappend(a, 2, data[0], data[1]);
+    assert(a->_[0] == data[0]);
+    for (i = 0; i < 2; i++)
+        assert(a->_[i + 1] == data[i]);
+    a->vappend(a, 3, data[0], data[1], data[2]);
+    assert(a->_[0] == data[0]);
+    for (i = 0; i < 2; i++)
+        assert(a->_[i + 1] == data[i]);
+    for (i = 0; i < 3; i++)
+        assert(a->_[i + 3] == data[i]);
+    a->del(a);
+
+    /*test mappend*/
+    a = array_i_new();
+    a->mappend(a, 100, data[0]);
+    for (i = 0; i < 100; i++)
+        assert(a->_[i] == data[0]);
+    a->mappend(a, 200, data[1]);
+    for (i = 0; i < 100; i++)
+        assert(a->_[i] == data[0]);
+    for (i = 0; i < 200; i++)
+        assert(a->_[i + 100] == data[1]);
+    a->mappend(a, 300, data[2]);
+    for (i = 0; i < 100; i++)
+        assert(a->_[i] == data[0]);
+    for (i = 0; i < 200; i++)
+        assert(a->_[i + 100] == data[1]);
+    for (i = 0; i < 300; i++)
+        assert(a->_[i + 300] == data[2]);
+    a->del(a);
+
+    /*test vset*/
+    a = array_i_new();
+    a->vset(a, 1, data[0]);
+    assert(a->_[0] == data[0]);
+    a->vset(a, 2, data[0], data[1]);
+    for (i = 0; i < 2; i++)
+        assert(a->_[i] == data[i]);
+    a->vset(a, 3, data[0], data[1], data[2]);
+    for (i = 0; i < 3; i++)
+        assert(a->_[i] == data[i]);
+    a->del(a);
+
+    /*test mset*/
+    a = array_i_new();
+    a->mset(a, 100, data[0]);
+    for (i = 0; i < 100; i++)
+        assert(a->_[i] == data[0]);
+    a->mset(a, 200, data[1]);
+    for (i = 0; i < 200; i++)
+        assert(a->_[i] == data[1]);
+    a->mset(a, 300, data[2]);
+    for (i = 0; i < 300; i++)
+        assert(a->_[i] == data[2]);
+    a->del(a);
+
+    /*test extend*/
+    a = array_i_new();
+    b = array_i_new();
+
+    for (i = 0; i < data_len; i++)
+        a->append(a, data[i]);
+    b->extend(b, a);
+    for (i = 0; i < data_len; i++)
+        assert(b->_[i] == data[i]);
+    a->reset(a);
+    for (i = 0; i < data_len; i++)
+        a->append(a, sorted_data[i]);
+    b->extend(b, a);
+    for (i = 0; i < data_len; i++)
+        assert(b->_[i] == data[i]);
+    for (i = 0; i < data_len; i++)
+        assert(b->_[i + data_len] == sorted_data[i]);
+    a->del(a);
+    b->del(b);
+
+    /*test equals*/
+    a = array_i_new();
+    b = array_i_new();
+
+    for (i = 0; i < data_len; i++) {
+        a->append(a, data[i]);
+        b->append(b, data[i]);
+    }
+    assert(a->equals(a, a));
+    assert(a->equals(a, b));
+    b->reset(b);
+    for (i = 0; i < data_len; i++)
+        b->append(b, sorted_data[i]);
+    assert(!a->equals(a, b));
+    assert(!b->equals(b, a));
+    a->del(a);
+    b->del(b);
+
+    /*test min*/
+    a = array_i_new();
+    for (i = 0; i < data_len; i++)
+        a->append(a, data[i]);
+    assert(a->min(a) == data_min);
+    a->del(a);
+    a = array_i_new();
+    for (i = 0; i < data_len; i++)
+        a->append(a, sorted_data[i]);
+    assert(a->min(a) == data_min);
+    a->del(a);
+
+    /*test max*/
+    a = array_i_new();
+    for (i = 0; i < data_len; i++)
+        a->append(a, data[i]);
+    assert(a->max(a) == data_max);
+    a->del(a);
+    a = array_i_new();
+    for (i = 0; i < data_len; i++)
+        a->append(a, sorted_data[i]);
+    assert(a->max(a) == data_max);
+    a->del(a);
+
+    /*test sum*/
+    a = array_i_new();
+    for (i = 0; i < data_len; i++)
+        a->append(a, data[i]);
+    assert(a->sum(a) == data_sum);
+    a->del(a);
+    a = array_i_new();
+    for (i = 0; i < data_len; i++)
+        a->append(a, sorted_data[i]);
+    assert(a->sum(a) == data_sum);
+    a->del(a);
+
+    /*test copy*/
+    a = array_i_new();
+    b = array_i_new();
+    for (i = 0; i < data_len; i++) {
+        a->append(a, data[i]);
+        b->append(b, sorted_data[i]);
+    }
+    assert(!a->equals(a, b));
+    a->copy(a, b);
+    assert(a->equals(a, b));
+    a->del(a);
+    b->del(b);
+
+    /*test link*/
+    a = array_i_new();
+    for (i = 0; i < data_len; i++)
+        a->append(a, data[i]);
+    test_li_array(a, data_min, data_max, data_sum);
+    a->del(a);
+
+    /*test swap*/
+    a = array_i_new();
+    b = array_i_new();
+    for (i = 0; i < data_len; i++) {
+        a->append(a, data[i]);
+        b->append(b, sorted_data[i]);
+    }
+    for (i = 0; i < data_len; i++) {
+        assert(a->_[i] == data[i]);
+        assert(b->_[i] == sorted_data[i]);
+    }
+    a->swap(a, a);
+    for (i = 0; i < data_len; i++) {
+        assert(a->_[i] == data[i]);
+        assert(b->_[i] == sorted_data[i]);
+    }
+    a->swap(a, b);
+    for (i = 0; i < data_len; i++) {
+        assert(a->_[i] == sorted_data[i]);
+        assert(b->_[i] == data[i]);
+    }
+    b->swap(b, a);
+    for (i = 0; i < data_len; i++) {
+        assert(a->_[i] == data[i]);
+        assert(b->_[i] == sorted_data[i]);
+    }
+    a->del(a);
+    b->del(b);
+
+    /*test head*/
+    for (i = 0; i < data_len; i++) {
+        unsigned j;
+
+        a = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->head(a, i, a);
+        assert(a->len == i);
+        for (j = 0; j < i; j++)
+            assert(a->_[j] == data[j]);
+        a->del(a);
+
+        a = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->head(a, data_len + 1, a);
+        assert(a->len == data_len);
+        for (j = 0; j < data_len; j++)
+            assert(a->_[j] == data[j]);
+        a->del(a);
+
+        a = array_i_new();
+        b = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->head(a, i, b);
+        assert(a->len == data_len);
+        assert(b->len == i);
+        for (j = 0; j < data_len; j++)
+            assert(a->_[j] == data[j]);
+        for (j = 0; j < i; j++)
+            assert(b->_[j] == data[j]);
+        a->del(a);
+        b->del(b);
+
+        a = array_i_new();
+        b = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->head(a, data_len + 1, b);
+        assert(a->equals(a, b));
+        a->del(a);
+        b->del(b);
+    }
+
+    /*test tail*/
+    for (i = 0; i < data_len; i++) {
+        unsigned j;
+
+        a = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->tail(a, i, a);
+        assert(a->len == i);
+        for (j = 0; j < i; j++)
+            assert(a->_[j] == data[j + (data_len - i)]);
+        a->del(a);
+
+        a = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->tail(a, data_len + 1, a);
+        assert(a->len == data_len);
+        for (j = 0; j < data_len; j++)
+            assert(a->_[j] == data[j]);
+        a->del(a);
+
+        a = array_i_new();
+        b = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->tail(a, i, b);
+        assert(a->len == data_len);
+        assert(b->len == i);
+        for (j = 0; j < data_len; j++)
+            assert(a->_[j] == data[j]);
+        for (j = 0; j < i; j++)
+            assert(b->_[j] == data[j + (data_len - i)]);
+        a->del(a);
+        b->del(b);
+
+        a = array_i_new();
+        b = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->tail(a, data_len + 1, b);
+        assert(a->equals(a, b));
+        a->del(a);
+        b->del(b);
+    }
+
+    /*test de_head*/
+    for (i = 0; i < data_len; i++) {
+        unsigned j;
+
+        a = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->de_head(a, i, a);
+        assert(a->len == (data_len - i));
+        for (j = 0; j < (data_len - i); j++)
+            assert(a->_[j] == data[j + i]);
+        a->del(a);
+
+        a = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->de_head(a, data_len + 1, a);
+        assert(a->len == 0);
+        a->del(a);
+
+        a = array_i_new();
+        b = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->de_head(a, i, b);
+        assert(a->len == data_len);
+        assert(b->len == (data_len - i));
+        for (j = 0; j < data_len; j++)
+            assert(a->_[j] == data[j]);
+        for (j = 0; j < (data_len - i); j++)
+            assert(b->_[j] == data[j + i]);
+        a->del(a);
+        b->del(b);
+
+        a = array_i_new();
+        b = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->de_head(a, data_len + 1, b);
+        assert(a->len == data_len);
+        assert(b->len == 0);
+        a->del(a);
+        b->del(b);
+    }
+
+    /*test de_tail*/
+    for (i = 0; i < data_len; i++) {
+        unsigned j;
+
+        a = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->de_tail(a, i, a);
+        assert(a->len == (data_len - i));
+        for (j = 0; j < (data_len - i); j++)
+            assert(a->_[j] == data[j]);
+        a->del(a);
+
+        a = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->de_tail(a, data_len + 1, a);
+        assert(a->len == 0);
+        a->del(a);
+
+        a = array_i_new();
+        b = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->de_tail(a, i, b);
+        assert(a->len == data_len);
+        assert(b->len == (data_len - i));
+        for (j = 0; j < data_len; j++)
+            assert(a->_[j] == data[j]);
+        for (j = 0; j < (data_len - i); j++)
+            assert(b->_[j] == data[j]);
+        a->del(a);
+        b->del(b);
+
+        a = array_i_new();
+        b = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->de_tail(a, data_len + 1, b);
+        assert(a->len == data_len);
+        assert(b->len == 0);
+        a->del(a);
+        b->del(b);
+    }
+
+    /*test split*/
+    for (i = 0; i < data_len; i++) {
+        unsigned j;
+        unsigned k;
+        array_i *c;
+
+        a = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+
+        a->split(a, i, a, a);
+        for (j = 0; j < data_len; j++)
+            assert(a->_[j] == data[j]);
+        a->del(a);
+
+        a = array_i_new();
+        b = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->split(a, i, a, b);
+        assert(a->len == i);
+        assert(b->len == (data_len - i));
+        for (j = 0; j < i; j++)
+            assert(a->_[j] == data[j]);
+        for (k = 0; j < data_len; j++,k++)
+            assert(b->_[k] == data[j]);
+        a->del(a);
+        b->del(b);
+
+        a = array_i_new();
+        b = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->split(a, i, b, a);
+        assert(a->len == (data_len - i));
+        assert(b->len == i);
+        for (j = 0; j < i; j++)
+            assert(b->_[j] == data[j]);
+        for (k = 0; j < data_len; j++,k++)
+            assert(a->_[k] == data[j]);
+        a->del(a);
+        b->del(b);
+
+        a = array_i_new();
+        b = array_i_new();
+        c = array_i_new();
+        for (j = 0; j < data_len; j++)
+            a->append(a, data[j]);
+        a->split(a, i, b, c);
+        assert(a->len == data_len);
+        for (j = 0; j < data_len; j++)
+            assert(a->_[j] == data[j]);
+        assert(b->len == i);
+        assert(c->len == (data_len - i));
+        for (j = 0; j < i; j++)
+            assert(b->_[j] == data[j]);
+        for (k = 0; j < data_len; j++,k++)
+            assert(c->_[k] == data[j]);
+        a->del(a);
+        b->del(b);
+        c->del(c);
+    }
+
+    /*test reverse*/
+    a = array_i_new();
+    for (i = 0; i < data_len; i++)
+        a->append(a, data[i]);
+    a->reverse(a);
+    for (i = 0; i < data_len; i++)
+        assert(a->_[i] == data[data_len - i - 1]);
+    a->del(a);
+
+    /*test sort*/
+    a = array_i_new();
+    for (i = 0; i < data_len; i++)
+        a->append(a, data[i]);
+    a->sort(a);
+    for (i = 0; i < data_len; i++)
+        assert(a->_[i] == sorted_data[i]);
+    a->del(a);
+}
+
+void test_li_array(const array_i* parent,
+                   int data_min, int data_max, int data_sum)
+{
+    unsigned i;
+    array_li* a;
+    array_li* b;
+    array_i* c;
+
+    /*test internal data*/
+    a = array_li_new();
+    parent->link(parent, a);
+    assert(a->len == parent->len);
+    for (i = 0; i < parent->len; i++)
+        assert(a->_[i] == parent->_[i]);
+    a->del(a);
+
+    /*test reset*/
+    a = array_li_new();
+    parent->link(parent, a);
+    assert(a->len == parent->len);
+    a->reset(a);
+    assert(a->len == 0);
+    a->del(a);
+
+    /*test equals*/
+    a = array_li_new();
+    b = array_li_new();
+    parent->link(parent, a);
+    parent->link(parent, b);
+    assert(a->equals(a, b));
+    assert(b->equals(b, a));
+    a->del(a);
+    b->del(b);
+
+    /*test min*/
+    a = array_li_new();
+    parent->link(parent, a);
+    assert(a->min(a) == data_min);
+    a->del(a);
+
+    /*test max*/
+    a = array_li_new();
+    parent->link(parent, a);
+    assert(a->max(a) == data_max);
+    a->del(a);
+
+    /*test sum*/
+    a = array_li_new();
+    parent->link(parent, a);
+    assert(a->sum(a) == data_sum);
+    a->del(a);
+
+    /*test copy*/
+    a = array_li_new();
+    c = array_i_new();
+    parent->link(parent, a);
+    a->copy(a, c);
+    assert(parent->equals(parent, c));
+    a->del(a);
+    c->del(c);
+
+    /*test swap*/
+    a = array_li_new();
+    b = array_li_new();
+    parent->link(parent, a);
+    assert(a->len == parent->len);
+    assert(b->len == 0);
+    for (i = 0; i < parent->len; i++)
+        assert(a->_[i] == parent->_[i]);
+    a->swap(a, b);
+    assert(a->len == 0);
+    assert(b->len == parent->len);
+    for (i = 0; i < parent->len; i++)
+        assert(b->_[i] == parent->_[i]);
+    b->swap(b, a);
+    assert(a->len == parent->len);
+    assert(b->len == 0);
+    for (i = 0; i < parent->len; i++)
+        assert(a->_[i] == parent->_[i]);
+    a->del(a);
+    b->del(b);
+
+    /*test head*/
+    for (i = 0; i < parent->len; i++) {
+        unsigned j;
+
+        a = array_li_new();
+        parent->link(parent, a);
+        a->head(a, i, a);
+        assert(a->len == i);
+        for (j = 0; j < i; j++)
+            assert(a->_[j] == parent->_[j]);
+        a->del(a);
+
+        a = array_li_new();
+        parent->link(parent, a);
+        a->head(a, parent->len + 1, a);
+        assert(a->len == parent->len);
+        for (j = 0; j < parent->len; j++)
+            assert(a->_[j] == parent->_[j]);
+        a->del(a);
+
+        a = array_li_new();
+        b = array_li_new();
+        parent->link(parent, a);
+        a->head(a, i, b);
+        assert(a->len == parent->len);
+        assert(b->len == i);
+        for (j = 0; j < parent->len; j++)
+            assert(a->_[j] == parent->_[j]);
+        for (j = 0; j < i; j++)
+            assert(b->_[j] == parent->_[j]);
+        a->del(a);
+        b->del(b);
+
+        a = array_li_new();
+        b = array_li_new();
+        parent->link(parent, a);
+        a->head(a, parent->len + 1, b);
+        assert(a->equals(a, b));
+        a->del(a);
+        b->del(b);
+    }
+
+    /*test tail*/
+    for (i = 0; i < parent->len; i++) {
+        unsigned j;
+
+        a = array_li_new();
+        parent->link(parent, a);
+        a->tail(a, i, a);
+        assert(a->len == i);
+        for (j = 0; j < i; j++)
+            assert(a->_[j] == parent->_[j + (parent->len - i)]);
+        a->del(a);
+
+        a = array_li_new();
+        parent->link(parent, a);
+        a->tail(a, parent->len + 1, a);
+        assert(a->len == parent->len);
+        for (j = 0; j < parent->len; j++)
+            assert(a->_[j] == parent->_[j]);
+        a->del(a);
+
+        a = array_li_new();
+        b = array_li_new();
+        parent->link(parent, a);
+        a->tail(a, i, b);
+        assert(a->len == parent->len);
+        assert(b->len == i);
+        for (j = 0; j < parent->len; j++)
+            assert(a->_[j] == parent->_[j]);
+        for (j = 0; j < i; j++)
+            assert(b->_[j] == parent->_[j + (parent->len - i)]);
+        a->del(a);
+        b->del(b);
+
+        a = array_li_new();
+        b = array_li_new();
+        parent->link(parent, a);
+        a->tail(a, parent->len + 1, b);
+        assert(a->equals(a, b));
+        a->del(a);
+        b->del(b);
+    }
+
+    /*test de_head*/
+    for (i = 0; i < parent->len; i++) {
+        unsigned j;
+
+        a = array_li_new();
+        parent->link(parent, a);
+        a->de_head(a, i, a);
+        assert(a->len == (parent->len - i));
+        for (j = 0; j < (parent->len - i); j++)
+            assert(a->_[j] == parent->_[j + i]);
+        a->del(a);
+
+        a = array_li_new();
+        parent->link(parent, a);
+        a->de_head(a, parent->len + 1, a);
+        assert(a->len == 0);
+        a->del(a);
+
+        a = array_li_new();
+        b = array_li_new();
+        parent->link(parent, a);
+        a->de_head(a, i, b);
+        assert(a->len == parent->len);
+        assert(b->len == (parent->len - i));
+        for (j = 0; j < parent->len; j++)
+            assert(a->_[j] == parent->_[j]);
+        for (j = 0; j < (parent->len - i); j++)
+            assert(b->_[j] == parent->_[j + i]);
+        a->del(a);
+        b->del(b);
+
+        a = array_li_new();
+        b = array_li_new();
+        parent->link(parent, a);
+        a->de_head(a, parent->len + 1, b);
+        assert(a->len == parent->len);
+        assert(b->len == 0);
+        a->del(a);
+        b->del(b);
+    }
+
+    /*test de_tail*/
+    for (i = 0; i < parent->len; i++) {
+        unsigned j;
+
+        a = array_li_new();
+        parent->link(parent, a);
+        a->de_tail(a, i, a);
+        assert(a->len == (parent->len - i));
+        for (j = 0; j < (parent->len - i); j++)
+            assert(a->_[j] == parent->_[j]);
+        a->del(a);
+
+        a = array_li_new();
+        parent->link(parent, a);
+        a->de_tail(a, parent->len + 1, a);
+        assert(a->len == 0);
+        a->del(a);
+
+        a = array_li_new();
+        b = array_li_new();
+        parent->link(parent, a);
+        a->de_tail(a, i, b);
+        assert(a->len == parent->len);
+        assert(b->len == (parent->len - i));
+        for (j = 0; j < parent->len; j++)
+            assert(a->_[j] == parent->_[j]);
+        for (j = 0; j < (parent->len - i); j++)
+            assert(b->_[j] == parent->_[j]);
+        a->del(a);
+        b->del(b);
+
+        a = array_li_new();
+        b = array_li_new();
+        parent->link(parent, a);
+        a->de_tail(a, parent->len + 1, b);
+        assert(a->len == parent->len);
+        assert(b->len == 0);
+        a->del(a);
+        b->del(b);
+    }
+
+    /*test split*/
+    for (i = 0; i < parent->len; i++) {
+        unsigned j;
+        unsigned k;
+        array_li *c;
+
+        a = array_li_new();
+        parent->link(parent, a);
+
+        a->split(a, i, a, a);
+        for (j = 0; j < parent->len; j++)
+            assert(a->_[j] == parent->_[j]);
+        a->del(a);
+
+        a = array_li_new();
+        b = array_li_new();
+        parent->link(parent, a);
+        a->split(a, i, a, b);
+        assert(a->len == i);
+        assert(b->len == (parent->len - i));
+        for (j = 0; j < i; j++)
+            assert(a->_[j] == parent->_[j]);
+        for (k = 0; j < parent->len; j++,k++)
+            assert(b->_[k] == parent->_[j]);
+        a->del(a);
+        b->del(b);
+
+        a = array_li_new();
+        b = array_li_new();
+        parent->link(parent, a);
+        a->split(a, i, b, a);
+        assert(a->len == (parent->len - i));
+        assert(b->len == i);
+        for (j = 0; j < i; j++)
+            assert(b->_[j] == parent->_[j]);
+        for (k = 0; j < parent->len; j++,k++)
+            assert(a->_[k] == parent->_[j]);
+        a->del(a);
+        b->del(b);
+
+        a = array_li_new();
+        b = array_li_new();
+        c = array_li_new();
+        parent->link(parent, a);
+        a->split(a, i, b, c);
+        assert(a->len == parent->len);
+        for (j = 0; j < parent->len; j++)
+            assert(a->_[j] == parent->_[j]);
+        assert(b->len == i);
+        assert(c->len == (parent->len - i));
+        for (j = 0; j < i; j++)
+            assert(b->_[j] == parent->_[j]);
+        for (k = 0; j < parent->len; j++,k++)
+            assert(c->_[k] == parent->_[j]);
+        a->del(a);
+        b->del(b);
+        c->del(c);
+    }
+}
+
+void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
+{
+    array_ia* a;
+    array_ia* b;
+    unsigned i;
+    int old_start;
+
+    /*test resize*/
+    a = array_ia_new();
+    assert(a->len == 0);
+    assert(a->total_size > 0);
+    a->resize(a, 10);
+    assert(a->len == 0);
+    assert(a->total_size >= 10);
+    a->resize(a, 20);
+    assert(a->len == 0);
+    assert(a->total_size >= 20);
+    a->del(a);
+
+    /*test reset*/
+    a = array_ia_new();
+    a->resize(a, 10);
+    for (i = 0; i < 10; i++)
+        (void)a->append(a);
+    assert(a->len == 10);
+    a->reset(a);
+    assert(a->len == 0);
+    a->del(a);
+
+    /*test append*/
+    /*note that we don't care about array contents,
+      only that there are arrays*/
+    a = array_ia_new();
+    for (i = 0; i < arrays; i++) {
+        array_i* c = a->append(a);
+        unsigned j;
+        for (j = 0; j < total; j++) {
+            c->append(c, start);
+            start += increment;
+        }
+        assert(c->len == total);
+    }
+    assert(a->len == arrays);
+    a->del(a);
+
+    /*test extend*/
+    old_start = start;
+    a = array_ia_new();
+    for (i = 0; i < arrays; i++) {
+        array_i* c = a->append(a);
+        unsigned j;
+        for (j = 0; j < total; j++) {
+            c->append(c, start);
+            start += increment;
+        }
+    }
+    b = array_ia_new();
+    for (i = 0; i < arrays; i++) {
+        array_i* c = b->append(b);
+        unsigned j;
+        for (j = 0; j < total; j++) {
+            c->append(c, start);
+            start += increment;
+        }
+    }
+    a->extend(a, b);
+    assert(a->len == (arrays * 2));
+    for (i = 0; i < arrays; i++) {
+        unsigned j;
+        for (j = 0; j < total; j++) {
+            assert(a->_[i]->_[j] == old_start);
+            old_start += increment;
+        }
+    }
+    for (i = 0; i < arrays; i++) {
+        unsigned j;
+        for (j = 0; j < total; j++) {
+            assert(a->_[i + arrays]->_[j] == old_start);
+            old_start += increment;
+        }
+    }
+    a->del(a);
+    b->del(b);
+
+    /*test equals*/
+    a = array_ia_new();
+    b = array_ia_new();
+    for (i = 0; i < arrays; i++) {
+        array_i* c = a->append(a);
+        array_i* d = b->append(b);
+        unsigned j;
+        for (j = 0; j < total; j++) {
+            c->append(c, start);
+            d->append(d, start);
+            start += increment;
+        }
+    }
+    assert(a->equals(a, b));
+    assert(b->equals(b, a));
+    b->reset(b);
+    assert(!a->equals(a, b));
+    assert(!b->equals(b, a));
+    a->del(a);
+    b->del(b);
+
+    /*test copy*/
+    a = array_ia_new();
+    b = array_ia_new();
+    for (i = 0; i < arrays; i++) {
+        array_i* c = a->append(a);
+        unsigned j;
+        for (j = 0; j < total; j++) {
+            c->append(c, start);
+            start += increment;
+        }
+    }
+    assert(!a->equals(a, b));
+    a->copy(a, b);
+    assert(a->equals(a, b));
+    a->del(a);
+    b->del(b);
+
+    /*test swap*/
+    old_start = start;
+    a = array_ia_new();
+    b = array_ia_new();
+    for (i = 0; i < arrays; i++) {
+        array_i* c = a->append(a);
+        unsigned j;
+        for (j = 0; j < total; j++) {
+            c->append(c, start);
+            start += increment;
+        }
+    }
+    assert(a->len == arrays);
+    assert(b->len == 0);
+    a->swap(a, b);
+    assert(a->len == 0);
+    assert(b->len == arrays);
+    for (i = 0; i < arrays; i++) {
+        unsigned j;
+        for (j = 0; j < total; j++) {
+            assert(b->_[i]->_[j] == old_start);
+            old_start += increment;
+        }
+    }
+    a->del(a);
+    b->del(b);
+
+    /*test split*/
+    for (i = 0; i < arrays; i++) {
+        array_ia* c;
+        unsigned j;
+        unsigned k;
+        unsigned old_start2;
+
+        /*split a to a,a*/
+        old_start = start;
+        a = array_ia_new();
+
+        for (j = 0; j < arrays; j++) {
+            array_i* d = a->append(a);
+            for (k = 0; k < total; k++) {
+                d->append(d, start);
+                start += increment;
+            }
+        }
+        a->split(a, i, a, a);
+        for (j = 0; j < arrays; j++) {
+            for (k = 0; k < total; k++) {
+                assert(a->_[j]->_[k] == old_start);
+                old_start += increment;
+            }
+        }
+        a->del(a);
+
+        /*split a to a,b*/
+        old_start = start;
+        a = array_ia_new();
+        b = array_ia_new();
+
+        for (j = 0; j < arrays; j++) {
+            array_i* d = a->append(a);
+            for (k = 0; k < total; k++) {
+                d->append(d, start);
+                start += increment;
+            }
+        }
+        a->split(a, i, a, b);
+        assert(a->len == i);
+        assert(b->len == (arrays - i));
+        for (j = 0; j < i; j++) {
+            for (k = 0; k < total; k++) {
+                assert(a->_[j]->_[k] == old_start);
+                old_start += increment;
+            }
+        }
+        for (j = 0; j < (arrays - i); j++) {
+            for (k = 0; k < total; k++) {
+                assert(b->_[j]->_[k] == old_start);
+                old_start += increment;
+            }
+        }
+        a->del(a);
+        b->del(b);
+
+        /*split a to b,a*/
+        old_start = start;
+        a = array_ia_new();
+        b = array_ia_new();
+
+        for (j = 0; j < arrays; j++) {
+            array_i* d = a->append(a);
+            for (k = 0; k < total; k++) {
+                d->append(d, start);
+                start += increment;
+            }
+        }
+        a->split(a, i, b, a);
+        assert(a->len == (arrays - i));
+        assert(b->len == i);
+        for (j = 0; j < i; j++) {
+            for (k = 0; k < total; k++) {
+                assert(b->_[j]->_[k] == old_start);
+                old_start += increment;
+            }
+        }
+        for (j = 0; j < (arrays - i); j++) {
+            for (k = 0; k < total; k++) {
+                assert(a->_[j]->_[k] == old_start);
+                old_start += increment;
+            }
+        }
+        a->del(a);
+        b->del(b);
+
+        /*split a to b,c*/
+        old_start = old_start2 = start;
+        a = array_ia_new();
+        b = array_ia_new();
+        c = array_ia_new();
+
+        for (j = 0; j < arrays; j++) {
+            array_i* d = a->append(a);
+            for (k = 0; k < total; k++) {
+                d->append(d, start);
+                start += increment;
+            }
+        }
+        a->split(a, i, b, c);
+        assert(a->len == arrays);
+        for (j = 0; j < arrays; j++) {
+            for (k = 0; k < total; k++) {
+                assert(a->_[j]->_[k] == old_start2);
+                old_start2 += increment;
+            }
+        }
+        assert(b->len == i);
+        assert(c->len == (arrays - i));
+        for (j = 0; j < i; j++) {
+            for (k = 0; k < total; k++) {
+                assert(b->_[j]->_[k] == old_start);
+                old_start += increment;
+            }
+        }
+        for (j = 0; j < (arrays - i); j++) {
+            for (k = 0; k < total; k++) {
+                assert(c->_[j]->_[k] == old_start);
+                old_start += increment;
+            }
+        }
+        a->del(a);
+        b->del(b);
+        c->del(c);
+    }
+
+    /*test cross_split*/
+    for (i = 0; i < total; i++) {
+        unsigned j;
+        unsigned k;
+        array_ia *c;
+        unsigned old_start2;
+
+        /*cross_split a to a,a*/
+        old_start = start;
+        a = array_ia_new();
+        for (j = 0; j < arrays; j++) {
+            array_i* d = a->append(a);
+            for (k = 0; k < total; k++) {
+                d->append(d, start);
+                start += increment;
+            }
+        }
+        a->cross_split(a, i, a, a);
+        for (j = 0; j < arrays; j++) {
+            for (k = 0; k < total; k++) {
+                assert(a->_[j]->_[k] == old_start);
+                old_start += increment;
+            }
+        }
+        a->del(a);
+
+        /*cross_split a to a,b*/
+        old_start = start;
+        a = array_ia_new();
+        b = array_ia_new();
+        for (j = 0; j < arrays; j++)
+            (void)a->append(a);
+        for (j = 0; j < total; j++) {
+            for (k = 0; k < arrays; k++) {
+                a->_[k]->append(a->_[k], start);
+                start += increment;
+            }
+        }
+        a->cross_split(a, i, a, b);
+        for (j = 0; j < i; j++) {
+            for (k = 0; k < arrays; k++) {
+                assert(a->_[k]->_[j] == old_start);
+                old_start += increment;
+            }
+        }
+        for (j = 0; j < (total - i); j++) {
+            for (k = 0; k < arrays; k++) {
+                assert(b->_[k]->_[j] == old_start);
+                old_start += increment;
+            }
+        }
+        a->del(a);
+        b->del(b);
+
+        /*cross_split a to b,a*/
+        old_start = start;
+        a = array_ia_new();
+        b = array_ia_new();
+        for (j = 0; j < arrays; j++)
+            (void)a->append(a);
+        for (j = 0; j < total; j++) {
+            for (k = 0; k < arrays; k++) {
+                a->_[k]->append(a->_[k], start);
+                start += increment;
+            }
+        }
+        a->cross_split(a, i, b, a);
+        for (j = 0; j < i; j++) {
+            for (k = 0; k < arrays; k++) {
+                assert(b->_[k]->_[j] == old_start);
+                old_start += increment;
+            }
+        }
+        for (j = 0; j < (total - i); j++) {
+            for (k = 0; k < arrays; k++) {
+                assert(a->_[k]->_[j] == old_start);
+                old_start += increment;
+            }
+        }
+        a->del(a);
+        b->del(b);
+
+        /*cross_split a to b,c*/
+        old_start = old_start2 = start;
+        a = array_ia_new();
+        b = array_ia_new();
+        c = array_ia_new();
+        for (j = 0; j < arrays; j++)
+            (void)a->append(a);
+        for (j = 0; j < total; j++) {
+            for (k = 0; k < arrays; k++) {
+                a->_[k]->append(a->_[k], start);
+                start += increment;
+            }
+        }
+        a->cross_split(a, i, b, c);
+        for (j = 0; j < total; j++) {
+            for (k = 0; k < arrays; k++) {
+                assert(a->_[k]->_[j] == old_start2);
+                old_start2 += increment;
+            }
+        }
+        for (j = 0; j < i; j++) {
+            for (k = 0; k < arrays; k++) {
+                assert(b->_[k]->_[j] == old_start);
+                old_start += increment;
+            }
+        }
+        for (j = 0; j < (total - i); j++) {
+            for (k = 0; k < arrays; k++) {
+                assert(c->_[k]->_[j] == old_start);
+                old_start += increment;
+            }
+        }
+        a->del(a);
+        b->del(b);
+        c->del(c);
+    }
+
+    /*test reverse*/
+    a = array_ia_new();
+    b = array_ia_new();
+    for (i = 0; i < arrays; i++) {
+        array_i* c = a->append(a);
+        unsigned j;
+        for (j = 0; j < total; j++) {
+            c->append(c, start);
+            start += increment;
+        }
+    }
+    a->copy(a, b);
+    a->reverse(a);
+    for (i = 0; i < arrays; i++) {
+        assert(a->_[i]->equals(a->_[i], b->_[arrays - i - 1]));
+    }
+    a->del(a);
+    b->del(b);
+}
+
+void test_iaa_array(unsigned arrays, unsigned sub_arrays,
+                    int start, int increment, unsigned total)
+{
+    array_iaa* a;
+    array_iaa* b;
+    unsigned i;
+    int old_start;
+
+    /*test resize*/
+    a = array_iaa_new();
+    assert(a->len == 0);
+    assert(a->total_size > 0);
+    a->resize(a, 10);
+    assert(a->len == 0);
+    assert(a->total_size >= 10);
+    a->resize(a, 20);
+    assert(a->len == 0);
+    assert(a->total_size >= 20);
+    a->del(a);
+
+    /*test reset*/
+    a = array_iaa_new();
+    a->resize(a, 10);
+    for (i = 0; i < 10; i++)
+        (void)a->append(a);
+    assert(a->len == 10);
+    a->reset(a);
+    assert(a->len == 0);
+    a->del(a);
+
+    /*test append*/
+    a = array_iaa_new();
+    for (i = 0; i < arrays; i++) {
+        array_ia* c = a->append(a);
+        unsigned j;
+        for (j = 0; j < sub_arrays; j++) {
+            array_i* d = c->append(c);
+            unsigned k;
+            for (k = 0; k < total; k++) {
+                d->append(d, start);
+                start += increment;
+            }
+            assert(d->len == total);
+        }
+        assert(c->len == sub_arrays);
+    }
+    assert(a->len == arrays);
+    a->del(a);
+
+    /*test extend*/
+    old_start = start;
+    a = array_iaa_new();
+    for (i = 0; i < arrays; i++) {
+        array_ia* c = a->append(a);
+        unsigned j;
+        for (j = 0; j < sub_arrays; j++) {
+            array_i* d = c->append(c);
+            unsigned k;
+            for (k = 0; k < total; k++) {
+                d->append(d, start);
+                start += increment;
+            }
+            assert(d->len == total);
+        }
+    }
+    b = array_iaa_new();
+    for (i = 0; i < arrays; i++) {
+        array_ia* c = a->append(a);
+        unsigned j;
+        for (j = 0; j < sub_arrays; j++) {
+            array_i* d = c->append(c);
+            unsigned k;
+            for (k = 0; k < total; k++) {
+                d->append(d, start);
+                start += increment;
+            }
+            assert(d->len == total);
+        }
+    }
+    a->extend(a, b);
+    assert(a->len == (arrays * 2));
+    for (i = 0; i < arrays; i++) {
+        unsigned j;
+        for (j = 0; j < sub_arrays; j++) {
+            unsigned k;
+            for (k = 0; k < total; k++) {
+                assert(a->_[i]->_[j]->_[k] == old_start);
+                old_start += increment;
+            }
+        }
+    }
+    for (i = 0; i < arrays; i++) {
+        unsigned j;
+        for (j = 0; j < sub_arrays; j++) {
+            unsigned k;
+            for (k = 0; k < total; k++) {
+                assert(a->_[i + arrays]->_[j]->_[k] == old_start);
+                old_start += increment;
+            }
+        }
+    }
+    a->del(a);
+    b->del(b);
+
+    /*test equals*/
+    a = array_iaa_new();
+    b = array_iaa_new();
+    for (i = 0; i < arrays; i++) {
+        array_ia* c = a->append(a);
+        array_ia* d = b->append(b);
+        unsigned j;
+        for (j = 0; j < sub_arrays; j++) {
+            array_i* e = c->append(c);
+            array_i* f = d->append(d);
+            unsigned k;
+            for (k = 0; k < total; k++) {
+                e->append(e, start);
+                f->append(f, start);
+                start += increment;
+            }
+        }
+    }
+    assert(a->equals(a, b));
+    assert(b->equals(b, a));
+    b->reset(b);
+    assert(!a->equals(a, b));
+    assert(!b->equals(b, a));
+    a->del(a);
+    b->del(b);
+
+    /*test copy*/
+    a = array_iaa_new();
+    b = array_iaa_new();
+    for (i = 0; i < arrays; i++) {
+        array_ia* c = a->append(a);
+        unsigned j;
+        for (j = 0; j < sub_arrays; j++) {
+            array_i* d = c->append(c);
+            unsigned k;
+            for (k = 0; k < total; k++) {
+                d->append(d, start);
+                start += increment;
+            }
+        }
+    }
+    assert(!a->equals(a, b));
+    a->copy(a, b);
+    assert(a->equals(a, b));
+    a->del(a);
+    b->del(b);
+
+    /*test swap*/
+    old_start = start;
+    a = array_iaa_new();
+    b = array_iaa_new();
+    for (i = 0; i < arrays; i++) {
+        array_ia* c = a->append(a);
+        unsigned j;
+        for (j = 0; j < sub_arrays; j++) {
+            array_i* d = c->append(c);
+            unsigned k;
+            for (k = 0; k < total; k++) {
+                d->append(d, start);
+                start += increment;
+            }
+        }
+    }
+    assert(a->len == arrays);
+    assert(b->len == 0);
+    a->swap(a, b);
+    assert(a->len == 0);
+    assert(b->len == arrays);
+    for (i = 0; i < arrays; i++) {
+        unsigned j;
+        for (j = 0; j < sub_arrays; j++) {
+            unsigned k;
+            for (k = 0; k < total; k++) {
+                assert(b->_[i]->_[j]->_[k] == old_start);
+                old_start += increment;
+            }
+        }
+    }
+    a->del(a);
+    b->del(b);
+
+    /*test split*/
+    for (i = 0; i < arrays; i++) {
+        array_iaa* base = array_iaa_new();
+        array_iaa* c;
+        unsigned j;
+
+        for (j = 0; j < arrays; j++) {
+            array_ia* c = base->append(base);
+            unsigned k;
+
+            for (k = 0; k < sub_arrays; k++) {
+                array_i* d = c->append(c);
+                unsigned l;
+                for (l = 0; l < total; l++) {
+                    d->append(d, start);
+                    start += increment;
+                }
+            }
+        }
+
+        /*split a to a,a*/
+        a = array_iaa_new();
+        base->copy(base, a);
+        a->split(a, i, a, a);
+        for (j = 0; j < arrays; j++)
+            assert(a->_[j]->equals(a->_[j], base->_[j]));
+        a->del(a);
+
+        /*split a to a,b*/
+        a = array_iaa_new();
+        b = array_iaa_new();
+        base->copy(base, a);
+        a->split(a, i, a, b);
+        for (j = 0; j < i; j++)
+            assert(a->_[j]->equals(a->_[j], base->_[j]));
+        for (j = 0; j < (arrays - i); j++)
+            assert(b->_[j]->equals(b->_[j], base->_[j + i]));
+        a->del(a);
+        b->del(b);
+
+        /*split a to b,a*/
+        a = array_iaa_new();
+        b = array_iaa_new();
+        base->copy(base, a);
+        a->split(a, i, b, a);
+        for (j = 0; j < i; j++)
+            assert(b->_[j]->equals(b->_[j], base->_[j]));
+        for (j = 0; j < (arrays - i); j++)
+            assert(a->_[j]->equals(a->_[j], base->_[j + i]));
+        a->del(a);
+        b->del(b);
+
+        /*split a to b,c*/
+        a = array_iaa_new();
+        b = array_iaa_new();
+        c = array_iaa_new();
+        base->copy(base, a);
+        a->split(a, i, b, c);
+        for (j = 0; j < i; j++)
+            assert(b->_[j]->equals(b->_[j], base->_[j]));
+        for (j = 0; j < (arrays - i); j++)
+            assert(c->_[j]->equals(c->_[j], base->_[j + i]));
+        a->del(a);
+        b->del(b);
+        c->del(c);
+
+        base->del(base);
+    }
+
+    /*test reverse*/
+    a = array_iaa_new();
+    b = array_iaa_new();
+    for (i = 0; i < arrays; i++) {
+        array_ia* c = a->append(a);
+        unsigned j;
+
+        for (j = 0; j < sub_arrays; j++) {
+            array_i* d = c->append(c);
+            unsigned k;
+            for (k = 0; k < total; k++) {
+                d->append(d, start);
+                start += increment;
+            }
+        }
+    }
+    a->copy(a, b);
+    a->reverse(a);
+    for (i = 0; i < arrays; i++) {
+        assert(a->_[i]->equals(a->_[i], b->_[arrays - i - 1]));
+    }
+    a->del(a);
+    b->del(b);
+}
+
+#endif
