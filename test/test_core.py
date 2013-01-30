@@ -2519,6 +2519,253 @@ class Bitstream(unittest.TestCase):
         self.assertRaises(TypeError, BitstreamReader)
 
     @LIB_BITSTREAM
+    def test_parse(self):
+        from audiotools.bitstream import parse
+
+        #test basic big-endian string
+        self.assertEqual(parse("2u3u5u3s19s",
+                               False,
+                               "".join(map(chr, [0xB1, 0xED, 0x3B, 0xC1]))),
+                         [2, 6, 7, -3, -181311])
+
+        #test several big-endian unsigned edge cases
+        self.assertEqual(
+            parse("32u 32u 32u 32u 64U 64U 64U 64U",
+                  False,
+                  "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
+                                    128, 0, 0, 0, 127, 255, 255, 255,
+                                    0, 0, 0, 0, 0, 0, 0, 0,
+                                    255, 255, 255, 255, 255, 255, 255, 255,
+                                    128, 0, 0, 0, 0, 0, 0, 0,
+                                    127, 255, 255, 255, 255, 255, 255, 255]))),
+            [0,
+             4294967295,
+             2147483648,
+             2147483647,
+             0,
+             0xFFFFFFFFFFFFFFFFL,
+             9223372036854775808L,
+             9223372036854775807L])
+
+        #test several big-endian signed edge cases
+        self.assertEqual(
+            parse("32s 32s 32s 32s 64S 64S 64S 64S",
+                  False,
+                  "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
+                                    128, 0, 0, 0, 127, 255, 255, 255,
+                                    0, 0, 0, 0, 0, 0, 0, 0,
+                                    255, 255, 255, 255, 255, 255, 255, 255,
+                                    128, 0, 0, 0, 0, 0, 0, 0,
+                                    127, 255, 255, 255, 255, 255, 255, 255]))),
+            [0,
+             -1,
+             -2147483648,
+             2147483647,
+             0,
+             -1,
+             -9223372036854775808L,
+             9223372036854775807L])
+
+        #test big-endian read errors
+        for s in ["3u", "3s", "3U", "3S", "3p", "3P", "3b"]:
+            self.assertRaises(IOError,
+                              parse,
+                              "8u" + s,
+                              False,
+                              "a")
+
+        #test basic little-endian string
+        self.assertEqual(parse("2u3u5u3s19s",
+                               True,
+                               "".join(map(chr, [0xB1, 0xED, 0x3B, 0xC1]))),
+                         [1, 4, 13, 3, -128545])
+
+        #test several little-endian unsigned edge cases
+        self.assertEqual(
+            parse("32u 32u 32u 32u 64U 64U 64U 64U",
+                  True,
+                  "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
+                                    0, 0, 0, 128, 255, 255, 255, 127,
+                                    0, 0, 0, 0, 0, 0, 0, 0,
+                                    255, 255, 255, 255, 255, 255, 255, 255,
+                                    0, 0, 0, 0, 0, 0, 0, 128,
+                                    255, 255, 255, 255, 255, 255, 255, 127]))),
+            [0,
+             4294967295,
+             2147483648,
+             2147483647,
+             0,
+             0xFFFFFFFFFFFFFFFFL,
+             9223372036854775808L,
+             9223372036854775807L])
+
+        #test several little-endian signed edge cases
+        self.assertEqual(
+            parse("32s 32s 32s 32s 64S 64S 64S 64S",
+                  True,
+                  "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
+                                    0, 0, 0, 128, 255, 255, 255, 127,
+                                    0, 0, 0, 0, 0, 0, 0, 0,
+                                    255, 255, 255, 255, 255, 255, 255, 255,
+                                    0, 0, 0, 0, 0, 0, 0, 128,
+                                    255, 255, 255, 255, 255, 255, 255, 127]))),
+            [0,
+             -1,
+             -2147483648,
+             2147483647,
+             0,
+             -1,
+             -9223372036854775808L,
+             9223372036854775807L])
+
+        #test little-endian read errors
+        for s in ["3u", "3s", "3U", "3S", "3p", "3P", "3b"]:
+            self.assertRaises(IOError,
+                              parse,
+                              "8u" + s,
+                              True,
+                              "a")
+
+    @LIB_BITSTREAM
+    def test_build(self):
+        from audiotools.bitstream import build
+
+        #test basic big-endian string
+        self.assertEqual(build("2u3u5u3s19s",
+                               False,
+                               [2, 6, 7, -3, -181311]),
+                         "".join(map(chr, [0xB1, 0xED, 0x3B, 0xC1])))
+
+        #test several big-endian unsigned edge cases
+        self.assertEqual(
+            build("32u 32u 32u 32u 64U 64U 64U 64U",
+                  False,
+                  [0,
+                   4294967295,
+                   2147483648,
+                   2147483647,
+                   0,
+                   0xFFFFFFFFFFFFFFFFL,
+                   9223372036854775808L,
+                   9223372036854775807L]),
+            "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
+                              128, 0, 0, 0, 127, 255, 255, 255,
+                              0, 0, 0, 0, 0, 0, 0, 0,
+                              255, 255, 255, 255, 255, 255, 255, 255,
+                              128, 0, 0, 0, 0, 0, 0, 0,
+                              127, 255, 255, 255, 255, 255, 255, 255])))
+
+        #test several big-endian signed edge cases
+        self.assertEqual(
+            build("32s 32s 32s 32s 64S 64S 64S 64S",
+                  False,
+                  [0,
+                   -1,
+                   -2147483648,
+                   2147483647,
+                   0,
+                   -1,
+                   -9223372036854775808L,
+                   9223372036854775807L]),
+            "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
+                              128, 0, 0, 0, 127, 255, 255, 255,
+                              0, 0, 0, 0, 0, 0, 0, 0,
+                              255, 255, 255, 255, 255, 255, 255, 255,
+                              128, 0, 0, 0, 0, 0, 0, 0,
+                              127, 255, 255, 255, 255, 255, 255, 255])))
+
+        #test big-endian write errors
+        for l in [[2, 6, 7, -3], [2, 6, 7], [2, 6], [2], []]:
+            self.assertRaises(IndexError,
+                              build,
+                              "2u3u5u3s19s",
+                              False,
+                              l)
+
+        #test basic little-endian string
+        self.assertEqual(build("2u3u5u3s19s",
+                               True,
+                               [1, 4, 13, 3, -128545]),
+                         "".join(map(chr, [0xB1, 0xED, 0x3B, 0xC1])))
+
+        #test several little-endian unsigned edge cases
+        self.assertEqual(
+            build("32u 32u 32u 32u 64U 64U 64U 64U",
+                  True,
+                  [0,
+                   4294967295,
+                   2147483648,
+                   2147483647,
+                   0,
+                   0xFFFFFFFFFFFFFFFFL,
+                   9223372036854775808L,
+                   9223372036854775807L]),
+            "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
+                              0, 0, 0, 128, 255, 255, 255, 127,
+                              0, 0, 0, 0, 0, 0, 0, 0,
+                              255, 255, 255, 255, 255, 255, 255, 255,
+                              0, 0, 0, 0, 0, 0, 0, 128,
+                              255, 255, 255, 255, 255, 255, 255, 127])))
+
+        #test several little-endian signed edge cases
+        self.assertEqual(
+            build("32s 32s 32s 32s 64S 64S 64S 64S",
+                  True,
+                  [0,
+                   -1,
+                   -2147483648,
+                   2147483647,
+                   0,
+                   -1,
+                   -9223372036854775808L,
+                   9223372036854775807L]),
+            "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
+                              0, 0, 0, 128, 255, 255, 255, 127,
+                              0, 0, 0, 0, 0, 0, 0, 0,
+                              255, 255, 255, 255, 255, 255, 255, 255,
+                              0, 0, 0, 0, 0, 0, 0, 128,
+                              255, 255, 255, 255, 255, 255, 255, 127])))
+
+        #test little-endian write errors
+        for l in [[1, 4, 13, 3], [1, 4, 13], [1, 4], [1], []]:
+            self.assertRaises(IndexError,
+                              build,
+                              "2u3u5u3s19s",
+                              True,
+                              l)
+
+    @LIB_BITSTREAM
+    def test_build_parse_roundtrip(self):
+        from audiotools.bitstream import build,parse
+
+        for (format_string, values) in [("1u a",   [1]),
+                                        ("2u a",   [1]),
+                                        ("3u a",   [1]),
+                                        ("4u a",   [1]),
+                                        ("5u a",   [1]),
+                                        ("6u a",   [1]),
+                                        ("7u a",   [1]),
+                                        ("8u",     [1]),
+                                        ("2s a",   [-1]),
+                                        ("3s a",   [-1]),
+                                        ("4s a",   [-1]),
+                                        ("5s a",   [-1]),
+                                        ("6s a",   [-1]),
+                                        ("7s a",   [-1]),
+                                        ("8s a",   [-1]),
+                                        ("64U",    [0xFFFFFFFFFFFFFFFFL]),
+                                        ("64S",    [-9223372036854775808L]),
+                                        ("10b",    [chr(0) * 10]),
+                                        ("10p10b a", [chr(1) * 10]),
+                                        ("10P10b", [chr(2) * 10])]:
+            self.assertEqual(parse(format_string, False,
+                                   build(format_string, False, values)),
+                             values)
+            self.assertEqual(parse(format_string, True,
+                                   build(format_string, True, values)),
+                             values)
+
+    @LIB_BITSTREAM
     def test_simple_reader(self):
         from audiotools.bitstream import BitstreamReader, HuffmanTree
 

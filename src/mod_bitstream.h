@@ -36,6 +36,12 @@ bitstream_format_size(PyObject *dummy, PyObject *args);
 PyObject*
 bitstream_format_byte_size(PyObject *dummy, PyObject *args);
 
+PyObject*
+bitstream_parse_func(PyObject *dummy, PyObject *args);
+
+PyObject*
+bitstream_build_func(PyObject *dummy, PyObject *args);
+
 PyMethodDef module_methods[] = {
     {"Substream", (PyCFunction)BitstreamReader_Substream,
      METH_VARARGS, "build a fresh Substream BitstreamReader"}, /*FIXME*/
@@ -43,6 +49,10 @@ PyMethodDef module_methods[] = {
      METH_VARARGS, "Calculate size of format string in bits"}, /*FIXME*/
     {"format_byte_size", (PyCFunction)bitstream_format_byte_size,
      METH_VARARGS, "Calculate size of format string in bytes"},
+    {"parse", (PyCFunction)bitstream_parse_func,
+     METH_VARARGS, "parse(format, is_little_endian, data) -> [values]"},
+    {"build", (PyCFunction)bitstream_build_func,
+     METH_VARARGS, "build(format, is_little_endian, [values]) -> data"},
     {NULL}
 };
 
@@ -785,6 +795,15 @@ PyTypeObject bitstream_BitstreamRecorderType = {
     BitstreamRecorder_new,       /* tp_new */
 };
 
+/*given a BitstreamReader, format string and list object
+  parses the format from the reader and appends Python values to the list
+  returns 0 on success, 1 on failure (with PyErr set)*/
+int
+bitstream_parse(BitstreamReader* stream, char* format, PyObject* values);
+
+/*given a BitstreamWriter, format string and PySequence of Python values,
+  writes those values to the writer
+  returns 0 on success, 1 on failure (with PyErr set)*/
 int
 bitstream_build(BitstreamWriter* stream, char* format, PyObject* values);
 

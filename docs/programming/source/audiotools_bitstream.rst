@@ -25,6 +25,30 @@ to handle data that's not strictly byte-aligned.
    >>> format_size("3u 4s 36U")
    43
 
+.. function:: parse(format_string, is_little_endian, data)
+
+   Given a format string as used by :meth:`BitstreamReader.parse`,
+   whether the data is little-endian, and a string of binary data,
+   returns a list of values as would be returned by
+   :meth:`BitstreamReader.parse`.
+
+   This is roughly equivalent to:
+
+   >>> return BitstreamReader(StringIO(data), is_little_endian).parse(format_string)
+
+.. function:: build(format_string, is_little_endian, values)
+
+   Given a format string as used by :meth:`BitstreamWriter.build`,
+   whether the data is little-endian, and a sequence of Python values,
+   returns the binary string as would be returned by
+   :meth:`BitstreamWriter.build`.
+
+   This is roughly equivalent to
+
+   >>> s = StringIO()
+   >>> BitstreamWriter(s, is_little_endian).build(format_string, values)
+   >>> return s
+
 BitstreamReader Objects
 -----------------------
 
