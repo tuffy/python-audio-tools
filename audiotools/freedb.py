@@ -39,10 +39,17 @@ class DiscID:
              repr(self.track_count))
 
     def __str__(self):
-        return "%2.2X%4.4X%2.2X" % \
-            (sum(map(int, "".join([str(o / 75) for o in self.offsets]))) % 255,
-             (self.total_length / 75) & 0xFFFF,
-             self.track_count & 0xFF)
+        return "%8.8X" % (int(self))
+
+    def __int__(self):
+        digitsum = sum(
+            map(int, "".join([str(o // 75) for o in self.offsets]))) % 255
+        seconds_length = self.total_length // 75
+        track_count = self.track_count
+
+        return ((digitsum << 24) |
+                ((seconds_length & 0xFFFF) << 8) |
+                (track_count & 0xFF))
 
 
 def perform_lookup(offsets, total_length, track_count,

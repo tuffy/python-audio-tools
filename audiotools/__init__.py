@@ -4441,14 +4441,6 @@ class CDDA:
                 reader.length = reader.pcmreader.length
                 reader.offset = reader.pcmreader.offset
 
-            # #if logging, wrap reader in AccurateRip checksummer
-            # if (self.perform_logging):
-            #     reader = CDTrackReaderAccurateRipCRC(
-            #         reader,
-            #         int(key),
-            #         self.total_tracks,
-            #         end_sector - start_sector + 1)
-
             return reader
 
     def __iter__(self):
@@ -4519,6 +4511,32 @@ class CDDA:
                                freedb_port=freedb_port,
                                use_musicbrainz=use_musicbrainz,
                                use_freedb=use_freedb)
+
+    def accuraterip_disc_id(self):
+        from .accuraterip import DiscID
+        from .freedb import DiscID as FreeDBDiscID
+
+        return DiscID(track_numbers=range(1, len(self) + 1),
+                      track_offsets=[t.offset() - 150 for t in self],
+                      lead_out_offset=self.last_sector() + 1,
+                      freedb_disc_id=self.freedb_disc_id())
+
+    def accuraterip_lookup(self, accuraterip_server="www.accuraterip.com",
+                           accuraterip_port=80):
+        """returns a dict of
+        {track_number:[(confidence, crc, crc2), ...], ...}
+        where track_number starts from 1
+
+        may return a dict of empty lists if no AccurateRip entry is found
+
+        may raise urllib2.HTTPError if an error occurs querying the server
+        """
+
+        from .accuraterip import perform_lookup
+
+        return perform_lookup(self.accuraterip_disc_id(),
+                              accuraterip_server=accuraterip_server,
+                              accuraterip_port=accuraterip_port)
 
 
 def PCMReaderWindow(pcmreader, initial_offset, pcm_frames):
@@ -4980,6 +4998,58 @@ def track_metadata_lookup(audiofiles,
         freedb_port=freedb_port,
         use_musicbrainz=use_musicbrainz,
         use_freedb=use_freedb)
+
+
+def accuraterip_lookup(sorted_tracks,
+                       accuraterip_server="www.accuraterip.com",
+                       accuraterip_port=80):
+    """given a list of sorted AudioFile objects
+    and optional AccurateRip server and port
+    returns a dict of
+    {track_number:[(confidence, crc, crc2), ...], ...}
+    where track_number starts from 1
+
+    may return a dict of empty lists if no AccurateRip entry is found
+
+    may raise urllib2.HTTPError if an error occurs querying the server
+    """
+
+    def track_number(track, default):
+        metadata = track.get_metadata()
+        if (metadata is not None):
+            if (metadata.track_number is not None):
+                return metadata.track_number
+            else:
+                return default
+        else:
+            return default
+
+    if (len(sorted_tracks) == 0):
+        return {}
+    else:
+        from .accuraterip import DiscID as ARDiscID
+        from .accuraterip import perform_lookup
+        from .freedb import DiscID as FreeDBDiscID
+
+        #generate artificial DiscID from tracks
+        track_numbers = [track_number(track, i + 1) for (i, track) in
+                         enumerate(sorted_tracks)]
+        track_offsets = [0]
+        for length in [track.cd_frames() for track in sorted_tracks[0:-1]]:
+            track_offsets.append(length + track_offsets[-1])
+        lead_out_offset = sum(track.cd_frames() for track in sorted_tracks)
+
+        freedb_disc_id = FreeDBDiscID(
+            offsets=[o + 150 for o in track_offsets],
+            total_length=sum([track.cd_frames() for track in sorted_tracks]),
+            track_count=len(sorted_tracks))
+
+        return perform_lookup(ARDiscID(track_numbers,
+                                       track_offsets,
+                                       lead_out_offset,
+                                       freedb_disc_id),
+                              accuraterip_server,
+                              accuraterip_port)
 
 
 #######################

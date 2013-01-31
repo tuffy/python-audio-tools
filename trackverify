@@ -21,6 +21,7 @@ import sys
 import os.path
 import audiotools
 import audiotools.text as _
+from operator import or_
 
 MAX_CPUS = audiotools.MAX_JOBS
 
@@ -89,6 +90,17 @@ def get_tracks(args, queued_files, accept_list=None):
                     yield track
 
 
+def track_number(track, default):
+    metadata = track.get_metadata()
+    if (metadata is not None):
+        if (metadata.track_number is not None):
+            return metadata.track_number
+        else:
+            return default
+    else:
+        return default
+
+
 def verify(progress, track):
     try:
         track.verify(progress)
@@ -119,6 +131,73 @@ class Results:
                                         [self.msg.FG_RED])}
 
 
+def accuraterip_checksum(progress, track):
+    from audiotools.accuraterip import AccurateRipTrackChecksum
+
+    reader = audiotools.PCMReaderProgress(track.to_pcm(),
+                                          track.total_frames(),
+                                          progress)
+    checksum = AccurateRipTrackChecksum()
+
+    try:
+        audiotools.transfer_data(reader.read, checksum.update)
+
+        return (audiotools.Filename(track.filename),
+                track.NAME,
+                int(checksum),
+                None)
+    except (IOError, ValueError), err:
+        return (audiotools.Filename(track.filename),
+                track.NAME,
+                None,
+                str(err))
+
+
+class AccurateRipResults:
+    def __init__(self, messenger):
+        self.msg = messenger
+        self.summary_match = {}
+        self.summary_mismatch = {}
+        self.summary_notfound = {}
+        self.summary_error = {}
+        self.matches = {}
+
+    def add_matches(self, filename, checksums):
+        self.matches[filename] = checksums[:]
+
+    def display(self, result):
+        (filename, track_type, checksum, error) = result
+        if (error is None):
+            ar_matches = self.matches.get(filename, [])
+            if (len(ar_matches) == 0):
+                self.summary_notfound.setdefault(track_type,
+                                                 Counter()).increment()
+                return _.LAB_TRACKVERIFY_RESULT % \
+                    {"path":filename,
+                     "result":_.LAB_ACCURATERIP_NOT_FOUND}
+            else:
+                for (confidence, ar_checksum, ar_crc2) in ar_matches:
+                    if (checksum == ar_checksum):
+                        self.summary_match.setdefault(track_type,
+                                                      Counter()).increment()
+                        return _.LAB_TRACKVERIFY_RESULT % \
+                            {"path":filename,
+                             "result":u"%s (%s)" %
+                             (_.LAB_ACCURATERIP_FOUND,
+                              _.LAB_ACCURATERIP_CONFIDENCE %
+                              (confidence))}
+                else:
+                    self.summary_mismatch.setdefault(track_type,
+                                                     Counter()).increment()
+                    return _.LAB_TRACKVERIFY_RESULT % \
+                        {"path":filename,
+                         "result":_.LAB_ACCURATERIP_MISMATCH}
+        else:
+            #FIXME - display actual error
+            self.summary_error.setdefault(track_type, Counter()).increment()
+            return u"read error"
+
+
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_.USAGE_TRACKVERIFY,
@@ -131,10 +210,16 @@ if (__name__ == '__main__'):
                       choices=audiotools.TYPE_MAP.keys(),
                       help=_.OPT_TYPE_TRACKVERIFY)
 
-    parser.add_option('-R', '--no-summary',
+    parser.add_option('-S', '--no-summary',
                       action='store_true',
                       dest='no_summary',
                       help=_.OPT_NO_SUMMARY)
+
+    parser.add_option('-R', '--accuraterip',
+                      action='store_true',
+                      dest='accuraterip',
+                      default=False,
+                      help=_.OPT_ACCURATERIP)
 
     parser.add_option('-j', '--joint',
                       action='store',
@@ -153,62 +238,167 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackverify", options)
 
-    queued_files = set([])  # a set of Filename objects already encountered
-    results = Results(msg)
-    queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
-    for track in get_tracks(args, queued_files, options.accept_list):
-        queue.execute(function=verify,
-                      progress_text=
-                      unicode(audiotools.Filename(track.filename)),
-                      completion_output=results.display,
-                      track=track)
-    msg.ansi_clearline()
+    if (not options.accuraterip):
+        queued_files = set([])  # a set of Filename objects already encountered
+        results = Results(msg)
+        queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
+        for track in get_tracks(args, queued_files, options.accept_list):
+            queue.execute(
+                function=verify,
+                progress_text=unicode(audiotools.Filename(track.filename)),
+                completion_output=results.display,
+                track=track)
 
-    queue.run(options.max_processes)
+        msg.ansi_clearline()
+        queue.run(options.max_processes)
 
-    summary_success = results.summary_success
-    summary_failure = results.summary_failure
-    formats = sorted(list(set(summary_success.keys()) |
-                          set(summary_failure.keys())))
-    success_total = sum(map(int, summary_success.values()))
-    failure_total = sum(map(int, summary_failure.values()))
+        summary_success = results.summary_success
+        summary_failure = results.summary_failure
+        formats = sorted(list(set(summary_success.keys()) |
+                              set(summary_failure.keys())))
+        success_total = sum(map(int, summary_success.values()))
+        failure_total = sum(map(int, summary_failure.values()))
 
-    if ((len(formats) > 0) and (not options.no_summary)):
-        msg.output(_.LAB_TRACKVERIFY_RESULTS)
-        msg.output(u"")
-        msg.new_row()
-        msg.output_column(_.LAB_TRACKVERIFY_RESULT_FORMAT, True)
-        msg.output_column(u" ")
-        msg.output_column(_.LAB_TRACKVERIFY_RESULT_SUCCESS, True)
-        msg.output_column(u" ")
-        msg.output_column(_.LAB_TRACKVERIFY_RESULT_FAILURE, True)
-        msg.output_column(u" ")
-        msg.output_column(_.LAB_TRACKVERIFY_RESULT_TOTAL, True)
-        msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
-
-        for format in formats:
-            success = int(summary_success.get(format, 0))
-            failure = int(summary_failure.get(format, 0))
+        if ((len(formats) > 0) and (not options.no_summary)):
+            msg.output(_.LAB_TRACKVERIFY_RESULTS)
+            msg.output(u"")
             msg.new_row()
-            msg.output_column(format.decode('ascii'), True)
+            msg.output_column(_.LAB_TRACKVERIFY_RESULT_FORMAT, True)
             msg.output_column(u" ")
-            msg.output_column(unicode(success), True)
+            msg.output_column(_.LAB_TRACKVERIFY_RESULT_SUCCESS, True)
             msg.output_column(u" ")
-            msg.output_column(unicode(failure), True)
+            msg.output_column(_.LAB_TRACKVERIFY_RESULT_FAILURE, True)
             msg.output_column(u" ")
-            msg.output_column(unicode(success + failure), True)
+            msg.output_column(_.LAB_TRACKVERIFY_RESULT_TOTAL, True)
+            msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
 
-        msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
-        msg.new_row()
-        msg.output_column(u"summary", True)
-        msg.output_column(u" ")
-        msg.output_column(unicode(success_total), True)
-        msg.output_column(u" ")
-        msg.output_column(unicode(failure_total), True)
-        msg.output_column(u" ")
-        msg.output_column(unicode(success_total + failure_total), True)
+            for format in formats:
+                success = int(summary_success.get(format, 0))
+                failure = int(summary_failure.get(format, 0))
+                msg.new_row()
+                msg.output_column(format.decode('ascii'), True)
+                msg.output_column(u" ")
+                msg.output_column(unicode(success), True)
+                msg.output_column(u" ")
+                msg.output_column(unicode(failure), True)
+                msg.output_column(u" ")
+                msg.output_column(unicode(success + failure), True)
 
-        msg.output_rows()
+            msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
+            msg.new_row()
+            msg.output_column(_.LAB_TRACKVERIFY_SUMMARY, True)
+            msg.output_column(u" ")
+            msg.output_column(unicode(success_total), True)
+            msg.output_column(u" ")
+            msg.output_column(unicode(failure_total), True)
+            msg.output_column(u" ")
+            msg.output_column(unicode(success_total + failure_total), True)
 
-    if (failure_total > 0):
-        sys.exit(1)
+            msg.output_rows()
+
+        if (failure_total > 0):
+            sys.exit(1)
+    else:
+        queued_files = set([])  # a set of Filename objects already encountered
+        results = AccurateRipResults(msg)
+        queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
+
+        for tracks in audiotools.group_tracks(
+                get_tracks(args, queued_files, options.accept_list)):
+            #perform AccurateRip lookup on album's worth of tracks
+            #if tracks are CD formatted
+            if ((set([t.channels() for t in tracks]) == set([2])) and
+                (set([t.sample_rate() for t in tracks]) == set([44100])) and
+                (set([t.bits_per_sample() for t in tracks]) == set([16]))):
+
+                tracks = audiotools.sorted_tracks(tracks)
+                ar_results = audiotools.accuraterip_lookup(tracks)
+
+                for (i, track) in enumerate(tracks, 1):
+                    filename = audiotools.Filename(track.filename)
+
+                    results.add_matches(
+                        filename,
+                        ar_results.get(track_number(track, i), []))
+
+                    queue.execute(
+                        function=accuraterip_checksum,
+                        progress_text=unicode(filename),
+                        completion_output=results.display,
+                        track=track)
+            else:
+                for track in tracks:
+                    msg.error(u"\"%(path)s\" %(result)s" %
+                              {"path":audiotools.Filename(track.filename),
+                               "result":_.ERR_TRACKVERIFY})
+
+        msg.ansi_clearline()
+        queue.run(options.max_processes)
+
+        summary_headers = []
+        summaries = []
+
+        if (sum(map(int, results.summary_match.values()))):
+            summary_headers.append(_.LAB_TRACKVERIFY_ACCURATERIP_MATCH)
+            summaries.append(results.summary_match)
+        if (sum(map(int, results.summary_mismatch.values()))):
+            summary_headers.append(_.LAB_TRACKVERIFY_ACCURATERIP_MISMATCH)
+            summaries.append(results.summary_mismatch)
+        if (sum(map(int, results.summary_notfound.values()))):
+            summary_headers.append(_.LAB_TRACKVERIFY_ACCURATERIP_NOTFOUND)
+            summaries.append(results.summary_notfound)
+        if (sum(map(int, results.summary_error.values()))):
+            summary_headers.append(_.LAB_TRACKVERIFY_ACCURATERIP_ERROR)
+            summaries.append(results.summary_error)
+
+        formats = sorted(reduce(or_,
+                                [set(s.keys()) for s in summaries],
+                                set([])))
+
+        error_total = sum(map(int, results.summary_error.values()))
+
+        divider_row = []
+
+        if ((len(formats) > 0) and (not options.no_summary)):
+            msg.output(_.LAB_TRACKVERIFY_RESULTS)
+            msg.output(u"")
+
+            msg.new_row()
+            msg.output_column(_.LAB_TRACKVERIFY_RESULT_FORMAT, True)
+            divider_row.append(u"-")
+            for header in summary_headers:
+                msg.output_column(u" ")
+                msg.output_column(header, True)
+                divider_row.extend([u" ", u"-"])
+            msg.output_column(u" ")
+            msg.output_column(_.LAB_TRACKVERIFY_RESULT_TOTAL, True)
+            divider_row.extend([u" ", u"-"])
+            msg.divider_row(divider_row)
+
+            for format in formats:
+                msg.new_row()
+                msg.output_column(format.decode('ascii'), True)
+                for summary in summaries:
+                    msg.output_column(u" ")
+                    msg.output_column(unicode(int(summary.get(format, 0))),
+                                      True)
+                msg.output_column(u" ")
+                msg.output_column(unicode(sum([int(s.get(format, 0))
+                                               for s in summaries])), True)
+
+            msg.divider_row(divider_row)
+            msg.new_row()
+            msg.output_column(_.LAB_TRACKVERIFY_SUMMARY, True)
+            for summary in summaries:
+                msg.output_column(u" ")
+                msg.output_column(unicode(sum(map(int, summary.values()))),
+                                  True)
+            msg.output_column(u" ")
+            msg.output_column(
+                unicode(sum([sum(map(int, s.values())) for s in summaries])),
+                True)
+
+            msg.output_rows()
+
+        if (error_total > 0):
+            sys.exit(1)

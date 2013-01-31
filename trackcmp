@@ -113,7 +113,7 @@ if (__name__ == '__main__'):
         dest='max_processes',
         help=_.OPT_JOINT)
 
-    parser.add_option('-R', '--no-summary',
+    parser.add_option('-S', '--no-summary',
                       action='store_true',
                       dest='no_summary',
                       help=_.OPT_NO_SUMMARY)

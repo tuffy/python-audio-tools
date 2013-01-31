@@ -91,6 +91,19 @@
       do not add ReplayGain metadata to newly created tracks
     </option>
   </options>
+  <element name="accuraterip">
+    <p>
+      Extracted tracks are automatically verified against
+      AccurateRip's online database.
+      The confidence level is the number of other people
+      who have the same rip, so a larger value indicates
+      one's own rip is consistent with those of others.
+      However, not finding one's rip in the AccurateRip
+      database does not necessarily mean the rip is bad;
+      the CD may be new, rare, or a different
+      pressing than the one in the database.
+    </p>
+  </element>
   <examples>
     <example>
       <description>

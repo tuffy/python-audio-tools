@@ -18,153 +18,105 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from . import DiscID
+class DiscID:
+    def __init__(self, track_numbers, track_offsets,
+                 lead_out_offset, freedb_disc_id):
+        """track_numbers is a list of track numbers, starting from 1
 
+        track_offsets is a list of offsets, in CD frames
+        and typically starting from 0
 
-class AccurateRipDiscID:
-    def __init__(self, offsets):
-        """offsets is a list of CD track offsets, in CD sectors
+        lead_out_offset is the offset of the lead-out track, in CD frames
 
-        these offsets *do not* include the 150 sector lead-in"""
+        freedb_disc_id is a string or freedb.DiscID object of the CD
+        """
 
-        self.__offsets__ = offsets
+        assert(len(track_numbers) == len(track_offsets))
 
-    def track_count(self):
-        return len(self.__offsets__) - 1
+        self.__track_numbers__ = track_numbers
+        self.__track_offsets__ = track_offsets
+        self.__lead_out_offset__ = lead_out_offset
+        self.__freedb_disc_id__ = freedb_disc_id
+
+    def track_numbers(self):
+        return self.__track_numbers__[:]
 
     def id1(self):
-        return sum(self.__offsets__)
+        return sum(self.__track_offsets__) + self.__lead_out_offset__
 
     def id2(self):
-        return sum([max(offset, 1) * (i + 1)
-                    for (i, offset) in enumerate(self.__offsets__)])
+        return (sum([n * max(o, 1) for (n, o) in
+                     zip(self.__track_numbers__, self.__track_offsets__)]) +
+                (max(self.__track_numbers__) + 1) * self.__lead_out_offset__)
 
-    def id3(self):
-        return DiscID(
-            tracks=[y - x for (x, y) in zip(self.__offsets__,
-                                            self.__offsets__[1:])],
-            offsets=[offset + 150 for offset in self.__offsets__[0:-1]],
-            length=self.__offsets__[-1])
+    def freedb_disc_id(self):
+        return int(self.__freedb_disc_id__)
 
-    @classmethod
-    def from_cdda(cls, cdda):
-        return cls([cdda.cdda.track_offsets(i)[0] for i in
-                    xrange(1, len(cdda) + 2)])
-
-    @classmethod
-    def from_tracks(cls, tracks):
-        offsets = [0]
-        for track in tracks:
-            offsets.append(offsets[-1] + track.cd_frames())
-
-        return cls(offsets)
-
-    def db_filename(self):
-        return ("dBAR-%(tracks)3.3d-%(id1)8.8x-%(id2)8.8x-%(id3)s.bin" %
-                {"tracks": self.track_count(),
-                 "id1": self.id1(),
-                 "id2": self.id2(),
-                 "id3": self.id3()})
-
-    def url(self):
-        id1 = self.id1()
-
-        return ("http://www.accuraterip.com/accuraterip/%.1x/%.1x/%.1x/%s" %
-                (id1 & 0xF,
-                 (id1 >> 4) & 0xF,
-                 (id1 >> 8) & 0xF,
-                 self.db_filename()))
+    def __str__(self):
+        return "dBAR-%(tracks)3.3d-%(id1)8.8x-%(id2)8.8x-%(freedb)8.8x.bin" % \
+            {"tracks":len(self.__track_numbers__),
+             "id1":self.id1(),
+             "id2":self.id2(),
+             "freedb":int(self.__freedb_disc_id__)}
 
     def __repr__(self):
-        return "AccurateRipDiscID(%s)" % (repr(self.__offsets__))
+        return "AccurateRipDiscID(%s, %s, %s, %s)" % \
+            (repr(self.__track_numbers__),
+             repr(self.__track_offsets__),
+             repr(self.__lead_out_offset__),
+             repr(self.__freedb_disc_id__))
 
 
-class AccurateRipEntry:
-    # ACCURATERIP_DB_ENTRY = Con.GreedyRepeater(
-    #     Con.Struct("db_entry",
-    #                Con.ULInt8("track_count"),
-    #                Con.ULInt32("disc_id1"),
-    #                Con.ULInt32("disc_id2"),
-    #                Con.ULInt32("freedb_id"),
-    #                Con.StrictRepeater(lambda ctx: ctx["track_count"],
-    #                                   Con.Struct("tracks",
-    #                                              Con.ULInt8("confidence"),
-    #                                              Con.ULInt32("crc"),
-    #                                              Con.ULInt32("crc2")))))
+def perform_lookup(disc_id,
+                   accuraterip_server="www.accuraterip.com",
+                   accuraterip_port=80):
+    """performs web-based lookup using the given DiscID object
+    and returns a dict of
+    {track_number:[(confidence, crc, crc2), ...], ...}
+    where track_number starts from 1
 
-    def __init__(self, disc_id1, disc_id2, freedb_id, track_entries):
-        """disc_id1, disc_id2 and freedb_id are ints
+    may return a dict of empty lists if no AccurateRip entry is found
 
-        track_entries is a list of lists of AccurateRipTrackEntry objects"""
+    may raise urllib2.HTTPError if an error occurs querying the server
+    """
 
-        self.disc_id1 = disc_id1
-        self.disc_id2 = disc_id2
-        self.freedb_id = freedb_id
-        self.track_entries = track_entries
+    from .bitstream import BitstreamReader
+    from urllib2 import urlopen,URLError
 
-    def __repr__(self):
-        return "AccurateRipEntry(%s, %s, %s, %s)" % \
-            (repr(self.disc_id1),
-             repr(self.disc_id2),
-             repr(self.freedb_id),
-             repr(self.track_entries))
+    matches = dict([(n, []) for n in disc_id.track_numbers()])
 
-    def __getitem__(self, key):
-        #returns a list of 0 or more AccurateRipTrackEntry objects
-        return self.track_entries[key]
+    url = "http://%s:%s/accuraterip/%s/%s/%s/%s" % (accuraterip_server,
+                                                    accuraterip_port,
+                                                    str(disc_id)[16],
+                                                    str(disc_id)[15],
+                                                    str(disc_id)[14],
+                                                    disc_id)
 
-    def __len__(self):
-        return len(self.track_entries)
+    try:
+        response = BitstreamReader(urlopen(url), True)
+    except URLError:
+        #no CD found matching given parameters
+        return matches
 
-    @classmethod
-    def parse_string(cls, string):
-        """given a string, returns an AccurateRipEntry object"""
-
-        entries = cls.ACCURATERIP_DB_ENTRY.parse(string)
-
-        if (len(entries) == 0):
-            raise ValueError("no AccurateRip entries found")
-
-        #all disc IDs should be identical
-        #and zip the track entries together
-        return cls(
-            disc_id1=entries[0].disc_id1,
-            disc_id2=entries[0].disc_id2,
-            freedb_id=entries[0].freedb_id,
-            track_entries=[
-                [AccurateRipTrackEntry(confidence=track.confidence,
-                                       crc=track.crc,
-                                       crc2=track.crc2) for track in tracks]
-                for tracks in zip(*[entry.tracks for entry in entries])])
-
-    @classmethod
-    def from_disc_id(cls, disc_id):
-        """given an AccurateRipDiscID, returns an AccurateRipEntry
-        or None if the given disc ID has no matches in the database"""
-
-        import urllib
-
-        response = urllib.urlopen(disc_id.url())
-        if (response.getcode() == 200):
-            return cls.parse_string(response.read())
-        else:
-            return None
+    try:
+        while (True):
+            (track_count,
+             id1,
+             id2,
+             freedb_disc_id) = response.parse("8u 32u 32u 32u")
+            if ((id1 == disc_id.id1()) and
+                (id2 == disc_id.id2()) and
+                (freedb_disc_id == disc_id.freedb_disc_id())):
+                for track_number in xrange(1, track_count + 1):
+                    if (track_number in matches):
+                        matches[track_number].append(
+                            tuple(response.parse("8u 32u 32u")))
+    except IOError:
+        #keep trying to parse values until the data runs out
+        return matches
 
 
-class AccurateRipTrackEntry:
-    def __init__(self, confidence, crc, crc2):
-        self.confidence = confidence
-        self.crc = crc
-        self.crc2 = crc2
-
-    def __repr__(self):
-        return "AccurateRipTrackEntry(%s, %s, %s)" % \
-            (self.confidence,
-             self.crc,
-             self.crc2)
-
-
-class AccurateRipTrackCRC:
+class AccurateRipTrackChecksum:
     def __init__(self):
         self.crc = 0
         self.track_index = 1
@@ -175,6 +127,34 @@ class AccurateRipTrackCRC:
         return self.crc
 
     def update(self, frame):
-        (self.crc, self.track_index) = self.accuraterip_crc(self.crc,
-                                                            self.track_index,
-                                                            frame)
+        (self.crc,
+         self.track_index) = self.accuraterip_crc(self.crc,
+                                                  self.track_index,
+                                                  frame)
+
+
+class AccurateRipReader:
+    def __init__(self, pcmreader):
+        self.pcmreader = pcmreader
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
+        self.bits_per_sample = pcmreader.bits_per_sample
+        self.__crc__ = 0
+        self.__track_index__ = 1
+        from .cdio import accuraterip_crc
+        self.accuraterip_crc = accuraterip_crc
+
+    def read(self, pcm_frames):
+        frame = self.pcmreader.read(pcm_frames)
+        (self.__crc__,
+         self.__track_index__) = self.accuraterip_crc(self.__crc__,
+                                                      self.__track_index__,
+                                                      frame)
+        return frame
+
+    def close(self):
+        self.pcmreader.close()
+
+    def checksum(self):
+        return self.__crc__

@@ -72,8 +72,12 @@ if (__name__ == '__main__'):
     msg.new_row()
     msg.output_column(_.LAB_MUSICBRAINZ_ID, True)
     msg.output_column(u" : ")
-
     msg.output_column(str(cdda.musicbrainz_disc_id()).decode('ascii'))
+
+    msg.new_row()
+    msg.output_column(_.LAB_ACCURATERIP_ID, True)
+    msg.output_column(u" : ")
+    msg.output_column(str(cdda.accuraterip_disc_id()).decode('ascii'))
 
     msg.blank_row()
     msg.output_rows()

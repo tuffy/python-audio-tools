@@ -25,7 +25,7 @@
       trackcmp(1)
       to use all of them simultaneously can greatly increase comparison speed.
     </option>
-    <option short="R" long="no-summary">
+    <option short="S" long="no-summary">
       suppress summary output
     </option>
     <option short="V" long="verbose" arg="verbosity">

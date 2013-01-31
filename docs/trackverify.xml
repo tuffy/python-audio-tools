@@ -20,8 +20,11 @@
       May be used multiple times.
       For a list of available audio formats, try: -t help
     </option>
-    <option short="R" long="no-summary">
+    <option short="S" long="no-summary">
       do not display summary information when verification is complete
+    </option>
+    <option short="R" long="accuraterip">
+      verify tracks against those of AccurateRip database
     </option>
     <option short="j" long="joint" arg="processes">
       The maximum number of tracks to verify at one time.
@@ -47,6 +50,20 @@
       However, for formats such as Wave, there is no standard way to verify
       that its data content is correct; we can only ensure that its
       blocks of data are the correct size.
+    </p>
+  </element>
+  <element name="accuraterip">
+    <p>
+      Verifying lossless tracks against AccurateRip's online
+      database is a way of ensuring one's rips are identical to
+      rips performed by other people.
+      The confidence level is the number of other people
+      who have the same rip, so a larger value indicates
+      one's own rip is consistent with those of others.
+      However, not finding one's rip in the AccurateRip
+      database does not necessarily mean the rip is bad;
+      the CD may be new, rare, or a different
+      pressing than the one in the database.
     </p>
   </element>
   <examples>

@@ -22,6 +22,7 @@ import sys
 import os
 import audiotools
 import audiotools.ui
+import audiotools.accuraterip
 import termios
 import audiotools.text as _
 
@@ -236,6 +237,9 @@ if (__name__ == '__main__'):
             for m in c:
                 m.album_total = options.album_total
 
+    #use CDDA object to perform AccurateRip lookup
+    accuraterip_checksums = cdda.accuraterip_lookup()
+
     #determine tracks to be ripped
     if (len(args) == 0):
         tracks_to_rip = set(range(1, len(cdda) + 1))
@@ -317,6 +321,8 @@ if (__name__ == '__main__'):
     #perform actual ripping of tracks from CDDA
     encoded = []
     rip_log = {}
+    accuraterip_log = {}
+
     for (i, (cd_track,
              (output_class,
               output_filename,
@@ -333,12 +339,14 @@ if (__name__ == '__main__'):
         progress = audiotools.SingleProgressDisplay(
             msg, unicode(output_filename))
 
+        accuraterip_reader = audiotools.accuraterip.AccurateRipReader(cd_track)
+
         try:
             encoded.append(
                 output_class.from_pcm(
                     str(output_filename),
                     audiotools.PCMReaderProgress(
-                        cd_track,
+                        accuraterip_reader,
                         cd_track.length() * (44100 / 75),
                         progress.update),
                     output_quality,
@@ -351,6 +359,7 @@ if (__name__ == '__main__'):
         progress.clear()
 
         rip_log[cd_track.track_number] = cd_track.rip_log
+        accuraterip_log[cd_track.track_number] = accuraterip_reader.checksum()
 
         msg.info(
             audiotools.output_progress(
@@ -381,25 +390,46 @@ if (__name__ == '__main__'):
     #display ripping log
     msg.output(_.LAB_CD2TRACK_LOG)
     msg.new_row()
-    headers = [u"track", u"rderr", u"skip", u"atom",
-               u"edge", u"drop", u"dup", u"drift"]
-    keys = ["rderr", "skip", "atom", "edge", "drop", "dup", "drift"]
+    extract_headers = [u"track", u"rderr", u"skip", u"atom",
+                       u"edge", u"drop", u"dup", u"drift",
+                       _.LAB_ACCURATERIP_CHECKSUM,
+                       _.LAB_ACCURATERIP_RESULT]
+    extract_keys = ["rderr", "skip", "atom", "edge", "drop", "dup", "drift"]
 
     dividers = []
-    for header in headers:
+
+    msg.output_column(extract_headers[0])
+    dividers.append(u"-")
+    for header in extract_headers[1:]:
+        msg.output_column(u" ")
         msg.output_column(header, True)
-        dividers.append(u'-')
-        if (header != headers[-1]):
-            msg.output_column(u" ")
-            dividers.append(u" ")
+        dividers.append(u" ")
+        dividers.append(u"-")
+
     msg.divider_row(dividers)
+
     for track_number in sorted(rip_log.keys()):
         msg.new_row()
         msg.output_column(unicode(track_number), True)
-        msg.output_column(u" ")
         log = rip_log[track_number]
-        for key in keys:
+        for key in extract_keys:
+            msg.output_column(u" ")
             msg.output_column(unicode(log.get(key, 0)), True)
-            if (key != keys[-1]):
-                msg.output_column(u" ")
+
+        track_checksum = accuraterip_log[track_number]
+        msg.output_column(u" ")
+        msg.output_column(u"%8.8X" % (track_checksum))
+        msg.output_column(u" ")
+        ar_matches = accuraterip_checksums.get(track_number, [])
+        if (len(ar_matches) == 0):
+            msg.output_column(_.LAB_ACCURATERIP_NOT_FOUND)
+        else:
+            for (confidence, ar_checksum, ar_crc2) in ar_matches:
+                if (track_checksum == ar_checksum):
+                    msg.output_column(
+                        _.LAB_ACCURATERIP_CONFIDENCE % (confidence))
+                    break
+            else:
+                msg.output_column(_.LAB_ACCURATERIP_MISMATCH)
+
     msg.output_rows()
