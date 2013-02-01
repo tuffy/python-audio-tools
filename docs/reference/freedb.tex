@@ -62,6 +62,7 @@ and complete the transaction.
 \pagebreak
 
 \subsection{the Disc ID}
+\label{freedb:discid}
 FreeDB uses a big-endian 32-bit disc ID to differentiate
 on disc from another.
 
@@ -109,6 +110,8 @@ This means our three values are 34, 840 and 4.
 In hexadecimal, they are 0x22, 0x0348 and 0x04.
 Combining them into a single value yields 0x22034804.
 Thus, our FreeDB disc ID is \texttt{22034804}
+
+\clearpage
 
 \subsection{Initial Greeting}
 \begin{Verbatim}[frame=single,label=\textit{From Server},showspaces=true]

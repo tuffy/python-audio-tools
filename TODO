@@ -1,5 +1,4 @@
-This file is formatted for Emacs' org-mode (see http://www.orgmode.org)
-To view it properly, open it in Emacs 23.x and type:  M-x org-mode
+# -*- Mode: Org -*-
 * Previous Issues
 ** DONE Fix WAVE/MP3 formats to support MP3 audio in a WAVE container
    Instead of WaveAudio generating a nasty "compression not supported" error,
@@ -6450,7 +6449,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Add AccurateRip support
   This might make give cd2track a little added respectability
   and post-rip tools could be built also to verify tracks/disc images.
-*** TODO Add accuraterip Python support
+*** DONE Add accuraterip Python support
 **** DONE add DiscID to accuraterip module
 **** DONE add perform_lookup to accuraterip module
 **** DONE add accuraterip_lookup to __init__ module
@@ -6461,8 +6460,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      This would be a transfer_framelist_data target
      to be used by trackverify to verify tracks
      already extracted.
-**** TODO Add programming docstrings
-**** TODO Add programming documentation
+**** DONE Add programming docstrings
+**** DONE Add programming documentation
 *** DONE Add AccurateRip disc ID to cdinfo
 *** DONE Add support to cd2track
     This should be done by default as a wrapper around
@@ -6471,14 +6470,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     Add a -R/--accuraterip option which foregoes the usual
     calls to .verify(), performs an AccurateRip lookup
     for all albums and indicates whether they match/don't match/aren't found
+*** DONE Add protocol documentation
+    - [X] calculating the AccurateRip disc ID
+    - [X] fetching database entries from the server
+    - [X] parsing database entries from the server
+    - [X] calculating a track's CRC
+    - [X] checking the confidence level
 *** TODO Add unit tests
 **** TODO Add unit tests to Python classes/functions
 **** TODO Update utilities unit tests
-*** TODO Add protocol documentation
-    - [ ] calculating the AccurateRip disc ID
-    - [ ] fetching database entries from the server
-    - [ ] calculating a track's CRC
-    - [ ] checking the confidence level
 ** TODO Overhaul exception handling
    A lot of our exceptions are used haphazardly
    mixing strings with unicode and aren't as well documented as they

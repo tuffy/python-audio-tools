@@ -597,10 +597,6 @@ cdio_accuraterip_crc(PyObject *dummy, PyObject *args) {
     PyObject *framelist_obj;
     pcm_FrameList *framelist;
     unsigned i;
-    int left_v;
-    int right_v;
-    uint32_t left;
-    uint32_t right;
 
     if (!PyArg_ParseTuple(args, "IIO", &crc, &track_index, &framelist_obj))
         return NULL;
@@ -641,11 +637,14 @@ cdio_accuraterip_crc(PyObject *dummy, PyObject *args) {
 
     /*update CRC with values from FrameList struct*/
     for (i = 0; i < framelist->frames; i++) {
-        left_v = framelist->samples[i * 2];
-        right_v = framelist->samples[i * 2 + 1];
-        left = left_v >= 0 ? left_v : (1 << 16) - (-left_v);
-        right = right_v >= 0 ? right_v : (1 << 16) - (-right_v);
-        crc += ((left | (right << 16)) * track_index);
+        const int left_s = framelist->samples[i * 2];
+        const int right_s = framelist->samples[i * 2 + 1];
+        const unsigned left_u =
+            left_s >= 0 ? left_s : (1 << 16) - (-left_s);
+        const unsigned right_u =
+            right_s >= 0 ? right_s : (1 << 16) - (-right_s);
+
+        crc += (((right_u << 16) | left_u) * track_index);
         track_index++;
     }
 

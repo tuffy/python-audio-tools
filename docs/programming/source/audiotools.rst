@@ -1475,6 +1475,14 @@ CDDA Objects
 
    Calls :func:`metadata_lookup` using this CD's table-of-contents.
 
+.. method:: CDDA.accuraterip_disc_id()
+
+   A :class:`accuraterip.DiscID` object from this CD's table-of-contents.
+
+.. method:: CDDA.accuraterip_lookup([server][, port])
+
+   Calls :func:`accuraterip_lookup` using this CD's table-of-contents.
+
 CD Lookups
 ^^^^^^^^^^
 
@@ -1495,6 +1503,22 @@ CD Lookups
    In the event that no matches for the CD can be found,
    those objects will only contain ``track_number`` and ``track_total``
    fields.
+
+.. function:: accuraterip_lookup(sorted_tracks[, server][, port])
+
+   Given a list of :class:`AudioFile` objects sorted by
+   track number, returns a
+   ``{track_number:[(confidence, crc, crc2), ...], ...}``
+   dict of values retrieved from the AccurateRip database
+   where ``track_number`` is an int starting from 1,
+   ``confidence`` is the number of people with the same people
+   with a matching ``crc`` of the track.
+
+   May return a dict of empty lists if no AccurateRip entry is found.
+
+   May return :exc:`urllib2.HTTPError` if an error occurs
+   querying the server.
+
 
 CDTrackReader Objects
 ^^^^^^^^^^^^^^^^^^^^^

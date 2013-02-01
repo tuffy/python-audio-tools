@@ -394,6 +394,9 @@ MUSICBRAINZ = \
 figures/musicbrainz/discid.pdf \
 figures/musicbrainz/xml.pdf \
 
+ACCURATERIP = \
+figures/accuraterip-data.pdf \
+figures/accuraterip-data-example.pdf
 
 FIGURES = \
 $(BASICS) \
@@ -416,6 +419,7 @@ $(ALAC) \
 $(VORBIS) \
 figures/speex_header.pdf \
 $(MUSEPACK) \
+$(ACCURATERIP) \
 $(DVDA) \
 $(FREEDB) \
 $(MUSICBRAINZ)
@@ -444,6 +448,7 @@ dvda2.tex \
 freedb.tex \
 musicbrainz.tex \
 musicbrainz_mmd.tex \
+accuraterip.tex \
 replaygain.tex \
 references.tex \
 license.tex
@@ -524,6 +529,12 @@ tta-codec.tex: tta-codec.template header.tex footer.tex
 	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
 
 tta-codec.pdf: tta-codec.tex tta.tex $(TTA)
+	python pdflatexbuild.py -halt-on-error $<
+
+accuraterip-short.tex: accuraterip-short.template header.tex footer.tex
+	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
+
+accuraterip-short.pdf: accuraterip-short.tex accuraterip.tex $(ACCURATERIP)
 	python pdflatexbuild.py -halt-on-error $<
 
 m4a-atoms.tex: m4a-atoms.template header.tex footer.tex

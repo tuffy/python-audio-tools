@@ -22,5 +22,6 @@
 \include{freedb}
 \include{musicbrainz}
 \include{musicbrainz_mmd}
+\include{accuraterip}
 \include{replaygain}
 <<file:footer.tex>>
