@@ -65,9 +65,6 @@ read_sector_callback(long int i, paranoia_cb_mode_t mode);
 static PyObject*
 cdio_identify_cdrom(PyObject *dummy, PyObject *args);
 
-static PyObject*
-cdio_accuraterip_crc(PyObject *dummy, PyObject *args);
-
 static PyMethodDef CDDA_methods[] = {
     {"total_tracks", (PyCFunction)CDDA_total_tracks,
      METH_NOARGS, "Returns the total number of tracks on the disc"},
@@ -165,15 +162,46 @@ static PyMethodDef CDImage_methods[] = {
 };
 
 
+typedef struct {
+    PyObject_HEAD
+
+    uint32_t checksum;
+    uint32_t track_index;
+    PyObject* framelist_class;
+} cdio_ARChecksum;
+
+static PyObject*
+ARChecksum_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+
+int
+ARChecksum_init(cdio_ARChecksum *self, PyObject *args, PyObject *kwds);
+
+void
+ARChecksum_dealloc(cdio_ARChecksum *self);
+
+static PyObject*
+ARChecksum_update(cdio_ARChecksum* self, PyObject *args);
+
+static PyObject*
+ARChecksum_checksum(cdio_ARChecksum* self, PyObject *args);
+
+static PyMethodDef  ARChecksum_methods[] = {
+    {"update", (PyCFunction)ARChecksum_update,
+     METH_VARARGS, "update(framelist) updates with the given FrameList"},
+    {"checksum", (PyCFunction)ARChecksum_checksum,
+     METH_NOARGS, "checksum() -> calculcated 32-bit checksum"},
+    {NULL}
+};
+
+
 static PyMethodDef cdioMethods[] = {
     {"set_read_callback", (PyCFunction)set_read_callback,
      METH_VARARGS, "Sets the global callback for CDDA.read_sector"},
     {"identify_cdrom", (PyCFunction)cdio_identify_cdrom,
      METH_VARARGS, "Identifies a CD-ROM device"},
-    {"accuraterip_crc", (PyCFunction)cdio_accuraterip_crc,
-     METH_VARARGS, "Calculates the running CRC for AccurateRip"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
+
 
 #ifndef PyMODINIT_FUNC  /* declarations for DLL import/export */
 #define PyMODINIT_FUNC void
@@ -261,4 +289,46 @@ static PyTypeObject cdio_CDImageType = {
     (initproc)CDImage_init,    /* tp_init */
     0,                         /* tp_alloc */
     CDImage_new,               /* tp_new */
+};
+
+static PyTypeObject cdio_ARChecksumType = {
+    PyObject_HEAD_INIT(NULL)
+    0,                         /*ob_size*/
+    "cdio.ARChecksum",         /*tp_name*/
+    sizeof(cdio_ARChecksum),   /*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)ARChecksum_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "ARChecksum objects",      /* tp_doc */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    ARChecksum_methods,        /* tp_methods */
+    0,                         /* tp_members */
+    0,                         /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)ARChecksum_init, /* tp_init */
+    0,                         /* tp_alloc */
+    ARChecksum_new,            /* tp_new */
 };

@@ -4790,73 +4790,6 @@ class CDTrackReader(PCMReader):
         self.read = self.read_closed
 
 
-class CDTrackReaderAccurateRipCRC:
-    def __init__(self, cdtrackreader,
-                 track_number, track_total,
-                 total_sectors):
-        self.cdtrackreader = cdtrackreader
-        self.accuraterip_crc = AccurateRipTrackCRC()
-        if (track_number == 1):
-            self.prefix_0s = 5 * (44100 / 75) - 1
-        else:
-            self.prefix_0s = 0
-        if (track_number == track_total):
-            postfix_0s = 5 * (44100 / 75)
-        else:
-            postfix_0s = 0
-
-        self.checksum_window = ((total_sectors * (44100 / 75)) -
-                                (self.prefix_0s + postfix_0s))
-
-        self.sample_rate = 44100
-        self.channels = 2
-        self.channel_mask = 0x3
-        self.bits_per_sample = 16
-
-        self.cdda = cdtrackreader.cdda
-        self.track_number = track_number
-        self.rip_log = cdtrackreader.rip_log
-
-    def offset(self):
-        return self.cdtrackreader.offset()
-
-    def length(self):
-        return self.cdtrackreader.length()
-
-    def log(self):
-        return self.cdtrackreader.log()
-
-    def read(self, pcm_frames):
-        frame = self.cdtrackreader.read(pcm_frames)
-        crc_frame = frame
-
-        if (self.prefix_0s > 0):
-            #substitute frame samples for prefix 0s
-            (substitute, remainder) = crc_frame.split(self.prefix_0s)
-            self.accuraterip_crc.update(
-                pcm.from_list([0] * len(substitute), 2, 16, True))
-            self.prefix_0s -= substitute.frames
-            crc_frame = remainder
-
-        if (crc_frame.frames > self.checksum_window):
-            #ensure PCM frames outside the window are substituted also
-            (remainder, substitute) = crc_frame.split(self.checksum_window)
-            self.checksum_window -= remainder.frames
-            self.accuraterip_crc.update(remainder)
-            self.accuraterip_crc.update(
-                pcm.from_list([0] * len(substitute), 2, 16, True))
-        else:
-            self.checksum_window -= crc_frame.frames
-            self.accuraterip_crc.update(crc_frame)
-
-        #no matter how the CRC is updated,
-        #return the original FrameList object as-is
-        return frame
-
-    def close(self):
-        self.cdtrackreader.close()
-
-
 #returns the value in item_list which occurs most often
 def most_numerous(item_list, empty_list="", all_differ=""):
     """returns the value in the item list which occurs most often
@@ -5050,6 +4983,41 @@ def accuraterip_lookup(sorted_tracks,
                                        freedb_disc_id),
                               accuraterip_server,
                               accuraterip_port)
+
+
+def accuraterip_sheet_lookup(sheet, total_pcm_frames, sample_rate,
+                             accuraterip_server="www.accuraterip.com",
+                             accuraterip_port=80):
+    """given a Sheet object, total number of PCM frames and sample rate
+    returns a dict of
+    {track_number:[(confidence, crc, crc2), ...], ...}
+    where track_number starts from 1
+
+    may return a dict of empty lists if no AccurateRip entry is found
+
+    may raise urllib2.HTTPError if an error occurs querying the server
+    """
+
+    from .accuraterip import DiscID as ARDiscID
+    from .accuraterip import perform_lookup
+    from .freedb import DiscID as FreeDBDiscID
+
+    #generate artificial DiscID from sheet's tracks
+    track_numbers = [t.number() for t in sheet.tracks()]
+    track_offsets = [max([int(i.offset() * 75) for i in t.indexes()])
+                     for t in sheet.tracks()]
+    lead_out_offset = (total_pcm_frames * 75) // sample_rate
+    freedb_disc_id = FreeDBDiscID(
+        offsets=[o + 150 for o in track_offsets],
+        total_length=(total_pcm_frames * 75) // sample_rate,
+        track_count=len(list(sheet.tracks())))
+
+    return perform_lookup(ARDiscID(track_numbers,
+                                   track_offsets,
+                                   lead_out_offset,
+                                   freedb_disc_id),
+                          accuraterip_server,
+                          accuraterip_port)
 
 
 #######################

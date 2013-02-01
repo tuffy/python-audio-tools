@@ -1508,17 +1508,31 @@ CD Lookups
 
    Given a list of :class:`AudioFile` objects sorted by
    track number, returns a
-   ``{track_number:[(confidence, crc, crc2), ...], ...}``
+   ``{track_number:[(confidence, checksum, alt), ...], ...}``
    dict of values retrieved from the AccurateRip database
    where ``track_number`` is an int starting from 1,
    ``confidence`` is the number of people with the same people
-   with a matching ``crc`` of the track.
+   with a matching ``checksum`` of the track.
 
    May return a dict of empty lists if no AccurateRip entry is found.
 
    May return :exc:`urllib2.HTTPError` if an error occurs
    querying the server.
 
+.. function:: accuraterip_sheet_lookup(sheet, total_pcm_frames, sample_rate[, server][, port])
+
+   Given a :class:`Sheet` object, total number of PCM frames and sample rate,
+   returns a
+   ``{track_number:[(confidence, checksum, alt), ...], ...}``
+   dict of values retrieved from the AccurateRip database
+   where ``track_number`` is an int starting from 1,
+   ``confidence`` is the number of people with the same people
+   with a matching ``checksum`` of the track.
+
+   May return a dict of empty lists if no AccurateRip entry is found.
+
+   May return :exc:`urllib2.HTTPError` if an error occurs
+   querying the server.
 
 CDTrackReader Objects
 ^^^^^^^^^^^^^^^^^^^^^

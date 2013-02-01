@@ -132,25 +132,61 @@ class Results:
 
 
 def accuraterip_checksum(progress, track):
-    from audiotools.accuraterip import AccurateRipTrackChecksum
+    from audiotools.cdio import ARChecksum
 
     reader = audiotools.PCMReaderProgress(track.to_pcm(),
                                           track.total_frames(),
                                           progress)
-    checksum = AccurateRipTrackChecksum()
+    checksum = ARChecksum()
 
     try:
         audiotools.transfer_data(reader.read, checksum.update)
 
         return (audiotools.Filename(track.filename),
                 track.NAME,
-                int(checksum),
+                checksum.checksum(),
                 None)
     except (IOError, ValueError), err:
         return (audiotools.Filename(track.filename),
                 track.NAME,
                 None,
                 str(err))
+
+
+def accuraterip_image_checksum(progress, track, filename, track_number,
+                               pcm_frames_offset, total_pcm_frames):
+    from audiotools.cdio import ARChecksum
+
+    reader = track.to_pcm()
+
+    checksum = ARChecksum()
+
+    #if PCMReader has seek(), use it to reduce the amount of frames to skip
+    if (hasattr(reader, "seek") and callable(reader.seek)):
+        pcm_frames_offset -= reader.seek(pcm_frames_offset)
+
+    reader = audiotools.PCMReaderProgress(
+        audiotools.PCMReaderWindow(reader,
+                                   pcm_frames_offset,
+                                   total_pcm_frames),
+        total_pcm_frames,
+        progress)
+
+    try:
+        audiotools.transfer_data(reader.read, checksum.update)
+
+        return (filename,
+                track_number,
+                track.NAME,
+                checksum.checksum(),
+                None)
+    except (IOError, ValueError), err:
+        return (filename,
+                track_number,
+                track.NAME,
+                None,
+                str(err))
+
 
 
 class AccurateRipResults:
@@ -163,12 +199,12 @@ class AccurateRipResults:
         self.matches = {}
 
     def add_matches(self, filename, checksums):
-        self.matches[filename] = checksums[:]
+        self.matches[(filename, None)] = checksums[:]
 
     def display(self, result):
         (filename, track_type, checksum, error) = result
         if (error is None):
-            ar_matches = self.matches.get(filename, [])
+            ar_matches = self.matches.get((filename, None), [])
             if (len(ar_matches) == 0):
                 self.summary_notfound.setdefault(track_type,
                                                  Counter()).increment()
@@ -191,6 +227,42 @@ class AccurateRipResults:
                                                      Counter()).increment()
                     return _.LAB_TRACKVERIFY_RESULT % \
                         {"path":filename,
+                         "result":_.LAB_ACCURATERIP_MISMATCH}
+        else:
+            #FIXME - display actual error
+            self.summary_error.setdefault(track_type, Counter()).increment()
+            return u"read error"
+
+    def add_image_matches(self, filename, track_number, checksums):
+        self.matches[(filename, track_number)] = checksums[:]
+
+    def display_image(self, result):
+        (filename, track_number, track_type, checksum, error) = result
+        path = u"%s - track %2.2d" % (filename, track_number)
+        if (error is None):
+            ar_matches = self.matches.get((filename, track_number), [])
+            if (len(ar_matches) == 0):
+                self.summary_notfound.setdefault(track_type,
+                                                 Counter()).increment()
+                return _.LAB_TRACKVERIFY_RESULT % \
+                    {"path":path,
+                     "result":_.LAB_ACCURATERIP_NOT_FOUND}
+            else:
+                for (confidence, ar_checksum, ar_crc2) in ar_matches:
+                    if (checksum == ar_checksum):
+                        self.summary_match.setdefault(track_type,
+                                                      Counter()).increment()
+                        return _.LAB_TRACKVERIFY_RESULT % \
+                            {"path":path,
+                             "result":u"%s (%s)" %
+                             (_.LAB_ACCURATERIP_FOUND,
+                              _.LAB_ACCURATERIP_CONFIDENCE %
+                              (confidence))}
+                else:
+                    self.summary_mismatch.setdefault(track_type,
+                                                     Counter()).increment()
+                    return _.LAB_TRACKVERIFY_RESULT % \
+                        {"path":path,
                          "result":_.LAB_ACCURATERIP_MISMATCH}
         else:
             #FIXME - display actual error
@@ -311,21 +383,55 @@ if (__name__ == '__main__'):
                 (set([t.sample_rate() for t in tracks]) == set([44100])) and
                 (set([t.bits_per_sample() for t in tracks]) == set([16]))):
 
-                tracks = audiotools.sorted_tracks(tracks)
-                ar_results = audiotools.accuraterip_lookup(tracks)
+                if ((len(tracks) == 1) and
+                    (tracks[0].get_cuesheet() is not None)):
+                    filename = audiotools.Filename(tracks[0].filename)
+                    sheet = tracks[0].get_cuesheet()
+                    total_frames = tracks[0].total_frames()
+                    sample_rate = tracks[0].sample_rate()
 
-                for (i, track) in enumerate(tracks, 1):
-                    filename = audiotools.Filename(track.filename)
+                    #process tracks in CD image individually
+                    ar_results = audiotools.accuraterip_sheet_lookup(
+                        sheet, total_frames, sample_rate)
 
-                    results.add_matches(
-                        filename,
-                        ar_results.get(track_number(track, i), []))
+                    pcm_frames_offset = 0
 
-                    queue.execute(
-                        function=accuraterip_checksum,
-                        progress_text=unicode(filename),
-                        completion_output=results.display,
-                        track=track)
+                    for (i, pcm_frames) in enumerate(sheet.pcm_lengths(
+                            total_frames, sample_rate), 1):
+                        filename_string = u"track %2.2d" % (i)
+
+                        results.add_image_matches(filename,
+                                                  i,
+                                                  ar_results.get(i, []))
+
+                        queue.execute(
+                            function=accuraterip_image_checksum,
+                            progress_text=filename_string,
+                            completion_output=results.display_image,
+                            track=tracks[0],
+                            filename=filename,
+                            track_number=i,
+                            pcm_frames_offset=pcm_frames_offset,
+                            total_pcm_frames=pcm_frames)
+
+                        pcm_frames_offset += pcm_frames
+                else:
+                    #process each track as if it were a CD
+                    tracks = audiotools.sorted_tracks(tracks)
+                    ar_results = audiotools.accuraterip_lookup(tracks)
+
+                    for (i, track) in enumerate(tracks, 1):
+                        filename = audiotools.Filename(track.filename)
+
+                        results.add_matches(
+                            filename,
+                            ar_results.get(track_number(track, i), []))
+
+                        queue.execute(
+                            function=accuraterip_checksum,
+                            progress_text=unicode(filename),
+                            completion_output=results.display,
+                            track=track)
             else:
                 for track in tracks:
                     msg.error(u"\"%(path)s\" %(result)s" %

@@ -116,23 +116,6 @@ def perform_lookup(disc_id,
         return matches
 
 
-class AccurateRipTrackChecksum:
-    def __init__(self):
-        self.crc = 0
-        self.track_index = 1
-        from .cdio import accuraterip_crc
-        self.accuraterip_crc = accuraterip_crc
-
-    def __int__(self):
-        return self.crc
-
-    def update(self, frame):
-        (self.crc,
-         self.track_index) = self.accuraterip_crc(self.crc,
-                                                  self.track_index,
-                                                  frame)
-
-
 class AccurateRipReader:
     def __init__(self, pcmreader):
         self.pcmreader = pcmreader
@@ -140,21 +123,17 @@ class AccurateRipReader:
         self.channels = pcmreader.channels
         self.channel_mask = pcmreader.channel_mask
         self.bits_per_sample = pcmreader.bits_per_sample
-        self.__crc__ = 0
-        self.__track_index__ = 1
-        from .cdio import accuraterip_crc
-        self.accuraterip_crc = accuraterip_crc
+
+        from .cdio import ARChecksum
+        self.__checksum__ = ARChecksum()
 
     def read(self, pcm_frames):
         frame = self.pcmreader.read(pcm_frames)
-        (self.__crc__,
-         self.__track_index__) = self.accuraterip_crc(self.__crc__,
-                                                      self.__track_index__,
-                                                      frame)
+        self.__checksum__.update(frame)
         return frame
 
     def close(self):
         self.pcmreader.close()
 
     def checksum(self):
-        return self.__crc__
+        return self.__checksum__.checksum()
