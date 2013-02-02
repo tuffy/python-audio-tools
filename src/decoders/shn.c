@@ -44,14 +44,14 @@ SHNDecoder_init(decoders_SHNDecoder *self,
     self->bitstream = NULL;
     self->stream_finished = 0;
 
-    self->means = array_ia_new();
-    self->previous_samples = array_ia_new();
+    self->means = aa_int_new();
+    self->previous_samples = aa_int_new();
 
     /*setup temporary buffers*/
-    self->samples = array_ia_new();
-    self->unshifted = array_ia_new();
-    self->pcm_header = array_i_new();
-    self->pcm_footer = array_i_new();
+    self->samples = aa_int_new();
+    self->unshifted = aa_int_new();
+    self->pcm_header = a_int_new();
+    self->pcm_footer = a_int_new();
 
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
@@ -166,9 +166,9 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
     switch (read_framelist(self, self->unshifted)) {
     case OK:
         PyEval_RestoreThread(thread_state);
-        return array_ia_to_FrameList(self->audiotools_pcm,
-                                     self->unshifted,
-                                     self->bits_per_sample);
+        return aa_int_to_FrameList(self->audiotools_pcm,
+                                   self->unshifted,
+                                   self->bits_per_sample);
     case END_OF_STREAM:
         PyEval_RestoreThread(thread_state);
         return empty_FrameList(self->audiotools_pcm,
@@ -196,9 +196,9 @@ static PyObject*
 SHNDecoder_pcm_split(decoders_SHNDecoder* self, PyObject *args)
 {
     if (!setjmp(*br_try(self->bitstream))) {
-        array_i* header = self->pcm_header;
-        array_i* footer = self->pcm_footer;
-        array_i* current = header;
+        a_int* header = self->pcm_header;
+        a_int* footer = self->pcm_footer;
+        a_int* current = header;
         uint8_t* header_s;
         uint8_t* footer_s;
         PyObject* tuple;
@@ -336,7 +336,7 @@ read_shn_header(decoders_SHNDecoder* self, BitstreamReader* reader)
         }
 
         for (i = 0; i < self->header.channels; i++) {
-            array_i* means = self->means->append(self->means);
+            a_int* means = self->means->append(self->means);
             means->mset(means, self->header.mean_count, 0);
             self->previous_samples->append(self->previous_samples);
         }
@@ -357,7 +357,7 @@ read_shn_header(decoders_SHNDecoder* self, BitstreamReader* reader)
 }
 
 static status
-read_framelist(decoders_SHNDecoder* self, array_ia* framelist)
+read_framelist(decoders_SHNDecoder* self, aa_int* framelist)
 {
     unsigned c = 0;
 
@@ -371,10 +371,10 @@ read_framelist(decoders_SHNDecoder* self, array_ia* framelist)
             if (((FN_DIFF0 <= command) && (command <= FN_DIFF3)) ||
                 ((FN_QLPC <= command) && (command <= FN_ZERO))) {
                 /*audio data commands*/
-                array_i* means = self->means->_[c];
-                array_i* previous_samples = self->previous_samples->_[c];
-                array_i* samples = self->samples->append(self->samples);
-                array_i* unshifted = framelist->append(framelist);
+                a_int* means = self->means->_[c];
+                a_int* previous_samples = self->previous_samples->_[c];
+                a_int* samples = self->samples->append(self->samples);
+                a_int* unshifted = framelist->append(framelist);
 
                 switch (command) {
                 case FN_DIFF0:
@@ -490,7 +490,7 @@ read_framelist(decoders_SHNDecoder* self, array_ia* framelist)
 
 static void
 read_diff0(BitstreamReader* bs, unsigned block_length,
-           const array_i* means, array_i* samples)
+           const a_int* means, a_int* samples)
 {
     const int offset = shnmean(means);
     const unsigned energy = read_unsigned(bs, ENERGY_SIZE);
@@ -506,7 +506,7 @@ read_diff0(BitstreamReader* bs, unsigned block_length,
 
 static void
 read_diff1(BitstreamReader* bs, unsigned block_length,
-           array_i* previous_samples, array_i* samples)
+           a_int* previous_samples, a_int* samples)
 {
     unsigned i;
     unsigned energy;
@@ -534,7 +534,7 @@ read_diff1(BitstreamReader* bs, unsigned block_length,
 
 static void
 read_diff2(BitstreamReader* bs, unsigned block_length,
-           array_i* previous_samples, array_i* samples)
+           a_int* previous_samples, a_int* samples)
 {
     unsigned i;
     unsigned energy;
@@ -563,7 +563,7 @@ read_diff2(BitstreamReader* bs, unsigned block_length,
 
 static void
 read_diff3(BitstreamReader* bs, unsigned block_length,
-           array_i* previous_samples, array_i* samples)
+           a_int* previous_samples, a_int* samples)
 {
     unsigned i;
     unsigned energy;
@@ -593,15 +593,15 @@ read_diff3(BitstreamReader* bs, unsigned block_length,
 
 static void
 read_qlpc(BitstreamReader* bs, unsigned block_length,
-          array_i* previous_samples, array_i* means, array_i* samples)
+          a_int* previous_samples, a_int* means, a_int* samples)
 {
     /*read some QLPC setup values*/
     const int offset = shnmean(means);
     const unsigned energy = read_unsigned(bs, ENERGY_SIZE);
     const unsigned LPC_count = read_unsigned(bs, LPC_COUNT_SIZE);
-    array_i* LPC_coeff = array_i_new();
-    array_i* offset_samples = array_i_new();
-    array_i* unoffset_samples = array_i_new();
+    a_int* LPC_coeff = a_int_new();
+    a_int* offset_samples = a_int_new();
+    a_int* unoffset_samples = a_int_new();
 
     if (!setjmp(*br_try(bs))) {
         int i;
@@ -659,7 +659,7 @@ read_qlpc(BitstreamReader* bs, unsigned block_length,
 }
 
 static int
-shnmean(const array_i* values)
+shnmean(const a_int* values)
 {
     return ((int)(values->len / 2) + values->sum(values)) / (int)(values->len);
 }
@@ -1017,7 +1017,7 @@ read_ieee_extended(BitstreamReader* bs)
 int main(int argc, char* argv[]) {
     decoders_SHNDecoder decoder;
     FILE* file;
-    array_ia* framelist;
+    aa_int* framelist;
     unsigned output_data_size;
     unsigned char* output_data;
     unsigned bytes_per_sample;
@@ -1034,15 +1034,15 @@ int main(int argc, char* argv[]) {
         decoder.bitstream = br_open(file, BS_BIG_ENDIAN);
         decoder.stream_finished = 0;
 
-        decoder.means = array_ia_new();
-        decoder.previous_samples = array_ia_new();
+        decoder.means = aa_int_new();
+        decoder.previous_samples = aa_int_new();
 
-        decoder.samples = array_ia_new();
-        decoder.unshifted = array_ia_new();
-        decoder.pcm_header = array_i_new();
-        decoder.pcm_footer = array_i_new();
+        decoder.samples = aa_int_new();
+        decoder.unshifted = aa_int_new();
+        decoder.pcm_header = a_int_new();
+        decoder.pcm_footer = a_int_new();
 
-        framelist = array_ia_new();
+        framelist = aa_int_new();
 
         output_data_size = 1;
         output_data = malloc(output_data_size);
@@ -1087,7 +1087,7 @@ int main(int argc, char* argv[]) {
                 output_data = realloc(output_data, output_data_size);
             }
             for (channel = 0; channel < framelist->len; channel++) {
-                const array_i* channel_data = framelist->_[channel];
+                const a_int* channel_data = framelist->_[channel];
                 for (frame = 0; frame < channel_data->len; frame++) {
                     converter(channel_data->_[frame],
                               output_data +

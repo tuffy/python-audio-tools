@@ -58,7 +58,7 @@ aobpcm_packet_empty(AOBPCMDecoder* decoder,
 void
 read_aobpcm(AOBPCMDecoder* decoder,
             struct bs_buffer* packet,
-            array_ia* framelist)
+            aa_int* framelist)
 {
     const static uint8_t AOB_BYTE_SWAP[2][6][36] = {
         { /*16 bps*/
@@ -115,7 +115,7 @@ read_aobpcm(AOBPCMDecoder* decoder,
 
         /*decode bytes to PCM ints and place them in proper channels*/
         for (i = 0; i < (channels * 2); i++) {
-            array_i* channel = framelist->_[i % channels];
+            a_int* channel = framelist->_[i % channels];
             channel->append(channel, decoder->converter(unswapped_ptr));
             unswapped_ptr += bytes_per_sample;
         }

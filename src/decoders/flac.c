@@ -32,14 +32,14 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     self->file = NULL;
     self->bitstream = NULL;
 
-    self->seektable = array_o_new((ARRAY_COPY_FUNC)seekpoint_copy,
-                                  free,
-                                  NULL);
+    self->seektable = a_obj_new((ARRAY_COPY_FUNC)seekpoint_copy,
+                                free,
+                                NULL);
 
-    self->subframe_data = array_ia_new();
-    self->residuals = array_i_new();
-    self->qlp_coeffs = array_i_new();
-    self->framelist_data = array_i_new();
+    self->subframe_data = aa_int_new();
+    self->residuals = a_int_new();
+    self->qlp_coeffs = a_int_new();
+    self->framelist_data = a_int_new();
     self->audiotools_pcm = NULL;
     self->remaining_samples = 0;
 
@@ -279,10 +279,10 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
     br_etry(self->bitstream);
     PyEval_RestoreThread(thread_state);
 
-    framelist = array_i_to_FrameList(self->audiotools_pcm,
-                                     self->framelist_data,
-                                     frame_header.channel_count,
-                                     frame_header.bits_per_sample);
+    framelist = a_int_to_FrameList(self->audiotools_pcm,
+                                   self->framelist_data,
+                                   frame_header.channel_count,
+                                   frame_header.bits_per_sample);
     if (framelist != NULL) {
         /*update MD5 sum*/
         if (FlacDecoder_update_md5sum(self, framelist) == OK)
@@ -302,7 +302,7 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
 {
     long long seeked_offset;
 
-    const array_o* seektable = self->seektable;
+    const a_obj* seektable = self->seektable;
     uint64_t pcm_frames_offset = 0;
     uint64_t byte_offset = 0;
     unsigned i;
@@ -496,7 +496,7 @@ FlacDecoder_verify_okay(decoders_FlacDecoder *self)
 int
 flacdec_read_metadata(BitstreamReader *bitstream,
                       struct flac_STREAMINFO *streaminfo,
-                      array_o *seektable)
+                      a_obj *seektable)
 {
     if (!setjmp(*br_try(bitstream))) {
         unsigned last_block;
@@ -692,11 +692,11 @@ flacdec_read_frame_header(BitstreamReader *bitstream,
 
 flac_status
 flacdec_read_subframe(BitstreamReader* bitstream,
-                      array_i* qlp_coeffs,
-                      array_i* residuals,
+                      a_int* qlp_coeffs,
+                      a_int* residuals,
                       unsigned block_size,
                       unsigned bits_per_sample,
-                      array_i* samples)
+                      a_int* samples)
 {
     struct flac_subframe_header subframe_header;
     unsigned i;
@@ -807,7 +807,7 @@ flac_status
 flacdec_read_constant_subframe(BitstreamReader* bitstream,
                                unsigned block_size,
                                unsigned bits_per_sample,
-                               array_i* samples)
+                               a_int* samples)
 {
     const int value = bitstream->read_signed(bitstream, bits_per_sample);
 
@@ -820,7 +820,7 @@ flac_status
 flacdec_read_verbatim_subframe(BitstreamReader* bitstream,
                                unsigned block_size,
                                unsigned bits_per_sample,
-                               array_i* samples)
+                               a_int* samples)
 {
     unsigned i;
 
@@ -835,11 +835,11 @@ flacdec_read_verbatim_subframe(BitstreamReader* bitstream,
 
 flac_status
 flacdec_read_fixed_subframe(BitstreamReader* bitstream,
-                            array_i* residuals,
+                            a_int* residuals,
                             unsigned order,
                             unsigned block_size,
                             unsigned bits_per_sample,
-                            array_i* samples)
+                            a_int* samples)
 {
     unsigned i;
     flac_status error;
@@ -908,12 +908,12 @@ flacdec_read_fixed_subframe(BitstreamReader* bitstream,
 
 flac_status
 flacdec_read_lpc_subframe(BitstreamReader* bitstream,
-                          array_i* qlp_coeffs,
-                          array_i* residuals,
+                          a_int* qlp_coeffs,
+                          a_int* residuals,
                           unsigned order,
                           unsigned block_size,
                           unsigned bits_per_sample,
-                          array_i* samples)
+                          a_int* samples)
 {
     unsigned i;
     unsigned qlp_precision;
@@ -975,7 +975,7 @@ flac_status
 flacdec_read_residual(BitstreamReader* bitstream,
                       unsigned order,
                       unsigned block_size,
-                      array_i* residuals)
+                      a_int* residuals)
 {
     const unsigned coding_method = bitstream->read(bitstream, 2);
     const unsigned partition_order = bitstream->read(bitstream, 4);
@@ -1051,8 +1051,8 @@ flacdec_read_residual(BitstreamReader* bitstream,
 
 void
 flacdec_decorrelate_channels(unsigned channel_assignment,
-                             const array_ia* subframes,
-                             array_i* framelist) {
+                             const aa_int* subframes,
+                             a_int* framelist) {
     unsigned i,j;
     const unsigned channel_count = subframes->len;
     const unsigned block_size = subframes->_[0]->len;
@@ -1183,13 +1183,13 @@ int main(int argc, char* argv[]) {
     FILE* file;
     BitstreamReader* reader;
     struct flac_STREAMINFO streaminfo;
-    array_o* seektable;
+    a_obj* seektable;
     uint64_t remaining_frames;
 
-    array_i* qlp_coeffs;
-    array_i* residuals;
-    array_ia* subframe_data;
-    array_i* framelist_data;
+    a_int* qlp_coeffs;
+    a_int* residuals;
+    aa_int* subframe_data;
+    a_int* framelist_data;
 
     FrameList_int_to_char_converter converter;
     unsigned char *output_data;
@@ -1212,13 +1212,13 @@ int main(int argc, char* argv[]) {
     } else {
         /*open bitstream and setup temporary arrays/buffers*/
         reader = br_open(file, BS_BIG_ENDIAN);
-        seektable = array_o_new((ARRAY_COPY_FUNC)seekpoint_copy,
-                                free,
-                                NULL);
-        qlp_coeffs = array_i_new();
-        residuals = array_i_new();
-        subframe_data = array_ia_new();
-        framelist_data = array_i_new();
+        seektable = a_obj_new((ARRAY_COPY_FUNC)seekpoint_copy,
+                              free,
+                              NULL);
+        qlp_coeffs = a_int_new();
+        residuals = a_int_new();
+        subframe_data = aa_int_new();
+        framelist_data = a_int_new();
 
         output_data = malloc(1);
         output_data_size = 1;

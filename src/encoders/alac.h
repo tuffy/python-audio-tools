@@ -43,26 +43,26 @@ struct alac_context {
 
     unsigned bits_per_sample;
 
-    array_u* frame_sizes;
+    a_unsigned* frame_sizes;
     unsigned total_pcm_frames;
 
-    array_i* LSBs;
-    array_ia* channels_MSB;
+    a_int* LSBs;
+    aa_int* channels_MSB;
 
-    array_ia* correlated_channels;
-    array_i* qlp_coefficients0;
-    array_i* qlp_coefficients1;
+    aa_int* correlated_channels;
+    a_int* qlp_coefficients0;
+    a_int* qlp_coefficients1;
     BitstreamWriter *residual0;
     BitstreamWriter *residual1;
 
-    array_f* tukey_window;
-    array_f* windowed_signal;
-    array_f* autocorrelation_values;
-    array_fa* lp_coefficients;
-    array_i* qlp_coefficients4;
-    array_i* qlp_coefficients8;
-    array_i* residual_values4;
-    array_i* residual_values8;
+    a_double* tukey_window;
+    a_double* windowed_signal;
+    a_double* autocorrelation_values;
+    aa_double* lp_coefficients;
+    a_int* qlp_coefficients4;
+    a_int* qlp_coefficients8;
+    a_int* residual_values4;
+    a_int* residual_values8;
     BitstreamWriter *residual_block4;
     BitstreamWriter *residual_block8;
 
@@ -97,93 +97,93 @@ PyObject
 static void
 write_frameset(BitstreamWriter *bs,
                struct alac_context* encoder,
-               array_ia* channels);
+               aa_int* channels);
 
 /*write a single ALAC frame, compressed or uncompressed as necessary*/
 static void
 write_frame(BitstreamWriter *bs,
             struct alac_context* encoder,
-            const array_ia* channels);
+            const aa_int* channels);
 
 /*writes a single uncompressed ALAC frame, not including the channel count*/
 static void
 write_uncompressed_frame(BitstreamWriter *bs,
                          struct alac_context* encoder,
-                         const array_ia* channels);
+                         const aa_int* channels);
 
 static void
 write_compressed_frame(BitstreamWriter *bs,
                        struct alac_context* encoder,
-                       const array_ia* channels);
+                       const aa_int* channels);
 
 static void
 write_non_interlaced_frame(BitstreamWriter *bs,
                            struct alac_context* encoder,
                            unsigned uncompressed_LSBs,
-                           const array_i* LSBs,
-                           const array_ia* channels);
+                           const a_int* LSBs,
+                           const aa_int* channels);
 
 static void
-correlate_channels(const array_ia* channels,
+correlate_channels(const aa_int* channels,
                    unsigned interlacing_shift,
                    unsigned interlacing_leftweight,
-                   array_ia* correlated_channels);
+                   aa_int* correlated_channels);
 
 static void
 write_interlaced_frame(BitstreamWriter *bs,
                        struct alac_context* encoder,
                        unsigned uncompressed_LSBs,
-                       const array_i* LSBs,
+                       const a_int* LSBs,
                        unsigned interlacing_shift,
                        unsigned interlacing_leftweight,
-                       const array_ia* channels);
+                       const aa_int* channels);
 
 static void
 compute_coefficients(struct alac_context* encoder,
-                     const array_i* samples,
+                     const a_int* samples,
                      unsigned sample_size,
-                     array_i* qlp_coefficients,
+                     a_int* qlp_coefficients,
                      BitstreamWriter *residual);
 
 /*given a set of integer samples,
   returns a windowed set of floating point samples*/
 static void
 window_signal(struct alac_context* encoder,
-              const array_i* samples,
-              array_f* windowed_signal);
+              const a_int* samples,
+              a_double* windowed_signal);
 
 /*given a set of windowed samples and a maximum LPC order,
   returns a set of autocorrelation values whose length is 9*/
 static void
-autocorrelate(const array_f* windowed_signal,
-              array_f* autocorrelation_values);
+autocorrelate(const a_double* windowed_signal,
+              a_double* autocorrelation_values);
 
 /*given a maximum LPC order of 8
   and set of autocorrelation values whose length is 9
   returns list of LP coefficient lists whose length is max_lpc_order*/
 static void
-compute_lp_coefficients(const array_f* autocorrelation_values,
-                        array_fa* lp_coefficients);
+compute_lp_coefficients(const a_double* autocorrelation_values,
+                        aa_double* lp_coefficients);
 
 static void
-quantize_coefficients(const array_fa* lp_coefficients,
+quantize_coefficients(const aa_double* lp_coefficients,
                       unsigned order,
-                      array_i* qlp_coefficients);
+                      a_int* qlp_coefficients);
 
 static void
 write_subframe_header(BitstreamWriter *bs,
-                      const array_i* qlp_coefficients);
+                      const a_int* qlp_coefficients);
 
 static void
-calculate_residuals(const array_i* samples,
+calculate_residuals(const a_int* samples,
                     unsigned sample_size,
-                    const array_i* qlp_coefficients,
-                    array_i* residuals);
+                    const a_int* qlp_coefficients,
+                    a_int* residuals);
 
 static void
 encode_residuals(struct alac_context* encoder,
                  unsigned sample_size,
-                 const array_i* residuals,
+                 const a_int* residuals,
                  BitstreamWriter *residual_block);
 
 static void

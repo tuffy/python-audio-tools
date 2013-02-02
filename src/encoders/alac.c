@@ -46,7 +46,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     BitstreamWriter *output = NULL;
     pcmreader* pcmreader;
     struct alac_context encoder;
-    array_ia* channels = array_ia_new();
+    aa_int* channels = aa_int_new();
     unsigned frame_byte_size = 0;
     fpos_t header_position;
 
@@ -103,7 +103,7 @@ ALACEncoder_encode_alac(char *filename,
     FILE *output_file;
     BitstreamWriter *output = NULL;
     struct alac_context encoder;
-    array_ia* channels = array_ia_new();
+    aa_int* channels = aa_int_new();
     unsigned frame_byte_size = 0;
     fpos_t header_position;
 
@@ -208,26 +208,26 @@ ALACEncoder_encode_alac(char *filename,
 static void
 init_encoder(struct alac_context* encoder)
 {
-    encoder->frame_sizes = array_u_new();
+    encoder->frame_sizes = a_unsigned_new();
     encoder->total_pcm_frames = 0;
 
-    encoder->LSBs = array_i_new();
-    encoder->channels_MSB = array_ia_new();
+    encoder->LSBs = a_int_new();
+    encoder->channels_MSB = aa_int_new();
 
-    encoder->correlated_channels = array_ia_new();
-    encoder->qlp_coefficients0 = array_i_new();
-    encoder->qlp_coefficients1 = array_i_new();
+    encoder->correlated_channels = aa_int_new();
+    encoder->qlp_coefficients0 = a_int_new();
+    encoder->qlp_coefficients1 = a_int_new();
     encoder->residual0 = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->residual1 = bw_open_recorder(BS_BIG_ENDIAN);
 
-    encoder->tukey_window = array_f_new();
-    encoder->windowed_signal = array_f_new();
-    encoder->autocorrelation_values = array_f_new();
-    encoder->lp_coefficients = array_fa_new();
-    encoder->qlp_coefficients4 = array_i_new();
-    encoder->qlp_coefficients8 = array_i_new();
-    encoder->residual_values4 = array_i_new();
-    encoder->residual_values8 = array_i_new();
+    encoder->tukey_window = a_double_new();
+    encoder->windowed_signal = a_double_new();
+    encoder->autocorrelation_values = a_double_new();
+    encoder->lp_coefficients = aa_double_new();
+    encoder->qlp_coefficients4 = a_int_new();
+    encoder->qlp_coefficients8 = a_int_new();
+    encoder->residual_values4 = a_int_new();
+    encoder->residual_values8 = a_int_new();
     encoder->residual_block4 = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->residual_block8 = bw_open_recorder(BS_BIG_ENDIAN);
 
@@ -266,8 +266,8 @@ free_encoder(struct alac_context* encoder)
     encoder->best_interlaced_frame->close(encoder->best_interlaced_frame);
 }
 
-static inline array_ia*
-extract_1ch(array_ia* frameset, unsigned channel, array_ia* pair)
+static inline aa_int*
+extract_1ch(aa_int* frameset, unsigned channel, aa_int* pair)
 {
     pair->reset(pair);
     frameset->_[channel]->swap(frameset->_[channel],
@@ -275,9 +275,9 @@ extract_1ch(array_ia* frameset, unsigned channel, array_ia* pair)
     return pair;
 }
 
-static inline array_ia*
-extract_2ch(array_ia* frameset, unsigned channel0, unsigned channel1,
-            array_ia* pair)
+static inline aa_int*
+extract_2ch(aa_int* frameset, unsigned channel0, unsigned channel1,
+            aa_int* pair)
 {
     pair->reset(pair);
     frameset->_[channel0]->swap(frameset->_[channel0],
@@ -291,9 +291,9 @@ extract_2ch(array_ia* frameset, unsigned channel0, unsigned channel1,
 static void
 write_frameset(BitstreamWriter *bs,
                struct alac_context* encoder,
-               array_ia* channels)
+               aa_int* channels)
 {
-    array_ia* channel_pair = array_ia_new();
+    aa_int* channel_pair = aa_int_new();
     unsigned i;
 
     switch (channels->len) {
@@ -373,7 +373,7 @@ write_frameset(BitstreamWriter *bs,
 static void
 write_frame(BitstreamWriter *bs,
             struct alac_context* encoder,
-            const array_ia* channels)
+            const aa_int* channels)
 {
     BitstreamWriter *compressed_frame;
 
@@ -402,7 +402,7 @@ write_frame(BitstreamWriter *bs,
 static void
 write_uncompressed_frame(BitstreamWriter *bs,
                          struct alac_context* encoder,
-                         const array_ia* channels)
+                         const aa_int* channels)
 {
     unsigned i;
     unsigned c;
@@ -432,11 +432,11 @@ write_uncompressed_frame(BitstreamWriter *bs,
 static void
 write_compressed_frame(BitstreamWriter *bs,
                        struct alac_context* encoder,
-                       const array_ia* channels)
+                       const aa_int* channels)
 {
     unsigned uncompressed_LSBs;
-    array_i* LSBs;
-    array_ia* channels_MSB;
+    a_int* LSBs;
+    aa_int* channels_MSB;
     unsigned i;
     unsigned c;
     unsigned leftweight;
@@ -541,11 +541,11 @@ static void
 write_non_interlaced_frame(BitstreamWriter *bs,
                            struct alac_context* encoder,
                            unsigned uncompressed_LSBs,
-                           const array_i* LSBs,
-                           const array_ia* channels)
+                           const a_int* LSBs,
+                           const aa_int* channels)
 {
     unsigned i;
-    array_i* qlp_coefficients = encoder->qlp_coefficients0;
+    a_int* qlp_coefficients = encoder->qlp_coefficients0;
     BitstreamWriter* residual = encoder->residual0;
 
     assert(channels->len == 1);
@@ -589,17 +589,17 @@ static void
 write_interlaced_frame(BitstreamWriter *bs,
                        struct alac_context* encoder,
                        unsigned uncompressed_LSBs,
-                       const array_i* LSBs,
+                       const a_int* LSBs,
                        unsigned interlacing_shift,
                        unsigned interlacing_leftweight,
-                       const array_ia* channels)
+                       const aa_int* channels)
 {
     unsigned i;
-    array_i* qlp_coefficients0 = encoder->qlp_coefficients0;
+    a_int* qlp_coefficients0 = encoder->qlp_coefficients0;
     BitstreamWriter* residual0 = encoder->residual0;
-    array_i* qlp_coefficients1 = encoder->qlp_coefficients1;
+    a_int* qlp_coefficients1 = encoder->qlp_coefficients1;
     BitstreamWriter* residual1 = encoder->residual1;
-    array_ia* correlated_channels = encoder->correlated_channels;
+    aa_int* correlated_channels = encoder->correlated_channels;
 
     assert(channels->len == 2);
     bw_reset_recorder(residual0);
@@ -654,15 +654,15 @@ write_interlaced_frame(BitstreamWriter *bs,
 }
 
 static void
-correlate_channels(const array_ia* channels,
+correlate_channels(const aa_int* channels,
                    unsigned interlacing_shift,
                    unsigned interlacing_leftweight,
-                   array_ia* correlated_channels)
+                   aa_int* correlated_channels)
 {
-    array_i* channel0;
-    array_i* channel1;
-    array_i* correlated0;
-    array_i* correlated1;
+    a_int* channel0;
+    a_int* channel1;
+    a_int* correlated0;
+    a_int* correlated1;
     unsigned frame_count;
 
     assert(channels->len == 2);
@@ -696,18 +696,18 @@ correlate_channels(const array_ia* channels,
 
 static void
 compute_coefficients(struct alac_context* encoder,
-                     const array_i* samples,
+                     const a_int* samples,
                      unsigned sample_size,
-                     array_i* qlp_coefficients,
+                     a_int* qlp_coefficients,
                      BitstreamWriter *residual)
 {
-    array_f* windowed_signal = encoder->windowed_signal;
-    array_f* autocorrelation_values = encoder->autocorrelation_values;
-    array_fa* lp_coefficients = encoder->lp_coefficients;
-    array_i* qlp_coefficients4 = encoder->qlp_coefficients4;
-    array_i* qlp_coefficients8 = encoder->qlp_coefficients8;
-    array_i* residual_values4 = encoder->residual_values4;
-    array_i* residual_values8 = encoder->residual_values8;
+    a_double* windowed_signal = encoder->windowed_signal;
+    a_double* autocorrelation_values = encoder->autocorrelation_values;
+    aa_double* lp_coefficients = encoder->lp_coefficients;
+    a_int* qlp_coefficients4 = encoder->qlp_coefficients4;
+    a_int* qlp_coefficients8 = encoder->qlp_coefficients8;
+    a_int* residual_values4 = encoder->residual_values4;
+    a_int* residual_values8 = encoder->residual_values8;
     BitstreamWriter *residual_block4 = encoder->residual_block4;
     BitstreamWriter *residual_block8 = encoder->residual_block8;
 
@@ -777,10 +777,10 @@ compute_coefficients(struct alac_context* encoder,
 
 static void
 window_signal(struct alac_context* encoder,
-              const array_i* samples,
-              array_f* windowed_signal)
+              const a_int* samples,
+              a_double* windowed_signal)
 {
-    array_f* tukey_window = encoder->tukey_window;
+    a_double* tukey_window = encoder->tukey_window;
     const unsigned N = samples->len;
     unsigned n;
 
@@ -816,8 +816,8 @@ window_signal(struct alac_context* encoder,
 }
 
 static void
-autocorrelate(const array_f* windowed_signal,
-              array_f* autocorrelation_values)
+autocorrelate(const a_double* windowed_signal,
+              a_double* autocorrelation_values)
 {
     unsigned lag;
 
@@ -836,14 +836,14 @@ autocorrelate(const array_f* windowed_signal,
 }
 
 static void
-compute_lp_coefficients(const array_f* autocorrelation_values,
-                        array_fa* lp_coefficients)
+compute_lp_coefficients(const a_double* autocorrelation_values,
+                        aa_double* lp_coefficients)
 {
     unsigned i;
-    array_f* lp_coeff;
+    a_double* lp_coeff;
     double k;
     /*no exceptions occur here, so it's okay to allocate temp space*/
-    array_f* lp_error = array_f_new();
+    a_double* lp_error = a_double_new();
 
     assert(autocorrelation_values->len == (MAX_LPC_ORDER + 1));
 
@@ -881,11 +881,11 @@ compute_lp_coefficients(const array_f* autocorrelation_values,
 }
 
 static void
-quantize_coefficients(const array_fa* lp_coefficients,
+quantize_coefficients(const aa_double* lp_coefficients,
                       unsigned order,
-                      array_i* qlp_coefficients)
+                      a_int* qlp_coefficients)
 {
-    array_f* lp_coeffs = lp_coefficients->_[order - 1];
+    a_double* lp_coeffs = lp_coefficients->_[order - 1];
     const int qlp_max = (1 << 15) - 1;
     const int qlp_min = -(1 << 15);
     double error = 0.0;
@@ -930,15 +930,15 @@ TRUNCATE_BITS(int value, unsigned bits)
 }
 
 static void
-calculate_residuals(const array_i* samples,
+calculate_residuals(const a_int* samples,
                     unsigned sample_size,
-                    const array_i* qlp_coefficients,
-                    array_i* residuals)
+                    const a_int* qlp_coefficients,
+                    a_int* residuals)
 {
     unsigned i = 0;
 
     /*no exceptions occur here either, so temporary array is safe*/
-    array_i* coefficients = array_i_new();
+    a_int* coefficients = a_int_new();
     const unsigned coeff_count = qlp_coefficients->len;
 
     qlp_coefficients->copy(qlp_coefficients, coefficients);
@@ -1020,7 +1020,7 @@ LOG2(unsigned value)
 static void
 encode_residuals(struct alac_context* encoder,
                  unsigned sample_size,
-                 const array_i* residuals,
+                 const a_int* residuals,
                  BitstreamWriter *residual_block)
 {
     int history = (int)encoder->options.initial_history;
@@ -1102,7 +1102,7 @@ write_residual(unsigned value, unsigned k, unsigned sample_size,
 
 static void
 write_subframe_header(BitstreamWriter *bs,
-                      const array_i* qlp_coefficients)
+                      const a_int* qlp_coefficients)
 {
     unsigned i;
 

@@ -185,11 +185,11 @@ encode_audio(BitstreamWriter* bs,
     int sign_adjustment;
 
     /*allocate some temporary buffers*/
-    array_ia* frame = array_ia_new();
-    array_ia* wrapped_samples = array_ia_new();
-    array_i* shifted = array_i_new();
-    array_ia* deltas = array_ia_new();
-    array_i* residuals = array_i_new();
+    aa_int* frame = aa_int_new();
+    aa_int* wrapped_samples = aa_int_new();
+    a_int* shifted = a_int_new();
+    aa_int* deltas = aa_int_new();
+    a_int* residuals = a_int_new();
     unsigned c;
     unsigned i;
 
@@ -218,8 +218,8 @@ encode_audio(BitstreamWriter* bs,
         }
 
         for (c = 0; c < frame->len; c++) {
-            array_i* channel = frame->_[c];
-            array_i* wrapped = wrapped_samples->_[c];
+            a_int* channel = frame->_[c];
+            a_int* wrapped = wrapped_samples->_[c];
 
             /*convert signed samples to unsigned, if necessary*/
             if (sign_adjustment != 0)
@@ -294,7 +294,7 @@ encode_audio(BitstreamWriter* bs,
 }
 
 static int
-all_zero(const array_i* samples)
+all_zero(const a_int* samples)
 {
     unsigned i;
     for (i = 0; i < samples->len; i++)
@@ -304,7 +304,7 @@ all_zero(const array_i* samples)
 }
 
 static int
-wasted_bits(const array_i* samples)
+wasted_bits(const a_int* samples)
 {
     unsigned i;
     unsigned wasted_bits_per_sample = INT_MAX;
@@ -332,16 +332,16 @@ wasted_bits(const array_i* samples)
 }
 
 static void
-calculate_best_diff(const array_i* samples,
-                    const array_i* prev_samples,
-                    array_ia* deltas,
+calculate_best_diff(const a_int* samples,
+                    const a_int* prev_samples,
+                    aa_int* deltas,
                     unsigned* diff,
                     unsigned* energy,
-                    array_i* residuals)
+                    a_int* residuals)
 {
-    array_i* delta1;
-    array_i* delta2;
-    array_i* delta3;
+    a_int* delta1;
+    a_int* delta2;
+    a_int* delta3;
     unsigned sum1 = 0;
     unsigned sum2 = 0;
     unsigned sum3 = 0;

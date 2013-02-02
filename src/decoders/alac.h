@@ -30,7 +30,7 @@ struct alac_subframe_header {
     unsigned prediction_type;
     unsigned qlp_shift_needed;
     unsigned rice_modifier;
-    array_i* qlp_coeff;
+    a_int* qlp_coeff;
 };
 
 struct alac_stts {
@@ -73,12 +73,12 @@ typedef struct {
     unsigned int maximum_k;
 
     /*a compiled seektable from the three seektable atoms*/
-    array_o* seektable;
+    a_obj* seektable;
 
-    array_ia* frameset_channels;
-    array_ia* frame_channels;
-    array_i* uncompressed_LSBs;
-    array_i* residuals;
+    aa_int* frameset_channels;
+    aa_int* frame_channels;
+    a_int* uncompressed_LSBs;
+    a_int* residuals;
     struct alac_subframe_header subframe_headers[MAX_CHANNELS];
 
 #ifndef STANDALONE
@@ -221,7 +221,7 @@ seek_mdat(BitstreamReader* alac_stream);
 /*swaps the ALAC-ordered set of channels to Wave order,
   depending on the number of ALAC-ordered channels*/
 static void
-alac_order_to_wave_order(array_ia* alac_ordered);
+alac_order_to_wave_order(aa_int* alac_ordered);
 
 /*appends 1 or 2 channels worth of data from the current bitstream
   to the "samples" arrays
@@ -230,7 +230,7 @@ alac_order_to_wave_order(array_ia* alac_ordered);
 static status
 read_frame(decoders_ALACDecoder *self,
            BitstreamReader *mdat,
-           array_ia* frameset_channels,
+           aa_int* frameset_channels,
            unsigned channel_count);
 
 /*reads "subframe header" from the current bitstream*/
@@ -241,7 +241,7 @@ read_subframe_header(BitstreamReader *bs,
 /*reads a block of residuals from the current bitstream*/
 static void
 read_residuals(BitstreamReader *bs,
-               array_i* residuals,
+               a_int* residuals,
                unsigned int residual_count,
                unsigned int sample_size,
                unsigned int initial_history,
@@ -257,16 +257,16 @@ read_residual(BitstreamReader *bs,
 /*decodes the given residuals, QLP coefficient values and shift needed
   to the given samples*/
 static void
-decode_subframe(array_i* samples,
+decode_subframe(a_int* samples,
                 unsigned sample_size,
-                array_i* residuals,
-                array_i* qlp_coeff,
+                a_int* residuals,
+                a_int* qlp_coeff,
                 uint8_t qlp_shift_needed);
 
 /*decorrelates 2 channels, in-place*/
 static void
-decorrelate_channels(array_i* left,
-                     array_i* right,
+decorrelate_channels(a_int* left,
+                     a_int* right,
                      unsigned interlacing_shift,
                      unsigned interlacing_leftweight);
 
@@ -314,7 +314,7 @@ alac_stts_print(struct alac_stts* stts, FILE* output);
 /*reads a list of alac_stts structs from the "stts" atom
   to "block_sizes"*/
 static status
-read_stts_atom(BitstreamReader* stts_atom, array_o* block_sizes);
+read_stts_atom(BitstreamReader* stts_atom, a_obj* block_sizes);
 
 static struct alac_stsc*
 alac_stsc_copy(struct alac_stsc* stsc);
@@ -325,12 +325,12 @@ alac_stsc_print(struct alac_stsc* stsc, FILE* output);
 /*reads a list of alac_stsc structs from the "stsc" atom
   to "chunk_sizes"*/
 static status
-read_stsc_atom(BitstreamReader* stsc_atom, array_o* chunk_sizes);
+read_stsc_atom(BitstreamReader* stsc_atom, a_obj* chunk_sizes);
 
 /*reads a list of chunk offsets from the "stco" atom
   to "chunk_offsets"*/
 static status
-read_stco_atom(BitstreamReader* stco_atom, array_u* chunk_offsets);
+read_stco_atom(BitstreamReader* stco_atom, a_unsigned* chunk_offsets);
 
 static struct alac_seektable*
 alac_seektable_copy(struct alac_seektable *entry);
@@ -339,7 +339,7 @@ static void
 alac_seektable_print(struct alac_seektable *entry, FILE *output);
 
 static status
-populate_seektable(array_o* block_sizes,
-                   array_o* chunk_sizes,
-                   array_u* chunk_offsets,
-                   array_o* seektable);
+populate_seektable(a_obj* block_sizes,
+                   a_obj* chunk_sizes,
+                   a_unsigned* chunk_offsets,
+                   a_obj* seektable);

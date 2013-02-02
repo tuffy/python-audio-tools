@@ -36,17 +36,17 @@ ALACDecoder_init(decoders_ALACDecoder *self,
     self->bitstream = NULL;
     self->audiotools_pcm = NULL;
 
-    self->seektable = array_o_new((ARRAY_COPY_FUNC)alac_seektable_copy,
-                                  free,
-                                  (ARRAY_PRINT_FUNC)alac_seektable_print);
+    self->seektable = a_obj_new((ARRAY_COPY_FUNC)alac_seektable_copy,
+                                free,
+                                (ARRAY_PRINT_FUNC)alac_seektable_print);
 
-    self->frameset_channels = array_ia_new();
-    self->frame_channels = array_ia_new();
-    self->uncompressed_LSBs = array_i_new();
-    self->residuals = array_i_new();
+    self->frameset_channels = aa_int_new();
+    self->frame_channels = aa_int_new();
+    self->uncompressed_LSBs = a_int_new();
+    self->residuals = a_int_new();
 
     for (i = 0; i < MAX_CHANNELS; i++) {
-        self->subframe_headers[i].qlp_coeff = array_i_new();
+        self->subframe_headers[i].qlp_coeff = a_int_new();
     }
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "s", kwlist, &filename))
@@ -184,7 +184,7 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
 {
     unsigned channel_count;
     BitstreamReader* mdat = self->bitstream;
-    array_ia* frameset_channels = self->frameset_channels;
+    aa_int* frameset_channels = self->frameset_channels;
     PyThreadState *thread_state;
 
     if (self->closed) {
@@ -242,9 +242,9 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
         alac_order_to_wave_order(frameset_channels);
 
         /*finally, build and return framelist object from the sample data*/
-        return array_ia_to_FrameList(self->audiotools_pcm,
-                                     frameset_channels,
-                                     self->bits_per_sample);
+        return aa_int_to_FrameList(self->audiotools_pcm,
+                                   frameset_channels,
+                                   self->bits_per_sample);
     } else {
         br_etry(mdat);
         PyEval_RestoreThread(thread_state);
@@ -341,17 +341,17 @@ ALACDecoder_init(decoders_ALACDecoder *self, char *filename)
     unsigned i;
     status status;
 
-    self->seektable = array_o_new((ARRAY_COPY_FUNC)alac_seektable_copy,
-                                  free,
-                                  (ARRAY_PRINT_FUNC)alac_seektable_print);
+    self->seektable = a_obj_new((ARRAY_COPY_FUNC)alac_seektable_copy,
+                                free,
+                                (ARRAY_PRINT_FUNC)alac_seektable_print);
 
-    self->frameset_channels = array_ia_new();
-    self->frame_channels = array_ia_new();
-    self->uncompressed_LSBs = array_i_new();
-    self->residuals = array_i_new();
+    self->frameset_channels = aa_int_new();
+    self->frame_channels = aa_int_new();
+    self->uncompressed_LSBs = a_int_new();
+    self->residuals = a_int_new();
 
     for (i = 0; i < MAX_CHANNELS; i++) {
-        self->subframe_headers[i].qlp_coeff = array_i_new();
+        self->subframe_headers[i].qlp_coeff = a_int_new();
     }
 
     if ((self->file = fopen(filename, "rb")) == NULL) {
@@ -440,13 +440,13 @@ parse_decoding_parameters(decoders_ALACDecoder *self)
 {
     BitstreamReader* mdia_atom = br_substream_new(BS_BIG_ENDIAN);
     BitstreamReader* atom = br_substream_new(BS_BIG_ENDIAN);
-    array_o* block_sizes = array_o_new((ARRAY_COPY_FUNC)alac_stts_copy,
-                                       free,
-                                       (ARRAY_PRINT_FUNC)alac_stts_print);
-    array_o* chunk_sizes = array_o_new((ARRAY_COPY_FUNC)alac_stsc_copy,
-                                       free,
-                                       (ARRAY_PRINT_FUNC)alac_stsc_print);
-    array_u* chunk_offsets = array_u_new();
+    a_obj* block_sizes = a_obj_new((ARRAY_COPY_FUNC)alac_stts_copy,
+                                   free,
+                                   (ARRAY_PRINT_FUNC)alac_stts_print);
+    a_obj* chunk_sizes = a_obj_new((ARRAY_COPY_FUNC)alac_stsc_copy,
+                                   free,
+                                   (ARRAY_PRINT_FUNC)alac_stsc_print);
+    a_unsigned* chunk_offsets = a_unsigned_new();
     unsigned mdia_atom_size;
     unsigned atom_size;
     int stts_found;
@@ -564,16 +564,16 @@ error:
 }
 
 static status
-populate_seektable(array_o* block_sizes,
-                   array_o* chunk_sizes,
-                   array_u* chunk_offsets,
-                   array_o* seektable)
+populate_seektable(a_obj* block_sizes,
+                   a_obj* chunk_sizes,
+                   a_unsigned* chunk_offsets,
+                   a_obj* seektable)
 {
     unsigned i;
-    array_u* frame_sizes = array_u_new();
-    array_lu* frame_sizes_l = array_lu_new();
-    array_lu* chunk_frames = array_lu_new();
-    array_u* chunk_lengths = array_u_new();
+    a_unsigned* frame_sizes = a_unsigned_new();
+    l_unsigned* frame_sizes_l = l_unsigned_new();
+    l_unsigned* chunk_frames = l_unsigned_new();
+    a_unsigned* chunk_lengths = a_unsigned_new();
     unsigned pcm_frames_offset = 0;
     status status = OK;
 
@@ -707,10 +707,10 @@ alac_stsc_print(struct alac_stsc* stsc, FILE* output)
 
 
 static void
-alac_order_to_wave_order(array_ia* alac_ordered)
+alac_order_to_wave_order(aa_int* alac_ordered)
 {
-    array_ia* wave_ordered = array_ia_new();
-    array_i* wave_ch;
+    aa_int* wave_ordered = aa_int_new();
+    a_int* wave_ch;
     unsigned i;
     wave_ordered->resize(wave_ordered, alac_ordered->len);
 
@@ -818,7 +818,7 @@ alac_order_to_wave_order(array_ia* alac_ordered)
 static status
 read_frame(decoders_ALACDecoder *self,
            BitstreamReader* mdat,
-           array_ia* frameset_channels,
+           aa_int* frameset_channels,
            unsigned channel_count)
 {
     unsigned has_sample_count;
@@ -841,7 +841,7 @@ read_frame(decoders_ALACDecoder *self,
     if (not_compressed == 1) {
         unsigned channel;
         unsigned i;
-        array_ia* frame_channels = self->frame_channels;
+        aa_int* frame_channels = self->frame_channels;
 
         /*if uncompressed, read and return a bunch of verbatim samples*/
 
@@ -869,9 +869,9 @@ read_frame(decoders_ALACDecoder *self,
         unsigned channel;
         unsigned i;
         unsigned sample_size;
-        array_i* LSBs = NULL;
+        a_int* LSBs = NULL;
 
-        array_ia* frame_channels = self->frame_channels;
+        aa_int* frame_channels = self->frame_channels;
 
         frame_channels->reset(frame_channels);
 
@@ -900,7 +900,7 @@ read_frame(decoders_ALACDecoder *self,
         /*read a residual block per channel
           and calculate the subframe's samples*/
         for (channel = 0; channel < channel_count; channel++) {
-            array_i* residuals = self->residuals;
+            a_int* residuals = self->residuals;
             residuals->reset(residuals);
             read_residuals(mdat,
                            residuals,
@@ -930,7 +930,7 @@ read_frame(decoders_ALACDecoder *self,
         /*if uncompressed LSBs, prepend partial samples to output*/
         if (uncompressed_LSBs > 0) {
             for (channel = 0; channel < channel_count; channel++) {
-                array_i* channel_data = frame_channels->_[channel];
+                a_int* channel_data = frame_channels->_[channel];
                 for (i = 0; i < sample_count; i++) {
                     channel_data->_[i] = ((channel_data->_[i] <<
                                            uncompressed_LSBs * 8) |
@@ -1016,7 +1016,7 @@ LOG2(int value)
 
 static void
 read_residuals(BitstreamReader *bs,
-               array_i* residuals,
+               a_int* residuals,
                unsigned int residual_count,
                unsigned int sample_size,
                unsigned int initial_history,
@@ -1145,10 +1145,10 @@ TRUNCATE_BITS(int value, unsigned bits)
 }
 
 static void
-decode_subframe(array_i* samples,
+decode_subframe(a_int* samples,
                 unsigned sample_size,
-                array_i* residuals,
-                array_i* qlp_coeff,
+                a_int* residuals,
+                a_int* qlp_coeff,
                 uint8_t qlp_shift_needed)
 {
     int* residuals_data = residuals->_;
@@ -1235,8 +1235,8 @@ decode_subframe(array_i* samples,
 }
 
 void
-decorrelate_channels(array_i* left,
-                     array_i* right,
+decorrelate_channels(a_int* left,
+                     a_int* right,
                      unsigned interlacing_shift,
                      unsigned interlacing_leftweight)
 {
@@ -1418,7 +1418,7 @@ read_mdhd_atom(BitstreamReader* mdhd_atom,
 }
 
 static status
-read_stts_atom(BitstreamReader* stts_atom, array_o* block_sizes)
+read_stts_atom(BitstreamReader* stts_atom, a_obj* block_sizes)
 {
     if (!setjmp(*br_try(stts_atom))) {
         unsigned times;
@@ -1440,7 +1440,7 @@ read_stts_atom(BitstreamReader* stts_atom, array_o* block_sizes)
 }
 
 static status
-read_stsc_atom(BitstreamReader* stsc_atom, array_o* chunk_sizes)
+read_stsc_atom(BitstreamReader* stsc_atom, a_obj* chunk_sizes)
 {
     if (!setjmp(*br_try(stsc_atom))) {
         unsigned entries;
@@ -1463,7 +1463,7 @@ read_stsc_atom(BitstreamReader* stsc_atom, array_o* chunk_sizes)
 }
 
 static status
-read_stco_atom(BitstreamReader* stco_atom, array_u* chunk_offsets)
+read_stco_atom(BitstreamReader* stco_atom, a_unsigned* chunk_offsets)
 {
     if (!setjmp(*br_try(stco_atom))) {
         unsigned offsets;
@@ -1503,7 +1503,7 @@ int main(int argc, char* argv[]) {
     decoders_ALACDecoder decoder;
     unsigned channel_count;
     BitstreamReader* mdat;
-    array_ia* frameset_channels;
+    aa_int* frameset_channels;
     unsigned frame;
     unsigned channel;
     unsigned bytes_per_sample;
@@ -1580,7 +1580,7 @@ int main(int argc, char* argv[]) {
                 output_data = realloc(output_data, output_data_size);
             }
             for (channel = 0; channel < frameset_channels->len; channel++) {
-                const array_i* channel_data = frameset_channels->_[channel];
+                const a_int* channel_data = frameset_channels->_[channel];
                 for (frame = 0; frame < channel_data->len; frame++) {
                     converter(channel_data->_[frame],
                               output_data +

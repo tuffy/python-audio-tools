@@ -25,8 +25,8 @@ typedef struct {
     PyObject_HEAD
 
     struct pcmreader_s* pcmreader;
-    array_ia* input_channels;
-    array_i* output_channel;
+    aa_int* input_channels;
+    a_int* output_channel;
     PyObject* audiotools_pcm;
 } pcmconverter_Averager;
 
@@ -118,10 +118,10 @@ typedef struct {
     PyObject_HEAD
 
     struct pcmreader_s* pcmreader;
-    array_ia* input_channels;
-    array_i* empty_channel;
-    array_lia* six_channels;
-    array_ia* output_channels;
+    aa_int* input_channels;
+    a_int* empty_channel;
+    al_int* six_channels;
+    aa_int* output_channels;
     PyObject* audiotools_pcm;
 } pcmconverter_Downmixer;
 
@@ -212,12 +212,12 @@ typedef struct {
     PyObject_HEAD
 
     struct pcmreader_s* pcmreader;
-    array_ia* input_channels;
+    aa_int* input_channels;
     SRC_STATE *src_state;
     double ratio;
     unsigned unprocessed_frame_count;
-    array_f* unprocessed_samples;
-    array_i* processed_samples;
+    a_double* unprocessed_samples;
+    a_int* processed_samples;
     int sample_rate;
     PyObject* audiotools_pcm;
 } pcmconverter_Resampler;
@@ -310,8 +310,8 @@ typedef struct {
 
     struct pcmreader_s* pcmreader;
     int bits_per_sample;
-    array_ia* input_channels;
-    array_ia* output_channels;
+    aa_int* input_channels;
+    aa_int* output_channels;
     BitstreamReader* white_noise;
     PyObject* audiotools_pcm;
 } pcmconverter_BPSConverter;

@@ -6401,6 +6401,95 @@
 **** DONE decoders.TTADecoder
 **** DONE decoders.WavPackDecoder
 *** DONE Add unit tests
+** DONE Swap array types for something easier to comprehend
+   array_i/array_f/array_u is more opaque than it should be
+*** DONE array_i         -> a_int
+*** DONE array_i_new()   -> a_int_new()
+    - [X] decoders/alac.h/.c
+    - [X] decoders/flac.h/.c
+    - [X] decoders/mlp.h/.c
+    - [X] decoders/oggflac.h/.c
+    - [X] decoders/shn.h/.c
+    - [X] decoders/tta.h/.c
+    - [X] decoders/wavpack.h/.c
+    - [X] encoders/alac.h/.c
+    - [X] encoders/flac.h/.c
+    - [X] encoders/shn.h/.c
+    - [X] encoders/tta.h/.c
+    - [X] encoders/wavpack.h/.c
+    - [X] pcmconverter.h/.c
+*** DONE array_ia        -> aa_int
+*** DONE array_ia_new()  -> aa_int_new()
+    - [X] decoders/alac.h/.c
+    - [X] decoders/aob.h/.c
+    - [X] decoders/flac.h/.c
+    - [X] decoders/mlp.h/.c
+    - [X] decoders/oggflac.h/.c
+    - [X] decoders/shn.h/.c
+    - [X] decoders/sine.h/.c
+    - [X] decoders/tta.h/.c
+    - [X] decoders/wavpack.h/.c
+    - [X] encoders/alac.h/.c
+    - [X] encoders/flac.h/.c
+    - [X] encoders/shn.h/.c
+    - [X] encoders/tta.h/.c
+    - [X] encoders/wavpack.h/.c
+    - [X] pcmconverter.h/.c
+    - [X] replaygain.h/.c
+*** DONE array_li        -> l_int
+*** DONE array_li_new()  -> l_int_new()
+    - [X] encoders/flac.h/.c
+*** DONE array_lia       -> al_int
+*** DONE array_lia_new() -> al_int_new()
+    - [X] encoders/flac.h/.c
+    - [X] pcmconverter.h/.c
+*** DONE array_u         -> l_unsigned
+*** DONE array_u_new     -> l_unsigned_new()
+    - [X] decoders/alac.c
+    - [X] encoders/alac.c
+*** DONE array_lf        -> l_double
+*** DONE array_lu        -> l_unsigned
+*** DONE array_lu_new()  -> l_unsigned_new()
+    - [X] decoders/alac.h/.c
+*** DONE array_lfa       -> al_double
+*** DONE array_lfa_new() -> al_double_new()
+*** DONE array_iaa       -> aaa_int
+*** DONE array_iaa_new() -> aaa_int_new()
+    - [X] encoders/wavpack.h/.c
+    - [X] decoders/wavpach.h/.c
+*** DONE array_f         -> a_double
+*** DONE array_f_new()   -> a_double_new()
+    - [X] pcmconverter.h/.c
+    - [X] encoders/alac.h/.c
+    - [X] encoders/flac.h/.c
+*** DONE array_fa        -> aa_double
+*** DONE array_fa_new()  -> aa_double_new()
+    - [X] replaygain.h/.c
+    - [X] encoders/alac.h/.c
+    - [X] encoders/flac.h/.c
+*** DONE array_faa       -> aaa_double
+*** DONE array_faa_new() -> aaa_double_new()
+*** DONE array_o         -> a_obj
+*** DONE array_o_new()   -> a_obj_new()
+    - [X] decoders/alac.h/.c
+    - [X] decoders/aob.h/.c
+    - [X] decoders/flac.h/.c
+    - [X] encoders/wavpack.h/.c
+*** DONE array_i_to_FrameList  -> a_int_to_FrameList
+    - [X] decoders/flac.c
+    - [X] decoders/oggflac.c
+    - [X] pcmconv.c
+    - [X] pcmconverter.c
+*** DONE array_ia_to_FrameList -> aa_int_to_FrameList
+    - [X] decoders/alac.c
+    - [X] decoders/aob.c
+    - [X] decoders/shn.c
+    - [X] decoders/sine.c
+    - [X] decoders/tta.c
+    - [X] decoders/wavpack.c
+    - [X] pcmconv.c
+    - [X] pcmconverter.c
+    - [X] replaygain.c
 ** TODO Add internal True Audio codec
 *** DONE Add Python-based True Audio decoder
 *** DONE Add Python-based True Audio encoder

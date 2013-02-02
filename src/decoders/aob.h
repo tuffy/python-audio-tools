@@ -68,10 +68,10 @@ typedef struct {
     MLPDecoder* mlp_decoder;
 
     /*a FrameList to be appended to by the PCM or MLP decoder*/
-    array_ia* codec_framelist;
+    aa_int* codec_framelist;
 
     /*a FrameList to be returned by calls to read()*/
-    array_ia* output_framelist;
+    aa_int* output_framelist;
 
 #ifndef STANDALONE
     /*a FrameList generator*/
@@ -213,7 +213,7 @@ free_aob(DVDA_AOB* aob);
   and this reader will automatically determine which AOB file
   to place the file cursor*/
 typedef struct DVDA_Sector_Reader_s {
-    array_o* aobs;          /*all the AOB files on the disc, in order*/
+    a_obj* aobs;          /*all the AOB files on the disc, in order*/
     struct {
         unsigned sector;
         DVDA_AOB* aob;

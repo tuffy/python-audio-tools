@@ -64,34 +64,34 @@ struct flac_context {
     struct flac_STREAMINFO streaminfo;
     unsigned int total_flac_frames;
 
-    array_i* average_samples;
-    array_i* difference_samples;
+    a_int* average_samples;
+    a_int* difference_samples;
     BitstreamWriter* left_subframe;
     BitstreamWriter* right_subframe;
     BitstreamWriter* average_subframe;
     BitstreamWriter* difference_subframe;
 
-    array_i* subframe_samples;
+    a_int* subframe_samples;
 
     BitstreamWriter* frame;
     BitstreamWriter* fixed_subframe;
-    array_ia* fixed_subframe_orders;
-    array_li* truncated_order;
+    aa_int* fixed_subframe_orders;
+    l_int* truncated_order;
 
     BitstreamWriter* lpc_subframe;
-    array_f* tukey_window;
-    array_f* windowed_signal;
-    array_f* autocorrelation_values;
-    array_fa* lp_coefficients;
-    array_f* lp_error;
-    array_i* qlp_coefficients;
-    array_i* lpc_residual;
+    a_double* tukey_window;
+    a_double* windowed_signal;
+    a_double* autocorrelation_values;
+    aa_double* lp_coefficients;
+    a_double* lp_error;
+    a_int* qlp_coefficients;
+    a_int* lpc_residual;
 
-    array_i* rice_parameters;
-    array_i* best_rice_parameters;
-    array_lia* residual_partitions;
-    array_lia* best_residual_partitions;
-    array_li* remaining_residuals;
+    a_int* rice_parameters;
+    a_int* best_rice_parameters;
+    al_int* residual_partitions;
+    al_int* best_residual_partitions;
+    l_int* remaining_residuals;
 };
 
 typedef enum {FLAC_SUBFRAME_CONSTANT,
@@ -128,7 +128,7 @@ flacenc_write_streaminfo(BitstreamWriter* bs,
 void
 flacenc_write_frame(BitstreamWriter* bs,
                     struct flac_context* encoder,
-                    const array_ia* samples);
+                    const aa_int* samples);
 
 /*takes a list of samples and the subframe's bits-per-sample
   (which may differ from the frame's bits-per-sample)
@@ -138,7 +138,7 @@ void
 flacenc_write_subframe(BitstreamWriter* bs,
                        struct flac_context* encoder,
                        unsigned bits_per_sample,
-                       const array_i* samples);
+                       const a_int* samples);
 
 /*writes a UTF-8 value to the bitstream*/
 void
@@ -150,14 +150,14 @@ md5_update(void *data, unsigned char *buffer, unsigned long len);
 
 /*determines the number of wasted bits in the given set of samples*/
 unsigned
-flacenc_max_wasted_bits_per_sample(const array_i* samples);
+flacenc_max_wasted_bits_per_sample(const a_int* samples);
 
 /*calculates the average/difference samples from
   a two channel set of samples*/
 void
-flacenc_average_difference(const array_ia* samples,
-                           array_i* average,
-                           array_i* difference);
+flacenc_average_difference(const aa_int* samples,
+                           a_int* average,
+                           a_int* difference);
 
 /*writes a FLAC frame header with the given attributes
   to the given BitstreamWriter*/
@@ -182,7 +182,7 @@ void
 flacenc_write_verbatim_subframe(BitstreamWriter *bs,
                                 unsigned bits_per_sample,
                                 unsigned wasted_bits_per_sample,
-                                const array_i* samples);
+                                const a_int* samples);
 
 /*determines the best FIXED subframe order from the given samples
   and writes that subframe to the given BitstreamWriter*/
@@ -191,13 +191,13 @@ flacenc_write_fixed_subframe(BitstreamWriter* bs,
                              struct flac_context* encoder,
                              unsigned bits_per_sample,
                              unsigned wasted_bits_per_sample,
-                             const array_i* samples);
+                             const a_int* samples);
 
 /*a helper function for write_fixed_subframe
   which, given the residuals of one FIXED subframe order
   determines the residuals of the next order*/
 void
-flacenc_next_fixed_order(const array_i* order, array_i* next_order);
+flacenc_next_fixed_order(const a_int* order, a_int* next_order);
 
 /*determines the best LPC subframe coefficients
   given a set of samples and encoding parameters
@@ -207,7 +207,7 @@ flacenc_write_lpc_subframe(BitstreamWriter* bs,
                            struct flac_context* encoder,
                            unsigned bits_per_sample,
                            unsigned wasted_bits_per_sample,
-                           const array_i* samples);
+                           const a_int* samples);
 
 /*given a set of samples and encoding parameters,
   determines the best QLP coefficients/precision/shift-needed
@@ -216,9 +216,9 @@ void
 flacenc_best_lpc_coefficients(struct flac_context* encoder,
                               unsigned bits_per_sample,
                               unsigned wasted_bits_per_sample,
-                              const array_i* samples,
+                              const a_int* samples,
 
-                              array_i* qlp_coefficients,
+                              a_int* qlp_coefficients,
                               unsigned* qlp_precision,
                               int* qlp_shift_needed);
 
@@ -232,22 +232,22 @@ flacenc_encode_lpc_subframe(BitstreamWriter* bs,
                             unsigned wasted_bits_per_sample,
                             unsigned qlp_precision,
                             unsigned qlp_shift_needed,
-                            const array_i* qlp_coefficients,
-                            const array_i* samples);
+                            const a_int* qlp_coefficients,
+                            const a_int* samples);
 
 /*given a set of integer samples,
   returns a windowed set of floating point samples*/
 void
 flacenc_window_signal(struct flac_context* encoder,
-                      const array_i* samples,
-                      array_f* windowed_signal);
+                      const a_int* samples,
+                      a_double* windowed_signal);
 
 /*given a set of windowed samples and a maximum LPC order,
   returns a set of autocorrelation values whose length is max_lpc_order + 1*/
 void
 flacenc_autocorrelate(unsigned max_lpc_order,
-                      const array_f* windowed_signal,
-                      array_f* autocorrelation_values);
+                      const a_double* windowed_signal,
+                      a_double* autocorrelation_values);
 
 /*given a maximum LPC order
   and set of autocorrelation values whose length is max_lpc_order + 1
@@ -255,9 +255,9 @@ flacenc_autocorrelate(unsigned max_lpc_order,
   and a list of error values whose length is also max_lpc_order*/
 void
 flacenc_compute_lp_coefficients(unsigned max_lpc_order,
-                                const array_f* autocorrelation_values,
-                                array_fa* lp_coefficients,
-                                array_f* lp_error);
+                                const a_double* autocorrelation_values,
+                                aa_double* lp_coefficients,
+                                a_double* lp_error);
 
 /*given a set of error values and a number of encoding parameters
   returns the best estimated LPC order value to use to encode those samples*/
@@ -266,18 +266,18 @@ flacenc_estimate_best_lpc_order(unsigned bits_per_sample,
                                 unsigned qlp_precision,
                                 unsigned max_lpc_order,
                                 unsigned block_size,
-                                const array_f* lp_error);
+                                const a_double* lp_error);
 
 /*given a list of LP coefficient lists, the LPC order to use
   and a QLP precision value (from the encoding paramters)
   returns a set of quantized QLP coefficient integers
   and a non-negative QLP shift-needed value*/
 void
-flacenc_quantize_coefficients(const array_fa* lp_coefficients,
+flacenc_quantize_coefficients(const aa_double* lp_coefficients,
                               unsigned order,
                               unsigned qlp_precision,
 
-                              array_i* qlp_coefficients,
+                              a_int* qlp_coefficients,
                               int* qlp_shift_needed);
 
 /*given a set of residuals, encoding parameters
@@ -288,7 +288,7 @@ flacenc_encode_residuals(BitstreamWriter* bs,
                          struct flac_context* encoder,
                          unsigned block_size,
                          unsigned predictor_order,
-                         const array_i* residuals);
+                         const a_int* residuals);
 
 /*given a list of residuals along with block size
   predictor_order (from the FIXED/LPC subframe)
@@ -299,23 +299,23 @@ flacenc_encode_residuals(BitstreamWriter* bs,
   (these lists will be the same size)
   and a total estimated size of the residual block in bits*/
 void
-flacenc_encode_residual_partitions(array_li* residuals,
+flacenc_encode_residual_partitions(l_int* residuals,
                                    unsigned block_size,
                                    unsigned predictor_order,
                                    unsigned partition_order,
                                    unsigned maximum_rice_parameter,
 
-                                   array_i* rice_parameters,
-                                   array_lia* partitions,
+                                   a_int* rice_parameters,
+                                   al_int* partitions,
                                    uint64_t* total_size);
 
 /*returns a true value if all samples are the same*/
 int
-flacenc_all_identical(const array_i* samples);
+flacenc_all_identical(const a_int* samples);
 
 /*equivilent to sum(map(abs, data))*/
 uint64_t
-flacenc_abs_sum(const array_li* data);
+flacenc_abs_sum(const l_int* data);
 
 #include "../common/flac_crc.h"
 

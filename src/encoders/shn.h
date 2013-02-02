@@ -69,17 +69,17 @@ encode_audio(BitstreamWriter* bs,
              unsigned block_size);
 
 static int
-all_zero(const array_i* samples);
+all_zero(const a_int* samples);
 
 static int
-wasted_bits(const array_i* samples);
+wasted_bits(const a_int* samples);
 
 static void
-calculate_best_diff(const array_i* samples,
-                    const array_i* prev_samples,
-                    array_ia* deltas,
+calculate_best_diff(const a_int* samples,
+                    const a_int* prev_samples,
+                    aa_int* deltas,
                     unsigned* diff,
                     unsigned* energy,
-                    array_i* residuals);
+                    a_int* residuals);
 
 #endif

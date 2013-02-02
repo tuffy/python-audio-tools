@@ -81,13 +81,13 @@ struct matrix_parameters {
     unsigned factional_bits;
     unsigned LSB_bypass;
     int coeff[MAX_MLP_CHANNELS];
-    array_i* bypassed_LSB;
+    a_int* bypassed_LSB;
 };
 
 struct filter_parameters {
     unsigned shift;
-    array_i* coeff;
-    array_i* state;
+    a_int* coeff;
+    a_int* state;
 };
 
 struct channel_parameters {
@@ -122,10 +122,10 @@ struct substream {
     struct decoding_parameters parameters;
 
     /*residuals[c][i] where c is channel and i is PCM frame*/
-    array_ia* residuals;
+    aa_int* residuals;
 
     /*a temporary buffer of filtered residual data*/
-    array_i* filtered;
+    a_int* filtered;
 };
 
 typedef struct {
@@ -137,7 +137,7 @@ typedef struct {
     int major_sync_read;
     struct substream substream[MAX_MLP_SUBSTREAMS];
 
-    array_ia* framelist;
+    aa_int* framelist;
 
 } MLPDecoder;
 
@@ -164,7 +164,7 @@ mlp_packet_empty(MLPDecoder* decoder);
   returns OK on success, or something else if an error occurs*/
 mlp_status
 read_mlp_frames(MLPDecoder* decoder,
-                array_ia* framelist);
+                aa_int* framelist);
 
 /*given MLPDecoder context and a buffer of single frame data
   (including major sync, but not including frame size header)
@@ -172,7 +172,7 @@ read_mlp_frames(MLPDecoder* decoder,
 mlp_status
 read_mlp_frame(MLPDecoder* decoder,
                BitstreamReader* bs,
-               array_ia* framelist);
+               aa_int* framelist);
 
 /*given a buffer of frame data, returns 28 byte major sync, if present*/
 mlp_status
@@ -194,14 +194,14 @@ read_mlp_substream_info(BitstreamReader* bs,
 mlp_status
 read_mlp_substream(struct substream* substream,
                    BitstreamReader* bs,
-                   array_ia* framelist);
+                   aa_int* framelist);
 
 /*given a substream context and buffer of substream data,
   appends block's data to framelist as 1 or more channels of PCM data*/
 mlp_status
 read_mlp_block(struct substream* substream,
                BitstreamReader* bs,
-               array_ia* framelist);
+               aa_int* framelist);
 
 /*reads a restart header from a block*/
 mlp_status
@@ -249,18 +249,18 @@ read_mlp_residual_data(BitstreamReader* bs,
                        const struct matrix_parameters* matrix,
                        const unsigned* quant_step_size,
                        const struct channel_parameters* channel,
-                       array_ia* residuals);
+                       aa_int* residuals);
 
 /*given a list of residuals for a given channel,
   the FIR/IIR filter parameters and a quant_step_size
   returns a list of filtered residuals
   along with updated FIR/IIR filter parameter state*/
 mlp_status
-filter_mlp_channel(const array_i* residuals,
+filter_mlp_channel(const a_int* residuals,
                    struct filter_parameters* FIR,
                    struct filter_parameters* IIR,
                    unsigned quant_step_size,
-                   array_i* filtered);
+                   a_int* filtered);
 
 /*given a list of filtered residuals across all substreams
   max_matrix_channel, noise_shift, noise_gen_seed from the restart header
@@ -271,7 +271,7 @@ filter_mlp_channel(const array_i* residuals,
   when 2 substreams are present in an MLP stream,
   one typically uses the parameters from the second substream*/
 void
-rematrix_mlp_channels(array_ia* channels,
+rematrix_mlp_channels(aa_int* channels,
                       unsigned max_matrix_channel,
                       unsigned noise_shift,
                       unsigned* noise_gen_seed,

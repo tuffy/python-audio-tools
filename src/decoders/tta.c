@@ -55,7 +55,7 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
 
     self->bitstream = NULL;
     self->frame = br_substream_new(BS_LITTLE_ENDIAN);
-    self->framelist = array_ia_new();
+    self->framelist = aa_int_new();
 
     self->audiotools_pcm = NULL;
 
@@ -236,9 +236,9 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
                            self->header.bits_per_sample,
                            self->framelist)) {
         default:
-            return array_ia_to_FrameList(self->audiotools_pcm,
-                                         self->framelist,
-                                         self->header.bits_per_sample);
+            return aa_int_to_FrameList(self->audiotools_pcm,
+                                       self->framelist,
+                                       self->header.bits_per_sample);
         case IOERROR:
             PyErr_SetString(PyExc_ValueError, "I/O error during frame read");
             return NULL;
@@ -314,13 +314,13 @@ TTADecoder_close(decoders_TTADecoder* self, PyObject *args)
 static void
 init_cache(struct tta_cache *cache)
 {
-    cache->k0 = array_i_new();
-    cache->sum0 = array_i_new();
-    cache->k1 = array_i_new();
-    cache->sum1 = array_i_new();
-    cache->residual = array_ia_new();
-    cache->filtered = array_ia_new();
-    cache->predicted = array_ia_new();
+    cache->k0 = a_int_new();
+    cache->sum0 = a_int_new();
+    cache->k1 = a_int_new();
+    cache->sum1 = a_int_new();
+    cache->residual = aa_int_new();
+    cache->filtered = aa_int_new();
+    cache->predicted = aa_int_new();
 }
 
 static void
@@ -422,16 +422,16 @@ read_frame(BitstreamReader* frame,
            unsigned block_size,
            unsigned channels,
            unsigned bits_per_sample,
-           array_ia* framelist)
+           aa_int* framelist)
 {
     unsigned c;
-    array_i* k0 = cache->k0;
-    array_i* sum0 = cache->sum0;
-    array_i* k1 = cache->k1;
-    array_i* sum1 = cache->sum1;
-    array_ia* residual = cache->residual;
-    array_ia* filtered = cache->filtered;
-    array_ia* predicted = cache->predicted;
+    a_int* k0 = cache->k0;
+    a_int* sum0 = cache->sum0;
+    a_int* k1 = cache->k1;
+    a_int* sum1 = cache->sum1;
+    aa_int* residual = cache->residual;
+    aa_int* filtered = cache->filtered;
+    aa_int* predicted = cache->predicted;
     uint32_t frame_crc = 0xFFFFFFFF;
 
     k0->mset(k0, channels, 10);
@@ -442,7 +442,7 @@ read_frame(BitstreamReader* frame,
     /*initialize residuals for each channel*/
     residual->reset(residual);
     for (c = 0; c < channels; c++) {
-        array_i* residual_ch = residual->append(residual);
+        a_int* residual_ch = residual->append(residual);
         residual_ch->resize(residual_ch, block_size);
     }
 
@@ -539,9 +539,9 @@ read_frame(BitstreamReader* frame,
 }
 
 static void
-hybrid_filter(array_i* residual,
+hybrid_filter(a_int* residual,
               unsigned bits_per_sample,
-              array_i* filtered)
+              a_int* filtered)
 {
     const unsigned block_size = residual->len;
     unsigned i;
@@ -629,9 +629,9 @@ hybrid_filter(array_i* residual,
 }
 
 static void
-fixed_prediction(array_i* filtered,
+fixed_prediction(a_int* filtered,
                  unsigned bits_per_sample,
-                 array_i* predicted)
+                 a_int* predicted)
 {
     const unsigned block_size = filtered->len;
     unsigned i;
@@ -662,8 +662,8 @@ fixed_prediction(array_i* filtered,
 }
 
 static void
-decorrelate_channels(array_ia* predicted,
-                     array_ia* decorrelated)
+decorrelate_channels(aa_int* predicted,
+                     aa_int* decorrelated)
 {
     const unsigned channels = predicted->len;
     const unsigned block_size = predicted->_[0]->len;
@@ -673,7 +673,7 @@ decorrelate_channels(array_ia* predicted,
     predicted->reverse(predicted);
     for (c = 0; c < channels; c++) {
         unsigned i;
-        array_i* decorrelated_ch = decorrelated->append(decorrelated);
+        a_int* decorrelated_ch = decorrelated->append(decorrelated);
         decorrelated_ch->resize(decorrelated_ch, block_size);
 
         if (c == 0) {
@@ -701,7 +701,7 @@ int main(int argc, char* argv[]) {
     BitstreamReader* bitstream;
     BitstreamReader* frame;
     struct tta_cache cache;
-    array_ia* framelist;
+    aa_int* framelist;
     unsigned channels;
     unsigned bits_per_sample;
     unsigned sample_rate;
@@ -724,7 +724,7 @@ int main(int argc, char* argv[]) {
         bitstream = br_open(file, BS_LITTLE_ENDIAN);
         frame = br_substream_new(BS_LITTLE_ENDIAN);
         init_cache(&cache);
-        framelist = array_ia_new();
+        framelist = aa_int_new();
         output_data_size = 1;
         output_data = malloc(output_data_size);
     }
@@ -812,7 +812,7 @@ int main(int argc, char* argv[]) {
                 output_data = realloc(output_data, output_data_size);
             }
             for (c = 0; c < channels; c++) {
-                const array_i* channel_data = framelist->_[c];
+                const a_int* channel_data = framelist->_[c];
                 for (f = 0; f < frame_block_size; f++) {
                     converter(channel_data->_[f],
                               output_data +

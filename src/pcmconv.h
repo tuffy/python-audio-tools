@@ -42,19 +42,19 @@ open_audiotools_pcm(void);
   which Python will presumably DECREF once no longer needed
   or returns NULL with an exception set on error*/
 PyObject*
-array_i_to_FrameList(PyObject* audiotools_pcm,
-                     array_i* samples,
-                     unsigned int channels,
-                     unsigned int bits_per_sample);
+a_int_to_FrameList(PyObject* audiotools_pcm,
+                   a_int* samples,
+                   unsigned int channels,
+                   unsigned int bits_per_sample);
 
 /*given a list of channel data lists,
   returns a new FrameList object
   which Python will presumably DECREF once no longer needed
   or returns NULL with an exception set on error*/
 PyObject*
-array_ia_to_FrameList(PyObject* audiotools_pcm,
-                      array_ia* channels,
-                      unsigned int bits_per_sample);
+aa_int_to_FrameList(PyObject* audiotools_pcm,
+                    aa_int* channels,
+                    unsigned int bits_per_sample);
 
 /*returns an empty FrameList object with the given number of channels
   typically returned at the end of a stream*/
@@ -107,7 +107,7 @@ typedef struct pcmreader_s {
       returns 0 on success, 1 if there's an exception during reading*/
     int (*read)(struct pcmreader_s* reader,
                 unsigned pcm_frames,
-                array_ia* channels);
+                aa_int* channels);
 
     /*forwards a call to "close" to the wrapped PCMReader object*/
     void (*close)(struct pcmreader_s* reader);
@@ -173,7 +173,7 @@ typedef struct pcmreader_s {
       returns 0 on success, 1 if there's an exception during reading*/
     int (*read)(struct pcmreader_s* reader,
                  unsigned pcm_frames,
-                 array_ia* channels);
+                 aa_int* channels);
 
     /*forwards a call to "close" to the wrapped PCMReader object*/
     void (*close)(struct pcmreader_s* reader);
@@ -199,7 +199,7 @@ typedef struct pcmreader_s {
 
 int pcmreader_read(struct pcmreader_s* reader,
                    unsigned pcm_frames,
-                   array_ia* channels);
+                   aa_int* channels);
 
 void pcmreader_close(struct pcmreader_s* reader);
 

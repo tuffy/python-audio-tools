@@ -49,10 +49,10 @@ typedef struct {
     int closed;
 
     /*temporary buffers we don't want to reallocate each time*/
-    array_ia* subframe_data;
-    array_i* residuals;
-    array_i* qlp_coeffs;
-    array_i* framelist_data;
+    aa_int* subframe_data;
+    a_int* residuals;
+    a_int* qlp_coeffs;
+    a_int* framelist_data;
 
     /*a framelist generator*/
     PyObject* audiotools_pcm;

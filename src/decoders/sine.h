@@ -38,7 +38,7 @@ typedef struct {
 
     int closed;
 
-    array_ia* buffer;
+    aa_int* buffer;
     PyObject* audiotools_pcm;
 } decoders_Sine_Mono;
 
@@ -155,7 +155,7 @@ typedef struct {
 
     int closed;
 
-    array_ia* buffer;
+    aa_int* buffer;
     PyObject* audiotools_pcm;
 } decoders_Sine_Stereo;
 
@@ -267,7 +267,7 @@ typedef struct {
 
     int closed;
 
-    array_ia* buffer;
+    aa_int* buffer;
     PyObject* audiotools_pcm;
 } decoders_Sine_Simple;
 

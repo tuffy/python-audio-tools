@@ -61,7 +61,7 @@ struct wavpack_encoder_context {
 
     /*list of offsets to all blocks in the file
       which we can seek to and repopulate once encoding is finished*/
-    array_o* offsets;
+    a_obj* offsets;
 
     /*RIFF WAVE header and footer data
       which may be populated from an external file*/
@@ -80,10 +80,10 @@ struct wavpack_encoder_context {
 
     /*cached stuff we don't want to reallocate every time*/
     struct {
-        array_ia* shifted;
-        array_ia* mid_side;
-        array_ia* correlated;
-        array_ia* correlation_temp;
+        aa_int* shifted;
+        aa_int* mid_side;
+        aa_int* correlated;
+        aa_int* correlation_temp;
         BitstreamWriter* sub_block;
         BitstreamWriter* sub_blocks;
     } cache;
@@ -123,16 +123,16 @@ struct encoding_parameters {
     unsigned correlation_passes;
 
     /*terms[p]  correlation term for pass p*/
-    array_i* terms;
+    a_int* terms;
     /*deltas[p] correlation delta for pass p*/
-    array_i* deltas;
+    a_int* deltas;
     /*weights[p][c] correlation weights for pass p, channel c*/
-    array_ia* weights;
+    aa_int* weights;
     /*samples[p][c][s] correlation sample s for pass p, channel c*/
-    array_iaa* samples;
+    aaa_int* samples;
 
     /*2 lists of 3 entropy variables, as entropy[c][s]*/
-    array_ia* entropies;
+    aa_int* entropies;
 };
 
 struct wavpack_residual {
@@ -159,7 +159,7 @@ reset_block_parameters(struct encoding_parameters* params,
                        unsigned channel_count);
 
 static void
-init_correlation_samples(array_i* samples,
+init_correlation_samples(a_int* samples,
                          int correlation_term);
 
 /*round-trips the correlation weights, samples and the entropy variables
@@ -173,7 +173,7 @@ static void
 free_block_parameters(struct encoding_parameters* params);
 
 static void
-add_block_offset(FILE* file, array_o* offsets);
+add_block_offset(FILE* file, a_obj* offsets);
 
 static void
 write_block_header(BitstreamWriter* bs,
@@ -204,7 +204,7 @@ encode_block(BitstreamWriter* bs,
              struct wavpack_encoder_context* context,
              const pcmreader* pcmreader,
              struct encoding_parameters* parameters,
-             const array_ia* channels,
+             const aa_int* channels,
              unsigned total_pcm_frames,
              unsigned block_index,
              int first_block,
@@ -226,8 +226,8 @@ write_sub_block(BitstreamWriter* block,
   for pass "p"*/
 static void
 write_correlation_terms(BitstreamWriter* bs,
-                        const array_i* terms,
-                        const array_i* deltas);
+                        const a_int* terms,
+                        const a_int* deltas);
 
 static int
 store_weight(int weight);
@@ -238,63 +238,63 @@ restore_weight(int value);
 /*weights[p][c] are the correlation weight values for channel "c", pass "p"*/
 static void
 write_correlation_weights(BitstreamWriter* bs,
-                          const array_ia* weights,
+                          const aa_int* weights,
                           unsigned channel_count);
 
 /*terms[p] are the correlation terms for pass "p"
   samples[p][c][s] are correlation samples for channel "c", pass "p"*/
 static void
 write_correlation_samples(BitstreamWriter* bs,
-                          const array_i* terms,
-                          const array_iaa* samples,
+                          const a_int* terms,
+                          const aaa_int* samples,
                           unsigned channel_count);
 
 static void
-correlate_channels(array_ia* correlated_samples,
-                   array_ia* uncorrelated_samples,
-                   array_i* terms,
-                   array_i* deltas,
-                   array_ia* weights,
-                   array_iaa* samples,
+correlate_channels(aa_int* correlated_samples,
+                   aa_int* uncorrelated_samples,
+                   a_int* terms,
+                   a_int* deltas,
+                   aa_int* weights,
+                   aaa_int* samples,
                    unsigned channel_count,
-                   array_ia* temp);
+                   aa_int* temp);
 
 static int
 apply_weight(int weight, int64_t sample);
 
 static void
-correlate_1ch(array_i* correlated,
-              const array_i* uncorrelated,
+correlate_1ch(a_int* correlated,
+              const a_int* uncorrelated,
               int term,
               int delta,
               int* weight,
-              array_i* samples,
-              array_i* temp);
+              a_int* samples,
+              a_int* temp);
 
 static void
-correlate_2ch(array_ia* correlated,
-              const array_ia* uncorrelated,
+correlate_2ch(aa_int* correlated,
+              const aa_int* uncorrelated,
               int term,
               int delta,
-              array_i* weights,
-              array_ia* samples,
-              array_ia* temp);
+              a_int* weights,
+              aa_int* samples,
+              aa_int* temp);
 
 static void
 write_entropy_variables(BitstreamWriter* bs,
                         unsigned channel_count,
-                        const array_ia* entropies);
+                        const aa_int* entropies);
 
 static void
 write_bitstream(BitstreamWriter* bs,
-                array_ia* entropies,
-                const array_ia* residuals);
+                aa_int* entropies,
+                const aa_int* residuals);
 
 static int
 unary_undefined(int u_j_1, int m_j);
 
 static void
-encode_residual(int residual, array_i* entropy,
+encode_residual(int residual, a_int* entropy,
                 int* m, unsigned* offset, unsigned* add, unsigned* sign);
 
 static int
@@ -306,16 +306,16 @@ static void
 write_egc(BitstreamWriter* bs, unsigned v);
 
 static unsigned
-maximum_magnitude(const array_i* channel);
+maximum_magnitude(const a_int* channel);
 
 static unsigned
-wasted_bits(const array_i* channel);
+wasted_bits(const a_int* channel);
 
 static uint32_t
-calculate_crc(const array_ia* channels);
+calculate_crc(const aa_int* channels);
 
 static void
-apply_joint_stereo(const array_ia* left_right, array_ia* mid_side);
+apply_joint_stereo(const aa_int* left_right, aa_int* mid_side);
 
 static int
 wv_log2(int value);

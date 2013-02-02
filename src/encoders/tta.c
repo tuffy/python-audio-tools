@@ -36,9 +36,9 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
     BitstreamWriter *output;
     pcmreader* pcmreader;
     unsigned block_size;
-    array_ia* framelist;
+    aa_int* framelist;
     struct tta_cache cache;
-    array_i* frame_sizes;
+    a_int* frame_sizes;
     PyObject* frame_sizes_obj;
     unsigned i;
     static char *kwlist[] = {"file",
@@ -61,9 +61,9 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
         /*initialize temporary buffers*/
         block_size = (pcmreader->sample_rate * 256) / 245;
         output = bw_open(output_file, BS_LITTLE_ENDIAN);
-        framelist = array_ia_new();
+        framelist = aa_int_new();
         cache_init(&cache);
-        frame_sizes = array_i_new();
+        frame_sizes = a_int_new();
     }
 
     /*convert PCMReader input to TTA frames*/
@@ -118,13 +118,13 @@ error:
 static void
 cache_init(struct tta_cache* cache)
 {
-    cache->correlated = array_ia_new();
-    cache->predicted = array_ia_new();
-    cache->residual = array_ia_new();
-    cache->k0 = array_i_new();
-    cache->sum0 = array_i_new();
-    cache->k1 = array_i_new();
-    cache->sum1 = array_i_new();
+    cache->correlated = aa_int_new();
+    cache->predicted = aa_int_new();
+    cache->residual = aa_int_new();
+    cache->k0 = a_int_new();
+    cache->sum0 = a_int_new();
+    cache->k1 = a_int_new();
+    cache->sum1 = a_int_new();
 }
 
 
@@ -144,7 +144,7 @@ cache_free(struct tta_cache* cache)
 int
 encode_frame(BitstreamWriter* output,
              struct tta_cache* cache,
-             array_ia* framelist,
+             aa_int* framelist,
              unsigned bits_per_sample)
 {
     const unsigned channels = framelist->len;
@@ -153,11 +153,11 @@ encode_frame(BitstreamWriter* output,
     unsigned c;
     int frame_size = 0;
     uint32_t frame_crc = 0xFFFFFFFF;
-    array_i* k0 = cache->k0;
-    array_i* sum0 = cache->sum0;
-    array_i* k1 = cache->k1;
-    array_i* sum1 = cache->sum1;
-    array_ia* residual = cache->residual;
+    a_int* k0 = cache->k0;
+    a_int* sum0 = cache->sum0;
+    a_int* k1 = cache->k1;
+    a_int* sum1 = cache->sum1;
+    aa_int* residual = cache->residual;
 
     bw_add_callback(output, (bs_callback_f)tta_byte_counter, &frame_size);
     bw_add_callback(output, (bs_callback_f)tta_crc32, &frame_crc);
@@ -259,8 +259,8 @@ encode_frame(BitstreamWriter* output,
 }
 
 static void
-correlate_channels(array_ia* channels,
-                   array_ia* correlated)
+correlate_channels(aa_int* channels,
+                   aa_int* correlated)
 {
     const unsigned block_size = channels->_[0]->len;
     unsigned c;
@@ -268,7 +268,7 @@ correlate_channels(array_ia* channels,
     correlated->reset(correlated);
     for (c = 0; c < channels->len; c++) {
         unsigned i;
-        array_i* correlated_ch = correlated->append(correlated);
+        a_int* correlated_ch = correlated->append(correlated);
         correlated_ch->resize(correlated_ch, block_size);
 
         if (c < (channels->len - 1)) {
@@ -287,9 +287,9 @@ correlate_channels(array_ia* channels,
 }
 
 static void
-fixed_prediction(array_i* channel,
+fixed_prediction(a_int* channel,
                  unsigned bits_per_sample,
-                 array_i* predicted)
+                 a_int* predicted)
 {
     const unsigned block_size = channel->len;
     unsigned i;
@@ -320,9 +320,9 @@ fixed_prediction(array_i* channel,
 }
 
 static void
-hybrid_filter(array_i* predicted,
+hybrid_filter(a_int* predicted,
               unsigned bits_per_sample,
-              array_i* residual)
+              a_int* residual)
 {
     const unsigned block_size = predicted->len;
     unsigned i;
@@ -435,9 +435,9 @@ int main(int argc, char* argv[]) {
 
     FILE* file;
     BitstreamWriter* writer;
-    array_i* tta_frame_sizes;
+    a_int* tta_frame_sizes;
     pcmreader* pcmreader;
-    array_ia* framelist;
+    aa_int* framelist;
     struct tta_cache cache;
     unsigned written_pcm_frames = 0;
 
@@ -533,8 +533,8 @@ int main(int argc, char* argv[]) {
     } else {
         /*allocate temporary buffers*/
         writer = bw_open(file, BS_LITTLE_ENDIAN);
-        tta_frame_sizes = array_i_new();
-        framelist = array_ia_new();
+        tta_frame_sizes = a_int_new();
+        framelist = aa_int_new();
         cache_init(&cache);
     }
 
@@ -612,7 +612,7 @@ write_header(BitstreamWriter* output,
 
 static void
 write_seektable(BitstreamWriter* output,
-                array_i* frame_sizes)
+                a_int* frame_sizes)
 {
     unsigned i;
     unsigned seektable_crc = 0xFFFFFFFF;

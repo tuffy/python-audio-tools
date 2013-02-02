@@ -59,10 +59,10 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
 
     self->ogg_stream = NULL;
     self->ogg_file = NULL;
-    self->subframe_data = array_ia_new();
-    self->residuals = array_i_new();
-    self->qlp_coeffs = array_i_new();
-    self->framelist_data = array_i_new();
+    self->subframe_data = aa_int_new();
+    self->residuals = a_int_new();
+    self->qlp_coeffs = a_int_new();
+    self->framelist_data = a_int_new();
     self->audiotools_pcm = NULL;
     self->packet = br_substream_new(BS_BIG_ENDIAN);
     self->stream_finalized = 0;
@@ -222,10 +222,10 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
 
             PyEval_RestoreThread(thread_state);
 
-            framelist = array_i_to_FrameList(self->audiotools_pcm,
-                                             self->framelist_data,
-                                             frame_header.channel_count,
-                                             frame_header.bits_per_sample);
+            framelist = a_int_to_FrameList(self->audiotools_pcm,
+                                           self->framelist_data,
+                                           frame_header.channel_count,
+                                           frame_header.bits_per_sample);
 
             if (framelist != NULL) {
                 /*update MD5 sum*/
@@ -396,10 +396,10 @@ int main(int argc, char* argv[]) {
     BitstreamReader* packet = NULL;
     struct flac_STREAMINFO streaminfo;
     uint16_t header_packets;
-    array_i* residuals = NULL;
-    array_i* qlp_coeffs = NULL;
-    array_ia* subframe_data = NULL;
-    array_i* framelist_data = NULL;
+    a_int* residuals = NULL;
+    a_int* qlp_coeffs = NULL;
+    aa_int* subframe_data = NULL;
+    a_int* framelist_data = NULL;
     ogg_status result;
     uint16_t crc16 = 0;
 
@@ -426,10 +426,10 @@ int main(int argc, char* argv[]) {
         /*open bitstream and setup temporary arrays/buffers*/
         ogg_stream = oggreader_open(ogg_file);
         packet = br_substream_new(BS_BIG_ENDIAN);
-        subframe_data = array_ia_new();
-        residuals = array_i_new();
-        qlp_coeffs = array_i_new();
-        framelist_data = array_i_new();
+        subframe_data = aa_int_new();
+        residuals = a_int_new();
+        qlp_coeffs = a_int_new();
+        framelist_data = a_int_new();
         output_data = malloc(output_data_size);
     }
 

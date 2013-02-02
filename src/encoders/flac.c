@@ -67,7 +67,7 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
                              NULL};
     audiotools__MD5Context md5sum;
 
-    array_ia* samples;
+    aa_int* samples;
 
     uint64_t current_offset = 0;
     PyObject *frame_offsets = NULL;
@@ -137,7 +137,7 @@ encoders_encode_flac(char *filename,
     struct flac_context encoder;
     char version_string[0xFF];
     audiotools__MD5Context md5sum;
-    array_ia* samples;
+    aa_int* samples;
     unsigned padding_size = DEFAULT_PADDING_SIZE;
 
     /*set user-defined encoding options*/
@@ -239,7 +239,7 @@ encoders_encode_flac(char *filename,
 
     /*build frames until reader is empty,
       which updates STREAMINFO in the process*/
-    samples = array_ia_new();
+    samples = aa_int_new();
 
     if (pcmreader->read(pcmreader, block_size, samples))
         goto error;
@@ -310,34 +310,34 @@ encoders_encode_flac(char *filename,
 void
 flacenc_init_encoder(struct flac_context* encoder)
 {
-    encoder->average_samples = array_i_new();
-    encoder->difference_samples = array_i_new();
+    encoder->average_samples = a_int_new();
+    encoder->difference_samples = a_int_new();
     encoder->left_subframe = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->right_subframe = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->average_subframe = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->difference_subframe = bw_open_recorder(BS_BIG_ENDIAN);
 
-    encoder->subframe_samples = array_i_new();
+    encoder->subframe_samples = a_int_new();
 
     encoder->frame = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->fixed_subframe = bw_open_recorder(BS_BIG_ENDIAN);
-    encoder->fixed_subframe_orders = array_ia_new();
-    encoder->truncated_order = array_li_new();
+    encoder->fixed_subframe_orders = aa_int_new();
+    encoder->truncated_order = l_int_new();
 
     encoder->lpc_subframe = bw_open_recorder(BS_BIG_ENDIAN);
-    encoder->tukey_window = array_f_new();
-    encoder->windowed_signal = array_f_new();
-    encoder->autocorrelation_values = array_f_new();
-    encoder->lp_coefficients = array_fa_new();
-    encoder->lp_error = array_f_new();
-    encoder->qlp_coefficients = array_i_new();
-    encoder->lpc_residual = array_i_new();
+    encoder->tukey_window = a_double_new();
+    encoder->windowed_signal = a_double_new();
+    encoder->autocorrelation_values = a_double_new();
+    encoder->lp_coefficients = aa_double_new();
+    encoder->lp_error = a_double_new();
+    encoder->qlp_coefficients = a_int_new();
+    encoder->lpc_residual = a_int_new();
 
-    encoder->best_rice_parameters = array_i_new();
-    encoder->rice_parameters = array_i_new();
-    encoder->remaining_residuals = array_li_new();
-    encoder->residual_partitions = array_lia_new();
-    encoder->best_residual_partitions = array_lia_new();
+    encoder->best_rice_parameters = a_int_new();
+    encoder->rice_parameters = a_int_new();
+    encoder->remaining_residuals = l_int_new();
+    encoder->residual_partitions = al_int_new();
+    encoder->best_residual_partitions = al_int_new();
 }
 
 void
@@ -520,7 +520,7 @@ flacenc_write_frame_header(BitstreamWriter *bs,
 void
 flacenc_write_frame(BitstreamWriter* bs,
                     struct flac_context* encoder,
-                    const array_ia* samples)
+                    const aa_int* samples)
 {
     unsigned block_size = samples->_[0]->len;
     unsigned channel_count = samples->len;
@@ -674,9 +674,9 @@ void
 flacenc_write_subframe(BitstreamWriter* bs,
                        struct flac_context* encoder,
                        unsigned bits_per_sample,
-                       const array_i* samples)
+                       const a_int* samples)
 {
-    array_i* subframe_samples = encoder->subframe_samples;
+    a_int* subframe_samples = encoder->subframe_samples;
 
     int try_VERBATIM = !encoder->options.no_verbatim_subframes;
     int try_CONSTANT = !encoder->options.no_constant_subframes;
@@ -833,7 +833,7 @@ void
 flacenc_write_verbatim_subframe(BitstreamWriter *bs,
                                 unsigned bits_per_sample,
                                 unsigned wasted_bits_per_sample,
-                                const array_i* samples)
+                                const a_int* samples)
 {
     unsigned i;
 
@@ -858,11 +858,11 @@ flacenc_write_fixed_subframe(BitstreamWriter* bs,
                              struct flac_context* encoder,
                              unsigned bits_per_sample,
                              unsigned wasted_bits_per_sample,
-                             const array_i* samples)
+                             const a_int* samples)
 {
-    array_ia* fixed_subframe_orders = encoder->fixed_subframe_orders;
-    array_i* order;
-    array_li* truncated_order = encoder->truncated_order;
+    aa_int* fixed_subframe_orders = encoder->fixed_subframe_orders;
+    a_int* order;
+    l_int* truncated_order = encoder->truncated_order;
 
     uint64_t best_order_abs_sum;
     unsigned best_order;
@@ -916,7 +916,7 @@ flacenc_write_fixed_subframe(BitstreamWriter* bs,
 }
 
 void
-flacenc_next_fixed_order(const array_i* order, array_i* next_order)
+flacenc_next_fixed_order(const a_int* order, a_int* next_order)
 {
     unsigned i;
     unsigned order_size = order->len;
@@ -934,9 +934,9 @@ flacenc_write_lpc_subframe(BitstreamWriter* bs,
                            struct flac_context* encoder,
                            unsigned bits_per_sample,
                            unsigned wasted_bits_per_sample,
-                           const array_i* samples)
+                           const a_int* samples)
 {
-    array_i* qlp_coefficients = encoder->qlp_coefficients;
+    a_int* qlp_coefficients = encoder->qlp_coefficients;
     unsigned qlp_precision;
     int qlp_shift_needed;
 
@@ -965,10 +965,10 @@ flacenc_encode_lpc_subframe(BitstreamWriter* bs,
                             unsigned wasted_bits_per_sample,
                             unsigned qlp_precision,
                             unsigned qlp_shift_needed,
-                            const array_i* qlp_coefficients,
-                            const array_i* samples)
+                            const a_int* qlp_coefficients,
+                            const a_int* samples)
 {
-    array_i* lpc_residual = encoder->lpc_residual;
+    a_int* lpc_residual = encoder->lpc_residual;
     const unsigned order = qlp_coefficients->len;
     unsigned i;
 
@@ -1019,16 +1019,16 @@ void
 flacenc_best_lpc_coefficients(struct flac_context* encoder,
                               unsigned bits_per_sample,
                               unsigned wasted_bits_per_sample,
-                              const array_i* samples,
+                              const a_int* samples,
 
-                              array_i* qlp_coefficients,
+                              a_int* qlp_coefficients,
                               unsigned* qlp_precision,
                               int* qlp_shift_needed)
 {
-    array_f* windowed_signal = encoder->windowed_signal;
-    array_f* autocorrelation_values = encoder->autocorrelation_values;
-    array_fa* lp_coefficients = encoder->lp_coefficients;
-    array_f* lp_error = encoder->lp_error;
+    a_double* windowed_signal = encoder->windowed_signal;
+    a_double* autocorrelation_values = encoder->autocorrelation_values;
+    aa_double* lp_coefficients = encoder->lp_coefficients;
+    a_double* lp_error = encoder->lp_error;
     unsigned best_order;
 
     if (samples->len > (encoder->options.max_lpc_order + 1)) {
@@ -1069,12 +1069,12 @@ flacenc_best_lpc_coefficients(struct flac_context* encoder,
             *qlp_precision = encoder->options.qlp_coeff_precision;
         } else {
             unsigned order;
-            array_i* candidate_coeffs = array_i_new();
+            a_int* candidate_coeffs = a_int_new();
             int candidate_shift;
             BitstreamWriter* candidate_subframe =
                 bw_open_accumulator(BS_BIG_ENDIAN);
 
-            array_i* best_coeffs = array_i_new();
+            a_int* best_coeffs = a_int_new();
             int best_shift_needed = 0;
             unsigned best_bits = UINT_MAX;
 
@@ -1128,10 +1128,10 @@ flacenc_best_lpc_coefficients(struct flac_context* encoder,
 
 void
 flacenc_window_signal(struct flac_context* encoder,
-                      const array_i* samples,
-                      array_f* windowed_signal)
+                      const a_int* samples,
+                      a_double* windowed_signal)
 {
-    array_f* tukey_window = encoder->tukey_window;
+    a_double* tukey_window = encoder->tukey_window;
     const unsigned N = samples->len;
     const double alpha = 0.5;
     unsigned n;
@@ -1168,8 +1168,8 @@ flacenc_window_signal(struct flac_context* encoder,
 
 void
 flacenc_autocorrelate(unsigned max_lpc_order,
-                      const array_f* windowed_signal,
-                      array_f* autocorrelation_values)
+                      const a_double* windowed_signal,
+                      a_double* autocorrelation_values)
 {
     unsigned lag;
 
@@ -1189,12 +1189,12 @@ flacenc_autocorrelate(unsigned max_lpc_order,
 
 void
 flacenc_compute_lp_coefficients(unsigned max_lpc_order,
-                                const array_f* autocorrelation_values,
-                                array_fa* lp_coefficients,
-                                array_f* lp_error)
+                                const a_double* autocorrelation_values,
+                                aa_double* lp_coefficients,
+                                a_double* lp_error)
 {
     unsigned i;
-    array_f* lp_coeff;
+    a_double* lp_coeff;
     double k;
 
     assert(autocorrelation_values->len == (max_lpc_order + 1));
@@ -1235,7 +1235,7 @@ flacenc_estimate_best_lpc_order(unsigned bits_per_sample,
                                 unsigned qlp_precision,
                                 unsigned max_lpc_order,
                                 unsigned block_size,
-                                const array_f* lp_error)
+                                const a_double* lp_error)
 {
     const double error_scale = (M_LN2 * M_LN2) / ((double)block_size * 2.0);
     unsigned best_order = 0;
@@ -1268,14 +1268,14 @@ flacenc_estimate_best_lpc_order(unsigned bits_per_sample,
 }
 
 void
-flacenc_quantize_coefficients(const array_fa* lp_coefficients,
+flacenc_quantize_coefficients(const aa_double* lp_coefficients,
                               unsigned order,
                               unsigned qlp_precision,
 
-                              array_i* qlp_coefficients,
+                              a_int* qlp_coefficients,
                               int* qlp_shift_needed)
 {
-    array_f* lp_coeffs = lp_coefficients->_[order - 1];
+    a_double* lp_coeffs = lp_coefficients->_[order - 1];
     double l = DBL_MIN;
     int log2cmax;
     unsigned i;
@@ -1328,7 +1328,7 @@ flacenc_encode_residuals(BitstreamWriter* bs,
                          struct flac_context* encoder,
                          unsigned block_size,
                          unsigned predictor_order,
-                         const array_i* residuals)
+                         const a_int* residuals)
 {
     unsigned coding_method;
     unsigned partition_order;
@@ -1338,15 +1338,15 @@ flacenc_encode_residuals(BitstreamWriter* bs,
     /*local links to the cached arrays*/
 
     uint64_t total_size;
-    array_i* rice_parameters = encoder->rice_parameters;
-    array_lia* residual_partitions = encoder->residual_partitions;
+    a_int* rice_parameters = encoder->rice_parameters;
+    al_int* residual_partitions = encoder->residual_partitions;
 
     uint64_t best_total_size = ULLONG_MAX;
-    array_i* best_rice_parameters = encoder->best_rice_parameters;
-    array_lia* best_residual_partitions = encoder->best_residual_partitions;
+    a_int* best_rice_parameters = encoder->best_rice_parameters;
+    al_int* best_residual_partitions = encoder->best_residual_partitions;
 
 
-    array_li* remaining_residuals = encoder->remaining_residuals;
+    l_int* remaining_residuals = encoder->remaining_residuals;
 
     void (*write)(struct BitstreamWriter_s* bs,
                   unsigned int count,
@@ -1435,14 +1435,14 @@ flacenc_encode_residuals(BitstreamWriter* bs,
 }
 
 void
-flacenc_encode_residual_partitions(array_li* residuals,
+flacenc_encode_residual_partitions(l_int* residuals,
                                    unsigned block_size,
                                    unsigned predictor_order,
                                    unsigned partition_order,
                                    unsigned maximum_rice_parameter,
 
-                                   array_i* rice_parameters,
-                                   array_lia* partitions,
+                                   a_int* rice_parameters,
+                                   al_int* partitions,
                                    uint64_t* total_size)
 {
     unsigned p;
@@ -1452,7 +1452,7 @@ flacenc_encode_residual_partitions(array_li* residuals,
     partitions->reset(partitions);
 
     for (p = 0; p < (1 << partition_order); p++) {
-        array_li* partition = partitions->append(partitions);
+        l_int* partition = partitions->append(partitions);
         unsigned plength;
         uint64_t abs_partition_sum = 0;
         unsigned i;
@@ -1505,9 +1505,9 @@ flacenc_encode_residual_partitions(array_li* residuals,
 }
 
 void
-flacenc_average_difference(const array_ia* samples,
-                           array_i* average,
-                           array_i* difference)
+flacenc_average_difference(const aa_int* samples,
+                           a_int* average,
+                           a_int* difference)
 {
     int* channel0;
     int* channel1;
@@ -1576,7 +1576,7 @@ md5_update(void *data, unsigned char *buffer, unsigned long len)
 }
 
 unsigned
-flacenc_max_wasted_bits_per_sample(const array_i* samples)
+flacenc_max_wasted_bits_per_sample(const a_int* samples)
 {
     unsigned i;
     unsigned wasted_bits_per_sample = INT_MAX;
@@ -1604,7 +1604,7 @@ flacenc_max_wasted_bits_per_sample(const array_i* samples)
 }
 
 int
-flacenc_all_identical(const array_i* samples)
+flacenc_all_identical(const a_int* samples)
 {
     if (samples->len > 1) {
         const int first = samples->_[0];
@@ -1620,7 +1620,7 @@ flacenc_all_identical(const array_i* samples)
 }
 
 uint64_t
-flacenc_abs_sum(const array_li* data)
+flacenc_abs_sum(const l_int* data)
 {
     register uint64_t accumulator = 0;
     unsigned i;

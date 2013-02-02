@@ -573,9 +573,9 @@ void LINK_TYPE##_print(const LINK_TYPE *array, FILE *output)        \
     putc(']', output);                                              \
 }
 
-ARRAY_FUNC_DEFINITION(array_i, int, array_li, INT_MIN, INT_MAX, 0, "%d")
-ARRAY_FUNC_DEFINITION(array_f, double, array_lf, DBL_MIN, DBL_MAX, 0.0, "%f")
-ARRAY_FUNC_DEFINITION(array_u, unsigned, array_lu, 0, UINT_MAX, 0, "%u")
+ARRAY_FUNC_DEFINITION(a_int, int, l_int, INT_MIN, INT_MAX, 0, "%d")
+ARRAY_FUNC_DEFINITION(a_double, double, l_double, DBL_MIN, DBL_MAX, 0.0, "%f")
+ARRAY_FUNC_DEFINITION(a_unsigned, unsigned, l_unsigned, 0, UINT_MAX, 0, "%u")
 
 
 #define ARRAY_A_FUNC_DEFINITION(TYPE, ARRAY_TYPE, COPY_METH)   \
@@ -809,10 +809,10 @@ void TYPE##_print(const TYPE *array, FILE *output)                  \
     putc(']', output);                                              \
 }
 
-ARRAY_A_FUNC_DEFINITION(array_ia, array_i, copy)
-ARRAY_A_FUNC_DEFINITION(array_fa, array_f, copy)
-ARRAY_A_FUNC_DEFINITION(array_lia, array_li, link)
-ARRAY_A_FUNC_DEFINITION(array_lfa, array_lf, link)
+ARRAY_A_FUNC_DEFINITION(aa_int, a_int, copy)
+ARRAY_A_FUNC_DEFINITION(aa_double, a_double, copy)
+ARRAY_A_FUNC_DEFINITION(al_int, l_int, link)
+ARRAY_A_FUNC_DEFINITION(al_double, l_double, link)
 
 #define ARRAY_AA_FUNC_DEFINITION(TYPE, ARRAY_TYPE, COPY_METH) \
 struct TYPE##_s*                                              \
@@ -1006,34 +1006,34 @@ void TYPE##_print(const TYPE *array, FILE *output)                  \
     putc(']', output);                                              \
 }
 
-ARRAY_AA_FUNC_DEFINITION(array_iaa, array_ia, copy)
-ARRAY_AA_FUNC_DEFINITION(array_faa, array_fa, copy)
+ARRAY_AA_FUNC_DEFINITION(aaa_int, aa_int, copy)
+ARRAY_AA_FUNC_DEFINITION(aaa_double, aa_double, copy)
 
 
 void*
-array_o_dummy_copy(void* obj)
+a_obj_dummy_copy(void* obj)
 {
     return obj; /*does nothing*/
 }
 
 void
-array_o_dummy_free(void* obj)
+a_obj_dummy_free(void* obj)
 {
     return;     /*does nothing*/
 }
 
 void
-array_o_dummy_print(void* obj, FILE* output)
+a_obj_dummy_print(void* obj, FILE* output)
 {
     fprintf(output, "<OBJECT>");
 }
 
-struct array_o_s*
-array_o_new(void* (*copy)(void* obj),
+struct a_obj_s*
+a_obj_new(void* (*copy)(void* obj),
             void (*free)(void* obj),
             void (*print)(void* obj, FILE* output))
 {
-    struct array_o_s* a = malloc(sizeof(struct array_o_s));
+    struct a_obj_s* a = malloc(sizeof(struct a_obj_s));
     a->len = 0;
     a->total_size = 1;
     a->_ = malloc(sizeof(void*) * a->total_size);
@@ -1041,44 +1041,44 @@ array_o_new(void* (*copy)(void* obj),
     if (copy != NULL)
         a->copy_obj = copy;
     else
-        a->copy_obj = array_o_dummy_copy;
+        a->copy_obj = a_obj_dummy_copy;
 
     if (free != NULL)
         a->free_obj = free;
     else
-        a->free_obj = array_o_dummy_free;
+        a->free_obj = a_obj_dummy_free;
 
     if (print != NULL)
         a->print_obj = print;
     else
-        a->print_obj = array_o_dummy_print;
+        a->print_obj = a_obj_dummy_print;
 
-    a->del = array_o_del;
-    a->resize = array_o_resize;
-    a->resize_for = array_o_resize_for;
-    a->reset = array_o_reset;
-    a->reset_for = array_o_reset_for;
-    a->append = array_o_append;
-    a->vappend = array_o_vappend;
-    a->mappend = array_o_mappend;
-    a->set = array_o_set;
-    a->vset = array_o_vset;
-    a->mset = array_o_mset;
-    a->extend = array_o_extend;
-    a->copy = array_o_copy;
-    a->swap = array_o_swap;
-    a->head = array_o_head;
-    a->tail = array_o_tail;
-    a->de_head = array_o_de_head;
-    a->de_tail = array_o_de_tail;
-    a->split = array_o_split;
-    a->print = array_o_print;
+    a->del = a_obj_del;
+    a->resize = a_obj_resize;
+    a->resize_for = a_obj_resize_for;
+    a->reset = a_obj_reset;
+    a->reset_for = a_obj_reset_for;
+    a->append = a_obj_append;
+    a->vappend = a_obj_vappend;
+    a->mappend = a_obj_mappend;
+    a->set = a_obj_set;
+    a->vset = a_obj_vset;
+    a->mset = a_obj_mset;
+    a->extend = a_obj_extend;
+    a->copy = a_obj_copy;
+    a->swap = a_obj_swap;
+    a->head = a_obj_head;
+    a->tail = a_obj_tail;
+    a->de_head = a_obj_de_head;
+    a->de_tail = a_obj_de_tail;
+    a->split = a_obj_split;
+    a->print = a_obj_print;
 
     return a;
 }
 
 void
-array_o_del(struct array_o_s *array)
+a_obj_del(struct a_obj_s *array)
 {
     while (array->len) {
         array->free_obj(array->_[--array->len]);
@@ -1087,7 +1087,7 @@ array_o_del(struct array_o_s *array)
     free(array);
 }
 
-void array_o_resize(array_o *array, unsigned minimum)
+void a_obj_resize(a_obj *array, unsigned minimum)
 {
     if (minimum > array->total_size) {
         array->total_size = minimum;
@@ -1095,27 +1095,27 @@ void array_o_resize(array_o *array, unsigned minimum)
     }
 }
 
-void array_o_resize_for(array_o *array, unsigned additional_items)
+void a_obj_resize_for(a_obj *array, unsigned additional_items)
 {
     array->resize(array, array->len + additional_items);
 }
 
 void
-array_o_reset(struct array_o_s *array)
+a_obj_reset(struct a_obj_s *array)
 {
     while (array->len) {
         array->free_obj(array->_[--array->len]);
     }
 }
 
-void array_o_reset_for(array_o *array, unsigned minimum)
+void a_obj_reset_for(a_obj *array, unsigned minimum)
 {
     array->reset(array);
     array->resize(array, minimum);
 }
 
 void
-array_o_append(struct array_o_s *array, void* value)
+a_obj_append(struct a_obj_s *array, void* value)
 {
     if (array->len == array->total_size)
         array->resize(array, array->total_size * 2);
@@ -1123,7 +1123,7 @@ array_o_append(struct array_o_s *array, void* value)
     array->_[array->len++] = array->copy_obj(value);
 }
 
-void array_o_vappend(struct array_o_s *array, unsigned count, ...)
+void a_obj_vappend(struct a_obj_s *array, unsigned count, ...)
 {
     void* i;
     va_list ap;
@@ -1138,7 +1138,7 @@ void array_o_vappend(struct array_o_s *array, unsigned count, ...)
 }
 
 void
-array_o_mappend(struct array_o_s *array, unsigned count, void* value)
+a_obj_mappend(struct a_obj_s *array, unsigned count, void* value)
 {
     array->resize(array, array->len + count);
     for (; count > 0; count--) {
@@ -1147,14 +1147,14 @@ array_o_mappend(struct array_o_s *array, unsigned count, void* value)
 }
 
 void
-array_o_set(struct array_o_s *array, unsigned index, void* value)
+a_obj_set(struct a_obj_s *array, unsigned index, void* value)
 {
     assert(index < array->len);
     array->free_obj(array->_[index]);
     array->_[index] = array->copy_obj(value);
 }
 
-void array_o_vset(struct array_o_s *array, unsigned count, ...)
+void a_obj_vset(struct a_obj_s *array, unsigned count, ...)
 {
     void* i;
     va_list ap;
@@ -1169,7 +1169,7 @@ void array_o_vset(struct array_o_s *array, unsigned count, ...)
 }
 
 void
-array_o_mset(struct array_o_s *array, unsigned count, void* value)
+a_obj_mset(struct a_obj_s *array, unsigned count, void* value)
 {
     array->reset_for(array, count);
     for (; count > 0; count--) {
@@ -1178,7 +1178,7 @@ array_o_mset(struct array_o_s *array, unsigned count, void* value)
 }
 
 void
-array_o_extend(struct array_o_s *array, const struct array_o_s *to_add)
+a_obj_extend(struct a_obj_s *array, const struct a_obj_s *to_add)
 {
     unsigned i;
     const unsigned len = to_add->len;
@@ -1191,7 +1191,7 @@ array_o_extend(struct array_o_s *array, const struct array_o_s *to_add)
 }
 
 void
-array_o_copy(const struct array_o_s *array, struct array_o_s *copy)
+a_obj_copy(const struct a_obj_s *array, struct a_obj_s *copy)
 {
     if (array != copy) {
         unsigned i;
@@ -1204,9 +1204,9 @@ array_o_copy(const struct array_o_s *array, struct array_o_s *copy)
 }
 
 void
-array_o_swap(array_o *array, array_o *swap)
+a_obj_swap(a_obj *array, a_obj *swap)
 {
-    array_o temp;
+    a_obj temp;
     temp._ = array->_;
     temp.len = array->len;
     temp.total_size = array->total_size;
@@ -1219,8 +1219,8 @@ array_o_swap(array_o *array, array_o *swap)
 }
 
 void
-array_o_head(const struct array_o_s *array, unsigned count,
-             struct array_o_s *head)
+a_obj_head(const struct a_obj_s *array, unsigned count,
+             struct a_obj_s *head)
 {
     const unsigned to_copy = MIN(count, array->len);
 
@@ -1238,8 +1238,8 @@ array_o_head(const struct array_o_s *array, unsigned count,
 }
 
 void
-array_o_tail(const struct array_o_s *array, unsigned count,
-             struct array_o_s *tail)
+a_obj_tail(const struct a_obj_s *array, unsigned count,
+             struct a_obj_s *tail)
 {
     const unsigned to_copy = MIN(count, array->len);
 
@@ -1251,7 +1251,7 @@ array_o_tail(const struct array_o_s *array, unsigned count,
             tail->_[tail->len++] = array->copy_obj(array->_[i]);
         }
     } else {
-        struct array_o_s* temp = array_o_new(array->copy_obj,
+        struct a_obj_s* temp = a_obj_new(array->copy_obj,
                                              array->free_obj,
                                              array->print_obj);
         unsigned i;
@@ -1265,22 +1265,22 @@ array_o_tail(const struct array_o_s *array, unsigned count,
 }
 
 void
-array_o_de_head(const struct array_o_s *array, unsigned count,
-                struct array_o_s *tail)
+a_obj_de_head(const struct a_obj_s *array, unsigned count,
+                struct a_obj_s *tail)
 {
     array->tail(array, array->len - MIN(count, array->len), tail);
 }
 
 void
-array_o_de_tail(const struct array_o_s *array, unsigned count,
-                struct array_o_s *head)
+a_obj_de_tail(const struct a_obj_s *array, unsigned count,
+                struct a_obj_s *head)
 {
     array->head(array, array->len - MIN(count, array->len), head);
 }
 
 void
-array_o_split(const struct array_o_s *array, unsigned count,
-              struct array_o_s *head, struct array_o_s *tail)
+a_obj_split(const struct a_obj_s *array, unsigned count,
+              struct a_obj_s *head, struct a_obj_s *tail)
 {
     const unsigned to_head = MIN(count, array->len);
     const unsigned to_tail = array->len - to_head;
@@ -1301,7 +1301,7 @@ array_o_split(const struct array_o_s *array, unsigned count,
 }
 
 void
-array_o_print(const struct array_o_s *array, FILE* output)
+a_obj_print(const struct a_obj_s *array, FILE* output)
 {
     unsigned i;
     putc('[', output);
@@ -1323,41 +1323,41 @@ array_o_print(const struct array_o_s *array, FILE* output)
 
 #ifdef EXECUTABLE
 
-void test_i_array(const int *data, unsigned data_len,
-                  int data_min, int data_max, int data_sum,
-                  const int *sorted_data);
+void test_a_int(const int *data, unsigned data_len,
+                int data_min, int data_max, int data_sum,
+                const int *sorted_data);
 
-void test_li_array(const array_i* parent,
-                   int data_min, int data_max, int data_sum);
+void test_l_int(const a_int* parent,
+                int data_min, int data_max, int data_sum);
 
-void test_ia_array(unsigned arrays, int start, int increment, unsigned total);
+void test_aa_int(unsigned arrays, int start, int increment, unsigned total);
 
-void test_iaa_array(unsigned arrays, unsigned sub_arrays,
-                    int start, int increment, unsigned total);
+void test_aaa_int(unsigned arrays, unsigned sub_arrays,
+                  int start, int increment, unsigned total);
 
 int main(int argc, char *argv[]) {
     int data[] = {5, 4, 3, 2, 1};
     int sorted_data[] = {1, 2, 3, 4, 5};
 
-    test_i_array(data, 5, 1, 5, 15, sorted_data);
-    test_ia_array(5, 0, 1, 20);
-    test_iaa_array(2, 3, 0, 1, 4);
+    test_a_int(data, 5, 1, 5, 15, sorted_data);
+    test_aa_int(5, 0, 1, 20);
+    test_aaa_int(2, 3, 0, 1, 4);
 
     return 0;
 }
 
-void test_i_array(const int *data, unsigned data_len,
-                  int data_min, int data_max, int data_sum,
-                  const int *sorted_data)
+void test_a_int(const int *data, unsigned data_len,
+                int data_min, int data_max, int data_sum,
+                const int *sorted_data)
 {
-    array_i* a;
-    array_i* b;
+    a_int* a;
+    a_int* b;
     unsigned i;
 
     assert(data_len >= 3);
 
     /*test resize*/
-    a = array_i_new();
+    a = a_int_new();
     assert(a->len == 0);
     assert(a->total_size > 0);
     a->resize(a, 10);
@@ -1369,7 +1369,7 @@ void test_i_array(const int *data, unsigned data_len,
     a->del(a);
 
     /*test resize_for*/
-    a = array_i_new();
+    a = a_int_new();
     assert(a->len == 0);
     assert(a->total_size > 0);
     a->resize_for(a, 10);
@@ -1383,7 +1383,7 @@ void test_i_array(const int *data, unsigned data_len,
     a->del(a);
 
     /*test reset*/
-    a = array_i_new();
+    a = a_int_new();
     a->resize(a, 10);
     for (i = 0; i < 10; i++)
         a_append(a, data[0]);
@@ -1393,7 +1393,7 @@ void test_i_array(const int *data, unsigned data_len,
     a->del(a);
 
     /*test reset_for*/
-    a = array_i_new();
+    a = a_int_new();
     a->resize(a, 10);
     for (i = 0; i < 10; i++)
         a_append(a, data[0]);
@@ -1405,7 +1405,7 @@ void test_i_array(const int *data, unsigned data_len,
     a->del(a);
 
     /*test append*/
-    a = array_i_new();
+    a = a_int_new();
     for (i = 0; i < data_len; i++)
         a->append(a, data[i]);
     for (i = 0; i < data_len; i++)
@@ -1413,7 +1413,7 @@ void test_i_array(const int *data, unsigned data_len,
     a->del(a);
 
     /*test vappend*/
-    a = array_i_new();
+    a = a_int_new();
     a->vappend(a, 1, data[0]);
     assert(a->_[0] == data[0]);
     a->vappend(a, 2, data[0], data[1]);
@@ -1429,7 +1429,7 @@ void test_i_array(const int *data, unsigned data_len,
     a->del(a);
 
     /*test mappend*/
-    a = array_i_new();
+    a = a_int_new();
     a->mappend(a, 100, data[0]);
     for (i = 0; i < 100; i++)
         assert(a->_[i] == data[0]);
@@ -1448,7 +1448,7 @@ void test_i_array(const int *data, unsigned data_len,
     a->del(a);
 
     /*test vset*/
-    a = array_i_new();
+    a = a_int_new();
     a->vset(a, 1, data[0]);
     assert(a->_[0] == data[0]);
     a->vset(a, 2, data[0], data[1]);
@@ -1460,7 +1460,7 @@ void test_i_array(const int *data, unsigned data_len,
     a->del(a);
 
     /*test mset*/
-    a = array_i_new();
+    a = a_int_new();
     a->mset(a, 100, data[0]);
     for (i = 0; i < 100; i++)
         assert(a->_[i] == data[0]);
@@ -1473,8 +1473,8 @@ void test_i_array(const int *data, unsigned data_len,
     a->del(a);
 
     /*test extend*/
-    a = array_i_new();
-    b = array_i_new();
+    a = a_int_new();
+    b = a_int_new();
 
     for (i = 0; i < data_len; i++)
         a->append(a, data[i]);
@@ -1493,8 +1493,8 @@ void test_i_array(const int *data, unsigned data_len,
     b->del(b);
 
     /*test equals*/
-    a = array_i_new();
-    b = array_i_new();
+    a = a_int_new();
+    b = a_int_new();
 
     for (i = 0; i < data_len; i++) {
         a->append(a, data[i]);
@@ -1511,44 +1511,44 @@ void test_i_array(const int *data, unsigned data_len,
     b->del(b);
 
     /*test min*/
-    a = array_i_new();
+    a = a_int_new();
     for (i = 0; i < data_len; i++)
         a->append(a, data[i]);
     assert(a->min(a) == data_min);
     a->del(a);
-    a = array_i_new();
+    a = a_int_new();
     for (i = 0; i < data_len; i++)
         a->append(a, sorted_data[i]);
     assert(a->min(a) == data_min);
     a->del(a);
 
     /*test max*/
-    a = array_i_new();
+    a = a_int_new();
     for (i = 0; i < data_len; i++)
         a->append(a, data[i]);
     assert(a->max(a) == data_max);
     a->del(a);
-    a = array_i_new();
+    a = a_int_new();
     for (i = 0; i < data_len; i++)
         a->append(a, sorted_data[i]);
     assert(a->max(a) == data_max);
     a->del(a);
 
     /*test sum*/
-    a = array_i_new();
+    a = a_int_new();
     for (i = 0; i < data_len; i++)
         a->append(a, data[i]);
     assert(a->sum(a) == data_sum);
     a->del(a);
-    a = array_i_new();
+    a = a_int_new();
     for (i = 0; i < data_len; i++)
         a->append(a, sorted_data[i]);
     assert(a->sum(a) == data_sum);
     a->del(a);
 
     /*test copy*/
-    a = array_i_new();
-    b = array_i_new();
+    a = a_int_new();
+    b = a_int_new();
     for (i = 0; i < data_len; i++) {
         a->append(a, data[i]);
         b->append(b, sorted_data[i]);
@@ -1560,15 +1560,15 @@ void test_i_array(const int *data, unsigned data_len,
     b->del(b);
 
     /*test link*/
-    a = array_i_new();
+    a = a_int_new();
     for (i = 0; i < data_len; i++)
         a->append(a, data[i]);
-    test_li_array(a, data_min, data_max, data_sum);
+    test_l_int(a, data_min, data_max, data_sum);
     a->del(a);
 
     /*test swap*/
-    a = array_i_new();
-    b = array_i_new();
+    a = a_int_new();
+    b = a_int_new();
     for (i = 0; i < data_len; i++) {
         a->append(a, data[i]);
         b->append(b, sorted_data[i]);
@@ -1599,7 +1599,7 @@ void test_i_array(const int *data, unsigned data_len,
     for (i = 0; i < data_len; i++) {
         unsigned j;
 
-        a = array_i_new();
+        a = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->head(a, i, a);
@@ -1608,7 +1608,7 @@ void test_i_array(const int *data, unsigned data_len,
             assert(a->_[j] == data[j]);
         a->del(a);
 
-        a = array_i_new();
+        a = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->head(a, data_len + 1, a);
@@ -1617,8 +1617,8 @@ void test_i_array(const int *data, unsigned data_len,
             assert(a->_[j] == data[j]);
         a->del(a);
 
-        a = array_i_new();
-        b = array_i_new();
+        a = a_int_new();
+        b = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->head(a, i, b);
@@ -1631,8 +1631,8 @@ void test_i_array(const int *data, unsigned data_len,
         a->del(a);
         b->del(b);
 
-        a = array_i_new();
-        b = array_i_new();
+        a = a_int_new();
+        b = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->head(a, data_len + 1, b);
@@ -1645,7 +1645,7 @@ void test_i_array(const int *data, unsigned data_len,
     for (i = 0; i < data_len; i++) {
         unsigned j;
 
-        a = array_i_new();
+        a = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->tail(a, i, a);
@@ -1654,7 +1654,7 @@ void test_i_array(const int *data, unsigned data_len,
             assert(a->_[j] == data[j + (data_len - i)]);
         a->del(a);
 
-        a = array_i_new();
+        a = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->tail(a, data_len + 1, a);
@@ -1663,8 +1663,8 @@ void test_i_array(const int *data, unsigned data_len,
             assert(a->_[j] == data[j]);
         a->del(a);
 
-        a = array_i_new();
-        b = array_i_new();
+        a = a_int_new();
+        b = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->tail(a, i, b);
@@ -1677,8 +1677,8 @@ void test_i_array(const int *data, unsigned data_len,
         a->del(a);
         b->del(b);
 
-        a = array_i_new();
-        b = array_i_new();
+        a = a_int_new();
+        b = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->tail(a, data_len + 1, b);
@@ -1691,7 +1691,7 @@ void test_i_array(const int *data, unsigned data_len,
     for (i = 0; i < data_len; i++) {
         unsigned j;
 
-        a = array_i_new();
+        a = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->de_head(a, i, a);
@@ -1700,15 +1700,15 @@ void test_i_array(const int *data, unsigned data_len,
             assert(a->_[j] == data[j + i]);
         a->del(a);
 
-        a = array_i_new();
+        a = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->de_head(a, data_len + 1, a);
         assert(a->len == 0);
         a->del(a);
 
-        a = array_i_new();
-        b = array_i_new();
+        a = a_int_new();
+        b = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->de_head(a, i, b);
@@ -1721,8 +1721,8 @@ void test_i_array(const int *data, unsigned data_len,
         a->del(a);
         b->del(b);
 
-        a = array_i_new();
-        b = array_i_new();
+        a = a_int_new();
+        b = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->de_head(a, data_len + 1, b);
@@ -1736,7 +1736,7 @@ void test_i_array(const int *data, unsigned data_len,
     for (i = 0; i < data_len; i++) {
         unsigned j;
 
-        a = array_i_new();
+        a = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->de_tail(a, i, a);
@@ -1745,15 +1745,15 @@ void test_i_array(const int *data, unsigned data_len,
             assert(a->_[j] == data[j]);
         a->del(a);
 
-        a = array_i_new();
+        a = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->de_tail(a, data_len + 1, a);
         assert(a->len == 0);
         a->del(a);
 
-        a = array_i_new();
-        b = array_i_new();
+        a = a_int_new();
+        b = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->de_tail(a, i, b);
@@ -1766,8 +1766,8 @@ void test_i_array(const int *data, unsigned data_len,
         a->del(a);
         b->del(b);
 
-        a = array_i_new();
-        b = array_i_new();
+        a = a_int_new();
+        b = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->de_tail(a, data_len + 1, b);
@@ -1781,9 +1781,9 @@ void test_i_array(const int *data, unsigned data_len,
     for (i = 0; i < data_len; i++) {
         unsigned j;
         unsigned k;
-        array_i *c;
+        a_int *c;
 
-        a = array_i_new();
+        a = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
 
@@ -1792,8 +1792,8 @@ void test_i_array(const int *data, unsigned data_len,
             assert(a->_[j] == data[j]);
         a->del(a);
 
-        a = array_i_new();
-        b = array_i_new();
+        a = a_int_new();
+        b = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->split(a, i, a, b);
@@ -1806,8 +1806,8 @@ void test_i_array(const int *data, unsigned data_len,
         a->del(a);
         b->del(b);
 
-        a = array_i_new();
-        b = array_i_new();
+        a = a_int_new();
+        b = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->split(a, i, b, a);
@@ -1820,9 +1820,9 @@ void test_i_array(const int *data, unsigned data_len,
         a->del(a);
         b->del(b);
 
-        a = array_i_new();
-        b = array_i_new();
-        c = array_i_new();
+        a = a_int_new();
+        b = a_int_new();
+        c = a_int_new();
         for (j = 0; j < data_len; j++)
             a->append(a, data[j]);
         a->split(a, i, b, c);
@@ -1841,7 +1841,7 @@ void test_i_array(const int *data, unsigned data_len,
     }
 
     /*test reverse*/
-    a = array_i_new();
+    a = a_int_new();
     for (i = 0; i < data_len; i++)
         a->append(a, data[i]);
     a->reverse(a);
@@ -1850,7 +1850,7 @@ void test_i_array(const int *data, unsigned data_len,
     a->del(a);
 
     /*test sort*/
-    a = array_i_new();
+    a = a_int_new();
     for (i = 0; i < data_len; i++)
         a->append(a, data[i]);
     a->sort(a);
@@ -1859,16 +1859,16 @@ void test_i_array(const int *data, unsigned data_len,
     a->del(a);
 }
 
-void test_li_array(const array_i* parent,
-                   int data_min, int data_max, int data_sum)
+void test_l_int(const a_int* parent,
+                int data_min, int data_max, int data_sum)
 {
     unsigned i;
-    array_li* a;
-    array_li* b;
-    array_i* c;
+    l_int* a;
+    l_int* b;
+    a_int* c;
 
     /*test internal data*/
-    a = array_li_new();
+    a = l_int_new();
     parent->link(parent, a);
     assert(a->len == parent->len);
     for (i = 0; i < parent->len; i++)
@@ -1876,7 +1876,7 @@ void test_li_array(const array_i* parent,
     a->del(a);
 
     /*test reset*/
-    a = array_li_new();
+    a = l_int_new();
     parent->link(parent, a);
     assert(a->len == parent->len);
     a->reset(a);
@@ -1884,8 +1884,8 @@ void test_li_array(const array_i* parent,
     a->del(a);
 
     /*test equals*/
-    a = array_li_new();
-    b = array_li_new();
+    a = l_int_new();
+    b = l_int_new();
     parent->link(parent, a);
     parent->link(parent, b);
     assert(a->equals(a, b));
@@ -1894,26 +1894,26 @@ void test_li_array(const array_i* parent,
     b->del(b);
 
     /*test min*/
-    a = array_li_new();
+    a = l_int_new();
     parent->link(parent, a);
     assert(a->min(a) == data_min);
     a->del(a);
 
     /*test max*/
-    a = array_li_new();
+    a = l_int_new();
     parent->link(parent, a);
     assert(a->max(a) == data_max);
     a->del(a);
 
     /*test sum*/
-    a = array_li_new();
+    a = l_int_new();
     parent->link(parent, a);
     assert(a->sum(a) == data_sum);
     a->del(a);
 
     /*test copy*/
-    a = array_li_new();
-    c = array_i_new();
+    a = l_int_new();
+    c = a_int_new();
     parent->link(parent, a);
     a->copy(a, c);
     assert(parent->equals(parent, c));
@@ -1921,8 +1921,8 @@ void test_li_array(const array_i* parent,
     c->del(c);
 
     /*test swap*/
-    a = array_li_new();
-    b = array_li_new();
+    a = l_int_new();
+    b = l_int_new();
     parent->link(parent, a);
     assert(a->len == parent->len);
     assert(b->len == 0);
@@ -1945,7 +1945,7 @@ void test_li_array(const array_i* parent,
     for (i = 0; i < parent->len; i++) {
         unsigned j;
 
-        a = array_li_new();
+        a = l_int_new();
         parent->link(parent, a);
         a->head(a, i, a);
         assert(a->len == i);
@@ -1953,7 +1953,7 @@ void test_li_array(const array_i* parent,
             assert(a->_[j] == parent->_[j]);
         a->del(a);
 
-        a = array_li_new();
+        a = l_int_new();
         parent->link(parent, a);
         a->head(a, parent->len + 1, a);
         assert(a->len == parent->len);
@@ -1961,8 +1961,8 @@ void test_li_array(const array_i* parent,
             assert(a->_[j] == parent->_[j]);
         a->del(a);
 
-        a = array_li_new();
-        b = array_li_new();
+        a = l_int_new();
+        b = l_int_new();
         parent->link(parent, a);
         a->head(a, i, b);
         assert(a->len == parent->len);
@@ -1974,8 +1974,8 @@ void test_li_array(const array_i* parent,
         a->del(a);
         b->del(b);
 
-        a = array_li_new();
-        b = array_li_new();
+        a = l_int_new();
+        b = l_int_new();
         parent->link(parent, a);
         a->head(a, parent->len + 1, b);
         assert(a->equals(a, b));
@@ -1987,7 +1987,7 @@ void test_li_array(const array_i* parent,
     for (i = 0; i < parent->len; i++) {
         unsigned j;
 
-        a = array_li_new();
+        a = l_int_new();
         parent->link(parent, a);
         a->tail(a, i, a);
         assert(a->len == i);
@@ -1995,7 +1995,7 @@ void test_li_array(const array_i* parent,
             assert(a->_[j] == parent->_[j + (parent->len - i)]);
         a->del(a);
 
-        a = array_li_new();
+        a = l_int_new();
         parent->link(parent, a);
         a->tail(a, parent->len + 1, a);
         assert(a->len == parent->len);
@@ -2003,8 +2003,8 @@ void test_li_array(const array_i* parent,
             assert(a->_[j] == parent->_[j]);
         a->del(a);
 
-        a = array_li_new();
-        b = array_li_new();
+        a = l_int_new();
+        b = l_int_new();
         parent->link(parent, a);
         a->tail(a, i, b);
         assert(a->len == parent->len);
@@ -2016,8 +2016,8 @@ void test_li_array(const array_i* parent,
         a->del(a);
         b->del(b);
 
-        a = array_li_new();
-        b = array_li_new();
+        a = l_int_new();
+        b = l_int_new();
         parent->link(parent, a);
         a->tail(a, parent->len + 1, b);
         assert(a->equals(a, b));
@@ -2029,7 +2029,7 @@ void test_li_array(const array_i* parent,
     for (i = 0; i < parent->len; i++) {
         unsigned j;
 
-        a = array_li_new();
+        a = l_int_new();
         parent->link(parent, a);
         a->de_head(a, i, a);
         assert(a->len == (parent->len - i));
@@ -2037,14 +2037,14 @@ void test_li_array(const array_i* parent,
             assert(a->_[j] == parent->_[j + i]);
         a->del(a);
 
-        a = array_li_new();
+        a = l_int_new();
         parent->link(parent, a);
         a->de_head(a, parent->len + 1, a);
         assert(a->len == 0);
         a->del(a);
 
-        a = array_li_new();
-        b = array_li_new();
+        a = l_int_new();
+        b = l_int_new();
         parent->link(parent, a);
         a->de_head(a, i, b);
         assert(a->len == parent->len);
@@ -2056,8 +2056,8 @@ void test_li_array(const array_i* parent,
         a->del(a);
         b->del(b);
 
-        a = array_li_new();
-        b = array_li_new();
+        a = l_int_new();
+        b = l_int_new();
         parent->link(parent, a);
         a->de_head(a, parent->len + 1, b);
         assert(a->len == parent->len);
@@ -2070,7 +2070,7 @@ void test_li_array(const array_i* parent,
     for (i = 0; i < parent->len; i++) {
         unsigned j;
 
-        a = array_li_new();
+        a = l_int_new();
         parent->link(parent, a);
         a->de_tail(a, i, a);
         assert(a->len == (parent->len - i));
@@ -2078,14 +2078,14 @@ void test_li_array(const array_i* parent,
             assert(a->_[j] == parent->_[j]);
         a->del(a);
 
-        a = array_li_new();
+        a = l_int_new();
         parent->link(parent, a);
         a->de_tail(a, parent->len + 1, a);
         assert(a->len == 0);
         a->del(a);
 
-        a = array_li_new();
-        b = array_li_new();
+        a = l_int_new();
+        b = l_int_new();
         parent->link(parent, a);
         a->de_tail(a, i, b);
         assert(a->len == parent->len);
@@ -2097,8 +2097,8 @@ void test_li_array(const array_i* parent,
         a->del(a);
         b->del(b);
 
-        a = array_li_new();
-        b = array_li_new();
+        a = l_int_new();
+        b = l_int_new();
         parent->link(parent, a);
         a->de_tail(a, parent->len + 1, b);
         assert(a->len == parent->len);
@@ -2111,9 +2111,9 @@ void test_li_array(const array_i* parent,
     for (i = 0; i < parent->len; i++) {
         unsigned j;
         unsigned k;
-        array_li *c;
+        l_int *c;
 
-        a = array_li_new();
+        a = l_int_new();
         parent->link(parent, a);
 
         a->split(a, i, a, a);
@@ -2121,8 +2121,8 @@ void test_li_array(const array_i* parent,
             assert(a->_[j] == parent->_[j]);
         a->del(a);
 
-        a = array_li_new();
-        b = array_li_new();
+        a = l_int_new();
+        b = l_int_new();
         parent->link(parent, a);
         a->split(a, i, a, b);
         assert(a->len == i);
@@ -2134,8 +2134,8 @@ void test_li_array(const array_i* parent,
         a->del(a);
         b->del(b);
 
-        a = array_li_new();
-        b = array_li_new();
+        a = l_int_new();
+        b = l_int_new();
         parent->link(parent, a);
         a->split(a, i, b, a);
         assert(a->len == (parent->len - i));
@@ -2147,9 +2147,9 @@ void test_li_array(const array_i* parent,
         a->del(a);
         b->del(b);
 
-        a = array_li_new();
-        b = array_li_new();
-        c = array_li_new();
+        a = l_int_new();
+        b = l_int_new();
+        c = l_int_new();
         parent->link(parent, a);
         a->split(a, i, b, c);
         assert(a->len == parent->len);
@@ -2167,15 +2167,15 @@ void test_li_array(const array_i* parent,
     }
 }
 
-void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
+void test_aa_int(unsigned arrays, int start, int increment, unsigned total)
 {
-    array_ia* a;
-    array_ia* b;
+    aa_int* a;
+    aa_int* b;
     unsigned i;
     int old_start;
 
     /*test resize*/
-    a = array_ia_new();
+    a = aa_int_new();
     assert(a->len == 0);
     assert(a->total_size > 0);
     a->resize(a, 10);
@@ -2187,7 +2187,7 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
     a->del(a);
 
     /*test reset*/
-    a = array_ia_new();
+    a = aa_int_new();
     a->resize(a, 10);
     for (i = 0; i < 10; i++)
         (void)a->append(a);
@@ -2199,9 +2199,9 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
     /*test append*/
     /*note that we don't care about array contents,
       only that there are arrays*/
-    a = array_ia_new();
+    a = aa_int_new();
     for (i = 0; i < arrays; i++) {
-        array_i* c = a->append(a);
+        a_int* c = a->append(a);
         unsigned j;
         for (j = 0; j < total; j++) {
             c->append(c, start);
@@ -2214,18 +2214,18 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
 
     /*test extend*/
     old_start = start;
-    a = array_ia_new();
+    a = aa_int_new();
     for (i = 0; i < arrays; i++) {
-        array_i* c = a->append(a);
+        a_int* c = a->append(a);
         unsigned j;
         for (j = 0; j < total; j++) {
             c->append(c, start);
             start += increment;
         }
     }
-    b = array_ia_new();
+    b = aa_int_new();
     for (i = 0; i < arrays; i++) {
-        array_i* c = b->append(b);
+        a_int* c = b->append(b);
         unsigned j;
         for (j = 0; j < total; j++) {
             c->append(c, start);
@@ -2252,11 +2252,11 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
     b->del(b);
 
     /*test equals*/
-    a = array_ia_new();
-    b = array_ia_new();
+    a = aa_int_new();
+    b = aa_int_new();
     for (i = 0; i < arrays; i++) {
-        array_i* c = a->append(a);
-        array_i* d = b->append(b);
+        a_int* c = a->append(a);
+        a_int* d = b->append(b);
         unsigned j;
         for (j = 0; j < total; j++) {
             c->append(c, start);
@@ -2273,10 +2273,10 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
     b->del(b);
 
     /*test copy*/
-    a = array_ia_new();
-    b = array_ia_new();
+    a = aa_int_new();
+    b = aa_int_new();
     for (i = 0; i < arrays; i++) {
-        array_i* c = a->append(a);
+        a_int* c = a->append(a);
         unsigned j;
         for (j = 0; j < total; j++) {
             c->append(c, start);
@@ -2291,10 +2291,10 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
 
     /*test swap*/
     old_start = start;
-    a = array_ia_new();
-    b = array_ia_new();
+    a = aa_int_new();
+    b = aa_int_new();
     for (i = 0; i < arrays; i++) {
-        array_i* c = a->append(a);
+        a_int* c = a->append(a);
         unsigned j;
         for (j = 0; j < total; j++) {
             c->append(c, start);
@@ -2318,17 +2318,17 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
 
     /*test split*/
     for (i = 0; i < arrays; i++) {
-        array_ia* c;
+        aa_int* c;
         unsigned j;
         unsigned k;
         unsigned old_start2;
 
         /*split a to a,a*/
         old_start = start;
-        a = array_ia_new();
+        a = aa_int_new();
 
         for (j = 0; j < arrays; j++) {
-            array_i* d = a->append(a);
+            a_int* d = a->append(a);
             for (k = 0; k < total; k++) {
                 d->append(d, start);
                 start += increment;
@@ -2345,11 +2345,11 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
 
         /*split a to a,b*/
         old_start = start;
-        a = array_ia_new();
-        b = array_ia_new();
+        a = aa_int_new();
+        b = aa_int_new();
 
         for (j = 0; j < arrays; j++) {
-            array_i* d = a->append(a);
+            a_int* d = a->append(a);
             for (k = 0; k < total; k++) {
                 d->append(d, start);
                 start += increment;
@@ -2375,11 +2375,11 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
 
         /*split a to b,a*/
         old_start = start;
-        a = array_ia_new();
-        b = array_ia_new();
+        a = aa_int_new();
+        b = aa_int_new();
 
         for (j = 0; j < arrays; j++) {
-            array_i* d = a->append(a);
+            a_int* d = a->append(a);
             for (k = 0; k < total; k++) {
                 d->append(d, start);
                 start += increment;
@@ -2405,12 +2405,12 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
 
         /*split a to b,c*/
         old_start = old_start2 = start;
-        a = array_ia_new();
-        b = array_ia_new();
-        c = array_ia_new();
+        a = aa_int_new();
+        b = aa_int_new();
+        c = aa_int_new();
 
         for (j = 0; j < arrays; j++) {
-            array_i* d = a->append(a);
+            a_int* d = a->append(a);
             for (k = 0; k < total; k++) {
                 d->append(d, start);
                 start += increment;
@@ -2447,14 +2447,14 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
     for (i = 0; i < total; i++) {
         unsigned j;
         unsigned k;
-        array_ia *c;
+        aa_int *c;
         unsigned old_start2;
 
         /*cross_split a to a,a*/
         old_start = start;
-        a = array_ia_new();
+        a = aa_int_new();
         for (j = 0; j < arrays; j++) {
-            array_i* d = a->append(a);
+            a_int* d = a->append(a);
             for (k = 0; k < total; k++) {
                 d->append(d, start);
                 start += increment;
@@ -2471,8 +2471,8 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
 
         /*cross_split a to a,b*/
         old_start = start;
-        a = array_ia_new();
-        b = array_ia_new();
+        a = aa_int_new();
+        b = aa_int_new();
         for (j = 0; j < arrays; j++)
             (void)a->append(a);
         for (j = 0; j < total; j++) {
@@ -2499,8 +2499,8 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
 
         /*cross_split a to b,a*/
         old_start = start;
-        a = array_ia_new();
-        b = array_ia_new();
+        a = aa_int_new();
+        b = aa_int_new();
         for (j = 0; j < arrays; j++)
             (void)a->append(a);
         for (j = 0; j < total; j++) {
@@ -2527,9 +2527,9 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
 
         /*cross_split a to b,c*/
         old_start = old_start2 = start;
-        a = array_ia_new();
-        b = array_ia_new();
-        c = array_ia_new();
+        a = aa_int_new();
+        b = aa_int_new();
+        c = aa_int_new();
         for (j = 0; j < arrays; j++)
             (void)a->append(a);
         for (j = 0; j < total; j++) {
@@ -2563,10 +2563,10 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
     }
 
     /*test reverse*/
-    a = array_ia_new();
-    b = array_ia_new();
+    a = aa_int_new();
+    b = aa_int_new();
     for (i = 0; i < arrays; i++) {
-        array_i* c = a->append(a);
+        a_int* c = a->append(a);
         unsigned j;
         for (j = 0; j < total; j++) {
             c->append(c, start);
@@ -2582,16 +2582,16 @@ void test_ia_array(unsigned arrays, int start, int increment, unsigned total)
     b->del(b);
 }
 
-void test_iaa_array(unsigned arrays, unsigned sub_arrays,
-                    int start, int increment, unsigned total)
+void test_aaa_int(unsigned arrays, unsigned sub_arrays,
+                  int start, int increment, unsigned total)
 {
-    array_iaa* a;
-    array_iaa* b;
+    aaa_int* a;
+    aaa_int* b;
     unsigned i;
     int old_start;
 
     /*test resize*/
-    a = array_iaa_new();
+    a = aaa_int_new();
     assert(a->len == 0);
     assert(a->total_size > 0);
     a->resize(a, 10);
@@ -2603,7 +2603,7 @@ void test_iaa_array(unsigned arrays, unsigned sub_arrays,
     a->del(a);
 
     /*test reset*/
-    a = array_iaa_new();
+    a = aaa_int_new();
     a->resize(a, 10);
     for (i = 0; i < 10; i++)
         (void)a->append(a);
@@ -2613,12 +2613,12 @@ void test_iaa_array(unsigned arrays, unsigned sub_arrays,
     a->del(a);
 
     /*test append*/
-    a = array_iaa_new();
+    a = aaa_int_new();
     for (i = 0; i < arrays; i++) {
-        array_ia* c = a->append(a);
+        aa_int* c = a->append(a);
         unsigned j;
         for (j = 0; j < sub_arrays; j++) {
-            array_i* d = c->append(c);
+            a_int* d = c->append(c);
             unsigned k;
             for (k = 0; k < total; k++) {
                 d->append(d, start);
@@ -2633,12 +2633,12 @@ void test_iaa_array(unsigned arrays, unsigned sub_arrays,
 
     /*test extend*/
     old_start = start;
-    a = array_iaa_new();
+    a = aaa_int_new();
     for (i = 0; i < arrays; i++) {
-        array_ia* c = a->append(a);
+        aa_int* c = a->append(a);
         unsigned j;
         for (j = 0; j < sub_arrays; j++) {
-            array_i* d = c->append(c);
+            a_int* d = c->append(c);
             unsigned k;
             for (k = 0; k < total; k++) {
                 d->append(d, start);
@@ -2647,12 +2647,12 @@ void test_iaa_array(unsigned arrays, unsigned sub_arrays,
             assert(d->len == total);
         }
     }
-    b = array_iaa_new();
+    b = aaa_int_new();
     for (i = 0; i < arrays; i++) {
-        array_ia* c = a->append(a);
+        aa_int* c = a->append(a);
         unsigned j;
         for (j = 0; j < sub_arrays; j++) {
-            array_i* d = c->append(c);
+            a_int* d = c->append(c);
             unsigned k;
             for (k = 0; k < total; k++) {
                 d->append(d, start);
@@ -2687,15 +2687,15 @@ void test_iaa_array(unsigned arrays, unsigned sub_arrays,
     b->del(b);
 
     /*test equals*/
-    a = array_iaa_new();
-    b = array_iaa_new();
+    a = aaa_int_new();
+    b = aaa_int_new();
     for (i = 0; i < arrays; i++) {
-        array_ia* c = a->append(a);
-        array_ia* d = b->append(b);
+        aa_int* c = a->append(a);
+        aa_int* d = b->append(b);
         unsigned j;
         for (j = 0; j < sub_arrays; j++) {
-            array_i* e = c->append(c);
-            array_i* f = d->append(d);
+            a_int* e = c->append(c);
+            a_int* f = d->append(d);
             unsigned k;
             for (k = 0; k < total; k++) {
                 e->append(e, start);
@@ -2713,13 +2713,13 @@ void test_iaa_array(unsigned arrays, unsigned sub_arrays,
     b->del(b);
 
     /*test copy*/
-    a = array_iaa_new();
-    b = array_iaa_new();
+    a = aaa_int_new();
+    b = aaa_int_new();
     for (i = 0; i < arrays; i++) {
-        array_ia* c = a->append(a);
+        aa_int* c = a->append(a);
         unsigned j;
         for (j = 0; j < sub_arrays; j++) {
-            array_i* d = c->append(c);
+            a_int* d = c->append(c);
             unsigned k;
             for (k = 0; k < total; k++) {
                 d->append(d, start);
@@ -2735,13 +2735,13 @@ void test_iaa_array(unsigned arrays, unsigned sub_arrays,
 
     /*test swap*/
     old_start = start;
-    a = array_iaa_new();
-    b = array_iaa_new();
+    a = aaa_int_new();
+    b = aaa_int_new();
     for (i = 0; i < arrays; i++) {
-        array_ia* c = a->append(a);
+        aa_int* c = a->append(a);
         unsigned j;
         for (j = 0; j < sub_arrays; j++) {
-            array_i* d = c->append(c);
+            a_int* d = c->append(c);
             unsigned k;
             for (k = 0; k < total; k++) {
                 d->append(d, start);
@@ -2769,16 +2769,16 @@ void test_iaa_array(unsigned arrays, unsigned sub_arrays,
 
     /*test split*/
     for (i = 0; i < arrays; i++) {
-        array_iaa* base = array_iaa_new();
-        array_iaa* c;
+        aaa_int* base = aaa_int_new();
+        aaa_int* c;
         unsigned j;
 
         for (j = 0; j < arrays; j++) {
-            array_ia* c = base->append(base);
+            aa_int* c = base->append(base);
             unsigned k;
 
             for (k = 0; k < sub_arrays; k++) {
-                array_i* d = c->append(c);
+                a_int* d = c->append(c);
                 unsigned l;
                 for (l = 0; l < total; l++) {
                     d->append(d, start);
@@ -2788,7 +2788,7 @@ void test_iaa_array(unsigned arrays, unsigned sub_arrays,
         }
 
         /*split a to a,a*/
-        a = array_iaa_new();
+        a = aaa_int_new();
         base->copy(base, a);
         a->split(a, i, a, a);
         for (j = 0; j < arrays; j++)
@@ -2796,8 +2796,8 @@ void test_iaa_array(unsigned arrays, unsigned sub_arrays,
         a->del(a);
 
         /*split a to a,b*/
-        a = array_iaa_new();
-        b = array_iaa_new();
+        a = aaa_int_new();
+        b = aaa_int_new();
         base->copy(base, a);
         a->split(a, i, a, b);
         for (j = 0; j < i; j++)
@@ -2808,8 +2808,8 @@ void test_iaa_array(unsigned arrays, unsigned sub_arrays,
         b->del(b);
 
         /*split a to b,a*/
-        a = array_iaa_new();
-        b = array_iaa_new();
+        a = aaa_int_new();
+        b = aaa_int_new();
         base->copy(base, a);
         a->split(a, i, b, a);
         for (j = 0; j < i; j++)
@@ -2820,9 +2820,9 @@ void test_iaa_array(unsigned arrays, unsigned sub_arrays,
         b->del(b);
 
         /*split a to b,c*/
-        a = array_iaa_new();
-        b = array_iaa_new();
-        c = array_iaa_new();
+        a = aaa_int_new();
+        b = aaa_int_new();
+        c = aaa_int_new();
         base->copy(base, a);
         a->split(a, i, b, c);
         for (j = 0; j < i; j++)
@@ -2837,14 +2837,14 @@ void test_iaa_array(unsigned arrays, unsigned sub_arrays,
     }
 
     /*test reverse*/
-    a = array_iaa_new();
-    b = array_iaa_new();
+    a = aaa_int_new();
+    b = aaa_int_new();
     for (i = 0; i < arrays; i++) {
-        array_ia* c = a->append(a);
+        aa_int* c = a->append(a);
         unsigned j;
 
         for (j = 0; j < sub_arrays; j++) {
-            array_i* d = c->append(c);
+            a_int* d = c->append(c);
             unsigned k;
             for (k = 0; k < total; k++) {
                 d->append(d, start);

@@ -41,17 +41,17 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     audiotools__MD5Init(&(self->md5));
     self->md5sum_checked = 0;
 
-    self->channels_data = array_ia_new();
-    self->decorrelation_terms = array_i_new();
-    self->decorrelation_deltas = array_i_new();
-    self->decorrelation_weights = array_ia_new();
-    self->decorrelation_samples = array_iaa_new();
-    self->entropies = array_ia_new();
-    self->residuals = array_ia_new();
-    self->decorrelated = array_ia_new();
-    self->correlated = array_ia_new();
-    self->left_right = array_ia_new();
-    self->un_shifted = array_ia_new();
+    self->channels_data = aa_int_new();
+    self->decorrelation_terms = a_int_new();
+    self->decorrelation_deltas = a_int_new();
+    self->decorrelation_weights = aa_int_new();
+    self->decorrelation_samples = aaa_int_new();
+    self->entropies = aa_int_new();
+    self->residuals = aa_int_new();
+    self->decorrelated = aa_int_new();
+    self->correlated = aa_int_new();
+    self->left_right = aa_int_new();
+    self->un_shifted = aa_int_new();
     self->block_data = br_substream_new(BS_LITTLE_ENDIAN);
     self->sub_block_data = br_substream_new(BS_LITTLE_ENDIAN);
 
@@ -253,7 +253,7 @@ WavPackDecoder_close(decoders_WavPackDecoder* self, PyObject *args) {
 PyObject*
 WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     BitstreamReader* bs = self->bitstream;
-    array_ia* channels_data = self->channels_data;
+    aa_int* channels_data = self->channels_data;
     status error;
     struct block_header block_header;
     BitstreamReader* block_data = self->block_data;
@@ -313,9 +313,9 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
                                            self->remaining_pcm_samples);
 
         /*convert all channels to single PCM framelist*/
-        framelist = array_ia_to_FrameList(self->audiotools_pcm,
-                                          channels_data,
-                                          self->bits_per_sample);
+        framelist = aa_int_to_FrameList(self->audiotools_pcm,
+                                        channels_data,
+                                        self->bits_per_sample);
 
         /*update stream's MD5 sum with framelist data*/
         if (!WavPackDecoder_update_md5sum(self, framelist)) {
@@ -592,7 +592,7 @@ decode_block(decoders_WavPackDecoder* decoder,
              const struct block_header* block_header,
              BitstreamReader* block_data,
              unsigned block_data_size,
-             array_ia* channels)
+             aa_int* channels)
 {
     struct sub_block sub_block;
     int sub_block_size;
@@ -607,12 +607,12 @@ decode_block(decoders_WavPackDecoder* decoder,
 
     struct extended_integers extended_integers;
 
-    array_i* decorrelation_terms = decoder->decorrelation_terms;
-    array_i* decorrelation_deltas = decoder->decorrelation_deltas;
-    array_ia* decorrelation_weights = decoder->decorrelation_weights;
-    array_iaa* decorrelation_samples = decoder->decorrelation_samples;
-    array_ia* entropies = decoder->entropies;
-    array_ia* residuals = decoder->residuals;
+    a_int* decorrelation_terms = decoder->decorrelation_terms;
+    a_int* decorrelation_deltas = decoder->decorrelation_deltas;
+    aa_int* decorrelation_weights = decoder->decorrelation_weights;
+    aaa_int* decorrelation_samples = decoder->decorrelation_samples;
+    aa_int* entropies = decoder->entropies;
+    aa_int* residuals = decoder->residuals;
 
     sub_block.data = decoder->sub_block_data;
 
@@ -707,9 +707,9 @@ decode_block(decoders_WavPackDecoder* decoder,
 
     if ((block_header->mono_output == 0) &&
         (block_header->false_stereo == 0)) {
-        array_ia* decorrelated = decoder->decorrelated;
-        array_ia* left_right = decoder->left_right;
-        array_ia* un_shifted = decoder->un_shifted;
+        aa_int* decorrelated = decoder->decorrelated;
+        aa_int* left_right = decoder->left_right;
+        aa_int* un_shifted = decoder->un_shifted;
 
         /*perform decorrelation passes over residual data*/
         if (decorrelation_terms_read &&
@@ -752,8 +752,8 @@ decode_block(decoders_WavPackDecoder* decoder,
 
         channels->extend(channels, un_shifted);
     } else {
-        array_ia* decorrelated = decoder->decorrelated;
-        array_ia* un_shifted = decoder->un_shifted;
+        aa_int* decorrelated = decoder->decorrelated;
+        aa_int* un_shifted = decoder->un_shifted;
 
         /*perform decorrelation passes over residual data*/
         if (decorrelation_terms_read &&
@@ -803,8 +803,8 @@ decode_block(decoders_WavPackDecoder* decoder,
 
 static status
 read_decorrelation_terms(const struct sub_block* sub_block,
-                         array_i* terms,
-                         array_i* deltas)
+                         a_int* terms,
+                         a_int* deltas)
 {
     BitstreamReader* sub_block_data = sub_block->data;
     unsigned passes;
@@ -854,7 +854,7 @@ static status
 read_decorrelation_weights(const struct block_header* block_header,
                            const struct sub_block* sub_block,
                            unsigned term_count,
-                           array_ia* weights)
+                           aa_int* weights)
 {
     unsigned i;
     unsigned weight_count;
@@ -873,14 +873,14 @@ read_decorrelation_weights(const struct block_header* block_header,
             return EXCESSIVE_DECORRELATION_WEIGHTS;
         }
         for (i = 0; i < weight_count / 2; i++) {
-            array_i* weights_pass = weights->append(weights);
+            a_int* weights_pass = weights->append(weights);
             weights_pass->append(weights_pass,
                                  pop_decorrelation_weight(sub_block->data));
             weights_pass->append(weights_pass,
                                  pop_decorrelation_weight(sub_block->data));
         }
         for (; i < term_count; i++) {
-            array_i* weights_pass = weights->append(weights);
+            a_int* weights_pass = weights->append(weights);
             weights_pass->mappend(weights_pass, 2, 0);
         }
 
@@ -893,12 +893,12 @@ read_decorrelation_weights(const struct block_header* block_header,
         }
 
         for (i = 0; i < weight_count; i++) {
-            array_i* weights_pass = weights->append(weights);
+            a_int* weights_pass = weights->append(weights);
             weights_pass->append(weights_pass,
                                  pop_decorrelation_weight(sub_block->data));
         }
         for (; i < term_count; i++) {
-            array_i* weights_pass = weights->append(weights);
+            a_int* weights_pass = weights->append(weights);
             weights_pass->append(weights_pass, 0);
         }
 
@@ -910,8 +910,8 @@ read_decorrelation_weights(const struct block_header* block_header,
 static status
 read_decorrelation_samples(const struct block_header* block_header,
                            const struct sub_block* sub_block,
-                           const array_i* terms,
-                           array_iaa* samples)
+                           const a_int* terms,
+                           aaa_int* samples)
 {
     unsigned bytes_remaining;
     int p;
@@ -928,12 +928,12 @@ read_decorrelation_samples(const struct block_header* block_header,
     if ((block_header->mono_output == 0) && (block_header->false_stereo == 0)) {
         /*two channels*/
         for (p = terms->len - 1; p >= 0; p--) {
-            array_ia* samples_p = samples->append(samples);
+            aa_int* samples_p = samples->append(samples);
 
             /*samples for pass "p", channel "0"*/
-            array_i* samples_p_0_s = samples_p->append(samples_p);
+            a_int* samples_p_0_s = samples_p->append(samples_p);
             /*samples for pass "p", channel "1"*/
-            array_i* samples_p_1_s = samples_p->append(samples_p);
+            a_int* samples_p_1_s = samples_p->append(samples_p);
 
             if ((17 <= terms->_[p]) && (terms->_[p] <= 18)) {
                 if (bytes_remaining >= 8) {
@@ -993,9 +993,9 @@ read_decorrelation_samples(const struct block_header* block_header,
         /*one channel*/
 
         for (p = terms->len - 1; p >= 0 ; p--) {
-            array_ia* samples_p = samples->append(samples);
+            aa_int* samples_p = samples->append(samples);
 
-            array_i* samples_p_0_s = samples_p->append(samples_p);
+            a_int* samples_p_0_s = samples_p->append(samples_p);
 
             if ((17 <= terms->_[p]) && (terms->_[p] <= 18)) {
                 if (bytes_remaining >= 4) {
@@ -1035,10 +1035,10 @@ read_decorrelation_samples(const struct block_header* block_header,
 static status
 read_entropy_variables(const struct block_header* block_header,
                        const struct sub_block* sub_block,
-                       array_ia* entropies)
+                       aa_int* entropies)
 {
-    array_i* entropies_0;
-    array_i* entropies_1;
+    a_int* entropies_0;
+    a_int* entropies_1;
 
     if (sub_block->actual_size_1_less)
         return INVALID_ENTROPY_VARIABLE_COUNT;
@@ -1128,8 +1128,8 @@ read_wv_exp2(BitstreamReader* sub_block_data)
 static status
 read_bitstream(const struct block_header* block_header,
                BitstreamReader* sub_block_data,
-               array_ia* entropies,
-               array_ia* residuals)
+               aa_int* entropies,
+               aa_int* residuals)
 {
     unsigned channel_count;
     int u = UNDEFINED;
@@ -1162,7 +1162,7 @@ read_bitstream(const struct block_header* block_header,
                     zeroes = MIN(zeroes, total_samples - i);
 
                     for (j = 0; j < zeroes; j++) {
-                        array_i* channel = residuals->_[i % channel_count];
+                        a_int* channel = residuals->_[i % channel_count];
                         channel->append(channel, 0);
                         i++;
                     }
@@ -1179,7 +1179,7 @@ read_bitstream(const struct block_header* block_header,
                         read_residual(sub_block_data,
                                       &u,
                                       entropies->_[i % channel_count]);
-                    array_i* channel = residuals->_[i % channel_count];
+                    a_int* channel = residuals->_[i % channel_count];
                     channel->append(channel, residual);
                     i++;
                 }
@@ -1188,7 +1188,7 @@ read_bitstream(const struct block_header* block_header,
                     read_residual(sub_block_data,
                                   &u,
                                   entropies->_[i % channel_count]);
-                array_i* channel = residuals->_[i % channel_count];
+                a_int* channel = residuals->_[i % channel_count];
                 channel->append(channel, residual);
                 i++;
             }
@@ -1229,7 +1229,7 @@ LOG2(unsigned value)
 static int
 read_residual(BitstreamReader* bs,
               int* last_u,
-              array_i* entropies)
+              a_int* entropies)
 {
     unsigned u;
     unsigned m;
@@ -1304,13 +1304,13 @@ read_residual(BitstreamReader* bs,
 }
 
 static status
-decorrelate_channels(const array_i* decorrelation_terms,
-                     const array_i* decorrelation_deltas,
-                     const array_ia* decorrelation_weights,
-                     const array_iaa* decorrelation_samples,
-                     const array_ia* residuals,
-                     array_ia* decorrelated,
-                     array_ia* correlated)
+decorrelate_channels(const a_int* decorrelation_terms,
+                     const a_int* decorrelation_deltas,
+                     const aa_int* decorrelation_weights,
+                     const aaa_int* decorrelation_samples,
+                     const aa_int* residuals,
+                     aa_int* decorrelated,
+                     aa_int* correlated)
 {
     status status;
     unsigned pass;
@@ -1384,9 +1384,9 @@ static status
 decorrelate_1ch_pass(int decorrelation_term,
                      int decorrelation_delta,
                      int decorrelation_weight,
-                     const array_i* decorrelation_samples,
-                     const array_i* correlated,
-                     array_i* decorrelated)
+                     const a_int* decorrelation_samples,
+                     const a_int* correlated,
+                     a_int* decorrelated)
 {
     unsigned i;
 
@@ -1455,10 +1455,10 @@ decorrelate_2ch_pass(int decorrelation_term,
                      int decorrelation_delta,
                      int weight_0,
                      int weight_1,
-                     const array_i* samples_0,
-                     const array_i* samples_1,
-                     const array_ia* correlated,
-                     array_ia* decorrelated)
+                     const a_int* samples_0,
+                     const a_int* samples_1,
+                     const aa_int* correlated,
+                     aa_int* decorrelated)
 {
     status status;
 
@@ -1484,10 +1484,10 @@ decorrelate_2ch_pass(int decorrelation_term,
 
         return OK;
     } else if ((-3 <= decorrelation_term) && (decorrelation_term <= -1)) {
-        array_i* corr_0;
-        array_i* corr_1;
-        array_i* decorr_0;
-        array_i* decorr_1;
+        a_int* corr_0;
+        a_int* corr_1;
+        a_int* decorr_0;
+        a_int* decorr_1;
         unsigned i;
 
         decorrelated->reset(decorrelated);
@@ -1569,12 +1569,12 @@ decorrelate_2ch_pass(int decorrelation_term,
 }
 
 static void
-undo_joint_stereo(const array_ia* mid_side, array_ia* left_right)
+undo_joint_stereo(const aa_int* mid_side, aa_int* left_right)
 {
-    array_i* mid = mid_side->_[0];
-    array_i* side = mid_side->_[1];
-    array_i* left;
-    array_i* right;
+    a_int* mid = mid_side->_[0];
+    a_int* side = mid_side->_[1];
+    a_int* left;
+    a_int* right;
     unsigned i;
 
     left_right->reset(left_right);
@@ -1588,7 +1588,7 @@ undo_joint_stereo(const array_ia* mid_side, array_ia* left_right)
 }
 
 static uint32_t
-calculate_crc(const array_ia* channels)
+calculate_crc(const aa_int* channels)
 {
     unsigned i;
     uint32_t crc = 0xFFFFFFFF;
@@ -1830,13 +1830,13 @@ read_extended_integers(const struct sub_block* sub_block,
 
 static void
 undo_extended_integers(const struct extended_integers* params,
-                       const array_ia* extended_integers,
-                       array_ia* un_extended_integers)
+                       const aa_int* extended_integers,
+                       aa_int* un_extended_integers)
 {
     unsigned c;
     unsigned i;
-    const array_i* extended;
-    array_i* un_extended;
+    const a_int* extended;
+    a_int* un_extended;
 
     un_extended_integers->reset(un_extended_integers);
 
@@ -1902,7 +1902,7 @@ int main(int argc, char* argv[]) {
 
     while (decoder.remaining_pcm_samples) {
         BitstreamReader* bs = decoder.bitstream;
-        array_ia* channels_data = decoder.channels_data;
+        aa_int* channels_data = decoder.channels_data;
         status error;
         BitstreamReader* block_data = decoder.block_data;
         unsigned pcm_size;
@@ -1960,7 +1960,7 @@ int main(int argc, char* argv[]) {
             output_data = realloc(output_data, output_data_size);
         }
         for (channel = 0; channel < channels_data->len; channel++) {
-            const array_i* channel_data = channels_data->_[channel];
+            const a_int* channel_data = channels_data->_[channel];
             for (frame = 0; frame < channel_data->len; frame++) {
                 converter(channel_data->_[frame],
                           output_data +

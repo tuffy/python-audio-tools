@@ -32,13 +32,13 @@ typedef enum {OK,
               UNSUPPORTED_FORMAT} status;
 
 struct tta_cache {
-    array_i* k0;
-    array_i* sum0;
-    array_i* k1;
-    array_i* sum1;
-    array_ia* residual;
-    array_ia* filtered;
-    array_ia* predicted;
+    a_int* k0;
+    a_int* sum0;
+    a_int* k1;
+    a_int* sum1;
+    aa_int* residual;
+    aa_int* filtered;
+    aa_int* predicted;
 };
 
 #ifndef STANDALONE
@@ -64,7 +64,7 @@ typedef struct {
 
     BitstreamReader* bitstream;
     BitstreamReader* frame;
-    array_ia* framelist;
+    aa_int* framelist;
 
     /*a framelist generator*/
     PyObject* audiotools_pcm;
@@ -191,18 +191,18 @@ read_frame(BitstreamReader* frame,
            unsigned block_size,
            unsigned channels,
            unsigned bits_per_sample,
-           array_ia* framelist);
+           aa_int* framelist);
 
 static void
-hybrid_filter(array_i* residual,
+hybrid_filter(a_int* residual,
               unsigned bits_per_sample,
-              array_i* filtered);
+              a_int* filtered);
 
 static void
-fixed_prediction(array_i* filtered,
+fixed_prediction(a_int* filtered,
                  unsigned bits_per_sample,
-                 array_i* predicted);
+                 a_int* predicted);
 
 static void
-decorrelate_channels(array_ia* predicted,
-                     array_ia* decorrelated);
+decorrelate_channels(aa_int* predicted,
+                     aa_int* decorrelated);

@@ -71,8 +71,8 @@ Averager_read(pcmconverter_Averager *self, PyObject *args)
     } else {
         unsigned c;
         unsigned i;
-        array_ia* input = self->input_channels;
-        array_i* output = self->output_channel;
+        aa_int* input = self->input_channels;
+        a_int* output = self->output_channel;
         const unsigned frame_count = input->_[0]->len;
         const unsigned channel_count = input->len;
         PyThreadState *thread_state = PyEval_SaveThread();
@@ -88,10 +88,10 @@ Averager_read(pcmconverter_Averager *self, PyObject *args)
         }
 
         PyEval_RestoreThread(thread_state);
-        return array_i_to_FrameList(self->audiotools_pcm,
-                                    output,
-                                    1,
-                                    self->pcmreader->bits_per_sample);
+        return a_int_to_FrameList(self->audiotools_pcm,
+                                  output,
+                                  1,
+                                  self->pcmreader->bits_per_sample);
     }
 }
 
@@ -129,8 +129,8 @@ int
 Averager_init(pcmconverter_Averager *self, PyObject *args, PyObject *kwds)
 {
     self->pcmreader = NULL;
-    self->input_channels = array_ia_new();
-    self->output_channel = array_i_new();
+    self->input_channels = aa_int_new();
+    self->output_channel = a_int_new();
     self->audiotools_pcm = NULL;
 
     if (!PyArg_ParseTuple(args, "O&", pcmreader_converter,
@@ -176,10 +176,10 @@ int
 Downmixer_init(pcmconverter_Downmixer *self, PyObject *args, PyObject *kwds)
 {
     self->pcmreader = NULL;
-    self->input_channels = array_ia_new();
-    self->empty_channel = array_i_new();
-    self->six_channels = array_lia_new();
-    self->output_channels = array_ia_new();
+    self->input_channels = aa_int_new();
+    self->empty_channel = a_int_new();
+    self->six_channels = al_int_new();
+    self->output_channels = aa_int_new();
     self->audiotools_pcm = NULL;
 
     if (!PyArg_ParseTuple(args, "O&", pcmreader_converter,
@@ -230,8 +230,8 @@ Downmixer_read(pcmconverter_Downmixer *self, PyObject *args)
         unsigned input_mask;
         unsigned mask;
         unsigned channel = 0;
-        array_i* left;
-        array_i* right;
+        a_int* left;
+        a_int* right;
         const double REAR_GAIN = 0.6;
         const double CENTER_GAIN = 0.7;
         const int SAMPLE_MIN =
@@ -334,9 +334,9 @@ Downmixer_read(pcmconverter_Downmixer *self, PyObject *args)
 
         PyEval_RestoreThread(thread_state);
         /*convert output to pcm.FrameList object and return it*/
-        return array_ia_to_FrameList(self->audiotools_pcm,
-                                     self->output_channels,
-                                     self->pcmreader->bits_per_sample);
+        return aa_int_to_FrameList(self->audiotools_pcm,
+                                   self->output_channels,
+                                   self->pcmreader->bits_per_sample);
     }
 }
 
@@ -442,8 +442,8 @@ Resampler_read(pcmconverter_Resampler *self, PyObject *args)
             const unsigned processed_sample_count =
                 (unsigned)(src_data.output_frames_gen *
                            self->pcmreader->channels);
-            array_f* unprocessed_samples = self->unprocessed_samples;
-            array_i* processed_samples = self->processed_samples;
+            a_double* unprocessed_samples = self->unprocessed_samples;
+            a_int* processed_samples = self->processed_samples;
             int i;
 
             /*save unprocessed samples for next run*/
@@ -474,10 +474,10 @@ Resampler_read(pcmconverter_Resampler *self, PyObject *args)
             /*return FrameList*/
             free(src_data.data_in);
             PyEval_RestoreThread(thread_state);
-            return array_i_to_FrameList(self->audiotools_pcm,
-                                        processed_samples,
-                                        self->pcmreader->channels,
-                                        self->pcmreader->bits_per_sample);
+            return a_int_to_FrameList(self->audiotools_pcm,
+                                      processed_samples,
+                                      self->pcmreader->channels,
+                                      self->pcmreader->bits_per_sample);
         }
     }
 }
@@ -520,9 +520,9 @@ Resampler_init(pcmconverter_Resampler *self, PyObject *args, PyObject *kwds)
     int error;
 
     self->pcmreader = NULL;
-    self->input_channels = array_ia_new();
-    self->unprocessed_samples = array_f_new();
-    self->processed_samples = array_i_new();
+    self->input_channels = aa_int_new();
+    self->unprocessed_samples = a_double_new();
+    self->processed_samples = a_int_new();
     self->audiotools_pcm = NULL;
 
     if (!PyArg_ParseTuple(args, "O&i", pcmreader_converter,
@@ -602,9 +602,9 @@ BPSConverter_read(pcmconverter_BPSConverter *self, PyObject *args)
                 self->output_channels->reset(self->output_channels);
 
                 for (c = 0; c < self->input_channels->len; c++) {
-                    array_i* input_channel =
+                    a_int* input_channel =
                         self->input_channels->_[c];
-                    array_i* output_channel =
+                    a_int* output_channel =
                         self->output_channels->append(self->output_channels);
                     unsigned i;
 
@@ -619,9 +619,9 @@ BPSConverter_read(pcmconverter_BPSConverter *self, PyObject *args)
                 }
 
                 br_etry(white_noise);
-                return array_ia_to_FrameList(self->audiotools_pcm,
-                                             self->output_channels,
-                                             self->bits_per_sample);
+                return aa_int_to_FrameList(self->audiotools_pcm,
+                                           self->output_channels,
+                                           self->bits_per_sample);
             } else {
                 /*I/O error reading white noise from os.random()*/
                 br_etry(white_noise);
@@ -639,9 +639,9 @@ BPSConverter_read(pcmconverter_BPSConverter *self, PyObject *args)
             self->output_channels->reset(self->output_channels);
 
             for (c = 0; c < self->input_channels->len; c++) {
-                array_i* input_channel =
+                a_int* input_channel =
                     self->input_channels->_[c];
-                array_i* output_channel =
+                a_int* output_channel =
                     self->output_channels->append(self->output_channels);
                 unsigned i;
 
@@ -651,14 +651,14 @@ BPSConverter_read(pcmconverter_BPSConverter *self, PyObject *args)
                 }
             }
 
-            return array_ia_to_FrameList(self->audiotools_pcm,
-                                         self->output_channels,
-                                         self->bits_per_sample);
+            return aa_int_to_FrameList(self->audiotools_pcm,
+                                       self->output_channels,
+                                       self->bits_per_sample);
         } else {
             /*leaving bits-per-sample unchanged returns FrameList as-is*/
-            return array_ia_to_FrameList(self->audiotools_pcm,
-                                         self->input_channels,
-                                         self->bits_per_sample);
+            return aa_int_to_FrameList(self->audiotools_pcm,
+                                       self->input_channels,
+                                       self->bits_per_sample);
         }
     }
 }
@@ -700,8 +700,8 @@ BPSConverter_init(pcmconverter_BPSConverter *self,
                   PyObject *args, PyObject *kwds)
 {
     self->pcmreader = NULL;
-    self->input_channels = array_ia_new();
-    self->output_channels = array_ia_new();
+    self->input_channels = aa_int_new();
+    self->output_channels = aa_int_new();
     self->audiotools_pcm = NULL;
     self->white_noise = NULL;
 

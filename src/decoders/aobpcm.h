@@ -50,6 +50,6 @@ aobpcm_packet_empty(AOBPCMDecoder* decoder,
 void
 read_aobpcm(AOBPCMDecoder* decoder,
             struct bs_buffer* packet,
-            array_ia* framelist);
+            aa_int* framelist);
 
 #endif

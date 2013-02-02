@@ -109,7 +109,7 @@ typedef struct {
     PyObject_HEAD;
 
     pcmreader* pcmreader;
-    array_ia* channels;
+    aa_int* channels;
     BitstreamReader* white_noise;
     PyObject* audiotools_pcm;
     double multiplier;

@@ -14,7 +14,9 @@ oggflacdec \
 shnenc \
 wvenc \
 huffman \
-bitstream
+bitstream \
+ttaenc \
+ttadec
 
 all: $(BINARIES)
 

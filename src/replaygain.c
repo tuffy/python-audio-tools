@@ -193,8 +193,8 @@ ReplayGain_title_gain(replaygain_ReplayGain *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "O&", pcmreader_converter, &pcmreader)) {
         return NULL;
     } else {
-        array_ia* channels = array_ia_new();
-        array_fa* channels_f = array_fa_new();
+        aa_int* channels = aa_int_new();
+        aa_double* channels_f = aa_double_new();
         const int32_t peak_shift = 1 << (pcmreader->bits_per_sample - 1);
 
         if (pcmreader->sample_rate != self->sample_rate) {
@@ -236,8 +236,8 @@ ReplayGain_title_gain(replaygain_ReplayGain *self, PyObject *args)
               (but *not* doubles between -1.0 and 1.0)
               and store peak values*/
             for (c = 0; c < 2; c++) {
-                array_i* channel_i = channels->_[c];
-                array_f* channel_f = channels_f->append(channels_f);
+                a_int* channel_i = channels->_[c];
+                a_double* channel_f = channels_f->append(channels_f);
                 int i;
                 double peak;
 
@@ -820,7 +820,7 @@ int
 ReplayGainReader_init(replaygain_ReplayGainReader *self,
                       PyObject *args, PyObject *kwds) {
     self->pcmreader = NULL;
-    self->channels = array_ia_new();
+    self->channels = aa_int_new();
     self->white_noise = NULL;
     self->audiotools_pcm = NULL;
 
@@ -850,7 +850,7 @@ void
 ReplayGainReader_dealloc(replaygain_ReplayGainReader* self) {
     if (self->pcmreader != NULL)
         self->pcmreader->del(self->pcmreader);
-    self->channels = array_ia_new();
+    self->channels = aa_int_new();
     if (self->white_noise != NULL)
         self->white_noise->close(self->white_noise);
     Py_XDECREF(self->audiotools_pcm);
@@ -885,7 +885,7 @@ ReplayGainReader_channel_mask(replaygain_ReplayGainReader *self,
 static PyObject*
 ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
     int pcm_frames = 0;
-    array_ia* channels = self->channels;
+    aa_int* channels = self->channels;
     unsigned c;
 
     const int max_value = (1 << (self->pcmreader->bits_per_sample - 1)) - 1;
@@ -909,7 +909,7 @@ ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
     /*apply our multiplier to framelist's integer samples
       and apply dithering*/
     for (c = 0; c < channels->len; c++) {
-        array_i* channel = channels->_[c];
+        a_int* channel = channels->_[c];
         unsigned i;
         for (i = 0; i < channel->len; i++) {
             channel->_[i] = (int)lround(channel->_[i] * multiplier);
@@ -919,9 +919,9 @@ ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
     }
 
     /*return integer samples as a new FrameList object*/
-    return array_ia_to_FrameList(self->audiotools_pcm,
-                                 channels,
-                                 self->pcmreader->bits_per_sample);
+    return aa_int_to_FrameList(self->audiotools_pcm,
+                               channels,
+                               self->pcmreader->bits_per_sample);
 }
 
 static PyObject*

@@ -82,8 +82,8 @@ int
 
     self->mlp_decoder = open_mlp_decoder(self->frames);
 
-    self->codec_framelist = array_ia_new();
-    self->output_framelist = array_ia_new();
+    self->codec_framelist = aa_int_new();
+    self->output_framelist = aa_int_new();
 
 #ifndef STANDALONE
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
@@ -408,9 +408,9 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
     self->pcm_frames_remaining -= self->output_framelist->_[0]->len;
 
     /*and return output FrameList*/
-    return array_ia_to_FrameList(self->audiotools_pcm,
-                                 self->output_framelist,
-                                 self->bits_per_sample);
+    return aa_int_to_FrameList(self->audiotools_pcm,
+                               self->output_framelist,
+                               self->bits_per_sample);
 }
 
 static PyObject*
@@ -490,7 +490,7 @@ open_sector_reader(const char* audio_ts_path,
     DVDA_Sector_Reader* reader = malloc(sizeof(DVDA_Sector_Reader));
     unsigned i;
 
-    reader->aobs = array_o_new(NULL, (ARRAY_FREE_FUNC)free_aob, NULL);
+    reader->aobs = a_obj_new(NULL, (ARRAY_FREE_FUNC)free_aob, NULL);
 #ifdef HAS_UNPROT
     reader->cppm_decoder = NULL;
 #endif
@@ -1023,7 +1023,7 @@ int main(int argc, char* argv[]) {
             output_data = realloc(output_data, output_data_size);
         }
         for (channel = 0; channel < title.output_framelist->len; channel++) {
-            const array_i* channel_data = title.output_framelist->_[channel];
+            const a_int* channel_data = title.output_framelist->_[channel];
             for (frame = 0; frame < channel_data->len; frame++) {
                 converter(channel_data->_[frame],
                           output_data +

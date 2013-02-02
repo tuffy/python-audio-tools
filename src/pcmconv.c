@@ -29,10 +29,10 @@ open_audiotools_pcm(void)
 }
 
 PyObject*
-array_i_to_FrameList(PyObject* audiotools_pcm,
-                     array_i* samples,
-                     unsigned int channels,
-                     unsigned int bits_per_sample)
+a_int_to_FrameList(PyObject* audiotools_pcm,
+                   a_int* samples,
+                   unsigned int channels,
+                   unsigned int bits_per_sample)
 {
     if ((samples->len % channels) == 0) {
         pcm_FrameList *framelist;
@@ -64,9 +64,9 @@ array_i_to_FrameList(PyObject* audiotools_pcm,
 }
 
 PyObject*
-array_ia_to_FrameList(PyObject* audiotools_pcm,
-                      array_ia* channels,
-                      unsigned int bits_per_sample)
+aa_int_to_FrameList(PyObject* audiotools_pcm,
+                    aa_int* channels,
+                    unsigned int bits_per_sample)
 {
     const unsigned channel_count = channels->len;
     unsigned pcm_frames;
@@ -102,7 +102,7 @@ array_ia_to_FrameList(PyObject* audiotools_pcm,
                                      framelist->samples_length *
                                      sizeof(int));
         for (c = 0; c < channel_count; c++) {
-            const array_i* channel = channels->_[c];
+            const a_int* channel = channels->_[c];
             for (i = 0; i < pcm_frames; i++) {
                 framelist->samples[(i * channel_count) + c] = channel->_[i];
             }
@@ -218,13 +218,13 @@ pcmreader_converter(PyObject* obj, void** pcm_reader)
 
 int pcmreader_read(struct pcmreader_s* reader,
                     unsigned pcm_frames,
-                    array_ia* channels)
+                    aa_int* channels)
 {
     PyObject* framelist_obj;
     pcm_FrameList* framelist;
     unsigned frame;
     unsigned channel;
-    array_i* channel_a;
+    a_int* channel_a;
 
     struct pcmreader_callback* callback;
     PyObject* string_obj;
@@ -371,7 +371,7 @@ struct pcmreader_s* open_pcmreader(FILE* file,
 
 int pcmreader_read(struct pcmreader_s* reader,
                    unsigned pcm_frames,
-                   array_ia* channels)
+                   aa_int* channels)
 {
     unsigned bytes_to_read = (pcm_frames *
                               reader->channels *
@@ -379,7 +379,7 @@ int pcmreader_read(struct pcmreader_s* reader,
     size_t bytes_read;
     unsigned frames_read;
 
-    array_i* channel_a;
+    a_int* channel_a;
     unsigned int byte;
     unsigned int sample;
     unsigned int channel;

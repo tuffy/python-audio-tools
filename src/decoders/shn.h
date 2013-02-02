@@ -82,14 +82,14 @@ typedef struct {
     int stream_finished;
 
     /*values that persist between commands*/
-    array_ia* means;
-    array_ia* previous_samples;
+    aa_int* means;
+    aa_int* previous_samples;
 
     /*temporary buffers we don't want to allocate all the time*/
-    array_ia* unshifted;
-    array_ia* samples;
-    array_i* pcm_header;
-    array_i* pcm_footer;
+    aa_int* unshifted;
+    aa_int* samples;
+    a_int* pcm_header;
+    a_int* pcm_footer;
 
 #ifndef STANDALONE
     /*a framelist generator*/
@@ -212,41 +212,41 @@ process_iff_header(BitstreamReader* bs,
                    unsigned* channel_mask);
 
 static status
-read_framelist(decoders_SHNDecoder* self, array_ia* framelist);
+read_framelist(decoders_SHNDecoder* self, aa_int* framelist);
 
 /*given a list of samples and a set of means for the given channel,
   reads a DIFF0 command and sets samples to "block_length" values*/
 static void
 read_diff0(BitstreamReader* bs, unsigned block_length,
-           const array_i* means, array_i* samples);
+           const a_int* means, a_int* samples);
 
 /*given a list of previous samples (which may be empty)
   reads a DIFF1 command with the given block length
   and sets samples to "block_length" values*/
 static void
 read_diff1(BitstreamReader* bs, unsigned block_length,
-           array_i* previous_samples, array_i* samples);
+           a_int* previous_samples, a_int* samples);
 
 /*given a list of previous samples (which may be empty)
   reads a DIFF2 command with the given block length
   and sets samples to "block_length" values*/
 static void
 read_diff2(BitstreamReader* bs, unsigned block_length,
-           array_i* previous_samples, array_i* samples);
+           a_int* previous_samples, a_int* samples);
 
 /*given a list of previous samples (which may be empty)
   reads a DIFF3 command with the given block length
   and sets samples to "block_length" values*/
 static void
 read_diff3(BitstreamReader* bs, unsigned block_length,
-           array_i* previous_samples, array_i* samples);
+           a_int* previous_samples, a_int* samples);
 
 static void
 read_qlpc(BitstreamReader* bs, unsigned block_length,
-          array_i* previous_samples, array_i* means, array_i* samples);
+          a_int* previous_samples, a_int* means, a_int* samples);
 
 static int
-shnmean(const array_i* values);
+shnmean(const a_int* values);
 
 /*reads the contents of a VERBATIM command
   into a substream for parsing*/

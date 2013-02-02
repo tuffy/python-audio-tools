@@ -24,13 +24,13 @@
 *******************************************************/
 
 struct tta_cache {
-    array_ia* correlated;
-    array_ia* predicted;
-    array_ia* residual;
-    array_i* k0;
-    array_i* sum0;
-    array_i* k1;
-    array_i* sum1;
+    aa_int* correlated;
+    aa_int* predicted;
+    aa_int* residual;
+    a_int* k0;
+    a_int* sum0;
+    a_int* k1;
+    a_int* sum1;
 };
 
 static void
@@ -42,22 +42,22 @@ cache_free(struct tta_cache* cache);
 static int
 encode_frame(BitstreamWriter* output,
              struct tta_cache* cache,
-             array_ia* framelist,
+             aa_int* framelist,
              unsigned bits_per_sample);
 
 static void
-correlate_channels(array_ia* channels,
-                   array_ia* correlated);
+correlate_channels(aa_int* channels,
+                   aa_int* correlated);
 
 static void
-fixed_prediction(array_i* channel,
+fixed_prediction(a_int* channel,
                  unsigned bits_per_sample,
-                 array_i* predicted);
+                 a_int* predicted);
 
 static void
-hybrid_filter(array_i* predicted,
+hybrid_filter(a_int* predicted,
               unsigned bits_per_sample,
-              array_i* residual);
+              a_int* residual);
 
 static void
 tta_byte_counter(uint8_t byte, int* frame_size);
@@ -72,5 +72,5 @@ write_header(BitstreamWriter* output,
 
 static void
 write_seektable(BitstreamWriter* output,
-                array_i* frame_sizes);
+                a_int* frame_sizes);
 #endif
