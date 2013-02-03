@@ -4413,11 +4413,12 @@ class CDDA:
                 reader.end = min(reader.end, self.last_sector())
 
                 #then wrap the reader in a window to fine-tune the offset
-                reader = PCMReaderWindow(reader, sample_offset, pcm_frames)
-                reader.track_number = reader.pcmreader.track_number
-                reader.rip_log = reader.pcmreader.rip_log
-                reader.length = reader.pcmreader.length
-                reader.offset = reader.pcmreader.offset
+                window = PCMReaderWindow(reader, sample_offset, pcm_frames)
+                window.track_number = reader.track_number
+                window.rip_log = reader.rip_log
+                window.length = reader.length
+                window.offset = reader.offset
+                reader = window
             elif (sample_offset < 0):
                 import math
 
@@ -4429,17 +4430,19 @@ class CDDA:
 
                 #then wrap the reader in a window to fine-tune the offset
                 if (reader.start >= self.first_sector()):
-                    reader = PCMReaderWindow(
+                    window = PCMReaderWindow(
                         reader,
                         sample_offset + (-(sample_offset / 588) * 588),
                         pcm_frames)
+
                 else:
                     reader.start = self.first_sector()
-                    reader = PCMReaderWindow(reader, sample_offset, pcm_frames)
-                reader.track_number = reader.pcmreader.track_number
-                reader.rip_log = reader.pcmreader.rip_log
-                reader.length = reader.pcmreader.length
-                reader.offset = reader.pcmreader.offset
+                    window = PCMReaderWindow(reader, sample_offset, pcm_frames)
+                window.track_number = reader.track_number
+                window.rip_log = reade.rip_log
+                window.length = reader.length
+                window.offset = reader.offset
+                reader = window
 
             return reader
 
