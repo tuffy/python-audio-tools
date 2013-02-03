@@ -128,11 +128,14 @@ figures/m4a/mdhd.pdf \
 figures/m4a/mdhd-example.pdf \
 figures/m4a/mdhd-example2.pdf \
 figures/m4a/mdia.pdf \
+figures/m4a/mdia-tree.pdf \
 figures/m4a/meta.pdf \
 figures/m4a/meta_atoms.pdf \
 figures/m4a/meta-example.pdf \
 figures/m4a/minf.pdf \
+figures/m4a/minf-tree.pdf \
 figures/m4a/moov.pdf \
+figures/m4a/moov-tree.pdf \
 figures/m4a/mp4a.pdf \
 figures/m4a/mvhd.pdf \
 figures/m4a/mvhd-example.pdf \
@@ -140,6 +143,7 @@ figures/m4a/nam-example.pdf \
 figures/m4a/smhd.pdf \
 figures/m4a/smhd-example.pdf \
 figures/m4a/stbl.pdf \
+figures/m4a/stbl-tree.pdf \
 figures/m4a/stco.pdf \
 figures/m4a/stco-example.pdf \
 figures/m4a/stsc.pdf \
@@ -153,6 +157,7 @@ figures/m4a/stts-example.pdf \
 figures/m4a/tkhd.pdf \
 figures/m4a/tkhd-example.pdf \
 figures/m4a/trak.pdf \
+figures/m4a/trak-tree.pdf \
 figures/m4a/trkn.pdf \
 figures/m4a/trkn-example.pdf \
 figures/m4a/udta.pdf
@@ -584,6 +589,21 @@ figures/m4a/atoms.pdf: figures/m4a/atoms.fig
 
 figures/m4a/meta_atoms.pdf: figures/m4a/meta_atoms.fig
 	fig2dev -Z 3 -L pdf $< $@
+
+figures/m4a/moov-tree.pdf: figures/m4a/moov-tree.fig
+	fig2dev -Z 6 -L pdf $< $@
+
+figures/m4a/trak-tree.pdf: figures/m4a/trak-tree.fig
+	fig2dev -Z 6 -L pdf $< $@
+
+figures/m4a/mdia-tree.pdf: figures/m4a/mdia-tree.fig
+	fig2dev -Z 6 -L pdf $< $@
+
+figures/m4a/minf-tree.pdf: figures/m4a/minf-tree.fig
+	fig2dev -Z 6 -L pdf $< $@
+
+figures/m4a/stbl-tree.pdf: figures/m4a/stbl-tree.fig
+	fig2dev -Z 6 -L pdf $< $@
 
 alac/figures/atoms.pdf: alac/figures/atoms.fig
 	fig2dev -Z 5 -L pdf $< $@

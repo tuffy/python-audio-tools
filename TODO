@@ -6490,25 +6490,7 @@
     - [X] pcmconv.c
     - [X] pcmconverter.c
     - [X] replaygain.c
-** TODO Add internal True Audio codec
-*** DONE Add Python-based True Audio decoder
-*** DONE Add Python-based True Audio encoder
-*** DONE Document True Audio decoding
-*** DONE Document True Audio encoding
-*** TODO Add C-based True Audio decoder
-**** DONE modify it for standalone use
-**** DONE ensure there's no memory errors or leaks
-**** TODO Make decoder thread-friendly
-*** DONE Add C-based True Audio encoder
-**** DONE modify it for standalone use
-**** DONE ensure there's no memory errors or leaks
-**** DONE make encoder thread-friendly
-*** DONE Add True Audio-specific unit tests
-*** DONE Test encoder/decoder against reference
-*** DONE Add True Audio detecter to file_type() function
-*** DONE Add True Audio AudioFile class
-*** DONE Ensure True Audio class passes all unit tests
-** TODO Better document M4A atoms
+** DONE Better document M4A atoms
    For each atom, indicate parent in bit diagram,
    tell what it's for, have a hex diagram example
    and show what those parsed values are.
@@ -6534,7 +6516,30 @@
 ***** DONE meta
 *** DONE free
 *** DONE mdat
-*** TODO Add some tree diagrams to fill sections of whitespace
+*** DONE Add some tree diagrams to fill sections of whitespace
+    - [X] moov
+    - [X] trak
+    - [X] mdia
+    - [X] minf
+    - [X] stbl
+** TODO Add internal True Audio codec
+*** DONE Add Python-based True Audio decoder
+*** DONE Add Python-based True Audio encoder
+*** DONE Document True Audio decoding
+*** DONE Document True Audio encoding
+*** TODO Add C-based True Audio decoder
+**** DONE modify it for standalone use
+**** DONE ensure there's no memory errors or leaks
+**** TODO Make decoder thread-friendly
+*** DONE Add C-based True Audio encoder
+**** DONE modify it for standalone use
+**** DONE ensure there's no memory errors or leaks
+**** DONE make encoder thread-friendly
+*** DONE Add True Audio-specific unit tests
+*** DONE Test encoder/decoder against reference
+*** DONE Add True Audio detecter to file_type() function
+*** DONE Add True Audio AudioFile class
+*** DONE Ensure True Audio class passes all unit tests
 ** TODO Add AccurateRip support
   This might make give cd2track a little added respectability
   and post-rip tools could be built also to verify tracks/disc images.

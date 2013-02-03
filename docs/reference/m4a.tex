@@ -71,6 +71,10 @@ or NULL when compatible brand fields are exhausted.
 \clearpage
 
 \subsection{the moov Atom}
+\begin{wrapfigure}[5]{r}{2in}
+  \includegraphics{figures/m4a/moov-tree.pdf}
+\end{wrapfigure}
+
 \begin{figure}[h]
   \includegraphics{figures/m4a/moov.pdf}
 \end{figure}
@@ -138,26 +142,27 @@ and \VAR{duration} is the length of the file, in PCM frames.
 
 \clearpage
 
+\begin{wrapfigure}[5]{r}{1in}
+  \includegraphics[width=1in,keepaspectratio]{figures/m4a/trak-tree.pdf}
+\end{wrapfigure}
 \subsection{the trak Atom}
 \label{atom:trak}
-\begin{figure}[h]
-  \includegraphics{figures/m4a/trak.pdf}
-\end{figure}
+\begin{minipage}[t]{4.75in}
+\includegraphics[width=4.75in,keepaspectratio]{figures/m4a/trak.pdf}
 \par
 \noindent
 This is a container for \hyperref[atom:tkhd]{\ATOM{tkhd}} and
 \hyperref[atom:mdia]{\ATOM{mdia}} atoms.
-
+\noindent
 \subsection{the tkhd Atom}
 \label{atom:tkhd}
-\begin{figure}[h]
-\includegraphics{figures/m4a/tkhd.pdf}
-\end{figure}
+\includegraphics[width=4.75in,keepaspectratio]{figures/m4a/tkhd.pdf}
 \par
 \noindent
 As with `mvhd', if \VAR{version} is 0, \VAR{created Mac UTC Date},
 \VAR{modified Mac UTC Date} and \VAR{duration} are 32-bit fields.
 If it is 1, they are 64-bit fields.
+\end{minipage}
 
 \clearpage
 
@@ -201,11 +206,13 @@ If it is 1, they are 64-bit fields.
 
 \clearpage
 
+\begin{wrapfigure}[5]{r}{1in}
+  \includegraphics[width=1in,keepaspectratio]{figures/m4a/mdia-tree.pdf}
+\end{wrapfigure}
+\begin{minipage}[t]{4.75in}
 \subsection{the mdia Atom}
 \label{atom:mdia}
-\begin{figure}[h]
-  \includegraphics{figures/m4a/mdia.pdf}
-\end{figure}
+\includegraphics[width=4.75in,keepaspectratio]{figures/m4a/mdia.pdf}
 \par
 \noindent
 This is a container for \hyperref[atom:mdhd]{\ATOM{mdhd}},
@@ -214,9 +221,7 @@ This is a container for \hyperref[atom:mdhd]{\ATOM{mdhd}},
 
 \subsection{the mdhd Atom}
 \label{atom:mdhd}
-\begin{figure}[h]
-\includegraphics{figures/m4a/mdhd.pdf}
-\end{figure}
+\includegraphics[width=4.75in,keepaspectratio]{figures/m4a/mdhd.pdf}
 \par
 \noindent
 The \ATOM{mdhd} atom contains track information such as samples-per-second,
@@ -226,6 +231,7 @@ As with \ATOM{mvhd}, if \VAR{version} is 0, \VAR{created Mac UTC date},
 If it is 1, they are 64-bit fields.
 \VAR{language} is a set of 3, 5-bit fields which can be converted
 back to ASCII by adding 96 to their values.
+\end{minipage}
 
 \clearpage
 
@@ -290,11 +296,13 @@ are integers.  The rest are ASCII strings.
 
 \clearpage
 
+\begin{wrapfigure}[5]{r}{1in}
+  \includegraphics[width=1in,keepaspectratio]{figures/m4a/minf-tree.pdf}
+\end{wrapfigure}
+\begin{minipage}[t]{4.75in}
 \subsection{the minf Atom}
 \label{atom:minf}
-\begin{figure}[h]
-  \includegraphics{figures/m4a/minf.pdf}
-\end{figure}
+\includegraphics[width=4.75in,keepaspectratio]{figures/m4a/minf.pdf}
 \par
 \noindent
 This atom is a container for \hyperref[atom:smhd]{\ATOM{smhd}},
@@ -303,14 +311,10 @@ This atom is a container for \hyperref[atom:smhd]{\ATOM{smhd}},
 
 \subsection{the smhd Atom}
 \label{atom:smhd}
-\begin{figure}[h]
-  \includegraphics{figures/m4a/smhd.pdf}
-\end{figure}
+\includegraphics[width=4.75in,keepaspectratio]{figures/m4a/smhd.pdf}
 
 \subsubsection{smhd Atom Example}
-\begin{figure}[h]
-  \includegraphics{figures/m4a/smhd-example.pdf}
-\end{figure}
+\includegraphics[width=4.75in,keepaspectratio]{figures/m4a/smhd-example.pdf}
 \begin{tabular}{rl}
   \textsf{length} & 16 bytes \\
   \textsf{name} & \textsf{smhd} \\
@@ -319,6 +323,7 @@ This atom is a container for \hyperref[atom:smhd]{\ATOM{smhd}},
   \textsf{audio balance} & 0 \\
   \textsf{reserved} & 0 \\
 \end{tabular}
+\end{minipage}
 
 \clearpage
 
@@ -352,11 +357,13 @@ This atom is a container for a number of reference atoms.
 
 \clearpage
 
+\begin{wrapfigure}[5]{r}{1in}
+  \includegraphics[width=1in,keepaspectratio]{figures/m4a/stbl-tree.pdf}
+\end{wrapfigure}
+\begin{minipage}[t]{4.75in}
 \subsection{the stbl Atom}
 \label{atom:stbl}
-\begin{figure}[h]
-  \includegraphics{figures/m4a/stbl.pdf}
-\end{figure}
+\includegraphics[width=4.75in,keepaspectratio]{figures/m4a/stbl.pdf}
 \par
 \noindent
 This atom is a container for the
@@ -365,6 +372,8 @@ This atom is a container for the
 \hyperref[atom:stsc]{\ATOM{stsc}},
 \hyperref[atom:stsz]{\ATOM{stsz}} and
 \hyperref[atom:stco]{\ATOM{stco}} atoms.
+\end{minipage}
+
 
 \clearpage
 
