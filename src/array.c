@@ -1323,1542 +1323,1603 @@ a_obj_print(const struct a_obj_s *array, FILE* output)
 
 #ifdef EXECUTABLE
 
-void test_a_int(const int *data, unsigned data_len,
-                int data_min, int data_max, int data_sum,
-                const int *sorted_data);
+#define ARRAY_TYPE_TEST_DEFINITION(TYPE, CONTENT_TYPE, LINK_TYPE)   \
+void test_##TYPE(const CONTENT_TYPE *data, unsigned data_len,       \
+                 CONTENT_TYPE data_min,                             \
+                 CONTENT_TYPE data_max,                             \
+                 CONTENT_TYPE data_sum,                             \
+                 const CONTENT_TYPE *sorted_data);                  \
+                                                                    \
+void test_##LINK_TYPE(const TYPE *parent,                           \
+                       CONTENT_TYPE data_min,                       \
+                       CONTENT_TYPE data_max,                       \
+                       CONTENT_TYPE data_sum);
 
-void test_l_int(const a_int* parent,
-                int data_min, int data_max, int data_sum);
+ARRAY_TYPE_TEST_DEFINITION(a_int, int, l_int)
+ARRAY_TYPE_TEST_DEFINITION(a_double, double, l_double)
+ARRAY_TYPE_TEST_DEFINITION(a_unsigned, unsigned, l_unsigned)
 
-void test_aa_int(unsigned arrays, int start, int increment, unsigned total);
+#define ARRAY_A_TYPE_TEST_DEFINITION(TYPE, CONTENT_TYPE)            \
+void test_##TYPE(unsigned arrays,                                   \
+                 CONTENT_TYPE start,                                \
+                 CONTENT_TYPE increment,                            \
+                 unsigned total);
 
-void test_aaa_int(unsigned arrays, unsigned sub_arrays,
-                  int start, int increment, unsigned total);
+ARRAY_A_TYPE_TEST_DEFINITION(aa_int, int)
+ARRAY_A_TYPE_TEST_DEFINITION(aa_double, double)
+
+#define ARRAY_AA_TYPE_TEST_DEFINITION(TYPE, CONTENT_TYPE)           \
+void test_##TYPE(unsigned arrays,                                   \
+                 unsigned sub_arrays,                               \
+                 CONTENT_TYPE start,                                \
+                 CONTENT_TYPE increment,                            \
+                 unsigned total);
+
+ARRAY_AA_TYPE_TEST_DEFINITION(aaa_int, int)
+ARRAY_AA_TYPE_TEST_DEFINITION(aaa_double, double)
 
 int main(int argc, char *argv[]) {
-    int data[] = {5, 4, 3, 2, 1};
-    int sorted_data[] = {1, 2, 3, 4, 5};
+    {
+        int data[] = {5, 4, 3, 2, 1};
+        int sorted_data[] = {1, 2, 3, 4, 5};
 
-    test_a_int(data, 5, 1, 5, 15, sorted_data);
-    test_aa_int(5, 0, 1, 20);
-    test_aaa_int(2, 3, 0, 1, 4);
+        test_a_int(data, 5, 1, 5, 15, sorted_data);
+        test_aa_int(5, 0, 1, 20);
+        test_aaa_int(2, 3, 0, 1, 4);
+    }
+    {
+        double data[] = {10.0, 8.0, 6.0, 4.0, 2.0};
+        double sorted_data[] = {2.0, 4.0, 6.0, 8.0, 10.0};
+
+        test_a_double(data, 5, 2.0, 10.0, 30.0, sorted_data);
+        test_aa_double(5, 0.0, 2.0, 20);
+        test_aaa_double(2, 3, 0.0, 2.0, 4);
+    }
+    {
+        unsigned data[] = {50, 40, 30, 20, 10};
+        unsigned sorted_data[] = {10, 20, 30, 40, 50};
+        test_a_unsigned(data, 5, 10, 50, 150, sorted_data);
+    }
 
     return 0;
 }
 
-void test_a_int(const int *data, unsigned data_len,
-                int data_min, int data_max, int data_sum,
-                const int *sorted_data)
-{
-    a_int* a;
-    a_int* b;
-    unsigned i;
-
-    assert(data_len >= 3);
-
-    /*test resize*/
-    a = a_int_new();
-    assert(a->len == 0);
-    assert(a->total_size > 0);
-    a->resize(a, 10);
-    assert(a->len == 0);
-    assert(a->total_size >= 10);
-    a->resize(a, 20);
-    assert(a->len == 0);
-    assert(a->total_size >= 20);
-    a->del(a);
-
-    /*test resize_for*/
-    a = a_int_new();
-    assert(a->len == 0);
-    assert(a->total_size > 0);
-    a->resize_for(a, 10);
-    assert(a->len == 0);
-    assert(a->total_size >= 10);
-    for (i = 0; i < 10; i++)
-        a_append(a, data[0]);
-    a->resize_for(a, 10);
-    assert(a->len == 10);
-    assert(a->total_size >= 20);
-    a->del(a);
-
-    /*test reset*/
-    a = a_int_new();
-    a->resize(a, 10);
-    for (i = 0; i < 10; i++)
-        a_append(a, data[0]);
-    assert(a->len == 10);
-    a->reset(a);
-    assert(a->len == 0);
-    a->del(a);
-
-    /*test reset_for*/
-    a = a_int_new();
-    a->resize(a, 10);
-    for (i = 0; i < 10; i++)
-        a_append(a, data[0]);
-    assert(a->len == 10);
-    assert(a->total_size >= 10);
-    a->reset_for(a, 20);
-    assert(a->len == 0);
-    assert(a->total_size >= 20);
-    a->del(a);
-
-    /*test append*/
-    a = a_int_new();
-    for (i = 0; i < data_len; i++)
-        a->append(a, data[i]);
-    for (i = 0; i < data_len; i++)
-        assert(a->_[i] == data[i]);
-    a->del(a);
-
-    /*test vappend*/
-    a = a_int_new();
-    a->vappend(a, 1, data[0]);
-    assert(a->_[0] == data[0]);
-    a->vappend(a, 2, data[0], data[1]);
-    assert(a->_[0] == data[0]);
-    for (i = 0; i < 2; i++)
-        assert(a->_[i + 1] == data[i]);
-    a->vappend(a, 3, data[0], data[1], data[2]);
-    assert(a->_[0] == data[0]);
-    for (i = 0; i < 2; i++)
-        assert(a->_[i + 1] == data[i]);
-    for (i = 0; i < 3; i++)
-        assert(a->_[i + 3] == data[i]);
-    a->del(a);
-
-    /*test mappend*/
-    a = a_int_new();
-    a->mappend(a, 100, data[0]);
-    for (i = 0; i < 100; i++)
-        assert(a->_[i] == data[0]);
-    a->mappend(a, 200, data[1]);
-    for (i = 0; i < 100; i++)
-        assert(a->_[i] == data[0]);
-    for (i = 0; i < 200; i++)
-        assert(a->_[i + 100] == data[1]);
-    a->mappend(a, 300, data[2]);
-    for (i = 0; i < 100; i++)
-        assert(a->_[i] == data[0]);
-    for (i = 0; i < 200; i++)
-        assert(a->_[i + 100] == data[1]);
-    for (i = 0; i < 300; i++)
-        assert(a->_[i + 300] == data[2]);
-    a->del(a);
-
-    /*test vset*/
-    a = a_int_new();
-    a->vset(a, 1, data[0]);
-    assert(a->_[0] == data[0]);
-    a->vset(a, 2, data[0], data[1]);
-    for (i = 0; i < 2; i++)
-        assert(a->_[i] == data[i]);
-    a->vset(a, 3, data[0], data[1], data[2]);
-    for (i = 0; i < 3; i++)
-        assert(a->_[i] == data[i]);
-    a->del(a);
-
-    /*test mset*/
-    a = a_int_new();
-    a->mset(a, 100, data[0]);
-    for (i = 0; i < 100; i++)
-        assert(a->_[i] == data[0]);
-    a->mset(a, 200, data[1]);
-    for (i = 0; i < 200; i++)
-        assert(a->_[i] == data[1]);
-    a->mset(a, 300, data[2]);
-    for (i = 0; i < 300; i++)
-        assert(a->_[i] == data[2]);
-    a->del(a);
-
-    /*test extend*/
-    a = a_int_new();
-    b = a_int_new();
-
-    for (i = 0; i < data_len; i++)
-        a->append(a, data[i]);
-    b->extend(b, a);
-    for (i = 0; i < data_len; i++)
-        assert(b->_[i] == data[i]);
-    a->reset(a);
-    for (i = 0; i < data_len; i++)
-        a->append(a, sorted_data[i]);
-    b->extend(b, a);
-    for (i = 0; i < data_len; i++)
-        assert(b->_[i] == data[i]);
-    for (i = 0; i < data_len; i++)
-        assert(b->_[i + data_len] == sorted_data[i]);
-    a->del(a);
-    b->del(b);
-
-    /*test equals*/
-    a = a_int_new();
-    b = a_int_new();
-
-    for (i = 0; i < data_len; i++) {
-        a->append(a, data[i]);
-        b->append(b, data[i]);
-    }
-    assert(a->equals(a, a));
-    assert(a->equals(a, b));
-    b->reset(b);
-    for (i = 0; i < data_len; i++)
-        b->append(b, sorted_data[i]);
-    assert(!a->equals(a, b));
-    assert(!b->equals(b, a));
-    a->del(a);
-    b->del(b);
-
-    /*test min*/
-    a = a_int_new();
-    for (i = 0; i < data_len; i++)
-        a->append(a, data[i]);
-    assert(a->min(a) == data_min);
-    a->del(a);
-    a = a_int_new();
-    for (i = 0; i < data_len; i++)
-        a->append(a, sorted_data[i]);
-    assert(a->min(a) == data_min);
-    a->del(a);
-
-    /*test max*/
-    a = a_int_new();
-    for (i = 0; i < data_len; i++)
-        a->append(a, data[i]);
-    assert(a->max(a) == data_max);
-    a->del(a);
-    a = a_int_new();
-    for (i = 0; i < data_len; i++)
-        a->append(a, sorted_data[i]);
-    assert(a->max(a) == data_max);
-    a->del(a);
-
-    /*test sum*/
-    a = a_int_new();
-    for (i = 0; i < data_len; i++)
-        a->append(a, data[i]);
-    assert(a->sum(a) == data_sum);
-    a->del(a);
-    a = a_int_new();
-    for (i = 0; i < data_len; i++)
-        a->append(a, sorted_data[i]);
-    assert(a->sum(a) == data_sum);
-    a->del(a);
-
-    /*test copy*/
-    a = a_int_new();
-    b = a_int_new();
-    for (i = 0; i < data_len; i++) {
-        a->append(a, data[i]);
-        b->append(b, sorted_data[i]);
-    }
-    assert(!a->equals(a, b));
-    a->copy(a, b);
-    assert(a->equals(a, b));
-    a->del(a);
-    b->del(b);
-
-    /*test link*/
-    a = a_int_new();
-    for (i = 0; i < data_len; i++)
-        a->append(a, data[i]);
-    test_l_int(a, data_min, data_max, data_sum);
-    a->del(a);
-
-    /*test swap*/
-    a = a_int_new();
-    b = a_int_new();
-    for (i = 0; i < data_len; i++) {
-        a->append(a, data[i]);
-        b->append(b, sorted_data[i]);
-    }
-    for (i = 0; i < data_len; i++) {
-        assert(a->_[i] == data[i]);
-        assert(b->_[i] == sorted_data[i]);
-    }
-    a->swap(a, a);
-    for (i = 0; i < data_len; i++) {
-        assert(a->_[i] == data[i]);
-        assert(b->_[i] == sorted_data[i]);
-    }
-    a->swap(a, b);
-    for (i = 0; i < data_len; i++) {
-        assert(a->_[i] == sorted_data[i]);
-        assert(b->_[i] == data[i]);
-    }
-    b->swap(b, a);
-    for (i = 0; i < data_len; i++) {
-        assert(a->_[i] == data[i]);
-        assert(b->_[i] == sorted_data[i]);
-    }
-    a->del(a);
-    b->del(b);
-
-    /*test head*/
-    for (i = 0; i < data_len; i++) {
-        unsigned j;
-
-        a = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->head(a, i, a);
-        assert(a->len == i);
-        for (j = 0; j < i; j++)
-            assert(a->_[j] == data[j]);
-        a->del(a);
-
-        a = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->head(a, data_len + 1, a);
-        assert(a->len == data_len);
-        for (j = 0; j < data_len; j++)
-            assert(a->_[j] == data[j]);
-        a->del(a);
-
-        a = a_int_new();
-        b = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->head(a, i, b);
-        assert(a->len == data_len);
-        assert(b->len == i);
-        for (j = 0; j < data_len; j++)
-            assert(a->_[j] == data[j]);
-        for (j = 0; j < i; j++)
-            assert(b->_[j] == data[j]);
-        a->del(a);
-        b->del(b);
-
-        a = a_int_new();
-        b = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->head(a, data_len + 1, b);
-        assert(a->equals(a, b));
-        a->del(a);
-        b->del(b);
-    }
-
-    /*test tail*/
-    for (i = 0; i < data_len; i++) {
-        unsigned j;
-
-        a = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->tail(a, i, a);
-        assert(a->len == i);
-        for (j = 0; j < i; j++)
-            assert(a->_[j] == data[j + (data_len - i)]);
-        a->del(a);
-
-        a = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->tail(a, data_len + 1, a);
-        assert(a->len == data_len);
-        for (j = 0; j < data_len; j++)
-            assert(a->_[j] == data[j]);
-        a->del(a);
-
-        a = a_int_new();
-        b = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->tail(a, i, b);
-        assert(a->len == data_len);
-        assert(b->len == i);
-        for (j = 0; j < data_len; j++)
-            assert(a->_[j] == data[j]);
-        for (j = 0; j < i; j++)
-            assert(b->_[j] == data[j + (data_len - i)]);
-        a->del(a);
-        b->del(b);
-
-        a = a_int_new();
-        b = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->tail(a, data_len + 1, b);
-        assert(a->equals(a, b));
-        a->del(a);
-        b->del(b);
-    }
-
-    /*test de_head*/
-    for (i = 0; i < data_len; i++) {
-        unsigned j;
-
-        a = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->de_head(a, i, a);
-        assert(a->len == (data_len - i));
-        for (j = 0; j < (data_len - i); j++)
-            assert(a->_[j] == data[j + i]);
-        a->del(a);
-
-        a = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->de_head(a, data_len + 1, a);
-        assert(a->len == 0);
-        a->del(a);
-
-        a = a_int_new();
-        b = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->de_head(a, i, b);
-        assert(a->len == data_len);
-        assert(b->len == (data_len - i));
-        for (j = 0; j < data_len; j++)
-            assert(a->_[j] == data[j]);
-        for (j = 0; j < (data_len - i); j++)
-            assert(b->_[j] == data[j + i]);
-        a->del(a);
-        b->del(b);
-
-        a = a_int_new();
-        b = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->de_head(a, data_len + 1, b);
-        assert(a->len == data_len);
-        assert(b->len == 0);
-        a->del(a);
-        b->del(b);
-    }
-
-    /*test de_tail*/
-    for (i = 0; i < data_len; i++) {
-        unsigned j;
-
-        a = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->de_tail(a, i, a);
-        assert(a->len == (data_len - i));
-        for (j = 0; j < (data_len - i); j++)
-            assert(a->_[j] == data[j]);
-        a->del(a);
-
-        a = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->de_tail(a, data_len + 1, a);
-        assert(a->len == 0);
-        a->del(a);
-
-        a = a_int_new();
-        b = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->de_tail(a, i, b);
-        assert(a->len == data_len);
-        assert(b->len == (data_len - i));
-        for (j = 0; j < data_len; j++)
-            assert(a->_[j] == data[j]);
-        for (j = 0; j < (data_len - i); j++)
-            assert(b->_[j] == data[j]);
-        a->del(a);
-        b->del(b);
-
-        a = a_int_new();
-        b = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->de_tail(a, data_len + 1, b);
-        assert(a->len == data_len);
-        assert(b->len == 0);
-        a->del(a);
-        b->del(b);
-    }
-
-    /*test split*/
-    for (i = 0; i < data_len; i++) {
-        unsigned j;
-        unsigned k;
-        a_int *c;
-
-        a = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-
-        a->split(a, i, a, a);
-        for (j = 0; j < data_len; j++)
-            assert(a->_[j] == data[j]);
-        a->del(a);
-
-        a = a_int_new();
-        b = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->split(a, i, a, b);
-        assert(a->len == i);
-        assert(b->len == (data_len - i));
-        for (j = 0; j < i; j++)
-            assert(a->_[j] == data[j]);
-        for (k = 0; j < data_len; j++,k++)
-            assert(b->_[k] == data[j]);
-        a->del(a);
-        b->del(b);
-
-        a = a_int_new();
-        b = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->split(a, i, b, a);
-        assert(a->len == (data_len - i));
-        assert(b->len == i);
-        for (j = 0; j < i; j++)
-            assert(b->_[j] == data[j]);
-        for (k = 0; j < data_len; j++,k++)
-            assert(a->_[k] == data[j]);
-        a->del(a);
-        b->del(b);
-
-        a = a_int_new();
-        b = a_int_new();
-        c = a_int_new();
-        for (j = 0; j < data_len; j++)
-            a->append(a, data[j]);
-        a->split(a, i, b, c);
-        assert(a->len == data_len);
-        for (j = 0; j < data_len; j++)
-            assert(a->_[j] == data[j]);
-        assert(b->len == i);
-        assert(c->len == (data_len - i));
-        for (j = 0; j < i; j++)
-            assert(b->_[j] == data[j]);
-        for (k = 0; j < data_len; j++,k++)
-            assert(c->_[k] == data[j]);
-        a->del(a);
-        b->del(b);
-        c->del(c);
-    }
-
-    /*test reverse*/
-    a = a_int_new();
-    for (i = 0; i < data_len; i++)
-        a->append(a, data[i]);
-    a->reverse(a);
-    for (i = 0; i < data_len; i++)
-        assert(a->_[i] == data[data_len - i - 1]);
-    a->del(a);
-
-    /*test sort*/
-    a = a_int_new();
-    for (i = 0; i < data_len; i++)
-        a->append(a, data[i]);
-    a->sort(a);
-    for (i = 0; i < data_len; i++)
-        assert(a->_[i] == sorted_data[i]);
-    a->del(a);
+#define ARRAY_TYPE_TEST(TYPE, CONTENT_TYPE, LINK_TYPE)              \
+void test_##TYPE(const CONTENT_TYPE *data, unsigned data_len,       \
+                CONTENT_TYPE data_min,                              \
+                CONTENT_TYPE data_max,                              \
+                CONTENT_TYPE data_sum,                              \
+                const CONTENT_TYPE *sorted_data)                    \
+{                                                                   \
+    TYPE *a;                                                        \
+    TYPE *b;                                                        \
+    unsigned i;                                                     \
+                                                                    \
+    assert(data_len >= 3);                                          \
+                                                                    \
+    /*test resize*/                                                 \
+    a = TYPE##_new();                                               \
+    assert(a->len == 0);                                            \
+    assert(a->total_size > 0);                                      \
+    a->resize(a, 10);                                               \
+    assert(a->len == 0);                                            \
+    assert(a->total_size >= 10);                                    \
+    a->resize(a, 20);                                               \
+    assert(a->len == 0);                                            \
+    assert(a->total_size >= 20);                                    \
+    a->del(a);                                                      \
+                                                                    \
+    /*test resize_for*/                                             \
+    a = TYPE##_new();                                               \
+    assert(a->len == 0);                                            \
+    assert(a->total_size > 0);                                      \
+    a->resize_for(a, 10);                                           \
+    assert(a->len == 0);                                            \
+    assert(a->total_size >= 10);                                    \
+    for (i = 0; i < 10; i++)                                        \
+        a_append(a, data[0]);                                       \
+    a->resize_for(a, 10);                                           \
+    assert(a->len == 10);                                           \
+    assert(a->total_size >= 20);                                    \
+    a->del(a);                                                      \
+                                                                    \
+    /*test reset*/                                                  \
+    a = TYPE##_new();                                               \
+    a->resize(a, 10);                                               \
+    for (i = 0; i < 10; i++)                                        \
+        a_append(a, data[0]);                                       \
+    assert(a->len == 10);                                           \
+    a->reset(a);                                                    \
+    assert(a->len == 0);                                            \
+    a->del(a);                                                      \
+                                                                    \
+    /*test reset_for*/                                              \
+    a = TYPE##_new();                                               \
+    a->resize(a, 10);                                               \
+    for (i = 0; i < 10; i++)                                        \
+        a_append(a, data[0]);                                       \
+    assert(a->len == 10);                                           \
+    assert(a->total_size >= 10);                                    \
+    a->reset_for(a, 20);                                            \
+    assert(a->len == 0);                                            \
+    assert(a->total_size >= 20);                                    \
+    a->del(a);                                                      \
+                                                                    \
+    /*test append*/                                                 \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++)                                  \
+        a->append(a, data[i]);                                      \
+    for (i = 0; i < data_len; i++)                                  \
+        assert(a->_[i] == data[i]);                                 \
+    a->del(a);                                                      \
+                                                                    \
+    /*test vappend*/                                                \
+    a = TYPE##_new();                                               \
+    a->vappend(a, 1, data[0]);                                      \
+    assert(a->_[0] == data[0]);                                     \
+    a->vappend(a, 2, data[0], data[1]);                             \
+    assert(a->_[0] == data[0]);                                     \
+    for (i = 0; i < 2; i++)                                         \
+        assert(a->_[i + 1] == data[i]);                             \
+    a->vappend(a, 3, data[0], data[1], data[2]);                    \
+    assert(a->_[0] == data[0]);                                     \
+    for (i = 0; i < 2; i++)                                         \
+        assert(a->_[i + 1] == data[i]);                             \
+    for (i = 0; i < 3; i++)                                         \
+        assert(a->_[i + 3] == data[i]);                             \
+    a->del(a);                                                      \
+                                                                    \
+    /*test mappend*/                                                \
+    a = TYPE##_new();                                               \
+    a->mappend(a, 100, data[0]);                                    \
+    for (i = 0; i < 100; i++)                                       \
+        assert(a->_[i] == data[0]);                                 \
+    a->mappend(a, 200, data[1]);                                    \
+    for (i = 0; i < 100; i++)                                       \
+        assert(a->_[i] == data[0]);                                 \
+    for (i = 0; i < 200; i++)                                       \
+        assert(a->_[i + 100] == data[1]);                           \
+    a->mappend(a, 300, data[2]);                                    \
+    for (i = 0; i < 100; i++)                                       \
+        assert(a->_[i] == data[0]);                                 \
+    for (i = 0; i < 200; i++)                                       \
+        assert(a->_[i + 100] == data[1]);                           \
+    for (i = 0; i < 300; i++)                                       \
+        assert(a->_[i + 300] == data[2]);                           \
+    a->del(a);                                                      \
+                                                                    \
+    /*test vset*/                                                   \
+    a = TYPE##_new();                                               \
+    a->vset(a, 1, data[0]);                                         \
+    assert(a->_[0] == data[0]);                                     \
+    a->vset(a, 2, data[0], data[1]);                                \
+    for (i = 0; i < 2; i++)                                         \
+        assert(a->_[i] == data[i]);                                 \
+    a->vset(a, 3, data[0], data[1], data[2]);                       \
+    for (i = 0; i < 3; i++)                                         \
+        assert(a->_[i] == data[i]);                                 \
+    a->del(a);                                                      \
+                                                                    \
+    /*test mset*/                                                   \
+    a = TYPE##_new();                                               \
+    a->mset(a, 100, data[0]);                                       \
+    for (i = 0; i < 100; i++)                                       \
+        assert(a->_[i] == data[0]);                                 \
+    a->mset(a, 200, data[1]);                                       \
+    for (i = 0; i < 200; i++)                                       \
+        assert(a->_[i] == data[1]);                                 \
+    a->mset(a, 300, data[2]);                                       \
+    for (i = 0; i < 300; i++)                                       \
+        assert(a->_[i] == data[2]);                                 \
+    a->del(a);                                                      \
+                                                                    \
+    /*test extend*/                                                 \
+    a = TYPE##_new();                                               \
+    b = TYPE##_new();                                               \
+                                                                    \
+    for (i = 0; i < data_len; i++)                                  \
+        a->append(a, data[i]);                                      \
+    b->extend(b, a);                                                \
+    for (i = 0; i < data_len; i++)                                  \
+        assert(b->_[i] == data[i]);                                 \
+    a->reset(a);                                                    \
+    for (i = 0; i < data_len; i++)                                  \
+        a->append(a, sorted_data[i]);                               \
+    b->extend(b, a);                                                \
+    for (i = 0; i < data_len; i++)                                  \
+        assert(b->_[i] == data[i]);                                 \
+    for (i = 0; i < data_len; i++)                                  \
+        assert(b->_[i + data_len] == sorted_data[i]);               \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    /*test equals*/                                                 \
+    a = TYPE##_new();                                               \
+    b = TYPE##_new();                                               \
+                                                                    \
+    for (i = 0; i < data_len; i++) {                                \
+        a->append(a, data[i]);                                      \
+        b->append(b, data[i]);                                      \
+    }                                                               \
+    assert(a->equals(a, a));                                        \
+    assert(a->equals(a, b));                                        \
+    b->reset(b);                                                    \
+    for (i = 0; i < data_len; i++)                                  \
+        b->append(b, sorted_data[i]);                               \
+    assert(!a->equals(a, b));                                       \
+    assert(!b->equals(b, a));                                       \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    /*test min*/                                                    \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++)                                  \
+        a->append(a, data[i]);                                      \
+    assert(a->min(a) == data_min);                                  \
+    a->del(a);                                                      \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++)                                  \
+        a->append(a, sorted_data[i]);                               \
+    assert(a->min(a) == data_min);                                  \
+    a->del(a);                                                      \
+                                                                    \
+    /*test max*/                                                    \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++)                                  \
+        a->append(a, data[i]);                                      \
+    assert(a->max(a) == data_max);                                  \
+    a->del(a);                                                      \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++)                                  \
+        a->append(a, sorted_data[i]);                               \
+    assert(a->max(a) == data_max);                                  \
+    a->del(a);                                                      \
+                                                                    \
+    /*test sum*/                                                    \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++)                                  \
+        a->append(a, data[i]);                                      \
+    assert(a->sum(a) == data_sum);                                  \
+    a->del(a);                                                      \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++)                                  \
+        a->append(a, sorted_data[i]);                               \
+    assert(a->sum(a) == data_sum);                                  \
+    a->del(a);                                                      \
+                                                                    \
+    /*test copy*/                                                   \
+    a = TYPE##_new();                                               \
+    b = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++) {                                \
+        a->append(a, data[i]);                                      \
+        b->append(b, sorted_data[i]);                               \
+    }                                                               \
+    assert(!a->equals(a, b));                                       \
+    a->copy(a, b);                                                  \
+    assert(a->equals(a, b));                                        \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    /*test link*/                                                   \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++)                                  \
+        a->append(a, data[i]);                                      \
+    test_##LINK_TYPE(a, data_min, data_max, data_sum);              \
+    a->del(a);                                                      \
+                                                                    \
+    /*test swap*/                                                   \
+    a = TYPE##_new();                                               \
+    b = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++) {                                \
+        a->append(a, data[i]);                                      \
+        b->append(b, sorted_data[i]);                               \
+    }                                                               \
+    for (i = 0; i < data_len; i++) {                                \
+        assert(a->_[i] == data[i]);                                 \
+        assert(b->_[i] == sorted_data[i]);                          \
+    }                                                               \
+    a->swap(a, a);                                                  \
+    for (i = 0; i < data_len; i++) {                                \
+        assert(a->_[i] == data[i]);                                 \
+        assert(b->_[i] == sorted_data[i]);                          \
+    }                                                               \
+    a->swap(a, b);                                                  \
+    for (i = 0; i < data_len; i++) {                                \
+        assert(a->_[i] == sorted_data[i]);                          \
+        assert(b->_[i] == data[i]);                                 \
+    }                                                               \
+    b->swap(b, a);                                                  \
+    for (i = 0; i < data_len; i++) {                                \
+        assert(a->_[i] == data[i]);                                 \
+        assert(b->_[i] == sorted_data[i]);                          \
+    }                                                               \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    /*test head*/                                                   \
+    for (i = 0; i < data_len; i++) {                                \
+        unsigned j;                                                 \
+                                                                    \
+        a = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->head(a, i, a);                                           \
+        assert(a->len == i);                                        \
+        for (j = 0; j < i; j++)                                     \
+            assert(a->_[j] == data[j]);                             \
+        a->del(a);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->head(a, data_len + 1, a);                                \
+        assert(a->len == data_len);                                 \
+        for (j = 0; j < data_len; j++)                              \
+            assert(a->_[j] == data[j]);                             \
+        a->del(a);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->head(a, i, b);                                           \
+        assert(a->len == data_len);                                 \
+        assert(b->len == i);                                        \
+        for (j = 0; j < data_len; j++)                              \
+            assert(a->_[j] == data[j]);                             \
+        for (j = 0; j < i; j++)                                     \
+            assert(b->_[j] == data[j]);                             \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->head(a, data_len + 1, b);                                \
+        assert(a->equals(a, b));                                    \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+    }                                                               \
+                                                                    \
+    /*test tail*/                                                   \
+    for (i = 0; i < data_len; i++) {                                \
+        unsigned j;                                                 \
+                                                                    \
+        a = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->tail(a, i, a);                                           \
+        assert(a->len == i);                                        \
+        for (j = 0; j < i; j++)                                     \
+            assert(a->_[j] == data[j + (data_len - i)]);            \
+        a->del(a);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->tail(a, data_len + 1, a);                                \
+        assert(a->len == data_len);                                 \
+        for (j = 0; j < data_len; j++)                              \
+            assert(a->_[j] == data[j]);                             \
+        a->del(a);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->tail(a, i, b);                                           \
+        assert(a->len == data_len);                                 \
+        assert(b->len == i);                                        \
+        for (j = 0; j < data_len; j++)                              \
+            assert(a->_[j] == data[j]);                             \
+        for (j = 0; j < i; j++)                                     \
+            assert(b->_[j] == data[j + (data_len - i)]);            \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->tail(a, data_len + 1, b);                                \
+        assert(a->equals(a, b));                                    \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+    }                                                               \
+                                                                    \
+    /*test de_head*/                                                \
+    for (i = 0; i < data_len; i++) {                                \
+        unsigned j;                                                 \
+                                                                    \
+        a = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->de_head(a, i, a);                                        \
+        assert(a->len == (data_len - i));                           \
+        for (j = 0; j < (data_len - i); j++)                        \
+            assert(a->_[j] == data[j + i]);                         \
+        a->del(a);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->de_head(a, data_len + 1, a);                             \
+        assert(a->len == 0);                                        \
+        a->del(a);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->de_head(a, i, b);                                        \
+        assert(a->len == data_len);                                 \
+        assert(b->len == (data_len - i));                           \
+        for (j = 0; j < data_len; j++)                              \
+            assert(a->_[j] == data[j]);                             \
+        for (j = 0; j < (data_len - i); j++)                        \
+            assert(b->_[j] == data[j + i]);                         \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->de_head(a, data_len + 1, b);                             \
+        assert(a->len == data_len);                                 \
+        assert(b->len == 0);                                        \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+    }                                                               \
+                                                                    \
+    /*test de_tail*/                                                \
+    for (i = 0; i < data_len; i++) {                                \
+        unsigned j;                                                 \
+                                                                    \
+        a = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->de_tail(a, i, a);                                        \
+        assert(a->len == (data_len - i));                           \
+        for (j = 0; j < (data_len - i); j++)                        \
+            assert(a->_[j] == data[j]);                             \
+        a->del(a);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->de_tail(a, data_len + 1, a);                             \
+        assert(a->len == 0);                                        \
+        a->del(a);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->de_tail(a, i, b);                                        \
+        assert(a->len == data_len);                                 \
+        assert(b->len == (data_len - i));                           \
+        for (j = 0; j < data_len; j++)                              \
+            assert(a->_[j] == data[j]);                             \
+        for (j = 0; j < (data_len - i); j++)                        \
+            assert(b->_[j] == data[j]);                             \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->de_tail(a, data_len + 1, b);                             \
+        assert(a->len == data_len);                                 \
+        assert(b->len == 0);                                        \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+    }                                                               \
+                                                                    \
+    /*test split*/                                                  \
+    for (i = 0; i < data_len; i++) {                                \
+        unsigned j;                                                 \
+        unsigned k;                                                 \
+        TYPE *c;                                                    \
+                                                                    \
+        a = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+                                                                    \
+        a->split(a, i, a, a);                                       \
+        for (j = 0; j < data_len; j++)                              \
+            assert(a->_[j] == data[j]);                             \
+        a->del(a);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->split(a, i, a, b);                                       \
+        assert(a->len == i);                                        \
+        assert(b->len == (data_len - i));                           \
+        for (j = 0; j < i; j++)                                     \
+            assert(a->_[j] == data[j]);                             \
+        for (k = 0; j < data_len; j++,k++)                          \
+            assert(b->_[k] == data[j]);                             \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->split(a, i, b, a);                                       \
+        assert(a->len == (data_len - i));                           \
+        assert(b->len == i);                                        \
+        for (j = 0; j < i; j++)                                     \
+            assert(b->_[j] == data[j]);                             \
+        for (k = 0; j < data_len; j++,k++)                          \
+            assert(a->_[k] == data[j]);                             \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        c = TYPE##_new();                                           \
+        for (j = 0; j < data_len; j++)                              \
+            a->append(a, data[j]);                                  \
+        a->split(a, i, b, c);                                       \
+        assert(a->len == data_len);                                 \
+        for (j = 0; j < data_len; j++)                              \
+            assert(a->_[j] == data[j]);                             \
+        assert(b->len == i);                                        \
+        assert(c->len == (data_len - i));                           \
+        for (j = 0; j < i; j++)                                     \
+            assert(b->_[j] == data[j]);                             \
+        for (k = 0; j < data_len; j++,k++)                          \
+            assert(c->_[k] == data[j]);                             \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+        c->del(c);                                                  \
+    }                                                               \
+                                                                    \
+    /*test reverse*/                                                \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++)                                  \
+        a->append(a, data[i]);                                      \
+    a->reverse(a);                                                  \
+    for (i = 0; i < data_len; i++)                                  \
+        assert(a->_[i] == data[data_len - i - 1]);                  \
+    a->del(a);                                                      \
+                                                                    \
+    /*test sort*/                                                   \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++)                                  \
+        a->append(a, data[i]);                                      \
+    a->sort(a);                                                     \
+    for (i = 0; i < data_len; i++)                                  \
+        assert(a->_[i] == sorted_data[i]);                          \
+    a->del(a);                                                      \
+}                                                                   \
+                                                                    \
+void test_##LINK_TYPE(const TYPE *parent,                           \
+                      CONTENT_TYPE data_min,                        \
+                      CONTENT_TYPE data_max,                        \
+                      CONTENT_TYPE data_sum)                        \
+{                                                                   \
+    unsigned i;                                                     \
+    LINK_TYPE* a;                                                   \
+    LINK_TYPE* b;                                                   \
+    TYPE *c;                                                        \
+                                                                    \
+    /*test internal data*/                                          \
+    a = LINK_TYPE##_new();                                          \
+    parent->link(parent, a);                                        \
+    assert(a->len == parent->len);                                  \
+    for (i = 0; i < parent->len; i++)                               \
+        assert(a->_[i] == parent->_[i]);                            \
+    a->del(a);                                                      \
+                                                                    \
+    /*test reset*/                                                  \
+    a = LINK_TYPE##_new();                                          \
+    parent->link(parent, a);                                        \
+    assert(a->len == parent->len);                                  \
+    a->reset(a);                                                    \
+    assert(a->len == 0);                                            \
+    a->del(a);                                                      \
+                                                                    \
+    /*test equals*/                                                 \
+    a = LINK_TYPE##_new();                                          \
+    b = LINK_TYPE##_new();                                          \
+    parent->link(parent, a);                                        \
+    parent->link(parent, b);                                        \
+    assert(a->equals(a, b));                                        \
+    assert(b->equals(b, a));                                        \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    /*test min*/                                                    \
+    a = LINK_TYPE##_new();                                          \
+    parent->link(parent, a);                                        \
+    assert(a->min(a) == data_min);                                  \
+    a->del(a);                                                      \
+                                                                    \
+    /*test max*/                                                    \
+    a = LINK_TYPE##_new();                                          \
+    parent->link(parent, a);                                        \
+    assert(a->max(a) == data_max);                                  \
+    a->del(a);                                                      \
+                                                                    \
+    /*test sum*/                                                    \
+    a = LINK_TYPE##_new();                                          \
+    parent->link(parent, a);                                        \
+    assert(a->sum(a) == data_sum);                                  \
+    a->del(a);                                                      \
+                                                                    \
+    /*test copy*/                                                   \
+    a = LINK_TYPE##_new();                                          \
+    c = TYPE##_new();                                               \
+    parent->link(parent, a);                                        \
+    a->copy(a, c);                                                  \
+    assert(parent->equals(parent, c));                              \
+    a->del(a);                                                      \
+    c->del(c);                                                      \
+                                                                    \
+    /*test swap*/                                                   \
+    a = LINK_TYPE##_new();                                          \
+    b = LINK_TYPE##_new();                                          \
+    parent->link(parent, a);                                        \
+    assert(a->len == parent->len);                                  \
+    assert(b->len == 0);                                            \
+    for (i = 0; i < parent->len; i++)                               \
+        assert(a->_[i] == parent->_[i]);                            \
+    a->swap(a, b);                                                  \
+    assert(a->len == 0);                                            \
+    assert(b->len == parent->len);                                  \
+    for (i = 0; i < parent->len; i++)                               \
+        assert(b->_[i] == parent->_[i]);                            \
+    b->swap(b, a);                                                  \
+    assert(a->len == parent->len);                                  \
+    assert(b->len == 0);                                            \
+    for (i = 0; i < parent->len; i++)                               \
+        assert(a->_[i] == parent->_[i]);                            \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    /*test head*/                                                   \
+    for (i = 0; i < parent->len; i++) {                             \
+        unsigned j;                                                 \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->head(a, i, a);                                           \
+        assert(a->len == i);                                        \
+        for (j = 0; j < i; j++)                                     \
+            assert(a->_[j] == parent->_[j]);                        \
+        a->del(a);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->head(a, parent->len + 1, a);                             \
+        assert(a->len == parent->len);                              \
+        for (j = 0; j < parent->len; j++)                           \
+            assert(a->_[j] == parent->_[j]);                        \
+        a->del(a);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        b = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->head(a, i, b);                                           \
+        assert(a->len == parent->len);                              \
+        assert(b->len == i);                                        \
+        for (j = 0; j < parent->len; j++)                           \
+            assert(a->_[j] == parent->_[j]);                        \
+        for (j = 0; j < i; j++)                                     \
+            assert(b->_[j] == parent->_[j]);                        \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        b = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->head(a, parent->len + 1, b);                             \
+        assert(a->equals(a, b));                                    \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+    }                                                               \
+                                                                    \
+    /*test tail*/                                                   \
+    for (i = 0; i < parent->len; i++) {                             \
+        unsigned j;                                                 \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->tail(a, i, a);                                           \
+        assert(a->len == i);                                        \
+        for (j = 0; j < i; j++)                                     \
+            assert(a->_[j] == parent->_[j + (parent->len - i)]);    \
+        a->del(a);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->tail(a, parent->len + 1, a);                             \
+        assert(a->len == parent->len);                              \
+        for (j = 0; j < parent->len; j++)                           \
+            assert(a->_[j] == parent->_[j]);                        \
+        a->del(a);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        b = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->tail(a, i, b);                                           \
+        assert(a->len == parent->len);                              \
+        assert(b->len == i);                                        \
+        for (j = 0; j < parent->len; j++)                           \
+            assert(a->_[j] == parent->_[j]);                        \
+        for (j = 0; j < i; j++)                                     \
+            assert(b->_[j] == parent->_[j + (parent->len - i)]);    \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        b = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->tail(a, parent->len + 1, b);                             \
+        assert(a->equals(a, b));                                    \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+    }                                                               \
+                                                                    \
+    /*test de_head*/                                                \
+    for (i = 0; i < parent->len; i++) {                             \
+        unsigned j;                                                 \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->de_head(a, i, a);                                        \
+        assert(a->len == (parent->len - i));                        \
+        for (j = 0; j < (parent->len - i); j++)                     \
+            assert(a->_[j] == parent->_[j + i]);                    \
+        a->del(a);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->de_head(a, parent->len + 1, a);                          \
+        assert(a->len == 0);                                        \
+        a->del(a);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        b = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->de_head(a, i, b);                                        \
+        assert(a->len == parent->len);                              \
+        assert(b->len == (parent->len - i));                        \
+        for (j = 0; j < parent->len; j++)                           \
+            assert(a->_[j] == parent->_[j]);                        \
+        for (j = 0; j < (parent->len - i); j++)                     \
+            assert(b->_[j] == parent->_[j + i]);                    \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        b = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->de_head(a, parent->len + 1, b);                          \
+        assert(a->len == parent->len);                              \
+        assert(b->len == 0);                                        \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+    }                                                               \
+                                                                    \
+    /*test de_tail*/                                                \
+    for (i = 0; i < parent->len; i++) {                             \
+        unsigned j;                                                 \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->de_tail(a, i, a);                                        \
+        assert(a->len == (parent->len - i));                        \
+        for (j = 0; j < (parent->len - i); j++)                     \
+            assert(a->_[j] == parent->_[j]);                        \
+        a->del(a);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->de_tail(a, parent->len + 1, a);                          \
+        assert(a->len == 0);                                        \
+        a->del(a);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        b = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->de_tail(a, i, b);                                        \
+        assert(a->len == parent->len);                              \
+        assert(b->len == (parent->len - i));                        \
+        for (j = 0; j < parent->len; j++)                           \
+            assert(a->_[j] == parent->_[j]);                        \
+        for (j = 0; j < (parent->len - i); j++)                     \
+            assert(b->_[j] == parent->_[j]);                        \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        b = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->de_tail(a, parent->len + 1, b);                          \
+        assert(a->len == parent->len);                              \
+        assert(b->len == 0);                                        \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+    }                                                               \
+                                                                    \
+    /*test split*/                                                  \
+    for (i = 0; i < parent->len; i++) {                             \
+        unsigned j;                                                 \
+        unsigned k;                                                 \
+        LINK_TYPE *c;                                               \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+                                                                    \
+        a->split(a, i, a, a);                                       \
+        for (j = 0; j < parent->len; j++)                           \
+            assert(a->_[j] == parent->_[j]);                        \
+        a->del(a);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        b = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->split(a, i, a, b);                                       \
+        assert(a->len == i);                                        \
+        assert(b->len == (parent->len - i));                        \
+        for (j = 0; j < i; j++)                                     \
+            assert(a->_[j] == parent->_[j]);                        \
+        for (k = 0; j < parent->len; j++,k++)                       \
+            assert(b->_[k] == parent->_[j]);                        \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        b = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->split(a, i, b, a);                                       \
+        assert(a->len == (parent->len - i));                        \
+        assert(b->len == i);                                        \
+        for (j = 0; j < i; j++)                                     \
+            assert(b->_[j] == parent->_[j]);                        \
+        for (k = 0; j < parent->len; j++,k++)                       \
+            assert(a->_[k] == parent->_[j]);                        \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        a = LINK_TYPE##_new();                                      \
+        b = LINK_TYPE##_new();                                      \
+        c = LINK_TYPE##_new();                                      \
+        parent->link(parent, a);                                    \
+        a->split(a, i, b, c);                                       \
+        assert(a->len == parent->len);                              \
+        for (j = 0; j < parent->len; j++)                           \
+            assert(a->_[j] == parent->_[j]);                        \
+        assert(b->len == i);                                        \
+        assert(c->len == (parent->len - i));                        \
+        for (j = 0; j < i; j++)                                     \
+            assert(b->_[j] == parent->_[j]);                        \
+        for (k = 0; j < parent->len; j++,k++)                       \
+            assert(c->_[k] == parent->_[j]);                        \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+        c->del(c);                                                  \
+    }                                                               \
 }
 
-void test_l_int(const a_int* parent,
-                int data_min, int data_max, int data_sum)
-{
-    unsigned i;
-    l_int* a;
-    l_int* b;
-    a_int* c;
+ARRAY_TYPE_TEST(a_int, int, l_int)
+ARRAY_TYPE_TEST(a_double, double, l_double)
+ARRAY_TYPE_TEST(a_unsigned, unsigned, l_unsigned)
 
-    /*test internal data*/
-    a = l_int_new();
-    parent->link(parent, a);
-    assert(a->len == parent->len);
-    for (i = 0; i < parent->len; i++)
-        assert(a->_[i] == parent->_[i]);
-    a->del(a);
-
-    /*test reset*/
-    a = l_int_new();
-    parent->link(parent, a);
-    assert(a->len == parent->len);
-    a->reset(a);
-    assert(a->len == 0);
-    a->del(a);
-
-    /*test equals*/
-    a = l_int_new();
-    b = l_int_new();
-    parent->link(parent, a);
-    parent->link(parent, b);
-    assert(a->equals(a, b));
-    assert(b->equals(b, a));
-    a->del(a);
-    b->del(b);
-
-    /*test min*/
-    a = l_int_new();
-    parent->link(parent, a);
-    assert(a->min(a) == data_min);
-    a->del(a);
-
-    /*test max*/
-    a = l_int_new();
-    parent->link(parent, a);
-    assert(a->max(a) == data_max);
-    a->del(a);
-
-    /*test sum*/
-    a = l_int_new();
-    parent->link(parent, a);
-    assert(a->sum(a) == data_sum);
-    a->del(a);
-
-    /*test copy*/
-    a = l_int_new();
-    c = a_int_new();
-    parent->link(parent, a);
-    a->copy(a, c);
-    assert(parent->equals(parent, c));
-    a->del(a);
-    c->del(c);
-
-    /*test swap*/
-    a = l_int_new();
-    b = l_int_new();
-    parent->link(parent, a);
-    assert(a->len == parent->len);
-    assert(b->len == 0);
-    for (i = 0; i < parent->len; i++)
-        assert(a->_[i] == parent->_[i]);
-    a->swap(a, b);
-    assert(a->len == 0);
-    assert(b->len == parent->len);
-    for (i = 0; i < parent->len; i++)
-        assert(b->_[i] == parent->_[i]);
-    b->swap(b, a);
-    assert(a->len == parent->len);
-    assert(b->len == 0);
-    for (i = 0; i < parent->len; i++)
-        assert(a->_[i] == parent->_[i]);
-    a->del(a);
-    b->del(b);
-
-    /*test head*/
-    for (i = 0; i < parent->len; i++) {
-        unsigned j;
-
-        a = l_int_new();
-        parent->link(parent, a);
-        a->head(a, i, a);
-        assert(a->len == i);
-        for (j = 0; j < i; j++)
-            assert(a->_[j] == parent->_[j]);
-        a->del(a);
-
-        a = l_int_new();
-        parent->link(parent, a);
-        a->head(a, parent->len + 1, a);
-        assert(a->len == parent->len);
-        for (j = 0; j < parent->len; j++)
-            assert(a->_[j] == parent->_[j]);
-        a->del(a);
-
-        a = l_int_new();
-        b = l_int_new();
-        parent->link(parent, a);
-        a->head(a, i, b);
-        assert(a->len == parent->len);
-        assert(b->len == i);
-        for (j = 0; j < parent->len; j++)
-            assert(a->_[j] == parent->_[j]);
-        for (j = 0; j < i; j++)
-            assert(b->_[j] == parent->_[j]);
-        a->del(a);
-        b->del(b);
-
-        a = l_int_new();
-        b = l_int_new();
-        parent->link(parent, a);
-        a->head(a, parent->len + 1, b);
-        assert(a->equals(a, b));
-        a->del(a);
-        b->del(b);
-    }
-
-    /*test tail*/
-    for (i = 0; i < parent->len; i++) {
-        unsigned j;
-
-        a = l_int_new();
-        parent->link(parent, a);
-        a->tail(a, i, a);
-        assert(a->len == i);
-        for (j = 0; j < i; j++)
-            assert(a->_[j] == parent->_[j + (parent->len - i)]);
-        a->del(a);
-
-        a = l_int_new();
-        parent->link(parent, a);
-        a->tail(a, parent->len + 1, a);
-        assert(a->len == parent->len);
-        for (j = 0; j < parent->len; j++)
-            assert(a->_[j] == parent->_[j]);
-        a->del(a);
-
-        a = l_int_new();
-        b = l_int_new();
-        parent->link(parent, a);
-        a->tail(a, i, b);
-        assert(a->len == parent->len);
-        assert(b->len == i);
-        for (j = 0; j < parent->len; j++)
-            assert(a->_[j] == parent->_[j]);
-        for (j = 0; j < i; j++)
-            assert(b->_[j] == parent->_[j + (parent->len - i)]);
-        a->del(a);
-        b->del(b);
-
-        a = l_int_new();
-        b = l_int_new();
-        parent->link(parent, a);
-        a->tail(a, parent->len + 1, b);
-        assert(a->equals(a, b));
-        a->del(a);
-        b->del(b);
-    }
-
-    /*test de_head*/
-    for (i = 0; i < parent->len; i++) {
-        unsigned j;
-
-        a = l_int_new();
-        parent->link(parent, a);
-        a->de_head(a, i, a);
-        assert(a->len == (parent->len - i));
-        for (j = 0; j < (parent->len - i); j++)
-            assert(a->_[j] == parent->_[j + i]);
-        a->del(a);
-
-        a = l_int_new();
-        parent->link(parent, a);
-        a->de_head(a, parent->len + 1, a);
-        assert(a->len == 0);
-        a->del(a);
-
-        a = l_int_new();
-        b = l_int_new();
-        parent->link(parent, a);
-        a->de_head(a, i, b);
-        assert(a->len == parent->len);
-        assert(b->len == (parent->len - i));
-        for (j = 0; j < parent->len; j++)
-            assert(a->_[j] == parent->_[j]);
-        for (j = 0; j < (parent->len - i); j++)
-            assert(b->_[j] == parent->_[j + i]);
-        a->del(a);
-        b->del(b);
-
-        a = l_int_new();
-        b = l_int_new();
-        parent->link(parent, a);
-        a->de_head(a, parent->len + 1, b);
-        assert(a->len == parent->len);
-        assert(b->len == 0);
-        a->del(a);
-        b->del(b);
-    }
-
-    /*test de_tail*/
-    for (i = 0; i < parent->len; i++) {
-        unsigned j;
-
-        a = l_int_new();
-        parent->link(parent, a);
-        a->de_tail(a, i, a);
-        assert(a->len == (parent->len - i));
-        for (j = 0; j < (parent->len - i); j++)
-            assert(a->_[j] == parent->_[j]);
-        a->del(a);
-
-        a = l_int_new();
-        parent->link(parent, a);
-        a->de_tail(a, parent->len + 1, a);
-        assert(a->len == 0);
-        a->del(a);
-
-        a = l_int_new();
-        b = l_int_new();
-        parent->link(parent, a);
-        a->de_tail(a, i, b);
-        assert(a->len == parent->len);
-        assert(b->len == (parent->len - i));
-        for (j = 0; j < parent->len; j++)
-            assert(a->_[j] == parent->_[j]);
-        for (j = 0; j < (parent->len - i); j++)
-            assert(b->_[j] == parent->_[j]);
-        a->del(a);
-        b->del(b);
-
-        a = l_int_new();
-        b = l_int_new();
-        parent->link(parent, a);
-        a->de_tail(a, parent->len + 1, b);
-        assert(a->len == parent->len);
-        assert(b->len == 0);
-        a->del(a);
-        b->del(b);
-    }
-
-    /*test split*/
-    for (i = 0; i < parent->len; i++) {
-        unsigned j;
-        unsigned k;
-        l_int *c;
-
-        a = l_int_new();
-        parent->link(parent, a);
-
-        a->split(a, i, a, a);
-        for (j = 0; j < parent->len; j++)
-            assert(a->_[j] == parent->_[j]);
-        a->del(a);
-
-        a = l_int_new();
-        b = l_int_new();
-        parent->link(parent, a);
-        a->split(a, i, a, b);
-        assert(a->len == i);
-        assert(b->len == (parent->len - i));
-        for (j = 0; j < i; j++)
-            assert(a->_[j] == parent->_[j]);
-        for (k = 0; j < parent->len; j++,k++)
-            assert(b->_[k] == parent->_[j]);
-        a->del(a);
-        b->del(b);
-
-        a = l_int_new();
-        b = l_int_new();
-        parent->link(parent, a);
-        a->split(a, i, b, a);
-        assert(a->len == (parent->len - i));
-        assert(b->len == i);
-        for (j = 0; j < i; j++)
-            assert(b->_[j] == parent->_[j]);
-        for (k = 0; j < parent->len; j++,k++)
-            assert(a->_[k] == parent->_[j]);
-        a->del(a);
-        b->del(b);
-
-        a = l_int_new();
-        b = l_int_new();
-        c = l_int_new();
-        parent->link(parent, a);
-        a->split(a, i, b, c);
-        assert(a->len == parent->len);
-        for (j = 0; j < parent->len; j++)
-            assert(a->_[j] == parent->_[j]);
-        assert(b->len == i);
-        assert(c->len == (parent->len - i));
-        for (j = 0; j < i; j++)
-            assert(b->_[j] == parent->_[j]);
-        for (k = 0; j < parent->len; j++,k++)
-            assert(c->_[k] == parent->_[j]);
-        a->del(a);
-        b->del(b);
-        c->del(c);
-    }
+#define ARRAY_A_TYPE_TEST(TYPE, ARRAY_TYPE, CONTENT_TYPE)           \
+void test_##TYPE(unsigned arrays,                                   \
+                 CONTENT_TYPE start,                                \
+                 CONTENT_TYPE increment,                            \
+                 unsigned total)                                    \
+{                                                                   \
+    TYPE *a;                                                        \
+    TYPE *b;                                                        \
+    unsigned i;                                                     \
+    CONTENT_TYPE old_start;                                         \
+                                                                    \
+    /*test resize*/                                                 \
+    a = TYPE##_new();                                               \
+    assert(a->len == 0);                                            \
+    assert(a->total_size > 0);                                      \
+    a->resize(a, 10);                                               \
+    assert(a->len == 0);                                            \
+    assert(a->total_size >= 10);                                    \
+    a->resize(a, 20);                                               \
+    assert(a->len == 0);                                            \
+    assert(a->total_size >= 20);                                    \
+    a->del(a);                                                      \
+                                                                    \
+    /*test reset*/                                                  \
+    a = TYPE##_new();                                               \
+    a->resize(a, 10);                                               \
+    for (i = 0; i < 10; i++)                                        \
+        (void)a->append(a);                                         \
+    assert(a->len == 10);                                           \
+    a->reset(a);                                                    \
+    assert(a->len == 0);                                            \
+    a->del(a);                                                      \
+                                                                    \
+    /*test append*/                                                 \
+    /*note that we don't care about array contents,                 \
+      only that there are arrays*/                                  \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        ARRAY_TYPE *c = a->append(a);                               \
+        unsigned j;                                                 \
+        for (j = 0; j < total; j++) {                               \
+            c->append(c, start);                                    \
+            start += increment;                                     \
+        }                                                           \
+        assert(c->len == total);                                    \
+    }                                                               \
+    assert(a->len == arrays);                                       \
+    a->del(a);                                                      \
+                                                                    \
+    /*test extend*/                                                 \
+    old_start = start;                                              \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        ARRAY_TYPE *c = a->append(a);                               \
+        unsigned j;                                                 \
+        for (j = 0; j < total; j++) {                               \
+            c->append(c, start);                                    \
+            start += increment;                                     \
+        }                                                           \
+    }                                                               \
+    b = TYPE##_new();                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        ARRAY_TYPE *c = b->append(b);                               \
+        unsigned j;                                                 \
+        for (j = 0; j < total; j++) {                               \
+            c->append(c, start);                                    \
+            start += increment;                                     \
+        }                                                           \
+    }                                                               \
+    a->extend(a, b);                                                \
+    assert(a->len == (arrays * 2));                                 \
+    for (i = 0; i < arrays; i++) {                                  \
+        unsigned j;                                                 \
+        for (j = 0; j < total; j++) {                               \
+            assert(a->_[i]->_[j] == old_start);                     \
+            old_start += increment;                                 \
+        }                                                           \
+    }                                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        unsigned j;                                                 \
+        for (j = 0; j < total; j++) {                               \
+            assert(a->_[i + arrays]->_[j] == old_start);            \
+            old_start += increment;                                 \
+        }                                                           \
+    }                                                               \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    /*test equals*/                                                 \
+    a = TYPE##_new();                                               \
+    b = TYPE##_new();                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        ARRAY_TYPE *c = a->append(a);                               \
+        ARRAY_TYPE *d = b->append(b);                               \
+        unsigned j;                                                 \
+        for (j = 0; j < total; j++) {                               \
+            c->append(c, start);                                    \
+            d->append(d, start);                                    \
+            start += increment;                                     \
+        }                                                           \
+    }                                                               \
+    assert(a->equals(a, b));                                        \
+    assert(b->equals(b, a));                                        \
+    b->reset(b);                                                    \
+    assert(!a->equals(a, b));                                       \
+    assert(!b->equals(b, a));                                       \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    /*test copy*/                                                   \
+    a = TYPE##_new();                                               \
+    b = TYPE##_new();                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        ARRAY_TYPE *c = a->append(a);                               \
+        unsigned j;                                                 \
+        for (j = 0; j < total; j++) {                               \
+            c->append(c, start);                                    \
+            start += increment;                                     \
+        }                                                           \
+    }                                                               \
+    assert(!a->equals(a, b));                                       \
+    a->copy(a, b);                                                  \
+    assert(a->equals(a, b));                                        \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    /*test swap*/                                                   \
+    old_start = start;                                              \
+    a = TYPE##_new();                                               \
+    b = TYPE##_new();                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        ARRAY_TYPE *c = a->append(a);                               \
+        unsigned j;                                                 \
+        for (j = 0; j < total; j++) {                               \
+            c->append(c, start);                                    \
+            start += increment;                                     \
+        }                                                           \
+    }                                                               \
+    assert(a->len == arrays);                                       \
+    assert(b->len == 0);                                            \
+    a->swap(a, b);                                                  \
+    assert(a->len == 0);                                            \
+    assert(b->len == arrays);                                       \
+    for (i = 0; i < arrays; i++) {                                  \
+        unsigned j;                                                 \
+        for (j = 0; j < total; j++) {                               \
+            assert(b->_[i]->_[j] == old_start);                     \
+            old_start += increment;                                 \
+        }                                                           \
+    }                                                               \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    /*test split*/                                                  \
+    for (i = 0; i < arrays; i++) {                                  \
+        TYPE *c;                                                    \
+        unsigned j;                                                 \
+        unsigned k;                                                 \
+        CONTENT_TYPE old_start2;                                    \
+                                                                    \
+        /*split a to a,a*/                                          \
+        old_start = start;                                          \
+        a = TYPE##_new();                                           \
+                                                                    \
+        for (j = 0; j < arrays; j++) {                              \
+            ARRAY_TYPE *d = a->append(a);                           \
+            for (k = 0; k < total; k++) {                           \
+                d->append(d, start);                                \
+                start += increment;                                 \
+            }                                                       \
+        }                                                           \
+        a->split(a, i, a, a);                                       \
+        for (j = 0; j < arrays; j++) {                              \
+            for (k = 0; k < total; k++) {                           \
+                assert(a->_[j]->_[k] == old_start);                 \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+        a->del(a);                                                  \
+                                                                    \
+        /*split a to a,b*/                                          \
+        old_start = start;                                          \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+                                                                    \
+        for (j = 0; j < arrays; j++) {                              \
+            ARRAY_TYPE *d = a->append(a);                           \
+            for (k = 0; k < total; k++) {                           \
+                d->append(d, start);                                \
+                start += increment;                                 \
+            }                                                       \
+        }                                                           \
+        a->split(a, i, a, b);                                       \
+        assert(a->len == i);                                        \
+        assert(b->len == (arrays - i));                             \
+        for (j = 0; j < i; j++) {                                   \
+            for (k = 0; k < total; k++) {                           \
+                assert(a->_[j]->_[k] == old_start);                 \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+        for (j = 0; j < (arrays - i); j++) {                        \
+            for (k = 0; k < total; k++) {                           \
+                assert(b->_[j]->_[k] == old_start);                 \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        /*split a to b,a*/                                          \
+        old_start = start;                                          \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+                                                                    \
+        for (j = 0; j < arrays; j++) {                              \
+            ARRAY_TYPE *d = a->append(a);                           \
+            for (k = 0; k < total; k++) {                           \
+                d->append(d, start);                                \
+                start += increment;                                 \
+            }                                                       \
+        }                                                           \
+        a->split(a, i, b, a);                                       \
+        assert(a->len == (arrays - i));                             \
+        assert(b->len == i);                                        \
+        for (j = 0; j < i; j++) {                                   \
+            for (k = 0; k < total; k++) {                           \
+                assert(b->_[j]->_[k] == old_start);                 \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+        for (j = 0; j < (arrays - i); j++) {                        \
+            for (k = 0; k < total; k++) {                           \
+                assert(a->_[j]->_[k] == old_start);                 \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        /*split a to b,c*/                                          \
+        old_start = old_start2 = start;                             \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        c = TYPE##_new();                                           \
+                                                                    \
+        for (j = 0; j < arrays; j++) {                              \
+            ARRAY_TYPE *d = a->append(a);                           \
+            for (k = 0; k < total; k++) {                           \
+                d->append(d, start);                                \
+                start += increment;                                 \
+            }                                                       \
+        }                                                           \
+        a->split(a, i, b, c);                                       \
+        assert(a->len == arrays);                                   \
+        for (j = 0; j < arrays; j++) {                              \
+            for (k = 0; k < total; k++) {                           \
+                assert(a->_[j]->_[k] == old_start2);                \
+                old_start2 += increment;                            \
+            }                                                       \
+        }                                                           \
+        assert(b->len == i);                                        \
+        assert(c->len == (arrays - i));                             \
+        for (j = 0; j < i; j++) {                                   \
+            for (k = 0; k < total; k++) {                           \
+                assert(b->_[j]->_[k] == old_start);                 \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+        for (j = 0; j < (arrays - i); j++) {                        \
+            for (k = 0; k < total; k++) {                           \
+                assert(c->_[j]->_[k] == old_start);                 \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+        c->del(c);                                                  \
+    }                                                               \
+                                                                    \
+    /*test cross_split*/                                            \
+    for (i = 0; i < total; i++) {                                   \
+        unsigned j;                                                 \
+        unsigned k;                                                 \
+        TYPE *c;                                                    \
+        CONTENT_TYPE old_start2;                                    \
+                                                                    \
+        /*cross_split a to a,a*/                                    \
+        old_start = start;                                          \
+        a = TYPE##_new();                                           \
+        for (j = 0; j < arrays; j++) {                              \
+            ARRAY_TYPE *d = a->append(a);                           \
+            for (k = 0; k < total; k++) {                           \
+                d->append(d, start);                                \
+                start += increment;                                 \
+            }                                                       \
+        }                                                           \
+        a->cross_split(a, i, a, a);                                 \
+        for (j = 0; j < arrays; j++) {                              \
+            for (k = 0; k < total; k++) {                           \
+                assert(a->_[j]->_[k] == old_start);                 \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+        a->del(a);                                                  \
+                                                                    \
+        /*cross_split a to a,b*/                                    \
+        old_start = start;                                          \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        for (j = 0; j < arrays; j++)                                \
+            (void)a->append(a);                                     \
+        for (j = 0; j < total; j++) {                               \
+            for (k = 0; k < arrays; k++) {                          \
+                a->_[k]->append(a->_[k], start);                    \
+                start += increment;                                 \
+            }                                                       \
+        }                                                           \
+        a->cross_split(a, i, a, b);                                 \
+        for (j = 0; j < i; j++) {                                   \
+            for (k = 0; k < arrays; k++) {                          \
+                assert(a->_[k]->_[j] == old_start);                 \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+        for (j = 0; j < (total - i); j++) {                         \
+            for (k = 0; k < arrays; k++) {                          \
+                assert(b->_[k]->_[j] == old_start);                 \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        /*cross_split a to b,a*/                                    \
+        old_start = start;                                          \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        for (j = 0; j < arrays; j++)                                \
+            (void)a->append(a);                                     \
+        for (j = 0; j < total; j++) {                               \
+            for (k = 0; k < arrays; k++) {                          \
+                a->_[k]->append(a->_[k], start);                    \
+                start += increment;                                 \
+            }                                                       \
+        }                                                           \
+        a->cross_split(a, i, b, a);                                 \
+        for (j = 0; j < i; j++) {                                   \
+            for (k = 0; k < arrays; k++) {                          \
+                assert(b->_[k]->_[j] == old_start);                 \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+        for (j = 0; j < (total - i); j++) {                         \
+            for (k = 0; k < arrays; k++) {                          \
+                assert(a->_[k]->_[j] == old_start);                 \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        /*cross_split a to b,c*/                                    \
+        old_start = old_start2 = start;                             \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        c = TYPE##_new();                                           \
+        for (j = 0; j < arrays; j++)                                \
+            (void)a->append(a);                                     \
+        for (j = 0; j < total; j++) {                               \
+            for (k = 0; k < arrays; k++) {                          \
+                a->_[k]->append(a->_[k], start);                    \
+                start += increment;                                 \
+            }                                                       \
+        }                                                           \
+        a->cross_split(a, i, b, c);                                 \
+        for (j = 0; j < total; j++) {                               \
+            for (k = 0; k < arrays; k++) {                          \
+                assert(a->_[k]->_[j] == old_start2);                \
+                old_start2 += increment;                            \
+            }                                                       \
+        }                                                           \
+        for (j = 0; j < i; j++) {                                   \
+            for (k = 0; k < arrays; k++) {                          \
+                assert(b->_[k]->_[j] == old_start);                 \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+        for (j = 0; j < (total - i); j++) {                         \
+            for (k = 0; k < arrays; k++) {                          \
+                assert(c->_[k]->_[j] == old_start);                 \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+        c->del(c);                                                  \
+    }                                                               \
+                                                                    \
+    /*test reverse*/                                                \
+    a = TYPE##_new();                                               \
+    b = TYPE##_new();                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        ARRAY_TYPE *c = a->append(a);                               \
+        unsigned j;                                                 \
+        for (j = 0; j < total; j++) {                               \
+            c->append(c, start);                                    \
+            start += increment;                                     \
+        }                                                           \
+    }                                                               \
+    a->copy(a, b);                                                  \
+    a->reverse(a);                                                  \
+    for (i = 0; i < arrays; i++) {                                  \
+        assert(a->_[i]->equals(a->_[i], b->_[arrays - i - 1]));     \
+    }                                                               \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
 }
 
-void test_aa_int(unsigned arrays, int start, int increment, unsigned total)
-{
-    aa_int* a;
-    aa_int* b;
-    unsigned i;
-    int old_start;
+ARRAY_A_TYPE_TEST(aa_int, a_int, int)
+ARRAY_A_TYPE_TEST(aa_double, a_double, double)
 
-    /*test resize*/
-    a = aa_int_new();
-    assert(a->len == 0);
-    assert(a->total_size > 0);
-    a->resize(a, 10);
-    assert(a->len == 0);
-    assert(a->total_size >= 10);
-    a->resize(a, 20);
-    assert(a->len == 0);
-    assert(a->total_size >= 20);
-    a->del(a);
-
-    /*test reset*/
-    a = aa_int_new();
-    a->resize(a, 10);
-    for (i = 0; i < 10; i++)
-        (void)a->append(a);
-    assert(a->len == 10);
-    a->reset(a);
-    assert(a->len == 0);
-    a->del(a);
-
-    /*test append*/
-    /*note that we don't care about array contents,
-      only that there are arrays*/
-    a = aa_int_new();
-    for (i = 0; i < arrays; i++) {
-        a_int* c = a->append(a);
-        unsigned j;
-        for (j = 0; j < total; j++) {
-            c->append(c, start);
-            start += increment;
-        }
-        assert(c->len == total);
-    }
-    assert(a->len == arrays);
-    a->del(a);
-
-    /*test extend*/
-    old_start = start;
-    a = aa_int_new();
-    for (i = 0; i < arrays; i++) {
-        a_int* c = a->append(a);
-        unsigned j;
-        for (j = 0; j < total; j++) {
-            c->append(c, start);
-            start += increment;
-        }
-    }
-    b = aa_int_new();
-    for (i = 0; i < arrays; i++) {
-        a_int* c = b->append(b);
-        unsigned j;
-        for (j = 0; j < total; j++) {
-            c->append(c, start);
-            start += increment;
-        }
-    }
-    a->extend(a, b);
-    assert(a->len == (arrays * 2));
-    for (i = 0; i < arrays; i++) {
-        unsigned j;
-        for (j = 0; j < total; j++) {
-            assert(a->_[i]->_[j] == old_start);
-            old_start += increment;
-        }
-    }
-    for (i = 0; i < arrays; i++) {
-        unsigned j;
-        for (j = 0; j < total; j++) {
-            assert(a->_[i + arrays]->_[j] == old_start);
-            old_start += increment;
-        }
-    }
-    a->del(a);
-    b->del(b);
-
-    /*test equals*/
-    a = aa_int_new();
-    b = aa_int_new();
-    for (i = 0; i < arrays; i++) {
-        a_int* c = a->append(a);
-        a_int* d = b->append(b);
-        unsigned j;
-        for (j = 0; j < total; j++) {
-            c->append(c, start);
-            d->append(d, start);
-            start += increment;
-        }
-    }
-    assert(a->equals(a, b));
-    assert(b->equals(b, a));
-    b->reset(b);
-    assert(!a->equals(a, b));
-    assert(!b->equals(b, a));
-    a->del(a);
-    b->del(b);
-
-    /*test copy*/
-    a = aa_int_new();
-    b = aa_int_new();
-    for (i = 0; i < arrays; i++) {
-        a_int* c = a->append(a);
-        unsigned j;
-        for (j = 0; j < total; j++) {
-            c->append(c, start);
-            start += increment;
-        }
-    }
-    assert(!a->equals(a, b));
-    a->copy(a, b);
-    assert(a->equals(a, b));
-    a->del(a);
-    b->del(b);
-
-    /*test swap*/
-    old_start = start;
-    a = aa_int_new();
-    b = aa_int_new();
-    for (i = 0; i < arrays; i++) {
-        a_int* c = a->append(a);
-        unsigned j;
-        for (j = 0; j < total; j++) {
-            c->append(c, start);
-            start += increment;
-        }
-    }
-    assert(a->len == arrays);
-    assert(b->len == 0);
-    a->swap(a, b);
-    assert(a->len == 0);
-    assert(b->len == arrays);
-    for (i = 0; i < arrays; i++) {
-        unsigned j;
-        for (j = 0; j < total; j++) {
-            assert(b->_[i]->_[j] == old_start);
-            old_start += increment;
-        }
-    }
-    a->del(a);
-    b->del(b);
-
-    /*test split*/
-    for (i = 0; i < arrays; i++) {
-        aa_int* c;
-        unsigned j;
-        unsigned k;
-        unsigned old_start2;
-
-        /*split a to a,a*/
-        old_start = start;
-        a = aa_int_new();
-
-        for (j = 0; j < arrays; j++) {
-            a_int* d = a->append(a);
-            for (k = 0; k < total; k++) {
-                d->append(d, start);
-                start += increment;
-            }
-        }
-        a->split(a, i, a, a);
-        for (j = 0; j < arrays; j++) {
-            for (k = 0; k < total; k++) {
-                assert(a->_[j]->_[k] == old_start);
-                old_start += increment;
-            }
-        }
-        a->del(a);
-
-        /*split a to a,b*/
-        old_start = start;
-        a = aa_int_new();
-        b = aa_int_new();
-
-        for (j = 0; j < arrays; j++) {
-            a_int* d = a->append(a);
-            for (k = 0; k < total; k++) {
-                d->append(d, start);
-                start += increment;
-            }
-        }
-        a->split(a, i, a, b);
-        assert(a->len == i);
-        assert(b->len == (arrays - i));
-        for (j = 0; j < i; j++) {
-            for (k = 0; k < total; k++) {
-                assert(a->_[j]->_[k] == old_start);
-                old_start += increment;
-            }
-        }
-        for (j = 0; j < (arrays - i); j++) {
-            for (k = 0; k < total; k++) {
-                assert(b->_[j]->_[k] == old_start);
-                old_start += increment;
-            }
-        }
-        a->del(a);
-        b->del(b);
-
-        /*split a to b,a*/
-        old_start = start;
-        a = aa_int_new();
-        b = aa_int_new();
-
-        for (j = 0; j < arrays; j++) {
-            a_int* d = a->append(a);
-            for (k = 0; k < total; k++) {
-                d->append(d, start);
-                start += increment;
-            }
-        }
-        a->split(a, i, b, a);
-        assert(a->len == (arrays - i));
-        assert(b->len == i);
-        for (j = 0; j < i; j++) {
-            for (k = 0; k < total; k++) {
-                assert(b->_[j]->_[k] == old_start);
-                old_start += increment;
-            }
-        }
-        for (j = 0; j < (arrays - i); j++) {
-            for (k = 0; k < total; k++) {
-                assert(a->_[j]->_[k] == old_start);
-                old_start += increment;
-            }
-        }
-        a->del(a);
-        b->del(b);
-
-        /*split a to b,c*/
-        old_start = old_start2 = start;
-        a = aa_int_new();
-        b = aa_int_new();
-        c = aa_int_new();
-
-        for (j = 0; j < arrays; j++) {
-            a_int* d = a->append(a);
-            for (k = 0; k < total; k++) {
-                d->append(d, start);
-                start += increment;
-            }
-        }
-        a->split(a, i, b, c);
-        assert(a->len == arrays);
-        for (j = 0; j < arrays; j++) {
-            for (k = 0; k < total; k++) {
-                assert(a->_[j]->_[k] == old_start2);
-                old_start2 += increment;
-            }
-        }
-        assert(b->len == i);
-        assert(c->len == (arrays - i));
-        for (j = 0; j < i; j++) {
-            for (k = 0; k < total; k++) {
-                assert(b->_[j]->_[k] == old_start);
-                old_start += increment;
-            }
-        }
-        for (j = 0; j < (arrays - i); j++) {
-            for (k = 0; k < total; k++) {
-                assert(c->_[j]->_[k] == old_start);
-                old_start += increment;
-            }
-        }
-        a->del(a);
-        b->del(b);
-        c->del(c);
-    }
-
-    /*test cross_split*/
-    for (i = 0; i < total; i++) {
-        unsigned j;
-        unsigned k;
-        aa_int *c;
-        unsigned old_start2;
-
-        /*cross_split a to a,a*/
-        old_start = start;
-        a = aa_int_new();
-        for (j = 0; j < arrays; j++) {
-            a_int* d = a->append(a);
-            for (k = 0; k < total; k++) {
-                d->append(d, start);
-                start += increment;
-            }
-        }
-        a->cross_split(a, i, a, a);
-        for (j = 0; j < arrays; j++) {
-            for (k = 0; k < total; k++) {
-                assert(a->_[j]->_[k] == old_start);
-                old_start += increment;
-            }
-        }
-        a->del(a);
-
-        /*cross_split a to a,b*/
-        old_start = start;
-        a = aa_int_new();
-        b = aa_int_new();
-        for (j = 0; j < arrays; j++)
-            (void)a->append(a);
-        for (j = 0; j < total; j++) {
-            for (k = 0; k < arrays; k++) {
-                a->_[k]->append(a->_[k], start);
-                start += increment;
-            }
-        }
-        a->cross_split(a, i, a, b);
-        for (j = 0; j < i; j++) {
-            for (k = 0; k < arrays; k++) {
-                assert(a->_[k]->_[j] == old_start);
-                old_start += increment;
-            }
-        }
-        for (j = 0; j < (total - i); j++) {
-            for (k = 0; k < arrays; k++) {
-                assert(b->_[k]->_[j] == old_start);
-                old_start += increment;
-            }
-        }
-        a->del(a);
-        b->del(b);
-
-        /*cross_split a to b,a*/
-        old_start = start;
-        a = aa_int_new();
-        b = aa_int_new();
-        for (j = 0; j < arrays; j++)
-            (void)a->append(a);
-        for (j = 0; j < total; j++) {
-            for (k = 0; k < arrays; k++) {
-                a->_[k]->append(a->_[k], start);
-                start += increment;
-            }
-        }
-        a->cross_split(a, i, b, a);
-        for (j = 0; j < i; j++) {
-            for (k = 0; k < arrays; k++) {
-                assert(b->_[k]->_[j] == old_start);
-                old_start += increment;
-            }
-        }
-        for (j = 0; j < (total - i); j++) {
-            for (k = 0; k < arrays; k++) {
-                assert(a->_[k]->_[j] == old_start);
-                old_start += increment;
-            }
-        }
-        a->del(a);
-        b->del(b);
-
-        /*cross_split a to b,c*/
-        old_start = old_start2 = start;
-        a = aa_int_new();
-        b = aa_int_new();
-        c = aa_int_new();
-        for (j = 0; j < arrays; j++)
-            (void)a->append(a);
-        for (j = 0; j < total; j++) {
-            for (k = 0; k < arrays; k++) {
-                a->_[k]->append(a->_[k], start);
-                start += increment;
-            }
-        }
-        a->cross_split(a, i, b, c);
-        for (j = 0; j < total; j++) {
-            for (k = 0; k < arrays; k++) {
-                assert(a->_[k]->_[j] == old_start2);
-                old_start2 += increment;
-            }
-        }
-        for (j = 0; j < i; j++) {
-            for (k = 0; k < arrays; k++) {
-                assert(b->_[k]->_[j] == old_start);
-                old_start += increment;
-            }
-        }
-        for (j = 0; j < (total - i); j++) {
-            for (k = 0; k < arrays; k++) {
-                assert(c->_[k]->_[j] == old_start);
-                old_start += increment;
-            }
-        }
-        a->del(a);
-        b->del(b);
-        c->del(c);
-    }
-
-    /*test reverse*/
-    a = aa_int_new();
-    b = aa_int_new();
-    for (i = 0; i < arrays; i++) {
-        a_int* c = a->append(a);
-        unsigned j;
-        for (j = 0; j < total; j++) {
-            c->append(c, start);
-            start += increment;
-        }
-    }
-    a->copy(a, b);
-    a->reverse(a);
-    for (i = 0; i < arrays; i++) {
-        assert(a->_[i]->equals(a->_[i], b->_[arrays - i - 1]));
-    }
-    a->del(a);
-    b->del(b);
+#define ARRAY_AA_TYPE_TEST(TYPE, A_TYPE, AA_TYPE, CONTENT_TYPE)     \
+void test_##TYPE(unsigned arrays,                                   \
+                 unsigned sub_arrays,                               \
+                 CONTENT_TYPE start,                                \
+                 CONTENT_TYPE increment,                            \
+                 unsigned total)                                    \
+{                                                                   \
+    TYPE *a;                                                        \
+    TYPE *b;                                                        \
+    unsigned i;                                                     \
+    CONTENT_TYPE old_start;                                         \
+                                                                    \
+    /*test resize*/                                                 \
+    a = TYPE##_new();                                               \
+    assert(a->len == 0);                                            \
+    assert(a->total_size > 0);                                      \
+    a->resize(a, 10);                                               \
+    assert(a->len == 0);                                            \
+    assert(a->total_size >= 10);                                    \
+    a->resize(a, 20);                                               \
+    assert(a->len == 0);                                            \
+    assert(a->total_size >= 20);                                    \
+    a->del(a);                                                      \
+                                                                    \
+    /*test reset*/                                                  \
+    a = TYPE##_new();                                               \
+    a->resize(a, 10);                                               \
+    for (i = 0; i < 10; i++)                                        \
+        (void)a->append(a);                                         \
+    assert(a->len == 10);                                           \
+    a->reset(a);                                                    \
+    assert(a->len == 0);                                            \
+    a->del(a);                                                      \
+                                                                    \
+    /*test append*/                                                 \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        A_TYPE *c = a->append(a);                                   \
+        unsigned j;                                                 \
+        for (j = 0; j < sub_arrays; j++) {                          \
+            AA_TYPE* d = c->append(c);                              \
+            unsigned k;                                             \
+            for (k = 0; k < total; k++) {                           \
+                d->append(d, start);                                \
+                start += increment;                                 \
+            }                                                       \
+            assert(d->len == total);                                \
+        }                                                           \
+        assert(c->len == sub_arrays);                               \
+    }                                                               \
+    assert(a->len == arrays);                                       \
+    a->del(a);                                                      \
+                                                                    \
+    /*test extend*/                                                 \
+    old_start = start;                                              \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        A_TYPE *c = a->append(a);                                   \
+        unsigned j;                                                 \
+        for (j = 0; j < sub_arrays; j++) {                          \
+            AA_TYPE* d = c->append(c);                              \
+            unsigned k;                                             \
+            for (k = 0; k < total; k++) {                           \
+                d->append(d, start);                                \
+                start += increment;                                 \
+            }                                                       \
+            assert(d->len == total);                                \
+        }                                                           \
+    }                                                               \
+    b = TYPE##_new();                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        A_TYPE *c = a->append(a);                                   \
+        unsigned j;                                                 \
+        for (j = 0; j < sub_arrays; j++) {                          \
+            AA_TYPE* d = c->append(c);                              \
+            unsigned k;                                             \
+            for (k = 0; k < total; k++) {                           \
+                d->append(d, start);                                \
+                start += increment;                                 \
+            }                                                       \
+            assert(d->len == total);                                \
+        }                                                           \
+    }                                                               \
+    a->extend(a, b);                                                \
+    assert(a->len == (arrays * 2));                                 \
+    for (i = 0; i < arrays; i++) {                                  \
+        unsigned j;                                                 \
+        for (j = 0; j < sub_arrays; j++) {                          \
+            unsigned k;                                             \
+            for (k = 0; k < total; k++) {                           \
+                assert(a->_[i]->_[j]->_[k] == old_start);           \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+    }                                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        unsigned j;                                                 \
+        for (j = 0; j < sub_arrays; j++) {                          \
+            unsigned k;                                             \
+            for (k = 0; k < total; k++) {                           \
+                assert(a->_[i + arrays]->_[j]->_[k] == old_start);  \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+    }                                                               \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    /*test equals*/                                                 \
+    a = TYPE##_new();                                               \
+    b = TYPE##_new();                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        A_TYPE *c = a->append(a);                                   \
+        A_TYPE *d = b->append(b);                                   \
+        unsigned j;                                                 \
+        for (j = 0; j < sub_arrays; j++) {                          \
+            AA_TYPE* e = c->append(c);                              \
+            AA_TYPE* f = d->append(d);                              \
+            unsigned k;                                             \
+            for (k = 0; k < total; k++) {                           \
+                e->append(e, start);                                \
+                f->append(f, start);                                \
+                start += increment;                                 \
+            }                                                       \
+        }                                                           \
+    }                                                               \
+    assert(a->equals(a, b));                                        \
+    assert(b->equals(b, a));                                        \
+    b->reset(b);                                                    \
+    assert(!a->equals(a, b));                                       \
+    assert(!b->equals(b, a));                                       \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    /*test copy*/                                                   \
+    a = TYPE##_new();                                               \
+    b = TYPE##_new();                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        A_TYPE *c = a->append(a);                                   \
+        unsigned j;                                                 \
+        for (j = 0; j < sub_arrays; j++) {                          \
+            AA_TYPE* d = c->append(c);                              \
+            unsigned k;                                             \
+            for (k = 0; k < total; k++) {                           \
+                d->append(d, start);                                \
+                start += increment;                                 \
+            }                                                       \
+        }                                                           \
+    }                                                               \
+    assert(!a->equals(a, b));                                       \
+    a->copy(a, b);                                                  \
+    assert(a->equals(a, b));                                        \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    /*test swap*/                                                   \
+    old_start = start;                                              \
+    a = TYPE##_new();                                               \
+    b = TYPE##_new();                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        A_TYPE *c = a->append(a);                                   \
+        unsigned j;                                                 \
+        for (j = 0; j < sub_arrays; j++) {                          \
+            AA_TYPE* d = c->append(c);                              \
+            unsigned k;                                             \
+            for (k = 0; k < total; k++) {                           \
+                d->append(d, start);                                \
+                start += increment;                                 \
+            }                                                       \
+        }                                                           \
+    }                                                               \
+    assert(a->len == arrays);                                       \
+    assert(b->len == 0);                                            \
+    a->swap(a, b);                                                  \
+    assert(a->len == 0);                                            \
+    assert(b->len == arrays);                                       \
+    for (i = 0; i < arrays; i++) {                                  \
+        unsigned j;                                                 \
+        for (j = 0; j < sub_arrays; j++) {                          \
+            unsigned k;                                             \
+            for (k = 0; k < total; k++) {                           \
+                assert(b->_[i]->_[j]->_[k] == old_start);           \
+                old_start += increment;                             \
+            }                                                       \
+        }                                                           \
+    }                                                               \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    /*test split*/                                                  \
+    for (i = 0; i < arrays; i++) {                                  \
+        TYPE *base = TYPE##_new();                                  \
+        TYPE *c;                                                    \
+        unsigned j;                                                 \
+                                                                    \
+        for (j = 0; j < arrays; j++) {                              \
+            A_TYPE *c = base->append(base);                         \
+            unsigned k;                                             \
+                                                                    \
+            for (k = 0; k < sub_arrays; k++) {                      \
+                AA_TYPE* d = c->append(c);                          \
+                unsigned l;                                         \
+                for (l = 0; l < total; l++) {                       \
+                    d->append(d, start);                            \
+                    start += increment;                             \
+                }                                                   \
+            }                                                       \
+        }                                                           \
+                                                                    \
+        /*split a to a,a*/                                          \
+        a = TYPE##_new();                                           \
+        base->copy(base, a);                                        \
+        a->split(a, i, a, a);                                       \
+        for (j = 0; j < arrays; j++)                                \
+            assert(a->_[j]->equals(a->_[j], base->_[j]));           \
+        a->del(a);                                                  \
+                                                                    \
+        /*split a to a,b*/                                          \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        base->copy(base, a);                                        \
+        a->split(a, i, a, b);                                       \
+        for (j = 0; j < i; j++)                                     \
+            assert(a->_[j]->equals(a->_[j], base->_[j]));           \
+        for (j = 0; j < (arrays - i); j++)                          \
+            assert(b->_[j]->equals(b->_[j], base->_[j + i]));       \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        /*split a to b,a*/                                          \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        base->copy(base, a);                                        \
+        a->split(a, i, b, a);                                       \
+        for (j = 0; j < i; j++)                                     \
+            assert(b->_[j]->equals(b->_[j], base->_[j]));           \
+        for (j = 0; j < (arrays - i); j++)                          \
+            assert(a->_[j]->equals(a->_[j], base->_[j + i]));       \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+                                                                    \
+        /*split a to b,c*/                                          \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        c = TYPE##_new();                                           \
+        base->copy(base, a);                                        \
+        a->split(a, i, b, c);                                       \
+        for (j = 0; j < i; j++)                                     \
+            assert(b->_[j]->equals(b->_[j], base->_[j]));           \
+        for (j = 0; j < (arrays - i); j++)                          \
+            assert(c->_[j]->equals(c->_[j], base->_[j + i]));       \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+        c->del(c);                                                  \
+                                                                    \
+        base->del(base);                                            \
+    }                                                               \
+                                                                    \
+    /*test reverse*/                                                \
+    a = TYPE##_new();                                               \
+    b = TYPE##_new();                                               \
+    for (i = 0; i < arrays; i++) {                                  \
+        A_TYPE *c = a->append(a);                                   \
+        unsigned j;                                                 \
+                                                                    \
+        for (j = 0; j < sub_arrays; j++) {                          \
+            AA_TYPE* d = c->append(c);                              \
+            unsigned k;                                             \
+            for (k = 0; k < total; k++) {                           \
+                d->append(d, start);                                \
+                start += increment;                                 \
+            }                                                       \
+        }                                                           \
+    }                                                               \
+    a->copy(a, b);                                                  \
+    a->reverse(a);                                                  \
+    for (i = 0; i < arrays; i++) {                                  \
+        assert(a->_[i]->equals(a->_[i], b->_[arrays - i - 1]));     \
+    }                                                               \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
 }
 
-void test_aaa_int(unsigned arrays, unsigned sub_arrays,
-                  int start, int increment, unsigned total)
-{
-    aaa_int* a;
-    aaa_int* b;
-    unsigned i;
-    int old_start;
-
-    /*test resize*/
-    a = aaa_int_new();
-    assert(a->len == 0);
-    assert(a->total_size > 0);
-    a->resize(a, 10);
-    assert(a->len == 0);
-    assert(a->total_size >= 10);
-    a->resize(a, 20);
-    assert(a->len == 0);
-    assert(a->total_size >= 20);
-    a->del(a);
-
-    /*test reset*/
-    a = aaa_int_new();
-    a->resize(a, 10);
-    for (i = 0; i < 10; i++)
-        (void)a->append(a);
-    assert(a->len == 10);
-    a->reset(a);
-    assert(a->len == 0);
-    a->del(a);
-
-    /*test append*/
-    a = aaa_int_new();
-    for (i = 0; i < arrays; i++) {
-        aa_int* c = a->append(a);
-        unsigned j;
-        for (j = 0; j < sub_arrays; j++) {
-            a_int* d = c->append(c);
-            unsigned k;
-            for (k = 0; k < total; k++) {
-                d->append(d, start);
-                start += increment;
-            }
-            assert(d->len == total);
-        }
-        assert(c->len == sub_arrays);
-    }
-    assert(a->len == arrays);
-    a->del(a);
-
-    /*test extend*/
-    old_start = start;
-    a = aaa_int_new();
-    for (i = 0; i < arrays; i++) {
-        aa_int* c = a->append(a);
-        unsigned j;
-        for (j = 0; j < sub_arrays; j++) {
-            a_int* d = c->append(c);
-            unsigned k;
-            for (k = 0; k < total; k++) {
-                d->append(d, start);
-                start += increment;
-            }
-            assert(d->len == total);
-        }
-    }
-    b = aaa_int_new();
-    for (i = 0; i < arrays; i++) {
-        aa_int* c = a->append(a);
-        unsigned j;
-        for (j = 0; j < sub_arrays; j++) {
-            a_int* d = c->append(c);
-            unsigned k;
-            for (k = 0; k < total; k++) {
-                d->append(d, start);
-                start += increment;
-            }
-            assert(d->len == total);
-        }
-    }
-    a->extend(a, b);
-    assert(a->len == (arrays * 2));
-    for (i = 0; i < arrays; i++) {
-        unsigned j;
-        for (j = 0; j < sub_arrays; j++) {
-            unsigned k;
-            for (k = 0; k < total; k++) {
-                assert(a->_[i]->_[j]->_[k] == old_start);
-                old_start += increment;
-            }
-        }
-    }
-    for (i = 0; i < arrays; i++) {
-        unsigned j;
-        for (j = 0; j < sub_arrays; j++) {
-            unsigned k;
-            for (k = 0; k < total; k++) {
-                assert(a->_[i + arrays]->_[j]->_[k] == old_start);
-                old_start += increment;
-            }
-        }
-    }
-    a->del(a);
-    b->del(b);
-
-    /*test equals*/
-    a = aaa_int_new();
-    b = aaa_int_new();
-    for (i = 0; i < arrays; i++) {
-        aa_int* c = a->append(a);
-        aa_int* d = b->append(b);
-        unsigned j;
-        for (j = 0; j < sub_arrays; j++) {
-            a_int* e = c->append(c);
-            a_int* f = d->append(d);
-            unsigned k;
-            for (k = 0; k < total; k++) {
-                e->append(e, start);
-                f->append(f, start);
-                start += increment;
-            }
-        }
-    }
-    assert(a->equals(a, b));
-    assert(b->equals(b, a));
-    b->reset(b);
-    assert(!a->equals(a, b));
-    assert(!b->equals(b, a));
-    a->del(a);
-    b->del(b);
-
-    /*test copy*/
-    a = aaa_int_new();
-    b = aaa_int_new();
-    for (i = 0; i < arrays; i++) {
-        aa_int* c = a->append(a);
-        unsigned j;
-        for (j = 0; j < sub_arrays; j++) {
-            a_int* d = c->append(c);
-            unsigned k;
-            for (k = 0; k < total; k++) {
-                d->append(d, start);
-                start += increment;
-            }
-        }
-    }
-    assert(!a->equals(a, b));
-    a->copy(a, b);
-    assert(a->equals(a, b));
-    a->del(a);
-    b->del(b);
-
-    /*test swap*/
-    old_start = start;
-    a = aaa_int_new();
-    b = aaa_int_new();
-    for (i = 0; i < arrays; i++) {
-        aa_int* c = a->append(a);
-        unsigned j;
-        for (j = 0; j < sub_arrays; j++) {
-            a_int* d = c->append(c);
-            unsigned k;
-            for (k = 0; k < total; k++) {
-                d->append(d, start);
-                start += increment;
-            }
-        }
-    }
-    assert(a->len == arrays);
-    assert(b->len == 0);
-    a->swap(a, b);
-    assert(a->len == 0);
-    assert(b->len == arrays);
-    for (i = 0; i < arrays; i++) {
-        unsigned j;
-        for (j = 0; j < sub_arrays; j++) {
-            unsigned k;
-            for (k = 0; k < total; k++) {
-                assert(b->_[i]->_[j]->_[k] == old_start);
-                old_start += increment;
-            }
-        }
-    }
-    a->del(a);
-    b->del(b);
-
-    /*test split*/
-    for (i = 0; i < arrays; i++) {
-        aaa_int* base = aaa_int_new();
-        aaa_int* c;
-        unsigned j;
-
-        for (j = 0; j < arrays; j++) {
-            aa_int* c = base->append(base);
-            unsigned k;
-
-            for (k = 0; k < sub_arrays; k++) {
-                a_int* d = c->append(c);
-                unsigned l;
-                for (l = 0; l < total; l++) {
-                    d->append(d, start);
-                    start += increment;
-                }
-            }
-        }
-
-        /*split a to a,a*/
-        a = aaa_int_new();
-        base->copy(base, a);
-        a->split(a, i, a, a);
-        for (j = 0; j < arrays; j++)
-            assert(a->_[j]->equals(a->_[j], base->_[j]));
-        a->del(a);
-
-        /*split a to a,b*/
-        a = aaa_int_new();
-        b = aaa_int_new();
-        base->copy(base, a);
-        a->split(a, i, a, b);
-        for (j = 0; j < i; j++)
-            assert(a->_[j]->equals(a->_[j], base->_[j]));
-        for (j = 0; j < (arrays - i); j++)
-            assert(b->_[j]->equals(b->_[j], base->_[j + i]));
-        a->del(a);
-        b->del(b);
-
-        /*split a to b,a*/
-        a = aaa_int_new();
-        b = aaa_int_new();
-        base->copy(base, a);
-        a->split(a, i, b, a);
-        for (j = 0; j < i; j++)
-            assert(b->_[j]->equals(b->_[j], base->_[j]));
-        for (j = 0; j < (arrays - i); j++)
-            assert(a->_[j]->equals(a->_[j], base->_[j + i]));
-        a->del(a);
-        b->del(b);
-
-        /*split a to b,c*/
-        a = aaa_int_new();
-        b = aaa_int_new();
-        c = aaa_int_new();
-        base->copy(base, a);
-        a->split(a, i, b, c);
-        for (j = 0; j < i; j++)
-            assert(b->_[j]->equals(b->_[j], base->_[j]));
-        for (j = 0; j < (arrays - i); j++)
-            assert(c->_[j]->equals(c->_[j], base->_[j + i]));
-        a->del(a);
-        b->del(b);
-        c->del(c);
-
-        base->del(base);
-    }
-
-    /*test reverse*/
-    a = aaa_int_new();
-    b = aaa_int_new();
-    for (i = 0; i < arrays; i++) {
-        aa_int* c = a->append(a);
-        unsigned j;
-
-        for (j = 0; j < sub_arrays; j++) {
-            a_int* d = c->append(c);
-            unsigned k;
-            for (k = 0; k < total; k++) {
-                d->append(d, start);
-                start += increment;
-            }
-        }
-    }
-    a->copy(a, b);
-    a->reverse(a);
-    for (i = 0; i < arrays; i++) {
-        assert(a->_[i]->equals(a->_[i], b->_[arrays - i - 1]));
-    }
-    a->del(a);
-    b->del(b);
-}
+ARRAY_AA_TYPE_TEST(aaa_int, aa_int, a_int, int)
+ARRAY_AA_TYPE_TEST(aaa_double, aa_double, a_double, double)
 
 #endif
