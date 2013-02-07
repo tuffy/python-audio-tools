@@ -407,12 +407,17 @@ static PyObject*
 CDImage_read_sector(cdio_CDImage* self) {
     uint8_t* data;
     PyObject* to_return;
+    int result;
 
     data = malloc(CDIO_CD_FRAMESIZE_RAW);
-    switch (cdio_read_audio_sector(self->image,
-                                   data,
-                                   self->current_sector)) {
-    case DRIVER_OP_SUCCESS:
+
+    Py_BEGIN_ALLOW_THREADS
+    result = cdio_read_audio_sector(self->image,
+                                    data,
+                                    self->current_sector);
+    Py_END_ALLOW_THREADS
+
+    if (result == DRIVER_OP_SUCCESS) {
         to_return = PyObject_CallMethod(self->pcm_module,
                                         "FrameList",
                                         "s#iiii",
@@ -422,7 +427,7 @@ CDImage_read_sector(cdio_CDImage* self) {
         free(data);
         self->current_sector += 1;
         return to_return;
-    default:
+    } else {
         free(data);
         PyErr_SetString(PyExc_IOError, "error reading sectors");
         return NULL;
@@ -434,6 +439,7 @@ CDImage_read_sectors(cdio_CDImage* self, PyObject *args) {
     int sectors_to_read;
     uint8_t* data;
     PyObject* to_return;
+    int result;
 
     if (!PyArg_ParseTuple(args, "i", &sectors_to_read)) {
         return NULL;
@@ -443,11 +449,15 @@ CDImage_read_sectors(cdio_CDImage* self, PyObject *args) {
     }
 
     data = malloc(CDIO_CD_FRAMESIZE_RAW * sectors_to_read);
-    switch (cdio_read_audio_sectors(self->image,
-                                    data,
-                                    self->current_sector,
-                                    sectors_to_read)) {
-    case DRIVER_OP_SUCCESS:
+
+    Py_BEGIN_ALLOW_THREADS
+    result = cdio_read_audio_sectors(self->image,
+                                     data,
+                                     self->current_sector,
+                                     sectors_to_read);
+    Py_END_ALLOW_THREADS
+
+    if (result == DRIVER_OP_SUCCESS) {
         to_return = PyObject_CallMethod(self->pcm_module,
                                         "FrameList",
                                         "s#iiii",
@@ -458,7 +468,7 @@ CDImage_read_sectors(cdio_CDImage* self, PyObject *args) {
         free(data);
         self->current_sector += sectors_to_read;
         return to_return;
-    default:
+    } else {
         free(data);
         PyErr_SetString(PyExc_IOError, "error reading sectors");
         return NULL;
