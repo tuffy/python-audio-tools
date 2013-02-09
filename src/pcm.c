@@ -373,19 +373,19 @@ FrameList_to_bytes(pcm_FrameList *self, PyObject *args)
 {
     int is_big_endian;
     int is_signed;
-    unsigned char *bytes;
-    Py_ssize_t bytes_size;
     PyObject *bytes_obj;
+    const Py_ssize_t bytes_size = ((self->bits_per_sample / 8) *
+                                   self->samples_length);
 
-    if (!PyArg_ParseTuple(args, "ii", &is_big_endian, &is_signed))
+    if (!PyArg_ParseTuple(args, "ii", &is_big_endian, &is_signed)) {
         return NULL;
-
-    bytes_size = (self->bits_per_sample / 8) * self->samples_length;
-    bytes = malloc(bytes_size);
-
-    if (bytes_size > 0) {
+    } else if ((bytes_obj =
+                PyString_FromStringAndSize(NULL, bytes_size)) == NULL) {
+        return NULL;
+    } else {
         FrameList_samples_to_char(
-             bytes, self->samples,
+             (uint8_t*)PyString_AsString(bytes_obj),
+             self->samples,
              FrameList_get_int_to_char_converter(self->bits_per_sample,
                                                  is_big_endian,
                                                  is_signed),
@@ -393,8 +393,6 @@ FrameList_to_bytes(pcm_FrameList *self, PyObject *args)
              self->bits_per_sample);
     }
 
-    bytes_obj = PyString_FromStringAndSize((char*)bytes, bytes_size);
-    free(bytes);
     return bytes_obj;
 }
 
