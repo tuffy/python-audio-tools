@@ -4157,12 +4157,10 @@ class Sheet:
             return
         else:
             for (prev, track) in zip(self.__tracks__, self.__tracks__[1:]):
-                yield int((max([i.offset() for i in track.indexes()]) -
-                           max([i.offset() for i in prev.indexes()])) *
-                          sample_rate)
+                yield int((track.index(1).offset() -
+                           prev.index(1).offset()) * sample_rate)
             yield (total_pcm_frames -
                    int(self.__tracks__[-1].index(1).offset() * sample_rate))
-
 
 class SheetTrack:
     def __init__(self, number, indexes, audio=True, ISRC=None):

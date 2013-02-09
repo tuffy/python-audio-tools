@@ -200,12 +200,12 @@ def write_tocfile(sheet, filename, file):
                              track_indexes[0].offset()) * 75))))
             for index in track_indexes[2:]:
                 file.write("  INDEX %s\n" %
-                           (build_timestamp(int(index.offset()))))
+                           (build_timestamp(int(index.offset() * 75))))
         else:
             #handle any additional indexes
             for index in track_indexes[1:]:
                 file.write("  INDEX %s\n" %
-                           (build_timestamp(int(index.offset()))))
+                           (build_timestamp(int(index.offset() * 75))))
 
         if (next_track is not None):
             file.write("\n")
