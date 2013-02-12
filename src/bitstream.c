@@ -1,6 +1,7 @@
 #include "bitstream.h"
 #include <string.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -1105,52 +1106,54 @@ br_read_bytes_c(struct BitstreamReader_s* bs,
 
 
 void
-br_parse(struct BitstreamReader_s* stream, char* format, ...)
+br_parse(struct BitstreamReader_s* stream, const char* format, ...)
 {
     va_list ap;
-    char* s = format;
-    unsigned int size;
-    bs_instruction type;
-    unsigned int* _unsigned;
-    int* _signed;
-    uint64_t* _unsigned64;
-    int64_t* _signed64;
-    uint8_t* _bytes;
+    bs_instruction_t inst;
 
     va_start(ap, format);
-    while (!bs_parse_format(&s, &size, &type)) {
-        switch (type) {
-        case BS_INST_UNSIGNED:
-            _unsigned = va_arg(ap, unsigned int*);
-            *_unsigned = stream->read(stream, size);
-            break;
-        case BS_INST_SIGNED:
-            _signed = va_arg(ap, int*);
-            *_signed = stream->read_signed(stream, size);
-            break;
-        case BS_INST_UNSIGNED64:
-            _unsigned64 = va_arg(ap, uint64_t*);
-            *_unsigned64 = stream->read_64(stream, size);
-            break;
-        case BS_INST_SIGNED64:
-            _signed64 = va_arg(ap, int64_t*);
-            *_signed64 = stream->read_signed_64(stream, size);
-            break;
-        case BS_INST_SKIP:
-            stream->skip(stream, size);
-            break;
-        case BS_INST_SKIP_BYTES:
-            stream->skip_bytes(stream, size);
-            break;
-        case BS_INST_BYTES:
-            _bytes = va_arg(ap, uint8_t*);
-            stream->read_bytes(stream, _bytes, size);
-            break;
-        case BS_INST_ALIGN:
+    do {
+        unsigned times;
+        unsigned size;
+
+        format = bs_parse_format(format, &times, &size, &inst);
+        if (inst == BS_INST_UNSIGNED) {
+            for (; times; times--) {
+                unsigned *value = va_arg(ap, unsigned*);
+                *value = stream->read(stream, size);
+            }
+        } else if (inst == BS_INST_SIGNED) {
+            for (; times; times--) {
+                int *value = va_arg(ap, int*);
+                *value = stream->read_signed(stream, size);
+            }
+        } else if (inst == BS_INST_UNSIGNED64) {
+            for (; times; times--) {
+                uint64_t *value = va_arg(ap, uint64_t*);
+                *value = stream->read_64(stream, size);
+            }
+        } else if (inst == BS_INST_SIGNED64) {
+            for (; times; times--) {
+                int64_t *value = va_arg(ap, int64_t*);
+                *value = stream->read_signed_64(stream, size);
+            }
+        } else if (inst == BS_INST_SKIP) {
+            for (; times; times--) {
+                stream->skip(stream, size);
+            }
+        } else if (inst == BS_INST_SKIP_BYTES) {
+            for (; times; times--) {
+                stream->skip_bytes(stream, size);
+            }
+        } else if (inst == BS_INST_BYTES) {
+            for (; times; times--) {
+                uint8_t *value = va_arg(ap, uint8_t*);
+                stream->read_bytes(stream, value, size);
+            }
+        } else if (inst == BS_INST_ALIGN) {
             stream->byte_align(stream);
-            break;
         }
-    }
+    } while (inst != BS_INST_EOF);
     va_end(ap);
 }
 
@@ -2527,61 +2530,63 @@ bw_set_endianness_c(BitstreamWriter* bs, bs_endianness endianness)
 
 
 void
-bw_build(struct BitstreamWriter_s* stream, char* format, ...)
+bw_build(struct BitstreamWriter_s* stream, const char* format, ...)
 {
     va_list ap;
-    char* s = format;
-    unsigned int size;
-    bs_instruction type;
-    unsigned int _unsigned;
-    int _signed;
-    uint64_t _unsigned64;
-    int64_t _signed64;
-    uint8_t* _bytes;
+    bs_instruction_t inst;
 
     va_start(ap, format);
-    while (!bs_parse_format(&s, &size, &type)) {
-        switch (type) {
-        case BS_INST_UNSIGNED:
-            _unsigned = va_arg(ap, unsigned int);
-            stream->write(stream, size, _unsigned);
-            break;
-        case BS_INST_SIGNED:
-            _signed = va_arg(ap, int);
-            stream->write_signed(stream, size, _signed);
-            break;
-        case BS_INST_UNSIGNED64:
-            _unsigned64 = va_arg(ap, uint64_t);
-            stream->write_64(stream, size, _unsigned64);
-            break;
-        case BS_INST_SIGNED64:
-            _signed64 = va_arg(ap, int64_t);
-            stream->write_signed_64(stream, size, _signed64);
-            break;
-        case BS_INST_SKIP:
-            stream->write(stream, size, 0);
-            break;
-        case BS_INST_SKIP_BYTES:
-            /*somewhat inefficient,
-              but byte skipping is rare for BitstreamWriters anyway*/
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            stream->write(stream, size, 0);
-            break;
-        case BS_INST_BYTES:
-            _bytes = va_arg(ap, uint8_t*);
-            stream->write_bytes(stream, _bytes, size);
-            break;
-        case BS_INST_ALIGN:
+    do {
+        unsigned times;
+        unsigned size;
+
+        format = bs_parse_format(format, &times, &size, &inst);
+        if (inst == BS_INST_UNSIGNED) {
+            for (; times; times--) {
+                const unsigned value = va_arg(ap, unsigned);
+                stream->write(stream, size, value);
+            }
+        } else if (inst == BS_INST_SIGNED) {
+            for (; times; times--) {
+                const int value = va_arg(ap, int);
+                stream->write_signed(stream, size, value);
+            }
+        } else if (inst == BS_INST_UNSIGNED64) {
+            for (; times; times--) {
+                const uint64_t value = va_arg(ap, uint64_t);
+                stream->write_64(stream, size, value);
+            }
+        } else if (inst == BS_INST_SIGNED64) {
+            for (; times; times--) {
+                const int64_t value = va_arg(ap, int64_t);
+                stream->write_signed_64(stream, size, value);
+            }
+        } else if (inst == BS_INST_SKIP) {
+            for (; times; times--) {
+                stream->write(stream, size, 0);
+            }
+        } else if (inst == BS_INST_SKIP_BYTES) {
+            for (; times; times--) {
+                /*somewhat inefficient,
+                  but byte skipping is rare for BitstreamWriters anyway*/
+                stream->write(stream, size, 0);
+                stream->write(stream, size, 0);
+                stream->write(stream, size, 0);
+                stream->write(stream, size, 0);
+                stream->write(stream, size, 0);
+                stream->write(stream, size, 0);
+                stream->write(stream, size, 0);
+                stream->write(stream, size, 0);
+            }
+        } else if (inst == BS_INST_BYTES) {
+            for (; times; times--) {
+                const uint8_t *value = va_arg(ap, uint8_t*);
+                stream->write_bytes(stream, value, size);
+            }
+        } else if (inst == BS_INST_ALIGN) {
             stream->byte_align(stream);
-            break;
         }
-    }
+    } while (inst != BS_INST_EOF);
     va_end(ap);
 }
 
@@ -2995,127 +3000,122 @@ bw_swap_records(BitstreamWriter* a, BitstreamWriter* b)
     b->buffer = c.buffer;
 }
 
-int
-bs_parse_format(char** format, unsigned int* size, bs_instruction* type) {
-    *size = 0;
 
-    /*Ulimately, the amount of supportable formats is kept small
-      because it's difficult to handle lots of complex formats symmetrically.
+const char*
+bs_parse_format(const char *format,
+                unsigned *times, unsigned *size, bs_instruction_t *inst)
+{
+    unsigned argument = 0;
+    unsigned sub_times;
 
-      Constant values are easy to handle for the BitstreamWriter
-      (just output the constant at the given size and consume no values)
-      but hard to handle for the BitstreamReader (what to do on a
-      constant value mismatch is a higher-level concern).
+    /*skip whitespace*/
+    while (isspace(format[0])) {
+        format++;
+    }
 
-      C-strings are similarly tricky, since the BitstreamReader
-      can't know how much space to allocate for one in advance.
+    /*the next token may be 1 or more digits*/
+    while (isdigit(format[0])) {
+        argument = (argument * 10) + (unsigned)(format[0] - '0');
+        format++;
+    }
 
-      So, lots of "nice to have" items from the Construct library
-      are left out in favor of keeping this routine specialized
-      for handling the most crucial cases.
-    */
-
-    for (;; *format += 1)
-        switch (**format) {
-        case '\0':
-            return 1;
-        case '0':
-            *size = (*size * 10) + 0;
-            break;
-        case '1':
-            *size = (*size * 10) + 1;
-            break;
-        case '2':
-            *size = (*size * 10) + 2;
-            break;
-        case '3':
-            *size = (*size * 10) + 3;
-            break;
-        case '4':
-            *size = (*size * 10) + 4;
-            break;
-        case '5':
-            *size = (*size * 10) + 5;
-            break;
-        case '6':
-            *size = (*size * 10) + 6;
-            break;
-        case '7':
-            *size = (*size * 10) + 7;
-            break;
-        case '8':
-            *size = (*size * 10) + 8;
-            break;
-        case '9':
-            *size = (*size * 10) + 9;
-            break;
-        case 'u':
-            *type = BS_INST_UNSIGNED;
-            *format += 1;
-            return 0;
-        case 's':
-            *type = BS_INST_SIGNED;
-            *format += 1;
-            return 0;
-        case 'U':
-            *type = BS_INST_UNSIGNED64;
-            *format += 1;
-            return 0;
-        case 'S':
-            *type = BS_INST_SIGNED64;
-            *format += 1;
-            return 0;
-        case 'p':
-            *type = BS_INST_SKIP;
-            *format += 1;
-            return 0;
-        case 'P':
-            *type = BS_INST_SKIP_BYTES;
-            *format += 1;
-            return 0;
-        case 'b':
-            *type = BS_INST_BYTES;
-            *format += 1;
-            return 0;
-        case 'a':
-            *type = BS_INST_ALIGN;
-            *format += 1;
-            return 0;
-        default:
-            break;
-        }
+    /*assign "times", "size" and "inst"
+      based on the following instruction character (if valid)*/
+    switch (format[0]) {
+    case 'u':
+        *times = 1;
+        *size = argument;
+        *inst = BS_INST_UNSIGNED;
+        return format + 1;
+    case 's':
+        *times = 1;
+        *size = argument;
+        *inst = BS_INST_SIGNED;
+        return format + 1;
+    case 'U':
+        *times = 1;
+        *size = argument;
+        *inst = BS_INST_UNSIGNED64;
+        return format + 1;
+    case 'S':
+        *times = 1;
+        *size = argument;
+        *inst = BS_INST_SIGNED64;
+        return format + 1;
+    case 'p':
+        *times = 1;
+        *size = argument;
+        *inst = BS_INST_SKIP;
+        return format + 1;
+    case 'P':
+        *times = 1;
+        *size = argument;
+        *inst = BS_INST_SKIP_BYTES;
+        return format + 1;
+    case 'b':
+        *times = 1;
+        *size = argument;
+        *inst = BS_INST_BYTES;
+        return format + 1;
+    case 'a':
+        *times = 0;
+        *size = 0;
+        *inst = BS_INST_ALIGN;
+        return format + 1;
+    case '*':
+        format = bs_parse_format(format + 1, &sub_times, size, inst);
+        *times = argument * sub_times;
+        return format;
+    case '\0':
+        *times = 0;
+        *size = 0;
+        *inst = BS_INST_EOF;
+        return format;
+    default:
+        *times = 0;
+        *size = 0;
+        *inst = BS_INST_EOF;
+        return format + 1;
+    }
 }
 
-unsigned int
-bs_format_size(char* format) {
-    unsigned int total_size = 0;
-    unsigned int format_size;
-    bs_instruction format_type;
-    char* format_pos = format;
 
-    while (!bs_parse_format(&format_pos, &format_size, &format_type))
-        switch (format_type) {
+unsigned
+bs_format_size(const char* format)
+{
+    unsigned total_size = 0;
+    bs_instruction_t inst;
+
+    do {
+        unsigned times;
+        unsigned size;
+
+        format = bs_parse_format(format, &times, &size, &inst);
+        switch (inst) {
         case BS_INST_UNSIGNED:
         case BS_INST_SIGNED:
         case BS_INST_UNSIGNED64:
         case BS_INST_SIGNED64:
         case BS_INST_SKIP:
-            total_size += format_size;
+            total_size += (times * size);
             break;
         case BS_INST_SKIP_BYTES:
         case BS_INST_BYTES:
-            total_size += (format_size * 8);
+            total_size += (times * size * 8);
             break;
         case BS_INST_ALIGN:
             total_size += (8 - (total_size % 8));
             break;
+        case BS_INST_EOF:
+            break;
         }
+    } while (inst != BS_INST_EOF);
 
     return total_size;
 }
 
-unsigned int
-bs_format_byte_size(char* format)
+unsigned
+bs_format_byte_size(const char* format)
 {
     return bs_format_size(format) / 8;
 }

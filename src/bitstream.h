@@ -43,9 +43,15 @@ typedef int state_t;
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_SUBSTREAM, BR_EXTERNAL} br_type;
 typedef enum {BW_FILE, BW_EXTERNAL, BW_RECORDER, BW_ACCUMULATOR} bw_type;
-typedef enum {BS_INST_UNSIGNED, BS_INST_SIGNED, BS_INST_UNSIGNED64,
-              BS_INST_SIGNED64, BS_INST_SKIP, BS_INST_SKIP_BYTES,
-              BS_INST_BYTES, BS_INST_ALIGN} bs_instruction;
+typedef enum {BS_INST_UNSIGNED,
+              BS_INST_SIGNED,
+              BS_INST_UNSIGNED64,
+              BS_INST_SIGNED64,
+              BS_INST_SKIP,
+              BS_INST_SKIP_BYTES,
+              BS_INST_BYTES,
+              BS_INST_ALIGN,
+              BS_INST_EOF} bs_instruction_t;
 
 typedef void (*bs_callback_f)(uint8_t, void*);
 
@@ -217,7 +223,7 @@ typedef struct BitstreamReader_s {
       a failed parse will trigger a call to br_abort
     */
     void
-    (*parse)(struct BitstreamReader_s* bs, char* format, ...);
+    (*parse)(struct BitstreamReader_s* bs, const char* format, ...);
 
     /*sets the stream's format to big endian or little endian
       which automatically byte aligns it*/
@@ -520,7 +526,7 @@ br_read_bytes_c(struct BitstreamReader_s* bs,
 
 /*bs->parse(bs, format, ...)  method*/
 void
-br_parse(struct BitstreamReader_s* stream, char* format, ...);
+br_parse(struct BitstreamReader_s* stream, const char* format, ...);
 
 
 /*bs->set_endianness(bs, endianness)  methods*/
@@ -831,7 +837,7 @@ typedef struct BitstreamWriter_s {
       this is designed to perform the inverse of a BitstreamReader->parse()
      */
     void
-    (*build)(struct BitstreamWriter_s* bs, char* format, ...);
+    (*build)(struct BitstreamWriter_s* bs, const char* format, ...);
 
     /*returns the total bits written to the stream thus far
 
@@ -1076,7 +1082,7 @@ bw_set_endianness_c(BitstreamWriter* bs, bs_endianness endianness);
 
 /*bs->build(bs, format, ...)  method*/
 void
-bw_build(struct BitstreamWriter_s* stream, char* format, ...);
+bw_build(struct BitstreamWriter_s* stream, const char* format, ...);
 
 /*bs->bytes_written(bs)  method*/
 unsigned int
@@ -1260,19 +1266,18 @@ bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
  *******************************************************************/
 
 /*parses (or continues parsing) the given format string
-  and places the results in the "size" and "type" variables
-  the position in "format" is incremented as necessary
-  returns 0 on success, 1 on end-of-string and -1 on error*/
-int
-bs_parse_format(char** format, unsigned int* size, bs_instruction* type);
+  and places the results in the "times", "size" and "inst" variables*/
+const char*
+bs_parse_format(const char *format,
+                unsigned *times, unsigned *size, bs_instruction_t *inst);
 
 /*returns the size of the given format string in bits*/
-unsigned int
-bs_format_size(char* format);
+unsigned
+bs_format_size(const char* format);
 
 /*returns the size of the given format string in bytes*/
-unsigned int
-bs_format_byte_size(char* format);
+unsigned
+bs_format_byte_size(const char* format);
 
 /*******************************************************************
  *                           miscellaneous                         *

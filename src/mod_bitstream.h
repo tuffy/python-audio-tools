@@ -799,13 +799,14 @@ PyTypeObject bitstream_BitstreamRecorderType = {
   parses the format from the reader and appends Python values to the list
   returns 0 on success, 1 on failure (with PyErr set)*/
 int
-bitstream_parse(BitstreamReader* stream, char* format, PyObject* values);
+bitstream_parse(BitstreamReader* stream, const char* format, PyObject* values);
 
 /*given a BitstreamWriter, format string and PySequence of Python values,
   writes those values to the writer
   returns 0 on success, 1 on failure (with PyErr set)*/
 int
-bitstream_build(BitstreamWriter* stream, char* format, PyObject* values);
+bitstream_build(BitstreamWriter* stream,
+                const char* format, PyObject* iterator);
 
 typedef struct {
     PyObject_HEAD

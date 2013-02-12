@@ -1234,13 +1234,17 @@ BitstreamWriter_build(bitstream_BitstreamWriter *self, PyObject *args)
 {
     char* format;
     PyObject *values;
+    PyObject *iterator;
 
-    if (!PyArg_ParseTuple(args, "sO", &format, &values))
+    if (!PyArg_ParseTuple(args, "sO", &format, &values)) {
         return NULL;
-
-    if (bitstream_build(self->bitstream, format, values)) {
+    } else if ((iterator = PyObject_GetIter(values)) == NULL) {
+        return NULL;
+    } else if (bitstream_build(self->bitstream, format, iterator)) {
+        Py_DECREF(iterator);
         return NULL;
     } else {
+        Py_DECREF(iterator);
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -1529,13 +1533,17 @@ BitstreamRecorder_build(bitstream_BitstreamRecorder *self,
 {
     char* format;
     PyObject *values;
+    PyObject *iterator;
 
-    if (!PyArg_ParseTuple(args, "sO", &format, &values))
+    if (!PyArg_ParseTuple(args, "sO", &format, &values)) {
         return NULL;
-
-    if (bitstream_build(self->bitstream, format, values)) {
+    } else if ((iterator = PyObject_GetIter(values)) == NULL) {
+        return NULL;
+    } else if (bitstream_build(self->bitstream, format, iterator)) {
+        Py_DECREF(iterator);
         return NULL;
     } else {
+        Py_DECREF(iterator);
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -2105,13 +2113,17 @@ BitstreamAccumulator_build(bitstream_BitstreamAccumulator *self,
 {
     char* format;
     PyObject *values;
+    PyObject *iterator;
 
-    if (!PyArg_ParseTuple(args, "sO", &format, &values))
+    if (!PyArg_ParseTuple(args, "sO", &format, &values)) {
         return NULL;
-
-    if (bitstream_build(self->bitstream, format, values)) {
+    } else if ((iterator = PyObject_GetIter(values)) == NULL) {
+        return NULL;
+    } else if (bitstream_build(self->bitstream, format, iterator)) {
+        Py_DECREF(iterator);
         return NULL;
     } else {
+        Py_DECREF(iterator);
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -2294,115 +2306,146 @@ bitstream_build_func(PyObject *dummy, PyObject *args)
     char *format;
     int is_little_endian;
     PyObject *values;
+    PyObject *iterator;
 
     if (!PyArg_ParseTuple(args, "siO", &format, &is_little_endian, &values)) {
+        return NULL;
+    } else if ((iterator = PyObject_GetIter(values)) == NULL) {
         return NULL;
     } else {
         BitstreamWriter* stream = bw_open_recorder(
             is_little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-        if (!bitstream_build(stream, format, values)) {
+        if (!bitstream_build(stream, format, iterator)) {
             PyObject* data = PyString_FromStringAndSize(
                 (char *)BUF_WINDOW_START(stream->output.buffer),
                 (Py_ssize_t)BUF_WINDOW_SIZE(stream->output.buffer));
             stream->close(stream);
+            Py_DECREF(iterator);
             return data;
         } else {
             stream->close(stream);
+            Py_DECREF(iterator);
             return NULL;
         }
     }
 }
 
 int
-bitstream_parse(BitstreamReader* stream, char* format, PyObject* values)
+bitstream_parse(BitstreamReader* stream, const char* format, PyObject* values)
 {
     if (!setjmp(*br_try(stream))) {
-        unsigned int size;
-        bs_instruction type;
+        bs_instruction_t inst;
 
-        while (!bs_parse_format(&format, &size, &type)) {
-            PyObject* value;
-            switch (type) {
-            case BS_INST_UNSIGNED:
-                if ((value =
-                     Py_BuildValue("I",
-                         stream->read(stream, size))) == NULL) {
-                    goto error;
-                } else if (PyList_Append(values, value) == -1) {
-                    Py_DECREF(value);
-                    goto error;
-                } else {
-                    Py_DECREF(value);
-                }
-                break;
-            case BS_INST_SIGNED:
-                if ((value =
-                     Py_BuildValue("i",
-                         stream->read_signed(stream, size))) == NULL) {
-                    goto error;
-                } else if (PyList_Append(values, value) == -1) {
-                    Py_DECREF(value);
-                    goto error;
-                } else {
-                    Py_DECREF(value);
-                }
-                break;
-            case BS_INST_UNSIGNED64:
-                if ((value =
-                     Py_BuildValue("K",
-                         stream->read_64(stream, size))) == NULL) {
-                    goto error;
-                } else if (PyList_Append(values, value) == -1) {
-                    Py_DECREF(value);
-                    goto error;
-                } else {
-                    Py_DECREF(value);
-                }
-                break;
-            case BS_INST_SIGNED64:
-                if ((value =
-                     Py_BuildValue("L",
-                         stream->read_signed_64(stream, size))) == NULL) {
-                    goto error;
-                } else if (PyList_Append(values, value) == -1) {
-                    Py_DECREF(value);
-                    goto error;
-                } else {
-                    Py_DECREF(value);
-                }
-                break;
-            case BS_INST_SKIP:
-                stream->skip(stream, size);
-                break;
-            case BS_INST_SKIP_BYTES:
-                stream->skip_bytes(stream, size);
-                break;
-            case BS_INST_BYTES:
-                if ((value = PyString_FromStringAndSize(NULL, size)) == NULL) {
-                    goto error;
-                } else {
-                    stream->read_bytes(stream,
-                                       (uint8_t*)PyString_AsString(value),
-                                       size);
-                    if (PyList_Append(values, value) == -1) {
-                        goto error;
-                        Py_DECREF(value);
+        do {
+            unsigned times;
+            unsigned size;
+
+            format = bs_parse_format(format, &times, &size, &inst);
+            if (inst == BS_INST_UNSIGNED) {
+                for (; times; times--) {
+                    const unsigned value = stream->read(stream, size);
+                    PyObject *py_value;
+                    if ((py_value = Py_BuildValue("I", value)) == NULL) {
+                        br_etry(stream);
+                        return 1;
+                    } else if (PyList_Append(values, py_value) == -1) {
+                        Py_DECREF(py_value);
+                        br_etry(stream);
+                        return 1;
                     } else {
-                        Py_DECREF(value);
+                        Py_DECREF(py_value);
                     }
                 }
-                break;
-            case BS_INST_ALIGN:
+            } else if (inst == BS_INST_SIGNED) {
+                for (; times; times--) {
+                    const int value = stream->read_signed(stream, size);
+                    PyObject *py_value;
+                    if ((py_value = Py_BuildValue("i", value)) == NULL) {
+                        br_etry(stream);
+                        return 1;
+                    } else if (PyList_Append(values, py_value) == -1) {
+                        Py_DECREF(py_value);
+                        br_etry(stream);
+                        return 1;
+                    } else {
+                        Py_DECREF(py_value);
+                    }
+                }
+            } else if (inst == BS_INST_UNSIGNED64) {
+                for (; times; times--) {
+                    const uint64_t value = stream->read_64(stream, size);
+                    PyObject *py_value;
+                    if ((py_value = Py_BuildValue("K", value)) == NULL) {
+                        br_etry(stream);
+                        return 1;
+                    } else if (PyList_Append(values, py_value) == -1) {
+                        Py_DECREF(py_value);
+                        br_etry(stream);
+                        return 1;
+                    } else {
+                        Py_DECREF(py_value);
+                    }
+                }
+            } else if (inst == BS_INST_SIGNED64) {
+                for (; times; times--) {
+                    const int64_t value = stream->read_64(stream, size);
+                    PyObject *py_value;
+                    if ((py_value = Py_BuildValue("L", value)) == NULL) {
+                        br_etry(stream);
+                        return 1;
+                    } else if (PyList_Append(values, py_value) == -1) {
+                        Py_DECREF(py_value);
+                        br_etry(stream);
+                        return 1;
+                    } else {
+                        Py_DECREF(py_value);
+                    }
+                }
+            } else if (inst == BS_INST_SKIP) {
+                for (; times; times--) {
+                    stream->skip(stream, size);
+                }
+            } else if (inst == BS_INST_SKIP_BYTES) {
+                for (; times; times--) {
+                    stream->skip_bytes(stream, size);
+                }
+            } else if (inst == BS_INST_BYTES) {
+                for (; times; times--) {
+                    PyObject *py_value;
+
+                    if ((py_value =
+                         PyString_FromStringAndSize(NULL, size)) == NULL) {
+                        /*error getting new string object at that size*/
+                        br_etry(stream);
+                        return 1;
+                    } else {
+                        uint8_t *value = (uint8_t*)PyString_AsString(py_value);
+                        /*ensure py_value gets DECREFed
+                          especially if a read error occurs*/
+                        if (!setjmp(*br_try(stream))) {
+                            stream->read_bytes(stream, value, size);
+                            br_etry(stream);
+                        } else {
+                            Py_DECREF(py_value);
+                            br_etry(stream);
+                            br_abort(stream);
+                        }
+                        if (PyList_Append(values, py_value) == -1) {
+                            Py_DECREF(py_value);
+                            br_etry(stream);
+                            return 1;
+                        } else {
+                            Py_DECREF(py_value);
+                        }
+                    }
+                }
+            } else if (inst == BS_INST_ALIGN) {
                 stream->byte_align(stream);
-                break;
             }
-        }
+        } while (inst != BS_INST_EOF);
 
         br_etry(stream);
         return 0;
-    error:
-        br_etry(stream);
-        return 1;
     } else {
         br_etry(stream);
         PyErr_SetString(PyExc_IOError, "I/O error parsing values");
@@ -2410,121 +2453,171 @@ bitstream_parse(BitstreamReader* stream, char* format, PyObject* values)
     }
 }
 
+#define MISSING_VALUES "number of items is too short for format"
+
 int
-bitstream_build(BitstreamWriter* stream, char* format, PyObject* values)
+bitstream_build(BitstreamWriter* stream,
+                const char* format, PyObject* iterator)
 {
-    Py_ssize_t i = 0;
 
     if (!setjmp(*bw_try(stream))) {
-        unsigned int size;
-        bs_instruction type;
-        while (!bs_parse_format(&format, &size, &type)) {
-            PyObject *value;
+        bs_instruction_t inst;
+        do {
+            unsigned times;
+            unsigned size;
 
-            switch (type) {
-            case BS_INST_UNSIGNED:
-                if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                    const unsigned long u = PyInt_AsUnsignedLongMask(value);
-                    Py_DECREF(value);
-                    if (!PyErr_Occurred())
-                        stream->write(stream, size, (unsigned)u);
-                    else
-                        goto write_error;
-                } else {
-                    goto write_error;
-                }
-                break;
-            case BS_INST_SIGNED:
-                if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                    const long s = PyInt_AsLong(value);
-                    Py_DECREF(value);
-                    if (!PyErr_Occurred())
-                        stream->write_signed(stream, size, (int)s);
-                    else
-                        goto write_error;
-                } else {
-                    goto write_error;
-                }
-                break;
-            case BS_INST_UNSIGNED64:
-                if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                    const unsigned PY_LONG_LONG u =
-                        PyInt_AsUnsignedLongLongMask(value);
-                    Py_DECREF(value);
-                    if (!PyErr_Occurred())
-                        stream->write_64(stream, size, (uint64_t)u);
-                    else
-                        goto write_error;
-                } else {
-                    goto write_error;
-                }
-                break;
-            case BS_INST_SIGNED64:
-                if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                    const PY_LONG_LONG s = PyLong_AsLongLong(value);
-                    Py_DECREF(value);
-                    if (!PyErr_Occurred())
-                        stream->write_signed_64(stream, size, (int64_t)s);
-                    else
-                        goto write_error;
-                } else {
-                    goto write_error;
-                }
-                break;
-            case BS_INST_SKIP:
-                stream->write(stream, size, 0);
-                break;
-            case BS_INST_SKIP_BYTES:
-                stream->write(stream, size, 0);
-                stream->write(stream, size, 0);
-                stream->write(stream, size, 0);
-                stream->write(stream, size, 0);
-                stream->write(stream, size, 0);
-                stream->write(stream, size, 0);
-                stream->write(stream, size, 0);
-                stream->write(stream, size, 0);
-                break;
-            case BS_INST_BYTES:
-                if ((value = PySequence_GetItem(values, i++)) != NULL) {
-                    char *bytes;
-                    Py_ssize_t bytes_len;
-
-                    if (PyString_AsStringAndSize(value,
-                                                 &bytes,
-                                                 &bytes_len) != -1) {
-                        if (size <= bytes_len) {
-                            /*FIXME - need to decref value
-                              if write_bytes should fail*/
-                            stream->write_bytes(stream,
-                                                (uint8_t*)bytes,
-                                                (unsigned)size);
-                            Py_DECREF(value);
+            format = bs_parse_format(format, &times, &size, &inst);
+            if (inst == BS_INST_UNSIGNED) {
+                for (; times; times--) {
+                    PyObject *py_value = PyIter_Next(iterator);
+                    if (py_value != NULL) {
+                        const unsigned long value =
+                            PyInt_AsUnsignedLongMask(py_value);
+                        Py_DECREF(py_value);
+                        if (!PyErr_Occurred()) {
+                            stream->write(stream, size, (unsigned)value);
                         } else {
-                            PyErr_SetString(PyExc_ValueError,
-                                            "string length too short");
-                            Py_DECREF(value);
-                            goto write_error;
+                            bw_etry(stream);
+                            return 1;
                         }
                     } else {
-                        Py_DECREF(value);
-                        goto write_error;
+                        if (!PyErr_Occurred()) {
+                            PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
+                        }
+                        bw_etry(stream);
+                        return 1;
                     }
-                } else {
-                    goto write_error;
                 }
-                break;
-            case BS_INST_ALIGN:
+            } else if (inst == BS_INST_SIGNED) {
+                for (; times; times--) {
+                    PyObject *py_value = PyIter_Next(iterator);
+                    if (py_value != NULL) {
+                        const long value = PyInt_AsLong(py_value);
+                        Py_DECREF(py_value);
+                        if (!PyErr_Occurred()) {
+                            stream->write_signed(stream, size, (int)value);
+                        } else {
+                            bw_etry(stream);
+                            return 1;
+                        }
+                    } else {
+                        if (!PyErr_Occurred()) {
+                            PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
+                        }
+                        bw_etry(stream);
+                        return 1;
+                    }
+                }
+            } else if (inst == BS_INST_UNSIGNED64) {
+                for (; times; times--) {
+                    PyObject *py_value = PyIter_Next(iterator);
+                    if (py_value != NULL) {
+                        const unsigned PY_LONG_LONG value =
+                            PyInt_AsUnsignedLongLongMask(py_value);
+                        Py_DECREF(py_value);
+                        if (!PyErr_Occurred()) {
+                            stream->write_64(stream, size, (uint64_t)value);
+                        } else {
+                            bw_etry(stream);
+                            return 1;
+                        }
+                    } else {
+                        if (!PyErr_Occurred()) {
+                            PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
+                        }
+                        bw_etry(stream);
+                        return 1;
+                    }
+                }
+            } else if (inst == BS_INST_SIGNED64) {
+                for (; times; times--) {
+                    PyObject *py_value = PyIter_Next(iterator);
+                    if (py_value != NULL) {
+                        const PY_LONG_LONG u =
+                            PyLong_AsLongLong(py_value);
+                        Py_DECREF(py_value);
+                        if (!PyErr_Occurred()) {
+                            stream->write_signed_64(stream, size, (int64_t)u);
+                        } else {
+                            bw_etry(stream);
+                            return 1;
+                        }
+                    } else {
+                        if (!PyErr_Occurred()) {
+                            PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
+                        }
+                        bw_etry(stream);
+                        return 1;
+                    }
+                }
+            } else if (inst == BS_INST_SKIP) {
+                for (; times; times--) {
+                    stream->write(stream, size, 0);
+                }
+            } else if (inst == BS_INST_SKIP_BYTES) {
+                for (; times; times--) {
+                    stream->write(stream, size, 0);
+                    stream->write(stream, size, 0);
+                    stream->write(stream, size, 0);
+                    stream->write(stream, size, 0);
+                    stream->write(stream, size, 0);
+                    stream->write(stream, size, 0);
+                    stream->write(stream, size, 0);
+                    stream->write(stream, size, 0);
+                }
+            } else if (inst == BS_INST_BYTES) {
+                for (; times; times--) {
+                    PyObject *py_value = PyIter_Next(iterator);
+                    if (py_value != NULL) {
+                        char *bytes;
+                        Py_ssize_t bytes_len;
+
+                        if (PyString_AsStringAndSize(py_value,
+                                                     &bytes,
+                                                     &bytes_len) != -1) {
+                            if (size <= bytes_len) {
+                                /*ensure py_value gets DECREFed
+                                  especially if a write error occurs*/
+
+                                if (!setjmp(*bw_try(stream))) {
+                                    stream->write_bytes(stream,
+                                                        (uint8_t*)bytes,
+                                                        (unsigned)size);
+                                    Py_DECREF(py_value);
+                                    bw_etry(stream);
+                                } else {
+                                    Py_DECREF(py_value);
+                                    bw_etry(stream);
+                                    bw_abort(stream);
+                                }
+                            } else {
+                                PyErr_SetString(PyExc_ValueError,
+                                                "string length too short");
+                                Py_DECREF(py_value);
+                                bw_etry(stream);
+                                return 1;
+                            }
+                        } else {
+                            Py_DECREF(py_value);
+                            bw_etry(stream);
+                            return 1;
+                        }
+                    } else {
+                        if (!PyErr_Occurred()) {
+                            PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
+                        }
+                        bw_etry(stream);
+                        return 1;
+                    }
+                }
+            } else if (inst == BS_INST_ALIGN) {
                 stream->byte_align(stream);
-                break;
             }
-        }
+
+        } while (inst != BS_INST_EOF);
 
         bw_etry(stream);
         return 0;
-
-    write_error:
-        bw_etry(stream);
-        return 1;
     } else {
         PyErr_SetString(PyExc_IOError, "I/O error writing to stream");
         bw_etry(stream);

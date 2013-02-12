@@ -1122,7 +1122,7 @@ class Flac_PICTURE(Image):
     def build(self, writer):
         """writes this metadata block to a BitstreamWriter"""
 
-        writer.build("32u [ 32u%db ] [32u%db ] 32u 32u 32u 32u [ 32u%db ]" %
+        writer.build("32u 32u%db 32u%db 32u 32u 32u 32u 32u%db" %
                      (len(self.mime_type.encode('ascii')),
                       len(self.description.encode('utf-8')),
                       len(self.data)),
