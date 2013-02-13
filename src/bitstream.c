@@ -3150,9 +3150,16 @@ sigabort_cleanup(int signum);
 void
 test_big_endian_reader(BitstreamReader* reader,
                        struct br_huffman_table (*table)[][0x200]);
+
+void
+test_big_endian_parse(BitstreamReader* reader);
+
 void
 test_little_endian_reader(BitstreamReader* reader,
                           struct br_huffman_table (*table)[][0x200]);
+
+void
+test_little_endian_parse(BitstreamReader* reader);
 
 void
 test_close_errors(BitstreamReader* reader,
@@ -3226,6 +3233,30 @@ writer_perform_write_unary_0(BitstreamWriter* writer,
 void
 writer_perform_write_unary_1(BitstreamWriter* writer,
                              bs_endianness endianness);
+
+void
+writer_perform_build_u(BitstreamWriter* writer,
+                       bs_endianness endianness);
+
+void
+writer_perform_build_U(BitstreamWriter* writer,
+                       bs_endianness endianness);
+
+void
+writer_perform_build_s(BitstreamWriter* writer,
+                       bs_endianness endianness);
+
+void
+writer_perform_build_S(BitstreamWriter* writer,
+                       bs_endianness endianness);
+
+void
+writer_perform_build_b(BitstreamWriter* writer,
+                       bs_endianness endianness);
+
+void
+writer_perform_build_mult(BitstreamWriter* writer,
+                          bs_endianness endianness);
 
 void
 writer_perform_huffman(BitstreamWriter* writer,
@@ -3331,6 +3362,7 @@ int main(int argc, char* argv[]) {
     /*test a big-endian stream*/
     reader = br_open(temp_file, BS_BIG_ENDIAN);
     test_big_endian_reader(reader, be_table);
+    test_big_endian_parse(reader);
     test_try(reader, be_table);
     test_callbacks_reader(reader, 14, 18, be_table, 14);
     reader->free(reader);
@@ -3351,6 +3383,7 @@ int main(int argc, char* argv[]) {
                               (ext_close_f)ext_fclose_test,
                               (ext_free_f)ext_ffree_test);
     test_big_endian_reader(reader, be_table);
+    test_big_endian_parse(reader);
     test_try(reader, be_table);
     test_callbacks_reader(reader, 14, 18, be_table, 14);
     reader->free(reader);
@@ -3360,6 +3393,7 @@ int main(int argc, char* argv[]) {
     /*test a little-endian stream*/
     reader = br_open(temp_file, BS_LITTLE_ENDIAN);
     test_little_endian_reader(reader, le_table);
+    test_little_endian_parse(reader);
     test_try(reader, le_table);
     test_callbacks_reader(reader, 14, 18, le_table, 13);
     reader->free(reader);
@@ -3378,6 +3412,7 @@ int main(int argc, char* argv[]) {
                               (ext_close_f)ext_fclose_test,
                               (ext_free_f)ext_ffree_test);
     test_little_endian_reader(reader, le_table);
+    test_little_endian_parse(reader);
     test_try(reader, le_table);
     test_callbacks_reader(reader, 14, 18, le_table, 13);
     reader->free(reader);
@@ -3405,6 +3440,7 @@ int main(int argc, char* argv[]) {
     reader->skip(reader, 16);
     reader->substream_append(reader, subreader, 4);
     test_big_endian_reader(subreader, be_table);
+    test_big_endian_parse(subreader);
     test_try(subreader, be_table);
     test_callbacks_reader(subreader, 14, 18, be_table, 14);
     br_substream_reset(subreader);
@@ -3425,6 +3461,7 @@ int main(int argc, char* argv[]) {
     subsubreader = br_substream_new(BS_BIG_ENDIAN);
     subreader->substream_append(subreader, subsubreader, 4);
     test_big_endian_reader(subsubreader, be_table);
+    test_big_endian_parse(subsubreader);
     test_try(subsubreader, be_table);
     test_callbacks_reader(subsubreader, 14, 18, be_table, 14);
     subsubreader->close(subsubreader);
@@ -3441,6 +3478,7 @@ int main(int argc, char* argv[]) {
     reader->skip(reader, 16);
     reader->substream_append(reader, subreader, 4);
     test_little_endian_reader(subreader, le_table);
+    test_little_endian_parse(subreader);
     test_try(subreader, le_table);
     test_callbacks_reader(subreader, 14, 18, le_table, 13);
     br_substream_reset(subreader);
@@ -3461,6 +3499,7 @@ int main(int argc, char* argv[]) {
     subsubreader = br_substream_new(BS_LITTLE_ENDIAN);
     subreader->substream_append(subreader, subsubreader, 4);
     test_little_endian_reader(subsubreader, le_table);
+    test_little_endian_parse(subsubreader);
     test_try(subsubreader, le_table);
     test_callbacks_reader(subsubreader, 14, 18, le_table, 13);
     subsubreader->close(subsubreader);
@@ -3672,6 +3711,121 @@ void test_big_endian_reader(BitstreamReader* reader,
     reader->unmark(reader);
 }
 
+void test_big_endian_parse(BitstreamReader* reader) {
+    unsigned u1,u2,u3,u4,u5,u6;
+    int s1,s2,s3,s4,s5;
+    uint64_t U1,U2,U3,U4,U5;
+    int64_t S1,S2,S3,S4,S5;
+    uint8_t sub_data1[2];
+    uint8_t sub_data2[2];
+
+    reader->mark(reader);
+
+    /*first, check all the defined format fields*/
+    reader->parse(reader, "2u 3u 5u 3u 19u", &u1, &u2, &u3, &u4, &u5);
+    assert(u1 == 0x2);
+    assert(u2 == 0x6);
+    assert(u3 == 0x07);
+    assert(u4 == 0x5);
+    assert(u5 == 0x53BC1);
+
+    reader->rewind(reader);
+    reader->parse(reader, "2s 3s 5s 3s 19s", &s1, &s2, &s3, &s4, &s5);
+    assert(s1 == -2);
+    assert(s2 == -2);
+    assert(s3 == 7);
+    assert(s4 == -3);
+    assert(s5 == -181311);
+
+    reader->rewind(reader);
+    reader->parse(reader, "2U 3U 5U 3U 19U", &U1, &U2, &U3, &U4, &U5);
+    assert(U1 == 0x2);
+    assert(U2 == 0x6);
+    assert(U3 == 0x07);
+    assert(U4 == 0x5);
+    assert(U5 == 0x53BC1);
+
+    reader->rewind(reader);
+    reader->parse(reader, "2S 3S 5S 3S 19S", &S1, &S2, &S3, &S4, &S5);
+    assert(S1 == -2);
+    assert(S2 == -2);
+    assert(S3 == 7);
+    assert(S4 == -3);
+    assert(S5 == -181311);
+
+    u1 = u2 = u3 = u4 = u5 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "2u 3p 5u 3p 19u", &u1, &u3, &u5);
+    assert(u1 == 0x2);
+    assert(u3 == 0x07);
+    assert(u5 == 0x53BC1);
+
+    u1 = u2 = u3 = u4 = u5 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "2p 1P 3u 19u", &u4, &u5);
+    assert(u4 == 0x5);
+    assert(u5 == 0x53BC1);
+
+    reader->rewind(reader);
+    reader->parse(reader, "2b 2b", sub_data1, sub_data2);
+    assert(memcmp(sub_data1, "\xB1\xED", 2) == 0);
+    assert(memcmp(sub_data2, "\x3B\xC1", 2) == 0);
+
+    u1 = u2 = u3 = u4 = u5 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "2u a 3u a 4u a 5u", &u1, &u2, &u3, &u4);
+    assert(u1 == 2);
+    assert(u2 == 7);
+    assert(u3 == 3);
+    assert(u4 == 24);
+
+    u1 = u2 = u3 = u4 = u5 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "3* 2u", &u1, &u2, &u3);
+    assert(u1 == 2);
+    assert(u2 == 3);
+    assert(u3 == 0);
+
+    u1 = u2 = u3 = u4 = u5 = u6 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "3* 2* 2u", &u1, &u2, &u3, &u4, &u5, &u6);
+    assert(u1 == 2);
+    assert(u2 == 3);
+    assert(u3 == 0);
+    assert(u4 == 1);
+    assert(u5 == 3);
+    assert(u6 == 2);
+
+    /*then check some errors which trigger an end-of-format*/
+
+    /*unknown instruction*/
+    u1 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "2u ? 3u", &u1);
+    assert(u1 == 2);
+
+    /*unknown instruction prefixed by number*/
+    u1 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "2u 10? 3u", &u1);
+    assert(u1 == 2);
+
+    /*unknown instruction prefixed by multiplier*/
+    u1 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "2u 10* ? 3u", &u1);
+    assert(u1 == 2);
+
+    /*unknown instruction prefixed by number and multiplier*/
+    u1 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "2u 10* 3? 3u", &u1);
+    assert(u1 == 2);
+
+    reader->rewind(reader);
+    reader->unmark(reader);
+}
+
 void test_little_endian_reader(BitstreamReader* reader,
                                struct br_huffman_table (*table)[][0x200]) {
     int bit;
@@ -3836,6 +3990,121 @@ void test_little_endian_reader(BitstreamReader* reader,
     reader->rewind(reader);
     assert(reader->read(reader, 12) == 0x3BE);
     reader->unmark(reader);
+
+    reader->rewind(reader);
+    reader->unmark(reader);
+}
+
+void test_little_endian_parse(BitstreamReader* reader) {
+    unsigned u1,u2,u3,u4,u5,u6;
+    int s1,s2,s3,s4,s5;
+    uint64_t U1,U2,U3,U4,U5;
+    int64_t S1,S2,S3,S4,S5;
+    uint8_t sub_data1[2];
+    uint8_t sub_data2[2];
+
+    reader->mark(reader);
+
+    /*first, check all the defined format fields*/
+    reader->parse(reader, "2u 3u 5u 3u 19u", &u1, &u2, &u3, &u4, &u5);
+    assert(u1 == 0x1);
+    assert(u2 == 0x4);
+    assert(u3 == 0x0D);
+    assert(u4 == 0x3);
+    assert(u5 == 0x609DF);
+
+    reader->rewind(reader);
+    reader->parse(reader, "2s 3s 5s 3s 19s", &s1, &s2, &s3, &s4, &s5);
+    assert(s1 == 1);
+    assert(s2 == -4);
+    assert(s3 == 13);
+    assert(s4 == 3);
+    assert(s5 == -128545);
+
+    reader->rewind(reader);
+    reader->parse(reader, "2U 3U 5U 3U 19U", &U1, &U2, &U3, &U4, &U5);
+    assert(u1 == 0x1);
+    assert(u2 == 0x4);
+    assert(u3 == 0x0D);
+    assert(u4 == 0x3);
+    assert(u5 == 0x609DF);
+
+    reader->rewind(reader);
+    reader->parse(reader, "2S 3S 5S 3S 19S", &S1, &S2, &S3, &S4, &S5);
+    assert(s1 == 1);
+    assert(s2 == -4);
+    assert(s3 == 13);
+    assert(s4 == 3);
+    assert(s5 == -128545);
+
+    u1 = u2 = u3 = u4 = u5 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "2u 3p 5u 3p 19u", &u1, &u3, &u5);
+    assert(u1 == 0x1);
+    assert(u3 == 0x0D);
+    assert(u5 == 0x609DF);
+
+    u1 = u2 = u3 = u4 = u5 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "2p 1P 3u 19u", &u4, &u5);
+    assert(u4 == 0x3);
+    assert(u5 == 0x609DF);
+
+    reader->rewind(reader);
+    reader->parse(reader, "2b 2b", sub_data1, sub_data2);
+    assert(memcmp(sub_data1, "\xB1\xED", 2) == 0);
+    assert(memcmp(sub_data2, "\x3B\xC1", 2) == 0);
+
+    u1 = u2 = u3 = u4 = u5 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "2u a 3u a 4u a 5u", &u1, &u2, &u3, &u4);
+    assert(u1 == 1);
+    assert(u2 == 5);
+    assert(u3 == 11);
+    assert(u4 == 1);
+
+    u1 = u2 = u3 = u4 = u5 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "3* 2u", &u1, &u2, &u3);
+    assert(u1 == 1);
+    assert(u2 == 0);
+    assert(u3 == 3);
+
+    u1 = u2 = u3 = u4 = u5 = u6 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "3* 2* 2u", &u1, &u2, &u3, &u4, &u5, &u6);
+    assert(u1 == 1);
+    assert(u2 == 0);
+    assert(u3 == 3);
+    assert(u4 == 2);
+    assert(u5 == 1);
+    assert(u6 == 3);
+
+    /*then check some errors which trigger an end-of-format*/
+
+    /*unknown instruction*/
+    u1 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "2u ? 3u", &u1);
+    assert(u1 == 1);
+
+    /*unknown instruction prefixed by number*/
+    u1 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "2u 10? 3u", &u1);
+    assert(u1 == 1);
+
+    /*unknown instruction prefixed by multiplier*/
+    u1 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "2u 10* ? 3u", &u1);
+    assert(u1 == 1);
+
+    /*unknown instruction prefixed by number and multiplier*/
+    u1 = 0;
+    reader->rewind(reader);
+    reader->parse(reader, "2u 10* 3? 3u", &u1);
+    assert(u1 == 1);
 
     reader->rewind(reader);
     reader->unmark(reader);
@@ -4230,8 +4499,14 @@ test_writer(bs_endianness endianness) {
                             writer_perform_write_unary_0,
                             writer_perform_write_unary_1,
                             writer_perform_huffman,
-                            writer_perform_write_bytes};
-    int total_checks = 7;
+                            writer_perform_write_bytes,
+                            writer_perform_build_u,
+                            writer_perform_build_U,
+                            writer_perform_build_s,
+                            writer_perform_build_S,
+                            writer_perform_build_b,
+                            writer_perform_build_mult};
+    int total_checks = 14;
 
     align_check achecks_be[] = {{0, 0, 0, 0},
                                 {1, 1, 1, 0x80},
@@ -4793,6 +5068,108 @@ writer_perform_write_unary_1(BitstreamWriter* writer,
 }
 
 void
+writer_perform_build_u(BitstreamWriter* writer,
+                       bs_endianness endianness)
+{
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        writer->build(writer, "2u 3u 5u 3u 19u", 2, 6, 7, 5, 342977);
+        break;
+    case BS_LITTLE_ENDIAN:
+        writer->build(writer, "2u 3u 5u 3u 19u", 1, 4, 13, 3, 395743);
+        break;
+    }
+}
+
+void
+writer_perform_build_U(BitstreamWriter* writer,
+                       bs_endianness endianness)
+{
+    uint64_t v1,v2,v3,v4,v5;
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        v1 = 2;
+        v2 = 6;
+        v3 = 7;
+        v4 = 5;
+        v5 = 342977;
+        break;
+    case BS_LITTLE_ENDIAN:
+        v1 = 1;
+        v2 = 4;
+        v3 = 13;
+        v4 = 3;
+        v5 = 395743;
+        break;
+    }
+
+    writer->build(writer, "2U 3U 5U 3U 19U", v1, v2, v3, v4, v5);
+}
+
+void
+writer_perform_build_s(BitstreamWriter* writer,
+                       bs_endianness endianness)
+{
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        writer->build(writer, "2s 3s 5s 3s 19s", -2, -2, 7, -3, -181311);
+        break;
+    case BS_LITTLE_ENDIAN:
+        writer->build(writer, "2s 3s 5s 3s 19s", 1, -4, 13, 3, -128545);
+        break;
+    }
+}
+
+void
+writer_perform_build_S(BitstreamWriter* writer,
+                       bs_endianness endianness)
+{
+    int64_t v1,v2,v3,v4,v5;
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        v1 = -2;
+        v2 = -2;
+        v3 = 7;
+        v4 = -3;
+        v5 = -181311;
+        break;
+    case BS_LITTLE_ENDIAN:
+        v1 = 1;
+        v2 = -4;
+        v3 = 13;
+        v4 = 3;
+        v5 = -128545;
+        break;
+    }
+
+    writer->build(writer, "2S 3S 5S 3S 19S", v1, v2, v3, v4, v5);
+}
+
+void
+writer_perform_build_b(BitstreamWriter* writer,
+                       bs_endianness endianness)
+{
+    writer->build(writer, "2b 2b", (uint8_t*)"\xB1\xED", (uint8_t*)"\x3B\xC1");
+}
+
+void
+writer_perform_build_mult(BitstreamWriter* writer,
+                          bs_endianness endianness)
+{
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        writer->build(writer, "8* 4u", 11, 1, 14, 13, 3, 11, 12, 1);
+        break;
+    case BS_LITTLE_ENDIAN:
+        writer->build(writer, "8* 4u", 1, 11, 13, 14, 11, 3, 1, 12);
+        break;
+    }
+}
+
+
+void
 writer_perform_huffman(BitstreamWriter* writer,
                        bs_endianness endianness)
 {
@@ -4856,7 +5233,7 @@ void
 writer_perform_write_bytes(BitstreamWriter* writer,
                            bs_endianness endianness)
 {
-    writer->write_bytes(writer, (uint8_t*)"\xB1\xED\x3D\xC1", 4);
+    writer->write_bytes(writer, (uint8_t*)"\xB1\xED\x3B\xC1", 4);
 }
 
 void

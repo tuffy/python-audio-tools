@@ -2528,6 +2528,36 @@ class Bitstream(unittest.TestCase):
                                "".join(map(chr, [0xB1, 0xED, 0x3B, 0xC1]))),
                          [2, 6, 7, -3, -181311])
 
+        #test all the defined format fields
+        for (fields, values) in [("2u 3u 5u 3u 19u",
+                                  [0x2, 0x6, 0x07, 0x5, 0x53BC1]),
+                                 ("2s 3s 5s 3s 19s",
+                                  [-2, -2, 7, -3, -181311]),
+                                 ("2U 3U 5U 3U 19U",
+                                  [0x2, 0x6, 0x07, 0x5, 0x53BC1]),
+                                 ("2S 3S 5S 3S 19S",
+                                  [-2, -2, 7, -3, -181311]),
+                                 ("2u 3p 5u 3p 19u",
+                                  [0x2, 0x07, 0x53BC1]),
+                                 ("2p 1P 3u 19u",
+                                  [0x5, 0x53BC1]),
+                                 ("2b 2b",
+                                  ["\xB1\xED", "\x3B\xC1"]),
+                                 ("2u a 3u a 4u a 5u",
+                                  [2, 7, 3, 24]),
+                                 ("3* 2u",
+                                  [2, 3, 0]),
+                                 ("3* 2* 2u",
+                                  [2, 3, 0, 1, 3, 2]),
+                                 ("2u ? 3u", [2]),
+                                 ("2u 10? 3u", [2]),
+                                 ("2u 10* ? 3u", [2]),
+                                 ("2u 10* 3? 3u", [2])]:
+            self.assertEqual(parse(fields,
+                                   False,
+                                   "".join(map(chr, [0xB1, 0xED, 0x3B, 0xC1]))),
+                             values)
+
         #test several big-endian unsigned edge cases
         self.assertEqual(
             parse("32u 32u 32u 32u 64U 64U 64U 64U",
@@ -2579,6 +2609,37 @@ class Bitstream(unittest.TestCase):
                                True,
                                "".join(map(chr, [0xB1, 0xED, 0x3B, 0xC1]))),
                          [1, 4, 13, 3, -128545])
+
+        #test all the defined format fields
+        for (fields, values) in [("2u 3u 5u 3u 19u",
+                                  [0x1, 0x4, 0x0D, 0x3, 0x609DF]),
+                                 ("2s 3s 5s 3s 19s",
+                                  [1, -4, 13, 3, -128545]),
+                                 ("2U 3U 5U 3U 19U",
+                                  [0x1, 0x4, 0x0D, 0x3, 0x609DF]),
+                                 ("2S 3S 5S 3S 19S",
+                                  [1, -4, 13, 3, -128545]),
+                                 ("2u 3p 5u 3p 19u",
+                                  [0x1, 0x0D, 0x609DF]),
+                                 ("2p 1P 3u 19u",
+                                  [0x3, 0x609DF]),
+                                 ("2b 2b",
+                                  ["\xB1\xED", "\x3B\xC1"]),
+                                 ("2u a 3u a 4u a 5u",
+                                  [1, 5, 11, 1]),
+                                 ("3* 2u",
+                                  [1, 0, 3]),
+                                 ("3* 2* 2u",
+                                  [1, 0, 3, 2, 1, 3]),
+                                 ("2u ? 3u", [1]),
+                                 ("2u 10? 3u", [1]),
+                                 ("2u 10* ? 3u", [1]),
+                                 ("2u 10* 3? 3u", [1])]:
+            self.assertEqual(parse(fields,
+                                   True,
+                                   "".join(map(chr, [0xB1, 0xED, 0x3B, 0xC1]))),
+                             values)
+
 
         #test several little-endian unsigned edge cases
         self.assertEqual(

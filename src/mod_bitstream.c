@@ -2388,7 +2388,7 @@ bitstream_parse(BitstreamReader* stream, const char* format, PyObject* values)
                 }
             } else if (inst == BS_INST_SIGNED64) {
                 for (; times; times--) {
-                    const int64_t value = stream->read_64(stream, size);
+                    const int64_t value = stream->read_signed_64(stream, size);
                     PyObject *py_value;
                     if ((py_value = Py_BuildValue("L", value)) == NULL) {
                         br_etry(stream);
