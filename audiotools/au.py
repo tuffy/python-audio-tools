@@ -43,8 +43,7 @@ class AuReader:
          data_size,
          encoding_format,
          self.sample_rate,
-         self.channels) = BitstreamReader(self.file, 0).parse(
-             "4b 32u 32u 32u 32u 32u")
+         self.channels) = BitstreamReader(self.file, 0).parse("4b 5* 32u")
 
         if (magic_number != '.snd'):
             raise ValueError(ERR_AU_INVALID_HEADER)
@@ -125,8 +124,7 @@ class AuAudio(AudioFile):
              self.__data_size__,
              encoding_format,
              self.__sample_rate__,
-             self.__channels__) = BitstreamReader(f, 0).parse(
-                 "4b 32u 32u 32u 32u 32u")
+             self.__channels__) = BitstreamReader(f, 0).parse("4b 5* 32u")
         except IOError, msg:
             raise InvalidAU(str(msg))
 
@@ -229,9 +227,8 @@ class AuAudio(AudioFile):
             raise EncodingError(str(err))
         try:
             #write a dummy header
-            au.build("4b 32u 32u 32u 32u 32u",
-                     (".snd", 24, data_size, encoding_format,
-                      pcmreader.sample_rate, pcmreader.channels))
+            au.build("4b 5* 32u", (".snd", 24, data_size, encoding_format,
+                                   pcmreader.sample_rate, pcmreader.channels))
 
             #write our big-endian PCM data
             try:
@@ -251,7 +248,7 @@ class AuAudio(AudioFile):
             if (data_size < 2 ** 32):
                 #rewind and write a complete header
                 f.seek(0, 0)
-                au.build("4b 32u 32u 32u 32u 32u",
+                au.build("4b 5* 32u",
                          (".snd", 24, data_size, encoding_format,
                           pcmreader.sample_rate, pcmreader.channels))
             else:

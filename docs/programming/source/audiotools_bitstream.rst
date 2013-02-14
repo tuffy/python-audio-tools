@@ -157,6 +157,11 @@ out of a larger binary file stream.
 
    >>> r.parse("3u 4s 36U") == [r.read(3), r.read_signed(4), r.read64(36)]
 
+   The ``*`` format multiplies the next format by the given amount.
+   For example, to read 4, signed 8 bit values:
+
+   >>> r.parse("4* 8s") == [r.read_signed(8) for i in range(4)]
+
    May raise :exc:`IOError` if an error occurs reading the stream.
 
 .. method:: BitstreamReader.read_huffman_code(huffman_tree)
@@ -357,6 +362,17 @@ into a larger binary file stream.
    >>> w.write(3,1)
    >>> w.write_signed(4, -2)
    >>> w.write64(36, 3L)
+
+   The ``*`` format multiplies the next format by the given amount.
+
+   >>> r.build("4* 8s", [-2, -1, 0, 1])
+
+   is equivalent to:
+
+   >>> w.write_signed(8, -2)
+   >>> w.write_signed(8, -1)
+   >>> w.write_signed(8, 0)
+   >>> w.write_signed(8, 1)
 
    May raise :exc:`IOError` if an error occurs writing the stream.
 

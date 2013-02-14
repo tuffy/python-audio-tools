@@ -75,7 +75,7 @@ class TrueAudio(AudioFile):
                 self.__total_pcm_frames__ * 245,
                 self.__sample_rate__ * 256)
             self.__frame_lengths__ = list(reader.parse(
-                    "32u" * self.__total_tta_frames__ + "32p"))
+                    "%d* 32u" % (self.__total_tta_frames__) + "32p"))
         except IOError, msg:
             raise InvalidTTA(str(msg))
 

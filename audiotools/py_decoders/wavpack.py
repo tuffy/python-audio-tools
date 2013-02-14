@@ -209,8 +209,7 @@ class Block_Header:
     @classmethod
     def read(cls, reader):
         return cls(*reader.parse("4b 32u 16u 8u 8u 32u 32u 32u" +
-                                 "2u 1u 1u 1u 1u 1u 1u 1u " +
-                                 "1u 1u 1u 1u 5u 5u 4u 2p 1u 1u 1p" +
+                                 "2u 11* 1u 5u 5u 4u 2p 1u 1u 1p" +
                                  "32u"))
 
 

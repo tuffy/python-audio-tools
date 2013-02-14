@@ -1244,8 +1244,7 @@ def file_type(file):
     elif ((len(header) >= 4) and (header[0] == "\xFF")):
         #possibly MP3 or MP2
 
-        from .bitstream import BitstreamReader
-        from cStringIO import StringIO
+        from .bitstream import parse
 
         #header is at least 32 bits, so no IOError is possible
         (frame_sync,
@@ -1260,9 +1259,8 @@ def file_type(file):
          mode_extension,
          copy,
          original,
-         emphasis) = BitstreamReader(
-             StringIO(header), 0).parse("11u 2u 2u 1u 4u 2u 1u " +
-                                        "1u 2u 2u 1u 1u 2u")
+         emphasis) = parse("11u 2u 2u 1u 4u 2u 1u " +
+                           "1u 2u 2u 1u 1u 2u", False, header)
         if (((frame_sync == 0x7FF) and
              (mpeg_id == 3) and
              (layer_description == 1) and

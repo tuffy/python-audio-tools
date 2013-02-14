@@ -305,7 +305,7 @@ class M4A_FTYP_Atom(M4A_Leaf_Atom):
         """writes the atom to the given BitstreamWriter
         not including its 64-bit size / name header"""
 
-        writer.build("4b 32u %s" % ("4b" * len(self.compatible_brands)),
+        writer.build("4b 32u %d* 4b" % (len(self.compatible_brands)),
                      [self.major_brand,
                       self.major_brand_version] +
                      self.compatible_brands)
@@ -408,7 +408,7 @@ class M4A_MVHD_Atom(M4A_Leaf_Atom):
                       self.time_scale, self.duration,
                       self.playback_speed, self.user_volume))
 
-        writer.build("32u" * 9, self.geometry_matrices)
+        writer.build("9* 32u", self.geometry_matrices)
 
         writer.build("64U 32u 64U 32u 32u",
                      (self.qt_preview, self.qt_still_poster,
@@ -483,7 +483,7 @@ class M4A_TKHD_Atom(M4A_Leaf_Atom):
          qt_alternate,
          volume) = reader.parse(atom_format)
 
-        geometry_matrices = reader.parse("32u" * 9)
+        geometry_matrices = reader.parse("9* 32u")
         (video_width, video_height) = reader.parse("32u 32u")
 
         return cls(version=version,
@@ -518,7 +518,7 @@ class M4A_TKHD_Atom(M4A_Leaf_Atom):
                      (self.created_utc_date, self.modified_utc_date,
                       self.track_id, self.duration, self.video_layer,
                       self.qt_alternate, self.volume))
-        writer.build("32u" * 9, self.geometry_matrices)
+        writer.build("9* 32u", self.geometry_matrices)
         writer.build("32u 32u", (self.video_width, self.video_height))
 
     def size(self):

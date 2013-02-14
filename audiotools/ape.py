@@ -66,7 +66,7 @@ def limited_transfer_data(from_function, to_function,
 class ApeTagItem:
     """a single item in the ApeTag, typically a unicode value"""
 
-    FORMAT = "32u [ 1u 2u 29p ]"
+    FORMAT = "32u 1u 2u 29p"
 
     def __init__(self, item_type, read_only, key, data):
         """fields are as follows:
@@ -192,7 +192,7 @@ class ApeTagItem:
 class ApeTag(MetaData):
     """a complete APEv2 tag"""
 
-    HEADER_FORMAT = "8b 32u 32u 32u [ 1u 2u 26p 1u 1u 1u ] 64p"
+    HEADER_FORMAT = "8b 32u 32u 32u 1u 2u 26p 1u 1u 1u 64p"
 
     ITEM = ApeTagItem
 

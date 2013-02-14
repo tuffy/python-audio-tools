@@ -220,7 +220,12 @@ typedef struct BitstreamReader_s {
 
       reader->parse(reader, "2u3u5s3u19U", &arg1, &arg2, &arg3, &arg4, &arg5);
 
-      a failed parse will trigger a call to br_abort
+      the "*" format multiplies the next format by the given amount
+      For example, to read 4, signed 8 bit values:
+
+      reader->parse(reader, "4* 8s", &arg1, &arg2, &arg3, &arg4);
+
+      an I/O error during reading will trigger a call to br_abort
     */
     void
     (*parse)(struct BitstreamReader_s* bs, const char* format, ...);
@@ -833,6 +838,11 @@ typedef struct BitstreamWriter_s {
       uint64_t arg5;     // 19 unsigned bits
 
       writer->build(writer, "2u3u5s3u19U", arg1, arg2, arg3, arg4, arg5);
+
+      the "*" format multiplies the next format by the given amount
+      For example, to write 4, signed 8 bit values:
+
+      reader->parse(reader, "4* 8s", arg1, arg2, arg3, arg4);
 
       this is designed to perform the inverse of a BitstreamReader->parse()
      */

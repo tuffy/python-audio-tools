@@ -213,7 +213,7 @@ class OggStreamReader:
         #grab all the segment data
         segments = self.reader.parse(
             "".join(["%db" % (segment_length) for segment_length in
-                     self.reader.parse("8u" * self.reader.read(8))]))
+                     self.reader.parse("%d* 8u" % (self.reader.read(8)))]))
 
         #verify calculated checksum against found checksum
         if (int(self.checksum) != checksum):

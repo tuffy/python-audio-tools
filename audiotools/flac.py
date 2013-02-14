@@ -1145,7 +1145,7 @@ class Flac_PICTURE(Image):
         from .bitstream import format_size
 
         return format_size(
-            "32u [ 32u%db ] [32u%db ] 32u 32u 32u 32u [ 32u%db ]" %
+            "32u 32u%db 32u%db 32u 32u 32u 32u 32u%db" %
             (len(self.mime_type.encode('ascii')),
              len(self.description.encode('utf-8')),
              len(self.data))) / 8
