@@ -165,6 +165,12 @@ struct TYPE##_s {                                              \
     void (*split)(const struct TYPE##_s *array, unsigned count,         \
                   struct TYPE##_s *head, struct TYPE##_s *tail);        \
                                                                         \
+    /*concatenates "array" and "tail" into a single array*/             \
+    /*and places the result in "combined"*/                             \
+    void (*concat)(const struct TYPE##_s *array,                        \
+                   const struct TYPE##_s *tail,                         \
+                   struct TYPE##_s *combined);                          \
+                                                                        \
     /*reverses the items in the array*/                                 \
     void (*reverse)(struct TYPE##_s *array);                            \
                                                                         \
@@ -208,6 +214,9 @@ void TYPE##_de_tail(const struct TYPE##_s *array, unsigned count,       \
                     struct TYPE##_s *head);                             \
 void TYPE##_split(const struct TYPE##_s *array, unsigned count,         \
                    struct TYPE##_s *head, struct TYPE##_s *tail);       \
+void TYPE##_concat(const struct TYPE##_s *array,                        \
+                   const struct TYPE##_s *tail,                         \
+                   struct TYPE##_s *combined);                          \
 void TYPE##_reverse(struct TYPE##_s *array);                            \
 void TYPE##_sort(struct TYPE##_s *array);                               \
 void TYPE##_print(const struct TYPE##_s *array, FILE* output);          \
@@ -558,6 +567,12 @@ struct a_obj_s {
     void (*split)(const struct a_obj_s *array, unsigned count,
                   struct a_obj_s *head, struct a_obj_s *tail);
 
+    /*concatenates "array" and "tail" into a single array*/
+    /*and places the result in "combined"*/
+    void (*concat)(const struct a_obj_s *array,
+                   const struct a_obj_s *tail,
+                   struct a_obj_s *combined);
+
     void (*print)(const struct a_obj_s *array, FILE* output);
 };
 
@@ -578,8 +593,8 @@ a_obj_dummy_print(void* obj, FILE* output);
 /*copy, free and print functions may be NULL,
   indicating no copy, free or print operations are necessary for object*/
 struct a_obj_s* a_obj_new(void* (*copy)(void* obj),
-                              void (*free)(void* obj),
-                              void (*print)(void* obj, FILE* output));
+                          void (*free)(void* obj),
+                          void (*print)(void* obj, FILE* output));
 void a_obj_del(struct a_obj_s *array);
 void a_obj_resize(struct a_obj_s *array, unsigned minimum);
 void a_obj_resize_for(struct a_obj_s *array, unsigned additional_items);
@@ -595,15 +610,18 @@ void a_obj_extend(struct a_obj_s *array, const struct a_obj_s *to_add);
 void a_obj_copy(const struct a_obj_s *array, struct a_obj_s *copy);
 void a_obj_swap(struct a_obj_s *array, struct a_obj_s *swap);
 void a_obj_head(const struct a_obj_s *array, unsigned count,
-                  struct a_obj_s *head);
+                struct a_obj_s *head);
 void a_obj_tail(const struct a_obj_s *array, unsigned count,
-                  struct a_obj_s *tail);
+                struct a_obj_s *tail);
 void a_obj_de_head(const struct a_obj_s *array, unsigned count,
-                     struct a_obj_s *tail);
+                   struct a_obj_s *tail);
 void a_obj_de_tail(const struct a_obj_s *array, unsigned count,
-                     struct a_obj_s *head);
+                   struct a_obj_s *head);
 void a_obj_split(const struct a_obj_s *array, unsigned count,
-                   struct a_obj_s *head, struct a_obj_s *tail);
+                 struct a_obj_s *head, struct a_obj_s *tail);
+void a_obj_concat(const struct a_obj_s *array,
+                  const struct a_obj_s *tail,
+                  struct a_obj_s *combined);
 void a_obj_print(const struct a_obj_s *array, FILE* output);
 
 #endif

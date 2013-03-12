@@ -3216,6 +3216,16 @@ void
 test_writer(bs_endianness endianness);
 
 void
+test_rec_copy_dumps(bs_endianness endianness,
+                    BitstreamWriter* writer,
+                    BitstreamWriter* recorder);
+
+void
+test_rec_split_dumps(bs_endianness endianness,
+                     BitstreamWriter* writer,
+                     BitstreamWriter* recorder);
+
+void
 test_writer_close_errors(BitstreamWriter* writer);
 
 void
@@ -4614,6 +4624,27 @@ test_writer(bs_endianness endianness) {
         fclose(output_file);
     }
 
+    /*perform partial recorder dumps*/
+    output_file = fopen(temp_filename, "wb");
+    writer = bw_open(output_file, endianness);
+    sub_writer = bw_open_recorder(endianness);
+    test_rec_copy_dumps(endianness, writer, sub_writer);
+    fflush(output_file);
+    check_output_file();
+    sub_writer->close(sub_writer);
+    writer->close(writer);
+    fclose(output_file);
+
+    output_file = fopen(temp_filename, "wb");
+    writer = bw_open(output_file, endianness);
+    sub_writer = bw_open_recorder(endianness);
+    test_rec_split_dumps(endianness, writer, sub_writer);
+    fflush(output_file);
+    check_output_file();
+    sub_writer->close(sub_writer);
+    writer->close(writer);
+    fclose(output_file);
+
     sub_writer = bw_open_recorder(endianness);
     test_writer_close_errors(sub_writer);
     sub_writer->set_endianness(sub_writer, endianness == BS_BIG_ENDIAN ?
@@ -5771,6 +5802,97 @@ validate_edge_recorder_le(BitstreamWriter* recorder)
     assert(memcmp(data, little_endian, 48) == 0);
     fclose(input_file);
 }
+
+void
+test_rec_copy_dumps(bs_endianness endianness,
+                    BitstreamWriter* writer,
+                    BitstreamWriter* recorder)
+{
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        recorder->write(recorder, 2, 2);
+        bw_rec_copy(writer, recorder);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 3, 6);
+        bw_rec_copy(writer, recorder);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 5, 7);
+        bw_rec_copy(writer, recorder);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 3, 5);
+        bw_rec_copy(writer, recorder);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 19, 342977);
+        bw_rec_copy(writer, recorder);
+        bw_reset_recorder(recorder);
+        break;
+    case BS_LITTLE_ENDIAN:
+        recorder->write(recorder, 2, 1);
+        bw_rec_copy(writer, recorder);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 3, 4);
+        bw_rec_copy(writer, recorder);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 5, 13);
+        bw_rec_copy(writer, recorder);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 3, 3);
+        bw_rec_copy(writer, recorder);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 19, 395743);
+        bw_rec_copy(writer, recorder);
+        bw_reset_recorder(recorder);
+        break;
+    }
+}
+
+void
+test_rec_split_dumps(bs_endianness endianness,
+                     BitstreamWriter* writer,
+                     BitstreamWriter* recorder)
+{
+    BitstreamWriter* dummy = bw_open_accumulator(endianness);
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        recorder->write(recorder, 2, 2);
+        bw_rec_split(dummy, writer, recorder, 0);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 3, 6);
+        bw_rec_split(dummy, writer, recorder, 0);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 5, 7);
+        bw_rec_split(dummy, writer, recorder, 0);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 3, 5);
+        bw_rec_split(dummy, writer, recorder, 0);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 19, 342977);
+        bw_rec_split(dummy, writer, recorder, 0);
+        bw_reset_recorder(recorder);
+        break;
+    case BS_LITTLE_ENDIAN:
+        recorder->write(recorder, 2, 1);
+        bw_rec_split(dummy, writer, recorder, 0);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 3, 4);
+        bw_rec_split(dummy, writer, recorder, 0);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 5, 13);
+        bw_rec_split(dummy, writer, recorder, 0);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 3, 3);
+        bw_rec_split(dummy, writer, recorder, 0);
+        bw_reset_recorder(recorder);
+        recorder->write(recorder, 19, 395743);
+        bw_rec_split(dummy, writer, recorder, 0);
+        bw_reset_recorder(recorder);
+        break;
+    }
+
+    dummy->close(dummy);
+}
+
 
 int ext_fread_test(FILE* user_data,
                    struct bs_buffer* buffer)

@@ -35,12 +35,40 @@ MAX_CPUS = audiotools.MAX_JOBS
 
 
 def convert(progress, source_audiofile, destination_filename,
-            destination_class, compression, metadata):
-    destination_audiofile = source_audiofile.convert(
-        destination_filename,
-        destination_class,
-        compression,
-        progress)
+            destination_class, compression, metadata,
+            sample_rate, channels, bits_per_sample):
+    if ((sample_rate is None) and
+        (channels is None) and
+        (bits_per_sample is None)):
+        destination_audiofile = source_audiofile.convert(
+            destination_filename,
+            destination_class,
+            compression,
+            progress)
+    else:
+        pcmreader = source_audiofile.to_pcm()
+        destination_audiofile = destination_class.from_pcm(
+            destination_filename,
+            audiotools.PCMConverter(
+                audiotools.PCMReaderProgress(
+                    pcmreader,
+                    source_audiofile.total_frames(),
+                    progress),
+                sample_rate if
+                (sample_rate is not None) else
+                pcmreader.sample_rate,
+                channels if
+                (channels is not None) else
+                pcmreader.channels,
+                0 if
+                (channels is not None) else
+                pcmreader.channel_mask,
+                bits_per_sample if (bits_per_sample is not None) else
+                pcmreader.bits_per_sample),
+            compression,
+            source_audiofile.total_frames() if
+            (source_audiofile.lossless() and (sample_rate is None))
+            else None)
 
     if (metadata is not None):
         destination_audiofile.set_metadata(metadata)
@@ -264,6 +292,33 @@ if (__name__ == '__main__'):
         help=_.OPT_JOINT)
 
     parser.add_option_group(conversion)
+
+    format = audiotools.OptionGroup(parser, _.OPT_CAT_OUTPUT_FORMAT)
+
+    format.add_option(
+        '--sample-rate',
+        action='store',
+        type='int',
+        dest='sample_rate',
+        metavar="RATE",
+        help=_.OPT_SAMPLE_RATE)
+
+    format.add_option(
+        '--channels',
+        action='store',
+        type='int',
+        dest='channels',
+        help=_.OPT_CHANNELS)
+
+    format.add_option(
+        '--bits-per-sample',
+        action='store',
+        type='int',
+        dest='bits_per_sample',
+        metavar="BITS",
+        help=_.OPT_BPS)
+
+    parser.add_option_group(format)
 
     lookup = audiotools.OptionGroup(parser, _.OPT_CAT_CD_LOOKUP)
 
@@ -607,7 +662,10 @@ if (__name__ == '__main__'):
                 destination_filename=str(output_filename),
                 destination_class=output_class,
                 compression=output_quality,
-                metadata=output_metadata)
+                metadata=output_metadata,
+                sample_rate=options.sample_rate,
+                channels=options.channels,
+                bits_per_sample=options.bits_per_sample)
 
         #perform actual track conversion
         try:
@@ -704,7 +762,10 @@ if (__name__ == '__main__'):
                     destination_filename=str(output_filename),
                     destination_class=destination_class,
                     compression=compression,
-                    metadata=track_metadata)
+                    metadata=track_metadata,
+                    sample_rate=options.sample_rate,
+                    channels=options.channels,
+                    bits_per_sample=options.bits_per_sample)
             progress.clear()
 
             msg.output(_.LAB_ENCODE % {"source": input_filename,

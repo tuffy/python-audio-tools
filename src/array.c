@@ -64,6 +64,7 @@ struct TYPE##_s* TYPE##_new(void)                               \
     a->de_head = TYPE##_de_head;                                \
     a->de_tail = TYPE##_de_tail;                                \
     a->split = TYPE##_split;                                    \
+    a->concat = TYPE##_concat;                                  \
     a->reverse = TYPE##_reverse;                                \
     a->sort = TYPE##_sort;                                      \
     a->print = TYPE##_print;                                    \
@@ -154,11 +155,7 @@ void TYPE##_mset(TYPE *array, unsigned count, CONTENT_TYPE value)    \
                                                                      \
 void TYPE##_extend(TYPE *array, const TYPE *to_add)                  \
 {                                                                    \
-    array->resize_for(array, to_add->len);                           \
-    memcpy(array->_ + array->len,                                    \
-           to_add->_,                                                \
-           sizeof(CONTENT_TYPE) * to_add->len);                      \
-    array->len += to_add->len;                                       \
+    array->concat(array, to_add, array);                             \
 }                                                                    \
                                                                      \
 int TYPE##_equals(const TYPE *array, const TYPE *compare)            \
@@ -346,6 +343,30 @@ void TYPE##_split(const TYPE *array, unsigned count, TYPE *head, TYPE *tail) \
         memcpy(tail->_, array->_ + to_head,                         \
                sizeof(CONTENT_TYPE) * to_tail);                     \
         tail->len = to_tail;                                        \
+    }                                                               \
+}                                                                   \
+                                                                    \
+void TYPE##_concat(const struct TYPE##_s *array,                    \
+                   const struct TYPE##_s *tail,                     \
+                   struct TYPE##_s *combined)                       \
+{                                                                   \
+    if (array == combined) {                                        \
+        /*extend array with values from tail*/                      \
+        combined->resize_for(combined, tail->len);                  \
+        memcpy(combined->_ + combined->len,                         \
+               tail->_,                                             \
+               sizeof(CONTENT_TYPE) * tail->len);                   \
+        combined->len += tail->len;                                 \
+    } else {                                                        \
+        /*concatenate array and tail to combined*/                  \
+        combined->reset_for(combined, array->len + tail->len);      \
+        memcpy(combined->_,                                         \
+               array->_,                                            \
+               sizeof(CONTENT_TYPE) * array->len);                  \
+        memcpy(combined->_ + array->len,                            \
+               tail->_,                                             \
+               sizeof(CONTENT_TYPE) * tail->len);                   \
+        combined->len = array->len + tail->len;                     \
     }                                                               \
 }                                                                   \
                                                                     \
@@ -1072,6 +1093,8 @@ a_obj_new(void* (*copy)(void* obj),
     a->de_head = a_obj_de_head;
     a->de_tail = a_obj_de_tail;
     a->split = a_obj_split;
+    a->concat = a_obj_concat;
+    a->concat = a_obj_concat;
     a->print = a_obj_print;
 
     return a;
@@ -1180,14 +1203,7 @@ a_obj_mset(struct a_obj_s *array, unsigned count, void* value)
 void
 a_obj_extend(struct a_obj_s *array, const struct a_obj_s *to_add)
 {
-    unsigned i;
-    const unsigned len = to_add->len;
-
-    array->resize_for(array, to_add->len);
-
-    for (i = 0; i < len; i++) {
-        array->_[array->len++] = array->copy_obj(to_add->_[i]);
-    }
+    array->concat(array, to_add, array);
 }
 
 void
@@ -1220,7 +1236,7 @@ a_obj_swap(a_obj *array, a_obj *swap)
 
 void
 a_obj_head(const struct a_obj_s *array, unsigned count,
-             struct a_obj_s *head)
+           struct a_obj_s *head)
 {
     const unsigned to_copy = MIN(count, array->len);
 
@@ -1239,7 +1255,7 @@ a_obj_head(const struct a_obj_s *array, unsigned count,
 
 void
 a_obj_tail(const struct a_obj_s *array, unsigned count,
-             struct a_obj_s *tail)
+           struct a_obj_s *tail)
 {
     const unsigned to_copy = MIN(count, array->len);
 
@@ -1266,7 +1282,7 @@ a_obj_tail(const struct a_obj_s *array, unsigned count,
 
 void
 a_obj_de_head(const struct a_obj_s *array, unsigned count,
-                struct a_obj_s *tail)
+              struct a_obj_s *tail)
 {
     array->tail(array, array->len - MIN(count, array->len), tail);
 }
@@ -1280,7 +1296,7 @@ a_obj_de_tail(const struct a_obj_s *array, unsigned count,
 
 void
 a_obj_split(const struct a_obj_s *array, unsigned count,
-              struct a_obj_s *head, struct a_obj_s *tail)
+            struct a_obj_s *head, struct a_obj_s *tail)
 {
     const unsigned to_head = MIN(count, array->len);
     const unsigned to_tail = array->len - to_head;
@@ -1297,6 +1313,35 @@ a_obj_split(const struct a_obj_s *array, unsigned count,
     } else {
         array->head(array, to_head, head);
         array->tail(array, to_tail, tail);
+    }
+}
+
+void
+a_obj_concat(const struct a_obj_s *array,
+             const struct a_obj_s *tail,
+             struct a_obj_s *combined)
+{
+    unsigned i;
+
+    if (array == combined) {
+        /*extend array with values from tail*/
+
+        combined->resize_for(combined, tail->len);
+
+        for (i = 0; i < tail->len; i++) {
+            combined->_[combined->len++] = combined->copy_obj(tail->_[i]);
+        }
+    } else {
+        /*concatenate array and tail to combined*/
+
+        combined->reset_for(combined, array->len + tail->len);
+
+        for (i = 0; i < array->len; i++) {
+            combined->_[combined->len++] = combined->copy_obj(array->_[i]);
+        }
+        for (i = 0; i < tail->len; i++) {
+            combined->_[combined->len++] = combined->copy_obj(tail->_[i]);
+        }
     }
 }
 
@@ -1876,6 +1921,63 @@ void test_##TYPE(const CONTENT_TYPE *data, unsigned data_len,       \
             assert(b->_[j] == data[j]);                             \
         for (k = 0; j < data_len; j++,k++)                          \
             assert(c->_[k] == data[j]);                             \
+        a->del(a);                                                  \
+        b->del(b);                                                  \
+        c->del(c);                                                  \
+    }                                                               \
+                                                                    \
+    /*test concat*/                                                 \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++)                                  \
+        a->append(a, data[i]);                                      \
+    a->concat(a, a, a);                                             \
+    for (i = 0; i < data_len; i++)                                  \
+        assert(a->_[i] == data[i]);                                 \
+    for (i = 0; i < data_len; i++)                                  \
+        assert(a->_[i + data_len] == data[i]);                      \
+    a->del(a);                                                      \
+                                                                    \
+    a = TYPE##_new();                                               \
+    b = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++)                                  \
+        a->append(a, data[i]);                                      \
+    a->concat(a, a, b);                                             \
+    for (i = 0; i < data_len; i++)                                  \
+        assert(b->_[i] == data[i]);                                 \
+    for (i = 0; i < data_len; i++)                                  \
+        assert(b->_[i + data_len] == data[i]);                      \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    a = TYPE##_new();                                               \
+    b = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++) {                                \
+        a->append(a, data[i]);                                      \
+        b->append(b, sorted_data[i]);                               \
+    }                                                               \
+    a->concat(a, b, a);                                             \
+    for (i = 0; i < data_len; i++)                                  \
+        assert(a->_[i] == data[i]);                                 \
+    for (i = 0; i < data_len; i++)                                  \
+        assert(a->_[i + data_len] == sorted_data[i]);               \
+    a->del(a);                                                      \
+    b->del(b);                                                      \
+                                                                    \
+    {                                                               \
+        TYPE *c;                                                    \
+                                                                    \
+        a = TYPE##_new();                                           \
+        b = TYPE##_new();                                           \
+        c = TYPE##_new();                                           \
+        for (i = 0; i < data_len; i++) {                            \
+            a->append(a, data[i]);                                  \
+            b->append(b, sorted_data[i]);                           \
+        }                                                           \
+        a->concat(a, b, c);                                         \
+        for (i = 0; i < data_len; i++)                              \
+            assert(c->_[i] == data[i]);                             \
+        for (i = 0; i < data_len; i++)                              \
+            assert(c->_[i + data_len] == sorted_data[i]);           \
         a->del(a);                                                  \
         b->del(b);                                                  \
         c->del(c);                                                  \

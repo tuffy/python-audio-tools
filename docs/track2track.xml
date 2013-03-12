@@ -54,6 +54,17 @@
       to use all of them simultaneously can greatly increase encoding speed.
     </option>
   </options>
+  <options category="Format">
+    <option long="sample-rate" arg="rate">
+     convert all output files to the given sample rate, in Hz
+   </option>
+   <option long="channels" arg="channels">
+     convert all output files to the given number of channels
+   </option>
+   <option long="bits-per-sample" arg="bits">
+     convert all output files to the given number of bits-per-sample
+   </option>
+  </options>
   <options category="CD lookup">
     <option short="M" long="metadata-lookup">
       perform metadata lookup for converted tracks

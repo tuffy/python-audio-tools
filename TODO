@@ -6522,6 +6522,13 @@
     - [X] mdia
     - [X] minf
     - [X] stbl
+** TODO Add track2track format conversion options
+   Primarily for conversion between one lossless format to another.
+   - [X] --sample-rate
+   - [X] --channels
+   - [X] --bits-per-sample
+*** DONE Add documentation to man page
+*** TODO Add unit tests
 ** TODO Add internal True Audio codec
 *** DONE Add Python-based True Audio decoder
 *** DONE Add Python-based True Audio encoder

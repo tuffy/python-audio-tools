@@ -64,20 +64,10 @@ buf_resize(struct bs_buffer *stream, unsigned additional_bytes)
             }
             stream->window_end -= stream->window_start;
             stream->window_start = 0;
+        }
 
-            if (additional_bytes > (stream->data_size - stream->window_end)) {
-                /*only perform resizing if space still needed
-                  after shifting the window down*/
-                while (additional_bytes > (stream->data_size -
-                                           stream->window_end)) {
-                    stream->data_size *= 2;
-                }
-            }
-        } else {
-            while (additional_bytes > (stream->data_size -
-                                       stream->window_end)) {
-                stream->data_size *= 2;
-            }
+        while (additional_bytes > (stream->data_size - stream->window_end)) {
+            stream->data_size *= 2;
         }
 
         stream->data = realloc(stream->data, stream->data_size);
