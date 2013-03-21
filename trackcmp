@@ -100,6 +100,39 @@ class Results:
                                   [self.msg.FG_RED]))
 
 
+def image_compare(progress, image_audiofile, track_audiofile,
+                  image_filename, track_filename,
+                  pcm_frames_offset, total_pcm_frames):
+    image_pcmreader = image_audiofile.to_pcm()
+
+    #if image_pcmreader has seek(),
+    #use it to reduce the amount of frames to skip
+    if (hasattr(image_pcmreader, "seek") and callable(image_pcmreader.seek)):
+        pcm_frames_offset -= image_pcmreader.seek(pcm_frames_offset)
+
+    return (
+        audiotools.pcm_frame_cmp(
+            audiotools.PCMReaderWindow(image_pcmreader,
+                                       pcm_frames_offset,
+                                       total_pcm_frames),
+            audiotools.PCMReaderProgress(track_audiofile.to_pcm(),
+                                         total_pcm_frames,
+                                         progress)),
+        image_filename,
+        track_filename)
+
+
+def image_compare_results(result):
+    (mismatch, image_name, track_name) = result
+    return u"%s : %s" % (_.LAB_TRACKCMP_CMP %
+                         {"file1":image_name, "file2":track_name},
+                         (msg.ansi(_.LAB_TRACKCMP_OK, [msg.FG_GREEN]) if
+                          mismatch is None else
+                          msg.ansi(_.LAB_TRACKCMP_MISMATCH %
+                                   {"frame_number": mismatch + 1},
+                                   [msg.FG_RED])))
+
+
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_.USAGE_TRACKCMP,
@@ -310,9 +343,6 @@ if (__name__ == '__main__'):
             sys.exit(1)
     elif (len(args) > 2):
         #possibly comparing disk image against tracks
-        progress = audiotools.SingleProgressDisplay(msg, u"")
-        progress.delete_row(0)
-
         audiofiles = audiotools.open_files(args, messenger=msg, sorted=False)
 
         audiofiles.sort(lambda t1, t2: cmp(t1.total_frames(),
@@ -326,34 +356,37 @@ if (__name__ == '__main__'):
         cd_image = audiofiles[-1]
         tracks = audiofiles[0:-1]
 
+        image_name = audiotools.Filename(cd_image.filename)
+
         #all tracks should have the same album number and track total
         tracks = audiotools.sorted_tracks(tracks)
 
         cd_data = audiotools.BufferedPCMReader(cd_image.to_pcm())
+
+        queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
+
+        pcm_offset = 0
+
         for (i, track) in enumerate(tracks):
-            progress.add_row(0,
-                             _.LAB_TRACKCMP_CMP %
-                             {"file1": audiotools.Filename(cd_image.filename),
-                              "file2": audiotools.Filename(track.filename)})
-            mismatch = audiotools.pcm_frame_cmp(
-                audiotools.to_pcm_progress(track, progress.update),
-                audiotools.LimitedPCMReader(cd_data, track.total_frames()))
-            progress.delete_row(0)
-            progress.clear()
-            msg.output(
-                audiotools.output_progress(
-                    (_.LAB_TRACKCMP_CMP %
-                     {"file1": audiotools.Filename(cd_image.filename),
-                      "file2": audiotools.Filename(track.filename)}) +
-                    u" : " +
-                    (msg.ansi(_.LAB_TRACKCMP_OK, [msg.FG_GREEN])
-                     if mismatch is None else
-                     msg.ansi(_.LAB_TRACKCMP_MISMATCH %
-                              {"frame_number": mismatch + 1},
-                              [msg.FG_RED])),
-                    i + 1, len(tracks)))
-            if (mismatch is not None):
-                sys.exit(1)
+            track_name = audiotools.Filename(track.filename)
+            queue.execute(
+                function=image_compare,
+                progress_text=_.LAB_TRACKCMP_CMP %
+                    {"file1": image_name, "file2": track_name},
+                completion_output=image_compare_results,
+                image_audiofile=cd_image,
+                track_audiofile=track,
+                image_filename=image_name,
+                track_filename=track_name,
+                pcm_frames_offset=pcm_offset,
+                total_pcm_frames=track.total_frames())
+
+            pcm_offset += track.total_frames()
+
+        queue.run(options.max_processes)
+        if (set([result[0] for result in queue.results.values()]) !=
+            set([None])):
+            sys.exit(1)
     else:
         msg.usage(_.USAGE_TRACKCMP_FILES)
         sys.exit(1)
