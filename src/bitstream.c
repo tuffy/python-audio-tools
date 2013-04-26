@@ -507,15 +507,13 @@ br_skip_bits_f_be(BitstreamReader* bs, unsigned int count)
                     for (callback = bs->callbacks;
                          callback != NULL;
                          callback = callback->next)
-                         callback->callback((uint8_t)byte,
-                                            callback->data);
+                         callback->callback((uint8_t)byte, callback->data);
                 } else {
                     br_abort(bs);
                 }
             }
 
-            result =
-                read_bits_table[result.state][MIN(count, 8) - 1];
+            result = read_bits_table[result.state][MIN(count, 8) - 1];
 
             count -= result.value_size;
         }
@@ -553,15 +551,13 @@ br_skip_bits_f_le(BitstreamReader* bs, unsigned int count)
                     for (callback = bs->callbacks;
                          callback != NULL;
                          callback = callback->next)
-                         callback->callback((uint8_t)byte,
-                                            callback->data);
+                         callback->callback((uint8_t)byte, callback->data);
                 } else {
                     br_abort(bs);
                 }
             }
 
-            result =
-                read_bits_table_le[result.state][MIN(count, 8) - 1];
+            result = read_bits_table_le[result.state][MIN(count, 8) - 1];
 
             count -= result.value_size;
         }
@@ -595,15 +591,13 @@ br_skip_bits_s_be(BitstreamReader* bs, unsigned int count)
                     for (callback = bs->callbacks;
                          callback != NULL;
                          callback = callback->next)
-                         callback->callback((uint8_t)byte,
-                                            callback->data);
+                         callback->callback((uint8_t)byte, callback->data);
                 } else {
                     br_abort(bs);
                 }
             }
 
-            result =
-                read_bits_table[result.state][MIN(count, 8) - 1];
+            result = read_bits_table[result.state][MIN(count, 8) - 1];
 
             count -= result.value_size;
         }
@@ -637,15 +631,13 @@ br_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
                     for (callback = bs->callbacks;
                          callback != NULL;
                          callback = callback->next)
-                         callback->callback((uint8_t)byte,
-                                            callback->data);
+                         callback->callback((uint8_t)byte, callback->data);
                 } else {
                     br_abort(bs);
                 }
             }
 
-            result =
-                read_bits_table_le[result.state][MIN(count, 8) - 1];
+            result = read_bits_table_le[result.state][MIN(count, 8) - 1];
 
             count -= result.value_size;
         }
@@ -682,15 +674,13 @@ br_skip_bits_e_be(BitstreamReader* bs, unsigned int count)
                     for (callback = bs->callbacks;
                          callback != NULL;
                          callback = callback->next)
-                         callback->callback((uint8_t)byte,
-                                            callback->data);
+                         callback->callback((uint8_t)byte, callback->data);
                 } else {
                     br_abort(bs);
                 }
             }
 
-            result =
-                read_bits_table[result.state][MIN(count, 8) - 1];
+            result = read_bits_table[result.state][MIN(count, 8) - 1];
 
             count -= result.value_size;
         }
@@ -727,15 +717,13 @@ br_skip_bits_e_le(BitstreamReader* bs, unsigned int count)
                     for (callback = bs->callbacks;
                          callback != NULL;
                          callback = callback->next)
-                         callback->callback((uint8_t)byte,
-                                            callback->data);
+                         callback->callback((uint8_t)byte, callback->data);
                 } else {
                     br_abort(bs);
                 }
             }
 
-            result =
-                read_bits_table_le[result.state][MIN(count, 8) - 1];
+            result = read_bits_table_le[result.state][MIN(count, 8) - 1];
 
             count -= result.value_size;
         }
@@ -2903,6 +2891,11 @@ bw_dump_bytes(BitstreamWriter* target,
     }
 }
 
+unsigned
+bw_read(BitstreamWriter* source, uint8_t* buffer, unsigned bytes)
+{
+    return buf_read(source->output.buffer, buffer, bytes);
+}
 
 void
 bw_rec_copy(BitstreamWriter* target, BitstreamWriter* source)

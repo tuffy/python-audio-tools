@@ -21,9 +21,21 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+extern PyTypeObject encoders_ALACEncoderType;
+
 PyMODINIT_FUNC
 initencoders(void)
 {
-    Py_InitModule3("encoders", module_methods,
-                   "Low-level audio format encoders");
+    PyObject* m;
+
+    encoders_ALACEncoderType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&encoders_ALACEncoderType) < 0)
+        return;
+
+    m = Py_InitModule3("encoders", module_methods,
+                       "Low-level audio format encoders");
+
+    Py_INCREF(&encoders_ALACEncoderType);
+    PyModule_AddObject(m, "ALACEncoder",
+                       (PyObject *)&encoders_ALACEncoderType);
 }

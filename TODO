@@ -6841,12 +6841,31 @@
 *** DONE Remove WavePackAudio.BINARIES
 *** DONE Add more WavPack INVALIDFILE .verify() tests
 *** DONE Remove wvgain for ReplayGain application
-** TODO Add volume control to low-level output players
-   It should be possible to adjust the volume from trackplay/cdplay
-   without adjusting the output data itself.
-** TODO Add raop support
-   It'd be useful to have support for AirPlay devices
-   using the output routines from raop_play as a base.
+** TODO Add volume control to trackplay/cdplay
+*** TODO Add set_volume(volume) method to low-level audio players
+    It should take a volume setting float and adjust the output volume.
+    - [ ] PulseAudioOutput
+    - [ ] OSSAudioOutput
+    - [ ] CoreAudioOutput
+    - [ ] NULLAudioOutput
+*** TODO Build volume setting, progress-bar style widget
+*** TODO Add widget to player widget
+** TODO Make audio output selectable in trackplay/cdplay
+*** TODO Add available_outputs() function to audiotools.player module
+    should return list of available AudioOutput subclasses
+*** TODO Add name() method to AudioOutput subclasses
+    Returns a human-readable Unicode string indicating
+    what the audio output device is.
+    - [ ] PulseAudioOutput
+    - [ ] OSSAudioOutput
+    - [ ] CoreAudioOutput
+    - [ ] NULLAudioOutput
+*** TODO Ensure output switches correctly
+    Switches should be as seamless as possible and include
+    setting the output volume properly.
+** TODO Add AirPlay support
+   Create AudioOutput-compatible AirPlay implementation
+   and have it returned by audiotools.player.available_outputs()
 * TODO Finish version 3.0
 ** TODO Shift to Python 3
    This lengthy transition will have to wait

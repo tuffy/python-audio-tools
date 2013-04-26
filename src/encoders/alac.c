@@ -1116,6 +1116,142 @@ write_subframe_header(BitstreamWriter *bs,
 }
 
 #ifndef STANDALONE
+static PyObject*
+ALACEncoder_new(PyTypeObject *type,
+                PyObject *args, PyObject *kwds)
+{
+    encoders_ALACEncoder *self;
+
+    self = (encoders_ALACEncoder *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
+}
+
+int
+ALACEncoder_init(encoders_ALACEncoder *self,
+                 PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"bits_per_sample",
+                             "block_size",
+                             "initial_history",
+                             "history_multiplier",
+                             "maximum_k",
+                             "minimum_interlacing_leftweight",
+                             "maximum_interlacing_leftweight",
+                             NULL};
+
+    int bits_per_sample = 0;
+    PyObject *audiotools_pcm;
+
+    init_encoder(&(self->encoder));
+    self->encoder.options.minimum_interlacing_leftweight = 0;
+    self->encoder.options.maximum_interlacing_leftweight = 4;
+    self->framelist_type = NULL;
+    self->channels = aa_int_new();
+    self->output_buffer = bw_open_recorder(BS_BIG_ENDIAN);
+
+    if (!PyArg_ParseTupleAndKeywords(
+        args, kwds, "iiiii|ii", kwlist,
+        &bits_per_sample,
+        &(self->encoder.options.block_size),
+        &(self->encoder.options.initial_history),
+        &(self->encoder.options.history_multiplier),
+        &(self->encoder.options.maximum_k),
+        &(self->encoder.options.minimum_interlacing_leftweight),
+        &(self->encoder.options.maximum_interlacing_leftweight)))
+        return -1;
+
+    switch (bits_per_sample) {
+    case 16:
+        self->encoder.bits_per_sample = 16;
+        break;
+    case 24:
+        self->encoder.bits_per_sample = 24;
+        break;
+    default:
+        PyErr_SetString(PyExc_ValueError, "unsupported bits_per_sample");
+        return -1;
+    }
+
+    if ((audiotools_pcm = PyImport_ImportModule("audiotools.pcm")) == NULL) {
+        return -1;
+    } else {
+        self->framelist_type = PyObject_GetAttrString(audiotools_pcm,
+                                                      "FrameList");
+        Py_DECREF(audiotools_pcm);
+    }
+
+    return 0;
+}
+
+void
+ALACEncoder_dealloc(encoders_ALACEncoder *self)
+{
+    free_encoder(&(self->encoder));
+    Py_XDECREF(self->framelist_type);
+    self->channels->del(self->channels);
+    self->output_buffer->close(self->output_buffer);
+
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+/*the ALAC.encode() method*/
+static PyObject*
+ALACEncoder_encode(encoders_ALACEncoder *self, PyObject *args)
+{
+    PyObject *framelist_obj;
+    pcm_FrameList* framelist;
+    unsigned channel;
+    aa_int* channels = self->channels;
+    unsigned bytes_written;
+    PyObject *string;
+
+    if (!PyArg_ParseTuple(args, "O", &framelist_obj))
+        return NULL;
+
+    /*ensure argument is FrameList object*/
+    if (framelist_obj->ob_type != (PyTypeObject*)self->framelist_type) {
+        PyErr_SetString(PyExc_TypeError, "argument must be a FrameList");
+        return NULL;
+    } else {
+        framelist = (pcm_FrameList*)framelist_obj;
+    }
+
+    Py_BEGIN_ALLOW_THREADS
+
+    /*convert FrameList object to multidimensional int array*/
+    channels->reset(channels);
+    for (channel = 0; channel < framelist->channels; channel++) {
+        unsigned frame;
+        a_int* channel_a = channels->append(channels);
+
+        channel_a->resize(channel_a, framelist->frames);
+        for (frame = 0; frame < framelist->frames; frame++) {
+            a_append(channel_a,
+                     framelist->samples[(frame * framelist->channels) +
+                                        channel]);
+        }
+    }
+
+    /*clear output buffer*/
+    bw_reset_recorder(self->output_buffer);
+
+    /*write frameset to output buffer*/
+    write_frameset(self->output_buffer, &(self->encoder), channels);
+
+    Py_END_ALLOW_THREADS
+
+    /*convert output buffer to Python string and return it*/
+    bytes_written = self->output_buffer->bytes_written(self->output_buffer);
+    string = PyString_FromStringAndSize(NULL, (Py_ssize_t)bytes_written);
+    bw_read(self->output_buffer,
+            (uint8_t*)PyString_AS_STRING(string),
+            bytes_written);
+
+    return string;
+}
+
+
 PyObject
 *alac_log_output(struct alac_context *encoder)
 {

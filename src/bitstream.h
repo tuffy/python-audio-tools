@@ -1235,6 +1235,12 @@ void
 bw_dump_bytes(BitstreamWriter* target,
               const uint8_t* buffer, unsigned int total);
 
+/*extracts up to the first "bytes" number of bytes from "source"
+  to "buffer", removes them from the recorder
+  and returns the amount of bytes actually read*/
+unsigned
+bw_read(BitstreamWriter* source, uint8_t* buffer, unsigned bytes);
+
 /*given a BitstreamWriter recorder "source",
   writes all of its recorded output to "target"*/
 void

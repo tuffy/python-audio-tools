@@ -388,8 +388,6 @@ int pcmreader_read(struct pcmreader_s* reader,
     struct pcmreader_callback *callback;
     FrameList_int_to_char_converter callback_converter;
 
-
-
     if (reader->buffer_size < bytes_to_read) {
         reader->buffer_size = bytes_to_read;
         reader->buffer = realloc(reader->buffer, bytes_to_read);

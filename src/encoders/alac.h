@@ -1,5 +1,5 @@
-#ifndef A_SHN_ENCODE
-#define A_SHN_ENCODE
+#ifndef A_ALAC_ENCODE
+#define A_ALAC_ENCODE
 #ifndef STANDALONE
 #include <Python.h>
 #endif
@@ -189,5 +189,86 @@ encode_residuals(struct alac_context* encoder,
 static void
 write_residual(unsigned value, unsigned k, unsigned sample_size,
                BitstreamWriter* residual);
+
+#ifndef STANDALONE
+
+typedef struct {
+    PyObject_HEAD
+
+    struct alac_context encoder;
+    PyObject *framelist_type;
+    aa_int* channels;
+    BitstreamWriter* output_buffer;
+} encoders_ALACEncoder;
+
+static PyObject*
+ALACEncoder_new(PyTypeObject *type,
+                PyObject *args, PyObject *kwds);
+
+int
+ALACEncoder_init(encoders_ALACEncoder *self,
+                 PyObject *args, PyObject *kwds);
+
+void
+ALACEncoder_dealloc(encoders_ALACEncoder *self);
+
+/*the ALAC.encode() method*/
+static PyObject*
+ALACEncoder_encode(encoders_ALACEncoder *self, PyObject *args);
+
+PyGetSetDef ALACEncoder_getseters[] = {
+    {NULL}
+};
+
+PyMethodDef ALACEncoder_methods[] = {
+    {"encode", (PyCFunction)ALACEncoder_encode,
+     METH_VARARGS, "encode(framelist) -> frame string"},
+    {NULL}
+};
+
+PyTypeObject encoders_ALACEncoderType = {
+    PyObject_HEAD_INIT(NULL)
+    0,                         /*ob_size*/
+    "encoders.ALACEncoder",    /*tp_name*/
+    sizeof(encoders_ALACEncoder), /*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)ALACEncoder_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "ALACEncoder objects",     /* tp_doc */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    ALACEncoder_methods,       /* tp_methods */
+    0,                         /* tp_members */
+    ALACEncoder_getseters,     /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)ALACEncoder_init,/* tp_init */
+    0,                         /* tp_alloc */
+    ALACEncoder_new,           /* tp_new */
+};
+
+
+#endif
 
 #endif

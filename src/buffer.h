@@ -120,7 +120,7 @@ buf_write(struct bs_buffer *stream, const uint8_t *data, unsigned data_size);
   may render the position invalid if the window's current position
   is shifted down!
 
-  Call buf_rewindable() to disable shifting out old data
+  Call buf_set_rewindable() to disable shifting out old data
   to disable rewinding in those cases.*/
 void
 buf_getpos(struct bs_buffer *stream, unsigned *pos);
