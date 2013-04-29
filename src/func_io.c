@@ -73,7 +73,7 @@ ext_fread(struct br_external_input* stream,
     } else {
         /*otherwise, populate the buffer with read() calls*/
         while (data_size > BUF_WINDOW_SIZE(buffer)) {
-            const unsigned old_size = BUF_WINDOW_SIZE(buffer);
+            const buf_size_t old_size = BUF_WINDOW_SIZE(buffer);
             if (!stream->read(stream->user_data, buffer) &&
                 (BUF_WINDOW_SIZE(buffer) > old_size)) {
                 /*as long as the reads are successful

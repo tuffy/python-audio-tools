@@ -74,8 +74,8 @@ struct bs_exception {
 struct br_mark {
     union {
         fpos_t file;
-        unsigned substream;
-        unsigned external;
+        buf_pos_t substream;
+        buf_pos_t external;
     } position;
     state_t state;
     struct br_mark *next;

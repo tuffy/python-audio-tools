@@ -2590,7 +2590,8 @@ bw_bits_written_f_p_c(BitstreamWriter* bs)
 unsigned int
 bw_bits_written_r(BitstreamWriter* bs)
 {
-    return (BUF_WINDOW_SIZE(bs->output.buffer) * 8) + bs->buffer_size;
+    return (unsigned int)((BUF_WINDOW_SIZE(bs->output.buffer) * 8) +
+                          bs->buffer_size);
 }
 
 unsigned int
@@ -2908,7 +2909,7 @@ bw_rec_copy(BitstreamWriter* target, BitstreamWriter* source)
     /*dump all the bytes from our internal buffer*/
     bw_dump_bytes(target,
                   BUF_WINDOW_START(source->output.buffer),
-                  BUF_WINDOW_SIZE(source->output.buffer));
+                  (unsigned)BUF_WINDOW_SIZE(source->output.buffer));
 
     /*then dump remaining bits (if any) with a partial write() call*/
     if (source->buffer_size > 0)
@@ -2924,7 +2925,8 @@ bw_rec_split(BitstreamWriter* target,
              BitstreamWriter* source,
              unsigned int total_bytes) {
     const uint8_t* buffer = BUF_WINDOW_START(source->output.buffer);
-    const unsigned buffer_size = BUF_WINDOW_SIZE(source->output.buffer);
+    const unsigned buffer_size =
+        (unsigned)BUF_WINDOW_SIZE(source->output.buffer);
     const unsigned to_target = MIN(total_bytes, buffer_size);
     const unsigned to_remaining = buffer_size - to_target;
 
@@ -6024,7 +6026,7 @@ void test_buffer(struct bs_buffer *buf)
     /*toggle rewindability and test buf_getpos/buf_setpos*/
     buf_reset(buf);
     if (!buf->rewindable) {
-        unsigned pos;
+        buf_pos_t pos;
 
         buf_set_rewindable(buf, 1);
 

@@ -43,7 +43,10 @@ struct bs_buffer {
     int rewindable;
 };
 
-/*the number of bytes remaining to be read
+typedef unsigned buf_size_t;
+typedef unsigned buf_pos_t;
+
+/*the number of bytes remaining to be read as a type of size buf_size_t
   b is evaluated twice*/
 #define BUF_WINDOW_SIZE(b) ((b)->window_end - (b)->window_start)
 
@@ -108,6 +111,12 @@ buf_putc(int i, struct bs_buffer *stream);
 unsigned
 buf_read(struct bs_buffer *stream, uint8_t *data, unsigned data_size);
 
+/*analagous to buf_read except that data is ignored rather than returned
+
+  returns the amount of bytes actually skipped*/
+unsigned
+buf_skip(struct bs_buffer *stream, unsigned data_size);
+
 /*analgous to fwrite
 
   appends "data_size" bytes from "data" to "stream" starting at "window_end"*/
@@ -123,11 +132,11 @@ buf_write(struct bs_buffer *stream, const uint8_t *data, unsigned data_size);
   Call buf_set_rewindable() to disable shifting out old data
   to disable rewinding in those cases.*/
 void
-buf_getpos(struct bs_buffer *stream, unsigned *pos);
+buf_getpos(struct bs_buffer *stream, buf_pos_t *pos);
 
 /*sets the current position of the buffer in "pos"*/
 void
-buf_setpos(struct bs_buffer *stream, unsigned pos);
+buf_setpos(struct bs_buffer *stream, buf_pos_t pos);
 
 /*if rewindable is true, the buffer's window can't be moved down
   to fit more data and can only be appended to

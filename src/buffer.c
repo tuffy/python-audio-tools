@@ -125,11 +125,20 @@ buf_putc(int i, struct bs_buffer *stream) {
 unsigned
 buf_read(struct bs_buffer *stream, uint8_t *data, unsigned data_size)
 {
-    const unsigned to_read = MIN(data_size, BUF_WINDOW_SIZE(stream));
+    const buf_size_t to_read = MIN(data_size, BUF_WINDOW_SIZE(stream));
     memcpy(data, BUF_WINDOW_START(stream), to_read);
     stream->window_start += to_read;
     return to_read;
 }
+
+unsigned
+buf_skip(struct bs_buffer *stream, unsigned data_size)
+{
+    const buf_size_t to_read = MIN(data_size, BUF_WINDOW_SIZE(stream));
+    stream->window_start += to_read;
+    return to_read;
+}
+
 
 void
 buf_write(struct bs_buffer *stream, const uint8_t* data, unsigned data_size)
@@ -140,13 +149,13 @@ buf_write(struct bs_buffer *stream, const uint8_t* data, unsigned data_size)
 }
 
 void
-buf_getpos(struct bs_buffer *stream, unsigned *pos)
+buf_getpos(struct bs_buffer *stream, buf_pos_t *pos)
 {
     *pos = stream->window_start;
 }
 
 void
-buf_setpos(struct bs_buffer *stream, unsigned pos)
+buf_setpos(struct bs_buffer *stream, buf_pos_t pos)
 {
     stream->window_start = pos;
 }
