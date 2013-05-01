@@ -277,6 +277,8 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
     DEFAULT_COMPRESSION = "100"
     COMPRESSION_MODES = tuple(["10"] + map(str, range(50, 500, 25)) + ["500"])
     BINARIES = ("faac", "faad")
+    BINARY_URLS = {"faac":"http://www.audiocoding.com/",
+                   "faad":"http://www.audiocoding.com/"}
 
     def __init__(self, filename):
         """filename is a plain string"""
@@ -581,6 +583,10 @@ class M4AAudio_nero(M4AAudio_faac):
     COMPRESSION_DESCRIPTIONS = {"0.4": COMP_NERO_LOW,
                                 "1.0": COMP_NERO_HIGH}
     BINARIES = ("neroAacDec", "neroAacEnc")
+    BINARY_URLS = {"neroAacDec":"http://www.nero.com/enu/" +
+                   "downloads-nerodigital-nero-aac-codec.php",
+                   "neroAacEnc":"http://www.nero.com/enu/" +
+                   "downloads-nerodigital-nero-aac-codec.php"}
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,

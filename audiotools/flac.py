@@ -3000,6 +3000,7 @@ class OggFlacAudio(FlacAudio):
     COMPRESSION_DESCRIPTIONS = {"0": COMP_FLAC_0,
                                 "8": COMP_FLAC_8}
     BINARIES = ("flac",)
+    BINARY_URLS = {"flac":"http://flac.sourceforge.net"}
 
     METADATA_CLASS = OggFlacMetaData
 

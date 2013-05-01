@@ -48,29 +48,26 @@ def display_messages(messenger, track, messages):
                         "message": message})
 
 
-def audiofiles(paths, processed_filenames, messenger):
+def audiofiles(paths, processed_filenames, unsupported_types, messenger):
     directories = [p for p in paths if os.path.isdir(p)]
     files = [p for p in paths if os.path.isfile(p)]
 
-    for p in paths:
-        if (os.path.isfile(p)):
-            filename = audiotools.Filename(p)
-            try:
-                if (filename not in processed_filenames):
-                    processed_filenames.add(filename)
-                    yield audiotools.open(str(filename))
-            except audiotools.UnsupportedFile:
-                pass
-            except IOError, err:
-                messenger.warning(_.ERR_OPEN_IOERROR % (filename,))
-            except audiotools.InvalidFile, err:
-                messenger.error(unicode(err))
-        elif (os.path.isdir(p)):
-            for (d, ds, fs) in os.walk(p):
-                for t in audiofiles([os.path.join(d, f) for f in fs],
-                                    processed_filenames,
-                                    messenger):
-                    yield t
+    for f in audiotools.open_files(files,
+                                   messenger=messenger,
+                                   warn_duplicates=True,
+                                   opened_files=processed_filenames,
+                                   unsupported_formats=unsupported_types):
+        yield f
+
+    for directory in directories:
+        for (d, ds, fs) in os.walk(directory):
+            for f in audiotools.open_files(
+                    [os.path.join(d, f) for f in fs],
+                    messenger=messenger,
+                    warn_duplicates=True,
+                    opened_files=processed_filenames,
+                    unsupported_formats=unsupported_types):
+                yield f
 
 
 def update_without_backup(track, messenger):
@@ -159,6 +156,7 @@ if (__name__ == '__main__'):
 
     (options, args) = parser.parse_args()
     processed_filenames = set([])
+    unsupported_types = set([])
     msg = audiotools.Messenger("tracklint", options)
 
     if (options.undo and (options.db is None)):
@@ -178,6 +176,7 @@ if (__name__ == '__main__'):
             try:
                 for track in audiofiles(args,
                                         processed_filenames,
+                                        unsupported_types,
                                         messenger=msg):
                     try:
                         update_and_backup(track, undo_db, msg)
@@ -194,7 +193,10 @@ if (__name__ == '__main__'):
             #if we're fixing tracks and have no undo DB,
             #simply overwrite the track and track metadata directly
             #if changes have been made
-            for track in audiofiles(args, processed_filenames, messenger=msg):
+            for track in audiofiles(args,
+                                    processed_filenames,
+                                    unsupported_types,
+                                    messenger=msg):
                 try:
                     update_without_backup(track, msg)
                 except IOError:
@@ -212,7 +214,10 @@ if (__name__ == '__main__'):
                       (audiotools.Filename(options.db),))
             sys.exit(1)
         try:
-            for track in audiofiles(args, processed_filenames, messenger=msg):
+            for track in audiofiles(args,
+                                    processed_filenames,
+                                    unsupported_types,
+                                    messenger=msg):
                 try:
                     undo_from_backup(track, undo_db, msg)
                 except IOError:
@@ -222,7 +227,10 @@ if (__name__ == '__main__'):
         finally:
             undo_db.close()
     else:  # a dry-run of the fixing procedure, with no changes made
-        for track in audiofiles(args, processed_filenames, messenger=msg):
+        for track in audiofiles(args,
+                                processed_filenames,
+                                unsupported_types,
+                                messenger=msg):
             fixes = []
             track.clean(fixes)
             display_messages(msg, track, fixes)

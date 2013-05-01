@@ -944,6 +944,51 @@ class ProgressDisplay:
         pass
 
 
+def missing_binaries(msg, audiofile):
+    """given a Messenger object and AudioFile subclass
+    indicate that binaries are missing in order to support that
+    class and where to get them"""
+
+    binaries = audiofile.BINARIES
+    urls = audiofile.BINARY_URLS
+    format_ = audiofile.NAME.decode('ascii')
+    if (len(binaries) == 0):
+        #no binaries, so they can't be missing, so nothing to display
+        pass
+    elif (len(binaries) == 1):
+        #one binary has only a single URL to display
+        from .text import (ERR_PROGRAM_NEEDED,
+                           ERR_PROGRAM_DOWNLOAD_URL,
+                           ERR_PROGRAM_PACKAGE_MANAGER)
+        msg.info(ERR_PROGRAM_NEEDED %
+                 {"program":u"\"%s\"" % (binaries[0].decode('ascii')),
+                  "format":format_})
+        msg.info(ERR_PROGRAM_DOWNLOAD_URL %
+                 {"program":binaries[0].decode('ascii'),
+                  "url":urls[binaries[0]]})
+        msg.info(ERR_PROGRAM_PACKAGE_MANAGER)
+    else:
+        #multiple binaries may have one or more URLs to display
+        from .text import (ERR_PROGRAMS_NEEDED,
+                           ERR_PROGRAMS_DOWNLOAD_URL,
+                           ERR_PROGRAM_DOWNLOAD_URL,
+                           ERR_PROGRAM_PACKAGE_MANAGER)
+        msg.info(ERR_PROGRAMS_NEEDED %
+                 {"programs":u", ".join([u"\"%s\"" % (b.decode('ascii'))
+                                         for b in binaries]),
+                  "format":format_})
+        if (len(set([urls[b] for b in binaries])) == 1):
+            #if they all come from one URL (like Vorbis tools)
+            #display only that URL
+            msg.info(ERR_PROGRAMS_DOWNLOAD_URL % {"url":urls[binaries[0]]})
+        else:
+            #otherwise, display the URL for each binary
+            for b in binaries:
+                msg.info(ERR_PROGRAM_DOWNLOAD_URL %
+                         {"program":b.decode('ascii'), "url":urls[b]})
+        msg.info(ERR_PROGRAM_PACKAGE_MANAGER)
+
+
 class SingleProgressDisplay(ProgressDisplay):
     """a specialized ProgressDisplay for handling a single line of output"""
 
@@ -1583,7 +1628,7 @@ def sorted_tracks(audiofiles):
 
 def open_files(filename_list, sorted=True, messenger=None,
                no_duplicates=False, warn_duplicates=False,
-               opened_files=None):
+               opened_files=None, unsupported_formats=None):
     """returns a list of AudioFile objects
     from a list of filename strings or Filename objects
 
@@ -1601,6 +1646,10 @@ def open_files(filename_list, sorted=True, messenger=None,
 
     "opened_files" is a set object containing previously opened
     Filename objects and which newly opened Filename objects are added to
+
+    "unsupported_formats" is a set object containing the .NAME strings
+    of AudioFile objects which have already been displayed
+    as unsupported in order to avoid displaying duplicate messages
     """
 
     from .text import (ERR_DUPLICATE_FILE,
@@ -1608,22 +1657,40 @@ def open_files(filename_list, sorted=True, messenger=None,
 
     if (opened_files is None):
         opened_files = set([])
+    if (unsupported_formats is None):
+        unsupported_formats = set([])
 
     to_return = []
 
     for filename in map(Filename, filename_list):
-        try:
-            if (filename in opened_files):
-                if (no_duplicates):
-                    raise DuplicateFile(filename)
-                elif (warn_duplicates and (messenger is not None)):
-                    messenger.warning(ERR_DUPLICATE_FILE % (filename,))
-            else:
-                opened_files.add(filename)
+        if (filename in opened_files):
+            if (no_duplicates):
+                raise DuplicateFile(filename)
+            elif (warn_duplicates and (messenger is not None)):
+                messenger.warning(ERR_DUPLICATE_FILE % (filename,))
+        else:
+            opened_files.add(filename)
 
-            to_return.append(open(str(filename)))
-        except UnsupportedFile:
-            pass
+        try:
+            f = file(str(filename), "rb")
+            try:
+                audio_class = file_type(f)
+            finally:
+                f.close()
+            if (audio_class is not None):
+                if (audio_class.has_binaries(BIN)):
+                    #is a supported audio type with needed binaries
+                    to_return.append(audio_class(str(filename)))
+                elif ((messenger is not None) and
+                      (audio_class.NAME not in unsupported_formats)):
+                    #is a supported audio type without needed binaries
+                    missing_binaries(messenger, audio_class)
+
+                    #but only display format binaries message once
+                    unsupported_formats.add(audio_class.NAME)
+            else:
+                #not a support audio type
+                pass
         except IOError, err:
             if (messenger is not None):
                 messenger.warning(ERR_OPEN_IOERROR % (filename,))
@@ -3465,6 +3532,7 @@ class AudioFile:
     COMPRESSION_MODES = ("",)
     COMPRESSION_DESCRIPTIONS = {}
     BINARIES = tuple()
+    BINARY_URLS = {}
     REPLAYGAIN_BINARIES = tuple()
 
     def __init__(self, filename):

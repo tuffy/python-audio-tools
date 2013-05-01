@@ -54,20 +54,13 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("coverdump", options)
 
-    if (len(args) != 1):
+    audiofiles = audiotools.open_files(args, sorted=False, messenger=msg)
+    if (len(audiofiles) != 1):
         msg.error(_.ERR_1_FILE_REQUIRED)
         sys.exit(1)
     else:
-        input_filename = audiotools.Filename(args[0])
-
-    try:
-        audiofile = audiotools.open(str(input_filename))
-    except audiotools.UnsupportedFile:
-        msg.error(_.ERR_1_FILE_REQUIRED)
-        sys.exit(1)
-    except IOError:
-        msg.error(_.ERR_OPEN_IOERROR % (audiotools.Filename(args[0]),))
-        sys.exit(1)
+        audiofile = audiofiles[0]
+        input_filename = audiotools.Filename(audiofile.filename)
 
     metadata = audiofile.get_metadata()
     if (metadata is not None):

@@ -229,23 +229,13 @@ if (__name__ == '__main__'):
                    "type": AudioType.NAME})
         sys.exit(1)
 
-    if (len(args) != 1):
+    audiofiles = audiotools.open_files(args, sorted=False, messenger=msg)
+    if (len(audiofiles) != 1):
         msg.error(_.ERR_1_FILE_REQUIRED)
         sys.exit(1)
     else:
-        input_filename = audiotools.Filename(args[0])
+        input_filename = audiotools.Filename(audiofile.filename)
         input_filenames = set([input_filename])
-
-    try:
-        audiofile = audiotools.open(str(input_filename))
-    except audiotools.UnsupportedFile:
-        msg.error(_.ERR_1_FILE_REQUIRED)
-        sys.exit(1)
-    except audiotools.InvalidFile:
-        msg.error(_.ERR_INVALID_FILE % (input_filename,))
-    except IOError:
-        msg.error(_.ERR_OPEN_IOERROR % (input_filename,))
-        sys.exit(1)
 
     base_directory = options.dir
     encoded_filenames = []

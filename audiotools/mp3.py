@@ -57,6 +57,8 @@ class MP3Audio(AudioFile):
                                 "extreme": COMP_LAME_EXTREME,
                                 "insane": COMP_LAME_INSANE}
     BINARIES = ("lame", "mpg123")
+    BINARY_URLS = {"lame":"http://lame.sourceforge.net/",
+                   "mpg123":"http://www.mpg123.de/"}
     REPLAYGAIN_BINARIES = ("mp3gain", )
 
     SAMPLE_RATE = ((11025, 12000, 8000, None),   # MPEG-2.5
@@ -721,6 +723,8 @@ class MP2Audio(MP3Audio):
     COMPRESSION_DESCRIPTIONS = {"64": COMP_TWOLAME_64,
                                 "384": COMP_TWOLAME_384}
     BINARIES = ("mpg123", "twolame")
+    BINARY_URLS = {"mpg123":"http://www.mpg123.de/",
+                   "twolame":"http://www.twolame.org/"}
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,

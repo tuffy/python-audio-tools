@@ -446,6 +446,16 @@ ERR_UNKNOWN_FIELD = u"unknown field \"%s\" in file format"
 ERR_INVALID_FILENAME_FORMAT = u"invalid filename format string"
 ERR_FOREIGN_METADATA = u"metadata not from audio file"
 ERR_NEGATIVE_SEEK = u"cannot seek to negative value"
+ERR_PROGRAM_NEEDED = \
+    u"program %(program)s needed to support %(format)s format"
+ERR_PROGRAM_DOWNLOAD_URL = \
+    u"%(program)s can be downloaded from %(url)s"
+ERR_PROGRAMS_NEEDED = \
+    u"programs %(programs)s needed to support %(format)s format"
+ERR_PROGRAMS_DOWNLOAD_URL = \
+    u"they can be downloaded from %(url)s"
+ERR_PROGRAM_PACKAGE_MANAGER = \
+    u"or check your system's package manager"
 ERR_AIFF_NOT_AIFF = u"not an AIFF file"
 ERR_AIFF_INVALID_AIFF = u"invalid AIFF file"
 ERR_AIFF_INVALID_CHUNK_ID = u"invalid AIFF chunk ID"

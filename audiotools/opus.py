@@ -41,6 +41,8 @@ class OpusAudio(VorbisAudio):
     COMPRESSION_DESCRIPTIONS = {"0": u"lowest quality, fastest encode",
                                 "10": u"best quality, slowest encode"}
     BINARIES = ("opusenc", "opusdec")
+    BINARY_URLS = {"opusenc":"http://opus-codec.org/",
+                   "opusdec":"http://opus-codec.org/"}
 
     def __init__(self, filename):
         """filename is a plain string"""
