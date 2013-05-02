@@ -2178,7 +2178,7 @@ class trackcmp(UtilTest):
                     self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                                       image.filename] + order), 0)
                 for (i, track) in enumerate(tracks):
-                    self.__check_output__(
+                    self.__check_info__(
                         audiotools.output_progress(
                             LAB_TRACKCMP_CMP %
                             {"file1":audiotools.Filename(image.filename),
@@ -4797,6 +4797,7 @@ class tracksplit(UtilTest):
 
                 self.assertEqual(
                     self.__run_app__(["tracksplit", "-V", "normal",
+                                      "-j", "1",
                                       "--no-freedb", "--no-musicbrainz"] +
                                      options + [track.filename]), 0)
                 if ("--format" in options):

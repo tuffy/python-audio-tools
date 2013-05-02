@@ -234,6 +234,7 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_1_FILE_REQUIRED)
         sys.exit(1)
     else:
+        audiofile = audiofiles[0]
         input_filename = audiotools.Filename(audiofile.filename)
         input_filenames = set([input_filename])
 
