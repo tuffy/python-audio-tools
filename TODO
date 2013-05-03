@@ -6842,6 +6842,12 @@
 *** DONE Add more WavPack INVALIDFILE .verify() tests
 *** DONE Remove wvgain for ReplayGain application
 ** TODO Add volume control to trackplay/cdplay
+*** TODO Add get_volume() method to low-level audio players
+    It should return the current set volume as a float.
+    - [ ] PulseAudioOutput
+    - [ ] OSSAudioOutput
+    - [ ] CoreAudioOutput
+    - [ ] NULLAudioOutput
 *** TODO Add set_volume(volume) method to low-level audio players
     It should take a volume setting float and adjust the output volume.
     - [ ] PulseAudioOutput
