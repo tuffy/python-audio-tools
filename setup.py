@@ -27,6 +27,7 @@ if (sys.version_info < (2, 6, 0, 'final', 0)):
 
 from distutils.core import setup, Extension
 
+has_pulseaudio = False
 
 cdiomodule = Extension('audiotools.cdio',
                        sources=['src/cdiomodule.c'],
@@ -122,6 +123,7 @@ verifymodule = Extension('audiotools.verify',
                                   'src/func_io.c'])
 
 output_sources = ['src/output.c']
+output_libraries = []
 output_defines = []
 output_link_args = []
 
@@ -132,7 +134,13 @@ if (sys.platform == 'darwin'):
                              "-framework", "AudioUnit",
                              "-framework", "CoreServices"])
 
+if (has_pulseaudio):
+    output_sources.append('src/output/pulseaudio.c')
+    output_defines.append(("PULSEAUDIO", "1"))
+    output_libraries.append("pulse")
+
 outputmodule = Extension('audiotools.output',
+                         libraries=output_libraries,
                          sources=output_sources,
                          define_macros=output_defines,
                          extra_link_args=output_link_args)
