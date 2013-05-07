@@ -21,20 +21,13 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-typedef enum {
-    PA_CONNECTING,
-    PA_CONNECTED,
-    PA_FINISHED
-} pulseaudio_status_t;
-
 typedef struct {
     PyObject_HEAD
 
     pa_mainloop* mainloop;
     pa_mainloop_api* mainloop_api;
     pa_context* context;
-    pulseaudio_status_t status;
-    uint32_t master_sink_index;
+    pa_stream* stream;
 } output_PulseAudio;
 
 static PyObject* PulseAudio_play(output_PulseAudio *self, PyObject *args);

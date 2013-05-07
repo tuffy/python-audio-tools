@@ -20,7 +20,31 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-static void context_state_callback(pa_context *context, void *userdata);
+/*connects the context to the default PulseAudio server
+  returns true on success, false on failure*/
+static int connect_context(pa_context *context, pa_mainloop* mainloop);
+
+typedef enum {
+    CONTEXT_CONNECTING,
+    CONTEXT_CONNECTED,
+    CONTEXT_CLOSED
+} context_state_t;
+
+static void context_state_callback(pa_context *context,
+                                   context_state_t *state);
+
+/*connects the stream to the default PulseAudio output sink
+  returns true on success, false on failure*/
+static int connect_stream(pa_stream *stream, pa_mainloop* mainloop);
+
+typedef enum {
+    STREAM_CONNECTING,
+    STREAM_CONNECTED,
+    STREAM_CLOSED
+} stream_state_t;
+
+static void stream_state_callback(pa_stream *stream,
+                                  stream_state_t *state);
 
 static pa_cvolume get_current_volume(pa_mainloop* mainloop,
                                      pa_context *context,
@@ -65,17 +89,14 @@ static PyObject* PulseAudio_flush(output_PulseAudio *self, PyObject *args)
 
 static PyObject* PulseAudio_get_volume(output_PulseAudio *self, PyObject *args)
 {
-    if (self->status == PA_CONNECTED) {
-        pa_cvolume cvolume = get_current_volume(self->mainloop,
-                                                self->context,
-                                                self->master_sink_index);
-        const double max_volume = pa_cvolume_max(&cvolume);
-        const double norm_volume = PA_VOLUME_NORM;
+    const pa_cvolume cvolume = get_current_volume(
+        self->mainloop,
+        self->context,
+        pa_stream_get_index(self->stream));
+    const double max_volume = pa_cvolume_max(&cvolume);
+    const double norm_volume = PA_VOLUME_NORM;
 
-        return PyFloat_FromDouble(max_volume / norm_volume);
-    } else {
-        return PyFloat_FromDouble(0.0);
-    }
+    return PyFloat_FromDouble(max_volume / norm_volume);
 }
 
 static PyObject* PulseAudio_set_volume(output_PulseAudio *self, PyObject *args)
@@ -95,7 +116,7 @@ static PyObject* PulseAudio_set_volume(output_PulseAudio *self, PyObject *args)
     /*get sink's current volume as a pa_cvolume set of values*/
     current_volume = get_current_volume(self->mainloop,
                                         self->context,
-                                        self->master_sink_index);
+                                        pa_stream_get_index(self->stream));
 
     /*scale values using the new volume setting*/
     pa_cvolume_scale(&current_volume, new_volume);
@@ -103,7 +124,7 @@ static PyObject* PulseAudio_set_volume(output_PulseAudio *self, PyObject *args)
     /*set sink's volume values*/
     op = pa_context_set_sink_volume_by_index(
         self->context,
-        self->master_sink_index,
+        pa_stream_get_index(self->stream),
         &current_volume,
         set_volume_callback,
         NULL);
@@ -112,6 +133,8 @@ static PyObject* PulseAudio_set_volume(output_PulseAudio *self, PyObject *args)
     while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
         pa_mainloop_iterate(self->mainloop, 1, NULL);
     }
+
+    pa_operation_unref(op);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -137,17 +160,57 @@ static PyObject* PulseAudio_new(PyTypeObject *type,
 
 int PulseAudio_init(output_PulseAudio *self, PyObject *args, PyObject *kwds)
 {
+    int sample_rate;
+    int channels;
+    int bits_per_sample;
     char *stream_name;
+    pa_sample_spec sample_spec;
 
     self->mainloop = NULL;
     self->mainloop_api = NULL;
     self->context = NULL;
-    self->status = PA_CONNECTING;
-    /*FIXME - discover master sink at runtime*/
-    self->master_sink_index = 0;
+    self->stream = NULL;
 
-    if (!PyArg_ParseTuple(args, "s", &stream_name))
+    if (!PyArg_ParseTuple(args, "iiis",
+                          &sample_rate,
+                          &channels,
+                          &bits_per_sample,
+                          &stream_name))
         return -1;
+
+    /*sanity check output parameters*/
+    if (sample_rate > 0) {
+        sample_spec.rate = sample_rate;
+    } else {
+        PyErr_SetString(
+            PyExc_ValueError, "sample rate must be a postive value");
+        return -1;
+    }
+
+    if (channels > 0) {
+        sample_spec.channels = channels;
+    } else {
+        PyErr_SetString(
+            PyExc_ValueError, "channels must be a positive value");
+        return -1;
+    }
+
+    /*use .wav-style sample format*/
+    switch (bits_per_sample) {
+    case 8:
+        sample_spec.format = PA_SAMPLE_U8;
+        break;
+    case 16:
+        sample_spec.format = PA_SAMPLE_S16LE;
+        break;
+    case 24:
+        sample_spec.format = PA_SAMPLE_S24LE;
+        break;
+    default:
+        PyErr_SetString(
+            PyExc_ValueError, "bits-per-sample must be 8, 16 or 24");
+        return -1;
+    }
 
     /*setup PulseAudio mainloop and abstract mainloop API*/
     self->mainloop = pa_mainloop_new();
@@ -162,27 +225,43 @@ int PulseAudio_init(output_PulseAudio *self, PyObject *args, PyObject *kwds)
     }
 
     /*connect context to server*/
-    pa_context_connect(self->context, NULL, 0, NULL);
-
-    /*add state callback which will perform initialization*/
-    pa_context_set_state_callback(self->context, context_state_callback, self);
-
-    /*iterate over the mainloop until a connection is established (or not)*/
-    do {
-        pa_mainloop_iterate(self->mainloop, 1, NULL);
-    } while (self->status == PA_CONNECTING);
-
-    if (self->status == PA_CONNECTED) {
-        return 0;
-    } else {
+    if (!connect_context(self->context, self->mainloop)) {
         PyErr_SetString(
             PyExc_ValueError, "unable to connect to PulseAudio server");
         return -1;
     }
+
+    /*create new connection stream*/
+    if ((self->stream = pa_stream_new(self->context,
+                                      stream_name,
+                                      &sample_spec,
+                                      NULL)) == NULL) {
+        PyErr_SetString(
+            PyExc_ValueError, "unable to create PulseAudio connection stream");
+        return -1;
+    }
+
+    /*connect stream to context*/
+    if (!connect_stream(self->stream, self->mainloop)) {
+        PyErr_SetString(
+            PyExc_ValueError, "unable to connect to PulseAudio output stream");
+        return -1;
+    }
+
+    /*add stream write callback*/
+    /*FIXME*/
+
+    return 0;
 }
 
 void PulseAudio_dealloc(output_PulseAudio *self)
 {
+    /*disconnect stream*/
+    if (self->stream != NULL) {
+        pa_stream_disconnect(self->stream);
+        pa_stream_unref(self->stream);
+    }
+
     /*stop mainloop thread, if running*/
     if (self->mainloop != NULL)
         pa_mainloop_quit(self->mainloop, 1);
@@ -199,29 +278,117 @@ void PulseAudio_dealloc(output_PulseAudio *self)
     self->ob_type->tp_free((PyObject*)self);
 }
 
-static void context_state_callback(pa_context *context, void *userdata)
+static int connect_context(pa_context *context, pa_mainloop* mainloop)
 {
-    output_PulseAudio *self = userdata;
+    context_state_t state = CONTEXT_CONNECTING;
+
+    /*setup context change callback*/
+    pa_context_set_state_callback(
+        context,
+        (pa_context_notify_cb_t)context_state_callback,
+        &state);
+
+    /*perform connection to PulseAudio server*/
+    if (pa_context_connect(context, NULL, 0, NULL) >= 0) {
+        /*wait for callback to indicate completion*/
+        while (state == CONTEXT_CONNECTING) {
+            pa_mainloop_iterate(mainloop, 1, NULL);
+        }
+
+        /*remove context change callback now that it's no longer needed*/
+        pa_context_set_state_callback(context, NULL, NULL);
+
+        /*return whether connection is successful*/
+        return state == CONTEXT_CONNECTED;
+    } else {
+        /*remove context change callback now that it's no longer needed*/
+        pa_context_set_state_callback(context, NULL, NULL);
+
+        return 0;
+    }
+}
+
+static void context_state_callback(pa_context *context,
+                                   context_state_t *state)
+{
     switch (pa_context_get_state(context)) {
     case PA_CONTEXT_UNCONNECTED:
     case PA_CONTEXT_CONNECTING:
     case PA_CONTEXT_AUTHORIZING:
     case PA_CONTEXT_SETTING_NAME:
-        /*indicate stream is still connecting*/
-        self->status = PA_CONNECTING;
+        /*indicate context is still connecting*/
+        *state = CONTEXT_CONNECTING;
         return;
     case PA_CONTEXT_READY:
-        /*indicate stream is up and ready to go*/
-        self->status = PA_CONNECTED;
+        /*indicate context opened successfully*/
+        *state = CONTEXT_CONNECTED;
         return;
     case PA_CONTEXT_FAILED:
     case PA_CONTEXT_TERMINATED:
     default:
-        /*indicate connection is finished*/
-        self->status = PA_FINISHED;
+        /*indicate context is closed or failed*/
+        *state = CONTEXT_CLOSED;
         return;
     }
 }
+
+static int connect_stream(pa_stream *stream, pa_mainloop* mainloop)
+{
+    stream_state_t state = STREAM_CONNECTING;
+
+    /*setup stream state change callback*/
+    pa_stream_set_state_callback(
+        stream,
+        (pa_stream_notify_cb_t)stream_state_callback,
+        &state);
+
+    /*perform connection to PulseAudio server's default output stream*/
+    if (pa_stream_connect_playback(stream,
+                                   NULL, /*device*/
+                                   NULL, /*buffering attributes*/
+                                   0,    /*flags*/
+                                   NULL, /*volume*/
+                                   NULL  /*sync stream*/) >= 0) {
+        /*wait for callback to indicate completion*/
+        while (state == STREAM_CONNECTING) {
+            pa_mainloop_iterate(mainloop, 1, NULL);
+        }
+
+        /*remove stream change callback now that it's no longer needed*/
+        pa_stream_set_state_callback(stream, NULL, NULL);
+
+        /*return whether connection is successful*/
+        return state == STREAM_CONNECTED;
+    } else {
+        /*remove stream change callback now that it's no longer needed*/
+        pa_stream_set_state_callback(stream, NULL, NULL);
+
+        return 0;
+    }
+}
+
+
+static void stream_state_callback(pa_stream *stream,
+                                  stream_state_t *state)
+{
+    switch (pa_stream_get_state(stream)) {
+    case PA_STREAM_CREATING:
+        /*indicate stream opening still in progress*/
+        *state = STREAM_CONNECTING;
+        break;
+    case PA_STREAM_READY:
+        /*indicate stream opened successfully*/
+        *state = STREAM_CONNECTED;
+        break;
+    case PA_STREAM_TERMINATED:
+    case PA_STREAM_FAILED:
+    default:
+        /*indicate stream is closed or failed to open*/
+        *state = STREAM_CLOSED;
+        break;
+    }
+}
+
 
 static pa_cvolume get_current_volume(pa_mainloop* mainloop,
                                      pa_context *context,
@@ -237,6 +404,8 @@ static pa_cvolume get_current_volume(pa_mainloop* mainloop,
     while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
         pa_mainloop_iterate(mainloop, 1, NULL);
     }
+
+    pa_operation_unref(op);
 
     return volume;
 }
