@@ -22,42 +22,32 @@
 
 /*connects the context to the default PulseAudio server
   returns true on success, false on failure*/
-static int connect_context(pa_context *context, pa_mainloop* mainloop);
-
-typedef enum {
-    CONTEXT_CONNECTING,
-    CONTEXT_CONNECTED,
-    CONTEXT_CLOSED
-} context_state_t;
+static int connect_context(pa_context *context, pa_threaded_mainloop* mainloop);
 
 static void context_state_callback(pa_context *context,
-                                   context_state_t *state);
+                                   pa_threaded_mainloop* mainloop);
 
 /*connects the stream to the default PulseAudio output sink
   returns true on success, false on failure*/
-static int connect_stream(pa_stream *stream, pa_mainloop* mainloop);
-
-typedef enum {
-    STREAM_CONNECTING,
-    STREAM_CONNECTED,
-    STREAM_CLOSED
-} stream_state_t;
+static int connect_stream(pa_stream *stream, pa_threaded_mainloop* mainloop);
 
 static void stream_state_callback(pa_stream *stream,
-                                  stream_state_t *state);
+                                  pa_threaded_mainloop* mainloop);
 
-static pa_cvolume get_current_volume(pa_mainloop* mainloop,
-                                     pa_context *context,
-                                     uint32_t sink_index);
+struct get_volume_cb_data {
+    pa_threaded_mainloop *mainloop;
+    pa_cvolume *cvolume;
+};
 
 static void get_volume_callback(pa_context *context,
-                                const pa_sink_info *i,
+                                const pa_sink_info *info,
                                 int eol,
-                                void *userdata);
+                                struct get_volume_cb_data *cb_data);
+
 
 static void set_volume_callback(pa_context *context,
                                 int success,
-                                void *userdata);
+                                pa_threaded_mainloop *mainloop);
 
 static PyObject* PulseAudio_play(output_PulseAudio *self, PyObject *args)
 {
@@ -68,6 +58,7 @@ static PyObject* PulseAudio_play(output_PulseAudio *self, PyObject *args)
 
 static PyObject* PulseAudio_pause(output_PulseAudio *self, PyObject *args)
 {
+    /*cork output stream*/
     /*FIXME*/
     Py_INCREF(Py_None);
     return Py_None;
@@ -89,22 +80,45 @@ static PyObject* PulseAudio_flush(output_PulseAudio *self, PyObject *args)
 
 static PyObject* PulseAudio_get_volume(output_PulseAudio *self, PyObject *args)
 {
-    const pa_cvolume cvolume = get_current_volume(
-        self->mainloop,
-        self->context,
-        pa_stream_get_index(self->stream));
-    const double max_volume = pa_cvolume_max(&cvolume);
-    const double norm_volume = PA_VOLUME_NORM;
+    pa_cvolume cvolume;
+    pa_operation *op;
+    struct get_volume_cb_data cb_data = {self->mainloop, &cvolume};
+    double max_volume;
+    double norm_volume;
 
+    pa_threaded_mainloop_lock(self->mainloop);
+
+    /*query stream info for current sink*/
+    op = pa_context_get_sink_info_by_index(
+        self->context,
+        pa_stream_get_device_index(self->stream),
+        (pa_sink_info_cb_t)get_volume_callback,
+        &cb_data);
+
+    /*wait for callback to complete*/
+    while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
+        pa_threaded_mainloop_wait(self->mainloop);
+    }
+
+    pa_operation_unref(op);
+
+    pa_threaded_mainloop_unlock(self->mainloop);
+
+    /*convert cvolume to double*/
+    max_volume = pa_cvolume_max(&cvolume);
+    norm_volume = PA_VOLUME_NORM;
+
+    /*return double converted to Python object*/
     return PyFloat_FromDouble(max_volume / norm_volume);
 }
 
 static PyObject* PulseAudio_set_volume(output_PulseAudio *self, PyObject *args)
 {
+    pa_cvolume cvolume;
+    pa_operation *op;
+    struct get_volume_cb_data cb_data = {self->mainloop, &cvolume};
     double new_volume_d;
     pa_volume_t new_volume;
-    pa_cvolume current_volume;
-    pa_operation *op;
 
     if (!PyArg_ParseTuple(args, "d", &new_volume_d))
         return NULL;
@@ -113,28 +127,41 @@ static PyObject* PulseAudio_set_volume(output_PulseAudio *self, PyObject *args)
       PA_VOLUME_MUTED and PA_VOLUME_NORM*/
     new_volume = round(new_volume_d * PA_VOLUME_NORM);
 
-    /*get sink's current volume as a pa_cvolume set of values*/
-    current_volume = get_current_volume(self->mainloop,
-                                        self->context,
-                                        pa_stream_get_index(self->stream));
+    pa_threaded_mainloop_lock(self->mainloop);
+
+    /*query stream info for current sink*/
+    op = pa_context_get_sink_info_by_index(
+        self->context,
+        pa_stream_get_device_index(self->stream),
+        (pa_sink_info_cb_t)get_volume_callback,
+        &cb_data);
+
+    /*wait for callback to complete*/
+    while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
+        pa_threaded_mainloop_wait(self->mainloop);
+    }
+
+    pa_operation_unref(op);
 
     /*scale values using the new volume setting*/
-    pa_cvolume_scale(&current_volume, new_volume);
+    pa_cvolume_scale(&cvolume, new_volume);
 
     /*set sink's volume values*/
     op = pa_context_set_sink_volume_by_index(
         self->context,
-        pa_stream_get_index(self->stream),
-        &current_volume,
-        set_volume_callback,
-        NULL);
+        pa_stream_get_device_index(self->stream),
+        &cvolume,
+        (pa_context_success_cb_t)set_volume_callback,
+        self->mainloop);
 
-    /*wait for callback to complete successfully*/
+    /*wait for callback to complete*/
     while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
-        pa_mainloop_iterate(self->mainloop, 1, NULL);
+        pa_threaded_mainloop_wait(self->mainloop);
     }
 
     pa_operation_unref(op);
+
+    pa_threaded_mainloop_unlock(self->mainloop);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -213,8 +240,13 @@ int PulseAudio_init(output_PulseAudio *self, PyObject *args, PyObject *kwds)
     }
 
     /*setup PulseAudio mainloop and abstract mainloop API*/
-    self->mainloop = pa_mainloop_new();
-    self->mainloop_api = pa_mainloop_get_api(self->mainloop);
+    self->mainloop = pa_threaded_mainloop_new();
+    if (pa_threaded_mainloop_start(self->mainloop)) {
+        PyErr_SetString(
+            PyExc_ValueError, "unable to start mainloop thread");
+        return -1;
+    }
+    self->mainloop_api = pa_threaded_mainloop_get_api(self->mainloop);
 
     /*create new connection context*/
     if ((self->context = pa_context_new(self->mainloop_api,
@@ -224,7 +256,6 @@ int PulseAudio_init(output_PulseAudio *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
-    /*connect context to server*/
     if (!connect_context(self->context, self->mainloop)) {
         PyErr_SetString(
             PyExc_ValueError, "unable to connect to PulseAudio server");
@@ -264,7 +295,7 @@ void PulseAudio_dealloc(output_PulseAudio *self)
 
     /*stop mainloop thread, if running*/
     if (self->mainloop != NULL)
-        pa_mainloop_quit(self->mainloop, 1);
+        pa_threaded_mainloop_stop(self->mainloop);
 
     /*reduce the context's reference count*/
     if (self->context != NULL)
@@ -273,34 +304,48 @@ void PulseAudio_dealloc(output_PulseAudio *self)
     /*deallocate PulseAudio main loop*/
     /*mainloop_api is owned by mainloop and need not be freed*/
     if (self->mainloop != NULL)
-        pa_mainloop_free(self->mainloop);
+        pa_threaded_mainloop_free(self->mainloop);
 
     self->ob_type->tp_free((PyObject*)self);
 }
 
-static int connect_context(pa_context *context, pa_mainloop* mainloop)
+static int connect_context(pa_context *context, pa_threaded_mainloop* mainloop)
 {
-    context_state_t state = CONTEXT_CONNECTING;
-
     /*setup context change callback*/
     pa_context_set_state_callback(
         context,
         (pa_context_notify_cb_t)context_state_callback,
-        &state);
+        mainloop);
 
     /*perform connection to PulseAudio server*/
     if (pa_context_connect(context, NULL, 0, NULL) >= 0) {
+        pa_context_state_t state;
+
         /*wait for callback to indicate completion*/
-        while (state == CONTEXT_CONNECTING) {
-            pa_mainloop_iterate(mainloop, 1, NULL);
-        }
+        pa_threaded_mainloop_lock(mainloop);
+
+        do {
+            state = pa_context_get_state(context);
+
+            if ((state == PA_CONTEXT_READY) ||
+                (state == PA_CONTEXT_FAILED) ||
+                (state == PA_CONTEXT_TERMINATED)) {
+                break;
+            } else {
+                pa_threaded_mainloop_wait(mainloop);
+            }
+        } while (1);
+
+        pa_threaded_mainloop_unlock(mainloop);
 
         /*remove context change callback now that it's no longer needed*/
         pa_context_set_state_callback(context, NULL, NULL);
 
         /*return whether connection is successful*/
-        return state == CONTEXT_CONNECTED;
+        return state == PA_CONTEXT_READY;
     } else {
+        pa_threaded_mainloop_unlock(mainloop);
+
         /*remove context change callback now that it's no longer needed*/
         pa_context_set_state_callback(context, NULL, NULL);
 
@@ -309,38 +354,31 @@ static int connect_context(pa_context *context, pa_mainloop* mainloop)
 }
 
 static void context_state_callback(pa_context *context,
-                                   context_state_t *state)
+                                   pa_threaded_mainloop* mainloop)
 {
     switch (pa_context_get_state(context)) {
     case PA_CONTEXT_UNCONNECTED:
     case PA_CONTEXT_CONNECTING:
     case PA_CONTEXT_AUTHORIZING:
     case PA_CONTEXT_SETTING_NAME:
-        /*indicate context is still connecting*/
-        *state = CONTEXT_CONNECTING;
-        return;
+        /*ignore work-in-progress states*/
+        break;
     case PA_CONTEXT_READY:
-        /*indicate context opened successfully*/
-        *state = CONTEXT_CONNECTED;
-        return;
     case PA_CONTEXT_FAILED:
     case PA_CONTEXT_TERMINATED:
-    default:
-        /*indicate context is closed or failed*/
-        *state = CONTEXT_CLOSED;
-        return;
+        /*signal on success or failure states*/
+        pa_threaded_mainloop_signal(mainloop, 0);
+        break;
     }
 }
 
-static int connect_stream(pa_stream *stream, pa_mainloop* mainloop)
+static int connect_stream(pa_stream *stream, pa_threaded_mainloop* mainloop)
 {
-    stream_state_t state = STREAM_CONNECTING;
-
     /*setup stream state change callback*/
     pa_stream_set_state_callback(
         stream,
         (pa_stream_notify_cb_t)stream_state_callback,
-        &state);
+        mainloop);
 
     /*perform connection to PulseAudio server's default output stream*/
     if (pa_stream_connect_playback(stream,
@@ -349,17 +387,32 @@ static int connect_stream(pa_stream *stream, pa_mainloop* mainloop)
                                    0,    /*flags*/
                                    NULL, /*volume*/
                                    NULL  /*sync stream*/) >= 0) {
+        pa_stream_state_t state;
+
         /*wait for callback to indicate completion*/
-        while (state == STREAM_CONNECTING) {
-            pa_mainloop_iterate(mainloop, 1, NULL);
-        }
+        pa_threaded_mainloop_lock(mainloop);
+        do {
+            state = pa_stream_get_state(stream);
+
+            if ((state == PA_STREAM_READY) ||
+                (state == PA_STREAM_FAILED) ||
+                (state == PA_STREAM_TERMINATED)) {
+                break;
+            } else {
+                pa_threaded_mainloop_wait(mainloop);
+            }
+        } while (1);
+
+        pa_threaded_mainloop_unlock(mainloop);
 
         /*remove stream change callback now that it's no longer needed*/
         pa_stream_set_state_callback(stream, NULL, NULL);
 
         /*return whether connection is successful*/
-        return state == STREAM_CONNECTED;
+        return state == PA_STREAM_READY;
     } else {
+        pa_threaded_mainloop_unlock(mainloop);
+
         /*remove stream change callback now that it's no longer needed*/
         pa_stream_set_state_callback(stream, NULL, NULL);
 
@@ -369,62 +422,38 @@ static int connect_stream(pa_stream *stream, pa_mainloop* mainloop)
 
 
 static void stream_state_callback(pa_stream *stream,
-                                  stream_state_t *state)
+                                  pa_threaded_mainloop* mainloop)
 {
     switch (pa_stream_get_state(stream)) {
+    case PA_STREAM_UNCONNECTED:
     case PA_STREAM_CREATING:
-        /*indicate stream opening still in progress*/
-        *state = STREAM_CONNECTING;
+        /*ignore work-in-progress states*/
         break;
     case PA_STREAM_READY:
-        /*indicate stream opened successfully*/
-        *state = STREAM_CONNECTED;
-        break;
     case PA_STREAM_TERMINATED:
     case PA_STREAM_FAILED:
-    default:
-        /*indicate stream is closed or failed to open*/
-        *state = STREAM_CLOSED;
+        /*signal on success or failure states*/
+        pa_threaded_mainloop_signal(mainloop, 0);
         break;
     }
-}
-
-
-static pa_cvolume get_current_volume(pa_mainloop* mainloop,
-                                     pa_context *context,
-                                     uint32_t sink_index)
-{
-    pa_cvolume volume;
-    pa_operation *op = pa_context_get_sink_info_by_index(
-        context,
-        sink_index,
-        get_volume_callback,
-        &volume);
-
-    while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
-        pa_mainloop_iterate(mainloop, 1, NULL);
-    }
-
-    pa_operation_unref(op);
-
-    return volume;
 }
 
 static void get_volume_callback(pa_context *context,
                                 const pa_sink_info *info,
                                 int eol,
-                                void *userdata)
+                                struct get_volume_cb_data *cb_data)
 {
     if (!eol) {
-        pa_cvolume *cvolume = userdata;
-        *cvolume = info->volume;
+        *(cb_data->cvolume) = info->volume;
     }
+
+    pa_threaded_mainloop_signal(cb_data->mainloop, 0);
 }
 
 static void set_volume_callback(pa_context *context,
                                 int success,
-                                void *userdata)
+                                pa_threaded_mainloop *mainloop)
 {
-    /*do nothing*/
-    return;
+    /*do nothing since there's no recourse if volume isn't set*/
+    pa_threaded_mainloop_signal(mainloop, 0);
 }

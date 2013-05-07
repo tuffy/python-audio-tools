@@ -24,7 +24,7 @@
 typedef struct {
     PyObject_HEAD
 
-    pa_mainloop* mainloop;
+    pa_threaded_mainloop* mainloop;
     pa_mainloop_api* mainloop_api;
     pa_context* context;
     pa_stream* stream;
