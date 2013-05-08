@@ -826,31 +826,16 @@ class PulseAudioOutput(AudioOutput):
         this *must* be called prior to play() and close()"""
 
         if (not self.initialized):
-            import subprocess
-            from . import BIN
-
             self.sample_rate = sample_rate
             self.channels = channels
             self.channel_mask = channel_mask
             self.bits_per_sample = bits_per_sample
 
-            if (bits_per_sample == 8):
-                format = "u8"
-            elif (bits_per_sample == 16):
-                format = "s16le"
-            elif (bits_per_sample == 24):
-                format = "s24le"
-            else:
-                raise ValueError("Unsupported bits-per-sample")
-
-            self.pacat = subprocess.Popen(
-                [BIN["pacat"],
-                 "-n", "Python Audio Tools",
-                 "--rate", str(sample_rate),
-                 "--format", format,
-                 "--channels", str(channels),
-                 "--latency-msec", str(100)],
-                stdin=subprocess.PIPE)
+            from .output import PulseAudio
+            self.pulseaudio = PulseAudio(sample_rate,
+                                         channels,
+                                         bits_per_sample,
+                                         "Python Audio Tools")
 
             self.initialized = True
         else:
@@ -877,52 +862,36 @@ class PulseAudioOutput(AudioOutput):
     def play(self, data):
         """plays a chunk of converted data"""
 
-        self.pacat.stdin.write(data)
-        self.pacat.stdin.flush()
+        self.pulseaudio.play(data)
 
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
 
-        #may need to update this if I ever switch PulseAudio
-        #to the low-level interface instead of using pacat
-        pass
+        self.pulseaudio.pause()
 
     def resume(self):
         """resumes playing paused audio output"""
 
-        #may need to update this if I ever switch PulseAudio
-        #to the low-level interface instead of using pacat
-        pass
+        self.pulseaudio.resume()
 
     def close(self):
         """closes the output stream"""
 
         if (self.initialized):
             self.initialized = False
-            self.pacat.stdin.close()
-            self.pacat.wait()
-
-    @classmethod
-    def server_alive(cls):
-        import subprocess
-        from . import BIN
-
-        dev = subprocess.Popen([BIN["pactl"], "stat"],
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-        dev.stdout.read()
-        dev.stderr.read()
-        return (dev.wait() == 0)
+            self.pulseaudio.flush()
+            self.pulseaudio.close()
 
     @classmethod
     def available(cls):
         """returns True if PulseAudio is available and running on the system"""
 
-        from . import BIN
+        try:
+            from .output import PulseAudio
 
-        return (BIN.can_execute(BIN["pacat"]) and
-                BIN.can_execute(BIN["pactl"]) and
-                cls.server_alive())
+            return True
+        except ImportError:
+            return False
 
 
 class CoreAudioOutput(AudioOutput):

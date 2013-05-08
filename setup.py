@@ -20,14 +20,13 @@
 VERSION = '2.20alpha2'
 
 import sys
+import subprocess
 
 if (sys.version_info < (2, 6, 0, 'final', 0)):
     print >> sys.stderr, "*** Python 2.6.0 or better required"
     sys.exit(1)
 
 from distutils.core import setup, Extension
-
-has_pulseaudio = False
 
 cdiomodule = Extension('audiotools.cdio',
                        sources=['src/cdiomodule.c'],
@@ -134,10 +133,22 @@ if (sys.platform == 'darwin'):
                              "-framework", "AudioUnit",
                              "-framework", "CoreServices"])
 
+#detect PulseAudio's presence using pkg-config, if possible
+try:
+    pkg_config = subprocess.Popen(["pkg-config", "--libs", "libpulse"],
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+
+    libpulse_stdout = pkg_config.stdout.read().strip()
+    libpulse_stderr = pkg_config.stderr.read()
+    has_pulseaudio = pkg_config.wait() == 0
+except OSError:
+    has_pulseaudio = False
+
 if (has_pulseaudio):
     output_sources.append('src/output/pulseaudio.c')
     output_defines.append(("PULSEAUDIO", "1"))
-    output_libraries.append("pulse")
+    output_link_args.extend(libpulse_stdout.split())
 
 outputmodule = Extension('audiotools.output',
                          libraries=output_libraries,

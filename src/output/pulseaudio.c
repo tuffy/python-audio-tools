@@ -49,31 +49,139 @@ static void set_volume_callback(pa_context *context,
                                 int success,
                                 pa_threaded_mainloop *mainloop);
 
+static void write_stream_callback(pa_stream *stream,
+                                  size_t nbytes,
+                                  pa_threaded_mainloop *mainloop);
+
+static void success_callback(pa_stream *stream,
+                             int success,
+                             pa_threaded_mainloop *mainloop);
+
 static PyObject* PulseAudio_play(output_PulseAudio *self, PyObject *args)
 {
+    uint8_t *data;
+#ifdef PY_SSIZE_T_CLEAN
+    Py_ssize_t data_len;
+#else
+    int data_len;
+#endif
+
+    if (!PyArg_ParseTuple(args, "s#", &data, &data_len))
+        return NULL;
+
+    /*ensure output stream is still running*/
     /*FIXME*/
+
+    /*Use polling interface to push data into stream.
+      The callback is mostly useless
+      because it doesn't allow us to adjust the data length
+      like CoreAudio's does.*/
+    pa_threaded_mainloop_lock(self->mainloop);
+
+    while (data_len > 0) {
+        size_t writeable_len;
+
+        while ((writeable_len = pa_stream_writable_size(self->stream)) == 0) {
+            pa_threaded_mainloop_wait(self->mainloop);
+        }
+
+        if (writeable_len > data_len)
+            writeable_len = data_len;
+
+        pa_stream_write(self->stream,
+                        data,
+                        writeable_len,
+                        NULL,
+                        0,
+                        PA_SEEK_RELATIVE);
+
+        data += writeable_len;
+        data_len -= writeable_len;
+    }
+
+    pa_threaded_mainloop_unlock(self->mainloop);
+
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 static PyObject* PulseAudio_pause(output_PulseAudio *self, PyObject *args)
 {
-    /*cork output stream*/
+    /*ensure output stream is still running*/
     /*FIXME*/
+
+    /*cork output stream, if uncorked*/
+    pa_threaded_mainloop_lock(self->mainloop);
+
+    if (!pa_stream_is_corked(self->stream)) {
+        pa_operation *op = pa_stream_cork(
+            self->stream,
+            1,
+            (pa_stream_success_cb_t)success_callback,
+            self->mainloop);
+
+        while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
+            pa_threaded_mainloop_wait(self->mainloop);
+        }
+
+        pa_operation_unref(op);
+    }
+
+    pa_threaded_mainloop_unlock(self->mainloop);
+
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 static PyObject* PulseAudio_resume(output_PulseAudio *self, PyObject *args)
 {
+    /*ensure output stream is still running*/
     /*FIXME*/
+
+    /*uncork output stream, if corked*/
+    pa_threaded_mainloop_lock(self->mainloop);
+
+    if (pa_stream_is_corked(self->stream)) {
+        pa_operation *op = pa_stream_cork(
+            self->stream,
+            0,
+            (pa_stream_success_cb_t)success_callback,
+            self->mainloop);
+
+        while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
+            pa_threaded_mainloop_wait(self->mainloop);
+        }
+
+        pa_operation_unref(op);
+    }
+
+    pa_threaded_mainloop_unlock(self->mainloop);
+
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 static PyObject* PulseAudio_flush(output_PulseAudio *self, PyObject *args)
 {
+    /*ensure outuput stream is still running*/
     /*FIXME*/
+
+    /*drain output stream*/
+    pa_threaded_mainloop_lock(self->mainloop);
+
+    pa_operation *op = pa_stream_drain(
+        self->stream,
+        (pa_stream_success_cb_t)success_callback,
+        self->mainloop);
+
+    while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
+        pa_threaded_mainloop_wait(self->mainloop);
+    }
+
+    pa_operation_unref(op);
+
+    pa_threaded_mainloop_unlock(self->mainloop);
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -88,6 +196,9 @@ static PyObject* PulseAudio_get_volume(output_PulseAudio *self, PyObject *args)
 
     pa_threaded_mainloop_lock(self->mainloop);
 
+    /*ensure outuput stream is still running*/
+    /*FIXME*/
+
     /*query stream info for current sink*/
     op = pa_context_get_sink_info_by_index(
         self->context,
@@ -99,6 +210,9 @@ static PyObject* PulseAudio_get_volume(output_PulseAudio *self, PyObject *args)
     while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
         pa_threaded_mainloop_wait(self->mainloop);
     }
+
+    /*ensure operation has completed successfully before using cvolume*/
+    /*FIXME*/
 
     pa_operation_unref(op);
 
@@ -122,6 +236,9 @@ static PyObject* PulseAudio_set_volume(output_PulseAudio *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "d", &new_volume_d))
         return NULL;
+
+    /*ensure output stream is still running*/
+    /*FIXME*/
 
     /*convert volume to integer pa_volume_t value between
       PA_VOLUME_MUTED and PA_VOLUME_NORM*/
@@ -279,9 +396,6 @@ int PulseAudio_init(output_PulseAudio *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
-    /*add stream write callback*/
-    /*FIXME*/
-
     return 0;
 }
 
@@ -380,13 +494,22 @@ static int connect_stream(pa_stream *stream, pa_threaded_mainloop* mainloop)
         (pa_stream_notify_cb_t)stream_state_callback,
         mainloop);
 
+    /*setup stream write callback*/
+    pa_stream_set_write_callback(
+        stream,
+        (pa_stream_request_cb_t)write_stream_callback,
+        mainloop);
+
     /*perform connection to PulseAudio server's default output stream*/
-    if (pa_stream_connect_playback(stream,
-                                   NULL, /*device*/
-                                   NULL, /*buffering attributes*/
-                                   0,    /*flags*/
-                                   NULL, /*volume*/
-                                   NULL  /*sync stream*/) >= 0) {
+    if (pa_stream_connect_playback(
+            stream,
+            NULL, /*device*/
+            NULL, /*buffering attributes*/
+            PA_STREAM_ADJUST_LATENCY |
+            PA_STREAM_AUTO_TIMING_UPDATE |
+            PA_STREAM_INTERPOLATE_TIMING, /*flags*/
+            NULL, /*volume*/
+            NULL  /*sync stream*/) >= 0) {
         pa_stream_state_t state;
 
         /*wait for callback to indicate completion*/
@@ -419,7 +542,6 @@ static int connect_stream(pa_stream *stream, pa_threaded_mainloop* mainloop)
         return 0;
     }
 }
-
 
 static void stream_state_callback(pa_stream *stream,
                                   pa_threaded_mainloop* mainloop)
@@ -455,5 +577,19 @@ static void set_volume_callback(pa_context *context,
                                 pa_threaded_mainloop *mainloop)
 {
     /*do nothing since there's no recourse if volume isn't set*/
+    pa_threaded_mainloop_signal(mainloop, 0);
+}
+
+static void write_stream_callback(pa_stream *stream,
+                                  size_t nbytes,
+                                  pa_threaded_mainloop *mainloop)
+{
+    pa_threaded_mainloop_signal(mainloop, 0);
+}
+
+static void success_callback(pa_stream *stream,
+                             int success,
+                             pa_threaded_mainloop *mainloop)
+{
     pa_threaded_mainloop_signal(mainloop, 0);
 }
