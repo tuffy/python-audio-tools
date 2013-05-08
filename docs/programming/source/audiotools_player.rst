@@ -7,22 +7,10 @@
 The :mod:`audiotools.player` module contains the Player and
 AudioOutput classes for playing AudioFiles.
 
-.. data:: AUDIO_OUTPUT
+.. function:: audiotools.player.available_outputs()
 
-   A tuple of :class:`AudioOutput`-compatible classes of available
-   output types.
-   As with ``AVAILABLE_TYPES``, these are classes that are available
-   to audiotools, not necessarily available to the user.
-
-================= =================
-Class             Output System
------------------ -----------------
-PulseAudioOutput  PulseAudio_
-OSSAudioOutput    OSS_
-CoreAudioOutput   CoreAudio
-NULLAudioOutput   No output
-================= =================
-
+Iterates over all available :class:`AudioOutput` subclasses.
+This will always return at least one output object.
 
 Player Objects
 --------------

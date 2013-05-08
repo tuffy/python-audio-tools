@@ -622,6 +622,11 @@ class AudioOutput:
 
         raise NotImplementedError()
 
+    def description(self):
+        """returns user-facing name of output device as unicode"""
+
+        raise NotImplementedError()
+
     def init(self, sample_rate, channels, channel_mask, bits_per_sample):
         """initializes the output stream
 
@@ -659,6 +664,17 @@ class AudioOutput:
 
         raise NotImplementedError()
 
+    def get_volume(self):
+        """returns a floating-point volume value between 0.0 and 1.0"""
+
+        return 0.0
+
+    def set_volume(self, volume):
+        """sets the output volume to a floating point value
+        between 0.0 and 1.0"""
+
+        pass
+
     def close(self):
         """closes the output stream"""
 
@@ -679,6 +695,11 @@ class NULLAudioOutput(AudioOutput):
 
     NAME = "NULL"
 
+    def description(self):
+        """returns user-facing name of output device as unicode"""
+
+        return u"NULL"
+
     def framelist_converter(self):
         """returns a function which converts framelist objects
 
@@ -695,6 +716,7 @@ class NULLAudioOutput(AudioOutput):
         self.channels = channels
         self.channel_mask = channel_mask
         self.bits_per_sample = bits_per_sample
+        self.volume = 0.30
 
     def play(self, data):
         """plays a chunk of converted data"""
@@ -713,6 +735,20 @@ class NULLAudioOutput(AudioOutput):
 
         pass
 
+    def get_volume(self):
+        """returns a floating-point volume value between 0.0 and 1.0"""
+
+        return self.volume
+
+    def set_volume(self, volume):
+        """sets the output volume to a floating point value
+        between 0.0 and 1.0"""
+
+        if ((volume >= 0) and (volume <= 1.0)):
+            self.volume = volume
+        else:
+            raise ValueError("volume must be between 0.0 and 1.0")
+
     def close(self):
         """closes the output stream"""
 
@@ -729,6 +765,11 @@ class OSSAudioOutput(AudioOutput):
     """an AudioOutput subclass for OSS output"""
 
     NAME = "OSS"
+
+    def description(self):
+        """returns user-facing name of output device as unicode"""
+
+        return u"Open Sound System"
 
     def init(self, sample_rate, channels, channel_mask, bits_per_sample):
         """initializes the output stream
@@ -820,6 +861,12 @@ class PulseAudioOutput(AudioOutput):
 
     NAME = "PulseAudio"
 
+    def description(self):
+        """returns user-facing name of output device as unicode"""
+
+        #FIXME - pull this from device description
+        return u"Pulse Audio"
+
     def init(self, sample_rate, channels, channel_mask, bits_per_sample):
         """initializes the output stream
 
@@ -874,6 +921,20 @@ class PulseAudioOutput(AudioOutput):
 
         self.pulseaudio.resume()
 
+    def get_volume(self):
+        """returns a floating-point volume value between 0.0 and 1.0"""
+
+        return self.pulseaudio.get_volume()
+
+    def set_volume(self, volume):
+        """sets the output volume to a floating point value
+        between 0.0 and 1.0"""
+
+        if ((volume >= 0) and (volume <= 1.0)):
+            self.pulseaudio.set_volume(volume)
+        else:
+            raise ValueError("volume must be between 0.0 and 1.0")
+
     def close(self):
         """closes the output stream"""
 
@@ -898,6 +959,12 @@ class CoreAudioOutput(AudioOutput):
     """an AudioOutput subclass for CoreAudio output"""
 
     NAME = "CoreAudio"
+
+    def description(self):
+        """returns user-facing name of output device as unicode"""
+
+        #FIXME - pull this from device description
+        return u"Core Audio"
 
     def init(self, sample_rate, channels, channel_mask, bits_per_sample):
         """initializes the output stream
@@ -945,6 +1012,20 @@ class CoreAudioOutput(AudioOutput):
 
         self.coreaudio.resume()
 
+    def get_volume(self):
+        """returns a floating-point volume value between 0.0 and 1.0"""
+
+        return self.coreaudio.get_volume()
+
+    def set_volume(self, volume):
+        """sets the output volume to a floating point value
+        between 0.0 and 1.0"""
+
+        if ((volume >= 0) and (volume <= 1.0)):
+            self.coreaudio.set_volume(volume)
+        else:
+            raise ValueError("volume must be between 0.0 and 1.0")
+
     def close(self):
         """closes the output stream"""
 
@@ -965,7 +1046,17 @@ class CoreAudioOutput(AudioOutput):
             return False
 
 
-AUDIO_OUTPUT = (PulseAudioOutput,
-                OSSAudioOutput,
-                CoreAudioOutput,
-                NULLAudioOutput)
+def available_outputs():
+    """iterates over all available AudioOutput subclasses
+    this will always yield at least one output"""
+
+    if (PulseAudioOutput.available()):
+        yield PulseAudioOutput
+
+    if (CoreAudioOutput.available()):
+        yield CoreAudioOutput
+
+    if (OSSAudioOutput.available()):
+        yield OSSAudioOutput
+
+    yield NULLAudioOutput

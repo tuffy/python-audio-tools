@@ -138,20 +138,21 @@ if (__name__ == '__main__'):
         help=_.OPT_INTERACTIVE_PLAY)
 
     players_map = dict([(player.NAME, player)
-                        for player in audiotools.player.AUDIO_OUTPUT])
+                        for player in
+                        audiotools.player.available_outputs()])
 
     parser.add_option(
         '-o', '--output',
         action='store',
         dest='output',
-        choices=[player.NAME for player in audiotools.player.AUDIO_OUTPUT
-                 if player.available()],
-        default=[player.NAME for player in audiotools.player.AUDIO_OUTPUT
-                 if player.available()][0],
+        choices=[player.NAME for player in
+                 audiotools.player.available_outputs()],
+        default=[player.NAME for player in
+                 audiotools.player.available_outputs()][0],
         help=(_.OPT_OUTPUT_PLAY %
               u", ".join([u"\"%s\"" % (player.NAME.decode('ascii'))
-                          for player in audiotools.player.AUDIO_OUTPUT
-                          if player.available()])))
+                          for player in
+                          audiotools.player.available_outputs()])))
 
     parser.add_option(
         '-c', '--cdrom', action='store',

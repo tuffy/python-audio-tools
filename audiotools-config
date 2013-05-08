@@ -228,8 +228,7 @@ def display_defaults(config, msg):
         msg,
         _.LAB_AT_CONFIG_AUDIO_OUTPUT,
         u", ".join([player.NAME.decode('ascii')
-                    for player in audiotools.player.AUDIO_OUTPUT
-                    if player.available()]))
+                    for player in audiotools.player.available_outputs()]))
 
 
 def apply_options(options, config):
