@@ -1769,20 +1769,6 @@ ExecProgressQueue Objects
    The optional ``total_progress_message`` argument is a Unicode string
    which displays an additional progress bar of the queue's total progress.
 
-.. attribute:: ExecProgressQueue.results
-
-   A dict of results returned by the queued functions once executed.
-   The key is an integer starting from 0.
-
-.. note::
-
-   Why not a list?
-   Since jobs may finish in an arbitrary order,
-   a dict is used so that results can be accumulated out-of-order.
-   Even using placeholder values such as ``None`` may not
-   be appropriate if queued functions return ``None`` as
-   a significant value.
-
 .. method:: ExecProgressQueue.execute(function[, progress_text[, completion_output[, *args[, **kwargs]]]])
 
    Queues a Python function for execution.
@@ -1808,10 +1794,11 @@ ExecProgressQueue Objects
 
    Executes all the queued functions, running ``max_processes`` number
    of functions at a time until the entire queue is empty.
+   Returns the results of the called functions in the order
+   in which they were added for execution.
    This operates by forking a new subprocess per function
    in which the running progress and function output are
-   piped to the parent for display to the screen or accumulation
-   in the :attr:`ExecProgressQueue.results` dict.
+   piped to the parent for display to the screen.
 
    If an exception occurs in one of the subprocesses,
    that exception will be raised by :meth:`ExecProgressQueue.run`
@@ -1841,7 +1828,6 @@ ExecProgressQueue Objects
    ...               filename=filename2)
    ...
    >>> queue.run()
-   >>> queue.results
 
 
 Messenger Objects
