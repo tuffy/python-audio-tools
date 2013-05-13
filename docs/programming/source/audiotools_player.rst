@@ -130,7 +130,7 @@ AudioOutput Objects
 
 This is an abstract class used to implement audio output sinks.
 
-.. class:: AudioOutput( )
+.. class:: AudioOutput()
 
 .. data:: AudioOutput.NAME
 
@@ -140,36 +140,26 @@ This is an abstract class used to implement audio output sinks.
 
    Returns a user-friendly name of the output device as a Unicode string.
 
-.. method:: AudioOutput.compatible(pcmreader)
+.. method:: AudioOutput.compatible(sample_rate, channels, channel_mask, bits_per_sample)
 
-   Returns ``True`` if the given :class:`audiotools.PCMReader`
-   is compatible with the currently opened output stream.
-   If ``False``, one should call :meth:`init` in order to
+   Returns ``True`` if the given attributes are compatible
+   with the currently opened output stream.
+   If ``False``, one should call :meth:`set_format` in order to
    reinitialize the output stream to play the given reader.
 
-.. method:: AudioOutput.init(sample_rate, channels, channel_mask, bits_per_sample)
+.. method:: AudioOutput.set_format(sample_rate, channels, channel_mask, bits_per_sample)
 
    Initializes the output stream for playing audio with the given parameters.
-   This *must* be called prior to :meth:`play` and :meth:`close`.
+   By default, the output stream is initialized for playing CD-quality
+   audio (sample rate of 44.1kHz, 2 channels, 16 bits per sample).
 
-.. method:: AudioOutput.framelist_converter()
+   If a format has already been set, the stream will be closed and
+   reopened if necessary to support the new format.
 
-   Returns a function which converts :class:`audiotools.pcm.FrameList`
-   objects to objects which are compatible with our
-   :meth:`play` method, for the currently initialized stream.
+.. method:: AudioOutput.play(framelist)
 
-.. method:: AudioOutput.play(data)
-
-   Plays the converted data object to our output stream.
-
-.. note::
-
-   Why not simply have the :meth:`play` method perform PCM conversion itself
-   instead of shifting it to :meth:`framelist_converter`?
-   The reason is that conversion may be a relatively time-consuming task.
-   By shifting that process into a sub-thread, there's less chance
-   that performing that work will cause playing to stutter
-   while it completes.
+   Plays the given FrameList object to the output stream.
+   This presumes the output stream's format has been set correctly.
 
 .. method:: AudioOutput.pause()
 

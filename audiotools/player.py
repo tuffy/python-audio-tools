@@ -143,6 +143,14 @@ class Player:
 
         return tuple(self.__progress__)
 
+    def get_volume(self):
+        self.__command_conn__.send(("get_volume", tuple()))
+        return self.__command_conn__.recv()
+
+    def set_volume(self, volume):
+        self.__command_conn__.send(("set_volume", (volume,)))
+        return self.__command_conn__.recv()
+
 
 (PLAYER_STOPPED, PLAYER_PAUSED, PLAYER_PLAYING) = range(3)
 
@@ -218,6 +226,12 @@ class PlayerProcess:
               (self.__state__ == PLAYER_STOPPED)):
             self.play()
 
+    def get_volume(self):
+        return self.__audio_output__.get_volume()
+
+    def set_volume(self, volume):
+        return self.__audio_output__.set_volume(volume)
+
     def start_playing(self):
         from . import BufferedPCMReader
 
@@ -251,14 +265,16 @@ class PlayerProcess:
         pcmreader = BufferedPCMReader(pcmreader)
 
         #reopen AudioOutput if necessary based on file's parameters
-        if (not self.__audio_output__.compatible(pcmreader)):
-            self.__audio_output__.init(
+        if (not self.__audio_output__.compatible(
+                sample_rate=pcmreader.sample_rate,
+                channels=pcmreader.channels,
+                channel_mask=pcmreader.channel_mask,
+                bits_per_sample=pcmreader.bits_per_sample)):
+            self.__audio_output__.set_format(
                 sample_rate=pcmreader.sample_rate,
                 channels=pcmreader.channels,
                 channel_mask=pcmreader.channel_mask,
                 bits_per_sample=pcmreader.bits_per_sample)
-            self.__converter__ = self.__audio_output__.framelist_converter()
-
 
         self.__pcmreader__ = pcmreader
         self.__buffer_size__ = min(round(self.BUFFER_SIZE *
@@ -276,7 +292,7 @@ class PlayerProcess:
         frame = self.__pcmreader__.read(self.__buffer_size__)
         if (len(frame) > 0):
             self.__progress__[0] += frame.frames
-            self.__audio_output__.play(self.__converter__(frame))
+            self.__audio_output__.play(frame)
         else:
             self.stop_playing()
             self.__next_track_conn__.send(True)
@@ -599,59 +615,40 @@ class AudioOutput:
     """an abstract parent class for playing audio"""
 
     def __init__(self):
-        self.sample_rate = 0
-        self.channels = 0
-        self.channel_mask = 0
-        self.bits_per_sample = 0
-        self.initialized = False
+        """automatically initializes output format for playing
+        CD quality audio"""
 
-    def compatible(self, pcmreader):
-        """returns True if the given pcmreader is compatible
-
-        if False, one is expected to open a new output stream
-        which is compatible"""
-
-        return ((self.sample_rate == pcmreader.sample_rate) and
-                (self.channels == pcmreader.channels) and
-                (self.channel_mask == pcmreader.channel_mask) and
-                (self.bits_per_sample == pcmreader.bits_per_sample))
-
-    def framelist_converter(self):
-        """returns a function which converts framelist objects
-
-        to objects acceptable by our play() method"""
-
-        raise NotImplementedError()
+        self.set_format(44100, 2, 0x3, 16)
 
     def description(self):
         """returns user-facing name of output device as unicode"""
 
         raise NotImplementedError()
 
-    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream
+    def compatible(self, sample_rate, channels, channel_mask, bits_per_sample):
+        """returns True if the given pcmreader is compatible
 
-        this *must* be called prior to play() and close()
-        the general flow of audio playing is:
+        if False, one is expected to open a new output stream
+        which is compatible"""
 
-        >>> pcm = audiofile.to_pcm()
-        >>> player = AudioOutput()
-        >>> player.init(pcm.sample_rate,
-        ...             pcm.channels,
-        ...             pcm.channel_mask,
-        ...             pcm.bits_per_sample)
-        >>> convert = player.framelist_converter()
-        >>> frame = pcm.read(1024)
-        >>> while (len(frame) > 0):
-        ...     player.play(convert(frame))
-        ...     frame = pcm.read(1024)
-        >>> player.close()
-        """
+        return ((self.sample_rate == sample_rate) and
+                (self.channels == channels) and
+                (self.channel_mask == channel_mask) and
+                (self.bits_per_sample == bits_per_sample))
 
-        raise NotImplementedError()
+    def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
+        """initializes the output stream for the given format
 
-    def play(self, data):
-        """plays a chunk of converted data"""
+        if the output stream has already been initialized,
+        this will close and reopen the stream for the new format"""
+
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.channel_mask = channel_mask
+        self.bits_per_sample = bits_per_sample
+
+    def play(self, framelist):
+        """plays a FrameList"""
 
         raise NotImplementedError()
 
@@ -696,35 +693,21 @@ class NULLAudioOutput(AudioOutput):
 
     NAME = "NULL"
 
+    def __init__(self):
+        self.__volume__ = 0.30
+        AudioOutput.__init__(self)
+
     def description(self):
         """returns user-facing name of output device as unicode"""
 
         return u"NULL"
 
-    def framelist_converter(self):
-        """returns a function which converts framelist objects
-
-        to objects acceptable by our play() method"""
-
-        return lambda f: f.frames
-
-    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream
-
-        this *must* be called prior to play() and close()"""
-
-        self.sample_rate = sample_rate
-        self.channels = channels
-        self.channel_mask = channel_mask
-        self.bits_per_sample = bits_per_sample
-        self.volume = 0.30
-
-    def play(self, data):
+    def play(self, framelist):
         """plays a chunk of converted data"""
 
         import time
 
-        time.sleep(float(data) / self.sample_rate)
+        time.sleep(float(framelist.frames) / self.sample_rate)
 
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
@@ -739,14 +722,14 @@ class NULLAudioOutput(AudioOutput):
     def get_volume(self):
         """returns a floating-point volume value between 0.0 and 1.0"""
 
-        return self.volume
+        return self.__volume__
 
     def set_volume(self, volume):
         """sets the output volume to a floating point value
         between 0.0 and 1.0"""
 
         if ((volume >= 0) and (volume <= 1.0)):
-            self.volume = volume
+            self.__volume__ = volume
         else:
             raise ValueError("volume must be between 0.0 and 1.0")
 
@@ -767,67 +750,62 @@ class OSSAudioOutput(AudioOutput):
 
     NAME = "OSS"
 
+    def __init__(self):
+        """automatically initializes output format for playing
+        CD quality audio"""
+
+        self.__ossaudio__ = None
+        AudioOutput.__init__(self)
+
     def description(self):
         """returns user-facing name of output device as unicode"""
 
         return u"Open Sound System"
 
-    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream
+    def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
+        """initializes the output stream for the given format
 
-        this *must* be called prior to play() and close()"""
+        if the output stream has already been initialized,
+        this will close and reopen the stream for the new format"""
 
-        if (not self.initialized):
+        if (self.__ossaudio__ is None):
             import ossaudiodev
 
-            self.sample_rate = sample_rate
-            self.channels = channels
-            self.channel_mask = channel_mask
-            self.bits_per_sample = bits_per_sample
+            AudioOutput.set_format(self, sample_rate, channels,
+                                   channel_mask, bits_per_sample)
 
-            self.ossaudio = ossaudiodev.open('w')
+            #initialize audio output device and setup framelist converter
+            self.__ossaudio__ = ossaudiodev.open('w')
             if (self.bits_per_sample == 8):
-                self.ossaudio.setfmt(ossaudiodev.AFMT_S8_LE)
+                self.__ossaudio__.setfmt(ossaudiodev.AFMT_S8_LE)
+                self.__converter__ = lambda f: f.to_bytes(False, True)
             elif (self.bits_per_sample == 16):
-                self.ossaudio.setfmt(ossaudiodev.AFMT_S16_LE)
+                self.__ossaudio__.setfmt(ossaudiodev.AFMT_S16_LE)
+                self.__converter__ = lambda f: f.to_bytes(False, True)
             elif (self.bits_per_sample == 24):
-                self.ossaudio.setfmt(ossaudiodev.AFMT_S16_LE)
+                from .pcm import from_list
+
+                self.__ossaudio__.setfmt(ossaudiodev.AFMT_S16_LE)
+                self.__converter__ = lambda f: from_list(
+                    [i >> 8 for i in list(f)],
+                    self.channels, 16, True).to_bytes(False, True)
             else:
                 raise ValueError("Unsupported bits-per-sample")
 
-            self.ossaudio.channels(channels)
-            self.ossaudio.speed(sample_rate)
+            self.__ossaudio__.channels(channels)
+            self.__ossaudio__.speed(sample_rate)
 
-            self.initialized = True
         else:
             self.close()
-            self.init(sample_rate=sample_rate,
-                      channels=channels,
-                      channel_mask=channel_mask,
-                      bits_per_sample=bits_per_sample)
+            self.set_format(sample_rate=sample_rate,
+                            channels=channels,
+                            channel_mask=channel_mask,
+                            bits_per_sample=bits_per_sample)
 
-    def framelist_converter(self):
-        """returns a function which converts framelist objects
+    def play(self, framelist):
+        """plays a FrameList"""
 
-        to objects acceptable by our play() method"""
-
-        if (self.bits_per_sample == 8):
-            return lambda f: f.to_bytes(False, True)
-        elif (self.bits_per_sample == 16):
-            return lambda f: f.to_bytes(False, True)
-        elif (self.bits_per_sample == 24):
-            from .pcm import from_list
-
-            return lambda f: from_list(
-                [i >> 8 for i in list(f)],
-                self.channels, 16, True).to_bytes(False, True)
-        else:
-            raise ValueError("Unsupported bits-per-sample")
-
-    def play(self, data):
-        """plays a chunk of converted data"""
-
-        self.ossaudio.writeall(data)
+        self.__ossaudio__.writeall(self.__converter__(framelist))
 
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
@@ -839,12 +817,23 @@ class OSSAudioOutput(AudioOutput):
 
         pass
 
+    def get_volume(self):
+        """returns a floating-point volume value between 0.0 and 1.0"""
+
+        raise NotImplementedError()
+
+    def set_volume(self, volume):
+        """sets the output volume to a floating point value
+        between 0.0 and 1.0"""
+
+        raise NotImplementedError()
+
     def close(self):
         """closes the output stream"""
 
-        if (self.initialized):
-            self.initialized = False
-            self.ossaudio.close()
+        if (self.__ossaudio__ is not None):
+            self.__ossaudio__.close()
+            self.__ossaudio__ = None
 
     @classmethod
     def available(cls):
@@ -862,87 +851,79 @@ class PulseAudioOutput(AudioOutput):
 
     NAME = "PulseAudio"
 
+    def __init__(self):
+        self.__pulseaudio__ = None
+        AudioOutput.__init__(self)
+
     def description(self):
         """returns user-facing name of output device as unicode"""
 
         #FIXME - pull this from device description
         return u"Pulse Audio"
 
-    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream
+    def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
+        """initializes the output stream for the given format
 
-        this *must* be called prior to play() and close()"""
+        if the output stream has already been initialized,
+        this will close and reopen the stream for the new format"""
 
-        if (not self.initialized):
-            self.sample_rate = sample_rate
-            self.channels = channels
-            self.channel_mask = channel_mask
-            self.bits_per_sample = bits_per_sample
-
+        if (self.__pulseaudio__ is None):
             from .output import PulseAudio
-            self.pulseaudio = PulseAudio(sample_rate,
-                                         channels,
-                                         bits_per_sample,
-                                         "Python Audio Tools")
 
-            self.initialized = True
+            AudioOutput.set_format(self, sample_rate, channels,
+                                   channel_mask, bits_per_sample)
+
+            self.__pulseaudio__ = PulseAudio(sample_rate,
+                                             channels,
+                                             bits_per_sample,
+                                             "Python Audio Tools")
+            self.__converter__ = {
+                8:lambda f: f.to_bytes(True, False),
+                16:lambda f: f.to_bytes(False, True),
+                24:lambda f: f.to_bytes(False, True)}[self.bits_per_sample]
         else:
             self.close()
-            self.init(sample_rate=sample_rate,
-                      channels=channels,
-                      channel_mask=channel_mask,
-                      bits_per_sample=bits_per_sample)
+            self.set_format(sample_rate=sample_rate,
+                            channels=channels,
+                            channel_mask=channel_mask,
+                            bits_per_sample=bits_per_sample)
 
-    def framelist_converter(self):
-        """returns a function which converts framelist objects
+    def play(self, framelist):
+        """plays a FrameList"""
 
-        to objects acceptable by our play() method"""
-
-        if (self.bits_per_sample == 8):
-            return lambda f: f.to_bytes(True, False)
-        elif (self.bits_per_sample == 16):
-            return lambda f: f.to_bytes(False, True)
-        elif (self.bits_per_sample == 24):
-            return lambda f: f.to_bytes(False, True)
-        else:
-            raise ValueError("Unsupported bits-per-sample")
-
-    def play(self, data):
-        """plays a chunk of converted data"""
-
-        self.pulseaudio.play(data)
+        self.__pulseaudio__.play(self.__converter__(framelist))
 
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
 
-        self.pulseaudio.pause()
+        self.__pulseaudio__.pause()
 
     def resume(self):
         """resumes playing paused audio output"""
 
-        self.pulseaudio.resume()
+        self.__pulseaudio__.resume()
 
     def get_volume(self):
         """returns a floating-point volume value between 0.0 and 1.0"""
 
-        return self.pulseaudio.get_volume()
+        return self.__pulseaudio__.get_volume()
 
     def set_volume(self, volume):
         """sets the output volume to a floating point value
         between 0.0 and 1.0"""
 
         if ((volume >= 0) and (volume <= 1.0)):
-            self.pulseaudio.set_volume(volume)
+            self.__pulseaudio__.set_volume(volume)
         else:
             raise ValueError("volume must be between 0.0 and 1.0")
 
     def close(self):
         """closes the output stream"""
 
-        if (self.initialized):
-            self.initialized = False
-            self.pulseaudio.flush()
-            self.pulseaudio.close()
+        if (self.__pulseaudio__ is not None):
+            self.__pulseaudio__.flush()
+            self.__pulseaudio__.close()
+            self.__pulseaudio__ = None
 
     @classmethod
     def available(cls):
@@ -961,79 +942,74 @@ class CoreAudioOutput(AudioOutput):
 
     NAME = "CoreAudio"
 
+    def __init__(self):
+        self.__coreaudio__ = None
+        AudioOutput.__init__(self)
+
     def description(self):
         """returns user-facing name of output device as unicode"""
 
         #FIXME - pull this from device description
         return u"Core Audio"
 
-    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream
+    def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
+        """initializes the output stream for the given format
 
-        this *must* be called prior to play() and close()"""
+        if the output stream has already been initialized,
+        this will close and reopen the stream for the new format"""
 
-        if (not self.initialized):
-            self.sample_rate = sample_rate
-            self.channels = channels
-            self.channel_mask = channel_mask
-            self.bits_per_sample = bits_per_sample
+        if (self.__coreaudio__ is None):
+            AudioOutput.set_format(self, sample_rate, channels,
+                                   channel_mask, bits_per_sample)
 
             from .output import CoreAudio
-            self.coreaudio = CoreAudio(sample_rate,
-                                       channels,
-                                       channel_mask,
-                                       bits_per_sample)
-            self.initialized = True
+            self.__coreaudio__ = CoreAudio(sample_rate,
+                                           channels,
+                                           channel_mask,
+                                           bits_per_sample)
         else:
             self.close()
-            self.init(sample_rate=sample_rate,
-                      channels=channels,
-                      channel_mask=channel_mask,
-                      bits_per_sample=bits_per_sample)
+            self.set_format(sample_rate=sample_rate,
+                            channels=channels,
+                            channel_mask=channel_mask,
+                            bits_per_sample=bits_per_sample)
 
-    def framelist_converter(self):
-        """returns a function which converts framelist objects
+    def play(self, framelist):
+        """plays a FrameList"""
 
-        to objects acceptable by our play() method"""
-
-        return lambda f: f.to_bytes(False, True)
-
-    def play(self, data):
-        """plays a chunk of converted data"""
-
-        self.coreaudio.play(data)
+        self.__coreaudio__.play(framelist.to_bytes(False, True))
 
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
 
-        self.coreaudio.pause()
+        self.__coreaudio__.pause()
 
     def resume(self):
         """resumes playing paused audio output"""
 
-        self.coreaudio.resume()
+        self.__coreaudio__.resume()
 
     def get_volume(self):
         """returns a floating-point volume value between 0.0 and 1.0"""
 
-        return self.coreaudio.get_volume()
+        return self.__coreaudio__.get_volume()
 
     def set_volume(self, volume):
         """sets the output volume to a floating point value
         between 0.0 and 1.0"""
 
         if ((volume >= 0) and (volume <= 1.0)):
-            self.coreaudio.set_volume(volume)
+            self.__coreaudio__.set_volume(volume)
         else:
             raise ValueError("volume must be between 0.0 and 1.0")
 
     def close(self):
         """closes the output stream"""
 
-        if (self.initialized):
-            self.initialized = False
-            self.coreaudio.flush()
-            self.coreaudio.close()
+        if (self.__coreaudio__ is not None):
+            self.__coreaudio__.flush()
+            self.__coreaudio__.close()
+            self.__coreaudio__ = None
 
     @classmethod
     def available(cls):
