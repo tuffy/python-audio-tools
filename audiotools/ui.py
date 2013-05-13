@@ -2176,9 +2176,9 @@ try:
                 self.track_list_widget.set_focus(track_index + 1, "above")
             except IndexError:
                 if (len(self.track_group)):
-                    self.track_group[0].set_state(True)
-                    self.track_list_widget.set_focus(0, "above")
                     self.player.stop()
+                    self.track_group[0].set_state(False)
+                    self.track_list_widget.set_focus(0, "above")
 
         def previous_track(self, user_data=None):
             track_index = [g.state for g in self.track_group].index(True)

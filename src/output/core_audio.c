@@ -411,7 +411,10 @@ static int open_coreaudio(audio_output_t *ao)
         }
         if(ao->channels == 1) {
             SInt32 channelMap[2] = { 0, 0 };
-            if(AudioConverterSetProperty(ca->converter, kAudioConverterChannelMap, sizeof(channelMap), channelMap)) {
+            if(AudioConverterSetProperty(ca->converter,
+                                         kAudioConverterChannelMap,
+                                         sizeof(channelMap),
+                                         channelMap)) {
                 return -1;
             }
         }

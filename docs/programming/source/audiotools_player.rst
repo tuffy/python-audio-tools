@@ -12,6 +12,14 @@ AudioOutput classes for playing AudioFiles.
 Iterates over all available :class:`AudioOutput` subclasses.
 This will always return at least one output object.
 
+.. function:: audiotools.player.open_output(output)
+
+Given a string of an :class:`AudioOutput` class' ``NAME`` attribute,
+returns the given :class:`AudioOutput` class which has been
+opened for output.
+
+Raises :exc:`ValueError` if the output cannot be found.
+
 Player Objects
 --------------
 
@@ -20,8 +28,9 @@ from an opened audio file object to a given output sink.
 
 .. class:: Player(audio_output[, replay_gain[, next_track_callback]])
 
-   ``audio_output`` is a :class:`AudioOutput` object subclass which
-   audio data will be played to.
+   ``audio_output`` is a string of the audio output to use,
+   as given in the :class:`AudioOutput` class' ``NAME`` attribute
+   and used by :func:`open_output`.
    ``replay_gain`` is either ``RG_NO_REPLAYGAIN``,
    ``RG_TRACK_GAIN`` or ``RG_ALBUM_GAIN``, indicating the level
    of ReplayGain to apply to tracks being played back.
@@ -127,6 +136,10 @@ This is an abstract class used to implement audio output sinks.
 
    The name of the AudioOutput subclass as a string.
 
+.. method:: AudioOutput.description()
+
+   Returns a user-friendly name of the output device as a Unicode string.
+
 .. method:: AudioOutput.compatible(pcmreader)
 
    Returns ``True`` if the given :class:`audiotools.PCMReader`
@@ -157,6 +170,30 @@ This is an abstract class used to implement audio output sinks.
    By shifting that process into a sub-thread, there's less chance
    that performing that work will cause playing to stutter
    while it completes.
+
+.. method:: AudioOutput.pause()
+
+   Pauses output of playing data.
+
+.. note::
+
+   Although suspending the transmission of data to output will also
+   have the same effect as pausing, calling the output's .pause() method
+   will typically suspend output immediately instead of having to
+   wait for the buffer to empty - which may take a fraction of a second.
+
+.. method:: AudioOutput.resume()
+
+   Resumes playing data to output after it has been paused.
+
+.. method:: AudioOutput.get_volume()
+
+   Returns a floating-point volume value between 0.0 and 1.0, inclusive.
+
+.. method:: AudioOutput.set_volume(volume)
+
+   Given a floating-point volume value between 0.0 and 1.0, inclusive,
+   sets audio output to that volume.
 
 .. method:: AudioOutput.close()
 
