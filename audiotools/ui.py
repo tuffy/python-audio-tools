@@ -2029,6 +2029,125 @@ try:
             except ZeroDivisionError:
                 return LAB_TRACK_LENGTH % (0, 0)
 
+    class VolumeControl(urwid.ProgressBar):
+        def __init__(self, volume, volume_step, volume_changed=lambda v: None):
+            urwid.ProgressBar.__init__(self,
+                                       normal="volume normal",
+                                       complete="volume complete",
+                                       current=0,
+                                       done=100)
+            self.volume = volume
+            self.volume_step = volume_step
+            self.volume_changed = volume_changed
+            self.set_completion(max(min(self.volume * 100, 100), 0))
+
+        def get_text(self):
+            from audiotools.text import LAB_VOLUME
+
+            return u"%s : %s" % \
+                (LAB_VOLUME, urwid.ProgressBar.get_text(self))
+
+        def selectable(self):
+            return True
+
+        def get_cursor_coords(self, size):
+            return (0, 0)
+
+        def keypress(self, size, key):
+            if ((key == 'left') and (self.decrease_volume is not None)):
+                self.decrease_volume()
+            elif ((key == 'right') and (self.increase_volume is not None)):
+                self.increase_volume()
+            else:
+                return key
+
+        def render(self, size, focus=False):
+            c = urwid.ProgressBar.render(self, size, focus)
+            if (focus):
+                # create a new canvas so we can add a cursor
+                c = urwid.CompositeCanvas(c)
+                c.cursor = self.get_cursor_coords(size)
+            return c
+
+        def decrease_volume(self):
+            self.set_volume(max(self.volume - self.volume_step, 0.0))
+
+        def increase_volume(self):
+            self.set_volume(min(self.volume + self.volume_step, 1.0))
+
+        def set_volume(self, volume):
+            self.volume = volume
+            self.set_completion(max(min(self.volume * 100, 100), 0))
+            self.volume_changed(self.volume)
+
+    class AdjustOutput(urwid.PopUpLauncher):
+        def __init__(self, player):
+            from .text import LAB_ADJUST_OUTPUT
+
+            self.__output_button__ = urwid.Button(LAB_ADJUST_OUTPUT)
+            self.__super.__init__(self.__output_button__)
+            urwid.connect_signal(
+                self.original_widget,
+                'click',
+                lambda button: self.open_pop_up())
+            self.player = player
+
+        def create_pop_up(self):
+            pop_up = AdjustOutputDialog(self.player)
+            urwid.connect_signal(
+                pop_up,
+                'close',
+                lambda button: self.close_pop_up())
+            return pop_up
+
+        def get_pop_up_parameters(self):
+            return {'left': 0,
+                    'top': 1,
+                    'overlay_width': 50,
+                    'overlay_height': 5}
+
+    class AdjustOutputWidget(urwid.Pile):
+        def __init__(self, player, closed_callback=None):
+            from .text import (LAB_DECREASE_VOLUME,
+                               LAB_INCREASE_VOLUME,
+                               LAB_KEY_DONE)
+
+            urwid.Pile.__init__(
+                self,
+                [VolumeControl(player.get_volume(),
+                               0.01,
+                               player.set_volume),
+                 urwid.Text(player.current_output_description()),
+                 urwid.Text([('key', u"\u2190"),
+                             LAB_DECREASE_VOLUME,
+                             u"   ",
+                             ('key', u"\u2192"),
+                             LAB_INCREASE_VOLUME,
+                             u"   ",
+                             ('key', 'esc'), LAB_KEY_DONE])])
+            self.closed_callback = closed_callback
+
+        def keypress(self, size, key):
+            key = urwid.Pile.keypress(self, size, key)
+            if (key == 'esc'):
+                if (self.closed_callback is not None):
+                    self.closed_callback()
+            else:
+                return key
+
+    class AdjustOutputDialog(urwid.WidgetWrap):
+        signals = ['close']
+
+        def __init__(self, player):
+            from .text import LAB_OUTPUT_OPTIONS
+
+            close_button = urwid.Button(u"done")
+            pile = AdjustOutputWidget(
+                player,
+                closed_callback=lambda: self._emit("close"))
+            self.__super.__init__(urwid.LineBox(urwid.Filler(pile),
+                                                title=LAB_OUTPUT_OPTIONS))
+
     class PlayerGUI(urwid.Frame):
         def __init__(self, player, tracks, track_len):
             """player is a Player-compatible object
@@ -2111,22 +2230,25 @@ try:
                                  self.progress])
 
             controls = urwid.Columns(
-                [("weight", 1,
+                [("fixed", 10, urwid.Divider(u" ")),
+                 ("weight", 1,
                   urwid.Divider(u" ")),
-                 ("fixed", 12,
+                 ("fixed", 9,
                   MappedButton(LAB_PREVIOUS_BUTTON,
                                on_press=self.previous_track,
                                key_map={"tab":"right"})),
-                 ("fixed", 12,
+                 ("fixed", 9,
                   self.play_pause_button),
-                 ("fixed", 12,
+                 ("fixed", 9,
                   MappedButton(LAB_NEXT_BUTTON,
                                on_press=self.next_track,
                                key_map={"tab":"down"})),
                  ("weight", 1,
-                  urwid.Divider(u" "))],
-                dividechars=4,
-                focus_column=2)
+                  urwid.Divider(u" ")),
+                 ("fixed", 10,
+                  AdjustOutput(self.player))],
+                dividechars=2,
+                focus_column=3)
 
             self.track_group = []
             self.track_list_widget = urwid.ListBox(
@@ -2286,7 +2408,9 @@ try:
                 ('error', 'light red,bold', 'default'),
                 ('pg normal', 'white', 'black', 'standout'),
                 ('pg complete', 'white', 'dark blue'),
-                ('pg smooth', 'dark blue', 'black')]
+                ('pg smooth', 'dark blue', 'black'),
+                ('volume normal', 'white', ''),
+                ('volume complete', 'white', 'dark blue')]
 
 except ImportError:
     AVAILABLE = False

@@ -212,7 +212,8 @@ if (__name__ == '__main__'):
 
         loop = urwid.MainLoop(trackplay,
                               audiotools.ui.style(),
-                              unhandled_input=trackplay.handle_text)
+                              unhandled_input=trackplay.handle_text,
+                              pop_ups=True)
 
         loop.set_alarm_at(tm=time.time() + 1,
                           callback=audiotools.ui.timer,

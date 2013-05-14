@@ -143,6 +143,14 @@ class Player:
 
         return tuple(self.__progress__)
 
+    def current_output_description(self):
+        self.__command_conn__.send(("current_output_description", tuple()))
+        return self.__command_conn__.recv()
+
+    def current_output_name(self):
+        self.__command_conn__.send(("current_output_name", tuple()))
+        return self.__command_conn__.recv()
+
     def get_volume(self):
         self.__command_conn__.send(("get_volume", tuple()))
         return self.__command_conn__.recv()
@@ -225,6 +233,12 @@ class PlayerProcess:
         elif ((self.__state__ == PLAYER_PAUSED) or
               (self.__state__ == PLAYER_STOPPED)):
             self.play()
+
+    def current_output_name(self):
+        return self.__audio_output__.NAME
+
+    def current_output_description(self):
+        return self.__audio_output__.description()
 
     def get_volume(self):
         return self.__audio_output__.get_volume()
@@ -700,7 +714,7 @@ class NULLAudioOutput(AudioOutput):
     def description(self):
         """returns user-facing name of output device as unicode"""
 
-        return u"NULL"
+        return u"Dummy Output"
 
     def play(self, framelist):
         """plays a chunk of converted data"""
