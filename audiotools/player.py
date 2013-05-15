@@ -73,7 +73,7 @@ class Player:
 
     def __del__(self):
         if (self.__player__ is not None):
-            self.__command_conn__.send(("exit", tuple()))
+            self.__command_conn__.send(("exit", tuple(), False))
             self.__command_conn__.close()
             self.__player__.join()
             self.__player__ = None
@@ -83,13 +83,13 @@ class Player:
 
         stops playing the current file, if any"""
 
-        self.__command_conn__.send(("open", (track,)))
+        self.__command_conn__.send(("open", (track,), True))
         return self.__command_conn__.recv()
 
     def play(self):
         """begins or resumes playing an opened AudioFile, if any"""
 
-        self.__command_conn__.send(("play", tuple()))
+        self.__command_conn__.send(("play", tuple(), True))
         return self.__command_conn__.recv()
 
     def set_replay_gain(self, replay_gain):
@@ -99,7 +99,7 @@ class Player:
         replayGain cannot be applied mid-playback
         one must stop() and play() a file for it to take effect"""
 
-        self.__command_conn__.send(("set_replay_gain", (replay_gain,)))
+        self.__command_conn__.send(("set_replay_gain", (replay_gain,), True))
         return self.__command_conn__.recv()
 
     def set_output(self, output):
@@ -110,7 +110,7 @@ class Player:
 
         any currently playing audio is stopped"""
 
-        self.__command_conn__.send(("set_output", (output,)))
+        self.__command_conn__.send(("set_output", (output,), True))
         return self.__command_conn__.recv()
 
     def pause(self):
@@ -118,13 +118,13 @@ class Player:
 
         playback may be resumed with play() or toggle_play_pause()"""
 
-        self.__command_conn__.send(("pause", tuple()))
+        self.__command_conn__.send(("pause", tuple(), True))
         return self.__command_conn__.recv()
 
     def toggle_play_pause(self):
         """pauses the file if playing, play the file if paused"""
 
-        self.__command_conn__.send(("toggle_play_pause", tuple()))
+        self.__command_conn__.send(("toggle_play_pause", tuple(), True))
         return self.__command_conn__.recv()
 
     def stop(self):
@@ -132,7 +132,7 @@ class Player:
 
         if play() is called, playback will start from the beginning"""
 
-        self.__command_conn__.send(("stop_playing", tuple()))
+        self.__command_conn__.send(("stop_playing", tuple(), True))
         return self.__command_conn__.recv()
 
     def state(self):
@@ -146,10 +146,10 @@ class Player:
 
         the player thread is halted and the AudioOutput is closed"""
 
-        self.__command_conn__.send(("close", tuple()))
+        self.__command_conn__.send(("close", tuple(), True))
         response = self.__command_conn__.recv()
         if (self.__player__ is not None):
-            self.__command_conn__.send(("exit", tuple()))
+            self.__command_conn__.send(("exit", tuple(), False))
             self.__command_conn__.close()
             self.__player__.join()
             self.__player__ = None
@@ -166,29 +166,32 @@ class Player:
         """returns the human-readable description of the current output device
         as a Unicode string"""
 
-        self.__command_conn__.send(("current_output_description", tuple()))
+        self.__command_conn__.send(("current_output_description",
+                                    tuple(),
+                                    True))
         return self.__command_conn__.recv()
 
     def current_output_name(self):
         """returns the ``NAME`` attribute of the current output device
         as a plain string"""
 
-        self.__command_conn__.send(("current_output_name", tuple()))
+        self.__command_conn__.send(("current_output_name",
+                                    tuple(),
+                                    True))
         return self.__command_conn__.recv()
 
     def get_volume(self):
         """returns the current volume level as a floating point value
         between 0.0 and 1.0, inclusive"""
 
-        self.__command_conn__.send(("get_volume", tuple()))
+        self.__command_conn__.send(("get_volume", tuple(), True))
         return self.__command_conn__.recv()
 
     def set_volume(self, volume):
         """given a floating point value between 0.0 and 1.0, inclusive,
         sets the current volume level to that value"""
 
-        self.__command_conn__.send(("set_volume", (volume,)))
-        return self.__command_conn__.recv()
+        self.__command_conn__.send(("set_volume", (volume,), False))
 
 
 (PLAYER_STOPPED, PLAYER_PAUSED, PLAYER_PLAYING) = range(3)
@@ -387,20 +390,22 @@ class PlayerProcess:
             if (state.value == PLAYER_PLAYING):
                 if (command_conn.poll()):
                     #handle command before processing more audio, if any
-                    (command, args) = command_conn.recv()
-                    if (command == "exit"):
-                        player.close()
-                        command_conn.close()
-                        next_track_conn.send(False)
-                        next_track_conn.close()
-                        return
-                    else:
-                        result = getattr(player, command)(*args)
-                        command_conn.send(result)
+                    while (command_conn.poll()):
+                        (command, args, return_result) = command_conn.recv()
+                        if (command == "exit"):
+                            player.close()
+                            command_conn.close()
+                            next_track_conn.send(False)
+                            next_track_conn.close()
+                            return
+                        else:
+                            result = getattr(player, command)(*args)
+                            if (return_result):
+                                command_conn.send(result)
                 else:
                     player.output_chunk()
             else:
-                (command, args) = command_conn.recv()
+                (command, args, return_result) = command_conn.recv()
                 if (command == "exit"):
                     player.close()
                     command_conn.close()
@@ -409,7 +414,8 @@ class PlayerProcess:
                     return
                 else:
                     result = getattr(player, command)(*args)
-                    command_conn.send(result)
+                    if (return_result):
+                        command_conn.send(result)
 
 
 class CDPlayer:
