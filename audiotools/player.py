@@ -38,7 +38,7 @@ class Player:
         next_track_callback is a function with no arguments
         which is called by the player when the current track is finished"""
 
-        from multiprocessing import Process, Array, Pipe
+        from multiprocessing import Process, Array, Value, Pipe
         from threading import Thread
 
         self.__player__ = None
@@ -52,6 +52,7 @@ class Player:
 
         (self.__command_conn__, client_conn) = Pipe(True)
         (server_next_track_conn, client_next_track_conn) = Pipe(False)
+        self.__state__ = Value("i", 0)
         self.__progress__ = Array("I", [0, 0])
 
         thread = Thread(target=call_next_track,
@@ -64,6 +65,7 @@ class Player:
             kwargs={"audio_output":audio_output,
                     "command_conn":client_conn,
                     "next_track_conn":client_next_track_conn,
+                    "state":self.__state__,
                     "current_progress":self.__progress__,
                     "replay_gain":replay_gain})
 
@@ -100,6 +102,17 @@ class Player:
         self.__command_conn__.send(("set_replay_gain", (replay_gain,)))
         return self.__command_conn__.recv()
 
+    def set_output(self, output):
+        """given the name string of an AudioOutput
+        (matching its .NAME attribute)
+
+        if the output is not valid, it will not be changed
+
+        any currently playing audio is stopped"""
+
+        self.__command_conn__.send(("set_output", (output,)))
+        return self.__command_conn__.recv()
+
     def pause(self):
         """pauses playback of the current file
 
@@ -121,6 +134,12 @@ class Player:
 
         self.__command_conn__.send(("stop_playing", tuple()))
         return self.__command_conn__.recv()
+
+    def state(self):
+        """returns the current state of the Player
+        as either PLAYER_STOPPED, PLAYER_PAUSED, or PLAYER_PLAYING ints"""
+
+        return self.__state__.value
 
     def close(self):
         """closes the player for playback
@@ -144,18 +163,30 @@ class Player:
         return tuple(self.__progress__)
 
     def current_output_description(self):
+        """returns the human-readable description of the current output device
+        as a Unicode string"""
+
         self.__command_conn__.send(("current_output_description", tuple()))
         return self.__command_conn__.recv()
 
     def current_output_name(self):
+        """returns the ``NAME`` attribute of the current output device
+        as a plain string"""
+
         self.__command_conn__.send(("current_output_name", tuple()))
         return self.__command_conn__.recv()
 
     def get_volume(self):
+        """returns the current volume level as a floating point value
+        between 0.0 and 1.0, inclusive"""
+
         self.__command_conn__.send(("get_volume", tuple()))
         return self.__command_conn__.recv()
 
     def set_volume(self, volume):
+        """given a floating point value between 0.0 and 1.0, inclusive,
+        sets the current volume level to that value"""
+
         self.__command_conn__.send(("set_volume", (volume,)))
         return self.__command_conn__.recv()
 
@@ -171,9 +202,14 @@ class PlayerProcess:
 
     BUFFER_SIZE = 0.25  # in seconds
 
-    def __init__(self, audio_output, progress, next_track_conn,
+    def __init__(self, audio_output,
+                 state,
+                 progress,
+                 next_track_conn,
                  replay_gain=RG_NO_REPLAYGAIN):
         """audio_output is a string of what audio type to use
+
+        state is a shared Value of the current processing state
 
         progress is a shared Array of current frames / total frames
 
@@ -188,10 +224,10 @@ class PlayerProcess:
 
         # an AudioOutput subclass
         self.__audio_output__ = open_output(audio_output)
-        self.__converter__ = None      # a FrameList converter function
         self.__buffer_size__ = 0       # the number of PCM frames to process
 
-        self.__state__ = PLAYER_STOPPED
+        self.__state__ = state
+        self.__state__.value = PLAYER_STOPPED
         self.__progress__ = progress   #an Array of current/total frames
 
         self.set_progress(0, 1)
@@ -203,35 +239,42 @@ class PlayerProcess:
     def open(self, track):
         self.stop_playing()
         self.__track__ = track
-        self.set_progress(0, 1)
 
     def close(self):
         self.stop_playing()
         self.__audio_output__.close()
 
     def pause(self):
-        if (self.__state__ == PLAYER_PLAYING):
+        if (self.__state__.value == PLAYER_PLAYING):
             self.__audio_output__.pause()
-            self.__state__ = PLAYER_PAUSED
+            self.__state__.value = PLAYER_PAUSED
 
     def play(self):
         if (self.__track__ is not None):
-            if (self.__state__ == PLAYER_STOPPED):
+            if (self.__state__.value == PLAYER_STOPPED):
                 self.start_playing()
-            elif (self.__state__ == PLAYER_PAUSED):
+            elif (self.__state__.value == PLAYER_PAUSED):
                 self.__audio_output__.resume()
-                self.__state__ = PLAYER_PLAYING
-            elif (self.__state__ == PLAYER_PLAYING):
+                self.__state__.value = PLAYER_PLAYING
+            elif (self.__state__.value == PLAYER_PLAYING):
                 pass
 
     def set_replay_gain(self, replay_gain):
         self.__replay_gain__ = replay_gain
 
+    def set_output(self, output):
+        self.stop_playing()
+        try:
+            self.__audio_output__ = open_output(output)
+            self.__buffer_size__ = 0
+        except ValueError:
+            pass
+
     def toggle_play_pause(self):
-        if (self.__state__ == PLAYER_PLAYING):
+        if (self.__state__.value == PLAYER_PLAYING):
             self.pause()
-        elif ((self.__state__ == PLAYER_PAUSED) or
-              (self.__state__ == PLAYER_STOPPED)):
+        elif ((self.__state__.value == PLAYER_PAUSED) or
+              (self.__state__.value == PLAYER_STOPPED)):
             self.play()
 
     def current_output_name(self):
@@ -293,13 +336,13 @@ class PlayerProcess:
         self.__pcmreader__ = pcmreader
         self.__buffer_size__ = min(round(self.BUFFER_SIZE *
                                          self.__track__.sample_rate()), 4096)
-        self.__state__ = PLAYER_PLAYING
+        self.__state__.value = PLAYER_PLAYING
         self.set_progress(0, self.__track__.total_frames())
 
     def stop_playing(self):
         if (self.__pcmreader__ is not None):
             self.__pcmreader__.close()
-        self.__state__ = PLAYER_STOPPED
+        self.__state__.value = PLAYER_STOPPED
         self.set_progress(0, 1)
 
     def output_chunk(self):
@@ -316,7 +359,7 @@ class PlayerProcess:
         self.__progress__[0] = current
 
     @classmethod
-    def run(cls, audio_output, command_conn, next_track_conn,
+    def run(cls, audio_output, state, command_conn, next_track_conn,
             current_progress, replay_gain=RG_NO_REPLAYGAIN):
         """audio_output is a string of what audio type to use
 
@@ -335,12 +378,13 @@ class PlayerProcess:
         #build PlayerProcess state management object
         player = PlayerProcess(
             audio_output=audio_output,
+            state=state,
             progress=current_progress,
             next_track_conn=next_track_conn,
             replay_gain=replay_gain)
 
         while (True):
-            if (player.__state__ == PLAYER_PLAYING):
+            if (state.value == PLAYER_PLAYING):
                 if (command_conn.poll()):
                     #handle command before processing more audio, if any
                     (command, args) = command_conn.recv()

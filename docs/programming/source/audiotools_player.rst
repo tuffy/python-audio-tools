@@ -54,6 +54,15 @@ from an opened audio file object to a given output sink.
    ReplayGain cannot be applied mid-playback.
    One must :meth:`stop` and :meth:`play` a file for it to take effect.
 
+.. method:: Player.set_output(output)
+
+   Changes where the audio will be played to the given output
+   where output is a string matching an :class:`AudioOutput` class'
+   ``NAME`` attribute.
+   If the given output is not found, it will not be changed.
+   Any currently playing audio is stopped and must be resumed
+   from the beginning on the given output device.
+
 .. method:: Player.pause()
 
    Pauses playback of the current file.
@@ -68,6 +77,11 @@ from an opened audio file object to a given output sink.
    Stops playback of the current file.
    If :meth:`play` is called, playback will start from the beginning.
 
+.. method:: Player.state()
+
+   Returns the current state of the player which will be either
+   ``PLAYER_STOPPED``, ``PLAYER_PAUSED`` or ``PLAYER_PLAYING`` integers.
+
 .. method:: Player.close()
 
    Closes the player for playback.
@@ -77,6 +91,26 @@ from an opened audio file object to a given output sink.
 
    Returns a (``pcm_frames_played``, ``pcm_frames_total``) tuple.
    This indicates the current playback status in terms of PCM frames.
+
+.. method:: Player.current_output_description()
+
+   Returns the human-readable description of the current output device
+   as a Unicode string.
+
+.. method:: Player.current_output_name()
+
+   Returns the ``NAME`` attribute of the current output device
+   as a plain string.
+
+.. method:: Player.get_volume()
+
+   Returns the current volume level as a floating point value
+   between 0.0 and 1.0, inclusive.
+
+.. method:: Player.set_volume(volume)
+
+   Given a floating point value between 0.0 and 1.0, inclusive,
+   sets the current volume level to that value.
 
 CDPlayer Objects
 ----------------

@@ -6857,7 +6857,7 @@
 *** DONE Build volume setting, progress-bar style widget
 *** DONE Ensure volume control updates when system volume is updated
 *** DONE Add widget to player widget
-** TODO Make audio output selectable in trackplay/cdplay
+** DONE Make audio output selectable in trackplay/cdplay
 *** DONE Add available_outputs() function to audiotools.player module
     should return list of available AudioOutput subclasses
 *** DONE Add description() method to AudioOutput subclasses
@@ -6867,7 +6867,7 @@
     - [X] OSSAudioOutput
     - [X] CoreAudioOutput
     - [X] NULLAudioOutput
-*** TODO Ensure output switches correctly
+*** DONE Ensure output switches correctly
     Switches should be as seamless as possible and include
     setting the output volume properly.
 ** TODO Add AirPlay support

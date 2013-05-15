@@ -2091,9 +2091,12 @@ try:
                 'click',
                 lambda button: self.open_pop_up())
             self.player = player
+            self.outputs = []
 
         def create_pop_up(self):
-            pop_up = AdjustOutputDialog(self.player)
+            from audiotools.player import available_outputs
+            self.outputs = [o() for o in available_outputs()]
+            pop_up = AdjustOutputDialog(self.player, self.outputs)
             urwid.connect_signal(
                 pop_up,
                 'close',
@@ -2104,28 +2107,38 @@ try:
             return {'left': 0,
                     'top': 1,
                     'overlay_width': 50,
-                    'overlay_height': 5}
+                    'overlay_height': len(self.outputs) + 4}
 
     class AdjustOutputWidget(urwid.Pile):
-        def __init__(self, player, closed_callback=None):
+        def __init__(self, player, outputs, closed_callback=None):
             from .text import (LAB_DECREASE_VOLUME,
                                LAB_INCREASE_VOLUME,
                                LAB_KEY_DONE)
 
+            self.player = player
+            self.closed_callback = closed_callback
+            self.volume = VolumeControl(player.get_volume(),
+                                        0.01,
+                                        player.set_volume)
+
+            current_output_name = player.current_output_name()
+            output_group = []
+
             urwid.Pile.__init__(
                 self,
-                [VolumeControl(player.get_volume(),
-                               0.01,
-                               player.set_volume),
-                 urwid.Text(player.current_output_description()),
-                 urwid.Text([('key', u"\u2190"),
+                [self.volume] +
+                [urwid.RadioButton(group=output_group,
+                                   label=o.description(),
+                                   state=current_output_name == o.NAME,
+                                   on_state_change=self.change_output,
+                                   user_data=o.NAME) for o in outputs] +
+                [urwid.Text([('key', u"\u2190"),
                              LAB_DECREASE_VOLUME,
                              u"   ",
                              ('key', u"\u2192"),
                              LAB_INCREASE_VOLUME,
                              u"   ",
                              ('key', 'esc'), LAB_KEY_DONE])])
-            self.closed_callback = closed_callback
 
         def keypress(self, size, key):
             key = urwid.Pile.keypress(self, size, key)
@@ -2135,15 +2148,26 @@ try:
             else:
                 return key
 
+        def change_output(self, radio_button, new_state, new_output):
+            if (new_state):
+                self.player.set_output(new_output)
+                new_volume = self.player.get_volume()
+                #not calling self.volume.set_volume()
+                #avoids a round-tripping call
+                #which sets the output's volume to its current value
+                self.volume.volume = new_volume
+                self.volume.set_completion(max(min(new_volume * 100, 100), 0))
+
     class AdjustOutputDialog(urwid.WidgetWrap):
         signals = ['close']
 
-        def __init__(self, player):
+        def __init__(self, player, outputs):
             from .text import LAB_OUTPUT_OPTIONS
 
             close_button = urwid.Button(u"done")
             pile = AdjustOutputWidget(
                 player,
+                outputs,
                 closed_callback=lambda: self._emit("close"))
             self.__super.__init__(urwid.LineBox(urwid.Filler(pile),
                                                 title=LAB_OUTPUT_OPTIONS))
@@ -2357,23 +2381,23 @@ try:
             self.progress.sample_rate = sample_rate
 
         def update_status(self):
-            self.progress.set_completion(self.player.progress()[0])
-
-        def play_pause(self, user_data):
             from audiotools.text import (LAB_PLAY_BUTTON,
                                          LAB_PAUSE_BUTTON)
+            from audiotools.player import PLAYER_PLAYING
 
-            self.player.toggle_play_pause()
-            if (self.play_pause_button.get_label() == LAB_PLAY_BUTTON):
+            self.progress.set_completion(self.player.progress()[0])
+            if (self.player.state() == PLAYER_PLAYING):
                 self.play_pause_button.set_label(LAB_PAUSE_BUTTON)
-            elif (self.play_pause_button.get_label() == LAB_PAUSE_BUTTON):
+            else:
                 self.play_pause_button.set_label(LAB_PLAY_BUTTON)
 
-        def stop(self):
-            from audiotools.text import LAB_PLAY_BUTTON
+        def play_pause(self, user_data):
+            self.player.toggle_play_pause()
+            self.update_status()
 
+        def stop(self):
             self.player.stop()
-            self.play_pause_button.set_label(LAB_PLAY_BUTTON)
+            self.update_status()
 
         def handle_text(self, i):
             if ((i == 'esc') or (i == 'q') or (i == 'Q')):
