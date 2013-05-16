@@ -146,9 +146,19 @@ except OSError:
     has_pulseaudio = False
 
 if (has_pulseaudio):
-    output_sources.append('src/output/pulseaudio.c')
+    output_sources.append("src/output/pulseaudio.c")
     output_defines.append(("PULSEAUDIO", "1"))
     output_link_args.extend(libpulse_stdout.split())
+
+#detect ALSA's presence using pkg-config, if possible
+#FIXME
+has_alsa = True
+if (has_alsa):
+    if ("src/pcmconv.c" not in output_sources):
+        output_sources.append("src/pcmconv.c")
+    output_sources.append("src/output/alsa.c")
+    output_defines.append(("ALSA", "1"))
+    output_link_args.extend(["-lasound"])
 
 outputmodule = Extension('audiotools.output',
                          libraries=output_libraries,

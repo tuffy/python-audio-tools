@@ -905,8 +905,9 @@ class OSSAudioOutput(AudioOutput):
 
         try:
             import ossaudiodev
+            ossaudiodev.open("w").close()
             return True
-        except ImportError:
+        except (ImportError, IOError):
             return False
 
 
@@ -1001,6 +1002,94 @@ class PulseAudioOutput(AudioOutput):
             return False
 
 
+class ALSAAudioOutput(AudioOutput):
+    """an AudioOutput subclass for ALSA output"""
+
+    NAME = "ALSA"
+
+    def __init__(self):
+        self.__alsaaudio__ = None
+        AudioOutput.__init__(self)
+
+    def description(self):
+        """returns user-facing name of output device as unicode"""
+
+        #FIXME - pull this from device description
+        return u"Advanced Linux Sound Architecture"
+
+    def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
+        """initializes the output stream for the given format
+
+        if the output stream has already been initialized,
+        this will close and reopen the stream for the new format"""
+
+        if (self.__pulseaudio__ is None):
+            from .output import PulseAudio
+
+            AudioOutput.set_format(self, sample_rate, channels,
+                                   channel_mask, bits_per_sample)
+
+            self.__alsaaudio__ = PulseAudio("default",
+                                            sample_rate,
+                                            channels,
+                                            bits_per_sample)
+        else:
+            self.close()
+            self.set_format(sample_rate=sample_rate,
+                            channels=channels,
+                            channel_mask=channel_mask,
+                            bits_per_sample=bits_per_sample)
+
+    def play(self, framelist):
+        """plays a FrameList"""
+
+        self.__alsaaudio__.play(framelist)
+
+    def pause(self):
+        """pauses audio output, with the expectation it will be resumed"""
+
+        self.__alsaaudio__.pause()
+
+    def resume(self):
+        """resumes playing paused audio output"""
+
+        self.__alsaaudio__.resume()
+
+    def get_volume(self):
+        """returns a floating-point volume value between 0.0 and 1.0"""
+
+        return self.__alsaaudio__.get_volume()
+
+    def set_volume(self, volume):
+        """sets the output volume to a floating point value
+        between 0.0 and 1.0"""
+
+        if ((volume >= 0) and (volume <= 1.0)):
+            self.__alsaaudio__.set_volume(volume)
+        else:
+            raise ValueError("volume must be between 0.0 and 1.0")
+
+    def close(self):
+        """closes the output stream"""
+
+        if (self.__alsaaudio__ is not None):
+            self.__alsaaudio__.flush()
+            self.__alsaaudio__.close()
+            self.__alsaaudio__ = None
+
+    @classmethod
+    def available(cls):
+        """returns True if PulseAudio is available and running on the system"""
+
+        try:
+            from .output import ALSAAudio
+
+            return True
+        except ImportError:
+            return False
+
+
+
 class CoreAudioOutput(AudioOutput):
     """an AudioOutput subclass for CoreAudio output"""
 
@@ -1090,6 +1179,9 @@ class CoreAudioOutput(AudioOutput):
 def available_outputs():
     """iterates over all available AudioOutput subclasses
     this will always yield at least one output"""
+
+    if (ALSAAudioOutput.available()):
+        yield ALSAAudioOutput
 
     if (PulseAudioOutput.available()):
         yield PulseAudioOutput
