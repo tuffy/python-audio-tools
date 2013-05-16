@@ -92,13 +92,13 @@ int ALSAAudio_init(output_ALSAAudio *self, PyObject *args, PyObject *kwds)
         break;
     case 16:
         self->bits_per_sample = bits_per_sample;
-        self->buffer.int8 = NULL;
+        self->buffer.int16 = NULL;
         output_format = SND_PCM_FORMAT_S16;
         break;
     case 24:
         self->bits_per_sample = bits_per_sample;
-        self->buffer.int8 = NULL;
-        output_format = SND_PCM_FORMAT_S24;
+        self->buffer.float32 = NULL;
+        output_format = SND_PCM_FORMAT_FLOAT;
         break;
     default:
         PyErr_SetString(
@@ -225,19 +225,20 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
         /*resize internal buffer if needed*/
         if (self->buffer_size < framelist->samples_length) {
             self->buffer_size = framelist->samples_length;
-            self->buffer.int24 = realloc(self->buffer.int24,
-                                         self->buffer_size * sizeof(int32_t));
+            self->buffer.float32 = realloc(self->buffer.float32,
+                                           self->buffer_size * sizeof(float));
         }
 
         /*transfer framelist data to buffer*/
         for (i = 0; i < framelist->samples_length; i++) {
-            self->buffer.int24[i] = framelist->samples[i];
+            const float v = framelist->samples[i];
+            self->buffer.float32[i] = v / (1 << 23);
         }
 
         /*output data to ALSA*/
         while (to_write > 0) {
             const snd_pcm_sframes_t frames_written =
-                snd_pcm_writei(self->handle, self->buffer.int24, to_write);
+                snd_pcm_writei(self->handle, self->buffer.float32, to_write);
             if (frames_written >= 0) {
                 to_write -= frames_written;
             } else {
@@ -251,22 +252,22 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
         break;
     }
 
-    /* frames = snd_pcm_writei(self->handle, data, data_len); */
-
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 static PyObject* ALSAAudio_pause(output_ALSAAudio *self, PyObject *args)
 {
-    /*FIXME*/
+    snd_pcm_pause(self->handle, 1);
+
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 static PyObject* ALSAAudio_resume(output_ALSAAudio *self, PyObject *args)
 {
-    /*FIXME*/
+    snd_pcm_pause(self->handle, 0);
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -297,8 +298,3 @@ static PyObject* ALSAAudio_close(output_ALSAAudio *self, PyObject *args)
     Py_INCREF(Py_None);
     return Py_None;
 }
-
-
-
-
-

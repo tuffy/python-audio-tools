@@ -31,7 +31,7 @@ typedef struct {
     union {
         int8_t *int8;
         int16_t *int16;
-        int32_t *int24;
+        float *float32;
     } buffer;
 
     PyObject *framelist_type;

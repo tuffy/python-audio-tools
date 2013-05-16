@@ -1023,14 +1023,14 @@ class ALSAAudioOutput(AudioOutput):
         if the output stream has already been initialized,
         this will close and reopen the stream for the new format"""
 
-        if (self.__pulseaudio__ is None):
-            from .output import PulseAudio
+        if (self.__alsaaudio__ is None):
+            from .output import ALSAAudio
 
             AudioOutput.set_format(self, sample_rate, channels,
                                    channel_mask, bits_per_sample)
 
-            self.__alsaaudio__ = PulseAudio("default",
-                                            sample_rate,
+            self.__alsaaudio__ = ALSAAudio("default",
+                                           sample_rate,
                                             channels,
                                             bits_per_sample)
         else:
