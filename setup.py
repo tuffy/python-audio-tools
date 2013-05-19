@@ -148,17 +148,33 @@ except OSError:
 if (has_pulseaudio):
     output_sources.append("src/output/pulseaudio.c")
     output_defines.append(("PULSEAUDIO", "1"))
+    # If not using pkg-config, comment the next line:
     output_link_args.extend(libpulse_stdout.split())
+    # and uncomment the next one:
+    # output_libraries.append("pulse")
+    # if you know PulseAudio development libraries are installed
 
-#detect ALSA's presence using pkg-config, if possible
-#FIXME
-has_alsa = True
+try:
+    pkg_config = subprocess.Popen(["pkg-config", "--libs", "alsa"],
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+
+    libalsa_stdout = pkg_config.stdout.read().strip()
+    libalsa_stderr = pkg_config.stderr.read()
+    has_alsa = pkg_config.wait() == 0
+except OSError:
+    has_alsa = False
+
 if (has_alsa):
     if ("src/pcmconv.c" not in output_sources):
         output_sources.append("src/pcmconv.c")
     output_sources.append("src/output/alsa.c")
     output_defines.append(("ALSA", "1"))
-    output_link_args.extend(["-lasound"])
+    # If not using pkg-config, comment the next line:
+    output_link_args.extend(libalsa_stdout.split())
+    # and uncomment the next one:
+    # output_libraries.append("asound")
+    # if you know ALSA development libraries are installed
 
 outputmodule = Extension('audiotools.output',
                          libraries=output_libraries,

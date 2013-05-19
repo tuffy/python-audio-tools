@@ -2034,12 +2034,12 @@ try:
             urwid.ProgressBar.__init__(self,
                                        normal="volume normal",
                                        complete="volume complete",
-                                       current=0,
-                                       done=100)
+                                       current=0.0,
+                                       done=1.0)
             self.volume = volume
             self.volume_step = volume_step
             self.volume_changed = volume_changed
-            self.set_completion(max(min(self.volume * 100, 100), 0))
+            self.set_completion(self.volume)
 
         def get_text(self):
             from audiotools.text import LAB_VOLUME
@@ -2077,7 +2077,7 @@ try:
 
         def set_volume(self, volume):
             self.volume = volume
-            self.set_completion(max(min(self.volume * 100, 100), 0))
+            self.set_completion(self.volume)
             self.volume_changed(self.volume)
 
     class AdjustOutput(urwid.PopUpLauncher):
@@ -2156,7 +2156,7 @@ try:
                 #avoids a round-tripping call
                 #which sets the output's volume to its current value
                 self.volume.volume = new_volume
-                self.volume.set_completion(max(min(new_volume * 100, 100), 0))
+                self.volume.set_completion(new_volume)
 
     class AdjustOutputDialog(urwid.WidgetWrap):
         signals = ['close']

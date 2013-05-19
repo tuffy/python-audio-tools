@@ -43,7 +43,9 @@ int ALSAAudio_init(output_ALSAAudio *self, PyObject *args, PyObject *kwds)
     snd_pcm_format_t output_format = SND_PCM_FORMAT_S16_LE;
 
     self->framelist_type = NULL;
-    self->handle = NULL;
+    self->output = NULL;
+    self->mixer = NULL;
+    self->mixer_elem = NULL;
     self->buffer_size = 0;
 
     /*get FrameList type for comparison during .play() operation*/
@@ -106,14 +108,15 @@ int ALSAAudio_init(output_ALSAAudio *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
-    if ((error = snd_pcm_open(&self->handle,
+    if ((error = snd_pcm_open(&self->output,
                               device,
                               SND_PCM_STREAM_PLAYBACK,
                               0)) < 0) {
-        PyErr_SetString(PyExc_IOError, "unable to open ALSA handle");
+        PyErr_SetString(PyExc_IOError, "unable to open ALSA output handle");
         return -1;
     }
-    if ((error = snd_pcm_set_params(self->handle,
+
+    if ((error = snd_pcm_set_params(self->output,
                                     output_format,
                                     SND_PCM_ACCESS_RW_INTERLEAVED,
                                     channels,
@@ -124,15 +127,65 @@ int ALSAAudio_init(output_ALSAAudio *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
+    if ((error = snd_mixer_open(&self->mixer, 0)) < 0) {
+        PyErr_SetString(PyExc_IOError, "unable to open ALSA mixer");
+        return -1;
+    } else if ((error = snd_mixer_attach(self->mixer, device)) < 0) {
+        PyErr_SetString(PyExc_IOError, "unable to attach ALSA mixer to card");
+        return -1;
+    } else if ((error = snd_mixer_selem_register(self->mixer,
+                                                 NULL,
+                                                 NULL)) < 0) {
+        PyErr_SetString(PyExc_IOError, "unable to register ALSA mixer");
+        return -1;
+    } else if ((error = snd_mixer_load(self->mixer)) < 0) {
+        PyErr_SetString(PyExc_IOError, "unable to load ALSA mixer");
+        return -1;
+    }
+
+    /*walk through mixer elements to find Master or PCM*/
+    self->mixer_elem = find_playback_mixer_element(self->mixer, "Master");
+    if (self->mixer_elem == NULL) {
+        /*this may be NULL if no Master or PCM found*/
+        self->mixer_elem = find_playback_mixer_element(self->mixer, "PCM");
+    }
+    if (self->mixer_elem != NULL) {
+        snd_mixer_selem_get_playback_volume_range(self->mixer_elem,
+                                                  &self->volume_min,
+                                                  &self->volume_max);
+    }
+
     return 0;
 }
+
+static snd_mixer_elem_t*
+find_playback_mixer_element(snd_mixer_t *mixer, const char *name)
+{
+    snd_mixer_elem_t *mixer_elem;
+
+    for (mixer_elem = snd_mixer_first_elem(mixer);
+         mixer_elem != NULL;
+         mixer_elem = snd_mixer_elem_next(mixer_elem)) {
+        const char *elem_name = snd_mixer_selem_get_name(mixer_elem);
+        if ((elem_name != NULL) &&
+            snd_mixer_selem_has_playback_volume(mixer_elem) &&
+            (!strcmp(name, elem_name))) {
+            return mixer_elem;
+        }
+    }
+
+    return NULL;
+}
+
 
 void ALSAAudio_dealloc(output_ALSAAudio *self)
 {
     Py_XDECREF(self->framelist_type);
 
-    if (self->handle != NULL)
-        snd_pcm_close(self->handle);
+    if (self->output != NULL)
+        snd_pcm_close(self->output);
+    if (self->mixer != NULL)
+        snd_mixer_close(self->mixer);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -187,7 +240,7 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
         /*output data to ALSA*/
         while (to_write > 0) {
             const snd_pcm_sframes_t frames_written =
-                snd_pcm_writei(self->handle, self->buffer.int8, to_write);
+                snd_pcm_writei(self->output, self->buffer.int8, to_write);
             if (frames_written >= 0) {
                 to_write -= frames_written;
             } else {
@@ -212,7 +265,7 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
         /*output data to ALSA*/
         while (to_write > 0) {
             const snd_pcm_sframes_t frames_written =
-                snd_pcm_writei(self->handle, self->buffer.int16, to_write);
+                snd_pcm_writei(self->output, self->buffer.int16, to_write);
             if (frames_written >= 0) {
                 to_write -= frames_written;
             } else {
@@ -238,7 +291,7 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
         /*output data to ALSA*/
         while (to_write > 0) {
             const snd_pcm_sframes_t frames_written =
-                snd_pcm_writei(self->handle, self->buffer.float32, to_write);
+                snd_pcm_writei(self->output, self->buffer.float32, to_write);
             if (frames_written >= 0) {
                 to_write -= frames_written;
             } else {
@@ -258,7 +311,7 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
 
 static PyObject* ALSAAudio_pause(output_ALSAAudio *self, PyObject *args)
 {
-    snd_pcm_pause(self->handle, 1);
+    snd_pcm_pause(self->output, 1);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -266,7 +319,7 @@ static PyObject* ALSAAudio_pause(output_ALSAAudio *self, PyObject *args)
 
 static PyObject* ALSAAudio_resume(output_ALSAAudio *self, PyObject *args)
 {
-    snd_pcm_pause(self->handle, 0);
+    snd_pcm_pause(self->output, 0);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -281,13 +334,61 @@ static PyObject* ALSAAudio_flush(output_ALSAAudio *self, PyObject *args)
 
 static PyObject* ALSAAudio_get_volume(output_ALSAAudio *self, PyObject *args)
 {
-    /*FIXME*/
-    return PyFloat_FromDouble(0.0);
+    if (self->mixer_elem != NULL) {
+        /*get the average volume from all supported output channels*/
+        const snd_mixer_selem_channel_id_t channels[] = {
+            SND_MIXER_SCHN_FRONT_LEFT,
+            SND_MIXER_SCHN_FRONT_RIGHT,
+            SND_MIXER_SCHN_REAR_LEFT,
+            SND_MIXER_SCHN_REAR_RIGHT,
+            SND_MIXER_SCHN_FRONT_CENTER,
+            SND_MIXER_SCHN_WOOFER,
+            SND_MIXER_SCHN_SIDE_LEFT,
+            SND_MIXER_SCHN_SIDE_RIGHT,
+            SND_MIXER_SCHN_REAR_CENTER};
+        const size_t channel_count =
+            sizeof(channels) / sizeof(snd_mixer_selem_channel_id_t);
+        size_t i;
+        double total_volume = 0.0;
+        unsigned total_channels = 0;
+
+        for (i = 0; i < channel_count; i++) {
+            long channel_volume;
+            if (snd_mixer_selem_has_playback_channel(self->mixer_elem,
+                                                     channels[i]) &&
+                (snd_mixer_selem_get_playback_volume(self->mixer_elem,
+                                                     channels[i],
+                                                     &channel_volume) == 0)) {
+                total_volume += channel_volume;
+                total_channels++;
+            }
+        }
+
+        if (total_channels > 0) {
+            const double average_volume = total_volume / total_channels;
+
+            /*convert to range min_volume->max_volume*/
+            return PyFloat_FromDouble(average_volume / self->volume_max);
+        } else {
+            return PyFloat_FromDouble(0.0);
+        }
+    } else {
+        return PyFloat_FromDouble(0.0);
+    }
 }
 
 static PyObject* ALSAAudio_set_volume(output_ALSAAudio *self, PyObject *args)
 {
-    /*FIXME*/
+    double new_volume_d;
+    long new_volume;
+
+    if (!PyArg_ParseTuple(args, "d", &new_volume_d))
+        return NULL;
+
+    new_volume = round(new_volume_d * self->volume_max);
+
+    snd_mixer_selem_set_playback_volume_all(self->mixer_elem, new_volume);
+
     Py_INCREF(Py_None);
     return Py_None;
 }

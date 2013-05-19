@@ -35,8 +35,11 @@ typedef struct {
     } buffer;
 
     PyObject *framelist_type;
-    snd_pcm_t *handle;
-
+    snd_pcm_t *output;
+    snd_mixer_t *mixer;
+    snd_mixer_elem_t *mixer_elem;
+    long volume_min;
+    long volume_max;
 } output_ALSAAudio;
 
 static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args);
@@ -109,3 +112,6 @@ PyTypeObject output_ALSAAudioType = {
     0,                         /* tp_alloc */
     ALSAAudio_new,             /* tp_new */
 };
+
+static snd_mixer_elem_t*
+find_playback_mixer_element(snd_mixer_t *mixer, const char *name);
