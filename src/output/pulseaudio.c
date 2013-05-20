@@ -20,16 +20,8 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-/*connects the context to the default PulseAudio server
-  returns true on success, false on failure*/
-static int connect_context(pa_context *context, pa_threaded_mainloop* mainloop);
-
 static void context_state_callback(pa_context *context,
                                    pa_threaded_mainloop* mainloop);
-
-/*connects the stream to the default PulseAudio output sink
-  returns true on success, false on failure*/
-static int connect_stream(pa_stream *stream, pa_threaded_mainloop* mainloop);
 
 static void stream_state_callback(pa_stream *stream,
                                   pa_threaded_mainloop* mainloop);
@@ -356,14 +348,20 @@ int PulseAudio_init(output_PulseAudio *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
-    /*setup PulseAudio mainloop and abstract mainloop API*/
-    self->mainloop = pa_threaded_mainloop_new();
-    if (pa_threaded_mainloop_start(self->mainloop)) {
+    /*initialize threaded mainloop*/
+    if ((self->mainloop = pa_threaded_mainloop_new()) == NULL) {
         PyErr_SetString(
-            PyExc_ValueError, "unable to start mainloop thread");
+            PyExc_ValueError, "unable to get new mainloop");
         return -1;
     }
-    self->mainloop_api = pa_threaded_mainloop_get_api(self->mainloop);
+
+    /*get abstract API from threaded mainloop*/
+    if ((self->mainloop_api =
+         pa_threaded_mainloop_get_api(self->mainloop)) == NULL) {
+        PyErr_SetString(
+            PyExc_ValueError, "unable to get mainloop API");
+        return -1;
+    }
 
     /*create new connection context*/
     if ((self->context = pa_context_new(self->mainloop_api,
@@ -373,11 +371,41 @@ int PulseAudio_init(output_PulseAudio *self, PyObject *args, PyObject *kwds)
         return -1;
     }
 
-    if (!connect_context(self->context, self->mainloop)) {
+    /*setup context change callback*/
+    pa_context_set_state_callback(
+        self->context,
+        (pa_context_notify_cb_t)context_state_callback,
+        self->mainloop);
+
+    /*connect the context to default server*/
+    if (pa_context_connect(self->context, NULL, 0, NULL) < 0) {
         PyErr_SetString(
-            PyExc_ValueError, "unable to connect to PulseAudio server");
+            PyExc_ValueError, "unable to connect context");
         return -1;
     }
+
+    pa_threaded_mainloop_lock(self->mainloop);
+
+    if (pa_threaded_mainloop_start(self->mainloop)) {
+        PyErr_SetString(
+            PyExc_ValueError, "unable to start mainloop thread");
+        goto error;
+    }
+
+    do {
+        pa_context_state_t state = pa_context_get_state(self->context);
+
+        if (state == PA_CONTEXT_READY) {
+            break;
+        } else if ((state == PA_CONTEXT_FAILED) ||
+                   (state == PA_CONTEXT_TERMINATED)) {
+            PyErr_SetString(
+                PyExc_ValueError, "failed to start main loop");
+            goto error;
+        } else {
+            pa_threaded_mainloop_wait(self->mainloop);
+        }
+    } while (1);
 
     /*create new connection stream*/
     if ((self->stream = pa_stream_new(self->context,
@@ -386,17 +414,57 @@ int PulseAudio_init(output_PulseAudio *self, PyObject *args, PyObject *kwds)
                                       NULL)) == NULL) {
         PyErr_SetString(
             PyExc_ValueError, "unable to create PulseAudio connection stream");
-        return -1;
+        goto error;
     }
 
-    /*connect stream to context*/
-    if (!connect_stream(self->stream, self->mainloop)) {
+    /*setup stream state change callback*/
+    pa_stream_set_state_callback(
+        self->stream,
+        (pa_stream_notify_cb_t)stream_state_callback,
+        self->mainloop);
+
+    /*setup stream write callback*/
+    pa_stream_set_write_callback(
+        self->stream,
+        (pa_stream_request_cb_t)write_stream_callback,
+        self->mainloop);
+
+    /*perform connection to PulseAudio server's default output stream*/
+    if (pa_stream_connect_playback(
+            self->stream,
+            NULL, /*device*/
+            NULL, /*buffering attributes*/
+            PA_STREAM_ADJUST_LATENCY |
+            PA_STREAM_AUTO_TIMING_UPDATE |
+            PA_STREAM_INTERPOLATE_TIMING, /*flags*/
+            NULL, /*volume*/
+            NULL  /*sync stream*/) < 0) {
         PyErr_SetString(
-            PyExc_ValueError, "unable to connect to PulseAudio output stream");
-        return -1;
+            PyExc_ValueError, "unable to connect for PulseAudio playback");
+        goto error;
     }
+
+    do {
+        pa_stream_state_t state = pa_stream_get_state(self->stream);
+
+        if (state == PA_STREAM_READY) {
+            break;
+        } else if ((state == PA_STREAM_FAILED) ||
+                   (state == PA_STREAM_TERMINATED)) {
+            PyErr_SetString(PyExc_ValueError, "failed to connect stream");
+            goto error;
+        } else {
+            pa_threaded_mainloop_wait(self->mainloop);
+        }
+    } while (1);
+
+    pa_threaded_mainloop_unlock(self->mainloop);
 
     return 0;
+error:
+    pa_threaded_mainloop_unlock(self->mainloop);
+
+    return -1;
 }
 
 void PulseAudio_dealloc(output_PulseAudio *self)
@@ -423,49 +491,6 @@ void PulseAudio_dealloc(output_PulseAudio *self)
     self->ob_type->tp_free((PyObject*)self);
 }
 
-static int connect_context(pa_context *context, pa_threaded_mainloop* mainloop)
-{
-    /*setup context change callback*/
-    pa_context_set_state_callback(
-        context,
-        (pa_context_notify_cb_t)context_state_callback,
-        mainloop);
-
-    /*perform connection to PulseAudio server*/
-    if (pa_context_connect(context, NULL, 0, NULL) >= 0) {
-        pa_context_state_t state;
-
-        /*wait for callback to indicate completion*/
-        pa_threaded_mainloop_lock(mainloop);
-
-        do {
-            state = pa_context_get_state(context);
-
-            if ((state == PA_CONTEXT_READY) ||
-                (state == PA_CONTEXT_FAILED) ||
-                (state == PA_CONTEXT_TERMINATED)) {
-                break;
-            } else {
-                pa_threaded_mainloop_wait(mainloop);
-            }
-        } while (1);
-
-        pa_threaded_mainloop_unlock(mainloop);
-
-        /*remove context change callback now that it's no longer needed*/
-        pa_context_set_state_callback(context, NULL, NULL);
-
-        /*return whether connection is successful*/
-        return state == PA_CONTEXT_READY;
-    } else {
-        pa_threaded_mainloop_unlock(mainloop);
-
-        /*remove context change callback now that it's no longer needed*/
-        pa_context_set_state_callback(context, NULL, NULL);
-
-        return 0;
-    }
-}
 
 static void context_state_callback(pa_context *context,
                                    pa_threaded_mainloop* mainloop)
@@ -483,63 +508,6 @@ static void context_state_callback(pa_context *context,
         /*signal on success or failure states*/
         pa_threaded_mainloop_signal(mainloop, 0);
         break;
-    }
-}
-
-static int connect_stream(pa_stream *stream, pa_threaded_mainloop* mainloop)
-{
-    /*setup stream state change callback*/
-    pa_stream_set_state_callback(
-        stream,
-        (pa_stream_notify_cb_t)stream_state_callback,
-        mainloop);
-
-    /*setup stream write callback*/
-    pa_stream_set_write_callback(
-        stream,
-        (pa_stream_request_cb_t)write_stream_callback,
-        mainloop);
-
-    /*perform connection to PulseAudio server's default output stream*/
-    if (pa_stream_connect_playback(
-            stream,
-            NULL, /*device*/
-            NULL, /*buffering attributes*/
-            PA_STREAM_ADJUST_LATENCY |
-            PA_STREAM_AUTO_TIMING_UPDATE |
-            PA_STREAM_INTERPOLATE_TIMING, /*flags*/
-            NULL, /*volume*/
-            NULL  /*sync stream*/) >= 0) {
-        pa_stream_state_t state;
-
-        /*wait for callback to indicate completion*/
-        pa_threaded_mainloop_lock(mainloop);
-        do {
-            state = pa_stream_get_state(stream);
-
-            if ((state == PA_STREAM_READY) ||
-                (state == PA_STREAM_FAILED) ||
-                (state == PA_STREAM_TERMINATED)) {
-                break;
-            } else {
-                pa_threaded_mainloop_wait(mainloop);
-            }
-        } while (1);
-
-        pa_threaded_mainloop_unlock(mainloop);
-
-        /*remove stream change callback now that it's no longer needed*/
-        pa_stream_set_state_callback(stream, NULL, NULL);
-
-        /*return whether connection is successful*/
-        return state == PA_STREAM_READY;
-    } else {
-        pa_threaded_mainloop_unlock(mainloop);
-
-        /*remove stream change callback now that it's no longer needed*/
-        pa_stream_set_state_callback(stream, NULL, NULL);
-
-        return 0;
     }
 }
 
