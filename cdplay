@@ -137,21 +137,18 @@ if (__name__ == '__main__'):
         dest='interactive',
         help=_.OPT_INTERACTIVE_PLAY)
 
-    players_map = dict([(player.NAME, player)
-                        for player in audiotools.player.AUDIO_OUTPUT])
-
     parser.add_option(
         '-o', '--output',
         action='store',
         dest='output',
-        choices=[player.NAME for player in audiotools.player.AUDIO_OUTPUT
-                 if player.available()],
-        default=[player.NAME for player in audiotools.player.AUDIO_OUTPUT
-                 if player.available()][0],
+        choices=[player.NAME for player in
+                 audiotools.player.available_outputs()],
+        default=[player.NAME for player in
+                 audiotools.player.available_outputs()][0],
         help=(_.OPT_OUTPUT_PLAY %
               u", ".join([u"\"%s\"" % (player.NAME.decode('ascii'))
-                          for player in audiotools.player.AUDIO_OUTPUT
-                          if player.available()])))
+                          for player in
+                          audiotools.player.available_outputs()])))
 
     parser.add_option(
         '-c', '--cdrom', action='store',
@@ -256,7 +253,7 @@ if (__name__ == '__main__'):
         cdplay = CDplayGUI(cdda=cdda,
                            metadata=metadata,
                            track_list=tracks,
-                           audio_output=players_map[options.output]())
+                           audio_output=options.output
         if (len(cdda) > 0):
             cdplay.select_track(None, True,
                                 (tracks[0],

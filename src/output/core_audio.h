@@ -53,6 +53,7 @@ typedef struct audio_output_struct
 
 typedef struct mpg123_coreaudio
 {
+    AudioDeviceID output_device;
     AudioConverterRef converter;
     AudioUnit outputUnit;
     int open;
@@ -83,6 +84,8 @@ static PyObject* CoreAudio_play(output_CoreAudio *self, PyObject *args);
 static PyObject* CoreAudio_pause(output_CoreAudio *self, PyObject *args);
 static PyObject* CoreAudio_resume(output_CoreAudio *self, PyObject *args);
 static PyObject* CoreAudio_flush(output_CoreAudio *self, PyObject *args);
+static PyObject* CoreAudio_get_volume(output_CoreAudio *self, PyObject *args);
+static PyObject* CoreAudio_set_volume(output_CoreAudio *self, PyObject *args);
 static PyObject* CoreAudio_close(output_CoreAudio *self, PyObject *args);
 
 static PyObject* CoreAudio_new(PyTypeObject *type,
@@ -100,6 +103,8 @@ PyMethodDef CoreAudio_methods[] = {
     {"pause", (PyCFunction)CoreAudio_pause, METH_NOARGS, ""},
     {"resume", (PyCFunction)CoreAudio_resume, METH_NOARGS, ""},
     {"flush", (PyCFunction)CoreAudio_flush, METH_NOARGS, ""},
+    {"get_volume", (PyCFunction)CoreAudio_get_volume, METH_NOARGS, ""},
+    {"set_volume", (PyCFunction)CoreAudio_set_volume, METH_VARARGS, ""},
     {"close", (PyCFunction)CoreAudio_close, METH_NOARGS, ""},
     {NULL}
 };
@@ -172,3 +177,10 @@ static OSStatus playProc(AudioConverterRef inAudioConverter,
                          AudioStreamPacketDescription
                          **outDataPacketDescription,
                          void* inClientData);
+
+static OSStatus get_volume_scalar(AudioDeviceID output_device,
+                                  UInt32 channel,
+                                  Float32 *volume);
+static OSStatus set_volume_scalar(AudioDeviceID output_device,
+                                  UInt32 channel,
+                                  Float32 volume);

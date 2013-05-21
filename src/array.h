@@ -401,7 +401,7 @@ ARRAY_A_TYPE_DEFINITION(al_int, l_int)
 ARRAY_A_TYPE_DEFINITION(al_double, l_double)
 
 /******************************************************************/
-/*   arrays of arrays of arraysuch as array_ia, array_fa, etc.    */
+/*   arrays of arrays of arrays such as array_ia, array_fa, etc.  */
 /******************************************************************/
 
 #define ARRAY_AA_TYPE_DEFINITION(TYPE, ARRAY_TYPE)  \

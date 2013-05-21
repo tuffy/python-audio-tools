@@ -51,53 +51,31 @@ def cmp_files(progress, audiofile1, audiofile2):
                 -1)
 
 
-class Results:
-    def __init__(self, messenger):
-        self.successes = 0
-        self.failures = 0
-        self.msg = messenger
+def cmp_result(result):
+    msg = audiotools.Messenger("trackcmp", None)
+    ansi = msg.ansi
+    FG_GREEN = msg.FG_GREEN
+    FG_RED = msg.FG_RED
 
-    def missing(self, filename, directory):
-        self.failures += 1
+    (path1, path2, mismatch) = result
 
-        self.msg.info(
-            self.msg.ansi(_.LAB_TRACKCMP_MISSING %
-                          {"filename":filename,
-                           "directory":audiotools.Filename(directory)},
-                          [self.msg.FG_RED]))
-        sys.stdout.flush()
-
-    def cmp_result(self, result):
-        (path1, path2, mismatch) = result
-
-        if (mismatch is None):
-            self.successes += 1
-
-            return ((_.LAB_TRACKCMP_CMP %
-                     {"file1": audiotools.Filename(path1),
-                      "file2": audiotools.Filename(path2)}) +
-                    u" : " +
-                    self.msg.ansi(_.LAB_TRACKCMP_OK,
-                                  [self.msg.FG_GREEN]))
-        elif (mismatch >= 0):
-            self.failures += 1
-
-            return ((_.LAB_TRACKCMP_CMP %
-                     {"file1": audiotools.Filename(path1),
-                      "file2": audiotools.Filename(path2)}) +
-                    u" : " +
-                    self.msg.ansi(_.LAB_TRACKCMP_MISMATCH %
-                                  {"frame_number": mismatch + 1},
-                                  [self.msg.FG_RED]))
-        else:
-            self.failures += 1
-
-            return ((_.LAB_TRACKCMP_CMP %
-                     {"file1": audiotools.Filename(path1),
-                      "file2": audiotools.Filename(path2)}) +
-                    u" : " +
-                    self.msg.ansi(_.LAB_TRACKCMP_ERROR,
-                                  [self.msg.FG_RED]))
+    if (mismatch is None):
+        return ((_.LAB_TRACKCMP_CMP %
+                 {"file1": audiotools.Filename(path1),
+                  "file2": audiotools.Filename(path2)}) +
+                u" : " + ansi(_.LAB_TRACKCMP_OK, [FG_GREEN]))
+    elif (mismatch >= 0):
+        return ((_.LAB_TRACKCMP_CMP %
+                 {"file1": audiotools.Filename(path1),
+                  "file2": audiotools.Filename(path2)}) +
+                u" : " + ansi(_.LAB_TRACKCMP_MISMATCH %
+                              {"frame_number": mismatch + 1},
+                              [FG_RED]))
+    else:
+        return ((_.LAB_TRACKCMP_CMP %
+                 {"file1": audiotools.Filename(path1),
+                  "file2": audiotools.Filename(path2)}) +
+                u" : " + ansi(_.LAB_TRACKCMP_ERROR, [FG_RED]))
 
 
 def image_compare(progress, image_audiofile, track_audiofile,
@@ -118,19 +96,23 @@ def image_compare(progress, image_audiofile, track_audiofile,
             audiotools.PCMReaderProgress(track_audiofile.to_pcm(),
                                          total_pcm_frames,
                                          progress)),
-        image_filename,
-        track_filename)
+        unicode(image_filename),
+        unicode(track_filename))
 
 
 def image_compare_results(result):
+    msg = audiotools.Messenger("trackcmp", None)
+    ansi = msg.ansi
+    FG_GREEN = msg.FG_GREEN
+    FG_RED = msg.FG_RED
+
     (mismatch, image_name, track_name) = result
     return u"%s : %s" % (_.LAB_TRACKCMP_CMP %
                          {"file1":image_name, "file2":track_name},
-                         (msg.ansi(_.LAB_TRACKCMP_OK, [msg.FG_GREEN]) if
+                         (ansi(_.LAB_TRACKCMP_OK, [FG_GREEN]) if
                           mismatch is None else
-                          msg.ansi(_.LAB_TRACKCMP_MISMATCH %
-                                   {"frame_number": mismatch + 1},
-                                   [msg.FG_RED])))
+                          ansi(_.LAB_TRACKCMP_MISMATCH %
+                               {"frame_number": mismatch + 1}, [FG_RED])))
 
 
 if (__name__ == '__main__'):
@@ -213,7 +195,7 @@ if (__name__ == '__main__'):
             #comparing two directories
 
             to_compare = []
-            results = Results(msg)
+            results = []
 
             files1 = dict([(f.filename, f) for f in
                            audiotools.open_files(
@@ -291,8 +273,14 @@ if (__name__ == '__main__'):
             #anything left over is marked as a missing file
             for (files, directory) in [(files1, args[1]), (files2, args[0])]:
                 for filename in files.keys():
-                    results.missing(audiotools.Filename(filename).basename(),
-                                    directory)
+                    msg.info(
+                        msg.ansi(
+                            _.LAB_TRACKCMP_MISSING %
+                            {"filename":filename,
+                             "directory":audiotools.Filename(directory)},
+                            [msg.FG_RED]))
+                    sys.stdout.flush()
+                    results.append((filename, None, 0))
 
             queue = audiotools.ExecProgressQueue(
                 audiotools.ProgressDisplay(msg))
@@ -305,11 +293,13 @@ if (__name__ == '__main__'):
                     progress_text=_.LAB_TRACKCMP_CMP %
                     {"file1": audiotools.Filename(track1.filename),
                      "file2": audiotools.Filename(track2.filename)},
-                    completion_output=results.cmp_result,
+                    completion_output=cmp_result,
                     audiofile1=track1,
                     audiofile2=track2)
 
-            queue.run(options.max_processes)
+            results.extend(queue.run(options.max_processes))
+            successes = len([r for r in results if r[2] is None])
+            failures = len(results) - successes
 
             if (not options.no_summary):
                 msg.output(_.LAB_TRACKCMP_RESULTS)
@@ -322,15 +312,14 @@ if (__name__ == '__main__'):
                 msg.output_column(_.LAB_TRACKCMP_HEADER_TOTAL, True)
                 msg.divider_row([u"-", u" ", u"-", u" ", u"-"])
                 msg.new_row()
-                msg.output_column(unicode(results.successes), True)
+                msg.output_column(unicode(successes), True)
                 msg.output_column(u" ")
-                msg.output_column(unicode(results.failures), True)
+                msg.output_column(unicode(failures), True)
                 msg.output_column(u" ")
-                msg.output_column(unicode(results.successes +
-                                          results.failures), True)
+                msg.output_column(unicode(successes + failures), True)
                 msg.output_rows()
 
-            if (results.failures > 0):
+            if (failures > 0):
                 sys.exit(1)
         else:
             #comparison mismatch
@@ -383,8 +372,7 @@ if (__name__ == '__main__'):
 
             pcm_offset += track.total_frames()
 
-        queue.run(options.max_processes)
-        if (set([result[0] for result in queue.results.values()]) !=
+        if (set([r[0] for r in queue.run(options.max_processes)]) !=
             set([None])):
             sys.exit(1)
     else:

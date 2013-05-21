@@ -23,6 +23,12 @@ PyMethodDef module_methods[] = {
     {NULL}
 };
 
+#ifdef ALSA
+extern PyTypeObject output_ALSAAudioType;
+#endif
+#ifdef PULSEAUDIO
+extern PyTypeObject output_PulseAudioType;
+#endif
 #ifdef CORE_AUDIO
 extern PyTypeObject output_CoreAudioType;
 #endif
@@ -32,6 +38,16 @@ initoutput(void)
 {
     PyObject* m;
 
+#ifdef PULSEAUDIO
+    output_PulseAudioType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&output_PulseAudioType) < 0)
+        return;
+#endif
+#ifdef ALSA
+    output_ALSAAudioType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&output_ALSAAudioType) < 0)
+        return;
+#endif
 #ifdef CORE_AUDIO
     output_CoreAudioType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&output_CoreAudioType) < 0)
@@ -41,11 +57,22 @@ initoutput(void)
     m = Py_InitModule3("output", module_methods,
                        "System-specific audio output");
 
+#ifdef PULSEAUDIO
+    Py_INCREF(&output_PulseAudioType);
+    PyModule_AddObject(m, "PulseAudio",
+                       (PyObject *)&output_PulseAudioType);
+#endif
+#ifdef ALSA
+    Py_INCREF(&output_ALSAAudioType);
+    PyModule_AddObject(m, "ALSAAudio",
+                       (PyObject *)&output_ALSAAudioType);
+#endif
 #ifdef CORE_AUDIO
     Py_INCREF(&output_CoreAudioType);
     PyModule_AddObject(m, "CoreAudio",
                        (PyObject *)&output_CoreAudioType);
-#else
+#endif
+#if !defined(PULSEAUDIO) && !defined(ALSA) && !defined(CORE_AUDIO)
     /*to avoid an unused variable warning if no output types are present*/
     (void)m;
 #endif

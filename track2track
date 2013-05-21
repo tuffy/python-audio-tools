@@ -669,12 +669,11 @@ if (__name__ == '__main__'):
 
         #perform actual track conversion
         try:
-            queue.run(options.max_processes)
+            output_files = audiotools.open_files(
+                queue.run(options.max_processes))
         except audiotools.EncodingError, err:
             msg.error(unicode(err))
             sys.exit(1)
-
-        output_files = audiotools.open_files(queue.results.values())
 
         #add ReplayGain to converted files, if necessary
         if ((audiotools.ADD_REPLAYGAIN and

@@ -54,7 +54,7 @@ def split(progress, source_audiofile, destination_filename,
     if (metadata is not None):
         destination_audiofile.set_metadata(metadata)
 
-    return destination_filename
+    return str(destination_filename)
 
 
 if (__name__ == '__main__'):
@@ -422,12 +422,12 @@ if (__name__ == '__main__'):
 
             pcm_frames_offset += pcm_frames
         try:
-            queue.run(options.max_processes)
+            encoded_tracks = audiotools.open_files(
+                queue.run(options.max_processes))
         except audiotools.EncodingError, err:
             msg.error(unicode(err))
             sys.exit(1)
 
-        encoded_tracks = audiotools.open_files(queue.results.values())
     else:
         total_pcm = audiotools.BufferedPCMReader(audiofile.to_pcm())
         encoded_tracks = []

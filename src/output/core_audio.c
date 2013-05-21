@@ -184,6 +184,46 @@ static PyObject* CoreAudio_flush(output_CoreAudio *self, PyObject *args)
     return Py_None;
 }
 
+static PyObject* CoreAudio_get_volume(output_CoreAudio *self, PyObject *args)
+{
+    mpg123_coreaudio_t *ao = self->ao->userptr;
+    AudioDeviceID output_device = ao->output_device;
+    UInt32 left_ch = 1;  /*FIXME - determine this at init-time*/
+    UInt32 right_ch = 2; /*FIXME - determine this at init-time*/
+    Float32 left_volume;
+    Float32 right_volume;
+
+    if (get_volume_scalar(output_device, left_ch, &left_volume) ||
+        get_volume_scalar(output_device, right_ch, &right_volume)) {
+        PyErr_SetString(PyExc_ValueError, "unable to get output volume");
+        return NULL;
+    } else {
+        const double avg_volume = (left_volume + right_volume) / 2.0;
+        return PyFloat_FromDouble(avg_volume);
+    }
+}
+
+static PyObject* CoreAudio_set_volume(output_CoreAudio *self, PyObject *args)
+{
+    mpg123_coreaudio_t *ao = self->ao->userptr;
+    AudioDeviceID output_device = ao->output_device;
+    UInt32 left_ch = 1;  /*FIXME - determine this at init-time*/
+    UInt32 right_ch = 2; /*FIXME - determine this at init-time*/
+    double volume;
+
+    if (!PyArg_ParseTuple(args, "d", &volume))
+        return NULL;
+
+    if (set_volume_scalar(output_device, left_ch, volume) ||
+        set_volume_scalar(output_device, right_ch, volume)) {
+        PyErr_SetString(PyExc_ValueError, "unable to set output volume");
+        return NULL;
+    } else {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+}
+
 static PyObject* CoreAudio_pause(output_CoreAudio *self, PyObject *args)
 {
     self->ao->pause(self->ao);
@@ -249,11 +289,15 @@ static int open_coreaudio(audio_output_t *ao)
 {
     mpg123_coreaudio_t* ca = (mpg123_coreaudio_t*)ao->userptr;
     UInt32 size;
+    AudioObjectPropertyAddress theAddress =
+        { kAudioHardwarePropertyDefaultOutputDevice,
+          kAudioObjectPropertyScopeGlobal,
+          kAudioObjectPropertyElementMaster };
     AudioComponentDescription desc;
     AudioComponent comp;
     AudioStreamBasicDescription inFormat;
     AudioStreamBasicDescription outFormat;
-    AURenderCallbackStruct  renderCallback;
+    AURenderCallbackStruct renderCallback;
     Boolean outWritable;
 
     /* Initialize our environment */
@@ -263,6 +307,19 @@ static int open_coreaudio(audio_output_t *ao)
     ca->last_buffer = 0;
     ca->play_done = 0;
     ca->decode_done = 0;
+
+
+    /* Get the default audio device ID*/
+    size = sizeof(AudioDeviceID);
+    if (AudioObjectGetPropertyData(
+            kAudioObjectSystemObject,
+            &theAddress,
+            0,
+            NULL,
+            &size,
+            &(ca->output_device))) {
+        return -1;
+    }
 
 
     /* Get the default audio output unit */
@@ -300,7 +357,12 @@ static int open_coreaudio(audio_output_t *ao)
         return -1;
     }
 
-    if(AudioUnitSetProperty(ca->outputUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &outFormat, size)) {
+    if(AudioUnitSetProperty(ca->outputUnit,
+                            kAudioUnitProperty_StreamFormat,
+                            kAudioUnitScope_Input,
+                            0,
+                            &outFormat,
+                            size)) {
         return -1;
     }
 
@@ -349,7 +411,10 @@ static int open_coreaudio(audio_output_t *ao)
         }
         if(ao->channels == 1) {
             SInt32 channelMap[2] = { 0, 0 };
-            if(AudioConverterSetProperty(ca->converter, kAudioConverterChannelMap, sizeof(channelMap), channelMap)) {
+            if(AudioConverterSetProperty(ca->converter,
+                                         kAudioConverterChannelMap,
+                                         sizeof(channelMap),
+                                         channelMap)) {
                 return -1;
             }
         }
@@ -536,3 +601,39 @@ static OSStatus playProc(AudioConverterRef inAudioConverter,
 }
 
 #include "sfifo.c"
+
+static OSStatus get_volume_scalar(AudioDeviceID output_device,
+                                  UInt32 channel,
+                                  Float32 *volume)
+{
+    UInt32 size = sizeof(Float32);
+    AudioObjectPropertyAddress address =
+        { kAudioDevicePropertyVolumeScalar,
+          kAudioDevicePropertyScopeOutput,
+          channel };
+
+    return AudioObjectGetPropertyData(output_device,
+                                      &address,
+                                      0,
+                                      NULL,
+                                      &size,
+                                      volume);
+}
+
+static OSStatus set_volume_scalar(AudioDeviceID output_device,
+                                  UInt32 channel,
+                                  Float32 volume)
+{
+    UInt32 size = sizeof(Float32);
+    AudioObjectPropertyAddress address =
+        { kAudioDevicePropertyVolumeScalar,
+          kAudioDevicePropertyScopeOutput,
+          channel };
+
+    return AudioObjectSetPropertyData(output_device,
+                                      &address,
+                                      0,
+                                      NULL,
+                                      size,
+                                      &volume);
+}

@@ -21,7 +21,7 @@
 import cPickle
 
 (RG_NO_REPLAYGAIN, RG_TRACK_GAIN, RG_ALBUM_GAIN) = range(3)
-
+DEFAULT_FORMAT = (44100, 2, 0x3, 16)
 
 class Player:
     """a class for operating an audio player
@@ -32,93 +32,65 @@ class Player:
     def __init__(self, audio_output,
                  replay_gain=RG_NO_REPLAYGAIN,
                  next_track_callback=lambda: None):
-        """audio_output is an AudioOutput subclass
+        """audio_output is the name of the output as a string
         replay_gain is RG_NO_REPLAYGAIN, RG_TRACK_GAIN or RG_ALBUM_GAIN,
         indicating how the player should apply ReplayGain
         next_track_callback is a function with no arguments
         which is called by the player when the current track is finished"""
 
-        self.__closed__ = True
+        from multiprocessing import Process, Array, Value, Pipe
+        from threading import Thread
 
-        import os
-        import sys
-        import mmap
-        import threading
+        self.__player__ = None
 
-        def call_next_track(response_f):
-            while (True):
-                try:
-                    result = cPickle.load(response_f)
-                    next_track_callback()
-                except (IOError, EOFError):
-                    break
+        def call_next_track(next_track_conn, next_track_callback):
+            response = next_track_conn.recv()
+            while (response):
+                next_track_callback()
+                response = next_track_conn.recv()
+            next_track_conn.close()
 
-        #2, 64-bit fields of progress data
-        self.__progress__ = mmap.mmap(-1, 16)
+        (self.__command_conn__, client_conn) = Pipe(True)
+        (server_next_track_conn, client_next_track_conn) = Pipe(False)
+        self.__state__ = Value("i", 0)
+        self.__progress__ = Array("I", [0, 0])
 
-        #for sending commands from player to child process
-        (command_r, command_w) = os.pipe()
+        thread = Thread(target=call_next_track,
+                        args=(server_next_track_conn, next_track_callback))
+        thread.daemon = True
+        thread.start()
 
-        #for receiving "next track" indicator from child process
-        (response_r, response_w) = os.pipe()
+        self.__player__ = Process(
+            target=PlayerProcess.run,
+            kwargs={"audio_output":audio_output,
+                    "command_conn":client_conn,
+                    "next_track_conn":client_next_track_conn,
+                    "state":self.__state__,
+                    "current_progress":self.__progress__,
+                    "replay_gain":replay_gain})
 
-        self.__pid__ = os.fork()
-        if (self.__pid__ > 0):
-            #parent
-            os.close(command_r)
-            os.close(response_w)
-
-            self.command_queue = os.fdopen(command_w, "wb")
-
-            thread = threading.Thread(target=call_next_track,
-                                      args=(os.fdopen(response_r, "rb"),))
-            thread.daemon = True
-            thread.start()
-
-            self.__closed__ = False
-        else:
-            #child
-            os.close(command_w)
-            os.close(response_r)
-            devnull = open(os.devnull, "r+b")
-            os.dup2(devnull.fileno(), sys.stdin.fileno())
-            os.dup2(devnull.fileno(), sys.stdout.fileno())
-            os.dup2(devnull.fileno(), sys.stderr.fileno())
-            try:
-                PlayerProcess(
-                    audio_output=audio_output,
-                    command_file=os.fdopen(command_r, "rb"),
-                    next_track_file=os.fdopen(response_w, "wb"),
-                    progress_file=self.__progress__,
-                    replay_gain=replay_gain).run()
-            finally:
-                #avoid calling Python cleanup handlers
-                os._exit(0)
+        self.__player__.start()
 
     def __del__(self):
-        if (self.__pid__ > 0):
-            import os
-
-            if (not self.__closed__):
-                self.close()
-
-            self.command_queue.close()
-            os.waitpid(self.__pid__, 0)
+        if (self.__player__ is not None):
+            self.__command_conn__.send(("exit", tuple(), False))
+            self.__command_conn__.close()
+            self.__player__.join()
+            self.__player__ = None
 
     def open(self, track):
         """opens the given AudioFile for playing
 
         stops playing the current file, if any"""
 
-        self.track = track
-        cPickle.dump(("open", [track]), self.command_queue)
-        self.command_queue.flush()
+        self.__command_conn__.send(("open", (track,), True))
+        return self.__command_conn__.recv()
 
     def play(self):
         """begins or resumes playing an opened AudioFile, if any"""
 
-        cPickle.dump(("play", []), self.command_queue)
-        self.command_queue.flush()
+        self.__command_conn__.send(("play", tuple(), True))
+        return self.__command_conn__.recv()
 
     def set_replay_gain(self, replay_gain):
         """sets the given ReplayGain level to apply during playback
@@ -127,52 +99,99 @@ class Player:
         replayGain cannot be applied mid-playback
         one must stop() and play() a file for it to take effect"""
 
-        cPickle.dump(("set_replay_gain", [replay_gain]), self.command_queue)
-        self.command_queue.flush()
+        self.__command_conn__.send(("set_replay_gain", (replay_gain,), True))
+        return self.__command_conn__.recv()
+
+    def set_output(self, output):
+        """given the name string of an AudioOutput
+        (matching its .NAME attribute)
+
+        if the output is not valid, it will not be changed
+
+        any currently playing audio is stopped"""
+
+        self.__command_conn__.send(("set_output", (output,), True))
+        return self.__command_conn__.recv()
 
     def pause(self):
         """pauses playback of the current file
 
         playback may be resumed with play() or toggle_play_pause()"""
 
-        cPickle.dump(("pause", []), self.command_queue)
-        self.command_queue.flush()
+        self.__command_conn__.send(("pause", tuple(), True))
+        return self.__command_conn__.recv()
 
     def toggle_play_pause(self):
         """pauses the file if playing, play the file if paused"""
 
-        cPickle.dump(("toggle_play_pause", []), self.command_queue)
-        self.command_queue.flush()
+        self.__command_conn__.send(("toggle_play_pause", tuple(), True))
+        return self.__command_conn__.recv()
 
     def stop(self):
         """stops playback of the current file
 
         if play() is called, playback will start from the beginning"""
 
-        cPickle.dump(("stop", []), self.command_queue)
-        self.command_queue.flush()
+        self.__command_conn__.send(("stop_playing", tuple(), True))
+        return self.__command_conn__.recv()
+
+    def state(self):
+        """returns the current state of the Player
+        as either PLAYER_STOPPED, PLAYER_PAUSED, or PLAYER_PLAYING ints"""
+
+        return self.__state__.value
 
     def close(self):
         """closes the player for playback
 
         the player thread is halted and the AudioOutput is closed"""
 
-        cPickle.dump(("exit", []), self.command_queue)
-        self.command_queue.flush()
-        self.__closed__ = True
+        self.__command_conn__.send(("close", tuple(), True))
+        response = self.__command_conn__.recv()
+        if (self.__player__ is not None):
+            self.__command_conn__.send(("exit", tuple(), False))
+            self.__command_conn__.close()
+            self.__player__.join()
+            self.__player__ = None
+        return response
 
     def progress(self):
         """returns a (pcm_frames_played, pcm_frames_total) tuple
 
         this indicates the current playback status in PCM frames"""
 
-        import struct
+        return tuple(self.__progress__)
 
-        self.__progress__.seek(0, 0)
-        (frames_played,
-         total_frames) = struct.unpack(">QQ", self.__progress__.read(16))
+    def current_output_description(self):
+        """returns the human-readable description of the current output device
+        as a Unicode string"""
 
-        return (frames_played, total_frames)
+        self.__command_conn__.send(("current_output_description",
+                                    tuple(),
+                                    True))
+        return self.__command_conn__.recv()
+
+    def current_output_name(self):
+        """returns the ``NAME`` attribute of the current output device
+        as a plain string"""
+
+        self.__command_conn__.send(("current_output_name",
+                                    tuple(),
+                                    True))
+        return self.__command_conn__.recv()
+
+    def get_volume(self):
+        """returns the current volume level as a floating point value
+        between 0.0 and 1.0, inclusive"""
+
+        self.__command_conn__.send(("get_volume", tuple(), True))
+        return self.__command_conn__.recv()
+
+    def set_volume(self, volume):
+        """given a floating point value between 0.0 and 1.0, inclusive,
+        sets the current volume level to that value"""
+
+        self.__command_conn__.send(("set_volume", (volume,), False))
 
 
 (PLAYER_STOPPED, PLAYER_PAUSED, PLAYER_PLAYING) = range(3)
@@ -184,157 +203,219 @@ class PlayerProcess:
     this should not be instantiated directly;
     player will do so automatically"""
 
-    def __init__(self,
-                 audio_output,
-                 command_file,
-                 next_track_file,
-                 progress_file,
-                 replay_gain=RG_NO_REPLAYGAIN):
-        self.audio_output = audio_output
-        self.command_file = command_file
-        self.next_track_file = next_track_file
-        self.progress_file = progress_file
-        self.replay_gain = replay_gain
+    BUFFER_SIZE = 0.25  # in seconds
 
-        self.track = None
-        self.pcmconverter = None
-        self.frames_played = 0
-        self.total_frames = 0
-        self.state = PLAYER_STOPPED
-        self.set_progress(self.frames_played, self.total_frames)
+    def __init__(self, audio_output,
+                 state,
+                 progress,
+                 next_track_conn,
+                 replay_gain=RG_NO_REPLAYGAIN):
+        """audio_output is a string of what audio type to use
+
+        state is a shared Value of the current processing state
+
+        progress is a shared Array of current frames / total frames
+
+        next_track_conn is a Connection object
+        to be sent an object when the current track ends
+
+        replay_gain is RG_NO_REPLAYGAIN, RG_TRACK_GAIN, or RG_ALBUM_GAIN
+        """
+
+        self.__track__ = None          # the currently playing AudioFile
+        self.__pcmreader__ = None      # the currently playing PCMReader
+
+        # an AudioOutput subclass
+        self.__audio_output__ = open_output(audio_output)
+        self.__buffer_size__ = 0       # the number of PCM frames to process
+
+        self.__state__ = state
+        self.__state__.value = PLAYER_STOPPED
+        self.__progress__ = progress   #an Array of current/total frames
+
+        self.set_progress(0, 1)
+
+        self.__next_track_conn__ = next_track_conn
+
+        self.__replay_gain__ = replay_gain  # the sort of ReplayGain to apply
 
     def open(self, track):
-        self.stop()
-        self.track = track
-        self.frames_played = 0
-        self.total_frames = track.total_frames()
-        self.set_progress(self.frames_played, self.total_frames)
+        self.stop_playing()
+        self.__track__ = track
+
+    def close(self):
+        self.stop_playing()
+        self.__audio_output__.close()
 
     def pause(self):
-        if (self.state == PLAYER_PLAYING):
-            self.audio_output.pause()
-            self.state = PLAYER_PAUSED
+        if (self.__state__.value == PLAYER_PLAYING):
+            self.__audio_output__.pause()
+            self.__state__.value = PLAYER_PAUSED
 
     def play(self):
-        if (self.track is not None):
-            if (self.state == PLAYER_STOPPED):
-                if (self.replay_gain == RG_TRACK_GAIN):
-                    from .replaygain import ReplayGainReader
-                    replay_gain = self.track.replay_gain()
-
-                    if (replay_gain is not None):
-                        pcmreader = ReplayGainReader(
-                            self.track.to_pcm(),
-                            replay_gain.track_gain,
-                            replay_gain.track_peak)
-                    else:
-                        pcmreader = self.track.to_pcm()
-                elif (self.replay_gain == RG_ALBUM_GAIN):
-                    from .replaygain import ReplayGainReader
-                    replay_gain = self.track.replay_gain()
-
-                    if (replay_gain is not None):
-                        pcmreader = ReplayGainReader(
-                            self.track.to_pcm(),
-                            replay_gain.album_gain,
-                            replay_gain.album_peak)
-                    else:
-                        pcmreader = self.track.to_pcm()
-                else:
-                    pcmreader = self.track.to_pcm()
-
-                if (not self.audio_output.compatible(pcmreader)):
-                    self.audio_output.init(
-                        sample_rate=pcmreader.sample_rate,
-                        channels=pcmreader.channels,
-                        channel_mask=pcmreader.channel_mask,
-                        bits_per_sample=pcmreader.bits_per_sample)
-
-                from . import BufferedPCMReader
-
-                if (self.pcmconverter is not None):
-                    self.pcmconverter.close()
-                self.pcmconverter = PCMConverter(
-                    BufferedPCMReader(pcmreader),
-                    self.audio_output.framelist_converter())
-                self.frames_played = 0
-                self.state = PLAYER_PLAYING
-                self.set_progress(self.frames_played, self.total_frames)
-            elif (self.state == PLAYER_PAUSED):
-                self.audio_output.resume()
-                self.state = PLAYER_PLAYING
-            elif (self.state == PLAYER_PLAYING):
+        if (self.__track__ is not None):
+            if (self.__state__.value == PLAYER_STOPPED):
+                self.start_playing()
+            elif (self.__state__.value == PLAYER_PAUSED):
+                self.__audio_output__.resume()
+                self.__state__.value = PLAYER_PLAYING
+            elif (self.__state__.value == PLAYER_PLAYING):
                 pass
 
     def set_replay_gain(self, replay_gain):
-        self.replay_gain = replay_gain
+        self.__replay_gain__ = replay_gain
+
+    def set_output(self, output):
+        self.stop_playing()
+        try:
+            self.__audio_output__ = open_output(output)
+            self.__buffer_size__ = 0
+        except ValueError:
+            pass
 
     def toggle_play_pause(self):
-        if (self.state == PLAYER_PLAYING):
+        if (self.__state__.value == PLAYER_PLAYING):
             self.pause()
-        elif ((self.state == PLAYER_PAUSED) or
-              (self.state == PLAYER_STOPPED)):
+        elif ((self.__state__.value == PLAYER_PAUSED) or
+              (self.__state__.value == PLAYER_STOPPED)):
             self.play()
 
-    def stop(self):
-        if (self.pcmconverter is not None):
-            self.pcmconverter.close()
-            del(self.pcmconverter)
-            self.pcmconverter = None
-        self.frames_played = 0
-        self.state = PLAYER_STOPPED
-        self.set_progress(self.frames_played, self.total_frames)
+    def current_output_name(self):
+        return self.__audio_output__.NAME
 
-    def run(self):
-        import select
+    def current_output_description(self):
+        return self.__audio_output__.description()
 
-        while (True):
-            if (self.state in (PLAYER_STOPPED, PLAYER_PAUSED)):
-                (command, args) = cPickle.load(self.command_file)
-                if (command == "exit"):
-                    self.audio_output.close()
-                    return
-                else:
-                    getattr(self, command)(*args)
+    def get_volume(self):
+        return self.__audio_output__.get_volume()
+
+    def set_volume(self, volume):
+        return self.__audio_output__.set_volume(volume)
+
+    def start_playing(self):
+        from . import BufferedPCMReader
+
+        #construct pcmreader from track
+        #depending on whether ReplayGain is set
+        if (self.__replay_gain__ == RG_TRACK_GAIN):
+            from .replaygain import ReplayGainReader
+            replay_gain = self.__track__.replay_gain()
+
+            if (replay_gain is not None):
+                pcmreader = ReplayGainReader(
+                    self.__track__.to_pcm(),
+                    replay_gain.track_gain,
+                    replay_gain.track_peak)
             else:
-                (r_list,
-                 w_list,
-                 x_list) = select.select([self.command_file],
-                                         [],
-                                         [],
-                                         0)
-                if (len(r_list)):
-                    (command, args) = cPickle.load(self.command_file)
-                    if (command == "exit"):
-                        self.audio_output.close()
-                        return
-                    else:
-                        getattr(self, command)(*args)
-                else:
-                    if (self.frames_played < self.total_frames):
-                        (data, frames) = self.pcmconverter.read()
-                        if (frames > 0):
-                            self.audio_output.play(data)
-                            self.frames_played += frames
-                            if (self.frames_played >= self.total_frames):
-                                cPickle.dump(None, self.next_track_file)
-                                self.next_track_file.flush()
-                        else:
-                            self.frames_played = self.total_frames
-                            cPickle.dump(None, self.next_track_file)
-                            self.next_track_file.flush()
+                pcmreader = self.__track__.to_pcm()
+        elif (self.__replay_gain__ == RG_ALBUM_GAIN):
+            from .replaygain import ReplayGainReader
+            replay_gain = self.__track__.replay_gain()
 
-                        self.set_progress(self.frames_played,
-                                          self.total_frames)
-                    else:
-                        self.stop()
+            if (replay_gain is not None):
+                pcmreader = ReplayGainReader(
+                    self.__track__.to_pcm(),
+                    replay_gain.album_gain,
+                    replay_gain.album_peak)
+            else:
+                pcmreader = self.__track__.to_pcm()
+        else:
+            pcmreader = self.__track__.to_pcm()
+
+        pcmreader = BufferedPCMReader(pcmreader)
+
+        #reopen AudioOutput if necessary based on file's parameters
+        if (not self.__audio_output__.compatible(
+                sample_rate=pcmreader.sample_rate,
+                channels=pcmreader.channels,
+                channel_mask=pcmreader.channel_mask,
+                bits_per_sample=pcmreader.bits_per_sample)):
+            self.__audio_output__.set_format(
+                sample_rate=pcmreader.sample_rate,
+                channels=pcmreader.channels,
+                channel_mask=pcmreader.channel_mask,
+                bits_per_sample=pcmreader.bits_per_sample)
+
+        self.__pcmreader__ = pcmreader
+        self.__buffer_size__ = min(round(self.BUFFER_SIZE *
+                                         self.__track__.sample_rate()), 4096)
+        self.__state__.value = PLAYER_PLAYING
+        self.set_progress(0, self.__track__.total_frames())
+
+    def stop_playing(self):
+        if (self.__pcmreader__ is not None):
+            self.__pcmreader__.close()
+        self.__state__.value = PLAYER_STOPPED
+        self.set_progress(0, 1)
+
+    def output_chunk(self):
+        frame = self.__pcmreader__.read(self.__buffer_size__)
+        if (len(frame) > 0):
+            self.__progress__[0] += frame.frames
+            self.__audio_output__.play(frame)
+        else:
+            self.stop_playing()
+            self.__next_track_conn__.send(True)
 
     def set_progress(self, current, total):
-        import struct
+        self.__progress__[1] = total
+        self.__progress__[0] = current
 
-        self.progress_file.seek(0, 0)
-        self.progress_file.write(struct.pack(">QQ", current, total))
-        self.progress_file.flush()
+    @classmethod
+    def run(cls, audio_output, state, command_conn, next_track_conn,
+            current_progress, replay_gain=RG_NO_REPLAYGAIN):
+        """audio_output is a string of what audio type to use
+
+        command_conn is a bidirectional Connection object
+        which reads (command, (arg1, arg2, ...)) tuples
+        from the parent and writes responses back
+
+        next_track_conn is a unidirectional Connection object
+        which writes an object when the player moves to the next track
+
+        current_progress is an Array of 2 ints
+        for the playing file's current/total progress
+
+        replay_gain is RG_NO_REPLAYGAIN, RG_TRACK_GAIN, or RG_ALBUM_GAIN"""
+
+        #build PlayerProcess state management object
+        player = PlayerProcess(
+            audio_output=audio_output,
+            state=state,
+            progress=current_progress,
+            next_track_conn=next_track_conn,
+            replay_gain=replay_gain)
+
+        while (True):
+            if (state.value == PLAYER_PLAYING):
+                if (command_conn.poll()):
+                    #handle command before processing more audio, if any
+                    while (command_conn.poll()):
+                        (command, args, return_result) = command_conn.recv()
+                        if (command == "exit"):
+                            player.close()
+                            command_conn.close()
+                            next_track_conn.send(False)
+                            next_track_conn.close()
+                            return
+                        else:
+                            result = getattr(player, command)(*args)
+                            if (return_result):
+                                command_conn.send(result)
+                else:
+                    player.output_chunk()
+            else:
+                (command, args, return_result) = command_conn.recv()
+                if (command == "exit"):
+                    player.close()
+                    command_conn.close()
+                    next_track_conn.send(False)
+                    next_track_conn.close()
+                    return
+                else:
+                    result = getattr(player, command)(*args)
+                    if (return_result):
+                        command_conn.send(result)
 
 
 class CDPlayer:
@@ -598,54 +679,40 @@ class AudioOutput:
     """an abstract parent class for playing audio"""
 
     def __init__(self):
-        self.sample_rate = 0
-        self.channels = 0
-        self.channel_mask = 0
-        self.bits_per_sample = 0
-        self.initialized = False
+        self.sample_rate = None
+        self.channels = None
+        self.channel_mask = None
+        self.bits_per_sample = None
 
-    def compatible(self, pcmreader):
+    def description(self):
+        """returns user-facing name of output device as unicode"""
+
+        raise NotImplementedError()
+
+    def compatible(self, sample_rate, channels, channel_mask, bits_per_sample):
         """returns True if the given pcmreader is compatible
 
         if False, one is expected to open a new output stream
         which is compatible"""
 
-        return ((self.sample_rate == pcmreader.sample_rate) and
-                (self.channels == pcmreader.channels) and
-                (self.channel_mask == pcmreader.channel_mask) and
-                (self.bits_per_sample == pcmreader.bits_per_sample))
+        return ((self.sample_rate == sample_rate) and
+                (self.channels == channels) and
+                (self.channel_mask == channel_mask) and
+                (self.bits_per_sample == bits_per_sample))
 
-    def framelist_converter(self):
-        """returns a function which converts framelist objects
+    def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
+        """initializes the output stream for the given format
 
-        to objects acceptable by our play() method"""
+        if the output stream has already been initialized,
+        this will close and reopen the stream for the new format"""
 
-        raise NotImplementedError()
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.channel_mask = channel_mask
+        self.bits_per_sample = bits_per_sample
 
-    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream
-
-        this *must* be called prior to play() and close()
-        the general flow of audio playing is:
-
-        >>> pcm = audiofile.to_pcm()
-        >>> player = AudioOutput()
-        >>> player.init(pcm.sample_rate,
-        ...             pcm.channels,
-        ...             pcm.channel_mask,
-        ...             pcm.bits_per_sample)
-        >>> convert = player.framelist_converter()
-        >>> frame = pcm.read(1024)
-        >>> while (len(frame) > 0):
-        ...     player.play(convert(frame))
-        ...     frame = pcm.read(1024)
-        >>> player.close()
-        """
-
-        raise NotImplementedError()
-
-    def play(self, data):
-        """plays a chunk of converted data"""
+    def play(self, framelist):
+        """plays a FrameList"""
 
         raise NotImplementedError()
 
@@ -658,6 +725,17 @@ class AudioOutput:
         """resumes playing paused audio output"""
 
         raise NotImplementedError()
+
+    def get_volume(self):
+        """returns a floating-point volume value between 0.0 and 1.0"""
+
+        return 0.0
+
+    def set_volume(self, volume):
+        """sets the output volume to a floating point value
+        between 0.0 and 1.0"""
+
+        pass
 
     def close(self):
         """closes the output stream"""
@@ -679,29 +757,21 @@ class NULLAudioOutput(AudioOutput):
 
     NAME = "NULL"
 
-    def framelist_converter(self):
-        """returns a function which converts framelist objects
+    def __init__(self):
+        self.__volume__ = 0.30
+        AudioOutput.__init__(self)
 
-        to objects acceptable by our play() method"""
+    def description(self):
+        """returns user-facing name of output device as unicode"""
 
-        return lambda f: f.frames
+        return u"Dummy Output"
 
-    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream
-
-        this *must* be called prior to play() and close()"""
-
-        self.sample_rate = sample_rate
-        self.channels = channels
-        self.channel_mask = channel_mask
-        self.bits_per_sample = bits_per_sample
-
-    def play(self, data):
+    def play(self, framelist):
         """plays a chunk of converted data"""
 
         import time
 
-        time.sleep(float(data) / self.sample_rate)
+        time.sleep(float(framelist.frames) / self.sample_rate)
 
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
@@ -712,6 +782,20 @@ class NULLAudioOutput(AudioOutput):
         """resumes playing paused audio output"""
 
         pass
+
+    def get_volume(self):
+        """returns a floating-point volume value between 0.0 and 1.0"""
+
+        return self.__volume__
+
+    def set_volume(self, volume):
+        """sets the output volume to a floating point value
+        between 0.0 and 1.0"""
+
+        if ((volume >= 0) and (volume <= 1.0)):
+            self.__volume__ = volume
+        else:
+            raise ValueError("volume must be between 0.0 and 1.0")
 
     def close(self):
         """closes the output stream"""
@@ -730,62 +814,63 @@ class OSSAudioOutput(AudioOutput):
 
     NAME = "OSS"
 
-    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream
+    def __init__(self):
+        """automatically initializes output format for playing
+        CD quality audio"""
 
-        this *must* be called prior to play() and close()"""
+        self.__ossaudio__ = None
+        self.__ossmixer__ = None
+        AudioOutput.__init__(self)
 
-        if (not self.initialized):
+    def description(self):
+        """returns user-facing name of output device as unicode"""
+
+        return u"Open Sound System"
+
+    def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
+        """initializes the output stream for the given format
+
+        if the output stream has already been initialized,
+        this will close and reopen the stream for the new format"""
+
+        if (self.__ossaudio__ is None):
             import ossaudiodev
 
-            self.sample_rate = sample_rate
-            self.channels = channels
-            self.channel_mask = channel_mask
-            self.bits_per_sample = bits_per_sample
+            AudioOutput.set_format(self, sample_rate, channels,
+                                   channel_mask, bits_per_sample)
 
-            self.ossaudio = ossaudiodev.open('w')
+            #initialize audio output device and setup framelist converter
+            self.__ossaudio__ = ossaudiodev.open('w')
+            self.__ossmixer__ = ossaudiodev.openmixer()
             if (self.bits_per_sample == 8):
-                self.ossaudio.setfmt(ossaudiodev.AFMT_S8_LE)
+                self.__ossaudio__.setfmt(ossaudiodev.AFMT_S8_LE)
+                self.__converter__ = lambda f: f.to_bytes(False, True)
             elif (self.bits_per_sample == 16):
-                self.ossaudio.setfmt(ossaudiodev.AFMT_S16_LE)
+                self.__ossaudio__.setfmt(ossaudiodev.AFMT_S16_LE)
+                self.__converter__ = lambda f: f.to_bytes(False, True)
             elif (self.bits_per_sample == 24):
-                self.ossaudio.setfmt(ossaudiodev.AFMT_S16_LE)
+                from .pcm import from_list
+
+                self.__ossaudio__.setfmt(ossaudiodev.AFMT_S16_LE)
+                self.__converter__ = lambda f: from_list(
+                    [i >> 8 for i in list(f)],
+                    self.channels, 16, True).to_bytes(False, True)
             else:
                 raise ValueError("Unsupported bits-per-sample")
 
-            self.ossaudio.channels(channels)
-            self.ossaudio.speed(sample_rate)
-
-            self.initialized = True
+            self.__ossaudio__.channels(channels)
+            self.__ossaudio__.speed(sample_rate)
         else:
             self.close()
-            self.init(sample_rate=sample_rate,
-                      channels=channels,
-                      channel_mask=channel_mask,
-                      bits_per_sample=bits_per_sample)
+            self.set_format(sample_rate=sample_rate,
+                            channels=channels,
+                            channel_mask=channel_mask,
+                            bits_per_sample=bits_per_sample)
 
-    def framelist_converter(self):
-        """returns a function which converts framelist objects
+    def play(self, framelist):
+        """plays a FrameList"""
 
-        to objects acceptable by our play() method"""
-
-        if (self.bits_per_sample == 8):
-            return lambda f: f.to_bytes(False, True)
-        elif (self.bits_per_sample == 16):
-            return lambda f: f.to_bytes(False, True)
-        elif (self.bits_per_sample == 24):
-            from .pcm import from_list
-
-            return lambda f: from_list(
-                [i >> 8 for i in list(f)],
-                self.channels, 16, True).to_bytes(False, True)
-        else:
-            raise ValueError("Unsupported bits-per-sample")
-
-    def play(self, data):
-        """plays a chunk of converted data"""
-
-        self.ossaudio.writeall(data)
+        self.__ossaudio__.writeall(self.__converter__(framelist))
 
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
@@ -797,12 +882,55 @@ class OSSAudioOutput(AudioOutput):
 
         pass
 
+    def get_volume(self):
+        """returns a floating-point volume value between 0.0 and 1.0"""
+
+        import ossaudiodev
+
+        if (self.__ossmixer__ is None):
+            self.set_format(*DEFAULT_FORMAT)
+
+        controls = self.__ossmixer__.controls()
+        for control in (ossaudiodev.SOUND_MIXER_VOLUME,
+                        ossaudiodev.SOUND_MIXER_PCM):
+            if (controls & (1 << control)):
+                try:
+                    volumes = self.__ossmixer__.get(control)
+                    return (sum(volumes) / float(len(volumes))) / 100.0
+                except ossaudiodev.OSSAudioError:
+                    continue
+        else:
+            return 0.0
+
+    def set_volume(self, volume):
+        """sets the output volume to a floating point value
+        between 0.0 and 1.0"""
+
+        if ((volume >= 0) and (volume <= 1.0)):
+            if (self.__ossmixer__ is None):
+                self.set_format(*DEFAULT_FORMAT)
+
+            controls = self.__ossmixer__.controls()
+            ossvolume = max(min(int(round(volume * 100)), 100), 0)
+            for control in (ossaudiodev.SOUND_MIXER_VOLUME,
+                            ossaudiodev.SOUND_MIXER_PCM):
+                if (controls & (1 << control)):
+                    try:
+                        self.__ossmixer__.set(control, (ossvolume, ossvolume))
+                    except ossaudiodev.OSSAudioError:
+                        continue
+        else:
+            raise ValueError("volume must be between 0.0 and 1.0")
+
     def close(self):
         """closes the output stream"""
 
-        if (self.initialized):
-            self.initialized = False
-            self.ossaudio.close()
+        if (self.__ossaudio__ is not None):
+            self.__ossaudio__.close()
+            self.__ossaudio__ = None
+        if (self.__ossmixer__ is not None):
+            self.__ossmixer__.close()
+            self.__ossmixer__ = None
 
     @classmethod
     def available(cls):
@@ -810,8 +938,9 @@ class OSSAudioOutput(AudioOutput):
 
         try:
             import ossaudiodev
+            ossaudiodev.open("w").close()
             return True
-        except ImportError:
+        except (ImportError, IOError):
             return False
 
 
@@ -820,109 +949,191 @@ class PulseAudioOutput(AudioOutput):
 
     NAME = "PulseAudio"
 
-    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream
+    def __init__(self):
+        self.__pulseaudio__ = None
+        AudioOutput.__init__(self)
 
-        this *must* be called prior to play() and close()"""
+    def description(self):
+        """returns user-facing name of output device as unicode"""
 
-        if (not self.initialized):
-            import subprocess
-            from . import BIN
+        #FIXME - pull this from device description
+        return u"Pulse Audio"
 
-            self.sample_rate = sample_rate
-            self.channels = channels
-            self.channel_mask = channel_mask
-            self.bits_per_sample = bits_per_sample
+    def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
+        """initializes the output stream for the given format
 
-            if (bits_per_sample == 8):
-                format = "u8"
-            elif (bits_per_sample == 16):
-                format = "s16le"
-            elif (bits_per_sample == 24):
-                format = "s24le"
-            else:
-                raise ValueError("Unsupported bits-per-sample")
+        if the output stream has already been initialized,
+        this will close and reopen the stream for the new format"""
 
-            self.pacat = subprocess.Popen(
-                [BIN["pacat"],
-                 "-n", "Python Audio Tools",
-                 "--rate", str(sample_rate),
-                 "--format", format,
-                 "--channels", str(channels),
-                 "--latency-msec", str(100)],
-                stdin=subprocess.PIPE)
+        if (self.__pulseaudio__ is None):
+            from .output import PulseAudio
 
-            self.initialized = True
+            AudioOutput.set_format(self, sample_rate, channels,
+                                   channel_mask, bits_per_sample)
+
+            self.__pulseaudio__ = PulseAudio(sample_rate,
+                                             channels,
+                                             bits_per_sample,
+                                             "Python Audio Tools")
+            self.__converter__ = {
+                8:lambda f: f.to_bytes(True, False),
+                16:lambda f: f.to_bytes(False, True),
+                24:lambda f: f.to_bytes(False, True)}[self.bits_per_sample]
         else:
             self.close()
-            self.init(sample_rate=sample_rate,
-                      channels=channels,
-                      channel_mask=channel_mask,
-                      bits_per_sample=bits_per_sample)
+            self.set_format(sample_rate=sample_rate,
+                            channels=channels,
+                            channel_mask=channel_mask,
+                            bits_per_sample=bits_per_sample)
 
-    def framelist_converter(self):
-        """returns a function which converts framelist objects
+    def play(self, framelist):
+        """plays a FrameList"""
 
-        to objects acceptable by our play() method"""
-
-        if (self.bits_per_sample == 8):
-            return lambda f: f.to_bytes(True, False)
-        elif (self.bits_per_sample == 16):
-            return lambda f: f.to_bytes(False, True)
-        elif (self.bits_per_sample == 24):
-            return lambda f: f.to_bytes(False, True)
-        else:
-            raise ValueError("Unsupported bits-per-sample")
-
-    def play(self, data):
-        """plays a chunk of converted data"""
-
-        self.pacat.stdin.write(data)
-        self.pacat.stdin.flush()
+        self.__pulseaudio__.play(self.__converter__(framelist))
 
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
 
-        #may need to update this if I ever switch PulseAudio
-        #to the low-level interface instead of using pacat
-        pass
+        if (self.__pulseaudio__ is not None):
+            self.__pulseaudio__.pause()
 
     def resume(self):
         """resumes playing paused audio output"""
 
-        #may need to update this if I ever switch PulseAudio
-        #to the low-level interface instead of using pacat
-        pass
+        if (self.__pulseaudio__ is not None):
+            self.__pulseaudio__.resume()
+
+    def get_volume(self):
+        """returns a floating-point volume value between 0.0 and 1.0"""
+
+        if (self.__pulseaudio__ is None):
+            self.set_format(*DEFAULT_FORMAT)
+
+        return self.__pulseaudio__.get_volume()
+
+    def set_volume(self, volume):
+        """sets the output volume to a floating point value
+        between 0.0 and 1.0"""
+
+        if ((volume >= 0) and (volume <= 1.0)):
+            if (self.__pulseaudio__ is None):
+                self.set_format(*DEFAULT_FORMAT)
+
+            self.__pulseaudio__.set_volume(volume)
+        else:
+            raise ValueError("volume must be between 0.0 and 1.0")
 
     def close(self):
         """closes the output stream"""
 
-        if (self.initialized):
-            self.initialized = False
-            self.pacat.stdin.close()
-            self.pacat.wait()
-
-    @classmethod
-    def server_alive(cls):
-        import subprocess
-        from . import BIN
-
-        dev = subprocess.Popen([BIN["pactl"], "stat"],
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-        dev.stdout.read()
-        dev.stderr.read()
-        return (dev.wait() == 0)
+        if (self.__pulseaudio__ is not None):
+            self.__pulseaudio__.flush()
+            self.__pulseaudio__.close()
+            self.__pulseaudio__ = None
 
     @classmethod
     def available(cls):
         """returns True if PulseAudio is available and running on the system"""
 
-        from . import BIN
+        try:
+            from .output import PulseAudio
 
-        return (BIN.can_execute(BIN["pacat"]) and
-                BIN.can_execute(BIN["pactl"]) and
-                cls.server_alive())
+            return True
+        except ImportError:
+            return False
+
+
+class ALSAAudioOutput(AudioOutput):
+    """an AudioOutput subclass for ALSA output"""
+
+    NAME = "ALSA"
+
+    def __init__(self):
+        self.__alsaaudio__ = None
+        AudioOutput.__init__(self)
+
+    def description(self):
+        """returns user-facing name of output device as unicode"""
+
+        #FIXME - pull this from device description
+        return u"Advanced Linux Sound Architecture"
+
+    def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
+        """initializes the output stream for the given format
+
+        if the output stream has already been initialized,
+        this will close and reopen the stream for the new format"""
+
+        if (self.__alsaaudio__ is None):
+            from .output import ALSAAudio
+
+            AudioOutput.set_format(self, sample_rate, channels,
+                                   channel_mask, bits_per_sample)
+
+            self.__alsaaudio__ = ALSAAudio("default",
+                                           sample_rate,
+                                            channels,
+                                            bits_per_sample)
+        else:
+            self.close()
+            self.set_format(sample_rate=sample_rate,
+                            channels=channels,
+                            channel_mask=channel_mask,
+                            bits_per_sample=bits_per_sample)
+
+    def play(self, framelist):
+        """plays a FrameList"""
+
+        self.__alsaaudio__.play(framelist)
+
+    def pause(self):
+        """pauses audio output, with the expectation it will be resumed"""
+
+        if (self.__alsaaudio__ is not None):
+            self.__alsaaudio__.pause()
+
+    def resume(self):
+        """resumes playing paused audio output"""
+
+        if (self.__alsaaudio__ is not None):
+            self.__alsaaudio__.resume()
+
+    def get_volume(self):
+        """returns a floating-point volume value between 0.0 and 1.0"""
+
+        if (self.__alsaaudio__ is None):
+            self.set_format(*DEFAULT_FORMAT)
+        return self.__alsaaudio__.get_volume()
+
+    def set_volume(self, volume):
+        """sets the output volume to a floating point value
+        between 0.0 and 1.0"""
+
+        if ((volume >= 0) and (volume <= 1.0)):
+            if (self.__alsaaudio__ is None):
+                self.set_format(*DEFAULT_FORMAT)
+            self.__alsaaudio__.set_volume(volume)
+        else:
+            raise ValueError("volume must be between 0.0 and 1.0")
+
+    def close(self):
+        """closes the output stream"""
+
+        if (self.__alsaaudio__ is not None):
+            self.__alsaaudio__.flush()
+            self.__alsaaudio__.close()
+            self.__alsaaudio__ = None
+
+    @classmethod
+    def available(cls):
+        """returns True if PulseAudio is available and running on the system"""
+
+        try:
+            from .output import ALSAAudio
+
+            return True
+        except ImportError:
+            return False
 
 
 class CoreAudioOutput(AudioOutput):
@@ -930,59 +1141,80 @@ class CoreAudioOutput(AudioOutput):
 
     NAME = "CoreAudio"
 
-    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream
+    def __init__(self):
+        self.__coreaudio__ = None
+        AudioOutput.__init__(self)
 
-        this *must* be called prior to play() and close()"""
+    def description(self):
+        """returns user-facing name of output device as unicode"""
 
-        if (not self.initialized):
-            self.sample_rate = sample_rate
-            self.channels = channels
-            self.channel_mask = channel_mask
-            self.bits_per_sample = bits_per_sample
+        #FIXME - pull this from device description
+        return u"Core Audio"
+
+    def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
+        """initializes the output stream for the given format
+
+        if the output stream has already been initialized,
+        this will close and reopen the stream for the new format"""
+
+        if (self.__coreaudio__ is None):
+            AudioOutput.set_format(self, sample_rate, channels,
+                                   channel_mask, bits_per_sample)
 
             from .output import CoreAudio
-            self.coreaudio = CoreAudio(sample_rate,
-                                       channels,
-                                       channel_mask,
-                                       bits_per_sample)
-            self.initialized = True
+            self.__coreaudio__ = CoreAudio(sample_rate,
+                                           channels,
+                                           channel_mask,
+                                           bits_per_sample)
         else:
             self.close()
-            self.init(sample_rate=sample_rate,
-                      channels=channels,
-                      channel_mask=channel_mask,
-                      bits_per_sample=bits_per_sample)
+            self.set_format(sample_rate=sample_rate,
+                            channels=channels,
+                            channel_mask=channel_mask,
+                            bits_per_sample=bits_per_sample)
 
-    def framelist_converter(self):
-        """returns a function which converts framelist objects
+    def play(self, framelist):
+        """plays a FrameList"""
 
-        to objects acceptable by our play() method"""
-
-        return lambda f: f.to_bytes(False, True)
-
-    def play(self, data):
-        """plays a chunk of converted data"""
-
-        self.coreaudio.play(data)
+        self.__coreaudio__.play(framelist.to_bytes(False, True))
 
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
 
-        self.coreaudio.pause()
+        if (self.__coreaudio__ is not None):
+            self.__coreaudio__.pause()
 
     def resume(self):
         """resumes playing paused audio output"""
 
-        self.coreaudio.resume()
+        if (self.__coreaudio__ is not None):
+            self.__coreaudio__.resume()
+
+    def get_volume(self):
+        """returns a floating-point volume value between 0.0 and 1.0"""
+
+        if (self.__coreaudio__ is None):
+            self.set_format(*DEFAULT_FORMAT)
+        return self.__coreaudio__.get_volume()
+
+    def set_volume(self, volume):
+        """sets the output volume to a floating point value
+        between 0.0 and 1.0"""
+
+        if ((volume >= 0) and (volume <= 1.0)):
+            if (self.__coreaudio__ is None):
+                self.set_format(*DEFAULT_FORMAT)
+            self.__coreaudio__.set_volume(volume)
+        else:
+            raise ValueError("volume must be between 0.0 and 1.0")
 
     def close(self):
         """closes the output stream"""
 
-        if (self.initialized):
-            self.initialized = False
-            self.coreaudio.flush()
-            self.coreaudio.close()
+        if (self.__coreaudio__ is not None):
+            self.__coreaudio__.flush()
+            self.__coreaudio__.close()
+            self.__coreaudio__ = None
 
     @classmethod
     def available(cls):
@@ -996,7 +1228,32 @@ class CoreAudioOutput(AudioOutput):
             return False
 
 
-AUDIO_OUTPUT = (PulseAudioOutput,
-                OSSAudioOutput,
-                CoreAudioOutput,
-                NULLAudioOutput)
+def available_outputs():
+    """iterates over all available AudioOutput objects
+    this will always yield at least one output"""
+
+    if (ALSAAudioOutput.available()):
+        yield ALSAAudioOutput()
+
+    if (PulseAudioOutput.available()):
+        yield PulseAudioOutput()
+
+    if (CoreAudioOutput.available()):
+        yield CoreAudioOutput()
+
+    if (OSSAudioOutput.available()):
+        yield OSSAudioOutput()
+
+    yield NULLAudioOutput()
+
+
+def open_output(output):
+    """given an output type string (e.g. "PulseAudio")
+    returns that AudioOutput subclass
+    or raises ValueError if it is unavailable"""
+
+    for audio_output in available_outputs():
+        if (audio_output.NAME == output):
+            return audio_output
+    else:
+        raise ValueError("no such outout %s" % (output))

@@ -7,22 +7,18 @@
 The :mod:`audiotools.player` module contains the Player and
 AudioOutput classes for playing AudioFiles.
 
-.. data:: AUDIO_OUTPUT
+.. function:: audiotools.player.available_outputs()
 
-   A tuple of :class:`AudioOutput`-compatible classes of available
-   output types.
-   As with ``AVAILABLE_TYPES``, these are classes that are available
-   to audiotools, not necessarily available to the user.
+Iterates over all available :class:`AudioOutput` objects.
+This will always return at least one output object.
 
-================= =================
-Class             Output System
------------------ -----------------
-PulseAudioOutput  PulseAudio_
-OSSAudioOutput    OSS_
-CoreAudioOutput   CoreAudio
-NULLAudioOutput   No output
-================= =================
+.. function:: audiotools.player.open_output(output)
 
+Given a string of an :class:`AudioOutput` class' ``NAME`` attribute,
+returns the given :class:`AudioOutput` class which has been
+opened for output.
+
+Raises :exc:`ValueError` if the output cannot be found.
 
 Player Objects
 --------------
@@ -32,8 +28,9 @@ from an opened audio file object to a given output sink.
 
 .. class:: Player(audio_output[, replay_gain[, next_track_callback]])
 
-   ``audio_output`` is a :class:`AudioOutput` object subclass which
-   audio data will be played to.
+   ``audio_output`` is a string of the audio output to use,
+   as given in the :class:`AudioOutput` class' ``NAME`` attribute
+   and used by :func:`open_output`.
    ``replay_gain`` is either ``RG_NO_REPLAYGAIN``,
    ``RG_TRACK_GAIN`` or ``RG_ALBUM_GAIN``, indicating the level
    of ReplayGain to apply to tracks being played back.
@@ -57,6 +54,15 @@ from an opened audio file object to a given output sink.
    ReplayGain cannot be applied mid-playback.
    One must :meth:`stop` and :meth:`play` a file for it to take effect.
 
+.. method:: Player.set_output(output)
+
+   Changes where the audio will be played to the given output
+   where output is a string matching an :class:`AudioOutput` class'
+   ``NAME`` attribute.
+   If the given output is not found, it will not be changed.
+   Any currently playing audio is stopped and must be resumed
+   from the beginning on the given output device.
+
 .. method:: Player.pause()
 
    Pauses playback of the current file.
@@ -71,6 +77,11 @@ from an opened audio file object to a given output sink.
    Stops playback of the current file.
    If :meth:`play` is called, playback will start from the beginning.
 
+.. method:: Player.state()
+
+   Returns the current state of the player which will be either
+   ``PLAYER_STOPPED``, ``PLAYER_PAUSED`` or ``PLAYER_PLAYING`` integers.
+
 .. method:: Player.close()
 
    Closes the player for playback.
@@ -80,6 +91,26 @@ from an opened audio file object to a given output sink.
 
    Returns a (``pcm_frames_played``, ``pcm_frames_total``) tuple.
    This indicates the current playback status in terms of PCM frames.
+
+.. method:: Player.current_output_description()
+
+   Returns the human-readable description of the current output device
+   as a Unicode string.
+
+.. method:: Player.current_output_name()
+
+   Returns the ``NAME`` attribute of the current output device
+   as a plain string.
+
+.. method:: Player.get_volume()
+
+   Returns the current volume level as a floating point value
+   between 0.0 and 1.0, inclusive.
+
+.. method:: Player.set_volume(volume)
+
+   Given a floating point value between 0.0 and 1.0, inclusive,
+   sets the current volume level to that value.
 
 CDPlayer Objects
 ----------------
@@ -133,42 +164,60 @@ AudioOutput Objects
 
 This is an abstract class used to implement audio output sinks.
 
-.. class:: AudioOutput( )
+.. class:: AudioOutput()
 
 .. data:: AudioOutput.NAME
 
    The name of the AudioOutput subclass as a string.
 
-.. method:: AudioOutput.compatible(pcmreader)
+.. method:: AudioOutput.description()
 
-   Returns ``True`` if the given :class:`audiotools.PCMReader`
-   is compatible with the currently opened output stream.
-   If ``False``, one should call :meth:`init` in order to
+   Returns a user-friendly name of the output device as a Unicode string.
+
+.. method:: AudioOutput.compatible(sample_rate, channels, channel_mask, bits_per_sample)
+
+   Returns ``True`` if the given attributes are compatible
+   with the currently opened output stream.
+   If ``False``, one should call :meth:`set_format` in order to
    reinitialize the output stream to play the given reader.
 
-.. method:: AudioOutput.init(sample_rate, channels, channel_mask, bits_per_sample)
+.. method:: AudioOutput.set_format(sample_rate, channels, channel_mask, bits_per_sample)
 
    Initializes the output stream for playing audio with the given parameters.
-   This *must* be called prior to :meth:`play` and :meth:`close`.
+   By default, the output stream is initialized for playing CD-quality
+   audio (sample rate of 44.1kHz, 2 channels, 16 bits per sample).
 
-.. method:: AudioOutput.framelist_converter()
+   If a format has already been set, the stream will be closed and
+   reopened if necessary to support the new format.
 
-   Returns a function which converts :class:`audiotools.pcm.FrameList`
-   objects to objects which are compatible with our
-   :meth:`play` method, for the currently initialized stream.
+.. method:: AudioOutput.play(framelist)
 
-.. method:: AudioOutput.play(data)
+   Plays the given FrameList object to the output stream.
+   This presumes the output stream's format has been set correctly.
 
-   Plays the converted data object to our output stream.
+.. method:: AudioOutput.pause()
+
+   Pauses output of playing data.
 
 .. note::
 
-   Why not simply have the :meth:`play` method perform PCM conversion itself
-   instead of shifting it to :meth:`framelist_converter`?
-   The reason is that conversion may be a relatively time-consuming task.
-   By shifting that process into a sub-thread, there's less chance
-   that performing that work will cause playing to stutter
-   while it completes.
+   Although suspending the transmission of data to output will also
+   have the same effect as pausing, calling the output's .pause() method
+   will typically suspend output immediately instead of having to
+   wait for the buffer to empty - which may take a fraction of a second.
+
+.. method:: AudioOutput.resume()
+
+   Resumes playing data to output after it has been paused.
+
+.. method:: AudioOutput.get_volume()
+
+   Returns a floating-point volume value between 0.0 and 1.0, inclusive.
+
+.. method:: AudioOutput.set_volume(volume)
+
+   Given a floating-point volume value between 0.0 and 1.0, inclusive,
+   sets audio output to that volume.
 
 .. method:: AudioOutput.close()
 
@@ -177,9 +226,3 @@ This is an abstract class used to implement audio output sinks.
 .. classmethod:: AudioOutput.available()
 
    Returns True if the AudioOutput implementation is available on the system.
-
-.. _PulseAudio: http://www.pulseaudio.org
-
-.. _OSS: http://www.opensound.com
-
-.. _PortAudio: http://www.portaudio.com

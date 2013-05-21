@@ -20,13 +20,13 @@
 VERSION = '2.20alpha2'
 
 import sys
+import subprocess
 
 if (sys.version_info < (2, 6, 0, 'final', 0)):
     print >> sys.stderr, "*** Python 2.6.0 or better required"
     sys.exit(1)
 
 from distutils.core import setup, Extension
-
 
 cdiomodule = Extension('audiotools.cdio',
                        sources=['src/cdiomodule.c'],
@@ -122,6 +122,7 @@ verifymodule = Extension('audiotools.verify',
                                   'src/func_io.c'])
 
 output_sources = ['src/output.c']
+output_libraries = []
 output_defines = []
 output_link_args = []
 
@@ -132,7 +133,51 @@ if (sys.platform == 'darwin'):
                              "-framework", "AudioUnit",
                              "-framework", "CoreServices"])
 
+#detect PulseAudio's presence using pkg-config, if possible
+try:
+    pkg_config = subprocess.Popen(["pkg-config", "--libs", "libpulse"],
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+
+    libpulse_stdout = pkg_config.stdout.read().strip()
+    libpulse_stderr = pkg_config.stderr.read()
+    has_pulseaudio = pkg_config.wait() == 0
+except OSError:
+    has_pulseaudio = False
+
+if (has_pulseaudio):
+    output_sources.append("src/output/pulseaudio.c")
+    output_defines.append(("PULSEAUDIO", "1"))
+    # If not using pkg-config, comment the next line:
+    output_link_args.extend(libpulse_stdout.split())
+    # and uncomment the next one:
+    # output_libraries.append("pulse")
+    # if you know PulseAudio development libraries are installed
+
+try:
+    pkg_config = subprocess.Popen(["pkg-config", "--libs", "alsa"],
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+
+    libalsa_stdout = pkg_config.stdout.read().strip()
+    libalsa_stderr = pkg_config.stderr.read()
+    has_alsa = pkg_config.wait() == 0
+except OSError:
+    has_alsa = False
+
+if (has_alsa):
+    if ("src/pcmconv.c" not in output_sources):
+        output_sources.append("src/pcmconv.c")
+    output_sources.append("src/output/alsa.c")
+    output_defines.append(("ALSA", "1"))
+    # If not using pkg-config, comment the next line:
+    output_link_args.extend(libalsa_stdout.split())
+    # and uncomment the next one:
+    # output_libraries.append("asound")
+    # if you know ALSA development libraries are installed
+
 outputmodule = Extension('audiotools.output',
+                         libraries=output_libraries,
                          sources=output_sources,
                          define_macros=output_defines,
                          extra_link_args=output_link_args)
