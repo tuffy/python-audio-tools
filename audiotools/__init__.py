@@ -5257,7 +5257,7 @@ class ExecProgressQueue:
                     #remove all other jobs from queue
                     #then raise exception to caller
                     #once working jobs are finished
-                    self.__raised_exception__ = exception
+                    self.__raised_exception__ = result
                     while (len(self.__queued_jobs__) > 0):
                         self.__queued_jobs__.pop(0)
 

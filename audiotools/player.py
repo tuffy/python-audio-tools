@@ -21,7 +21,7 @@
 import cPickle
 
 (RG_NO_REPLAYGAIN, RG_TRACK_GAIN, RG_ALBUM_GAIN) = range(3)
-
+DEFAULT_FORMAT = (44100, 2, 0x3, 16)
 
 class Player:
     """a class for operating an audio player
@@ -679,10 +679,10 @@ class AudioOutput:
     """an abstract parent class for playing audio"""
 
     def __init__(self):
-        """automatically initializes output format for playing
-        CD quality audio"""
-
-        self.set_format(44100, 2, 0x3, 16)
+        self.sample_rate = None
+        self.channels = None
+        self.channel_mask = None
+        self.bits_per_sample = None
 
     def description(self):
         """returns user-facing name of output device as unicode"""
@@ -819,6 +819,7 @@ class OSSAudioOutput(AudioOutput):
         CD quality audio"""
 
         self.__ossaudio__ = None
+        self.__ossmixer__ = None
         AudioOutput.__init__(self)
 
     def description(self):
@@ -840,6 +841,7 @@ class OSSAudioOutput(AudioOutput):
 
             #initialize audio output device and setup framelist converter
             self.__ossaudio__ = ossaudiodev.open('w')
+            self.__ossmixer__ = ossaudiodev.openmixer()
             if (self.bits_per_sample == 8):
                 self.__ossaudio__.setfmt(ossaudiodev.AFMT_S8_LE)
                 self.__converter__ = lambda f: f.to_bytes(False, True)
@@ -858,7 +860,6 @@ class OSSAudioOutput(AudioOutput):
 
             self.__ossaudio__.channels(channels)
             self.__ossaudio__.speed(sample_rate)
-
         else:
             self.close()
             self.set_format(sample_rate=sample_rate,
@@ -884,13 +885,42 @@ class OSSAudioOutput(AudioOutput):
     def get_volume(self):
         """returns a floating-point volume value between 0.0 and 1.0"""
 
-        raise NotImplementedError()
+        import ossaudiodev
+
+        if (self.__ossmixer__ is None):
+            self.set_format(*DEFAULT_FORMAT)
+
+        controls = self.__ossmixer__.controls()
+        for control in (ossaudiodev.SOUND_MIXER_VOLUME,
+                        ossaudiodev.SOUND_MIXER_PCM):
+            if (controls & (1 << control)):
+                try:
+                    volumes = self.__ossmixer__.get(control)
+                    return (sum(volumes) / float(len(volumes))) / 100.0
+                except ossaudiodev.OSSAudioError:
+                    continue
+        else:
+            return 0.0
 
     def set_volume(self, volume):
         """sets the output volume to a floating point value
         between 0.0 and 1.0"""
 
-        raise NotImplementedError()
+        if ((volume >= 0) and (volume <= 1.0)):
+            if (self.__ossmixer__ is None):
+                self.set_format(*DEFAULT_FORMAT)
+
+            controls = self.__ossmixer__.controls()
+            ossvolume = max(min(int(round(volume * 100)), 100), 0)
+            for control in (ossaudiodev.SOUND_MIXER_VOLUME,
+                            ossaudiodev.SOUND_MIXER_PCM):
+                if (controls & (1 << control)):
+                    try:
+                        self.__ossmixer__.set(control, (ossvolume, ossvolume))
+                    except ossaudiodev.OSSAudioError:
+                        continue
+        else:
+            raise ValueError("volume must be between 0.0 and 1.0")
 
     def close(self):
         """closes the output stream"""
@@ -898,6 +928,9 @@ class OSSAudioOutput(AudioOutput):
         if (self.__ossaudio__ is not None):
             self.__ossaudio__.close()
             self.__ossaudio__ = None
+        if (self.__ossmixer__ is not None):
+            self.__ossmixer__.close()
+            self.__ossmixer__ = None
 
     @classmethod
     def available(cls):
@@ -961,15 +994,20 @@ class PulseAudioOutput(AudioOutput):
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
 
-        self.__pulseaudio__.pause()
+        if (self.__pulseaudio__ is not None):
+            self.__pulseaudio__.pause()
 
     def resume(self):
         """resumes playing paused audio output"""
 
-        self.__pulseaudio__.resume()
+        if (self.__pulseaudio__ is not None):
+            self.__pulseaudio__.resume()
 
     def get_volume(self):
         """returns a floating-point volume value between 0.0 and 1.0"""
+
+        if (self.__pulseaudio__ is None):
+            self.set_format(*DEFAULT_FORMAT)
 
         return self.__pulseaudio__.get_volume()
 
@@ -978,6 +1016,9 @@ class PulseAudioOutput(AudioOutput):
         between 0.0 and 1.0"""
 
         if ((volume >= 0) and (volume <= 1.0)):
+            if (self.__pulseaudio__ is None):
+                self.set_format(*DEFAULT_FORMAT)
+
             self.__pulseaudio__.set_volume(volume)
         else:
             raise ValueError("volume must be between 0.0 and 1.0")
@@ -1048,16 +1089,20 @@ class ALSAAudioOutput(AudioOutput):
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
 
-        self.__alsaaudio__.pause()
+        if (self.__alsaaudio__ is not None):
+            self.__alsaaudio__.pause()
 
     def resume(self):
         """resumes playing paused audio output"""
 
-        self.__alsaaudio__.resume()
+        if (self.__alsaaudio__ is not None):
+            self.__alsaaudio__.resume()
 
     def get_volume(self):
         """returns a floating-point volume value between 0.0 and 1.0"""
 
+        if (self.__alsaaudio__ is None):
+            self.set_format(*DEFAULT_FORMAT)
         return self.__alsaaudio__.get_volume()
 
     def set_volume(self, volume):
@@ -1065,6 +1110,8 @@ class ALSAAudioOutput(AudioOutput):
         between 0.0 and 1.0"""
 
         if ((volume >= 0) and (volume <= 1.0)):
+            if (self.__alsaaudio__ is None):
+                self.set_format(*DEFAULT_FORMAT)
             self.__alsaaudio__.set_volume(volume)
         else:
             raise ValueError("volume must be between 0.0 and 1.0")
@@ -1087,7 +1134,6 @@ class ALSAAudioOutput(AudioOutput):
             return True
         except ImportError:
             return False
-
 
 
 class CoreAudioOutput(AudioOutput):
@@ -1135,16 +1181,20 @@ class CoreAudioOutput(AudioOutput):
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
 
-        self.__coreaudio__.pause()
+        if (self.__coreaudio__ is not None):
+            self.__coreaudio__.pause()
 
     def resume(self):
         """resumes playing paused audio output"""
 
-        self.__coreaudio__.resume()
+        if (self.__coreaudio__ is not None):
+            self.__coreaudio__.resume()
 
     def get_volume(self):
         """returns a floating-point volume value between 0.0 and 1.0"""
 
+        if (self.__coreaudio__ is None):
+            self.set_format(*DEFAULT_FORMAT)
         return self.__coreaudio__.get_volume()
 
     def set_volume(self, volume):
@@ -1152,6 +1202,8 @@ class CoreAudioOutput(AudioOutput):
         between 0.0 and 1.0"""
 
         if ((volume >= 0) and (volume <= 1.0)):
+            if (self.__coreaudio__ is None):
+                self.set_format(*DEFAULT_FORMAT)
             self.__coreaudio__.set_volume(volume)
         else:
             raise ValueError("volume must be between 0.0 and 1.0")
@@ -1177,22 +1229,22 @@ class CoreAudioOutput(AudioOutput):
 
 
 def available_outputs():
-    """iterates over all available AudioOutput subclasses
+    """iterates over all available AudioOutput objects
     this will always yield at least one output"""
 
     if (ALSAAudioOutput.available()):
-        yield ALSAAudioOutput
+        yield ALSAAudioOutput()
 
     if (PulseAudioOutput.available()):
-        yield PulseAudioOutput
+        yield PulseAudioOutput()
 
     if (CoreAudioOutput.available()):
-        yield CoreAudioOutput
+        yield CoreAudioOutput()
 
     if (OSSAudioOutput.available()):
-        yield OSSAudioOutput
+        yield OSSAudioOutput()
 
-    yield NULLAudioOutput
+    yield NULLAudioOutput()
 
 
 def open_output(output):
@@ -1202,6 +1254,6 @@ def open_output(output):
 
     for audio_output in available_outputs():
         if (audio_output.NAME == output):
-            return audio_output()
+            return audio_output
     else:
         raise ValueError("no such outout %s" % (output))

@@ -9,7 +9,7 @@ AudioOutput classes for playing AudioFiles.
 
 .. function:: audiotools.player.available_outputs()
 
-Iterates over all available :class:`AudioOutput` subclasses.
+Iterates over all available :class:`AudioOutput` objects.
 This will always return at least one output object.
 
 .. function:: audiotools.player.open_output(output)
@@ -226,9 +226,3 @@ This is an abstract class used to implement audio output sinks.
 .. classmethod:: AudioOutput.available()
 
    Returns True if the AudioOutput implementation is available on the system.
-
-.. _PulseAudio: http://www.pulseaudio.org
-
-.. _OSS: http://www.opensound.com
-
-.. _PortAudio: http://www.portaudio.com

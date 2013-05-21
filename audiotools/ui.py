@@ -2095,7 +2095,7 @@ try:
 
         def create_pop_up(self):
             from audiotools.player import available_outputs
-            self.outputs = [o() for o in available_outputs()]
+            self.outputs = list(available_outputs())
             pop_up = AdjustOutputDialog(self.player, self.outputs)
             urwid.connect_signal(
                 pop_up,
