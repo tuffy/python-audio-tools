@@ -4684,6 +4684,7 @@ class tracksplit(UtilTest):
 
                 self.assertEqual(
                     self.__run_app__(["tracksplit", "-V", "normal",
+                                      "-j", "1",
                                       "--no-freedb", "--no-musicbrainz"] +
                                      options + [track.filename]), 0)
                 if ("--format" in options):
@@ -5018,7 +5019,8 @@ class tracksplit(UtilTest):
 
                 if ("-t" in options):
                     self.assertEqual(
-                        self.__run_app__(["tracksplit", track1.filename] +
+                        self.__run_app__(["tracksplit", "-j", "1",
+                                          track1.filename] +
                                          options),
                         2)
                     continue
@@ -5026,7 +5028,7 @@ class tracksplit(UtilTest):
                     output_type = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
 
                 self.assertEqual(
-                    self.__run_app__(["tracksplit", "--cue",
+                    self.__run_app__(["tracksplit", "-j", "1", "--cue",
                                       self.cuesheet.name,
                                       track1.filename] +
                                      options),

@@ -5940,7 +5940,7 @@ class Test_Player(unittest.TestCase):
         import time
 
         callback = __callback__()
-        player = audiotools.player.Player(audiotools.player.NULLAudioOutput(),
+        player = audiotools.player.Player("NULL",
                                           next_track_callback=callback.call)
         self.assertEqual(callback.called, False)
         self.assertEqual(player.progress(), (0, 0))

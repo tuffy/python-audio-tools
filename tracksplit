@@ -444,15 +444,19 @@ if (__name__ == '__main__'):
             progress = audiotools.SingleProgressDisplay(
                 msg, unicode(output_filename))
 
-            encoded_tracks.append(
-                output_class.from_pcm(
-                    str(output_filename),
-                    audiotools.PCMReaderProgress(
-                        audiotools.LimitedPCMReader(total_pcm, pcm_frames),
-                        pcm_frames,
-                        progress.update),
-                    output_quality,
-                    total_pcm_frames=pcm_frames))
+            try:
+                encoded_tracks.append(
+                    output_class.from_pcm(
+                        str(output_filename),
+                        audiotools.PCMReaderProgress(
+                            audiotools.LimitedPCMReader(total_pcm, pcm_frames),
+                            pcm_frames,
+                            progress.update),
+                        output_quality,
+                        total_pcm_frames=pcm_frames))
+            except audiotools.EncodingError, err:
+                msg.error(unicode(err))
+                sys.exit(1)
             encoded_tracks[-1].set_metadata(output_metadata)
             progress.clear()
             msg.info(
