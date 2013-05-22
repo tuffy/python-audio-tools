@@ -33,10 +33,14 @@ class Player:
                  replay_gain=RG_NO_REPLAYGAIN,
                  next_track_callback=lambda: None):
         """audio_output is the name of the output as a string
+
         replay_gain is RG_NO_REPLAYGAIN, RG_TRACK_GAIN or RG_ALBUM_GAIN,
         indicating how the player should apply ReplayGain
+
         next_track_callback is a function with no arguments
-        which is called by the player when the current track is finished"""
+        which is called by the player when the current track is finished
+
+        Raises :exc:`ValueError` if unable to start player subprocess."""
 
         from multiprocessing import Process, Array, Value, Pipe
         from threading import Thread
@@ -70,6 +74,10 @@ class Player:
                     "replay_gain":replay_gain})
 
         self.__player__.start()
+
+        #ensure player process has started successfully
+        if (not self.__command_conn__.recv()):
+            raise ValueError("unable to start player process")
 
     def __del__(self):
         if (self.__player__ is not None):
@@ -106,12 +114,13 @@ class Player:
         """given the name string of an AudioOutput
         (matching its .NAME attribute)
 
-        if the output is not valid, it will not be changed
+        raises ValueError if the output is invalid
 
         any currently playing audio is stopped"""
 
         self.__command_conn__.send(("set_output", (output,), True))
-        return self.__command_conn__.recv()
+        if (not self.__command_conn__.recv()):
+            raise ValueError("no such output")
 
     def pause(self):
         """pauses playback of the current file
@@ -270,8 +279,9 @@ class PlayerProcess:
         try:
             self.__audio_output__ = open_output(output)
             self.__buffer_size__ = 0
+            return True
         except ValueError:
-            pass
+            return False
 
     def toggle_play_pause(self):
         if (self.__state__.value == PLAYER_PLAYING):
@@ -379,12 +389,20 @@ class PlayerProcess:
         replay_gain is RG_NO_REPLAYGAIN, RG_TRACK_GAIN, or RG_ALBUM_GAIN"""
 
         #build PlayerProcess state management object
-        player = PlayerProcess(
-            audio_output=audio_output,
-            state=state,
-            progress=current_progress,
-            next_track_conn=next_track_conn,
-            replay_gain=replay_gain)
+        try:
+            player = PlayerProcess(
+                audio_output=audio_output,
+                state=state,
+                progress=current_progress,
+                next_track_conn=next_track_conn,
+                replay_gain=replay_gain)
+            command_conn.send(True)
+        except ValueError:
+            command_conn.send(False)
+            command_conn.close()
+            next_track_conn.send(False)
+            next_track_conn.close()
+            return
 
         while (True):
             if (state.value == PLAYER_PLAYING):

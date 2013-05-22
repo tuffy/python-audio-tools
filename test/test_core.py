@@ -30,7 +30,7 @@ import cStringIO
 from hashlib import md5
 
 from test import (parser, Variable_Reader, BLANK_PCM_Reader,
-                  RANDOM_PCM_Reader,
+                  RANDOM_PCM_Reader, EXACT_SILENCE_PCM_Reader,
                   EXACT_BLANK_PCM_Reader, SHORT_PCM_COMBINATIONS,
                   MD5_Reader, FrameCounter,
                   MiniFrameReader, Combinations, Possibilities,
@@ -5921,124 +5921,536 @@ class __callback__:
     def call(self):
         self.called = True
 
+    def reset(self):
+        self.called = False
 
-class Test_Player(unittest.TestCase):
+
+class Test_NULL_Player(unittest.TestCase):
     @LIB_PLAYER
     def setUp(self):
         self.temp_track_file = tempfile.NamedTemporaryFile(suffix=".flac")
         self.temp_track = audiotools.FlacAudio.from_pcm(
             self.temp_track_file.name,
-            BLANK_PCM_Reader(6))
+            EXACT_SILENCE_PCM_Reader(pcm_frames=44100 * 6))
+        self.output_name = "NULL"
 
     @LIB_PLAYER
     def tearDown(self):
         self.temp_track_file.close()
 
     @LIB_PLAYER
-    def test_player(self):
+    def test_stopped_notrack(self):
         import audiotools.player
+        from audiotools.player import (PLAYER_STOPPED,
+                                       PLAYER_PAUSED,
+                                       PLAYER_PLAYING,
+                                       RG_NO_REPLAYGAIN,
+                                       RG_TRACK_GAIN,
+                                       RG_ALBUM_GAIN)
+        import time
+
+        #try all the player methods while the player is stopped
+        #and no track is opened
+        try:
+            player = audiotools.player.Player(self.output_name)
+        except ValueError:
+            #player not supported on this system
+            return
+
+        try:
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+
+            #ensure setting ReplayGain causes no errors
+            for gain in [RG_NO_REPLAYGAIN, RG_TRACK_GAIN, RG_ALBUM_GAIN]:
+                player.set_replay_gain(gain)
+
+            #pause does nothing
+            player.pause()
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+
+            #play does nothing
+            player.play()
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+
+            #toggle playing/pausing does nothing
+            player.toggle_play_pause()
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+
+            #stopping does nothing
+            player.stop()
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+
+            #ensure progress remains constant
+            player.play()
+            (s_current, s_total) = player.progress()
+            time.sleep(1)
+            (e_current, e_total) = player.progress()
+            self.assertEqual(s_total, e_total)
+            self.assert_(s_current <= s_total)
+            self.assert_(e_current <= s_total)
+            self.assertEqual(s_current, e_current)
+
+            self.assertEqual(player.current_output_name(), self.output_name)
+
+            #changing volume should be okay
+            current_volume = player.get_volume()
+            try:
+                player.set_volume(0.0)
+                self.assertEqual(player.get_volume(), 0.0)
+            finally:
+                player.set_volume(current_volume)
+
+            #setting output should cause no errors
+            for output in audiotools.player.available_outputs():
+                player.set_output(output.NAME)
+                self.assertEqual(player.current_output_name(), output.NAME)
+
+            #setting nonexistent output should raise ValueError
+            self.assertRaises(ValueError, player.set_output, "DUMMY")
+
+            player.set_output(self.output_name)
+            self.assertEqual(player.current_output_name(), self.output_name)
+
+            player.stop()
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+        finally:
+            player.close()
+
+    @LIB_PLAYER
+    def test_stopped_track(self):
+        import audiotools.player
+        from audiotools.player import (PLAYER_STOPPED,
+                                       PLAYER_PAUSED,
+                                       PLAYER_PLAYING,
+                                       RG_NO_REPLAYGAIN,
+                                       RG_TRACK_GAIN,
+                                       RG_ALBUM_GAIN)
+        import time
+
+        #try all the player methods while a track is opened
+        #and the player is stopped
+        try:
+            player = audiotools.player.Player(self.output_name)
+        except ValueError:
+            #player not supported on this system
+            return
+
+        try:
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+
+            player.open(self.temp_track)
+            player.stop()
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+
+            #opening new track while stopped should keep us in stopped state
+            player.open(self.temp_track)
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+
+            #ensure setting ReplayGain causes no errors
+            for gain in [RG_NO_REPLAYGAIN, RG_TRACK_GAIN, RG_ALBUM_GAIN]:
+                player.set_replay_gain(gain)
+
+            #pause does nothing while stopped
+            player.pause()
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+
+            #play starts track playing
+            player.play()
+            self.assertEqual(player.state(), PLAYER_PLAYING)
+            player.stop()
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+
+            #toggle playing/pausing starts playing if stopped
+            player.toggle_play_pause()
+            self.assertEqual(player.state(), PLAYER_PLAYING)
+            player.stop()
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+
+            #stopping while stopped does nothing
+            player.stop()
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+
+            #ensure progress remains constant while stopped
+            (s_current, s_total) = player.progress()
+            time.sleep(1)
+            (e_current, e_total) = player.progress()
+            self.assertEqual(s_total, e_total)
+            self.assert_(s_current <= s_total)
+            self.assert_(e_current <= s_total)
+            self.assertEqual(s_current, e_current)
+
+            self.assertEqual(player.current_output_name(), self.output_name)
+
+            #changing volume should be okay
+            current_volume = player.get_volume()
+            try:
+                player.set_volume(0.0)
+                self.assertEqual(player.get_volume(), 0.0)
+            finally:
+                player.set_volume(current_volume)
+
+            #setting output should cause no errors
+            for output in audiotools.player.available_outputs():
+                player.set_output(output.NAME)
+                self.assertEqual(player.current_output_name(), output.NAME)
+
+            #setting nonexistent output should raise ValueError
+            self.assertRaises(ValueError, player.set_output, "DUMMY")
+
+            player.set_output(self.output_name)
+            self.assertEqual(player.current_output_name(), self.output_name)
+
+            player.stop()
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+        finally:
+            player.close()
+
+    @LIB_PLAYER
+    def test_paused(self):
+        import audiotools.player
+        from audiotools.player import (PLAYER_STOPPED,
+                                       PLAYER_PAUSED,
+                                       PLAYER_PLAYING,
+                                       RG_NO_REPLAYGAIN,
+                                       RG_TRACK_GAIN,
+                                       RG_ALBUM_GAIN)
+        import time
+
+        #try all the player methods while a track is opened
+        #and the player is paused
+        try:
+            player = audiotools.player.Player(self.output_name)
+        except ValueError:
+            #player not supported on this system
+            return
+
+        try:
+            player.open(self.temp_track)
+            player.play()
+            player.pause()
+            self.assertEqual(player.state(), PLAYER_PAUSED)
+
+            #open new track while paused should put us in stopped state
+            player.open(self.temp_track)
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+            player.play()
+            player.pause()
+            self.assertEqual(player.state(), PLAYER_PAUSED)
+
+            #ensure setting ReplayGain causes no errors
+            for gain in [RG_NO_REPLAYGAIN, RG_TRACK_GAIN, RG_ALBUM_GAIN]:
+                player.set_replay_gain(gain)
+
+            self.assertEqual(player.state(), PLAYER_PAUSED)
+
+            #pause does nothing while paused
+            player.pause()
+            self.assertEqual(player.state(), PLAYER_PAUSED)
+
+            #play starts track playing
+            player.play()
+            self.assertEqual(player.state(), PLAYER_PLAYING)
+            player.pause()
+            self.assertEqual(player.state(), PLAYER_PAUSED)
+
+            #toggle playing/pausing starts playing if paused
+            player.toggle_play_pause()
+            self.assertEqual(player.state(), PLAYER_PLAYING)
+            player.pause()
+            self.assertEqual(player.state(), PLAYER_PAUSED)
+
+            #stopping while paused stops playing
+            player.stop()
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+            player.play()
+            player.pause()
+            self.assertEqual(player.state(), PLAYER_PAUSED)
+
+            #ensure progress remains constant while paused
+            (s_current, s_total) = player.progress()
+            time.sleep(1)
+            (e_current, e_total) = player.progress()
+            self.assertEqual(s_total, e_total)
+            self.assert_(s_current <= s_total)
+            self.assert_(e_current <= s_total)
+            self.assertEqual(s_current, e_current)
+
+            self.assertEqual(player.current_output_name(), self.output_name)
+
+            #changing volume should be okay
+            current_volume = player.get_volume()
+            try:
+                player.set_volume(0.0)
+                self.assertEqual(player.get_volume(), 0.0)
+            finally:
+                player.set_volume(current_volume)
+
+            #setting output should cause no errors
+            for output in audiotools.player.available_outputs():
+                player.set_output(output.NAME)
+                self.assertEqual(player.current_output_name(), output.NAME)
+
+            #setting nonexistent output should raise ValueError
+            self.assertRaises(ValueError, player.set_output, "DUMMY")
+
+            player.set_output(self.output_name)
+            self.assertEqual(player.current_output_name(), self.output_name)
+
+            player.play()
+            player.pause()
+            self.assertEqual(player.state(), PLAYER_PAUSED)
+        finally:
+            player.close()
+
+    @LIB_PLAYER
+    def test_playing(self):
+        import audiotools.player
+        from audiotools.player import (PLAYER_STOPPED,
+                                       PLAYER_PAUSED,
+                                       PLAYER_PLAYING,
+                                       RG_NO_REPLAYGAIN,
+                                       RG_TRACK_GAIN,
+                                       RG_ALBUM_GAIN)
+        import time
+
+        try:
+            player = audiotools.player.Player(self.output_name)
+        except ValueError:
+            #player not supported on this system
+            return
+
+        #try all the player methods while a track is opened
+        #and the player is playing
+        try:
+            player.open(self.temp_track)
+            player.play()
+            self.assertEqual(player.state(), PLAYER_PLAYING)
+
+            #open new track while playing should put us in stopped state
+            player.open(self.temp_track)
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+            player.play()
+            self.assertEqual(player.state(), PLAYER_PLAYING)
+
+            #ensure setting ReplayGain causes no errors
+            for gain in [RG_NO_REPLAYGAIN, RG_TRACK_GAIN, RG_ALBUM_GAIN]:
+                player.set_replay_gain(gain)
+
+            self.assertEqual(player.state(), PLAYER_PLAYING)
+
+            #pause pauses while playing
+            player.pause()
+            self.assertEqual(player.state(), PLAYER_PAUSED)
+            player.play()
+            self.assertEqual(player.state(), PLAYER_PLAYING)
+
+            #play while playing does nothing
+            player.play()
+            self.assertEqual(player.state(), PLAYER_PLAYING)
+
+            #toggle playing/pausing pauses playing
+            player.toggle_play_pause()
+            self.assertEqual(player.state(), PLAYER_PAUSED)
+            player.play()
+            self.assertEqual(player.state(), PLAYER_PLAYING)
+
+            #stopping while playing stops playing
+            player.stop()
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+            player.play()
+            self.assertEqual(player.state(), PLAYER_PLAYING)
+
+            #ensure progress increments while playing
+            (s_current, s_total) = player.progress()
+            time.sleep(1)
+            (e_current, e_total) = player.progress()
+            self.assertEqual(s_total, e_total)
+            self.assert_(s_current <= s_total)
+            self.assert_(e_current <= s_total)
+            self.assert_(e_current > s_current)
+
+            self.assertEqual(player.current_output_name(), self.output_name)
+
+            #changing volume should be okay
+            current_volume = player.get_volume()
+            try:
+                player.set_volume(0.0)
+                self.assertEqual(player.get_volume(), 0.0)
+            finally:
+                player.set_volume(current_volume)
+
+            #setting output should cause no errors
+            for output in audiotools.player.available_outputs():
+                player.set_output(output.NAME)
+                self.assertEqual(player.current_output_name(), output.NAME)
+
+            #setting nonexistent output should raise ValueError
+            self.assertRaises(ValueError, player.set_output, "DUMMY")
+
+            player.set_output(self.output_name)
+            self.assertEqual(player.current_output_name(), self.output_name)
+
+            player.play()
+            self.assertEqual(player.state(), PLAYER_PLAYING)
+
+        finally:
+            player.close()
+
+
+    @LIB_PLAYER
+    def test_callback(self):
+        import audiotools.player
+        from audiotools.player import (PLAYER_STOPPED,
+                                       PLAYER_PAUSED,
+                                       PLAYER_PLAYING,
+                                       RG_NO_REPLAYGAIN,
+                                       RG_TRACK_GAIN,
+                                       RG_ALBUM_GAIN)
         import time
 
         callback = __callback__()
-        player = audiotools.player.Player("NULL",
-                                          next_track_callback=callback.call)
-        self.assertEqual(callback.called, False)
-        self.assertEqual(player.progress(), (0, 0))
-        player.open(self.temp_track)
-        player.play()
-        time.sleep(1)
-        (current1, total1) = player.progress()
-        self.assertEqual(callback.called, False)
-        self.assert_(current1 > 0)
-        self.assert_(total1 > 0)
-        time.sleep(1)
-        (current2, total2) = player.progress()
-        self.assertEqual(callback.called, False)
-        self.assert_(current2 > current1)
-        self.assertEqual(total2, total1)
-        time.sleep(1)
-        player.pause()
-        time.sleep(.5)
-        (current3, total3) = player.progress()
-        self.assertEqual(callback.called, False)
-        self.assert_(current3 > current2)
-        self.assertEqual(total3, total1)
-        time.sleep(1)
-        (current4, total4) = player.progress()
-        self.assertEqual(callback.called, False)
-        self.assertEqual(current4, current3)
-        self.assertEqual(total4, total1)
-        player.play()
-        time.sleep(6)
-        self.assertEqual(callback.called, True)
-        player.close()
 
+        try:
+            player = audiotools.player.Player(
+                self.output_name,
+                next_track_callback=callback.call)
+        except ValueError:
+            #player not supported on this system
+            return
 
-class Test_CDPlayer(unittest.TestCase):
+        try:
+            player.open(self.temp_track)
+            player.play()
+            self.assertEqual(player.state(), PLAYER_PLAYING)
+
+            #let player run to the end of the track
+            while (player.state() == PLAYER_PLAYING):
+                time.sleep(1)
+
+            #ensure it stops when finished
+            self.assertEqual(player.state(), PLAYER_STOPPED)
+
+            #ensure callback has been called
+            self.assertEqual(callback.called, True)
+        finally:
+            player.close()
+
+class Test_Dummy_Player(Test_NULL_Player):
     @LIB_PLAYER
     def setUp(self):
-        self.input_dir = tempfile.mkdtemp()
+        self.temp_track_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.temp_track = audiotools.FlacAudio.from_pcm(
+            self.temp_track_file.name,
+            EXACT_SILENCE_PCM_Reader(pcm_frames=44100 * 6))
+        #this should raise ValueError when opened by player
+        self.output_name = "DUMMY"
 
-        self.stream = test_streams.Sine16_Stereo(793800, 44100,
-                                                 8820.0, 0.70,
-                                                 4410.0, 0.29, 1.0)
 
-        self.cue_file = os.path.join(self.input_dir, "CDImage.cue")
-        self.bin_file = os.path.join(self.input_dir, "CDImage.bin")
-
-        f = open(self.cue_file, "w")
-        f.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC JPPI00652340\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC JPPI00652349\r\n    INDEX 00 00:06:00\r\n    INDEX 01 00:08:00\r\n  TRACK 03 AUDIO\r\n    ISRC JPPI00652341\r\n    INDEX 00 00:9:00\r\n    INDEX 01 00:11:00\r\n')
-        f.close()
-
-        f = open(self.bin_file, "w")
-        audiotools.transfer_framelist_data(self.stream, f.write)
-        f.close()
-
-        self.cdda = audiotools.CDDA(self.cue_file)
-
+class Test_ALSA_Player(Test_NULL_Player):
     @LIB_PLAYER
-    def tearDown(self):
-        for f in os.listdir(self.input_dir):
-            os.unlink(os.path.join(self.input_dir, f))
-        os.rmdir(self.input_dir)
+    def setUp(self):
+        self.temp_track_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.temp_track = audiotools.FlacAudio.from_pcm(
+            self.temp_track_file.name,
+            EXACT_SILENCE_PCM_Reader(pcm_frames=44100 * 6))
+        self.output_name = "ALSA"
 
+
+class Test_PulseAudio_Player(Test_NULL_Player):
     @LIB_PLAYER
-    def test_player(self):
-        import audiotools.player
-        import time
+    def setUp(self):
+        self.temp_track_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.temp_track = audiotools.FlacAudio.from_pcm(
+            self.temp_track_file.name,
+            EXACT_SILENCE_PCM_Reader(pcm_frames=44100 * 6))
+        self.output_name = "PulseAudio"
 
-        callback = __callback__()
-        player = audiotools.player.CDPlayer(
-            self.cdda,
-            audiotools.player.NULLAudioOutput(),
-            next_track_callback=callback.call)
-        self.assertEqual(callback.called, False)
-        self.assertEqual(player.progress(), (0, 0))
-        player.open(1)
-        player.play()
-        time.sleep(1)
-        (current1, total1) = player.progress()
-        self.assertEqual(callback.called, False)
-        self.assert_(current1 > 0)
-        self.assert_(total1 > 0)
-        time.sleep(1)
-        (current2, total2) = player.progress()
-        self.assertEqual(callback.called, False)
-        self.assert_(current2 > current1)
-        self.assertEqual(total2, total1)
-        time.sleep(1)
-        player.pause()
-        time.sleep(.5)
-        (current3, total3) = player.progress()
-        self.assertEqual(callback.called, False)
-        self.assert_(current3 > current2)
-        self.assertEqual(total3, total1)
-        time.sleep(1)
-        (current4, total4) = player.progress()
-        self.assertEqual(callback.called, False)
-        self.assertEqual(current4, current3)
-        self.assertEqual(total4, total1)
-        player.play()
-        time.sleep(6)
-        self.assertEqual(callback.called, True)
-        player.close()
+
+class Test_OSS_Player(Test_NULL_Player):
+    @LIB_PLAYER
+    def setUp(self):
+        self.temp_track_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.temp_track = audiotools.FlacAudio.from_pcm(
+            self.temp_track_file.name,
+            EXACT_SILENCE_PCM_Reader(pcm_frames=44100 * 6))
+        self.output_name = "OSS"
+
+
+class Test_CoreAudio_Player(Test_NULL_Player):
+    @LIB_PLAYER
+    def setUp(self):
+        self.temp_track_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.temp_track = audiotools.FlacAudio.from_pcm(
+            self.temp_track_file.name,
+            EXACT_SILENCE_PCM_Reader(pcm_frames=44100 * 6))
+        self.output_name = "CoreAudio"
+
+
+# class Test_CDPlayer(unittest.TestCase):
+#     @LIB_PLAYER
+#     def setUp(self):
+#         self.input_dir = tempfile.mkdtemp()
+
+#         self.stream = test_streams.Sine16_Stereo(793800, 44100,
+#                                                  8820.0, 0.70,
+#                                                  4410.0, 0.29, 1.0)
+
+#         self.cue_file = os.path.join(self.input_dir, "CDImage.cue")
+#         self.bin_file = os.path.join(self.input_dir, "CDImage.bin")
+
+#         f = open(self.cue_file, "w")
+#         f.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC JPPI00652340\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC JPPI00652349\r\n    INDEX 00 00:06:00\r\n    INDEX 01 00:08:00\r\n  TRACK 03 AUDIO\r\n    ISRC JPPI00652341\r\n    INDEX 00 00:9:00\r\n    INDEX 01 00:11:00\r\n')
+#         f.close()
+
+#         f = open(self.bin_file, "w")
+#         audiotools.transfer_framelist_data(self.stream, f.write)
+#         f.close()
+
+#         self.cdda = audiotools.CDDA(self.cue_file)
+
+#     @LIB_PLAYER
+#     def tearDown(self):
+#         for f in os.listdir(self.input_dir):
+#             os.unlink(os.path.join(self.input_dir, f))
+#         os.rmdir(self.input_dir)
+
+#     @LIB_PLAYER
+#     def test_player(self):
+#         import audiotools.player
+#         import time
+
+#         callback = __callback__()
+#         player = audiotools.player.CDPlayer(
+#             self.cdda,
+#             audiotools.player.NULLAudioOutput(),
+#             next_track_callback=callback.call)
+#         self.assertEqual(callback.called, False)
+#         self.assertEqual(player.progress(), (0, 0))
+#         player.open(1)
+#         player.play()
+#         time.sleep(1)
+#         (current1, total1) = player.progress()
+#         self.assertEqual(callback.called, False)
+#         self.assert_(current1 > 0)
+#         self.assert_(total1 > 0)
+#         time.sleep(1)
+#         (current2, total2) = player.progress()
+#         self.assertEqual(callback.called, False)
+#         self.assert_(current2 > current1)
+#         self.assertEqual(total2, total1)
+#         time.sleep(1)
+#         player.pause()
+#         time.sleep(.5)
+#         (current3, total3) = player.progress()
+#         self.assertEqual(callback.called, False)
+#         self.assert_(current3 > current2)
+#         self.assertEqual(total3, total1)
+#         time.sleep(1)
+#         (current4, total4) = player.progress()
+#         self.assertEqual(callback.called, False)
+#         self.assertEqual(current4, current3)
+#         self.assertEqual(total4, total1)
+#         player.play()
+#         time.sleep(6)
+#         self.assertEqual(callback.called, True)
+#         player.close()

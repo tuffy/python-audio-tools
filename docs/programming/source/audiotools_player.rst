@@ -31,11 +31,15 @@ from an opened audio file object to a given output sink.
    ``audio_output`` is a string of the audio output to use,
    as given in the :class:`AudioOutput` class' ``NAME`` attribute
    and used by :func:`open_output`.
+
    ``replay_gain`` is either ``RG_NO_REPLAYGAIN``,
    ``RG_TRACK_GAIN`` or ``RG_ALBUM_GAIN``, indicating the level
    of ReplayGain to apply to tracks being played back.
+
    ``next_track_callback`` is a function which takes no arguments,
    to be called when the currently playing track is completed.
+
+   Raises :exc:`ValueError` if unable to start player subprocess.
 
 .. method:: Player.open(audiofile)
 
@@ -62,6 +66,8 @@ from an opened audio file object to a given output sink.
    If the given output is not found, it will not be changed.
    Any currently playing audio is stopped and must be resumed
    from the beginning on the given output device.
+
+   Raises ValueError if the output is invalid.
 
 .. method:: Player.pause()
 
