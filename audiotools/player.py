@@ -355,6 +355,7 @@ class PlayerProcess:
     def stop_playing(self):
         if (self.__pcmreader__ is not None):
             self.__pcmreader__.close()
+        self.__audio_output__.close()
         self.__state__.value = PLAYER_STOPPED
         self.set_progress(0, 1)
 
@@ -758,7 +759,10 @@ class AudioOutput:
     def close(self):
         """closes the output stream"""
 
-        raise NotImplementedError()
+        self.sample_rate = None
+        self.channels = None
+        self.channel_mask = None
+        self.bits_per_sample = None
 
     @classmethod
     def available(cls):
@@ -818,7 +822,7 @@ class NULLAudioOutput(AudioOutput):
     def close(self):
         """closes the output stream"""
 
-        pass
+        AudioOutput.close(self)
 
     @classmethod
     def available(cls):
@@ -943,6 +947,8 @@ class OSSAudioOutput(AudioOutput):
     def close(self):
         """closes the output stream"""
 
+        AudioOutput.close(self)
+
         if (self.__ossaudio__ is not None):
             self.__ossaudio__.close()
             self.__ossaudio__ = None
@@ -1044,6 +1050,8 @@ class PulseAudioOutput(AudioOutput):
     def close(self):
         """closes the output stream"""
 
+        AudioOutput.close(self)
+
         if (self.__pulseaudio__ is not None):
             self.__pulseaudio__.flush()
             self.__pulseaudio__.close()
@@ -1137,6 +1145,8 @@ class ALSAAudioOutput(AudioOutput):
     def close(self):
         """closes the output stream"""
 
+        AudioOutput.close(self)
+
         if (self.__alsaaudio__ is not None):
             self.__alsaaudio__.flush()
             self.__alsaaudio__.close()
@@ -1228,6 +1238,8 @@ class CoreAudioOutput(AudioOutput):
 
     def close(self):
         """closes the output stream"""
+
+        AudioOutput.close(self)
 
         if (self.__coreaudio__ is not None):
             self.__coreaudio__.flush()

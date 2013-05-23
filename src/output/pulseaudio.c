@@ -155,13 +155,30 @@ static PyObject* PulseAudio_resume(output_PulseAudio *self, PyObject *args)
 
 static PyObject* PulseAudio_flush(output_PulseAudio *self, PyObject *args)
 {
+    pa_operation *op;
+
     /*ensure outuput stream is still running*/
     /*FIXME*/
 
-    /*drain output stream*/
     pa_threaded_mainloop_lock(self->mainloop);
 
-    pa_operation *op = pa_stream_drain(
+    /*uncork output stream, if necessary*/
+    if (pa_stream_is_corked(self->stream)) {
+        op = pa_stream_cork(
+            self->stream,
+            0,
+            (pa_stream_success_cb_t)success_callback,
+            self->mainloop);
+
+        while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
+            pa_threaded_mainloop_wait(self->mainloop);
+        }
+
+        pa_operation_unref(op);
+    }
+
+    /*drain output stream*/
+    op = pa_stream_drain(
         self->stream,
         (pa_stream_success_cb_t)success_callback,
         self->mainloop);
