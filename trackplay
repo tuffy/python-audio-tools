@@ -201,9 +201,10 @@ if (__name__ == '__main__'):
         replay_gain = audiotools.player.RG_NO_REPLAYGAIN
 
     if (options.interactive):
-        trackplay = TrackplayGUI(track_list=audiofiles,
-                                 audio_output=options.output,
-                                 replay_gain=replay_gain)
+        trackplay = TrackplayGUI(
+            track_list=audiofiles,
+            audio_output=audiotools.player.open_output(options.output),
+            replay_gain=replay_gain)
 
         if (len(audiofiles) > 0):
             trackplay.select_track(None, True,
@@ -228,7 +229,8 @@ if (__name__ == '__main__'):
             msg.info(audiotools.ui.xargs_suggestion(sys.argv))
             sys.exit(1)
     else:
-        trackplay = TrackplayTTY(track_list=audiofiles,
-                                 audio_output=options.output,
-                                 replay_gain=replay_gain)
+        trackplay = TrackplayTTY(
+            track_list=audiofiles,
+            audio_output=audiotools.player.open_output(options.output),
+            replay_gain=replay_gain)
         sys.exit(trackplay.run(msg, sys.stdin))

@@ -5952,7 +5952,8 @@ class Test_NULL_Player(unittest.TestCase):
         #try all the player methods while the player is stopped
         #and no track is opened
         try:
-            player = audiotools.player.Player(self.output_name)
+            player = audiotools.player.Player(
+                audiotools.player.open_output(self.output_name))
         except ValueError:
             #player not supported on this system
             return
@@ -6002,13 +6003,13 @@ class Test_NULL_Player(unittest.TestCase):
 
             #setting output should cause no errors
             for output in audiotools.player.available_outputs():
-                player.set_output(output.NAME)
+                player.set_output(output)
                 self.assertEqual(player.current_output_name(), output.NAME)
 
             #setting nonexistent output should raise ValueError
-            self.assertRaises(ValueError, player.set_output, "DUMMY")
+            self.assertRaises(TypeError, player.set_output, "DUMMY")
 
-            player.set_output(self.output_name)
+            player.set_output(audiotools.player.open_output(self.output_name))
             self.assertEqual(player.current_output_name(), self.output_name)
 
             player.stop()
@@ -6030,7 +6031,8 @@ class Test_NULL_Player(unittest.TestCase):
         #try all the player methods while a track is opened
         #and the player is stopped
         try:
-            player = audiotools.player.Player(self.output_name)
+            player = audiotools.player.Player(
+                audiotools.player.open_output(self.output_name))
         except ValueError:
             #player not supported on this system
             return
@@ -6091,13 +6093,13 @@ class Test_NULL_Player(unittest.TestCase):
 
             #setting output should cause no errors
             for output in audiotools.player.available_outputs():
-                player.set_output(output.NAME)
+                player.set_output(output)
                 self.assertEqual(player.current_output_name(), output.NAME)
 
-            #setting nonexistent output should raise ValueError
-            self.assertRaises(ValueError, player.set_output, "DUMMY")
+            #setting invalid output should raise TypeError
+            self.assertRaises(TypeError, player.set_output, "DUMMY")
 
-            player.set_output(self.output_name)
+            player.set_output(audiotools.player.open_output(self.output_name))
             self.assertEqual(player.current_output_name(), self.output_name)
 
             player.stop()
@@ -6119,7 +6121,8 @@ class Test_NULL_Player(unittest.TestCase):
         #try all the player methods while a track is opened
         #and the player is paused
         try:
-            player = audiotools.player.Player(self.output_name)
+            player = audiotools.player.Player(
+                audiotools.player.open_output(self.output_name))
         except ValueError:
             #player not supported on this system
             return
@@ -6187,13 +6190,14 @@ class Test_NULL_Player(unittest.TestCase):
 
             #setting output should cause no errors
             for output in audiotools.player.available_outputs():
-                player.set_output(output.NAME)
+                player.set_output(output)
                 self.assertEqual(player.current_output_name(), output.NAME)
 
-            #setting nonexistent output should raise ValueError
-            self.assertRaises(ValueError, player.set_output, "DUMMY")
+            #setting invalid output should raise TypeError
+            self.assertRaises(TypeError, player.set_output, "DUMMY")
 
-            player.set_output(self.output_name)
+            player.set_output(
+                audiotools.player.open_output(self.output_name))
             self.assertEqual(player.current_output_name(), self.output_name)
 
             player.play()
@@ -6214,7 +6218,8 @@ class Test_NULL_Player(unittest.TestCase):
         import time
 
         try:
-            player = audiotools.player.Player(self.output_name)
+            player = audiotools.player.Player(
+                audiotools.player.open_output(self.output_name))
         except ValueError:
             #player not supported on this system
             return
@@ -6281,13 +6286,14 @@ class Test_NULL_Player(unittest.TestCase):
 
             #setting output should cause no errors
             for output in audiotools.player.available_outputs():
-                player.set_output(output.NAME)
+                player.set_output(output)
                 self.assertEqual(player.current_output_name(), output.NAME)
 
-            #setting nonexistent output should raise ValueError
-            self.assertRaises(ValueError, player.set_output, "DUMMY")
+            #setting invalid output should raise TypeError
+            self.assertRaises(TypeError, player.set_output, "DUMMY")
 
-            player.set_output(self.output_name)
+            player.set_output(
+                audiotools.player.open_output(self.output_name))
             self.assertEqual(player.current_output_name(), self.output_name)
 
             player.play()
@@ -6312,7 +6318,7 @@ class Test_NULL_Player(unittest.TestCase):
 
         try:
             player = audiotools.player.Player(
-                self.output_name,
+                audiotools.player.open_output(self.output_name),
                 next_track_callback=callback.call)
         except ValueError:
             #player not supported on this system

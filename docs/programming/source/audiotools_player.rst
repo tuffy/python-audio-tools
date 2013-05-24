@@ -15,8 +15,7 @@ This will always return at least one output object.
 .. function:: audiotools.player.open_output(output)
 
 Given a string of an :class:`AudioOutput` class' ``NAME`` attribute,
-returns the given :class:`AudioOutput` class which has been
-opened for output.
+returns the given :class:`AudioOutput` object.
 
 Raises :exc:`ValueError` if the output cannot be found.
 
@@ -28,9 +27,7 @@ from an opened audio file object to a given output sink.
 
 .. class:: Player(audio_output[, replay_gain[, next_track_callback]])
 
-   ``audio_output`` is a string of the audio output to use,
-   as given in the :class:`AudioOutput` class' ``NAME`` attribute
-   and used by :func:`open_output`.
+   ``audio_output`` is an :class:`AudioOutput` object.
 
    ``replay_gain`` is either ``RG_NO_REPLAYGAIN``,
    ``RG_TRACK_GAIN`` or ``RG_ALBUM_GAIN``, indicating the level
@@ -58,16 +55,13 @@ from an opened audio file object to a given output sink.
    ReplayGain cannot be applied mid-playback.
    One must :meth:`stop` and :meth:`play` a file for it to take effect.
 
-.. method:: Player.set_output(output)
+.. method:: Player.set_output(audio_output)
 
    Changes where the audio will be played to the given output
-   where output is a string matching an :class:`AudioOutput` class'
-   ``NAME`` attribute.
-   If the given output is not found, it will not be changed.
+   where ``audio_output`` is an :class:`AudioOutput` object.
+
    Any currently playing audio is stopped and must be resumed
    from the beginning on the given output device.
-
-   Raises ValueError if the output is invalid.
 
 .. method:: Player.pause()
 

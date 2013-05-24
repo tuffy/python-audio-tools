@@ -32,7 +32,7 @@ class Player:
     def __init__(self, audio_output,
                  replay_gain=RG_NO_REPLAYGAIN,
                  next_track_callback=lambda: None):
-        """audio_output is the name of the output as a string
+        """audio_output is an AudioOutput object
 
         replay_gain is RG_NO_REPLAYGAIN, RG_TRACK_GAIN or RG_ALBUM_GAIN,
         indicating how the player should apply ReplayGain
@@ -46,6 +46,9 @@ class Player:
         from threading import Thread
 
         self.__player__ = None
+
+        if (not isinstance(audio_output, AudioOutput)):
+            raise TypeError("invalid output object")
 
         def call_next_track(next_track_conn, next_track_callback):
             response = next_track_conn.recv()
@@ -74,10 +77,6 @@ class Player:
                     "replay_gain":replay_gain})
 
         self.__player__.start()
-
-        #ensure player process has started successfully
-        if (not self.__command_conn__.recv()):
-            raise ValueError("unable to start player process")
 
     def __del__(self):
         if (self.__player__ is not None):
@@ -111,16 +110,15 @@ class Player:
         return self.__command_conn__.recv()
 
     def set_output(self, output):
-        """given the name string of an AudioOutput
-        (matching its .NAME attribute)
-
-        raises ValueError if the output is invalid
+        """given an AudioOutput object,
+        sets the player's output to that device
 
         any currently playing audio is stopped"""
 
+        if (not isinstance(output, AudioOutput)):
+            raise TypeError("invalid output object")
         self.__command_conn__.send(("set_output", (output,), True))
-        if (not self.__command_conn__.recv()):
-            raise ValueError("no such output")
+        return self.__command_conn__.recv()
 
     def pause(self):
         """pauses playback of the current file
@@ -219,7 +217,7 @@ class PlayerProcess:
                  progress,
                  next_track_conn,
                  replay_gain=RG_NO_REPLAYGAIN):
-        """audio_output is a string of what audio type to use
+        """audio_output is an AudioOutput object
 
         state is a shared Value of the current processing state
 
@@ -235,7 +233,7 @@ class PlayerProcess:
         self.__pcmreader__ = None      # the currently playing PCMReader
 
         # an AudioOutput subclass
-        self.__audio_output__ = open_output(audio_output)
+        self.__audio_output__ = audio_output
         self.__buffer_size__ = 0       # the number of PCM frames to process
 
         self.__state__ = state
@@ -277,7 +275,7 @@ class PlayerProcess:
     def set_output(self, output):
         self.stop_playing()
         try:
-            self.__audio_output__ = open_output(output)
+            self.__audio_output__ = output
             self.__buffer_size__ = 0
             return True
         except ValueError:
@@ -375,7 +373,7 @@ class PlayerProcess:
     @classmethod
     def run(cls, audio_output, state, command_conn, next_track_conn,
             current_progress, replay_gain=RG_NO_REPLAYGAIN):
-        """audio_output is a string of what audio type to use
+        """audio_output is an AudioOutput object
 
         command_conn is a bidirectional Connection object
         which reads (command, (arg1, arg2, ...)) tuples
@@ -390,20 +388,12 @@ class PlayerProcess:
         replay_gain is RG_NO_REPLAYGAIN, RG_TRACK_GAIN, or RG_ALBUM_GAIN"""
 
         #build PlayerProcess state management object
-        try:
-            player = PlayerProcess(
-                audio_output=audio_output,
-                state=state,
-                progress=current_progress,
-                next_track_conn=next_track_conn,
-                replay_gain=replay_gain)
-            command_conn.send(True)
-        except ValueError:
-            command_conn.send(False)
-            command_conn.close()
-            next_track_conn.send(False)
-            next_track_conn.close()
-            return
+        player = PlayerProcess(
+            audio_output=audio_output,
+            state=state,
+            progress=current_progress,
+            next_track_conn=next_track_conn,
+            replay_gain=replay_gain)
 
         while (True):
             if (state.value == PLAYER_PLAYING):
@@ -703,6 +693,20 @@ class AudioOutput:
         self.channel_mask = None
         self.bits_per_sample = None
 
+    def __getstate__(self):
+        """gets internal state for use by Pickle module"""
+
+        return ""
+
+    def __setstate__(self, name):
+        """sets internal state for use by Pickle module"""
+
+        #audio outputs are initialized closed for obvious reasons
+        self.sample_rate = None
+        self.channels = None
+        self.channel_mask = None
+        self.bits_per_sample = None
+
     def description(self):
         """returns user-facing name of output device as unicode"""
 
@@ -783,6 +787,13 @@ class NULLAudioOutput(AudioOutput):
         self.__volume__ = 0.30
         AudioOutput.__init__(self)
 
+    def __getstate__(self):
+        return "NULL"
+
+    def __setstate__(self, name):
+        AudioOutput.__setstate__(self, name)
+        self.__volume__ = 0.30
+
     def description(self):
         """returns user-facing name of output device as unicode"""
 
@@ -843,6 +854,18 @@ class OSSAudioOutput(AudioOutput):
         self.__ossaudio__ = None
         self.__ossmixer__ = None
         AudioOutput.__init__(self)
+
+    def __getstate__(self):
+        """gets internal state for use by Pickle module"""
+
+        return "OSS"
+
+    def __setstate__(self, name):
+        """sets internal state for use by Pickle module"""
+
+        AudioOutput.__setstate__(self, name)
+        self.__ossaudio__ = None
+        self.__ossmixer__ = None
 
     def description(self):
         """returns user-facing name of output device as unicode"""
@@ -977,6 +1000,17 @@ class PulseAudioOutput(AudioOutput):
         self.__pulseaudio__ = None
         AudioOutput.__init__(self)
 
+    def __getstate__(self):
+        """gets internal state for use by Pickle module"""
+
+        return "PulseAudio"
+
+    def __setstate__(self, name):
+        """sets internal state for use by Pickle module"""
+
+        AudioOutput.__setstate__(self, name)
+        self.__pulseaudio__ = None
+
     def description(self):
         """returns user-facing name of output device as unicode"""
 
@@ -1078,6 +1112,17 @@ class ALSAAudioOutput(AudioOutput):
         self.__alsaaudio__ = None
         AudioOutput.__init__(self)
 
+    def __getstate__(self):
+        """gets internal state for use by Pickle module"""
+
+        return "ALSA"
+
+    def __setstate__(self, name):
+        """sets internal state for use by Pickle module"""
+
+        AudioOutput.__setstate__(self, name)
+        self.__alsaaudio__ = None
+
     def description(self):
         """returns user-facing name of output device as unicode"""
 
@@ -1172,6 +1217,17 @@ class CoreAudioOutput(AudioOutput):
     def __init__(self):
         self.__coreaudio__ = None
         AudioOutput.__init__(self)
+
+    def __getstate__(self):
+        """gets internal state for use by Pickle module"""
+
+        return "CoreAudio"
+
+    def __setstate__(self, name):
+        """sets internal state for use by Pickle module"""
+
+        AudioOutput.__setstate__(self, name)
+        self.__coreaudio__ = None
 
     def description(self):
         """returns user-facing name of output device as unicode"""
@@ -1279,7 +1335,7 @@ def available_outputs():
 
 def open_output(output):
     """given an output type string (e.g. "PulseAudio")
-    returns that AudioOutput subclass
+    returns that AudioOutput instance
     or raises ValueError if it is unavailable"""
 
     for audio_output in available_outputs():

@@ -2131,7 +2131,7 @@ try:
                                    label=o.description(),
                                    state=current_output_name == o.NAME,
                                    on_state_change=self.change_output,
-                                   user_data=o.NAME) for o in outputs] +
+                                   user_data=o) for o in outputs] +
                 [urwid.Text([('key', u" \u2190 "),
                              LAB_DECREASE_VOLUME,
                              u"   ",
