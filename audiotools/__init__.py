@@ -4425,6 +4425,12 @@ class CDDA:
     def __init__(self, device_name, speed=None, perform_logging=True):
         """device_name is a string, speed is an optional int"""
 
+        self.device_name = device_name
+        self.speed = speed
+        self.perform_logging = perform_logging
+        self.__open__(device_name, speed, perform_logging)
+
+    def __open__(self, device_name, speed, perform_logging):
         from audiotools.cdio import identify_cdrom, CDImage, CDDA, CD_IMAGE
 
         self.cdrom_type = identify_cdrom(device_name)
@@ -4435,11 +4441,19 @@ class CDDA:
             if (speed is not None):
                 self.cdda.set_speed(speed)
 
-        self.perform_logging = perform_logging
         self.total_tracks = len([track_type for track_type in
                                  map(self.cdda.track_type,
                                      xrange(1, self.cdda.total_tracks() + 1))
                                  if (track_type == 0)])
+
+    def __getstate__(self):
+        return (self.device_name, self.speed, self.perform_logging)
+
+    def __setstate__(self, state):
+        (self.device_name,
+         self.speed,
+         self.perform_logging) = state
+        self.__open__(self.device_name, self.speed, self.perform_logging)
 
     def __len__(self):
         return self.total_tracks
@@ -4851,7 +4865,7 @@ class CDTrackReader(PCMReader):
         return self.__read_sectors__(max(pcm_frames / 588, 1))
 
     def read_closed(self, pcm_frames):
-        raise ValueError()
+        return pcm.from_list([], 2, 16, True)
 
     def close(self):
         """closes the CD track for reading"""

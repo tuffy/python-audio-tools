@@ -204,7 +204,7 @@ if (__name__ == '__main__'):
     parser.add_option_group(lookup)
 
     (options, args) = parser.parse_args()
-    msg = audiotools.Messenger("trackplay", options)
+    msg = audiotools.Messenger("cdplay", options)
 
     if (options.interactive and (not interactive_available)):
         msg.error(_.ERR_URWID_REQUIRED)
@@ -250,10 +250,11 @@ if (__name__ == '__main__'):
                  use_musicbrainz=options.use_musicbrainz,
                  use_freedb=options.use_freedb)[0]])
 
-        cdplay = CDplayGUI(cdda=cdda,
-                           metadata=metadata,
-                           track_list=tracks,
-                           audio_output=options.output
+        cdplay = CDplayGUI(
+            cdda=cdda,
+            metadata=metadata,
+            track_list=tracks,
+            audio_output=audiotools.player.open_output(options.output))
         if (len(cdda) > 0):
             cdplay.select_track(None, True,
                                 (tracks[0],
@@ -262,7 +263,9 @@ if (__name__ == '__main__'):
 
         loop = urwid.MainLoop(cdplay,
                               audiotools.ui.style(),
-                              unhandled_input=cdplay.handle_text)
+                              unhandled_input=cdplay.handle_text,
+                              pop_ups=True)
+
         loop.set_alarm_at(tm=time.time() + 1,
                           callback=audiotools.ui.timer,
                           user_data=cdplay)
@@ -276,7 +279,8 @@ if (__name__ == '__main__'):
             msg.info(audiotools.ui.xargs_suggestion(sys.argv))
             sys.exit(1)
     else:
-        trackplay = CDplayTTY(cdda=cdda,
-                              track_list=tracks,
-                              audio_output=players_map[options.output]())
+        trackplay = CDplayTTY(
+            cdda=cdda,
+            track_list=tracks,
+            audio_output=audiotools.player.open_output(options.output))
         sys.exit(trackplay.run(msg, sys.stdin))
