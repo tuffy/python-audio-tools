@@ -385,7 +385,8 @@ if (__name__ == '__main__'):
         #treat tracks as single album and don't perform lookup
         album_tracks.append(tracks)
         album_current_metadatas.append([t.get_metadata() for t in tracks])
-        album_metadata_choices.append([[audiotools.MetaData() for t in tracks]])
+        album_metadata_choices.append(
+            [[audiotools.MetaData() for t in tracks]])
 
     if (options.replace):
         #ignore track metadata and treat choices as final metadata
@@ -517,9 +518,9 @@ if (__name__ == '__main__'):
 
     for album_tracks in audiotools.group_tracks(tracks):
         if (options.add_replay_gain and (len(album_tracks) > 0)):
-            album_number = set([(m.album_number if m is not None else None)
-                                for m in
-                                [f.get_metadata() for f in album_tracks]]).pop()
+            album_number = set(
+                [(m.album_number if m is not None else None)
+                 for m in [f.get_metadata() for f in album_tracks]]).pop()
 
             audio_type = album_tracks[0].__class__
 

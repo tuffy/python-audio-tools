@@ -204,7 +204,7 @@ def __parse__(tokens):
                                   'TITLE')):
                         if (token == 'CATALOG'):
                             cuesheet_catalog_number = str(get_value(
-                                tokens, STRING | NUMBER ,
+                                tokens, STRING | NUMBER,
                                 ERR_CUE_MISSING_VALUE))
                         else:
                             get_value(tokens,

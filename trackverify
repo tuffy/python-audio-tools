@@ -136,6 +136,7 @@ AR_NOT_FOUND = -1
 #but our track doesn't match any of the checksums
 AR_MISMATCH = -2
 
+
 def accuraterip_checksum(progress, track, ar_matches):
     from audiotools.cdio import ARChecksum
 
@@ -179,20 +180,19 @@ def accuraterip_display_result(result):
     if (error is None):
         if (confidence == AR_NOT_FOUND):
             return _.LAB_TRACKVERIFY_RESULT % \
-                {"path":filename,
-                 "result":_.LAB_ACCURATERIP_NOT_FOUND}
+                {"path": filename,
+                 "result": _.LAB_ACCURATERIP_NOT_FOUND}
         elif (confidence == AR_MISMATCH):
             return _.LAB_TRACKVERIFY_RESULT % \
-                {"path":filename,
-                 "result":_.LAB_ACCURATERIP_MISMATCH}
+                {"path": filename,
+                 "result": _.LAB_ACCURATERIP_MISMATCH}
         else:
             return _.LAB_TRACKVERIFY_RESULT % \
-                {"path":filename,
-                 "result":u"%s (%s)" %
+                {"path": filename,
+                 "result": u"%s (%s)" %
                  (_.LAB_ACCURATERIP_FOUND,
                   _.LAB_ACCURATERIP_CONFIDENCE %
                   (confidence))}
-
     else:
         #FIXME - display actual error
         return u"read error"
@@ -353,12 +353,11 @@ if (__name__ == '__main__'):
                 get_tracks(args, queued_files, options.accept_list)):
             #perform AccurateRip lookup on album's worth of tracks
             #if tracks are CD formatted
-            if ((set([t.channels() for t in tracks]) == set([2])) and
-                (set([t.sample_rate() for t in tracks]) == set([44100])) and
-                (set([t.bits_per_sample() for t in tracks]) == set([16]))):
-
-                if ((len(tracks) == 1) and
-                    (tracks[0].get_cuesheet() is not None)):
+            if (((set([t.channels() for t in tracks]) == set([2])) and
+                 (set([t.sample_rate() for t in tracks]) == set([44100])) and
+                 (set([t.bits_per_sample() for t in tracks]) == set([16])))):
+                if (((len(tracks) == 1) and
+                     (tracks[0].get_cuesheet() is not None))):
                     filename = audiotools.Filename(tracks[0].filename)
                     sheet = tracks[0].get_cuesheet()
                     total_frames = tracks[0].total_frames()
@@ -403,8 +402,8 @@ if (__name__ == '__main__'):
             else:
                 for track in tracks:
                     msg.error(u"\"%(path)s\" %(result)s" %
-                              {"path":audiotools.Filename(track.filename),
-                               "result":_.ERR_TRACKVERIFY})
+                              {"path": audiotools.Filename(track.filename),
+                               "result": _.ERR_TRACKVERIFY})
 
         msg.ansi_clearline()
         results = queue.run(options.max_processes)

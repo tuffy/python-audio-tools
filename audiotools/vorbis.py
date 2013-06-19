@@ -55,8 +55,8 @@ class VorbisAudio(AudioFile):
     COMPRESSION_DESCRIPTIONS = {"0": COMP_VORBIS_0,
                                 "10": COMP_VORBIS_10}
     BINARIES = ("oggenc", "oggdec")
-    BINARY_URLS = {"oggenc":"http://www.xiph.org/",
-                   "oggdec":"http://www.xiph.org/"}
+    BINARY_URLS = {"oggenc": "http://www.xiph.org/",
+                   "oggdec": "http://www.xiph.org/"}
     REPLAYGAIN_BINARIES = ("vorbisgain", )
 
     def __init__(self, filename):

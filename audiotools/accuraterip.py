@@ -54,10 +54,10 @@ class DiscID:
 
     def __str__(self):
         return "dBAR-%(tracks)3.3d-%(id1)8.8x-%(id2)8.8x-%(freedb)8.8x.bin" % \
-            {"tracks":len(self.__track_numbers__),
-             "id1":self.id1(),
-             "id2":self.id2(),
-             "freedb":int(self.__freedb_disc_id__)}
+            {"tracks": len(self.__track_numbers__),
+             "id1": self.id1(),
+             "id2": self.id2(),
+             "freedb": int(self.__freedb_disc_id__)}
 
     def __repr__(self):
         return "AccurateRipDiscID(%s, %s, %s, %s)" % \
@@ -81,7 +81,7 @@ def perform_lookup(disc_id,
     """
 
     from .bitstream import BitstreamReader
-    from urllib2 import urlopen,URLError
+    from urllib2 import urlopen, URLError
 
     matches = dict([(n, []) for n in disc_id.track_numbers()])
 
@@ -104,9 +104,9 @@ def perform_lookup(disc_id,
              id1,
              id2,
              freedb_disc_id) = response.parse("8u 32u 32u 32u")
-            if ((id1 == disc_id.id1()) and
-                (id2 == disc_id.id2()) and
-                (freedb_disc_id == disc_id.freedb_disc_id())):
+            if (((id1 == disc_id.id1()) and
+                 (id2 == disc_id.id2()) and
+                 (freedb_disc_id == disc_id.freedb_disc_id()))):
                 for track_number in xrange(1, track_count + 1):
                     if (track_number in matches):
                         matches[track_number].append(

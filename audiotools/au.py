@@ -52,8 +52,9 @@ class AuReader:
         except KeyError:
             raise ValueError(ERR_AU_UNSUPPORTED_FORMAT)
 
-        self.channel_mask = {1:0x4, 2:0x3}.get(self.channels, 0)
-        self.bytes_per_pcm_frame = ((self.bits_per_sample // 8) * self.channels)
+        self.channel_mask = {1: 0x4, 2: 0x3}.get(self.channels, 0)
+        self.bytes_per_pcm_frame = ((self.bits_per_sample // 8) *
+                                    self.channels)
         self.total_pcm_frames = (data_size // self.bytes_per_pcm_frame)
         self.remaining_pcm_frames = self.total_pcm_frames
 
@@ -78,7 +79,6 @@ class AuReader:
                              self.bits_per_sample,
                              True,
                              True)
-
 
     def seek(self, pcm_frame_offset):
         if (pcm_frame_offset < 0):

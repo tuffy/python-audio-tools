@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamReader
-from audiotools.pcm import FrameList,from_frames,from_list,from_channels
+from audiotools.pcm import FrameList, from_frames, from_list, from_channels
 
 
 def div_ceil(n, d):
@@ -219,7 +219,7 @@ class TTADecoder:
          self.bits_per_sample,
          self.sample_rate,
          self.total_pcm_frames) = self.reader.parse(
-            "4b 16u 16u 16u 32u 32u")
+             "4b 16u 16u 16u 32u 32u")
 
         self.reader.pop_callback()
         header_crc = self.reader.read(32)
@@ -228,7 +228,7 @@ class TTADecoder:
                 "CRC32 mismatch in header (0x%8.8X != 0x%8.8X)" %
                 (header_crc, int(crc)))
 
-        self.channel_mask = {1:0x4, 2:0x3}.get(self.channels, 0)
+        self.channel_mask = {1: 0x4, 2: 0x3}.get(self.channels, 0)
 
         total_tta_frames = div_ceil(self.total_pcm_frames * 245,
                                     self.sample_rate * 256)

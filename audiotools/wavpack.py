@@ -468,11 +468,11 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         try:
             (encode_wavpack if encoding_function is None
              else encoding_function)(
-                filename,
-                BufferedPCMReader(counter),
-                total_pcm_frames=(total_pcm_frames if
-                                  total_pcm_frames is not None else 0) ,
-                **cls.__options__[compression])
+                 filename,
+                 BufferedPCMReader(counter),
+                 total_pcm_frames=(total_pcm_frames if
+                                   total_pcm_frames is not None else 0),
+                 **cls.__options__[compression])
         except (ValueError, IOError), msg:
             cls.__unlink__(filename)
             raise EncodingError(str(msg))
@@ -481,14 +481,13 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
             raise err
 
         #ensure actual total PCM frames matches argument, if any
-        if ((total_pcm_frames is not None) and
-            (counter.frames_written != total_pcm_frames)):
+        if (((total_pcm_frames is not None) and
+             (counter.frames_written != total_pcm_frames))):
             cls.__unlink__(filename)
             from .text import ERR_TOTAL_PCM_FRAMES_MISMATCH
             raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
 
         return cls(filename)
-
 
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""

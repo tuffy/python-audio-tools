@@ -1016,6 +1016,7 @@ class Flac_CUESHEET_index:
                 u"index : %3.2d  offset : %9.9s" %
                 (self.number, u"+%d" % (self.offset)))
 
+
 class Flac_PICTURE(Image):
     BLOCK_ID = 6
 
@@ -3000,7 +3001,7 @@ class OggFlacAudio(FlacAudio):
     COMPRESSION_DESCRIPTIONS = {"0": COMP_FLAC_0,
                                 "8": COMP_FLAC_8}
     BINARIES = ("flac",)
-    BINARY_URLS = {"flac":"http://flac.sourceforge.net"}
+    BINARY_URLS = {"flac": "http://flac.sourceforge.net"}
 
     METADATA_CLASS = OggFlacMetaData
 

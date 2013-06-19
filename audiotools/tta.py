@@ -64,7 +64,7 @@ class TrueAudio(AudioFile):
              self.__bits_per_sample__,
              self.__sample_rate__,
              self.__total_pcm_frames__) = reader.parse(
-                "4b 16u 16u 16u 32u 32u 32p")
+                 "4b 16u 16u 16u 32u 32u 32p")
 
             if (signature != "TTA1"):
                 raise InvalidTTA(ERR_TTA_INVALID_SIGNATURE)
@@ -75,7 +75,7 @@ class TrueAudio(AudioFile):
                 self.__total_pcm_frames__ * 245,
                 self.__sample_rate__ * 256)
             self.__frame_lengths__ = list(reader.parse(
-                    "%d* 32u" % (self.__total_tta_frames__) + "32p"))
+                "%d* 32u" % (self.__total_tta_frames__) + "32p"))
         except IOError, msg:
             raise InvalidTTA(str(msg))
 
@@ -95,7 +95,7 @@ class TrueAudio(AudioFile):
         from . import ChannelMask
 
         if (self.__channels__ == 1):
-            return ChannelMask(0x4);
+            return ChannelMask(0x4)
         elif (self.__channels__ == 2):
             return ChannelMask(0x3)
         else:
@@ -397,10 +397,10 @@ class TrueAudio(AudioFile):
         from .id3v1 import ID3v1Comment
 
         #ensure metadata is APEv2, ID3v2, ID3v1, or ID3CommentPair
-        if ((not isinstance(metadata, ApeTag)) and
-            (not isinstance(metadata, ID3v2Comment)) and
-            (not isinstance(metadata, ID3CommentPair)) and
-            (not isinstance(metadata, ID3v1Comment))):
+        if (((not isinstance(metadata, ApeTag)) and
+             (not isinstance(metadata, ID3v2Comment)) and
+             (not isinstance(metadata, ID3CommentPair)) and
+             (not isinstance(metadata, ID3v1Comment)))):
             from .text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
 
@@ -543,7 +543,7 @@ class TrueAudio(AudioFile):
 
         from . import open_files
         from . import calculate_replay_gain
-        from .ape import ApeTag,ApeTagItem
+        from .ape import ApeTag, ApeTagItem
 
         tracks = [track for track in open_files(filenames) if
                   isinstance(track, cls)]

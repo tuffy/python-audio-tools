@@ -159,7 +159,7 @@ try:
                                  urwid.Button(LAB_CANCEL_BUTTON,
                                               on_press=self.exit),
                                  urwid.Button(completion_label,
-                                               on_press=self.complete),
+                                              on_press=self.complete),
                                  self.page_changed)
 
             urwid.Frame.__init__(self,
@@ -1967,9 +1967,9 @@ try:
                                   focus_column=1))
 
                 self.__body_pages__.append(urwid.Pile(
-                        [("weight", 1, widget),
-                         ("fixed", 1, metadata_buttons)],
-                        focus_item=1))
+                    [("weight", 1, widget),
+                     ("fixed", 1, metadata_buttons)],
+                    focus_item=1))
 
             urwid.Frame.__init__(self, body=self.__body_pages__[0])
 

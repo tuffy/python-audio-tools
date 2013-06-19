@@ -206,9 +206,8 @@ if (__name__ == '__main__'):
                 msg.error(_.ERR_CUE_INVALID_FORMAT)
                 sys.exit(1)
             elif (list(cuesheet.pcm_lengths(
-                        sum([f.total_frames()
-                             for f in audiofiles]),
-                        audiofiles[0].sample_rate()))[-1] < 0):
+                    sum([f.total_frames() for f in audiofiles]),
+                    audiofiles[0].sample_rate()))[-1] < 0):
                 msg.error(_.ERR_TRACKSPLIT_OVERLONG_CUESHEET)
                 sys.exit(1)
 

@@ -277,8 +277,8 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
     DEFAULT_COMPRESSION = "100"
     COMPRESSION_MODES = tuple(["10"] + map(str, range(50, 500, 25)) + ["500"])
     BINARIES = ("faac", "faad")
-    BINARY_URLS = {"faac":"http://www.audiocoding.com/",
-                   "faad":"http://www.audiocoding.com/"}
+    BINARY_URLS = {"faac": "http://www.audiocoding.com/",
+                   "faad": "http://www.audiocoding.com/"}
 
     def __init__(self, filename):
         """filename is a plain string"""
@@ -583,9 +583,9 @@ class M4AAudio_nero(M4AAudio_faac):
     COMPRESSION_DESCRIPTIONS = {"0.4": COMP_NERO_LOW,
                                 "1.0": COMP_NERO_HIGH}
     BINARIES = ("neroAacDec", "neroAacEnc")
-    BINARY_URLS = {"neroAacDec":"http://www.nero.com/enu/" +
+    BINARY_URLS = {"neroAacDec": "http://www.nero.com/enu/" +
                    "downloads-nerodigital-nero-aac-codec.php",
-                   "neroAacEnc":"http://www.nero.com/enu/" +
+                   "neroAacEnc": "http://www.nero.com/enu/" +
                    "downloads-nerodigital-nero-aac-codec.php"}
 
     @classmethod
@@ -987,8 +987,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             #to stick at the start of the file
             moov = cls.__moov_atom__(pcmreader,
                                      create_date,
-                                     0,  #placeholder
-                                     0,  #placeholder
+                                     0,  # placeholder
+                                     0,  # placeholder
                                      block_size,
                                      total_pcm_frames,
                                      [0] * total_alac_frames)
@@ -1012,15 +1012,15 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
             #encode the mdat atom based on encoding parameters
             try:
-                (frame_byte_sizes,
-                 actual_pcm_frames) = \
-                 (encode_alac if encoding_function is None else
-                  encoding_function)(file=f,
-                                     pcmreader=BufferedPCMReader(pcmreader),
-                                     block_size=block_size,
-                                     initial_history=cls.INITIAL_HISTORY,
-                                     history_multiplier=cls.HISTORY_MULTIPLIER,
-                                     maximum_k=cls.MAXIMUM_K)
+                (frame_byte_sizes, actual_pcm_frames) = \
+                    (encode_alac if encoding_function is None else
+                     encoding_function)(
+                         file=f,
+                         pcmreader=BufferedPCMReader(pcmreader),
+                         block_size=block_size,
+                         initial_history=cls.INITIAL_HISTORY,
+                         history_multiplier=cls.HISTORY_MULTIPLIER,
+                         maximum_k=cls.MAXIMUM_K)
             except (IOError, ValueError), err:
                 f.close()
                 self.__unlink__(filename)
@@ -1061,15 +1061,15 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             #which returns a tuple of output values
             #which are various fields for the "alac" atom
             try:
-                (frame_byte_sizes,
-                 total_pcm_frames) = \
-                 (encode_alac if encoding_function is None else
-                  encoding_function)(file=mdat_file,
-                                     pcmreader=BufferedPCMReader(pcmreader),
-                                     block_size=block_size,
-                                     initial_history=cls.INITIAL_HISTORY,
-                                     history_multiplier=cls.HISTORY_MULTIPLIER,
-                                     maximum_k=cls.MAXIMUM_K)
+                (frame_byte_sizes, total_pcm_frames) = \
+                    (encode_alac if encoding_function is None else
+                     encoding_function)(
+                         file=mdat_file,
+                         pcmreader=BufferedPCMReader(pcmreader),
+                         block_size=block_size,
+                         initial_history=cls.INITIAL_HISTORY,
+                         history_multiplier=cls.HISTORY_MULTIPLIER,
+                         maximum_k=cls.MAXIMUM_K)
             except (IOError, ValueError), err:
                 raise EncodingError(str(err))
 
@@ -1078,7 +1078,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             #use the fields from encode_alac() to populate our ALAC atoms
             moov = cls.__moov_atom__(pcmreader,
                                      create_date,
-                                     0,  #placeholder
+                                     0,  # placeholder
                                      mdat_size,
                                      block_size,
                                      total_pcm_frames,

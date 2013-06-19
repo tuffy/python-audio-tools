@@ -108,7 +108,7 @@ def image_compare_results(result):
 
     (mismatch, image_name, track_name) = result
     return u"%s : %s" % (_.LAB_TRACKCMP_CMP %
-                         {"file1":image_name, "file2":track_name},
+                         {"file1": image_name, "file2": track_name},
                          (ansi(_.LAB_TRACKCMP_OK, [FG_GREEN]) if
                           mismatch is None else
                           ansi(_.LAB_TRACKCMP_MISMATCH %
@@ -197,21 +197,23 @@ if (__name__ == '__main__'):
             to_compare = []
             results = []
 
-            files1 = dict([(f.filename, f) for f in
-                           audiotools.open_files(
-                        [path for path in [os.path.join(args[0], f) for f in
-                                           os.listdir(args[0])] if
-                         os.path.isfile(path)],
-                        sorted=False,
-                        messenger=msg)])
+            files1 = dict(
+                [(f.filename, f) for f in
+                 audiotools.open_files(
+                     [path for path in [os.path.join(args[0], f) for f in
+                                        os.listdir(args[0])] if
+                      os.path.isfile(path)],
+                     sorted=False,
+                     messenger=msg)])
 
-            files2 = dict([(f.filename, f) for f in
-                           audiotools.open_files(
-                        [path for path in [os.path.join(args[1], f) for f in
-                                           os.listdir(args[1])] if
-                         os.path.isfile(path)],
-                        sorted=False,
-                        messenger=msg)])
+            files2 = dict(
+                [(f.filename, f) for f in
+                 audiotools.open_files(
+                     [path for path in [os.path.join(args[1], f) for f in
+                                        os.listdir(args[1])] if
+                      os.path.isfile(path)],
+                     sorted=False,
+                     messenger=msg)])
 
             #first, attempt to match files by their stream characteristics
             streams1 = {}
@@ -229,8 +231,8 @@ if (__name__ == '__main__'):
             #and only a single possible match per directory
             #is queued for comparison
             for specs in set(streams1.keys()) & set(streams2.keys()):
-                if ((len(streams1[specs]) == 1) and
-                    (len(streams2[specs]) == 1)):
+                if (((len(streams1[specs]) == 1) and
+                     (len(streams2[specs]) == 1))):
                     file1 = streams1[specs][0]
                     file2 = streams2[specs][0]
 
@@ -258,8 +260,8 @@ if (__name__ == '__main__'):
                                               None), []).append(f)
 
             for metadata in set(metadatas1.keys()) & set(metadatas2.keys()):
-                if ((len(metadatas1[metadata]) == 1) and
-                    (len(metadatas2[metadata]) == 1)):
+                if (((len(metadatas1[metadata]) == 1) and
+                     (len(metadatas2[metadata]) == 1))):
                     file1 = metadatas1[metadata][0]
                     file2 = metadatas2[metadata][0]
 
@@ -276,8 +278,8 @@ if (__name__ == '__main__'):
                     msg.info(
                         msg.ansi(
                             _.LAB_TRACKCMP_MISSING %
-                            {"filename":os.path.basename(filename),
-                             "directory":audiotools.Filename(directory)},
+                            {"filename": os.path.basename(filename),
+                             "directory": audiotools.Filename(directory)},
                             [msg.FG_RED]))
                     sys.stdout.flush()
                     results.append((filename, None, 0))
@@ -285,7 +287,7 @@ if (__name__ == '__main__'):
             queue = audiotools.ExecProgressQueue(
                 audiotools.ProgressDisplay(msg))
 
-            to_compare.sort(lambda f1,f2: cmp(f1[0].filename, f2[0].filename))
+            to_compare.sort(lambda f1, f2: cmp(f1[0].filename, f2[0].filename))
 
             for (track1, track2) in to_compare:
                 queue.execute(
@@ -361,7 +363,7 @@ if (__name__ == '__main__'):
             queue.execute(
                 function=image_compare,
                 progress_text=_.LAB_TRACKCMP_CMP %
-                    {"file1": image_name, "file2": track_name},
+                {"file1": image_name, "file2": track_name},
                 completion_output=image_compare_results,
                 image_audiofile=cd_image,
                 track_audiofile=track,
@@ -372,8 +374,8 @@ if (__name__ == '__main__'):
 
             pcm_offset += track.total_frames()
 
-        if (set([r[0] for r in queue.run(options.max_processes)]) !=
-            set([None])):
+        if (set([r[0] for r in
+                 queue.run(options.max_processes)]) != set([None])):
             sys.exit(1)
     else:
         msg.usage(_.USAGE_TRACKCMP_FILES)

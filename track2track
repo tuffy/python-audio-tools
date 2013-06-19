@@ -37,9 +37,9 @@ MAX_CPUS = audiotools.MAX_JOBS
 def convert(progress, source_audiofile, destination_filename,
             destination_class, compression, metadata,
             sample_rate, channels, bits_per_sample):
-    if ((sample_rate is None) and
-        (channels is None) and
-        (bits_per_sample is None)):
+    if (((sample_rate is None) and
+         (channels is None) and
+         (bits_per_sample is None))):
         destination_audiofile = source_audiofile.convert(
             destination_filename,
             destination_class,
@@ -507,13 +507,13 @@ if (__name__ == '__main__'):
             else:
                 #perform CD lookup for existing files
                 metadata_choices.append(audiotools.track_metadata_lookup(
-                        audiofiles=album_tracks,
-                        musicbrainz_server=options.musicbrainz_server,
-                        musicbrainz_port=options.musicbrainz_port,
-                        freedb_server=options.freedb_server,
-                        freedb_port=options.freedb_port,
-                        use_musicbrainz=options.use_musicbrainz,
-                        use_freedb=options.use_freedb))
+                    audiofiles=album_tracks,
+                    musicbrainz_server=options.musicbrainz_server,
+                    musicbrainz_port=options.musicbrainz_port,
+                    freedb_server=options.freedb_server,
+                    freedb_port=options.freedb_port,
+                    use_musicbrainz=options.use_musicbrainz,
+                    use_freedb=options.use_freedb))
 
                 #and prepend metadata from existing files as an option, if any
                 if (track_metadatas != [None] * len(track_metadatas)):

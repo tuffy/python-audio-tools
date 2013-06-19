@@ -961,11 +961,11 @@ def missing_binaries(msg, audiofile):
                            ERR_PROGRAM_DOWNLOAD_URL,
                            ERR_PROGRAM_PACKAGE_MANAGER)
         msg.info(ERR_PROGRAM_NEEDED %
-                 {"program":u"\"%s\"" % (binaries[0].decode('ascii')),
-                  "format":format_})
+                 {"program": u"\"%s\"" % (binaries[0].decode('ascii')),
+                  "format": format_})
         msg.info(ERR_PROGRAM_DOWNLOAD_URL %
-                 {"program":binaries[0].decode('ascii'),
-                  "url":urls[binaries[0]]})
+                 {"program": binaries[0].decode('ascii'),
+                  "url": urls[binaries[0]]})
         msg.info(ERR_PROGRAM_PACKAGE_MANAGER)
     else:
         #multiple binaries may have one or more URLs to display
@@ -974,18 +974,19 @@ def missing_binaries(msg, audiofile):
                            ERR_PROGRAM_DOWNLOAD_URL,
                            ERR_PROGRAM_PACKAGE_MANAGER)
         msg.info(ERR_PROGRAMS_NEEDED %
-                 {"programs":u", ".join([u"\"%s\"" % (b.decode('ascii'))
-                                         for b in binaries]),
-                  "format":format_})
+                 {"programs": u", ".join([u"\"%s\"" % (b.decode('ascii'))
+                                          for b in binaries]),
+                  "format": format_})
         if (len(set([urls[b] for b in binaries])) == 1):
             #if they all come from one URL (like Vorbis tools)
             #display only that URL
-            msg.info(ERR_PROGRAMS_DOWNLOAD_URL % {"url":urls[binaries[0]]})
+            msg.info(ERR_PROGRAMS_DOWNLOAD_URL % {"url": urls[binaries[0]]})
         else:
             #otherwise, display the URL for each binary
             for b in binaries:
                 msg.info(ERR_PROGRAM_DOWNLOAD_URL %
-                         {"program":b.decode('ascii'), "url":urls[b]})
+                         {"program": b.decode('ascii'),
+                          "url": urls[b]})
         msg.info(ERR_PROGRAM_PACKAGE_MANAGER)
 
 
@@ -1583,8 +1584,8 @@ def sorted_tracks(audiofiles):
         (track2, metadata2) = pair2
         if ((metadata1 is not None) and (metadata2 is not None)):
             #both Metadata objects are present
-            if ((metadata1.album_number is not None) and
-                (metadata2.album_number is not None)):
+            if (((metadata1.album_number is not None) and
+                 (metadata2.album_number is not None))):
                 #both album numbers are present
                 result = cmp(metadata1.album_number, metadata2.album_number)
                 if (result == 0):
@@ -4230,6 +4231,7 @@ class Sheet:
 
             yield total_pcm_frames
 
+
 class SheetTrack:
     def __init__(self, number, indexes, audio=True, ISRC=None):
         """number is the track's number (typically starts from 1)
@@ -5259,9 +5261,9 @@ class ExecProgressQueue:
 
                     if (output is not None):
                         self.progress_display.messenger.info(
-                                output_progress(unicode(output),
-                                                completed_job_number,
-                                                total_jobs))
+                            output_progress(unicode(output),
+                                            completed_job_number,
+                                            total_jobs))
 
                     #attach result to output in the order it was received
                     results[finished_job.job_index] = result
@@ -5362,8 +5364,8 @@ class __ProgressQueueJob__:
         def execute_job(function, args, kwargs, progress, result_pipe):
             try:
                 result_pipe.send((False, function(*args,
-                                                 progress=progress,
-                                                 **kwargs)))
+                                                  progress=progress,
+                                                  **kwargs)))
             except Exception, exception:
                 result_pipe.send((True, exception))
 

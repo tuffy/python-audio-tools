@@ -23,6 +23,7 @@ import cPickle
 (RG_NO_REPLAYGAIN, RG_TRACK_GAIN, RG_ALBUM_GAIN) = range(3)
 DEFAULT_FORMAT = (44100, 2, 0x3, 16)
 
+
 class Player:
     """a class for operating an audio player
 
@@ -69,12 +70,12 @@ class Player:
 
         self.__player__ = Process(
             target=PlayerProcess.run,
-            kwargs={"audio_output":audio_output,
-                    "command_conn":client_conn,
-                    "next_track_conn":client_next_track_conn,
-                    "state":self.__state__,
-                    "current_progress":self.__progress__,
-                    "replay_gain":replay_gain})
+            kwargs={"audio_output": audio_output,
+                    "command_conn": client_conn,
+                    "next_track_conn": client_next_track_conn,
+                    "state": self.__state__,
+                    "current_progress": self.__progress__,
+                    "replay_gain": replay_gain})
 
         self.__player__.start()
 
@@ -238,7 +239,7 @@ class PlayerProcess:
 
         self.__state__ = state
         self.__state__.value = PLAYER_STOPPED
-        self.__progress__ = progress   #an Array of current/total frames
+        self.__progress__ = progress   # an Array of current/total frames
 
         self.set_progress(0, 1)
 
@@ -471,12 +472,12 @@ class CDPlayer(Player):
 
         self.__player__ = Process(
             target=CDPlayerProcess.run,
-            kwargs={"cdda":cdda,
-                    "audio_output":audio_output,
-                    "state":self.__state__,
-                    "command_conn":client_conn,
-                    "next_track_conn":client_next_track_conn,
-                    "current_progress":self.__progress__})
+            kwargs={"cdda": cdda,
+                    "audio_output": audio_output,
+                    "state": self.__state__,
+                    "command_conn": client_conn,
+                    "next_track_conn": client_next_track_conn,
+                    "current_progress": self.__progress__})
 
         self.__player__.start()
 
@@ -538,7 +539,7 @@ class CDPlayerProcess(PlayerProcess):
         from . import BufferedPCMReader
 
         #construct pcmreader from track
-        pcmreader = BufferedPCMReader(self.__track__)
+        pcmreader = BufferedPCMReader(ThreadedPCMReader(self.__track__))
 
         #reopen AudioOutput if necessary
         if (not self.__audio_output__.compatible(
@@ -1033,9 +1034,9 @@ class PulseAudioOutput(AudioOutput):
                                              bits_per_sample,
                                              "Python Audio Tools")
             self.__converter__ = {
-                8:lambda f: f.to_bytes(True, False),
-                16:lambda f: f.to_bytes(False, True),
-                24:lambda f: f.to_bytes(False, True)}[self.bits_per_sample]
+                8: lambda f: f.to_bytes(True, False),
+                16: lambda f: f.to_bytes(False, True),
+                24: lambda f: f.to_bytes(False, True)}[self.bits_per_sample]
         else:
             self.close()
             self.set_format(sample_rate=sample_rate,
@@ -1142,8 +1143,8 @@ class ALSAAudioOutput(AudioOutput):
 
             self.__alsaaudio__ = ALSAAudio("default",
                                            sample_rate,
-                                            channels,
-                                            bits_per_sample)
+                                           channels,
+                                           bits_per_sample)
         else:
             self.close()
             self.set_format(sample_rate=sample_rate,
