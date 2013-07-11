@@ -524,12 +524,22 @@ class CDPlayerProcess(PlayerProcess):
                                next_track_conn,
                                replay_gain=RG_NO_REPLAYGAIN)
 
-        #self.__track__ will be either a CDTrackReader object or None
         self.__cdda__ = cdda
+        self.__track_number__ = None
 
     def open(self, track_number):
         self.stop_playing()
-        self.__track__ = self.__cdda__[track_number]
+        self.__track_number__ = track_number
+
+    def play(self):
+        if (self.__track_number__ is not None):
+            if (self.__state__.value == PLAYER_STOPPED):
+                self.start_playing()
+            elif (self.__state__.value == PLAYER_PAUSED):
+                self.__audio_output__.resume()
+                self.__state__.value = PLAYER_PLAYING
+            elif (self.__state__.value == PLAYER_PLAYING):
+                pass
 
     def set_replay_gain(self, replay_gain):
         #does nothing
@@ -539,7 +549,8 @@ class CDPlayerProcess(PlayerProcess):
         from . import BufferedPCMReader
 
         #construct pcmreader from track
-        pcmreader = BufferedPCMReader(ThreadedPCMReader(self.__track__))
+        track = self.__cdda__[self.__track_number__]
+        pcmreader = BufferedPCMReader(ThreadedPCMReader(track))
 
         #reopen AudioOutput if necessary
         if (not self.__audio_output__.compatible(
@@ -556,12 +567,12 @@ class CDPlayerProcess(PlayerProcess):
         self.__pcmreader__ = pcmreader
         self.__state__.value = PLAYER_PLAYING
         self.__buffer_size__ = min(round(self.BUFFER_SIZE * 44100), 4096)
-        self.set_progress(0, self.__track__.length() * 44100 / 75)
+        self.set_progress(0, track.length() * 44100 / 75)
 
     def stop_playing(self):
-        # if (self.__pcmreader__ is not None):
-        #     self.__pcmreader__.close()
-        # self.__audio_output__.close()
+        if (self.__pcmreader__ is not None):
+            self.__pcmreader__.close()
+        self.__audio_output__.close()
         self.__state__.value = PLAYER_STOPPED
         self.set_progress(0, 1)
 

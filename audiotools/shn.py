@@ -50,10 +50,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         reader = BitstreamReader(f, 0)
         try:
             if (reader.parse("4b 8u") != ["ajkg", 2]):
-                #FIXME
                 raise InvalidShorten("invalid Shorten header")
         except IOError:
-            #FIXME
             raise InvalidShorten("invalid Shorten header")
 
         def read_unsigned(r, c):

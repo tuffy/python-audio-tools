@@ -6404,9 +6404,7 @@ class Test_NULL_CDPlayer(unittest.TestCase):
 
         f = open(bin_file, "w")
         audiotools.transfer_framelist_data(
-            test_streams.Sine16_Stereo(52251444, 44100,
-                                       8820.0, 0.70,
-                                       4410.0, 0.29, 1.0), f.write)
+            EXACT_SILENCE_PCM_Reader(52251444), f.write)
         f.close()
 
         return (input_dir, cue_file, bin_file)
@@ -6670,8 +6668,11 @@ class Test_NULL_CDPlayer(unittest.TestCase):
             player.set_output(
                 audiotools.player.open_output(self.output_name))
             self.assertEqual(player.current_output_name(), self.output_name)
+            self.assertEqual(player.state(), PLAYER_STOPPED)
 
             player.play()
+            self.assertEqual(player.state(), PLAYER_PLAYING)
+
             player.pause()
             self.assertEqual(player.state(), PLAYER_PAUSED)
         finally:
