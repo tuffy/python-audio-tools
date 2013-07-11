@@ -4421,207 +4421,296 @@ def iter_last(iterator):
 #is something code should avoid at all costs!
 #there's simply no way to accomplish that cleanly
 
-class CDDA:
-    """a CDDA device which contains CDTrackReader objects"""
+try:
+    from audiotools.cdio import identify_cdrom, CDImage, CDDA, CD_IMAGE
 
-    def __init__(self, device_name, speed=None, perform_logging=True):
-        """device_name is a string, speed is an optional int"""
+    class CDDA:
+        """a CDDA device which contains CDTrackReader objects"""
 
-        self.device_name = device_name
-        self.speed = speed
-        self.perform_logging = perform_logging
-        self.__open__(device_name, speed, perform_logging)
+        def __init__(self, device_name, speed=None, perform_logging=True):
+            """device_name is a string, speed is an optional int"""
 
-    def __open__(self, device_name, speed, perform_logging):
-        from audiotools.cdio import identify_cdrom, CDImage, CDDA, CD_IMAGE
+            self.device_name = device_name
+            self.speed = speed
+            self.perform_logging = perform_logging
+            self.__open__(device_name, speed, perform_logging)
 
-        self.cdrom_type = identify_cdrom(device_name)
-        if (self.cdrom_type & CD_IMAGE):
-            self.cdda = CDImage(device_name, self.cdrom_type)
-        else:
-            self.cdda = CDDA(device_name)
-            if (speed is not None):
-                self.cdda.set_speed(speed)
+        def __open__(self, device_name, speed, perform_logging):
 
-        self.total_tracks = len([track_type for track_type in
-                                 map(self.cdda.track_type,
-                                     xrange(1, self.cdda.total_tracks() + 1))
-                                 if (track_type == 0)])
 
-    def __getstate__(self):
-        return (self.device_name, self.speed, self.perform_logging)
-
-    def __setstate__(self, state):
-        (self.device_name,
-         self.speed,
-         self.perform_logging) = state
-        self.__open__(self.device_name, self.speed, self.perform_logging)
-
-    def __len__(self):
-        return self.total_tracks
-
-    def __getitem__(self, key):
-        if ((key < 1) or (key > self.total_tracks)):
-            raise IndexError(key)
-        else:
-            #apply sample offset only to physical CD drives
-            from audiotools.cdio import CD_IMAGE
-
+            self.cdrom_type = identify_cdrom(device_name)
             if (self.cdrom_type & CD_IMAGE):
-                sample_offset = 0
+                self.cdda = CDImage(device_name, self.cdrom_type)
             else:
-                try:
-                    sample_offset = int(config.get_default("System",
-                                                           "cdrom_read_offset",
-                                                           "0"))
-                except ValueError:
+                self.cdda = CDDA(device_name)
+                if (speed is not None):
+                    self.cdda.set_speed(speed)
+
+            self.total_tracks = len(
+                [track_type for track_type in
+                 map(self.cdda.track_type,
+                     xrange(1, self.cdda.total_tracks() + 1))
+                 if (track_type == 0)])
+
+        def __getstate__(self):
+            return (self.device_name, self.speed, self.perform_logging)
+
+        def __setstate__(self, state):
+            (self.device_name,
+             self.speed,
+             self.perform_logging) = state
+            self.__open__(self.device_name, self.speed, self.perform_logging)
+
+        def __len__(self):
+            return self.total_tracks
+
+        def __getitem__(self, key):
+            if ((key < 1) or (key > self.total_tracks)):
+                raise IndexError(key)
+            else:
+                #apply sample offset only to physical CD drives
+                if (self.cdrom_type & CD_IMAGE):
                     sample_offset = 0
-
-            reader = CDTrackReader(self.cdda,
-                                   int(key),
-                                   self.perform_logging)
-            start_sector = reader.start
-            end_sector = reader.end
-
-            #apply sample offset, if any
-            if (sample_offset > 0):
-                import math
-
-                pcm_frames = reader.length() * 588
-
-                #adjust start and end sectors to account for the offset
-                reader.start += (sample_offset / 588)
-                reader.end += int(math.ceil(sample_offset / 588.0))
-                reader.end = min(reader.end, self.last_sector())
-
-                #then wrap the reader in a window to fine-tune the offset
-                window = PCMReaderWindow(reader, sample_offset, pcm_frames)
-                window.track_number = reader.track_number
-                window.rip_log = reader.rip_log
-                window.length = reader.length
-                window.offset = reader.offset
-                reader = window
-            elif (sample_offset < 0):
-                import math
-
-                pcm_frames = reader.length() * 588
-
-                #adjust start and end sectors to account for the offset
-                reader.start += sample_offset / 588
-                reader.end += int(math.ceil(sample_offset / 588.0))
-
-                #then wrap the reader in a window to fine-tune the offset
-                if (reader.start >= self.first_sector()):
-                    window = PCMReaderWindow(
-                        reader,
-                        sample_offset + (-(sample_offset / 588) * 588),
-                        pcm_frames)
-
                 else:
-                    reader.start = self.first_sector()
+                    try:
+                        sample_offset = config.getint_default(
+                            "System", "cdrom_read_offset", 0)
+                    except ValueError:
+                        sample_offset = 0
+
+                reader = CDTrackReader(self.cdda,
+                                       int(key),
+                                       self.perform_logging)
+                start_sector = reader.start
+                end_sector = reader.end
+
+                #apply sample offset, if any
+                if (sample_offset > 0):
+                    import math
+
+                    pcm_frames = reader.length() * 588
+
+                    #adjust start and end sectors to account for the offset
+                    reader.start += (sample_offset / 588)
+                    reader.end += int(math.ceil(sample_offset / 588.0))
+                    reader.end = min(reader.end, self.last_sector())
+
+                    #then wrap the reader in a window to fine-tune the offset
                     window = PCMReaderWindow(reader, sample_offset, pcm_frames)
-                window.track_number = reader.track_number
-                window.rip_log = reade.rip_log
-                window.length = reader.length
-                window.offset = reader.offset
-                reader = window
+                    window.track_number = reader.track_number
+                    window.rip_log = reader.rip_log
+                    window.length = reader.length
+                    window.offset = reader.offset
+                    reader = window
+                elif (sample_offset < 0):
+                    import math
 
-            return reader
+                    pcm_frames = reader.length() * 588
 
-    def __iter__(self):
-        for i in range(1, self.total_tracks + 1):
-            yield self[i]
+                    #adjust start and end sectors to account for the offset
+                    reader.start += sample_offset / 588
+                    reader.end += int(math.ceil(sample_offset / 588.0))
 
-    def length(self):
-        """returns the length of the CD in CD frames"""
+                    #then wrap the reader in a window to fine-tune the offset
+                    if (reader.start >= self.first_sector()):
+                        window = PCMReaderWindow(
+                            reader,
+                            sample_offset + (-(sample_offset / 588) * 588),
+                            pcm_frames)
 
-        #lead-in should always be 150
-        return self.last_sector() + 150 + 1
+                    else:
+                        reader.start = self.first_sector()
+                        window = PCMReaderWindow(reader,
+                                                 sample_offset,
+                                                 pcm_frames)
+                    window.track_number = reader.track_number
+                    window.rip_log = reade.rip_log
+                    window.length = reader.length
+                    window.offset = reader.offset
+                    reader = window
 
-    def close(self):
-        """closes the CDDA device"""
+                return reader
 
-        pass
+        def __iter__(self):
+            for i in range(1, self.total_tracks + 1):
+                yield self[i]
 
-    def first_sector(self):
-        """returns the first sector's location, in CD frames"""
+        def length(self):
+            """returns the length of the CD in CD frames"""
 
-        return self.cdda.first_sector()
+            #lead-in should always be 150
+            return self.last_sector() + 150 + 1
 
-    def last_sector(self):
-        """returns the last sector's location, in CD frames"""
+        def close(self):
+            """closes the CDDA device"""
 
-        return self.cdda.last_sector()
+            pass
 
-    def freedb_disc_id(self):
-        from .freedb import DiscID
+        def first_sector(self):
+            """returns the first sector's location, in CD frames"""
 
-        return DiscID(offsets=[t.offset() for t in self],
-                      total_length=self.last_sector(),
-                      track_count=len(self))
+            return self.cdda.first_sector()
 
-    def musicbrainz_disc_id(self):
-        from .musicbrainz import DiscID
+        def last_sector(self):
+            """returns the last sector's location, in CD frames"""
 
-        return DiscID(first_track_number=1,
-                      last_track_number=len(self),
-                      lead_out_offset=self.last_sector() + 150 + 1,
-                      offsets=[t.offset() for t in self])
+            return self.cdda.last_sector()
 
-    def metadata_lookup(self, musicbrainz_server="musicbrainz.org",
-                        musicbrainz_port=80,
-                        freedb_server="us.freedb.org",
-                        freedb_port=80,
-                        use_musicbrainz=True,
-                        use_freedb=True):
-        """generates a set of MetaData objects from CD
+        def freedb_disc_id(self):
+            from .freedb import DiscID
 
-        returns a metadata[c][t] list of lists
-        where 'c' is a possible choice
-        and 't' is the MetaData for a given track (starting from 0)
+            return DiscID(offsets=[t.offset() for t in self],
+                          total_length=self.last_sector(),
+                          track_count=len(self))
 
-        this will always return at least one choice,
-        which may be a list of largely empty MetaData objects
-        if no match can be found for the CD
-        """
+        def musicbrainz_disc_id(self):
+            from .musicbrainz import DiscID
 
-        return metadata_lookup(first_track_number=1,
-                               last_track_number=len(self),
-                               offsets=[t.offset() for t in self],
-                               lead_out_offset=self.last_sector() + 150 + 1,
-                               total_length=self.last_sector(),
-                               musicbrainz_server=musicbrainz_server,
-                               musicbrainz_port=musicbrainz_port,
-                               freedb_server=freedb_server,
-                               freedb_port=freedb_port,
-                               use_musicbrainz=use_musicbrainz,
-                               use_freedb=use_freedb)
+            return DiscID(first_track_number=1,
+                          last_track_number=len(self),
+                          lead_out_offset=self.last_sector() + 150 + 1,
+                          offsets=[t.offset() for t in self])
 
-    def accuraterip_disc_id(self):
-        from .accuraterip import DiscID
-        from .freedb import DiscID as FreeDBDiscID
+        def metadata_lookup(self, musicbrainz_server="musicbrainz.org",
+                            musicbrainz_port=80,
+                            freedb_server="us.freedb.org",
+                            freedb_port=80,
+                            use_musicbrainz=True,
+                            use_freedb=True):
+            """generates a set of MetaData objects from CD
 
-        return DiscID(track_numbers=range(1, len(self) + 1),
-                      track_offsets=[t.offset() - 150 for t in self],
-                      lead_out_offset=self.last_sector() + 1,
-                      freedb_disc_id=self.freedb_disc_id())
+            returns a metadata[c][t] list of lists
+            where 'c' is a possible choice
+            and 't' is the MetaData for a given track (starting from 0)
 
-    def accuraterip_lookup(self, accuraterip_server="www.accuraterip.com",
-                           accuraterip_port=80):
-        """returns a dict of
-        {track_number:[(confidence, crc, crc2), ...], ...}
-        where track_number starts from 1
+            this will always return at least one choice,
+            which may be a list of largely empty MetaData objects
+            if no match can be found for the CD
+            """
 
-        may return a dict of empty lists if no AccurateRip entry is found
+            return metadata_lookup(first_track_number=1,
+                                   last_track_number=len(self),
+                                   offsets=[t.offset() for t in self],
+                                   lead_out_offset=self.last_sector() + 150 + 1,
+                                   total_length=self.last_sector(),
+                                   musicbrainz_server=musicbrainz_server,
+                                   musicbrainz_port=musicbrainz_port,
+                                   freedb_server=freedb_server,
+                                   freedb_port=freedb_port,
+                                   use_musicbrainz=use_musicbrainz,
+                                   use_freedb=use_freedb)
 
-        may raise urllib2.HTTPError if an error occurs querying the server
-        """
+        def accuraterip_disc_id(self):
+            from .accuraterip import DiscID
+            from .freedb import DiscID as FreeDBDiscID
 
-        from .accuraterip import perform_lookup
+            return DiscID(track_numbers=range(1, len(self) + 1),
+                          track_offsets=[t.offset() - 150 for t in self],
+                          lead_out_offset=self.last_sector() + 1,
+                          freedb_disc_id=self.freedb_disc_id())
 
-        return perform_lookup(self.accuraterip_disc_id(),
-                              accuraterip_server=accuraterip_server,
-                              accuraterip_port=accuraterip_port)
+        def accuraterip_lookup(self, accuraterip_server="www.accuraterip.com",
+                               accuraterip_port=80):
+            """returns a dict of
+            {track_number:[(confidence, crc, crc2), ...], ...}
+            where track_number starts from 1
+
+            may return a dict of empty lists if no AccurateRip entry is found
+
+            may raise urllib2.HTTPError if an error occurs querying the server
+            """
+
+            from .accuraterip import perform_lookup
+
+            return perform_lookup(self.accuraterip_disc_id(),
+                                  accuraterip_server=accuraterip_server,
+                                  accuraterip_port=accuraterip_port)
+
+
+    class CDTrackReader(PCMReader):
+        """a PCMReader-compatible object which reads from CDDA"""
+
+        def __init__(self, cdda, track_number, perform_logging=True):
+            """cdda is a cdio.CDDA object.  track_number is offset from 1"""
+
+            PCMReader.__init__(
+                self, None,
+                sample_rate=44100,
+                channels=2,
+                channel_mask=int(ChannelMask.from_fields(front_left=True,
+                                                         front_right=True)),
+                bits_per_sample=16)
+
+            self.cdda = cdda
+            self.track_number = track_number
+
+            (self.start, self.end) = cdda.track_offsets(track_number)
+
+            self.position = self.start
+            self.cursor_placed = False
+
+            self.perform_logging = perform_logging
+            self.rip_log = CDTrackLog()
+
+        def offset(self):
+            """returns this track's CD offset, in CD frames"""
+
+            return self.start + 150
+
+        def length(self):
+            """returns this track's length, in CD frames"""
+
+            return self.end - self.start + 1
+
+        def log(self, i, v):
+            """adds a log entry to the track's rip_log
+
+            this is meant to be called from CD reading callbacks"""
+
+            if v in self.rip_log:
+                self.rip_log[v] += 1
+            else:
+                self.rip_log[v] = 1
+
+        def __read_sectors__(self, sectors):
+            #if we haven't moved CDDA to the track start yet, do it now
+            if (not self.cursor_placed):
+                self.cdda.seek(self.start)
+                if (self.perform_logging):
+                    cdio.set_read_callback(self.log)
+
+                self.position = self.start
+                self.cursor_placed = True
+
+            if (self.position <= self.end):
+                s = self.cdda.read_sectors(min(sectors,
+                                               self.end - self.position + 1))
+                self.position += sectors
+                return s
+            else:
+                return pcm.from_list([], 2, 16, True)
+
+        def read(self, pcm_frames):
+            """try to read a pcm.FrameList with the given number of PCM frames
+
+            for CD reading, this will be a sector-aligned number"""
+
+            #returns a sector-aligned number of PCM frames
+            #(divisible by 588 frames, basically)
+            #or at least 1 sector's worth, if "pcm_frames" is too small
+            return self.__read_sectors__(max(pcm_frames / 588, 1))
+
+        def read_closed(self, pcm_frames):
+            return pcm.from_list([], 2, 16, True)
+
+        def close(self):
+            """closes the CD track for reading"""
+
+            self.read = self.read_closed
+except ImportError:
+    #no low-level libcdio functionality present
+    pass
+
 
 
 def PCMReaderWindow(pcmreader, initial_offset, pcm_frames):
@@ -4633,7 +4722,7 @@ def PCMReaderWindow(pcmreader, initial_offset, pcm_frames):
 
 
 class PCMReaderHead:
-    """a wrapper around PCMReader for trancating a stream's ending"""
+    """a wrapper around PCMReader for truncating a stream's ending"""
 
     def __init__(self, pcmreader, pcm_frames):
         """pcmreader is a PCMReader object
@@ -4791,88 +4880,6 @@ class CDTrackLog(dict):
                           for field in
                           ("rderr", "skip", "atom", "edge",
                            "drop", "dup", "drift")]) % fields
-
-
-class CDTrackReader(PCMReader):
-    """a PCMReader-compatible object which reads from CDDA"""
-
-    def __init__(self, cdda, track_number, perform_logging=True):
-        """cdda is a cdio.CDDA object.  track_number is offset from 1"""
-
-        PCMReader.__init__(
-            self, None,
-            sample_rate=44100,
-            channels=2,
-            channel_mask=int(ChannelMask.from_fields(front_left=True,
-                                                     front_right=True)),
-            bits_per_sample=16)
-
-        self.cdda = cdda
-        self.track_number = track_number
-
-        (self.start, self.end) = cdda.track_offsets(track_number)
-
-        self.position = self.start
-        self.cursor_placed = False
-
-        self.perform_logging = perform_logging
-        self.rip_log = CDTrackLog()
-
-    def offset(self):
-        """returns this track's CD offset, in CD frames"""
-
-        return self.start + 150
-
-    def length(self):
-        """returns this track's length, in CD frames"""
-
-        return self.end - self.start + 1
-
-    def log(self, i, v):
-        """adds a log entry to the track's rip_log
-
-        this is meant to be called from CD reading callbacks"""
-
-        if v in self.rip_log:
-            self.rip_log[v] += 1
-        else:
-            self.rip_log[v] = 1
-
-    def __read_sectors__(self, sectors):
-        #if we haven't moved CDDA to the track start yet, do it now
-        if (not self.cursor_placed):
-            self.cdda.seek(self.start)
-            if (self.perform_logging):
-                cdio.set_read_callback(self.log)
-
-            self.position = self.start
-            self.cursor_placed = True
-
-        if (self.position <= self.end):
-            s = self.cdda.read_sectors(min(sectors,
-                                           self.end - self.position + 1))
-            self.position += sectors
-            return s
-        else:
-            return pcm.from_list([], 2, 16, True)
-
-    def read(self, pcm_frames):
-        """try to read a pcm.FrameList with the given number of PCM frames
-
-        for CD reading, this will be a sector-aligned number"""
-
-        #returns a sector-aligned number of PCM frames
-        #(divisible by 588 frames, basically)
-        #or at least 1 sector's worth, if "pcm_frames" is too small
-        return self.__read_sectors__(max(pcm_frames / 588, 1))
-
-    def read_closed(self, pcm_frames):
-        return pcm.from_list([], 2, 16, True)
-
-    def close(self):
-        """closes the CD track for reading"""
-
-        self.read = self.read_closed
 
 
 #returns the value in item_list which occurs most often
