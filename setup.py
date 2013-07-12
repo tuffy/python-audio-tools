@@ -17,8 +17,6 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-VERSION = '2.20alpha2'
-
 #True indicates the given library is present
 #False indicates the given library is not present
 #None indicates setup should probe for the given library using pkg-config
@@ -27,14 +25,23 @@ HAS_LIBPULSE = None
 HAS_LIBALSA = None
 
 import sys
-import subprocess
 
 if (sys.version_info < (2, 6, 0, 'final', 0)):
     print >> sys.stderr, "*** Python 2.6.0 or better required"
     sys.exit(1)
 
+import os
+import os.path
+import re
+import subprocess
 from distutils.core import setup, Extension
 from distutils.command.build_ext import build_ext as _build_ext
+
+
+VERSION = re.search(r'VERSION\s*=\s"(.+?)"',
+                    open(os.path.join(
+                        os.path.dirname(sys.argv[0]),
+                        "audiotools/__init__.py")).read()).group(1)
 
 
 class build_ext(_build_ext):
@@ -58,12 +65,12 @@ class build_ext(_build_ext):
                 print "    or your system's package manager"
                 print ""
 
+        output = [e for e in self.extensions if
+                  isinstance(e, audiotools_output)][0]
+
         if ('linux' in sys.platform):
             #if on Linux, indicate whether PulseAudio and ALSA are found
             #or where to get them
-
-            output = [e for e in self.extensions if
-                      isinstance(e, audiotools_output)][0]
 
             if (output.has_pulseaudio):
                 print "--- libpulse found"
@@ -86,6 +93,14 @@ class build_ext(_build_ext):
                 print ""
                 print "    or your system's package manager"
                 print ""
+
+        if (output.has_coreaudio):
+            print "--- CoreAudio found"
+        else:
+            #if CoreAudio not found, we must not be on a Mac OS X machine
+            #so no reason to tell the user to get it
+            pass
+
 
 class audiotools_cdio(Extension):
     def __init__(self, extra_link_args=None):
@@ -241,6 +256,9 @@ class audiotools_output(Extension):
             link_args.extend(["-framework", "AudioToolbox",
                               "-framework", "AudioUnit",
                               "-framework", "CoreServices"])
+            self.has_coreaudio = True
+        else:
+            self.has_coreaudio = False
 
         if (has_pulseaudio is None):
             #detect PulseAudio's presence using pkg-config, if possible
@@ -361,10 +379,36 @@ if (HAS_LIBCDIO is None):
                             "cdplay"])
         else:
             #libcdio not found in pkg-config
-            pass
+            #so look for one of libcdio's accompanying executables
+            try:
+                cd_info = subprocess.Popen(
+                    ["cd-info", "--version"],
+                    stdout=open(os.devnull, "wb"),
+                    stderr=open(os.devnull, "wb"))
+                ext_modules.append(audiotools_cdio())
+
+                scripts.extend(["cd2track",
+                                "cdinfo",
+                                "cdplay"])
+            except OSError:
+                #cd-info not found either
+                pass
     except OSError:
         #pkg-config not found
-        pass
+        #so look for one of libcdio's accompanying executables
+        try:
+            cd_info = subprocess.Popen(
+                ["cd-info", "--version"],
+                stdout=open(os.devnull, "wb"),
+                stderr=open(os.devnull, "wb"))
+            ext_modules.append(audiotools_cdio())
+
+            scripts.extend(["cd2track",
+                            "cdinfo",
+                            "cdplay"])
+        except OSError:
+            #cd-info not found either
+            pass
 elif (HAS_LIBCDIO):
     ext_modules.append(audiotools_cdio())
 
