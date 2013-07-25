@@ -57,8 +57,10 @@ PyMethodDef module_methods[] = {
 *******************/
 
 PyGetSetDef FrameList_getseters[] = {
-    {"frames", (getter)FrameList_frames, 0, "frame count", NULL},
-    {"channels", (getter)FrameList_channels, 0, "channel count", NULL},
+    {"frames", (getter)FrameList_frames,
+     0, "frame count", NULL},
+    {"channels", (getter)FrameList_channels,
+     0, "channel count", NULL},
     {"bits_per_sample", (getter)FrameList_bits_per_sample,
      0, "bits per sample", NULL},
     {NULL}  /* Sentinel */
@@ -81,6 +83,16 @@ PyMethodDef FrameList_methods[] = {
     {"to_float", (PyCFunction)FrameList_to_float,
      METH_NOARGS,
      "F.to_float() -> FloatFrameList"},
+    {"from_list", (PyCFunction)FrameList_from_list,
+     METH_VARARGS | METH_CLASS,
+     "FrameList.from_list(int_list, channels, bits_per_sample, is_signed) -> FrameList"
+    },
+    {"from_frames", (PyCFunction)FrameList_from_frames,
+     METH_VARARGS | METH_CLASS,
+     "FrameList.from_frames(framelist_list) -> FrameList"},
+    {"from_channels", (PyCFunction)FrameList_from_channels,
+     METH_VARARGS | METH_CLASS,
+     "FrameList.from_channels(framelist_list) -> FrameList"},
     {"frame_count", (PyCFunction)FrameList_frame_count,
      METH_VARARGS,
      "F.frame_count(bytes) -> int -- "
@@ -912,6 +924,12 @@ PyMethodDef FloatFrameList_methods[] = {
      METH_VARARGS,
      "FF.split(i) -> (FloatFrameList,FloatFrameList) -- "
      "splits the FloatFrameList at the given index"},
+    {"from_frames", (PyCFunction)FloatFrameList_from_frames,
+     METH_VARARGS | METH_CLASS,
+     "FloatFrameList.from_frames(floatframelist_list) -> FloatFrameList"},
+    {"from_channels", (PyCFunction)FloatFrameList_from_channels,
+     METH_VARARGS | METH_CLASS,
+     "FloatFrameList.from_channels(floatframelist_list) -> FloatFrameList"},
     {"to_int", (PyCFunction)FloatFrameList_to_int,
      METH_VARARGS,
      "FF.to_int(bits_per_sample) -> FrameList"},

@@ -364,7 +364,9 @@ class PlayerProcess:
             self.__progress__[0] += frame.frames
             self.__audio_output__.play(frame)
         else:
-            self.stop_playing()
+            self.__pcmreader__.close()
+            self.__state__.value = PLAYER_STOPPED
+            self.set_progress(0, 1)
             self.__next_track_conn__.send(True)
 
     def set_progress(self, current, total):
@@ -1210,7 +1212,7 @@ class ALSAAudioOutput(AudioOutput):
 
     @classmethod
     def available(cls):
-        """returns True if PulseAudio is available and running on the system"""
+        """returns True if ALSA is available and running on the system"""
 
         try:
             from .output import ALSAAudio
