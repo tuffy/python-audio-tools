@@ -771,5 +771,3 @@ initpcmconverter(void)
     PyModule_AddObject(m, "BPSConverter",
                        (PyObject *)&pcmconverter_BPSConverterType);
 }
-
-#include "samplerate/samplerate.c"

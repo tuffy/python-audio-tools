@@ -136,7 +136,11 @@ class audiotools_pcmconverter(Extension):
                                     'src/array.c',
                                     'src/bitstream.c',
                                     'src/buffer.c',
-                                    'src/func_io.c'])
+                                    'src/func_io.c',
+                                    'src/samplerate/samplerate.c',
+                                    'src/samplerate/src_sinc.c',
+                                    'src/samplerate/src_zoh.c',
+                                    'src/samplerate/src_linear.c'])
 
 
 class audiotools_replaygain(Extension):

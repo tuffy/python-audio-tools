@@ -1,7 +1,6 @@
 /*
 ** Copyright (C) 2001-2011 Erik de Castro Lopo <erikd@mega-nerd.com>
-** Portions modified April 2008 by Brian Langenberger
-** for use in Python Audio Tools
+** Modified 2013 by Brian Langenberger for use in Python Audio Tools
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU Lesser General Public License as published by
@@ -55,14 +54,32 @@
 
 #define		HAVE_LRINT_REPLACEMENT	0
 
-/*assuming no LRINT or LRINTF for maximum compatibility*/
-#define HAVE_LRINT 0
-#define HAVE_LRINTF 0
+#if (HAVE_LRINT && HAVE_LRINTF)
 
+	/*
+	**	These defines enable functionality introduced with the 1999 ISO C
+	**	standard. They must be defined before the inclusion of math.h to
+	**	engage them. If optimisation is enabled, these functions will be
+	**	inlined. With optimisation switched off, you have to link in the
+	**	maths library using -lm.
+	*/
 
-#include	<math.h>
+	#define	_ISOC9X_SOURCE	1
+	#define _ISOC99_SOURCE	1
 
-#define	lrint(dbl)		((long) (dbl))
-#define	lrintf(flt)		((long) (flt))
+	#define	__USE_ISOC9X	1
+	#define	__USE_ISOC99	1
+
+	#include	<math.h>
+
+#else
+
+    #include	<math.h>
+
+    #define	lrint(dbl)		((long) (dbl))
+    #define	lrintf(flt)		((long) (flt))
 
 #endif
+
+
+#endif /* FLOAT_CAST_HEADER */

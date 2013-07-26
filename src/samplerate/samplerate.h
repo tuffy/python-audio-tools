@@ -1,7 +1,5 @@
 /*
 ** Copyright (C) 2002-2011 Erik de Castro Lopo <erikd@mega-nerd.com>
-** Portions modified April 2008 by Brian Langenberger
-** for use in Python Audio Tools
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -36,9 +34,6 @@
 extern "C" {
 #endif	/* __cplusplus */
 
-/*FIXME - shouldn't hard-code these*/
-#define CPU_CLIPS_NEGATIVE 0
-#define CPU_CLIPS_POSITIVE 0
 
 /* Opaque data type SRC_STATE. */
 typedef struct SRC_STATE_tag SRC_STATE ;
@@ -131,6 +126,7 @@ int src_simple (SRC_DATA *data, int converter_type, int channels) ;
 
 const char *src_get_name (int converter_type) ;
 const char *src_get_description (int converter_type) ;
+const char *src_get_version (void) ;
 
 /*
 **	Set a new SRC ratio. This allows step responses

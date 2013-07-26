@@ -1,7 +1,6 @@
 /*
 ** Copyright (C) 2002-2011 Erik de Castro Lopo <erikd@mega-nerd.com>
-** Portions modified March 2009 by Brian Langenberger
-** for use in Python Audio Tools
+** Modified 2013 by Brian Langenberger for use in Python Audio Tools
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -28,14 +27,14 @@
 #include	<stdlib.h>
 #include	<string.h>
 
+#define PACKAGE "libsamplerate"
+#define VERSION "0.1.8"
+#define CPU_CLIPS_POSITIVE 0
+#define CPU_CLIPS_NEGATIVE 0
+
 #include	"samplerate.h"
 #include	"float_cast.h"
 #include	"common.h"
-
-#include        "src_sinc.c"
-#include        "src_zoh.c"
-#include        "src_linear.c"
-
 
 static int psrc_set_converter (SRC_PRIVATE	*psrc, int converter_type) ;
 
@@ -356,6 +355,11 @@ src_get_description (int converter_type)
 	return NULL ;
 } /* src_get_description */
 
+const char *
+src_get_version (void)
+{	return PACKAGE "-" VERSION " (c) 2002-2008 Erik de Castro Lopo" ;
+} /* src_get_version */
+
 int
 src_is_valid_ratio (double ratio)
 {
@@ -519,7 +523,7 @@ src_float_to_int_array (const float *in, int *out, int len)
 			continue ;
 			} ;
 
-		out [len] = (int)lrint (scaled_value) ;
+        out [len] = (int)lrint (scaled_value) ;
 		} ;
 
 } /* src_float_to_int_array */
