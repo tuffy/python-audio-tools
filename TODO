@@ -6522,22 +6522,51 @@
     - [X] mdia
     - [X] minf
     - [X] stbl
-** TODO Add track2track format conversion options
+** DONE Add volume control to trackplay/cdplay
+*** DONE Add get_volume() method to low-level audio players
+    It should return the current set volume as a float.
+    - [X] PulseAudioOutput
+    - [X] OSSAudioOutput
+    - [X] CoreAudioOutput
+    - [X] NULLAudioOutput
+*** DONE Add set_volume(volume) method to low-level audio players
+    It should take a volume setting float and adjust the output volume.
+    - [X] PulseAudioOutput
+    - [X] OSSAudioOutput
+    - [X] CoreAudioOutput
+    - [X] NULLAudioOutput
+*** DONE Build volume setting, progress-bar style widget
+*** DONE Ensure volume control updates when system volume is updated
+*** DONE Add widget to player widget
+** DONE Make audio output selectable in trackplay/cdplay
+*** DONE Add available_outputs() function to audiotools.player module
+    should return list of available AudioOutput subclasses
+*** DONE Add description() method to AudioOutput subclasses
+    Returns a human-readable Unicode string indicating
+    what the audio output device is.
+    - [X] PulseAudioOutput
+    - [X] OSSAudioOutput
+    - [X] CoreAudioOutput
+    - [X] NULLAudioOutput
+*** DONE Ensure output switches correctly
+    Switches should be as seamless as possible and include
+    setting the output volume properly.
+** DONE Add track2track format conversion options
    Primarily for conversion between one lossless format to another.
    - [X] --sample-rate
    - [X] --channels
    - [X] --bits-per-sample
 *** DONE Add documentation to man page
-*** TODO Add unit tests
-** TODO Add internal True Audio codec
+*** DONE Add unit tests
+** DONE Add internal True Audio codec
 *** DONE Add Python-based True Audio decoder
 *** DONE Add Python-based True Audio encoder
 *** DONE Document True Audio decoding
 *** DONE Document True Audio encoding
-*** TODO Add C-based True Audio decoder
+*** DONE Add C-based True Audio decoder
 **** DONE modify it for standalone use
 **** DONE ensure there's no memory errors or leaks
-**** TODO Make decoder thread-friendly
+**** DONE Make decoder thread-friendly
 *** DONE Add C-based True Audio encoder
 **** DONE modify it for standalone use
 **** DONE ensure there's no memory errors or leaks
@@ -6580,16 +6609,43 @@
 *** TODO Add unit tests
 **** TODO Add unit tests to Python classes/functions
 **** TODO Update utilities unit tests
-** TODO Overhaul exception handling
-   A lot of our exceptions are used haphazardly
-   mixing strings with unicode and aren't as well documented as they
-   should be.
+* TODO Finish version 2.21
+** TODO Bump minimum required Python version to 2.7
+   Python 2.7 is pretty common these days and offers useful
+   features that have been backported from 3.
+** TODO Update coverview widget set
+   Although wxPython is available lots of places,
+   it doesn't behave the same everywhere.
+   It's like a better Tkinter.
 
-   It'd be a good idea to ensure every function/method that
-   throws an exception has that documented,
-   internal exceptions themselves are documented
-   with what they're for and what they take as values,
-   and make sure they get caught correctly where they're supposed to.
+   PyGTK works well on X11 platforms, but is a non-starter on Mac OS.
+
+   Using the built-in PyObjC bridge on Mac OS is the most compatible
+   solution, if it can be implemented without making a huge mess.
+** TODO Convert utilties from optparse to argparse
+   argparse seems a bit nicer and more user-friendly
+   since it generates usage lines automatically.
+   - [ ] audiotools-config
+   - [ ] cd2track
+   - [ ] cdinfo
+   - [ ] cdplay
+   - [ ] coverdump
+   - [ ] covertag
+   - [ ] coverview
+   - [ ] dvda2track
+   - [ ] dvdainfo
+   - [ ] track2cd
+   - [ ] track2track
+   - [ ] trackcat
+   - [ ] trackcmp
+   - [ ] trackinfo
+   - [ ] tracklength
+   - [ ] tracklint
+   - [ ] trackplay
+   - [ ] trackrename
+   - [ ] tracksplit
+   - [ ] tracktag
+   - [ ] trackverify
 ** TODO Shift the classmethods from ALACAudio to the atoms themselves
    It's better to have them as alternate constructors
    much closer to the actual atom definitions.
@@ -6635,15 +6691,6 @@
     wav files, at least it gets updated.
     Having two different, slightly incompatible M4A implementations
     needlessly complicates things.
-** TODO Update coverview widget set
-   Although wxPython is available lots of places,
-   it doesn't behave the same everywhere.
-   It's like a better Tkinter.
-
-   PyGTK works well on X11 platforms, but is a non-starter on Mac OS.
-
-   Using the built-in PyObjC bridge on Mac OS is the most compatible
-   solution, if it can be implemented without making a huge mess.
 ** TODO Add internal WavPack codec
 *** DONE update WavPack documentation to little-endian reading order
 *** TODO Add WavPack decoder
@@ -6841,35 +6888,16 @@
 *** DONE Remove WavePackAudio.BINARIES
 *** DONE Add more WavPack INVALIDFILE .verify() tests
 *** DONE Remove wvgain for ReplayGain application
-** TODO Add volume control to trackplay/cdplay
-*** TODO Add get_volume() method to low-level audio players
-    It should return the current set volume as a float.
-    - [X] PulseAudioOutput
-    - [ ] OSSAudioOutput
-    - [X] CoreAudioOutput
-    - [X] NULLAudioOutput
-*** TODO Add set_volume(volume) method to low-level audio players
-    It should take a volume setting float and adjust the output volume.
-    - [X] PulseAudioOutput
-    - [ ] OSSAudioOutput
-    - [X] CoreAudioOutput
-    - [X] NULLAudioOutput
-*** DONE Build volume setting, progress-bar style widget
-*** DONE Ensure volume control updates when system volume is updated
-*** DONE Add widget to player widget
-** DONE Make audio output selectable in trackplay/cdplay
-*** DONE Add available_outputs() function to audiotools.player module
-    should return list of available AudioOutput subclasses
-*** DONE Add description() method to AudioOutput subclasses
-    Returns a human-readable Unicode string indicating
-    what the audio output device is.
-    - [X] PulseAudioOutput
-    - [X] OSSAudioOutput
-    - [X] CoreAudioOutput
-    - [X] NULLAudioOutput
-*** DONE Ensure output switches correctly
-    Switches should be as seamless as possible and include
-    setting the output volume properly.
+** TODO Overhaul exception handling
+   A lot of our exceptions are used haphazardly
+   mixing strings with unicode and aren't as well documented as they
+   should be.
+
+   It'd be a good idea to ensure every function/method that
+   throws an exception has that documented,
+   internal exceptions themselves are documented
+   with what they're for and what they take as values,
+   and make sure they get caught correctly where they're supposed to.
 ** TODO Add AirPlay support
    Create AudioOutput-compatible AirPlay implementation
    and have it returned by audiotools.player.available_outputs()

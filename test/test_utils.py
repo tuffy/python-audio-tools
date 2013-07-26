@@ -933,6 +933,15 @@ class track2track(UtilTest):
             elif (option == '-o'):
                 populated.append(option)
                 populated.append(self.output_file.name)
+            elif (option == '--sample-rate'):
+                populated.append(option)
+                populated.append(str(48000))
+            elif (option == '--channels'):
+                populated.append(option)
+                populated.append(str(1))
+            elif (option == '--bits-per-sample'):
+                populated.append(option)
+                populated.append(str(8))
             else:
                 populated.append(option)
 
@@ -963,6 +972,15 @@ class track2track(UtilTest):
             elif (option == '-j'):
                 populated.append(option)
                 populated.append(str(0))
+            elif (option == '--sample-rate'):
+                populated.append(option)
+                populated.append(str(0))
+            elif (option == '--channels'):
+                populated.append(option)
+                populated.append(str(0))
+            elif (option == '--bits-per-sample'):
+                populated.append(option)
+                populated.append(str(0))
             else:
                 populated.append(option)
 
@@ -981,7 +999,8 @@ class track2track(UtilTest):
         messenger = audiotools.Messenger("track2track", None)
 
         all_options = ["-t", "-q", "-d", "--format", "-o",
-                       "--replay-gain", "--no-replay-gain"]
+                       "--replay-gain", "--no-replay-gain",
+                       "--sample-rate", "--channels", "--bits-per-sample"]
 
         for count in xrange(1, len(all_options) + 1):
             for options in Combinations(all_options, count):
@@ -1058,10 +1077,26 @@ class track2track(UtilTest):
                 if (self.track1.lossless() and
                     track2.lossless() and not
                     (output_class.supports_replay_gain() and
-                     "--replay-gain" in options)):
+                     "--replay-gain" in options) and
+                    ("--sample-rate" not in options) and
+                    ("--channels" not in options) and
+                    ("--bits-per-sample" not in options)):
+
                     self.assert_(
                         audiotools.pcm_frame_cmp(self.track1.to_pcm(),
                                                  track2.to_pcm()) is None)
+
+                if (track2.lossless()):
+                    self.assertEqual(
+                        track2.sample_rate(),
+                        44100 if ("--sample-rate" not in options) else 48000)
+                    self.assertEqual(
+                        track2.channels(),
+                        2 if ("--channels" not in options) else 1)
+                    self.assertEqual(
+                        track2.bits_per_sample(),
+                        16 if ("--bits-per-sample" not in options) else 8)
+
                 if (track2.get_metadata() is not None):
                     self.assertEqual(track2.get_metadata(), metadata)
 
@@ -1168,10 +1203,14 @@ class track2track(UtilTest):
                                      ERR_UNSUPPORTED_CHANNEL_COUNT,
                                      ERR_UNSUPPORTED_CHANNEL_MASK,
                                      ERR_UNSUPPORTED_BITS_PER_SAMPLE,
+                                     ERR_INVALID_SAMPLE_RATE,
+                                     ERR_INVALID_CHANNEL_COUNT,
+                                     ERR_INVALID_BITS_PER_SAMPLE
                                      )
 
         all_options = ["-t", "-q", "-d", "--format", "-o", "-j",
-                       "--replay-gain", "--no-replay-gain"]
+                       "--replay-gain", "--no-replay-gain",
+                       "--sample-rate", "--channels", "--bits-per-sample"]
         for count in xrange(0, len(all_options) + 1):
             for options in Combinations(all_options, count):
                 self.clean_output_dirs()
@@ -1209,6 +1248,18 @@ class track2track(UtilTest):
                         ERR_UNSUPPORTED_COMPRESSION_MODE %
                         {"quality": "bar",
                          "type": output_class.NAME})
+                    continue
+
+                if ("--sample-rate" in options):
+                    self.__check_error__(ERR_INVALID_SAMPLE_RATE)
+                    continue
+
+                if ("--channels" in options):
+                    self.__check_error__(ERR_INVALID_CHANNEL_COUNT)
+                    continue
+
+                if ("--bits-per-sample" in options):
+                    self.__check_error__(ERR_INVALID_BITS_PER_SAMPLE)
                     continue
 
                 if ("-j" in options):

@@ -33,7 +33,7 @@
   for example:
 
   int total = 0;
-  array_i* a = array_i_new();    //initialize a new integer array
+  a_int* a = a_int_new();        //initialize a new integer array
   a->vappend(a, 3, 1, 2, 3);     //append three integer values
   for (i = 0; i < a->len; i++) { //iterate over the array
       total += a->_[i];          //sum the values in the array

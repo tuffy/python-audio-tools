@@ -215,6 +215,8 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
         const unsigned frame_size = self->seektable[self->current_tta_frame++];
         const unsigned block_size = MIN(self->remaining_pcm_frames,
                                         self->block_size);
+        status status;
+
         self->remaining_pcm_frames -= block_size;
 
         br_substream_reset(self->frame);
@@ -229,12 +231,18 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
             return NULL;
         }
 
-        switch (read_frame(self->frame,
-                           &(self->cache),
-                           block_size,
-                           self->header.channels,
-                           self->header.bits_per_sample,
-                           self->framelist)) {
+        Py_BEGIN_ALLOW_THREADS
+
+        status = read_frame(self->frame,
+                            &(self->cache),
+                            block_size,
+                            self->header.channels,
+                            self->header.bits_per_sample,
+                            self->framelist);
+
+        Py_END_ALLOW_THREADS
+
+        switch (status) {
         default:
             return aa_int_to_FrameList(self->audiotools_pcm,
                                        self->framelist,

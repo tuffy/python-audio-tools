@@ -447,6 +447,21 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_FILES_REQUIRED)
         sys.exit(1)
 
+    if ((options.sample_rate is not None) and
+        (options.sample_rate < 1)):
+        msg.error(_.ERR_INVALID_SAMPLE_RATE)
+        sys.exit(1)
+
+    if ((options.channels is not None) and
+        (options.channels < 1)):
+        msg.error(_.ERR_INVALID_CHANNEL_COUNT)
+        sys.exit(1)
+
+    if ((options.bits_per_sample is not None) and
+        (options.bits_per_sample < 1)):
+        msg.error(_.ERR_INVALID_BITS_PER_SAMPLE)
+        sys.exit(1)
+
     if (options.max_processes < 1):
         msg.error(_.ERR_INVALID_JOINT)
         sys.exit(1)
