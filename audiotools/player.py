@@ -346,8 +346,9 @@ class PlayerProcess:
                 bits_per_sample=pcmreader.bits_per_sample)
 
         self.__pcmreader__ = pcmreader
-        self.__buffer_size__ = min(round(self.BUFFER_SIZE *
-                                         self.__track__.sample_rate()), 4096)
+        self.__buffer_size__ = min(int(round(self.BUFFER_SIZE *
+                                             self.__track__.sample_rate())),
+                                   4096)
         self.__state__.value = PLAYER_PLAYING
         self.set_progress(0, self.__track__.total_frames())
 
@@ -568,7 +569,8 @@ class CDPlayerProcess(PlayerProcess):
 
         self.__pcmreader__ = pcmreader
         self.__state__.value = PLAYER_PLAYING
-        self.__buffer_size__ = min(round(self.BUFFER_SIZE * 44100), 4096)
+        self.__buffer_size__ = min(int(round(self.BUFFER_SIZE * 44100)),
+                                   4096)
         self.set_progress(0, track.length() * 44100 / 75)
 
     def stop_playing(self):
