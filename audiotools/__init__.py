@@ -4701,7 +4701,7 @@ try:
             return self.__read_sectors__(max(pcm_frames / 588, 1))
 
         def read_closed(self, pcm_frames):
-            return pcm.from_list([], 2, 16, True)
+            raise ValueError()
 
         def close(self):
             """closes the CD track for reading"""
