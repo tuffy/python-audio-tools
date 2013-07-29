@@ -4422,7 +4422,8 @@ def iter_last(iterator):
 #there's simply no way to accomplish that cleanly
 
 try:
-    from audiotools.cdio import identify_cdrom, CDImage, CDDA, CD_IMAGE
+    from audiotools.cdio import identify_cdrom, CDImage, CD_IMAGE
+    from audiotools.cdio import CDDA as CDDA_
 
     class CDDA:
         """a CDDA device which contains CDTrackReader objects"""
@@ -4436,13 +4437,11 @@ try:
             self.__open__(device_name, speed, perform_logging)
 
         def __open__(self, device_name, speed, perform_logging):
-
-
             self.cdrom_type = identify_cdrom(device_name)
             if (self.cdrom_type & CD_IMAGE):
                 self.cdda = CDImage(device_name, self.cdrom_type)
             else:
-                self.cdda = CDDA(device_name)
+                self.cdda = CDDA_(device_name)
                 if (speed is not None):
                     self.cdda.set_speed(speed)
 

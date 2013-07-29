@@ -278,8 +278,10 @@ if (__name__ == '__main__'):
                     msg.info(
                         msg.ansi(
                             _.LAB_TRACKCMP_MISSING %
-                            {"filename": os.path.basename(filename),
-                             "directory": audiotools.Filename(directory)},
+                            {"filename": audiotools.Filename(
+                                    os.path.basename(filename)),
+                             "directory": audiotools.Filename(
+                                    directory)},
                             [msg.FG_RED]))
                     sys.stdout.flush()
                     results.append((filename, None, 0))
