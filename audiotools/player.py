@@ -553,7 +553,7 @@ class CDPlayerProcess(PlayerProcess):
 
         #construct pcmreader from track
         track = self.__cdda__[self.__track_number__]
-        pcmreader = BufferedPCMReader(ThreadedPCMReader(track))
+        pcmreader = ThreadedPCMReader(BufferedPCMReader(track))
 
         #reopen AudioOutput if necessary
         if (not self.__audio_output__.compatible(
