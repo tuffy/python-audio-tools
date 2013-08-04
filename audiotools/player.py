@@ -652,13 +652,20 @@ class ThreadedPCMReader:
         from threading import (Thread, Event)
 
         def transfer_data(read, queue, stop_event):
-            frame = read(4096)
+            try:
+                frame = read(4096)
+            except ValueError:
+                return
+
             while (not stop_event.is_set()):
                 #want to be sure to put 0 length frame in queue
                 #if reading is intended to continue
                 queue.put(frame)
                 if (len(frame) > 0):
-                    frame = read(4096)
+                    try:
+                        frame = read(4096)
+                    except ValueError:
+                        break
                 else:
                     break
 
