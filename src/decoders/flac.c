@@ -1056,8 +1056,6 @@ flacdec_decorrelate_channels(unsigned channel_assignment,
     unsigned i,j;
     const unsigned channel_count = subframes->len;
     const unsigned block_size = subframes->_[0]->len;
-    int64_t mid;
-    int32_t side;
 
     framelist->reset_for(framelist, channel_count * block_size);
 
@@ -1087,8 +1085,8 @@ flacdec_decorrelate_channels(unsigned channel_assignment,
         assert(subframes->len == 2);
         assert(subframes->_[0]->len == subframes->_[1]->len);
         for (i = 0; i < block_size; i++) {
-            mid = subframes->_[0]->_[i];
-            side = subframes->_[1]->_[i];
+            int64_t mid = subframes->_[0]->_[i];
+            int32_t side = subframes->_[1]->_[i];
             mid = (mid << 1) | (side & 1);
             a_append(framelist, (int)((mid + side) >> 1));
             a_append(framelist, (int)((mid - side) >> 1));

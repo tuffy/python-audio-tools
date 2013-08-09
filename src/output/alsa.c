@@ -244,8 +244,24 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
             if (frames_written >= 0) {
                 to_write -= frames_written;
             } else {
-                PyErr_SetString(PyExc_IOError, "error writing frame to output");
-                return NULL;
+                switch (-frames_written) {
+                case EBADFD:
+                    PyErr_SetString(PyExc_IOError,
+                                    "PCM not in correct state");
+                    return NULL;
+                case EPIPE:
+                    PyErr_SetString(PyExc_IOError,
+                                    "buffer underrun occurred");
+                    return NULL;
+                case ESTRPIPE:
+                    PyErr_SetString(PyExc_IOError,
+                                    "suspend event occurred");
+                    return NULL;
+                default:
+                    PyErr_SetString(PyExc_IOError,
+                                    "unknown ALSA write error");
+                    return NULL;
+                }
             }
         }
         break;
@@ -269,8 +285,24 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
             if (frames_written >= 0) {
                 to_write -= frames_written;
             } else {
-                PyErr_SetString(PyExc_IOError, "error writing frame to output");
-                return NULL;
+                switch (-frames_written) {
+                case EBADFD:
+                    PyErr_SetString(PyExc_IOError,
+                                    "PCM not in correct state");
+                    return NULL;
+                case EPIPE:
+                    PyErr_SetString(PyExc_IOError,
+                                    "buffer underrun occurred");
+                    return NULL;
+                case ESTRPIPE:
+                    PyErr_SetString(PyExc_IOError,
+                                    "suspend event occurred");
+                    return NULL;
+                default:
+                    PyErr_SetString(PyExc_IOError,
+                                    "unknown ALSA write error");
+                    return NULL;
+                }
             }
         }
         break;
@@ -295,8 +327,24 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
             if (frames_written >= 0) {
                 to_write -= frames_written;
             } else {
-                PyErr_SetString(PyExc_IOError, "error writing frame to output");
-                return NULL;
+                switch (-frames_written) {
+                case EBADFD:
+                    PyErr_SetString(PyExc_IOError,
+                                    "PCM not in correct state");
+                    return NULL;
+                case EPIPE:
+                    PyErr_SetString(PyExc_IOError,
+                                    "buffer underrun occurred");
+                    return NULL;
+                case ESTRPIPE:
+                    PyErr_SetString(PyExc_IOError,
+                                    "suspend event occurred");
+                    return NULL;
+                default:
+                    PyErr_SetString(PyExc_IOError,
+                                    "unknown ALSA write error");
+                    return NULL;
+                }
             }
         }
         break;

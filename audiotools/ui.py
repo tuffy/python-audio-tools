@@ -2433,7 +2433,7 @@ try:
                 ('pg normal', 'white', 'black', 'standout'),
                 ('pg complete', 'white', 'dark blue'),
                 ('pg smooth', 'dark blue', 'black'),
-                ('volume normal', 'white', ''),
+                ('volume normal', 'white', 'black'),
                 ('volume complete', 'white', 'dark blue')]
 
 except ImportError:
