@@ -1,6 +1,6 @@
 #This makefile is for generating debug standalone executables
 
-VERSION = "2.20beta1"
+VERSION = "2.20"
 OBJS = array.o pcm.o pcmconv.o bitstream.a
 FLAGS = -Wall -g
 BINARIES = alacdec \
