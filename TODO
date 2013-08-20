@@ -6607,18 +6607,9 @@
 *** TODO Test encoder/decoder against reference
 *** TODO Restore AudioFile-compatible Python interface
 * TODO Finish version 2.21
-** TODO Bump minimum required Python version to 2.7
+** DONE Bump minimum required Python version to 2.7
    Python 2.7 is pretty common these days and offers useful
    features that have been backported from 3.
-** TODO Update coverview widget set
-   Although wxPython is available lots of places,
-   it doesn't behave the same everywhere.
-   It's like a better Tkinter.
-
-   PyGTK works well on X11 platforms, but is a non-starter on Mac OS.
-
-   Using the built-in PyObjC bridge on Mac OS is the most compatible
-   solution, if it can be implemented without making a huge mess.
 ** TODO Convert utilties from optparse to argparse
    argparse seems a bit nicer and more user-friendly
    since it generates usage lines automatically.
@@ -6643,6 +6634,15 @@
    - [ ] tracksplit
    - [ ] tracktag
    - [ ] trackverify
+** TODO Update coverview widget set
+   Although wxPython is available lots of places,
+   it doesn't behave the same everywhere.
+   It's like a better Tkinter.
+
+   PyGTK works well on X11 platforms, but is a non-starter on Mac OS.
+
+   Using the built-in PyObjC bridge on Mac OS is the most compatible
+   solution, if it can be implemented without making a huge mess.
 ** TODO Shift the classmethods from ALACAudio to the atoms themselves
    It's better to have them as alternate constructors
    much closer to the actual atom definitions.
