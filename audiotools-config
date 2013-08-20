@@ -408,6 +408,8 @@ if (__name__ == '__main__'):
                          ("weight", 1, urwid.Divider(u"\u2500"))],
                         dividechars=1))
 
+                format_example = urwid.Text(markup=u"", wrap='clip')
+
                 for audio_type in audio_types:
                     if (len(audio_type.COMPRESSION_MODES) < 2):
                         qualities = urwid.Text(u"")
@@ -445,11 +447,10 @@ if (__name__ == '__main__'):
                                   default_format,
                                   label=u"",
                                   state=(audio_type.NAME == DEFAULT_TYPE),
-                                  on_state_change=self.change_choice,
+                                  on_state_change=self.change_default_format,
                                   user_data=(config,
-                                             "System",
-                                             "default_type",
-                                             audio_type.NAME))),
+                                             audio_type.NAME,
+                                             format_example))),
                              ("fixed",
                               len(audiotools.display_unicode(
                                   _.LAB_AT_CONFIG_TYPE)),
@@ -462,26 +463,31 @@ if (__name__ == '__main__'):
                              ],
                             dividechars=1))
 
+                current_format = config.get_default(
+                    "Filenames",
+                    "format",
+                    audiotools.DEFAULT_FILENAME_FORMAT).decode('utf-8')
+
                 format = urwid.Edit(
                     caption=("label",
-                             u"%s : " % (_.LAB_OPTIONS_FILENAME_FORMAT)),
-                    edit_text=config.get_default(
-                        "Filenames",
-                        "format",
-                        audiotools.DEFAULT_FILENAME_FORMAT).decode('utf-8'),
+                             u"%s  : " % (_.LAB_OPTIONS_FILENAME_FORMAT)),
+                    edit_text=current_format,
                     wrap='clip')
+
+                self.update_format_example(config, format_example)
+
                 urwid.connect_signal(format,
                                      "change",
-                                     self.change_text,
-                                     (config,
-                                      "Filenames",
-                                      "format"))
+                                     self.update_format,
+                                     (config, format_example))
 
                 format_rows.append(urwid.Divider(u" "))
                 format_rows.append(
                     urwid.Columns(
                         [('weight', 1, format),
                          ('fixed', 10, audiotools.ui.BrowseFields(format))]))
+
+                format_rows.append(format_example)
 
                 joint = urwid.IntEdit(
                     caption=("label", u"%s : " % (_.LAB_AT_CONFIG_JOBS,)),
@@ -512,6 +518,59 @@ if (__name__ == '__main__'):
                     self,
                     format_rows)
 
+            def update_format(self, widget, new_value, user_data):
+                (config, example_widget) = user_data
+                config.set_default("Filenames", "format", new_value)
+                self.update_format_example(config, example_widget)
+
+            def update_format_example(self,
+                                      config,
+                                      example_widget):
+                from time import strftime
+
+                try:
+                    new_format = config.get_default(
+                        "Filenames",
+                        "format",
+                        audiotools.DEFAULT_FILENAME_FORMAT)
+
+                    default_audio_format = audiotools.TYPE_MAP.get(
+                        config.get_default("System", "default_type", "wav"),
+                        audiotools.WaveAudio)
+
+                    example_text = default_audio_format.track_name(
+                        file_path="file_name.%s" % \
+                            (default_audio_format.SUFFIX),
+                        track_metadata=audiotools.MetaData(
+                            track_name=u"Track Name",
+                            track_number=1,
+                            track_total=2,
+                            album_name=u"Album Name",
+                            artist_name=u"Artist Name",
+                            performer_name=u"Performer Name",
+                            composer_name=u"Composer Name",
+                            conductor_name=u"Conductor Name",
+                            media=u"media",
+                            ISRC=u"CCXXXYYNNNNN",
+                            catalog="catalog #",
+                            copyright="Copyright",
+                            publisher="Publisher Name",
+                            year=strftime("%Y").decode('ascii'),
+                            date=strftime("%x").decode('ascii'),
+                            album_number=3,
+                            album_total=4,
+                            comment=u"Comment Text"),
+                        format=new_format,
+                        suffix=default_audio_format.SUFFIX)
+                except (audiotools.UnsupportedTracknameField,
+                        audiotools.InvalidFilenameFormat):
+                    example_text = u"invalid filename format"
+
+                example_widget.set_text(
+                    [("label",
+                      u"%s : " % (_.LAB_OPTIONS_FILENAME_FORMAT_EXAMPLE)),
+                     example_text])
+
             def change_text(self, widget, new_value, user_data):
                 (config, section, option) = user_data
                 config.set_default(section, option, new_value)
@@ -523,10 +582,11 @@ if (__name__ == '__main__'):
                 except ValueError:
                     config.set_default(section, option, 0)
 
-            def change_choice(self, radiobutton, new_state, user_data):
+            def change_default_format(self, radiobutton, new_state, user_data):
                 if (new_state):
-                    (config, section, option, value) = user_data
-                    config.set_default(section, option, value)
+                    (config, value, example_widget) = user_data
+                    config.set_default("System", "default_type", value)
+                    self.update_format_example(config, example_widget)
 
             def change_quality(self, new_value, user_data):
                 (config, section, option) = user_data

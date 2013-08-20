@@ -131,7 +131,7 @@ MUSICBRAINZ_PORT = config.getint_default("MusicBrainz", "port", 80)
 ADD_REPLAYGAIN = config.getboolean_default("ReplayGain", "add_by_default",
                                            True)
 
-VERSION = "2.20"
+VERSION = "2.21alpha1"
 
 DEFAULT_FILENAME_FORMAT = '%(track_number)2.2d - %(track_name)s.%(suffix)s'
 FILENAME_FORMAT = config.get_default("Filenames", "format",
@@ -2104,6 +2104,11 @@ def to_pcm_progress(audiofile, progress):
 
 class PCMReaderProgress:
     def __init__(self, pcmreader, total_frames, progress, current_frames=0):
+        """pcmreader is a PCMReader compatible object
+        total_frames is the total PCM frames of the stream
+        progress(current, total) is a callable function
+        current_frames is the current amount of PCM frames in the stream"""
+
         self.__read__ = pcmreader.read
         self.__close__ = pcmreader.close
         self.sample_rate = pcmreader.sample_rate
@@ -5126,7 +5131,7 @@ from .dvda import InvalidDVDA
 
 def output_progress(u, current, total):
     """given a unicode string and current/total integers,
-    returns a u'[<current>/<total>]  <string>  unicode string
+    returns a u'[<current>/<total>]  <string>'  unicode string
     indicating the current progress"""
 
     if (total > 1):
