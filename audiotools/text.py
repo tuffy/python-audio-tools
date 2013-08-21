@@ -20,38 +20,74 @@
 """a text strings module"""
 
 #Utility usage
-USAGE_AT_CONFIG = u"%prog [options]"
-USAGE_CD2TRACK = u"%prog [options] [track #] [track #] ..."
-USAGE_CDINFO = u"%prog [options]"
-USAGE_CDPLAY = u"%prog [track 1] [track 2] ..."
-USAGE_TRACKPLAY = u"%prog [track 1] [track 2] ..."
-USAGE_COVERDUMP = u"%prog [-d directory] <track>"
-USAGE_COVERTAG = u"%prog [OPTIONS] <track 1> [track 2] ..."
 USAGE_COVERVIEW = u"%prog [OPTIONS] [track]"
 USAGE_DVDA2TRACK = u"%prog [options] [track #] [track #] ..."
 USAGE_DVDAINFO = u"%prog [options]"
-USAGE_TRACK2CD = u"%prog [options] <track 1> [track 2] ..."
-USAGE_TRACKCAT = u"%prog [options] [-o output] <track 1> [track 2] ..."
-USAGE_TRACKCMP = u"%prog <file 1> <file 2>"
 USAGE_TRACKCMP_CDIMAGE = u"<CD image> <track 1> <track 2> ..."
 USAGE_TRACKCMP_FILES = u"<track 1> <track 2>"
-USAGE_TRACKSPLIT = u"%prog [options] [-d directory] <track>"
-USAGE_TRACKINFO = u"%prog [options] <track 1> [track 2] ..."
-USAGE_TRACKLENGTH = u"%prog <track 1> [track 2] ..."
-USAGE_TRACKLINT = \
-    u"%prog [options] [--fix] [--undo] [--db file] <track 1> [track 2] ..."
-USAGE_TRACKRENAME = u"%prog [options] <track 1> [track 2] ..."
-USAGE_TRACKVERIFY = u"%prog <track 1> [track 2] ..."
-USAGE_TRACKTAG = u"%prog [options] <track 1> [track 2] ..."
 
 #Utility Descriptions
+DESCRIPTION_AT_CONFIG = \
+    "set default parameters"
+
+DESCRIPTION_COVERDUMP = \
+    "extract embedded images from file"
+
+DESCRIPTION_CD2TRACK = \
+    "extract CD audio contents to files"
+
+DESCRIPTION_CDINFO = \
+    "display information about audio CD"
+
+DESCRIPTION_CDPLAY = \
+    "play audio CD"
+
+DESCRIPTION_COVERTAG = \
+    "set embedded file images"
+
+DESCRIPTION_TRACKCMP = \
+    "compare two files or directories"
+
+DESCRIPTION_TRACK2CD = \
+    "burn files to audio CD"
+
+DESCRIPTION_TRACKCAT = \
+    "concatenate multiple files into a single file"
+
+DESCRIPTION_TRACKINFO = \
+    "display information about a file"
+
+DESCRIPTION_TRACKLENGTH = \
+    "summarize total file lengths, in seconds"
+
+DESCRIPTION_TRACKLINT = \
+    "fix common file metadata problems"
+
+DESCRIPTION_TRACKPLAY = \
+    "play files"
+
+DESCRIPTION_TRACKRENAME = \
+    "rename files based on internal metadata"
+
+DESCRIPTION_TRACKSPLIT = \
+    "split a single file into multiple files"
+
+DESCRIPTION_TRACKTAG = \
+    "set file metadata attributes"
+
 DESCRIPTION_TRACK2TRACK = \
     "convert audio files from one format to another"
+
+DESCRIPTION_TRACKVERIFY = \
+    "verify correctness of files"
 
 #Utility Options
 OPT_VERBOSE = u"the verbosity level to execute at"
 OPT_VERBOSE_AT_CONFIG = u"the new default verbosity level"
 OPT_INPUT_FILENAME = u"input filename"
+OPT_INPUT_FILENAME_OR_DIR = u"input filename or directory"
+OPT_INPUT_FILENAME_OR_IMAGE = u"input filename, directory or CD image filename"
+OPT_TRACK_INDEX = u"track index number, starting from 1"
 OPT_TYPE = u"the type of audio track to create"
 OPT_TYPE_AT_CONFIG = u"the default audio type to use, " + \
     u"or the type for a given default quality level"
@@ -68,7 +104,7 @@ OPT_INTERACTIVE_METADATA = u"edit metadata interactively"
 OPT_INTERACTIVE_OPTIONS = u"edit metadata and output options interactively"
 OPT_INTERACTIVE_PLAY = u"play in interactive mode"
 OPT_INTERACTIVE_AT_CONFIG = u"edit options interactively"
-OPT_OUTPUT_PLAY = u"the method to play audio (choose from: %s)"
+OPT_OUTPUT_PLAY = u"the system output to use"
 OPT_OUTPUT_TRACK2TRACK = u"output filename to use, overriding default and -d"
 OPT_OUTPUT_TRACKCAT = u"the output file"
 OPT_DEFAULT = u"when multiple choices are available, " + \

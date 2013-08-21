@@ -166,32 +166,37 @@ if (audiotools.ui.AVAILABLE):
 
 
 if (__name__ == '__main__'):
-    parser = audiotools.OptionParser(
-        _.USAGE_TRACKRENAME,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
+    import argparse
 
-    parser.add_option(
-        '-I', '--interactive',
-        action='store_true',
-        default=False,
-        dest='interactive',
-        help=_.OPT_INTERACTIVE_METADATA)
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_TRACKRENAME)
 
-    parser.add_option('--format',
-                      action='store',
-                      type='string',
-                      default=audiotools.FILENAME_FORMAT,
-                      dest='format',
-                      help=_.OPT_FORMAT)
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-V', '--verbose',
-                      action='store',
-                      dest='verbosity',
-                      choices=audiotools.VERBOSITY_LEVELS,
-                      default=audiotools.DEFAULT_VERBOSITY,
-                      help=_.OPT_VERBOSE)
+    parser.add_argument("-I", "--interactive",
+                        action="store_true",
+                        default=False,
+                        dest="interactive",
+                        help=_.OPT_INTERACTIVE_OPTIONS)
 
-    (options, args) = parser.parse_args()
+    parser.add_argument("-V", "--verbose",
+                        dest="verbosity",
+                        choices=audiotools.VERBOSITY_LEVELS,
+                        default=audiotools.DEFAULT_VERBOSITY,
+                        help=_.OPT_VERBOSE)
+
+    parser.add_argument('--format',
+                        default=audiotools.FILENAME_FORMAT,
+                        dest='format',
+                        help=_.OPT_FORMAT)
+
+    parser.add_argument("filenames",
+                        metavar="FILENAME",
+                        nargs="+",
+                        help=_.OPT_INPUT_FILENAME)
+
+    options = parser.parse_args()
     msg = audiotools.Messenger("trackrename", options)
 
     #ensure interactive mode is available, if selected
@@ -200,7 +205,7 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     try:
-        audiofiles = audiotools.open_files(args,
+        audiofiles = audiotools.open_files(options.filenames,
                                            messenger=msg,
                                            no_duplicates=True)
     except audiotools.DuplicateFile, err:

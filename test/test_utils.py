@@ -1709,8 +1709,7 @@ class trackcat(UtilTest):
 
         #first, check the error conditions
         self.assertEqual(
-            self.__run_app__(["trackcat", "-o", "fail.flac"]), 1)
-        self.__check_error__(ERR_FILES_REQUIRED)
+            self.__run_app__(["trackcat", "-o", "fail.flac"]), 2)
 
         self.assertEqual(
             self.__run_app__(["trackcat", "-o", "fail.flac",
@@ -4524,8 +4523,7 @@ class trackrename(UtilTest):
                                                track_number=1,
                                                album_name=u"Album"))
         try:
-            self.assertEqual(self.__run_app__(["trackrename"]), 1)
-            self.__check_error__(ERR_FILES_REQUIRED)
+            self.assertEqual(self.__run_app__(["trackrename"]), 2)
 
             self.assertEqual(self.__run_app__(
                     ["trackrename", "--format=%(foo)s", track.filename]), 1)
@@ -5117,15 +5115,11 @@ class tracksplit(UtilTest):
                     continue
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit", "-t", "flac", "-d", self.output_dir]), 1)
-
-        self.__check_error__(ERR_1_FILE_REQUIRED)
+                ["tracksplit", "-t", "flac", "-d", self.output_dir]), 2)
 
         self.assertEqual(self.__run_app__(
                 ["tracksplit", "-t", "flac", "-d", self.output_dir,
-                 self.unsplit_file.name, self.unsplit_file2.name]), 1)
-
-        self.__check_error__(ERR_1_FILE_REQUIRED)
+                 self.unsplit_file.name, self.unsplit_file2.name]), 2)
 
         self.assertEqual(self.__run_app__(
                 ["tracksplit", "-t", "flac", "-d", self.output_dir,

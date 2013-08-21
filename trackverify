@@ -248,49 +248,58 @@ def accuraterip_image_checksum(progress, track, ar_matches,
 
 
 if (__name__ == '__main__'):
-    parser = audiotools.OptionParser(
-        usage=_.USAGE_TRACKVERIFY,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
+    import argparse
 
-    parser.add_option('-t', '--type',
-                      action='append',
-                      dest='accept_list',
-                      metavar='type',
-                      choices=audiotools.TYPE_MAP.keys(),
-                      help=_.OPT_TYPE_TRACKVERIFY)
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_TRACKVERIFY)
 
-    parser.add_option('-S', '--no-summary',
-                      action='store_true',
-                      dest='no_summary',
-                      help=_.OPT_NO_SUMMARY)
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-R', '--accuraterip',
-                      action='store_true',
-                      dest='accuraterip',
-                      default=False,
-                      help=_.OPT_ACCURATERIP)
+    parser.add_argument("-V", "--verbose",
+                        dest="verbosity",
+                        choices=audiotools.VERBOSITY_LEVELS,
+                        default=audiotools.DEFAULT_VERBOSITY,
+                        help=_.OPT_VERBOSE)
 
-    parser.add_option('-j', '--joint',
-                      action='store',
-                      type='int',
-                      default=MAX_CPUS,
-                      dest='max_processes',
-                      help=_.OPT_JOINT)
+    parser.add_argument("-t", "--type",
+                        action="append",
+                        dest="accept_list",
+                        metavar="type",
+                        choices=audiotools.TYPE_MAP.keys(),
+                        help=_.OPT_TYPE_TRACKVERIFY)
 
-    parser.add_option('-V', '--verbose',
-                      action='store',
-                      dest='verbosity',
-                      choices=audiotools.VERBOSITY_LEVELS,
-                      default=audiotools.DEFAULT_VERBOSITY,
-                      help=_.OPT_VERBOSE)
+    parser.add_argument("-S", "--no-summary",
+                        action="store_true",
+                        dest="no_summary",
+                        help=_.OPT_NO_SUMMARY)
 
-    (options, args) = parser.parse_args()
+    parser.add_argument("-R", "--accuraterip",
+                        action="store_true",
+                        dest="accuraterip",
+                        default=False,
+                        help=_.OPT_ACCURATERIP)
+
+    parser.add_argument("-j", "--joint",
+                        type=int,
+                        default=MAX_CPUS,
+                        dest="max_processes",
+                        help=_.OPT_JOINT)
+
+    parser.add_argument("filenames",
+                        metavar="PATH",
+                        nargs="+",
+                        help=_.OPT_INPUT_FILENAME_OR_DIR)
+
+    options = parser.parse_args()
     msg = audiotools.Messenger("trackverify", options)
 
     if (not options.accuraterip):
         queued_files = set([])  # a set of Filename objects already encountered
         queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
-        for track in get_tracks(args, queued_files, options.accept_list):
+        for track in get_tracks(options.filenames,
+                                queued_files,
+                                options.accept_list):
             queue.execute(
                 function=verify,
                 progress_text=unicode(audiotools.Filename(track.filename)),

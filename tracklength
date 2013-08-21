@@ -88,17 +88,26 @@ class FormatSummary:
 
 
 if (__name__ == '__main__'):
-    parser = audiotools.OptionParser(
-        usage=_.USAGE_TRACKLENGTH,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
+    import argparse
 
-    (options, args) = parser.parse_args()
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_TRACKLENGTH)
+
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_argument("filenames",
+                        metavar="PATH",
+                        nargs="+",
+                        help=_.OPT_INPUT_FILENAME_OR_DIR)
+
+    options = parser.parse_args()
     msg = audiotools.Messenger("tracklength", options)
 
     format_summaries = {}
     total_summary = FormatSummary()
 
-    for audio_file in audio_files(msg, args):
+    for audio_file in audio_files(msg, options.filenames):
         if (audio_file.NAME not in format_summaries.keys()):
             format_summaries[audio_file.NAME] = FormatSummary()
         format_summaries[audio_file.NAME].add(audio_file)

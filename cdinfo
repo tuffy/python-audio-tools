@@ -25,15 +25,19 @@ import audiotools.text as _
 
 
 if (__name__ == '__main__'):
-    parser = audiotools.OptionParser(
-        usage=_.USAGE_CDINFO,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
+    import argparse
 
-    parser.add_option('-c', '--cdrom', action='store',
-                      type='string', dest='cdrom',
-                      default=audiotools.DEFAULT_CDROM)
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_CDINFO)
 
-    (options, args) = parser.parse_args()
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_argument("-c", "--cdrom",
+                        dest="cdrom",
+                        default=audiotools.DEFAULT_CDROM)
+
+    options = parser.parse_args()
     msg = audiotools.Messenger("cd2info", options)
 
     try:

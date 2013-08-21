@@ -338,6 +338,8 @@ def apply_options(options, config):
 
 
 if (__name__ == '__main__'):
+    import argparse
+
     #There's no good way to make these dynamic
     #since the configurable text comes from the audiotools.text module
     #which we can't load because the module isn't installed correctly.
@@ -970,163 +972,137 @@ if (__name__ == '__main__'):
             def cancelled(self):
                 return self.__cancelled__
 
-    parser = audiotools.OptionParser(
-        usage=_.USAGE_AT_CONFIG,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_AT_CONFIG)
 
-    transcoding = audiotools.OptionGroup(parser, _.OPT_CAT_TRANSCODING)
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    transcoding.add_option(
-        '-t', '--type',
-        action='store',
-        dest='type',
-        choices=sorted(audiotools.TYPE_MAP.keys() + ['help']),
-        help=_.OPT_TYPE_AT_CONFIG)
+    parser.add_argument("-I", "--interactive",
+                        action="store_true",
+                        default=False,
+                        dest="interactive",
+                        help=_.OPT_INTERACTIVE_AT_CONFIG)
 
-    transcoding.add_option(
-        '-q', '--quality',
-        action='store',
-        type='string',
-        dest='quality',
-        help=_.OPT_QUALITY_AT_CONFIG)
+    parser.add_argument("-V", "--verbose",
+                        dest="verbosity",
+                        choices=audiotools.VERBOSITY_LEVELS,
+                        default=audiotools.DEFAULT_VERBOSITY,
+                        help=_.OPT_VERBOSE_AT_CONFIG)
 
-    transcoding.add_option(
-        '--format',
-        action='store',
-        metavar='FORMAT',
-        dest='filename_format',
-        help=_.OPT_FORMAT)
+    transcoding = parser.add_argument_group(_.OPT_CAT_TRANSCODING)
 
-    transcoding.add_option(
-        '-j', '--joint',
-        action='store',
-        type='int',
-        metavar='MAX_PROCESSES',
-        dest='system_maximum_jobs',
-        help=_.OPT_JOINT)
+    transcoding.add_argument("-t", "--type",
+                             dest="type",
+                             choices=sorted(audiotools.TYPE_MAP.keys() +
+                                            ["help"]),
+                             help=_.OPT_TYPE_AT_CONFIG)
 
-    transcoding.add_option(
-        '--replay-gain',
-        action='store',
-        type='choice',
-        choices=('yes', 'no'),
-        dest='add_replaygain',
-        metavar='yes / no',
-        help=_.OPT_REPLAY_GAIN)
+    transcoding.add_argument("-q", "--quality",
+                             dest="quality",
+                             help=_.OPT_QUALITY_AT_CONFIG)
 
-    parser.add_option_group(transcoding)
+    transcoding.add_argument("--format",
+                             metavar="FORMAT",
+                             dest="filename_format",
+                             help=_.OPT_FORMAT)
 
-    id3 = audiotools.OptionGroup(parser, _.OPT_CAT_ID3)
+    transcoding.add_argument("-j", "--joint",
+                             type=int,
+                             metavar="MAX_PROCESSES",
+                             dest="system_maximum_jobs",
+                             help=_.OPT_JOINT)
 
-    id3.add_option(
-        '--id3v2-version',
-        action='store',
-        type='choice',
-        choices=('id3v2.2', 'id3v2.3', 'id3v2.4', 'none'),
-        dest='id3v2_version',
-        metavar='VERSION',
-        help=_.OPT_AT_CONFIG_ID3V2_VERSION)
+    transcoding.add_argument("--replay-gain",
+                             choices=("yes", "no"),
+                             dest="add_replaygain",
+                             help=_.OPT_REPLAY_GAIN)
 
-    id3.add_option(
-        '--id3v2-pad',
-        action='store',
-        type='choice',
-        choices=('yes', 'no'),
-        dest='id3_digit_padding',
-        metavar='yes / no',
-        help=_.OPT_AT_CONFIG_ID3V2_PAD)
+    id3 = parser.add_argument_group(_.OPT_CAT_ID3)
 
-    id3.add_option(
-        '--id3v1-version',
-        action='store',
-        type='choice',
-        choices=('id3v1.1', 'none'),
-        dest='id3v1_version',
-        metavar='VERSION',
-        help=_.OPT_AT_CONFIG_ID3V1_VERSION)
+    id3.add_argument("--id3v2-version",
+                     choices=("id3v2.2", "id3v2.3", "id3v2.4", "none"),
+                     dest="id3v2_version",
+                     metavar="VERSION",
+                     help=_.OPT_AT_CONFIG_ID3V2_VERSION)
 
-    parser.add_option_group(id3)
+    id3.add_argument("--id3v2-pad",
+                     choices=("yes", "no"),
+                     dest="id3_digit_padding",
+                     help=_.OPT_AT_CONFIG_ID3V2_PAD)
 
-    lookup = audiotools.OptionGroup(parser, _.OPT_CAT_CD_LOOKUP)
+    id3.add_argument("--id3v1-version",
+                     choices=("id3v1.1", "none"),
+                     dest="id3v1_version",
+                     metavar="VERSION",
+                     help=_.OPT_AT_CONFIG_ID3V1_VERSION)
 
-    lookup.add_option(
-        '--use-musicbrainz',
-        metavar='yes/no',
-        choices=("yes", "no"),
-        dest='use_musicbrainz')
+    lookup = parser.add_argument_group(_.OPT_CAT_CD_LOOKUP)
 
-    lookup.add_option(
-        '--musicbrainz-server',
-        action='store',
-        metavar='HOSTNAME',
-        dest='musicbrainz_server')
+    lookup.add_argument("--use-musicbrainz",
+                        choices=("yes", "no"),
+                        dest="use_musicbrainz")
 
-    lookup.add_option(
-        '--musicbrainz-port',
-        action='store',
-        metavar='PORT',
-        type='int',
-        dest='musicbrainz_port')
+    lookup.add_argument("--musicbrainz-server",
+                        action="store",
+                        metavar="HOSTNAME",
+                        dest="musicbrainz_server")
 
-    lookup.add_option(
-        '--use-freedb',
-        metavar='yes/no',
-        choices=("yes", "no"),
-        dest='use_freedb')
+    lookup.add_argument("--musicbrainz-port",
+                        action="store",
+                        metavar="PORT",
+                        type=int,
+                        dest="musicbrainz_port")
 
-    lookup.add_option(
-        '--freedb-server',
-        action='store',
-        metavar='HOSTNAME',
-        dest='freedb_server')
+    lookup.add_argument("--use-freedb",
+                        choices=("yes", "no"),
+                        dest="use_freedb")
 
-    lookup.add_option(
-        '--freedb-port',
-        action='store',
-        metavar='PORT',
-        type='int',
-        dest='freedb_port')
+    lookup.add_argument("--freedb-server",
+                        action="store",
+                        metavar="HOSTNAME",
+                        dest="freedb_server")
 
-    parser.add_option_group(lookup)
+    lookup.add_argument("--freedb-port",
+                        action="store",
+                        metavar="PORT",
+                        type=int,
+                        dest="freedb_port")
 
-    system = audiotools.OptionGroup(parser, _.OPT_CAT_SYSTEM)
+    system = parser.add_argument_group(_.OPT_CAT_SYSTEM)
 
-    system.add_option('-c', '--cdrom',
-                      action='store',
-                      dest='system_cdrom',
-                      metavar='PATH')
+    system.add_argument("-c", "--cdrom",
+                        action="store",
+                        dest="system_cdrom",
+                        metavar="PATH")
 
-    system.add_option('--cdrom-read-offset',
-                      action='store',
-                      type='int',
-                      metavar='INT',
-                      dest='system_cdrom_read_offset',
-                      help=_.OPT_AT_CONFIG_READ_OFFSET)
+    system.add_argument("--cdrom-read-offset",
+                        action="store",
+                        type=int,
+                        metavar="INT",
+                        dest="system_cdrom_read_offset",
+                        help=_.OPT_AT_CONFIG_READ_OFFSET)
 
-    system.add_option('--cdrom-write-offset',
-                      action='store',
-                      type='int',
-                      metavar='INT',
-                      dest='system_cdrom_write_offset',
-                      help=_.OPT_AT_CONFIG_WRITE_OFFSET)
+    system.add_argument("--cdrom-write-offset",
+                        action="store",
+                        type=int,
+                        metavar="INT",
+                        dest="system_cdrom_write_offset",
+                        help=_.OPT_AT_CONFIG_WRITE_OFFSET)
 
-    system.add_option(
-        '--fs-encoding',
-        action='store',
-        metavar='ENCODING',
-        dest='system_fs_encoding',
-        help=_.OPT_AT_CONFIG_FS_ENCODING)
+    system.add_argument("--fs-encoding",
+                        action="store",
+                        metavar="ENCODING",
+                        dest="system_fs_encoding",
+                        help=_.OPT_AT_CONFIG_FS_ENCODING)
 
-    system.add_option(
-        '--io-encoding',
-        action='store',
-        metavar='ENCODING',
-        dest='system_io_encoding',
-        help=_.OPT_AT_CONFIG_IO_ENCODING)
+    system.add_argument("--io-encoding",
+                        action="store",
+                        metavar="ENCODING",
+                        dest="system_io_encoding",
+                        help=_.OPT_AT_CONFIG_IO_ENCODING)
 
-    parser.add_option_group(system)
-
-    binaries = audiotools.OptionGroup(parser, _.OPT_CAT_BINARIES)
+    binaries = parser.add_argument_group(_.OPT_CAT_BINARIES)
 
     bins = set([])
     for audioclass in audiotools.AVAILABLE_TYPES:
@@ -1134,29 +1110,11 @@ if (__name__ == '__main__'):
             bins.add(binary)
 
     for binary in sorted(list(bins)):
-        binaries.add_option('--' + binary,
-                            action='store',
-                            metavar='PATH',
-                            dest='binary_' + binary)
+        binaries.add_argument('--' + binary,
+                              metavar='PATH',
+                              dest='binary_' + binary)
 
-    parser.add_option_group(binaries)
-
-    parser.add_option(
-        '-I', '--interactive',
-        action='store_true',
-        default=False,
-        dest='interactive',
-        help=_.OPT_INTERACTIVE_AT_CONFIG)
-
-    parser.add_option(
-        '-V', '--verbose',
-        action='store',
-        dest='verbosity',
-        choices=audiotools.VERBOSITY_LEVELS,
-        default=audiotools.DEFAULT_VERBOSITY,
-        help=_.OPT_VERBOSE_AT_CONFIG)
-
-    (options, args) = parser.parse_args()
+    options = parser.parse_args()
 
     msg = audiotools.Messenger("audiotools-config", None)
 

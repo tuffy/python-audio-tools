@@ -126,84 +126,94 @@ class CDplayTTY(audiotools.ui.PlayerTTY):
 
 
 if (__name__ == '__main__'):
-    parser = audiotools.OptionParser(
-        usage=_.USAGE_CDPLAY,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
+    import argparse
 
-    parser.add_option(
-        '-I', '--interactive',
-        action='store_true',
-        default=False,
-        dest='interactive',
-        help=_.OPT_INTERACTIVE_PLAY)
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_CDPLAY)
 
-    parser.add_option(
-        '-o', '--output',
-        action='store',
-        dest='output',
-        choices=[player.NAME for player in
-                 audiotools.player.available_outputs()],
-        default=[player.NAME for player in
-                 audiotools.player.available_outputs()][0],
-        help=(_.OPT_OUTPUT_PLAY %
-              u", ".join([u"\"%s\"" % (player.NAME.decode('ascii'))
-                          for player in
-                          audiotools.player.available_outputs()])))
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option(
-        '-c', '--cdrom', action='store',
-        type='string', dest='cdrom',
-        default=audiotools.DEFAULT_CDROM)
+    parser.add_argument("-I", "--interactive",
+                        action="store_true",
+                        default=False,
+                        dest="interactive",
+                        help=_.OPT_INTERACTIVE_OPTIONS)
 
-    parser.add_option(
-        '--shuffle', action='store_true', dest='shuffle', default=False,
-        help='shuffle tracks')
+    parser.add_argument("-V", "--verbose",
+                        action="store",
+                        dest="verbosity",
+                        choices=audiotools.VERBOSITY_LEVELS,
+                        default=audiotools.DEFAULT_VERBOSITY,
+                        help=_.OPT_VERBOSE)
 
-    parser.add_option(
-        '-V', '--verbose',
-        action='store',
-        dest='verbosity',
-        choices=audiotools.VERBOSITY_LEVELS,
-        default=audiotools.DEFAULT_VERBOSITY,
-        help=_.OPT_VERBOSE)
+    parser.add_argument("-o", "--output",
+                        dest="output",
+                        choices=[player.NAME for player in
+                                 audiotools.player.available_outputs()],
+                        default=[player.NAME for player in
+                                 audiotools.player.available_outputs()][0],
+                        help=_.OPT_OUTPUT_PLAY)
 
-    lookup = audiotools.OptionGroup(parser, _.OPT_CAT_CD_LOOKUP)
+    parser.add_argument("-c", "--cdrom",
+                        dest="cdrom",
+                        default=audiotools.DEFAULT_CDROM)
 
-    lookup.add_option(
-        '--musicbrainz-server', action='store',
-        type='string', dest='musicbrainz_server',
-        default=audiotools.MUSICBRAINZ_SERVER,
-        metavar='HOSTNAME')
-    lookup.add_option(
-        '--musicbrainz-port', action='store',
-        type='int', dest='musicbrainz_port',
-        default=audiotools.MUSICBRAINZ_PORT,
-        metavar='PORT')
-    lookup.add_option(
-        '--no-musicbrainz', action='store_false',
-        dest='use_musicbrainz',
-        default=audiotools.MUSICBRAINZ_SERVICE,
-        help=_.OPT_NO_MUSICBRAINZ)
+    parser.add_argument("--shuffle",
+                        action="store_true",
+                        dest="shuffle",
+                        default=False,
+                        help="shuffle tracks")
 
-    lookup.add_option(
-        '--freedb-server', action='store',
-        type='string', dest='freedb_server',
-        default=audiotools.FREEDB_SERVER,
-        metavar='HOSTNAME')
-    lookup.add_option(
-        '--freedb-port', action='store',
-        type='int', dest='freedb_port',
-        default=audiotools.FREEDB_PORT,
-        metavar='PORT')
-    lookup.add_option(
-        '--no-freedb', action='store_false',
-        dest='use_freedb',
-        default=audiotools.FREEDB_SERVICE,
-        help=_.OPT_NO_FREEDB)
+    lookup = parser.add_argument_group(_.OPT_CAT_CD_LOOKUP)
 
-    parser.add_option_group(lookup)
+    lookup.add_argument("-M", "--metadata-lookup",
+                        action="store_true",
+                        default=False,
+                        dest="metadata_lookup",
+                        help=_.OPT_METADATA_LOOKUP)
 
-    (options, args) = parser.parse_args()
+    lookup.add_argument("--musicbrainz-server",
+                        dest="musicbrainz_server",
+                        default=audiotools.MUSICBRAINZ_SERVER,
+                        metavar="HOSTNAME")
+
+    lookup.add_argument("--musicbrainz-port",
+                        type=int,
+                        dest="musicbrainz_port",
+                        default=audiotools.MUSICBRAINZ_PORT,
+                        metavar="PORT")
+
+    lookup.add_argument("--no-musicbrainz",
+                        action="store_false",
+                        dest="use_musicbrainz",
+                        default=audiotools.MUSICBRAINZ_SERVICE,
+                        help=_.OPT_NO_MUSICBRAINZ)
+
+    lookup.add_argument("--freedb-server",
+                        dest="freedb_server",
+                        default=audiotools.FREEDB_SERVER,
+                        metavar="HOSTNAME")
+
+    lookup.add_argument("--freedb-port",
+                        type=int,
+                        dest="freedb_port",
+                        default=audiotools.FREEDB_PORT,
+                        metavar="PORT")
+
+    lookup.add_argument("--no-freedb",
+                        action="store_false",
+                        dest="use_freedb",
+                        default=audiotools.FREEDB_SERVICE,
+                        help=_.OPT_NO_FREEDB)
+
+    parser.add_argument("tracks",
+                        type=int,
+                        metavar="TRACK",
+                        nargs="*",
+                        help=_.OPT_TRACK_INDEX)
+
+    options = parser.parse_args()
     msg = audiotools.Messenger("cdplay", options)
 
     if (options.interactive and (not interactive_available)):
@@ -222,11 +232,11 @@ if (__name__ == '__main__'):
         msg.error(ERR_NO_CDDA)
         sys.exit(1)
 
-    if (len(args) == 0):
+    if (len(options.tracks) == 0):
         tracks = [cdda[i] for i in xrange(1, len(cdda) + 1)]
     else:
         tracks = []
-        for tracknum in args:
+        for tracknum in options.tracks:
             try:
                 tracks.append(cdda[int(tracknum)])
             except (ValueError, IndexError):

@@ -6613,27 +6613,59 @@
 ** TODO Convert utilties from optparse to argparse
    argparse seems a bit nicer and more user-friendly
    since it generates usage lines automatically.
-   - [ ] audiotools-config
-   - [ ] cd2track
-   - [ ] cdinfo
-   - [ ] cdplay
-   - [ ] coverdump
-   - [ ] covertag
+   - [X] audiotools-config
+   - [X] cd2track
+   - [X] cdinfo
+   - [X] cdplay
+   - [X] coverdump
+   - [X] covertag
    - [ ] coverview
    - [ ] dvda2track
    - [ ] dvdainfo
-   - [ ] track2cd
+   - [X] track2cd
    - [X] track2track
-   - [ ] trackcat
-   - [ ] trackcmp
-   - [ ] trackinfo
-   - [ ] tracklength
-   - [ ] tracklint
-   - [ ] trackplay
-   - [ ] trackrename
-   - [ ] tracksplit
-   - [ ] tracktag
-   - [ ] trackverify
+   - [X] trackcat
+   - [X] trackcmp
+   - [X] trackinfo
+   - [X] tracklength
+   - [X] tracklint
+   - [X] trackplay
+   - [X] trackrename
+   - [X] tracksplit
+   - [X] tracktag
+   - [X] trackverify
+*** TODO Ensure all utilities have a working --version option
+    Now that it's no longer built-in, I'll need to add and check
+    the option by hand.
+    - [ ] audiotools-config
+    - [ ] cd2track
+    - [ ] cdinfo
+    - [ ] cdplay
+    - [ ] coverdump
+    - [ ] covertag
+    - [ ] coverview
+    - [ ] dvda2track
+    - [ ] dvdainfo
+    - [ ] track2cd
+    - [ ] track2track
+    - [ ] trackcat
+    - [ ] trackcmp
+    - [ ] trackinfo
+    - [ ] tracklength
+    - [ ] tracklint
+    - [ ] trackplay
+    - [ ] trackrename
+    - [ ] tracksplit
+    - [ ] tracktag
+    - [ ] trackverify
+** TODO Cleanup ProgressDisplay design
+   Replace row_id indicators with a ProgressDisplayRow object
+   which is created by ProgressDisplay and features
+   update() and delete() methods that update the main ProgressDisplay.
+
+   This removes the need to specify row_id values and the
+   main ProgressDisplay can assign empty slots as needed.
+*** TODO Update documentation
 ** TODO Update coverview widget set
    Although wxPython is available lots of places,
    it doesn't behave the same everywhere.

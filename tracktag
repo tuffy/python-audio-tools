@@ -178,137 +178,135 @@ REMOVE_OPTIONS = {"track_name": ("--remove-name",
                               _.LAB_TRACKTAG_REMOVE_COMMENT)}
 
 if (__name__ == '__main__'):
+    import argparse
+
     #add an enormous number of options to the parser
     #neatly categorized for convenience
-    parser = audiotools.OptionParser(
-        usage=_.USAGE_TRACKTAG,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option(
-        '-I', '--interactive',
-        action='store_true',
-        default=False,
-        dest='interactive',
-        help=_.OPT_INTERACTIVE_METADATA)
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_TRACKTAG)
 
-    text_group = audiotools.OptionGroup(parser, _.OPT_CAT_TEXT)
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_argument("-I", "--interactive",
+                        action="store_true",
+                        default=False,
+                        dest="interactive",
+                        help=_.OPT_INTERACTIVE_METADATA)
+
+    parser.add_argument("-V", "--verbose",
+                        dest="verbosity",
+                        choices=audiotools.VERBOSITY_LEVELS,
+                        default=audiotools.DEFAULT_VERBOSITY,
+                        help=_.OPT_VERBOSE)
+
+    text_group = parser.add_argument_group(_.OPT_CAT_TEXT)
 
     for field in audiotools.MetaData.FIELD_ORDER:
         if (field in UPDATE_OPTIONS):
             variable = "update_%s" % (field)
             (option, help_text) = UPDATE_OPTIONS[field]
-            text_group.add_option(
+            text_group.add_argument(
                 option,
-                action='store',
-                type='string' if field not in
-                audiotools.MetaData.INTEGER_FIELDS else 'int',
+                type=str if field not in
+                audiotools.MetaData.INTEGER_FIELDS else int,
                 dest=variable,
-                metavar='STRING' if field not in
-                audiotools.MetaData.INTEGER_FIELDS else 'INT',
+                metavar="STRING" if field not in
+                audiotools.MetaData.INTEGER_FIELDS else "INT",
                 help=help_text)
 
-    text_group.add_option(
-        '--comment-file',
-        action='store',
-        type='string',
-        dest='comment_file',
-        metavar='FILENAME',
-        help=_.OPT_TRACKTAG_COMMENT_FILE)
+    text_group.add_argument("--comment-file",
+                            dest="comment_file",
+                            metavar="FILENAME",
+                            help=_.OPT_TRACKTAG_COMMENT_FILE)
 
-    parser.add_option_group(text_group)
+    parser.add_argument("-r", "--replace",
+                        action="store_true",
+                        default=False,
+                        dest="replace",
+                        help=_.OPT_TRACKTAG_REPLACE)
 
-    parser.add_option(
-        '-r', '--replace',
-        action='store_true',
-        default=False,
-        dest='replace',
-        help=_.OPT_TRACKTAG_REPLACE)
-
-    remove_group = audiotools.OptionGroup(parser, _.OPT_CAT_REMOVAL)
+    remove_group = parser.add_argument_group(_.OPT_CAT_REMOVAL)
 
     for field in audiotools.MetaData.FIELD_ORDER:
         if (field in REMOVE_OPTIONS):
             variable = "remove_%s" % (field)
             (option, help_text) = REMOVE_OPTIONS[field]
-            remove_group.add_option(
+            remove_group.add_argument(
                 option,
                 action='store_true',
                 default=False,
                 dest=variable,
                 help=help_text)
 
-    parser.add_option_group(remove_group)
+    lookup = parser.add_argument_group(_.OPT_CAT_CD_LOOKUP)
 
-    lookup = audiotools.OptionGroup(parser, _.OPT_CAT_CD_LOOKUP)
+    lookup.add_argument("-M", "--metadata-lookup",
+                        action="store_true",
+                        default=False,
+                        dest="metadata_lookup",
+                        help=_.OPT_METADATA_LOOKUP)
 
-    lookup.add_option(
-        '-M', '--metadata-lookup', action='store_true',
-        default=False, dest='metadata_lookup',
-        help=_.OPT_METADATA_LOOKUP)
+    lookup.add_argument("--musicbrainz-server",
+                        dest="musicbrainz_server",
+                        default=audiotools.MUSICBRAINZ_SERVER,
+                        metavar="HOSTNAME")
 
-    lookup.add_option(
-        '--musicbrainz-server', action='store',
-        type='string', dest='musicbrainz_server',
-        default=audiotools.MUSICBRAINZ_SERVER,
-        metavar='HOSTNAME')
-    lookup.add_option(
-        '--musicbrainz-port', action='store',
-        type='int', dest='musicbrainz_port',
-        default=audiotools.MUSICBRAINZ_PORT,
-        metavar='PORT')
-    lookup.add_option(
-        '--no-musicbrainz', action='store_false',
-        dest='use_musicbrainz',
-        default=audiotools.MUSICBRAINZ_SERVICE,
-        help=_.OPT_NO_MUSICBRAINZ)
+    lookup.add_argument("--musicbrainz-port",
+                        type=int,
+                        dest="musicbrainz_port",
+                        default=audiotools.MUSICBRAINZ_PORT,
+                        metavar="PORT")
 
-    lookup.add_option(
-        '--freedb-server', action='store',
-        type='string', dest='freedb_server',
-        default=audiotools.FREEDB_SERVER,
-        metavar='HOSTNAME')
-    lookup.add_option(
-        '--freedb-port', action='store',
-        type='int', dest='freedb_port',
-        default=audiotools.FREEDB_PORT,
-        metavar='PORT')
-    lookup.add_option(
-        '--no-freedb', action='store_false',
-        dest='use_freedb',
-        default=audiotools.FREEDB_SERVICE,
-        help=_.OPT_NO_FREEDB)
+    lookup.add_argument("--no-musicbrainz",
+                        action="store_false",
+                        dest="use_musicbrainz",
+                        default=audiotools.MUSICBRAINZ_SERVICE,
+                        help=_.OPT_NO_MUSICBRAINZ)
 
-    lookup.add_option(
-        '-D', '--default',
-        dest='use_default', action='store_true', default=False,
-        help=_.OPT_DEFAULT)
+    lookup.add_argument("--freedb-server",
+                        dest="freedb_server",
+                        default=audiotools.FREEDB_SERVER,
+                        metavar="HOSTNAME")
 
-    parser.add_option_group(lookup)
+    lookup.add_argument("--freedb-port",
+                        type=int,
+                        dest="freedb_port",
+                        default=audiotools.FREEDB_PORT,
+                        metavar="PORT")
 
-    parser.add_option(
-        '--replay-gain',
-        action='store_true',
-        default=False,
-        dest='add_replay_gain',
-        help=_.OPT_REPLAY_GAIN_TRACKTAG)
+    lookup.add_argument("--no-freedb",
+                        action="store_false",
+                        dest="use_freedb",
+                        default=audiotools.FREEDB_SERVICE,
+                        help=_.OPT_NO_FREEDB)
 
-    parser.add_option(
-        '-j', '--joint',
-        action='store',
-        type='int',
-        default=audiotools.MAX_JOBS,
-        dest='max_processes',
-        help=_.OPT_JOINT)
+    lookup.add_argument("-D", "--default",
+                        dest="use_default",
+                        action="store_true",
+                        default=False,
+                        help=_.OPT_DEFAULT)
 
-    parser.add_option(
-        '-V', '--verbose',
-        action='store',
-        dest='verbosity',
-        choices=audiotools.VERBOSITY_LEVELS,
-        default=audiotools.DEFAULT_VERBOSITY,
-        help=_.OPT_VERBOSE)
+    parser.add_argument("--replay-gain",
+                        action="store_true",
+                        default=False,
+                        dest="add_replay_gain",
+                        help=_.OPT_REPLAY_GAIN_TRACKTAG)
 
-    (options, args) = parser.parse_args()
+    parser.add_argument("-j", "--joint",
+                        type=int,
+                        default=audiotools.MAX_JOBS,
+                        dest="max_processes",
+                        help=_.OPT_JOINT)
+
+    parser.add_argument("filenames",
+                        metavar="FILENAME",
+                        nargs="+",
+                        help=_.OPT_INPUT_FILENAME)
+
+    options = parser.parse_args()
+
     msg = audiotools.Messenger("tracktag", options)
 
     #ensure interactive mode is available, if selected
@@ -316,7 +314,7 @@ if (__name__ == '__main__'):
         audiotools.ui.not_available_message(msg)
         sys.exit(1)
 
-    #open a --comment-file as UTF-8
+    #open a --comment-file as UTF-8 formatted text file
     if (options.comment_file is not None):
         try:
             comment_file = open(options.comment_file,
@@ -336,7 +334,7 @@ if (__name__ == '__main__'):
 
     #open our set of input files for tagging
     try:
-        tracks = audiotools.open_files(args,
+        tracks = audiotools.open_files(options.filenames,
                                        messenger=msg,
                                        no_duplicates=True)
     except audiotools.DuplicateFile, err:

@@ -116,32 +116,46 @@ def image_compare_results(result):
 
 
 if (__name__ == '__main__'):
-    parser = audiotools.OptionParser(
-        usage=_.USAGE_TRACKCMP,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
+    import argparse
 
-    parser.add_option(
-        '-j', '--joint',
-        action='store',
-        type='int',
-        default=audiotools.MAX_JOBS,
-        dest='max_processes',
-        help=_.OPT_JOINT)
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_TRACKCMP)
 
-    parser.add_option('-S', '--no-summary',
-                      action='store_true',
-                      dest='no_summary',
-                      help=_.OPT_NO_SUMMARY)
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-V', '--verbose',
-                      action='store',
-                      dest='verbosity',
-                      choices=audiotools.VERBOSITY_LEVELS,
-                      default=audiotools.DEFAULT_VERBOSITY,
-                      help=_.OPT_VERBOSE)
+    parser.add_argument("-V", "--verbose",
+                        action="store",
+                        dest="verbosity",
+                        choices=audiotools.VERBOSITY_LEVELS,
+                        default=audiotools.DEFAULT_VERBOSITY,
+                        help=_.OPT_VERBOSE)
 
-    (options, args) = parser.parse_args()
+    parser.add_argument("-j", "--joint",
+                        type=int,
+                        default=audiotools.MAX_JOBS,
+                        dest="max_processes",
+                        help=_.OPT_JOINT)
+
+    parser.add_argument("-S", "--no-summary",
+                        action="store_true",
+                        dest="no_summary",
+                        help=_.OPT_NO_SUMMARY)
+
+    parser.add_argument("filename",
+                        metavar="PATH",
+                        help=_.OPT_INPUT_FILENAME_OR_IMAGE)
+
+    parser.add_argument("filenames",
+                        metavar="PATH",
+                        nargs="+",
+                        help=_.OPT_INPUT_FILENAME_OR_DIR)
+
+    options = parser.parse_args()
+
     msg = audiotools.Messenger("trackcmp", options)
+
+    args = [options.filename] + options.filenames
 
     if (options.max_processes < 1):
         msg.error(_.ERR_INVALID_JOINT)

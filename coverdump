@@ -27,34 +27,43 @@ import audiotools.text as _
 FILENAME_TYPES = ("front_cover", "back_cover", "leaflet", "media", "other")
 
 if (__name__ == '__main__'):
-    parser = audiotools.OptionParser(
-        usage=_.USAGE_COVERDUMP,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
+    import argparse
 
-    parser.add_option('-d', '--dir',
-                      action='store',
-                      type='string',
-                      dest='dir',
-                      default='.',
-                      help=_.OPT_DIR_IMAGES)
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_COVERDUMP)
 
-    parser.add_option('-p', '--prefix',
-                      action='store',
-                      dest='prefix',
-                      default="",
-                      help=_.OPT_PREFIX)
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-V', '--verbose',
-                      action='store',
-                      dest='verbosity',
-                      choices=audiotools.VERBOSITY_LEVELS,
-                      default=audiotools.DEFAULT_VERBOSITY,
-                      help=_.OPT_VERBOSE)
+    parser.add_argument("-V", "--verbose",
+                        dest="verbosity",
+                        choices=audiotools.VERBOSITY_LEVELS,
+                        default=audiotools.DEFAULT_VERBOSITY,
+                        help=_.OPT_VERBOSE)
 
-    (options, args) = parser.parse_args()
+    parser.add_argument("-d", "--dir",
+                        dest="dir",
+                        default=".",
+                        help=_.OPT_DIR_IMAGES)
+
+    parser.add_argument("-p", "--prefix",
+                        action="store",
+                        dest="prefix",
+                        default="",
+                        help=_.OPT_PREFIX)
+
+    parser.add_argument("filenames",
+                        metavar="FILENAME",
+                        nargs="+",
+                        help=_.OPT_INPUT_FILENAME)
+
+    options = parser.parse_args()
+
     msg = audiotools.Messenger("coverdump", options)
 
-    audiofiles = audiotools.open_files(args, sorted=False, messenger=msg)
+    audiofiles = audiotools.open_files(options.filenames,
+                                       sorted=False,
+                                       messenger=msg)
     if (len(audiofiles) != 1):
         msg.error(_.ERR_1_FILE_REQUIRED)
         sys.exit(1)

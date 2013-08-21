@@ -39,58 +39,52 @@ def get_image(filename, type):
 
 
 if (__name__ == '__main__'):
-    parser = audiotools.OptionParser(
-        usage=_.USAGE_COVERTAG,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
+    import argparse
 
-    parser.add_option(
-        '-r', '--replace',
-        action='store_true',
-        default=False,
-        dest='replace',
-        help=_.OPT_TRACKTAG_REPLACE)
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_COVERTAG)
+
+    parser.add_argument("-r", "--replace",
+                        action="store_true",
+                        default=False,
+                        dest="replace",
+                        help=_.OPT_TRACKTAG_REPLACE)
 
     #FIXME - add -I/--interactive mode
     #which should use a proper GUI, if available,
     #so one can see added images directly
 
-    parser.add_option(
-        '-V', '--verbose',
-        action='store',
-        dest='verbosity',
-        choices=audiotools.VERBOSITY_LEVELS,
-        default=audiotools.DEFAULT_VERBOSITY,
-        help=_.OPT_VERBOSE)
+    parser.add_argument("-V", "--verbose",
+                        dest="verbosity",
+                        choices=audiotools.VERBOSITY_LEVELS,
+                        default=audiotools.DEFAULT_VERBOSITY,
+                        help=_.OPT_VERBOSE)
 
-    img_group = audiotools.OptionGroup(parser, _.OPT_CAT_IMAGE)
+    img_group = parser.add_argument_group(_.OPT_CAT_IMAGE)
 
     for (option, destination, helptext) in [
-        ('--front-cover', 'front_cover',
-         _.OPT_TRACKTAG_FRONT_COVER),
-        ('--back-cover', 'back_cover',
-         _.OPT_TRACKTAG_BACK_COVER),
-        ('--leaflet', 'leaflet',
-         _.OPT_TRACKTAG_LEAFLET),
-        ('--media', 'media',
-         _.OPT_TRACKTAG_MEDIA),
-        ('--other-image', 'other_image',
-         _.OPT_TRACKTAG_OTHER_IMAGE)]:
-        img_group.add_option(
-            option,
-            action='append',
-            type='string',
-            dest=destination,
-            metavar='FILENAME',
-            help=helptext)
+        ("--front-cover", "front_cover", _.OPT_TRACKTAG_FRONT_COVER),
+        ("--back-cover", "back_cover", _.OPT_TRACKTAG_BACK_COVER),
+        ("--leaflet", "leaflet", _.OPT_TRACKTAG_LEAFLET),
+        ("--media", "media", _.OPT_TRACKTAG_MEDIA),
+        ("--other-image", "other_image", _.OPT_TRACKTAG_OTHER_IMAGE)]:
+        img_group.add_argument(option,
+                               action="append",
+                               dest=destination,
+                               metavar='FILENAME',
+                               help=helptext)
 
-    parser.add_option_group(img_group)
+    parser.add_argument("filenames",
+                        metavar="FILENAME",
+                        nargs="+",
+                        help=_.OPT_INPUT_FILENAME)
 
-    (options, args) = parser.parse_args()
+    options = parser.parse_args()
+
     msg = audiotools.Messenger("covertag", options)
 
     #open our set of input files for tagging
     try:
-        audiofiles = audiotools.open_files(args,
+        audiofiles = audiotools.open_files(options.filenames,
                                            messenger=msg,
                                            no_duplicates=True)
     except audiotools.DuplicateFile, err:

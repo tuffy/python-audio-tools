@@ -23,30 +23,48 @@ import audiotools
 import audiotools.text as _
 
 if (__name__ == '__main__'):
-    parser = audiotools.OptionParser(
-        usage=_.USAGE_TRACKINFO,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
-    parser.add_option("-n", "--no-metadata",
-                      action="store_true", dest="no_metadata",
-                      default=False)
+    import argparse
 
-    parser.add_option("-L", "--low-level",
-                      action="store_true", dest="low_level",
-                      default=False)
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_TRACKINFO)
 
-    parser.add_option("-b", "--bitrate",
-                      action="store_true", dest="show_bitrate")
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option("-%", "--percentage",
-                      action="store_true", dest="show_percentage")
+    parser.add_argument("-n", "--no-metadata",
+                        action="store_true",
+                        dest="no_metadata",
+                        default=False)
 
-    parser.add_option("-C", "--channel-assignment",
-                      action="store_true", dest="channel_assignment")
+    parser.add_argument("-L", "--low-level",
+                        action="store_true",
+                        dest="low_level",
+                        default=False)
 
-    (options, args) = parser.parse_args()
+    parser.add_argument("-b",
+                        "--bitrate",
+                        action="store_true",
+                        dest="show_bitrate")
+
+    parser.add_argument("-%",
+                        "--percentage",
+                        action="store_true",
+                        dest="show_percentage")
+
+    parser.add_argument("-C", "--channel-assignment",
+                        action="store_true",
+                        dest="channel_assignment")
+
+    parser.add_argument("filenames",
+                        metavar="FILENAME",
+                        nargs="+",
+                        help=_.OPT_INPUT_FILENAME)
+
+    options = parser.parse_args()
+
     msg = audiotools.Messenger("trackinfo", options)
 
-    for file in audiotools.open_files(args, messenger=msg):
+    for file in audiotools.open_files(options.filenames, messenger=msg):
         length = int(file.seconds_length())
         if (options.show_bitrate):
             try:

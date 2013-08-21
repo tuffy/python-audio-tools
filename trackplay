@@ -128,57 +128,52 @@ class TrackplayTTY(audiotools.ui.PlayerTTY):
 
 
 if (__name__ == '__main__'):
-    parser = audiotools.OptionParser(
-        usage=_.USAGE_TRACKPLAY,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
+    import argparse
 
-    parser.add_option(
-        '-I', '--interactive',
-        action='store_true',
-        default=False,
-        dest='interactive',
-        help=_.OPT_INTERACTIVE_PLAY)
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_TRACKPLAY)
 
-    parser.add_option(
-        '-o', '--output',
-        action='store',
-        dest='output',
-        choices=[player.NAME for player in
-                 audiotools.player.available_outputs()],
-        default=[player.NAME for player in
-                 audiotools.player.available_outputs()][0],
-        help=(_.OPT_OUTPUT_PLAY %
-              u", ".join([u"\"%s\"" % (player.NAME.decode('ascii'))
-                          for player in
-                          audiotools.player.available_outputs()])))
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option(
-        '-T', '--track-replaygain',
-        action='store_true',
-        default=False,
-        dest='track_replaygain',
-        help=_.OPT_PLAYBACK_TRACK_GAIN)
+    parser.add_argument("-I", "--interactive",
+                        action="store_true",
+                        default=False,
+                        dest="interactive",
+                        help=_.OPT_INTERACTIVE_OPTIONS)
 
-    parser.add_option(
-        '-A', '--album-replaygain',
-        action='store_true',
-        default=False,
-        dest='album_replaygain',
-        help=_.OPT_PLAYBACK_ALBUM_GAIN)
+    parser.add_argument("-o", "--output",
+                        dest="output",
+                        choices=[player.NAME for player in
+                                 audiotools.player.available_outputs()],
+                        default=[player.NAME for player in
+                                 audiotools.player.available_outputs()][0],
+                        help=_.OPT_OUTPUT_PLAY)
 
-    parser.add_option(
-        '--shuffle', action='store_true', dest='shuffle', default=False,
-        help=_.OPT_SHUFFLE)
+    parser.add_argument("-T", "--track-replaygain",
+                        action="store_true",
+                        default=False,
+                        dest="track_replaygain",
+                        help=_.OPT_PLAYBACK_TRACK_GAIN)
 
-    parser.add_option(
-        '-V', '--verbose',
-        action='store',
-        dest='verbosity',
-        choices=audiotools.VERBOSITY_LEVELS,
-        default=audiotools.DEFAULT_VERBOSITY,
-        help=_.OPT_VERBOSE)
+    parser.add_argument("-A", "--album-replaygain",
+                        action="store_true",
+                        default=False,
+                        dest="album_replaygain",
+                        help=_.OPT_PLAYBACK_ALBUM_GAIN)
 
-    (options, args) = parser.parse_args()
+    parser.add_argument("--shuffle",
+                        action="store_true",
+                        dest="shuffle",
+                        default=False,
+                        help=_.OPT_SHUFFLE)
+
+    parser.add_argument("filenames",
+                        metavar="FILENAME",
+                        nargs="+",
+                        help=_.OPT_INPUT_FILENAME)
+
+    options = parser.parse_args()
     msg = audiotools.Messenger("trackplay", options)
 
     if (options.interactive and (not interactive_available)):
@@ -187,7 +182,9 @@ if (__name__ == '__main__'):
         msg.output(_.ERR_GET_URWID2)
         sys.exit(1)
 
-    audiofiles = audiotools.open_files(args, sorted=False, messenger=msg)
+    audiofiles = audiotools.open_files(options.filenames,
+                                       sorted=False,
+                                       messenger=msg)
     if (options.shuffle):
         import random
 

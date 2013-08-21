@@ -228,8 +228,7 @@ if (audiotools.ui.AVAILABLE):
 if (__name__ == '__main__'):
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description=_.DESCRIPTION_TRACK2TRACK)
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_TRACK2TRACK)
 
     parser.add_argument("--version",
                         action="version",
