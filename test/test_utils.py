@@ -1303,8 +1303,7 @@ class track2track(UtilTest):
                 self.assert_(len(self.stderr.getvalue()) > 0)
 
         #check no input files
-        self.assertEqual(self.__run_app__(["track2track"]), 1)
-        self.__check_error__(ERR_FILES_REQUIRED)
+        self.assertEqual(self.__run_app__(["track2track"]), 2)
 
         self.track2 = self.input_format.from_pcm(
             os.path.join(self.input_dir, "02.%s" % (self.input_format.SUFFIX)),

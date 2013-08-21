@@ -6623,7 +6623,7 @@
    - [ ] dvda2track
    - [ ] dvdainfo
    - [ ] track2cd
-   - [ ] track2track
+   - [X] track2track
    - [ ] trackcat
    - [ ] trackcmp
    - [ ] trackinfo

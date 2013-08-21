@@ -31,7 +31,6 @@ USAGE_COVERVIEW = u"%prog [OPTIONS] [track]"
 USAGE_DVDA2TRACK = u"%prog [options] [track #] [track #] ..."
 USAGE_DVDAINFO = u"%prog [options]"
 USAGE_TRACK2CD = u"%prog [options] <track 1> [track 2] ..."
-USAGE_TRACK2TRACK = u"%prog [options] <track 1> [track 2] ..."
 USAGE_TRACKCAT = u"%prog [options] [-o output] <track 1> [track 2] ..."
 USAGE_TRACKCMP = u"%prog <file 1> <file 2>"
 USAGE_TRACKCMP_CDIMAGE = u"<CD image> <track 1> <track 2> ..."
@@ -45,9 +44,14 @@ USAGE_TRACKRENAME = u"%prog [options] <track 1> [track 2] ..."
 USAGE_TRACKVERIFY = u"%prog <track 1> [track 2] ..."
 USAGE_TRACKTAG = u"%prog [options] <track 1> [track 2] ..."
 
+#Utility Descriptions
+DESCRIPTION_TRACK2TRACK = \
+    "convert audio files from one format to another"
+
 #Utility Options
 OPT_VERBOSE = u"the verbosity level to execute at"
 OPT_VERBOSE_AT_CONFIG = u"the new default verbosity level"
+OPT_INPUT_FILENAME = u"input filename"
 OPT_TYPE = u"the type of audio track to create"
 OPT_TYPE_AT_CONFIG = u"the default audio type to use, " + \
     u"or the type for a given default quality level"
