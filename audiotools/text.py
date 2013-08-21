@@ -20,9 +20,6 @@
 """a text strings module"""
 
 #Utility usage
-USAGE_COVERVIEW = u"%prog [OPTIONS] [track]"
-USAGE_DVDA2TRACK = u"%prog [options] [track #] [track #] ..."
-USAGE_DVDAINFO = u"%prog [options]"
 USAGE_TRACKCMP_CDIMAGE = u"<CD image> <track 1> <track 2> ..."
 USAGE_TRACKCMP_FILES = u"<track 1> <track 2>"
 
@@ -33,8 +30,11 @@ DESCRIPTION_AT_CONFIG = \
 DESCRIPTION_COVERDUMP = \
     "extract embedded images from file"
 
+DESCRIPTION_COVERVIEW = \
+    "display embedded images"
+
 DESCRIPTION_CD2TRACK = \
-    "extract CD audio contents to files"
+    "extract CD audio tracks to files"
 
 DESCRIPTION_CDINFO = \
     "display information about audio CD"
@@ -44,6 +44,12 @@ DESCRIPTION_CDPLAY = \
 
 DESCRIPTION_COVERTAG = \
     "set embedded file images"
+
+DESCRIPTION_DVDA2TRACK = \
+    "extract DVA-A tracks to files"
+
+DESCRIPTION_DVDAINFO = \
+    "display information about DVD-A"
 
 DESCRIPTION_TRACKCMP = \
     "compare two files or directories"

@@ -592,25 +592,37 @@ except ImportError:
     TKINTER_AVAILABLE = False
 
 if (__name__ == '__main__'):
-    parser = audiotools.OptionParser(
-        usage=_.USAGE_COVERVIEW,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
+    import argparse
+
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_COVERVIEW)
+
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
 
     if (GTK_AVAILABLE):
-        parser.add_option('--no-gtk',
-                          dest="no_gtk",
-                          action='store_true',
-                          default=False,
-                          help=_.OPT_NO_GTK)
+        parser.add_argument('--no-gtk',
+                            dest="no_gtk",
+                            action='store_true',
+                            default=False,
+                            help=_.OPT_NO_GTK)
 
     if (TKINTER_AVAILABLE):
-        parser.add_option('--no-tkinter',
-                          dest="no_tkinter",
-                          action='store_true',
-                          default=False,
-                          help=_.OPT_NO_TKINTER)
+        parser.add_argument('--no-tkinter',
+                            dest="no_tkinter",
+                            action='store_true',
+                            default=False,
+                            help=_.OPT_NO_TKINTER)
 
-    (options, args) = parser.parse_args()
+    parser.add_argument("filenames",
+                        metavar="FILENAME",
+                        nargs="*",
+                        help=_.OPT_INPUT_FILENAME)
+
+    options = parser.parse_args()
+
+    args = options.filenames
+
     messenger = audiotools.Messenger("coverview", None)
 
     use_gtk = (hasattr(options, "no_gtk") and not options.no_gtk)

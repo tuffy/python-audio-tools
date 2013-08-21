@@ -37,168 +37,155 @@ def limit(l, indexes):
 
 
 if (__name__ == '__main__'):
-    parser = audiotools.OptionParser(
-        usage=_.USAGE_DVDA2TRACK,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
+    import argparse
 
-    parser.add_option(
-        '-I', '--interactive',
-        action='store_true',
-        default=False,
-        dest='interactive',
-        help=_.OPT_INTERACTIVE_OPTIONS)
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_DVDA2TRACK)
 
-    parser.add_option(
-        '-c', '--cdrom', action='store',
-        type='string', dest='cdrom',
-        default=audiotools.DEFAULT_CDROM)
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-A', '--audio-ts', action='store', default=None,
-                      type='string', dest='audio_ts', metavar='DIR',
-                      help=_.OPT_AUDIO_TS)
+    parser.add_argument("-I", "--interactive",
+                        action="store_true",
+                        default=False,
+                        dest="interactive",
+                        help=_.OPT_INTERACTIVE_OPTIONS)
 
-    parser.add_option('--title', action='store', default=1,
-                      type='int', dest='title',
-                      help=_.OPT_DVDA_TITLE)
+    parser.add_argument("-V", "--verbose",
+                        dest="verbosity",
+                        choices=audiotools.VERBOSITY_LEVELS,
+                        default=audiotools.DEFAULT_VERBOSITY,
+                        help=_.OPT_VERBOSE)
 
-    parser.add_option(
-        '-V', '--verbose',
-        action='store',
-        dest='verbosity',
-        choices=audiotools.VERBOSITY_LEVELS,
-        default=audiotools.DEFAULT_VERBOSITY,
-        help=_.OPT_VERBOSE)
+    parser.add_argument("-c", "--cdrom",
+                        dest="cdrom",
+                        default=audiotools.DEFAULT_CDROM)
 
-    conversion = audiotools.OptionGroup(parser, _.OPT_CAT_EXTRACTION)
+    parser.add_argument("-A", "--audio-ts",
+                        default=".",
+                        dest="audio_ts",
+                        metavar="DIR",
+                        help=_.OPT_AUDIO_TS)
 
-    conversion.add_option(
-        '-t', '--type',
-        action='store',
-        dest='type',
-        choices=sorted(audiotools.TYPE_MAP.keys() + ['help']),
-        default=audiotools.DEFAULT_TYPE,
-        help=_.OPT_TYPE)
+    parser.add_argument("--title",
+                        default=1,
+                        type=int,
+                        dest="title",
+                        help=_.OPT_DVDA_TITLE)
 
-    conversion.add_option(
-        '-q', '--quality',
-        action='store',
-        type='string',
-        dest='quality',
-        help=_.OPT_QUALITY)
+    conversion = parser.add_argument_group(_.OPT_CAT_EXTRACTION)
 
-    conversion.add_option(
-        '-d', '--dir',
-        action='store',
-        type='string',
-        dest='dir',
-        default='.',
-        help=_.OPT_DIR)
+    conversion.add_argument("-t", "--type",
+                            dest="type",
+                            choices=sorted(audiotools.TYPE_MAP.keys() +
+                                           ["help"]),
+                            default=audiotools.DEFAULT_TYPE,
+                            help=_.OPT_TYPE)
 
-    conversion.add_option(
-        '--format',
-        action='store',
-        type='string',
-        default=audiotools.FILENAME_FORMAT,
-        dest='format',
-        help=_.OPT_FORMAT)
+    conversion.add_argument("-q", "--quality",
+                            dest="quality",
+                            help=_.OPT_QUALITY)
 
-    parser.add_option_group(conversion)
+    conversion.add_argument("-d", "--dir",
+                            dest="dir",
+                            default=".",
+                            help=_.OPT_DIR)
 
-    lookup = audiotools.OptionGroup(parser, _.OPT_CAT_DVDA_LOOKUP)
+    conversion.add_argument("--format",
+                            default=audiotools.FILENAME_FORMAT,
+                            dest="format",
+                            help=_.OPT_FORMAT)
 
-    lookup.add_option(
-        '--musicbrainz-server', action='store',
-        type='string', dest='musicbrainz_server',
-        default=audiotools.MUSICBRAINZ_SERVER,
-        metavar='HOSTNAME')
-    lookup.add_option(
-        '--musicbrainz-port', action='store',
-        type='int', dest='musicbrainz_port',
-        default=audiotools.MUSICBRAINZ_PORT,
-        metavar='PORT')
-    lookup.add_option(
-        '--no-musicbrainz', action='store_false',
-        dest='use_musicbrainz',
-        default=audiotools.MUSICBRAINZ_SERVICE,
-        help=_.OPT_NO_MUSICBRAINZ)
+    lookup = parser.add_argument_group(_.OPT_CAT_DVDA_LOOKUP)
 
-    lookup.add_option(
-        '--freedb-server', action='store',
-        type='string', dest='freedb_server',
-        default=audiotools.FREEDB_SERVER,
-        metavar='HOSTNAME')
-    lookup.add_option(
-        '--freedb-port', action='store',
-        type='int', dest='freedb_port',
-        default=audiotools.FREEDB_PORT,
-        metavar='PORT')
-    lookup.add_option(
-        '--no-freedb', action='store_false',
-        dest='use_freedb',
-        default=audiotools.FREEDB_SERVICE,
-        help=_.OPT_NO_FREEDB)
+    lookup.add_argument("--musicbrainz-server",
+                        dest="musicbrainz_server",
+                        default=audiotools.MUSICBRAINZ_SERVER,
+                        metavar="HOSTNAME")
 
-    lookup.add_option(
-        '-D', '--default',
-        dest='use_default', action='store_true', default=False,
-        help=_.OPT_DEFAULT)
+    lookup.add_argument("--musicbrainz-port",
+                        type=int,
+                        dest="musicbrainz_port",
+                        default=audiotools.MUSICBRAINZ_PORT,
+                        metavar="PORT")
 
-    parser.add_option_group(lookup)
+    lookup.add_argument("--no-musicbrainz",
+                        action="store_false",
+                        dest="use_musicbrainz",
+                        default=audiotools.MUSICBRAINZ_SERVICE,
+                        help=_.OPT_NO_MUSICBRAINZ)
 
-    metadata = audiotools.OptionGroup(parser, _.OPT_CAT_METADATA)
+    lookup.add_argument("--freedb-server",
+                        dest="freedb_server",
+                        default=audiotools.FREEDB_SERVER,
+                        metavar="HOSTNAME")
 
-    metadata.add_option(
-        '--track-start',
-        action='store',
-        type='int',
-        dest='track_start',
-        default=None,
-        help=_.OPT_TRACK_START)
+    lookup.add_argument("--freedb-port",
+                        type=int,
+                        dest="freedb_port",
+                        default=audiotools.FREEDB_PORT,
+                        metavar="PORT")
 
-    metadata.add_option(
-        '--track-total',
-        action='store',
-        type='int',
-        dest='track_total',
-        default=None,
-        help=_.OPT_TRACK_TOTAL)
+    lookup.add_argument("--no-freedb",
+                        action="store_false",
+                        dest="use_freedb",
+                        default=audiotools.FREEDB_SERVICE,
+                        help=_.OPT_NO_FREEDB)
 
-    metadata.add_option(
-        '--album-number',
-        dest='album_number',
-        action='store',
-        type='int',
-        default=None,
-        help=_.OPT_ALBUM_NUMBER)
+    lookup.add_argument("-D", "--default",
+                        dest="use_default",
+                        action="store_true",
+                        default=False,
+                        help=_.OPT_DEFAULT)
 
-    metadata.add_option(
-        '--album-total',
-        dest='album_total',
-        action='store',
-        type='int',
-        default=None,
-        help=_.OPT_ALBUM_TOTAL)
+    metadata = parser.add_argument_group(_.OPT_CAT_METADATA)
+
+    metadata.add_argument("--track-start",
+                          type=int,
+                          dest="track_start",
+                          default=None,
+                          help=_.OPT_TRACK_START)
+
+    metadata.add_argument("--track-total",
+                          type=int,
+                          dest="track_total",
+                          default=None,
+                          help=_.OPT_TRACK_TOTAL)
+
+    metadata.add_argument("--album-number",
+                          dest="album_number",
+                          type=int,
+                          default=None,
+                          help=_.OPT_ALBUM_NUMBER)
+
+    metadata.add_argument("--album-total",
+                          dest="album_total",
+                          type=int,
+                          default=None,
+                          help=_.OPT_ALBUM_TOTAL)
 
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)
     #add_replay_gain should default to True
     #if not, add_replay_gain should default to False
     #which is which depends on the track type
-    metadata.add_option(
-        '--replay-gain',
-        action='store_true',
-        dest='add_replay_gain',
-        help=_.OPT_REPLAY_GAIN)
+    metadata.add_argument("--replay-gain",
+                          action="store_true",
+                          dest="add_replay_gain",
+                          help=_.OPT_REPLAY_GAIN)
 
-    metadata.add_option(
-        '--no-replay-gain',
-        action='store_false',
-        dest='add_replay_gain',
-        help=_.OPT_NO_REPLAY_GAIN)
+    metadata.add_argument("--no-replay-gain",
+                          action="store_false",
+                          dest="add_replay_gain",
+                          help=_.OPT_NO_REPLAY_GAIN)
 
-    parser.add_option_group(metadata)
+    parser.add_argument("tracks",
+                        type=int,
+                        metavar="TRACK",
+                        nargs="*",
+                        help=_.OPT_TRACK_INDEX)
 
-    (options, args) = parser.parse_args()
+    options = parser.parse_args()
     msg = audiotools.Messenger("dvda2track", options)
 
     #ensure interactive mode is available, if selected
@@ -274,11 +261,11 @@ if (__name__ == '__main__'):
                 m.album_total = options.album_total
 
     #determine which tracks to extract from the DVDATitle
-    if (len(args) == 0):
+    if (len(options.tracks) == 0):
         to_rip = dict([(track.track, track) for track in title])
     else:
         to_rip = {}
-        for arg in args:
+        for arg in options.tracks:
             try:
                 to_rip[int(arg)] = title[int(arg)]
             except IndexError:

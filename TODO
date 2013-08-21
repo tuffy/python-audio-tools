@@ -6619,9 +6619,9 @@
    - [X] cdplay
    - [X] coverdump
    - [X] covertag
-   - [ ] coverview
-   - [ ] dvda2track
-   - [ ] dvdainfo
+   - [X] coverview
+   - [X] dvda2track
+   - [X] dvdainfo
    - [X] track2cd
    - [X] track2track
    - [X] trackcat

@@ -24,21 +24,23 @@ import audiotools
 import audiotools.text as _
 
 if (__name__ == '__main__'):
-    parser = audiotools.OptionParser(
-        usage=_.USAGE_DVDAINFO,
-        version="Python Audio Tools %s" % (audiotools.VERSION))
+    import argparse
 
-    parser.add_option('-A', '--audio-ts', action='store', default=None,
-                      type='string', dest='audio_ts', metavar='DIR',
-                      help=_.OPT_AUDIO_TS)
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_DVDAINFO)
 
-    (options, args) = parser.parse_args()
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_argument("-A", "--audio-ts",
+                        default=".",
+                        dest="audio_ts",
+                        metavar="DIR",
+                        help=_.OPT_AUDIO_TS)
+
+    options = parser.parse_args()
 
     msg = audiotools.Messenger("dvdainfo", options)
-
-    if (options.audio_ts is None):
-        msg.error(_.ERR_NO_AUDIO_TS)
-        sys.exit(1)
 
     try:
         dvda = audiotools.DVDAudio(options.audio_ts)
