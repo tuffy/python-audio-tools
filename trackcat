@@ -335,14 +335,16 @@ if (__name__ == '__main__'):
 
         encoded.set_metadata(metadata)
 
-        progress.clear()
+        progress.clear_rows()
 
         if (cuesheet is not None):
             encoded.set_cuesheet(cuesheet)
 
     except audiotools.EncodingError, err:
+        progress.clear_rows()
         msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
         sys.exit(1)
     except audiotools.InvalidFilenameFormat, err:
+        progress.clear_rows()
         msg.error(unicode(err))
         sys.exit(1)

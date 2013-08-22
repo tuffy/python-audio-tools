@@ -165,7 +165,7 @@ if (__name__ == '__main__'):
                                   audiofiles[0].sample_rate()),
                     progress=progress.update))
 
-        progress.clear()
+        progress.clear_rows()
 
         os.chdir(os.path.dirname(tempwav.name))
         cdrdao_args = [audiotools.BIN["cdrdao"], "write"]
@@ -276,7 +276,7 @@ if (__name__ == '__main__'):
                     total_frames=output_frames,
                     progress=progress_update))
 
-        progress.clear()
+        progress.clear_rows()
 
         os.chdir(os.path.dirname(tempwav.name))
         cdrdao_args = [audiotools.BIN["cdrdao"], "write"]

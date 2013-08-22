@@ -763,11 +763,11 @@ if (__name__ == '__main__'):
                     sample_rate=options.sample_rate,
                     channels=options.channels,
                     bits_per_sample=options.bits_per_sample)
-            progress.clear()
+            progress.clear_rows()
 
             msg.output(_.LAB_ENCODE % {"source": input_filename,
                                        "destination": output_filename})
         except audiotools.EncodingError, err:
-            progress.clear()
+            progress.clear_row()
             msg.error(unicode(err))
             sys.exit(1)

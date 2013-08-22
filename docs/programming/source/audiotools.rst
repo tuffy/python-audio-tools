@@ -2079,37 +2079,48 @@ ProgressDisplay Objects
    ANSI escape sequences such that the user's screen need not scroll.
    If a TTY is not detected, most progress output is omitted.
 
-.. method:: ProgressDisplay.add_row(row_id, output_line)
+.. method:: ProgressDisplay.add_row(output_line)
 
-   Adds a row of output to be displayed with progress indicated.
-   ``row_id`` should be a unique identifier, typically an int.
-   ``output_line`` should be a Unicode string indicating what
+   ``output_line`` is a Unicode string indicating what
    we're displaying the progress of.
+   Returns a :class:`ProgressRow` object which can be updated
+   with the current progress for display.
 
-.. method:: ProgressDisplay.update_row(row_id, current, total)
+.. method:: ProgressDisplay.remove_row(row_index)
 
-   Updates the progress of the given row.
-   ``current`` and ``total`` are integers such that
-   ``current`` / ``total`` indicates the percentage of progress performed.
+   Removes the given row index and frees the slot for reuse.
 
-.. method:: ProgressDisplay.refresh()
+.. method:: ProgressDisplay.display_rows()
 
-   Refreshes the screen output, clearing and displaying a fresh
-   progress rows as needed.
-   This is called automatically by :meth:`update_row`.
+   Outputs the current state of all progress rows.
 
-.. method:: ProgressDisplay.clear()
+.. method:: ProgressDisplay.clear_row()
 
-   Clears the screen output.
-   Although :meth:`refresh` will call this method as needed,
-   one may need to call it manually when generating
-   output independently for the progress monitor
-   so that partial updates aren't left on the user's screen.
+   Clears all previously displayed output rows, if any.
 
-.. method:: ProgressDisplay.delete_row(row_id)
+.. class:: ProgressRow(progress_display, row_index, output_line)
 
-   Removes the row with the given ID from the current list
-   of progress monitors.
+   This is used by :class:`ProgressDisplay` and its subclasses
+   for actual output generation.
+   ``progress_display`` is a parent :class:`ProgressDisplay` object.
+   ``row_index`` is this row's index on the screen.
+   ``output_line`` is a unicode string.
+   It is not typically instantiated directly.
+
+.. method:: ProgressRow.update(current, total)
+
+   Updates the current progress with ``current`` and ``total`` integer values.
+
+.. method:: ProgressRow.finish()
+
+   Indicate output is finished and the row will no longer be needed.
+
+.. method:: ProgressRow.unicode(width)
+
+   Returns the output line and its current progress as a Unicode string,
+   formatted to the given width in onscreen characters.
+   Screen width can be determined from the :meth:`Messenger.terminal_size`
+   method.
 
 .. class:: SingleProgressDisplay(messenger, progress_text)
 
@@ -2157,24 +2168,6 @@ ProgressDisplay Objects
    >>> rg_progress.initial_message()
    >>> AudioType.add_replay_gain(filename_list, rg_progress.update)
    >>> rg_Progress.final_message()
-
-.. class:: ProgressRow(row_id, output_line)
-
-   This is used by :class:`ProgressDisplay` and its subclasses
-   for actual output generation.
-   ``row_id`` is a unique identifier and ``output_line`` is a Unicode string.
-   It is not typically instantiated directly.
-
-.. method:: ProgressRow.update(current, total)
-
-   Updates the current progress with ``current`` and ``total`` integer values.
-
-.. method:: ProgressRow.unicode(width)
-
-   Returns the output line and its current progress as a Unicode string,
-   formatted to the given width in onscreen characters.
-   Screen width can be determined from the :meth:`Messenger.terminal_size`
-   method.
 
 display_unicode Objects
 ^^^^^^^^^^^^^^^^^^^^^^^
