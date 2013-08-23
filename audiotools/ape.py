@@ -864,27 +864,24 @@ class ApeTaggedAudio:
             else:
                 #metadata has shrunk
                 #so rewrite file with smaller metadata
-                import tempfile
+                from . import TemporaryFile
                 from os.path import getsize
-                rewritten = tempfile.TemporaryFile()
 
                 #copy everything but the last "old_tag_size" bytes
                 #from existing file to rewritten file
-                f = open(self.filename, "rb")
-                limited_transfer_data(f.read, rewritten.write,
-                                      getsize(self.filename) -
-                                      old_tag_size)
-                f.close()
+                new_apev2 = TemporaryFile(self.filename)
+                old_apev2 = open(self.filename, "rb")
+
+                limited_transfer_data(
+                    old_apev2.read,
+                    new_apev2.write,
+                    getsize(self.filename) - old_tag_size)
 
                 #append new tag to rewritten file
-                metadata.build(BitstreamWriter(rewritten, 1))
+                metadata.build(BitstreamWriter(new_apev2, 1))
 
-                #finally, overwrite current file with rewritten file
-                rewritten.seek(0, 0)
-                f = open(self.filename, "wb")
-                transfer_data(rewritten.read, f.write)
-                f.close()
-                rewritten.close()
+                old_apev2.close()
+                new_apev2.close()
         else:
             #no existing metadata, so simply append a fresh tag
             f = file(self.filename, "ab")
@@ -970,6 +967,9 @@ class ApeTaggedAudio:
          has_header) = BitstreamReader(f, 1).parse(ApeTag.HEADER_FORMAT)
 
         if ((preamble == 'APETAGEX') and (version == 2000)):
+            from . import TemporaryFile
+            from os.path import getsize
+
             #there's existing metadata to delete
             #so rewrite file without trailing metadata tag
             if (has_header):
@@ -977,24 +977,18 @@ class ApeTaggedAudio:
             else:
                 old_tag_size = tag_size
 
-            import tempfile
-            from os.path import getsize
-            rewritten = tempfile.TemporaryFile()
-
             #copy everything but the last "old_tag_size" bytes
             #from existing file to rewritten file
-            f = open(self.filename, "rb")
-            limited_transfer_data(f.read, rewritten.write,
-                                  getsize(self.filename) -
-                                  old_tag_size)
-            f.close()
+            new_apev2 = TemporaryFile(self.filename)
+            old_apev2 = open(self.filename, "rb")
 
-            #finally, overwrite current file with rewritten file
-            rewritten.seek(0, 0)
-            f = open(self.filename, "wb")
-            transfer_data(rewritten.read, f.write)
-            f.close()
-            rewritten.close()
+            limited_transfer_data(
+                old_apev2.read,
+                new_apev2.write,
+                getsize(self.filename) - old_tag_size)
+
+            old_apev2.close()
+            new_apev2.close()
 
 
 class ApeGainedAudio:

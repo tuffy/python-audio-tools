@@ -322,6 +322,45 @@ class MetaDataTest(unittest.TestCase):
                 finally:
                     temp_file.close()
 
+    @METADATA_METADATA
+    def test_mode(self):
+        import os
+
+        #ensure that setting, updating and deleting metadata
+        #doesn't change the file's original mode
+        for audio_class in self.supported_formats:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            try:
+                mode = 0755
+                track = audio_class.from_pcm(temp_file.name,
+                                             BLANK_PCM_Reader(1))
+                original_mode = os.stat(track.filename).st_mode
+
+                os.chmod(track.filename, mode)
+                #may not round-trip as expected on some systems
+                mode = os.stat(track.filename).st_mode
+                self.assert_(mode != original_mode)
+
+                metadata = self.empty_metadata()
+                metadata.track_name = u"Test 1"
+                track.set_metadata(metadata)
+
+                self.assertEqual(os.stat(track.filename).st_mode, mode)
+
+                metadata = track.get_metadata()
+                metadata.track_name = u"Test 2"
+                track.update_metadata(metadata)
+
+                self.assertEqual(os.stat(track.filename).st_mode, mode)
+
+                track.delete_metadata()
+
+                self.assertEqual(os.stat(track.filename).st_mode, mode)
+            finally:
+                temp_file.close()
+
+
 
 class WavPackApeTagMetaData(MetaDataTest):
     def setUp(self):

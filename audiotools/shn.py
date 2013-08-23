@@ -578,7 +578,6 @@ class ShortenAudio(WaveContainer, AiffContainer):
         #A Shorten file cannot contain both RIFF and AIFF chunks
         #at the same time.
 
-        import tempfile
         from . import WaveAudio
         from . import AiffAudio
         from . import to_pcm_progress

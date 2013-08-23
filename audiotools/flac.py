@@ -1382,37 +1382,35 @@ class FlacAudio(WaveContainer, AiffContainer):
             #or file has no padding,
             #rewrite entire file to fit new metadata
 
-            import tempfile
-            from . import transfer_data
+            from . import TemporaryFile, transfer_data
 
-            stream = file(self.filename, 'rb')
-            stream.seek(self.__stream_offset__, 0)
+            #skip existing metadata blocks
+            old_file = file(self.filename, "rb")
+            old_file.seek(self.__stream_offset__)
 
-            if (stream.read(4) != 'fLaC'):
-                from .text import ERR_FLAC_INVALID_FILE
-                raise InvalidFLAC(ERR_FLAC_INVALID_FILE)
+            if (old_file.read(4) != 'fLaC'):
+                 from .text import ERR_FLAC_INVALID_FILE
+                 raise InvalidFLAC(ERR_FLAC_INVALID_FILE)
 
-            #skip the existing metadata blocks
             stop = 0
-            reader = BitstreamReader(stream, 0)
+            reader = BitstreamReader(old_file, 0)
             while (stop == 0):
                 (stop, length) = reader.parse("1u 7p 24u")
                 reader.skip_bytes(length)
 
-            #write the remaining data stream to a temp file
-            file_data = tempfile.TemporaryFile()
-            transfer_data(stream.read, file_data.write)
-            file_data.seek(0, 0)
-
-            #finally, rebuild our file using new metadata and old stream
-            stream = file(self.filename, 'wb')
-            stream.write('fLaC')
-            writer = BitstreamWriter(stream, 0)
+            #write new metadata to new file
+            new_file = TemporaryFile(self.filename)
+            new_file.write("fLaC")
+            writer = BitstreamWriter(new_file, 0)
             metadata.build(writer)
             writer.flush()
-            transfer_data(file_data.read, stream.write)
-            file_data.close()
-            stream.close()
+
+            #write remaining old data to new file
+            transfer_data(old_file.read, new_file.write)
+
+            #commit change to disk
+            reader.close()
+            writer.close()
 
     def set_metadata(self, metadata):
         """takes a MetaData object and sets this track's metadata
@@ -2324,9 +2322,8 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         #If a FLAC has embedded RIFF *and* embedded AIFF chunks,
         #RIFF takes precedence if the target format supports both.
-        #It's hard to envision a scenario in which that would happen.
+        #(it's hard to envision a scenario in which that would happen)
 
-        import tempfile
         from . import WaveAudio
         from . import AiffAudio
         from . import to_pcm_progress
@@ -3081,57 +3078,43 @@ class OggFlacAudio(FlacAudio):
         #then go back and fill-in the initial padding page's length
         #field before re-checksumming it.
 
-        import tempfile
-
         from .bitstream import BitstreamWriter
         from .bitstream import BitstreamRecorder
         from .bitstream import BitstreamAccumulator
         from .bitstream import BitstreamReader
         from .ogg import OggStreamReader, OggStreamWriter
-        from . import transfer_data
+        from . import TemporaryFile, transfer_data
 
-        new_file = tempfile.TemporaryFile()
-        try:
-            original_file = file(self.filename, 'rb')
-            try:
-                original_reader = BitstreamReader(original_file, 1)
-                original_ogg = OggStreamReader(original_reader)
+        new_writer = BitstreamWriter(TemporaryFile(self.filename), 1)
 
-                new_writer = BitstreamWriter(new_file, 1)
-                new_ogg = OggStreamWriter(new_writer,
-                                          self.__serial_number__)
+        original_reader = BitstreamReader(file(self.filename, 'rb'), 1)
 
-                #write our new comment blocks to the new file
-                metadata.build(new_ogg)
+        original_ogg = OggStreamReader(original_reader)
 
-                #skip the metadata packets in the original file
-                OggFlacMetaData.parse(original_reader)
+        new_ogg = OggStreamWriter(new_writer, self.__serial_number__)
 
-                #transfer the remaining pages from the original file
-                #(which are re-sequenced and re-checksummed automatically)
-                for (granule_position,
-                     segments,
-                     continuation,
-                     first_page,
-                     last_page) in original_ogg.pages():
-                    new_ogg.write_page(granule_position,
-                                       segments,
-                                       continuation,
-                                       first_page,
-                                       last_page)
-            finally:
-                original_file.close()
+        #write our new comment blocks to the new file
+        metadata.build(new_ogg)
 
-            #copy temporary file data over our original file
-            original_file = file(self.filename, "wb")
-            try:
-                new_file.seek(0, 0)
-                transfer_data(new_file.read, original_file.write)
-                new_file.close()
-            finally:
-                original_file.close()
-        finally:
-            new_file.close()
+        #skip the metadata packets in the original file
+        OggFlacMetaData.parse(original_reader)
+
+        #transfer the remaining pages from the original file
+        #(which are re-sequenced and re-checksummed automatically)
+        for (granule_position,
+             segments,
+             continuation,
+             first_page,
+             last_page) in original_ogg.pages():
+            new_ogg.write_page(granule_position,
+                               segments,
+                               continuation,
+                               first_page,
+                               last_page)
+
+        original_reader.close()
+        new_writer.close()
+
 
     def metadata_length(self):
         """returns the length of all Ogg FLAC metadata blocks as an integer

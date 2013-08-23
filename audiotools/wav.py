@@ -786,8 +786,8 @@ class WaveAudio(WaveContainer):
         from . import transfer_framelist_data
         from . import open_files
         from . import calculate_replay_gain
+        from . import TemporaryFile
         from .replaygain import ReplayGainReader
-        import tempfile
 
         wave_files = [track for track in open_files(filenames) if
                       isinstance(track, cls)]
@@ -799,26 +799,24 @@ class WaveAudio(WaveContainer):
              track_peak,
              album_gain,
              album_peak) in calculate_replay_gain(wave_files, progress):
-            temp_wav_file = tempfile.NamedTemporaryFile(suffix=".wav")
-            try:
-                (header, footer) = original_wave.wave_header_footer()
-                temp_wav_file.write(header)
-                replaygain_pcm = ReplayGainReader(original_wave.to_pcm(),
-                                                  track_gain, track_peak)
-                transfer_framelist_data(
-                    replaygain_pcm,
-                    temp_wav_file.write,
-                    signed=original_wave.bits_per_sample() > 8,
-                    big_endian=False)
-                temp_wav_file.write(footer)
-                replaygain_pcm.close()
+            new_wav_file = TemporaryFile(original_wave.filename)
 
-                temp_wav_file.seek(0, 0)
-                new_wave = open(original_wave.filename, 'wb')
-                transfer_data(temp_wav_file.read, new_wave.write)
-                new_wave.close()
-            finally:
-                temp_wav_file.close()
+            (header, footer) = original_wave.wave_header_footer()
+
+            new_wav_file.write(header)
+
+            replaygain_pcm = ReplayGainReader(original_wave.to_pcm(),
+                                              track_gain, track_peak)
+
+            transfer_framelist_data(
+                replaygain_pcm,
+                new_wav_file.write,
+                signed=original_wave.bits_per_sample() > 8,
+                big_endian=False)
+
+            new_wav_file.write(footer)
+
+            replaygain_pcm.close()
 
     @classmethod
     def track_name(cls, file_path, track_metadata=None, format=None):

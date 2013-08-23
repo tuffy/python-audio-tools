@@ -423,41 +423,34 @@ class TrueAudio(AudioFile):
             f.seek(-current_metadata.total_size(), 2)
             metadata.build(BitstreamWriter(f, True))
         else:
-            from tempfile import TemporaryFile
-            from . import (transfer_data, LimitedFileReader)
+            from .bitstream import BitstreamWriter
+            from . import (transfer_data, LimitedFileReader, TemporaryFile)
             from .id3 import skip_id3v2_comment
 
-            #otherwise, shift TTA file data to temporary space
-            temp_tta_data = TemporaryFile()
-            f = open(self.filename, "rb")
-            skip_id3v2_comment(f)
-            current_tta_data = LimitedFileReader(f, self.data_size())
-            transfer_data(current_tta_data.read, temp_tta_data.write)
-            f.close()
+            #otherwise, rebuild TTA with APEv2/ID3 tags in place
+            old_tta = open(self.filename, "rb")
+            skip_id3v2_comment(old_tta)
+            old_tta = LimitedFileReader(old_tta, self.data_size())
 
-            #and rebuild TTA with APEv2/ID3 tags in place
-            f = open(self.filename, "wb")
-            temp_tta_data.seek(0, 0)
+            new_tta = TemporaryFile(self.filename)
 
             if (isinstance(metadata, ApeTag)):
-                from .bitstream import BitstreamWriter
-                transfer_data(temp_tta_data.read, f.write)
-                metadata.build(BitstreamWriter(f, True))
+                transfer_data(old_tta.read, new_tta.write)
+                metadata.build(BitstreamWriter(new_tta, True))
             elif (isinstance(metadata, ID3CommentPair)):
-                from .bitstream import BitstreamWriter
-                metadata.id3v2.build(BitstreamWriter(f, False))
-                transfer_data(temp_tta_data.read, f.write)
-                metadata.id3v1.build(f)
+                metadata.id3v2.build(BitstreamWriter(new_tta, False))
+                transfer_data(old_tta.read, new_tta.write)
+                metadata.id3v1.build(new_tta)
             elif (isinstance(metadata, ID3v2Comment)):
-                from .bitstream import BitstreamWriter
-                metadata.build(BitstreamWriter(f, False))
-                transfer_data(temp_tta_data.read, f.write)
+                metadata.build(BitstreamWriter(new_tta, False))
+                transfer_data(old_tta.read, new_tta.write)
             else:
-                transfer_data(temp_tta_data.read, f.write)
-                metadata.build(f)
+                #ID3v1Comment
+                transfer_data(old_tta.read, new_tta.write)
+                metadata.build(new_tta)
 
-            f.close()
-            temp_tta_data.close()
+            old_tta.close()
+            new_tta.close()
 
     def delete_metadata(self):
         """deletes the track's MetaData
@@ -465,24 +458,19 @@ class TrueAudio(AudioFile):
         this removes or unsets tags as necessary in order to remove all data
         raises IOError if unable to write the file"""
 
-        from tempfile import TemporaryFile
-        from . import (transfer_data, LimitedFileReader)
+        from . import (transfer_data, LimitedFileReader, TemporaryFile)
         from .id3 import skip_id3v2_comment
 
-        #move only TTA data to temporary space
-        temp_tta_data = TemporaryFile()
-        f = open(self.filename, "rb")
-        skip_id3v2_comment(f)
-        current_tta_data = LimitedFileReader(f, self.data_size())
-        transfer_data(current_tta_data.read, temp_tta_data.write)
-        f.close()
+        #overwrite original with no tags attached
+        old_tta = open(self.filename, "rb")
+        skip_id3v2_comment(old_tta)
+        old_tta = LimitedFileReader(old_tta, self.data_size())
 
-        #and overwrite original with no tags attached
-        f = open(self.filename, "wb")
-        temp_tta_data.seek(0, 0)
-        transfer_data(temp_tta_data.read, f.write)
-        f.close()
-        temp_tta_data.close()
+        new_tta = TemporaryFile(self.filename)
+        transfer_data(old_tta.read, new_tta.write)
+
+        old_tta.close()
+        new_tta.close()
 
     def get_cuesheet(self):
         """returns the embedded Cuesheet-compatible object, or None

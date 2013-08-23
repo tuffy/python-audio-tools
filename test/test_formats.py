@@ -2010,7 +2010,7 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
                        [COMM]]:
             temp = tempfile.NamedTemporaryFile(suffix=".aiff")
             try:
-                audiotools.AiffAudio.aiff_from_chunks(temp.name, chunks)
+                audiotools.AiffAudio.aiff_from_chunks(temp, chunks)
                 self.assertRaises(
                     audiotools.InvalidFile,
                     audiotools.open(temp.name).verify)
@@ -2033,7 +2033,6 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
         #test multiple COMM chunks
         #test multiple SSND chunks
         #test data chunk before fmt chunk
-        temp = tempfile.NamedTemporaryFile(suffix=".aiff")
         fixed = tempfile.NamedTemporaryFile(suffix=".aiff")
         try:
             for chunks in [[COMM, COMM, SSND],
@@ -2041,9 +2040,12 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
                            [COMM, SSND, SSND],
                            [SSND, COMM],
                            [SSND, COMM, COMM]]:
-                audiotools.AiffAudio.aiff_from_chunks(temp.name, chunks)
+                temp = tempfile.NamedTemporaryFile(suffix=".aiff")
+                audiotools.AiffAudio.aiff_from_chunks(temp, chunks)
+                temp.flush()
                 fixes = []
                 aiff = audiotools.open(temp.name).clean(fixes, fixed.name)
+                temp.close()
                 chunks = list(aiff.chunks())
                 self.assertEquals([c.id for c in chunks],
                                   [c.id for c in [COMM, SSND]])
@@ -2052,7 +2054,6 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
                 self.assertEquals([c.__data__ for c in chunks],
                                   [c.__data__ for c in [COMM, SSND]])
         finally:
-            temp.close()
             fixed.close()
 
 

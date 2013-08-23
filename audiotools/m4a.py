@@ -171,6 +171,8 @@ class M4ATaggedAudio:
             f.close()
             return
         else:
+            from . import TemporaryFile
+
             #if there's insufficient room,
             #attempt to resize the outermost "free" also
 
@@ -224,8 +226,9 @@ class M4ATaggedAudio:
                 pass
 
             #then write entire tree back to disk
-            writer = BitstreamWriter(file(self.filename, "wb"), 0)
+            writer = BitstreamWriter(TemporaryFile(self.filename), 0)
             m4a_tree.build(writer)
+            writer.close()
 
     def set_metadata(self, metadata):
         """takes a MetaData object and sets this track's metadata

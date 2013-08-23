@@ -616,29 +616,27 @@ class AiffAudio(AiffContainer):
                 total_size -= chunk_size
 
     @classmethod
-    def aiff_from_chunks(cls, filename, chunk_iter):
+    def aiff_from_chunks(cls, aiff_file, chunk_iter):
         """builds a new AIFF file from a chunk data iterator
 
-        filename is the path to the AIFF file to build
+        aiff_file is a seekable file object
         chunk_iter should yield AIFF_Chunk-compatible objects
         """
 
-        aiff_file = file(filename, 'wb')
-        try:
-            total_size = 4
+        start = aiff_file.tell()
 
-            #write an unfinished header with a placeholder size
-            aiff_file.write(struct.pack(">4sI4s", "FORM", total_size, "AIFF"))
+        #write an unfinished header with a placeholder size
+        aiff_file.write(struct.pack(">4sI4s", "FORM", 4, "AIFF"))
 
-            #write the individual chunks
-            for chunk in chunk_iter:
-                total_size += chunk.write(aiff_file)
+        #write the individual chunks
+        total_size = 4
 
-            #once the chunks are done, go back and re-write the header
-            aiff_file.seek(0, 0)
-            aiff_file.write(struct.pack(">4sI4s", "FORM", total_size, "AIFF"))
-        finally:
-            aiff_file.close()
+        for chunk in chunk_iter:
+            total_size += chunk.write(aiff_file)
+
+        #once the chunks are done, go back and re-write the header
+        aiff_file.seek(start)
+        aiff_file.write(struct.pack(">4sI4s", "FORM", total_size, "AIFF"))
 
     def get_metadata(self):
         """returns a MetaData object, or None
@@ -662,8 +660,7 @@ class AiffAudio(AiffContainer):
         raises IOError if unable to write the file
         """
 
-        import tempfile
-        from . import transfer_data
+        from . import transfer_data, TemporaryFile
         from .id3 import ID3v22Comment
         from .bitstream import BitstreamRecorder
         from .text import ERR_FOREIGN_METADATA
@@ -673,33 +670,22 @@ class AiffAudio(AiffContainer):
         elif (not isinstance(metadata, ID3v22Comment)):
             raise ValueError(ERR_FOREIGN_METADATA)
 
-        def chunk_filter(chunks, id3_chunk_data):
-            for chunk in chunks:
-                if (chunk.id == "ID3 "):
-                    yield AIFF_Chunk("ID3 ",
-                                     len(id3_chunk_data),
-                                     id3_chunk_data)
-                else:
-                    yield chunk
-
         #turn our ID3v2.2 tag into a raw binary chunk
         id3_chunk = BitstreamRecorder(0)
         metadata.build(id3_chunk)
-        id3_chunk = id3_chunk.data()
 
         #generate a temporary AIFF file in which our new ID3v2.2 chunk
         #replaces the existing ID3v2.2 chunk
-        new_aiff = tempfile.NamedTemporaryFile(suffix=self.SUFFIX)
-        self.__class__.aiff_from_chunks(new_aiff.name,
-                                        chunk_filter(self.chunks(),
-                                                     id3_chunk))
+        new_aiff = TemporaryFile(self.filename)
 
-        #replace the existing file with data from the temporary file
-        new_file = open(new_aiff.name, 'rb')
-        old_file = open(self.filename, 'wb')
-        transfer_data(new_file.read, old_file.write)
-        old_file.close()
-        new_file.close()
+        self.__class__.aiff_from_chunks(
+            new_aiff,
+            [(chunk if chunk.id != "ID3 " else
+              AIFF_Chunk("ID3 ",
+                         id3_chunk.bytes(),
+                         id3_chunk.data())) for chunk in self.chunks()])
+
+        new_aiff.close()
 
     def set_metadata(self, metadata):
         """takes a MetaData object and sets this track's metadata
@@ -717,36 +703,23 @@ class AiffAudio(AiffContainer):
         else:
             #current file has no metadata, so append new ID3 block
 
-            import tempfile
             from .bitstream import BitstreamRecorder
-            from . import transfer_data
-
-            def chunk_filter(chunks, id3_chunk_data):
-                for chunk in chunks:
-                    yield chunk
-
-                yield AIFF_Chunk("ID3 ",
-                                 len(id3_chunk_data),
-                                 id3_chunk_data)
+            from . import transfer_data, TemporaryFile
 
             #turn our ID3v2.2 tag into a raw binary chunk
             id3_chunk = BitstreamRecorder(0)
             ID3v22Comment.converted(metadata).build(id3_chunk)
-            id3_chunk = id3_chunk.data()
 
             #generate a temporary AIFF file in which our new ID3v2.2 chunk
             #is appended to the file's set of chunks
-            new_aiff = tempfile.NamedTemporaryFile(suffix=self.SUFFIX)
-            self.__class__.aiff_from_chunks(new_aiff.name,
-                                            chunk_filter(self.chunks(),
-                                                         id3_chunk))
+            new_aiff = TemporaryFile(self.filename)
+            self.__class__.aiff_from_chunks(
+                new_aiff,
+                [c for c in self.chunks()] + [AIFF_Chunk("ID3 ",
+                                                         id3_chunk.bytes(),
+                                                         id3_chunk.data())])
 
-            #replace the existing file with data from the temporary file
-            new_file = open(new_aiff.name, 'rb')
-            old_file = open(self.filename, 'wb')
-            transfer_data(new_file.read, old_file.write)
-            old_file.close()
-            new_file.close()
+            new_aiff.close()
 
     def delete_metadata(self):
         """deletes the track's MetaData
@@ -754,25 +727,14 @@ class AiffAudio(AiffContainer):
         this removes or unsets tags as necessary in order to remove all data
         raises IOError if unable to write the file"""
 
-        def chunk_filter(chunks):
-            for chunk in chunks:
-                if (chunk.id == 'ID3 '):
-                    continue
-                else:
-                    yield chunk
+        from . import transfer_data, TemporaryFile
 
-        import tempfile
-        from . import transfer_data
+        new_aiff = TemporaryFile(self.filename)
+        self.__class__.aiff_from_chunks(
+            new_aiff,
+            [c for c in self.chunks() if c.id != "ID3 "])
 
-        new_aiff = tempfile.NamedTemporaryFile(suffix=self.SUFFIX)
-        self.__class__.aiff_from_chunks(new_aiff.name,
-                                        chunk_filter(self.chunks()))
-
-        new_file = open(new_aiff.name, 'rb')
-        old_file = open(self.filename, 'wb')
-        transfer_data(new_file.read, old_file.write)
-        old_file.close()
-        new_file.close()
+        new_aiff.close()
 
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
@@ -1125,7 +1087,9 @@ class AiffAudio(AiffContainer):
             fixed_metadata = old_metadata
 
         if (output_filename is not None):
-            AiffAudio.aiff_from_chunks(output_filename, chunk_queue)
+            output_file = open(output_filename, "wb")
+            AiffAudio.aiff_from_chunks(output_file, chunk_queue)
+            output_file.close()
             fixed_aiff = AiffAudio(output_filename)
             if (fixed_metadata is not None):
                 fixed_aiff.update_metadata(fixed_metadata)

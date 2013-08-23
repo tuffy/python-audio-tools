@@ -5386,6 +5386,60 @@ class __progress__:
         self.memory[1] = total
 
 
+class TemporaryFile:
+    """a class for staging file rewrites"""
+
+    def __init__(self, original_filename):
+        """original_filename is the path of the file
+        to be rewritten with new data"""
+
+        from tempfile import mkstemp
+
+        self.__original_filename__ = original_filename
+        (dirname, basename) = os.path.split(original_filename)
+        (fd, self.__temp_path__) = mkstemp(prefix="." + basename,
+                                           dir=dirname)
+        self.__temp_file__ = os.fdopen(fd, "wb")
+
+    def write(self, data):
+        """writes the given data string to the temporary file"""
+
+        self.__temp_file__.write(data)
+
+    def flush(self):
+        """flushes pending data to stream"""
+
+        self.__temp_file__.flush()
+
+    def tell(self):
+        """returns current file position"""
+
+        return self.__temp_file__.tell()
+
+    def seek(self, offset, whence=None):
+        """move to new file position"""
+
+        if (whence is not None):
+            self.__temp_file__.seek(offset, whence)
+        else:
+            self.__temp_file__.seek(offset)
+
+    def close(self):
+        """commits all staged changes
+
+        the original file is overwritten, its file mode is preserved
+        and the temporary file is closed and deleted"""
+
+        self.__temp_file__.close()
+        original_mode = os.stat(self.__original_filename__).st_mode
+        try:
+            os.rename(self.__temp_path__, self.__original_filename__)
+            os.chmod(self.__original_filename__, original_mode)
+        except OSError, err:
+            os.unlink(self.__temp_path__)
+            raise err
+
+
 from .au import AuAudio
 from .wav import WaveAudio
 from .aiff import AiffAudio
