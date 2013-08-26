@@ -652,31 +652,28 @@ class Flac_VORBISCOMMENT(VorbisComment):
         as unicode"""
 
         from os import linesep
-        from . import display_unicode
+        from . import output_table
 
         #align the text strings on the "=" sign, if any
 
-        if (len(self.comment_strings) > 0):
-            max_indent = max([len(display_unicode(comment.split(u"=", 1)[0]))
-                              for comment in self.comment_strings
-                              if u"=" in comment])
-        else:
-            max_indent = 0
+        table = output_table()
 
-        comment_strings = []
         for comment in self.comment_strings:
+            row = table.row()
+            row.add_column(u" " * 4)
             if (u"=" in comment):
-                comment_strings.append(
-                    u" " * (4 + max_indent -
-                            len(display_unicode(comment.split(u"=", 1)[0]))) +
-                    comment)
+                (tag, value) = comment.split(u"=", 1)
+                row.add_column(tag, "right")
+                row.add_column(u"=")
+                row.add_column(value)
             else:
-                comment_strings.append(u" " * 4 + comment)
+                row.add_column(comment)
+                row.add_column(u"")
+                row.add_column(u"")
 
-        return linesep.decode('ascii').join(
-            [u"  VORBIS_COMMENT:",
-             u"    %s" % (self.vendor_string)] +
-            comment_strings)
+        return (u"  VORBIS_COMMENT:" + linesep.decode('ascii') +
+                u"    %s" % (self.vendor_string) + linesep.decode('ascii') +
+                linesep.decode('ascii').join(table.format()))
 
     @classmethod
     def converted(cls, metadata):

@@ -343,55 +343,143 @@ def str_width(s):
          unicodedata.normalize('NFC', __ANSI_SEQUENCE__.sub(u"", s))])
 
 
-class display_unicode:
-    """a class for abstracting unicode string truncation
+class output_text:
+    """a class for formatting unicode strings for display"""
 
-    this is necessary because not all Unicode characters are
-    the same length when displayed onscreen
-    """
+    def __init__(self, unicode_string,
+                 fg_color=None,
+                 bg_color=None,
+                 style=None):
+        """unicode_string is the text to be displayed
 
-    def __init__(self, unicode_string):
+        fg_color and bg_color may be one of:
+        'black', 'red', 'green', 'yellow',
+        'blue', 'magenta', 'cyan', 'white'
+
+        style may be one of:
+        'bold', 'underline', 'blink', 'inverse'
+        """
+
         import unicodedata
 
-        self.__string__ = unicodedata.normalize(
-            'NFC',
-            __ANSI_SEQUENCE__.sub(u"", unicode(unicode_string)))
+        self.__string__ = unicodedata.normalize('NFC', unicode(unicode_string))
+
         self.__char_widths__ = tuple(
             [__CHAR_WIDTHS__.get(unicodedata.east_asian_width(char), 1)
              for char in self.__string__])
 
+        self.__fg_color__ = fg_color
+        self.__bg_color__ = bg_color
+        self.__style__ = style
+
+        self.set_format(fg_color, bg_color, style)
+
+    def set_format(self, fg_color=None, bg_color=None, style=None):
+        self.__open_codes__ = []
+        self.__close_codes__ = []
+
+        if (fg_color is not None):
+            try:
+                self.__open_codes__.append(
+                    {"black":30,
+                     "red":31,
+                     "green":32,
+                     "yellow":33,
+                     "blue":34,
+                     "magenta":35,
+                     "cyan":36,
+                     "white":37}[fg_color])
+                self.__close_codes__.append(39)
+            except KeyError:
+                raise ValueError("unknown fg_color %s" % (repr(fg_color)))
+
+        if (bg_color is not None):
+            try:
+                self.__open_codes__.append(
+                    {"black":40,
+                     "red":41,
+                     "green":42,
+                     "yellow":43,
+                     "blue":44,
+                     "magenta":45,
+                     "cyan":46,
+                     "white":47}[bg_color])
+                self.__close_codes__.append(49)
+            except KeyError:
+                raise ValueError("unknown bg_color %s" % (repr(bg_color)))
+
+        if (style is not None):
+            try:
+                self.__open_codes__.append(
+                    {"bold":1,
+                     "underline":4,
+                     "blink":5,
+                     "inverse":7}[style])
+                self.__close_codes__.append(
+                    {"bold":22,
+                     "underline":24,
+                     "blink":25,
+                     "inverse":27}[style])
+            except KeyError:
+                raise ValueError("unknown style %s" % (repr(style)))
+
     def __unicode__(self):
         return self.__string__
+
+    def format(self, is_tty=False):
+        """returns unicode text formatted depending on is_tty"""
+
+        if (is_tty and (len(self.__open_codes__) > 0)):
+            return (u"\u001B[%sm%s\u001B[%sm" % \
+                        (";".join(map(unicode,
+                                      self.__open_codes__)),
+                         self.__string__,
+                         ";".join(map(unicode,
+                                      self.__close_codes__))))
+        else:
+            return self.__string__
 
     def __len__(self):
         return sum(self.__char_widths__)
 
     def __repr__(self):
-        return "display_unicode(%s)" % (repr(self.__string__))
-
-    def __add__(self, unicode_string):
-        return display_unicode(self.__string__ + unicode(unicode_string))
+        return "output_text(%s, %s, %s, %s)" % (repr(self.__string__),
+                                                repr(self.__fg_color__),
+                                                repr(self.__bg_color__),
+                                                repr(self.__style__))
 
     def head(self, display_characters):
-        """returns a display_unicode object truncated to the given length
+        """returns a text object truncated to the given length
 
-        characters at the end of the string are removed as needed"""
+        characters at the end of the string are removed as needed
+
+        due to double-width characters,
+        the size of the string may be smaller than requested"""
 
         output_chars = []
+
         for (char, width) in zip(self.__string__, self.__char_widths__):
             if (width <= display_characters):
                 output_chars.append(char)
                 display_characters -= width
             else:
                 break
-        return display_unicode(u"".join(output_chars))
+
+        return output_text(u"".join(output_chars),
+                           self.__fg_color__,
+                           self.__bg_color__,
+                           self.__style__)
 
     def tail(self, display_characters):
-        """returns a display_unicode object truncated to the given length
+        """returns a text object truncated to the given length
 
-        characters at the beginning of the string are removed as needed"""
+        characters at the beginning of the string are removed as needed
+
+        due to double-width characters,
+        the size of the string may be smaller than requested"""
 
         output_chars = []
+
         for (char, width) in zip(reversed(self.__string__),
                                  reversed(self.__char_widths__)):
             if (width <= display_characters):
@@ -401,14 +489,19 @@ class display_unicode:
                 break
 
         output_chars.reverse()
-        return display_unicode(u"".join(output_chars))
+        return output_text(u"".join(output_chars),
+                           self.__fg_color__,
+                           self.__bg_color__,
+                           self.__style__)
 
     def split(self, display_characters):
-        """returns a tuple of display_unicode objects
+        """returns a tuple of text objects
 
         the first is up to 'display_characters' in length
         the second contains the remainder of the string
-        """
+
+        due to double-width characters,
+        the first string may be smaller than requested"""
 
         head_chars = []
         tail_chars = []
@@ -420,60 +513,306 @@ class display_unicode:
                 tail_chars.append(char)
                 display_characters = -1
 
-        return (display_unicode(u"".join(head_chars)),
-                display_unicode(u"".join(tail_chars)))
+        return (output_text(u"".join(head_chars),
+                            self.__fg_color__,
+                            self.__bg_color__,
+                            self.__style__),
+                output_text(u"".join(tail_chars),
+                            self.__fg_color__,
+                            self.__bg_color__,
+                            self.__style__))
 
+    def join(self, output_texts):
+        """returns output_list joined by our formatted text"""
 
-class __MessengerRow__:
-    def __init__(self):
-        self.strings = []  # a list of unicode strings
-        self.alignments = []  # a list of booleans
-                              # False if left-aligned, True if right-aligned
-        self.total_lengths = []  # a list of total length integers,
-                                 # to be set at print-time
-
-    def add_string(self, string, left_aligned):
-        self.strings.append(string)
-        self.alignments.append(left_aligned)
-        self.total_lengths.append(str_width(string))
-
-    def lengths(self):
-        return map(str_width, self.strings)
-
-    def set_total_lengths(self, total_lengths):
-        self.total_lengths = total_lengths
-
-    def __unicode__(self):
-        output_string = []
-        for (string, right_aligned, length) in zip(self.strings,
-                                                   self.alignments,
-                                                   self.total_lengths):
-            if (str_width(string) < length):
-                if (not right_aligned):
-                    output_string.append(string)
-                    output_string.append(u" " * (length - str_width(string)))
+        def join_iter(texts):
+            first_sent = False
+            for text in texts:
+                if (not first_sent):
+                    yield text
+                    first_sent = True
                 else:
-                    output_string.append(u" " * (length - str_width(string)))
-                    output_string.append(string)
-            else:
-                output_string.append(string)
-        return u"".join(output_string)
+                    yield self
+                    yield text
+
+        return output_list(join_iter(output_texts))
 
 
-class __DividerRow__:
-    def __init__(self, dividers):
-        self.dividers = dividers
-        self.total_lengths = []
+class output_list(output_text):
+    """a class for formatting multiple unicode strings as a unit
 
-    def lengths(self):
-        return [1 for x in self.dividers]
+    Note that a styled list enclosing styled text isn't likely
+    to nest as expected since styles are reset to the terminal default
+    rather than to what they were initially.
 
-    def set_total_lengths(self, total_lengths):
-        self.total_lengths = total_lengths
+    So it's best to either style the internal elements
+    or style the list, but not both."""
+
+    def __init__(self, output_texts,
+                 fg_color=None,
+                 bg_color=None,
+                 style=None):
+        """output_texts is an iterable of output_text objects or unicode"""
+
+        self.__output_texts__ = [t if isinstance(t, output_text)
+                                 else output_text(t)
+                                 for t in output_texts]
+
+        self.__fg_color__ = fg_color
+        self.__bg_color__ = bg_color
+        self.__style__ = style
+
+        self.set_format(fg_color, bg_color, style)
 
     def __unicode__(self):
-        return u"".join([divider * length for (divider, length) in
-                         zip(self.dividers, self.total_lengths)])
+        return u"".join(map(unicode, self.__output_texts__))
+
+    def format(self, is_tty=False):
+        """returns unicode text formatted depending on is_tty"""
+
+        if (is_tty and (len(self.__open_codes__) > 0)):
+            return (u"\u001B[%sm%s\u001B[%sm" % \
+                        (";".join(map(unicode,
+                                      self.__open_codes__)),
+                         self.format(False),
+                         ";".join(map(unicode,
+                                      self.__close_codes__))))
+        else:
+            return u"".join([t.format(is_tty) for t in self.__output_texts__])
+
+    def __len__(self):
+        return sum(map(len, self.__output_texts__))
+
+    def __repr__(self):
+        return "output_texts(%s)" % (repr(self.__output_texts__))
+
+    def head(self, display_characters):
+        """returns a text object truncated to the given length
+
+        characters at the end of the string are removed as needed
+
+        due to double-width characters,
+        the size of the string may be smaller than requested"""
+
+        output_texts = []
+
+        for text in self.__output_texts__:
+            if (len(text) <= display_characters):
+                output_texts.append(text)
+                display_characters -= len(text)
+            else:
+                output_texts.append(text.head(display_characters))
+                break
+
+        return output_list(output_texts,
+                           fg_color=self.__fg_color__,
+                           bg_color=self.__bg_color__,
+                           style=self.__style__)
+
+    def tail(self, display_characters):
+        """returns a text object truncated to the given length
+
+        characters at the beginning of the string are removed as needed
+
+        due to double-width characters,
+        the size of the string may be smaller than requested"""
+
+        output_texts = []
+
+        for text in reversed(self.__output_texts__):
+            if (len(text) <= display_characters):
+                output_texts.append(text)
+                display_characters -= len(text)
+            else:
+                output_texts.append(text.tail(display_characters))
+                break
+
+        output_texts.reverse()
+        return output_list(output_texts,
+                           fg_color=self.__fg_color__,
+                           bg_color=self.__bg_color__,
+                           style=self.__style__)
+
+    def split(self, display_characters):
+        """returns a tuple of text objects
+
+        the first is up to 'display_characters' in length
+        the second contains the remainder of the string
+
+        due to double-width characters,
+        the first string may be smaller than requested
+        """
+
+        head_texts = []
+        tail_texts = []
+
+        for text in self.__output_texts__:
+            if (len(text) <= display_characters):
+                head_texts.append(text)
+                display_characters -= len(text)
+            elif (display_characters >= 0):
+                (head, tail) = text.split(display_characters)
+                head_texts.append(head)
+                tail_texts.append(tail)
+                display_characters = -1
+            else:
+                tail_texts.append(text)
+
+        return (output_list(head_texts,
+                           fg_color=self.__fg_color__,
+                           bg_color=self.__bg_color__,
+                           style=self.__style__),
+                output_list(tail_texts,
+                           fg_color=self.__fg_color__,
+                           bg_color=self.__bg_color__,
+                           style=self.__style__))
+
+
+class output_table:
+    def __init__(self):
+        """a class for formatting rows for display"""
+
+        self.__rows__ = []
+
+    def row(self):
+        """returns a output_table_row object which columns can be added to"""
+
+        row = output_table_row()
+        self.__rows__.append(row)
+        return row
+
+    def blank_row(self):
+        """inserts a blank table row with no output"""
+
+        self.__rows__.append(output_table_blank())
+
+    def divider_row(self, dividers):
+        """adds a row of unicode divider characters
+
+        there should be one character in dividers per output column"""
+
+        self.__rows__.append(output_table_divider(dividers))
+
+    def format(self, is_tty=False):
+        """yields one unicode formatted string per row depending on is_tty"""
+
+        if (len(self.__rows__) == 0):
+            #no rows, so do nothing
+            return
+
+        if (len(set([len(r) for r in self.__rows__ if
+                     not isinstance(r, output_table_blank)])) != 1):
+            raise ValueError("all rows must have same number of columns")
+
+        column_widths = [
+            max([row.column_width(col) for row in self.__rows__])
+            for col in xrange(len(self.__rows__[0]))]
+
+        for row in self.__rows__:
+            yield row.format(column_widths, is_tty)
+
+
+class output_table_row:
+    def __init__(self):
+        """a class for formatting columns for display"""
+
+        self.__columns__ = []
+
+    def __len__(self):
+        return len(self.__columns__)
+
+    def add_column(self, text, alignment="left"):
+        """adds text, which may be unicode or a formatted output_text object
+
+        alignment may be 'left', 'center', 'right'"""
+
+        if (alignment not in ("left", "center", "right")):
+            raise ValueError("alignment must be 'left', 'center', or 'right'")
+
+        self.__columns__.append(
+            (text if isinstance(text, output_text) else output_text(text),
+             alignment))
+
+    def column_width(self, column):
+        return len(self.__columns__[column][0])
+
+    def format(self, column_widths, is_tty=False):
+        """returns formatted row as unicode"""
+
+        def align_left(text, width, is_tty):
+            spaces = width - len(text)
+
+            if (spaces > 0):
+                return text.format(is_tty) + u" " * spaces
+            else:
+                return text.format(is_tty)
+
+        def align_right(text, width, is_tty):
+            spaces = width - len(text)
+
+            if (spaces > 0):
+                return u" " * spaces + text.format(is_tty)
+            else:
+                return text.format(is_tty)
+
+        def align_center(text, width, is_tty):
+            left_spaces = (width - len(text)) // 2
+            right_spaces = width - (left_spaces + len(text))
+
+            if ((left_spaces + right_spaces) > 0):
+                return (u" " * left_spaces +
+                        text.format(is_tty) +
+                        u" " * right_spaces)
+            else:
+                return text.format(is_tty)
+
+        #attribute to method mapping
+        align_meth = {"left":align_left,
+                      "right":align_right,
+                      "center":align_center}
+
+        assert(len(column_widths) == len(self.__columns__))
+
+        return u"".join([align_meth[alignment](text, width, is_tty)
+                         for ((text, alignment), width) in
+                         zip(self.__columns__, column_widths)]).rstrip()
+
+
+class output_table_divider:
+    """a class for formatting a row of divider characters"""
+
+    def __init__(self, dividers):
+        self.__dividers__ = dividers[:]
+
+    def __len__(self):
+        return len(self.__dividers__)
+
+    def column_width(self, column):
+        return 0
+
+    def format(self, column_widths, is_tty=False):
+        """returns formatted row as unicode"""
+
+        assert(len(column_widths) == len(self.__dividers__))
+
+        return u"".join([divider * width
+                         for (divider, width) in
+                         zip(self.__dividers__, column_widths)]).rstrip()
+
+
+class output_table_blank:
+    """a class for an empty table row"""
+
+    def __init__(self):
+        pass
+
+    def column_width(self, column):
+        return 0
+
+    def format(self, column_widths, is_tty=False):
+        """returns formatted row as unicode"""
+
+        return u""
 
 
 class VerboseMessenger:
@@ -517,7 +856,15 @@ class VerboseMessenger:
         this is typically for use by the usage() method"""
 
         self.executable = executable
-        self.output_msg_rows = []  # a list of __MessengerRow__ objects
+
+    def output_isatty(self):
+        return sys.stdout.isatty()
+
+    def info_isatty(self):
+        return sys.stderr.isatty()
+
+    def error_isatty(self):
+        return sys.stderr.isatty()
 
     def output(self, s):
         """displays an output message unicode string to stdout
@@ -534,78 +881,6 @@ class VerboseMessenger:
 
         sys.stdout.write(s.encode(IO_ENCODING, 'replace'))
         sys.stdout.flush()
-
-    def new_row(self):
-        """sets up a new tabbed row for outputting aligned text
-
-        this must be called prior to calling output_column()"""
-
-        self.output_msg_rows.append(__MessengerRow__())
-
-    def blank_row(self):
-        """generates a completely blank row of aligned text
-
-        this cannot be the first row of aligned text"""
-
-        if (len(self.output_msg_rows) == 0):
-            raise ValueError("first output row cannot be blank")
-        else:
-            self.new_row()
-            for i in xrange(len(self.output_msg_rows[0].lengths())):
-                self.output_column(u"")
-
-    def divider_row(self, dividers):
-        """adds a row of unicode divider characters
-
-        there should be one character in dividers per output column
-        for example:
-        >>> m = VerboseMessenger("audiotools")
-        >>> m.new_row()
-        >>> m.output_column(u'Foo')
-        >>> m.output_column(u' ')
-        >>> m.output_column(u'Bar')
-        >>> m.divider_row([u'-',u' ',u'-'])
-        >>> m.output_rows()
-        foo Bar
-        --- ---
-
-        """
-
-        self.output_msg_rows.append(__DividerRow__(dividers))
-
-    def output_column(self, string, right_aligned=False):
-        """adds a column of aligned unicode data"""
-
-        if (len(self.output_msg_rows) > 0):
-            self.output_msg_rows[-1].add_string(string, right_aligned)
-        else:
-            raise ValueError(
-                "you must perform \"new_row\" before adding columns")
-
-    def output_rows(self):
-        """outputs all of our accumulated output rows as aligned output
-
-        this operates by calling our output() method
-        therefore, subclasses that have overridden output() to noops
-        (silent messengers) will also have silent output_rows() methods
-        """
-
-        lengths = [row.lengths() for row in self.output_msg_rows]
-        if (len(lengths) == 0):
-            raise ValueError("you must generate at least one output row")
-        if (len(set(map(len, lengths))) != 1):
-            raise ValueError("all output rows must be the same length")
-
-        max_lengths = []
-        for i in xrange(len(lengths[0])):
-            max_lengths.append(max([length[i] for length in lengths]))
-
-        for row in self.output_msg_rows:
-            row.set_total_lengths(max_lengths)
-
-        for row in self.output_msg_rows:
-            self.output(unicode(row))
-        self.output_msg_rows = []
 
     def info(self, s):
         """displays an informative message unicode string to stderr
@@ -696,28 +971,6 @@ class VerboseMessenger:
         sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
 
-    def ansi(self, s, codes):
-        """generates an ANSI code as a unicode string
-
-        takes a unicode string to be escaped
-        and a list of ANSI SGR codes
-        returns an ANSI-escaped unicode terminal string
-        with those codes activated followed by the unescaped code
-        if the Messenger's stdout is to a tty terminal
-        otherwise, the string is returned unmodified
-
-        for example:
-        >>> VerboseMessenger("audiotools").ansi(u"foo",
-        ...                                     [VerboseMessenger.BOLD])
-        u'\\x1b[1mfoo\\x1b[0m'
-        """
-
-        if (sys.stdout.isatty()):
-            return u"\u001B[%sm%s\u001B[0m" % \
-                (";".join(map(unicode, codes)), s)
-        else:
-            return s
-
     def ansi_clearline(self):
         """generates a set of clear line ANSI escape codes to stdout
 
@@ -757,22 +1010,6 @@ class VerboseMessenger:
             sys.stdout.write(u"\u001B[2J")
             sys.stdout.write(u"\u001B[1;1H")
             sys.stdout.flush()
-
-    def ansi_err(self, s, codes):
-        """generates an ANSI code as a unicode string
-
-        takes a unicode string to be escaped
-        and a list of ANSI SGR codes
-        returns an ANSI-escaped unicode terminal string
-        with those codes activated followed by the unescaped code
-        if the Messenger's stderr is to a tty terminal
-        otherwise, the string is returned unmodified"""
-
-        if (sys.stderr.isatty()):
-            return u"\u001B[%sm%s\u001B[0m" % \
-                (";".join(map(unicode, codes)), s)
-        else:
-            return s
 
     def terminal_size(self, fd):
         """returns the current terminal size as (height, width)"""
@@ -907,12 +1144,10 @@ class ProgressRow:
 
         self.progress_display = progress_display
         self.row_index = row_index
-        self.output_line = display_unicode(output_line)
+        self.output_line = output_text(output_line)
         self.current = 0
         self.total = 1
         self.start_time = time()
-
-        self.ansi = VerboseMessenger("").ansi
 
     def update(self, current, total):
         """updates our row with the current progress values"""
@@ -943,23 +1178,31 @@ class ProgressRow:
             split_point = 0
             time_remaining = u" --:--"
 
-        output_line_width = width - len(time_remaining)
-
-        if (len(self.output_line) < output_line_width):
-            output_line = self.output_line
+        if (len(self.output_line) + len(time_remaining) > width):
+            #truncate output line and append time remaining
+            truncated = self.output_line.tail(
+                width - (len(time_remaining) + 1))
+            combined_line = output_list(
+                #note that "truncated" may be smaller than expected
+                #so pad with more ellipsises if needed
+                [u"\u2026" * (width - (len(truncated) +
+                                       len(time_remaining))),
+                 truncated,
+                 time_remaining])
         else:
-            output_line = self.output_line.tail(output_line_width)
+            #add padding between output line and time remaining
+            combined_line = output_list(
+                [self.output_line,
+                 u" " * (width - (len(self.output_line) +
+                                  len(time_remaining))),
+                 time_remaining])
 
-        output_line += (u" " * (output_line_width - len(output_line)) +
-                        time_remaining)
+        #turn whole line into progress bar
+        (head, tail) = combined_line.split(split_point)
 
-        (head, tail) = output_line.split(split_point)
-        output_line = (self.ansi(unicode(head),
-                                 [VerboseMessenger.FG_WHITE,
-                                  VerboseMessenger.BG_BLUE]) +
-                       unicode(tail))
+        head.set_format(fg_color="white", bg_color="blue")
 
-        return output_line
+        return (head.format(True) + tail.format(True))
 
 
 class SingleProgressDisplay(ProgressDisplay):
@@ -3052,7 +3295,9 @@ class MetaData:
                 yield (attr, field)
 
     def __unicode__(self):
-        comment_pairs = []
+        table = output_table()
+
+        SEPARATOR = u" : "
 
         for attr in self.FIELD_ORDER:
             if (attr == "track_number"):
@@ -3063,18 +3308,21 @@ class MetaData:
                     #nothing to display
                     pass
                 elif ((track_number is not None) and (track_total is None)):
-                    comment_pairs.append(
-                        (display_unicode(self.FIELD_NAMES[attr]),
-                         unicode(track_number)))
+                    row = table.row()
+                    row.add_column(self.FIELD_NAMES[attr], "right")
+                    row.add_column(SEPARATOR)
+                    row.add_column(unicode(track_number))
                 elif ((track_number is None) and (track_total is not None)):
-                    comment_pairs.append(
-                        (display_unicode(self.FIELD_NAMES[attr]),
-                         u"?/%d" % (track_total,)))
+                    row = table.row()
+                    row.add_column(self.FIELD_NAMES[attr], "right")
+                    row.add_column(SEPARATOR)
+                    row.add_column(u"?/%d" % (track_total,))
                 else:
                     #neither track_number or track_total is None
-                    comment_pairs.append(
-                        (display_unicode(self.FIELD_NAMES[attr]),
-                         u"%d/%d" % (track_number, track_total)))
+                    row = table.row()
+                    row.add_column(self.FIELD_NAMES[attr], "right")
+                    row.add_column(SEPARATOR)
+                    row.add_column(u"%d/%d" % (track_number, track_total))
             elif (attr == "track_total"):
                 pass
             elif (attr == "album_number"):
@@ -3085,42 +3333,39 @@ class MetaData:
                     #nothing to display
                     pass
                 elif ((album_number is not None) and (album_total is None)):
-                    comment_pairs.append(
-                        (display_unicode(self.FIELD_NAMES[attr]),
-                         unicode(album_number)))
+                    row = table.row()
+                    row.add_column(self.FIELD_NAMES[attr], "right")
+                    row.add_column(SEPARATOR)
+                    row.add_column(unicode(album_number))
                 elif ((album_number is None) and (album_total is not None)):
-                    comment_pairs.append(
-                        (display_unicode(self.FIELD_NAMES[attr]),
-                         u"?/%d" % (album_total,)))
+                    row = table.row()
+                    row.add_column(self.FIELD_NAMES[attr], "right")
+                    row.add_column(SEPARATOR)
+                    row.add_column(u"?/%d" % (album_total,))
                 else:
                     #neither album_number or album_total is None
-                    comment_pairs.append(
-                        (display_unicode(self.FIELD_NAMES[attr]),
-                         u"%d/%d" % (album_number, album_total)))
+                    row = table.row()
+                    row.add_column(self.FIELD_NAMES[attr], "right")
+                    row.add_column(SEPARATOR)
+                    row.add_column(u"%d/%d" % (album_number, album_total))
             elif (attr == "album_total"):
                 pass
             elif (getattr(self, attr) is not None):
-                comment_pairs.append((display_unicode(self.FIELD_NAMES[attr]),
-                                      getattr(self, attr)))
+                row = table.row()
+                row.add_column(self.FIELD_NAMES[attr], "right")
+                row.add_column(SEPARATOR)
+                row.add_column(getattr(self, attr))
 
         #append image data, if necessary
         from .text import LAB_PICTURE
 
         for image in self.images():
-            comment_pairs.append((display_unicode(LAB_PICTURE),
-                                  unicode(image)))
+            row = table.row()
+            row.add_column(LAB_PICTURE, "right")
+            row.add_column(SEPARATOR)
+            row.add_column(unicode(image))
 
-        #right-align the comment key values
-        #and turn them into unicode strings
-        #before returning the completed comment
-        if (len(comment_pairs) > 0):
-            field_len = max([len(field) for (field, value) in comment_pairs])
-            return os.linesep.decode('ascii').join(
-                [u"%s%s : %s" % (u" " * (field_len - len(field)),
-                                 field, value)
-                 for (field, value) in comment_pairs])
-        else:
-            return u""
+        return os.linesep.decode('ascii').join(table.format())
 
     def raw_info(self):
         """returns a Unicode string of low-level MetaData information
@@ -4328,7 +4573,7 @@ def at_a_time(total, per):
 
 
 def iter_first(iterator):
-    """yields a (is_last, item) per item in the iterator
+    """yields a (is_first, item) per item in the iterator
 
     where is_first indicates whether the item is the first one
 

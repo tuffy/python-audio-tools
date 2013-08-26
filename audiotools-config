@@ -23,109 +23,138 @@ import os.path
 
 
 def display_defaults(config, msg):
-    def display_option(msg, label, value, indent=2):
+    def display_option(table, label, value, indent=2):
         """label and value should be unicode objects"""
 
-        msg.output(u"%s%s%s" % (u" " * indent,
-                                u"%s : " % (msg.ansi(label, [msg.BOLD])),
-                                value))
+        row = table.row()
 
-    def display_boolean_option(msg, label, value, indent=2):
+        row.add_column(u" " * indent)
+        row.add_column(audiotools.output_text(label, style="bold"), "right")
+        row.add_column(u" : ")
+        row.add_column(value)
+
+    def display_boolean_option(table, label, value, indent=2):
         """value should be a boolean"""
 
-        display_option(msg, label, u"yes" if value else u"no", indent)
+        display_option(table, label, u"yes" if value else u"no", indent)
 
-    display_option(msg,
+
+    table = audiotools.output_table()
+    display_option(table,
                    _.LAB_AT_CONFIG_VERBOSITY,
                    config.get_default("Defaults",
                                       "verbosity",
                                       "normal").decode('utf-8'),
                    indent=0)
+    for row in table.format(msg.output_isatty()):
+        msg.output(row)
 
     msg.output(u"")
     msg.output(_.OPT_CAT_EXTRACTION)
 
-    msg.new_row()
-    msg.output_column(u"  ")
-    msg.output_column(_.LAB_AT_CONFIG_TYPE)
-    msg.output_column(u" ")
-    msg.output_column(_.LAB_AT_CONFIG_BINARIES, True)
-    msg.output_column(u" ")
-    msg.output_column(_.LAB_AT_CONFIG_DEFAULT_QUALITY)
+    table = audiotools.output_table()
 
-    msg.divider_row([u" ", u"\u2500", u" ", u"\u2500", u" ", u"\u2500"])
+    row = table.row()
+    row.add_column(u"  ")
+    row.add_column(_.LAB_AT_CONFIG_TYPE)
+    row.add_column(u" ")
+    row.add_column(_.LAB_AT_CONFIG_BINARIES, "right")
+    row.add_column(u" ")
+    row.add_column(_.LAB_AT_CONFIG_DEFAULT_QUALITY)
+
+    table.divider_row([u" ", u"\u2500", u" ", u"\u2500", u" ", u"\u2500"])
 
     for audio_type in sorted(audiotools.AVAILABLE_TYPES,
                              lambda x, y: cmp(x.NAME, y.NAME)):
-        msg.new_row()
-        msg.output_column(u"  ")
-        options = []
-        if (config.get_default("System",
-                               "default_type",
-                               "wav") == audio_type.NAME):
-            options.append(msg.UNDERLINE)
-        if (audio_type.has_binaries(audiotools.BIN)):
-            options.append(msg.FG_GREEN)
-        else:
-            options.append(msg.FG_RED)
-        msg.output_column(msg.ansi(audio_type.NAME.decode('ascii'),
-                                   options), True)
-        msg.output_column(u" ")
-        if (len(audio_type.BINARIES) < 2):
-            msg.output_column(u"")
-        else:
-            msg.output_column(
-                u", ".join(
-                    [msg.ansi(b.decode('ascii'),
-                              [msg.FG_GREEN if
-                               audiotools.BIN.can_execute(audiotools.BIN[b])
-                               else msg.FG_RED])
-                     for b in audio_type.BINARIES]),
-                True)
+        row = table.row()
+        row.add_column(u"  ")
 
-        msg.output_column(u" ")
+        row.add_column(
+            audiotools.output_text(
+                audio_type.NAME.decode('ascii'),
+                fg_color=("green" if audio_type.has_binaries(audiotools.BIN)
+                          else "red"),
+                style=("underline" if
+                       (config.get_default("System",
+                                           "default_type",
+                                           "wav") == audio_type.NAME)
+                       else None)),
+            "right")
+
+        row.add_column(u" ")
+
+        if (len(audio_type.BINARIES) < 2):
+            row.add_column(u"")
+        else:
+            row.add_column(
+                audiotools.output_text(u", ").join(
+                    [audiotools.output_text(
+                        b.decode('ascii'),
+                        fg_color=("green" if
+                                  audiotools.BIN.can_execute(
+                                      audiotools.BIN[b]) else "red"))
+                     for b in audio_type.BINARIES]),
+                "right")
+
+        row.add_column(u" ")
+
         if (len(audio_type.COMPRESSION_MODES) < 2):
-            msg.output_column(u" ")
+            row.add_column(u" ")
         else:
             quality = config.get_default("Quality",
                                          audio_type.NAME,
                                          audio_type.DEFAULT_COMPRESSION)
             if (quality in audio_type.COMPRESSION_DESCRIPTIONS):
-                msg.output_column(
+                row.add_column(
                     u"%s - %s" %
                     (quality.decode('ascii'),
                      audio_type.COMPRESSION_DESCRIPTIONS[quality]))
             else:
-                msg.output_column(
+                row.add_column(
                     quality.decode('ascii'))
 
-    msg.output_rows()
+    for row in table.format(msg.output_isatty()):
+        msg.output(row)
     msg.output(u"")
 
+    table = audiotools.output_table()
+
     display_option(
-        msg,
+        table,
         _.LAB_OPTIONS_FILENAME_FORMAT,
         config.get_default("Filenames",
                            "format",
                            audiotools.DEFAULT_FILENAME_FORMAT).decode('utf-8'))
 
-    display_option(msg,
-                   _.LAB_AT_CONFIG_JOBS,
-                   unicode(config.get_default("System",
-                                              "maximum_jobs",
-                                              audiotools.MAX_JOBS)))
+    for row in table.format(msg.output_isatty()):
+        msg.output(row)
 
-    display_boolean_option(msg,
-                           _.LAB_AT_CONFIG_ADD_REPLAY_GAIN,
-                           config.getboolean_default("ReplayGain",
-                                                     "add_by_default",
-                                                     True))
+    table = audiotools.output_table()
+
+    display_option(
+        table,
+        _.LAB_AT_CONFIG_JOBS,
+        unicode(config.get_default("System",
+                                   "maximum_jobs",
+                                   audiotools.MAX_JOBS)))
+
+    display_boolean_option(
+        table,
+        _.LAB_AT_CONFIG_ADD_REPLAY_GAIN,
+        config.getboolean_default("ReplayGain",
+                                  "add_by_default",
+                                  True))
+
+    for row in table.format(msg.output_isatty()):
+        msg.output(row)
 
     msg.output(u"")
     msg.output(_.OPT_CAT_ID3)
 
+    table = audiotools.output_table()
+
     display_option(
-        msg,
+        table,
         _.LAB_AT_CONFIG_ID3V2_VERSION,
         {"id3v2.2": _.LAB_AT_CONFIG_ID3V2_ID3V22,
          "id3v2.3": _.LAB_AT_CONFIG_ID3V2_ID3V23,
@@ -134,14 +163,14 @@ def display_defaults(config, msg):
              config.get_default("ID3", "id3v2", "id3v2.3")))
 
     display_option(
-        msg,
+        table,
         _.LAB_AT_CONFIG_ID3V2_PADDING,
         {True: _.LAB_AT_CONFIG_ID3V2_PADDING_YES,
          False: _.LAB_AT_CONFIG_ID3V2_PADDING_NO}.get(
              config.getboolean_default("ID3", "pad", False)))
 
     display_option(
-        msg,
+        table,
         _.LAB_AT_CONFIG_ID3V1_VERSION,
         {"id3v1.1": _.LAB_AT_CONFIG_ID3V1_ID3V11,
          "none": _.LAB_AT_CONFIG_ID3V1_NONE}.get(
@@ -149,87 +178,99 @@ def display_defaults(config, msg):
                                 "id3v1",
                                 "id3v1.1")))
 
+    for row in table.format(msg.output_isatty()):
+        msg.output(row)
+
     msg.output(u"")
     msg.output(_.OPT_CAT_CD_LOOKUP)
 
-    display_boolean_option(msg,
+    table = audiotools.output_table()
+
+    display_boolean_option(table,
                            _.LAB_AT_CONFIG_USE_MUSICBRAINZ,
                            config.getboolean_default("MusicBrainz",
                                                      "service",
                                                      True))
-    display_option(msg,
+    display_option(table,
                    _.LAB_AT_CONFIG_MUSICBRAINZ_SERVER,
                    config.get_default("MusicBrainz",
                                       "server",
                                       "musicbrainz.org").decode('utf-8'))
 
-    display_option(msg,
+    display_option(table,
                    _.LAB_AT_CONFIG_MUSICBRAINZ_PORT,
                    unicode(config.getint_default("MusicBrainz",
                                                  "port",
                                                  80)))
 
-    msg.output(u"")
+    table.blank_row()
 
-    display_boolean_option(msg,
+    display_boolean_option(table,
                            _.LAB_AT_CONFIG_USE_FREEDB,
                            config.getboolean_default("FreeDB",
                                                      "service",
                                                      True))
-    display_option(msg,
+    display_option(table,
                    _.LAB_AT_CONFIG_FREEDB_SERVER,
                    config.get_default("FreeDB",
                                       "server",
                                       "us.freedb.org").decode('utf-8'))
 
-    display_option(msg,
+    display_option(table,
                    _.LAB_AT_CONFIG_FREEDB_PORT,
                    unicode(config.getint_default("FreeDB",
                                                  "port",
                                                  80)))
 
+    for row in table.format(msg.output_isatty()):
+        msg.output(row)
+
     msg.output(u"")
     msg.output(_.OPT_CAT_SYSTEM)
 
+    table = audiotools.output_table()
+
     display_option(
-        msg,
+        table,
         _.LAB_AT_CONFIG_DEFAULT_CDROM,
         config.get_default("System",
                            "cdrom",
                            "/dev/cdrom").decode(audiotools.FS_ENCODING))
 
     display_option(
-        msg,
+        table,
         _.LAB_AT_CONFIG_CDROM_READ_OFFSET,
         unicode(config.getint_default("System",
                                       "cdrom_read_offset",
                                       0)))
 
     display_option(
-        msg,
+        table,
         _.LAB_AT_CONFIG_CDROM_WRITE_OFFSET,
         unicode(config.getint_default("System",
                                       "cdrom_write_offset",
                                       0)))
 
     display_option(
-        msg,
+        table,
         _.LAB_AT_CONFIG_FS_ENCODING,
         config.get_default("System",
                            "fs_encoding",
                            sys.getfilesystemencoding()).decode('ascii'))
 
     display_option(
-        msg,
+        table,
         _.LAB_AT_CONFIG_IO_ENCODING,
         config.get_default("System", "io_encoding", "UTF-8").decode('ascii'))
 
     display_option(
-        msg,
+        table,
         _.LAB_AT_CONFIG_AUDIO_OUTPUT,
         u", ".join([player.NAME.decode('ascii')
                     for player in audiotools.player.available_outputs()]))
 
+    for row in table.format(msg.output_isatty()):
+        msg.output(row)
 
 def apply_options(options, config):
     """given an OptionParser's options dict
@@ -384,11 +425,11 @@ if (__name__ == '__main__'):
                 format_rows.append(
                     urwid.Columns(
                         [("fixed",
-                          len(audiotools.display_unicode(
+                          len(audiotools.output_text(
                               _.LAB_AT_CONFIG_DEFAULT)),
                           urwid.Text(("label", _.LAB_AT_CONFIG_DEFAULT))),
                          ("fixed",
-                          len(audiotools.display_unicode(
+                          len(audiotools.output_text(
                               _.LAB_AT_CONFIG_TYPE)),
                           urwid.Text(("label", _.LAB_AT_CONFIG_TYPE))),
                          ("fixed", 1, urwid.Text(u" ")),
@@ -399,11 +440,11 @@ if (__name__ == '__main__'):
                 format_rows.append(
                     urwid.Columns(
                         [("fixed",
-                          len(audiotools.display_unicode(
+                          len(audiotools.output_text(
                               _.LAB_AT_CONFIG_DEFAULT)),
                           urwid.Divider(u"\u2500")),
                          ("fixed",
-                          len(audiotools.display_unicode(
+                          len(audiotools.output_text(
                               _.LAB_AT_CONFIG_TYPE)),
                           urwid.Divider(u"\u2500")),
                          ("fixed", 1, urwid.Text(u" ")),
@@ -443,7 +484,7 @@ if (__name__ == '__main__'):
                     format_rows.append(
                         urwid.Columns(
                             [("fixed",
-                              len(audiotools.display_unicode(
+                              len(audiotools.output_text(
                                   _.LAB_AT_CONFIG_DEFAULT)),
                               urwid.RadioButton(
                                   default_format,
@@ -454,7 +495,7 @@ if (__name__ == '__main__'):
                                              audio_type.NAME,
                                              format_example))),
                              ("fixed",
-                              len(audiotools.display_unicode(
+                              len(audiotools.output_text(
                                   _.LAB_AT_CONFIG_TYPE)),
                               urwid.Text(
                                   markup=audio_type.NAME.decode('ascii'),
@@ -562,8 +603,7 @@ if (__name__ == '__main__'):
                             album_number=3,
                             album_total=4,
                             comment=u"Comment Text"),
-                        format=new_format,
-                        suffix=default_audio_format.SUFFIX)
+                        format=new_format)
                 except (audiotools.UnsupportedTracknameField,
                         audiotools.InvalidFilenameFormat):
                     example_text = u"invalid filename format"
@@ -718,7 +758,7 @@ if (__name__ == '__main__'):
                 id3v2_version = []
                 id3v2_version_row = urwid.Columns(
                     [("fixed",
-                      len(audiotools.display_unicode(
+                      len(audiotools.output_text(
                           _.LAB_AT_CONFIG_ID3V2_VERSION)) + 3,
                       urwid.Text(("label", u"%s : " %
                                   (_.LAB_AT_CONFIG_ID3V2_VERSION))))] +
@@ -742,7 +782,7 @@ if (__name__ == '__main__'):
                 id3v1_version = []
                 id3v1_version_row = urwid.Columns(
                     [("fixed",
-                      len(audiotools.display_unicode(
+                      len(audiotools.output_text(
                           _.LAB_AT_CONFIG_ID3V1_VERSION)) + 3,
                       urwid.Text(("label", u"%s : " %
                                  (_.LAB_AT_CONFIG_ID3V1_VERSION))))] +
@@ -764,7 +804,7 @@ if (__name__ == '__main__'):
                 id3_padding = []
                 id3_pad_row = urwid.Columns(
                     [("fixed",
-                      len(audiotools.display_unicode(
+                      len(audiotools.output_text(
                           _.LAB_AT_CONFIG_ID3V2_PADDING)) + 3,
                       urwid.Text(("label", u"%s : " %
                                   (_.LAB_AT_CONFIG_ID3V2_PADDING))))] +
@@ -873,7 +913,7 @@ if (__name__ == '__main__'):
                                                      "normal")
                 verbosity_row = urwid.Columns(
                     [("fixed",
-                      len(audiotools.display_unicode(
+                      len(audiotools.output_text(
                           _.LAB_AT_CONFIG_VERBOSITY)) + 3,
                       urwid.Text(("label", u"%s : " %
                                   (_.LAB_AT_CONFIG_VERBOSITY))))] +

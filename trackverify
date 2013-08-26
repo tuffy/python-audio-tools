@@ -114,20 +114,30 @@ def verify(progress, track):
 
 
 def display_results(result):
-    msg = audiotools.Messenger("trackverify", None)
-    ansi = msg.ansi
-    FG_GREEN = msg.FG_GREEN
-    FG_RED = msg.FG_RED
-
     (filename, track_type, error) = result
     if (error is None):
         return _.LAB_TRACKVERIFY_RESULT % {
             "path": filename,
-            "result": ansi(_.LAB_TRACKVERIFY_OK, [FG_GREEN])}
+            "result": _.LAB_TRACKVERIFY_OK}
     else:
         return _.LAB_TRACKVERIFY_RESULT % {
             "path": filename,
-            "result": ansi(error, [FG_RED])}
+            "result": error}
+
+
+def display_results_tty(result):
+    (filename, track_type, error) = result
+    if (error is None):
+        return _.LAB_TRACKVERIFY_RESULT % {
+            "path": filename,
+            "result": audiotools.output_text(_.LAB_TRACKVERIFY_OK,
+                                             fg_color="green").format(True)}
+    else:
+        return _.LAB_TRACKVERIFY_RESULT % {
+            "path": filename,
+            "result": audiotools.output_text(error,
+                                             fg_color="red").format(True)}
+
 
 #returned if the track isn't found in the AccurateRip database
 AR_NOT_FOUND = -1
@@ -303,7 +313,9 @@ if (__name__ == '__main__'):
             queue.execute(
                 function=verify,
                 progress_text=unicode(audiotools.Filename(track.filename)),
-                completion_output=display_results,
+                completion_output=(display_results_tty
+                                   if msg.info_isatty() else
+                                   display_results),
                 track=track)
 
         msg.ansi_clearline()
@@ -316,41 +328,46 @@ if (__name__ == '__main__'):
         if ((len(formats) > 0) and (not options.no_summary)):
             msg.output(_.LAB_TRACKVERIFY_RESULTS)
             msg.output(u"")
-            msg.new_row()
-            msg.output_column(_.LAB_TRACKVERIFY_RESULT_FORMAT, True)
-            msg.output_column(u" ")
-            msg.output_column(_.LAB_TRACKVERIFY_RESULT_SUCCESS, True)
-            msg.output_column(u" ")
-            msg.output_column(_.LAB_TRACKVERIFY_RESULT_FAILURE, True)
-            msg.output_column(u" ")
-            msg.output_column(_.LAB_TRACKVERIFY_RESULT_TOTAL, True)
-            msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
+
+            table = audiotools.output_table()
+
+            row = table.row()
+            row.add_column(_.LAB_TRACKVERIFY_RESULT_FORMAT, "right")
+            row.add_column(u" ")
+            row.add_column(_.LAB_TRACKVERIFY_RESULT_SUCCESS, "right")
+            row.add_column(u" ")
+            row.add_column(_.LAB_TRACKVERIFY_RESULT_FAILURE, "right")
+            row.add_column(u" ")
+            row.add_column(_.LAB_TRACKVERIFY_RESULT_TOTAL, "right")
+
+            table.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
 
             for format in formats:
                 success = len([r for r in results if ((r[1] == format) and
                                                       (r[2] is None))])
                 failure = len([r for r in results if ((r[1] == format) and
                                                       (r[2] is not None))])
-                msg.new_row()
-                msg.output_column(format.decode('ascii'), True)
-                msg.output_column(u" ")
-                msg.output_column(unicode(success), True)
-                msg.output_column(u" ")
-                msg.output_column(unicode(failure), True)
-                msg.output_column(u" ")
-                msg.output_column(unicode(success + failure), True)
+                row = table.row()
+                row.add_column(format.decode('ascii'), "right")
+                row.add_column(u" ")
+                row.add_column(unicode(success), "right")
+                row.add_column(u" ")
+                row.add_column(unicode(failure), "right")
+                row.add_column(u" ")
+                row.add_column(unicode(success + failure), "right")
 
-            msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
-            msg.new_row()
-            msg.output_column(_.LAB_TRACKVERIFY_SUMMARY, True)
-            msg.output_column(u" ")
-            msg.output_column(unicode(success_total), True)
-            msg.output_column(u" ")
-            msg.output_column(unicode(failure_total), True)
-            msg.output_column(u" ")
-            msg.output_column(unicode(success_total + failure_total), True)
+            table.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
+            row = table.row()
+            row.add_column(_.LAB_TRACKVERIFY_SUMMARY, "right")
+            row.add_column(u" ")
+            row.add_column(unicode(success_total), "right")
+            row.add_column(u" ")
+            row.add_column(unicode(failure_total), "right")
+            row.add_column(u" ")
+            row.add_column(unicode(success_total + failure_total), "right")
 
-            msg.output_rows()
+            for row in table.format(msg.output_isatty()):
+                msg.output(row)
 
         if (failure_total > 0):
             sys.exit(1)
@@ -359,7 +376,9 @@ if (__name__ == '__main__'):
         queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
 
         for tracks in audiotools.group_tracks(
-                get_tracks(args, queued_files, options.accept_list)):
+                get_tracks(options.filenames,
+                           queued_files,
+                           options.accept_list)):
             #perform AccurateRip lookup on album's worth of tracks
             #if tracks are CD formatted
             if (((set([t.channels() for t in tracks]) == set([2])) and
@@ -430,8 +449,10 @@ if (__name__ == '__main__'):
             msg.output(_.LAB_TRACKVERIFY_RESULTS)
             msg.output(u"")
 
-            msg.new_row()
-            msg.output_column(_.LAB_TRACKVERIFY_RESULT_FORMAT, True)
+            table = audiotools.output_table()
+
+            row = table.row()
+            row.add_column(_.LAB_TRACKVERIFY_RESULT_FORMAT, "right")
             divider_row.append(u"-")
             for (output_filter,
                  title) in [(is_match,
@@ -443,40 +464,41 @@ if (__name__ == '__main__'):
                             (is_error,
                              _.LAB_TRACKVERIFY_ACCURATERIP_ERROR)]:
                 if (len(filter(output_filter, results)) > 0):
-                    msg.output_column(u" ")
-                    msg.output_column(title)
+                    row.add_column(u" ")
+                    row.add_column(title)
                     output_filters.append(output_filter)
                     divider_row.extend([u" ", u"-"])
 
-            msg.output_column(u" ")
-            msg.output_column(_.LAB_TRACKVERIFY_RESULT_TOTAL, True)
+            row.add_column(u" ")
+            row.add_column(_.LAB_TRACKVERIFY_RESULT_TOTAL, "right")
             divider_row.extend([u" ", u"-"])
-            msg.divider_row(divider_row)
+            table.divider_row(divider_row)
 
             for format in formats:
                 format_results = [r for r in results if r[1] == format]
-                msg.new_row()
-                msg.output_column(format.decode('ascii'), True)
+                row = table.row()
+                row.add_column(format.decode('ascii'), "right")
                 for output_filter in output_filters:
-                    msg.output_column(u" ")
-                    msg.output_column(
+                    row.add_column(u" ")
+                    row.add_column(
                         unicode(len(filter(output_filter, format_results))),
-                        True)
+                        "right")
 
-                msg.output_column(u" ")
-                msg.output_column(unicode(len(format_results)), True)
+                row.add_column(u" ")
+                row.add_column(unicode(len(format_results)), "right")
 
-            msg.divider_row(divider_row)
-            msg.new_row()
-            msg.output_column(_.LAB_TRACKVERIFY_SUMMARY, True)
+            table.divider_row(divider_row)
+            row = table.row()
+            row.add_column(_.LAB_TRACKVERIFY_SUMMARY, "right")
             for output_filter in output_filters:
-                msg.output_column(u" ")
-                msg.output_column(
-                    unicode(len(filter(output_filter, results))), True)
-            msg.output_column(u" ")
-            msg.output_column(unicode(len(results)), True)
+                row.add_column(u" ")
+                row.add_column(
+                    unicode(len(filter(output_filter, results))), "right")
+            row.add_column(u" ")
+            row.add_column(unicode(len(results)), "right")
 
-            msg.output_rows()
+            for row in table.format(msg.output_isatty()):
+                msg.output(row)
 
         if (len(filter(is_error, results)) > 0):
             sys.exit(1)

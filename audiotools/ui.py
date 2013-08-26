@@ -2209,7 +2209,7 @@ try:
                                              current=0,
                                              done=100)
 
-            label_width = max([len(audiotools.display_unicode(s))
+            label_width = max([len(audiotools.output_text(s))
                                for s in [METADATA_TRACK_NAME,
                                          METADATA_ARTIST_NAME,
                                          METADATA_ALBUM_NAME,
@@ -2444,35 +2444,42 @@ def show_available_formats(msg):
     """given a Messenger object,
     display all the available file formats"""
 
+    from audiotools import output_table,output_text
     from audiotools.text import (LAB_AVAILABLE_FORMATS,
                                  LAB_OUTPUT_TYPE,
                                  LAB_OUTPUT_TYPE_DESCRIPTION)
 
     msg.output(LAB_AVAILABLE_FORMATS)
-    msg.info(u"")
+    msg.output(u"")
 
-    msg.new_row()
-    msg.output_column(LAB_OUTPUT_TYPE, True)
-    msg.output_column(u" ")
-    msg.output_column(LAB_OUTPUT_TYPE_DESCRIPTION)
-    msg.divider_row([u"-", u" ", u"-"])
+    table = output_table()
+
+    row = table.row()
+    row.add_column(LAB_OUTPUT_TYPE, "right")
+    row.add_column(u" ")
+    row.add_column(LAB_OUTPUT_TYPE_DESCRIPTION)
+
+    table.divider_row([u"-", u" ", u"-"])
     for name in sorted(audiotools.TYPE_MAP.keys()):
-        msg.new_row()
-        if (name == audiotools.DEFAULT_TYPE):
-            msg.output_column(msg.ansi(name.decode('ascii'),
-                                       [msg.BOLD,
-                                        msg.UNDERLINE]), True)
-        else:
-            msg.output_column(name.decode('ascii'), True)
-        msg.output_column(u" : ")
-        msg.output_column(audiotools.TYPE_MAP[name].DESCRIPTION)
-    msg.output_rows()
+        row = table.row()
+        row.add_column(
+            output_text(name.decode('ascii'),
+                        style=("underline" if
+                               (name == audiotools.DEFAULT_TYPE)
+                               else None)),
+            "right")
+        row.add_column(u" : ")
+        row.add_column(audiotools.TYPE_MAP[name].DESCRIPTION)
+
+    for row in table.format(msg.output_isatty()):
+        msg.output(row)
 
 
 def show_available_qualities(msg, audiotype):
     """given a Messenger object and AudioFile class,
     display all available quality types for that format"""
 
+    from audiotools import output_table,output_text
     from audiotools.text import (LAB_AVAILABLE_COMPRESSION_TYPES,
                                  LAB_OUTPUT_QUALITY_DESCRIPTION,
                                  LAB_OUTPUT_QUALITY,
@@ -2483,26 +2490,33 @@ def show_available_qualities(msg, audiotype):
                  (audiotype.NAME.decode('ascii')))
         msg.info(u"")
 
-        msg.new_row()
-        msg.output_column(LAB_OUTPUT_QUALITY, True)
-        msg.output_column(u"   ")
-        msg.output_column(LAB_OUTPUT_QUALITY_DESCRIPTION)
-        msg.divider_row([u"-", u" ", u"-"])
+        table = audiotools.output_table()
+
+        row = table.row()
+        row.add_column(LAB_OUTPUT_QUALITY, "right")
+        row.add_column(u"   ")
+        row.add_column(LAB_OUTPUT_QUALITY_DESCRIPTION)
+
+        table.divider_row([u"-", u" ", u"-"])
+
         for mode in audiotype.COMPRESSION_MODES:
-            msg.new_row()
-            if (mode == audiotools.__default_quality__(audiotype.NAME)):
-                msg.output_column(msg.ansi(mode.decode('ascii'),
-                                           [msg.BOLD,
-                                            msg.UNDERLINE]), True)
-            else:
-                msg.output_column(mode.decode('ascii'), True)
+            row = table.row()
+            row.add_column(
+                output_text(mode.decode('ascii'),
+                            style=("underline" if
+                                   (mode == audiotools.__default_quality__(
+                                       audiotype.NAME))
+                                   else None)),
+                "right")
             if (mode in audiotype.COMPRESSION_DESCRIPTIONS):
-                msg.output_column(u" : ")
+                row.add_column(u" : ")
+                row.add_column(audiotype.COMPRESSION_DESCRIPTIONS[mode])
             else:
-                msg.output_column(u"   ")
-            msg.output_column(
-                audiotype.COMPRESSION_DESCRIPTIONS.get(mode, u""))
-        msg.info_rows()
+                row.add_column(u"")
+                row.add_column(u"")
+
+        for row in table.format(msg.info_isatty()):
+            msg.info(row)
     else:
         msg.info(ERR_NO_COMPRESSION_MODES %
                  (audiotype.NAME.decode('ascii')))

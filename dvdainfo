@@ -51,6 +51,8 @@ if (__name__ == '__main__'):
         msg.os_error(err)
         sys.exit(1)
 
+    table = audiotools.output_table()
+
     titleset = dvda[0]
     for (title_num, title) in enumerate(titleset):
         (sample_rate,
@@ -59,36 +61,40 @@ if (__name__ == '__main__'):
          bits_per_sample,
          stream_type) = title.info()
 
-        msg.new_row()
-        msg.output_column(_.LAB_DVDA_TITLE % (title_num + 1), True)
-        msg.output_column(_.LAB_DVDA_TRACKS % (len(title.tracks)), True)
-        msg.output_column(u" : ")
-        msg.output_column(_.LAB_DVDA_TITLE_INFO %
-                          {"minutes": title.pts_length / 90000 / 60,
-                           "seconds": title.pts_length / 90000 % 60,
-                           "channels": channels,
-                           "rate": audiotools.khz(sample_rate),
-                           "bits": bits_per_sample,
-                           "type": {0xA0: u"PCM",
-                                    0xA1: u"MLP"}.get(stream_type,
-                                                      u"UNKNOWN")})
-    msg.blank_row()
-    msg.output_rows()
+        row = table.row()
+        row.add_column(_.LAB_DVDA_TITLE % (title_num + 1), "right")
+        row.add_column(_.LAB_DVDA_TRACKS % (len(title.tracks)), "right")
+        row.add_column(u" : ")
+        row.add_column(_.LAB_DVDA_TITLE_INFO %
+                       {"minutes": title.pts_length / 90000 / 60,
+                        "seconds": title.pts_length / 90000 % 60,
+                        "channels": channels,
+                        "rate": audiotools.khz(sample_rate),
+                        "bits": bits_per_sample,
+                        "type": {0xA0: u"PCM",
+                                 0xA1: u"MLP"}.get(stream_type,
+                                                   u"UNKNOWN")})
+    for row in table.format(msg.output_isatty()):
+        msg.output(row)
 
-    msg.new_row()
-    msg.output_column(_.LAB_DVDAINFO_TITLE)
-    msg.output_column(u" ")
-    msg.output_column(_.LAB_DVDAINFO_TRACK)
-    msg.output_column(u" ")
-    msg.output_column(_.LAB_DVDAINFO_LENGTH)
-    msg.output_column(u"   ")
-    msg.output_column(_.LAB_DVDAINFO_FILENAME)
-    msg.output_column(u" ")
-    msg.output_column(_.LAB_DVDAINFO_STARTSECTOR)
-    msg.output_column(u" ")
-    msg.output_column(_.LAB_DVDAINFO_ENDSECTOR)
-    msg.output_column(u" ")
-    msg.output_column(_.LAB_DVDAINFO_TICKS)
+    msg.output(u"")
+
+    table = audiotools.output_table()
+
+    row = table.row()
+    row.add_column(_.LAB_DVDAINFO_TITLE)
+    row.add_column(u" ")
+    row.add_column(_.LAB_DVDAINFO_TRACK)
+    row.add_column(u" ")
+    row.add_column(_.LAB_DVDAINFO_LENGTH)
+    row.add_column(u"   ")
+    row.add_column(_.LAB_DVDAINFO_FILENAME)
+    row.add_column(u" ")
+    row.add_column(_.LAB_DVDAINFO_STARTSECTOR)
+    row.add_column(u" ")
+    row.add_column(_.LAB_DVDAINFO_ENDSECTOR)
+    row.add_column(u" ")
+    row.add_column(_.LAB_DVDAINFO_TICKS)
 
     msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-",
                      u" ", u"-", u" ", u"-", u" ", u"-"])
@@ -98,34 +104,35 @@ if (__name__ == '__main__'):
             for (i, (aob_file,
                      start_sector,
                      end_sector)) in enumerate(track.sectors()):
-                msg.new_row()
+                row = table.row()
                 if (i == 0):
-                    msg.output_column(unicode(title_num + 1), True)
-                    msg.output_column(u" ")
-                    msg.output_column(unicode(track_num + 1), True)
-                    msg.output_column(u" ")
-                    msg.output_column(_.LAB_TRACK_LENGTH %
-                                      (track.pts_length / 90000 / 60,
-                                       track.pts_length / 90000 % 60),
-                                      True)
+                    row.add_column(unicode(title_num + 1), "right")
+                    row.add_column(u" ")
+                    row.add_column(unicode(track_num + 1), "right")
+                    row.add_column(u" ")
+                    row.add_column(_.LAB_TRACK_LENGTH %
+                                   (track.pts_length / 90000 / 60,
+                                    track.pts_length / 90000 % 60),
+                                   "right")
                 else:
-                    msg.output_column(u"")
-                    msg.output_column(u" ")
-                    msg.output_column(u"")
-                    msg.output_column(u" ")
-                    msg.output_column(u"")
-                msg.output_column(u"   ")
-                msg.output_column(
+                    row.add_column(u"")
+                    row.add_column(u" ")
+                    row.add_column(u"")
+                    row.add_column(u" ")
+                    row.add_column(u"")
+                row.add_column(u"   ")
+                row.add_column(
                     unicode(audiotools.Filename(os.path.basename(aob_file))),
-                    True)
-                msg.output_column(u" ")
-                msg.output_column(unicode(start_sector), True)
-                msg.output_column(u" ")
-                msg.output_column(unicode(end_sector - 1), True)
-                msg.output_column(u" ")
+                    "right")
+                row.add_column(u" ")
+                row.add_column(unicode(start_sector), "right")
+                row.add_column(u" ")
+                row.add_column(unicode(end_sector - 1), "right")
+                row.add_column(u" ")
                 if (i == 0):
-                    msg.output_column(unicode(track.pts_length), True)
+                    row.add_column(unicode(track.pts_length), "right")
                 else:
-                    msg.output_column(u" ")
+                    row.add_column(u" ")
 
-    msg.output_rows()
+    for row in table.format(msg.output_isatty()):
+        msg.output(row)

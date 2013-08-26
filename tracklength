@@ -48,19 +48,19 @@ class FormatSummary:
         self.file_count += 1
         self.total_size += os.path.getsize(audiofile.filename)
 
-    def to_row(self, name, msg):
-        msg.new_row()
-        msg.output_column(name, True)
-        msg.output_column(u" ")
-        msg.output_column(unicode(self.file_count), True)
-        msg.output_column(u" ")
+    def to_row(self, name, table):
+        row = table.row()
+        row.add_column(name, "right")
+        row.add_column(u" ")
+        row.add_column(unicode(self.file_count), "right")
+        row.add_column(u" ")
         format_length = int(self.total_length)
-        msg.output_column(_.LAB_TRACKLENGTH %
-                          {"hours": format_length / (60 * 60),
-                           "minutes": (format_length / 60) % 60,
-                           "seconds": format_length % 60},
-                          True)
-        msg.output_column(u" ")
+        row.add_column(_.LAB_TRACKLENGTH %
+                       {"hours": format_length / (60 * 60),
+                        "minutes": (format_length / 60) % 60,
+                        "seconds": format_length % 60},
+                       "right")
+        row.add_column(u" ")
         if (self.total_size > (2 ** 40)):
             #terabytes
             total_size = u"%sT" % \
@@ -84,7 +84,8 @@ class FormatSummary:
         else:
             #bytes
             total_size = unicode(self.total_size)
-        msg.output_column(total_size, True)
+
+        row.add_column(total_size, "right")
 
 
 if (__name__ == '__main__'):
@@ -114,20 +115,25 @@ if (__name__ == '__main__'):
         total_summary.add(audio_file)
 
     if (total_summary.file_count > 0):
-        msg.new_row()
-        msg.output_column(_.LAB_TRACKLENGTH_FILE_FORMAT, True)
-        msg.output_column(u" ")
-        msg.output_column(_.LAB_TRACKLENGTH_FILE_COUNT, True)
-        msg.output_column(u" ")
-        msg.output_column(_.LAB_TRACKLENGTH_FILE_LENGTH, True)
-        msg.output_column(u" ")
-        msg.output_column(_.LAB_TRACKLENGTH_FILE_SIZE, True)
-        msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
+        table = audiotools.output_table()
+
+        row = table.row()
+        row.add_column(_.LAB_TRACKLENGTH_FILE_FORMAT, "right")
+        row.add_column(u" ")
+        row.add_column(_.LAB_TRACKLENGTH_FILE_COUNT, "right")
+        row.add_column(u" ")
+        row.add_column(_.LAB_TRACKLENGTH_FILE_LENGTH, "right")
+        row.add_column(u" ")
+        row.add_column(_.LAB_TRACKLENGTH_FILE_SIZE, "right")
+
+        table.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
+
         for name in sorted(format_summaries.keys()):
-            format_summaries[name].to_row(name.decode('ascii'), msg)
+            format_summaries[name].to_row(name.decode('ascii'), table)
 
         if (len(format_summaries.keys()) > 1):
             msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
-            total_summary.to_row(_.LAB_TRACKLENGTH_FILE_TOTAL, msg)
+            total_summary.to_row(_.LAB_TRACKLENGTH_FILE_TOTAL, table)
 
-        msg.output_rows()
+        for row in table.format(msg.output_isatty()):
+            msg.output(row)

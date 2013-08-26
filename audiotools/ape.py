@@ -577,20 +577,20 @@ class ApeTag(MetaData):
         """returns the ApeTag as a human-readable unicode string"""
 
         from os import linesep
-        from . import display_unicode
+        from . import output_table
 
         #align tag values on the "=" sign
-        if (len(self.tags) > 0):
-            max_indent = max([len(display_unicode(tag.raw_info_pair()[0]))
-                              for tag in self.tags])
-            tag_strings = [u"%s%s = %s" %
-                           (u" " * (max_indent - len(display_unicode(key))),
-                            key, value) for (key, value) in
-                           [tag.raw_info_pair() for tag in self.tags]]
-        else:
-            tag_strings = []
+        table = output_table()
 
-        return linesep.decode('ascii').join([u"APEv2:"] + tag_strings)
+        for tag in self.tags:
+            row = table.row()
+            (key, value) = tag.raw_info_pair()
+            row.add_column(key, "right")
+            row.add_column(u" = ")
+            row.add_column(value)
+
+        return (u"APEv2:" + linesep.decode('ascii') +
+                linesep.decode('ascii').join(table.format()))
 
     @classmethod
     def supports_images(cls):

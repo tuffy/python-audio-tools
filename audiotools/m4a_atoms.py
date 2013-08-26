@@ -1111,7 +1111,6 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         """
 
         from os import linesep
-        from . import display_unicode
 
         if (self.has_ilst_atom()):
             comment_lines = [u"M4A:"]

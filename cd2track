@@ -352,7 +352,7 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
         encoded[-1].set_metadata(output_metadata)
-        progress.clear()
+        progress.clear_rows()
 
         rip_log[cd_track.track_number] = cd_track.rip_log
         accuraterip_log[cd_track.track_number] = accuraterip_reader.checksum()
@@ -385,7 +385,10 @@ if (__name__ == '__main__'):
 
     #display ripping log
     msg.output(_.LAB_CD2TRACK_LOG)
-    msg.new_row()
+
+    table = audiotools.output_table()
+
+    row = table.row()
     extract_headers = [u"track", u"rderr", u"skip", u"atom",
                        u"edge", u"drop", u"dup", u"drift",
                        _.LAB_ACCURATERIP_CHECKSUM,
@@ -394,38 +397,39 @@ if (__name__ == '__main__'):
 
     dividers = []
 
-    msg.output_column(extract_headers[0])
+    row.add_column(extract_headers[0])
     dividers.append(u"-")
     for header in extract_headers[1:]:
-        msg.output_column(u" ")
-        msg.output_column(header, True)
+        row.add_column(u" ")
+        row.add_column(header, "right")
         dividers.append(u" ")
         dividers.append(u"-")
 
-    msg.divider_row(dividers)
+    table.divider_row(dividers)
 
     for track_number in sorted(rip_log.keys()):
-        msg.new_row()
-        msg.output_column(unicode(track_number), True)
+        row = table.row()
+        row.add_column(unicode(track_number), "right")
         log = rip_log[track_number]
         for key in extract_keys:
-            msg.output_column(u" ")
-            msg.output_column(unicode(log.get(key, 0)), True)
+            row.add_column(u" ")
+            row.add_column(unicode(log.get(key, 0)), "right")
 
         track_checksum = accuraterip_log[track_number]
-        msg.output_column(u" ")
-        msg.output_column(u"%8.8X" % (track_checksum))
-        msg.output_column(u" ")
+        row.add_column(u" ")
+        row.add_column(u"%8.8X" % (track_checksum))
+        row.add_column(u" ")
         ar_matches = accuraterip_checksums.get(track_number, [])
         if (len(ar_matches) == 0):
-            msg.output_column(_.LAB_ACCURATERIP_NOT_FOUND)
+            row.add_column(_.LAB_ACCURATERIP_NOT_FOUND)
         else:
             for (confidence, ar_checksum, ar_crc2) in ar_matches:
                 if (track_checksum == ar_checksum):
-                    msg.output_column(
+                    row.add_column(
                         _.LAB_ACCURATERIP_CONFIDENCE % (confidence))
                     break
             else:
-                msg.output_column(_.LAB_ACCURATERIP_MISMATCH)
+                row.add_column(_.LAB_ACCURATERIP_MISMATCH)
 
-    msg.output_rows()
+    for row in table.format(msg.output_isatty()):
+        msg.output(row)

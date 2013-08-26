@@ -108,24 +108,28 @@ if (__name__ == '__main__'):
                     msg.output(u"")
                 replay_gain = file.replay_gain()
                 if (replay_gain is not None):
+                    table = audiotools.output_table()
+
                     msg.output(_.LAB_TRACKINFO_REPLAYGAIN)
-                    msg.new_row()
-                    msg.output_column(_.LAB_TRACKINFO_TRACK_GAIN, True)
-                    msg.output_column(u" : ")
-                    msg.output_column(unicode(replay_gain.track_gain) + u" dB")
-                    msg.new_row()
-                    msg.output_column(_.LAB_TRACKINFO_TRACK_PEAK, True)
-                    msg.output_column(u" : ")
-                    msg.output_column(u"%f" % (replay_gain.track_peak))
-                    msg.new_row()
-                    msg.output_column(_.LAB_TRACKINFO_ALBUM_GAIN, True)
-                    msg.output_column(u" : ")
-                    msg.output_column(unicode(replay_gain.album_gain) + u" dB")
-                    msg.new_row()
-                    msg.output_column(_.LAB_TRACKINFO_ALBUM_PEAK, True)
-                    msg.output_column(u" : ")
-                    msg.output_column(u"%f" % (replay_gain.album_peak))
-                    msg.output_rows()
+                    row = table.row()
+                    row.add_column(_.LAB_TRACKINFO_TRACK_GAIN, "right")
+                    row.add_column(u" : ")
+                    row.add_column(unicode(replay_gain.track_gain) + u" dB")
+                    row = table.row()
+                    row.add_column(_.LAB_TRACKINFO_TRACK_PEAK, "right")
+                    row.add_column(u" : ")
+                    row.add_column(u"%f" % (replay_gain.track_peak))
+                    row = table.row()
+                    row.add_column(_.LAB_TRACKINFO_ALBUM_GAIN, "right")
+                    row.add_column(u" : ")
+                    row.add_column(unicode(replay_gain.album_gain) + u" dB")
+                    row = table.row()
+                    row.add_column(_.LAB_TRACKINFO_ALBUM_PEAK, "right")
+                    row.add_column(u" : ")
+                    row.add_column(u"%f" % (replay_gain.album_peak))
+
+                    for row in table.format(msg.output_isatty()):
+                        msg.output(row)
                     msg.output(u"")
                 cuesheet = file.get_cuesheet()
                 if (cuesheet is not None):
@@ -149,34 +153,38 @@ if (__name__ == '__main__'):
 
                     index_numbers = list(index_numbers)
                     index_numbers.sort()
-                    msg.new_row()
-                    msg.output_column(u"  ")
-                    msg.output_column(_.LAB_TRACKINFO_CUESHEET_TRACK, True)
+
+                    table = audiotools.output_table()
+
+                    row = table.row()
+                    row.add_column(u"  ")
+                    row.add_column(_.LAB_TRACKINFO_CUESHEET_TRACK, "right")
                     for i in index_numbers:
-                        msg.output_column(u"  ")
-                        msg.output_column(
-                            _.LAB_TRACKINFO_CUESHEET_INDEX % (i), True)
-                    msg.output_column(u"  ")
-                    msg.output_column(_.LAB_TRACKINFO_CUESHEET_ISRC, True)
+                        row.add_column(u"  ")
+                        row.add_column(
+                            _.LAB_TRACKINFO_CUESHEET_INDEX % (i), "right")
+                    row.add_column(u"  ")
+                    row.add_column(_.LAB_TRACKINFO_CUESHEET_ISRC, "right")
 
                     for t in sorted(indexes.keys()):
-                        msg.new_row()
-                        msg.output_column(u"")
-                        msg.output_column(unicode(t), True)
+                        row = table.row()
+                        row.add_column(u"")
+                        row.add_column(unicode(t), "right")
                         track_indexes = indexes[t]
                         for i in index_numbers:
-                            msg.output_column(u"")
+                            row.add_column(u"")
                             if (i in track_indexes):
                                 index = track_indexes[i]
-                                msg.output_column(
+                                row.add_column(
                                     audiotools.build_timestamp(
                                         int(index * 75)).decode('ascii'))
                             else:
-                                msg.output_column(u"")
-                        msg.output_column(u"")
-                        msg.output_column(isrcs[i])
+                                row.add_column(u"")
+                        row.add_column(u"")
+                        row.add_column(isrcs[i])
 
-                    msg.output_rows()
+                    for row in table.format(msg.output_isatty()):
+                        msg.output(row)
                     msg.output(u"")
             else:
                 if (metadata is not None):

@@ -134,31 +134,28 @@ class VorbisComment(MetaData):
         """
 
         from os import linesep
-        from . import display_unicode
+        from . import output_table
 
         #align text strings on the "=" sign, if any
 
-        if (len(self.comment_strings) > 0):
-            max_indent = max([len(display_unicode(comment.split(u"=", 1)[0]))
-                              for comment in self.comment_strings
-                              if u"=" in comment])
+        table = output_table()
 
-            comment_strings = []
-            for comment in self.comment_strings:
-                if (u"=" in comment):
-                    comment_strings.append(
-                        u" " * (max_indent -
-                                len(
-                                display_unicode(comment.split(u"=", 1)[0]))) +
-                        comment)
-                else:
-                    comment_strings.append(comment)
-        else:
-            comment_strings = 0
+        for comment in self.comment_strings:
+            row = table.row()
 
-        return linesep.decode('ascii').join(
-            [u"%s:  %s" % (self.__comment_name__(), self.vendor_string)] +
-            comment_strings)
+            if (u"=" in comment):
+                (tag, value) = comment.split(u"=", 1)
+                row.add_column(tag, "right")
+                row.add_column(u"=")
+                row.add_column(value)
+            else:
+                row.add_column(comment)
+                row.add_column(u"")
+                row.add_column(u"")
+
+        return (u"%s:  %s" % (self.__comment_name__(),
+                              self.vendor_string) + linesep.decode('ascii') +
+                linesep.decode('ascii').join(table.format()))
 
     def __getattr__(self, attr):
         #returns the first matching key for the given attribute
