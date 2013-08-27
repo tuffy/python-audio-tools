@@ -1906,126 +1906,24 @@ Messenger Objects
    Otherwise, there's a good chance that non-ASCII filenames will
    be garbled.
 
+.. method:: Messenger.output_isatty()
+
+   Returns ``True`` if the output method sends to a TTY rather than a file.
+
+.. method:: Messenger.info_isatty()
+
+   Returns ``True`` if the info method sends to a TTY rather than a file.
+
+.. method:: Messenger.error_isatty()
+
+   Returns ``True`` if the error method sends to a TTY rather than a file.
+
 .. method:: Messenger.usage(string)
 
    Outputs usage text, Unicode ``string`` and a newline to stderr.
 
    >>> m.usage(u"<arg1> <arg2> <arg3>")
    *** Usage: audiotools <arg1> <arg2> <arg3>
-
-.. method:: Messenger.new_row()
-
-   This method begins the process of creating aligned table data output.
-   It sets up a new row in our output table to which we can add
-   columns of text which will be aligned automatically upon completion.
-
-.. method:: Messenger.output_column(string[, right_aligned])
-
-   This method adds a new Unicode string to the currently open row.
-   If ``right_aligned`` is ``True``, its text will be right-aligned
-   when it is displayed.
-   When you've finished with one row and wish to start on another,
-   call :meth:`Messenger.new_row` again.
-
-.. method:: Messenger.blank_row()
-
-   This method adds a completely blank row to its table data.
-   Note that the first row within an output table cannot be blank.
-
-.. method:: Messenger.output_rows()
-
-   Formats and displays the entire table data through the
-   :meth:`Messenger.output` method (which will do nothing
-   if ``verbosity`` level is ``"silent"``).
-
-   >>> m.new_row()
-   >>> m.output_column(u"a",True)
-   >>> m.output_column(u" : ",True)
-   >>> m.output_column(u"This is some test data")
-   >>> m.new_row()
-   >>> m.output_column(u"ab",True)
-   >>> m.output_column(u" : ",True)
-   >>> m.output_column(u"Another row of test data")
-   >>> m.new_row()
-   >>> m.output_column(u"abc",True)
-   >>> m.output_column(u" : ",True)
-   >>> m.output_column(u"The final row of test data")
-   >>> m.output_rows()
-     a : This is some test data
-    ab : Another row of test data
-   abc : The final row of test data
-
-.. method:: Messenger.info_rows()
-
-   Functions like :meth:`Messenger.output_rows`,
-   but displays output via :meth:`Messenger.info` rather than
-   :meth:`Messenger.output`.
-
-.. method:: Messenger.divider_row(dividers)
-
-   This method takes a list of vertical divider Unicode characters,
-   one per output column, and multiplies those characters by their
-   column width when displayed.
-
-   >>> m.new_row()
-   >>> m.output_column(u"foo")
-   >>> m.output_column(u" ")
-   >>> m.output_column(u"bar")
-   >>> m.divider_row([u"-",u" ",u"-"])
-   >>> m.new_row()
-   >>> m.output_column(u"test")
-   >>> m.output_column(u" ")
-   >>> m.output_column(u"column")
-   >>> m.output_rows()
-   foo  bar
-   ---- ------
-   test column
-
-.. method:: Messenger.ansi(string, codes)
-
-   Takes a Unicode string and list of ANSI SGR code integers.
-   If ``stdout`` is to a TTY, returns a Unicode string
-   formatted with those codes.
-   If not, the string is returned as is.
-   Codes can be taken from the many predefined values
-   in the :class:`Messenger` class.
-   Note that not all output terminals are guaranteed to support
-   all ANSI escape codes.
-
-.. method:: Messenger.ansi_err(string, codes)
-
-   This is identical to ``Messenger.ansi``, but it checks whether
-   ``stderr`` is a TTY instead of ``stdout``.
-
-    ======================== ====================
-    Code                     Effect
-    ------------------------ --------------------
-    ``Messenger.RESET``      resets current codes
-    ``Messenger.BOLD``       bold font
-    ``Messenger.FAINT``      faint font
-    ``Messenger.ITALIC``     italic font
-    ``Messenger.UNDERLINE``  underline text
-    ``Messenger.BLINK_SLOW`` blink slowly
-    ``Messenger.BLINK_FAST`` blink quickly
-    ``Messenger.REVERSE``    reverse text
-    ``Messenger.STRIKEOUT``  strikeout text
-    ``Messenger.FG_BLACK``   foreground black
-    ``Messenger.FG_RED``     foreground red
-    ``Messenger.FG_GREEN``   foreground green
-    ``Messenger.FG_YELLOW``  foreground yellow
-    ``Messenger.FG_BLUE``    foreground blue
-    ``Messenger.FG_MAGENTA`` foreground magenta
-    ``Messenger.FG_CYAN``    foreground cyan
-    ``Messenger.FG_WHITE``   foreground write
-    ``Messenger.BG_BLACK``   background black
-    ``Messenger.BG_RED``     background red
-    ``Messenger.BG_GREEN``   background green
-    ``Messenger.BG_YELLOW``  background yellow
-    ``Messenger.BG_BLUE``    background blue
-    ``Messenger.BG_MAGENTA`` background magenta
-    ``Messenger.BG_CYAN``    background cyan
-    ``Messenger.BG_WHITE``   background white
-    ======================== ====================
 
 .. method:: Messenger.ansi_clearline()
 
@@ -2169,13 +2067,15 @@ ProgressDisplay Objects
    >>> AudioType.add_replay_gain(filename_list, rg_progress.update)
    >>> rg_Progress.final_message()
 
-display_unicode Objects
-^^^^^^^^^^^^^^^^^^^^^^^
+output_text Objects
+^^^^^^^^^^^^^^^^^^^
 
 This class is for displaying portions of a Unicode string to
-the screen.
+the screen and applying formatting such as color via ANSI escape
+sequences.
+
 The reason this is needed is because not all Unicode characters
-are the same width.
+are the same width when displayed to the screen.
 So, for example, if one wishes to display a portion of a Unicode string to
 a screen that's 80 ASCII characters wide, one can't simply perform:
 
@@ -2184,39 +2084,64 @@ a screen that's 80 ASCII characters wide, one can't simply perform:
 since some of those Unicode characters might be double width,
 which would cause the string to wrap.
 
-.. class:: display_unicode(unicode_string)
+.. class:: output_text(unicode_string[, fg_color][, bg_color][, style])
 
-.. method:: display_unicode.head(display_characters)
+   ``unicode_string`` is the text to display.
+   ``fg_color`` and ``bg_color`` may be one of
+   ``"black"``, ``"red"``, ``"green"``, ``"yellow"``,
+   ``"blue"``, ``"magenta"``, ``"cyan"``, or ``"white"``.
+   ``style`` may be one of
+   ``"bold"``, ``"underline"``, ``"blink"`` or ``"inverse"``.
 
-   Returns a new :class:`display_unicode` object that's been
-   truncated to the given number of display characters.
+.. method:: output_text.set_format([fg_color][, bg_color][, style])
+
+   Applies the given format strings, replacing any existing format.
+
+.. method:: output_text.format([is_tty])
+
+   If formatting is present and ``is_tty`` is ``True``,
+   returns a Unicode string with ANSI escape sequences applied.
+   Otherwise, returns the Unicode string with no ANSI formatting.
+
+.. method:: output_text.head(display_characters)
+
+   Returns a new :class:`output_text` object that's been
+   truncated up to the given number of display characters,
+   but may return less.
 
    >>> s = u"".join(map(unichr, range(0x30a1, 0x30a1+25)))
    >>> len(s)
    25
-   >>> u = unicode(display_unicode(s).head(40))
+   >>> u = unicode(output_text(s).head(40))
    >>> len(u)
    20
    >>> print repr(u)
    u'\u30a1\u30a2\u30a3\u30a4\u30a5\u30a6\u30a7\u30a8\u30a9\u30aa\u30ab\u30ac\u30ad\u30ae\u30af\u30b0\u30b1\u30b2\u30b3\u30b4'
 
-.. method:: display_unicode.tail(display_characters)
+.. note::
 
-   Returns a new :class:`display_unicode` object that's been
-   truncated to the given number of display characters.
+   Because some characters are double-width, this method
+   along with :meth:`output_text.tail` and :meth:`output_text.split`
+   may not return strings that are the same length as requested
+   if the dividing point in the middle of a character.
+
+.. method:: output_text.tail(display_characters)
+
+   Returns a new :class:`output_text` object that's been
+   truncated up to the given number of display characters.
 
    >>> s = u"".join(map(unichr, range(0x30a1, 0x30a1+25)))
    >>> len(s)
    25
-   >>> u = unicode(display_unicode(s).tail(40))
+   >>> u = unicode(output_text(s).tail(40))
    >>> len(u)
    20
    >>> print repr(u)
    u'\u30a6\u30a7\u30a8\u30a9\u30aa\u30ab\u30ac\u30ad\u30ae\u30af\u30b0\u30b1\u30b2\u30b3\u30b4\u30b5\u30b6\u30b7\u30b8\u30b9'
 
-.. method:: display_unicode.split(display_characters)
+.. method:: output_text.split(display_characters)
 
-   Returns a tuple of :class:`display_unicode` objects.
+   Returns a tuple of :class:`output_text` objects.
    The first is up to ``display_characters`` wide,
    while the second contains the remainder.
 
@@ -2226,6 +2151,127 @@ which would cause the string to wrap.
    u'\u30a1\u30a2\u30a3\u30a4\u30a5\u30a6\u30a7\u30a8\u30a9\u30aa\u30ab\u30ac\u30ad\u30ae\u30af\u30b0\u30b1\u30b2\u30b3\u30b4'
    >>> print repr(unicode(tail))
    u'\u30b5\u30b6\u30b7\u30b8\u30b9'
+
+.. method:: output_text.join(output_texts)
+
+   Given an iterable collection of :class:`output_text` objects,
+   returns an :class:`output_list` joined by our formatted text.
+
+output_list Objects
+^^^^^^^^^^^^^^^^^^^
+
+output_list is an :class:`output_text` subclass
+for formatting multiple :class:`output_text` objects as a unit.
+
+.. class:: output_list(output_texts[, fg_color][, bg_color][, style])
+
+   ``output_texts`` is an iterable collection of
+   :class:`output_text` or unicode objects.
+   ``fg_color`` and ``bg_color`` may be one of
+   ``"black"``, ``"red"``, ``"green"``, ``"yellow"``,
+   ``"blue"``, ``"magenta"``, ``"cyan"``, or ``"white"``.
+   ``style`` may be one of
+   ``"bold"``, ``"underline"``, ``"blink"`` or ``"inverse"``.
+
+.. warning::
+
+   Formatting is unlikely to nest properly since
+   ANSI is un-escaped to the terminal default.
+   Therefore, if the :class:`output_list` has formatting,
+   its contained :class:`output_text` objects should not have formatting.
+   Or if the :class:`output_text` objects do have formatting,
+   the :class:`output_list` container should not have formatting.
+
+.. method:: output_list.set_format([fg_color][, bg_color][, style])
+
+   Applies the given format strings, replacing any existing format.
+
+.. method:: output_list.format([is_tty])
+
+   If formatting is present and ``is_tty`` is ``True``,
+   returns a Unicode string with ANSI escape sequences applied.
+   Otherwise, returns the Unicode string with no ANSI formatting.
+
+.. method:: output_list.head(display_characters)
+
+   Returns a new :class:`output_list` object that's been
+   truncated up to the given number of display characters,
+   but may return less.
+
+.. method:: output_list.tail(display_characters)
+
+   Returns a new :class:`output_list` object that's been
+   truncated up to the given number of display characters.
+
+.. method:: output_list.split(display_characters)
+
+   Returns a tuple of :class:`output_text` objects.
+   The first is up to ``display_characters`` wide,
+   while the second contains the remainder.
+
+.. method:: output_list.join(output_texts)
+
+   Given an iterable collection of :class:`output_text` objects,
+   returns an :class:`output_list` joined by our formatted text.
+
+output_table Objects
+^^^^^^^^^^^^^^^^^^^^
+
+output_table is for formatting text into rows and columns.
+
+.. class:: output_table()
+
+.. method:: output_table.row()
+
+   Adds new row to table and returns :class:`output_table_row` object
+   which columns may be added to.
+
+.. method:: output_table.blank_row()
+
+   Adds empty row to table whose columns will be blank.
+
+.. method:: output_table.divider_row(dividers)
+
+   Takes a list of Unicode characters, one per column,
+   and generates a row which will expand those characters
+   as needed to fill each column.
+
+.. method:: output_table.format([is_tty])
+
+   Yields one formatted Unicode string per row.
+   If ``is_tty`` is ``True``, rows may contain ANSI escape sequences
+   for color and style.
+
+output_table_row Objects
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+output_table_row is a container for table columns
+and is returned from :meth:`output_table.row()`
+rather than instantiated directly.
+
+.. class:: output_table_row()
+
+.. method:: output_table_row.__len__()
+
+   Returns the total number of columns in the table.
+
+.. method:: output_table_row.add_column(text[, alignment="left"])
+
+   Adds text, which may be a Unicode string or
+   :class:`output_text` object.
+   ``alignment`` may be ``"left"``, ``"center"`` or ``"right"``.
+
+.. method:: output_table_row.column_width(column)
+
+   Returns the width of the given column in printable characters.
+
+.. method:: output_table_row.format(column_widths[, is_tty])
+
+   Given a list of column widths, returns the table row
+   as a Unicode string such that each column is padded to the
+   corresponding width depending on its alignment.
+   If ``is_tty`` is ``True``, columns may contain ANSI escape
+   sequences for color and style.
 
 Exceptions
 ----------
