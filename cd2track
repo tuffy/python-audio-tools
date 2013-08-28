@@ -398,12 +398,12 @@ if (__name__ == '__main__'):
     dividers = []
 
     row.add_column(extract_headers[0])
-    dividers.append(u"-")
+    dividers.append(_.DIV)
     for header in extract_headers[1:]:
         row.add_column(u" ")
         row.add_column(header, "right")
         dividers.append(u" ")
-        dividers.append(u"-")
+        dividers.append(_.DIV)
 
     table.divider_row(dividers)
 

@@ -62,7 +62,7 @@ def display_defaults(config, msg):
     row.add_column(u" ")
     row.add_column(_.LAB_AT_CONFIG_DEFAULT_QUALITY)
 
-    table.divider_row([u" ", u"\u2500", u" ", u"\u2500", u" ", u"\u2500"])
+    table.divider_row([u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
 
     for audio_type in sorted(audiotools.AVAILABLE_TYPES,
                              lambda x, y: cmp(x.NAME, y.NAME)):

@@ -19,6 +19,8 @@
 
 """a text strings module"""
 
+DIV = u"\u2500"
+
 #Utility usage
 USAGE_TRACKCMP_CDIMAGE = u"<CD image> <track 1> <track 2> ..."
 USAGE_TRACKCMP_FILES = u"<track 1> <track 2>"

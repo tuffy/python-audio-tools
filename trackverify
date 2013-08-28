@@ -340,7 +340,7 @@ if (__name__ == '__main__'):
             row.add_column(u" ")
             row.add_column(_.LAB_TRACKVERIFY_RESULT_TOTAL, "right")
 
-            table.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
+            table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
 
             for format in formats:
                 success = len([r for r in results if ((r[1] == format) and
@@ -356,7 +356,7 @@ if (__name__ == '__main__'):
                 row.add_column(u" ")
                 row.add_column(unicode(success + failure), "right")
 
-            table.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
+            table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
             row = table.row()
             row.add_column(_.LAB_TRACKVERIFY_SUMMARY, "right")
             row.add_column(u" ")
@@ -453,7 +453,7 @@ if (__name__ == '__main__'):
 
             row = table.row()
             row.add_column(_.LAB_TRACKVERIFY_RESULT_FORMAT, "right")
-            divider_row.append(u"-")
+            divider_row.append(_.DIV)
             for (output_filter,
                  title) in [(is_match,
                              _.LAB_TRACKVERIFY_ACCURATERIP_MATCH),
@@ -467,11 +467,11 @@ if (__name__ == '__main__'):
                     row.add_column(u" ")
                     row.add_column(title)
                     output_filters.append(output_filter)
-                    divider_row.extend([u" ", u"-"])
+                    divider_row.extend([u" ", _.DIV])
 
             row.add_column(u" ")
             row.add_column(_.LAB_TRACKVERIFY_RESULT_TOTAL, "right")
-            divider_row.extend([u" ", u"-"])
+            divider_row.extend([u" ", _.DIV])
             table.divider_row(divider_row)
 
             for format in formats:

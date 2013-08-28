@@ -371,7 +371,7 @@ if (__name__ == '__main__'):
                 sys.exit(1)
 
             encoded[-1].set_metadata(output_metadata)
-            progress.clear()
+            progress.clear_rows()
 
             msg.info(
                 audiotools.output_progress(
@@ -399,7 +399,7 @@ if (__name__ == '__main__'):
             output_class.add_replay_gain([f.filename for f in encoded],
                                          rg_progress.update)
         except ValueError, err:
-            rg_progress.clear()
+            rg_progress.clear_rows()
             msg.error(unicode(err))
             sys.exit(1)
         rg_progress.final_message()

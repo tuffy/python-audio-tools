@@ -126,13 +126,13 @@ if (__name__ == '__main__'):
         row.add_column(u" ")
         row.add_column(_.LAB_TRACKLENGTH_FILE_SIZE, "right")
 
-        table.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
+        table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
 
         for name in sorted(format_summaries.keys()):
             format_summaries[name].to_row(name.decode('ascii'), table)
 
         if (len(format_summaries.keys()) > 1):
-            msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
+            table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
             total_summary.to_row(_.LAB_TRACKLENGTH_FILE_TOTAL, table)
 
         for row in table.format(msg.output_isatty()):

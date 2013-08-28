@@ -363,7 +363,7 @@ if (__name__ == '__main__'):
                 row.add_column(u" ")
                 row.add_column(_.LAB_TRACKCMP_HEADER_TOTAL, "right")
 
-                table.divider_row([u"-", u" ", u"-", u" ", u"-"])
+                table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV])
 
                 row = table.row()
                 row.add_column(unicode(successes), "right")

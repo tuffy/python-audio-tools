@@ -98,7 +98,7 @@ if (__name__ == '__main__'):
     row.add_column(u" ")
     row.add_column(_.LAB_CDINFO_OFFSET)
 
-    row = table.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
+    row = table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
 
     for track in tracks:
         row= table.row()
