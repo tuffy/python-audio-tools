@@ -43,6 +43,10 @@ if (__name__ == '__main__'):
 
     parser = argparse.ArgumentParser(description=_.DESCRIPTION_COVERTAG)
 
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
+
     parser.add_argument("-r", "--replace",
                         action="store_true",
                         default=False,

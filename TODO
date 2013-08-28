@@ -6635,7 +6635,7 @@
    - [X] wav.py
 *** DONE Add unit tests
     Ensure tracks retain permissions when metadata is updated.
-** TODO Convert utilties from optparse to argparse
+** DONE Convert utilties from optparse to argparse
    argparse seems a bit nicer and more user-friendly
    since it generates usage lines automatically.
    - [X] audiotools-config
@@ -6659,30 +6659,30 @@
    - [X] tracksplit
    - [X] tracktag
    - [X] trackverify
-*** TODO Ensure all utilities have a working --version option
+*** DONE Ensure all utilities have a working --version option
     Now that it's no longer built-in, I'll need to add and check
     the option by hand.
-    - [ ] audiotools-config
-    - [ ] cd2track
-    - [ ] cdinfo
-    - [ ] cdplay
-    - [ ] coverdump
-    - [ ] covertag
-    - [ ] coverview
-    - [ ] dvda2track
-    - [ ] dvdainfo
-    - [ ] track2cd
-    - [ ] track2track
-    - [ ] trackcat
-    - [ ] trackcmp
-    - [ ] trackinfo
-    - [ ] tracklength
-    - [ ] tracklint
-    - [ ] trackplay
-    - [ ] trackrename
-    - [ ] tracksplit
-    - [ ] tracktag
-    - [ ] trackverify
+    - [X] audiotools-config
+    - [X] cd2track
+    - [X] cdinfo
+    - [X] cdplay
+    - [X] coverdump
+    - [X] covertag
+    - [X] coverview
+    - [X] dvda2track
+    - [X] dvdainfo
+    - [X] track2cd
+    - [X] track2track
+    - [X] trackcat
+    - [X] trackcmp
+    - [X] trackinfo
+    - [X] tracklength
+    - [X] tracklint
+    - [X] trackplay
+    - [X] trackrename
+    - [X] tracksplit
+    - [X] tracktag
+    - [X] trackverify
 ** TODO Update coverview widget set
    Although wxPython is available lots of places,
    it doesn't behave the same everywhere.

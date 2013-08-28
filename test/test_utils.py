@@ -134,6 +134,14 @@ class UtilTest(unittest.TestCase):
         self.__run_checks__()
 
 
+class audiotools_config(UtilTest):
+    @UTIL_AUDIOTOOLS_CONFIG
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["audiotools-config",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
+
+
 class cd2track(UtilTest):
     @UTIL_CD2TRACK
     def setUp(self):
@@ -185,6 +193,13 @@ class cd2track(UtilTest):
 
         os.chmod(self.unwritable_dir, 0700)
         os.rmdir(self.unwritable_dir)
+
+    @UTIL_CD2TRACK
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["cd2track",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
+
 
     def populate_options(self, options):
         populated = ["--no-musicbrainz", "--no-freedb"]
@@ -459,6 +474,22 @@ class cd2track(UtilTest):
                     continue
 
 
+class cdinfo(UtilTest):
+    @UTIL_CDINFO
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["cdinfo",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
+
+
+class cdplay(UtilTest):
+    @UTIL_CDPLAY
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["cdplay",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
+
+
 class coverdump(UtilTest):
     @UTIL_COVERDUMP
     def setUp(self):
@@ -524,6 +555,12 @@ class coverdump(UtilTest):
 
         self.input_file1.close()
         self.input_file2.close()
+
+    @UTIL_COVERDUMP
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["coverdump",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
 
     def clean_output_dir(self):
         for f in os.listdir(self.output_dir):
@@ -745,40 +782,311 @@ class coverdump(UtilTest):
             (audiotools.Filename(track.filename),))
 
 
-class dvdainfo(UtilTest):
-    @UTIL_DVDAINFO
+class covertag(UtilTest):
+    @UTIL_COVERTAG
     def setUp(self):
-        self.invalid_dir1 = tempfile.mkdtemp()
-        self.invalid_dir2 = tempfile.mkdtemp()
-        f = open(os.path.join(self.invalid_dir2, "AUDIO_TS.IFO"), "wb")
-        f.write(os.urandom(1000))
+        track_file_base = tempfile.NamedTemporaryFile()
+        self.initial_metadata = audiotools.MetaData(
+            track_name=u"Name 1",
+            track_number=1,
+            track_total=2,
+            album_name=u"Album 1",
+            artist_name=u"Artist 1",
+            album_number=3,
+            album_total=4,
+            ISRC=u'ABCD00000000',
+            comment=u"Comment 1")
+
+        self.image = audiotools.Image.new(TEST_COVER1, u"", 0)
+        self.initial_metadata.add_image(self.image)
+
+        track_base = audiotools.FlacAudio.from_pcm(
+            track_file_base.name,
+            BLANK_PCM_Reader(1))
+        track_base.set_metadata(self.initial_metadata)
+        self.track_data = open(track_base.filename, 'rb').read()
+        track_file_base.close()
+
+        self.track_file = tempfile.NamedTemporaryFile()
+
+        self.front_cover1 = tempfile.NamedTemporaryFile(suffix=".png")
+        self.front_cover1.write(TEST_COVER4)
+        self.front_cover1.flush()
+
+        self.front_cover2 = tempfile.NamedTemporaryFile(suffix=".jpg")
+        self.front_cover2.write(TEST_COVER3)
+        self.front_cover2.flush()
+
+        self.back_cover = tempfile.NamedTemporaryFile(suffix=".png")
+        self.back_cover.write(TEST_COVER2)
+        self.back_cover.flush()
+
+        self.leaflet = tempfile.NamedTemporaryFile(suffix=".jpg")
+        self.leaflet.write(TEST_COVER1)
+        self.leaflet.flush()
+
+        self.media = tempfile.NamedTemporaryFile(suffix=".png")
+        self.media.write(TEST_COVER2)
+        self.media.flush()
+
+        self.other = tempfile.NamedTemporaryFile(suffix=".png")
+        self.other.write(TEST_COVER4)
+        self.other.flush()
+
+        self.front_cover1_image = audiotools.Image.new(
+            TEST_COVER4, u"", 0)
+        self.front_cover2_image = audiotools.Image.new(
+            TEST_COVER3, u"", 0)
+        self.back_cover_image = audiotools.Image.new(
+            TEST_COVER2, u"", 1)
+        self.leaflet_image = audiotools.Image.new(
+            TEST_COVER1, u"", 2)
+        self.media_image = audiotools.Image.new(
+            TEST_COVER2, u"", 3)
+        self.other_image = audiotools.Image.new(
+            TEST_COVER4, u"", 4)
+
+    @UTIL_COVERTAG
+    def tearDown(self):
+        self.track_file.close()
+        self.front_cover1.close()
+        self.front_cover2.close()
+        self.back_cover.close()
+        self.leaflet.close()
+        self.media.close()
+        self.other.close()
+
+    @UTIL_COVERTAG
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["covertag",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
+
+
+    def populate_options(self, options):
+        populated = []
+        front_covers = [self.front_cover1.name, self.front_cover2.name]
+
+        for option in sorted(options):
+            if (option == '--front-cover'):
+                populated.append(option)
+                populated.append(front_covers.pop(0))
+            elif (option == '--back-cover'):
+                populated.append(option)
+                populated.append(self.back_cover.name)
+            elif (option == '--leaflet'):
+                populated.append(option)
+                populated.append(self.leaflet.name)
+            elif (option == '--media'):
+                populated.append(option)
+                populated.append(self.media.name)
+            elif (option == '--other-image'):
+                populated.append(option)
+                populated.append(self.other.name)
+            else:
+                populated.append(option)
+
+        return populated
+
+    @UTIL_COVERTAG
+    def test_options(self):
+        from audiotools.text import (ERR_DUPLICATE_FILE,)
+
+        #start out with a bit of sanity checking
+        f = open(self.track_file.name, 'wb')
+        f.write(self.track_data)
         f.close()
 
-    @UTIL_DVDAINFO
-    def tearDown(self):
-        os.rmdir(self.invalid_dir1)
-        os.unlink(os.path.join(self.invalid_dir2, "AUDIO_TS.IFO"))
-        os.rmdir(self.invalid_dir2)
+        track = audiotools.open(self.track_file.name)
+        track.verify()
+        metadata = track.get_metadata()
+        self.assertEqual(metadata.images(),
+                         [self.image])
 
-    @UTIL_DVDAINFO
-    def test_errors(self):
-        from audiotools.text import (ERR_NO_AUDIO_TS,
-                                     ERR_DVDA_IOERROR_AUDIO_TS,
-                                     ERR_DVDA_INVALID_AUDIO_TS)
+        covertag_options = ['-r', '--front-cover', '--front-cover',
+                            '--back-cover', '--leaflet', '--media',
+                            '--other-image']
 
-        #test with no -A option
-        self.assertEqual(self.__run_app__(["dvdainfo"]), 1)
-        self.__check_error__(ERR_NO_AUDIO_TS)
+        #ensure tagging the same file twice triggers an error
+        self.assertEqual(self.__run_app__(
+                ["covertag", "--front-cover", self.front_cover1.name,
+                 self.track_file.name, self.track_file.name]), 1)
+        self.__check_error__(ERR_DUPLICATE_FILE %
+                             (audiotools.Filename(self.track_file.name),))
 
-        #test with an invalid AUDIO_TS dir
-        self.assertEqual(self.__run_app__(["dvdainfo",
-                                           "-A", self.invalid_dir1]), 1)
-        self.__check_error__(ERR_DVDA_IOERROR_AUDIO_TS)
+        for count in xrange(1, len(covertag_options) + 1):
+            for options in Combinations(covertag_options, count):
+                f = open(self.track_file.name, 'wb')
+                f.write(self.track_data)
+                f.close()
 
-        #test with an invalid AUDIO_TS/AUDIO_TS.IFO file
-        self.assertEqual(self.__run_app__(["dvdainfo",
-                                           "-A", self.invalid_dir2]), 1)
-        self.__check_error__(ERR_DVDA_INVALID_AUDIO_TS)
+                options = self.populate_options(options)
+                self.assertEqual(
+                    self.__run_app__(["covertag"] +
+                                     options +
+                                     [self.track_file.name]), 0)
+
+                track = audiotools.open(self.track_file.name)
+                track.verify()
+                metadata = track.get_metadata()
+
+                if ('-r' in options):
+                    if (options.count('--front-cover') == 0):
+                        self.assertEqual(metadata.front_covers(),
+                                         [])
+                    elif (options.count('--front-cover') == 1):
+                        self.assertEqual(metadata.front_covers(),
+                                         [self.front_cover1_image])
+                    elif (options.count('--front-cover') == 2):
+                        self.assertEqual(metadata.front_covers(),
+                                         [self.front_cover1_image,
+                                          self.front_cover2_image])
+                else:
+                    if (options.count('--front-cover') == 0):
+                        self.assertEqual(metadata.front_covers(),
+                                         [self.image])
+                    elif (options.count('--front-cover') == 1):
+                        self.assertEqual(metadata.front_covers(),
+                                         [self.image,
+                                          self.front_cover1_image])
+                    elif (options.count('--front-cover') == 2):
+                        self.assertEqual(metadata.front_covers(),
+                                         [self.image,
+                                          self.front_cover1_image,
+                                          self.front_cover2_image])
+                if ('--back-cover' in options):
+                    self.assertEqual(metadata.back_covers(),
+                                     [self.back_cover_image])
+                else:
+                    self.assertEqual(metadata.back_covers(),
+                                     [])
+                if ('--leaflet' in options):
+                    self.assertEqual(metadata.leaflet_pages(),
+                                     [self.leaflet_image])
+                else:
+                    self.assertEqual(metadata.leaflet_pages(),
+                                     [])
+                if ('--media' in options):
+                    self.assertEqual(metadata.media_images(),
+                                     [self.media_image])
+                else:
+                    self.assertEqual(metadata.media_images(),
+                                     [])
+                if ('--other-image' in options):
+                    self.assertEqual(metadata.other_images(),
+                                     [self.other_image])
+                else:
+                    self.assertEqual(metadata.other_images(),
+                                     [])
+
+    @UTIL_COVERTAG
+    def test_unicode(self):
+        from shutil import rmtree
+
+        for (file_path,
+             option,
+             image_path) in Possibilities(
+            ["test.flac",  #check filename arguments
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
+            ["--front-cover",
+             "--back-cover",
+             "--leaflet",
+             "--media",
+             "--other-image"],
+            ["image.jpg",  #check image path arguments
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.jpg'.encode('utf-8')]):
+            if (os.path.isfile(file_path)):
+                os.unlink(file_path)
+            if (os.path.isfile(image_path)):
+                os.unlink(image_path)
+
+            track = audiotools.FlacAudio.from_pcm(
+                file_path,
+                BLANK_PCM_Reader(1))
+
+            f = open(image_path, "wb")
+            f.write(TEST_COVER1)
+            f.close()
+
+            self.assertEqual(
+                self.__run_app__(
+                    ["covertag", option, image_path, file_path]), 0)
+
+            self.assertEqual(
+                audiotools.open(file_path).get_metadata().images()[0].data,
+                TEST_COVER1)
+
+            if (os.path.isfile(file_path)):
+                os.unlink(file_path)
+            if (os.path.isfile(image_path)):
+                os.unlink(image_path)
+
+
+class covertag_errors(UtilTest):
+    @UTIL_COVERTAG
+    def test_bad_options(self):
+        from audiotools.text import (ERR_OPEN_IOERROR,)
+
+        temp_track_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        temp_track_stat = os.stat(temp_track_file.name)[0]
+        try:
+            temp_track = audiotools.FlacAudio.from_pcm(
+                temp_track_file.name,
+                BLANK_PCM_Reader(5))
+
+            self.assertEqual(self.__run_app__(
+                    ["covertag", "--front-cover=/dev/null/foo.jpg",
+                     temp_track.filename]), 1)
+            self.__check_error__(
+                ERR_OPEN_IOERROR % (audiotools.Filename(u"/dev/null/foo.jpg"),))
+        finally:
+            os.chmod(temp_track_file.name, temp_track_stat)
+            temp_track_file.close()
+
+    @UTIL_COVERTAG
+    def test_oversized_metadata(self):
+        for audio_class in [audiotools.FlacAudio,
+                            audiotools.OggFlacAudio]:
+            tempflac = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            big_bmp = tempfile.NamedTemporaryFile(suffix=".bmp")
+            try:
+                flac = audio_class.from_pcm(
+                    tempflac.name,
+                    BLANK_PCM_Reader(5))
+
+                flac.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+
+                big_bmp.write(HUGE_BMP.decode('bz2'))
+                big_bmp.flush()
+
+                orig_md5 = md5()
+                pcm = flac.to_pcm()
+                audiotools.transfer_framelist_data(pcm, orig_md5.update)
+                pcm.close()
+
+                #ensure that setting a big image via covertag
+                #doesn't break the file
+                subprocess.call(["covertag", "-V", "quiet",
+                                 "--front-cover=%s" % (big_bmp.name),
+                                 flac.filename])
+                new_md5 = md5()
+                pcm = flac.to_pcm()
+                audiotools.transfer_framelist_data(pcm, new_md5.update)
+                pcm.close()
+                self.assertEqual(orig_md5.hexdigest(),
+                                 new_md5.hexdigest())
+            finally:
+                tempflac.close()
+                big_bmp.close()
+
+
+class coverview(UtilTest):
+    @UTIL_COVERVIEW
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["coverview",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
 
 
 class dvda2track(UtilTest):
@@ -795,6 +1103,13 @@ class dvda2track(UtilTest):
         os.rmdir(self.invalid_dir1)
         os.unlink(os.path.join(self.invalid_dir2, "AUDIO_TS.IFO"))
         os.rmdir(self.invalid_dir2)
+
+    @UTIL_DVDA2TRACK
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["dvda2track",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
+
 
     @UTIL_DVDA2TRACK
     def test_errors(self):
@@ -821,6 +1136,56 @@ class dvda2track(UtilTest):
         #without a valid AUDIO_TS.IFO file,
         #and a set of present IFO files and AOB files.
         #I'll need a way to generate synthetic ones.
+
+
+class dvdainfo(UtilTest):
+    @UTIL_DVDAINFO
+    def setUp(self):
+        self.invalid_dir1 = tempfile.mkdtemp()
+        self.invalid_dir2 = tempfile.mkdtemp()
+        f = open(os.path.join(self.invalid_dir2, "AUDIO_TS.IFO"), "wb")
+        f.write(os.urandom(1000))
+        f.close()
+
+    @UTIL_DVDAINFO
+    def tearDown(self):
+        os.rmdir(self.invalid_dir1)
+        os.unlink(os.path.join(self.invalid_dir2, "AUDIO_TS.IFO"))
+        os.rmdir(self.invalid_dir2)
+
+    @UTIL_DVDAINFO
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["dvdainfo",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
+
+    @UTIL_DVDAINFO
+    def test_errors(self):
+        from audiotools.text import (ERR_NO_AUDIO_TS,
+                                     ERR_DVDA_IOERROR_AUDIO_TS,
+                                     ERR_DVDA_INVALID_AUDIO_TS)
+
+        #test with no -A option
+        self.assertEqual(self.__run_app__(["dvdainfo"]), 1)
+        self.__check_error__(ERR_NO_AUDIO_TS)
+
+        #test with an invalid AUDIO_TS dir
+        self.assertEqual(self.__run_app__(["dvdainfo",
+                                           "-A", self.invalid_dir1]), 1)
+        self.__check_error__(ERR_DVDA_IOERROR_AUDIO_TS)
+
+        #test with an invalid AUDIO_TS/AUDIO_TS.IFO file
+        self.assertEqual(self.__run_app__(["dvdainfo",
+                                           "-A", self.invalid_dir2]), 1)
+        self.__check_error__(ERR_DVDA_INVALID_AUDIO_TS)
+
+
+class track2cd(UtilTest):
+    @UTIL_TRACK2CD
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["track2cd",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
 
 
 class track2track(UtilTest):
@@ -913,6 +1278,12 @@ class track2track(UtilTest):
 
         f = open(self.output_file.name, "wb")
         f.close()
+
+    @UTIL_TRACK2TRACK
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["track2track",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
 
     def populate_options(self, options):
         populated = []
@@ -1660,6 +2031,12 @@ class trackcat(UtilTest):
         self.suffix_outfile.close()
         self.nonsuffix_outfile.close()
 
+    @UTIL_TRACKCAT
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["trackcat",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
+
     def populate_options(self, options, type, quality, outfile):
         populated = []
 
@@ -2001,6 +2378,12 @@ class trackcmp(UtilTest):
         self.mismatch_file.close()
 
     @UTIL_TRACKCMP
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["trackcmp",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
+
+    @UTIL_TRACKCMP
     def test_combinations(self):
         from audiotools.text import (LAB_TRACKCMP_CMP,
                                      LAB_TRACKCMP_MISMATCH,
@@ -2312,6 +2695,12 @@ class trackinfo(UtilTest):
             file.close()
 
     @UTIL_TRACKINFO
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["trackinfo",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
+
+    @UTIL_TRACKINFO
     def test_trackinfo(self):
         import re
         import StringIO
@@ -2399,6 +2788,12 @@ class tracklength(UtilTest):
     @UTIL_TRACKLENGTH
     def tearDown(self):
         pass
+
+    @UTIL_TRACKLENGTH
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["tracklength",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
 
     @UTIL_TRACKLENGTH
     def test_tracklength(self):
@@ -2590,6 +2985,12 @@ class tracklint(UtilTest):
     @UTIL_TRACKLINT
     def tearDown(self):
         pass
+
+    @UTIL_TRACKLINT
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["tracklint",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
 
     @UTIL_TRACKLINT
     def test_vorbis(self):
@@ -3467,902 +3868,13 @@ class tracklint(UtilTest):
                 os.rmdir(undo_db_dir)
 
 
-class tracktag(UtilTest):
-    @UTIL_TRACKTAG
-    def setUp(self):
-        track_file_base = tempfile.NamedTemporaryFile()
-        self.initial_metadata = audiotools.MetaData(
-            track_name=u"Name 1",
-            track_number=1,
-            track_total=2,
-            album_name=u"Album 1",
-            artist_name=u"Artist 1",
-            album_number=3,
-            album_total=4,
-            ISRC=u'ABCD00000000',
-            comment=u"Comment 1")
+class trackplay(UtilTest):
+    @UTIL_TRACKPLAY
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["trackplay",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
 
-        self.image = audiotools.Image.new(TEST_COVER1, u"", 0)
-        self.initial_metadata.add_image(self.image)
-
-        track_base = audiotools.FlacAudio.from_pcm(
-            track_file_base.name,
-            BLANK_PCM_Reader(1))
-        track_base.set_metadata(self.initial_metadata)
-        self.track_data = open(track_base.filename, 'rb').read()
-        track_file_base.close()
-
-        self.track_file = tempfile.NamedTemporaryFile()
-
-        self.comment_file = tempfile.NamedTemporaryFile(suffix=".txt")
-        self.comment_file.write("Comment File")
-        self.comment_file.flush()
-
-    @UTIL_TRACKTAG
-    def tearDown(self):
-        self.track_file.close()
-        self.comment_file.close()
-
-    def populate_options(self, options):
-        populated = []
-
-        for option in sorted(options):
-            if (option == '--name'):
-                populated.append(option)
-                populated.append("Name 3")
-            elif (option == '--artist'):
-                populated.append(option)
-                populated.append("Artist 3")
-            elif (option == '--album'):
-                populated.append(option)
-                populated.append("Album 3")
-            elif (option == '--number'):
-                populated.append(option)
-                populated.append("5")
-            elif (option == '--track-total'):
-                populated.append(option)
-                populated.append("6")
-            elif (option == '--album-number'):
-                populated.append(option)
-                populated.append("7")
-            elif (option == '--album-total'):
-                populated.append(option)
-                populated.append("8")
-            elif (option == '--comment'):
-                populated.append(option)
-                populated.append("Comment 3")
-            elif (option == '--comment-file'):
-                populated.append(option)
-                populated.append(self.comment_file.name)
-            else:
-                populated.append(option)
-
-        return populated
-
-    @UTIL_TRACKTAG
-    def test_options(self):
-        from audiotools.text import (ERR_DUPLICATE_FILE,)
-
-        #start out with a bit of sanity checking
-        f = open(self.track_file.name, 'wb')
-        f.write(self.track_data)
-        f.close()
-
-        track = audiotools.open(self.track_file.name)
-        track.verify()
-        metadata = track.get_metadata()
-        self.assertEqual(metadata.images(),
-                         [self.image])
-
-        #Why not test all of tracktag's options?
-        #The trouble is that it has 30 metadata-specific options
-        #and the set of all possible combinations from 1 to 30 options
-        #literally numbers in the millions.
-        #Since most of those options are straight text,
-        #we'll restrict the tests to the more interesting ones
-        #which is still over 8000 different option combinations.
-        most_options = ['-r', '--name', '--number', '--track-total',
-                        '--album-number', '--comment', '--comment-file']
-
-        #ensure tagging the same file twice triggers an error
-        self.assertEqual(self.__run_app__(
-                ["tracktag", "--name=Test",
-                 self.track_file.name, self.track_file.name]), 1)
-        self.__check_error__(ERR_DUPLICATE_FILE %
-                             (audiotools.Filename(self.track_file.name),))
-
-        for count in xrange(1, len(most_options) + 1):
-            for options in Combinations(most_options, count):
-                f = open(self.track_file.name, 'wb')
-                f.write(self.track_data)
-                f.close()
-
-                options = self.populate_options(options)
-
-                self.assertEqual(
-                    self.__run_app__(["tracktag"] +
-                                     options +
-                                     [self.track_file.name]), 0)
-
-                track = audiotools.open(self.track_file.name)
-                track.verify()
-                metadata = track.get_metadata()
-
-                if ("--name" in options):
-                    self.assertEqual(metadata.track_name, u"Name 3")
-                elif ("-r" in options):
-                    self.assertEqual(metadata.track_name, None)
-                else:
-                    self.assertEqual(metadata.track_name, u"Name 1")
-
-                if ("--artist" in options):
-                    self.assertEqual(metadata.artist_name, u"Artist 3")
-                elif ("-r" in options):
-                    self.assertEqual(metadata.artist_name, None)
-                else:
-                    self.assertEqual(metadata.artist_name, u"Artist 1")
-
-                if ("--album" in options):
-                    self.assertEqual(metadata.album_name, u"Album 3")
-                elif ("-r" in options):
-                    self.assertEqual(metadata.album_name, None)
-                else:
-                    self.assertEqual(metadata.album_name, u"Album 1")
-
-                if ("--number" in options):
-                    self.assertEqual(metadata.track_number, 5)
-                elif ("-r" in options):
-                    self.assertEqual(metadata.track_number, None)
-                else:
-                    self.assertEqual(metadata.track_number, 1)
-
-                if ("--track-total" in options):
-                    self.assertEqual(metadata.track_total, 6)
-                elif ("-r" in options):
-                    self.assertEqual(metadata.track_total, None)
-                else:
-                    self.assertEqual(metadata.track_total, 2)
-
-                if ("--album-number" in options):
-                    self.assertEqual(metadata.album_number, 7)
-                elif ("-r" in options):
-                    self.assertEqual(metadata.album_number, None)
-                else:
-                    self.assertEqual(metadata.album_number, 3)
-
-                if ("--album-total" in options):
-                    self.assertEqual(metadata.album_total, 8)
-                elif ("-r" in options):
-                    self.assertEqual(metadata.album_total, None)
-                else:
-                    self.assertEqual(metadata.album_total, 4)
-
-                if ("--comment-file" in options):
-                    self.assertEqual(metadata.comment, u"Comment File")
-                elif ("--comment" in options):
-                    self.assertEqual(metadata.comment, u"Comment 3")
-                elif ("-r" in options):
-                    self.assertEqual(metadata.comment, None)
-                else:
-                    self.assertEqual(metadata.comment, u"Comment 1")
-
-                if ("-r" in options):
-                    self.assertEqual(metadata.ISRC, None)
-                else:
-                    self.assertEqual(metadata.ISRC, u"ABCD00000000")
-
-                if ("--replay-gain" in options):
-                    self.assert_(track.replay_gain() is not None)
-
-    @UTIL_TRACKTAG
-    def test_replaygain(self):
-        from audiotools.text import (RG_REPLAYGAIN_ADDED,
-                                     RG_REPLAYGAIN_APPLIED)
-
-        for audio_class in audiotools.AVAILABLE_TYPES:
-            if (audio_class.supports_replay_gain()):
-                track_file = tempfile.NamedTemporaryFile(
-                    suffix="." + audio_class.SUFFIX)
-                try:
-                    track = audio_class.from_pcm(
-                        track_file.name,
-                        BLANK_PCM_Reader(5))
-                    self.assertEqual(
-                        self.__run_app__(["tracktag", "--replay-gain",
-                                          track.filename]), 0)
-                    if (audio_class.lossless_replay_gain()):
-                        self.__check_info__(RG_REPLAYGAIN_ADDED)
-                        track2 = audiotools.open(track_file.name)
-                        self.assert_(track2.replay_gain() is not None)
-                    else:
-                        self.__check_info__(RG_REPLAYGAIN_APPLIED)
-                finally:
-                    track_file.close()
-
-    @UTIL_TRACKTAG
-    def test_unicode(self):
-        for (input_filename,
-             (argument, attribute),
-             unicode_value) in Possibilities(
-            ["track.flac",  #check filename arguments
-             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
-            [("--name", "track_name"),  #check text arguments
-             ("--artist", "artist_name"),
-             ("--album", "album_name"),
-             ("--performer", "performer_name"),
-             ("--composer", "composer_name"),
-             ("--conductor", "conductor_name"),
-             ("--catalog", "catalog"),
-             ("--ISRC", "ISRC"),
-             ("--publisher", "publisher"),
-             ("--media-type", "media"),
-             ("--year", "year"),
-             ("--date", "date"),
-             ("--copyright", "copyright"),
-             ("--comment", "comment")],
-            [u"text",
-             u'value abc\xe0\xe7\xe8\u3041\u3044\u3046']):
-            self.assert_(isinstance(unicode_value, unicode))
-
-            if (os.path.isfile(input_filename)):
-                os.unlink(input_filename)
-
-            track = audiotools.FlacAudio.from_pcm(
-                input_filename,
-                BLANK_PCM_Reader(1))
-
-            self.assertEqual(
-                self.__run_app__(["tracktag",
-                                  argument,
-                                  unicode_value.encode('utf-8'),
-                                  input_filename]), 0)
-
-            set_value = getattr(audiotools.open(input_filename).get_metadata(),
-                                attribute)
-            if (set_value is not None):
-                self.assertEqual(set_value, unicode_value)
-
-            if (os.path.isfile(input_filename)):
-                os.unlink(input_filename)
-
-        for (input_filename,
-             comment_filename) in Possibilities(
-            ["track.flac",     #check input filename arguments
-             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
-            ["comment.txt",    #check comment filename arguments
-             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.txt'.encode('utf-8')]):
-            if (os.path.isfile(input_filename)):
-                os.unlink(input_filename)
-            if (os.path.isfile(comment_filename)):
-                os.unlink(comment_filename)
-
-            track = audiotools.FlacAudio.from_pcm(
-                input_filename,
-                BLANK_PCM_Reader(1))
-
-            f = open(comment_filename, "wb")
-            f.write("Test Text")
-            f.close()
-
-            self.assertEqual(
-                self.__run_app__(["tracktag",
-                                  "--comment-file", comment_filename,
-                                  input_filename]), 0)
-
-            self.assertEqual(
-                audiotools.open(input_filename).get_metadata().comment,
-                u"Test Text")
-
-            if (os.path.isfile(input_filename)):
-                os.unlink(input_filename)
-            if (os.path.isfile(comment_filename)):
-                os.unlink(comment_filename)
-
-class tracktag_errors(UtilTest):
-    @UTIL_TRACKTAG
-    def test_bad_options(self):
-        from audiotools.text import (ERR_OPEN_IOERROR,
-                                     ERR_ENCODING_ERROR,
-                                     ERR_TRACKTAG_COMMENT_IOERROR,
-                                     ERR_TRACKTAG_COMMENT_NOT_UTF8)
-
-        temp_comment = tempfile.NamedTemporaryFile(suffix=".txt")
-        temp_track_file = tempfile.NamedTemporaryFile(suffix=".flac")
-        temp_track_stat = os.stat(temp_track_file.name)[0]
-        try:
-            temp_track = audiotools.FlacAudio.from_pcm(
-                temp_track_file.name,
-                BLANK_PCM_Reader(5))
-
-            temp_track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
-
-            self.assertEqual(self.__run_app__(
-                    ["tracktag", "--comment-file=/dev/null/foo.txt",
-                     temp_track.filename]), 1)
-            self.__check_error__(ERR_TRACKTAG_COMMENT_IOERROR %
-                                 (audiotools.Filename("/dev/null/foo.txt"),))
-
-            temp_comment.write(
-                os.urandom(1024) + ((u"\uFFFD".encode('utf-8')) * 103))
-            temp_comment.flush()
-
-            self.assertEqual(self.__run_app__(
-                    ["tracktag", "--comment-file=%s" % (temp_comment.name),
-                     temp_track.filename]), 1)
-            self.__check_error__(ERR_TRACKTAG_COMMENT_NOT_UTF8 %
-                                 (audiotools.Filename(temp_comment.name),))
-
-            os.chmod(temp_track_file.name, temp_track_stat & 07555)
-            self.assertEqual(self.__run_app__(
-                    ["tracktag", "--name=Bar",
-                     temp_track.filename]), 1)
-            self.__check_error__(ERR_ENCODING_ERROR %
-                                 (audiotools.Filename(temp_track.filename),))
-        finally:
-            os.chmod(temp_track_file.name, temp_track_stat)
-            temp_track_file.close()
-            temp_comment.close()
-
-    @UTIL_TRACKTAG
-    def test_oversized_metadata(self):
-        for audio_class in [audiotools.FlacAudio,
-                            audiotools.OggFlacAudio]:
-            tempflac = tempfile.NamedTemporaryFile(
-            suffix="." + audio_class.SUFFIX)
-            tempwv = tempfile.NamedTemporaryFile(
-                suffix="." + audiotools.WavPackAudio.SUFFIX)
-            big_text = tempfile.NamedTemporaryFile(suffix=".txt")
-            try:
-                flac = audio_class.from_pcm(
-                    tempflac.name,
-                    BLANK_PCM_Reader(5))
-
-                flac.set_metadata(audiotools.MetaData(track_name=u"Foo"))
-
-                big_text.write("QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2'))
-                big_text.flush()
-
-                orig_md5 = md5()
-                pcm = flac.to_pcm()
-                audiotools.transfer_framelist_data(pcm, orig_md5.update)
-                pcm.close()
-
-                #ensure that setting big text via tracktag
-                #doesn't break the file
-                subprocess.call(["tracktag", "-V", "quiet",
-                                 "--comment-file=%s" % (big_text.name),
-                                 flac.filename])
-                new_md5 = md5()
-                pcm = flac.to_pcm()
-                audiotools.transfer_framelist_data(pcm, new_md5.update)
-                pcm.close()
-                self.assertEqual(orig_md5.hexdigest(),
-                                 new_md5.hexdigest())
-
-                subprocess.call(["track2track", "-V", "quiet", "-t", "wv",
-                                 "-o", tempwv.name,
-                                 flac.filename])
-
-                wv = audiotools.open(tempwv.name)
-
-                self.assertEqual(flac, wv)
-
-                self.assertEqual(subprocess.call(
-                        ["tracktag", "-V", "quiet",
-                         "--comment-file=%s" % (big_text.name),
-                         wv.filename]), 0)
-
-                self.assert_(len(wv.get_metadata().comment) > 0)
-
-                subprocess.call(["track2track", "-V", "quiet",
-                                 "-t", audio_class.NAME, "-o",
-                                 flac.filename, wv.filename])
-
-                flac = audiotools.open(tempflac.name)
-                self.assertEqual(flac, wv)
-            finally:
-                tempflac.close()
-                tempwv.close()
-                big_text.close()
-
-
-class NoMetaData(Exception):
-    pass
-
-
-class tracktag_misc(UtilTest):
-    @UTIL_TRACKTAG
-    def test_text_options(self):
-        def number_fields_values(fields, metadata_class):
-            values = set([])
-            for field in audiotools.MetaData.INTEGER_FIELDS:
-                if (field in fields):
-                    values.add(
-                        (field,
-                         audiotools.MetaData.INTEGER_FIELDS.index(
-                                field) + 1))
-                else:
-                    values.add((field, None))
-
-            return values
-
-        def deleted_number_fields_values(fields, metadata_class):
-            values = set([])
-            for field in audiotools.MetaData.INTEGER_FIELDS:
-                if (field not in fields):
-                    values.add(
-                        (field,
-                         audiotools.MetaData.INTEGER_FIELDS.index(
-                                field) + 1))
-                else:
-                    values.add((field, None))
-
-            return values
-
-        def metadata_fields_values(metadata):
-            values = set([])
-            for field in audiotools.MetaData.INTEGER_FIELDS:
-                values.add((field, getattr(metadata, field)))
-            return values
-
-        for audio_type in audiotools.AVAILABLE_TYPES:
-            temp_file = tempfile.NamedTemporaryFile(
-                suffix="." + audio_type.SUFFIX)
-            try:
-                track = audio_type.from_pcm(temp_file.name,
-                                            BLANK_PCM_Reader(1))
-                for (field_name,
-                     add_field,
-                     remove_field) in zip(
-                    ['track_name',
-                     'artist_name',
-                     'performer_name',
-                     'composer_name',
-                     'conductor_name',
-                     'album_name',
-                     'catalog',
-                     'ISRC',
-                     'publisher',
-                     'media',
-                     'year',
-                     'date',
-                     'copyright',
-                     'comment'],
-                    ['--name',
-                     '--artist',
-                     '--performer',
-                     '--composer',
-                     '--conductor',
-                     '--album',
-                     '--catalog',
-                     '--ISRC',
-                     '--publisher',
-                     '--media-type',
-                     '--year',
-                     '--date',
-                     '--copyright',
-                     '--comment'],
-                    ['--remove-name',
-                     '--remove-artist',
-                     '--remove-performer',
-                     '--remove-composer',
-                     '--remove-conductor',
-                     '--remove-album',
-                     '--remove-catalog',
-                     '--remove-ISRC',
-                     '--remove-publisher',
-                     '--remove-media-type',
-                     '--remove-year',
-                     '--remove-date',
-                     '--remove-copyright',
-                     '--remove-comment']):
-                    self.assertEqual(
-                        self.__run_app__(['tracktag', add_field, 'foo',
-                                          track.filename]), 0)
-                    new_track = audiotools.open(track.filename)
-                    metadata = new_track.get_metadata()
-                    if (metadata is None):
-                        break
-                    elif (getattr(metadata, field_name) is not None):
-                        self.assertEqual(getattr(metadata, field_name),
-                                         u'foo')
-
-                        self.assertEqual(
-                            self.__run_app__(['tracktag', remove_field,
-                                              track.filename]), 0)
-
-                        metadata = audiotools.open(
-                            track.filename).get_metadata()
-
-                        self.assertEqual(
-                            getattr(metadata, field_name),
-                            None,
-                            "remove option failed for %s field %s" %
-                            (audio_type.NAME, remove_field))
-
-                number_fields = ['track_number',
-                                 'track_total',
-                                 'album_number',
-                                 'album_total']
-                try:
-                    #make sure the number fields get set properly, if possible
-                    for count in xrange(1, len(number_fields) + 1):
-                        for fields in Combinations(number_fields, count):
-                            self.assertEqual(
-                                self.__run_app__(
-                                    ["tracktag", '-r', track.filename] +
-                                    self.populate_set_number_fields(fields)),
-                                0)
-                            metadata = audiotools.open(
-                                track.filename).get_metadata()
-                            if (metadata is None):
-                                raise NoMetaData()
-
-                            self.assert_(
-                                metadata_fields_values(metadata).issubset(
-                                    number_fields_values(
-                                        fields, metadata.__class__)),
-                                "%s not subset of %s for fields %s" % (
-                                    metadata_fields_values(metadata),
-                                    number_fields_values(
-                                        fields, metadata.__class__),
-                                    repr(fields)))
-
-                    #make sure the number fields get removed properly, also
-                    number_metadata = audiotools.MetaData(track_number=1,
-                                                          track_total=2,
-                                                          album_number=3,
-                                                          album_total=4)
-                    for count in xrange(1, len(number_fields) + 1):
-                        for fields in Combinations(number_fields, count):
-                            audiotools.open(track.filename).set_metadata(
-                                number_metadata)
-                            self.assertEqual(
-                                self.__run_app__(
-                                   ["tracktag", track.filename] +
-                                   self.populate_delete_number_fields(fields)),
-                                0)
-                            metadata = audiotools.open(
-                                track.filename).get_metadata()
-                            self.assert_(
-                                metadata_fields_values(metadata).issubset(
-                                    deleted_number_fields_values(
-                                        fields, metadata.__class__)),
-                                "%s not subset of %s for options %s, fields %s, type %s" %
-                                (metadata_fields_values(metadata),
-                                 deleted_number_fields_values(
-                                        fields, metadata.__class__),
-                                 self.populate_delete_number_fields(
-                                        fields),
-                                 fields,
-                                 audio_type.NAME))
-
-                except NoMetaData:
-                    pass
-
-            finally:
-                temp_file.close()
-
-    def populate_set_number_fields(self, fields):
-        options = []
-        for field in fields:
-            if (field == 'track_number'):
-                options.append('--number')
-                options.append(str(1))
-            elif (field == 'track_total'):
-                options.append('--track-total')
-                options.append(str(2))
-            elif (field == 'album_number'):
-                options.append('--album-number')
-                options.append(str(3))
-            elif (field == 'album_total'):
-                options.append('--album-total')
-                options.append(str(4))
-        return options
-
-    def populate_delete_number_fields(self, fields):
-        options = []
-        for field in fields:
-            if (field == 'track_number'):
-                options.append('--remove-number')
-            elif (field == 'track_total'):
-                options.append('--remove-track-total')
-            elif (field == 'album_number'):
-                options.append('--remove-album-number')
-            elif (field == 'album_total'):
-                options.append('--remove-album-total')
-        return options
-
-
-class covertag(UtilTest):
-    @UTIL_COVERTAG
-    def setUp(self):
-        track_file_base = tempfile.NamedTemporaryFile()
-        self.initial_metadata = audiotools.MetaData(
-            track_name=u"Name 1",
-            track_number=1,
-            track_total=2,
-            album_name=u"Album 1",
-            artist_name=u"Artist 1",
-            album_number=3,
-            album_total=4,
-            ISRC=u'ABCD00000000',
-            comment=u"Comment 1")
-
-        self.image = audiotools.Image.new(TEST_COVER1, u"", 0)
-        self.initial_metadata.add_image(self.image)
-
-        track_base = audiotools.FlacAudio.from_pcm(
-            track_file_base.name,
-            BLANK_PCM_Reader(1))
-        track_base.set_metadata(self.initial_metadata)
-        self.track_data = open(track_base.filename, 'rb').read()
-        track_file_base.close()
-
-        self.track_file = tempfile.NamedTemporaryFile()
-
-        self.front_cover1 = tempfile.NamedTemporaryFile(suffix=".png")
-        self.front_cover1.write(TEST_COVER4)
-        self.front_cover1.flush()
-
-        self.front_cover2 = tempfile.NamedTemporaryFile(suffix=".jpg")
-        self.front_cover2.write(TEST_COVER3)
-        self.front_cover2.flush()
-
-        self.back_cover = tempfile.NamedTemporaryFile(suffix=".png")
-        self.back_cover.write(TEST_COVER2)
-        self.back_cover.flush()
-
-        self.leaflet = tempfile.NamedTemporaryFile(suffix=".jpg")
-        self.leaflet.write(TEST_COVER1)
-        self.leaflet.flush()
-
-        self.media = tempfile.NamedTemporaryFile(suffix=".png")
-        self.media.write(TEST_COVER2)
-        self.media.flush()
-
-        self.other = tempfile.NamedTemporaryFile(suffix=".png")
-        self.other.write(TEST_COVER4)
-        self.other.flush()
-
-        self.front_cover1_image = audiotools.Image.new(
-            TEST_COVER4, u"", 0)
-        self.front_cover2_image = audiotools.Image.new(
-            TEST_COVER3, u"", 0)
-        self.back_cover_image = audiotools.Image.new(
-            TEST_COVER2, u"", 1)
-        self.leaflet_image = audiotools.Image.new(
-            TEST_COVER1, u"", 2)
-        self.media_image = audiotools.Image.new(
-            TEST_COVER2, u"", 3)
-        self.other_image = audiotools.Image.new(
-            TEST_COVER4, u"", 4)
-
-    @UTIL_COVERTAG
-    def tearDown(self):
-        self.track_file.close()
-        self.front_cover1.close()
-        self.front_cover2.close()
-        self.back_cover.close()
-        self.leaflet.close()
-        self.media.close()
-        self.other.close()
-
-    def populate_options(self, options):
-        populated = []
-        front_covers = [self.front_cover1.name, self.front_cover2.name]
-
-        for option in sorted(options):
-            if (option == '--front-cover'):
-                populated.append(option)
-                populated.append(front_covers.pop(0))
-            elif (option == '--back-cover'):
-                populated.append(option)
-                populated.append(self.back_cover.name)
-            elif (option == '--leaflet'):
-                populated.append(option)
-                populated.append(self.leaflet.name)
-            elif (option == '--media'):
-                populated.append(option)
-                populated.append(self.media.name)
-            elif (option == '--other-image'):
-                populated.append(option)
-                populated.append(self.other.name)
-            else:
-                populated.append(option)
-
-        return populated
-
-    @UTIL_COVERTAG
-    def test_options(self):
-        from audiotools.text import (ERR_DUPLICATE_FILE,)
-
-        #start out with a bit of sanity checking
-        f = open(self.track_file.name, 'wb')
-        f.write(self.track_data)
-        f.close()
-
-        track = audiotools.open(self.track_file.name)
-        track.verify()
-        metadata = track.get_metadata()
-        self.assertEqual(metadata.images(),
-                         [self.image])
-
-        covertag_options = ['-r', '--front-cover', '--front-cover',
-                            '--back-cover', '--leaflet', '--media',
-                            '--other-image']
-
-        #ensure tagging the same file twice triggers an error
-        self.assertEqual(self.__run_app__(
-                ["covertag", "--front-cover", self.front_cover1.name,
-                 self.track_file.name, self.track_file.name]), 1)
-        self.__check_error__(ERR_DUPLICATE_FILE %
-                             (audiotools.Filename(self.track_file.name),))
-
-        for count in xrange(1, len(covertag_options) + 1):
-            for options in Combinations(covertag_options, count):
-                f = open(self.track_file.name, 'wb')
-                f.write(self.track_data)
-                f.close()
-
-                options = self.populate_options(options)
-                self.assertEqual(
-                    self.__run_app__(["covertag"] +
-                                     options +
-                                     [self.track_file.name]), 0)
-
-                track = audiotools.open(self.track_file.name)
-                track.verify()
-                metadata = track.get_metadata()
-
-                if ('-r' in options):
-                    if (options.count('--front-cover') == 0):
-                        self.assertEqual(metadata.front_covers(),
-                                         [])
-                    elif (options.count('--front-cover') == 1):
-                        self.assertEqual(metadata.front_covers(),
-                                         [self.front_cover1_image])
-                    elif (options.count('--front-cover') == 2):
-                        self.assertEqual(metadata.front_covers(),
-                                         [self.front_cover1_image,
-                                          self.front_cover2_image])
-                else:
-                    if (options.count('--front-cover') == 0):
-                        self.assertEqual(metadata.front_covers(),
-                                         [self.image])
-                    elif (options.count('--front-cover') == 1):
-                        self.assertEqual(metadata.front_covers(),
-                                         [self.image,
-                                          self.front_cover1_image])
-                    elif (options.count('--front-cover') == 2):
-                        self.assertEqual(metadata.front_covers(),
-                                         [self.image,
-                                          self.front_cover1_image,
-                                          self.front_cover2_image])
-                if ('--back-cover' in options):
-                    self.assertEqual(metadata.back_covers(),
-                                     [self.back_cover_image])
-                else:
-                    self.assertEqual(metadata.back_covers(),
-                                     [])
-                if ('--leaflet' in options):
-                    self.assertEqual(metadata.leaflet_pages(),
-                                     [self.leaflet_image])
-                else:
-                    self.assertEqual(metadata.leaflet_pages(),
-                                     [])
-                if ('--media' in options):
-                    self.assertEqual(metadata.media_images(),
-                                     [self.media_image])
-                else:
-                    self.assertEqual(metadata.media_images(),
-                                     [])
-                if ('--other-image' in options):
-                    self.assertEqual(metadata.other_images(),
-                                     [self.other_image])
-                else:
-                    self.assertEqual(metadata.other_images(),
-                                     [])
-
-    @UTIL_COVERTAG
-    def test_unicode(self):
-        from shutil import rmtree
-
-        for (file_path,
-             option,
-             image_path) in Possibilities(
-            ["test.flac",  #check filename arguments
-             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
-            ["--front-cover",
-             "--back-cover",
-             "--leaflet",
-             "--media",
-             "--other-image"],
-            ["image.jpg",  #check image path arguments
-             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.jpg'.encode('utf-8')]):
-            if (os.path.isfile(file_path)):
-                os.unlink(file_path)
-            if (os.path.isfile(image_path)):
-                os.unlink(image_path)
-
-            track = audiotools.FlacAudio.from_pcm(
-                file_path,
-                BLANK_PCM_Reader(1))
-
-            f = open(image_path, "wb")
-            f.write(TEST_COVER1)
-            f.close()
-
-            self.assertEqual(
-                self.__run_app__(
-                    ["covertag", option, image_path, file_path]), 0)
-
-            self.assertEqual(
-                audiotools.open(file_path).get_metadata().images()[0].data,
-                TEST_COVER1)
-
-            if (os.path.isfile(file_path)):
-                os.unlink(file_path)
-            if (os.path.isfile(image_path)):
-                os.unlink(image_path)
-
-class covertag_errors(UtilTest):
-    @UTIL_COVERTAG
-    def test_bad_options(self):
-        from audiotools.text import (ERR_OPEN_IOERROR,)
-
-        temp_track_file = tempfile.NamedTemporaryFile(suffix=".flac")
-        temp_track_stat = os.stat(temp_track_file.name)[0]
-        try:
-            temp_track = audiotools.FlacAudio.from_pcm(
-                temp_track_file.name,
-                BLANK_PCM_Reader(5))
-
-            self.assertEqual(self.__run_app__(
-                    ["covertag", "--front-cover=/dev/null/foo.jpg",
-                     temp_track.filename]), 1)
-            self.__check_error__(
-                ERR_OPEN_IOERROR % (audiotools.Filename(u"/dev/null/foo.jpg"),))
-        finally:
-            os.chmod(temp_track_file.name, temp_track_stat)
-            temp_track_file.close()
-
-    @UTIL_COVERTAG
-    def test_oversized_metadata(self):
-        for audio_class in [audiotools.FlacAudio,
-                            audiotools.OggFlacAudio]:
-            tempflac = tempfile.NamedTemporaryFile(
-                suffix="." + audio_class.SUFFIX)
-            big_bmp = tempfile.NamedTemporaryFile(suffix=".bmp")
-            try:
-                flac = audio_class.from_pcm(
-                    tempflac.name,
-                    BLANK_PCM_Reader(5))
-
-                flac.set_metadata(audiotools.MetaData(track_name=u"Foo"))
-
-                big_bmp.write(HUGE_BMP.decode('bz2'))
-                big_bmp.flush()
-
-                orig_md5 = md5()
-                pcm = flac.to_pcm()
-                audiotools.transfer_framelist_data(pcm, orig_md5.update)
-                pcm.close()
-
-                #ensure that setting a big image via covertag
-                #doesn't break the file
-                subprocess.call(["covertag", "-V", "quiet",
-                                 "--front-cover=%s" % (big_bmp.name),
-                                 flac.filename])
-                new_md5 = md5()
-                pcm = flac.to_pcm()
-                audiotools.transfer_framelist_data(pcm, new_md5.update)
-                pcm.close()
-                self.assertEqual(orig_md5.hexdigest(),
-                                 new_md5.hexdigest())
-            finally:
-                tempflac.close()
-                big_bmp.close()
 
 class trackrename(UtilTest):
     @UTIL_TRACKRENAME
@@ -4393,6 +3905,12 @@ class trackrename(UtilTest):
         for f in os.listdir(self.input_dir):
             os.unlink(os.path.join(self.input_dir, f))
         os.rmdir(self.input_dir)
+
+    @UTIL_TRACKRENAME
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["trackrename",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
 
     def clean_input_directory(self):
         for f in os.listdir(self.input_dir):
@@ -4594,6 +4112,7 @@ class trackrename(UtilTest):
             if (os.path.isfile(format_string)):
                 os.unlink(format_string)
 
+
 class tracksplit(UtilTest):
     @UTIL_TRACKSPLIT
     def setUp(self):
@@ -4665,6 +4184,12 @@ class tracksplit(UtilTest):
 
         for f in os.listdir(self.cwd_dir):
             os.unlink(os.path.join(self.cwd_dir, f))
+
+    @UTIL_TRACKSPLIT
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["tracksplit",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
 
     def populate_options(self, options):
         populated = ["--no-musicbrainz", "--no-freedb"]
@@ -5134,3 +4659,625 @@ class tracksplit(UtilTest):
         self.__check_error__(ERR_TRACKSPLIT_OVERLONG_CUESHEET)
 
         #FIXME? - check for broken cue sheet output?
+
+
+class tracktag(UtilTest):
+    @UTIL_TRACKTAG
+    def setUp(self):
+        track_file_base = tempfile.NamedTemporaryFile()
+        self.initial_metadata = audiotools.MetaData(
+            track_name=u"Name 1",
+            track_number=1,
+            track_total=2,
+            album_name=u"Album 1",
+            artist_name=u"Artist 1",
+            album_number=3,
+            album_total=4,
+            ISRC=u'ABCD00000000',
+            comment=u"Comment 1")
+
+        self.image = audiotools.Image.new(TEST_COVER1, u"", 0)
+        self.initial_metadata.add_image(self.image)
+
+        track_base = audiotools.FlacAudio.from_pcm(
+            track_file_base.name,
+            BLANK_PCM_Reader(1))
+        track_base.set_metadata(self.initial_metadata)
+        self.track_data = open(track_base.filename, 'rb').read()
+        track_file_base.close()
+
+        self.track_file = tempfile.NamedTemporaryFile()
+
+        self.comment_file = tempfile.NamedTemporaryFile(suffix=".txt")
+        self.comment_file.write("Comment File")
+        self.comment_file.flush()
+
+    @UTIL_TRACKTAG
+    def tearDown(self):
+        self.track_file.close()
+        self.comment_file.close()
+
+    @UTIL_TRACKTAG
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["tracktag",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
+
+    def populate_options(self, options):
+        populated = []
+
+        for option in sorted(options):
+            if (option == '--name'):
+                populated.append(option)
+                populated.append("Name 3")
+            elif (option == '--artist'):
+                populated.append(option)
+                populated.append("Artist 3")
+            elif (option == '--album'):
+                populated.append(option)
+                populated.append("Album 3")
+            elif (option == '--number'):
+                populated.append(option)
+                populated.append("5")
+            elif (option == '--track-total'):
+                populated.append(option)
+                populated.append("6")
+            elif (option == '--album-number'):
+                populated.append(option)
+                populated.append("7")
+            elif (option == '--album-total'):
+                populated.append(option)
+                populated.append("8")
+            elif (option == '--comment'):
+                populated.append(option)
+                populated.append("Comment 3")
+            elif (option == '--comment-file'):
+                populated.append(option)
+                populated.append(self.comment_file.name)
+            else:
+                populated.append(option)
+
+        return populated
+
+    @UTIL_TRACKTAG
+    def test_options(self):
+        from audiotools.text import (ERR_DUPLICATE_FILE,)
+
+        #start out with a bit of sanity checking
+        f = open(self.track_file.name, 'wb')
+        f.write(self.track_data)
+        f.close()
+
+        track = audiotools.open(self.track_file.name)
+        track.verify()
+        metadata = track.get_metadata()
+        self.assertEqual(metadata.images(),
+                         [self.image])
+
+        #Why not test all of tracktag's options?
+        #The trouble is that it has 30 metadata-specific options
+        #and the set of all possible combinations from 1 to 30 options
+        #literally numbers in the millions.
+        #Since most of those options are straight text,
+        #we'll restrict the tests to the more interesting ones
+        #which is still over 8000 different option combinations.
+        most_options = ['-r', '--name', '--number', '--track-total',
+                        '--album-number', '--comment', '--comment-file']
+
+        #ensure tagging the same file twice triggers an error
+        self.assertEqual(self.__run_app__(
+                ["tracktag", "--name=Test",
+                 self.track_file.name, self.track_file.name]), 1)
+        self.__check_error__(ERR_DUPLICATE_FILE %
+                             (audiotools.Filename(self.track_file.name),))
+
+        for count in xrange(1, len(most_options) + 1):
+            for options in Combinations(most_options, count):
+                f = open(self.track_file.name, 'wb')
+                f.write(self.track_data)
+                f.close()
+
+                options = self.populate_options(options)
+
+                self.assertEqual(
+                    self.__run_app__(["tracktag"] +
+                                     options +
+                                     [self.track_file.name]), 0)
+
+                track = audiotools.open(self.track_file.name)
+                track.verify()
+                metadata = track.get_metadata()
+
+                if ("--name" in options):
+                    self.assertEqual(metadata.track_name, u"Name 3")
+                elif ("-r" in options):
+                    self.assertEqual(metadata.track_name, None)
+                else:
+                    self.assertEqual(metadata.track_name, u"Name 1")
+
+                if ("--artist" in options):
+                    self.assertEqual(metadata.artist_name, u"Artist 3")
+                elif ("-r" in options):
+                    self.assertEqual(metadata.artist_name, None)
+                else:
+                    self.assertEqual(metadata.artist_name, u"Artist 1")
+
+                if ("--album" in options):
+                    self.assertEqual(metadata.album_name, u"Album 3")
+                elif ("-r" in options):
+                    self.assertEqual(metadata.album_name, None)
+                else:
+                    self.assertEqual(metadata.album_name, u"Album 1")
+
+                if ("--number" in options):
+                    self.assertEqual(metadata.track_number, 5)
+                elif ("-r" in options):
+                    self.assertEqual(metadata.track_number, None)
+                else:
+                    self.assertEqual(metadata.track_number, 1)
+
+                if ("--track-total" in options):
+                    self.assertEqual(metadata.track_total, 6)
+                elif ("-r" in options):
+                    self.assertEqual(metadata.track_total, None)
+                else:
+                    self.assertEqual(metadata.track_total, 2)
+
+                if ("--album-number" in options):
+                    self.assertEqual(metadata.album_number, 7)
+                elif ("-r" in options):
+                    self.assertEqual(metadata.album_number, None)
+                else:
+                    self.assertEqual(metadata.album_number, 3)
+
+                if ("--album-total" in options):
+                    self.assertEqual(metadata.album_total, 8)
+                elif ("-r" in options):
+                    self.assertEqual(metadata.album_total, None)
+                else:
+                    self.assertEqual(metadata.album_total, 4)
+
+                if ("--comment-file" in options):
+                    self.assertEqual(metadata.comment, u"Comment File")
+                elif ("--comment" in options):
+                    self.assertEqual(metadata.comment, u"Comment 3")
+                elif ("-r" in options):
+                    self.assertEqual(metadata.comment, None)
+                else:
+                    self.assertEqual(metadata.comment, u"Comment 1")
+
+                if ("-r" in options):
+                    self.assertEqual(metadata.ISRC, None)
+                else:
+                    self.assertEqual(metadata.ISRC, u"ABCD00000000")
+
+                if ("--replay-gain" in options):
+                    self.assert_(track.replay_gain() is not None)
+
+    @UTIL_TRACKTAG
+    def test_replaygain(self):
+        from audiotools.text import (RG_REPLAYGAIN_ADDED,
+                                     RG_REPLAYGAIN_APPLIED)
+
+        for audio_class in audiotools.AVAILABLE_TYPES:
+            if (audio_class.supports_replay_gain()):
+                track_file = tempfile.NamedTemporaryFile(
+                    suffix="." + audio_class.SUFFIX)
+                try:
+                    track = audio_class.from_pcm(
+                        track_file.name,
+                        BLANK_PCM_Reader(5))
+                    self.assertEqual(
+                        self.__run_app__(["tracktag", "--replay-gain",
+                                          track.filename]), 0)
+                    if (audio_class.lossless_replay_gain()):
+                        self.__check_info__(RG_REPLAYGAIN_ADDED)
+                        track2 = audiotools.open(track_file.name)
+                        self.assert_(track2.replay_gain() is not None)
+                    else:
+                        self.__check_info__(RG_REPLAYGAIN_APPLIED)
+                finally:
+                    track_file.close()
+
+    @UTIL_TRACKTAG
+    def test_unicode(self):
+        for (input_filename,
+             (argument, attribute),
+             unicode_value) in Possibilities(
+            ["track.flac",  #check filename arguments
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
+            [("--name", "track_name"),  #check text arguments
+             ("--artist", "artist_name"),
+             ("--album", "album_name"),
+             ("--performer", "performer_name"),
+             ("--composer", "composer_name"),
+             ("--conductor", "conductor_name"),
+             ("--catalog", "catalog"),
+             ("--ISRC", "ISRC"),
+             ("--publisher", "publisher"),
+             ("--media-type", "media"),
+             ("--year", "year"),
+             ("--date", "date"),
+             ("--copyright", "copyright"),
+             ("--comment", "comment")],
+            [u"text",
+             u'value abc\xe0\xe7\xe8\u3041\u3044\u3046']):
+            self.assert_(isinstance(unicode_value, unicode))
+
+            if (os.path.isfile(input_filename)):
+                os.unlink(input_filename)
+
+            track = audiotools.FlacAudio.from_pcm(
+                input_filename,
+                BLANK_PCM_Reader(1))
+
+            self.assertEqual(
+                self.__run_app__(["tracktag",
+                                  argument,
+                                  unicode_value.encode('utf-8'),
+                                  input_filename]), 0)
+
+            set_value = getattr(audiotools.open(input_filename).get_metadata(),
+                                attribute)
+            if (set_value is not None):
+                self.assertEqual(set_value, unicode_value)
+
+            if (os.path.isfile(input_filename)):
+                os.unlink(input_filename)
+
+        for (input_filename,
+             comment_filename) in Possibilities(
+            ["track.flac",     #check input filename arguments
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
+            ["comment.txt",    #check comment filename arguments
+             u'abc\xe0\xe7\xe8\u3041\u3044\u3046.txt'.encode('utf-8')]):
+            if (os.path.isfile(input_filename)):
+                os.unlink(input_filename)
+            if (os.path.isfile(comment_filename)):
+                os.unlink(comment_filename)
+
+            track = audiotools.FlacAudio.from_pcm(
+                input_filename,
+                BLANK_PCM_Reader(1))
+
+            f = open(comment_filename, "wb")
+            f.write("Test Text")
+            f.close()
+
+            self.assertEqual(
+                self.__run_app__(["tracktag",
+                                  "--comment-file", comment_filename,
+                                  input_filename]), 0)
+
+            self.assertEqual(
+                audiotools.open(input_filename).get_metadata().comment,
+                u"Test Text")
+
+            if (os.path.isfile(input_filename)):
+                os.unlink(input_filename)
+            if (os.path.isfile(comment_filename)):
+                os.unlink(comment_filename)
+
+
+class tracktag_errors(UtilTest):
+    @UTIL_TRACKTAG
+    def test_bad_options(self):
+        from audiotools.text import (ERR_OPEN_IOERROR,
+                                     ERR_ENCODING_ERROR,
+                                     ERR_TRACKTAG_COMMENT_IOERROR,
+                                     ERR_TRACKTAG_COMMENT_NOT_UTF8)
+
+        temp_comment = tempfile.NamedTemporaryFile(suffix=".txt")
+        temp_track_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        temp_track_stat = os.stat(temp_track_file.name)[0]
+        try:
+            temp_track = audiotools.FlacAudio.from_pcm(
+                temp_track_file.name,
+                BLANK_PCM_Reader(5))
+
+            temp_track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+
+            self.assertEqual(self.__run_app__(
+                    ["tracktag", "--comment-file=/dev/null/foo.txt",
+                     temp_track.filename]), 1)
+            self.__check_error__(ERR_TRACKTAG_COMMENT_IOERROR %
+                                 (audiotools.Filename("/dev/null/foo.txt"),))
+
+            temp_comment.write(
+                os.urandom(1024) + ((u"\uFFFD".encode('utf-8')) * 103))
+            temp_comment.flush()
+
+            self.assertEqual(self.__run_app__(
+                    ["tracktag", "--comment-file=%s" % (temp_comment.name),
+                     temp_track.filename]), 1)
+            self.__check_error__(ERR_TRACKTAG_COMMENT_NOT_UTF8 %
+                                 (audiotools.Filename(temp_comment.name),))
+
+            os.chmod(temp_track_file.name, temp_track_stat & 07555)
+            self.assertEqual(self.__run_app__(
+                    ["tracktag", "--name=Bar",
+                     temp_track.filename]), 1)
+            self.__check_error__(ERR_ENCODING_ERROR %
+                                 (audiotools.Filename(temp_track.filename),))
+        finally:
+            os.chmod(temp_track_file.name, temp_track_stat)
+            temp_track_file.close()
+            temp_comment.close()
+
+    @UTIL_TRACKTAG
+    def test_oversized_metadata(self):
+        for audio_class in [audiotools.FlacAudio,
+                            audiotools.OggFlacAudio]:
+            tempflac = tempfile.NamedTemporaryFile(
+            suffix="." + audio_class.SUFFIX)
+            tempwv = tempfile.NamedTemporaryFile(
+                suffix="." + audiotools.WavPackAudio.SUFFIX)
+            big_text = tempfile.NamedTemporaryFile(suffix=".txt")
+            try:
+                flac = audio_class.from_pcm(
+                    tempflac.name,
+                    BLANK_PCM_Reader(5))
+
+                flac.set_metadata(audiotools.MetaData(track_name=u"Foo"))
+
+                big_text.write("QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2'))
+                big_text.flush()
+
+                orig_md5 = md5()
+                pcm = flac.to_pcm()
+                audiotools.transfer_framelist_data(pcm, orig_md5.update)
+                pcm.close()
+
+                #ensure that setting big text via tracktag
+                #doesn't break the file
+                subprocess.call(["tracktag", "-V", "quiet",
+                                 "--comment-file=%s" % (big_text.name),
+                                 flac.filename])
+                new_md5 = md5()
+                pcm = flac.to_pcm()
+                audiotools.transfer_framelist_data(pcm, new_md5.update)
+                pcm.close()
+                self.assertEqual(orig_md5.hexdigest(),
+                                 new_md5.hexdigest())
+
+                subprocess.call(["track2track", "-V", "quiet", "-t", "wv",
+                                 "-o", tempwv.name,
+                                 flac.filename])
+
+                wv = audiotools.open(tempwv.name)
+
+                self.assertEqual(flac, wv)
+
+                self.assertEqual(subprocess.call(
+                        ["tracktag", "-V", "quiet",
+                         "--comment-file=%s" % (big_text.name),
+                         wv.filename]), 0)
+
+                self.assert_(len(wv.get_metadata().comment) > 0)
+
+                subprocess.call(["track2track", "-V", "quiet",
+                                 "-t", audio_class.NAME, "-o",
+                                 flac.filename, wv.filename])
+
+                flac = audiotools.open(tempflac.name)
+                self.assertEqual(flac, wv)
+            finally:
+                tempflac.close()
+                tempwv.close()
+                big_text.close()
+
+
+class NoMetaData(Exception):
+    pass
+
+
+class tracktag_misc(UtilTest):
+    @UTIL_TRACKTAG
+    def test_text_options(self):
+        def number_fields_values(fields, metadata_class):
+            values = set([])
+            for field in audiotools.MetaData.INTEGER_FIELDS:
+                if (field in fields):
+                    values.add(
+                        (field,
+                         audiotools.MetaData.INTEGER_FIELDS.index(
+                                field) + 1))
+                else:
+                    values.add((field, None))
+
+            return values
+
+        def deleted_number_fields_values(fields, metadata_class):
+            values = set([])
+            for field in audiotools.MetaData.INTEGER_FIELDS:
+                if (field not in fields):
+                    values.add(
+                        (field,
+                         audiotools.MetaData.INTEGER_FIELDS.index(
+                                field) + 1))
+                else:
+                    values.add((field, None))
+
+            return values
+
+        def metadata_fields_values(metadata):
+            values = set([])
+            for field in audiotools.MetaData.INTEGER_FIELDS:
+                values.add((field, getattr(metadata, field)))
+            return values
+
+        for audio_type in audiotools.AVAILABLE_TYPES:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_type.SUFFIX)
+            try:
+                track = audio_type.from_pcm(temp_file.name,
+                                            BLANK_PCM_Reader(1))
+                for (field_name,
+                     add_field,
+                     remove_field) in zip(
+                    ['track_name',
+                     'artist_name',
+                     'performer_name',
+                     'composer_name',
+                     'conductor_name',
+                     'album_name',
+                     'catalog',
+                     'ISRC',
+                     'publisher',
+                     'media',
+                     'year',
+                     'date',
+                     'copyright',
+                     'comment'],
+                    ['--name',
+                     '--artist',
+                     '--performer',
+                     '--composer',
+                     '--conductor',
+                     '--album',
+                     '--catalog',
+                     '--ISRC',
+                     '--publisher',
+                     '--media-type',
+                     '--year',
+                     '--date',
+                     '--copyright',
+                     '--comment'],
+                    ['--remove-name',
+                     '--remove-artist',
+                     '--remove-performer',
+                     '--remove-composer',
+                     '--remove-conductor',
+                     '--remove-album',
+                     '--remove-catalog',
+                     '--remove-ISRC',
+                     '--remove-publisher',
+                     '--remove-media-type',
+                     '--remove-year',
+                     '--remove-date',
+                     '--remove-copyright',
+                     '--remove-comment']):
+                    self.assertEqual(
+                        self.__run_app__(['tracktag', add_field, 'foo',
+                                          track.filename]), 0)
+                    new_track = audiotools.open(track.filename)
+                    metadata = new_track.get_metadata()
+                    if (metadata is None):
+                        break
+                    elif (getattr(metadata, field_name) is not None):
+                        self.assertEqual(getattr(metadata, field_name),
+                                         u'foo')
+
+                        self.assertEqual(
+                            self.__run_app__(['tracktag', remove_field,
+                                              track.filename]), 0)
+
+                        metadata = audiotools.open(
+                            track.filename).get_metadata()
+
+                        self.assertEqual(
+                            getattr(metadata, field_name),
+                            None,
+                            "remove option failed for %s field %s" %
+                            (audio_type.NAME, remove_field))
+
+                number_fields = ['track_number',
+                                 'track_total',
+                                 'album_number',
+                                 'album_total']
+                try:
+                    #make sure the number fields get set properly, if possible
+                    for count in xrange(1, len(number_fields) + 1):
+                        for fields in Combinations(number_fields, count):
+                            self.assertEqual(
+                                self.__run_app__(
+                                    ["tracktag", '-r', track.filename] +
+                                    self.populate_set_number_fields(fields)),
+                                0)
+                            metadata = audiotools.open(
+                                track.filename).get_metadata()
+                            if (metadata is None):
+                                raise NoMetaData()
+
+                            self.assert_(
+                                metadata_fields_values(metadata).issubset(
+                                    number_fields_values(
+                                        fields, metadata.__class__)),
+                                "%s not subset of %s for fields %s" % (
+                                    metadata_fields_values(metadata),
+                                    number_fields_values(
+                                        fields, metadata.__class__),
+                                    repr(fields)))
+
+                    #make sure the number fields get removed properly, also
+                    number_metadata = audiotools.MetaData(track_number=1,
+                                                          track_total=2,
+                                                          album_number=3,
+                                                          album_total=4)
+                    for count in xrange(1, len(number_fields) + 1):
+                        for fields in Combinations(number_fields, count):
+                            audiotools.open(track.filename).set_metadata(
+                                number_metadata)
+                            self.assertEqual(
+                                self.__run_app__(
+                                   ["tracktag", track.filename] +
+                                   self.populate_delete_number_fields(fields)),
+                                0)
+                            metadata = audiotools.open(
+                                track.filename).get_metadata()
+                            self.assert_(
+                                metadata_fields_values(metadata).issubset(
+                                    deleted_number_fields_values(
+                                        fields, metadata.__class__)),
+                                "%s not subset of %s for options %s, fields %s, type %s" %
+                                (metadata_fields_values(metadata),
+                                 deleted_number_fields_values(
+                                        fields, metadata.__class__),
+                                 self.populate_delete_number_fields(
+                                        fields),
+                                 fields,
+                                 audio_type.NAME))
+
+                except NoMetaData:
+                    pass
+
+            finally:
+                temp_file.close()
+
+    def populate_set_number_fields(self, fields):
+        options = []
+        for field in fields:
+            if (field == 'track_number'):
+                options.append('--number')
+                options.append(str(1))
+            elif (field == 'track_total'):
+                options.append('--track-total')
+                options.append(str(2))
+            elif (field == 'album_number'):
+                options.append('--album-number')
+                options.append(str(3))
+            elif (field == 'album_total'):
+                options.append('--album-total')
+                options.append(str(4))
+        return options
+
+    def populate_delete_number_fields(self, fields):
+        options = []
+        for field in fields:
+            if (field == 'track_number'):
+                options.append('--remove-number')
+            elif (field == 'track_total'):
+                options.append('--remove-track-total')
+            elif (field == 'album_number'):
+                options.append('--remove-album-number')
+            elif (field == 'album_total'):
+                options.append('--remove-album-total')
+        return options
+
+
+class trackverify(UtilTest):
+    @UTIL_TRACKVERIFY
+    def test_version(self):
+        self.assertEqual(self.__run_app__(["trackverify",
+                                           "--version"]), 0)
+        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
