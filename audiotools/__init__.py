@@ -295,24 +295,179 @@ class OptionParser(optparse.OptionParser):
 OptionGroup = optparse.OptionGroup
 
 
-def Messenger(executable, options):
-    """returns a Messenger object based on set verbosity level in options"""
+class DummyOutput:
+    """a writable FILE-like object which generates no output"""
 
-    if (not hasattr(options, "verbosity")):
-        return VerboseMessenger(executable)
-    elif ((options.verbosity == 'normal') or
-          (options.verbosity == 'debug')):
-        return VerboseMessenger(executable)
-    else:
-        return SilentMessenger(executable)
+    def __init__(self):
+        pass
 
-__ANSI_SEQUENCE__ = re.compile(u"\u001B\[[0-9;]+.")
-__CHAR_WIDTHS__ = {"Na": 1,
-                   "A": 1,
-                   "W": 2,
-                   "F": 2,
-                   "N": 1,
-                   "H": 1}
+    def isatty(self):
+        return False
+
+    def write(self, s):
+        return
+
+    def flush(self):
+        return
+
+    def close(self):
+        return
+
+
+class Messenger:
+    """this class is for displaying formatted output in a consistent way"""
+
+    def __init__(self, executable, options):
+        """executable is a plain string of what script is being run
+
+        this is typically for use by the usage() method"""
+
+        self.executable = executable
+        if (hasattr(options, "verbosity") and (options.verbosity == "quiet")):
+            self.__stdout__ = DummyOutput()
+            self.__stderr__ = DummyOutput()
+        else:
+            self.__stdout__ = sys.stdout
+            self.__stderr__ = sys.stderr
+
+    def output_isatty(self):
+        return self.__stdout__.isatty()
+
+    def info_isatty(self):
+        return self.__stderr__.isatty()
+
+    def error_isatty(self):
+        return self.__stderr__.isatty()
+
+    def output(self, s):
+        """displays an output message unicode string to stdout
+
+        this appends a newline to that message"""
+
+        self.__stdout__.write(s.encode(IO_ENCODING, 'replace'))
+        self.__stdout__.write(os.linesep)
+
+    def partial_output(self, s):
+        """displays a partial output message unicode string to stdout
+
+        this flushes output so that message is displayed"""
+
+        self.__stdout__.write(s.encode(IO_ENCODING, 'replace'))
+        self.__stdout__.flush()
+
+    def info(self, s):
+        """displays an informative message unicode string to stderr
+
+        this appends a newline to that message"""
+
+        self.__stderr__.write(s.encode(IO_ENCODING, 'replace'))
+        self.__stderr__.write(os.linesep)
+
+    def partial_info(self, s):
+        """displays a partial informative message unicode string to stdout
+
+        this flushes output so that message is displayed"""
+
+        self.__stderr__.write(s.encode(IO_ENCODING, 'replace'))
+        self.__stderr__.flush()
+
+    #what's the difference between output() and info() ?
+    #output() is for a program's primary data
+    #info() is for incidental information
+    #for example, trackinfo(1) should use output() for what it displays
+    #since that output is its primary function
+    #but track2track should use info() for its lines of progress
+    #since its primary function is converting audio
+    #and tty output is purely incidental
+
+    def error(self, s):
+        """displays an error message unicode string to stderr
+
+        this appends a newline to that message"""
+
+        self.__stderr__.write("*** Error: ")
+        self.__stderr__.write(s.encode(IO_ENCODING, 'replace'))
+        self.__stderr__.write(os.linesep)
+
+    def os_error(self, oserror):
+        """displays an properly formatted OSError exception to stderr
+
+        this appends a newline to that message"""
+
+        self.error(u"[Errno %d] %s: '%s'" %
+                   (oserror.errno,
+                    oserror.strerror.decode('utf-8', 'replace'),
+                    Filename(oserror.filename)))
+
+    def warning(self, s):
+        """displays a warning message unicode string to stderr
+
+        this appends a newline to that message"""
+
+        self.__stderr__.write("*** Warning: ")
+        self.__stderr__.write(s.encode(IO_ENCODING, 'replace'))
+        self.__stderr__.write(os.linesep)
+
+    def usage(self, s):
+        """displays the program's usage unicode string to stderr
+
+        this appends a newline to that message"""
+
+        self.__stderr__.write("*** Usage: ")
+        self.__stderr__.write(self.executable.decode('ascii'))
+        self.__stderr__.write(" ")
+        self.__stderr__.write(s.encode(IO_ENCODING, 'replace'))
+        self.__stderr__.write(os.linesep)
+
+    def ansi_clearline(self):
+        """generates a set of clear line ANSI escape codes to stdout
+
+        this works only if stdout is a tty.  Otherwise, it does nothing
+        for example:
+        >>> msg = Messenger("audiotools")
+        >>> msg.partial_output(u"working")
+        >>> time.sleep(1)
+        >>> msg.ansi_clearline()
+        >>> msg.output(u"done")
+        """
+
+        if (self.__stdout__.isatty()):
+            self.__stdout__.write((u"\u001B[0G" +  # move cursor to column 0
+                                   # clear everything after cursor
+                                   u"\u001B[0K").encode(IO_ENCODING))
+            self.__stdout__.flush()
+
+    def ansi_uplines(self, lines):
+        """moves the cursor up by the given number of lines"""
+
+        if (self.__stdout__.isatty()):
+            self.__stdout__.write(u"\u001B[%dA" % (lines))
+            self.__stdout__.flush()
+
+    def ansi_cleardown(self):
+        """clears the remainder of the screen from the cursor downward"""
+
+        if (self.__stdout__.isatty()):
+            self.__stdout__.write(u"\u001B[0J")
+            self.__stdout__.flush()
+
+    def ansi_clearscreen(self):
+        """clears the entire screen and moves cursor to upper left corner"""
+
+        if (self.__stdout__.isatty()):
+            self.__stdout__.write(u"\u001B[2J")
+            self.__stdout__.write(u"\u001B[1;1H")
+            self.__stdout__.flush()
+
+    def terminal_size(self, fd):
+        """returns the current terminal size as (height, width)"""
+
+        import fcntl
+        import termios
+        import struct
+
+        #this isn't all that portable, but will have to do
+        return struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234'))
 
 
 def khz(hz):
@@ -327,20 +482,6 @@ def khz(hz):
         return u"%dkHz" % (num)
     else:
         return u"%d.%dkHz" % (num, den)
-
-
-def str_width(s):
-    """returns the width of unicode string s, in characters
-
-    this accounts for multi-code Unicode characters
-    as well as embedded ANSI sequences
-    """
-
-    import unicodedata
-
-    return sum(
-        [__CHAR_WIDTHS__.get(unicodedata.east_asian_width(char), 1) for char in
-         unicodedata.normalize('NFC', __ANSI_SEQUENCE__.sub(u"", s))])
 
 
 class output_text:
@@ -362,10 +503,17 @@ class output_text:
 
         import unicodedata
 
+        CHAR_WIDTHS = {"Na": 1,
+                       "A": 1,
+                       "W": 2,
+                       "F": 2,
+                       "N": 1,
+                       "H": 1}
+
         self.__string__ = unicodedata.normalize('NFC', unicode(unicode_string))
 
         self.__char_widths__ = tuple(
-            [__CHAR_WIDTHS__.get(unicodedata.east_asian_width(char), 1)
+            [CHAR_WIDTHS.get(unicodedata.east_asian_width(char), 1)
              for char in self.__string__])
 
         self.__fg_color__ = fg_color
@@ -813,228 +961,6 @@ class output_table_blank:
         """returns formatted row as unicode"""
 
         return u""
-
-
-class VerboseMessenger:
-    """this class is for displaying formatted output in a consistent way"""
-
-    def __init__(self, executable):
-        """executable is a plain string of what script is being run
-
-        this is typically for use by the usage() method"""
-
-        self.executable = executable
-
-    def output_isatty(self):
-        return sys.stdout.isatty()
-
-    def info_isatty(self):
-        return sys.stderr.isatty()
-
-    def error_isatty(self):
-        return sys.stderr.isatty()
-
-    def output(self, s):
-        """displays an output message unicode string to stdout
-
-        this appends a newline to that message"""
-
-        sys.stdout.write(s.encode(IO_ENCODING, 'replace'))
-        sys.stdout.write(os.linesep)
-
-    def partial_output(self, s):
-        """displays a partial output message unicode string to stdout
-
-        this flushes output so that message is displayed"""
-
-        sys.stdout.write(s.encode(IO_ENCODING, 'replace'))
-        sys.stdout.flush()
-
-    def info(self, s):
-        """displays an informative message unicode string to stderr
-
-        this appends a newline to that message"""
-
-        sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
-        sys.stderr.write(os.linesep)
-
-    def info_rows(self):
-        """outputs all of our accumulated output rows as aligned info
-
-        this operates by calling our info() method
-        therefore, subclasses that have overridden info() to noops
-        (silent messengers) will also have silent info_rows() methods
-        """
-
-        lengths = [row.lengths() for row in self.output_msg_rows]
-        if (len(lengths) == 0):
-            raise ValueError("you must generate at least one output row")
-        if (len(set(map(len, lengths))) != 1):
-            raise ValueError("all output rows must be the same length")
-
-        max_lengths = []
-        for i in xrange(len(lengths[0])):
-            max_lengths.append(max([length[i] for length in lengths]))
-
-        for row in self.output_msg_rows:
-            row.set_total_lengths(max_lengths)
-
-        for row in self.output_msg_rows:
-            self.info(unicode(row))
-        self.output_msg_rows = []
-
-    def partial_info(self, s):
-        """displays a partial informative message unicode string to stdout
-
-        this flushes output so that message is displayed"""
-
-        sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
-        sys.stderr.flush()
-
-    #what's the difference between output() and info() ?
-    #output() is for a program's primary data
-    #info() is for incidental information
-    #for example, trackinfo(1) should use output() for what it displays
-    #since that output is its primary function
-    #but track2track should use info() for its lines of progress
-    #since its primary function is converting audio
-    #and tty output is purely incidental
-
-    def error(self, s):
-        """displays an error message unicode string to stderr
-
-        this appends a newline to that message"""
-
-        sys.stderr.write("*** Error: ")
-        sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
-        sys.stderr.write(os.linesep)
-
-    def os_error(self, oserror):
-        """displays an properly formatted OSError exception to stderr
-
-        this appends a newline to that message"""
-
-        self.error(u"[Errno %d] %s: '%s'" %
-                   (oserror.errno,
-                    oserror.strerror.decode('utf-8', 'replace'),
-                    Filename(oserror.filename)))
-
-    def warning(self, s):
-        """displays a warning message unicode string to stderr
-
-        this appends a newline to that message"""
-
-        sys.stderr.write("*** Warning: ")
-        sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
-        sys.stderr.write(os.linesep)
-
-    def usage(self, s):
-        """displays the program's usage unicode string to stderr
-
-        this appends a newline to that message"""
-
-        sys.stderr.write("*** Usage: ")
-        sys.stderr.write(self.executable.decode('ascii'))
-        sys.stderr.write(" ")
-        sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
-        sys.stderr.write(os.linesep)
-
-    def ansi_clearline(self):
-        """generates a set of clear line ANSI escape codes to stdout
-
-        this works only if stdout is a tty.  Otherwise, it does nothing
-        for example:
-        >>> msg = VerboseMessenger("audiotools")
-        >>> msg.partial_output(u"working")
-        >>> time.sleep(1)
-        >>> msg.ansi_clearline()
-        >>> msg.output(u"done")
-        """
-
-        if (sys.stdout.isatty()):
-            sys.stdout.write((u"\u001B[0G" +  # move cursor to column 0
-                              # clear everything after cursor
-                              u"\u001B[0K").encode(IO_ENCODING))
-            sys.stdout.flush()
-
-    def ansi_uplines(self, lines):
-        """moves the cursor up by the given number of lines"""
-
-        if (sys.stdout.isatty()):
-            sys.stdout.write(u"\u001B[%dA" % (lines))
-            sys.stdout.flush()
-
-    def ansi_cleardown(self):
-        """clears the remainder of the screen from the cursor downward"""
-
-        if (sys.stdout.isatty()):
-            sys.stdout.write(u"\u001B[0J")
-            sys.stdout.flush()
-
-    def ansi_clearscreen(self):
-        """clears the entire screen and moves cursor to upper left corner"""
-
-        if (sys.stdout.isatty()):
-            sys.stdout.write(u"\u001B[2J")
-            sys.stdout.write(u"\u001B[1;1H")
-            sys.stdout.flush()
-
-    def terminal_size(self, fd):
-        """returns the current terminal size as (height, width)"""
-
-        import fcntl
-        import termios
-        import struct
-
-        #this isn't all that portable, but will have to do
-        return struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234'))
-
-
-class SilentMessenger(VerboseMessenger):
-    def output(self, s):
-        """performs no output, resulting in silence"""
-
-        pass
-
-    def partial_output(self, s):
-        """performs no output, resulting in silence"""
-
-        pass
-
-    def warning(self, s):
-        """performs no output, resulting in silence"""
-
-        pass
-
-    def info(self, s):
-        """performs no output, resulting in silence"""
-
-        pass
-
-    def partial_info(self, s):
-        """performs no output, resulting in silence"""
-
-        pass
-
-    def ansi_clearline(self):
-        """performs no output, resulting in silence"""
-
-        pass
-
-    def ansi_uplines(self, lines):
-        """performs no output, resulting in silence"""
-
-        pass
-
-    def ansi_cleardown(self):
-        """performs no output, resulting in silence"""
-
-        pass
-
-    def ansi_clearscreen(self):
-        """clears the entire screen and moves cursor to upper left corner"""
-
-        pass
 
 
 class ProgressDisplay:
