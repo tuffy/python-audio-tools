@@ -2,6 +2,25 @@
 #include <cdio/cdda.h>
 #include <cdio/paranoia.h>
 
+/********************************************************
+ Audio Tools, a module and set of tools for manipulating audio data
+ Copyright (C) 2007-2013  Brian Langenberger
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+*******************************************************/
+
 #define CD_IMAGE 1 << 3
 #define DEVICE_FILE 0
 #define CUE_FILE 1
@@ -162,38 +181,6 @@ static PyMethodDef CDImage_methods[] = {
 };
 
 
-typedef struct {
-    PyObject_HEAD
-
-    uint32_t checksum;
-    uint32_t track_index;
-    PyObject* framelist_class;
-} cdio_ARChecksum;
-
-static PyObject*
-ARChecksum_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
-
-int
-ARChecksum_init(cdio_ARChecksum *self, PyObject *args, PyObject *kwds);
-
-void
-ARChecksum_dealloc(cdio_ARChecksum *self);
-
-static PyObject*
-ARChecksum_update(cdio_ARChecksum* self, PyObject *args);
-
-static PyObject*
-ARChecksum_checksum(cdio_ARChecksum* self, PyObject *args);
-
-static PyMethodDef  ARChecksum_methods[] = {
-    {"update", (PyCFunction)ARChecksum_update,
-     METH_VARARGS, "update(framelist) updates with the given FrameList"},
-    {"checksum", (PyCFunction)ARChecksum_checksum,
-     METH_NOARGS, "checksum() -> calculcated 32-bit checksum"},
-    {NULL}
-};
-
-
 static PyMethodDef cdioMethods[] = {
     {"set_read_callback", (PyCFunction)set_read_callback,
      METH_VARARGS, "Sets the global callback for CDDA.read_sector"},
@@ -289,46 +276,4 @@ static PyTypeObject cdio_CDImageType = {
     (initproc)CDImage_init,    /* tp_init */
     0,                         /* tp_alloc */
     CDImage_new,               /* tp_new */
-};
-
-static PyTypeObject cdio_ARChecksumType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
-    "cdio.ARChecksum",         /*tp_name*/
-    sizeof(cdio_ARChecksum),   /*tp_basicsize*/
-    0,                         /*tp_itemsize*/
-    (destructor)ARChecksum_dealloc, /*tp_dealloc*/
-    0,                         /*tp_print*/
-    0,                         /*tp_getattr*/
-    0,                         /*tp_setattr*/
-    0,                         /*tp_compare*/
-    0,                         /*tp_repr*/
-    0,                         /*tp_as_number*/
-    0,                         /*tp_as_sequence*/
-    0,                         /*tp_as_mapping*/
-    0,                         /*tp_hash */
-    0,                         /*tp_call*/
-    0,                         /*tp_str*/
-    0,                         /*tp_getattro*/
-    0,                         /*tp_setattro*/
-    0,                         /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "ARChecksum objects",      /* tp_doc */
-    0,                         /* tp_traverse */
-    0,                         /* tp_clear */
-    0,                         /* tp_richcompare */
-    0,                         /* tp_weaklistoffset */
-    0,                         /* tp_iter */
-    0,                         /* tp_iternext */
-    ARChecksum_methods,        /* tp_methods */
-    0,                         /* tp_members */
-    0,                         /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    (initproc)ARChecksum_init, /* tp_init */
-    0,                         /* tp_alloc */
-    ARChecksum_new,            /* tp_new */
 };

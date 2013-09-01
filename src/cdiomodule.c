@@ -43,10 +43,6 @@ initcdio(void)
     if (PyType_Ready(&cdio_CDImageType) < 0)
         return;
 
-    cdio_ARChecksumType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&cdio_ARChecksumType) < 0)
-        return;
-
     m = Py_InitModule3("cdio", cdioMethods,
                        "A CDDA reading module.");
 
@@ -56,8 +52,6 @@ initcdio(void)
     Py_INCREF(&cdio_CDImageType);
     PyModule_AddObject(m, "CDImage", (PyObject *)&cdio_CDImageType);
 
-    Py_INCREF(&cdio_ARChecksumType);
-    PyModule_AddObject(m, "ARChecksum", (PyObject *)&cdio_ARChecksumType);
 
     PyModule_AddIntConstant(m, "CD_IMAGE", CD_IMAGE);
     PyModule_AddIntConstant(m, "DEVICE_FILE", DEVICE_FILE);
@@ -549,101 +543,6 @@ set_read_callback(PyObject *dummy, PyObject *args)
     }
     return result;
 }
-
-static PyObject*
-ARChecksum_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    cdio_ARChecksum *self;
-
-    self = (cdio_ARChecksum *)type->tp_alloc(type, 0);
-
-    return (PyObject *)self;
-}
-
-int
-ARChecksum_init(cdio_ARChecksum *self, PyObject *args, PyObject *kwds)
-{
-    PyObject *pcm;
-
-    self->checksum = 0;
-    self->track_index = 1;
-    self->framelist_class = NULL;
-
-    if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
-        return -1;
-
-    if ((self->framelist_class =
-         PyObject_GetAttrString(pcm, "FrameList")) == NULL) {
-        Py_DECREF(pcm);
-        return -1;
-    } else {
-        Py_DECREF(pcm);
-    }
-
-    return 0;
-}
-
-void
-ARChecksum_dealloc(cdio_ARChecksum *self)
-{
-    Py_XDECREF(self->framelist_class);
-
-    self->ob_type->tp_free((PyObject*)self);
-}
-
-static PyObject*
-ARChecksum_update(cdio_ARChecksum* self, PyObject *args)
-{
-    PyObject *framelist_obj;
-    pcm_FrameList *framelist;
-    unsigned i;
-
-    if (!PyArg_ParseTuple(args, "O", &framelist_obj))
-        return NULL;
-
-    /*ensure framelist_obj is a FrameList object*/
-    if (PyObject_IsInstance(framelist_obj, self->framelist_class)) {
-        framelist = (pcm_FrameList*)framelist_obj;
-    } else {
-        PyErr_SetString(PyExc_TypeError, "objects must be of type FrameList");
-        return NULL;
-    }
-
-    /*ensure FrameList is CD-formatted*/
-    if (framelist->channels != 2) {
-        PyErr_SetString(PyExc_ValueError,
-                        "FrameList must be 2 channels");
-        return NULL;
-    }
-    if (framelist->bits_per_sample != 16) {
-        PyErr_SetString(PyExc_ValueError,
-                        "FrameList must be 16 bits per sample");
-        return NULL;
-    }
-
-    /*update CRC with values from FrameList*/
-    for (i = 0; i < framelist->frames; i++) {
-        const int left_s = framelist->samples[i * 2];
-        const int right_s = framelist->samples[i * 2 + 1];
-        const unsigned left_u =
-            left_s >= 0 ? left_s : (1 << 16) - (-left_s);
-        const unsigned right_u =
-            right_s >= 0 ? right_s : (1 << 16) - (-right_s);
-
-        self->checksum += (((right_u << 16) | left_u) * self->track_index);
-        self->track_index++;
-    }
-
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-static PyObject*
-ARChecksum_checksum(cdio_ARChecksum* self, PyObject *args)
-{
-    return Py_BuildValue("I", self->checksum);
-}
-
 
 void
 read_sector_callback(long int i, paranoia_cb_mode_t mode)

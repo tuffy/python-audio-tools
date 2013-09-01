@@ -147,8 +147,9 @@ AR_NOT_FOUND = -1
 AR_MISMATCH = -2
 
 
-def accuraterip_checksum(progress, track, ar_matches):
-    from audiotools.cdio import ARChecksum
+def accuraterip_checksum(progress, track, track_number, track_total,
+                         ar_matches):
+    from audiotools._accuraterip import ChecksumV1
 
     if (len(ar_matches) == 0):
         return (unicode(audiotools.Filename(track.filename)),
@@ -159,7 +160,26 @@ def accuraterip_checksum(progress, track, ar_matches):
         reader = audiotools.PCMReaderProgress(track.to_pcm(),
                                               track.total_frames(),
                                               progress)
-        checksum = ARChecksum()
+
+        metadata = track.get_metadata()
+        if (metadata is not None):
+            if (metadata.track_number is not None):
+                is_first = (metadata.track_number == 1)
+                if (metadata.track_total is not None):
+                    is_last = (metadata.track_number == metadata.track_total)
+                else:
+                    is_last = (metadata.track_number == track_total)
+            else:
+                is_first = (track_number == 1)
+                is_last = (track_number == track_total)
+        else:
+            is_first = (track_number == 1)
+            is_last = (track_number == track_total)
+
+        checksum = ChecksumV1(is_first,
+                              is_last,
+                              track.sample_rate(),
+                              track.total_frames())
 
         try:
             audiotools.transfer_data(reader.read, checksum.update)
@@ -208,10 +228,11 @@ def accuraterip_display_result(result):
         return u"read error"
 
 
-def accuraterip_image_checksum(progress, track, ar_matches,
+def accuraterip_image_checksum(progress, track, track_number, track_total,
+                               ar_matches,
                                displayed_filename,
                                pcm_frames_offset, total_pcm_frames):
-    from audiotools.cdio import ARChecksum
+    from audiotools._accuraterip import ChecksumV1
 
     if (len(ar_matches) == 0):
         return (unicode(audiotools.Filename(track.filename)),
@@ -232,7 +253,10 @@ def accuraterip_image_checksum(progress, track, ar_matches,
             total_pcm_frames,
             progress)
 
-        checksum = ARChecksum()
+        checksum = ChecksumV1(track_number == 1,
+                              track_number == track_total,
+                              track.sample_rate(),
+                              track.total_frames())
 
         try:
             audiotools.transfer_data(reader.read, checksum.update)
@@ -406,6 +430,8 @@ if (__name__ == '__main__'):
                             progress_text=filename,
                             completion_output=accuraterip_display_result,
                             track=tracks[0],
+                            track_number=i,
+                            track_total=len(tracks),
                             ar_matches=ar_results.get(i, []),
                             displayed_filename=filename,
                             pcm_frames_offset=pcm_frames_offset,
@@ -425,6 +451,8 @@ if (__name__ == '__main__'):
                             progress_text=unicode(filename),
                             completion_output=accuraterip_display_result,
                             track=track,
+                            track_number=i,
+                            track_total=len(tracks),
                             ar_matches=ar_results.get(
                                 track_number(track, i), []))
             else:

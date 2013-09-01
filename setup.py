@@ -240,6 +240,13 @@ class audiotools_verify(Extension):
                                     'src/func_io.c'])
 
 
+class audiotools_accuraterip(Extension):
+    def __init__(self):
+        Extension.__init__(self,
+                           'audiotools._accuraterip',
+                           sources=['src/accuraterip.c'])
+
+
 class audiotools_output(Extension):
     def __init__(self, has_pulseaudio=None, has_alsa=None):
         """has_pulseaudio and has_alsa may be True, False or None
@@ -339,6 +346,7 @@ ext_modules = [audiotools_pcm(),
                audiotools_encoders(),
                audiotools_bitstream(),
                audiotools_verify(),
+               audiotools_accuraterip(),
                audiotools_output()]
 
 

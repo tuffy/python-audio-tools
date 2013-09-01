@@ -114,26 +114,3 @@ def perform_lookup(disc_id,
     except IOError:
         #keep trying to parse values until the data runs out
         return matches
-
-
-class AccurateRipReader:
-    def __init__(self, pcmreader):
-        self.pcmreader = pcmreader
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
-
-        from .cdio import ARChecksum
-        self.__checksum__ = ARChecksum()
-
-    def read(self, pcm_frames):
-        frame = self.pcmreader.read(pcm_frames)
-        self.__checksum__.update(frame)
-        return frame
-
-    def close(self):
-        self.pcmreader.close()
-
-    def checksum(self):
-        return self.__checksum__.checksum()

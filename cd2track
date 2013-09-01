@@ -35,6 +35,32 @@ def limit(l, indexes):
             if ((index + 1) in indexes)]
 
 
+class AccurateRipReader:
+    def __init__(self, pcmreader, track_number, track_total, total_pcm_frames):
+        self.pcmreader = pcmreader
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
+        self.bits_per_sample = pcmreader.bits_per_sample
+
+        from audiotools._accuraterip import ChecksumV1
+        self.__checksum__ = ChecksumV1(track_number == 1,
+                                       track_number == track_total,
+                                       pcmreader.sample_rate,
+                                       total_pcm_frames)
+
+    def read(self, pcm_frames):
+        frame = self.pcmreader.read(pcm_frames)
+        self.__checksum__.update(frame)
+        return frame
+
+    def close(self):
+        self.pcmreader.close()
+
+    def checksum(self):
+        return self.__checksum__.checksum()
+
+
 if (__name__ == '__main__'):
     import argparse
 
@@ -83,7 +109,7 @@ if (__name__ == '__main__'):
                             help=_.OPT_DIR)
 
     conversion.add_argument("--format",
-                            default=None,
+                            default=audiotools.FILENAME_FORMAT,
                             dest="format",
                             help=_.OPT_FORMAT)
 
@@ -335,7 +361,11 @@ if (__name__ == '__main__'):
         progress = audiotools.SingleProgressDisplay(
             msg, unicode(output_filename))
 
-        accuraterip_reader = audiotools.accuraterip.AccurateRipReader(cd_track)
+        accuraterip_reader = AccurateRipReader(
+            cd_track,
+            cd_track.track_number,
+            len(cdda),
+            cd_track.length() * (44100 / 75))
 
         try:
             encoded.append(

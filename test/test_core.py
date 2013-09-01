@@ -6816,3 +6816,69 @@ class Test_CoreAudio_CDPlayer(Test_NULL_CDPlayer):
          self.cue_file,
          self.bin_file) = self.__setup_bin_cue__()
         self.output_name = "CoreAudio"
+
+
+class Test_Accuraterip(unittest.TestCase):
+    def test_checksum_v1(self):
+        from audiotools._accuraterip import ChecksumV1
+
+        #sanity checking
+        self.assertRaises(ValueError,
+                          ChecksumV1,
+                          False, False,
+                          0, 10)
+
+        self.assertRaises(ValueError,
+                          ChecksumV1,
+                          False, False,
+                          -1, 10)
+
+        self.assertRaises(ValueError,
+                          ChecksumV1,
+                          False, False,
+                          44100, 0)
+
+        self.assertRaises(ValueError,
+                          ChecksumV1,
+                          False, False,
+                          44100, -1)
+
+        self.assertRaises(ValueError,
+                          ChecksumV1,
+                          False, False,
+                          -1, -1)
+
+        track = audiotools.open("tone.flac")
+
+        first_track = ChecksumV1(True, False,
+                                 track.sample_rate(),
+                                 track.total_frames())
+
+        audiotools.transfer_data(track.to_pcm().read, first_track.update)
+
+        #values taken from reference implementation
+        self.assertEqual(first_track.checksum(), 0xEE4DBEB4)
+
+        middle_track = ChecksumV1(False, False,
+                                  track.sample_rate(),
+                                  track.total_frames())
+
+        audiotools.transfer_data(track.to_pcm().read, middle_track.update)
+
+        self.assertEqual(middle_track.checksum(), 0xF6E4AD26)
+
+        last_track = ChecksumV1(False, True,
+                                track.sample_rate(),
+                                track.total_frames())
+
+        audiotools.transfer_data(track.to_pcm().read, last_track.update)
+
+        self.assertEqual(last_track.checksum(), 0xF819E862)
+
+        only_track = ChecksumV1(True, True,
+                                track.sample_rate(),
+                                track.total_frames())
+
+        audiotools.transfer_data(track.to_pcm().read, only_track.update)
+
+        self.assertEqual(only_track.checksum(), 0xEF82F9F0)
