@@ -1182,10 +1182,284 @@ class dvdainfo(UtilTest):
 
 class track2cd(UtilTest):
     @UTIL_TRACK2CD
+    def setUp(self):
+        #if the user has an ~/.audiotools.cfg file, save it and its mode
+        self.audiotools_cfg_path = os.path.expanduser("~/.audiotools.cfg")
+        if (os.path.isfile(self.audiotools_cfg_path)):
+            self.audiotools_cfg = open(self.audiotools_cfg_path, "rb").read()
+            self.audiotools_cfg_mode = os.stat(
+                self.audiotools_cfg_path).st_mode
+        else:
+            self.audiotools_cfg = None
+            self.audiotools_cfg_mode = None
+
+        #setup a couple of test tracks from a single big sine wave
+        sine = audiotools.BufferedPCMReader(
+            test_streams.Sine16_Stereo(12397980 + 10862124, 44100,
+                                       441.0, 0.50,
+                                       4410.0, 0.49, 1.0))
+
+        self.track1 = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.track2 = tempfile.NamedTemporaryFile(suffix=".flac")
+
+        track1 = audiotools.FlacAudio.from_pcm(
+            self.track1.name,
+            audiotools.LimitedPCMReader(sine, 12397980),
+            "0")
+
+        track1.set_metadata(audiotools.MetaData(track_number=1,
+                                                track_total=2))
+
+        track2 = audiotools.FlacAudio.from_pcm(
+            self.track2.name,
+            audiotools.LimitedPCMReader(sine, 10862124),
+            "0")
+
+        track2.set_metadata(audiotools.MetaData(track_number=2,
+                                                track_total=2))
+
+        #setup a test cuesheet
+        self.cuesheet = tempfile.NamedTemporaryFile(suffix=".cue")
+        self.cuesheet.write('FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 04:36:50\n    INDEX 01 04:41:10\n')
+        self.cuesheet.flush()
+
+    @UTIL_TRACK2CD
+    def tearDown(self):
+        if ((self.audiotools_cfg is not None) and
+            (self.audiotools_cfg_mode is not None)):
+            #if saved .audiotools.cfg file
+            #rewrite it to disk and restore its mode
+            open(self.audiotools_cfg_path, "wb").write(self.audiotools_cfg)
+            os.chmod(self.audiotools_cfg_path, self.audiotools_cfg_mode)
+        else:
+            #otherwise, remove any temporary file
+            if (os.path.isfile(self.audiotools_cfg_path)):
+                os.unlink(self.audiotools_cfg_path)
+
+        self.track1.close()
+        self.track2.close()
+        self.cuesheet.close()
+
+    @UTIL_TRACK2CD
     def test_version(self):
         self.assertEqual(self.__run_app__(["track2cd",
                                            "--version"]), 0)
         self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
+
+    @UTIL_TRACK2CD
+    def test_tracks_nocue(self):
+        import cPickle
+
+        #replace "cdrecord" with test program in config file
+        config = audiotools.RawConfigParser()
+        config.set_default("Binaries", "cdrecord",
+                           os.path.abspath("test_cdrecord.py"))
+
+        #check writing files track at a time with no write offset
+        config.write(open(self.audiotools_cfg_path, "w"))
+
+        results_file = tempfile.NamedTemporaryFile(suffix=".bin")
+
+        self.assertEqual(self.__run_app__(["track2cd",
+                                           "--cdrom",
+                                           results_file.name,
+                                           self.track1.name,
+                                           self.track2.name]), 0)
+
+        #both tracks should match
+        f = open(results_file.name, "rb")
+        self.assertEqual(cPickle.load(f), None)
+        self.assertEqual(cPickle.load(f), None)
+        f.close()
+
+        results_file.close()
+
+        #check writing files track at a time with positive write offset
+        config.set_default("System", "cdrom_write_offset", str(25))
+        config.write(open(self.audiotools_cfg_path, "w"))
+
+        results_file = tempfile.NamedTemporaryFile(suffix=".bin")
+
+        self.assertEqual(self.__run_app__(["track2cd",
+                                           "--cdrom",
+                                           results_file.name,
+                                           self.track1.name,
+                                           self.track2.name]), 0)
+
+        #both tracks should match
+        f = open(results_file.name, "rb")
+        self.assertEqual(cPickle.load(f), None)
+        self.assertEqual(cPickle.load(f), None)
+        f.close()
+
+        results_file.close()
+
+        #check writing files track at a time with negative write offset
+        config.set_default("System", "cdrom_write_offset", str(-25))
+        config.write(open(self.audiotools_cfg_path, "w"))
+
+        results_file = tempfile.NamedTemporaryFile(suffix=".bin")
+
+        self.assertEqual(self.__run_app__(["track2cd",
+                                           "--cdrom",
+                                           results_file.name,
+                                           self.track1.name,
+                                           self.track2.name]), 0)
+
+        #both tracks should match
+        f = open(results_file.name, "rb")
+        self.assertEqual(cPickle.load(f), None)
+        self.assertEqual(cPickle.load(f), None)
+        f.close()
+
+        results_file.close()
+
+    @UTIL_TRACK2CD
+    def test_tracks_cue(self):
+        import cPickle
+
+        #replace "cdrdao" with test program in config file
+        config = audiotools.RawConfigParser()
+        config.set_default("Binaries", "cdrdao",
+                           os.path.abspath("test_cdrdao.py"))
+
+        #check writing files via cdrdao with no write offset
+        config.write(open(self.audiotools_cfg_path, "w"))
+
+        results_file = tempfile.NamedTemporaryFile(suffix=".bin")
+
+        self.assertEqual(self.__run_app__(["track2cd",
+                                           "--cdrom",
+                                           results_file.name,
+                                           "--cue",
+                                           self.cuesheet.name,
+                                           self.track1.name,
+                                           self.track2.name]), 0)
+
+        #both tracks should match
+        f = open(results_file.name, "rb")
+        self.assertEqual(cPickle.load(f), None)
+        f.close()
+
+        results_file.close()
+
+        #check writing files via cdrdao with positive write offset
+        config.set_default("System", "cdrom_write_offset", str(25))
+        config.write(open(self.audiotools_cfg_path, "w"))
+
+        results_file = tempfile.NamedTemporaryFile(suffix=".bin")
+
+        self.assertEqual(self.__run_app__(["track2cd",
+                                           "--cdrom",
+                                           results_file.name,
+                                           "--cue",
+                                           self.cuesheet.name,
+                                           self.track1.name,
+                                           self.track2.name]), 0)
+
+        #both tracks should match
+        f = open(results_file.name, "rb")
+        self.assertEqual(cPickle.load(f), None)
+        f.close()
+
+        results_file.close()
+
+        #check writing files via cdrdao with negative write offset
+        config.set_default("System", "cdrom_write_offset", str(-25))
+        config.write(open(self.audiotools_cfg_path, "w"))
+
+        results_file = tempfile.NamedTemporaryFile(suffix=".bin")
+
+        self.assertEqual(self.__run_app__(["track2cd",
+                                           "--cdrom",
+                                           results_file.name,
+                                           "--cue",
+                                           self.cuesheet.name,
+                                           self.track1.name,
+                                           self.track2.name]), 0)
+
+        #both tracks should match
+        f = open(results_file.name, "rb")
+        self.assertEqual(cPickle.load(f), None)
+        f.close()
+
+        results_file.close()
+
+    @UTIL_TRACK2CD
+    def test_embedded_cuesheet(self):
+        import cPickle
+
+        combined_temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            combined_track = audiotools.FlacAudio.from_pcm(
+                combined_temp.name,
+                audiotools.PCMCat([audiotools.open(self.track1.name).to_pcm(),
+                                   audiotools.open(self.track2.name).to_pcm()]),
+                "0")
+            combined_track.set_cuesheet(
+                audiotools.read_sheet(self.cuesheet.name))
+
+            self.assert_(combined_track.get_cuesheet() is not None)
+
+            #replace "cdrdao" with test program in config file
+            config = audiotools.RawConfigParser()
+            config.set_default("Binaries", "cdrdao",
+                               os.path.abspath("test_cdrdao.py"))
+
+            #check writing files via cdrdao with no write offset
+            config.write(open(self.audiotools_cfg_path, "w"))
+
+            results_file = tempfile.NamedTemporaryFile(suffix=".bin")
+
+            self.assertEqual(self.__run_app__(["track2cd",
+                                               "--cdrom",
+                                               results_file.name,
+                                               combined_track.filename]), 0)
+
+            #both tracks should match
+            f = open(results_file.name, "rb")
+            self.assertEqual(cPickle.load(f), None)
+            f.close()
+
+            results_file.close()
+
+            #check writing files via cdrdao with positive write offset
+            config.set_default("System", "cdrom_write_offset", str(25))
+            config.write(open(self.audiotools_cfg_path, "w"))
+
+            results_file = tempfile.NamedTemporaryFile(suffix=".bin")
+
+            self.assertEqual(self.__run_app__(["track2cd",
+                                               "--cdrom",
+                                               results_file.name,
+                                               combined_track.filename]), 0)
+
+            #both tracks should match
+            f = open(results_file.name, "rb")
+            self.assertEqual(cPickle.load(f), None)
+            f.close()
+
+            results_file.close()
+
+            #check writing files via cdrdao with negative write offset
+            config.set_default("System", "cdrom_write_offset", str(-25))
+            config.write(open(self.audiotools_cfg_path, "w"))
+
+            results_file = tempfile.NamedTemporaryFile(suffix=".bin")
+
+            self.assertEqual(self.__run_app__(["track2cd",
+                                               "--cdrom",
+                                               results_file.name,
+                                               combined_track.filename]), 0)
+
+            #both tracks should match
+            f = open(results_file.name, "rb")
+            self.assertEqual(cPickle.load(f), None)
+            f.close()
+
+            results_file.close()
+        finally:
+            combined_temp.close()
 
 
 class track2track(UtilTest):
