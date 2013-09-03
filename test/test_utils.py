@@ -727,9 +727,7 @@ class coverdump(UtilTest):
 
         #check no input files
         self.assertEqual(self.__run_app__(
-                ["coverdump", "-V", "normal"]), 1)
-
-        self.__check_error__(ERR_1_FILE_REQUIRED)
+                ["coverdump", "-V", "normal"]), 2)
 
         #check multiple input files
         self.assertEqual(self.__run_app__(
@@ -1119,7 +1117,7 @@ class dvda2track(UtilTest):
 
         #test with no -A option
         self.assertEqual(self.__run_app__(["dvda2track"]), 1)
-        self.__check_error__(ERR_NO_AUDIO_TS)
+        self.__check_error__(ERR_DVDA_IOERROR_AUDIO_TS)
 
         #test with an invalid AUDIO_TS dir
         self.assertEqual(self.__run_app__(["dvda2track",
@@ -1167,7 +1165,7 @@ class dvdainfo(UtilTest):
 
         #test with no -A option
         self.assertEqual(self.__run_app__(["dvdainfo"]), 1)
-        self.__check_error__(ERR_NO_AUDIO_TS)
+        self.__check_error__(ERR_DVDA_IOERROR_AUDIO_TS)
 
         #test with an invalid AUDIO_TS dir
         self.assertEqual(self.__run_app__(["dvdainfo",
@@ -3076,7 +3074,8 @@ class tracklength(UtilTest):
                                      LAB_TRACKLENGTH_FILE_COUNT,
                                      LAB_TRACKLENGTH_FILE_LENGTH,
                                      LAB_TRACKLENGTH_FILE_SIZE,
-                                     LAB_TRACKLENGTH)
+                                     LAB_TRACKLENGTH,
+                                     DIV)
 
         track1 = audiotools.open("1s.flac")
         track2 = audiotools.open("1m.flac")
@@ -3091,10 +3090,10 @@ class tracklength(UtilTest):
                                LAB_TRACKLENGTH_FILE_LENGTH,
                                LAB_TRACKLENGTH_FILE_SIZE))
         self.__check_output__(u"%s %s %s %s" %
-                              (u"-" * 6,
-                               u"-" * 5,
-                               u"-" * 7,
-                               u"-" * 4))
+                              (DIV * 6,
+                               DIV * 5,
+                               DIV * 7,
+                               DIV * 4))
         self.__check_output__(u"%6s %5s %7s %4s" %
                               (u"flac",
                                1,
@@ -3111,10 +3110,10 @@ class tracklength(UtilTest):
                                LAB_TRACKLENGTH_FILE_LENGTH,
                                LAB_TRACKLENGTH_FILE_SIZE))
         self.__check_output__(u"%s %s %s %s" %
-                              (u"-" * 6,
-                               u"-" * 5,
-                               u"-" * 7,
-                               u"-" * 4))
+                              (DIV * 6,
+                               DIV * 5,
+                               DIV * 7,
+                               DIV * 4))
         self.__check_output__(u"%6s %5s %7s %4s" %
                               (u"flac",
                                2,
@@ -3131,10 +3130,10 @@ class tracklength(UtilTest):
                                LAB_TRACKLENGTH_FILE_LENGTH,
                                LAB_TRACKLENGTH_FILE_SIZE))
         self.__check_output__(u"%s %s %s %s" %
-                              (u"-" * 6,
-                               u"-" * 5,
-                               u"-" * 7,
-                               u"-" * 4))
+                              (DIV * 6,
+                               DIV * 5,
+                               DIV * 7,
+                               DIV * 4))
         self.__check_output__(u"%6s %5s %7s %4s" %
                               (u"flac",
                                2,
@@ -3151,10 +3150,10 @@ class tracklength(UtilTest):
                                LAB_TRACKLENGTH_FILE_LENGTH,
                                LAB_TRACKLENGTH_FILE_SIZE))
         self.__check_output__(u"%s %s %s %s" %
-                              (u"-" * 6,
-                               u"-" * 5,
-                               u"-" * 7,
-                               u"-" * 5))
+                              (DIV * 6,
+                               DIV * 5,
+                               DIV * 7,
+                               DIV * 5))
         self.__check_output__(u"%6s %5s %7s %5s" %
                               (u"flac",
                                3,
@@ -3171,10 +3170,10 @@ class tracklength(UtilTest):
                                LAB_TRACKLENGTH_FILE_LENGTH,
                                LAB_TRACKLENGTH_FILE_SIZE))
         self.__check_output__(u"%s %s %s %s" %
-                              (u"-" * 6,
-                               u"-" * 5,
-                               u"-" * 7,
-                               u"-" * 5))
+                              (DIV * 6,
+                               DIV * 5,
+                               DIV * 7,
+                               DIV * 5))
         self.__check_output__(u"%6s %5s %7s %5s" %
                               (u"flac",
                                3,
@@ -3192,10 +3191,10 @@ class tracklength(UtilTest):
                                LAB_TRACKLENGTH_FILE_LENGTH,
                                LAB_TRACKLENGTH_FILE_SIZE))
         self.__check_output__(u"%s %s %s %s" %
-                              (u"-" * 6,
-                               u"-" * 5,
-                               u"-" * 7,
-                               u"-" * 5))
+                              (DIV * 6,
+                               DIV * 5,
+                               DIV * 7,
+                               DIV * 5))
         self.__check_output__(u"%6s %5s %7s %5s" %
                               (u"flac",
                                4,
@@ -3216,10 +3215,10 @@ class tracklength(UtilTest):
                                    LAB_TRACKLENGTH_FILE_LENGTH,
                                    LAB_TRACKLENGTH_FILE_SIZE))
             self.__check_output__(u"%s %s %s %s" %
-                                  (u"-" * 6,
-                                   u"-" * 5,
-                                   u"-" * 7,
-                                   u"-" * 5))
+                                  (DIV * 6,
+                                   DIV * 5,
+                                   DIV * 7,
+                                   DIV * 5))
             self.__check_output__(u"%6s %5s %7s %5s" %
                                   (u"flac",
                                    3,

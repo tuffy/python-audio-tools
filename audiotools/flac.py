@@ -3058,12 +3058,21 @@ class OggFlacAudio(FlacAudio):
         raises IOError if unable to write the file
         """
 
+        import os
+        from .bitstream import BitstreamWriter
+        from .bitstream import BitstreamRecorder
+        from .bitstream import BitstreamAccumulator
+        from .bitstream import BitstreamReader
+        from .ogg import OggStreamReader, OggStreamWriter
+        from . import TemporaryFile, transfer_data
+
         if (metadata is None):
             return None
-
-        if (not isinstance(metadata, OggFlacMetaData)):
+        elif (not isinstance(metadata, OggFlacMetaData)):
             from .text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
+        elif (not os.access(self.filename, os.W_OK)):
+            raise IOError(self.filename)
 
         #always overwrite Ogg FLAC with fresh metadata
         #
@@ -3074,13 +3083,6 @@ class OggFlacAudio(FlacAudio):
         #We'd have to build a bunch of empty pages for padding
         #then go back and fill-in the initial padding page's length
         #field before re-checksumming it.
-
-        from .bitstream import BitstreamWriter
-        from .bitstream import BitstreamRecorder
-        from .bitstream import BitstreamAccumulator
-        from .bitstream import BitstreamReader
-        from .ogg import OggStreamReader, OggStreamWriter
-        from . import TemporaryFile, transfer_data
 
         new_writer = BitstreamWriter(TemporaryFile(self.filename), 1)
 

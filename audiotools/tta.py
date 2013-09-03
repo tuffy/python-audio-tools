@@ -325,6 +325,7 @@ class TrueAudio(AudioFile):
         this metadata includes track name, album name, and so on
         raises IOError if unable to write the file"""
 
+        import os
         from .ape import ApeTag
         from .bitstream import BitstreamWriter
 
@@ -332,6 +333,9 @@ class TrueAudio(AudioFile):
             return
         else:
             new_metadata = ApeTag.converted(metadata)
+
+        if (not os.access(self.filename, os.W_OK)):
+            raise IOError(self.filename)
 
         #if current metadata is present and in a particular format
         #set_metadata() should continue using that format
@@ -388,13 +392,16 @@ class TrueAudio(AudioFile):
         raises IOError if unable to write the file
         """
 
-        if (metadata is None):
-            return
-
+        import os
         from .ape import ApeTag
         from .id3 import ID3v2Comment
         from .id3 import ID3CommentPair
         from .id3v1 import ID3v1Comment
+
+        if (metadata is None):
+            return
+        elif (not os.access(self.filename, os.W_OK)):
+            raise IOError(self.filename)
 
         #ensure metadata is APEv2, ID3v2, ID3v1, or ID3CommentPair
         if (((not isinstance(metadata, ApeTag)) and
@@ -458,8 +465,12 @@ class TrueAudio(AudioFile):
         this removes or unsets tags as necessary in order to remove all data
         raises IOError if unable to write the file"""
 
+        import os
         from . import (transfer_data, LimitedFileReader, TemporaryFile)
         from .id3 import skip_id3v2_comment
+
+        if (not os.access(self.filename, os.W_OK)):
+            raise IOError(self.filename)
 
         #overwrite original with no tags attached
         old_tta = open(self.filename, "rb")

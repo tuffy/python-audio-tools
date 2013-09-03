@@ -664,11 +664,14 @@ class AiffAudio(AiffContainer):
         from .id3 import ID3v22Comment
         from .bitstream import BitstreamRecorder
         from .text import ERR_FOREIGN_METADATA
+        import os
 
         if (metadata is None):
             return
         elif (not isinstance(metadata, ID3v22Comment)):
             raise ValueError(ERR_FOREIGN_METADATA)
+        elif (not os.access(self.filename, os.W_OK)):
+            raise IOError(self.filename)
 
         #turn our ID3v2.2 tag into a raw binary chunk
         id3_chunk = BitstreamRecorder(0)
@@ -702,9 +705,13 @@ class AiffAudio(AiffContainer):
             self.update_metadata(ID3v22Comment.converted(metadata))
         else:
             #current file has no metadata, so append new ID3 block
-
             from .bitstream import BitstreamRecorder
             from . import transfer_data, TemporaryFile
+
+            import os
+
+            if (not os.access(self.filename, os.W_OK)):
+                raise IOError(self.filename)
 
             #turn our ID3v2.2 tag into a raw binary chunk
             id3_chunk = BitstreamRecorder(0)
@@ -727,7 +734,11 @@ class AiffAudio(AiffContainer):
         this removes or unsets tags as necessary in order to remove all data
         raises IOError if unable to write the file"""
 
+        import os
         from . import transfer_data, TemporaryFile
+
+        if (not os.access(self.filename, os.W_OK)):
+            raise IOError(self.filename)
 
         new_aiff = TemporaryFile(self.filename)
         self.__class__.aiff_from_chunks(

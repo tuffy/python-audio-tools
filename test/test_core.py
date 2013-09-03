@@ -1353,28 +1353,6 @@ class Test_pcm_split(unittest.TestCase):
             self.assertEqual(sub_frames, int(counter) * 44100)
 
 
-class Test_str_width(unittest.TestCase):
-    @LIB_CORE
-    def test_str_width(self):
-        #check a plain ASCII string
-        self.assertEqual(audiotools.str_width(u"Foo"), 3)
-
-        #check a Unicode string without combining characters
-        self.assertEqual(audiotools.str_width(u"F\u00f3o"), 3)
-
-        #check a Unicode string with combining characters
-        self.assertEqual(audiotools.str_width(u"Fo\u0301o"), 3)
-
-        #check an ANSI-escaped ASCII string
-        self.assertEqual(audiotools.str_width(u"\x1b[1mFoo\x1b[0m"), 3)
-
-        #check an ANSI-escaped Unicode string without combining characeters
-        self.assertEqual(audiotools.str_width(u"\x1b[1mF\u00f3o\x1b[0m"), 3)
-
-        #check an ANSI-escaped Unicode string with combining characters
-        self.assertEqual(audiotools.str_width(u"\x1b[1mFo\u0301o\x1b[0m"), 3)
-
-
 class TestFrameList(unittest.TestCase):
     @classmethod
     def Bits8(cls):
