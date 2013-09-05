@@ -168,7 +168,8 @@ class audiotools_decoders(Extension):
                             'src/decoders/flac.c',
                             'src/decoders/oggflac.c',
                             'src/common/flac_crc.c',
-                            'src/common/ogg_crc.c',
+                            'src/ogg.c',
+                            'src/ogg_crc.c',
                             'src/common/tta_crc.c',
                             'src/decoders/shn.c',
                             'src/decoders/alac.c',
@@ -179,7 +180,6 @@ class audiotools_decoders(Extension):
                             'src/decoders/aobpcm.c',
                             'src/decoders/aob.c',
                             'src/decoders/sine.c',
-                            'src/decoders/ogg.c',
                             'src/decoders/mod_cppm.c',
                             'src/decoders.c']
 
@@ -234,7 +234,7 @@ class audiotools_verify(Extension):
         Extension.__init__(self,
                            'audiotools.verify',
                            sources=['src/verify.c',
-                                    'src/common/ogg_crc.c',
+                                    'src/ogg_crc.c',
                                     'src/bitstream.c',
                                     'src/buffer.c',
                                     'src/func_io.c'])

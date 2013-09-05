@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "../bitstream.h"
 #include "../array.h"
-#include "ogg.h"
+#include "../ogg.h"
 #ifndef STANDALONE
 #define STANDALONE
 #include "flac.h"

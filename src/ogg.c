@@ -1,5 +1,5 @@
 #include "ogg.h"
-#include "../common/ogg_crc.h"
+#include "ogg_crc.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -89,7 +89,7 @@ oggreader_read_page_header(BitstreamReader *ogg_stream,
 
 ogg_status
 oggreader_next_segment(OggReader *reader,
-                       BitstreamReader *packet,
+                       uint8_t *segment_data,
                        uint8_t *segment_size) {
     ogg_status status;
 
@@ -98,9 +98,9 @@ oggreader_next_segment(OggReader *reader,
         *segment_size = reader->current_header.page_segment_lengths[
                                                 reader->current_segment++];
         if (!setjmp(*br_try(reader->ogg_stream))) {
-            reader->ogg_stream->substream_append(reader->ogg_stream,
-                                                 packet,
-                                                 *segment_size);
+            reader->ogg_stream->read_bytes(reader->ogg_stream,
+                                           segment_data,
+                                           *segment_size);
             br_etry(reader->ogg_stream);
             return OGG_OK;
         } else {
@@ -125,7 +125,9 @@ oggreader_next_segment(OggReader *reader,
                                                 &(reader->current_header));
             reader->current_segment = 0;
             if (status == OGG_OK) {
-                return oggreader_next_segment(reader, packet, segment_size);
+                return oggreader_next_segment(reader,
+                                              segment_data,
+                                              segment_size);
             } else
                 return status;
         }
@@ -133,13 +135,17 @@ oggreader_next_segment(OggReader *reader,
 }
 
 ogg_status
-oggreader_next_packet(OggReader *reader, BitstreamReader *packet) {
+oggreader_next_packet(OggReader *reader, struct bs_buffer *packet) {
     ogg_status result;
+    uint8_t segment_data[256];
     uint8_t segment_length;
 
-    br_substream_reset(packet);
     do {
-        result = oggreader_next_segment(reader, packet, &segment_length);
+        if ((result = oggreader_next_segment(reader,
+                                             segment_data,
+                                             &segment_length)) == OGG_OK) {
+            buf_write(packet, segment_data, segment_length);
+        }
     } while ((result == OGG_OK) && (segment_length == 255));
 
     return result;

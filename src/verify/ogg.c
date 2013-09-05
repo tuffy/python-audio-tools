@@ -1,4 +1,4 @@
-#include "../common/ogg_crc.h"
+#include "../ogg_crc.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data

@@ -89,11 +89,11 @@ mlp.o: decoders/mlp.c decoders/mlp.h
 aobpcm.o: decoders/aobpcm.c decoders/aobpcm.h
 	$(CC) $(FLAGS) -c decoders/aobpcm.c -DSTANDALONE
 
-ogg.o: decoders/ogg.c decoders/ogg.h
-	$(CC) $(FLAGS) -c decoders/ogg.c -DSTANDALONE
+ogg.o: ogg.c ogg.h
+	$(CC) $(FLAGS) -c ogg.c -DSTANDALONE
 
-ogg_crc.o: common/ogg_crc.c common/ogg_crc.h
-	$(CC) $(FLAGS) -c common/ogg_crc.c -DSTANDALONE
+ogg_crc.o: ogg_crc.c ogg_crc.h
+	$(CC) $(FLAGS) -c ogg_crc.c -DSTANDALONE
 
 flac_crc.o: common/flac_crc.c common/flac_crc.h
 	$(CC) $(FLAGS) -c common/flac_crc.c -DSTANDALONE

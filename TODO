@@ -6683,6 +6683,11 @@
     - [X] tracksplit
     - [X] tracktag
     - [X] trackverify
+** TODO Improve Ogg format metadata speeds
+   Reading/writing should be faster for all Ogg-based formats.
+*** TODO Ogg FLAC
+*** TODO Ogg Vorbis
+*** TODO Opus
 ** TODO Update coverview widget set
    Although wxPython is available lots of places,
    it doesn't behave the same everywhere.

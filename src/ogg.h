@@ -1,7 +1,8 @@
 #ifndef STANDALONE
 #include <Python.h>
 #endif
-#include "../bitstream.h"
+#include "buffer.h"
+#include "bitstream.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -59,22 +60,21 @@ ogg_status
 oggreader_read_page_header(BitstreamReader *ogg_stream,
                            struct ogg_page_header *header);
 
-/*appends the next segment in the stream to "packet"
-  and places the segment's size in "segment_size"*/
+/*"segment_data" is an array capable of holding up to 256 bytes
+  "segment_size" is the length of the segment, in bytes*/
 ogg_status
 oggreader_next_segment(OggReader *reader,
-                       BitstreamReader *packet,
+                       uint8_t *segment_data,
                        uint8_t *segment_size);
 
-/*places the next packet in Ogg stream in "packet",
-  where "packet" is cleared out beforehand
+/*appends the next Ogg packet to the "packet" buffer
 
   handles read errors automatically,
   so the bitstream need not be wrapped in a check for them
 
   an error in the stream may result in a partially filled packet*/
 ogg_status
-oggreader_next_packet(OggReader *reader, BitstreamReader *packet);
+oggreader_next_packet(OggReader *reader, struct bs_buffer *packet);
 
 char *
 ogg_strerror(ogg_status err);
