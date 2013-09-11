@@ -351,10 +351,9 @@ br_substream_new(bs_endianness endianness);
 BitstreamReader*
 br_open_external(void* user_data,
                  bs_endianness endianness,
-                 int (*read)(void* user_data,
-                             struct bs_buffer* buffer),
-                 void (*close)(void* user_data),
-                 void (*free)(void* user_data));
+                 ext_read_f read,
+                 ext_close_f close,
+                 ext_free_f free);
 
 /*this is much like br_substream_new
   except that the buffer is passed in externally

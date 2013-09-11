@@ -2932,8 +2932,13 @@ bw_rec_split(BitstreamWriter* target,
 
     assert(source->type == BW_RECORDER);
 
-    if (bw_closed(target) || bw_closed(remaining) || bw_closed(source))
+    if ((target != NULL) && bw_closed(target)) {
         bw_abort(source);
+    } else if ((remaining != NULL) && bw_closed(remaining)) {
+        bw_abort(source);
+    } else if ((source != NULL) && bw_closed(source)) {
+        bw_abort(source);
+    }
 
     /*first, dump up to "total_bytes" from source to "target"
       if available*/

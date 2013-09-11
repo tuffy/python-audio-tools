@@ -44,8 +44,8 @@ OggFlacDecoder_dealloc(decoders_OggFlacDecoder *self) {
     Py_XDECREF(self->audiotools_pcm);
 
     self->packet->close(self->packet);
-    if (self->ogg_stream != NULL)
-        oggreader_close(self->ogg_stream);
+    if (self->ogg_packets != NULL)
+        oggiterator_close(self->ogg_packets);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -57,7 +57,7 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
     ogg_status result;
     uint16_t header_packets;
 
-    self->ogg_stream = NULL;
+    self->ogg_packets = NULL;
     self->ogg_file = NULL;
     self->subframe_data = aa_int_new();
     self->residuals = a_int_new();
@@ -80,13 +80,13 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return -1;
     } else {
-        self->ogg_stream = oggreader_open(self->ogg_file);
+        self->ogg_packets = oggiterator_open(self->ogg_file);
     }
 
     /*the first packet should be the FLAC's STREAMINFO*/
     br_substream_reset(self->packet);
-    if ((result = oggreader_next_packet(
-            self->ogg_stream, self->packet->input.substream)) == OGG_OK) {
+    if ((result = oggiterator_next_packet(
+            self->ogg_packets, self->packet->input.substream)) == OGG_OK) {
         if (!oggflac_read_streaminfo(self->packet,
                                      &(self->streaminfo),
                                      &header_packets))
@@ -99,8 +99,8 @@ OggFlacDecoder_init(decoders_OggFlacDecoder *self,
     /*skip subsequent header packets*/
     for (; header_packets > 0; header_packets--) {
         br_substream_reset(self->packet);
-        if ((result = oggreader_next_packet(
-                self->ogg_stream, self->packet->input.substream)) != OGG_OK) {
+        if ((result = oggiterator_next_packet(
+                self->ogg_packets, self->packet->input.substream)) != OGG_OK) {
             PyErr_SetString(ogg_exception(result), ogg_strerror(result));
             return -1;
         }
@@ -167,7 +167,7 @@ OggFlacDecoder_read(decoders_OggFlacDecoder *self, PyObject *args) {
 
     thread_state = PyEval_SaveThread();
     br_substream_reset(self->packet);
-    ogg_status = oggreader_next_packet(self->ogg_stream,
+    ogg_status = oggiterator_next_packet(self->ogg_packets,
                                        self->packet->input.substream);
     PyEval_RestoreThread(thread_state);
 
@@ -396,7 +396,7 @@ error:
 #ifdef STANDALONE
 int main(int argc, char* argv[]) {
     FILE* ogg_file;
-    OggReader* ogg_stream = NULL;
+    OggPacketIterator* ogg_packets = NULL;
     BitstreamReader* packet = NULL;
     struct flac_STREAMINFO streaminfo;
     uint16_t header_packets;
@@ -428,7 +428,7 @@ int main(int argc, char* argv[]) {
         return 1;
     } else {
         /*open bitstream and setup temporary arrays/buffers*/
-        ogg_stream = oggreader_open(ogg_file);
+        ogg_packets = oggiterator_open(ogg_file);
         packet = br_substream_new(BS_BIG_ENDIAN);
         subframe_data = aa_int_new();
         residuals = a_int_new();
@@ -439,7 +439,7 @@ int main(int argc, char* argv[]) {
 
     /*the first packet should be the FLAC's STREAMINFO*/
     br_substream_reset(packet);
-    if ((result = oggreader_next_packet(ogg_stream,
+    if ((result = oggiterator_next_packet(ogg_packets,
                                         packet->input.substream)) == OGG_OK) {
         if (!oggflac_read_streaminfo(packet, &streaminfo, &header_packets)) {
             goto error;
@@ -455,8 +455,8 @@ int main(int argc, char* argv[]) {
     /*skip subsequent header packets*/
     for (; header_packets > 0; header_packets--) {
         br_substream_reset(packet);
-        if ((result = oggreader_next_packet(
-                ogg_stream, packet->input.substream)) != OGG_OK) {
+        if ((result = oggiterator_next_packet(
+                ogg_packets, packet->input.substream)) != OGG_OK) {
             fprintf(stderr, "*** Error: %s\n", ogg_strerror(result));
             goto error;
         }
@@ -470,7 +470,7 @@ int main(int argc, char* argv[]) {
 
     /*decode the next FrameList from the stream*/
     br_substream_reset(packet);
-    result = oggreader_next_packet(ogg_stream, packet->input.substream);
+    result = oggiterator_next_packet(ogg_packets, packet->input.substream);
 
     while (result != OGG_STREAM_FINISHED) {
         if (result == OGG_OK) {
@@ -549,7 +549,8 @@ int main(int argc, char* argv[]) {
             fwrite(output_data, sizeof(unsigned char), pcm_size, stdout);
 
             br_substream_reset(packet);
-            result = oggreader_next_packet(ogg_stream, packet->input.substream);
+            result = oggiterator_next_packet(ogg_packets,
+                                             packet->input.substream);
         } else {
             /*some error reading Ogg stream*/
             fprintf(stderr, "*** Error: %s\n", ogg_strerror(result));
@@ -567,7 +568,7 @@ int main(int argc, char* argv[]) {
     }
 
     /*close streams, temporary buffers*/
-    oggreader_close(ogg_stream);
+    oggiterator_close(ogg_packets);
     packet->close(packet);
     subframe_data->del(subframe_data);
     residuals->del(residuals);
@@ -578,7 +579,7 @@ int main(int argc, char* argv[]) {
     return 0;
 
 error:
-    oggreader_close(ogg_stream);
+    oggiterator_close(ogg_packets);
     packet->close(packet);
     subframe_data->del(subframe_data);
     residuals->del(residuals);

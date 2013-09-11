@@ -37,7 +37,7 @@ typedef struct {
     PyObject_HEAD
 
     FILE* ogg_file;
-    OggReader* ogg_stream;
+    OggPacketIterator* ogg_packets;
     BitstreamReader* packet;
     int channel_mask;
 

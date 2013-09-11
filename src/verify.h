@@ -30,13 +30,8 @@ typedef int Py_ssize_t;
 PyObject*
 verifymodule_mpeg(PyObject *dummy, PyObject *args);
 
-PyObject*
-verifymodule_ogg(PyObject *dummy, PyObject *args);
-
 PyMethodDef module_methods[] = {
     {"mpeg", (PyCFunction)verifymodule_mpeg,
-     METH_VARARGS, ""},
-    {"ogg", (PyCFunction)verifymodule_ogg,
      METH_VARARGS, ""},
     {NULL}
 };
@@ -44,4 +39,3 @@ PyMethodDef module_methods[] = {
 typedef enum {OK, ERROR} status;
 
 #include "verify/mpeg.h"
-#include "verify/ogg.h"

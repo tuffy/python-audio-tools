@@ -4,4 +4,5 @@
   assigns a new checksum to that value*/
 
 void
-ogg_crc(uint8_t byte, void *checksum);
+ogg_crc(uint8_t byte, uint32_t *checksum);
+

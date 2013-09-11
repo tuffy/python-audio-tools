@@ -1,8 +1,7 @@
 #include "ogg_crc.h"
 
 void
-ogg_crc(uint8_t byte, void *checksum) {
-    uint32_t *sum = (uint32_t*)checksum;
+ogg_crc(uint8_t byte, uint32_t *checksum) {
     const static uint32_t CRC_LOOKUP[] =
         {0x00000000, 0x04c11db7, 0x09823b6e, 0x0d4326d9,
          0x130476dc, 0x17c56b6b, 0x1a864db2, 0x1e475005,
@@ -69,6 +68,6 @@ ogg_crc(uint8_t byte, void *checksum) {
          0xafb010b1, 0xab710d06, 0xa6322bdf, 0xa2f33668,
          0xbcb4666d, 0xb8757bda, 0xb5365d03, 0xb1f740b4};
 
-    *sum = ((*sum << 8) ^
-            CRC_LOOKUP[((*sum >> 24) & 0xFF) ^ byte]) & 0xFFFFFFFF;
+    *checksum = ((*checksum << 8) ^
+                 CRC_LOOKUP[((*checksum >> 24) & 0xFF) ^ byte]) & 0xFFFFFFFF;
 }

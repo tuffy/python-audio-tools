@@ -31,53 +31,66 @@ typedef enum {OGG_OK = 0,
               OGG_PREMATURE_EOF = -4} ogg_status;
 
 struct ogg_page_header {
-    uint32_t magic_number;
-    uint8_t version;
-    uint8_t type;
-    uint64_t granule_position;
-    uint32_t bitstream_serial_number;
-    uint32_t page_sequence_number;
-    uint32_t checksum;
-    uint8_t page_segment_count;
-    uint8_t page_segment_lengths[0x100];
-    uint32_t segment_length_total;
+    unsigned magic_number;
+    unsigned version;
+    unsigned packet_continuation;
+    unsigned stream_beginning;
+    unsigned stream_end;
+    int64_t granule_position;
+    unsigned bitstream_serial_number;
+    unsigned sequence_number;
+    unsigned checksum;
+    unsigned segment_count;
+    unsigned segment_lengths[0x100];
 };
 
-typedef struct OggReader_s {
-    BitstreamReader *ogg_stream;
-    uint32_t checksum;
-    struct ogg_page_header current_header;
-    uint8_t current_segment;
-} OggReader;
+struct ogg_page {
+    struct ogg_page_header header;
+    uint8_t segment[0x100][0x100];
+};
 
-OggReader*
-oggreader_open(FILE *stream);
+ogg_status
+read_ogg_page_header(BitstreamReader *ogg_stream,
+                     struct ogg_page_header *header);
+
+ogg_status
+read_ogg_page(BitstreamReader *ogg_stream,
+              struct ogg_page *page);
 
 void
-oggreader_close(OggReader *reader);
+write_ogg_page_header(BitstreamWriter *ogg_stream,
+                      const struct ogg_page_header *header);
+
+void
+write_ogg_page(BitstreamWriter *ogg_stream,
+               const struct ogg_page *page);
+
+
+typedef struct OggPacketIterator_s {
+    BitstreamReader *reader;
+    struct ogg_page page;
+    uint8_t current_segment;
+} OggPacketIterator;
+
+OggPacketIterator*
+oggiterator_open(FILE *stream);
+
+void
+oggiterator_close(OggPacketIterator *iterator);
 
 ogg_status
-oggreader_read_page_header(BitstreamReader *ogg_stream,
-                           struct ogg_page_header *header);
+oggiterator_next_segment(OggPacketIterator *iterator,
+                         uint8_t **segment_data,
+                         uint8_t *segment_size);
 
-/*"segment_data" is an array capable of holding up to 256 bytes
-  "segment_size" is the length of the segment, in bytes*/
 ogg_status
-oggreader_next_segment(OggReader *reader,
-                       uint8_t *segment_data,
-                       uint8_t *segment_size);
+oggiterator_next_packet(OggPacketIterator *iterator,
+                        struct bs_buffer *packet);
 
-/*appends the next Ogg packet to the "packet" buffer
-
-  handles read errors automatically,
-  so the bitstream need not be wrapped in a check for them
-
-  an error in the stream may result in a partially filled packet*/
-ogg_status
-oggreader_next_packet(OggReader *reader, struct bs_buffer *packet);
 
 char *
 ogg_strerror(ogg_status err);
+
 
 #ifndef STANDALONE
 PyObject*

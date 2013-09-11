@@ -1,5 +1,6 @@
 #include "ogg.h"
 #include "ogg_crc.h"
+#include <string.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -20,136 +21,230 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-OggReader*
-oggreader_open(FILE *stream) {
-    OggReader *reader = malloc(sizeof(OggReader));
-    reader->ogg_stream = br_open(stream, BS_LITTLE_ENDIAN);
-    reader->current_segment = 1;
-    reader->current_header.page_segment_count = 0;
-    reader->current_header.type = 0;
-    reader->current_header.checksum = 0;
-    reader->checksum = 0;
-    br_add_callback(reader->ogg_stream, ogg_crc, &(reader->checksum));
-    return reader;
-}
-
-void
-oggreader_close(OggReader *reader) {
-    reader->ogg_stream->close(reader->ogg_stream);
-    free(reader);
-}
-
 ogg_status
-oggreader_read_page_header(BitstreamReader *ogg_stream,
-                           struct ogg_page_header *header) {
+read_ogg_page_header(BitstreamReader *ogg_stream,
+                     struct ogg_page_header *header) {
     int i;
     struct bs_callback callback;
 
+    if ((header->magic_number =
+         ogg_stream->read(ogg_stream, 32)) != 0x5367674F) {
+        return OGG_INVALID_MAGIC_NUMBER;
+    }
+
+    if ((header->version = ogg_stream->read(ogg_stream, 8)) != 0) {
+        return OGG_INVALID_STREAM_VERSION;
+    }
+
+    header->packet_continuation = ogg_stream->read(ogg_stream, 1);
+    header->stream_beginning = ogg_stream->read(ogg_stream, 1);
+    header->stream_end = ogg_stream->read(ogg_stream, 1);
+    ogg_stream->skip(ogg_stream, 5);
+    header->granule_position = ogg_stream->read_signed_64(ogg_stream, 64);
+    header->bitstream_serial_number = ogg_stream->read(ogg_stream, 32);
+    header->sequence_number = ogg_stream->read(ogg_stream, 32);
+
+    /*the checksum field is *not* checksummed itself, naturally
+      those 4 bytes are treated as 0*/
+    br_pop_callback(ogg_stream, &callback);
+    header->checksum = ogg_stream->read(ogg_stream, 32);
+    br_push_callback(ogg_stream, &callback);
+    br_call_callbacks(ogg_stream, 0);
+    br_call_callbacks(ogg_stream, 0);
+    br_call_callbacks(ogg_stream, 0);
+    br_call_callbacks(ogg_stream, 0);
+
+    header->segment_count = ogg_stream->read(ogg_stream, 8);
+    for (i = 0; i < header->segment_count; i++) {
+        header->segment_lengths[i] = ogg_stream->read(ogg_stream, 8);
+    }
+
+    return OGG_OK;
+}
+
+ogg_status
+read_ogg_page(BitstreamReader *ogg_stream,
+              struct ogg_page *page)
+{
+    uint32_t checksum = 0;
+
+    /*attach checksum calculator to stream*/
+    br_add_callback(ogg_stream, (bs_callback_f)ogg_crc, &checksum);
+
     if (!setjmp(*br_try(ogg_stream))) {
-        if ((header->magic_number =
-             ogg_stream->read(ogg_stream, 32)) != 0x5367674F) {
+        uint8_t i;
+        ogg_status result;
+
+        /*read header*/
+        if ((result = read_ogg_page_header(ogg_stream,
+                                                 &(page->header))) != OGG_OK) {
+            /*abort if error in header*/
+            br_pop_callback(ogg_stream, NULL);
             br_etry(ogg_stream);
-            return OGG_INVALID_MAGIC_NUMBER;
+            return result;
         }
 
-        if ((header->version = ogg_stream->read(ogg_stream, 8)) != 0) {
-            br_etry(ogg_stream);
-            return OGG_INVALID_STREAM_VERSION;
+        /*populate segments based on lengths in header*/
+        for (i = 0; i < page->header.segment_count; i++) {
+            ogg_stream->read_bytes(ogg_stream,
+                                   page->segment[i],
+                                   page->header.segment_lengths[i]);
         }
 
-        header->type = ogg_stream->read(ogg_stream, 8);
-        header->granule_position = ogg_stream->read_64(ogg_stream, 64);
-        header->bitstream_serial_number = ogg_stream->read(ogg_stream, 32);
-        header->page_sequence_number = ogg_stream->read(ogg_stream, 32);
+        /*remove checksum calculator from stream*/
+        br_pop_callback(ogg_stream, NULL);
 
-        /*the checksum field is *not* checksummed itself, naturally
-          those 4 bytes are treated as 0*/
-        br_pop_callback(ogg_stream, &callback);
-        header->checksum = ogg_stream->read(ogg_stream, 32);
-        br_push_callback(ogg_stream, &callback);
-        br_call_callbacks(ogg_stream, 0);
-        br_call_callbacks(ogg_stream, 0);
-        br_call_callbacks(ogg_stream, 0);
-        br_call_callbacks(ogg_stream, 0);
-
-        header->page_segment_count = ogg_stream->read(ogg_stream, 8);
-        header->segment_length_total = 0;
-        for (i = 0; i < header->page_segment_count; i++) {
-            header->page_segment_lengths[i] = ogg_stream->read(ogg_stream, 8);
-            header->segment_length_total += header->page_segment_lengths[i];
-        }
-
+        /*no more I/O needed for page*/
         br_etry(ogg_stream);
-        return OGG_OK;
+
+        /*validate checksum*/
+        if (checksum == page->header.checksum) {
+            return OGG_OK;
+        } else {
+            return OGG_CHECKSUM_MISMATCH;
+        }
     } else {
+        br_pop_callback(ogg_stream, NULL);
         br_etry(ogg_stream);
         return OGG_PREMATURE_EOF;
     }
 }
 
+void
+write_ogg_page_header(BitstreamWriter *ogg_stream,
+                            const struct ogg_page_header *header)
+{
+    uint8_t i;
+    struct bs_callback callback;
+
+    ogg_stream->write(ogg_stream, 32, header->magic_number);
+    ogg_stream->write(ogg_stream, 8, header->version);
+    ogg_stream->write(ogg_stream, 1, header->packet_continuation);
+    ogg_stream->write(ogg_stream, 1, header->stream_beginning);
+    ogg_stream->write(ogg_stream, 1, header->stream_end);
+    ogg_stream->write(ogg_stream, 5, 0);
+    ogg_stream->write_signed_64(ogg_stream, 64, header->granule_position);
+    ogg_stream->write(ogg_stream, 32, header->bitstream_serial_number);
+    ogg_stream->write(ogg_stream, 32, header->sequence_number);
+
+    /*the checksum field is *not* checksummed itself, naturally
+      those 4 bytes are treated as 0*/
+    bw_pop_callback(ogg_stream, &callback);
+    ogg_stream->write(ogg_stream, 32, header->checksum);
+    bw_push_callback(ogg_stream, &callback);
+    bw_call_callbacks(ogg_stream, 0);
+    bw_call_callbacks(ogg_stream, 0);
+    bw_call_callbacks(ogg_stream, 0);
+    bw_call_callbacks(ogg_stream, 0);
+
+    ogg_stream->write(ogg_stream, 8, header->segment_count);
+    for (i = 0; i < header->segment_count; i++)
+        ogg_stream->write(ogg_stream, 8, header->segment_lengths[i]);
+}
+
+void
+write_ogg_page(BitstreamWriter *ogg_stream,
+               const struct ogg_page *page)
+{
+    uint32_t checksum = 0;
+    BitstreamWriter *temp = bw_open_recorder(BS_LITTLE_ENDIAN);
+    uint8_t i;
+
+    /*attach checksum calculator to temporary stream*/
+    bw_add_callback(temp, (bs_callback_f)ogg_crc, &checksum);
+
+    /*dump header and data to temporary stream*/
+    write_ogg_page_header(temp, &(page->header));
+    for (i = 0; i < page->header.segment_count; i++) {
+        temp->write_bytes(temp,
+                          page->segment[i],
+                          page->header.segment_lengths[i]);
+    }
+
+    /*output header, calculated checksum and the rest to actual stream*/
+    bw_rec_split(ogg_stream, temp, temp, 22);
+    ogg_stream->write(ogg_stream, 32, checksum);
+    bw_rec_split(NULL, temp, temp, 4);
+    bw_rec_copy(ogg_stream, temp);
+
+    /*remove temporary stream*/
+    temp->close(temp);
+}
+
+
+OggPacketIterator*
+oggiterator_open(FILE *stream)
+{
+    OggPacketIterator *iterator = malloc(sizeof(OggPacketIterator));
+    iterator->reader = br_open(stream, BS_LITTLE_ENDIAN);
+
+    /*force next read to read in a new page*/
+    iterator->page.header.segment_count = 0;
+    iterator->current_segment = 1;
+    iterator->page.header.stream_end = 0;
+    return iterator;
+}
+
+void
+oggiterator_close(OggPacketIterator *iterator)
+{
+    iterator->reader->close(iterator->reader);
+    free(iterator);
+}
+
 ogg_status
-oggreader_next_segment(OggReader *reader,
-                       uint8_t *segment_data,
-                       uint8_t *segment_size) {
-    ogg_status status;
-
-    if (reader->current_segment < reader->current_header.page_segment_count) {
-        /*return an Ogg segment from the current page*/
-        *segment_size = reader->current_header.page_segment_lengths[
-                                                reader->current_segment++];
-        if (!setjmp(*br_try(reader->ogg_stream))) {
-            reader->ogg_stream->read_bytes(reader->ogg_stream,
-                                           segment_data,
-                                           *segment_size);
-            br_etry(reader->ogg_stream);
-            return OGG_OK;
-        } else {
-            br_etry(reader->ogg_stream);
-            return OGG_PREMATURE_EOF;
-        }
+oggiterator_next_segment(OggPacketIterator *iterator,
+                         uint8_t **segment_data,
+                         uint8_t *segment_size)
+{
+    if (iterator->current_segment < iterator->page.header.segment_count) {
+        /*return Ogg segment from current page*/
+        *segment_size =
+            iterator->page.header.segment_lengths[iterator->current_segment];
+        *segment_data =
+            iterator->page.segment[iterator->current_segment];
+        iterator->current_segment++;
+        return OGG_OK;
     } else {
-        /*the current page is finished*/
+        ogg_status result;
 
-        /*validate page checksum*/
-        if (reader->current_header.checksum != reader->checksum) {
-            return OGG_CHECKSUM_MISMATCH;
-        }
-
-        /*if the current page isn't the final page,
-          read the next page from the stream*/
-        if (reader->current_header.type & 0x4) {
-            return OGG_STREAM_FINISHED;
+        /*current page's segments exhausted
+          so read another unless the page is marked as the last*/
+        if (!iterator->page.header.stream_end) {
+            if ((result = read_ogg_page(iterator->reader,
+                                        &(iterator->page))) == OGG_OK) {
+                iterator->current_segment = 0;
+                return oggiterator_next_segment(iterator,
+                                                segment_data,
+                                                segment_size);
+            } else {
+                return result;
+            }
         } else {
-            reader->checksum = 0;
-            status = oggreader_read_page_header(reader->ogg_stream,
-                                                &(reader->current_header));
-            reader->current_segment = 0;
-            if (status == OGG_OK) {
-                return oggreader_next_segment(reader,
-                                              segment_data,
-                                              segment_size);
-            } else
-                return status;
+            return OGG_STREAM_FINISHED;
         }
     }
 }
 
 ogg_status
-oggreader_next_packet(OggReader *reader, struct bs_buffer *packet) {
+oggiterator_next_packet(OggPacketIterator *iterator,
+                        struct bs_buffer *packet)
+{
     ogg_status result;
-    uint8_t segment_data[256];
+    uint8_t *segment_data;
     uint8_t segment_length;
 
     do {
-        if ((result = oggreader_next_segment(reader,
-                                             segment_data,
-                                             &segment_length)) == OGG_OK) {
+        if ((result = oggiterator_next_segment(iterator,
+                                               &segment_data,
+                                               &segment_length)) == OGG_OK) {
             buf_write(packet, segment_data, segment_length);
         }
     } while ((result == OGG_OK) && (segment_length == 255));
 
     return result;
 }
+
 
 char *
 ogg_strerror(ogg_status err) {
@@ -190,23 +285,29 @@ ogg_exception(ogg_status err) {
 
 #ifdef EXECUTABLE
 int main(int argc, char *argv[]) {
-    FILE *f = fopen(argv[1], "rb");
-    OggReader *reader = oggreader_open(f);
-    BitstreamReader *packet = bs_substream_new(BS_LITTLE_ENDIAN);
-    ogg_status result;
+    /*perform simple round-trip using page reader and writer*/
+
+    BitstreamReader *reader = br_open(stdin, BS_LITTLE_ENDIAN);
+    BitstreamWriter *writer = bw_open(stdout, BS_LITTLE_ENDIAN);
+    struct ogg_page page;
 
     do {
-        result = oggreader_next_packet(reader, packet);
-        if (result < 0) {
-            fprintf(stderr, "Error : %s\n", ogg_error(result));
-        } else if (result == OGG_OK) {
-            printf("packet size %u\n", packet->input.substream->buffer_size);
+        ogg_status result;
+        if ((result = read_ogg_page(reader, &page)) == OGG_OK) {
+            write_ogg_page(writer, &page);
+        } else {
+            fprintf(stderr, "*** Error: %s", ogg_strerror(result));
+            goto error;
         }
-    } while (result == OGG_OK);
+    } while (!page.header.stream_end);
 
-    packet->close(packet);
-    oggreader_close(reader);
-    fclose(f);
+    reader->close(reader);
+    writer->close(writer);
     return 0;
+
+error:
+    reader->close(reader);
+    writer->close(writer);
+    return 1;
 }
 #endif
