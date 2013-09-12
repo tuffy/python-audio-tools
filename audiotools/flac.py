@@ -2838,12 +2838,13 @@ class OggFlacMetaData(FlacMetaData):
         return ("OggFlacMetaData(%s)" % (repr(self.block_list)))
 
     @classmethod
-    def parse(cls, reader):
-        """returns an OggFlacMetaData object from the given BitstreamReader
+    def parse(cls, packetreader):
+        """returns an OggFlacMetaData object from the given ogg.PacketReader
 
         raises IOError or ValueError if an error occurs reading MetaData"""
 
-        from .ogg import read_ogg_packets
+        from cStringIO import StringIO
+        from audiotools.bitstream import BitstreamReader
 
         streaminfo = None
         applications = []
@@ -2851,11 +2852,6 @@ class OggFlacMetaData(FlacMetaData):
         vorbis_comment = None
         cuesheet = None
         pictures = []
-
-        packets = read_ogg_packets(reader)
-
-        streaminfo_packet = packets.next()
-        streaminfo_packet.set_endianness(0)
 
         (packet_byte,
          ogg_signature,
@@ -2873,8 +2869,10 @@ class OggFlacMetaData(FlacMetaData):
          channels,
          bits_per_sample,
          total_samples,
-         md5sum) = streaminfo_packet.parse(
-             "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
+         md5sum) = BitstreamReader(
+             StringIO(packetreader.read_packet()),
+             False).parse(
+                 "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
 
         block_list = [Flac_STREAMINFO(minimum_block_size=minimum_block_size,
                                       maximum_block_size=maximum_block_size,
@@ -2886,8 +2884,9 @@ class OggFlacMetaData(FlacMetaData):
                                       total_samples=total_samples,
                                       md5sum=md5sum)]
 
-        for (i, packet) in zip(range(header_packets), packets):
-            packet.set_endianness(0)
+        for i in xrange(header_packets):
+            packet = BitstreamReader(StringIO(packetreader.read_packet()),
+                                     False)
             (block_type, length) = packet.parse("1p 7u 24u")
             if (block_type == 1):    # PADDING
                 block_list.append(Flac_PADDING.parse(packet, length))
@@ -2910,14 +2909,11 @@ class OggFlacMetaData(FlacMetaData):
 
         return cls(block_list)
 
-    def build(self, oggwriter):
-        """oggwriter is an OggStreamWriter-compatible object"""
+    def build(self, pagewriter, serial_number):
+        """pagewriter is an ogg.PageWriter object"""
 
-        from .bitstream import BitstreamRecorder
-        from .bitstream import format_size
-        from . import iter_first, iter_last
-
-        packet = BitstreamRecorder(0)
+        from audiotools.bitstream import build,BitstreamRecorder,format_size
+        from audiotools.ogg import packet_to_pages
 
         #build extended Ogg FLAC STREAMINFO block
         #which will always occupy its own page
@@ -2929,57 +2925,49 @@ class OggFlacMetaData(FlacMetaData):
                         if ((b.BLOCK_ID != Flac_STREAMINFO.BLOCK_ID) and
                             (b.size() < (2 ** 24)))]
 
-        packet.build(
-            "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b",
-            (0x7F,
-             "FLAC",
-             1,
-             0,
-             len(valid_blocks),
-             "fLaC",
-             0,
-             format_size("16u 16u 24u 24u 20u 3u 5u 36U 16b") / 8,
-             streaminfo.minimum_block_size,
-             streaminfo.maximum_block_size,
-             streaminfo.minimum_frame_size,
-             streaminfo.maximum_frame_size,
-             streaminfo.sample_rate,
-             streaminfo.channels - 1,
-             streaminfo.bits_per_sample - 1,
-             streaminfo.total_samples,
-             streaminfo.md5sum))
-        oggwriter.write_page(0, [packet.data()], 0, 1, 0)
+        page = packet_to_pages(
+            build("8u 4b 8u 8u 16u " +
+                  "4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b",
+                  False,
+                  (0x7F,
+                   "FLAC",
+                   1,
+                   0,
+                   len(valid_blocks),
+                   "fLaC",
+                   0,
+                   format_size("16u 16u 24u 24u 20u 3u 5u 36U 16b") / 8,
+                   streaminfo.minimum_block_size,
+                   streaminfo.maximum_block_size,
+                   streaminfo.minimum_frame_size,
+                   streaminfo.maximum_frame_size,
+                   streaminfo.sample_rate,
+                   streaminfo.channels - 1,
+                   streaminfo.bits_per_sample - 1,
+                   streaminfo.total_samples,
+                   streaminfo.md5sum)),
+            bitstream_serial_number=serial_number,
+            starting_sequence_number=0).next()
 
-        #FIXME - adjust non-STREAMINFO blocks to use fewer pages
+        page.stream_beginning = True
+        pagewriter.write(page)
 
-        #pack remaining metadata blocks into as few pages as possible, if any
-        if (len(valid_blocks)):
-            for (last_block, block) in iter_last(iter(valid_blocks)):
-                packet.reset()
-                if (not last_block):
-                    packet.build("1u 7u 24u",
-                                 (0, block.BLOCK_ID, block.size()))
-                else:
-                    packet.build("1u 7u 24u",
-                                 (1, block.BLOCK_ID, block.size()))
-                block.build(packet)
-                for (first_page, page_segments) in iter_first(
-                    oggwriter.segments_to_pages(
-                        oggwriter.packet_to_segments(packet.data()))):
-                    oggwriter.write_page(0 if first_page else -1,
-                                         page_segments,
-                                         0 if first_page else 1, 0, 0)
+        sequence_number = 1
 
+        #pack remaining metadata blocks into Ogg packets
+        for (i, block) in enumerate(valid_blocks, 1):
+            packet = BitstreamRecorder(False)
+            packet.build("1u 7u 24u",
+                         (0 if not (i == len(valid_blocks)) else 1,
+                          block.BLOCK_ID, block.size()))
+            block.build(packet)
+            for page in packet_to_pages(
+                    packet.data(),
+                    bitstream_serial_number=serial_number,
+                    starting_sequence_number=sequence_number):
+                pagewriter.write(page)
+                sequence_number += 1
 
-class __Counter__:
-    def __init__(self):
-        self.value = 0
-
-    def count_byte(self, i):
-        self.value += 1
-
-    def __int__(self):
-        return self.value
 
 
 class OggFlacAudio(FlacAudio):
@@ -3039,16 +3027,13 @@ class OggFlacAudio(FlacAudio):
         raise ValueError if some error reading metadata
         raises IOError if unable to read the file"""
 
-        f = open(self.filename, "rb")
-        try:
-            from .bitstream import BitstreamReader
+        from audiotools.ogg import PacketReader,PageReader
 
-            try:
-                return OggFlacMetaData.parse(BitstreamReader(f, 1))
-            except ValueError:
-                return None
-        finally:
-            f.close()
+        try:
+            return OggFlacMetaData.parse(
+                PacketReader(PageReader(open(self.filename, "rb"))))
+        except ValueError:
+            return None
 
     def update_metadata(self, metadata):
         """takes this track's current MetaData object
@@ -3059,12 +3044,8 @@ class OggFlacAudio(FlacAudio):
         """
 
         import os
-        from .bitstream import BitstreamWriter
-        from .bitstream import BitstreamRecorder
-        from .bitstream import BitstreamAccumulator
-        from .bitstream import BitstreamReader
-        from .ogg import OggStreamReader, OggStreamWriter
-        from . import TemporaryFile, transfer_data
+        from audiotools.ogg import (PageReader, PacketReader, PageWriter)
+        from audiotools import TemporaryFile
 
         if (metadata is None):
             return None
@@ -3084,55 +3065,31 @@ class OggFlacAudio(FlacAudio):
         #then go back and fill-in the initial padding page's length
         #field before re-checksumming it.
 
-        new_writer = BitstreamWriter(TemporaryFile(self.filename), 1)
-
-        original_reader = BitstreamReader(file(self.filename, 'rb'), 1)
-
-        original_ogg = OggStreamReader(original_reader)
-
-        new_ogg = OggStreamWriter(new_writer, self.__serial_number__)
-
-        #write our new comment blocks to the new file
-        metadata.build(new_ogg)
+        original_ogg = PageReader(file(self.filename, "rb"))
+        new_ogg = PageWriter(TemporaryFile(self.filename))
 
         #skip the metadata packets in the original file
-        OggFlacMetaData.parse(original_reader)
+        OggFlacMetaData.parse(PacketReader(original_ogg))
 
-        #transfer the remaining pages from the original file
-        #(which are re-sequenced and re-checksummed automatically)
-        for (granule_position,
-             segments,
-             continuation,
-             first_page,
-             last_page) in original_ogg.pages():
-            new_ogg.write_page(granule_position,
-                               segments,
-                               continuation,
-                               first_page,
-                               last_page)
+        #write our new comment blocks to the new file
+        metadata.build(new_ogg, self.__serial_number__)
 
-        original_reader.close()
-        new_writer.close()
+        #transfer the remaining pages from the original file to the new file
+        page = original_ogg.read()
+        new_ogg.write(page)
+        while (not page.stream_end):
+            page = original_ogg.read()
+            new_ogg.write(page)
 
+        original_ogg.close()
+        new_ogg.close()
 
     def metadata_length(self):
         """returns the length of all Ogg FLAC metadata blocks as an integer
 
         this includes all Ogg page headers"""
 
-        from .bitstream import BitstreamReader
-
-        f = file(self.filename, 'rb')
-        try:
-            byte_count = __Counter__()
-            ogg_stream = BitstreamReader(f, 1)
-            ogg_stream.add_callback(byte_count.count_byte)
-
-            OggFlacMetaData.parse(ogg_stream)
-
-            return int(byte_count)
-        finally:
-            f.close()
+        raise NotImplementedError()
 
     def __read_streaminfo__(self):
         from .bitstream import BitstreamReader
@@ -3339,42 +3296,3 @@ class OggFlacAudio(FlacAudio):
         else:
             #FIXME
             raise EncodingError(u"error encoding file with flac")
-
-    def sub_pcm_tracks(self):
-        """yields a PCMReader object per cuesheet track
-
-        this currently does nothing since the FLAC reference
-        decoder has limited support for Ogg FLAC
-        """
-
-        return iter([])
-
-    def verify(self, progress=None):
-        """verifies the current file for correctness
-
-        returns True if the file is okay
-        raises an InvalidFile with an error message if there is
-        some problem with the file"""
-
-        from .verify import ogg as verify_ogg_stream
-
-        #Ogg stream verification is likely to be so fast
-        #that individual calls to progress() are
-        #a waste of time.
-        if (progress is not None):
-            progress(0, 1)
-
-        try:
-            f = open(self.filename, 'rb')
-        except IOError, err:
-            raise InvalidFLAC(str(err))
-        try:
-            try:
-                result = verify_ogg_stream(f)
-                if (progress is not None):
-                    progress(1, 1)
-                return result is None
-            except (IOError, ValueError), err:
-                raise InvalidFLAC(str(err))
-        finally:
-            f.close()

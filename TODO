@@ -6685,7 +6685,7 @@
     - [X] trackverify
 ** TODO Improve Ogg format metadata speeds
    Reading/writing should be faster for all Ogg-based formats.
-*** TODO Ogg FLAC
+*** DONE Ogg FLAC
 *** TODO Ogg Vorbis
 *** TODO Opus
 ** TODO Update coverview widget set
