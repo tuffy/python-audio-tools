@@ -5540,6 +5540,11 @@ class TemporaryFile:
                                            dir=dirname)
         self.__temp_file__ = os.fdopen(fd, "wb")
 
+    def __del__(self):
+        if ((self.__temp_path__ is not None) and
+            os.path.isfile(self.__temp_path__)):
+            os.unlink(self.__temp_path__)
+
     def write(self, data):
         """writes the given data string to the temporary file"""
 
@@ -5574,6 +5579,7 @@ class TemporaryFile:
         try:
             os.rename(self.__temp_path__, self.__original_filename__)
             os.chmod(self.__original_filename__, original_mode)
+            self.__temp_path__ = None
         except OSError, err:
             os.unlink(self.__temp_path__)
             raise err
