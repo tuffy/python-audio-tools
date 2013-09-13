@@ -126,49 +126,35 @@ class OpusAudio(VorbisAudio):
         raises IOError if unable to write the file
         """
 
-        from .bitstream import BitstreamReader
-        from .bitstream import BitstreamRecorder
-        from .bitstream import BitstreamWriter
-        from .ogg import OggStreamWriter
-        from .ogg import OggStreamReader
-        from .ogg import read_ogg_packets_data
-        from . import iter_first
-        from .vorbiscomment import VorbisComment
+        import os
+        from audiotools import TemporaryFile
+        from audiotools.ogg import (PageReader, PacketReader,
+                                    PageWriter, packet_to_pages)
+        from audiotools.vorbiscomment import VorbisComment
+        from audiotools.bitstream import BitstreamRecorder
 
         if (metadata is None):
             return
-
-        if (not isinstance(metadata, OpusTags)):
+        elif (not isinstance(metadata, OpusTags)):
             from .text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
+        elif (not os.access(self.filename, os.W_OK)):
+            raise IOError(self.filename)
 
-        original_reader = BitstreamReader(open(self.filename, "rb"), 1)
-        original_ogg = OggStreamReader(original_reader)
-        original_serial_number = original_ogg.serial_number
-        original_packets = read_ogg_packets_data(original_reader)
+        original_ogg = PacketReader(PageReader(file(self.filename, "rb")))
+        new_ogg = PageWriter(TemporaryFile(self.filename))
 
-        #save the current file's identification page/packet
+        #transfer current file's identification page/packet
         #(the ID packet is always fixed size, and fits in one page)
         identification_page = original_ogg.read_page()
+        new_ogg.write(identification_page)
+        sequence_number = 1
 
         #discard the current file's comment packet
-        original_packets.next()
-
-        #save all the subsequent Ogg pages
-        data_pages = list(original_ogg.pages())
-
-        del(original_ogg)
-        del(original_packets)
-        original_reader.close()
-
-        updated_writer = BitstreamWriter(open(self.filename, "wb"), 1)
-        updated_ogg = OggStreamWriter(updated_writer, original_serial_number)
-
-        #write the identification packet in its own page
-        updated_ogg.write_page(*identification_page)
+        original_ogg.read_packet()
 
         #write the new comment packet in its own page(s)
-        comment_writer = BitstreamRecorder(1)
+        comment_writer = BitstreamRecorder(True)
         comment_writer.write_bytes("OpusTags")
         vendor_string = metadata.vendor_string.encode('utf-8')
         comment_writer.build("32u %db" % (len(vendor_string)),
@@ -179,14 +165,26 @@ class OpusAudio(VorbisAudio):
             comment_writer.build("32u %db" % (len(comment_string)),
                                  (len(comment_string), comment_string))
 
-        for (first_page, segments) in iter_first(
-            updated_ogg.segments_to_pages(
-                updated_ogg.packet_to_segments(comment_writer.data()))):
-            updated_ogg.write_page(0, segments, 0 if first_page else 1, 0, 0)
+        for page in packet_to_pages(
+                comment_writer.data(),
+                identification_page.bitstream_serial_number,
+                starting_sequence_number=sequence_number):
+            new_ogg.write(page)
+            sequence_number += 1
 
-        #write the subsequent Ogg pages
-        for page in data_pages:
-            updated_ogg.write_page(*page)
+        #transfer remaining pages after re-sequencing
+        page = original_ogg.read_page()
+        page.sequence_number = sequence_number
+        sequence_number += 1
+        new_ogg.write(page)
+        while (not page.stream_end):
+            page = original_ogg.read_page()
+            page.sequence_number = sequence_number
+            sequence_number += 1
+            new_ogg.write(page)
+
+        original_ogg.close()
+        new_ogg.close()
 
     @classmethod
     def supports_replay_gain(cls):
@@ -230,25 +228,25 @@ class OpusAudio(VorbisAudio):
 
         raises IOError if unable to read the file"""
 
-        from .bitstream import BitstreamReader
-        from .ogg import read_ogg_packets
-        from .vorbiscomment import VorbisComment
+        from audiotools.ogg import PacketReader,PageReader
+        from cStringIO import StringIO
+        from audiotools.bitstream import BitstreamReader
+        from audiotools.vorbiscomment import VorbisComment
 
-        packets = read_ogg_packets(
-            BitstreamReader(open(self.filename, "rb"), 1))
+        packets = PacketReader(PageReader(open(self.filename, "rb")))
 
-        identification = packets.next()
-        comment = packets.next()
+        identification = packets.read_packet()
+        comment = BitstreamReader(StringIO(packets.read_packet()), True)
 
-        if (comment.read_bytes(8) != "OpusTags"):
-            return None
-        else:
+        if (comment.read_bytes(8) == "OpusTags"):
             vendor_string = \
                 comment.read_bytes(comment.read(32)).decode('utf-8')
             comment_strings = [
                 comment.read_bytes(comment.read(32)).decode('utf-8')
                 for i in xrange(comment.read(32))]
             return OpusTags(comment_strings, vendor_string)
+        else:
+            return None
 
     def delete_metadata(self):
         """deletes the track's MetaData
@@ -450,27 +448,30 @@ class OpusAudio(VorbisAudio):
         raises an InvalidFile with an error message if there is
         some problem with the file"""
 
-        #Ogg stream verification is likely to be so fast
-        #that individual calls to progress() are
-        #a waste of time.
-        if (progress is not None):
-            progress(0, 1)
+        from audiotools.ogg import PageReader
+        import os.path
+
+        if (progress is None):
+            progress = lambda x,y: None
+
+        bytes_read = 0
+        total_bytes = os.path.getsize(self.filename)
 
         try:
-            f = open(self.filename, 'rb')
+            reader = PageReader(open(self.filename, "rb"))
         except IOError, err:
-            raise InvalidOpus(str(err))
+            raise InvalidVorbis(str(err))
+
         try:
-            try:
-                from . import verify
-                verify.ogg(f)
-                if (progress is not None):
-                    progress(1, 1)
-                return True
-            except (IOError, ValueError), err:
-                raise InvalidOpus(str(err))
-        finally:
-            f.close()
+            page = reader.read()
+            bytes_read += page.size()
+            progress(bytes_read, total_bytes)
+            while (not page.stream_end):
+                page = reader.read()
+                bytes_read += page.size()
+                progress(bytes_read, total_bytes)
+        except (IOError, ValueError), err:
+            raise InvalidVorbis(str(err))
 
 
 class OpusTags(VorbisComment):

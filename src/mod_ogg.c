@@ -346,6 +346,17 @@ Page_full(ogg_Page *self, PyObject *args)
     return PyBool_FromLong(self->page.header.segment_count == 255);
 }
 
+static PyObject*
+Page_size(ogg_Page *self, PyObject *args)
+{
+    int size = 27 + self->page.header.segment_count;
+    unsigned i;
+
+    for (i = 0; i < self->page.header.segment_count; i++)
+        size += self->page.header.segment_lengths[i];
+
+    return Py_BuildValue("i", size);
+}
 
 static PyObject*
 PageReader_new(PyTypeObject *type, PyObject *args, PyObject *kwds)

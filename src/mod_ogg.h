@@ -132,11 +132,16 @@ Page_append(ogg_Page *self, PyObject *args);
 static PyObject*
 Page_full(ogg_Page *self, PyObject *args);
 
+static PyObject*
+Page_size(ogg_Page *self, PyObject *args);
+
 PyMethodDef Page_methods[] = {
     {"append", (PyCFunction)Page_append,
      METH_VARARGS, "append(segment)"},
     {"full", (PyCFunction)Page_full,
      METH_NOARGS, "full() -> True if Page can hold no more segments"},
+    {"size", (PyCFunction)Page_size,
+     METH_NOARGS, "size() -> total size of Ogg page in bytes"},
     {NULL}
 };
 

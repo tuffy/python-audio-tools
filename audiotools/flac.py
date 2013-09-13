@@ -2910,7 +2910,9 @@ class OggFlacMetaData(FlacMetaData):
         return cls(block_list)
 
     def build(self, pagewriter, serial_number):
-        """pagewriter is an ogg.PageWriter object"""
+        """pagewriter is an ogg.PageWriter object
+
+        returns new sequence number"""
 
         from audiotools.bitstream import build,BitstreamRecorder,format_size
         from audiotools.ogg import packet_to_pages
@@ -2968,6 +2970,7 @@ class OggFlacMetaData(FlacMetaData):
                 pagewriter.write(page)
                 sequence_number += 1
 
+        return sequence_number
 
 
 class OggFlacAudio(FlacAudio):
@@ -3072,13 +3075,17 @@ class OggFlacAudio(FlacAudio):
         OggFlacMetaData.parse(PacketReader(original_ogg))
 
         #write our new comment blocks to the new file
-        metadata.build(new_ogg, self.__serial_number__)
+        sequence_number = metadata.build(new_ogg, self.__serial_number__)
 
         #transfer the remaining pages from the original file to the new file
         page = original_ogg.read()
+        page.sequence_number = sequence_number
+        sequence_number += 1
         new_ogg.write(page)
         while (not page.stream_end):
             page = original_ogg.read()
+            page.sequence_number = sequence_number
+            sequence_number += 1
             new_ogg.write(page)
 
         original_ogg.close()
