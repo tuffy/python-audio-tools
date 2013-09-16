@@ -6797,6 +6797,7 @@ class Test_CoreAudio_CDPlayer(Test_NULL_CDPlayer):
 
 
 class Test_Accuraterip(unittest.TestCase):
+    @LIB_ACCURATERIP
     def test_checksum_v1(self):
         from audiotools._accuraterip import ChecksumV1
 
@@ -6861,7 +6862,7 @@ class Test_Accuraterip(unittest.TestCase):
 
         self.assertEqual(only_track.checksum(), 0xEF82F9F0)
 
-
+    @LIB_ACCURATERIP
     def test_checksum_v2(self):
         from audiotools._accuraterip import ChecksumV2
 
@@ -6925,3 +6926,30 @@ class Test_Accuraterip(unittest.TestCase):
         audiotools.transfer_data(track.to_pcm().read, only_track.update)
 
         self.assertEqual(only_track.checksum(), 0x197662C7)
+
+
+class Test_Ogg(unittest.TestCase):
+    @LIB_OGG
+    def test_roundtrip(self):
+        import audiotools.ogg
+        import cStringIO
+
+        for packet_len in xrange(0, 1000):
+            packet = os.urandom(packet_len)
+            ogg_stream = cStringIO.StringIO()
+            self.assertEqual(packet_len, len(packet))
+
+            ogg_writer = audiotools.ogg.PageWriter(ogg_stream)
+            for page in audiotools.ogg.packet_to_pages(packet, 1234):
+                ogg_writer.write(page)
+            ogg_writer.flush()
+
+            ogg_stream.seek(0)
+
+            ogg_reader = audiotools.ogg.PacketReader(
+                audiotools.ogg.PageReader(ogg_stream))
+
+            self.assertEqual(packet, ogg_reader.read_packet())
+
+            ogg_writer.close()
+            ogg_reader.close()

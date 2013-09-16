@@ -78,6 +78,19 @@ def packet_to_pages(packet, bitstream_serial_number,
 
     from audiotools._ogg import Page
 
+    def packet_to_segments(packet):
+        if (len(packet) == 0):
+            yield ""
+        else:
+            while (len(packet) > 0):
+                if (len(packet) == 255):
+                    yield packet
+                    yield ""
+                    packet = ""
+                else:
+                    yield packet[0:255]
+                    packet = packet[255:]
+
     page = Page(
         packet_continuation=False,
         stream_beginning=False,
@@ -87,7 +100,7 @@ def packet_to_pages(packet, bitstream_serial_number,
         sequence_number=starting_sequence_number,
         segments=[])
 
-    while (len(packet) > 0):
+    for segment in packet_to_segments(packet):
         if (page.full()):
             yield page
             starting_sequence_number += 1
@@ -100,7 +113,6 @@ def packet_to_pages(packet, bitstream_serial_number,
                 sequence_number=starting_sequence_number,
                 segments=[])
 
-        page.append(packet[0:255])
-        packet = packet[255:]
+        page.append(segment)
 
     yield page
