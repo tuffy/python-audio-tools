@@ -1049,15 +1049,14 @@ class AiffAudio(AiffContainer):
 
         return True
 
-    def clean(self, fixes_performed, output_filename=None):
+    def clean(self, output_filename=None):
         """cleans the file of known data and metadata problems
 
-        fixes_performed is a list-like object which is appended
-        with Unicode strings of fixed problems
-
         output_filename is an optional filename of the fixed file
-        if present, a new AudioFile is returned
+        if present, a new AudioFile is written to that path
         otherwise, only a dry-run is performed and no new file is written
+
+        return list of fixes performed as Unicode strings
 
         raises IOError if unable to write the file or its metadata
         raises ValueError if the file has errors of some sort
@@ -1067,6 +1066,7 @@ class AiffAudio(AiffContainer):
                            CLEAN_AIFF_REORDERED_SSND_CHUNK,
                            CLEAN_AIFF_MULTIPLE_SSND_CHUNKS)
 
+        fixes_performed = []
         chunk_queue = []
         pending_data = None
 
@@ -1093,9 +1093,11 @@ class AiffAudio(AiffContainer):
 
         old_metadata = self.get_metadata()
         if (old_metadata is not None):
-            fixed_metadata = old_metadata.clean(fixes_performed)
+            (fixed_metadata,
+             metadata_fixes) = old_metadata.clean()
         else:
             fixed_metadata = old_metadata
+            metadata_fixes = []
 
         if (output_filename is not None):
             output_file = open(output_filename, "wb")
@@ -1104,4 +1106,5 @@ class AiffAudio(AiffContainer):
             fixed_aiff = AiffAudio(output_filename)
             if (fixed_metadata is not None):
                 fixed_aiff.update_metadata(fixed_metadata)
-            return fixed_aiff
+
+        return fixes_performed + metadata_fixes

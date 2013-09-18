@@ -441,9 +441,10 @@ class VorbisComment(MetaData):
 
         return []
 
-    def clean(self, fixes_performed):
+    def clean(self):
         """returns a new MetaData object that's been cleaned of problems"""
 
+        fixes_performed = []
         reverse_attr_map = {}
         for (attr, key) in self.ATTRIBUTE_MAP.items():
             reverse_attr_map[key] = attr
@@ -523,4 +524,5 @@ class VorbisComment(MetaData):
             else:
                 cleaned_fields.append(comment_string)
 
-        return self.__class__(cleaned_fields, self.vendor_string)
+        return (self.__class__(cleaned_fields, self.vendor_string),
+                fixes_performed)

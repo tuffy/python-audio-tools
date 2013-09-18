@@ -76,7 +76,7 @@ def update_without_backup(track, messenger):
     temp_track_f = tempfile.NamedTemporaryFile(suffix="." + track.SUFFIX)
     try:
         #perform cleanup on a temporary track
-        track.clean(fixes, temp_track_f.name)
+        fixes = track.clean(temp_track_f.name)
 
         #if changes are made, copy temporary track over original
         if (len(fixes) > 0):
@@ -98,21 +98,21 @@ def update_and_backup(track, undo_db, messenger):
     temp_track_f = tempfile.NamedTemporaryFile(suffix="." + track.SUFFIX)
     try:
         #perform cleanup on a temporary track
-        track.clean(fixes, temp_track_f.name)
+        fixes = track.clean(temp_track_f.name)
 
         #if changes are made
         if (len(fixes) > 0):
             #store undo information between old and new track
             undo_db.add(track.filename, temp_track_f.name)
 
-            #then copy temporary track over original
+            #copy temporary track over original
             input_f = open(temp_track_f.name, 'rb')
             output_f = open(track.filename, 'wb')
             audiotools.transfer_data(input_f.read, output_f.write)
             output_f.close()
             input_f.close()
 
-            #then display output messages
+            #display output messages
             display_messages(messenger, track, fixes)
     finally:
         temp_track_f.close()
@@ -240,6 +240,4 @@ if (__name__ == '__main__'):
                                 processed_filenames,
                                 unsupported_types,
                                 messenger=msg):
-            fixes = []
-            track.clean(fixes)
-            display_messages(msg, track, fixes)
+            display_messages(msg, track, track.clean())

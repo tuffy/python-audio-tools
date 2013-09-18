@@ -2043,9 +2043,9 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
                 temp = tempfile.NamedTemporaryFile(suffix=".aiff")
                 audiotools.AiffAudio.aiff_from_chunks(temp, chunks)
                 temp.flush()
-                fixes = []
-                aiff = audiotools.open(temp.name).clean(fixes, fixed.name)
+                fixes = audiotools.open(temp.name).clean(fixed.name)
                 temp.close()
+                aiff = audiotools.open(fixed.name)
                 chunks = list(aiff.chunks())
                 self.assertEquals([c.id for c in chunks],
                                   [c.id for c in [COMM, SSND]])
@@ -3875,15 +3875,13 @@ class FlacFileTest(TestForeignAiffChunks,
         f.close()
         track = audiotools.open("flac-id3.flac")
         metadata1 = track.get_metadata()
-        fixes = []
-        self.assertEqual(track.clean(fixes), None)
+        fixes = track.clean()
         self.assertEqual(fixes,
                          [CLEAN_FLAC_REMOVE_ID3V2,
                           CLEAN_FLAC_REMOVE_ID3V1])
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
-            fixes = []
-            self.assertNotEqual(track.clean(fixes, temp.name), None)
+            fixes = track.clean(temp.name)
             self.assertEqual(fixes,
                              [CLEAN_FLAC_REMOVE_ID3V2,
                               CLEAN_FLAC_REMOVE_ID3V1])
@@ -3903,14 +3901,12 @@ class FlacFileTest(TestForeignAiffChunks,
         f.close()
         track = audiotools.open("flac-disordered.flac")
         metadata1 = track.get_metadata()
-        fixes = []
-        self.assertEqual(track.clean(fixes), None)
+        fixes = track.clean()
         self.assertEqual(fixes,
                          [CLEAN_FLAC_REORDERED_STREAMINFO])
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
-            fixes = []
-            self.assertNotEqual(track.clean(fixes, temp.name), None)
+            fixes = track.clean(temp.name)
             self.assertEqual(fixes,
                              [CLEAN_FLAC_REORDERED_STREAMINFO])
             f = open(temp.name, "rb")
@@ -3928,12 +3924,11 @@ class FlacFileTest(TestForeignAiffChunks,
         fixes = []
         self.assertEqual(track.get_metadata().get_block(
                 audiotools.flac.Flac_STREAMINFO.BLOCK_ID).md5sum, chr(0) * 16)
-        self.assertEqual(track.clean(fixes), None)
+        fixes = track.clean()
         self.assertEqual(fixes, [CLEAN_FLAC_POPULATE_MD5])
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
-            fixes = []
-            self.assertNotEqual(track.clean(fixes, temp.name), None)
+            fixes = track.clean(temp.name)
             self.assertEqual(fixes, [CLEAN_FLAC_POPULATE_MD5])
             track2 = audiotools.open(temp.name)
             self.assertEqual(track2.get_metadata().get_block(
@@ -3962,14 +3957,12 @@ class FlacFileTest(TestForeignAiffChunks,
 
                 for track in [audiotools.open(path),
                               audiotools.open(no_blocks_file.name)]:
-                    fixes = []
-                    self.assertEqual(track.clean(fixes), None)
+                    fixes = track.clean()
                     self.assertEqual(fixes, [CLEAN_FLAC_ADD_CHANNELMASK])
 
                     temp = tempfile.NamedTemporaryFile(suffix=".flac")
                     try:
-                        fixes = []
-                        track.clean(fixes, temp.name)
+                        fixes = track.clean(temp.name)
                         self.assertEqual(
                             fixes,
                             [CLEAN_FLAC_ADD_CHANNELMASK])
@@ -3991,19 +3984,16 @@ class FlacFileTest(TestForeignAiffChunks,
 
         #check bad seekpoint destinations
         track = audiotools.open("flac-seektable.flac")
-        fixes = []
-        self.assertEqual(track.clean(fixes), None)
+        fixes = track.clean()
         self.assertEqual(fixes, [CLEAN_FLAC_FIX_SEEKTABLE])
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
-            fixes = []
-            track.clean(fixes, temp.name)
+            fixes = track.clean(temp.name)
             self.assertEqual(
                 fixes,
                 [CLEAN_FLAC_FIX_SEEKTABLE])
             new_track = audiotools.open(temp.name)
-            fixes = []
-            new_track.clean(fixes, None)
+            fixes = new_track.clean()
             self.assertEqual(fixes, [])
         finally:
             temp.close()
@@ -5455,8 +5445,8 @@ class WaveFileTest(TestForeignWaveChunks,
                            [DATA, FMT],
                            [DATA, FMT, FMT]]:
                 audiotools.WaveAudio.wave_from_chunks(temp.name, chunks)
-                fixes = []
-                wave = audiotools.open(temp.name).clean(fixes, fixed.name)
+                fixes = audiotools.open(temp.name).clean(fixed.name)
+                wave = audiotools.open(fixed.name)
                 chunks = list(wave.chunks())
                 self.assertEquals([c.id for c in chunks],
                                   [c.id for c in [FMT, DATA]])

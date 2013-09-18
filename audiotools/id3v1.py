@@ -256,12 +256,13 @@ class ID3v1Comment(MetaData):
 
         return []
 
-    def clean(self, fixes_performed):
+    def clean(self):
         """returns a new ID3v1Comment object that's been cleaned of problems"""
 
         from .text import (CLEAN_REMOVE_TRAILING_WHITESPACE,
                            CLEAN_REMOVE_LEADING_WHITESPACE)
 
+        fixes_performed = []
         fields = {}
         for (init_attr,
              attr,
@@ -290,4 +291,4 @@ class ID3v1Comment(MetaData):
         fields["track_number"] = self.__track_number__
         fields["genre"] = self.__genre__
 
-        return ID3v1Comment(**fields)
+        return (ID3v1Comment(**fields), fixes_performed)

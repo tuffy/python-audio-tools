@@ -715,7 +715,7 @@ class ApeTag(MetaData):
                           not self.contains_footer,  # no footer
                           self.contains_header))     # has header
 
-    def clean(self, fixes_applied):
+    def clean(self):
         import re
         from .text import (CLEAN_REMOVE_DUPLICATE_TAG,
                            CLEAN_REMOVE_TRAILING_WHITESPACE,
@@ -723,11 +723,12 @@ class ApeTag(MetaData):
                            CLEAN_FIX_TAG_FORMATTING,
                            CLEAN_REMOVE_EMPTY_TAG)
 
+        fixes_performed = []
         used_tags = set([])
         tag_items = []
         for tag in self.tags:
             if (tag.key.upper() in used_tags):
-                fixes_applied.append(
+                fixes_performed.append(
                     CLEAN_REMOVE_DUPLICATE_TAG %
                     {"field": tag.key.decode('ascii')})
             elif (tag.type == 0):
@@ -737,14 +738,14 @@ class ApeTag(MetaData):
                 #check trailing whitespace
                 fix1 = text.rstrip()
                 if (fix1 != text):
-                    fixes_applied.append(
+                    fixes_performed.append(
                         CLEAN_REMOVE_TRAILING_WHITESPACE %
                         {"field": tag.key.decode('ascii')})
 
                 #check leading whitespace
                 fix2 = fix1.lstrip()
                 if (fix2 != fix1):
-                    fixes_applied.append(
+                    fixes_performed.append(
                         CLEAN_REMOVE_LEADING_WHITESPACE %
                         {"field": tag.key.decode('ascii')})
 
@@ -782,7 +783,7 @@ class ApeTag(MetaData):
                             fix3 = fix2
 
                     if (fix3 != fix2):
-                        fixes_applied.append(
+                        fixes_performed.append(
                             CLEAN_FIX_TAG_FORMATTING %
                             {"field": tag.key.decode('ascii')})
                 else:
@@ -791,16 +792,17 @@ class ApeTag(MetaData):
                 if (len(fix3) > 0):
                     tag_items.append(ApeTagItem.string(tag.key, fix3))
                 else:
-                    fixes_applied.append(
+                    fixes_performed.append(
                         CLEAN_REMOVE_EMPTY_TAG %
                         {"field": tag.key.decode('ascii')})
             else:
                 used_tags.add(tag.key.upper())
                 tag_items.append(tag)
 
-        return self.__class__(tag_items,
-                              self.contains_header,
-                              self.contains_footer)
+        return (self.__class__(tag_items,
+                               self.contains_header,
+                               self.contains_footer),
+                fixes_performed)
 
 
 class ApeTaggedAudio:

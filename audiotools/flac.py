@@ -198,10 +198,12 @@ class FlacMetaData(MetaData):
 
         return True
 
-    def clean(self, fixes_performed):
-        """returns a new FlacMetaData object that's been cleaned of problems
+    def clean(self):
+        """returns (FlacMetaData, [fixes]) tuple
 
-        any fixes performed are appended to fixes_performed as unicode"""
+        where FlacMetaData is a new MetaData object fixed of problems
+        and fixes is a list of Unicode strings of fixes performed
+        """
 
         from .text import (CLEAN_FLAC_REORDERED_STREAMINFO,
                            CLEAN_FLAC_MULITPLE_STREAMINFO,
@@ -210,6 +212,7 @@ class FlacMetaData(MetaData):
                            CLEAN_FLAC_MULTIPLE_CUESHEET,
                            CLEAN_FLAC_UNDEFINED_BLOCK)
 
+        fixes_performed = []
         cleaned_blocks = []
 
         for block in self.block_list:
@@ -231,10 +234,14 @@ class FlacMetaData(MetaData):
                         CLEAN_FLAC_MULTIPLE_VORBISCOMMENT)
                 else:
                     #recursively clean up the text fields in FlacVorbisComment
-                    cleaned_blocks.append(block.clean(fixes_performed))
+                    (block, block_fixes) = block.clean()
+                    cleaned_blocks.append(block)
+                    fixes_performed.extend(block_fixes)
             elif (block.BLOCK_ID == Flac_PICTURE.BLOCK_ID):
                 #recursively clean up any image blocks
-                cleaned_blocks.append(block.clean(fixes_performed))
+                (block, block_fixes) = block.clean()
+                cleaned_blocks.append(block)
+                fixes_performed.extend(block_fixes)
             elif (block.BLOCK_ID == Flac_APPLICATION.BLOCK_ID):
                 cleaned_blocks.append(block)
             elif (block.BLOCK_ID == Flac_SEEKTABLE.BLOCK_ID):
@@ -243,7 +250,9 @@ class FlacMetaData(MetaData):
                     fixes_performed.append(
                         CLEAN_FLAC_MULTIPLE_SEEKTABLE)
                 else:
-                    cleaned_blocks.append(block.clean(fixes_performed))
+                    (block, block_fixes) = block.clean()
+                    cleaned_blocks.append(block)
+                    fixes_performed.extend(block_fixes)
             elif (block.BLOCK_ID == Flac_CUESHEET.BLOCK_ID):
                 #remove redundant cuesheet, if necessary
                 if (block.BLOCK_ID in [b.BLOCK_ID for b in cleaned_blocks]):
@@ -257,7 +266,7 @@ class FlacMetaData(MetaData):
                 #remove undefined blocks
                 fixes_performed.append(CLEAN_FLAC_UNDEFINED_BLOCK)
 
-        return self.__class__(cleaned_blocks)
+        return (self.__class__(cleaned_blocks), fixes_performed)
 
     def __repr__(self):
         return "FlacMetaData(%s)" % (self.block_list)
@@ -613,13 +622,15 @@ class Flac_SEEKTABLE:
 
         return (format_size("64U64U16u") / 8) * len(self.seekpoints)
 
-    def clean(self, fixes_performed):
+    def clean(self):
         """removes any empty seek points
         and ensures PCM frame offset and byte offset
         are both incrementing"""
 
+        fixes_performed = []
         nonempty_points = [seekpoint for seekpoint in self.seekpoints
                            if (seekpoint[2] != 0)]
+
         if (len(nonempty_points) != len(self.seekpoints)):
             from .text import CLEAN_FLAC_REMOVE_SEEKPOINTS
             fixes_performed.append(CLEAN_FLAC_REMOVE_SEEKPOINTS)
@@ -631,7 +642,7 @@ class Flac_SEEKTABLE:
             from .text import CLEAN_FLAC_REORDER_SEEKPOINTS
             fixes_performed.append(CLEAN_FLAC_REORDER_SEEKPOINTS)
 
-        return Flac_SEEKTABLE(ascending_order)
+        return (Flac_SEEKTABLE(ascending_order), fixes_performed)
 
 
 class Flac_VORBISCOMMENT(VorbisComment):
@@ -1191,7 +1202,7 @@ class Flac_PICTURE(Image):
                 20: "Publisher / Studio logotype"}.get(self.picture_type,
                                                        "Other")
 
-    def clean(self, fixes_performed):
+    def clean(self):
         from .image import image_metrics
 
         img = image_metrics(self.data)
@@ -1201,9 +1212,10 @@ class Flac_PICTURE(Image):
              (self.height != img.height) or
              (self.color_depth != img.bits_per_pixel) or
              (self.color_count != img.color_count))):
+
             from .text import CLEAN_FIX_IMAGE_FIELDS
-            fixes_performed.append(CLEAN_FIX_IMAGE_FIELDS)
-            return self.__class__.converted(
+
+            return (self.__class__.converted(
                 Image(type=self.type,
                       mime_type=img.mime_type,
                       description=self.description,
@@ -1211,9 +1223,9 @@ class Flac_PICTURE(Image):
                       height=img.height,
                       color_depth=img.bits_per_pixel,
                       color_count=img.color_count,
-                      data=self.data))
+                      data=self.data)), [CLEAN_FIX_IMAGE_FIELDS])
         else:
-            return self
+            return (self, [])
 
 
 class FlacAudio(WaveContainer, AiffContainer):
@@ -2526,17 +2538,17 @@ class FlacAudio(WaveContainer, AiffContainer):
         else:
             return False
 
-    def clean(self, fixes_performed, output_filename=None):
+    def clean(self, output_filename=None):
         """cleans the file of known data and metadata problems
 
-        fixes_performed is a list-like object which is appended
-        with Unicode strings of fixed problems
-
         output_filename is an optional filename of the fixed file
-        if present, a new AudioFile is returned
+        if present, a new AudioFile is written to that path
         otherwise, only a dry-run is performed and no new file is written
 
+        return list of fixes performed as Unicode strings
+
         raises IOError if unable to write the file or its metadata
+        raises ValueError if the file has errors of some sort
         """
 
         import os.path
@@ -2566,6 +2578,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         if (output_filename is None):
             #dry run only
 
+            fixes_performed = []
             input_f = open(self.filename, "rb")
             try:
                 #remove ID3 tags from before and after FLAC stream
@@ -2614,13 +2627,15 @@ class FlacAudio(WaveContainer, AiffContainer):
                     pass
 
                 #fix any remaining metadata problems
-                metadata.clean(fixes_performed)
+                (metadata, metadata_fixes) = metadata.clean()
 
+                return fixes_performed + metadata_fixes
             finally:
                 input_f.close()
         else:
             #perform complete fix
 
+            fixes_performed = []
             input_f = open(self.filename, "rb")
             try:
                 #remove ID3 tags from before and after FLAC stream
@@ -2715,10 +2730,10 @@ class FlacAudio(WaveContainer, AiffContainer):
                     #fix remaining metadata problems
                     #which automatically shifts STREAMINFO to the right place
                     #(the message indicating the fix has already been output)
-                    output_track.update_metadata(
-                        metadata.clean(fixes_performed))
+                    (metadata, metadata_fixes) = metadata.clean()
+                    output_track.update_metadata(metadata)
 
-                return output_track
+                return fixes_performed + metadata_fixes
             finally:
                 input_f.close()
 

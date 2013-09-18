@@ -1417,10 +1417,12 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
 
         return True
 
-    def clean(self, fixes_performed):
+    def clean(self):
         """returns a new MetaData object that's been cleaned of problems
 
         any fixes performed are appended to fixes_performed as Unicode"""
+
+        fixes_performed = []
 
         def cleaned_atom(atom):
             #numerical fields are stored in bytes,
@@ -1458,19 +1460,21 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 return atom
 
         if (self.has_ilst_atom()):
-            return M4A_META_Atom(
+            return (M4A_META_Atom(
                 self.version,
                 self.flags,
                 [M4A_Tree_Atom('ilst',
                                filter(lambda atom: atom is not None,
-                                      map(cleaned_atom, self.ilst_atom())))])
+                                      map(cleaned_atom, self.ilst_atom())))]),
+                    fixes_performed)
         else:
             #if no ilst atom, return a copy of the meta atom as-is
-            return M4A_META_Atom(
+            return (M4A_META_Atom(
                 self.version,
                 self.flags,
                 [M4A_Tree_Atom('ilst',
-                               [atom.copy() for atom in self.ilst_atom()])])
+                               [atom.copy() for atom in self.ilst_atom()])]),
+                    [])
 
 
 class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):

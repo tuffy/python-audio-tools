@@ -1127,20 +1127,20 @@ class WaveAudio(WaveContainer):
 
         return True
 
-    def clean(self, fixes_performed, output_filename=None):
+    def clean(self, output_filename=None):
         """cleans the file of known data and metadata problems
 
-        fixes_performed is a list-like object which is appended
-        with Unicode strings of fixed problems
-
         output_filename is an optional filename of the fixed file
-        if present, a new AudioFile is returned
+        if present, a new AudioFile is written to that path
         otherwise, only a dry-run is performed and no new file is written
+
+        return list of fixes performed as Unicode strings
 
         raises IOError if unable to write the file or its metadata
         raises ValueError if the file has errors of some sort
         """
 
+        fixes_performed = []
         chunk_queue = []
         pending_data = None
 
@@ -1169,4 +1169,5 @@ class WaveAudio(WaveContainer):
 
         if (output_filename is not None):
             WaveAudio.wave_from_chunks(output_filename, chunk_queue)
-            return WaveAudio(output_filename)
+
+        return fixes_performed

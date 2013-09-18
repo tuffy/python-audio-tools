@@ -344,7 +344,7 @@ class ID3v22_Frame:
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
 
-        return self.__class__(self.id, self.data)
+        return (self.__class__(self.id, self.data), [])
 
 
 class ID3v22_T__Frame:
@@ -457,7 +457,7 @@ class ID3v22_T__Frame:
         else:
             return cls(frame_id, 1, unicode_string.encode('ucs2'))
 
-    def clean(self, fixes_performed):
+    def clean(self):
         """returns a cleaned frame,
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
@@ -468,14 +468,13 @@ class ID3v22_T__Frame:
                            CLEAN_REMOVE_LEADING_ZEROES,
                            CLEAN_ADD_LEADING_ZEROES)
 
+        fixes_performed = []
         field = self.id.decode('ascii')
         value = unicode(self)
 
         #check for an empty tag
         if (len(value.strip()) == 0):
-            fixes_performed.append(CLEAN_REMOVE_EMPTY_TAG %
-                                   {"field": field})
-            return None
+            return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
 
         #check trailing whitespace
         fix1 = value.rstrip()
@@ -504,7 +503,7 @@ class ID3v22_T__Frame:
         else:
             fix3 = fix2
 
-        return self.__class__.converted(self.id, fix3)
+        return (self.__class__.converted(self.id, fix3), fixes_performed)
 
 
 class ID3v22_TXX_Frame:
@@ -567,7 +566,7 @@ class ID3v22_TXX_Frame:
 
         return 1 + self.description.size() + len(self.data)
 
-    def clean(self, fixes_performed):
+    def clean(self):
         """returns a cleaned frame,
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
@@ -576,14 +575,13 @@ class ID3v22_TXX_Frame:
                                      CLEAN_REMOVE_TRAILING_WHITESPACE,
                                      CLEAN_REMOVE_LEADING_WHITESPACE)
 
+        fixes_performed = []
         field = self.id.decode('ascii')
         value = unicode(self)
 
         #check for an empty tag
         if (len(value.strip()) == 0):
-            fixes_performed.append(CLEAN_REMOVE_EMPTY_TAG %
-                                   {"field": field})
-            return None
+            return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
 
         #check trailing whitespace
         fix1 = value.rstrip()
@@ -597,7 +595,8 @@ class ID3v22_TXX_Frame:
             fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
                                    {"field": field})
 
-        return self.__class__(self.encoding, self.description, fix2)
+        return (self.__class__(self.encoding, self.description, fix2),
+                fixes_performed)
 
 
 class ID3v22_W__Frame:
@@ -637,12 +636,12 @@ class ID3v22_W__Frame:
 
         return len(self.data)
 
-    def clean(self, fixes_applied):
+    def clean(self):
         """returns a cleaned frame,
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
 
-        return self.__class__(self.id, self.data)
+        return (self.__class__(self.id, self.data), [])
 
 
 class ID3v22_WXX_Frame:
@@ -700,14 +699,14 @@ class ID3v22_WXX_Frame:
 
         return 1 + self.description.size() + len(self.data)
 
-    def clean(self, fixes_performed):
+    def clean(self):
         """returns a cleaned frame,
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
 
-        return self.__class__(self.encoding,
-                              self.description,
-                              self.data)
+        return (self.__class__(self.encoding,
+                               self.description,
+                               self.data), [])
 
 
 class ID3v22_COM_Frame:
@@ -806,9 +805,7 @@ class ID3v22_COM_Frame:
 
         #check for an empty tag
         if (len(value.strip()) == 0):
-            fixes_performed.append(CLEAN_REMOVE_EMPTY_TAG %
-                                   {"field": field})
-            return None
+            return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
 
         #check trailing whitespace
         fix1 = value.rstrip()
@@ -824,10 +821,11 @@ class ID3v22_COM_Frame:
 
         #stripping whitespace shouldn't alter text/description encoding
 
-        return self.__class__(self.encoding,
-                              self.language,
-                              self.short_description,
-                              fix2.encode(text_encoding[self.encoding]))
+        return (self.__class__(self.encoding,
+                               self.language,
+                               self.short_description,
+                               fix2.encode(text_encoding[self.encoding])),
+                fixes_performed)
 
 
 class ID3v22_PIC_Frame(Image):
@@ -984,7 +982,7 @@ class ID3v22_PIC_Frame(Image):
                    description=description,
                    data=image.data)
 
-    def clean(self, fixes_performed):
+    def clean(self):
         """returns a cleaned ID3v22_PIC_Frame,
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
@@ -995,10 +993,10 @@ class ID3v22_PIC_Frame(Image):
         #not sure if it's worth testing for bugs in the description
         #or format fields
 
-        return ID3v22_PIC_Frame(self.pic_format,
-                                self.pic_type,
-                                self.pic_description,
-                                self.data)
+        return (ID3v22_PIC_Frame(self.pic_format,
+                                 self.pic_type,
+                                 self.pic_description,
+                                 self.data), [])
 
 
 class ID3v22Comment(MetaData):
@@ -1407,12 +1405,19 @@ class ID3v22Comment(MetaData):
 
         return cls(frames)
 
-    def clean(self, fixes_performed):
+    def clean(self):
         """returns a new MetaData object that's been cleaned of problems"""
 
-        return self.__class__([filtered_frame for filtered_frame in
-                               [frame.clean(fixes_performed) for frame in self]
-                               if filtered_frame is not None])
+        new_frames = []
+        fixes_performed = []
+
+        for frame in self:
+            (filtered_frame, frame_fixes) = frame.clean()
+            if (filtered_frame is not None):
+                new_frames.append(filtered_frame)
+            fixes_performed.extend(frame_fixes)
+
+        return (self.__class__(new_frames), fixes_performed)
 
 
 ############################################################
@@ -1602,7 +1607,7 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
                    description=description,
                    data=image.data)
 
-    def clean(self, fixes_performed):
+    def clean(self):
         """returns a cleaned ID3v23_APIC_Frame,
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
@@ -1610,18 +1615,17 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
         actual_mime_type = Image.new(self.data, u"", 0).mime_type
         if (unicode(self.pic_mime_type) != actual_mime_type):
             from audiotools.text import (CLEAN_FIX_IMAGE_FIELDS)
-            fixes_performed.append(CLEAN_FIX_IMAGE_FIELDS)
-            return ID3v23_APIC_Frame(
+            return (ID3v23_APIC_Frame(
                 C_string('ascii', actual_mime_type.encode('ascii')),
                 self.pic_type,
                 self.pic_description,
-                self.data)
+                self.data), [CLEAN_FIX_IMAGE_FIELDS])
         else:
-            return ID3v23_APIC_Frame(
+            return (ID3v23_APIC_Frame(
                 self.pic_mime_type,
                 self.pic_type,
                 self.pic_description,
-                self.data)
+                self.data), [])
 
 
 class ID3v23_COMM_Frame(ID3v22_COM_Frame):
@@ -1927,7 +1931,7 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
                    description=description,
                    data=image.data)
 
-    def clean(self, fixes_performed):
+    def clean(self):
         """returns a cleaned ID3v24_APIC_Frame,
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
@@ -1935,19 +1939,18 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
         actual_mime_type = Image.new(self.data, u"", 0).mime_type
         if (unicode(self.pic_mime_type) != actual_mime_type):
             from audiotools.text import (CLEAN_FIX_IMAGE_FIELDS)
-            fixes_performed.append(CLEAN_FIX_IMAGE_FIELDS)
-            return ID3v24_APIC_Frame(
+            return (ID3v24_APIC_Frame(
                 C_string('ascii',
                          actual_mime_type.encode('ascii')),
                 self.pic_type,
                 self.pic_description,
-                self.data)
+                self.data), [CLEAN_FIX_IMAGE_FIELDS])
         else:
-            return ID3v24_APIC_Frame(
+            return (ID3v24_APIC_Frame(
                 self.pic_mime_type,
                 self.pic_type,
                 self.pic_description,
-                self.data)
+                self.data), [])
 
 
 class ID3v24_W___Frame(ID3v23_W___Frame):
@@ -2040,7 +2043,7 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
             return cls(3, "eng", C_string("utf-8", u""),
                        unicode_string.encode('utf-8'))
 
-    def clean(self, fixes_performed):
+    def clean(self):
         """returns a cleaned frame of the same class
         or None if the frame should be omitted
         fix text will be appended to fixes_performed, if necessary"""
@@ -2049,6 +2052,7 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
                            CLEAN_REMOVE_TRAILING_WHITESPACE,
                            CLEAN_REMOVE_LEADING_WHITESPACE)
 
+        fixes_performed = []
         field = self.id.decode('ascii')
         text_encoding = {0: 'latin-1',
                          1: 'utf-16',
@@ -2059,9 +2063,7 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
 
         #check for an empty tag
         if (len(value.strip()) == 0):
-            fixes_performed.append(CLEAN_REMOVE_EMPTY_TAG %
-                                   {"field": field})
-            return None
+            return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
 
         #check trailing whitespace
         fix1 = value.rstrip()
@@ -2077,10 +2079,11 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
 
         #stripping whitespace shouldn't alter text/description encoding
 
-        return self.__class__(self.encoding,
-                              self.language,
-                              self.short_description,
-                              fix2.encode(text_encoding[self.encoding]))
+        return (self.__class__(self.encoding,
+                               self.language,
+                               self.short_description,
+                               fix2.encode(text_encoding[self.encoding])),
+                fixes_performed)
 
 
 class ID3v24Comment(ID3v23Comment):
@@ -2298,15 +2301,18 @@ class ID3CommentPair(MetaData):
 
         return True
 
-    def clean(self, fixes_performed):
+    def clean(self):
         if (self.id3v2 is not None):
-            new_id3v2 = self.id3v2.clean(fixes_performed)
+            (new_id3v2, id3v2_fixes) = self.id3v2.clean()
         else:
             new_id3v2 = None
+            id3v2_fixes = []
 
         if (self.id3v1 is not None):
-            new_id3v1 = self.id3v1.clean(fixes_performed)
+            (new_id3v1, id3v1_fixes) = self.id3v1.clean(fixes_performed)
         else:
             new_id3v1 = None
+            id3v1_fixes = []
 
-        return ID3CommentPair(new_id3v2, new_id3v1)
+        return (ID3CommentPair(new_id3v2, new_id3v1),
+                id3v2_fixes + id3v1_fixes)

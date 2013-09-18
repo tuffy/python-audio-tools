@@ -3370,7 +3370,7 @@ class MetaData:
             from .text import ERR_PICTURES_UNSUPPORTED
             raise ValueError(ERR_PICTURES_UNSUPPORTED)
 
-    def clean(self, fixes_performed):
+    def clean(self):
         """returns a new MetaData object that's been cleaned of problems
 
         any fixes performed are appended to fixes_performed as Unicode
@@ -3382,7 +3382,8 @@ class MetaData:
         * Fix incorrectly labeled image metadata fields
         """
 
-        return self
+        return (MetaData(**dict([(field, getattr(self, field))
+                                 for field in MetaData.FIELDS])), [])
 
 
 class AlbumMetaData(dict):
@@ -4010,15 +4011,14 @@ class AudioFile:
         else:
             return True
 
-    def clean(self, fixes_performed, output_filename=None):
+    def clean(self, output_filename=None):
         """cleans the file of known data and metadata problems
 
-        fixes_performed is a list-like object which is appended
-        with Unicode strings of fixed problems
-
         output_filename is an optional filename of the fixed file
-        if present, a new AudioFile is returned
+        if present, a new AudioFile is written to that path
         otherwise, only a dry-run is performed and no new file is written
+
+        return list of fixes performed as Unicode strings
 
         raises IOError if unable to write the file or its metadata
         raises ValueError if the file has errors of some sort
@@ -4028,7 +4028,10 @@ class AudioFile:
             #dry run only
             metadata = self.get_metadata()
             if (metadata is not None):
-                metadata.clean(fixes_performed)
+                (metadata, fixes) = metadata.clean()
+                return fixes
+            else:
+                return []
         else:
             #perform full fix
             input_f = file(self.filename, "rb")
@@ -4042,8 +4045,9 @@ class AudioFile:
             new_track = open(output_filename)
             metadata = self.get_metadata()
             if (metadata is not None):
-                new_track.set_metadata(metadata.clean(fixes_performed))
-            return new_track
+                (metadata, fixes) = metadata.clean()
+                new_track.set_metadata(metadata)
+                return fixes
 
 
 class WaveContainer(AudioFile):
