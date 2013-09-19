@@ -339,7 +339,7 @@ class ID3v22_Frame:
 
         raise NotImplementedError()
 
-    def clean(self, fixes_applied):
+    def clean(self):
         """returns a cleaned ID3v22_Frame,
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
@@ -789,7 +789,7 @@ class ID3v22_COM_Frame:
             return cls(1, "eng", C_string("ucs2", u""),
                        unicode_string.encode('ucs2'))
 
-    def clean(self, fixes_performed):
+    def clean(self):
         """returns a cleaned frame of the same class
         or None if the frame should be omitted
         fix text will be appended to fixes_performed, if necessary"""
@@ -798,6 +798,7 @@ class ID3v22_COM_Frame:
                                      CLEAN_REMOVE_TRAILING_WHITESPACE,
                                      CLEAN_REMOVE_LEADING_WHITESPACE)
 
+        fixes_performed = []
         field = self.id.decode('ascii')
         text_encoding = {0: 'latin-1', 1: 'ucs2'}
 

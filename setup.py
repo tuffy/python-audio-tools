@@ -245,7 +245,10 @@ class audiotools_ogg(Extension):
                            'audiotools._ogg',
                            sources=['src/ogg.c',
                                     'src/ogg_crc.c',
-                                    'src/mod_ogg.c'])
+                                    'src/mod_ogg.c',
+                                    'src/bitstream.c',
+                                    'src/func_io.c',
+                                    'src/buffer.c'])
 
 
 class audiotools_accuraterip(Extension):

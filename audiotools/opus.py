@@ -470,6 +470,8 @@ class OpusAudio(VorbisAudio):
                 page = reader.read()
                 bytes_read += page.size()
                 progress(bytes_read, total_bytes)
+
+            return True
         except (IOError, ValueError), err:
             raise InvalidVorbis(str(err))
 
