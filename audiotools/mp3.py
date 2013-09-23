@@ -56,9 +56,8 @@ class MP3Audio(AudioFile):
                                 "standard": COMP_LAME_STANDARD,
                                 "extreme": COMP_LAME_EXTREME,
                                 "insane": COMP_LAME_INSANE}
-    BINARIES = ("lame", "mpg123")
-    BINARY_URLS = {"lame": "http://lame.sourceforge.net/",
-                   "mpg123": "http://www.mpg123.de/"}
+    BINARIES = ("lame",)
+    BINARY_URLS = {"lame": "http://lame.sourceforge.net/"}
     REPLAYGAIN_BINARIES = ("mp3gain", )
 
     SAMPLE_RATE = ((11025, 12000, 8000, None),   # MPEG-2.5
@@ -209,27 +208,9 @@ class MP3Audio(AudioFile):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        from . import PCMReader
-        from . import BIN
-        from . import ChannelMask
-        import subprocess
-        import sys
-        import os
+        from audiotools.decoders import MP3Decoder
 
-        BIG_ENDIAN = sys.byteorder == 'big'
-
-        sub = subprocess.Popen([BIN["mpg123"], "-qs", self.filename],
-                               stdout=subprocess.PIPE,
-                               stderr=file(os.devnull, "a"))
-
-        return PCMReader(
-            sub.stdout,
-            sample_rate=self.sample_rate(),
-            channels=self.channels(),
-            bits_per_sample=16,
-            channel_mask=int(ChannelMask.from_channels(self.channels())),
-            process=sub,
-            big_endian=BIG_ENDIAN)
+        return MP3Decoder(self.filename)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
@@ -355,14 +336,7 @@ class MP3Audio(AudioFile):
 
         f = file(self.filename, "rb")
         try:
-            if (f.read(3) != "ID3"):      # no ID3v2 tag, try ID3v1
-                try:
-                    # no ID3v2, yes ID3v1
-                    return ID3v1Comment.parse(f)
-                except ValueError:
-                    # no ID3v2, no ID3v1
-                    return None
-            else:
+            if (f.read(3) == "ID3"):
                 id3v2 = read_id3v2_comment(self.filename)
 
                 try:
@@ -372,6 +346,13 @@ class MP3Audio(AudioFile):
                 except ValueError:
                     # yes ID3v2, no ID3v1
                     return id3v2
+            else:
+                try:
+                    # no ID3v2, yes ID3v1
+                    return ID3v1Comment.parse(f)
+                except ValueError:
+                    # no ID3v2, no ID3v1
+                    return None
         finally:
             f.close()
 
@@ -703,6 +684,57 @@ class MP3Audio(AudioFile):
         finally:
             f.close()
 
+    @classmethod
+    def available(cls, system_binaries):
+        """returns True if all necessary compenents are available
+        to support format"""
+
+        for command in cls.BINARIES:
+            if (not system_binaries.can_execute(system_binaries[command])):
+                return False
+        else:
+            try:
+                from audiotools.decoders import MP3Decoder
+                return True
+            except ImportError:
+                return False
+
+    @classmethod
+    def missing_components(cls, messenger):
+        """given a Messenger object, displays missing binaries or libraries
+        needed to support this format and where to get them"""
+
+        from .text import (ERR_PROGRAM_NEEDED,
+                           ERR_LIBRARY_NEEDED,
+                           ERR_PROGRAM_DOWNLOAD_URL,
+                           ERR_LIBRARY_DOWNLOAD_URL,
+                           ERR_PROGRAM_PACKAGE_MANAGER)
+
+        binary = cls.BINARIES[0]
+        url = cls.BINARY_URLS[binary]
+        format_ = cls.NAME.decode('ascii')
+
+        #display where to get lame
+        messenger.info(
+            ERR_PROGRAM_NEEDED %
+                {"program": u"\"%s\"" % (binary.decode('ascii')),
+                 "format": format_})
+        messenger.info(
+            ERR_PROGRAM_DOWNLOAD_URL %
+            {"program": binary.decode('ascii'),
+             "url": url})
+
+        #then display where to get libmpg123
+        messenger.info(
+            ERR_LIBRARY_NEEDED %
+                {"library": u"\"libmpg123\"",
+                 "format": format_})
+        messenger.info(
+            ERR_LIBRARY_DOWNLOAD_URL %
+            {"library": u"mpg123",
+             "url": u"http://www.mpg123.org/"})
+
+        messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)
 
 #######################
 #MP2 AUDIO
@@ -722,9 +754,8 @@ class MP2Audio(MP3Audio):
                                         224, 256, 320, 384)))
     COMPRESSION_DESCRIPTIONS = {"64": COMP_TWOLAME_64,
                                 "384": COMP_TWOLAME_384}
-    BINARIES = ("mpg123", "twolame")
-    BINARY_URLS = {"mpg123": "http://www.mpg123.de/",
-                   "twolame": "http://www.twolame.org/"}
+    BINARIES = ("twolame", )
+    BINARY_URLS = {"twolame": "http://www.twolame.org/"}
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,

@@ -1,5 +1,8 @@
 #include <Python.h>
 #include "decoders.h"
+#ifdef HAS_MP3
+#include <mpg123.h>
+#endif
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -26,6 +29,9 @@ extern PyTypeObject decoders_SHNDecoderType;
 extern PyTypeObject decoders_ALACDecoderType;
 extern PyTypeObject decoders_WavPackDecoderType;
 /* extern PyTypeObject decoders_VorbisDecoderType; */
+#ifdef HAS_MP3
+extern PyTypeObject decoders_MP3DecoderType;
+#endif
 extern PyTypeObject decoders_TTADecoderType;
 extern PyTypeObject decoders_DVDA_Title_Type;
 extern PyTypeObject decoders_Sine_Mono_Type;
@@ -61,6 +67,12 @@ initdecoders(void)
     /* decoders_VorbisDecoderType.tp_new = PyType_GenericNew; */
     /* if (PyType_Ready(&decoders_VorbisDecoderType) < 0) */
     /*     return; */
+
+    #ifdef HAS_MP3
+    decoders_MP3DecoderType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&decoders_MP3DecoderType) < 0)
+        return;
+    #endif
 
     decoders_TTADecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_TTADecoderType) < 0)
@@ -113,6 +125,12 @@ initdecoders(void)
     /* PyModule_AddObject(m, "VorbisDecoder", */
     /*                    (PyObject *)&decoders_VorbisDecoderType); */
 
+    #ifdef HAS_MP3
+    Py_INCREF(&decoders_MP3DecoderType);
+    PyModule_AddObject(m, "MP3Decoder",
+                       (PyObject *)&decoders_MP3DecoderType);
+    #endif
+
     Py_INCREF(&decoders_TTADecoderType);
     PyModule_AddObject(m, "TTADecoder",
                        (PyObject *)&decoders_TTADecoderType);
@@ -136,4 +154,13 @@ initdecoders(void)
     Py_INCREF(&decoders_Sine_Simple_Type);
     PyModule_AddObject(m, "Sine_Simple",
                        (PyObject *)&decoders_Sine_Simple_Type);
+
+    #ifdef HAS_MP3
+    /*this initializes the library's static decoding tables
+
+      although the library has an mpg123_exit() function
+      to be called at shutdown-time, it's currenly a noop
+      so we won't worry about it*/
+    mpg123_init();
+    #endif
 }

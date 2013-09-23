@@ -509,6 +509,10 @@ ERR_PROGRAM_NEEDED = \
     u"program %(program)s needed to support %(format)s format"
 ERR_PROGRAM_DOWNLOAD_URL = \
     u"%(program)s can be downloaded from %(url)s"
+ERR_LIBRARY_NEEDED = \
+    u"library %(library)s needed to support %(format)s format"
+ERR_LIBRARY_DOWNLOAD_URL = \
+    u"%(library)s can be downloaded from %(url)s"
 ERR_PROGRAMS_NEEDED = \
     u"programs %(programs)s needed to support %(format)s format"
 ERR_PROGRAMS_DOWNLOAD_URL = \

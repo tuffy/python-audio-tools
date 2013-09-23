@@ -1635,7 +1635,7 @@ try:
                 items=sorted([(u"%s - %s" % (t.NAME.decode('ascii'),
                                              t.DESCRIPTION), t) for t in
                               audiotools.AVAILABLE_TYPES
-                              if t.has_binaries(audiotools.BIN)],
+                              if t.available(audiotools.BIN)],
                              lambda x, y: cmp(x[0], y[0])),
                 selected_value=audio_class,
                 on_change=self.select_type,
@@ -1845,7 +1845,7 @@ try:
                 items=sorted([(u"%s - %s" % (t.NAME.decode('ascii'),
                                              t.DESCRIPTION), t) for t in
                               audiotools.AVAILABLE_TYPES
-                              if t.has_binaries(audiotools.BIN)],
+                              if t.available(audiotools.BIN)],
                              lambda x, y: cmp(x[0], y[0])),
                 selected_value=audio_class,
                 on_change=self.select_type,

@@ -23,6 +23,7 @@
 HAS_LIBCDIO = None
 HAS_LIBPULSE = None
 HAS_LIBALSA = None
+HAS_MPG123 = None
 
 import sys
 
@@ -101,6 +102,20 @@ class build_ext(_build_ext):
             #so no reason to tell the user to get it
             pass
 
+        decoders = [e for e in self.extensions if
+                    isinstance(e, audiotools_decoders)][0]
+
+        if (decoders.has_mpg123):
+            print "--- libmpg123 found"
+        else:
+            print "*** libmpg123 not found"
+            print "    for MP3 and MP2 support, install libmpg123 from:"
+            print ""
+            print "    http://www.mpg123.org"
+            print ""
+            print "    or your system's package manager"
+            print ""
+
 
 class audiotools_cdio(Extension):
     def __init__(self, extra_link_args=None):
@@ -156,45 +171,107 @@ class audiotools_replaygain(Extension):
 
 
 class audiotools_decoders(Extension):
-    def __init__(self):
-        decoders_defines = [("VERSION", VERSION)]
-        decoders_sources = ['src/array.c',
-                            'src/pcmconv.c',
-                            'src/common/md5.c',
-                            'src/bitstream.c',
-                            'src/buffer.c',
-                            'src/func_io.c',
-                            'src/huffman.c',
-                            'src/decoders/flac.c',
-                            'src/decoders/oggflac.c',
-                            'src/common/flac_crc.c',
-                            'src/ogg.c',
-                            'src/ogg_crc.c',
-                            'src/common/tta_crc.c',
-                            'src/decoders/shn.c',
-                            'src/decoders/alac.c',
-                            'src/decoders/wavpack.c',
-                            # 'src/decoders/vorbis.c',
-                            'src/decoders/tta.c',
-                            'src/decoders/mlp.c',
-                            'src/decoders/aobpcm.c',
-                            'src/decoders/aob.c',
-                            'src/decoders/sine.c',
-                            'src/decoders/mod_cppm.c',
-                            'src/decoders.c']
+    def __init__(self, has_mp3=None):
+        defines = [("VERSION", VERSION)]
+        sources = ['src/array.c',
+                   'src/pcmconv.c',
+                   'src/common/md5.c',
+                   'src/bitstream.c',
+                   'src/buffer.c',
+                   'src/func_io.c',
+                   'src/huffman.c',
+                   'src/decoders/flac.c',
+                   'src/decoders/oggflac.c',
+                   'src/common/flac_crc.c',
+                   'src/ogg.c',
+                   'src/ogg_crc.c',
+                   'src/common/tta_crc.c',
+                   'src/decoders/shn.c',
+                   'src/decoders/alac.c',
+                   'src/decoders/wavpack.c',
+                   # 'src/decoders/vorbis.c',
+                   'src/decoders/tta.c',
+                   'src/decoders/mlp.c',
+                   'src/decoders/aobpcm.c',
+                   'src/decoders/aob.c',
+                   'src/decoders/sine.c',
+                   'src/decoders/mod_cppm.c',
+                   'src/decoders.c']
+        libraries = []
+        link_args = []
+
+        def has_mpg123():
+            try:
+                mpg123 = subprocess.Popen(
+                    ["mpg123", "--version"],
+                    stdout=open(os.devnull, "wb"),
+                    stderr=open(os.devnull, "wb"))
+                mpg123.wait()
+
+                return True
+            except OSError:
+                return False
+
+        if (has_mp3 is None):
+            #probe for libmpg123 via pkg-config
+            try:
+                pkg_config = subprocess.Popen(
+                    ["pkg-config", "--libs", "libmpg123"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
+
+                mpg123_stdout = pkg_config.stdout.read().strip()
+                mpg123_stderr = pkg_config.stderr.read()
+                if (pkg_config.wait() == 0):
+                    #libmpg123 found via pkg-config
+                    #so append pkg-config's results to link arguments as-is
+                    defines.append(("HAS_MP3", None))
+                    sources.append("src/decoders/mp3.c")
+                    link_args.extend(mpg123_stdout.split())
+                    self.has_mpg123 = True
+                else:
+                    #libmpg123 not found via pkg-config
+                    #so see if mpg123 binary is present
+                    if (has_mpg123()):
+                        defines.append(("HAS_MP3", None))
+                        sources.append("src/decoders/mp3.c")
+                        libraries.append("mpg123")
+                        self.has_mpg123 = True
+                    else:
+                        self.has_mpg123 = False
+            except OSError:
+                #pkg-config not found
+                #so see if mpg123 binary is present
+                if (has_mpg123()):
+                    defines.append(("HAS_MP3", None))
+                    sources.append("src/decoders/mp3.c")
+                    libraries.append("mpg123")
+                    self.has_mpg123 = True
+                else:
+                    self.has_mpg123 = False
+        elif (has_mp3):
+            #user promises libmpg123 is present on system
+            defines.append(("HAS_MP3", None))
+            sources.append("src/decoders/mp3.c")
+            libraries.append("mpg123")
+            self.has_mpg123 = True
+        else:
+            self.has_mpg123 = False
 
         if (sys.platform == 'linux2'):
-            decoders_defines.extend([('DVD_STRUCT_IN_LINUX_CDROM_H', None),
-                                     ('HAVE_LINUX_DVD_STRUCT', None),
-                                     ('HAS_UNPROT', None)])
-            decoders_sources.extend(['src/decoders/cppm.c',
-                                     'src/decoders/ioctl.c',
-                                     'src/decoders/dvd_css.c'])
+            defines.extend([('DVD_STRUCT_IN_LINUX_CDROM_H', None),
+                            ('HAVE_LINUX_DVD_STRUCT', None),
+                            ('HAS_UNPROT', None)])
+            sources.extend(['src/decoders/cppm.c',
+                            'src/decoders/ioctl.c',
+                            'src/decoders/dvd_css.c'])
 
         Extension.__init__(self,
                            'audiotools.decoders',
-                           sources=decoders_sources,
-                           define_macros=decoders_defines)
+                           sources=sources,
+                           define_macros=defines,
+                           libraries=libraries,
+                           extra_link_args=link_args)
 
 
 class audiotools_encoders(Extension):
@@ -353,13 +430,14 @@ class audiotools_output(Extension):
 ext_modules = [audiotools_pcm(),
                audiotools_pcmconverter(),
                audiotools_replaygain(),
-               audiotools_decoders(),
+               audiotools_decoders(has_mp3=HAS_MPG123),
                audiotools_encoders(),
                audiotools_bitstream(),
                audiotools_ogg(),
                audiotools_verify(),
                audiotools_accuraterip(),
-               audiotools_output()]
+               audiotools_output(has_pulseaudio=HAS_LIBPULSE,
+                                 has_alsa=HAS_LIBALSA)]
 
 
 scripts = ["audiotools-config",
@@ -409,6 +487,8 @@ if (HAS_LIBCDIO is None):
                     ["cd-info", "--version"],
                     stdout=open(os.devnull, "wb"),
                     stderr=open(os.devnull, "wb"))
+                cd_info.wait()
+
                 ext_modules.append(audiotools_cdio())
 
                 scripts.extend(["cd2track",

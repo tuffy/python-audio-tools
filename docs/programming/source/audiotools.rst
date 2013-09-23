@@ -112,7 +112,7 @@ classes and functions upon which all of the other modules depend.
    detected type, or ``None`` if the stream's type is unknown.
 
    The :class:`AudioFile` class may not be available for use
-   and so its :meth:`AudioFile.has_binaries` classmethod
+   and so its :meth:`AudioFile.available` classmethod
    may need to be checked separately.
 
 .. function:: open(filename)
@@ -641,12 +641,18 @@ AudioFile Objects
    Raises :exc:`IOError` if some error occurs when writing the new file.
    Raises :exc:`ValueError` if the file itself is invalid.
 
-.. classmethod:: AudioFile.has_binaries(system_binaries)
+.. classmethod:: AudioFile.available(system_binaries)
 
    Takes the :attr:`audiotools.BIN` object of system binaries.
    Returns ``True`` if all the binaries necessary to implement
    this :class:`AudioFile`-compatible class are present and executable.
    Returns ``False`` if not.
+
+.. classmethod:: AudioFile.missing_components(messenger)
+
+   Takes a :class:`Messenger` object and displays missing binaries
+   or libraries needed to support this format and where to get them,
+   if any.
 
 WaveContainer Objects
 ^^^^^^^^^^^^^^^^^^^^^

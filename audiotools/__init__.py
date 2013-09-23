@@ -1203,52 +1203,6 @@ class ReplayGainProgressDisplay(ProgressDisplay):
         pass
 
 
-def missing_binaries(msg, audiofile):
-    """given a Messenger object and AudioFile subclass
-    indicate that binaries are missing in order to support that
-    class and where to get them"""
-
-    binaries = audiofile.BINARIES
-    urls = audiofile.BINARY_URLS
-    format_ = audiofile.NAME.decode('ascii')
-    if (len(binaries) == 0):
-        #no binaries, so they can't be missing, so nothing to display
-        pass
-    elif (len(binaries) == 1):
-        #one binary has only a single URL to display
-        from .text import (ERR_PROGRAM_NEEDED,
-                           ERR_PROGRAM_DOWNLOAD_URL,
-                           ERR_PROGRAM_PACKAGE_MANAGER)
-        msg.info(ERR_PROGRAM_NEEDED %
-                 {"program": u"\"%s\"" % (binaries[0].decode('ascii')),
-                  "format": format_})
-        msg.info(ERR_PROGRAM_DOWNLOAD_URL %
-                 {"program": binaries[0].decode('ascii'),
-                  "url": urls[binaries[0]]})
-        msg.info(ERR_PROGRAM_PACKAGE_MANAGER)
-    else:
-        #multiple binaries may have one or more URLs to display
-        from .text import (ERR_PROGRAMS_NEEDED,
-                           ERR_PROGRAMS_DOWNLOAD_URL,
-                           ERR_PROGRAM_DOWNLOAD_URL,
-                           ERR_PROGRAM_PACKAGE_MANAGER)
-        msg.info(ERR_PROGRAMS_NEEDED %
-                 {"programs": u", ".join([u"\"%s\"" % (b.decode('ascii'))
-                                          for b in binaries]),
-                  "format": format_})
-        if (len(set([urls[b] for b in binaries])) == 1):
-            #if they all come from one URL (like Vorbis tools)
-            #display only that URL
-            msg.info(ERR_PROGRAMS_DOWNLOAD_URL % {"url": urls[binaries[0]]})
-        else:
-            #otherwise, display the URL for each binary
-            for b in binaries:
-                msg.info(ERR_PROGRAM_DOWNLOAD_URL %
-                         {"program": b.decode('ascii'),
-                          "url": urls[b]})
-        msg.info(ERR_PROGRAM_PACKAGE_MANAGER)
-
-
 class UnsupportedFile(Exception):
     """raised by open() if the file can be opened but not identified"""
 
@@ -1534,7 +1488,7 @@ def open(filename):
     f = file(filename, "rb")
     try:
         audio_class = file_type(f)
-        if ((audio_class is not None) and audio_class.has_binaries(BIN)):
+        if ((audio_class is not None) and audio_class.available(BIN)):
             return audio_class(filename)
         else:
             raise UnsupportedFile(filename)
@@ -1774,13 +1728,14 @@ def open_files(filename_list, sorted=True, messenger=None,
             finally:
                 f.close()
             if (audio_class is not None):
-                if (audio_class.has_binaries(BIN)):
+                if (audio_class.available(BIN)):
                     #is a supported audio type with needed binaries
                     to_return.append(audio_class(str(filename)))
                 elif ((messenger is not None) and
                       (audio_class.NAME not in unsupported_formats)):
                     #is a supported audio type without needed binaries
-                    missing_binaries(messenger, audio_class)
+                    #or libraries
+                    audio_class.missing_components(messenger)
 
                     #but only display format binaries message once
                     unsupported_formats.add(audio_class.NAME)
@@ -4000,16 +3955,66 @@ class AudioFile:
             raise InvalidFile("incorrect PCM frame count")
 
     @classmethod
-    def has_binaries(cls, system_binaries):
-        """returns True if all the required binaries can be found
-
-        checks the __system_binaries__ class for which path to check"""
+    def available(cls, system_binaries):
+        """returns True if all necessary compenents are available
+        to support format"""
 
         for command in cls.BINARIES:
             if (not system_binaries.can_execute(system_binaries[command])):
                 return False
         else:
             return True
+
+    @classmethod
+    def missing_components(cls, messenger):
+        """given a Messenger object, displays missing binaries or libraries
+        needed to support this format and where to get them"""
+
+        binaries = cls.BINARIES
+        urls = cls.BINARY_URLS
+        format_ = cls.NAME.decode('ascii')
+
+        if (len(binaries) == 0):
+            #no binaries, so they can't be missing, so nothing to display
+            pass
+        elif (len(binaries) == 1):
+            #one binary has only a single URL to display
+            from .text import (ERR_PROGRAM_NEEDED,
+                               ERR_PROGRAM_DOWNLOAD_URL,
+                               ERR_PROGRAM_PACKAGE_MANAGER)
+            messenger.info(
+                ERR_PROGRAM_NEEDED %
+                {"program": u"\"%s\"" % (binaries[0].decode('ascii')),
+                 "format": format_})
+            messenger.info(
+                ERR_PROGRAM_DOWNLOAD_URL %
+                {"program": binaries[0].decode('ascii'),
+                 "url": urls[binaries[0]]})
+            messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)
+        else:
+            #multiple binaries may have one or more URLs to display
+            from .text import (ERR_PROGRAMS_NEEDED,
+                               ERR_PROGRAMS_DOWNLOAD_URL,
+                               ERR_PROGRAM_DOWNLOAD_URL,
+                               ERR_PROGRAM_PACKAGE_MANAGER)
+            messenger.info(
+                ERR_PROGRAMS_NEEDED %
+                {"programs": u", ".join([u"\"%s\"" % (b.decode('ascii'))
+                                         for b in binaries]),
+                 "format": format_})
+            if (len(set([urls[b] for b in binaries])) == 1):
+                #if they all come from one URL (like Vorbis tools)
+                #display only that URL
+                messenger.info(
+                    ERR_PROGRAMS_DOWNLOAD_URL % {"url": urls[binaries[0]]})
+            else:
+                #otherwise, display the URL for each binary
+                for b in binaries:
+                    messenger.info(
+                        ERR_PROGRAM_DOWNLOAD_URL %
+                        {"program": b.decode('ascii'),
+                         "url": urls[b]})
+            messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)
 
     def clean(self, output_filename=None):
         """cleans the file of known data and metadata problems
@@ -5632,7 +5637,7 @@ AVAILABLE_TYPES = (FlacAudio,
 
 TYPE_MAP = dict([(track_type.NAME, track_type)
                  for track_type in AVAILABLE_TYPES
-                 if track_type.has_binaries(BIN)])
+                 if track_type.available(BIN)])
 
 DEFAULT_QUALITY = dict([(track_type.NAME,
                          config.get_default("Quality",

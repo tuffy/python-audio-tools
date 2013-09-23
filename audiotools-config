@@ -72,7 +72,7 @@ def display_defaults(config, msg):
         row.add_column(
             audiotools.output_text(
                 audio_type.NAME.decode('ascii'),
-                fg_color=("green" if audio_type.has_binaries(audiotools.BIN)
+                fg_color=("green" if audio_type.available(audiotools.BIN)
                           else "red"),
                 style=("underline" if
                        (config.get_default("System",
@@ -83,8 +83,16 @@ def display_defaults(config, msg):
 
         row.add_column(u" ")
 
-        if (len(audio_type.BINARIES) < 2):
+        if (len(audio_type.BINARIES) < 1):
             row.add_column(u"")
+        elif (len(audio_type.BINARIES) < 2):
+            row.add_column(audiotools.output_text(
+                audio_type.BINARIES[0].decode('ascii'),
+                fg_color=("green" if
+                          audiotools.BIN.can_execute(
+                              audiotools.BIN[audio_type.BINARIES[0]])
+                          else "red")),
+                           "right")
         else:
             row.add_column(
                 audiotools.output_text(u", ").join(
@@ -412,7 +420,7 @@ if (__name__ == '__main__'):
                 DEFAULT_TYPE = config.get_default("System",
                                                   "default_type",
                                                   "wav")
-                if (not audiotools.TYPE_MAP[DEFAULT_TYPE].has_binaries(
+                if (not audiotools.TYPE_MAP[DEFAULT_TYPE].available(
                         audiotools.BIN)):
                     DEFAULT_TYPE = "wav"
 
