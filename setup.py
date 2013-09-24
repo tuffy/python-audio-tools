@@ -17,15 +17,6 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-#True indicates the given library is present
-#False indicates the given library is not present
-#None indicates setup should probe for the given library using pkg-config
-HAS_LIBCDIO = None
-HAS_LIBPULSE = None
-HAS_LIBALSA = None
-HAS_MPG123 = None
-HAS_LAME = None
-
 import sys
 
 if (sys.version_info < (2, 7, 0, 'final', 0)):
@@ -38,7 +29,37 @@ import re
 import subprocess
 from distutils.core import setup, Extension
 from distutils.command.build_ext import build_ext as _build_ext
+from ConfigParser import (ConfigParser, NoSectionError, NoOptionError)
 
+def get_library_availability(config, library):
+    """given ConfigParser object and library name string
+    returns True if library is present,
+    False if library is not present,
+    None if one should probe for the library
+
+    default is None"""
+
+    try:
+        if (config.get("Libraries", library) == "probe"):
+            return None
+        else:
+            try:
+                return config.getboolean("Libraries", library)
+            except ValueError:
+                return None
+    except NoSectionError:
+        return None
+    except NoOptionError:
+        return None
+
+parser = ConfigParser()
+parser.read(["setup.cfg"])
+
+HAS_LIBCDIO = get_library_availability(parser, "libcdio")
+HAS_LIBPULSE = get_library_availability(parser, "libpulse")
+HAS_LIBALSA = get_library_availability(parser, "alsa")
+HAS_MPG123 = get_library_availability(parser, "libmpg123")
+HAS_LAME = get_library_availability(parser, "libmp3lame")
 
 VERSION = re.search(r'VERSION\s*=\s"(.+?)"',
                     open(os.path.join(
