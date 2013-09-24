@@ -5409,7 +5409,7 @@ class TestMultiChannel(unittest.TestCase):
         self.flac_channel_masks = [audiotools.FlacAudio,
                                    audiotools.OggFlacAudio]
 
-        if (audiotools.m4a.M4AAudio_nero.has_binaries(audiotools.BIN)):
+        if (audiotools.m4a.M4AAudio_nero.available(audiotools.BIN)):
             self.flac_channel_masks.append(audiotools.m4a.M4AAudio_nero)
 
         #these support a reordered subset of ChannelMasks up to 8 channels
@@ -5885,7 +5885,7 @@ class TestMultiChannel(unittest.TestCase):
                                                channels,
                                                True)
 
-        if (audiotools.m4a.M4AAudio_nero.has_binaries(audiotools.BIN)):
+        if (audiotools.m4a.M4AAudio_nero.available(audiotools.BIN)):
             for channels in xrange(1, 7):
                 self.__test_undefined_mask_blank__(audiotools.m4a.M4AAudio_nero,
                                                    channels,

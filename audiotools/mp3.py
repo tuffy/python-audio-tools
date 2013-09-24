@@ -222,7 +222,10 @@ class MP3Audio(AudioFile):
         at the given filename with the specified compression level
         and returns a new MP3Audio object"""
 
-        from audiotools import (PCMConverter, BufferedPCMReader, ChannelMask)
+        from audiotools import (PCMConverter,
+                                BufferedPCMReader,
+                                ChannelMask,
+                                __default_quality__)
         from audiotools.encoders import encode_mp3
 
         if (((compression is None) or
@@ -298,9 +301,13 @@ class MP3Audio(AudioFile):
         raises IOError if unable to write the file
         """
 
-        from .id3 import ID3v2Comment
-        from .id3 import ID3CommentPair
-        from .id3v1 import ID3v1Comment
+        import os
+        from audiotools import (TemporaryFile,
+                                LimitedFileReader,
+                                transfer_data)
+        from audiotools.id3 import (ID3v2Comment, ID3CommentPair)
+        from audiotools.id3v1 import ID3v1Comment
+        from audiotools.bitstream import BitstreamWriter
 
         if (metadata is None):
             return
@@ -309,32 +316,35 @@ class MP3Audio(AudioFile):
                    isinstance(metadata, ID3v1Comment))):
             from .text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
+        elif (not os.access(self.filename, os.W_OK)):
+            raise IOError(self.filename)
+
+        new_mp3 = TemporaryFile(self.filename)
 
         #get the original MP3 data
-        f = file(self.filename, "rb")
-        MP3Audio.__find_mp3_start__(f)
-        data_start = f.tell()
-        MP3Audio.__find_last_mp3_frame__(f)
-        data_end = f.tell()
-        f.seek(data_start, 0)
-        mp3_data = f.read(data_end - data_start)
-        f.close()
-
-        from .bitstream import BitstreamWriter
+        old_mp3 = open(self.filename, "rb")
+        MP3Audio.__find_last_mp3_frame__(old_mp3)
+        data_end = old_mp3.tell()
+        old_mp3.seek(0, 0)
+        MP3Audio.__find_mp3_start__(old_mp3)
+        data_start = old_mp3.tell()
+        old_mp3 = LimitedFileReader(old_mp3, data_end - data_start)
 
         #write id3v2 + data + id3v1 to file
-        f = file(self.filename, "wb")
         if (isinstance(metadata, ID3CommentPair)):
-            metadata.id3v2.build(BitstreamWriter(f, 0))
-            f.write(mp3_data)
-            metadata.id3v1.build(f)
+            metadata.id3v2.build(BitstreamWriter(new_mp3, 0))
+            transfer_data(old_mp3.read, new_mp3.write)
+            metadata.id3v1.build(new_mp3)
         elif (isinstance(metadata, ID3v2Comment)):
-            metadata.build(BitstreamWriter(f, 0))
-            f.write(mp3_data)
+            metadata.build(BitstreamWriter(new_mp3, 0))
+            transfer_data(old_mp3.read, new_mp3.write)
         elif (isinstance(metadata, ID3v1Comment)):
-            f.write(mp3_data)
-            metadata.build(f)
-        f.close()
+            transfer_data(old_mp3.read, new_mp3.write)
+            metadata.build(new_mp3)
+
+        #commit change to disk
+        old_mp3.close()
+        new_mp3.close()
 
     def set_metadata(self, metadata):
         """takes a MetaData object and sets this track's metadata
@@ -392,20 +402,34 @@ class MP3Audio(AudioFile):
         this removes or unsets tags as necessary in order to remove all data
         raises IOError if unable to write the file"""
 
+        import os
+        from audiotools import (TemporaryFile,
+                                LimitedFileReader,
+                                transfer_data)
+
+        #this works a lot like update_metadata
+        #but without any new metadata to set
+
+        if (not os.access(self.filename, os.W_OK)):
+            raise IOError(self.filename)
+
+        new_mp3 = TemporaryFile(self.filename)
+
         #get the original MP3 data
-        f = file(self.filename, "rb")
-        MP3Audio.__find_mp3_start__(f)
-        data_start = f.tell()
-        MP3Audio.__find_last_mp3_frame__(f)
-        data_end = f.tell()
-        f.seek(data_start, 0)
-        mp3_data = f.read(data_end - data_start)
-        f.close()
+        old_mp3 = open(self.filename, "rb")
+        MP3Audio.__find_last_mp3_frame__(old_mp3)
+        data_end = old_mp3.tell()
+        old_mp3.seek(0, 0)
+        MP3Audio.__find_mp3_start__(old_mp3)
+        data_start = old_mp3.tell()
+        old_mp3 = LimitedFileReader(old_mp3, data_end - data_start)
 
         #write data to file
-        f = file(self.filename, "wb")
-        f.write(mp3_data)
-        f.close()
+        transfer_data(old_mp3.read, new_mp3.write)
+
+        #commit change to disk
+        old_mp3.close()
+        new_mp3.close()
 
     #places mp3file at the position of the next MP3 frame's start
     @classmethod
