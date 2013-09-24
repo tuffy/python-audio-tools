@@ -24,6 +24,7 @@ HAS_LIBCDIO = None
 HAS_LIBPULSE = None
 HAS_LIBALSA = None
 HAS_MPG123 = None
+HAS_LAME = None
 
 import sys
 
@@ -112,6 +113,20 @@ class build_ext(_build_ext):
             print "    for MP3 and MP2 support, install libmpg123 from:"
             print ""
             print "    http://www.mpg123.org"
+            print ""
+            print "    or your system's package manager"
+            print ""
+
+        encoders = [e for e in self.extensions if
+                    isinstance(e, audiotools_encoders)][0]
+
+        if (encoders.has_lame):
+            print "--- libmp3lame found"
+        else:
+            print "*** libmp3lame not found"
+            print "    for MP3 and MP2 support, install libmp3lame from:"
+            print ""
+            print "    http://lame.sourceforge.net"
             print ""
             print "    or your system's package manager"
             print ""
@@ -231,23 +246,22 @@ class audiotools_decoders(Extension):
                     self.has_mpg123 = True
                 else:
                     #libmpg123 not found via pkg-config
-                    #so see if mpg123 binary is present
-                    if (has_mpg123()):
-                        defines.append(("HAS_MP3", None))
-                        sources.append("src/decoders/mp3.c")
-                        libraries.append("mpg123")
-                        self.has_mpg123 = True
-                    else:
-                        self.has_mpg123 = False
+                    self.has_mpg123 = False
             except OSError:
                 #pkg-config not found
                 #so see if mpg123 binary is present
-                if (has_mpg123()):
+                try:
+                    mpg123 = subprocess.Popen(
+                        ["mpg123", "--version"],
+                        stdout=open(os.devnull, "wb"),
+                        stderr=open(os.devnull, "wb"))
+                    mpg123.wait()
+
                     defines.append(("HAS_MP3", None))
                     sources.append("src/decoders/mp3.c")
                     libraries.append("mpg123")
                     self.has_mpg123 = True
-                else:
+                except OSError:
                     self.has_mpg123 = False
         elif (has_mp3):
             #user promises libmpg123 is present on system
@@ -275,24 +289,76 @@ class audiotools_decoders(Extension):
 
 
 class audiotools_encoders(Extension):
-    def __init__(self):
+    def __init__(self, has_mp3=None):
+        defines = [("VERSION", VERSION)]
+        sources = ['src/array.c',
+                   'src/pcmconv.c',
+                   'src/bitstream.c',
+                   'src/buffer.c',
+                   'src/func_io.c',
+                   'src/common/md5.c',
+                   'src/encoders/flac.c',
+                   'src/common/flac_crc.c',
+                   'src/common/tta_crc.c',
+                   'src/encoders/shn.c',
+                   'src/encoders/alac.c',
+                   'src/encoders/wavpack.c',
+                   'src/encoders/tta.c',
+                   'src/encoders.c']
+        libraries = []
+        link_args = []
+
+        if (has_mp3 is None):
+            #probe for libmp3lame via pkg-config
+            try:
+                pkg_config = subprocess.Popen(
+                    ["pkg-config", "--libs", "libmp3lame"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
+
+                lame_stdout = pkg_config.stdout.read().strip()
+                lame_stderr = pkg_config.stderr.read()
+                if (pkg_config.wait() == 0):
+                    #libmp3lame found via pkg-config
+                    #so append pkg-config's results to link arguments as-is
+                    defines.append(("HAS_MP3", None))
+                    sources.append("src/encoders/mp3.c")
+                    link_args.extend(lame_stdout.split())
+                    self.has_lame = True
+                else:
+                    #lame not found via pkg-config
+                    self.has_lame = False
+            except OSError:
+                #pkg-config not found
+                #so see if lame binary is present
+                try:
+                    lame = subprocess.Popen(
+                        ["lame", "--version"],
+                        stdout=open(os.devnull, "wb"),
+                        stderr=open(os.devnull, "wb"))
+                    lame.wait()
+
+                    defines.append(("HAS_MP3", None))
+                    sources.append("src/encoders/mp3.c")
+                    libraries.append("mp3lame")
+                    self.has_lame = True
+                except OSError:
+                    self.has_lame = False
+        elif (has_mp3):
+            #user promises libmp3lame is present on system
+            defines.append(("HAS_MP3", None))
+            sources.append("src/encoders/mp3.c")
+            libraries.append("mp3lame")
+            self.has_lame = True
+        else:
+            self.has_lame = False
+
         Extension.__init__(self,
                            'audiotools.encoders',
-                           sources=['src/array.c',
-                                    'src/pcmconv.c',
-                                    'src/bitstream.c',
-                                    'src/buffer.c',
-                                    'src/func_io.c',
-                                    'src/common/md5.c',
-                                    'src/encoders/flac.c',
-                                    'src/common/flac_crc.c',
-                                    'src/common/tta_crc.c',
-                                    'src/encoders/shn.c',
-                                    'src/encoders/alac.c',
-                                    'src/encoders/wavpack.c',
-                                    'src/encoders/tta.c',
-                                    'src/encoders.c'],
-                           define_macros=[("VERSION", VERSION)])
+                           sources=sources,
+                           define_macros=defines,
+                           libraries=libraries,
+                           extra_link_args=link_args)
 
 
 class audiotools_bitstream(Extension):
@@ -431,7 +497,7 @@ ext_modules = [audiotools_pcm(),
                audiotools_pcmconverter(),
                audiotools_replaygain(),
                audiotools_decoders(has_mp3=HAS_MPG123),
-               audiotools_encoders(),
+               audiotools_encoders(has_mp3=HAS_LAME),
                audiotools_bitstream(),
                audiotools_ogg(),
                audiotools_verify(),

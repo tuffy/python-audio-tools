@@ -56,8 +56,6 @@ class MP3Audio(AudioFile):
                                 "standard": COMP_LAME_STANDARD,
                                 "extreme": COMP_LAME_EXTREME,
                                 "insane": COMP_LAME_INSANE}
-    BINARIES = ("lame",)
-    BINARY_URLS = {"lame": "http://lame.sourceforge.net/"}
     REPLAYGAIN_BINARIES = ("mp3gain", )
 
     SAMPLE_RATE = ((11025, 12000, 8000, None),   # MPEG-2.5
@@ -224,91 +222,27 @@ class MP3Audio(AudioFile):
         at the given filename with the specified compression level
         and returns a new MP3Audio object"""
 
-        from . import transfer_framelist_data
-        from . import BIN
-        from . import ignore_sigint
-        from . import EncodingError
-        from . import DecodingError
-        from . import ChannelMask
-        from . import __default_quality__
-        import decimal
-        import bisect
-        import subprocess
-        import os
+        from audiotools import (PCMConverter, BufferedPCMReader, ChannelMask)
+        from audiotools.encoders import encode_mp3
 
         if (((compression is None) or
              (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
-        if ((pcmreader.channels > 2) or (pcmreader.sample_rate not in
-                                         (32000, 48000, 44100))):
-            from . import PCMConverter
-
-            pcmreader = PCMConverter(
-                pcmreader,
-                sample_rate=[32000,
-                             32000,
-                             44100,
-                             48000][bisect.bisect([32000,
-                                                   44100,
-                                                   48000],
-                                                  pcmreader.sample_rate)],
-                channels=min(pcmreader.channels, 2),
-                channel_mask=ChannelMask.from_channels(
-                    min(pcmreader.channels, 2)),
-                bits_per_sample=16)
-
-        if (pcmreader.channels > 1):
-            mode = "j"
-        else:
-            mode = "m"
-
-        devnull = file(os.devnull, 'ab')
-
-        if (str(compression) in map(str, range(0, 10))):
-            compression = ["-V" + str(compression)]
-        else:
-            compression = ["--preset", str(compression)]
-
-        sub = subprocess.Popen(
-            [BIN['lame'], "--quiet",
-             "-r",
-             "-s", str(decimal.Decimal(pcmreader.sample_rate) / 1000),
-             "--bitwidth", str(pcmreader.bits_per_sample),
-             "--signed", "--little-endian",
-             "-m", mode] + compression + ["-", filename],
-            stdin=subprocess.PIPE,
-            stdout=devnull,
-            stderr=devnull,
-            preexec_fn=ignore_sigint)
-
         try:
-            transfer_framelist_data(pcmreader, sub.stdin.write)
-        except (IOError, ValueError), err:
-            sub.stdin.close()
-            sub.wait()
-            cls.__unlink__(filename)
-            raise EncodingError(str(err))
-        except Exception, err:
-            sub.stdin.close()
-            sub.wait()
-            cls.__unlink__(filename)
-            raise err
+            encode_mp3(filename,
+                       BufferedPCMReader(
+                           PCMConverter(pcmreader,
+                                        sample_rate=pcmreader.sample_rate,
+                                        channels=min(pcmreader.channels, 2),
+                                        channel_mask=ChannelMask.from_channels(
+                                            min(pcmreader.channels, 2)),
+                                        bits_per_sample=16)),
+                       compression)
 
-        try:
-            pcmreader.close()
-        except DecodingError, err:
-            cls.__unlink__(filename)
-            raise EncodingError(err.error_message)
-        sub.stdin.close()
-
-        devnull.close()
-
-        if (sub.wait() == 0):
             return MP3Audio(filename)
-        else:
-            cls.__unlink__(filename)
-            raise EncodingError(u"error encoding file with lame")
+        except ValueError, err:
+            raise EncodingError(str(err))
 
     def bits_per_sample(self):
         """returns an integer number of bits-per-sample this track contains"""
@@ -689,40 +623,34 @@ class MP3Audio(AudioFile):
         """returns True if all necessary compenents are available
         to support format"""
 
-        for command in cls.BINARIES:
-            if (not system_binaries.can_execute(system_binaries[command])):
-                return False
-        else:
-            try:
-                from audiotools.decoders import MP3Decoder
-                return True
-            except ImportError:
-                return False
+        try:
+            from audiotools.decoders import MP3Decoder
+            from audiotools.encoders import encode_mp3
+
+            return True
+        except ImportError:
+            return False
 
     @classmethod
     def missing_components(cls, messenger):
         """given a Messenger object, displays missing binaries or libraries
         needed to support this format and where to get them"""
 
-        from .text import (ERR_PROGRAM_NEEDED,
-                           ERR_LIBRARY_NEEDED,
-                           ERR_PROGRAM_DOWNLOAD_URL,
+        from .text import (ERR_LIBRARY_NEEDED,
                            ERR_LIBRARY_DOWNLOAD_URL,
                            ERR_PROGRAM_PACKAGE_MANAGER)
 
-        binary = cls.BINARIES[0]
-        url = cls.BINARY_URLS[binary]
         format_ = cls.NAME.decode('ascii')
 
-        #display where to get lame
+        #display where to get libmp3lame
         messenger.info(
-            ERR_PROGRAM_NEEDED %
-                {"program": u"\"%s\"" % (binary.decode('ascii')),
+            ERR_LIBRARY_NEEDED %
+                {"library": u"\"libmp3lame\"",
                  "format": format_})
         messenger.info(
-            ERR_PROGRAM_DOWNLOAD_URL %
-            {"program": binary.decode('ascii'),
-             "url": url})
+            ERR_LIBRARY_DOWNLOAD_URL %
+            {"library": u"mp3lame",
+             "url": "http://lame.sourceforge.net/"})
 
         #then display where to get libmpg123
         messenger.info(
