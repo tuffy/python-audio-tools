@@ -47,6 +47,11 @@ PyObject*
 encoders_encode_mp3(PyObject *dummy, PyObject *args, PyObject *keywds);
 #endif
 
+#ifdef HAS_MP2
+PyObject*
+encoders_encode_mp2(PyObject *dummy, PyObject *args, PyObject *keywds);
+#endif
+
 PyMethodDef module_methods[] = {
     {"encode_flac", (PyCFunction)encoders_encode_flac,
      METH_VARARGS | METH_KEYWORDS, "Encode FLAC file from PCMReader"},
@@ -61,6 +66,10 @@ PyMethodDef module_methods[] = {
     #ifdef HAS_MP3
     {"encode_mp3", (PyCFunction)encoders_encode_mp3,
      METH_VARARGS | METH_KEYWORDS, "Encode MP3 file from PCMReader"},
+    #endif
+    #ifdef HAS_MP2
+    {"encode_mp2", (PyCFunction)encoders_encode_mp2,
+    METH_VARARGS | METH_KEYWORDS, "Encode MP2 file from PCMReader"},
     #endif
     {NULL}
 };

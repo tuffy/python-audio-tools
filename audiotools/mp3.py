@@ -225,7 +225,8 @@ class MP3Audio(AudioFile):
         from audiotools import (PCMConverter,
                                 BufferedPCMReader,
                                 ChannelMask,
-                                __default_quality__)
+                                __default_quality__,
+                                EncodingError)
         from audiotools.encoders import encode_mp3
 
         if (((compression is None) or
@@ -706,8 +707,6 @@ class MP2Audio(MP3Audio):
                                         224, 256, 320, 384)))
     COMPRESSION_DESCRIPTIONS = {"64": COMP_TWOLAME_64,
                                 "384": COMP_TWOLAME_384}
-    BINARIES = ("twolame", )
-    BINARY_URLS = {"twolame": "http://www.twolame.org/"}
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
@@ -721,79 +720,86 @@ class MP2Audio(MP3Audio):
         at the given filename with the specified compression level
         and returns a new MP2Audio object"""
 
-        from . import transfer_framelist_data
-        from . import BIN
-        from . import ignore_sigint
-        from . import EncodingError
-        from . import DecodingError
-        from . import __default_quality__
-        import decimal
+        from audiotools import (PCMConverter,
+                                BufferedPCMReader,
+                                ChannelMask,
+                                __default_quality__,
+                                EncodingError)
+        from audiotools.encoders import encode_mp2
         import bisect
-        import subprocess
-        import os
 
         if (((compression is None) or
              (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
-        if (((pcmreader.channels > 2) or
-             (pcmreader.sample_rate not in (32000, 48000, 44100)) or
-             (pcmreader.bits_per_sample != 16))):
-            from . import PCMConverter
-
-            pcmreader = PCMConverter(
-                pcmreader,
-                sample_rate=[32000,
-                             32000,
-                             44100,
-                             48000][bisect.bisect([32000,
-                                                   44100,
-                                                   48000],
-                                                  pcmreader.sample_rate)],
-                channels=min(pcmreader.channels, 2),
-                channel_mask=pcmreader.channel_mask,
-                bits_per_sample=16)
-
-        devnull = file(os.devnull, 'ab')
-
-        sub = subprocess.Popen([BIN['twolame'], "--quiet",
-                                "-r",
-                                "-s", str(pcmreader.sample_rate),
-                                "--samplesize", str(pcmreader.bits_per_sample),
-                                "-N", str(pcmreader.channels),
-                                "-m", "a",
-                                "-b", compression,
-                                "-",
-                                filename],
-                               stdin=subprocess.PIPE,
-                               stdout=devnull,
-                               stderr=devnull,
-                               preexec_fn=ignore_sigint)
-
-        try:
-            transfer_framelist_data(pcmreader, sub.stdin.write)
-        except (ValueError, IOError), err:
-            sub.stdin.close()
-            sub.wait()
-            cls.__unlink__(filename)
-            raise EncodingError(str(err))
-        except Exception, err:
-            sub.stdin.close()
-            sub.wait()
-            cls.__unlink__(filename)
-            raise err
-
-        try:
-            pcmreader.close()
-        except DecodingError, err:
-            cls.__unlink__(filename)
-            raise EncodingError(err.error_message)
-
-        sub.stdin.close()
-        devnull.close()
-
-        if (sub.wait() == 0):
-            return MP2Audio(filename)
+        if (pcmreader.sample_rate in (32000, 48000, 44100)):
+            sample_rate = pcmreader.sample_rate
         else:
-            cls.__unlink__(filename)
-            raise EncodingError(u"twolame exited with error")
+            sample_rate = [32000,
+                           32000,
+                           44100,
+                           48000][bisect.bisect([32000,
+                                                 44100,
+                                                 48000],
+                                                pcmreader.sample_rate)]
+
+        try:
+            encode_mp2(filename,
+                       BufferedPCMReader(
+                           PCMConverter(pcmreader,
+                                        sample_rate=sample_rate,
+                                        channels=min(pcmreader.channels, 2),
+                                        channel_mask=ChannelMask.from_channels(
+                                            min(pcmreader.channels, 2)),
+                                        bits_per_sample=16)),
+                       int(compression))
+
+            return MP2Audio(filename)
+        except ValueError, err:
+            raise EncodingError(str(err))
+
+    @classmethod
+    def available(cls, system_binaries):
+        """returns True if all necessary compenents are available
+        to support format"""
+
+        try:
+            from audiotools.decoders import MP3Decoder
+            from audiotools.encoders import encode_mp2
+
+            return True
+        except ImportError:
+            return False
+
+    @classmethod
+    def missing_components(cls, messenger):
+        """given a Messenger object, displays missing binaries or libraries
+        needed to support this format and where to get them"""
+
+        from .text import (ERR_LIBRARY_NEEDED,
+                           ERR_LIBRARY_DOWNLOAD_URL,
+                           ERR_PROGRAM_PACKAGE_MANAGER)
+
+        format_ = cls.NAME.decode('ascii')
+
+        #display where to get libtwo,ame
+        messenger.info(
+            ERR_LIBRARY_NEEDED %
+                {"library": u"\"libtwolame\"",
+                 "format": format_})
+        messenger.info(
+            ERR_LIBRARY_DOWNLOAD_URL %
+            {"library": u"twolame",
+             "url": "http://twolame.sourceforge.net/"})
+
+        #then display where to get libmpg123
+        messenger.info(
+            ERR_LIBRARY_NEEDED %
+                {"library": u"\"libmpg123\"",
+                 "format": format_})
+        messenger.info(
+            ERR_LIBRARY_DOWNLOAD_URL %
+            {"library": u"mpg123",
+             "url": u"http://www.mpg123.org/"})
+
+        messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)

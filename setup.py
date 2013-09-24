@@ -60,6 +60,7 @@ HAS_LIBPULSE = get_library_availability(parser, "libpulse")
 HAS_LIBALSA = get_library_availability(parser, "alsa")
 HAS_MPG123 = get_library_availability(parser, "libmpg123")
 HAS_LAME = get_library_availability(parser, "libmp3lame")
+HAS_TWOLAME = get_library_availability(parser, "libtwolame")
 
 VERSION = re.search(r'VERSION\s*=\s"(.+?)"',
                     open(os.path.join(
@@ -148,6 +149,17 @@ class build_ext(_build_ext):
             print "    for MP3 and MP2 support, install libmp3lame from:"
             print ""
             print "    http://lame.sourceforge.net"
+            print ""
+            print "    or your system's package manager"
+            print ""
+
+        if (encoders.has_twolame):
+            print "--- libtwolame found"
+        else:
+            print "*** libtwolame not found"
+            print "    for MP2 support, install libtwolame from:"
+            print ""
+            print "    http://twolame.sourceforge.net"
             print ""
             print "    or your system's package manager"
             print ""
@@ -310,7 +322,7 @@ class audiotools_decoders(Extension):
 
 
 class audiotools_encoders(Extension):
-    def __init__(self, has_mp3=None):
+    def __init__(self, has_mp3=None, has_mp2=None):
         defines = [("VERSION", VERSION)]
         sources = ['src/array.c',
                    'src/pcmconv.c',
@@ -373,6 +385,50 @@ class audiotools_encoders(Extension):
             self.has_lame = True
         else:
             self.has_lame = False
+
+        if (has_mp2 is None):
+            try:
+                pkg_config = subprocess.Popen(
+                    ["pkg-config", "--libs", "twolame"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
+
+                twolame_stdout = pkg_config.stdout.read().strip()
+                twolame_stderr = pkg_config.stderr.read()
+                if (pkg_config.wait() == 0):
+                    #libtwolame found via pkg-config
+                    #so append pkg-config's results to link arguments as-is
+                    defines.append(("HAS_MP2", None))
+                    sources.append("src/encoders/mp2.c")
+                    link_args.extend(twolame_stdout.split())
+                    self.has_twolame = True
+                else:
+                    #twolame not found via pkg-config
+                    self.has_twolame = False
+            except OSError:
+                #pkg-config not found
+                #so see if twolame binary is present
+                try:
+                    twolame = subprocess.Popen(
+                        ["twolame", "--version"],
+                        stdout=open(os.devnull, "wb"),
+                        stderr=open(os.devnull, "wb"))
+                    twolame.wait()
+
+                    defines.append(("HAS_MP2", None))
+                    sources.append("src/encoders/mp2.c")
+                    libraries.append("twolame")
+                    self.has_twolame = True
+                except OSError:
+                    self.has_twolame = False
+        elif (has_mp2):
+            #user promises libtwolame is present on system
+            defines.append(("HAS_MP2", None))
+            sources.append("src/encoders/mp2.c")
+            libraries.append("twolame")
+            self.has_twolame = True
+        else:
+            self.has_twolame = False
 
         Extension.__init__(self,
                            'audiotools.encoders',
@@ -518,7 +574,8 @@ ext_modules = [audiotools_pcm(),
                audiotools_pcmconverter(),
                audiotools_replaygain(),
                audiotools_decoders(has_mp3=HAS_MPG123),
-               audiotools_encoders(has_mp3=HAS_LAME),
+               audiotools_encoders(has_mp3=HAS_LAME,
+                                   has_mp2=HAS_TWOLAME),
                audiotools_bitstream(),
                audiotools_ogg(),
                audiotools_verify(),
