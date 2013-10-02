@@ -78,7 +78,7 @@ BitstreamReader_read(bitstream_BitstreamReader *self, PyObject *args)
     int count;
     unsigned int result;
 
-    if (!PyArg_ParseTuple(args, "I", &count)) {
+    if (!PyArg_ParseTuple(args, "i", &count)) {
         return NULL;
     } else if (count < 0) {
         PyErr_SetString(PyExc_ValueError, "count must be >= 0");
@@ -558,14 +558,18 @@ static PyObject*
 BitstreamReader_substream_meth(bitstream_BitstreamReader *self, PyObject *args)
 {
     PyTypeObject *type = self->ob_type;
-    int bytes;
+    long int bytes;
     bitstream_BitstreamReader *obj;
 
-    if (!PyArg_ParseTuple(args, "i", &bytes)) {
+    if (!PyArg_ParseTuple(args, "l", &bytes)) {
         return NULL;
     } else if (bytes < 0) {
         PyErr_SetString(PyExc_ValueError, "byte count must be >= 0");
         return NULL;
+    } else if (bytes > UINT_MAX) {
+        return PyErr_Format(PyExc_ValueError,
+                            "byte count must be <= %u",
+                            UINT_MAX);
     }
 
     obj = (bitstream_BitstreamReader *)type->tp_alloc(type, 0);
@@ -595,13 +599,17 @@ BitstreamReader_substream_append(bitstream_BitstreamReader *self,
 {
     PyObject *substream_obj;
     bitstream_BitstreamReader *substream;
-    int bytes;
+    long int bytes;
 
-    if (!PyArg_ParseTuple(args, "Oi", &substream_obj, &bytes)) {
+    if (!PyArg_ParseTuple(args, "Ol", &substream_obj, &bytes)) {
         return NULL;
     } else if (bytes < 0) {
         PyErr_SetString(PyExc_ValueError, "byte count must be >= 0");
         return NULL;
+    } else if (bytes > UINT_MAX) {
+        return PyErr_Format(PyExc_ValueError,
+                            "byte count must be < %u",
+                            UINT_MAX);
     }
 
     if (self->ob_type != substream_obj->ob_type) {
