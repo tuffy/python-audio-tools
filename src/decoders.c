@@ -28,7 +28,9 @@ extern PyTypeObject decoders_OggFlacDecoderType;
 extern PyTypeObject decoders_SHNDecoderType;
 extern PyTypeObject decoders_ALACDecoderType;
 extern PyTypeObject decoders_WavPackDecoderType;
-/* extern PyTypeObject decoders_VorbisDecoderType; */
+#ifdef HAS_VORBIS
+extern PyTypeObject decoders_VorbisDecoderType;
+#endif
 #ifdef HAS_MP3
 extern PyTypeObject decoders_MP3DecoderType;
 #endif
@@ -64,9 +66,11 @@ initdecoders(void)
     if (PyType_Ready(&decoders_WavPackDecoderType) < 0)
         return;
 
-    /* decoders_VorbisDecoderType.tp_new = PyType_GenericNew; */
-    /* if (PyType_Ready(&decoders_VorbisDecoderType) < 0) */
-    /*     return; */
+    #ifdef HAS_VORBIS
+    decoders_VorbisDecoderType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&decoders_VorbisDecoderType) < 0)
+        return;
+    #endif
 
     #ifdef HAS_MP3
     decoders_MP3DecoderType.tp_new = PyType_GenericNew;
@@ -121,9 +125,11 @@ initdecoders(void)
     PyModule_AddObject(m, "WavPackDecoder",
                        (PyObject *)&decoders_WavPackDecoderType);
 
-    /* Py_INCREF(&decoders_VorbisDecoderType); */
-    /* PyModule_AddObject(m, "VorbisDecoder", */
-    /*                    (PyObject *)&decoders_VorbisDecoderType); */
+    #ifdef HAS_VORBIS
+    Py_INCREF(&decoders_VorbisDecoderType);
+    PyModule_AddObject(m, "VorbisDecoder",
+                       (PyObject *)&decoders_VorbisDecoderType);
+    #endif
 
     #ifdef HAS_MP3
     Py_INCREF(&decoders_MP3DecoderType);

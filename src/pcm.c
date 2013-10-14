@@ -1219,10 +1219,8 @@ FloatFrameList_to_int(pcm_FloatFrameList *self, PyObject *args)
     sample_min = -adjustment;
     sample_max = adjustment - 1;
     for (i = 0; i < self->samples_length; i++) {
-        framelist->samples[i] =  MAX(MIN((int)(
-                                         self->samples[i] * adjustment),
-                                         sample_max),
-                                     sample_min);
+        const int int_sample = (int)(self->samples[i] * adjustment);
+        framelist->samples[i] =  MAX(MIN(int_sample, sample_max), sample_min);
     }
 
     return (PyObject*)framelist;

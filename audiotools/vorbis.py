@@ -54,9 +54,8 @@ class VorbisAudio(AudioFile):
     COMPRESSION_MODES = tuple([str(i) for i in range(0, 11)])
     COMPRESSION_DESCRIPTIONS = {"0": COMP_VORBIS_0,
                                 "10": COMP_VORBIS_10}
-    BINARIES = ("oggenc", "oggdec")
-    BINARY_URLS = {"oggenc": "http://www.xiph.org/",
-                   "oggdec": "http://www.xiph.org/"}
+    BINARIES = ("oggenc", )
+    BINARY_URLS = {"oggenc": "http://www.xiph.org/"}
     REPLAYGAIN_BINARIES = ("vorbisgain", )
 
     def __init__(self, filename):
@@ -217,42 +216,9 @@ class VorbisAudio(AudioFile):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        from . import PCMReader
-        from . import BIN
-        import subprocess
-        import os
+        from audiotools.decoders import VorbisDecoder
 
-        sub = subprocess.Popen([BIN['oggdec'], '-Q',
-                                '-b', str(16),
-                                '-e', str(0),
-                                '-s', str(1),
-                                '-R',
-                                '-o', '-',
-                                self.filename],
-                               stdout=subprocess.PIPE,
-                               stderr=file(os.devnull, "a"))
-
-        pcmreader = PCMReader(sub.stdout,
-                              sample_rate=self.sample_rate(),
-                              channels=self.channels(),
-                              channel_mask=int(self.channel_mask()),
-                              bits_per_sample=self.bits_per_sample(),
-                              process=sub)
-
-        if (self.channels() <= 2):
-            return pcmreader
-        elif (self.channels() <= 8):
-            #these mappings transform Vorbis order into ChannelMask order
-            from . import ReorderedPCMReader
-
-            standard_channel_mask = self.channel_mask()
-            vorbis_channel_mask = VorbisChannelMask(self.channel_mask())
-            return ReorderedPCMReader(
-                pcmreader,
-                [vorbis_channel_mask.channels().index(channel) for channel in
-                 standard_channel_mask.channels()])
-        else:
-            return pcmreader
+        return VorbisDecoder(self.filename)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
@@ -618,6 +584,45 @@ class VorbisAudio(AudioFile):
             return True
         except (IOError, ValueError), err:
             raise InvalidVorbis(str(err))
+
+    @classmethod
+    def available(cls, system_binaries):
+        """returns True if all necessary compenents are available
+        to support format"""
+
+        try:
+            from audiotools.decoders import VorbisDecoder
+
+            for command in cls.BINARIES:
+                if (not system_binaries.can_execute(system_binaries[command])):
+                    return False
+            else:
+                return True
+        except ImportError:
+            return False
+
+    @classmethod
+    def missing_components(cls, messenger):
+        """given a Messenger object, displays missing binaries or libraries
+        needed to support this format and where to get them"""
+
+        from .text import (ERR_LIBRARY_NEEDED,
+                           ERR_LIBRARY_DOWNLOAD_URL,
+                           ERR_PROGRAM_PACKAGE_MANAGER)
+
+        format_ = cls.NAME.decode('ascii')
+
+        #display where to get vorbisfile
+        messenger.info(
+            ERR_LIBRARY_NEEDED %
+                {"library": u"\"libvorbisfile\"",
+                 "format": format_})
+        messenger.info(
+            ERR_LIBRARY_DOWNLOAD_URL %
+            {"library": u"libvorbisfile",
+             "url": "http://www.xiph.org/"})
+
+        messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)
 
 
 class VorbisChannelMask(ChannelMask):

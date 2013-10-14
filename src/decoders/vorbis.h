@@ -1,7 +1,7 @@
 #include <Python.h>
 #include <stdint.h>
-#include "ogg.h"
-#include "../huffman.h"
+#include <vorbis/vorbisfile.h>
+#include "../array.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -22,51 +22,18 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-struct vorbis_identification_header {
-    uint32_t vorbis_version;
-    uint8_t channel_count;
-    uint32_t sample_rate;
-    uint32_t bitrate_maximum;
-    uint32_t bitrate_nominal;
-    uint32_t bitrate_minimum;
-    uint16_t blocksize_0;
-    uint16_t blocksize_1;
-};
-
-struct vorbis_codeword {
-    int is_leaf;
-    int value;
-    unsigned int bits;
-    unsigned int length;
-    struct vorbis_codeword* bit_0;
-    struct vorbis_codeword* bit_1;
-};
-
 typedef struct {
     PyObject_HEAD
 
-    FILE* ogg_file;
-    OggReader* ogg_stream;
-    BitstreamReader* packet;
+    OggVorbis_File vorbisfile;
+    int open_ok;  /*used to determine if vorbis_file is opened successfully*/
 
-    struct vorbis_identification_header identification;
+    int channel_count;
+    long rate;
+
+    aa_int* channels;
+    PyObject* audiotools_pcm;
 } decoders_VorbisDecoder;
-
-typedef enum {VORBIS_OK,
-              VORBIS_PREMATURE_EOF,
-              VORBIS_ID_HEADER_NOT_1ST,
-              VORBIS_SETUP_NOT_3RD,
-              VORBIS_UNSUPPORTED_VERSION,
-              VORBIS_INVALID_CHANNEL_COUNT,
-              VORBIS_INVALID_SAMPLE_RATE,
-              VORBIS_INVALID_BLOCK_SIZE_0,
-              VORBIS_INVALID_BLOCK_SIZE_1,
-              VORBIS_INVALID_FRAMING_BIT,
-              VORBIS_INVALID_CODEBOOK_SYNC,
-              VORBIS_UNSUPPORTED_CODEBOOK_LOOKUP_TYPE,
-              VORBIS_INVALID_TIME_COUNT_VALUE,
-              VORBIS_NOT_IMPLEMENTED /*FIXME - take this out at some point*/
-} vorbis_status;
 
 static PyObject*
 VorbisDecoder_sample_rate(decoders_VorbisDecoder *self, void *closure);
@@ -82,9 +49,6 @@ VorbisDecoder_channel_mask(decoders_VorbisDecoder *self, void *closure);
 
 static PyObject*
 VorbisDecoder_read(decoders_VorbisDecoder *self, PyObject *args);
-
-static PyObject*
-VorbisDecoder_analyze_frame(decoders_VorbisDecoder *self, PyObject *args);
 
 static PyObject*
 VorbisDecoder_close(decoders_VorbisDecoder *self, PyObject *args);
@@ -108,7 +72,6 @@ PyGetSetDef VorbisDecoder_getseters[] = {
 
 PyMethodDef VorbisDecoder_methods[] = {
     {"read", (PyCFunction)VorbisDecoder_read, METH_VARARGS, ""},
-    {"analyze_frame", (PyCFunction)VorbisDecoder_analyze_frame, METH_NOARGS, ""},
     {"close", (PyCFunction)VorbisDecoder_close, METH_NOARGS, ""},
     {NULL}
 };
@@ -154,49 +117,3 @@ PyTypeObject decoders_VorbisDecoderType = {
     0,                         /* tp_alloc */
     VorbisDecoder_new,         /* tp_new */
 };
-
-char*
-vorbis_strerror(vorbis_status error);
-
-PyObject*
-vorbis_exception(vorbis_status error);
-
-static float
-float32_unpack(BitstreamReader *bs);
-
-static int
-lookup1_values(int codebook_entries, int codebook_dimensions);
-
-/*this is (log(x) / log(2)) + 1 if x > 0, else 0 */
-static int
-ilog(int x);
-
-/*returns a non-negative packet type upon success
-  or a negative value if the header fields aren't "vorbis"
-  doesn't perform any EOF checking of its own*/
-int
-vorbis_read_common_header(BitstreamReader *packet);
-
-/*reads packet data (including the common header) into "identification"
-  performs EOF checking in case the packet is too small*/
-vorbis_status
-vorbis_read_identification_packet(BitstreamReader *packet,
-                                  struct vorbis_identification_header *id);
-
-/*reads setup information (including the common header)
-  performs EOF checking in case the packet is too small*/
-/*FIXME - place the setup info somewhere*/
-vorbis_status
-vorbis_read_setup_packet(BitstreamReader *packet);
-
-/*reads codebook information*/
-/*FIXME - place the codebook info somewhere*/
-vorbis_status
-vorbis_read_codebooks(BitstreamReader *packet);
-
-#include "vorbis_codewords.h"
-
-/*read time domain transforms information*/
-/*FIXME - place the results from this somewhere (if necessary)*/
-vorbis_status
-vorbis_read_time_domain_transforms(BitstreamReader *packet);

@@ -59,6 +59,7 @@ HAS_LIBCDIO = get_library_availability(parser, "libcdio")
 HAS_LIBPULSE = get_library_availability(parser, "libpulse")
 HAS_LIBALSA = get_library_availability(parser, "alsa")
 HAS_MPG123 = get_library_availability(parser, "libmpg123")
+HAS_VORBISFILE = get_library_availability(parser, "libvorbisfile")
 HAS_LAME = get_library_availability(parser, "libmp3lame")
 HAS_TWOLAME = get_library_availability(parser, "libtwolame")
 
@@ -135,6 +136,17 @@ class build_ext(_build_ext):
             print "    for MP3 and MP2 support, install libmpg123 from:"
             print ""
             print "    http://www.mpg123.org"
+            print ""
+            print "    or your system's package manager"
+            print ""
+
+        if (decoders.has_vorbis):
+            print "--- libvorbisfile found"
+        else:
+            print "*** libvorbisfile not found"
+            print "    for Ogg Vorbis support, install libvorbisfile from:"
+            print ""
+            print "    http://www.xiph.org"
             print ""
             print "    or your system's package manager"
             print ""
@@ -219,7 +231,7 @@ class audiotools_replaygain(Extension):
 
 
 class audiotools_decoders(Extension):
-    def __init__(self, has_mp3=None):
+    def __init__(self, has_mp3=None, has_vorbisfile=None):
         defines = [("VERSION", VERSION)]
         sources = ['src/array.c',
                    'src/pcmconv.c',
@@ -237,7 +249,6 @@ class audiotools_decoders(Extension):
                    'src/decoders/shn.c',
                    'src/decoders/alac.c',
                    'src/decoders/wavpack.c',
-                   # 'src/decoders/vorbis.c',
                    'src/decoders/tta.c',
                    'src/decoders/mlp.c',
                    'src/decoders/aobpcm.c',
@@ -304,6 +315,52 @@ class audiotools_decoders(Extension):
             self.has_mpg123 = True
         else:
             self.has_mpg123 = False
+
+        if (has_vorbisfile is None):
+            #probe for vorbisfile via pkg-config
+            try:
+                pkg_config = subprocess.Popen(
+                    ["pkg-config", "--libs", "vorbisfile"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
+
+                vorbisfile_stdout = pkg_config.stdout.read().strip()
+                vorbisfile_stderr = pkg_config.stderr.read()
+                if (pkg_config.wait() == 0):
+                    #vorbisfile found via pkg-config
+                    #so append pkg-config's results to link arguments as-is
+                    defines.append(("HAS_VORBIS", None))
+                    sources.append("src/decoders/vorbis.c")
+                    link_args.extend(vorbisfile_stdout.split())
+                    self.has_vorbis = True
+                else:
+                    #vorbisfile not found via pkg-config
+                    self.has_vorbis = False
+            except OSError:
+                #pkg-config not found
+                #so see if oggdec binary is present
+                try:
+                    oggdec = subprocess.Popen(
+                        ["oggdec", "--version"],
+                        stdout=open(os.devnull, "wb"),
+                        stderr=open(os.devnull, "wb"))
+                    oggdec.wait()
+
+                    defines.append(("HAS_VORBIS", None))
+                    sources.append("src/decoders/vorbis.c")
+                    libraries.extend(["vorbisfile", "vorbis", "ogg"])
+                    self.has_vorbis = True
+                except OSError:
+                    self.has_vorbis = False
+
+        elif (has_vorbisfile):
+            #user promises vorbisfile is present on system
+            defines.append(("HAS_VORBIS", None))
+            sources.append("src/decoders/vorbis.c")
+            libraries.extend(["vorbisfile", "vorbis", "ogg"])
+            self.has_vorbis = True
+        else:
+            self.has_vorbis = False
 
         if (sys.platform == 'linux2'):
             defines.extend([('DVD_STRUCT_IN_LINUX_CDROM_H', None),
@@ -573,7 +630,8 @@ class audiotools_output(Extension):
 ext_modules = [audiotools_pcm(),
                audiotools_pcmconverter(),
                audiotools_replaygain(),
-               audiotools_decoders(has_mp3=HAS_MPG123),
+               audiotools_decoders(has_mp3=HAS_MPG123,
+                                   has_vorbisfile=HAS_VORBISFILE),
                audiotools_encoders(has_mp3=HAS_LAME,
                                    has_mp2=HAS_TWOLAME),
                audiotools_bitstream(),
