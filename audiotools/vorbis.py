@@ -270,8 +270,11 @@ class VorbisAudio(AudioFile):
 
         import os
         from audiotools import TemporaryFile
-        from audiotools.ogg import (PageReader, PacketReader,
-                                    PageWriter, packet_to_pages)
+        from audiotools.ogg import (PageReader,
+                                    PacketReader,
+                                    PageWriter,
+                                    packet_to_pages,
+                                    packets_to_pages)
         from audiotools.vorbiscomment import VorbisComment
         from audiotools.bitstream import BitstreamRecorder
 
@@ -286,16 +289,22 @@ class VorbisAudio(AudioFile):
         original_ogg = PacketReader(PageReader(file(self.filename, "rb")))
         new_ogg = PageWriter(TemporaryFile(self.filename))
 
-        #transfer current file's identification page/packet
-        #(the ID packet is always fixed size, and fits in one page)
-        identification_page = original_ogg.read_page()
-        new_ogg.write(identification_page)
-        sequence_number = 1
+        sequence_number = 0
+
+        #transfer current file's identification packet in its own page
+        identification_packet = original_ogg.read_packet()
+        for (i, page) in enumerate(packet_to_pages(
+                identification_packet,
+                self.__serial_number__,
+                starting_sequence_number=sequence_number)):
+            page.stream_beginning = (i == 0)
+            new_ogg.write(page)
+            sequence_number += 1
 
         #discard the current file's comment packet
-        original_ogg.read_packet()
+        comment_packet = original_ogg.read_packet()
 
-        #write new comment packet in its own page(s)
+        #generate new comment packet
         comment_writer = BitstreamRecorder(True)
         comment_writer.build("8u 6b", (3, "vorbis"))
         vendor_string = metadata.vendor_string.encode('utf-8')
@@ -309,9 +318,12 @@ class VorbisAudio(AudioFile):
 
         comment_writer.build("1u a", (1,))  # framing bit
 
-        for page in packet_to_pages(
-                comment_writer.data(),
-                identification_page.bitstream_serial_number,
+        #transfer codebooks packet from original file to new file
+        codebooks_packet = original_ogg.read_packet()
+
+        for page in packets_to_pages(
+                [comment_writer.data(), codebooks_packet],
+                self.__serial_number__,
                 starting_sequence_number=sequence_number):
             new_ogg.write(page)
             sequence_number += 1
@@ -324,6 +336,7 @@ class VorbisAudio(AudioFile):
         while (not page.stream_end):
             page = original_ogg.read_page()
             page.sequence_number = sequence_number
+            page.bitstream_serial_number = self.__serial_number__
             sequence_number += 1
             new_ogg.write(page)
 

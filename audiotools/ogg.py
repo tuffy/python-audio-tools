@@ -65,6 +65,20 @@ class PacketReader:
         self.__pagereader__.close()
 
 
+def packet_to_segments(packet):
+    if (len(packet) == 0):
+        yield ""
+    else:
+        while (len(packet) > 0):
+            if (len(packet) == 255):
+                yield packet
+                yield ""
+                packet = ""
+            else:
+                yield packet[0:255]
+                packet = packet[255:]
+
+
 def packet_to_pages(packet, bitstream_serial_number,
                     starting_sequence_number=0):
     """given a string of packet data,
@@ -77,19 +91,6 @@ def packet_to_pages(packet, bitstream_serial_number,
     """
 
     from audiotools._ogg import Page
-
-    def packet_to_segments(packet):
-        if (len(packet) == 0):
-            yield ""
-        else:
-            while (len(packet) > 0):
-                if (len(packet) == 255):
-                    yield packet
-                    yield ""
-                    packet = ""
-                else:
-                    yield packet[0:255]
-                    packet = packet[255:]
 
     page = Page(
         packet_continuation=False,
@@ -116,3 +117,45 @@ def packet_to_pages(packet, bitstream_serial_number,
         page.append(segment)
 
     yield page
+
+
+def packets_to_pages(packets, bitstream_serial_number,
+                     starting_sequence_number=0):
+    """given an iterable of packet data strings,
+    yields a Page object per Ogg page necessary to hold those packets
+
+    packet_continuation is filled in as needed
+    stream_beginning and stream_end are False
+    granule_position is 0
+    sequence_number increments starting from "starting_sequence_number"
+    """
+
+    from audiotools._ogg import Page
+
+    page = Page(
+        packet_continuation=False,
+        stream_beginning=False,
+        stream_end=False,
+        granule_position=0,
+        bitstream_serial_number=bitstream_serial_number,
+        sequence_number=starting_sequence_number,
+        segments=[])
+
+    for packet in packets:
+        for (i, segment) in enumerate(packet_to_segments(packet)):
+            if (page.full()):
+                yield page
+                starting_sequence_number += 1
+                page = Page(
+                    packet_continuation=(i != 0),
+                    stream_beginning=False,
+                    stream_end=False,
+                    granule_position=0,
+                    bitstream_serial_number=bitstream_serial_number,
+                    sequence_number=starting_sequence_number,
+                    segments=[])
+
+            page.append(segment)
+
+    yield page
+
