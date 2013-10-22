@@ -54,8 +54,6 @@ class VorbisAudio(AudioFile):
     COMPRESSION_MODES = tuple([str(i) for i in range(0, 11)])
     COMPRESSION_DESCRIPTIONS = {"0": COMP_VORBIS_0,
                                 "10": COMP_VORBIS_10}
-    BINARIES = ("oggenc", )
-    BINARY_URLS = {"oggenc": "http://www.xiph.org/"}
     REPLAYGAIN_BINARIES = ("vorbisgain", )
 
     def __init__(self, filename):
@@ -232,100 +230,35 @@ class VorbisAudio(AudioFile):
         at the given filename with the specified compression level
         and returns a new VorbisAudio object"""
 
-        from . import transfer_framelist_data
-        from . import BIN
-        from . import ignore_sigint
-        from . import EncodingError
-        from . import DecodingError
-        from . import UnsupportedChannelMask
-        from . import __default_quality__
-        import subprocess
-        import os
+        from audiotools import (BufferedPCMReader, __default_quality__)
+        from audiotools.encoders import encode_vorbis
 
         if (((compression is None) or
              (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
-        devnull = file(os.devnull, 'ab')
-
-        sub = subprocess.Popen([BIN['oggenc'], '-Q',
-                                '-r',
-                                '-B', str(pcmreader.bits_per_sample),
-                                '-C', str(pcmreader.channels),
-                                '-R', str(pcmreader.sample_rate),
-                                '--raw-endianness', str(0),
-                                '-q', compression,
-                                '-o', filename, '-'],
-                               stdin=subprocess.PIPE,
-                               stdout=devnull,
-                               stderr=devnull,
-                               preexec_fn=ignore_sigint)
-
-        if ((pcmreader.channels <= 2) or (int(pcmreader.channel_mask) == 0)):
-            try:
-                transfer_framelist_data(pcmreader, sub.stdin.write)
-            except (IOError, ValueError), err:
-                sub.stdin.close()
-                sub.wait()
-                cls.__unlink__(filename)
-                raise EncodingError(str(err))
-            except Exception, err:
-                sub.stdin.close()
-                sub.wait()
-                cls.__unlink__(filename)
-                raise err
-
-        elif (pcmreader.channels <= 8):
-            if (int(pcmreader.channel_mask) in
-                (0x7,      # FR, FC, FL
-                 0x33,     # FR, FL, BR, BL
-                 0x37,     # FR, FC, FL, BL, BR
-                 0x3f,     # FR, FC, FL, BL, BR, LFE
-                 0x70f,    # FL, FC, FR, SL, SR, BC, LFE
-                 0x63f)):  # FL, FC, FR, SL, SR, BL, BR, LFE
-
-                standard_channel_mask = ChannelMask(pcmreader.channel_mask)
-                vorbis_channel_mask = VorbisChannelMask(standard_channel_mask)
-            else:
+        if ((pcmreader.channels > 2) and (pcmreader.channels <= 8)):
+            channel_mask = int(pcmreader.channel_mask)
+            if ((channel_mask != 0) and
+                (channel_mask not in
+                 (0x7,      # FR, FC, FL
+                  0x33,     # FR, FL, BR, BL
+                  0x37,     # FR, FC, FL, BL, BR
+                  0x3f,     # FR, FC, FL, BL, BR, LFE
+                  0x70f,    # FL, FC, FR, SL, SR, BC, LFE
+                  0x63f     # FL, FC, FR, SL, SR, BL, BR, LFE
+              ))):
                 raise UnsupportedChannelMask(filename,
-                                             int(pcmreader.channel_mask))
-
-            try:
-                from . import ReorderedPCMReader
-
-                transfer_framelist_data(
-                    ReorderedPCMReader(
-                        pcmreader,
-                        [standard_channel_mask.channels().index(channel)
-                         for channel in vorbis_channel_mask.channels()]),
-                    sub.stdin.write)
-            except (IOError, ValueError), err:
-                sub.stdin.close()
-                sub.wait()
-                cls.__unlink__(filename)
-                raise EncodingError(str(err))
-            except Exception, err:
-                sub.stdin.close()
-                sub.wait()
-                cls.__unlink__(filename)
-                raise err
-
-        else:
-            raise UnsupportedChannelMask(filename,
                                          int(pcmreader.channel_mask))
 
         try:
-            pcmreader.close()
-        except DecodingError, err:
-            raise EncodingError(err.error_message)
-
-        sub.stdin.close()
-        devnull.close()
-
-        if (sub.wait() == 0):
+            encode_vorbis(filename,
+                          BufferedPCMReader(pcmreader),
+                          float(compression) / 10)
             return VorbisAudio(filename)
-        else:
-            raise EncodingError(u"unable to encode file with oggenc")
+        except ValueError, err:
+            raise EncodingError(str(err))
+
 
     def update_metadata(self, metadata):
         """takes this track's current MetaData object

@@ -379,7 +379,7 @@ class audiotools_decoders(Extension):
 
 
 class audiotools_encoders(Extension):
-    def __init__(self, has_mp3=None, has_mp2=None):
+    def __init__(self, has_mp3=None, has_mp2=None, has_vorbis=None):
         defines = [("VERSION", VERSION)]
         sources = ['src/array.c',
                    'src/pcmconv.c',
@@ -486,6 +486,17 @@ class audiotools_encoders(Extension):
             self.has_twolame = True
         else:
             self.has_twolame = False
+
+        if (has_vorbis is None):
+            raise NotImplementedError()
+        elif (has_vorbis):
+            #user promises libvorbis is present on system
+            defines.append(("HAS_VORBIS", None))
+            sources.append("src/encoders/vorbis.c")
+            libraries.extend(["vorbis", "ogg", "vorbisenc"])
+            self.has_vorbis = True
+        else:
+            self.has_vorbis = False
 
         Extension.__init__(self,
                            'audiotools.encoders',
@@ -633,7 +644,8 @@ ext_modules = [audiotools_pcm(),
                audiotools_decoders(has_mp3=HAS_MPG123,
                                    has_vorbisfile=HAS_VORBISFILE),
                audiotools_encoders(has_mp3=HAS_LAME,
-                                   has_mp2=HAS_TWOLAME),
+                                   has_mp2=HAS_TWOLAME,
+                                   has_vorbis=True),  #FIXME
                audiotools_bitstream(),
                audiotools_ogg(),
                audiotools_verify(),

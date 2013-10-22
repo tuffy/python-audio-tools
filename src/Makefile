@@ -65,6 +65,9 @@ aobdec: decoders/aob.c decoders/aob.h $(OBJS) mlp.o aobpcm.o
 dvdadec: dvda/dvda.c dvda/dvda.h bitstream.a
 	$(CC) $(FLAGS) -o dvdadec dvda/dvda.c bitstream.a -DSTANDALONE
 
+vorbisenc: $(OBJS) encoders/vorbis.c
+	$(CC) $(FLAGS) -o vorbisenc encoders/vorbis.c $(OBJS) -DSTANDALONE -lvorbis -logg -lvorbisenc
+
 huffman: huffman.c huffman.h parson.o
 	$(CC) $(FLAGS) -o huffman huffman.c parson.o -DSTANDALONE -DEXECUTABLE
 
