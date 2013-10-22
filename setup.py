@@ -176,6 +176,17 @@ class build_ext(_build_ext):
             print "    or your system's package manager"
             print ""
 
+        if (encoders.has_vorbis):
+            print "--- libvorbisenc found"
+        else:
+            print "*** libvorbisenc not found"
+            print "    for Vorbis support, install libvorbisenc from:"
+            print ""
+            print "    http://www.xiph.org"
+            print ""
+            print "    or your system's package manager"
+            print ""
+
 
 class audiotools_cdio(Extension):
     def __init__(self, extra_link_args=None):
@@ -488,7 +499,41 @@ class audiotools_encoders(Extension):
             self.has_twolame = False
 
         if (has_vorbis is None):
-            raise NotImplementedError()
+            #probe for vorbis encoding libraries via pkg-config
+            try:
+                pkg_config = subprocess.Popen(
+                    ["pkg-config", "--libs", "vorbis", "ogg", "vorbisenc"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
+
+                vorbis_stdout = pkg_config.stdout.read().strip()
+                vorbis_stderr = pkg_config.stderr.read()
+                if (pkg_config.wait() == 0):
+                    #libvorbisenc found via pkg-config
+                    #so append pkg-config's results to link arguments as-is
+                    defines.append(("HAS_VORBIS", None))
+                    sources.append("src/encoders/vorbis.c")
+                    link_args.extend(vorbis_stdout.split())
+                    self.has_vorbis = True
+                else:
+                    #libvorbisenc not found via pkg-config
+                    self.has_vorbis = False
+            except OSError:
+                #pkg-config not found
+                #so see if oggenc binary is present
+                try:
+                    oggenc = subprocess.Popen(
+                        ["oggenc", "--version"],
+                        stdout=open(os.devnull, "wb"),
+                        stderr=open(os.devnull, "wb"))
+                    oggenc.wait()
+
+                    defines.append(("HAS_VORBIS", None))
+                    sources.append("src/encoders/vorbis.c")
+                    libraries.extend(["vorbis", "ogg", "vorbisenc"])
+                    self.has_vorbis = True
+                except OSError:
+                    self.has_vorbis = False
         elif (has_vorbis):
             #user promises libvorbis is present on system
             defines.append(("HAS_VORBIS", None))
