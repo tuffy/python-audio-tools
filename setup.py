@@ -62,11 +62,57 @@ HAS_MPG123 = get_library_availability(parser, "libmpg123")
 HAS_VORBISFILE = get_library_availability(parser, "libvorbisfile")
 HAS_LAME = get_library_availability(parser, "libmp3lame")
 HAS_TWOLAME = get_library_availability(parser, "libtwolame")
+HAS_VORBISENC = get_library_availability(parser, "libvorbisenc")
+HAS_OPUS = get_library_availability(parser, "libopus")
 
 VERSION = re.search(r'VERSION\s*=\s"(.+?)"',
                     open(os.path.join(
                         os.path.dirname(sys.argv[0]),
                         "audiotools/__init__.py")).read()).group(1)
+
+
+def pkg_config_link_args(libraries):
+    """given a list of libraries in pkg-config,
+    returns a list of extra_link_arg arguments to pass to the Extension
+    initializer
+
+    Raises ValueError if the libraries can't be found in pkg-config
+
+    Raises OSError if pkg-config can't be found on the system.
+    """
+
+    #this may raise OSError outright
+    pkg_config = subprocess.Popen(["pkg-config", "--libs"] + libraries,
+                                  stdout=subprocess.PIPE,
+                                  stderr=open(os.devnull, "wb"))
+
+    pkg_config_stdout = pkg_config.stdout.read().strip()
+
+    if (pkg_config.wait() == 0):
+        #libraries found, so return them as list of strings
+        return pkg_config_stdout.split()
+    else:
+        #libraries not found, so raise ValueError
+        raise ValueError()
+
+
+def has_executable(executable, test_arguments=None):
+    """given an executable an optional list of test arguments
+    (such as ['--version']), returns True if the executable
+    can be called or False if not
+    """
+
+    try:
+        sub = subprocess.Popen(
+            ["executable"] +
+            ([] if test_arguments is None else test_arguments),
+            stdout=open(os.devnull, "wb"),
+            stderr=open(os.devnull, "wb"))
+        sub.wait()
+
+        return True
+    except OSError:
+        return False
 
 
 class build_ext(_build_ext):
@@ -151,6 +197,8 @@ class build_ext(_build_ext):
             print "    or your system's package manager"
             print ""
 
+        #FIXME - add has_opus
+
         encoders = [e for e in self.extensions if
                     isinstance(e, audiotools_encoders)][0]
 
@@ -158,7 +206,7 @@ class build_ext(_build_ext):
             print "--- libmp3lame found"
         else:
             print "*** libmp3lame not found"
-            print "    for MP3 and MP2 support, install libmp3lame from:"
+            print "    for MP3 support, install libmp3lame from:"
             print ""
             print "    http://lame.sourceforge.net"
             print ""
@@ -242,7 +290,7 @@ class audiotools_replaygain(Extension):
 
 
 class audiotools_decoders(Extension):
-    def __init__(self, has_mp3=None, has_vorbisfile=None):
+    def __init__(self, has_mp3=None, has_vorbisfile=None, has_opus=None):
         defines = [("VERSION", VERSION)]
         sources = ['src/array.c',
                    'src/pcmconv.c',
@@ -270,108 +318,72 @@ class audiotools_decoders(Extension):
         libraries = []
         link_args = []
 
-        def has_mpg123():
-            try:
-                mpg123 = subprocess.Popen(
-                    ["mpg123", "--version"],
-                    stdout=open(os.devnull, "wb"),
-                    stderr=open(os.devnull, "wb"))
-                mpg123.wait()
-
-                return True
-            except OSError:
-                return False
-
         if (has_mp3 is None):
             #probe for libmpg123 via pkg-config
             try:
-                pkg_config = subprocess.Popen(
-                    ["pkg-config", "--libs", "libmpg123"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
-
-                mpg123_stdout = pkg_config.stdout.read().strip()
-                mpg123_stderr = pkg_config.stderr.read()
-                if (pkg_config.wait() == 0):
-                    #libmpg123 found via pkg-config
-                    #so append pkg-config's results to link arguments as-is
-                    defines.append(("HAS_MP3", None))
-                    sources.append("src/decoders/mp3.c")
-                    link_args.extend(mpg123_stdout.split())
-                    self.has_mpg123 = True
-                else:
-                    #libmpg123 not found via pkg-config
-                    self.has_mpg123 = False
+                link_args.extend(pkg_config_link_args(["libmpg123"]))
+                self.has_mpg123 = True
+            except ValueError:
+                #libmpg123 not found in pkg-config
+                self.has_mpg123 = False
             except OSError:
-                #pkg-config not found
-                #so see if mpg123 binary is present
-                try:
-                    mpg123 = subprocess.Popen(
-                        ["mpg123", "--version"],
-                        stdout=open(os.devnull, "wb"),
-                        stderr=open(os.devnull, "wb"))
-                    mpg123.wait()
-
-                    defines.append(("HAS_MP3", None))
-                    sources.append("src/decoders/mp3.c")
+                #pkg-config not found, so see if mpg123 binary is present
+                if (has_executable("mpg123", ["--version"])):
                     libraries.append("mpg123")
                     self.has_mpg123 = True
-                except OSError:
+                else:
                     self.has_mpg123 = False
         elif (has_mp3):
             #user promises libmpg123 is present on system
-            defines.append(("HAS_MP3", None))
-            sources.append("src/decoders/mp3.c")
             libraries.append("mpg123")
             self.has_mpg123 = True
         else:
+            #user promises libmpg123 is missing
             self.has_mpg123 = False
+
+        if (self.has_mpg123):
+            defines.append(("HAS_MP3", None))
+            sources.append("src/decoders/mp3.c")
 
         if (has_vorbisfile is None):
             #probe for vorbisfile via pkg-config
             try:
-                pkg_config = subprocess.Popen(
-                    ["pkg-config", "--libs", "vorbisfile"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
-
-                vorbisfile_stdout = pkg_config.stdout.read().strip()
-                vorbisfile_stderr = pkg_config.stderr.read()
-                if (pkg_config.wait() == 0):
-                    #vorbisfile found via pkg-config
-                    #so append pkg-config's results to link arguments as-is
-                    defines.append(("HAS_VORBIS", None))
-                    sources.append("src/decoders/vorbis.c")
-                    link_args.extend(vorbisfile_stdout.split())
-                    self.has_vorbis = True
-                else:
-                    #vorbisfile not found via pkg-config
-                    self.has_vorbis = False
+                link_args.extend(pkg_config_link_args(["vorbisfile"]))
+                self.has_vorbis = True
+            except ValueError:
+                #vorbisfile not present in pkg-config
+                self.has_vorbis = False
             except OSError:
-                #pkg-config not found
-                #so see if oggdec binary is present
-                try:
-                    oggdec = subprocess.Popen(
-                        ["oggdec", "--version"],
-                        stdout=open(os.devnull, "wb"),
-                        stderr=open(os.devnull, "wb"))
-                    oggdec.wait()
-
-                    defines.append(("HAS_VORBIS", None))
-                    sources.append("src/decoders/vorbis.c")
+                #pkg-config not found, so see if oggdec is present
+                if (has_executable("oggdec", ["--version"])):
                     libraries.extend(["vorbisfile", "vorbis", "ogg"])
                     self.has_vorbis = True
-                except OSError:
+                else:
                     self.has_vorbis = False
-
         elif (has_vorbisfile):
             #user promises vorbisfile is present on system
-            defines.append(("HAS_VORBIS", None))
-            sources.append("src/decoders/vorbis.c")
             libraries.extend(["vorbisfile", "vorbis", "ogg"])
             self.has_vorbis = True
         else:
+            #user promises vorbisfile is missing
             self.has_vorbis = False
+
+        if (self.has_vorbis):
+            defines.append(("HAS_VORBIS", None))
+            sources.append("src/decoders/vorbis.c")
+
+        if (has_opus is None):
+            raise NotImplementedError()
+        elif (has_opus):
+            #user promises opus is present on system
+            self.has_opus = True
+        else:
+            #user promises opus is missing
+            self.has_opus = False
+
+        if (self.has_opus):
+            defines.append(("HAS_OPUS", None))
+            sources.append("src/decoders/opus.c")
 
         if (sys.platform == 'linux2'):
             defines.extend([('DVD_STRUCT_IN_LINUX_CDROM_H', None),
@@ -410,138 +422,79 @@ class audiotools_encoders(Extension):
         link_args = []
 
         if (has_mp3 is None):
-            #probe for libmp3lame via pkg-config
-            try:
-                pkg_config = subprocess.Popen(
-                    ["pkg-config", "--libs", "libmp3lame"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
-
-                lame_stdout = pkg_config.stdout.read().strip()
-                lame_stderr = pkg_config.stderr.read()
-                if (pkg_config.wait() == 0):
-                    #libmp3lame found via pkg-config
-                    #so append pkg-config's results to link arguments as-is
-                    defines.append(("HAS_MP3", None))
-                    sources.append("src/encoders/mp3.c")
-                    link_args.extend(lame_stdout.split())
-                    self.has_lame = True
-                else:
-                    #lame not found via pkg-config
-                    self.has_lame = False
-            except OSError:
-                #pkg-config not found
-                #so see if lame binary is present
-                try:
-                    lame = subprocess.Popen(
-                        ["lame", "--version"],
-                        stdout=open(os.devnull, "wb"),
-                        stderr=open(os.devnull, "wb"))
-                    lame.wait()
-
-                    defines.append(("HAS_MP3", None))
-                    sources.append("src/encoders/mp3.c")
-                    libraries.append("mp3lame")
-                    self.has_lame = True
-                except OSError:
-                    self.has_lame = False
+            #mp3lame doesn't seem to show in pkg-config,
+            #so see if lame binary is present
+            if (has_executable("lame", ["--version"])):
+                libraries.append("mp3lame")
+                self.has_lame = True
+            else:
+                self.has_lame = False
         elif (has_mp3):
             #user promises libmp3lame is present on system
-            defines.append(("HAS_MP3", None))
-            sources.append("src/encoders/mp3.c")
             libraries.append("mp3lame")
             self.has_lame = True
         else:
             self.has_lame = False
 
+        if (self.has_lame):
+            defines.append(("HAS_MP3", None))
+            sources.append("src/encoders/mp3.c")
+
         if (has_mp2 is None):
+            #probe for twolame via pkg-config
             try:
-                pkg_config = subprocess.Popen(
-                    ["pkg-config", "--libs", "twolame"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
-
-                twolame_stdout = pkg_config.stdout.read().strip()
-                twolame_stderr = pkg_config.stderr.read()
-                if (pkg_config.wait() == 0):
-                    #libtwolame found via pkg-config
-                    #so append pkg-config's results to link arguments as-is
-                    defines.append(("HAS_MP2", None))
-                    sources.append("src/encoders/mp2.c")
-                    link_args.extend(twolame_stdout.split())
-                    self.has_twolame = True
-                else:
-                    #twolame not found via pkg-config
-                    self.has_twolame = False
+                link_args.extend(pkg_config_link_args(["twolame"]))
+                self.has_twolame = True
+            except ValueError:
+                #twolame not found in pkg-config
+                self.has_twolame = False
             except OSError:
-                #pkg-config not found
-                #so see if twolame binary is present
-                try:
-                    twolame = subprocess.Popen(
-                        ["twolame", "--version"],
-                        stdout=open(os.devnull, "wb"),
-                        stderr=open(os.devnull, "wb"))
-                    twolame.wait()
-
-                    defines.append(("HAS_MP2", None))
-                    sources.append("src/encoders/mp2.c")
+                #pkg-config not found, so see if twolame binary is present
+                if (has_executable("twolame", ["--version"])):
                     libraries.append("twolame")
                     self.has_twolame = True
-                except OSError:
+                else:
                     self.has_twolame = False
         elif (has_mp2):
-            #user promises libtwolame is present on system
-            defines.append(("HAS_MP2", None))
-            sources.append("src/encoders/mp2.c")
+            #user promises twolame is present on system
             libraries.append("twolame")
             self.has_twolame = True
         else:
+            #user promises twolame is missing
             self.has_twolame = False
 
+        if (self.has_twolame):
+            defines.append(("HAS_MP2", None))
+            sources.append("src/encoders/mp2.c")
+
         if (has_vorbis is None):
-            #probe for vorbis encoding libraries via pkg-config
+            #probe for vorbisenc and friends via pkg-config
             try:
-                pkg_config = subprocess.Popen(
-                    ["pkg-config", "--libs", "vorbis", "ogg", "vorbisenc"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
-
-                vorbis_stdout = pkg_config.stdout.read().strip()
-                vorbis_stderr = pkg_config.stderr.read()
-                if (pkg_config.wait() == 0):
-                    #libvorbisenc found via pkg-config
-                    #so append pkg-config's results to link arguments as-is
-                    defines.append(("HAS_VORBIS", None))
-                    sources.append("src/encoders/vorbis.c")
-                    link_args.extend(vorbis_stdout.split())
-                    self.has_vorbis = True
-                else:
-                    #libvorbisenc not found via pkg-config
-                    self.has_vorbis = False
+                link_args.extend(pkg_config_link_args(["vorbis",
+                                                       "ogg",
+                                                       "vorbisenc"]))
+                self.has_vorbis = True
+            except ValueError:
+                #vorbisenc and friends not found in pkg-config
+                self.has_vorbis = False
             except OSError:
-                #pkg-config not found
-                #so see if oggenc binary is present
-                try:
-                    oggenc = subprocess.Popen(
-                        ["oggenc", "--version"],
-                        stdout=open(os.devnull, "wb"),
-                        stderr=open(os.devnull, "wb"))
-                    oggenc.wait()
-
-                    defines.append(("HAS_VORBIS", None))
-                    sources.append("src/encoders/vorbis.c")
+                #pkg-config not found, so see if oggenc binary is present
+                if (has_executable("oggenc", ["--version"])):
                     libraries.extend(["vorbis", "ogg", "vorbisenc"])
                     self.has_vorbis = True
-                except OSError:
+                else:
                     self.has_vorbis = False
         elif (has_vorbis):
-            #user promises libvorbis is present on system
-            defines.append(("HAS_VORBIS", None))
-            sources.append("src/encoders/vorbis.c")
+            #user promises vorbisenc is present on system
             libraries.extend(["vorbis", "ogg", "vorbisenc"])
             self.has_vorbis = True
         else:
+            #user promises vorbisenc is missing
             self.has_vorbis = False
+
+        if (self.has_vorbis):
+            defines.append(("HAS_VORBIS", None))
+            sources.append("src/encoders/vorbis.c")
 
         Extension.__init__(self,
                            'audiotools.encoders',
@@ -618,23 +571,11 @@ class audiotools_output(Extension):
         if (has_pulseaudio is None):
             #detect PulseAudio's presence using pkg-config, if possible
             try:
-                pkg_config = subprocess.Popen(
-                    ["pkg-config", "--libs", "libpulse"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
-
-                libpulse_stdout = pkg_config.stdout.read().strip()
-                libpulse_stderr = pkg_config.stderr.read()
-                if (pkg_config.wait() == 0):
-                    #libpulse found via pkg-config
-                    #so append pkg-config's results
-                    sources.append("src/output/pulseaudio.c")
-                    defines.append(("PULSEAUDIO", "1"))
-                    link_args.extend(libpulse_stdout.split())
-                    self.has_pulseaudio = True
-                else:
-                    #libpulse not found in pkg-config
-                    self.has_pulseaudio = False
+                link_args.extend(pkg_config_link_args(["libpulse"]))
+                self.has_pulseaudio = True
+            except ValueError:
+                #libpulse not found in pkg-config
+                self.has_pulseaudio = False
             except OSError:
                 #pkg-config not found
                 self.has_pulseaudio = False
@@ -642,31 +583,23 @@ class audiotools_output(Extension):
             #user promises libpulse is present on system
             libraries.append("pulse")
             self.has_pulseaudio = True
+        else:
+            #user promises libpulse is missing
+            self.has_pulseaudio = False
+
+        if (self.has_pulseaudio):
+            sources.append("src/output/pulseaudio.c")
+            defines.append(("PULSEAUDIO", "1"))
 
         if (has_alsa is None):
             #detense ALSA's present using pkg-config, if possible
             try:
-                pkg_config = subprocess.Popen(["pkg-config", "--libs", "alsa"],
-                                              stdout=subprocess.PIPE,
-                                              stderr=subprocess.PIPE)
-
-                libalsa_stdout = pkg_config.stdout.read().strip()
-                libalsa_stderr = pkg_config.stderr.read()
-                if (pkg_config.wait() == 0):
-                    #libalsa found via pkg-config
-                    #so append pkg-config's results
-
-                    if ("src/pcmconv.c" not in sources):
-                        #only include pcmconv.c once
-                        sources.append("src/pcmconv.c")
-
-                    sources.append("src/output/alsa.c")
-                    defines.append(("ALSA", "1"))
-                    link_args.extend(libalsa_stdout.split())
-                    self.has_alsa = True
-                else:
-                    #libalsa not found in pkg-config
-                    self.has_alsa = False
+                link_args.extend(pkg_config_link_args(["alsa"]))
+                link_args.extend(libalsa_stdout.split())
+                self.has_alsa = True
+            except ValueError:
+                #libalsa not found in pkg-config
+                self.has_alsa = False
             except OSError:
                 #pkg-config not found
                 self.has_alsa = False
@@ -674,6 +607,17 @@ class audiotools_output(Extension):
             #user promises libasound is present on system
             libraries.append("asound")
             self.has_alsa = True
+        else:
+            #user promises libasound is missing
+            self.has_alsa = False
+
+        if (self.has_alsa):
+            if ("src/pcmconv.c" not in sources):
+                #only include pcmconv.c once
+                sources.append("src/pcmconv.c")
+
+            sources.append("src/output/alsa.c")
+            defines.append(("ALSA", "1"))
 
         Extension.__init__(self,
                            'audiotools.output',
@@ -687,10 +631,11 @@ ext_modules = [audiotools_pcm(),
                audiotools_pcmconverter(),
                audiotools_replaygain(),
                audiotools_decoders(has_mp3=HAS_MPG123,
-                                   has_vorbisfile=HAS_VORBISFILE),
+                                   has_vorbisfile=HAS_VORBISFILE,
+                                   has_opus=HAS_OPUS),
                audiotools_encoders(has_mp3=HAS_LAME,
                                    has_mp2=HAS_TWOLAME,
-                                   has_vorbis=True),  #FIXME
+                                   has_vorbis=HAS_VORBISENC),
                audiotools_bitstream(),
                audiotools_ogg(),
                audiotools_verify(),
@@ -722,62 +667,31 @@ scripts = ["audiotools-config",
 if (HAS_LIBCDIO is None):
     #probe for libcdio via pkg-config
     try:
-        pkg_config = subprocess.Popen(
-            ["pkg-config", "--libs",
-             "libcdio", "libcdio_cdda", "libcdio_paranoia"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+        ext_modules.append(
+            audiotools_cdio(
+                pkg_config_link_args(["libcdio",
+                                      "libcdio_cdda",
+                                      "libcdio_paranoia"])))
 
-        libcdio_stdout = pkg_config.stdout.read().strip()
-        libcdio_stderr = pkg_config.stderr.read()
-        if (pkg_config.wait() == 0):
-            #libcdio found via pkg-config
-            #so use pkg-config's results
-            ext_modules.append(audiotools_cdio(libcdio_stdout.split()))
-
-            scripts.extend(["cd2track",
-                            "cdinfo",
-                            "cdplay"])
-        else:
-            #libcdio not found in pkg-config
-            #so look for one of libcdio's accompanying executables
-            try:
-                cd_info = subprocess.Popen(
-                    ["cd-info", "--version"],
-                    stdout=open(os.devnull, "wb"),
-                    stderr=open(os.devnull, "wb"))
-                cd_info.wait()
-
-                ext_modules.append(audiotools_cdio())
-
-                scripts.extend(["cd2track",
-                                "cdinfo",
-                                "cdplay"])
-            except OSError:
-                #cd-info not found either
-                pass
+        scripts.extend(["cd2track", "cdinfo", "cdplay"])
+    except ValueError:
+        #libcdio not found in pkg-config
+        pass
     except OSError:
         #pkg-config not found
         #so look for one of libcdio's accompanying executables
-        try:
-            cd_info = subprocess.Popen(
-                ["cd-info", "--version"],
-                stdout=open(os.devnull, "wb"),
-                stderr=open(os.devnull, "wb"))
+        if (has_executable("cd-info", ["--version"])):
             ext_modules.append(audiotools_cdio())
 
-            scripts.extend(["cd2track",
-                            "cdinfo",
-                            "cdplay"])
-        except OSError:
+            scripts.extend(["cd2track", "cdinfo", "cdplay"])
+        else:
             #cd-info not found either
             pass
 elif (HAS_LIBCDIO):
+    #user promises libcdio is present
     ext_modules.append(audiotools_cdio())
 
-    scripts.extend(["cd2track",
-                    "cdinfo",
-                    "cdplay"])
+    scripts.extend(["cd2track", "cdinfo", "cdplay"])
 
 setup(name='Python Audio Tools',
       version=VERSION,

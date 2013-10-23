@@ -263,30 +263,20 @@ class OpusAudio(VorbisAudio):
     def total_frames(self):
         """returns the total PCM frames of the track as an integer"""
 
-        from .bitstream import BitstreamReader
+        from audiotools._ogg import PageReader
 
-        pcm_samples = 0
-        end_of_stream = 0
         try:
-            ogg_stream = BitstreamReader(file(self.filename, "rb"), 1)
-            while (end_of_stream == 0):
-                (magic_number,
-                 version,
-                 end_of_stream,
-                 granule_position,
-                 page_segment_count) = ogg_stream.parse(
-                     "4b 8u 1p 1p 1u 5p 64S 32p 32p 32p 8u")
-                ogg_stream.skip_bytes(sum([ogg_stream.read(8) for i in
-                                           xrange(page_segment_count)]))
+            reader = PageReader(file(self.filename, "rb"))
+            page = reader.read()
+            pcm_samples = page.granule_position
 
-                if ((magic_number != "OggS") or (version != 0)):
-                    return 0
-                if (granule_position >= 0):
-                    pcm_samples = granule_position
+            while (not page.stream_end):
+                page = reader.read()
+                pcm_samples = max(pcm_samples, page.granule_position)
 
-            ogg_stream.close()
+            reader.close()
             return pcm_samples
-        except IOError:
+        except (IOError, ValueError):
             return 0
 
     def sample_rate(self):
@@ -300,37 +290,9 @@ class OpusAudio(VorbisAudio):
         if an error occurs initializing a decoder, this should
         return a PCMReaderError with an appropriate error message"""
 
-        from . import PCMReader
-        from . import BIN
-        import subprocess
-        import os
+        from audiotools.decoders import OpusDecoder
 
-        sub = subprocess.Popen([BIN["opusdec"], "--quiet",
-                                "--rate", str(48000),
-                                self.filename, "-"],
-                               stdout=subprocess.PIPE,
-                               stderr=file(os.devnull, "a"))
-
-        pcmreader = PCMReader(sub.stdout,
-                              sample_rate=self.sample_rate(),
-                              channels=self.channels(),
-                              channel_mask=int(self.channel_mask()),
-                              bits_per_sample=self.bits_per_sample(),
-                              process=sub)
-
-        if (self.channels() <= 2):
-            return pcmreader
-        elif (self.channels() <= 8):
-            from . import ReorderedPCMReader
-
-            standard_channel_mask = self.channel_mask()
-            vorbis_channel_mask = VorbisChannelMask(self.channel_mask())
-            return ReorderedPCMReader(
-                pcmreader,
-                [vorbis_channel_mask.channels().index(channel) for channel in
-                 standard_channel_mask.channels()])
-        else:
-            return pcmreader
+        return OpusDecoder(self.filename)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
@@ -474,6 +436,45 @@ class OpusAudio(VorbisAudio):
             return True
         except (IOError, ValueError), err:
             raise InvalidVorbis(str(err))
+
+    @classmethod
+    def available(cls, system_binaries):
+        """returns True if all necessary compenents are available
+        to support format"""
+
+        try:
+            from audiotools.decoders import OpusDecoder
+
+            for command in cls.BINARIES:
+                if (not system_binaries.can_execute(system_binaries[command])):
+                    return False
+            else:
+                return True
+        except ImportError:
+            return False
+
+    @classmethod
+    def missing_components(cls, messenger):
+        """given a Messenger object, displays missing binaries or libraries
+        needed to support this format and where to get them"""
+
+        from .text import (ERR_LIBRARY_NEEDED,
+                           ERR_LIBRARY_DOWNLOAD_URL,
+                           ERR_PROGRAM_PACKAGE_MANAGER)
+
+        format_ = cls.NAME.decode('ascii')
+
+        #display where to get vorbisfile
+        messenger.info(
+            ERR_LIBRARY_NEEDED %
+                {"library": u"\"libopus\" and \"opusfile\"",
+                 "format": format_})
+        messenger.info(
+            ERR_LIBRARY_DOWNLOAD_URL %
+            {"library": u"libopus and opusfile",
+             "url": "http://www.opus-codec.org/"})
+
+        messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)
 
 
 class OpusTags(VorbisComment):

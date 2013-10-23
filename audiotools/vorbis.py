@@ -180,30 +180,20 @@ class VorbisAudio(AudioFile):
     def total_frames(self):
         """returns the total PCM frames of the track as an integer"""
 
-        from .bitstream import BitstreamReader
+        from audiotools._ogg import PageReader
 
-        pcm_samples = 0
-        end_of_stream = 0
         try:
-            ogg_stream = BitstreamReader(file(self.filename, "rb"), 1)
-            while (end_of_stream == 0):
-                (magic_number,
-                 version,
-                 end_of_stream,
-                 granule_position,
-                 page_segment_count) = ogg_stream.parse(
-                     "4b 8u 1p 1p 1u 5p 64S 32p 32p 32p 8u")
-                ogg_stream.skip_bytes(sum([ogg_stream.read(8) for i in
-                                           xrange(page_segment_count)]))
+            reader = PageReader(file(self.filename, "rb"))
+            page = reader.read()
+            pcm_samples = page.granule_position
 
-                if ((magic_number != "OggS") or (version != 0)):
-                    return 0
-                if (granule_position >= 0):
-                    pcm_samples = granule_position
+            while (not page.stream_end):
+                page = reader.read()
+                pcm_samples = max(pcm_samples, page.granule_position)
 
-            ogg_stream.close()
+            reader.close()
             return pcm_samples
-        except IOError:
+        except (IOError, ValueError):
             return 0
 
     def sample_rate(self):
@@ -538,12 +528,9 @@ class VorbisAudio(AudioFile):
 
         try:
             from audiotools.decoders import VorbisDecoder
+            from audiotools.encoders import encode_vorbis
 
-            for command in cls.BINARIES:
-                if (not system_binaries.can_execute(system_binaries[command])):
-                    return False
-            else:
-                return True
+            return True
         except ImportError:
             return False
 

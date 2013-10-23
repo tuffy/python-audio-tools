@@ -34,6 +34,9 @@ extern PyTypeObject decoders_VorbisDecoderType;
 #ifdef HAS_MP3
 extern PyTypeObject decoders_MP3DecoderType;
 #endif
+#ifdef HAS_OPUS
+extern PyTypeObject decoders_OpusDecoderType;
+#endif
 extern PyTypeObject decoders_TTADecoderType;
 extern PyTypeObject decoders_DVDA_Title_Type;
 extern PyTypeObject decoders_Sine_Mono_Type;
@@ -75,6 +78,12 @@ initdecoders(void)
     #ifdef HAS_MP3
     decoders_MP3DecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_MP3DecoderType) < 0)
+        return;
+    #endif
+
+    #ifdef HAS_OPUS
+    decoders_OpusDecoderType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&decoders_OpusDecoderType) < 0)
         return;
     #endif
 
@@ -135,6 +144,12 @@ initdecoders(void)
     Py_INCREF(&decoders_MP3DecoderType);
     PyModule_AddObject(m, "MP3Decoder",
                        (PyObject *)&decoders_MP3DecoderType);
+    #endif
+
+    #ifdef HAS_OPUS
+    Py_INCREF(&decoders_OpusDecoderType);
+    PyModule_AddObject(m, "OpusDecoder",
+                       (PyObject *)&decoders_OpusDecoderType);
     #endif
 
     Py_INCREF(&decoders_TTADecoderType);
