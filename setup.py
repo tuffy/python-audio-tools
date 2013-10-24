@@ -29,41 +29,12 @@ import re
 import subprocess
 from distutils.core import setup, Extension
 from distutils.command.build_ext import build_ext as _build_ext
-from ConfigParser import (ConfigParser, NoSectionError, NoOptionError)
+from ConfigParser import (RawConfigParser, NoSectionError, NoOptionError)
 
-def get_library_availability(config, library):
-    """given ConfigParser object and library name string
-    returns True if library is present,
-    False if library is not present,
-    None if one should probe for the library
 
-    default is None"""
+configfile = RawConfigParser()
+configfile.read(["setup.cfg"])
 
-    try:
-        if (config.get("Libraries", library) == "probe"):
-            return None
-        else:
-            try:
-                return config.getboolean("Libraries", library)
-            except ValueError:
-                return None
-    except NoSectionError:
-        return None
-    except NoOptionError:
-        return None
-
-parser = ConfigParser()
-parser.read(["setup.cfg"])
-
-HAS_LIBCDIO = get_library_availability(parser, "libcdio")
-HAS_LIBPULSE = get_library_availability(parser, "libpulse")
-HAS_LIBALSA = get_library_availability(parser, "alsa")
-HAS_MPG123 = get_library_availability(parser, "libmpg123")
-HAS_VORBISFILE = get_library_availability(parser, "libvorbisfile")
-HAS_LAME = get_library_availability(parser, "libmp3lame")
-HAS_TWOLAME = get_library_availability(parser, "libtwolame")
-HAS_VORBISENC = get_library_availability(parser, "libvorbisenc")
-HAS_OPUS = get_library_availability(parser, "libopus")
 
 VERSION = re.search(r'VERSION\s*=\s"(.+?)"',
                     open(os.path.join(
@@ -71,187 +42,334 @@ VERSION = re.search(r'VERSION\s*=\s"(.+?)"',
                         "audiotools/__init__.py")).read()).group(1)
 
 
-def pkg_config_link_args(libraries):
-    """given a list of libraries in pkg-config,
-    returns a list of extra_link_arg arguments to pass to the Extension
-    initializer
-
-    Raises ValueError if the libraries can't be found in pkg-config
-
-    Raises OSError if pkg-config can't be found on the system.
-    """
-
-    #this may raise OSError outright
-    pkg_config = subprocess.Popen(["pkg-config", "--libs"] + libraries,
-                                  stdout=subprocess.PIPE,
-                                  stderr=open(os.devnull, "wb"))
-
-    pkg_config_stdout = pkg_config.stdout.read().strip()
-
-    if (pkg_config.wait() == 0):
-        #libraries found, so return them as list of strings
-        return pkg_config_stdout.split()
-    else:
-        #libraries not found, so raise ValueError
-        raise ValueError()
+LIBRARY_URLS = {"libcdio_paranoia":"http://www.gnu.org/software/libcdio/",
+                "libmpg123":"http://www.mpg123.org",
+                "vorbisfile":"http://xiph.org",
+                "opusfile":"http://www.opus-codec.org",
+                "mp3lame":"http://lame.sourceforge.net",
+                "twolame":"http://twolame.sourceforge.net",
+                "vorbisenc":"http://www.xiph.org",
+                "alsa":"http://www.alsa-project.org",
+                "libpulse":"http://www.freedesktop.org"}
 
 
-def has_executable(executable, test_arguments=None):
-    """given an executable an optional list of test arguments
-    (such as ['--version']), returns True if the executable
-    can be called or False if not
-    """
+class SystemLibraries:
+    def __init__(self, configfile):
+        self.configfile = configfile
 
-    try:
-        sub = subprocess.Popen(
-            ["executable"] +
-            ([] if test_arguments is None else test_arguments),
-            stdout=open(os.devnull, "wb"),
-            stderr=open(os.devnull, "wb"))
-        sub.wait()
+    def guaranteed_present(self, library):
+        """given library name string
+        returns True if library is guaranteed present,
+        False if library is not present,
+        None if one should probe for the library
 
-        return True
-    except OSError:
-        return False
+        default is None"""
+
+        try:
+            if (self.configfile.get("Libraries", library) == "probe"):
+                return None
+            else:
+                try:
+                    return self.configfile.getboolean("Libraries", library)
+                except ValueError:
+                    return None
+        except NoSectionError:
+            return None
+        except NoOptionError:
+            return None
+
+    def present(self, library):
+        """returns True if the given library is present on the system,
+        returns False if it cannot be found"""
+
+        present = self.guaranteed_present(library)
+        if (present is None):
+            #probe for library using pkg-config, if available
+            try:
+                pkg_config = subprocess.Popen(
+                    ["pkg-config", "--exists", library],
+                    stdout=open(os.devnull, "wb"),
+                    stderr=open(os.devnull, "wb"))
+                return (pkg_config.wait() == 0)
+            except OSError:
+                #pkg-config not found, so assume library isn't found
+                return False
+        else:
+            return present
+
+    def extra_link_args(self, library):
+        """returns a list of link argument strings for populating
+        an extension's 'extra_link_args' argument
+
+        the set may be empty"""
+
+        try:
+            pkg_config = subprocess.Popen(
+                ["pkg-config", "--libs", library],
+                stdout=subprocess.PIPE,
+                stderr=open(os.devnull, "wb"))
+
+            pkg_config_stdout = pkg_config.stdout.read().strip()
+
+            if (pkg_config.wait() == 0):
+                #libraries found
+                return pkg_config_stdout.split()
+            else:
+                #library not found
+                return []
+        except OSError:
+            #pkg-config not found
+            return []
+
+
+system_libraries = SystemLibraries(configfile)
+
+
+class output_table:
+    def __init__(self):
+        """a class for formatting rows for display"""
+
+        self.__rows__ = []
+
+    def row(self):
+        """returns a output_table_row object which columns can be added to"""
+
+        row = output_table_row()
+        self.__rows__.append(row)
+        return row
+
+    def blank_row(self):
+        """inserts a blank table row with no output"""
+
+        self.__rows__.append(output_table_blank())
+
+    def divider_row(self, dividers):
+        """adds a row of unicode divider characters
+
+        there should be one character in dividers per output column"""
+
+        self.__rows__.append(output_table_divider(dividers))
+
+    def format(self):
+        """yields one formatted string per row"""
+
+        if (len(self.__rows__) == 0):
+            #no rows, so do nothing
+            return
+
+        if (len(set([len(r) for r in self.__rows__ if
+                     not isinstance(r, output_table_blank)])) != 1):
+            raise ValueError("all rows must have same number of columns")
+
+        column_widths = [
+            max([row.column_width(col) for row in self.__rows__])
+            for col in xrange(len(self.__rows__[0]))]
+
+        for row in self.__rows__:
+            yield row.format(column_widths)
+
+
+class output_table_row:
+    def __init__(self):
+        """a class for formatting columns for display"""
+
+        self.__columns__ = []
+
+    def __len__(self):
+        return len(self.__columns__)
+
+    def add_column(self, text, alignment="left"):
+        """adds text which is a plain string and an optional alignment
+
+        alignment may be 'left', 'center', 'right'"""
+
+        if (alignment not in ("left", "center", "right")):
+            raise ValueError("alignment must be 'left', 'center', or 'right'")
+
+        self.__columns__.append((text, alignment))
+
+    def column_width(self, column):
+        return len(self.__columns__[column][0])
+
+    def format(self, column_widths):
+        """returns formatted row as a string"""
+
+        def align_left(text, width):
+            spaces = width - len(text)
+
+            if (spaces > 0):
+                return text + " " * spaces
+            else:
+                return text
+
+        def align_right(text, width):
+            spaces = width - len(text)
+
+            if (spaces > 0):
+                return " " * spaces + text
+            else:
+                return text
+
+        def align_center(text, width):
+            left_spaces = (width - len(text)) // 2
+            right_spaces = width - (left_spaces + len(text))
+
+            if ((left_spaces + right_spaces) > 0):
+                return (" " * left_spaces +
+                        text +
+                        " " * right_spaces)
+            else:
+                return text
+
+        #attribute to method mapping
+        align_meth = {"left":align_left,
+                      "right":align_right,
+                      "center":align_center}
+
+        assert(len(column_widths) == len(self.__columns__))
+
+        return "".join([align_meth[alignment](text, width)
+                        for ((text, alignment), width) in
+                        zip(self.__columns__, column_widths)]).rstrip()
+
+
+class output_table_divider:
+    """a class for formatting a row of divider characters"""
+
+    def __init__(self, dividers):
+        self.__dividers__ = dividers[:]
+
+    def __len__(self):
+        return len(self.__dividers__)
+
+    def column_width(self, column):
+        return 0
+
+    def format(self, column_widths):
+        """returns formatted row as a string"""
+
+        assert(len(column_widths) == len(self.__dividers__))
+
+        return "".join([divider * width
+                        for (divider, width) in
+                        zip(self.__dividers__, column_widths)]).rstrip()
+
+
+class output_table_blank:
+    """a class for an empty table row"""
+
+    def __init__(self):
+        pass
+
+    def column_width(self, column):
+        return 0
+
+    def format(self, column_widths):
+        """returns formatted row as a string"""
+
+        return ""
 
 
 class build_ext(_build_ext):
     def build_extensions(self):
         _build_ext.build_extensions(self)
+
         print "=" * 60
         print "Python Audio Tools %s Setup" % (VERSION)
         print "=" * 60
 
-        if (HAS_LIBCDIO is None):
-            #indicate whether libcdio is found or where to get it
-            if (len([e for e in self.extensions if
-                     isinstance(e, audiotools_cdio)]) > 0):
-                print "--- libcdio found"
+        #lib_name -> ([used for, ...], is present)
+        libraries = {}
+
+        for extension in self.extensions:
+            if (hasattr(extension, "library_manifest") and
+                callable(extension.library_manifest)):
+                for (library,
+                     used_for,
+                     is_present) in extension.library_manifest():
+                    if (library in libraries):
+                        libraries[library] = (
+                            libraries[library][0] + [used_for],
+                            libraries[library][1] and is_present)
+                    else:
+                        libraries[library] = ([used_for], is_present)
+
+        table = output_table()
+
+        header = table.row()
+        header.add_column("library", "right")
+        header.add_column(" ")
+        header.add_column("present?")
+        header.add_column(" ")
+        header.add_column("used for")
+        header.add_column(" ")
+        header.add_column("download URL")
+
+        table.divider_row(["-", " ", "-", " ", "-", " ", "-"])
+
+        for library in sorted(libraries.keys()):
+            row = table.row()
+            row.add_column(library, "right")
+            row.add_column(" ")
+            row.add_column("yes" if libraries[library][1] else "no")
+            row.add_column(" ")
+            row.add_column(", ".join(libraries[library][0]))
+            row.add_column(" ")
+            if (not libraries[library][1]):
+                row.add_column(LIBRARY_URLS[library])
             else:
-                print "*** libcdio not found"
-                print "    for CDDA reading support, install libcdio from:"
-                print ""
-                print "    http://www.gnu.org/software/libcdio/"
-                print ""
-                print "    or your system's package manager"
-                print ""
+                row.add_column("")
 
-        output = [e for e in self.extensions if
-                  isinstance(e, audiotools_output)][0]
-
-        if ('linux' in sys.platform):
-            #if on Linux, indicate whether PulseAudio and ALSA are found
-            #or where to get them
-
-            if (output.has_pulseaudio):
-                print "--- libpulse found"
-            else:
-                print "*** libpulse not found"
-                print "    for PulseAudio output support, install libpulse from:"
-                print ""
-                print "    http://www.freedesktop.org/wiki/Software/PulseAudio/"
-                print ""
-                print "    or your system's package manager"
-                print ""
-
-            if (output.has_alsa):
-                print "--- libasound found"
-            else:
-                print "*** libasound not found"
-                print "    for ALSA output support, install libasound from:"
-                print ""
-                print "    http://alsa-project.org"
-                print ""
-                print "    or your system's package manager"
-                print ""
-
-        if (output.has_coreaudio):
-            print "--- CoreAudio found"
-        else:
-            #if CoreAudio not found, we must not be on a Mac OS X machine
-            #so no reason to tell the user to get it
-            pass
-
-        decoders = [e for e in self.extensions if
-                    isinstance(e, audiotools_decoders)][0]
-
-        if (decoders.has_mpg123):
-            print "--- libmpg123 found"
-        else:
-            print "*** libmpg123 not found"
-            print "    for MP3 and MP2 support, install libmpg123 from:"
-            print ""
-            print "    http://www.mpg123.org"
-            print ""
-            print "    or your system's package manager"
-            print ""
-
-        if (decoders.has_vorbis):
-            print "--- libvorbisfile found"
-        else:
-            print "*** libvorbisfile not found"
-            print "    for Ogg Vorbis support, install libvorbisfile from:"
-            print ""
-            print "    http://www.xiph.org"
-            print ""
-            print "    or your system's package manager"
-            print ""
-
-        #FIXME - add has_opus
-
-        encoders = [e for e in self.extensions if
-                    isinstance(e, audiotools_encoders)][0]
-
-        if (encoders.has_lame):
-            print "--- libmp3lame found"
-        else:
-            print "*** libmp3lame not found"
-            print "    for MP3 support, install libmp3lame from:"
-            print ""
-            print "    http://lame.sourceforge.net"
-            print ""
-            print "    or your system's package manager"
-            print ""
-
-        if (encoders.has_twolame):
-            print "--- libtwolame found"
-        else:
-            print "*** libtwolame not found"
-            print "    for MP2 support, install libtwolame from:"
-            print ""
-            print "    http://twolame.sourceforge.net"
-            print ""
-            print "    or your system's package manager"
-            print ""
-
-        if (encoders.has_vorbis):
-            print "--- libvorbisenc found"
-        else:
-            print "*** libvorbisenc not found"
-            print "    for Vorbis support, install libvorbisenc from:"
-            print ""
-            print "    http://www.xiph.org"
-            print ""
-            print "    or your system's package manager"
-            print ""
+        for row in table.format():
+            print row
+        print
 
 
 class audiotools_cdio(Extension):
-    def __init__(self, extra_link_args=None):
+    def __init__(self, system_libraries):
         """extra_link_args is a list of argument strings
         from pkg-config, or None if we're to use the standard
         libcdio libraries"""
 
+        self.__library_manifest__ = []
+        sources = []
+        libraries = set()
+        extra_link_args = []
+
+        if (system_libraries.present("libcdio_paranoia")):
+            if (system_libraries.guaranteed_present("libcdio_paranoia")):
+                libraries.update(set(["libcdio",
+                                      "libcdio_cdda",
+                                      "libcdio_paranoia"]))
+            else:
+                extra_link_args.extend(
+                    system_libraries.extra_link_args("libcdio_paranoia"))
+            sources.append("src/cdiomodule.c")
+            self.__library_manifest__.append(("libcdio",
+                                              "CDDA data extraction",
+                                              True))
+        else:
+            self.__library_manifest__.append(("libcdio",
+                                              "CDDA data extraction",
+                                              False))
+
         Extension.__init__(
             self,
             'audiotools.cdio',
-            sources=['src/cdiomodule.c'],
-            libraries=(['cdio',
-                        'cdio_paranoia',
-                        'cdio_cdda',
-                        'm'] if extra_link_args is None else []),
-            extra_link_args=(extra_link_args if
-                             extra_link_args is not None else []))
+            sources=sources,
+            libraries=list(libraries),
+            extra_link_args=extra_link_args)
+
+    def library_manifest(self):
+        for values in self.__library_manifest__:
+            yield values
+
+    def libraries_present(self):
+        for (library, used_for, is_present) in self.library_manifest():
+            if (not is_present):
+                return False
+        else:
+            return True
 
 
 class audiotools_pcm(Extension):
@@ -290,7 +408,9 @@ class audiotools_replaygain(Extension):
 
 
 class audiotools_decoders(Extension):
-    def __init__(self, has_mp3=None, has_vorbisfile=None, has_opus=None):
+    def __init__(self, system_libraries):
+        self.__library_manifest__ = []
+
         defines = [("VERSION", VERSION)]
         sources = ['src/array.c',
                    'src/pcmconv.c',
@@ -315,75 +435,56 @@ class audiotools_decoders(Extension):
                    'src/decoders/sine.c',
                    'src/decoders/mod_cppm.c',
                    'src/decoders.c']
-        libraries = []
-        link_args = []
+        libraries = set()
+        extra_link_args = []
 
-        if (has_mp3 is None):
-            #probe for libmpg123 via pkg-config
-            try:
-                link_args.extend(pkg_config_link_args(["libmpg123"]))
-                self.has_mpg123 = True
-            except ValueError:
-                #libmpg123 not found in pkg-config
-                self.has_mpg123 = False
-            except OSError:
-                #pkg-config not found, so see if mpg123 binary is present
-                if (has_executable("mpg123", ["--version"])):
-                    libraries.append("mpg123")
-                    self.has_mpg123 = True
-                else:
-                    self.has_mpg123 = False
-        elif (has_mp3):
-            #user promises libmpg123 is present on system
-            libraries.append("mpg123")
-            self.has_mpg123 = True
-        else:
-            #user promises libmpg123 is missing
-            self.has_mpg123 = False
-
-        if (self.has_mpg123):
+        if (system_libraries.present("libmpg123")):
+            if (system_libraries.guaranteed_present("libmpg123")):
+                libraries.add("libmpg123")
+            else:
+                extra_link_args.extend(
+                    system_libraries.extra_link_args("libmpg123"))
             defines.append(("HAS_MP3", None))
             sources.append("src/decoders/mp3.c")
-
-        if (has_vorbisfile is None):
-            #probe for vorbisfile via pkg-config
-            try:
-                link_args.extend(pkg_config_link_args(["vorbisfile"]))
-                self.has_vorbis = True
-            except ValueError:
-                #vorbisfile not present in pkg-config
-                self.has_vorbis = False
-            except OSError:
-                #pkg-config not found, so see if oggdec is present
-                if (has_executable("oggdec", ["--version"])):
-                    libraries.extend(["vorbisfile", "vorbis", "ogg"])
-                    self.has_vorbis = True
-                else:
-                    self.has_vorbis = False
-        elif (has_vorbisfile):
-            #user promises vorbisfile is present on system
-            libraries.extend(["vorbisfile", "vorbis", "ogg"])
-            self.has_vorbis = True
+            self.__library_manifest__.append(("libmpg123",
+                                              "MP3/MP2 decoding",
+                                              True))
         else:
-            #user promises vorbisfile is missing
-            self.has_vorbis = False
+            self.__library_manifest__.append(("libmpg123",
+                                              "MP3/MP2 decoding",
+                                              False))
 
-        if (self.has_vorbis):
+        if (system_libraries.present("vorbisfile")):
+            if (system_libraries.guaranteed_present("vorbisfile")):
+                libraries.update(set(["vorbisfile", "vorbis", "ogg"]))
+            else:
+                extra_link_args.extend(
+                    system_libraries.extra_link_args("vorbisfile"))
             defines.append(("HAS_VORBIS", None))
             sources.append("src/decoders/vorbis.c")
-
-        if (has_opus is None):
-            raise NotImplementedError()
-        elif (has_opus):
-            #user promises opus is present on system
-            self.has_opus = True
+            self.__library_manifest__.append(("vorbisfile",
+                                              "Ogg Vorbis decoding",
+                                              True))
         else:
-            #user promises opus is missing
-            self.has_opus = False
+            self.__library_manifest__.append(("vorbisfile",
+                                              "Ogg Vorbis decoding",
+                                              False))
 
-        if (self.has_opus):
+        if (system_libraries.present("opusfile")):
+            if (system_libraries.guaranteed_present("opusfile")):
+                libraries.add("opusfile")
+            else:
+                extra_link_args.extend(
+                    system_libraries.extra_link_args("opusfile"))
             defines.append(("HAS_OPUS", None))
             sources.append("src/decoders/opus.c")
+            self.__library_manifest__.append(("opusfile",
+                                              "Opus decoding",
+                                              True))
+        else:
+            self.__library_manifest__.append(("opusfile",
+                                              "Opus decoding",
+                                              False))
 
         if (sys.platform == 'linux2'):
             defines.extend([('DVD_STRUCT_IN_LINUX_CDROM_H', None),
@@ -397,12 +498,17 @@ class audiotools_decoders(Extension):
                            'audiotools.decoders',
                            sources=sources,
                            define_macros=defines,
-                           libraries=libraries,
-                           extra_link_args=link_args)
+                           libraries=list(libraries),
+                           extra_link_args=extra_link_args)
+
+    def library_manifest(self):
+        for values in self.__library_manifest__:
+            yield values
 
 
 class audiotools_encoders(Extension):
-    def __init__(self, has_mp3=None, has_mp2=None, has_vorbis=None):
+    def __init__(self, system_libraries):
+        self.__library_manifest__ = []
         defines = [("VERSION", VERSION)]
         sources = ['src/array.c',
                    'src/pcmconv.c',
@@ -418,90 +524,72 @@ class audiotools_encoders(Extension):
                    'src/encoders/wavpack.c',
                    'src/encoders/tta.c',
                    'src/encoders.c']
-        libraries = []
-        link_args = []
+        libraries = set()
+        extra_link_args = []
 
-        if (has_mp3 is None):
-            #mp3lame doesn't seem to show in pkg-config,
-            #so see if lame binary is present
-            if (has_executable("lame", ["--version"])):
-                libraries.append("mp3lame")
-                self.has_lame = True
+        if (system_libraries.present("mp3lame")):
+            if (system_libraries.guaranteed_present("mp3lame")):
+                libraries.add("mp3lame")
             else:
-                self.has_lame = False
-        elif (has_mp3):
-            #user promises libmp3lame is present on system
-            libraries.append("mp3lame")
-            self.has_lame = True
-        else:
-            self.has_lame = False
+                #the LAME library doesn't seem to show in pkg-config
+                #so this may not be used
+                extra_link_args.extend(
+                    system_libraries.extra_link_args("mp3lame"))
 
-        if (self.has_lame):
             defines.append(("HAS_MP3", None))
             sources.append("src/encoders/mp3.c")
-
-        if (has_mp2 is None):
-            #probe for twolame via pkg-config
-            try:
-                link_args.extend(pkg_config_link_args(["twolame"]))
-                self.has_twolame = True
-            except ValueError:
-                #twolame not found in pkg-config
-                self.has_twolame = False
-            except OSError:
-                #pkg-config not found, so see if twolame binary is present
-                if (has_executable("twolame", ["--version"])):
-                    libraries.append("twolame")
-                    self.has_twolame = True
-                else:
-                    self.has_twolame = False
-        elif (has_mp2):
-            #user promises twolame is present on system
-            libraries.append("twolame")
-            self.has_twolame = True
+            self.__library_manifest__.append(("mp3lame",
+                                              "MP3 encoding",
+                                              True))
         else:
-            #user promises twolame is missing
-            self.has_twolame = False
+            self.__library_manifest__.append(("mp3lame",
+                                              "MP3 encoding",
+                                              False))
 
-        if (self.has_twolame):
+        if (system_libraries.present("twolame")):
+            if (system_libraries.guaranteed_present("twolame")):
+                libraries.add("twolame")
+            else:
+                extra_link_args.extend(
+                    system_libraries.extra_link_args("twolame"))
+
             defines.append(("HAS_MP2", None))
             sources.append("src/encoders/mp2.c")
-
-        if (has_vorbis is None):
-            #probe for vorbisenc and friends via pkg-config
-            try:
-                link_args.extend(pkg_config_link_args(["vorbis",
-                                                       "ogg",
-                                                       "vorbisenc"]))
-                self.has_vorbis = True
-            except ValueError:
-                #vorbisenc and friends not found in pkg-config
-                self.has_vorbis = False
-            except OSError:
-                #pkg-config not found, so see if oggenc binary is present
-                if (has_executable("oggenc", ["--version"])):
-                    libraries.extend(["vorbis", "ogg", "vorbisenc"])
-                    self.has_vorbis = True
-                else:
-                    self.has_vorbis = False
-        elif (has_vorbis):
-            #user promises vorbisenc is present on system
-            libraries.extend(["vorbis", "ogg", "vorbisenc"])
-            self.has_vorbis = True
+            self.__library_manifest__.append(("twolame",
+                                              "MP2 encoding",
+                                              True))
         else:
-            #user promises vorbisenc is missing
-            self.has_vorbis = False
+            self.__library_manifest__.append(("twolame",
+                                              "MP2 encoding",
+                                              False))
 
-        if (self.has_vorbis):
+        if (system_libraries.present("vorbisenc")):
+            if (system_libraries.guaranteed_present("vorbisenc")):
+                libraries.update(set(["vorbisenc", "vorbis", "ogg"]))
+            else:
+                extra_link_args.extend(
+                    system_libraries.extra_link_args("vorbisenc"))
+
             defines.append(("HAS_VORBIS", None))
             sources.append("src/encoders/vorbis.c")
+            self.__library_manifest__.append(("vorbisenc",
+                                              "Ogg Vorbis encoding",
+                                              True))
+        else:
+            self.__library_manifest__.append(("vorbisenc",
+                                              "Ogg Vorbis encoding",
+                                              False))
 
         Extension.__init__(self,
                            'audiotools.encoders',
                            sources=sources,
                            define_macros=defines,
-                           libraries=libraries,
-                           extra_link_args=link_args)
+                           libraries=list(libraries),
+                           extra_link_args=extra_link_args)
+
+    def library_manifest(self):
+        for values in self.__library_manifest__:
+            yield values
 
 
 class audiotools_bitstream(Extension):
@@ -545,104 +633,86 @@ class audiotools_accuraterip(Extension):
 
 
 class audiotools_output(Extension):
-    def __init__(self, has_pulseaudio=None, has_alsa=None):
-        """has_pulseaudio and has_alsa may be True, False or None
-
-        True or False guarantees the given libraries are present
-        or not present, while None indicates we should probe the system
-        """
+    def __init__(self, system_libraries):
+        self.__library_manifest__ = []
 
         sources = ['src/output.c']
-        libraries = []
         defines = []
-        link_args = []
+        libraries = set()
+        extra_link_args = []
 
         #assume MacOS X always has CoreAudio
         if (sys.platform == 'darwin'):
             sources.append('src/output/core_audio.c')
             defines.append(("CORE_AUDIO", "1"))
-            link_args.extend(["-framework", "AudioToolbox",
-                              "-framework", "AudioUnit",
-                              "-framework", "CoreServices"])
-            self.has_coreaudio = True
-        else:
-            self.has_coreaudio = False
-
-        if (has_pulseaudio is None):
-            #detect PulseAudio's presence using pkg-config, if possible
-            try:
-                link_args.extend(pkg_config_link_args(["libpulse"]))
-                self.has_pulseaudio = True
-            except ValueError:
-                #libpulse not found in pkg-config
-                self.has_pulseaudio = False
-            except OSError:
-                #pkg-config not found
-                self.has_pulseaudio = False
-        elif (has_pulseaudio):
-            #user promises libpulse is present on system
-            libraries.append("pulse")
-            self.has_pulseaudio = True
-        else:
-            #user promises libpulse is missing
-            self.has_pulseaudio = False
-
-        if (self.has_pulseaudio):
-            sources.append("src/output/pulseaudio.c")
-            defines.append(("PULSEAUDIO", "1"))
-
-        if (has_alsa is None):
-            #detense ALSA's present using pkg-config, if possible
-            try:
-                link_args.extend(pkg_config_link_args(["alsa"]))
-                link_args.extend(libalsa_stdout.split())
-                self.has_alsa = True
-            except ValueError:
-                #libalsa not found in pkg-config
-                self.has_alsa = False
-            except OSError:
-                #pkg-config not found
-                self.has_alsa = False
-        elif (has_alsa):
-            #user promises libasound is present on system
-            libraries.append("asound")
-            self.has_alsa = True
-        else:
-            #user promises libasound is missing
-            self.has_alsa = False
-
-        if (self.has_alsa):
-            if ("src/pcmconv.c" not in sources):
-                #only include pcmconv.c once
+            extra_link_args.extend(["-framework", "AudioToolbox",
+                                    "-framework", "AudioUnit",
+                                    "-framework", "CoreServices"])
+            self.__library_manifest__.append(("CoreAudio",
+                                              "Core Audio output",
+                                              True))
+        elif (sys.platform.startswith("linux")):
+            #only check for ALSA on Linux
+            if (system_libraries.present("alsa")):
+                if (system_libraries.guaranteed_present("alsa")):
+                    libraries.add("asound")
+                else:
+                    extra_link_args.extend(
+                        system_libraries.extra_link_args("alsa"))
+                sources.append("src/output/alsa.c")
                 sources.append("src/pcmconv.c")
+                defines.append(("ALSA", "1"))
+                self.__library_manifest__.append(("libasound2",
+                                                  "ALSA output",
+                                                  True))
+            else:
+                self.__library_manifest__.append(("libasound2",
+                                                  "ALSA output",
+                                                  False))
 
-            sources.append("src/output/alsa.c")
-            defines.append(("ALSA", "1"))
+        if (system_libraries.present("libpulse")):
+            if (system_libraries.guaranteed_present("libpulse")):
+                libraries.add("pulse")
+            else:
+                extra_link_args.extend(
+                    system_libraries.extra_link_args("libpulse"))
+            sources.append("src/output/pulseaudio.c")
+            #only include pcmconv once
+            if ("src/pcmconv.c" not in sources):
+                sources.append("src/pcmconv.c")
+            defines.append(("PULSEAUDIO", "1"))
+            self.__library_manifest__.append(("libpulse",
+                                              "PulseAudio output",
+                                              True))
+        else:
+            self.__library_manifest__.append(("libpulse",
+                                              "PulseAudio output",
+                                              False))
 
         Extension.__init__(self,
                            'audiotools.output',
-                           libraries=libraries,
                            sources=sources,
                            define_macros=defines,
-                           extra_link_args=link_args)
+                           libraries=list(libraries),
+                           extra_link_args=extra_link_args)
 
+    def library_manifest(self):
+        for values in self.__library_manifest__:
+            yield values
+
+
+ext_audiotools_cdio = audiotools_cdio(system_libraries)
 
 ext_modules = [audiotools_pcm(),
                audiotools_pcmconverter(),
                audiotools_replaygain(),
-               audiotools_decoders(has_mp3=HAS_MPG123,
-                                   has_vorbisfile=HAS_VORBISFILE,
-                                   has_opus=HAS_OPUS),
-               audiotools_encoders(has_mp3=HAS_LAME,
-                                   has_mp2=HAS_TWOLAME,
-                                   has_vorbis=HAS_VORBISENC),
+               audiotools_decoders(system_libraries),
+               audiotools_encoders(system_libraries),
                audiotools_bitstream(),
                audiotools_ogg(),
                audiotools_verify(),
                audiotools_accuraterip(),
-               audiotools_output(has_pulseaudio=HAS_LIBPULSE,
-                                 has_alsa=HAS_LIBALSA)]
-
+               audiotools_output(system_libraries)]
 
 scripts = ["audiotools-config",
            "coverdump",
@@ -663,34 +733,8 @@ scripts = ["audiotools-config",
            "tracktag",
            "trackverify"]
 
-
-if (HAS_LIBCDIO is None):
-    #probe for libcdio via pkg-config
-    try:
-        ext_modules.append(
-            audiotools_cdio(
-                pkg_config_link_args(["libcdio",
-                                      "libcdio_cdda",
-                                      "libcdio_paranoia"])))
-
-        scripts.extend(["cd2track", "cdinfo", "cdplay"])
-    except ValueError:
-        #libcdio not found in pkg-config
-        pass
-    except OSError:
-        #pkg-config not found
-        #so look for one of libcdio's accompanying executables
-        if (has_executable("cd-info", ["--version"])):
-            ext_modules.append(audiotools_cdio())
-
-            scripts.extend(["cd2track", "cdinfo", "cdplay"])
-        else:
-            #cd-info not found either
-            pass
-elif (HAS_LIBCDIO):
-    #user promises libcdio is present
-    ext_modules.append(audiotools_cdio())
-
+if (ext_audiotools_cdio.libraries_present()):
+    ext_modules.append(ext_audiotools_cdio)
     scripts.extend(["cd2track", "cdinfo", "cdplay"])
 
 setup(name='Python Audio Tools',
