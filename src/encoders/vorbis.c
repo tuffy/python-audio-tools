@@ -215,7 +215,7 @@ encode_ogg_vorbis(char *filename, pcmreader *pcmreader, float quality)
     vorbis_block_init(&vorbis_dsp, &vorbis_block);
 
     /*initialize packet -> Ogg page stream converter*/
-    srand(time(NULL));
+    srand((unsigned)time(NULL));
     ogg_stream_init(&ogg_stream, rand());
 
     /*generate initial, comments and codebooks headers and write them out*/

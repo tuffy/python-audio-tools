@@ -238,8 +238,7 @@ class VorbisAudio(AudioFile):
                   0x70f,    # FL, FC, FR, SL, SR, BC, LFE
                   0x63f     # FL, FC, FR, SL, SR, BL, BR, LFE
               ))):
-                raise UnsupportedChannelMask(filename,
-                                         int(pcmreader.channel_mask))
+                raise UnsupportedChannelMask(filename, channel_mask)
 
         try:
             encode_vorbis(filename,
@@ -486,40 +485,6 @@ class VorbisAudio(AudioFile):
                 return None
         else:
             return None
-
-    def verify(self, progress=None):
-        """verifies the current file for correctness
-
-        returns True if the file is okay
-        raises an InvalidFile with an error message if there is
-        some problem with the file"""
-
-        from audiotools.ogg import PageReader
-        import os.path
-
-        if (progress is None):
-            progress = lambda x,y: None
-
-        bytes_read = 0
-        total_bytes = os.path.getsize(self.filename)
-
-        try:
-            reader = PageReader(open(self.filename, "rb"))
-        except IOError, err:
-            raise InvalidVorbis(str(err))
-
-        try:
-            page = reader.read()
-            bytes_read += page.size()
-            progress(bytes_read, total_bytes)
-            while (not page.stream_end):
-                page = reader.read()
-                bytes_read += page.size()
-                progress(bytes_read, total_bytes)
-
-            return True
-        except (IOError, ValueError), err:
-            raise InvalidVorbis(str(err))
 
     @classmethod
     def available(cls, system_binaries):

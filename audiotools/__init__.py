@@ -3949,10 +3949,13 @@ class AudioFile:
         except DecodingError, err:
             raise InvalidFile(err.error_message)
 
-        if (pcm_frame_count == total_frames):
-            return True
+        if (self.lossless()):
+            if (pcm_frame_count == total_frames):
+                return True
+            else:
+                raise InvalidFile("incorrect PCM frame count")
         else:
-            raise InvalidFile("incorrect PCM frame count")
+            return True
 
     @classmethod
     def available(cls, system_binaries):

@@ -314,128 +314,41 @@ class OpusAudio(VorbisAudio):
         is formatted in a way this class is unable to support
         """
 
-        from . import transfer_framelist_data
-        from . import BIN
-        from . import ignore_sigint
-        from . import EncodingError
-        from . import DecodingError
-        from . import UnsupportedChannelMask
-        from . import __default_quality__
-        from .vorbis import VorbisChannelMask
-        from . import ChannelMask
-        import subprocess
-        import os
+        from audiotools import (BufferedPCMReader,
+                                PCMConverter,
+                                __default_quality__)
+        from audiotools.encoders import encode_opus
 
         if (((compression is None) or
              (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
-        devnull = file(os.devnull, 'ab')
+        if ((pcmreader.channels > 2) and (pcmreader.channels <= 8)):
+            channel_mask = int(pcmreader.channel_mask)
+            if ((channel_mask != 0) and
+                (channel_mask not in
+                 (0x7,      # FR, FC, FL
+                  0x33,     # FR, FL, BR, BL
+                  0x37,     # FR, FC, FL, BL, BR
+                  0x3f,     # FR, FC, FL, BL, BR, LFE
+                  0x70f,    # FL, FC, FR, SL, SR, BC, LFE
+                  0x63f))):  # FL, FC, FR, SL, SR, BL, BR, LFE
+                raise UnsupportedChannelMask(filename, channel_mask)
 
-        sub = subprocess.Popen([BIN["opusenc"], "--quiet",
-                                "--comp", compression,
-                                "--raw",
-                                "--raw-bits", str(pcmreader.bits_per_sample),
-                                "--raw-rate", str(pcmreader.sample_rate),
-                                "--raw-chan", str(pcmreader.channels),
-                                "--raw-endianness", str(0),
-                                "-", filename],
-                               stdin=subprocess.PIPE,
-                               stdout=devnull,
-                               stderr=devnull)
+        try:
+            encode_opus(filename,
+                        BufferedPCMReader(
+                            PCMConverter(pcmreader,
+                                         sample_rate=48000,
+                                         channels=pcmreader.channels,
+                                         channel_mask=pcmreader.channel_mask,
+                                         bits_per_sample=16)),
+                        quality=int(compression),
+                        original_sample_rate=pcmreader.sample_rate)
 
-        if ((pcmreader.channels <= 2) or (int(pcmreader.channel_mask) == 0)):
-            try:
-                transfer_framelist_data(pcmreader, sub.stdin.write)
-            except (IOError, ValueError), err:
-                sub.stdin.close()
-                sub.wait()
-                cls.__unlink__(filename)
-                raise EncodingError(str(err))
-            except Exception, err:
-                sub.stdin.close()
-                sub.wait()
-                cls.__unlink__(filename)
-                raise err
-        elif (pcmreader.channels <= 8):
-            if (int(pcmreader.channel_mask) in
-                (0x7,      # FR, FC, FL
-                 0x33,     # FR, FL, BR, BL
-                 0x37,     # FR, FC, FL, BL, BR
-                 0x3f,     # FR, FC, FL, BL, BR, LFE
-                 0x70f,    # FL, FC, FR, SL, SR, BC, LFE
-                 0x63f)):  # FL, FC, FR, SL, SR, BL, BR, LFE
-
-                standard_channel_mask = ChannelMask(pcmreader.channel_mask)
-                vorbis_channel_mask = VorbisChannelMask(standard_channel_mask)
-            else:
-                raise UnsupportedChannelMask(filename,
-                                             int(pcmreader.channel_mask))
-
-            try:
-                from . import ReorderedPCMReader
-
-                transfer_framelist_data(
-                    ReorderedPCMReader(
-                        pcmreader,
-                        [standard_channel_mask.channels().index(channel)
-                         for channel in vorbis_channel_mask.channels()]),
-                    sub.stdin.write)
-            except (IOError, ValueError), err:
-                sub.stdin.close()
-                sub.wait()
-                cls.__unlink__(filename)
-                raise EncodingError(str(err))
-            except Exception, err:
-                sub.stdin.close()
-                sub.wait()
-                cls.__unlink__(filename)
-                raise err
-
-        else:
-            raise UnsupportedChannelMask(filename,
-                                         int(pcmreader.channel_mask))
-
-        sub.stdin.close()
-
-        if (sub.wait() == 0):
-            return OpusAudio(filename)
-        else:
+            return cls(filename)
+        except ValueError:
             raise EncodingError(u"unable to encode file with opusenc")
-
-    def verify(self, progress=None):
-        """verifies the current file for correctness
-
-        returns True if the file is okay
-        raises an InvalidFile with an error message if there is
-        some problem with the file"""
-
-        from audiotools.ogg import PageReader
-        import os.path
-
-        if (progress is None):
-            progress = lambda x,y: None
-
-        bytes_read = 0
-        total_bytes = os.path.getsize(self.filename)
-
-        try:
-            reader = PageReader(open(self.filename, "rb"))
-        except IOError, err:
-            raise InvalidVorbis(str(err))
-
-        try:
-            page = reader.read()
-            bytes_read += page.size()
-            progress(bytes_read, total_bytes)
-            while (not page.stream_end):
-                page = reader.read()
-                bytes_read += page.size()
-                progress(bytes_read, total_bytes)
-
-            return True
-        except (IOError, ValueError), err:
-            raise InvalidVorbis(str(err))
 
     @classmethod
     def available(cls, system_binaries):
@@ -444,12 +357,9 @@ class OpusAudio(VorbisAudio):
 
         try:
             from audiotools.decoders import OpusDecoder
+            from audiotools.encoders import encode_opus
 
-            for command in cls.BINARIES:
-                if (not system_binaries.can_execute(system_binaries[command])):
-                    return False
-            else:
-                return True
+            return True
         except ImportError:
             return False
 

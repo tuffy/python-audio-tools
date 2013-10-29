@@ -55,11 +55,13 @@ encoders_encode_mp3(PyObject *dummy, PyObject *args, PyObject *keywds)
     /*ensure PCMReader object is compatible with MP3 output*/
     if ((pcmreader->channels != 1) && (pcmreader->channels != 2)) {
         PyErr_SetString(PyExc_ValueError, "channel count must be 1 or 2");
+        pcmreader->del(pcmreader);
         return NULL;
     }
 
     if (pcmreader->bits_per_sample != 16) {
         PyErr_SetString(PyExc_ValueError, "bits per sample must be 16");
+        pcmreader->del(pcmreader);
         return NULL;
     }
 
@@ -68,6 +70,7 @@ encoders_encode_mp3(PyObject *dummy, PyObject *args, PyObject *keywds)
     /*open output file for writing*/
     if ((output_file = fopen(filename, "w+b")) == NULL) {
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+        pcmreader->del(pcmreader);
         return NULL;
     }
 

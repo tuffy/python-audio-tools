@@ -46,6 +46,7 @@ LIBRARY_URLS = {"libcdio_paranoia":"http://www.gnu.org/software/libcdio/",
                 "libmpg123":"http://www.mpg123.org",
                 "vorbisfile":"http://xiph.org",
                 "opusfile":"http://www.opus-codec.org",
+                "opus":"http://www.opus-codec.org",
                 "mp3lame":"http://lame.sourceforge.net",
                 "twolame":"http://twolame.sourceforge.net",
                 "vorbisenc":"http://www.xiph.org",
@@ -578,6 +579,22 @@ class audiotools_encoders(Extension):
         else:
             self.__library_manifest__.append(("vorbisenc",
                                               "Ogg Vorbis encoding",
+                                              False))
+
+        if (system_libraries.present("opus")):
+            if (system_libraries.guaranteed_present("opus")):
+                libraries.add("opus")
+            else:
+                extra_link_args.extend(
+                    system_libraries.extra_link_args("opus"))
+            defines.append(("HAS_OPUS", None))
+            sources.append("src/encoders/opus.c")
+            self.__library_manifest__.append(("opus",
+                                              "Opus encoding",
+                                              True))
+        else:
+            self.__library_manifest__.append(("opus",
+                                              "Opus encoding",
                                               False))
 
         Extension.__init__(self,
