@@ -40,9 +40,6 @@ class OpusAudio(VorbisAudio):
     COMPRESSION_MODES = tuple(map(str, range(0, 11)))
     COMPRESSION_DESCRIPTIONS = {"0": u"lowest quality, fastest encode",
                                 "10": u"best quality, slowest encode"}
-    BINARIES = ("opusenc", "opusdec")
-    BINARY_URLS = {"opusenc": "http://opus-codec.org/",
-                   "opusdec": "http://opus-codec.org/"}
 
     def __init__(self, filename):
         """filename is a plain string"""
@@ -349,6 +346,151 @@ class OpusAudio(VorbisAudio):
             return cls(filename)
         except ValueError:
             raise EncodingError(u"unable to encode file with opusenc")
+
+    def update_metadata(self, metadata):
+        """takes this track's current MetaData object
+        as returned by get_metadata() and sets this track's metadata
+        with any fields updated in that object
+
+        raises IOError if unable to write the file
+        """
+
+        import os
+        from audiotools import TemporaryFile
+        from audiotools.ogg import (PageReader,
+                                    PacketReader,
+                                    PageWriter,
+                                    packet_to_pages,
+                                    packets_to_pages)
+        from audiotools.vorbiscomment import VorbisComment
+        from audiotools.bitstream import BitstreamRecorder
+
+        if (metadata is None):
+            return
+        elif (not isinstance(metadata, VorbisComment)):
+            from .text import ERR_FOREIGN_METADATA
+            raise ValueError(ERR_FOREIGN_METADATA)
+        elif (not os.access(self.filename, os.W_OK)):
+            raise IOError(self.filename)
+
+        original_ogg = PacketReader(PageReader(file(self.filename, "rb")))
+        new_ogg = PageWriter(TemporaryFile(self.filename))
+
+        sequence_number = 0
+
+        #transfer current file's identification packet in its own page
+        identification_packet = original_ogg.read_packet()
+        for (i, page) in enumerate(packet_to_pages(
+                identification_packet,
+                self.__serial_number__,
+                starting_sequence_number=sequence_number)):
+            page.stream_beginning = (i == 0)
+            new_ogg.write(page)
+            sequence_number += 1
+
+        #discard the current file's comment packet
+        comment_packet = original_ogg.read_packet()
+
+        #generate new comment packet
+        comment_writer = BitstreamRecorder(True)
+        comment_writer.write_bytes("OpusTags")
+        vendor_string = metadata.vendor_string.encode('utf-8')
+        comment_writer.build("32u %db" % (len(vendor_string)),
+                             (len(vendor_string), vendor_string))
+        comment_writer.write(32, len(metadata.comment_strings))
+        for comment_string in metadata.comment_strings:
+            comment_string = comment_string.encode('utf-8')
+            comment_writer.build("32u %db" % (len(comment_string)),
+                                 (len(comment_string), comment_string))
+
+        for page in packet_to_pages(
+                comment_writer.data(),
+                self.__serial_number__,
+                starting_sequence_number=sequence_number):
+            new_ogg.write(page)
+            sequence_number += 1
+
+        #transfer remaining pages after re-sequencing
+        page = original_ogg.read_page()
+        page.sequence_number = sequence_number
+        sequence_number += 1
+        new_ogg.write(page)
+        while (not page.stream_end):
+            page = original_ogg.read_page()
+            page.sequence_number = sequence_number
+            page.bitstream_serial_number = self.__serial_number__
+            sequence_number += 1
+            new_ogg.write(page)
+
+        original_ogg.close()
+        new_ogg.close()
+
+    def set_metadata(self, metadata):
+        """takes a MetaData object and sets this track's metadata
+
+        this metadata includes track name, album name, and so on
+        raises IOError if unable to write the file"""
+
+        from audiotools.vorbiscomment import VorbisComment
+
+        if (metadata is not None):
+            metadata = VorbisComment.converted(metadata)
+
+            old_metadata = self.get_metadata()
+
+            metadata.vendor_string = old_metadata.vendor_string
+
+            #port REPLAYGAIN and ENCODER from old metadata to new metadata
+            for key in [u"REPLAYGAIN_TRACK_GAIN",
+                        u"REPLAYGAIN_TRACK_PEAK",
+                        u"REPLAYGAIN_ALBUM_GAIN",
+                        u"REPLAYGAIN_ALBUM_PEAK",
+                        u"REPLAYGAIN_REFERENCE_LOUDNESS",
+                        u"ENCODER"]:
+                try:
+                    metadata[key] = old_metadata[key]
+                except KeyError:
+                    metadata[key] = []
+
+            self.update_metadata(metadata)
+
+    def get_metadata(self):
+        """returns a MetaData object, or None
+
+        raises IOError if unable to read the file"""
+
+        from cStringIO import StringIO
+        from audiotools.bitstream import BitstreamReader
+        from audiotools.ogg import PacketReader,PageReader
+        from audiotools.vorbiscomment import VorbisComment
+
+        reader = PacketReader(PageReader(open(self.filename, "rb")))
+
+        identification = reader.read_packet()
+        comment = BitstreamReader(StringIO(reader.read_packet()), True)
+
+        if (comment.read_bytes(8) == "OpusTags"):
+            vendor_string = \
+                comment.read_bytes(comment.read(32)).decode('utf-8')
+            comment_strings = [
+                comment.read_bytes(comment.read(32)).decode('utf-8')
+                for i in xrange(comment.read(32))]
+
+            return VorbisComment(comment_strings, vendor_string)
+        else:
+            return None
+
+    def delete_metadata(self):
+        """deletes the track's MetaData
+
+        this removes or unsets tags as necessary in order to remove all data
+        raises IOError if unable to write the file"""
+
+        from audiotools import MetaData
+
+        #the vorbis comment packet is required,
+        #so simply zero out its contents
+        self.set_metadata(MetaData())
 
     @classmethod
     def available(cls, system_binaries):

@@ -98,11 +98,35 @@ class SystemLibraries:
         else:
             return present
 
+    def extra_compile_args(self, library):
+        """returns a list of compile argument strings for populating
+        an extension's 'extra_compile_args' argument
+
+        the list may be empty"""
+
+        try:
+            pkg_config = subprocess.Popen(
+                ["pkg-config", "--cflags", library],
+                stdout=subprocess.PIPE,
+                stderr=open(os.devnull, "wb"))
+
+            pkg_config_stdout = pkg_config.stdout.read().strip()
+
+            if (pkg_config.wait() == 0):
+                #libraries found
+                return pkg_config_stdout.split()
+            else:
+                #library not found
+                return []
+        except OSError:
+            #pkg-config not found
+            return []
+
     def extra_link_args(self, library):
         """returns a list of link argument strings for populating
         an extension's 'extra_link_args' argument
 
-        the set may be empty"""
+        the list may be empty"""
 
         try:
             pkg_config = subprocess.Popen(
@@ -438,6 +462,7 @@ class audiotools_decoders(Extension):
                    'src/decoders.c']
         libraries = set()
         extra_link_args = []
+        extra_compile_args = []
 
         if (system_libraries.present("libmpg123")):
             if (system_libraries.guaranteed_present("libmpg123")):
@@ -475,6 +500,8 @@ class audiotools_decoders(Extension):
             if (system_libraries.guaranteed_present("opusfile")):
                 libraries.add("opusfile")
             else:
+                extra_compile_args.extend(
+                    system_libraries.extra_compile_args("opusfile"))
                 extra_link_args.extend(
                     system_libraries.extra_link_args("opusfile"))
             defines.append(("HAS_OPUS", None))
@@ -500,6 +527,7 @@ class audiotools_decoders(Extension):
                            sources=sources,
                            define_macros=defines,
                            libraries=list(libraries),
+                           extra_compile_args=extra_compile_args,
                            extra_link_args=extra_link_args)
 
     def library_manifest(self):
