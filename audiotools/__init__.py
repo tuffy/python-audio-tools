@@ -3931,10 +3931,10 @@ class AudioFile:
         raises an InvalidFile with an error message if there is
         some problem with the file"""
 
-        total_frames = self.total_frames()
-        decoder = self.to_pcm()
-        pcm_frame_count = 0
         try:
+            total_frames = self.total_frames()
+            decoder = self.to_pcm()
+            pcm_frame_count = 0
             framelist = decoder.read(FRAMELIST_SIZE)
             while (len(framelist) > 0):
                 pcm_frame_count += framelist.frames
@@ -5621,7 +5621,6 @@ from .id3 import ID3v23Comment
 from .id3 import ID3v24Comment
 from .m4a_atoms import M4A_META_Atom
 from .vorbiscomment import VorbisComment
-from .opus import OpusTags
 
 AVAILABLE_TYPES = (FlacAudio,
                    OggFlacAudio,

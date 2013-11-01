@@ -127,12 +127,11 @@ class OpusAudio(VorbisAudio):
         from audiotools import TemporaryFile
         from audiotools.ogg import (PageReader, PacketReader,
                                     PageWriter, packet_to_pages)
-        from audiotools.vorbiscomment import VorbisComment
         from audiotools.bitstream import BitstreamRecorder
 
         if (metadata is None):
             return
-        elif (not isinstance(metadata, OpusTags)):
+        elif (not isinstance(metadata, VorbisComment)):
             from .text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
         elif (not os.access(self.filename, os.W_OK)):
@@ -196,7 +195,7 @@ class OpusAudio(VorbisAudio):
         raises IOError if unable to write the file"""
 
         if (metadata is not None):
-            metadata = OpusTags.converted(metadata)
+            metadata = VorbisComment.converted(metadata)
 
             old_metadata = self.get_metadata()
 
@@ -228,7 +227,6 @@ class OpusAudio(VorbisAudio):
         from audiotools.ogg import PacketReader,PageReader
         from cStringIO import StringIO
         from audiotools.bitstream import BitstreamReader
-        from audiotools.vorbiscomment import VorbisComment
 
         packets = PacketReader(PageReader(open(self.filename, "rb")))
 
@@ -241,7 +239,7 @@ class OpusAudio(VorbisAudio):
             comment_strings = [
                 comment.read_bytes(comment.read(32)).decode('utf-8')
                 for i in xrange(comment.read(32))]
-            return OpusTags(comment_strings, vendor_string)
+            return VorbisComment(comment_strings, vendor_string)
         else:
             return None
 
@@ -313,7 +311,8 @@ class OpusAudio(VorbisAudio):
 
         from audiotools import (BufferedPCMReader,
                                 PCMConverter,
-                                __default_quality__)
+                                __default_quality__,
+                                EncodingError)
         from audiotools.encoders import encode_opus
 
         if (((compression is None) or
@@ -344,8 +343,9 @@ class OpusAudio(VorbisAudio):
                         original_sample_rate=pcmreader.sample_rate)
 
             return cls(filename)
-        except ValueError:
-            raise EncodingError(u"unable to encode file with opusenc")
+        except (ValueError, IOError), err:
+            cls.__unlink__(filename)
+            raise EncodingError(err)
 
     def update_metadata(self, metadata):
         """takes this track's current MetaData object
@@ -362,7 +362,6 @@ class OpusAudio(VorbisAudio):
                                     PageWriter,
                                     packet_to_pages,
                                     packets_to_pages)
-        from audiotools.vorbiscomment import VorbisComment
         from audiotools.bitstream import BitstreamRecorder
 
         if (metadata is None):
@@ -431,8 +430,6 @@ class OpusAudio(VorbisAudio):
         this metadata includes track name, album name, and so on
         raises IOError if unable to write the file"""
 
-        from audiotools.vorbiscomment import VorbisComment
-
         if (metadata is not None):
             metadata = VorbisComment.converted(metadata)
 
@@ -462,7 +459,6 @@ class OpusAudio(VorbisAudio):
         from cStringIO import StringIO
         from audiotools.bitstream import BitstreamReader
         from audiotools.ogg import PacketReader,PageReader
-        from audiotools.vorbiscomment import VorbisComment
 
         reader = PacketReader(PageReader(open(self.filename, "rb")))
 
@@ -527,44 +523,3 @@ class OpusAudio(VorbisAudio):
              "url": "http://www.opus-codec.org/"})
 
         messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)
-
-
-class OpusTags(VorbisComment):
-    @classmethod
-    def converted(cls, metadata):
-        """converts metadata from another class to OpusTags"""
-
-        from . import VERSION
-
-        if (metadata is None):
-            return None
-        elif (isinstance(metadata, OpusTags)):
-            return cls(metadata.comment_strings[:],
-                       metadata.vendor_string)
-        elif (metadata.__class__.__name__ == 'FlacMetaData'):
-            if (metadata.has_block(4)):
-                vorbis_comment = metadata.get_block(4)
-                return cls(vorbis_comment.comment_strings[:],
-                           vorbis_comment.vendor_string)
-            else:
-                return cls([], u"Python Audio Tools %s" % (VERSION))
-        elif (metadata.__class__.__name__ in ('Flac_VORBISCOMMENT',
-                                              'VorbisComment')):
-            return cls(metadata.comment_strings[:],
-                       metadata.vendor_string)
-        else:
-            comment_strings = []
-
-            for (attr, key) in cls.ATTRIBUTE_MAP.items():
-                value = getattr(metadata, attr)
-                if (value is not None):
-                    comment_strings.append(u"%s=%s" % (key, value))
-
-            return cls(comment_strings, u"Python Audio Tools %s" % (VERSION))
-
-    def __repr__(self):
-        return "OpusTags(%s, %s)" % \
-            (repr(self.comment_strings), repr(self.vendor_string))
-
-    def __comment_name__(self):
-        return u"Opus Tags"

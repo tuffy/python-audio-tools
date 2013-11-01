@@ -7032,7 +7032,7 @@ class VorbisCommentTest(MetaDataTest):
 
 class OpusTagsTest(MetaDataTest):
     def setUp(self):
-        self.metadata_class = audiotools.OpusTags
+        self.metadata_class = audiotools.VorbisComment
         self.supported_fields = ["track_name",
                                  "track_number",
                                  "track_total",
@@ -7095,7 +7095,7 @@ class OpusTagsTest(MetaDataTest):
                 #vendor_string not updated with set_metadata()
                 #but can be updated with update_metadata()
                 old_metadata = track.get_metadata()
-                new_metadata = audiotools.OpusTags(
+                new_metadata = audiotools.VorbisComment(
                     comment_strings=old_metadata.comment_strings[:],
                     vendor_string=u"Vendor String")
                 track.set_metadata(new_metadata)
@@ -7108,7 +7108,7 @@ class OpusTagsTest(MetaDataTest):
                 #REPLAYGAIN_* tags not updated with set_metadata()
                 #but can be updated with update_metadata()
                 old_metadata = track.get_metadata()
-                new_metadata = audiotools.OpusTags(
+                new_metadata = audiotools.VorbisComment(
                     comment_strings=old_metadata.comment_strings +
                     [u"REPLAYGAIN_REFERENCE_LOUDNESS=89.0 dB"],
                     vendor_string=old_metadata.vendor_string)
@@ -7126,13 +7126,13 @@ class OpusTagsTest(MetaDataTest):
 
     @METADATA_OPUS
     def test_foreign_field(self):
-        metadata = audiotools.OpusTags([u"TITLE=Track Name",
-                                        u"ALBUM=Album Name",
-                                        u"TRACKNUMBER=1",
-                                        u"TRACKTOTAL=3",
-                                        u"DISCNUMBER=2",
-                                        u"DISCTOTAL=4",
-                                        u"FOO=Bar"], u"")
+        metadata = audiotools.VorbisComment([u"TITLE=Track Name",
+                                             u"ALBUM=Album Name",
+                                             u"TRACKNUMBER=1",
+                                             u"TRACKTOTAL=3",
+                                             u"DISCNUMBER=2",
+                                             u"DISCTOTAL=4",
+                                             u"FOO=Bar"], u"")
         for format in self.supported_formats:
             temp_file = tempfile.NamedTemporaryFile(
                 suffix="." + format.SUFFIX)

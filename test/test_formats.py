@@ -1393,8 +1393,7 @@ class LossyFileTest(AudioFileTest):
                 temp2 = tempfile.NamedTemporaryFile(
                     suffix="." + audio_class.SUFFIX)
                 try:
-                    track2 = track.convert(temp2.name,
-                                           audio_class)
+                    track2 = track.convert(temp2.name, audio_class)
 
                     counter = FrameCounter(2, 16, 44100)
                     audiotools.transfer_framelist_data(track2.to_pcm(),

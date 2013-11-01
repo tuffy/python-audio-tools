@@ -24,16 +24,17 @@
 *******************************************************/
 
 typedef struct {
-PyObject_HEAD
+    PyObject_HEAD
 
-mpg123_handle *handle;
+    mpg123_handle *handle;
 
-int channels;
-long rate;
-int encoding;
+    int channels;
+    long rate;
+    int encoding;
+    int closed;
 
-PyObject *audiotools_pcm;
-a_int *buffer;
+    PyObject *audiotools_pcm;
+    a_int *buffer;
 } decoders_MP3Decoder;
 
 static PyObject*

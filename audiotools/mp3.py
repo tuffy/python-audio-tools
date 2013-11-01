@@ -245,7 +245,8 @@ class MP3Audio(AudioFile):
                        compression)
 
             return MP3Audio(filename)
-        except ValueError, err:
+        except (ValueError, IOError), err:
+            cls.__unlink__(filename)
             raise EncodingError(str(err))
 
     def bits_per_sample(self):
@@ -755,7 +756,8 @@ class MP2Audio(MP3Audio):
                        int(compression))
 
             return MP2Audio(filename)
-        except ValueError, err:
+        except (ValueError, IOError), err:
+            cls.__unlink__(filename)
             raise EncodingError(str(err))
 
     @classmethod

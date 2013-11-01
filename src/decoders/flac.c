@@ -578,116 +578,139 @@ flacdec_read_frame_header(BitstreamReader *bitstream,
     unsigned sample_rate_bits;
     uint8_t crc8 = 0;
 
-    br_add_callback(bitstream, (bs_callback_f)flac_crc8, &crc8);
+    if (!setjmp(*br_try(bitstream))) {
+        br_add_callback(bitstream, (bs_callback_f)flac_crc8, &crc8);
 
-    /*read and verify sync code*/
-    if (bitstream->read(bitstream, 14) != 0x3FFE) {
-        return ERR_INVALID_SYNC_CODE;
+        /*read and verify sync code*/
+        if (bitstream->read(bitstream, 14) != 0x3FFE) {
+            br_pop_callback(bitstream, NULL);
+            br_etry(bitstream);
+            return ERR_INVALID_SYNC_CODE;
+        }
+
+        /*read and verify reserved bit*/
+        if (bitstream->read(bitstream, 1) != 0) {
+            br_pop_callback(bitstream, NULL);
+            br_etry(bitstream);
+            return ERR_INVALID_RESERVED_BIT;
+        }
+
+        header->blocking_strategy = bitstream->read(bitstream, 1);
+
+        block_size_bits = bitstream->read(bitstream, 4);
+        sample_rate_bits = bitstream->read(bitstream, 4);
+        header->channel_assignment = bitstream->read(bitstream, 4);
+        switch (header->channel_assignment) {
+        case 0x8:
+        case 0x9:
+        case 0xA:
+            header->channel_count = 2;
+            break;
+        default:
+            header->channel_count = header->channel_assignment + 1;
+            break;
+        }
+
+        switch (bitstream->read(bitstream, 3)) {
+        case 0:
+            header->bits_per_sample = streaminfo->bits_per_sample;
+            break;
+        case 1:
+            header->bits_per_sample = 8; break;
+        case 2:
+            header->bits_per_sample = 12; break;
+        case 4:
+            header->bits_per_sample = 16; break;
+        case 5:
+            header->bits_per_sample = 20; break;
+        case 6:
+            header->bits_per_sample = 24; break;
+        default:
+            return ERR_INVALID_BITS_PER_SAMPLE;
+        }
+        bitstream->read(bitstream, 1); /*padding*/
+
+        header->frame_number = read_utf8(bitstream);
+
+        switch (block_size_bits) {
+        case 0x0: header->block_size = streaminfo->maximum_block_size;
+            break;
+        case 0x1: header->block_size = 192; break;
+        case 0x2: header->block_size = 576; break;
+        case 0x3: header->block_size = 1152; break;
+        case 0x4: header->block_size = 2304; break;
+        case 0x5: header->block_size = 4608; break;
+        case 0x6: header->block_size = bitstream->read(bitstream, 8) + 1;
+            break;
+        case 0x7: header->block_size = bitstream->read(bitstream, 16) + 1;
+            break;
+        case 0x8: header->block_size = 256; break;
+        case 0x9: header->block_size = 512; break;
+        case 0xA: header->block_size = 1024; break;
+        case 0xB: header->block_size = 2048; break;
+        case 0xC: header->block_size = 4096; break;
+        case 0xD: header->block_size = 8192; break;
+        case 0xE: header->block_size = 16384; break;
+        case 0xF: header->block_size = 32768; break;
+        }
+
+        switch (sample_rate_bits) {
+        case 0x0: header->sample_rate = streaminfo->sample_rate; break;
+        case 0x1: header->sample_rate = 88200; break;
+        case 0x2: header->sample_rate = 176400; break;
+        case 0x3: header->sample_rate = 192000; break;
+        case 0x4: header->sample_rate = 8000; break;
+        case 0x5: header->sample_rate = 16000; break;
+        case 0x6: header->sample_rate = 22050; break;
+        case 0x7: header->sample_rate = 24000; break;
+        case 0x8: header->sample_rate = 32000; break;
+        case 0x9: header->sample_rate = 44100; break;
+        case 0xA: header->sample_rate = 48000; break;
+        case 0xB: header->sample_rate = 96000; break;
+        case 0xC: header->sample_rate = bitstream->read(bitstream, 8) * 1000;
+            break;
+        case 0xD: header->sample_rate = bitstream->read(bitstream, 16);
+            break;
+        case 0xE: header->sample_rate = bitstream->read(bitstream, 16) * 10;
+            break;
+        case 0xF:
+            return ERR_INVALID_SAMPLE_RATE;
+        }
+
+        /*check for valid CRC-8 value*/
+        bitstream->read(bitstream, 8);
+
+        /*no more I/O after this point*/
+        br_pop_callback(bitstream, NULL);
+        br_etry(bitstream);
+
+        if (crc8 != 0)
+            return ERR_INVALID_FRAME_CRC;
+
+        /*Once we've read everything,
+          ensure the values are compatible with STREAMINFO.*/
+
+        if (streaminfo->sample_rate != header->sample_rate) {
+            return ERR_SAMPLE_RATE_MISMATCH;
+        }
+        if (streaminfo->channels != header->channel_count) {
+            return ERR_CHANNEL_COUNT_MISMATCH;
+        }
+        if (streaminfo->bits_per_sample != header->bits_per_sample) {
+            return ERR_BITS_PER_SAMPLE_MISMATCH;
+        }
+        if (header->block_size > streaminfo->maximum_block_size) {
+            return ERR_MAXIMUM_BLOCK_SIZE_EXCEEDED;
+        }
+
+        return OK;
+    } else {
+        /*push read error to calling function*/
+        br_pop_callback(bitstream, NULL);
+        br_etry(bitstream);
+        br_abort(bitstream);
+        return OK;  /*won't get here*/
     }
-
-    /*read and verify reserved bit*/
-    if (bitstream->read(bitstream, 1) != 0) {
-        return ERR_INVALID_RESERVED_BIT;
-    }
-
-    header->blocking_strategy = bitstream->read(bitstream, 1);
-
-    block_size_bits = bitstream->read(bitstream, 4);
-    sample_rate_bits = bitstream->read(bitstream, 4);
-    header->channel_assignment = bitstream->read(bitstream, 4);
-    switch (header->channel_assignment) {
-    case 0x8:
-    case 0x9:
-    case 0xA:
-        header->channel_count = 2;
-        break;
-    default:
-        header->channel_count = header->channel_assignment + 1;
-        break;
-    }
-
-    switch (bitstream->read(bitstream, 3)) {
-    case 0:
-        header->bits_per_sample = streaminfo->bits_per_sample; break;
-    case 1:
-        header->bits_per_sample = 8; break;
-    case 2:
-        header->bits_per_sample = 12; break;
-    case 4:
-        header->bits_per_sample = 16; break;
-    case 5:
-        header->bits_per_sample = 20; break;
-    case 6:
-        header->bits_per_sample = 24; break;
-    default:
-        return ERR_INVALID_BITS_PER_SAMPLE;
-    }
-    bitstream->read(bitstream, 1); /*padding*/
-
-    header->frame_number = read_utf8(bitstream);
-
-    switch (block_size_bits) {
-    case 0x0: header->block_size = streaminfo->maximum_block_size; break;
-    case 0x1: header->block_size = 192; break;
-    case 0x2: header->block_size = 576; break;
-    case 0x3: header->block_size = 1152; break;
-    case 0x4: header->block_size = 2304; break;
-    case 0x5: header->block_size = 4608; break;
-    case 0x6: header->block_size = bitstream->read(bitstream, 8) + 1; break;
-    case 0x7: header->block_size = bitstream->read(bitstream, 16) + 1; break;
-    case 0x8: header->block_size = 256; break;
-    case 0x9: header->block_size = 512; break;
-    case 0xA: header->block_size = 1024; break;
-    case 0xB: header->block_size = 2048; break;
-    case 0xC: header->block_size = 4096; break;
-    case 0xD: header->block_size = 8192; break;
-    case 0xE: header->block_size = 16384; break;
-    case 0xF: header->block_size = 32768; break;
-    }
-
-    switch (sample_rate_bits) {
-    case 0x0: header->sample_rate = streaminfo->sample_rate; break;
-    case 0x1: header->sample_rate = 88200; break;
-    case 0x2: header->sample_rate = 176400; break;
-    case 0x3: header->sample_rate = 192000; break;
-    case 0x4: header->sample_rate = 8000; break;
-    case 0x5: header->sample_rate = 16000; break;
-    case 0x6: header->sample_rate = 22050; break;
-    case 0x7: header->sample_rate = 24000; break;
-    case 0x8: header->sample_rate = 32000; break;
-    case 0x9: header->sample_rate = 44100; break;
-    case 0xA: header->sample_rate = 48000; break;
-    case 0xB: header->sample_rate = 96000; break;
-    case 0xC: header->sample_rate = bitstream->read(bitstream, 8) * 1000; break;
-    case 0xD: header->sample_rate = bitstream->read(bitstream, 16); break;
-    case 0xE: header->sample_rate = bitstream->read(bitstream, 16) * 10; break;
-    case 0xF:
-        return ERR_INVALID_SAMPLE_RATE;
-    }
-
-    /*check for valid CRC-8 value*/
-    bitstream->read(bitstream, 8);
-    br_pop_callback(bitstream, NULL);
-    if (crc8 != 0)
-        return ERR_INVALID_FRAME_CRC;
-
-    /*Once we've read everything,
-      ensure the values are compatible with STREAMINFO.*/
-
-    if (streaminfo->sample_rate != header->sample_rate) {
-        return ERR_SAMPLE_RATE_MISMATCH;
-    }
-    if (streaminfo->channels != header->channel_count) {
-        return ERR_CHANNEL_COUNT_MISMATCH;
-    }
-    if (streaminfo->bits_per_sample != header->bits_per_sample) {
-        return ERR_BITS_PER_SAMPLE_MISMATCH;
-    }
-    if (header->block_size > streaminfo->maximum_block_size) {
-        return ERR_MAXIMUM_BLOCK_SIZE_EXCEEDED;
-    }
-
-    return OK;
 }
 
 flac_status

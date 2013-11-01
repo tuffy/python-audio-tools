@@ -28,6 +28,7 @@ typedef struct {
     OggOpusFile *opus_file;
 
     int channel_count;
+    int closed;
     aa_int *channels;
     PyObject *audiotools_pcm;
 } decoders_OpusDecoder;

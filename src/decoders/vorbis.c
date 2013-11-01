@@ -38,6 +38,7 @@ VorbisDecoder_init(decoders_VorbisDecoder *self, PyObject *args, PyObject *kwds)
     self->open_ok = 0;
     self->channel_count = 0;
     self->rate = 0;
+    self->closed = 0;
     self->channels = aa_int_new();
     self->audiotools_pcm = NULL;
 
@@ -155,6 +156,11 @@ VorbisDecoder_read(decoders_VorbisDecoder *self, PyObject *args) {
     const int sample_min = -adjustment;
     const int sample_max = adjustment - 1;
 
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "stream is closed");
+        return NULL;
+    }
+
     samples_read = ov_read_float(&(self->vorbisfile),
                                  &pcm_channels,
                                  4096,
@@ -241,10 +247,18 @@ VorbisDecoder_read(decoders_VorbisDecoder *self, PyObject *args) {
             break;
         }
 
-        /*return new FrameList object*/
-        return aa_int_to_FrameList(self->audiotools_pcm,
-                                   channels,
-                                   BITS_PER_SAMPLE);
+
+        if ((samples_read == 0) && (self->vorbisfile.os.e_o_s == 0)) {
+            /*EOF encountered without EOF being marked in stream*/
+            PyErr_SetString(PyExc_IOError,
+                            "I/O error reading from Ogg stream");
+            return NULL;
+        } else {
+            /*return new FrameList object*/
+            return aa_int_to_FrameList(self->audiotools_pcm,
+                                       channels,
+                                       BITS_PER_SAMPLE);
+        }
     } else {
         switch (samples_read) {
         case OV_HOLE:
@@ -265,7 +279,7 @@ VorbisDecoder_read(decoders_VorbisDecoder *self, PyObject *args) {
 
 static PyObject*
 VorbisDecoder_close(decoders_VorbisDecoder *self, PyObject *args) {
-    /*FIXME*/
+    self->closed = 1;
 
     Py_INCREF(Py_None);
     return Py_None;

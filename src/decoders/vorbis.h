@@ -30,6 +30,7 @@ typedef struct {
 
     int channel_count;
     long rate;
+    int closed;
 
     aa_int* channels;
     PyObject* audiotools_pcm;

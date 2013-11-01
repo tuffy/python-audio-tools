@@ -1715,7 +1715,7 @@ br_call_callbacks(BitstreamReader *bs, uint8_t byte)
 }
 
 void
-br_pop_callback(BitstreamReader *bs, struct bs_callback *callback)
+__br_pop_callback(BitstreamReader *bs, struct bs_callback *callback)
 {
     struct bs_callback *c_node = bs->callbacks;
     if (c_node != NULL) {
@@ -1727,8 +1727,6 @@ br_pop_callback(BitstreamReader *bs, struct bs_callback *callback)
         bs->callbacks = c_node->next;
         c_node->next = bs->callbacks_used;
         bs->callbacks_used = c_node;
-    } else {
-        fprintf(stderr, "Warning: no callbacks available to pop\n");
     }
 }
 

@@ -40,6 +40,7 @@ OpusDecoder_init(decoders_OpusDecoder *self,
     self->opus_file = NULL;
     self->audiotools_pcm = NULL;
     self->channels = NULL;
+    self->closed = 0;
 
     if (!PyArg_ParseTuple(args, "s", &filename))
         return -1;
@@ -159,6 +160,11 @@ OpusDecoder_read(decoders_OpusDecoder* self, PyObject *args)
     static opus_int16 pcm[BUF_SIZE];
     int pcm_frames_read;
 
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "stream is closed");
+        return NULL;
+    }
+
     if ((pcm_frames_read = op_read(self->opus_file,
                                    pcm,
                                    BUF_SIZE,
@@ -255,7 +261,7 @@ OpusDecoder_read(decoders_OpusDecoder* self, PyObject *args)
 static PyObject*
 OpusDecoder_close(decoders_OpusDecoder* self, PyObject *args)
 {
-    /*FIXME*/
+    self->closed = 1;
     Py_INCREF(Py_None);
     return Py_None;
 }

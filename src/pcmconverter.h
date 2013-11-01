@@ -208,17 +208,55 @@ PyTypeObject pcmconverter_DownmixerType = {
     Downmixer_new,             /* tp_new */
 };
 
+struct float_buffer {
+    float *_;
+    unsigned frames;
+    unsigned max_frames;
+    unsigned channels;
+    unsigned quantization;
+    int min_sample;
+    int max_sample;
+};
+
+static struct float_buffer*
+fb_init(unsigned channels,
+        unsigned bits_per_sample,
+        unsigned max_frames);
+
+static void
+fb_free(struct float_buffer *buffer);
+
+/*amount of frames one can place in the buffer's available space*/
+static unsigned
+fb_available_frames(const struct float_buffer *buffer);
+
+/*increases the frames the buffer can hold by the given amount*/
+static void
+fb_increase_frame_size(struct float_buffer *buffer, unsigned frames);
+
+/*converts each channel in "samples" to floats and appends them to buffer*/
+static void
+fb_append_samples(struct float_buffer *buffer, const aa_int *samples);
+
+/*removes the given number of frames from the start of the buffer*/
+static void
+fb_pop_frames(struct float_buffer *buffer, unsigned frames);
+
+/*quantizes frames in buffer and appends them to samples*/
+static void
+fb_export_frames(struct float_buffer *buffer, a_int *samples);
+
 typedef struct {
     PyObject_HEAD
 
     struct pcmreader_s* pcmreader;
-    aa_int* input_channels;
-    SRC_STATE *src_state;
-    double ratio;
-    unsigned unprocessed_frame_count;
-    a_double* unprocessed_samples;
-    a_int* processed_samples;
-    int sample_rate;
+    aa_int *pcmreader_channels;      /*a given read() call's input buffer*/
+    SRC_STATE *src_state;            /*libsamplerate's internal state*/
+    double ratio;                    /*the conversion ratio*/
+    struct float_buffer *in_buffer;  /*input floating point samples*/
+    struct float_buffer *out_buffer; /*output floating point samples*/
+    a_int *output_framelist;         /*a FrameList output buffer*/
+    int sample_rate;                 /*the output sample rate*/
     PyObject* audiotools_pcm;
 } pcmconverter_Resampler;
 

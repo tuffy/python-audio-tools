@@ -655,8 +655,10 @@ br_call_callbacks(BitstreamReader *bs, uint8_t byte);
   unchecksummed_value = bs->read(bs, 16);    //read a value
   br_push_callback(reader, &saved_callback); //restore saved callback
 */
+#define br_pop_callback(bs, callback) (((bs)->callbacks != NULL) ? __br_pop_callback((bs), (callback)) : fprintf(stderr, "*** Warning: %s %d: no callbacks to pop\n", __FILE__, __LINE__))
+
 void
-br_pop_callback(BitstreamReader *bs, struct bs_callback *callback);
+__br_pop_callback(BitstreamReader *bs, struct bs_callback *callback);
 
 /*pushes the given callback back onto the callback stack
   note that the data from "callback" is copied onto a new internal struct;

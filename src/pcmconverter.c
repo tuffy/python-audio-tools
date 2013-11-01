@@ -354,141 +354,7 @@ Downmixer_close(pcmconverter_Downmixer *self, PyObject *args)
  Resampler for changing a PCMReader's sample rate
 *******************************************************/
 
-static PyObject*
-Resampler_sample_rate(pcmconverter_Resampler *self, void *closure)
-{
-    return Py_BuildValue("i", self->sample_rate);
-}
-
-static PyObject*
-Resampler_bits_per_sample(pcmconverter_Resampler *self, void *closure)
-{
-    return Py_BuildValue("I", self->pcmreader->bits_per_sample);
-}
-
-static PyObject*
-Resampler_channels(pcmconverter_Resampler *self, void *closure)
-{
-    return Py_BuildValue("I", self->pcmreader->channels);
-}
-
-static PyObject*
-Resampler_channel_mask(pcmconverter_Resampler *self, void *closure)
-{
-    return Py_BuildValue("I", self->pcmreader->channel_mask);
-}
-
-#define OUTPUT_SAMPLES_LENGTH 0x100000
-
-static PyObject*
-Resampler_read(pcmconverter_Resampler *self, PyObject *args)
-{
-    /*read FrameList from PCMReader*/
-    if (self->pcmreader->read(self->pcmreader,
-                              4096,
-                              self->input_channels)) {
-        /*error reading from pcmreader*/
-        return NULL;
-    } else {
-        const unsigned input_frame_count = self->input_channels->_[0]->len;
-        const unsigned channels = self->pcmreader->channels;
-        const unsigned quantization =
-            (1 << (self->pcmreader->bits_per_sample - 1));
-        const int max_sample =
-            (1 << (self->pcmreader->bits_per_sample - 1)) - 1;
-        const int min_sample =
-            -(1 << (self->pcmreader->bits_per_sample - 1));
-        SRC_DATA src_data;
-        int processing_error;
-        static float data_out[OUTPUT_SAMPLES_LENGTH];
-        unsigned s = 0;
-        unsigned c;
-        unsigned i;
-        PyThreadState *thread_state = PyEval_SaveThread();
-
-        /*populate SRC_DATA from unprocessed samples and FrameList*/
-        src_data.input_frames = (self->unprocessed_frame_count +
-                                 input_frame_count);
-        src_data.data_in = malloc(src_data.input_frames *
-                                  self->pcmreader->channels *
-                                  sizeof(float));
-        src_data.output_frames = (OUTPUT_SAMPLES_LENGTH /
-                                  self->pcmreader->channels);
-        src_data.data_out = data_out;
-        src_data.end_of_input = (input_frame_count == 0);
-        src_data.src_ratio = self->ratio;
-
-        /*first append the unprocessed samples*/
-        for (i = 0; i < self->unprocessed_samples->len; i++) {
-            src_data.data_in[s++] = (float)(self->unprocessed_samples->_[i]);
-        }
-        /*then append the new input samples*/
-        for (i = 0; i < input_frame_count; i++) {
-            for (c = 0; c < channels; c++)
-                src_data.data_in[s++] =
-                    ((float)self->input_channels->_[c]->_[i] /
-                     quantization);
-        }
-
-        /*run src_process() on self->SRC_STATE and SRC_DATA*/
-        if ((processing_error = src_process(self->src_state, &src_data)) != 0) {
-            /*some sort of processing error raises ValueError*/
-            PyEval_RestoreThread(thread_state);
-            PyErr_SetString(PyExc_ValueError,
-                            src_strerror(processing_error));
-            free(src_data.data_in);
-            return NULL;
-        } else {
-            const unsigned processed_sample_count =
-                (unsigned)(src_data.output_frames_gen *
-                           self->pcmreader->channels);
-            a_double* unprocessed_samples = self->unprocessed_samples;
-            a_int* processed_samples = self->processed_samples;
-            int i;
-
-            /*save unprocessed samples for next run*/
-            self->unprocessed_frame_count = (unsigned)(
-                src_data.input_frames -
-                src_data.input_frames_used);
-            unprocessed_samples->reset(unprocessed_samples);
-            unprocessed_samples->resize(unprocessed_samples,
-                                        self->unprocessed_frame_count *
-                                        self->pcmreader->channels);;
-            for (i = (unsigned)(src_data.input_frames_used *
-                                self->pcmreader->channels);
-                 i < (src_data.input_frames * self->pcmreader->channels);
-                 i++) {
-                a_append(unprocessed_samples, src_data.data_in[i]);
-            }
-
-            /*convert processed samples to integer array*/
-            processed_samples->reset(processed_samples);
-            processed_samples->resize(processed_samples,
-                                      processed_sample_count);
-            for (i = 0; i < processed_sample_count; i++) {
-                const int sample = (int)(src_data.data_out[i] * quantization);
-                a_append(processed_samples,
-                         MAX(MIN(sample, max_sample), min_sample));
-            }
-
-            /*return FrameList*/
-            free(src_data.data_in);
-            PyEval_RestoreThread(thread_state);
-            return a_int_to_FrameList(self->audiotools_pcm,
-                                      processed_samples,
-                                      self->pcmreader->channels,
-                                      self->pcmreader->bits_per_sample);
-        }
-    }
-}
-
-static PyObject*
-Resampler_close(pcmconverter_Resampler *self, PyObject *args)
-{
-    self->pcmreader->close(self->pcmreader);
-    Py_INCREF(Py_None);
-    return Py_None;
-}
+#define RESAMPLER_BLOCK_SIZE 4096
 
 static PyObject*
 Resampler_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
@@ -500,29 +366,17 @@ Resampler_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     return (PyObject *)self;
 }
 
-void
-Resampler_dealloc(pcmconverter_Resampler *self)
-{
-    if (self->pcmreader != NULL)
-        self->pcmreader->del(self->pcmreader);
-    self->input_channels->del(self->input_channels);
-    src_delete(self->src_state);
-    self->unprocessed_samples->del(self->unprocessed_samples);
-    self->processed_samples->del(self->processed_samples);
-    Py_XDECREF(self->audiotools_pcm);
-
-    self->ob_type->tp_free((PyObject*)self);
-}
-
 int
 Resampler_init(pcmconverter_Resampler *self, PyObject *args, PyObject *kwds)
 {
     int error;
 
     self->pcmreader = NULL;
-    self->input_channels = aa_int_new();
-    self->unprocessed_samples = a_double_new();
-    self->processed_samples = a_int_new();
+    self->pcmreader_channels = aa_int_new();
+    self->src_state = NULL;
+    self->in_buffer = NULL;
+    self->out_buffer = NULL;
+    self->output_framelist = a_int_new();
     self->audiotools_pcm = NULL;
 
     if (!PyArg_ParseTuple(args, "O&i", pcmreader_converter,
@@ -530,20 +384,248 @@ Resampler_init(pcmconverter_Resampler *self, PyObject *args, PyObject *kwds)
                           &(self->sample_rate)))
         return -1;
 
+    /*basic sanity checking*/
     if (self->sample_rate <= 0) {
         PyErr_SetString(PyExc_ValueError,
                         "new sample rate must be positive");
         return -1;
     }
 
-    self->src_state = src_new(0, self->pcmreader->channels, &error);
+    /*allocate fresh resampler state*/
+    self->src_state = src_new(SRC_SINC_BEST_QUALITY,
+                              self->pcmreader->channels,
+                              &error);
+
+    /*calculate ratio based on new and old sample rates*/
     self->ratio = ((double)self->sample_rate /
                    (double)self->pcmreader->sample_rate);
+
+    /*allocate input and output buffers*/
+    self->in_buffer = fb_init(
+        self->pcmreader->channels,
+        self->pcmreader->bits_per_sample,
+        RESAMPLER_BLOCK_SIZE);
+    self->out_buffer = fb_init(
+        self->pcmreader->channels,
+        self->pcmreader->bits_per_sample,
+        (unsigned)(ceil(RESAMPLER_BLOCK_SIZE * self->ratio)));
 
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
     return 0;
+}
+
+void
+Resampler_dealloc(pcmconverter_Resampler *self)
+{
+    if (self->pcmreader != NULL)
+        self->pcmreader->del(self->pcmreader);
+
+    self->pcmreader_channels->del(self->pcmreader_channels);
+    if (self->src_state != NULL)
+        src_delete(self->src_state);
+    if (self->in_buffer != NULL)
+        fb_free(self->in_buffer);
+    if (self->out_buffer != NULL)
+        fb_free(self->out_buffer);
+    self->output_framelist->del(self->output_framelist);
+    Py_XDECREF(self->audiotools_pcm);
+
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static PyObject*
+Resampler_read(pcmconverter_Resampler *self, PyObject *args)
+{
+    int end_of_input;
+
+    do {
+        SRC_DATA src_data;
+        int process_result;
+
+        /*read integer samples from PCMReader*/
+        if (self->pcmreader->read(self->pcmreader,
+                                  RESAMPLER_BLOCK_SIZE,
+                                  self->pcmreader_channels)) {
+            /*propagate PCMReader error*/
+            return NULL;
+        }
+
+        fb_append_samples(self->in_buffer, self->pcmreader_channels);
+        end_of_input = (self->in_buffer->frames == 0);
+
+        /*run conversion on input float buffer and get output float buffer*/
+        src_data.data_in = self->in_buffer->_;
+        src_data.input_frames = self->in_buffer->frames;
+        src_data.data_out = self->out_buffer->_;
+        src_data.output_frames = self->out_buffer->max_frames;
+        src_data.src_ratio = self->ratio;
+        src_data.end_of_input = end_of_input;
+
+        if ((process_result = src_process(self->src_state, &src_data)) != 0) {
+            PyErr_SetString(PyExc_ValueError, src_strerror(process_result));
+            return NULL;
+        }
+
+        /*update buffer sizes based on conversion results*/
+        fb_pop_frames(self->in_buffer, (unsigned)src_data.input_frames_used);
+
+        if (self->in_buffer->frames > 0) {
+            /*output buffer too small to hold all of input,
+              so expand output buffer to double its current size*/
+            fb_increase_frame_size(self->out_buffer,
+                                   self->out_buffer->max_frames);
+        }
+
+        self->out_buffer->frames += src_data.output_frames_gen;
+
+        /*read as necessary until there's some output or no more input*/
+    } while ((self->out_buffer->frames == 0) && (!end_of_input));
+
+    /*convert out buffer to framelist and deduct outputted frames*/
+    self->output_framelist->reset(self->output_framelist);
+    fb_export_frames(self->out_buffer, self->output_framelist);
+    self->out_buffer->frames = 0;
+
+    return a_int_to_FrameList(self->audiotools_pcm,
+                              self->output_framelist,
+                              self->pcmreader->channels,
+                              self->pcmreader->bits_per_sample);
+}
+
+static PyObject*
+Resampler_close(pcmconverter_Resampler *self, PyObject *args)
+{
+    self->pcmreader->close(self->pcmreader);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+Resampler_sample_rate(pcmconverter_Resampler *self, void *closure)
+{
+    const int sample_rate = self->sample_rate;
+    return Py_BuildValue("i", sample_rate);
+}
+
+static PyObject*
+Resampler_bits_per_sample(pcmconverter_Resampler *self, void *closure)
+{
+    const int bits_per_sample = self->pcmreader->bits_per_sample;
+    return Py_BuildValue("i", bits_per_sample);
+}
+
+static PyObject*
+Resampler_channels(pcmconverter_Resampler *self, void *closure)
+{
+    const int channels = self->pcmreader->channels;
+    return Py_BuildValue("i", channels);
+}
+
+static PyObject*
+Resampler_channel_mask(pcmconverter_Resampler *self, void *closure)
+{
+    const int channel_mask = self->pcmreader->channel_mask;
+    return Py_BuildValue("i", channel_mask);
+}
+
+static struct float_buffer*
+fb_init(unsigned channels,
+        unsigned bits_per_sample,
+        unsigned max_frames)
+{
+    struct float_buffer *buffer = malloc(sizeof(struct float_buffer));
+
+    buffer->_ = malloc(sizeof(float) * max_frames * channels);
+    buffer->frames = 0;
+    buffer->max_frames = max_frames;
+    buffer->channels = channels;
+    buffer->quantization = (1 << (bits_per_sample - 1));
+    buffer->min_sample = -(1 << (bits_per_sample - 1));
+    buffer->max_sample = (1 << (bits_per_sample - 1)) - 1;
+
+    return buffer;
+}
+
+static void
+fb_free(struct float_buffer *buffer)
+{
+    free(buffer->_);
+    free(buffer);
+}
+
+static unsigned
+fb_available_frames(const struct float_buffer *buffer)
+{
+    return buffer->max_frames - buffer->frames;
+}
+
+static void
+fb_increase_frame_size(struct float_buffer *buffer, unsigned frames)
+{
+    buffer->max_frames += frames;
+    buffer->_ = realloc(buffer->_,
+                        sizeof(float) * buffer->max_frames * buffer->channels);
+}
+
+static void
+fb_append_samples(struct float_buffer *buffer, const aa_int *samples)
+{
+    const unsigned added_frames = samples->_[0]->len;
+    const unsigned quantization = buffer->quantization;
+    unsigned c;
+
+    assert(samples->len == buffer->channels);
+
+    /*allocate more space in buffer if needed*/
+    if (added_frames > fb_available_frames(buffer)) {
+        fb_increase_frame_size(buffer,
+                               added_frames - fb_available_frames(buffer));
+    }
+
+    /*quantize samples and append them to buffer*/
+    for (c = 0; c < samples->len; c++) {
+        const a_int *channel = samples->_[c];
+        unsigned i;
+        for (i = 0; i < channel->len; i++) {
+            const int sample = channel->_[i];
+            buffer->_[(buffer->frames + i) * buffer->channels + c] =
+                (float)sample / quantization;
+        }
+    }
+
+    /*update buffer length indicator*/
+    buffer->frames += added_frames;
+}
+
+static void
+fb_pop_frames(struct float_buffer *buffer, unsigned frames)
+{
+    assert(frames <= buffer->frames);
+
+    /*shift samples down based on frames and channels*/
+    memmove(buffer->_,
+            buffer->_ + (frames * buffer->channels),
+            (buffer->frames - frames) * buffer->channels * sizeof(float));
+
+    /*update buffer size*/
+    buffer->frames -= frames;
+}
+
+static void
+fb_export_frames(struct float_buffer *buffer, a_int *samples) {
+    const unsigned buffer_samples = buffer->frames * buffer->channels;
+    const unsigned quantization = buffer->quantization;
+    const int min_sample = buffer->min_sample;
+    const int max_sample = buffer->max_sample;
+    unsigned i;
+
+    samples->resize_for(samples, buffer_samples);
+    for (i = 0; i < buffer_samples; i++) {
+        const int sample = (int)(buffer->_[i] * quantization);
+        a_append(samples, MAX(MIN(sample, max_sample), min_sample));
+    }
 }
 
 static int

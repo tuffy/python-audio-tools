@@ -206,7 +206,15 @@ class VorbisAudio(AudioFile):
 
         from audiotools.decoders import VorbisDecoder
 
-        return VorbisDecoder(self.filename)
+        try:
+            return VorbisDecoder(self.filename)
+        except ValueError, err:
+            from audiotools import PCMReaderError
+            return PCMReaderError(str(err),
+                                  self.sample_rate(),
+                                  self.channels(),
+                                  int(self.channel_mask()),
+                                  self.bits_per_sample())
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
@@ -220,7 +228,9 @@ class VorbisAudio(AudioFile):
         at the given filename with the specified compression level
         and returns a new VorbisAudio object"""
 
-        from audiotools import (BufferedPCMReader, __default_quality__)
+        from audiotools import (BufferedPCMReader,
+                                __default_quality__,
+                                EncodingError)
         from audiotools.encoders import encode_vorbis
 
         if (((compression is None) or
@@ -245,7 +255,8 @@ class VorbisAudio(AudioFile):
                           BufferedPCMReader(pcmreader),
                           float(compression) / 10)
             return VorbisAudio(filename)
-        except ValueError, err:
+        except (ValueError, IOError), err:
+            cls.__unlink__(filename)
             raise EncodingError(str(err))
 
 

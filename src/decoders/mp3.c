@@ -42,6 +42,7 @@ MP3Decoder_init(decoders_MP3Decoder *self,
     self->channels = 0;
     self->rate = 0;
     self->encoding = 0;
+    self->closed = 0;
 
     self->audiotools_pcm = NULL;
     self->buffer = NULL;
@@ -132,10 +133,14 @@ MP3Decoder_channel_mask(decoders_MP3Decoder *self, void *closure)
 static PyObject*
 MP3Decoder_read(decoders_MP3Decoder* self, PyObject *args)
 {
-
     static int16_t buffer[BUFFER_SIZE];
     size_t buffer_size;
     size_t i;
+
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "stream is closed");
+        return NULL;
+    }
 
     /*perform mpg123_read() to output buffer*/
     switch (mpg123_read(self->handle,
@@ -170,6 +175,7 @@ MP3Decoder_read(decoders_MP3Decoder* self, PyObject *args)
 static PyObject*
 MP3Decoder_close(decoders_MP3Decoder* self, PyObject *args)
 {
+    self->closed = 1;
     Py_INCREF(Py_None);
     return Py_None;
 }
