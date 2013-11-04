@@ -2,6 +2,7 @@
 #include "../array.h"
 #include "../bitstream.h"
 #include <opus/opus.h>
+#include <opus_multistream.h>
 #include <ogg/ogg.h>
 #include <time.h>
 #include <stdlib.h>
@@ -135,11 +136,19 @@ static result_t
 encode_opus_file(char *filename, pcmreader *pcmreader,
                  int quality, unsigned original_sample_rate)
 {
+    const int multichannel = (pcmreader->channels > 2);
+    const unsigned channel_mapping = (pcmreader->channels > 8 ? 255 :
+                                      pcmreader->channels > 2);
+    int stream_count;
+    int coupled_stream_count;
+    unsigned char stream_map[255];
+
     result_t result = ENCODE_OK;
     FILE *output_file = NULL;
     ogg_stream_state ogg_stream;
     ogg_page ogg_page;
     OpusEncoder *opus_encoder = NULL;
+    OpusMSEncoder *opus_ms_encoder = NULL;
     int error;
     aa_int *samples = NULL;
     opus_int16 *opus_samples = NULL;
@@ -153,16 +162,39 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
         return ERR_IOERROR;
     }
 
-    if ((opus_encoder = opus_encoder_create(48000,
-                                            pcmreader->channels,
-                                            OPUS_APPLICATION_AUDIO,
-                                            &error)) == NULL) {
-        fclose(output_file);
-        return ERR_ENCODER_INIT;
+    if (!multichannel) {
+        if ((opus_encoder = opus_encoder_create(48000,
+                                                pcmreader->channels,
+                                                OPUS_APPLICATION_AUDIO,
+                                                &error)) == NULL) {
+            fclose(output_file);
+            return ERR_ENCODER_INIT;
+        }
+
+        opus_encoder_ctl(opus_encoder, OPUS_SET_COMPLEXITY(quality));
+        opus_encoder_ctl(opus_encoder, OPUS_GET_LOOKAHEAD(&preskip));
+    } else {
+
+        if ((opus_ms_encoder =
+             opus_multistream_surround_encoder_create(
+                 48000,
+                 pcmreader->channels,
+                 channel_mapping,
+                 &stream_count,
+                 &coupled_stream_count,
+                 stream_map,
+                 OPUS_APPLICATION_AUDIO,
+                 &error)) == NULL) {
+            fclose(output_file);
+            return ERR_ENCODER_INIT;
+        }
+
+        opus_multistream_encoder_ctl(opus_ms_encoder,
+                                     OPUS_SET_COMPLEXITY(quality));
+        opus_multistream_encoder_ctl(opus_ms_encoder,
+                                     OPUS_GET_LOOKAHEAD(&preskip));
     }
 
-    opus_encoder_ctl(opus_encoder, OPUS_SET_COMPLEXITY(quality));
-    opus_encoder_ctl(opus_encoder, OPUS_GET_LOOKAHEAD(&preskip));
 
     srand((unsigned)time(NULL));
     ogg_stream_init(&ogg_stream, rand());
@@ -189,11 +221,13 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
         header->write(header, 16, preskip);
         header->write(header, 32, original_sample_rate);
         header->write(header, 16, 0);      /*output gain*/
-        /*mapping family*/
-        if (pcmreader->channels > 8) {
-            header->write(header, 8, 255);
-        } else {
-            header->write(header, 8, pcmreader->channels > 2);
+        header->write(header, 8, channel_mapping);
+        if (channel_mapping != 0) {
+            header->write(header, 8, stream_count);
+            header->write(header, 8, coupled_stream_count);
+            for (i = 0; i < pcmreader->channels; i++) {
+                header->write(header, 8, stream_map[i]);
+            }
         }
 
         packet_head.packet = BUF_WINDOW_START(header->output.buffer);
@@ -285,11 +319,19 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
         }
 
         /*call opus_encode on interleaved buffer to get next packet*/
-        encoded_size = opus_encode(opus_encoder,
-                                   opus_samples,
-                                   samples->_[0]->len,
-                                   opus_frame,
-                                   OPUS_FRAME_LEN);
+        if (!multichannel) {
+            encoded_size = opus_encode(opus_encoder,
+                                       opus_samples,
+                                       samples->_[0]->len,
+                                       opus_frame,
+                                       OPUS_FRAME_LEN);
+        } else {
+            encoded_size = opus_multistream_encode(opus_ms_encoder,
+                                                   opus_samples,
+                                                   samples->_[0]->len,
+                                                   opus_frame,
+                                                   OPUS_FRAME_LEN);
+        }
 
         /*get next FrameList to encode*/
         if (pcmreader->read(pcmreader, BLOCK_SIZE, samples)) {
@@ -327,7 +369,11 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
 cleanup:
     fclose(output_file);
     ogg_stream_clear(&ogg_stream);
-    opus_encoder_destroy(opus_encoder);
+    if (!multichannel) {
+        opus_encoder_destroy(opus_encoder);
+    } else {
+        opus_multistream_encoder_destroy(opus_ms_encoder);
+    }
     samples->del(samples);
     free(opus_samples);
     return result;

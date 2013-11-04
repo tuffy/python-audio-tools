@@ -555,6 +555,7 @@ class audiotools_encoders(Extension):
                    'src/encoders.c']
         libraries = set()
         extra_link_args = []
+        extra_compile_args = []
 
         if (system_libraries.present("mp3lame")):
             if (system_libraries.guaranteed_present("mp3lame")):
@@ -613,6 +614,8 @@ class audiotools_encoders(Extension):
             if (system_libraries.guaranteed_present("opus")):
                 libraries.add("opus")
             else:
+                extra_compile_args.extend(
+                    system_libraries.extra_compile_args("opus"))
                 extra_link_args.extend(
                     system_libraries.extra_link_args("opus"))
             defines.append(("HAS_OPUS", None))
@@ -630,6 +633,7 @@ class audiotools_encoders(Extension):
                            sources=sources,
                            define_macros=defines,
                            libraries=list(libraries),
+                           extra_compile_args=extra_compile_args,
                            extra_link_args=extra_link_args)
 
     def library_manifest(self):

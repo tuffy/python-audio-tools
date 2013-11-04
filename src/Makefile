@@ -69,7 +69,7 @@ vorbisenc: $(OBJS) encoders/vorbis.c
 	$(CC) $(FLAGS) -o vorbisenc encoders/vorbis.c $(OBJS) -DSTANDALONE -lvorbis -logg -lvorbisenc
 
 opusenc: $(OBJS) encoders/opus.c
-	$(CC) $(FLAGS) -o opusenc encoders/opus.c $(OBJS) -DSTANDALONE -lopus -logg
+	$(CC) $(FLAGS) -o opusenc encoders/opus.c $(OBJS) -DSTANDALONE `pkg-config --cflags --libs opus ogg`
 
 huffman: huffman.c huffman.h parson.o
 	$(CC) $(FLAGS) -o huffman huffman.c parson.o -DSTANDALONE -DEXECUTABLE
