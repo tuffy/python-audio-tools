@@ -10,6 +10,9 @@ install: .FORCE
 check: .FORCE
 	cd test && $(PYTHON) test.py
 
+probe:
+	$(PYTHON) setup.py build_ext --dry-run
+
 clean: .FORCE
 	rm -rfv build
 	rm -fv audiotools/*.pyc

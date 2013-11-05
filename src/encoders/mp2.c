@@ -103,9 +103,21 @@ encoders_encode_mp2(PyObject *dummy, PyObject *args, PyObject *keywds)
     while (samples->_[0]->len > 0) {
         unsigned i;
 
-        for (i = 0; i < samples->_[0]->len; i++) {
-            buffer_l[i] = (short int)samples->_[0]->_[i];
-            buffer_r[i] = (short int)samples->_[1]->_[i];
+        if (samples->len == 2) {
+            for (i = 0; i < samples->_[0]->len; i++) {
+                buffer_l[i] = (short int)samples->_[0]->_[i];
+                buffer_r[i] = (short int)samples->_[1]->_[i];
+            }
+        } else if (samples->len == 1) {
+            for (i = 0; i < samples->_[0]->len; i++) {
+                buffer_l[i] = (short int)samples->_[0]->_[i];
+                buffer_r[i] = (short int)samples->_[0]->_[i];
+            }
+        } else {
+            PyErr_SetString(
+                PyExc_ValueError,
+                "invalid number of channels in framelist");
+            goto error;
         }
 
         if ((to_output = twolame_encode_buffer(twolame_opts,
