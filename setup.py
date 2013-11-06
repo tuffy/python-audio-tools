@@ -466,7 +466,7 @@ class audiotools_decoders(Extension):
 
         if (system_libraries.present("libmpg123")):
             if (system_libraries.guaranteed_present("libmpg123")):
-                libraries.add("libmpg123")
+                libraries.add("mpg123")
             else:
                 extra_link_args.extend(
                     system_libraries.extra_link_args("libmpg123"))

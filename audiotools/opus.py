@@ -488,6 +488,40 @@ class OpusAudio(VorbisAudio):
         #so simply zero out its contents
         self.set_metadata(MetaData())
 
+    def verify(self, progress=None):
+        """verifies the current file for correctness
+
+        returns True if the file is okay
+        raises an InvalidFile with an error message if there is
+        some problem with the file"""
+
+        #Checking for a truncated Ogg stream typically involves
+        #verifying that the "end of stream" flag is set on the last
+        #Ogg page in the stream in the event that one or more whole
+        #pages is lost.  But since the OpusFile decoder doesn't perform
+        #this check and doesn't provide any access to its internal
+        #Ogg decoder (unlike Vorbis), we'll perform that check externally.
+        #
+        #And since it's a fast check, we won't bother to update progress.
+
+        from audiotools.ogg import PageReader
+        import os.path
+
+        try:
+            reader = PageReader(open(self.filename, "rb"))
+        except IOError, err:
+            raise InvalidOpus(str(err))
+
+        try:
+            page = reader.read()
+            while (not page.stream_end):
+                page = reader.read()
+            reader.close()
+        except (IOError, ValueError), err:
+            raise InvalidOpus(str(err))
+
+        return AudioFile.verify(self, progress)
+
     @classmethod
     def available(cls, system_binaries):
         """returns True if all necessary compenents are available
