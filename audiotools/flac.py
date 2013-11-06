@@ -1271,10 +1271,15 @@ class FlacAudio(WaveContainer, AiffContainer):
         try:
             metadata = self.get_metadata()
             if (metadata is not None):
-                return ChannelMask(
+                channel_mask = ChannelMask(
                     int(metadata.get_block(
                         Flac_VORBISCOMMENT.BLOCK_ID)[
                             u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0], 16))
+                if (len(channel_mask) == self.channels()):
+                    return channel_mask
+                else:
+                    #channel count mismatch in given mask
+                    return ChannelMask(0)
             else:
                 #proceed to generate channel mask
                 raise ValueError()
@@ -1299,7 +1304,19 @@ class FlacAudio(WaveContainer, AiffContainer):
                     front_left=True, front_right=True, front_center=True,
                     back_left=True, back_right=True,
                     low_frequency=True)
+            elif (self.channels() == 7):
+                return ChannelMask.from_fields(
+                    front_left=True, front_right=True, front_center=True,
+                    low_frequency=True, back_center=True,
+                    side_left=True, side_right=True)
+            elif (self.channels() == 8):
+                return ChannelMask.from_fields(
+                    front_left=True, front_right=True, front_center=True,
+                    low_frequency=True,
+                    back_left=True, back_right=True,
+                    side_left=True, side_right=True)
             else:
+                #shouldn't be able to happen
                 return ChannelMask(0)
 
     def lossless(self):
@@ -1638,9 +1655,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         from . import PCMReaderError
 
         try:
-            return decoders.FlacDecoder(self.filename,
-                                        self.channel_mask(),
-                                        self.__stream_offset__)
+            return decoders.FlacDecoder(self.filename, self.__stream_offset__)
         except (IOError, ValueError), msg:
             #The only time this is likely to occur is
             #if the FLAC is modified between when FlacAudio

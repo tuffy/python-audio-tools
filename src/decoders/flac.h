@@ -84,7 +84,6 @@ typedef enum {OK,
 typedef struct {
     PyObject_HEAD
 
-    char* filename;
     FILE* file;
     BitstreamReader* bitstream;
     int channel_mask;
@@ -175,7 +174,7 @@ static PyObject*
 FlacDecoder_new(PyTypeObject *type,
                 PyObject *args, PyObject *kwds);
 
-/*reads the STREAMINFO and SEEKTABLE blocks,
+/*reads the STREAMINFO, SEEKTABLE and VORBIS_COMMENT blocks,
   skips any other metadata blocks,
   placing our internal stream at the first FLAC frame
 
@@ -183,7 +182,8 @@ FlacDecoder_new(PyTypeObject *type,
 int
 flacdec_read_metadata(BitstreamReader *bitstream,
                       struct flac_STREAMINFO *streaminfo,
-                      a_obj* seektable);
+                      a_obj* seektable,
+                      int *channel_mask);
 #endif
 
 /*reads a FLAC frame header from the sync code to the CRC-8

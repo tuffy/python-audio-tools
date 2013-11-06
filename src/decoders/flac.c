@@ -1,5 +1,8 @@
 #include "flac.h"
 #include "../pcmconv.h"
+#include <string.h>
+#include <ctype.h>
+#include <errno.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -28,7 +31,6 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     char* filename;
     int stream_offset = 0;
 
-    self->filename = NULL;
     self->file = NULL;
     self->bitstream = NULL;
 
@@ -43,16 +45,11 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     self->audiotools_pcm = NULL;
     self->remaining_samples = 0;
 
-    if (!PyArg_ParseTuple(args, "si|i",
+    if (!PyArg_ParseTuple(args, "s|i",
                           &filename,
-                          &(self->channel_mask),
                           &stream_offset))
         return -1;
 
-    if (self->channel_mask < 0) {
-        PyErr_SetString(PyExc_ValueError, "channel_mask must be >= 0");
-        return -1;
-    }
     if (stream_offset < 0) {
         PyErr_SetString(PyExc_ValueError, "stream offset must be >= 0");
         return -1;
@@ -71,13 +68,12 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     if (stream_offset != 0)
         fseek(self->file, stream_offset, SEEK_SET);
 
-    self->filename = strdup(filename);
-
     /*read the STREAMINFO block, SEEKTABLE block
       and setup the total number of samples to read*/
     if (flacdec_read_metadata(self->bitstream,
                               &(self->streaminfo),
-                              self->seektable)) {
+                              self->seektable,
+                              &(self->channel_mask))) {
         self->streaminfo.channels = 0;
         return -1;
     }
@@ -123,9 +119,6 @@ FlacDecoder_dealloc(decoders_FlacDecoder *self)
     self->qlp_coeffs->del(self->qlp_coeffs);
     self->framelist_data->del(self->framelist_data);
     Py_XDECREF(self->audiotools_pcm);
-
-    if (self->filename != NULL)
-        free(self->filename);
 
     if (self->bitstream != NULL) {
         /*clear out seek mark, if present*/
@@ -493,11 +486,97 @@ FlacDecoder_verify_okay(decoders_FlacDecoder *self)
 
 #endif
 
+static unsigned
+channel_bits(unsigned channel_mask)
+{
+    unsigned bits = 0;
+    while (channel_mask > 0) {
+        bits += (channel_mask & 0x1);
+        channel_mask >>= 1;
+    }
+    return bits;
+}
+
+static void
+flacdec_read_vorbis_comment(BitstreamReader *comment,
+                            unsigned channel_count,
+                            int *channel_mask)
+{
+    struct bs_buffer *line = buf_new();
+    unsigned line_len;
+    unsigned total_lines;
+    const char mask_prefix[] =
+        "WAVEFORMATEXTENSIBLE_CHANNEL_MASK=";
+
+    if (!setjmp(*br_try(comment))) {
+        /*skip over vendor string*/
+        line_len = comment->read(comment, 32);
+        comment->skip_bytes(comment, line_len);
+
+        /*walk through all entries in the comment*/
+        for (total_lines = comment->read(comment, 32);
+             total_lines > 0;
+             total_lines--) {
+            const char *s;
+
+            /*populate entry one character at a time
+              (this avoids allocating a big chunk of space
+               if the length field is something way too large)*/
+            buf_reset(line);
+
+            for (line_len = comment->read(comment, 32);
+                 line_len > 0;
+                 line_len--) {
+                buf_putc(
+                    toupper((int)comment->read(comment, 8)),
+                    line);
+            }
+            buf_putc(0, line);  /*NULL terminator*/
+
+            s = (const char *)BUF_WINDOW_START(line);
+
+            /*if line starts with mask prefix*/
+            if (strstr(s, mask_prefix) == s) {
+                /*convert rest of line to base-16 integer*/
+                unsigned mask = strtoul(
+                    s + strlen(mask_prefix), NULL, 16);
+                /*and populate mask field if its number of channel bits
+                  matches the stream's channel count*/
+                if (channel_bits(mask) == channel_count) {
+                    *channel_mask = mask;
+                }
+            }
+        }
+        br_etry(comment);
+    } else {
+        /*read error in VORBIS_COMMENT
+          (probably invalid length field somewhere)*/
+        br_etry(comment);
+    }
+
+    buf_close(line);
+}
+
 int
 flacdec_read_metadata(BitstreamReader *bitstream,
                       struct flac_STREAMINFO *streaminfo,
-                      a_obj *seektable)
+                      a_obj *seektable,
+                      int *channel_mask)
 {
+    BitstreamReader *comment = br_substream_new(BS_LITTLE_ENDIAN);
+
+    enum {
+        fL =  0x1,
+        fR =  0x2,
+        fC =  0x4,
+        LFE = 0x8,
+        bL =  0x10,
+        bR =  0x20,
+        bC =  0x100,
+        sL =  0x200,
+        sR =  0x400
+    };
+
     if (!setjmp(*br_try(bitstream))) {
         unsigned last_block;
 
@@ -506,6 +585,7 @@ flacdec_read_metadata(BitstreamReader *bitstream,
             PyErr_SetString(PyExc_ValueError, "not a FLAC file");
 #endif
             br_etry(bitstream);
+            comment->close(comment);
             return 1;
         }
 
@@ -534,6 +614,38 @@ flacdec_read_metadata(BitstreamReader *bitstream,
                     bitstream->read_64(bitstream, 36);
 
                 bitstream->read_bytes(bitstream, streaminfo->md5sum, 16);
+
+                /*default channel mask based on channel count*/
+                switch (streaminfo->channels) {
+                case 1:
+                    *channel_mask = fC;
+                    break;
+                case 2:
+                    *channel_mask = fL | fR;
+                    break;
+                case 3:
+                    *channel_mask = fL | fR | fC;
+                    break;
+                case 4:
+                    *channel_mask = fL | fR | bL | bR;
+                    break;
+                case 5:
+                    *channel_mask = fL | fR | fC | bL | bR;
+                    break;
+                case 6:
+                    *channel_mask = fL | fR | fC | LFE | bL | bR;
+                    break;
+                case 7:
+                    *channel_mask = fL | fR | fC | LFE | bC | sL | sR;
+                    break;
+                case 8:
+                    *channel_mask = fL | fR | fC | LFE | bL | bR | sL | sR;
+                    break;
+                default:
+                    /*shouldn't be able to happen*/
+                    *channel_mask = 0;
+                    break;
+                }
                 break;
             case 3: /*SEEKTABLE*/
                 {
@@ -552,6 +664,21 @@ flacdec_read_metadata(BitstreamReader *bitstream,
                     }
                 }
                 break;
+            case 4: /*VORBIS_COMMENT*/
+                {
+                    /*Vorbis comment's channel mask - if any -
+                      overrides default one from channel count */
+
+                    br_substream_reset(comment);
+                    bitstream->substream_append(bitstream,
+                                                comment,
+                                                block_length);
+
+                    flacdec_read_vorbis_comment(comment,
+                                                streaminfo->channels,
+                                                channel_mask);
+                }
+                break;
             default:  /*all other blocks*/
                 bitstream->skip(bitstream, block_length * 8);
                 break;
@@ -559,12 +686,14 @@ flacdec_read_metadata(BitstreamReader *bitstream,
         } while (!last_block);
 
         br_etry(bitstream);
+        comment->close(comment);
         return 0;
     } else {
 #ifndef STANDALONE
         PyErr_SetString(PyExc_IOError, "EOF while reading metadata");
 #endif
         br_etry(bitstream);
+        comment->close(comment);
         return 1;
     }
 }
@@ -1205,6 +1334,7 @@ int main(int argc, char* argv[]) {
     BitstreamReader* reader;
     struct flac_STREAMINFO streaminfo;
     a_obj* seektable;
+    int channel_mask;
     uint64_t remaining_frames;
 
     a_int* qlp_coeffs;
@@ -1246,7 +1376,7 @@ int main(int argc, char* argv[]) {
     }
 
     /*read initial metadata blocks*/
-    if (flacdec_read_metadata(reader, &streaminfo, seektable)) {
+    if (flacdec_read_metadata(reader, &streaminfo, seektable, &channel_mask)) {
         fprintf(stderr, "*** Error reading streaminfo\n");
         goto error;
     } else {

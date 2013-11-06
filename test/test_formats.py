@@ -3063,8 +3063,6 @@ class FlacFileTest(TestForeignAiffChunks,
 
         self.assertRaises(ValueError, self.decoder, "/dev/null", -1)
 
-        self.assertRaises(ValueError, self.decoder, "/dev/null", 0x3, -1)
-
     @FORMAT_FLAC
     def test_metadata2(self):
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -3318,7 +3316,7 @@ class FlacFileTest(TestForeignAiffChunks,
                         None)
                 self.assertRaises(IOError,
                                   audiotools.decoders.FlacDecoder,
-                                  temp.name, 1)
+                                  temp.name)
         finally:
             temp.close()
 
@@ -3577,7 +3575,7 @@ class FlacFileTest(TestForeignAiffChunks,
             self.assertEqual(flac.__md5__, pcmreader.digest())
 
         md5sum = md5()
-        d = self.decoder(temp_file.name, pcmreader.channel_mask)
+        d = self.decoder(temp_file.name)
         f = d.read(audiotools.FRAMELIST_SIZE)
         while (len(f) > 0):
             md5sum.update(f.to_bytes(False, True))
@@ -4038,7 +4036,7 @@ class FlacFileTest(TestForeignAiffChunks,
 
             self.assertEqual(audiotools.pcm_frame_cmp(
                     FlacDecoder1(temp_file.name, 0),
-                    FlacDecoder2(temp_file.name, 0)), None)
+                    FlacDecoder2(temp_file.name)), None)
 
             temp_file.close()
 
