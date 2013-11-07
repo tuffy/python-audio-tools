@@ -81,7 +81,7 @@ pcmconv.o: pcmconv.c pcmconv.h
 	$(CC) $(FLAGS) -c pcmconv.c -DSTANDALONE
 
 bitstream.o: bitstream.c bitstream.h
-	$(CC) $(FLAGS) -c bitstream.c
+	$(CC) $(FLAGS) -c bitstream.c -DSTANDALONE
 
 md5.o: common/md5.c common/md5.h
 	$(CC) $(FLAGS) -c common/md5.c -DSTANDALONE

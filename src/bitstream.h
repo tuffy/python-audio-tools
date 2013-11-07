@@ -10,6 +10,9 @@
 #include <limits.h>
 #include "buffer.h"
 #include "func_io.h"
+#ifndef STANDALONE
+#include <Python.h>
+#endif
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -1295,6 +1298,28 @@ bs_format_size(const char* format);
 /*returns the size of the given format string in bytes*/
 unsigned
 bs_format_byte_size(const char* format);
+
+#ifndef STANDALONE
+/*******************************************************************
+ *                          Python-specific                        *
+ *******************************************************************/
+
+int br_read_python(PyObject *reader,
+                   struct bs_buffer* buffer);
+
+int bw_write_python(PyObject* writer,
+                    struct bs_buffer* buffer,
+                    unsigned buffer_size);
+
+void bw_flush_python(PyObject* writer);
+
+void bs_close_python(PyObject* obj);
+
+void bs_free_python_decref(PyObject* obj);
+
+void bs_free_python_nodecref(PyObject* obj);
+
+#endif
 
 /*******************************************************************
  *                           miscellaneous                         *

@@ -84,7 +84,7 @@ typedef enum {OK,
 typedef struct {
     PyObject_HEAD
 
-    FILE* file;
+    PyObject* file;
     BitstreamReader* bitstream;
     int channel_mask;
 

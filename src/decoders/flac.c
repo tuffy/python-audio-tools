@@ -28,9 +28,6 @@ int
 FlacDecoder_init(decoders_FlacDecoder *self,
                  PyObject *args, PyObject *kwds)
 {
-    char* filename;
-    int stream_offset = 0;
-
     self->file = NULL;
     self->bitstream = NULL;
 
@@ -45,28 +42,32 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     self->audiotools_pcm = NULL;
     self->remaining_samples = 0;
 
-    if (!PyArg_ParseTuple(args, "s|i",
-                          &filename,
-                          &stream_offset))
-        return -1;
-
-    if (stream_offset < 0) {
-        PyErr_SetString(PyExc_ValueError, "stream offset must be >= 0");
-        return -1;
-    }
-
-    /*open the flac file*/
-    self->file = fopen(filename, "rb");
-    if (self->file == NULL) {
-        PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+    if (!PyArg_ParseTuple(args, "O", &self->file)) {
         return -1;
     } else {
-        self->bitstream = br_open(self->file, BS_BIG_ENDIAN);
+        Py_INCREF(self->file);
     }
 
-    /*skip the given number of bytes, if any*/
-    if (stream_offset != 0)
-        fseek(self->file, stream_offset, SEEK_SET);
+    /*open BitstreamReader from FLAC file stream
+      based on whether it's a low-level file object*/
+    if (PyFile_Check(self->file)) {
+        /*increment use count to prevent file closure*/
+        PyFile_IncUseCount((PyFileObject *)self->file);
+
+        /*open bitstream through file object*/
+        self->bitstream = br_open(PyFile_AsFile(self->file), BS_BIG_ENDIAN);
+
+        /*place mark at beginning of stream in case seeking is needed*/
+        self->bitstream->mark(self->bitstream);
+    } else {
+        /*treat file as Python-implemented file-like object*/
+        self->bitstream = br_open_external(
+            self->file,
+            BS_BIG_ENDIAN,
+            (ext_read_f)br_read_python,
+            (ext_close_f)bs_close_python,
+            (ext_free_f)bs_free_python_nodecref);
+    }
 
     /*read the STREAMINFO block, SEEKTABLE block
       and setup the total number of samples to read*/
@@ -88,9 +89,6 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     /*setup a framelist generator function*/
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
-
-    /*place mark at beginning of stream in case seeking is needed*/
-    self->bitstream->mark(self->bitstream);
 
     /*mark stream as not closed and ready for reading*/
     self->closed = 0;
@@ -122,11 +120,17 @@ FlacDecoder_dealloc(decoders_FlacDecoder *self)
 
     if (self->bitstream != NULL) {
         /*clear out seek mark, if present*/
-        if (self->bitstream->marks != NULL)
+        while (self->bitstream->marks != NULL) {
             self->bitstream->unmark(self->bitstream);
+        }
 
-        self->bitstream->close(self->bitstream);
+        self->bitstream->free(self->bitstream);
     }
+
+    if ((self->file != NULL) && PyFile_Check(self->file)) {
+        PyFile_DecUseCount((PyFileObject *)self->file);
+    }
+    Py_XDECREF(self->file);
 
     self->seektable->del(self->seektable);
 
@@ -175,7 +179,6 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
     int channel;
     struct flac_frame_header frame_header;
     PyObject* framelist;
-    PyThreadState *thread_state;
     flac_status error;
 
     if (self->closed) {
@@ -206,8 +209,6 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
         }
     }
 
-    thread_state = PyEval_SaveThread();
-
     if (!setjmp(*br_try(self->bitstream))) {
         /*add callback for CRC16 calculation*/
         br_add_callback(self->bitstream, (bs_callback_f)flac_crc16, &crc16);
@@ -217,7 +218,6 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
                                                &(self->streaminfo),
                                                &frame_header)) != OK) {
             br_pop_callback(self->bitstream, NULL);
-            PyEval_RestoreThread(thread_state);
             PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
             br_etry(self->bitstream);
             return NULL;
@@ -236,7 +236,6 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
                                                       channel),
                      self->subframe_data->append(self->subframe_data))) != OK) {
                 br_pop_callback(self->bitstream, NULL);
-                PyEval_RestoreThread(thread_state);
                 PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
                 br_etry(self->bitstream);
                 return NULL;
@@ -252,7 +251,6 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
         self->bitstream->read(self->bitstream, 16);
         br_pop_callback(self->bitstream, NULL);
         if (crc16 != 0) {
-            PyEval_RestoreThread(thread_state);
             PyErr_SetString(PyExc_ValueError, "invalid checksum in frame");
             br_etry(self->bitstream);
             return NULL;
@@ -263,14 +261,12 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
     } else {
         /*handle I/O error during read*/
         br_pop_callback(self->bitstream, NULL);
-        PyEval_RestoreThread(thread_state);
         PyErr_SetString(PyExc_IOError, "EOF reading frame");
         br_etry(self->bitstream);
         return NULL;
     }
 
     br_etry(self->bitstream);
-    PyEval_RestoreThread(thread_state);
 
     framelist = a_int_to_FrameList(self->audiotools_pcm,
                                    self->framelist_data,
@@ -299,10 +295,17 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
     uint64_t pcm_frames_offset = 0;
     uint64_t byte_offset = 0;
     unsigned i;
+    FILE *file = NULL;
 
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot seek closed stream");
         return NULL;
+    } else if (!PyFile_Check(self->file)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "can only seek streams from file objects");
+        return NULL;
+    } else {
+        file = PyFile_AsFile(self->file);
     }
 
     if (!PyArg_ParseTuple(args, "L", &seeked_offset))
@@ -333,7 +336,7 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
         /*perform this in chunks in case seeked distance
           is longer than a "long" taken by fseek*/
         const uint64_t seek = MIN(byte_offset, LONG_MAX);
-        fseek(self->file, (long)seek, SEEK_CUR);
+        fseek(file, (long)seek, SEEK_CUR);
         byte_offset -= seek;
     }
 
@@ -538,7 +541,7 @@ flacdec_read_vorbis_comment(BitstreamReader *comment,
             /*if line starts with mask prefix*/
             if (strstr(s, mask_prefix) == s) {
                 /*convert rest of line to base-16 integer*/
-                unsigned mask = strtoul(
+                unsigned mask = (unsigned)strtoul(
                     s + strlen(mask_prefix), NULL, 16);
                 /*and populate mask field if its number of channel bits
                   matches the stream's channel count*/

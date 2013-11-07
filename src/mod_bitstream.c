@@ -3,7 +3,6 @@
 #include "huffman.h"
 #include "mod_bitstream.h"
 
-
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
  Copyright (C) 2007-2013  Brian Langenberger
@@ -707,12 +706,12 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
         self->bitstream->close_internal_stream =
             br_close_internal_stream_python_file;
     } else {
-        self->bitstream = br_open_external(self->file_obj,
-                                           self->little_endian ?
-                                           BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
-                                           br_read_python,
-                                           br_close_python,
-                                           br_free_python);
+        self->bitstream = br_open_external(
+            self->file_obj,
+            self->little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
+            (ext_read_f)br_read_python,
+            (ext_close_f)bs_close_python,
+            (ext_free_f)bs_free_python_nodecref);
     }
 
     return 0;
@@ -970,14 +969,14 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
         self->bitstream->close_internal_stream =
             bw_close_internal_stream_python_file;
     } else {
-        self->bitstream = bw_open_external(self->file_obj,
-                                           little_endian ?
-                                           BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
-                                           (unsigned)buffer_size,
-                                           (ext_write_f)bw_write_python,
-                                           (ext_flush_f)bw_flush_python,
-                                           (ext_close_f)bw_close_python,
-                                           (ext_free_f)bw_free_python);
+        self->bitstream = bw_open_external(
+            self->file_obj,
+            little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
+            (unsigned)buffer_size,
+            (ext_write_f)bw_write_python,
+            (ext_flush_f)bw_flush_python,
+            (ext_close_f)bs_close_python,
+            (ext_free_f)bs_free_python_nodecref);
     }
 
     return 0;
@@ -2180,97 +2179,6 @@ BitstreamWriter_callback(uint8_t byte, PyObject *callback)
     } else {
         PyErr_PrintEx(0);
     }
-}
-
-int br_read_python(void* user_data,
-                   struct bs_buffer* buffer)
-{
-    PyObject* reader = (PyObject*)user_data;
-    PyObject* read_result;
-
-    /*call read() method on reader*/
-    if ((read_result =
-         PyObject_CallMethod(reader, "read", "i", 4096)) != NULL) {
-        char *string;
-        Py_ssize_t string_size;
-
-        /*convert returned object to string of bytes*/
-        if (PyString_AsStringAndSize(read_result,
-                                     &string,
-                                     &string_size) != -1) {
-            /*then append bytes to buffer and return success*/
-            buf_write(buffer, (uint8_t*)string, (unsigned)string_size);
-
-            return 0;
-        } else {
-            /*string conversion failed so print/clear error and return an EOF*/
-            PyErr_Print();
-            return 1;
-        }
-    } else {
-        /*read() method call failed
-          so print/clear error and return an EOF
-          (which will likely generate an IOError exception if its own)*/
-        PyErr_Print();
-        return 1;
-    }
-
-}
-
-void br_close_python(void* user_data)
-{
-    /*FIXME*/
-}
-
-void br_free_python(void* user_data)
-{
-    /*FIXME*/
-}
-
-int bw_write_python(PyObject* user_data,
-                    struct bs_buffer* buffer,
-                    unsigned buffer_size)
-{
-    while (BUF_WINDOW_SIZE(buffer) >= buffer_size) {
-        PyObject* write_result =
-            PyObject_CallMethod(user_data, "write", "s#",
-                                BUF_WINDOW_START(buffer),
-                                buffer_size);
-        if (write_result != NULL) {
-            Py_DECREF(write_result);
-            buffer->window_start += buffer_size;
-        } else {
-            PyErr_Print();
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-void bw_flush_python(PyObject* user_data)
-{
-    PyObject* flush_result = PyObject_CallMethod(user_data, "flush", NULL);
-    if (flush_result != NULL) {
-        Py_DECREF(flush_result);
-    } else {
-        PyErr_Print();
-    }
-}
-
-void bw_close_python(PyObject* user_data)
-{
-    PyObject* close_result = PyObject_CallMethod(user_data, "close", NULL);
-    if (close_result != NULL) {
-        Py_DECREF(close_result);
-    } else {
-        PyErr_Print();
-    }
-}
-
-void bw_free_python(PyObject* user_data)
-{
-    /*FIXME*/
 }
 
 PyObject*

@@ -1655,7 +1655,10 @@ class FlacAudio(WaveContainer, AiffContainer):
         from . import PCMReaderError
 
         try:
-            return decoders.FlacDecoder(self.filename, self.__stream_offset__)
+            flac = open(self.filename, "rb")
+            if (self.__stream_offset__ > 0):
+                flac.seek(self.__stream_offset__)
+            return decoders.FlacDecoder(flac)
         except (IOError, ValueError), msg:
             #The only time this is likely to occur is
             #if the FLAC is modified between when FlacAudio

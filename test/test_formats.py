@@ -107,6 +107,17 @@ class Log:
         self.results.append(args)
 
 
+class Filewrapper:
+    def __init__(self, file):
+        self.file = file
+
+    def read(self, bytes):
+        return self.file.read(bytes)
+
+    def close(self):
+        self.file.close()
+
+
 class AudioFileTest(unittest.TestCase):
     def setUp(self):
         self.audio_class = audiotools.AudioFile
@@ -3057,11 +3068,9 @@ class FlacFileTest(TestForeignAiffChunks,
 
         #check some decoder errors,
         #mostly to ensure a failed init doesn't make Python explode
-        self.assertRaises(TypeError, self.decoder)
+        self.assertRaises(IOError, self.decoder, None)
 
-        self.assertRaises(TypeError, self.decoder, None)
-
-        self.assertRaises(ValueError, self.decoder, "/dev/null", -1)
+        self.assertRaises(IOError, self.decoder, "filename")
 
     @FORMAT_FLAC
     def test_metadata2(self):
@@ -3316,7 +3325,7 @@ class FlacFileTest(TestForeignAiffChunks,
                         None)
                 self.assertRaises(IOError,
                                   audiotools.decoders.FlacDecoder,
-                                  temp.name)
+                                  open(temp.name, "rb"))
         finally:
             temp.close()
 
@@ -3574,8 +3583,19 @@ class FlacFileTest(TestForeignAiffChunks,
         if (hasattr(pcmreader, "digest")):
             self.assertEqual(flac.__md5__, pcmreader.digest())
 
+        #check FlacDecoder using raw file
         md5sum = md5()
-        d = self.decoder(temp_file.name)
+        d = self.decoder(open(temp_file.name, "rb"))
+        f = d.read(audiotools.FRAMELIST_SIZE)
+        while (len(f) > 0):
+            md5sum.update(f.to_bytes(False, True))
+            f = d.read(audiotools.FRAMELIST_SIZE)
+        d.close()
+        self.assertEqual(md5sum.digest(), pcmreader.digest())
+
+        #check FlacDecoder using file-like wrapper
+        md5sum = md5()
+        d = self.decoder(Filewrapper(open(temp_file.name, "rb")))
         f = d.read(audiotools.FRAMELIST_SIZE)
         while (len(f) > 0):
             md5sum.update(f.to_bytes(False, True))
@@ -4036,7 +4056,7 @@ class FlacFileTest(TestForeignAiffChunks,
 
             self.assertEqual(audiotools.pcm_frame_cmp(
                     FlacDecoder1(temp_file.name, 0),
-                    FlacDecoder2(temp_file.name)), None)
+                    FlacDecoder2(open(temp_file.name, "rb"))), None)
 
             temp_file.close()
 

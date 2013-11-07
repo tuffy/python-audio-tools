@@ -3125,6 +3125,101 @@ byte_counter(uint8_t byte, void *total_bytes)
     *u += 1;
 }
 
+#ifndef STANDALONE
+
+int br_read_python(PyObject *reader,
+                   struct bs_buffer* buffer)
+{
+    PyObject* read_result = PyObject_CallMethod(reader, "read", "i", 4096);
+
+    /*call read() method on reader*/
+    if (read_result != NULL) {
+        char *string;
+        Py_ssize_t string_size;
+
+        /*convert returned object to string of bytes*/
+        if (PyString_AsStringAndSize(read_result,
+                                     &string,
+                                     &string_size) != -1) {
+            /*then append bytes to buffer and return success*/
+            buf_write(buffer, (uint8_t*)string, (unsigned)string_size);
+
+            Py_DECREF(read_result);
+            return 0;
+        } else {
+            /*string conversion failed so clear error and return an EOF
+              (which will likely generate an IOError exception if its own)*/
+
+            Py_DECREF(read_result);
+            PyErr_Clear();
+            return 1;
+        }
+    } else {
+        /*read() method call failed
+          so clear error and return an EOF
+          (which will likely generate an IOError exception if its own)*/
+        PyErr_Clear();
+        return 1;
+    }
+
+}
+
+int bw_write_python(PyObject* writer,
+                    struct bs_buffer* buffer,
+                    unsigned buffer_size)
+{
+    while (BUF_WINDOW_SIZE(buffer) >= buffer_size) {
+        PyObject* write_result =
+            PyObject_CallMethod(writer, "write", "s#",
+                                BUF_WINDOW_START(buffer),
+                                buffer_size);
+        if (write_result != NULL) {
+            Py_DECREF(write_result);
+            buffer->window_start += buffer_size;
+        } else {
+            PyErr_Clear();
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+void bw_flush_python(PyObject* writer)
+{
+    PyObject* flush_result = PyObject_CallMethod(writer, "flush", NULL);
+    if (flush_result != NULL) {
+        Py_DECREF(flush_result);
+    } else {
+        PyErr_Clear();
+    }
+}
+
+void bs_close_python(PyObject* obj)
+{
+    /*call close method on reader/writer*/
+    PyObject* close_result = PyObject_CallMethod(obj, "close", NULL);
+    if (close_result != NULL) {
+        /*ignore result*/
+        Py_DECREF(close_result);
+    } else {
+        /*close method call failed, so clear error*/
+        PyErr_Clear();
+    }
+}
+
+void bs_free_python_decref(PyObject* obj)
+{
+    Py_XDECREF(obj);
+}
+
+void bs_free_python_nodecref(PyObject* obj)
+{
+    /*no DECREF, so does nothing*/
+    return;
+}
+
+#endif
 
 /*****************************************************************
  BEGIN UNIT TESTS
