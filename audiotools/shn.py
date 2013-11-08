@@ -197,7 +197,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         from . import PCMReaderError
 
         try:
-            return SHNDecoder(self.filename)
+            return SHNDecoder(open(self.filename, "rb"))
         except (IOError, ValueError), msg:
             #these may not be accurate if the Shorten file is broken
             #but if it is broken, there'll be no way to
@@ -284,7 +284,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         import cStringIO
 
         try:
-            (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()
+            (head, tail) = decoders.SHNDecoder(
+                open(self.filename, "rb")).pcm_split()
             header = bitstream.BitstreamReader(cStringIO.StringIO(head), 1)
             (RIFF, SIZE, WAVE) = header.parse("4b 32u 4b")
             if ((RIFF != 'RIFF') or (WAVE != 'WAVE')):
@@ -327,7 +328,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         from . import bitstream
         import cStringIO
 
-        (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()
+        (head, tail) = decoders.SHNDecoder(
+            open(self.filename, "rb")).pcm_split()
         header = bitstream.BitstreamReader(cStringIO.StringIO(head), 1)
         (RIFF, SIZE, WAVE) = header.parse("4b 32u 4b")
         if ((RIFF != 'RIFF') or (WAVE != 'WAVE')):
@@ -432,7 +434,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         import cStringIO
 
         try:
-            (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()
+            (head, tail) = decoders.SHNDecoder(
+                open(self.filename, "rb")).pcm_split()
             header = bitstream.BitstreamReader(cStringIO.StringIO(head), 0)
             (FORM, SIZE, AIFF) = header.parse("4b 32u 4b")
             if ((FORM != 'FORM') or (AIFF != 'AIFF')):
@@ -474,7 +477,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         from . import bitstream
         import cStringIO
 
-        (head, tail) = decoders.SHNDecoder(self.filename).pcm_split()
+        (head, tail) = decoders.SHNDecoder(
+            open(self.filename, "rb")).pcm_split()
         header = bitstream.BitstreamReader(cStringIO.StringIO(head), 0)
         (FORM, SIZE, AIFF) = header.parse("4b 32u 4b")
         if ((FORM != 'FORM') or (AIFF != 'AIFF')):

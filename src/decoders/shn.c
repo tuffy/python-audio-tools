@@ -38,9 +38,7 @@ int
 SHNDecoder_init(decoders_SHNDecoder *self,
                 PyObject *args, PyObject *kwds)
 {
-    char* filename;
-    FILE* fp;
-
+    self->file = NULL;
     self->bitstream = NULL;
     self->stream_finished = 0;
 
@@ -56,16 +54,22 @@ SHNDecoder_init(decoders_SHNDecoder *self,
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
-    if (!PyArg_ParseTuple(args, "s", &filename))
-        return -1;
-
-    /*open the shn file*/
-    if ((fp = fopen(filename, "rb")) == NULL) {
-        self->bitstream = NULL;
-        PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+    if (!PyArg_ParseTuple(args, "O", &(self->file))) {
         return -1;
     } else {
-        self->bitstream = br_open(fp, BS_BIG_ENDIAN);
+        Py_INCREF(self->file);
+    }
+
+    /*open the shn file*/
+    if (PyFile_Check(self->file)) {
+        self->bitstream = br_open(PyFile_AsFile(self->file), BS_BIG_ENDIAN);
+    } else {
+        self->bitstream = br_open_external(
+            self->file,
+            BS_BIG_ENDIAN,
+            (ext_read_f)br_read_python,
+            (ext_close_f)bs_close_python,
+            (ext_free_f)bs_free_python_nodecref);
     }
 
     /*read Shorten header for basic info*/
@@ -93,6 +97,7 @@ SHNDecoder_init(decoders_SHNDecoder *self,
 void
 SHNDecoder_dealloc(decoders_SHNDecoder *self)
 {
+    Py_XDECREF(self->file);
     self->means->del(self->means);
     self->previous_samples->del(self->previous_samples);
     self->samples->del(self->samples);
@@ -103,7 +108,7 @@ SHNDecoder_dealloc(decoders_SHNDecoder *self)
     Py_XDECREF(self->audiotools_pcm);
 
     if (self->bitstream != NULL) {
-        self->bitstream->close(self->bitstream);
+        self->bitstream->free(self->bitstream);
     }
 
     self->ob_type->tp_free((PyObject*)self);
@@ -147,8 +152,6 @@ SHNDecoder_channel_mask(decoders_SHNDecoder *self, void *closure)
 PyObject*
 SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
 {
-    PyThreadState *thread_state = NULL;
-
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
         return NULL;
@@ -160,32 +163,26 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
                                self->bits_per_sample);
     }
 
-    thread_state = PyEval_SaveThread();
     self->unshifted->reset(self->unshifted);
 
     switch (read_framelist(self, self->unshifted)) {
     case OK:
-        PyEval_RestoreThread(thread_state);
         return aa_int_to_FrameList(self->audiotools_pcm,
                                    self->unshifted,
                                    self->bits_per_sample);
     case END_OF_STREAM:
-        PyEval_RestoreThread(thread_state);
         return empty_FrameList(self->audiotools_pcm,
                                self->header.channels,
                                self->bits_per_sample);
     case UNKNOWN_COMMAND:
-        PyEval_RestoreThread(thread_state);
         PyErr_SetString(PyExc_ValueError,
                         "unknown command in Shorten stream");
         return NULL;
     case IOERROR:
-        PyEval_RestoreThread(thread_state);
         PyErr_SetString(PyExc_IOError, "I/O error reading Shorten file");
         return NULL;
     default:
         /*shouldn't get here*/
-        PyEval_RestoreThread(thread_state);
         PyErr_SetString(PyExc_ValueError,
                         "unknown value from read_framelist()");
         return NULL;

@@ -4634,11 +4634,6 @@ class ShortenFileTest(TestForeignWaveChunks,
 
     @FORMAT_SHORTEN
     def test_init(self):
-        #check missing file
-        self.assertRaises(audiotools.shn.InvalidShorten,
-                          audiotools.ShortenAudio,
-                          "/dev/null/foo")
-
         #check invalid file
         invalid_file = tempfile.NamedTemporaryFile(suffix=".shn")
         try:
@@ -4655,9 +4650,9 @@ class ShortenFileTest(TestForeignWaveChunks,
         #mostly to ensure a failed init doesn't make Python explode
         self.assertRaises(TypeError, self.decoder)
 
-        self.assertRaises(TypeError, self.decoder, None)
+        self.assertRaises(IOError, self.decoder, None)
 
-        self.assertRaises(IOError, self.decoder, "/dev/null/foo")
+        self.assertRaises(IOError, self.decoder, "filename")
 
     @FORMAT_SHORTEN
     def test_bits_per_sample(self):
@@ -4712,19 +4707,21 @@ class ShortenFileTest(TestForeignWaveChunks,
                     self.assertEqual(os.path.getsize(temp.name), i)
                     self.assertRaises(IOError,
                                       audiotools.decoders.SHNDecoder,
-                                      temp.name)
+                                      open(temp.name, "rb"))
 
                 for i in xrange(first, len(shn_data[0:last].rstrip(chr(0)))):
                     temp.seek(0, 0)
                     temp.write(shn_data[0:i])
                     temp.flush()
                     self.assertEqual(os.path.getsize(temp.name), i)
-                    decoder = audiotools.decoders.SHNDecoder(temp.name)
+                    decoder = audiotools.decoders.SHNDecoder(
+                        open(temp.name, "rb"))
                     self.assertNotEqual(decoder, None)
                     self.assertRaises(IOError,
                                       decoder.pcm_split)
 
-                    decoder = audiotools.decoders.SHNDecoder(temp.name)
+                    decoder = audiotools.decoders.SHNDecoder(
+                        open(temp.name, "rb"))
                     self.assertNotEqual(decoder, None)
                     self.assertRaises(IOError,
                                       audiotools.transfer_framelist_data,
@@ -4877,14 +4874,15 @@ class ShortenFileTest(TestForeignWaveChunks,
 
         #first, ensure the Shorten-encoded file
         #has the same MD5 signature as pcmreader once decoded
-        md5sum = md5()
-        d = self.decoder(temp_file.name)
-        f = d.read(audiotools.FRAMELIST_SIZE)
-        while (len(f) > 0):
-            md5sum.update(f.to_bytes(False, True))
-            f = d.read(audiotools.FRAMELIST_SIZE)
-        d.close()
-        self.assertEqual(md5sum.digest(), pcmreader.digest())
+        for shndec in [self.decoder(open(temp_file.name, "rb")),
+                       self.decoder(Filewrapper(open(temp_file.name, "rb")))]:
+            md5sum = md5()
+            f = shndec.read(audiotools.FRAMELIST_SIZE)
+            while (len(f) > 0):
+                md5sum.update(f.to_bytes(False, True))
+                f = shndec.read(audiotools.FRAMELIST_SIZE)
+            shndec.close()
+            self.assertEqual(md5sum.digest(), pcmreader.digest())
 
         #then compare our .to_wave() output
         #with that of the Shorten reference decoder
@@ -4933,14 +4931,15 @@ class ShortenFileTest(TestForeignWaveChunks,
 
         #first, ensure the Shorten-encoded file
         #has the same MD5 signature as pcmreader once decoded
-        md5sum = md5()
-        d = self.decoder(temp_file.name)
-        f = d.read(audiotools.BUFFER_SIZE)
-        while (len(f) > 0):
-            md5sum.update(f.to_bytes(False, True))
-            f = d.read(audiotools.BUFFER_SIZE)
-        d.close()
-        self.assertEqual(md5sum.digest(), pcmreader.digest())
+        for shndec in [self.decoder(open(temp_file.name, "rb")),
+                       self.decoder(Filewrapper(open(temp_file.name, "rb")))]:
+            md5sum = md5()
+            f = shndec.read(audiotools.BUFFER_SIZE)
+            while (len(f) > 0):
+                md5sum.update(f.to_bytes(False, True))
+                f = shndec.read(audiotools.BUFFER_SIZE)
+            shndec.close()
+            self.assertEqual(md5sum.digest(), pcmreader.digest())
 
         #then compare our .to_aiff() output
         #with that of the Shorten reference decoder
@@ -5043,7 +5042,7 @@ class ShortenFileTest(TestForeignWaveChunks,
             from audiotools.py_decoders import SHNDecoder as SHNDecoder2
 
             self.assertEqual(audiotools.pcm_frame_cmp(
-                SHNDecoder1(temp_file.name),
+                SHNDecoder1(open(temp_file.name, "rb")),
                 SHNDecoder2(temp_file.name)), None)
 
             #try test again, this time with total_pcm_frames indicated
@@ -5056,7 +5055,7 @@ class ShortenFileTest(TestForeignWaveChunks,
                 encoding_function=encode_shn)
 
             self.assertEqual(audiotools.pcm_frame_cmp(
-                SHNDecoder1(temp_file.name),
+                SHNDecoder1(open(temp_file.name, "rb")),
                 SHNDecoder2(temp_file.name)), None)
 
             temp_file.close()
