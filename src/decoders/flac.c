@@ -51,14 +51,8 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     /*open BitstreamReader from FLAC file stream
       based on whether it's a low-level file object*/
     if (PyFile_Check(self->file)) {
-        /*increment use count to prevent file closure*/
-        PyFile_IncUseCount((PyFileObject *)self->file);
-
         /*open bitstream through file object*/
         self->bitstream = br_open(PyFile_AsFile(self->file), BS_BIG_ENDIAN);
-
-        /*place mark at beginning of stream in case seeking is needed*/
-        self->bitstream->mark(self->bitstream);
     } else {
         /*treat file as Python-implemented file-like object*/
         self->bitstream = br_open_external(
@@ -77,6 +71,12 @@ FlacDecoder_init(decoders_FlacDecoder *self,
                               &(self->channel_mask))) {
         self->streaminfo.channels = 0;
         return -1;
+    }
+
+    if (PyFile_Check(self->file)) {
+        /*place mark at beginning of stream but after metadata
+          in case seeking is needed*/
+        self->bitstream->mark(self->bitstream);
     }
 
     self->remaining_samples = self->streaminfo.total_samples;
@@ -127,9 +127,6 @@ FlacDecoder_dealloc(decoders_FlacDecoder *self)
         self->bitstream->free(self->bitstream);
     }
 
-    if ((self->file != NULL) && PyFile_Check(self->file)) {
-        PyFile_DecUseCount((PyFileObject *)self->file);
-    }
     Py_XDECREF(self->file);
 
     self->seektable->del(self->seektable);
@@ -367,7 +364,6 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
     PyObject* offset_pair;
     uint32_t samples;
     long offset;
-    PyThreadState *thread_state = PyEval_SaveThread();
 
     while (self->remaining_samples > 0) {
         self->subframe_data->reset(self->subframe_data);
@@ -378,7 +374,6 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
             if ((error = flacdec_read_frame_header(self->bitstream,
                                                    &(self->streaminfo),
                                                    &frame_header)) != OK) {
-                PyEval_RestoreThread(thread_state);
                 PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
                 goto error;
             }
@@ -398,7 +393,6 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
                                                           channel),
                          self->subframe_data->append(self->subframe_data))) !=
                     OK) {
-                    PyEval_RestoreThread(thread_state);
                     PyErr_SetString(PyExc_ValueError,
                                     FlacDecoder_strerror(error));
                     goto error;
@@ -412,14 +406,11 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
             self->remaining_samples -= frame_header.block_size;
 
             /*add offset pair to our list*/
-            PyEval_RestoreThread(thread_state);
             offset_pair = Py_BuildValue("(i, I)", offset, samples);
             PyList_Append(offsets, offset_pair);
             Py_DECREF(offset_pair);
-            thread_state = PyEval_SaveThread();
         } else {
             /*handle I/O error during read*/
-            PyEval_RestoreThread(thread_state);
             PyErr_SetString(PyExc_IOError, "EOF reading frame");
             goto error;
         }
@@ -429,7 +420,6 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
 
     self->stream_finalized = 1;
 
-    PyEval_RestoreThread(thread_state);
     return offsets;
 error:
     Py_XDECREF(offsets);

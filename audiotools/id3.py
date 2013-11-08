@@ -2310,7 +2310,7 @@ class ID3CommentPair(MetaData):
             id3v2_fixes = []
 
         if (self.id3v1 is not None):
-            (new_id3v1, id3v1_fixes) = self.id3v1.clean(fixes_performed)
+            (new_id3v1, id3v1_fixes) = self.id3v1.clean()
         else:
             new_id3v1 = None
             id3v1_fixes = []

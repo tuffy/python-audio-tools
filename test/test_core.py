@@ -5816,14 +5816,11 @@ class TestMultiChannel(unittest.TestCase):
                                                True)
 
         for audio_class in [audiotools.FlacAudio, audiotools.OggFlacAudio]:
-            for channels in xrange(1, 7):
+            for channels in xrange(1, 9):
                 self.__test_undefined_mask_blank__(audio_class,
                                                    channels,
                                                    False)
-            for channels in xrange(7, 9):
-                self.__test_undefined_mask_blank__(audio_class,
-                                                   channels,
-                                                   True)
+
             self.__test_error_channel_count__(audio_class,
                                               9, audiotools.ChannelMask(0))
             self.__test_error_channel_count__(audio_class,
