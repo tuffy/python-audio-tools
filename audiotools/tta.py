@@ -126,8 +126,10 @@ class TrueAudio(AudioFile):
         from . import PCMReaderError
 
         try:
-            return decoders.TTADecoder(self.filename,
-                                       self.__stream_offset__)
+            tta = open(self.filename, "rb")
+            if (self.__stream_offset__ > 0):
+                tta.seek(self.__stream_offset__)
+            return decoders.TTADecoder(tta)
         except (IOError, ValueError), msg:
             #This isn't likely unless the TTA file is modified
             #between when TrueAudio is instantiated

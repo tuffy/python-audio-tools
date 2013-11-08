@@ -45,6 +45,8 @@ struct tta_cache {
 typedef struct {
     PyObject_HEAD
 
+    PyObject* file;
+
     struct {
         unsigned channels;
         unsigned bits_per_sample;

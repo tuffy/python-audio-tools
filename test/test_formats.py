@@ -6325,11 +6325,9 @@ class TTAFileTest(LosslessFileTest):
         #check some decoder errors
         self.assertRaises(TypeError, self.decoder)
 
-        self.assertRaises(TypeError, self.decoder, None)
+        self.assertRaises(IOError, self.decoder, None)
 
-        self.assertRaises(IOError, self.decoder, "/dev/null/foo")
-
-        self.assertRaises(IOError, self.decoder, "/dev/null", sample_rate=-1)
+        self.assertRaises(IOError, self.decoder, "filename")
 
     @FORMAT_TTA
     def test_verify(self):
@@ -6378,7 +6376,7 @@ class TTAFileTest(LosslessFileTest):
                         None)
                 self.assertRaises(IOError,
                                   audiotools.decoders.TTADecoder,
-                                  temp.name, 1)
+                                  open(temp.name, "rb"))
         finally:
             temp.close()
 
@@ -6574,25 +6572,28 @@ class TTAFileTest(LosslessFileTest):
         else:
             temp_wav_file = None
 
-        tta = self.decoder(temp_tta_file.name)
-        self.assertEqual(tta.sample_rate, pcmreader.sample_rate)
-        self.assertEqual(tta.bits_per_sample, pcmreader.bits_per_sample)
-        self.assertEqual(tta.channels, pcmreader.channels)
+        for tta in [self.decoder(open(temp_tta_file.name, "rb")),
+                    self.decoder(Filewrapper(open(temp_tta_file.name, "rb")))]:
+            self.assertEqual(tta.sample_rate, pcmreader.sample_rate)
+            self.assertEqual(tta.bits_per_sample, pcmreader.bits_per_sample)
+            self.assertEqual(tta.channels, pcmreader.channels)
 
-        md5sum = md5()
-        f = tta.read(audiotools.FRAMELIST_SIZE)
-        while (len(f) > 0):
-            md5sum.update(f.to_bytes(False, True))
+            md5sum = md5()
             f = tta.read(audiotools.FRAMELIST_SIZE)
-        tta.close()
-        self.assertEqual(md5sum.digest(), pcmreader.digest())
+            while (len(f) > 0):
+                md5sum.update(f.to_bytes(False, True))
+                f = tta.read(audiotools.FRAMELIST_SIZE)
+            tta.close()
+            self.assertEqual(md5sum.digest(), pcmreader.digest())
+
+            if (temp_wav_file is not None):
+                wav_md5sum = md5()
+                audiotools.transfer_framelist_data(
+                    audiotools.WaveAudio(temp_wav_file.name).to_pcm(),
+                    wav_md5sum.update)
+                self.assertEqual(md5sum.digest(), wav_md5sum.digest())
 
         if (temp_wav_file is not None):
-            wav_md5sum = md5()
-            audiotools.transfer_framelist_data(
-                audiotools.WaveAudio(temp_wav_file.name).to_pcm(),
-                wav_md5sum.update)
-            self.assertEqual(md5sum.digest(), wav_md5sum.digest())
             temp_wav_file.close()
 
         #perform test again with total_pcm_frames indicated
@@ -6615,29 +6616,30 @@ class TTAFileTest(LosslessFileTest):
         else:
             temp_wav_file = None
 
-        tta = self.decoder(temp_tta_file.name)
-        self.assertEqual(tta.sample_rate, pcmreader.sample_rate)
-        self.assertEqual(tta.bits_per_sample, pcmreader.bits_per_sample)
-        self.assertEqual(tta.channels, pcmreader.channels)
+        for tta in [self.decoder(open(temp_tta_file.name, "rb")),
+                    self.decoder(Filewrapper(open(temp_tta_file.name, "rb")))]:
+            self.assertEqual(tta.sample_rate, pcmreader.sample_rate)
+            self.assertEqual(tta.bits_per_sample, pcmreader.bits_per_sample)
+            self.assertEqual(tta.channels, pcmreader.channels)
 
-        md5sum = md5()
-        f = tta.read(audiotools.FRAMELIST_SIZE)
-        while (len(f) > 0):
-            md5sum.update(f.to_bytes(False, True))
+            md5sum = md5()
             f = tta.read(audiotools.FRAMELIST_SIZE)
-        tta.close()
-        self.assertEqual(md5sum.digest(), pcmreader.digest())
-        temp_tta_file.close()
+            while (len(f) > 0):
+                md5sum.update(f.to_bytes(False, True))
+                f = tta.read(audiotools.FRAMELIST_SIZE)
+            tta.close()
+            self.assertEqual(md5sum.digest(), pcmreader.digest())
+            temp_tta_file.close()
+
+            if (temp_wav_file is not None):
+                wav_md5sum = md5()
+                audiotools.transfer_framelist_data(
+                    audiotools.WaveAudio(temp_wav_file.name).to_pcm(),
+                    wav_md5sum.update)
+                self.assertEqual(md5sum.digest(), wav_md5sum.digest())
 
         if (temp_wav_file is not None):
-            wav_md5sum = md5()
-            audiotools.transfer_framelist_data(
-                audiotools.WaveAudio(temp_wav_file.name).to_pcm(),
-                wav_md5sum.update)
-            self.assertEqual(md5sum.digest(), wav_md5sum.digest())
             temp_wav_file.close()
-
-
 
     @FORMAT_TTA
     def test_small_files(self):
@@ -6799,7 +6801,7 @@ class TTAFileTest(LosslessFileTest):
                                  "tta decode error on %s" % (repr(pcmreader)))
 
                 self.assertEqual(audiotools.pcm_frame_cmp(
-                        TTADecoder2(temp_tta_file.name),
+                        TTADecoder2(open(temp_tta_file.name, "rb")),
                         audiotools.WaveAudio(temp_wav_file.name).to_pcm()),
                                  None)
                 temp_wav_file.close()
@@ -6809,7 +6811,7 @@ class TTAFileTest(LosslessFileTest):
             #C-based decoder
             self.assertEqual(audiotools.pcm_frame_cmp(
                     TTADecoder1(temp_tta_file.name),
-                    TTADecoder2(temp_tta_file.name)), None)
+                    TTADecoder2(open(temp_tta_file.name, "rb"))), None)
 
             #perform tests again with total_pcm_frames indicated
             pcmreader.reset()
@@ -6834,7 +6836,7 @@ class TTAFileTest(LosslessFileTest):
                                  "tta decode error on %s" % (repr(pcmreader)))
 
                 self.assertEqual(audiotools.pcm_frame_cmp(
-                        TTADecoder2(temp_tta_file.name),
+                        TTADecoder2(open(temp_tta_file.name, "rb")),
                         audiotools.WaveAudio(temp_wav_file.name).to_pcm()),
                                  None)
                 temp_wav_file.close()
@@ -6844,7 +6846,7 @@ class TTAFileTest(LosslessFileTest):
             #C-based decoder
             self.assertEqual(audiotools.pcm_frame_cmp(
                     TTADecoder1(temp_tta_file.name),
-                    TTADecoder2(temp_tta_file.name)), None)
+                    TTADecoder2(open(temp_tta_file.name, "rb"))), None)
 
             temp_tta_file.close()
 

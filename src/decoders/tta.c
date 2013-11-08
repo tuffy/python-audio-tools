@@ -40,9 +40,7 @@ TTADecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 int
 TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
-    char* filename;
-    int stream_offset = 0;
-    FILE* file;
+    self->file = NULL;
 
     /*initialize temporary buffers*/
     self->total_tta_frames = 0;
@@ -59,35 +57,22 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
 
     self->audiotools_pcm = NULL;
 
-    if (!PyArg_ParseTuple(args, "s|i",
-                          &filename,
-                          &stream_offset))
+    if (!PyArg_ParseTuple(args, "O", &(self->file))) {
         return -1;
-
-    if (stream_offset < 0) {
-        PyErr_SetString(PyExc_ValueError, "stream offset must be >= 0");
-        return -1;
+    } else {
+        Py_INCREF(self->file);
     }
 
     /*open the TTA file*/
-    if ((file = fopen(filename, "rb")) == NULL) {
-        PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
-        return -1;
+    if (PyFile_Check(self->file)) {
+        self->bitstream = br_open(PyFile_AsFile(self->file), BS_LITTLE_ENDIAN);
     } else {
-        self->bitstream = br_open(file, BS_LITTLE_ENDIAN);
-    }
-
-    /*skip the given number of bytes, if any*/
-    if (stream_offset > 0) {
-        if (!setjmp(*br_try(self->bitstream))) {
-            self->bitstream->skip_bytes(self->bitstream,
-                                        (unsigned int)stream_offset);
-            br_etry(self->bitstream);
-        } else {
-            br_etry(self->bitstream);
-            PyErr_SetString(PyExc_IOError, "I/O error skipping bytes");
-            return -1;
-        }
+        self->bitstream = br_open_external(
+            self->file,
+            BS_LITTLE_ENDIAN,
+            (ext_read_f)br_read_python,
+            (ext_close_f)bs_close_python,
+            (ext_free_f)bs_free_python_nodecref);
     }
 
     switch (read_header(self->bitstream,
@@ -139,8 +124,10 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
-    /*place a mark after the seektable for possible rewinding*/
-    self->bitstream->mark(self->bitstream);
+    /*place a mark after the seektable for possible rewinding
+      if the stream is file-based*/
+    if (PyFile_Check(self->file))
+        self->bitstream->mark(self->bitstream);
 
     /*mark stream as not closed and ready for reading*/
     self->closed = 0;
@@ -150,16 +137,18 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
 
 void
 TTADecoder_dealloc(decoders_TTADecoder *self) {
+    Py_XDECREF(self->file);
+
     if (self->seektable != NULL)
         free(self->seektable);
 
     free_cache(&(self->cache));
 
     if (self->bitstream != NULL) {
-        if (self->bitstream->marks) {
+        while (self->bitstream->marks != NULL) {
             self->bitstream->unmark(self->bitstream);
         }
-        self->bitstream->close(self->bitstream);
+        self->bitstream->free(self->bitstream);
     }
 
     self->frame->close(self->frame);
@@ -231,16 +220,12 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
             return NULL;
         }
 
-        Py_BEGIN_ALLOW_THREADS
-
         status = read_frame(self->frame,
                             &(self->cache),
                             block_size,
                             self->header.channels,
                             self->header.bits_per_sample,
                             self->framelist);
-
-        Py_END_ALLOW_THREADS
 
         switch (status) {
         default:
@@ -260,12 +245,19 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
 static PyObject*
 TTADecoder_seek(decoders_TTADecoder *self, PyObject *args)
 {
+    FILE *file;
     long long seeked_offset;
     unsigned current_pcm_frame;
 
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot seek closed stream");
         return NULL;
+    } else if (!PyFile_Check(self->file)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "can only seek streams from file objects");
+        return NULL;
+    } else {
+        file = PyFile_AsFile(self->file);
     }
 
     if (!PyArg_ParseTuple(args, "L", &seeked_offset))
@@ -294,7 +286,7 @@ TTADecoder_seek(decoders_TTADecoder *self, PyObject *args)
             const unsigned frame_size =
                 self->seektable[self->current_tta_frame];
 
-            fseek(self->bitstream->input.file, (long)frame_size, SEEK_CUR);
+            fseek(file, (long)frame_size, SEEK_CUR);
 
             current_pcm_frame += block_size;
             self->current_tta_frame++;
