@@ -117,7 +117,7 @@ bitstream.a: bitstream.o huffman.o buffer.o func_io.o
 	$(AR) -r $@ bitstream.o huffman.o buffer.o func_io.o
 
 bitstream: bitstream.c bitstream.h huffman.o buffer.o func_io.o
-	$(CC) $(FLAGS) bitstream.c huffman.o buffer.o func_io.o -DEXECUTABLE -o $@
+	$(CC) $(FLAGS) bitstream.c huffman.o buffer.o func_io.o -DEXECUTABLE -DSTANDALONE -o $@
 
 array: array.c array.h
 	$(CC) $(FLAGS) array.c -DEXECUTABLE -o $@

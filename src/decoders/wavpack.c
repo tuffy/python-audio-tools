@@ -25,18 +25,16 @@
 int
 WavPackDecoder_init(decoders_WavPackDecoder *self,
                     PyObject *args, PyObject *kwds) {
-    char* filename;
 #else
 int
 WavPackDecoder_init(decoders_WavPackDecoder *self,
                     char* filename) {
+    FILE* file;
 #endif
     struct block_header header;
     status error;
 
-    self->filename = NULL;
     self->bitstream = NULL;
-    self->file = NULL;
 
     audiotools__MD5Init(&(self->md5));
     self->md5sum_checked = 0;
@@ -59,26 +57,34 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
-    if (!PyArg_ParseTuple(args, "s", &filename))
+    self->file = NULL;
+
+    if (!PyArg_ParseTuple(args, "O", &(self->file))) {
         return -1;
+    } else {
+        Py_INCREF(self->file);
+    }
 
     /*open the WavPack file*/
-    self->file = fopen(filename, "rb");
-    if (self->file == NULL) {
-        PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
-        return -1;
+    if (PyFile_Check(self->file)) {
+        /*open bitstream through file object*/
+        self->bitstream = br_open(PyFile_AsFile(self->file), BS_LITTLE_ENDIAN);
     } else {
-        self->bitstream = br_open(self->file, BS_LITTLE_ENDIAN);
+        /*treat file as Python-implemented file-like object*/
+        self->bitstream = br_open_external(
+            self->file,
+            BS_LITTLE_ENDIAN,
+            (ext_read_f)br_read_python,
+            (ext_close_f)bs_close_python,
+            (ext_free_f)bs_free_python_nodecref);
     }
 #else
-    if ((self->file = fopen(filename, "rb")) == NULL) {
+    if ((file = fopen(filename, "rb")) == NULL) {
         return -1;
     } else {
-        self->bitstream = br_open(self->file, BS_LITTLE_ENDIAN);
+        self->bitstream = br_open(file, BS_LITTLE_ENDIAN);
     }
 #endif
-
-    self->filename = strdup(filename);
 
     self->sample_rate = 0;
     self->bits_per_sample = 0;
@@ -94,7 +100,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
 #ifndef STANDALONE
         PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
 #endif
-        self->bitstream->unmark(self->bitstream);
+        self->bitstream->unmark(self->bitstream); /*beginning of stream*/
         return -1;
     }
 
@@ -140,7 +146,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
         /*in the event of a stream with more than 2 channels,
           look for a channel count/channel mask sub block
           within the first block*/
-        self->bitstream->mark(self->bitstream);
+        self->bitstream->mark(self->bitstream);  /*after block header*/
         switch (error =
                 read_channel_count_sub_block(&header,
                                              self->bitstream,
@@ -197,13 +203,13 @@ WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
 
 #ifndef STANDALONE
     Py_XDECREF(self->audiotools_pcm);
-#endif
-
-    if (self->filename != NULL)
-        free(self->filename);
-
+    Py_XDECREF(self->file);
+    if (self->bitstream != NULL)
+        self->bitstream->free(self->bitstream);
+#else
     if (self->bitstream != NULL)
         self->bitstream->close(self->bitstream);
+#endif
 
 #ifndef STANDALONE
     self->ob_type->tp_free((PyObject*)self);
@@ -257,7 +263,6 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     status error;
     struct block_header block_header;
     BitstreamReader* block_data = self->block_data;
-    PyThreadState *thread_state;
     PyObject* framelist;
 
     if (self->closed) {
@@ -293,18 +298,14 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
             }
 
             /*decode block to 1 or 2 channels of PCM data*/
-            thread_state = PyEval_SaveThread();
             if ((error = decode_block(self,
                                       &block_header,
                                       block_data,
                                       block_header.block_size - 24,
                                       channels_data)) != OK) {
-                PyEval_RestoreThread(thread_state);
                 PyErr_SetString(wavpack_exception(error),
                                 wavpack_strerror(error));
                 return NULL;
-            } else {
-                PyEval_RestoreThread(thread_state);
             }
         } while (block_header.final_block == 0);
 
@@ -367,10 +368,17 @@ WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args)
     fpos_t best_byte_offset;
     status status;
     struct block_header header;
+    FILE *file = NULL;
 
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot seek closed stream");
         return NULL;
+    } else if (!PyFile_Check(self->file)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "can only seek streams from file objects");
+        return NULL;
+    } else {
+        file = PyFile_AsFile(self->file);
     }
 
     if (!PyArg_ParseTuple(args, "L", &seeked_offset))
@@ -382,8 +390,8 @@ WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args)
     }
 
     /*go to beginning of file*/
-    fseek(self->file, 0, SEEK_SET);
-    fgetpos(self->file, &candidate_offset);
+    fseek(file, 0, SEEK_SET);
+    fgetpos(file, &candidate_offset);
     best_pcm_offset = 0;
     best_byte_offset = candidate_offset;
 
@@ -401,8 +409,8 @@ WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args)
                 best_byte_offset = candidate_offset;
 
                 /*move on to next block in file*/
-                fseek(self->file, header.block_size - 24, SEEK_CUR);
-                fgetpos(self->file, &candidate_offset);
+                fseek(file, header.block_size - 24, SEEK_CUR);
+                fgetpos(file, &candidate_offset);
                 status = read_block_header(self->bitstream, &header);
             } else {
                 /*block index is greater than seeked offset,
@@ -412,14 +420,14 @@ WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args)
         } else {
             /*a continuation block or one with no samples,
               so automatically move on to next block - if any*/
-            fseek(self->file, header.block_size - 24, SEEK_CUR);
-            fgetpos(self->file, &candidate_offset);
+            fseek(file, header.block_size - 24, SEEK_CUR);
+            fgetpos(file, &candidate_offset);
             status = read_block_header(self->bitstream, &header);
         }
     }
 
     /*rewind to start of candidate block*/
-    fsetpos(self->file, &best_byte_offset);
+    fsetpos(file, &best_byte_offset);
 
     /*reset stream's total remaining frames*/
     self->remaining_pcm_samples = self->total_pcm_frames - best_pcm_offset;

@@ -53,8 +53,8 @@ void
 buf_resize(struct bs_buffer *stream, unsigned additional_bytes)
 {
     /*only perform resize if space actually needed*/
-    if (additional_bytes > (stream->data_size - stream->window_end)) {
-        if ((stream->window_start > 0) && !stream->rewindable) {
+    if (additional_bytes > BUF_UNUSED_SIZE(stream)) {
+        if ((stream->window_start > 0) && !(stream->rewindable)) {
             /*we don't need to rewind the buffer
               so shift window down before extending buffer to add more space*/
             if (BUF_WINDOW_SIZE(stream)) {
@@ -66,7 +66,7 @@ buf_resize(struct bs_buffer *stream, unsigned additional_bytes)
             stream->window_start = 0;
         }
 
-        while (additional_bytes > (stream->data_size - stream->window_end)) {
+        while (additional_bytes > BUF_UNUSED_SIZE(stream)) {
             stream->data_size *= 2;
         }
 

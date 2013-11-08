@@ -50,6 +50,8 @@ typedef unsigned buf_pos_t;
   b is evaluated twice*/
 #define BUF_WINDOW_SIZE(b) ((b)->window_end - (b)->window_start)
 
+#define BUF_UNUSED_SIZE(b) ((b)->data_size - (b)->window_end)
+
 /*the start of the buffer's data window as a uint8_t pointer
   b is evaluated twice*/
 #define BUF_WINDOW_START(b) ((b)->data + (b)->window_start)

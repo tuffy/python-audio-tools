@@ -5548,11 +5548,9 @@ class WavPackFileTest(TestForeignWaveChunks,
         #mostly to ensure a failed init doesn't make Python explode
         self.assertRaises(TypeError, self.decoder)
 
-        self.assertRaises(TypeError, self.decoder, None)
+        self.assertRaises(IOError, self.decoder, None)
 
-        self.assertRaises(IOError, self.decoder, "/dev/null/foo")
-
-        self.assertRaises(IOError, self.decoder, "/dev/null", sample_rate=-1)
+        self.assertRaises(IOError, self.decoder, "filename")
 
     @FORMAT_WAVPACK
     def test_verify(self):
@@ -5602,13 +5600,13 @@ class WavPackFileTest(TestForeignWaveChunks,
                 temp.flush()
                 self.assertEqual(os.path.getsize(temp.name), i)
                 try:
-                    decoder = WavPackDecoder(temp.name)
+                    decoder = WavPackDecoder(open(temp.name, "rb"))
                 except IOError:
                     #chopping off the first few bytes might trigger
                     #an IOError at init-time, which is ok
                     continue
                 self.assertNotEqual(decoder, None)
-                decoder = WavPackDecoder(temp.name)
+                decoder = WavPackDecoder(open(temp.name, "rb"))
                 self.assertNotEqual(decoder, None)
                 self.assertRaises(IOError,
                                   audiotools.transfer_framelist_data,
@@ -5783,19 +5781,20 @@ class WavPackFileTest(TestForeignWaveChunks,
                              (repr(pcmreader),
                               repr(encode_options)))
 
-        wavpack = self.decoder(temp_file.name)
-        self.assertEqual(wavpack.sample_rate, pcmreader.sample_rate)
-        self.assertEqual(wavpack.bits_per_sample, pcmreader.bits_per_sample)
-        self.assertEqual(wavpack.channels, pcmreader.channels)
-        self.assertEqual(wavpack.channel_mask, pcmreader.channel_mask)
+        for wavpack in [self.decoder(open(temp_file.name, "rb")),
+                        self.decoder(Filewrapper(open(temp_file.name, "rb")))]:
+            self.assertEqual(wavpack.sample_rate, pcmreader.sample_rate)
+            self.assertEqual(wavpack.bits_per_sample, pcmreader.bits_per_sample)
+            self.assertEqual(wavpack.channels, pcmreader.channels)
+            self.assertEqual(wavpack.channel_mask, pcmreader.channel_mask)
 
-        md5sum = md5()
-        f = wavpack.read(audiotools.FRAMELIST_SIZE)
-        while (len(f) > 0):
-            md5sum.update(f.to_bytes(False, True))
+            md5sum = md5()
             f = wavpack.read(audiotools.FRAMELIST_SIZE)
-        wavpack.close()
-        self.assertEqual(md5sum.digest(), pcmreader.digest())
+            while (len(f) > 0):
+                md5sum.update(f.to_bytes(False, True))
+                f = wavpack.read(audiotools.FRAMELIST_SIZE)
+            wavpack.close()
+            self.assertEqual(md5sum.digest(), pcmreader.digest())
 
         #perform test again with total_pcm_frames indicated
         pcmreader.reset()
@@ -5815,19 +5814,20 @@ class WavPackFileTest(TestForeignWaveChunks,
                              (repr(pcmreader),
                               repr(encode_options)))
 
-        wavpack = self.decoder(temp_file.name)
-        self.assertEqual(wavpack.sample_rate, pcmreader.sample_rate)
-        self.assertEqual(wavpack.bits_per_sample, pcmreader.bits_per_sample)
-        self.assertEqual(wavpack.channels, pcmreader.channels)
-        self.assertEqual(wavpack.channel_mask, pcmreader.channel_mask)
+        for wavpack in [self.decoder(open(temp_file.name, "rb")),
+                        self.decoder(Filewrapper(open(temp_file.name, "rb")))]:
+            self.assertEqual(wavpack.sample_rate, pcmreader.sample_rate)
+            self.assertEqual(wavpack.bits_per_sample, pcmreader.bits_per_sample)
+            self.assertEqual(wavpack.channels, pcmreader.channels)
+            self.assertEqual(wavpack.channel_mask, pcmreader.channel_mask)
 
-        md5sum = md5()
-        f = wavpack.read(audiotools.FRAMELIST_SIZE)
-        while (len(f) > 0):
-            md5sum.update(f.to_bytes(False, True))
+            md5sum = md5()
             f = wavpack.read(audiotools.FRAMELIST_SIZE)
-        wavpack.close()
-        self.assertEqual(md5sum.digest(), pcmreader.digest())
+            while (len(f) > 0):
+                md5sum.update(f.to_bytes(False, True))
+                f = wavpack.read(audiotools.FRAMELIST_SIZE)
+            wavpack.close()
+            self.assertEqual(md5sum.digest(), pcmreader.digest())
 
         temp_file.close()
 
@@ -6081,7 +6081,7 @@ class WavPackFileTest(TestForeignWaveChunks,
 
             self.assertEqual(audiotools.pcm_frame_cmp(
                     WavPackDecoder1(temp_file.name),
-                    WavPackDecoder2(temp_file.name)), None)
+                    WavPackDecoder2(open(temp_file.name, "rb"))), None)
 
             #redo test with total_pcm_frames indicated
             pcmreader.reset()
@@ -6099,7 +6099,7 @@ class WavPackFileTest(TestForeignWaveChunks,
 
             self.assertEqual(audiotools.pcm_frame_cmp(
                     WavPackDecoder1(temp_file.name),
-                    WavPackDecoder2(temp_file.name)), None)
+                    WavPackDecoder2(open(temp_file.name, "rb"))), None)
 
             temp_file.close()
 
