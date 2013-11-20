@@ -458,6 +458,13 @@ replaygain.tex \
 references.tex \
 license.tex
 
+PS_DIR = pseudocode-src
+
+PSEUDOCODE_OBJECTS = \
+$(PS_DIR)/statement.o \
+$(PS_DIR)/expression.o \
+$(PS_DIR)/variable.o \
+$(PS_DIR)/latex.o
 
 all: audioformats-letter.pdf audioformats-a4.pdf
 
@@ -473,6 +480,30 @@ audioformats-letter.pdf: audioformats-letter.tex $(CHAPTERS) $(FIGURES)
 audioformats-a4.pdf: audioformats-a4.tex $(CHAPTERS) $(FIGURES)
 	python pdflatexbuild.py -halt-on-error audioformats-a4.tex
 	python ../pdftag.py "--title=Audio Formats Reference" "--author=Brian Langenberger" $@
+
+pseudocode: $(PS_DIR)/pseudocode.tab.c $(PS_DIR)/lex.yy.c $(PSEUDOCODE_OBJECTS)
+	$(CC) -g -Wall $(PS_DIR)/pseudocode.tab.c $(PS_DIR)/lex.yy.c $(PSEUDOCODE_OBJECTS) -ll -o $@
+
+$(PS_DIR)/pseudocode.tab.c: $(PS_DIR)/pseudocode.y
+	bison -d $(PS_DIR)/pseudocode.y -o $@
+
+$(PS_DIR)/pseudocode.tab.h: $(PS_DIR)/pseudocode.y
+	bison -d $(PS_DIR)/pseudocode.y -o $@
+
+$(PS_DIR)/lex.yy.c: $(PS_DIR)/pseudocode.l $(PS_DIR)/pseudocode.tab.h
+	flex -o $@ $(PS_DIR)/pseudocode.l
+
+$(PS_DIR)/statement.o: $(PS_DIR)/statement.h $(PS_DIR)/statement.c $(PS_DIR)/types.h
+	$(CC) -g -c -Wall $(PS_DIR)/statement.c -o $@
+
+$(PS_DIR)/expression.o: $(PS_DIR)/expression.h $(PS_DIR)/expression.c $(PS_DIR)/types.h
+	$(CC) -g -c -Wall $(PS_DIR)/expression.c -o $@
+
+$(PS_DIR)/variable.o: $(PS_DIR)/variable.h $(PS_DIR)/variable.c $(PS_DIR)/types.h
+	$(CC) -g -c -Wall $(PS_DIR)/variable.c -o $@
+
+$(PS_DIR)/latex.o: $(PS_DIR)/latex.h $(PS_DIR)/latex.c
+	$(CC) -g -c -Wall $(PS_DIR)/latex.c -o $@
 
 mp3_decode.pdf: mp3_decode.tex $(MP3)
 	python pdflatexbuild.py -halt-on-error $<
@@ -620,19 +651,20 @@ figures/bitstream_littleendian_alt.pdf: figures/bitstream_littleendian_alt.fig
 figures/vorbis/ordered_entries.pdf: figures/vorbis/ordered_entries.dot
 	dot -Tpdf $< -o $@
 
-.SUFFIXES: .pdf .bdx .bpx .bypx .dot
-
-.bdx.pdf:
+%.pdf: %.bdx
 	./bitdiagram.py -i $< -o $@
 
-.bpx.pdf:
+%.pdf: %.bpx
 	./bitparse.py -i $< -o $@
 
-.bypx.pdf:
+%.pdf: %.bypx
 	./byteparse.py -i $< -o $@
 
-.dot.pdf:
+%.pdf: %.dot
 	dot -Tpdf $< -o $@
+
+%.tex: %.pfl pseudocode
+	./pseudocode $< -o $@
 
 figures/m4a/data.pdf: figures/m4a/data.bdx
 	./bitdiagram.py -w 306 -i $< -o $@
