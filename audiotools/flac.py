@@ -1253,6 +1253,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         self.__bitspersample__ = 0
         self.__total_frames__ = 0
         self.__stream_offset__ = 0
+        self.__stream_suffix__ = 0
         self.__md5__ = chr(0) * 16
 
         try:
@@ -1400,6 +1401,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
             #then overwrite the beginning of the file
             stream = file(self.filename, 'r+b')
+            stream.seek(self.__stream_offset__, 0)
             stream.write('fLaC')
             metadata.build(BitstreamWriter(stream, 0))
             stream.close()
@@ -1410,9 +1412,11 @@ class FlacAudio(WaveContainer, AiffContainer):
 
             from . import TemporaryFile, transfer_data
 
-            #skip existing metadata blocks
+            #dump any prefix data from old file to new one
             old_file = file(self.filename, "rb")
-            old_file.seek(self.__stream_offset__)
+            new_file = TemporaryFile(self.filename)
+
+            new_file.write(old_file.read(self.__stream_offset__))
 
             if (old_file.read(4) != 'fLaC'):
                  from .text import ERR_FLAC_INVALID_FILE
@@ -1425,7 +1429,6 @@ class FlacAudio(WaveContainer, AiffContainer):
                 reader.skip_bytes(length)
 
             #write new metadata to new file
-            new_file = TemporaryFile(self.filename)
             new_file.write("fLaC")
             writer = BitstreamWriter(new_file, 0)
             metadata.build(writer)
@@ -2402,6 +2405,13 @@ class FlacAudio(WaveContainer, AiffContainer):
         valid_header_types = frozenset(range(0, 6 + 1))
         f = file(self.filename, "rb")
         try:
+            f.seek(-128, 2)
+            if (f.read(3) == "TAG"):
+                self.__stream_suffix__ = 128
+            else:
+                self.__stream_suffix__ = 0
+
+            f.seek(0, 0)
             self.__stream_offset__ = skip_id3v2_comment(f)
             f.read(4)
 

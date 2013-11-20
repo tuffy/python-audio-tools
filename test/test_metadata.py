@@ -4821,6 +4821,93 @@ aYrtF1+qPBWf9pV+6vkr7bLlfP84o8vSLcLmLq5hZsr8+N4B1Z1/4u5IpwoSFGcYsUA=""",
                 temp_flac1.close()
                 temp_flac2.close()
 
+    @METADATA_FLAC
+    def test_id3(self):
+        id3v2_tag = 'x\x9c\xf3t1ff\x00\x02\xd6\xd8\x90\x00WC C\x00\x88=]\x8c\x15BR\x8bK\x14\x1c\x8bJ2\x8bKB<C\x8c\x80\xa2|\xc82\xc1\xf9y\xe9\x0c\xa3`\x14\x0c\r\x00\x00{g\x0c\xcf'.decode('zlib')
+        id3v1_tag = 'x\x9c\x0bqt\xf7t1V\x08I-.Q\x08\xce\xcfKg@\x07pY\xc7\xa2\x92\xcc\xe2\x12\x0cy\xca\xc0\x7f\x00\x1dK\x0b*'.decode('zlib')
+
+        dummy_flac = tempfile.NamedTemporaryFile(suffix=".flac")
+        dummy_id3flac = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            #build test FLAC file with test metadata
+            flac = audiotools.FlacAudio.from_pcm(
+                dummy_flac.name,
+                BLANK_PCM_Reader(2))
+            metadata = flac.get_metadata()
+            metadata.track_name = u"Test Name"
+            metadata.album_name = u"Test Album"
+            flac.update_metadata(metadata)
+            self.assertEqual(flac.verify(), True)
+
+            #wrap in ID3v2/ID3v1 tags (with different values)
+            dummy_id3flac.write(id3v2_tag)
+            dummy_id3flac.write(open(dummy_flac.name, "rb").read())
+            dummy_id3flac.write(id3v1_tag)
+            dummy_id3flac.flush()
+
+            #ensure file tests okay
+            flac2 = audiotools.open(dummy_id3flac.name)
+            self.assertEqual(flac2.verify(), True)
+
+            #ensure start and end of file still match tags
+            self.assertEqual(
+                open(dummy_id3flac.name, "rb").read()[0:len(id3v2_tag)],
+                id3v2_tag)
+            self.assertEqual(
+                open(dummy_id3flac.name, "rb").read()[-len(id3v1_tag):],
+                id3v1_tag)
+
+            #ensure metadata values don't come from ID3v2/ID3v1
+            metadata = flac2.get_metadata()
+            self.assertEqual(metadata.track_name, u"Test Name")
+            self.assertEqual(metadata.album_name, u"Test Album")
+
+            #update metadata with new values
+            #(these are short enough that padding should still be used)
+            metadata.track_name = u"Test Name2"
+            metadata.album_name = u"Test Album2"
+            flac2.update_metadata(metadata)
+
+            #ensure start and end of file still match tags
+            self.assertEqual(
+                open(dummy_id3flac.name, "rb").read()[0:len(id3v2_tag)],
+                id3v2_tag)
+            self.assertEqual(
+                open(dummy_id3flac.name, "rb").read()[-len(id3v1_tag):],
+                id3v1_tag)
+
+            #ensure file still tests okay
+            self.assertEqual(flac2.verify(), True)
+
+            #ensure metadata values still don't come from ID3v2/ID3v1
+            metadata = flac2.get_metadata()
+            self.assertEqual(metadata.track_name, u"Test Name2")
+            self.assertEqual(metadata.album_name, u"Test Album2")
+
+            #update metadata with large values
+            #(this should be long enough that padding can't be used)
+            metadata.comment = u" " * 2 ** 20
+            flac2.update_metadata(metadata)
+
+            #ensure start and end of file still match tags
+            self.assertEqual(
+                open(dummy_id3flac.name, "rb").read()[0:len(id3v2_tag)],
+                id3v2_tag)
+            self.assertEqual(
+                open(dummy_id3flac.name, "rb").read()[-len(id3v1_tag):],
+                id3v1_tag)
+
+            #ensure file still tests okay
+            self.assertEqual(flac2.verify(), True)
+
+            #ensure metadata matches large values
+            metadata = flac2.get_metadata()
+            self.assertEqual(metadata.track_name, u"Test Name2")
+            self.assertEqual(metadata.album_name, u"Test Album2")
+            self.assertEqual(metadata.comment, u" " * 2 ** 20)
+        finally:
+            dummy_flac.close()
+            dummy_id3flac.close()
 
 class M4AMetaDataTest(MetaDataTest):
     def setUp(self):
