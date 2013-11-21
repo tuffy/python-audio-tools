@@ -18,16 +18,16 @@
     <col width=".2" start="7" end="7">has wasted BPS</col>
     <col style="dashed" width=".25" id="subframe_e">wasted BPS (+1)</col>  </row>
   <row>
-    <col width=".283" start="0"
-         end="subframe bps - 1">warm-up sample₀</col>
-    <col width=".283" start="0"
-         end="subframe bps - 1">warm-up sample₁</col>
-    <col width=".283" start="0"
-         end="subframe bps - 1">warm-up sample₂</col>
+    <col width=".283" start="subframe's bits-per-sample"
+         end="subframe's bits-per-sample">warm-up sample₀</col>
+    <col width=".283" start="subframe's bits-per-sample"
+         end="subframe's bits-per-sample">warm-up sample₁</col>
+    <col width=".283" start="subframe's bits-per-sample"
+         end="subframe's bits-per-sample">warm-up sample₂</col>
     <col width=".15" style="dashed">...</col>
   </row>
   <row>
-    <col>residual block</col>
+    <col>Residual Block</col>
   </row>
   <line style="dotted">
     <start id="subframe" corner="sw"/>

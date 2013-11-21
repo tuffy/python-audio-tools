@@ -51,6 +51,22 @@ figures/id3v24/wxxx.pdf
 FLAC = \
 flac/metadata.tex \
 flac/decode.tex \
+flac/algorithms/decode_flac.tex \
+flac/algorithms/read_metadata.tex \
+flac/algorithms/decode_frame.tex \
+flac/algorithms/read_frame_header.tex \
+flac/algorithms/read_utf8.tex \
+flac/algorithms/decode_block_size.tex \
+flac/algorithms/decode_sample_rate.tex \
+flac/algorithms/decode_bps.tex \
+flac/algorithms/decode_channels.tex \
+flac/algorithms/decode_subframe.tex \
+flac/algorithms/decode_constant.tex \
+flac/algorithms/decode_verbatim.tex \
+flac/algorithms/decode_fixed.tex \
+flac/algorithms/decode_lpc.tex \
+flac/algorithms/decode_residual.tex \
+flac/algorithms/decorrelate_channels.tex \
 flac/encode.tex \
 flac/encode/fixed.tex \
 flac/encode/residual.tex \

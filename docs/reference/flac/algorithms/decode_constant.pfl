@@ -1,0 +1,11 @@
+INPUT "block size, subframe's bits-per-sample";
+OUTPUT "decoded signed PCM samples";
+VAR block_size "block size";
+VAR subframe_bps "subframe's bits-per-sample";
+VAR constant "constant";
+VAR sample "sample";
+constant <- read (subframe_bps) signed;
+for i <- 0 to block_size {
+    sample[i] <- constant;
+}
+return sample;

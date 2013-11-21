@@ -6,8 +6,8 @@
   <row>
     <col end="1" start="0" width=".20">coding method</col>
     <col end="5" start="2" width=".20">partition order</col>
-    <col id="partition" start="6" width=".20">partition₀</col>
-    <col width=".20">partition₁</col>
+    <col id="partition" start="6" width=".20">Partition₀</col>
+    <col width=".20">Partition₁</col>
     <col style="dashed" width=".20">...</col>
   </row>
   <spacer/>

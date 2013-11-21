@@ -1,0 +1,42 @@
+INPUT "block size, channel count, channel assignment, subframe samples";
+OUTPUT "decorrelated channels";
+VAR block_size "block size";
+VAR channels "channel count";
+VAR channel_assignment "channel assignment";
+VAR ch8 "front left, difference";
+VAR ch9 "difference, front right";
+VAR ch10 "average, difference";
+VAR subframe "subframe";
+VAR channel "channel";
+switch channel_assignment {
+    case ch8 {
+        for i <- 0 to block_size {
+            channel[0][i] <- subframe[0][i];
+            channel[1][i] <- subframe[0][i] - subframe[1][i];
+        }
+    }
+    case ch9 {
+        for i <- 0 to block_size {
+            channel[0][i] <- subframe[0][i] + subframe[1][i];
+            channel[1][i] <- subframe[1][i];
+        }
+    }
+    case ch10 {
+        for i <- 0 to block_size {
+            channel[0][i] <- floor((((subframe[0][i] * 2) +
+                                     (subframe[1][i] % 2)) +
+                                    subframe[1][i]) / 2);
+            channel[1][i] <- floor((((subframe[0][i] * 2) +
+                                     (subframe[1][i] % 2)) -
+                                    subframe[1][i]) / 2);
+        }
+    }
+    default /*independent*/ {
+        for c <- 0 to channels {
+            for i <- 0 to block_size {
+                channel[c][i] <- subframe[c][i];
+            }
+        }
+    }
+}
+return channel;

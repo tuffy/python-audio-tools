@@ -1097,10 +1097,11 @@ statement_output_latex_return(const struct statement *self,
         fprintf(output, "\\left\\lbrace\\begin{tabular}{l}");
 
         for (; toreturn != NULL; toreturn = toreturn->next) {
+            fprintf(output, "$");
             toreturn->expression->output_latex(toreturn->expression,
                                                defs,
                                                output);
-            fprintf(output, "\\\\ ");
+            fprintf(output, "$\\\\ ");
         }
 
         fprintf(output, "\\end{tabular}\\right.");

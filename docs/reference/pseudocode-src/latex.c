@@ -28,7 +28,6 @@ escape_latex_square_brackets(FILE *output, const char *string)
 
     while ((c = string[0]) != '\0') {
         switch (c) {
-        case '_':
         case '$':
         case '[':
         case ']':

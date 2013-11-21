@@ -19,14 +19,14 @@
     <col style="dashed" width=".25" id="subframe_e">wasted BPS (+1)</col>
   </row>
   <row>
-    <col start="(subframe bps) bits"
-         end="(subframe bps) bits"
+    <col start="subframe's bits-per-sample"
+         end="subframe's bits-per-sample"
          width=".25">warm-up sample₀</col>
-    <col start="(subframe bps) bits"
-         end="(subframe bps) bits"
+    <col start="subframe's bits-per-sample"
+         end="subframe's bits-per-sample"
          width=".25">warm-up sample₁</col>
-    <col start="(subframe bps) bits"
-         end="(subframe bps) bits"
+    <col start="subframe's bits-per-sample"
+         end="subframe's bits-per-sample"
          width=".25">warm-up sample₂</col>
     <col width=".25" style="dashed">...</col>
   </row>
@@ -35,19 +35,19 @@
     <col start="4" end="8" width=".60">QLP shift needed</col>
   </row>
   <row>
-    <col start="(QLP precision) bits"
-         end ="(QLP precision) bits"
+    <col start="QLP precision"
+         end ="QLP precision"
          width=".25">QLP coefficient₀</col>
-    <col start="(QLP precision) bits"
-         end ="(QLP precision) bits"
+    <col start="QLP precision"
+         end ="QLP precision"
          width=".25">QLP coefficient₁</col>
-    <col start="(QLP precision) bits"
-         end ="(QLP precision) bits"
+    <col start="QLP precision"
+         end ="QLP precision"
          width=".25">QLP coefficient₂</col>
     <col style="dashed" width=".25">...</col>
   </row>
   <row>
-    <col>residual block</col>
+    <col>Residual Block</col>
   </row>
   <line style="dotted">
     <start id="subframe" corner="sw"/>

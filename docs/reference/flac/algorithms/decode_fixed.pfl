@@ -1,0 +1,53 @@
+INPUT "block size, subframe's bits-per-sample, predictor order";
+OUTPUT "decoded signed PCM samples";
+VAR block_size "block size";
+VAR subframe_bps "subframe's bits-per-sample";
+VAR sample "sample";
+VAR order "predictor order";
+VAR residual "residual";
+FUNC read_residual_block "read residual block" "flac:decode_residual";
+FUNC undefined_fixed_order "undefined FIXED subframe order";
+for i <- 0 to order /*warm-up samples*/ {
+    sample[i] <- read (subframe_bps) signed;
+}
+;
+residual <- read_residual_block(block_size, order);
+;
+switch order {
+    case 0 {
+        for i <- 0 to block_size {
+            sample[i] <- residual[i];
+        }
+    }
+    case 1 {
+        for i <- 1 to block_size {
+            sample[i] <- sample[i - 1] + residual[i - 1];
+        }
+    }
+    case 2 {
+        for i <- 2 to block_size {
+            sample[i] <- (2 * sample[i - 1]) - sample[i - 2] + residual[i - 2];
+        }
+    }
+    case 3 {
+        for i <- 3 to block_size {
+            sample[i] <- (3 * sample[i - 1]) -
+                         (3 * sample[i - 2]) +
+                         sample[i - 3] +
+                         residual[i - 3];
+        }
+    }
+    case 4 {
+        for i <- 4 to block_size {
+            sample[i] <- (4 * sample[i - 1]) -
+                         (6 * sample[i - 2]) +
+                         (4 * sample[i - 3]) -
+                         sample[i - 4] +
+                         residual[i - 4];
+        }
+    }
+    default {
+        undefined_fixed_order();
+    }
+}
+return sample;

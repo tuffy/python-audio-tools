@@ -1,0 +1,17 @@
+INPUT "FLAC file stream";
+OUTPUT "UTF-8 value as unsigned integer";
+VAR total_bytes "total bytes";
+VAR value "UTF-8 value";
+VAR header "header";
+VAR continuation "continuation bits";
+total_bytes <- read unary 0;
+value <- read (7 - total_bytes) unsigned;
+if (total_bytes > 0) {
+    for i <- 0 to (total_bytes - 1) {
+        header[i] <- read 2 unsigned;
+        assert header[i] == 2;
+        continuation[i] <- read 6 unsigned;
+        value <- (value * 2 ^ 6) + continuation[i];
+    }
+}
+return value;

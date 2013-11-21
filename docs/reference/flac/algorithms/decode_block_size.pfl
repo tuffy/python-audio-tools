@@ -1,0 +1,22 @@
+INPUT "encoded block size as 4 bit value, the FLAC file stream";
+OUTPUT "decoded block size in PCM frames";
+VAR encoded_block_size "encoded block size";
+VAR max_block_size "maximum block size from STREAMINFO";
+switch encoded_block_size {
+    case 0 {return max_block_size;}
+    case 1 {return 192;}
+    case 2 {return 576;}
+    case 3 {return 1152;}
+    case 4 {return 2304;}
+    case 5 {return 4608;}
+    case 6 {return (read 8 unsigned) + 1;}
+    case 7 {return (read 16 unsigned) + 1;}
+    case 8 {return 256;}
+    case 9 {return 512;}
+    case 10 {return 1024;}
+    case 11 {return 2048;}
+    case 12 {return 4096;}
+    case 13 {return 8192;}
+    case 14 {return 16384;}
+    case 15 {return 32768;}
+}

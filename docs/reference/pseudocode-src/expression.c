@@ -274,9 +274,9 @@ expression_output_latex_wrapped(const struct expression *self,
     switch (wrapper) {
     case WRAP_PARENTHESIZED:
         if (sub->is_tall(sub)) {
-            fprintf(output, "\\left(");
+            fprintf(output, "\\left( ");
             sub->output_latex(sub, defs, output);
-            fprintf(output, "\\right)");
+            fprintf(output, "\\right) ");
         } else {
             fprintf(output, "(");
             sub->output_latex(sub, defs, output);
@@ -285,24 +285,24 @@ expression_output_latex_wrapped(const struct expression *self,
         break;
     case WRAP_CEILING:
         if (sub->is_tall(sub)) {
-            fprintf(output, "\\left\\lceil");
+            fprintf(output, "\\left\\lceil ");
             sub->output_latex(sub, defs, output);
-            fprintf(output, "\\right\\rceil");
+            fprintf(output, "\\right\\rceil ");
         } else {
-            fprintf(output, "\\lceil");
+            fprintf(output, "\\lceil ");
             sub->output_latex(sub, defs, output);
-            fprintf(output, "\\rceil");
+            fprintf(output, "\\rceil ");
         }
         break;
     case WRAP_FLOOR:
         if (sub->is_tall(sub)) {
-            fprintf(output, "\\left\\lfloor");
+            fprintf(output, "\\left\\lfloor ");
             sub->output_latex(sub, defs, output);
-            fprintf(output, "\\right\\rfloor");
+            fprintf(output, "\\right\\rfloor ");
         } else {
-            fprintf(output, "\\lfloor");
+            fprintf(output, "\\lfloor ");
             sub->output_latex(sub, defs, output);
-            fprintf(output, "\\rfloor");
+            fprintf(output, "\\rfloor ");
         }
         break;
     case WRAP_ABS:

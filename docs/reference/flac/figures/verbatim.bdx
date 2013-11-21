@@ -18,12 +18,14 @@
     <col style="dashed" width=".25" id="subframe_e">wasted BPS (+1)</col>
   </row>
   <row>
-    <col width=".283" start="0"
-         end="subframe bps - 1">uncompressed sample₀</col>
-    <col width=".283" start="0"
-         end="subframe bps - 1">uncompressed sample₁</col>
-    <col width=".283" start="0"
-         end="subframe bps - 1">uncompressed sample₂</col>
+    <col width=".283"
+         start="subframe's bits-per-sample"
+         end="subframe's bits-per-sample">sample₀</col>
+    <col width=".283"
+         start="subframe's bits-per-sample"
+         end="subframe's bits-per-sample">sample₁</col>
+    <col width=".283" start="subframe's bits-per-sample"
+         end="subframe's bits-per-sample">sample₂</col>
     <col width=".15" style="dashed">...</col>
   </row>
   <line style="dotted">

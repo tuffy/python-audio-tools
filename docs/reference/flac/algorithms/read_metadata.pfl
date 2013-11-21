@@ -1,0 +1,34 @@
+INPUT "the FLAC file stream";
+OUTPUT "STREAMINFO values used for decoding";
+VAR last "last";
+VAR type "type";
+VAR size "size";
+VAR min_block_size "minimum block size";
+VAR max_block_size "maximum block size";
+VAR min_frame_size "minimum frame size";
+VAR max_frame_size "maximum frame size";
+VAR sample_rate "sample rate";
+VAR channels "channels";
+VAR bps "bits per sample";
+VAR total_frames "total PCM frames";
+VAR md5 "MD5 sum";
+do {
+    last <- read 1 unsigned;
+    type <- read 7 unsigned;
+    size <- read 24 unsigned;
+    if type == 0 /*read STREAMINFO metadata block*/ {
+        min_block_size <- read 16 unsigned;
+        max_block_size <- read 16 unsigned;
+        min_frame_size <- read 24 unsigned;
+        max_frame_size <- read 24 unsigned;
+        sample_rate <- read 20 unsigned;
+        channels <- (read 3 unsigned) + 1;
+        bps <- (read 5 unsigned) + 1;
+        total_frames <- read 36 unsigned;
+        md5 <- read 16 bytes;
+    } else /*skip other metadata blocks*/ {
+        skip size bytes;
+    }
+} while (last == 1);
+return min_block_size,max_block_size,min_frame_size,max_frame_size,
+    sample_rate,channels,bps,total_frames,md5;

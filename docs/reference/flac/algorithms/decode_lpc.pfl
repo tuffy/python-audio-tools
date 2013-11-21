@@ -1,0 +1,28 @@
+INPUT "block size, subframe's bits-per-sample, predictor order";
+OUTPUT "decoded signed PCM samples";
+VAR block_size "block size";
+VAR subframe_bps "subframe's bits-per-sample";
+VAR sample "sample";
+VAR order "predictor order";
+VAR residual "residual";
+VAR QLP_precision "QLP precision";
+VAR QLP_shift "QLP shift needed";
+VAR QLP_coeff "QLP coefficient";
+FUNC read_residual_block "read residual block" "flac:decode_residual";
+for i <- 0 to order /*warm-up samples*/ {
+    sample[i] <- read (subframe_bps) signed;
+}
+QLP_precision <- (read 4 unsigned) + 1;
+QLP_shift <- max(read 5 signed, 0) /*negative shifts are no-ops*/;
+for i <- 0 to order {
+    QLP_coeff[i] <- read (QLP_precision) signed;
+}
+;
+residual <- read_residual_block(block_size, order);
+;
+for i <- order to block_size {
+    sample[i] <- floor(frac(sum j <- 0 to order - 1
+                            {QLP_coeff[j] * sample[i - j - 1]},
+                            2 ^ QLP_shift)) + residual[i - order];
+}
+return sample;

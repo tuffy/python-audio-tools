@@ -1,0 +1,33 @@
+INPUT "encoded channels as 4 bit value";
+OUTPUT "channel count and channel assignment";
+VAR encoded_channels "encoded channels";
+VAR ch0 "front center";
+VAR ch1 "front left, front right";
+VAR ch2 "front left, front right, front center";
+VAR ch3 "front left, right right, back left, back right";
+VAR ch4 "front left, front right, front center, back/surround left, back/surround right";
+VAR ch5 "front left, front right, front center, LFE, back/surround left, back/surround right";
+VAR ch6 "undefined";
+VAR ch7 "undefined";
+VAR ch8 "front left, difference";
+VAR ch9 "difference, front right";
+VAR ch10 "average, difference";
+FUNC reserved "reserved channel assignment";
+switch encoded_channels {
+    case 0 {return 1,ch0;}
+    case 1 {return 2,ch1;}
+    case 2 {return 3,ch2;}
+    case 3 {return 4,ch3;}
+    case 4 {return 5,ch4;}
+    case 5 {return 6,ch5;}
+    case 6 {return 7,ch6;}
+    case 7 {return 8,ch7;}
+    case 8 {return 2,ch8;}
+    case 9 {return 2,ch9;}
+    case 10 {return 2,ch10;}
+    case 11 {reserved();}
+    case 12 {reserved();}
+    case 13 {reserved();}
+    case 14 {reserved();}
+    case 15 {reserved();}
+}

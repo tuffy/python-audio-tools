@@ -1,0 +1,15 @@
+INPUT "encoded bits-per-sample as 3 bit value";
+OUTPUT "file's bits-per-sample";
+VAR encoded_bps "encoded bits-per-sample";
+VAR streaminfo_bps "bits-per-sample from STREAMINFO";
+FUNC invalid "invalid bits-per-sample";
+switch encoded_bps {
+    case 0 {return streaminfo_bps;}
+    case 1 {return 8;}
+    case 2 {return 12;}
+    case 3 {invalid();}
+    case 4 {return 16;}
+    case 5 {return 20;}
+    case 6 {return 24;}
+    case 7 {invalid();}
+}

@@ -1,0 +1,31 @@
+INPUT "a FLAC encoded file";
+OUTPUT "signed PCM samples";
+VAR header "file header";
+VAR min_block_size "minimum block size";
+VAR max_block_size "maximum block size";
+VAR min_frame_size "minimum frame size";
+VAR max_frame_size "maximum frame size";
+VAR sample_rate "sample rate";
+VAR channels "channels";
+VAR bps "bits per sample";
+VAR total_frames "total PCM frames";
+VAR md5 "header MD5 sum";
+VAR stream_md5 "stream MD5 sum";
+VAR block_size "block size";
+VAR samples "samples";
+FUNC read_metadata "read metadata blocks" "flac:read_metadata";
+FUNC initialize_stream_md5 "initialize stream MD5";
+FUNC decode_frame "decode FLAC frame" "flac:decode_frame";
+FUNC update_md5 "update stream MD5" "flac:update_md5";
+header <- read 4 bytes;
+assert header == [102, 76, 97, 67];
+min_block_size,max_block_size,min_frame_size,max_frame_size,
+sample_rate,channels,bps,total_frames,md5 <- read_metadata();
+stream_md5 <- initialize_stream_md5();
+while (total_frames > 0) {
+    block_size,samples <- decode_frame();
+    stream_md5 <- update_md5(stream_md5, channels, samples);
+    total_frames <- total_frames - block_size;
+    return samples;
+}
+assert stream_md5 == md5;

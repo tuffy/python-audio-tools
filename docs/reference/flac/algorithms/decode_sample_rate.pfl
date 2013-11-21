@@ -1,0 +1,23 @@
+INPUT "encoded sample rate as 4 bit value, the FLAC file stream";
+OUTPUT "file's sample rate in Hz";
+VAR streaminfo_sample_rate "sample rate from STREAMINFO";
+VAR encoded_sample_rate "encoded sample rate";
+FUNC invalid "invalid sample rate";
+switch encoded_sample_rate {
+    case 0 {return streaminfo_sample_rate;}
+    case 1 {return 88200;}
+    case 2 {return 176400;}
+    case 3 {return 192000;}
+    case 4 {return 8000;}
+    case 5 {return 16000;}
+    case 6 {return 22050;}
+    case 7 {return 24000;}
+    case 8 {return 32000;}
+    case 9 {return 44100;}
+    case 10 {return 48000;}
+    case 11 {return 96000;}
+    case 12 {return (read 8 unsigned) * 1000;}
+    case 13 {return (read 16 unsigned);}
+    case 14 {return (read 16 unsigned) * 10;}
+    case 15 {invalid();}
+}
