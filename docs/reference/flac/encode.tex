@@ -301,49 +301,6 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
 \end{figure}
 \clearpage
 
-\subsection{Encoding a CONSTANT Subframe}
-\label{flac:encode_constant_subframe}
-\ALGORITHM{signed subframe sample, subframe's bits per sample}{a CONSTANT subframe}
-\SetKwData{SAMPLE}{sample}
-\SetKwData{BPS}{subframe's BPS}
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{pad}
-$0 \rightarrow$ \WRITE 6 unsigned bits\tcc*[r]{subframe type}
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{no wasted BPS}
-$\text{\SAMPLE} \rightarrow$ \WRITE $(\BPS)$ signed bits\;
-\Return a CONSTANT subframe\;
-\EALGORITHM
-\begin{figure}[h]
-  \includegraphics{flac/figures/constant.pdf}
-\end{figure}
-
-\clearpage
-
-\subsection{Encoding a VERBATIM Subframe}
-\label{flac:encode_verbatim_subframe}
-\ALGORITHM{signed subframe samples, block size, subframe's bits per sample, wasted BPS}{a VERBATIM subframe}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{SAMPLE}{sample}
-\SetKwData{BPS}{subframe's BPS}
-\SetKwData{WASTEDBPS}{wasted BPS}
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{pad}
-$1 \rightarrow$ \WRITE 6 unsigned bits\tcc*[r]{subframe type}
-\eIf{$\WASTEDBPS > 0$}{
-  $1 \rightarrow$ \WRITE 1 unsigned bit\;
-  $(\text{\WASTEDBPS} - 1) \rightarrow$ \WUNARY with stop bit 1\;
-}{
-  $0 \rightarrow$ \WRITE 1 unsigned bit\;
-}
-\For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
-  $\text{\SAMPLE}_i \rightarrow$ \WRITE $(\BPS)$ signed bits\;
-}
-\Return a VERBATIM subframe\;
-\EALGORITHM
-\begin{figure}[h]
-  \includegraphics{flac/figures/verbatim.pdf}
-\end{figure}
-
-\clearpage
-
 \input{flac/encode/fixed}
 
 \clearpage

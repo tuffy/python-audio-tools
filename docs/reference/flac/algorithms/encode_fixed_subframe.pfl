@@ -1,0 +1,37 @@
+INPUT "signed subframe samples, sample count, effective bits-per-sample";
+OUTPUT "a FIXED subframe, its length in bits and predictor order";
+VAR sample_count "sample count";
+VAR sample "sample";
+VAR residual "residual";
+VAR total_error "total error";
+VAR fixed_order "order";
+VAR bits_per_sample "bits-per-sample";
+VAR fixed_subframe "FIXED subframe";
+VAR fixed_subframe_length "FIXED length";
+FUNC encode_residual "encode residual block" "flac:write_residual_block";
+/*determine which predictor order to use*/;
+for i <- 0 to sample_count {
+    residual[0][i] <- sample[i];
+}
+total_error[0] <- sum i <- 4 to sample_count - 1 {|residual[0][i]|};
+if sample_count > 4 {
+    fixed_order <- 0;
+    for o <- 1 to 5 {
+        total_error[o] <- 0;
+        for i <- 0 to sample_count - o {
+            residual[o][i] <- residual[(o - 1)][(i + 1)] - residual[(o - 1)][i];
+            total_error[o] <- total_error[o] + |residual[o][i]|;
+        }
+        if total_error[o] < total_error[fixed_order] {
+            fixed_order <- o;
+        }
+    }
+} else {
+    fixed_order <- 0;
+}
+;
+for i <- 0 to fixed_order /*write warm-up samples*/ {
+    sample[i] -> write bits_per_sample signed;
+}
+encode_residual(sample_count, fixed_order, residual[fixed_order]);
+return fixed_subframe,fixed_subframe_length,fixed_order;

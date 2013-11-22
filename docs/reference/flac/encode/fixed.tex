@@ -9,50 +9,7 @@
 \subsection{Encoding a FIXED Subframe}
 \label{flac:encode_fixed_subframe}
 {\relsize{-1}
-\ALGORITHM{signed subframe samples, block size, subframe's bits per sample, wasted BPS}{a FIXED subframe}
-\SetKwData{BPS}{subframe's BPS}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{SAMPLE}{sample}
-\SetKwData{ERROR}{total error}
-\SetKwData{ORDER}{order}
-\SetKwData{WASTEDBPS}{wasted BPS}
-\tcc{first decide which FIXED subframe order to use}
-\For(\tcc*[f]{order 0}){$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
-  $\text{\RESIDUAL}_{0~i} \leftarrow \text{\SAMPLE}_i$\;
-}
-$\text{\ERROR}_0 \leftarrow \overset{\BLOCKSIZE - 1}{\underset{i = 4}{\sum}}|\text{\RESIDUAL}_{0~i}|$\;
-\BlankLine
-\eIf{$\BLOCKSIZE > 4$}{
-\For(\tcc*[f]{order 1-4}){$\ORDER \leftarrow 1$ \emph{\KwTo}5}{
-  \For{$i \leftarrow 0$ \emph{\KwTo}$\BLOCKSIZE - \ORDER$}{
-  $\text{\RESIDUAL}_{\ORDER~i} \leftarrow \text{\RESIDUAL}_{(\ORDER - 1)~(i + 1)} - \text{\RESIDUAL}_{(\ORDER - 1)~i}$\;
-  }
-  $\text{\ERROR}_{\ORDER} \leftarrow \overset{\BLOCKSIZE - \ORDER - 1}{\underset{i = 4 - \ORDER}{\sum}}|\text{\RESIDUAL}_{\ORDER~i}|$\;
-}
-\BlankLine
-choose subframe \ORDER such that $\text{\ERROR}_{\ORDER}$ is smallest\;
-}{
-use subframe \ORDER 0\;
-}
-\BlankLine
-\tcc{then return a FIXED subframe with best order}
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{pad}
-$1 \rightarrow$ \WRITE 3 unsigned bits\tcc*[r]{subframe type}
-$\text{\ORDER} \rightarrow$ \WRITE 3 unsigned bits\;
-\eIf{$\WASTEDBPS > 0$}{
-  $1 \rightarrow$ \WRITE 1 unsigned bit\;
-  $(\text{\WASTEDBPS} - 1) \rightarrow$ \WUNARY with stop bit 1\;
-}{
-  $0 \rightarrow$ \WRITE 1 unsigned bit\;
-}
-\For(\tcc*[f]{warm-up samples}){$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
-  $\text{\SAMPLE}_i \rightarrow$ \WRITE $(\BPS)$ signed bits\;
-}
-\hyperref[flac:write_residual_block]{write encoded residual block based on $\text{\RESIDUAL}_{\ORDER}$, \BLOCKSIZE and \ORDER}\;
-\BlankLine
-\Return a FIXED subframe\;
-\EALGORITHM
+  \input{flac/algorithms/encode_fixed_subframe}
 }
 \begin{figure}[h]
   \includegraphics{flac/figures/fixed.pdf}
