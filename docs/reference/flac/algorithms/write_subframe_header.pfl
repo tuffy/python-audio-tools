@@ -1,0 +1,14 @@
+INPUT "subframe's type and order, wasted bits-per-sample";
+OUTPUT "a FLAC subframe header";
+VAR type_order "subframe type/order";
+VAR wasted_BPS "wasted BPS";
+VAR subframe_header "subframe header";
+0 -> write 1 unsigned /*pad*/;
+type_order -> write 6 unsigned;
+if wasted_BPS == 0 {
+   0 -> write 1 unsigned;
+} else {
+   1 -> write 1 unsigned;
+   (wasted_BPS - 1) -> write unary 1;
+}
+return subframe_header;

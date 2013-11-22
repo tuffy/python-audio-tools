@@ -1,0 +1,26 @@
+INPUT "frame number as unsigned integer";
+OUTPUT "one or more UTF-8 bytes";
+VAR value "frame number";
+VAR cont_bytes "continuation bytes";
+
+if value <= 127 {
+    value -> write 8 unsigned;
+} else {
+    if value <= 2047 {
+        cont_bytes <- 1;
+    } elif value <= 65535 {
+        cont_bytes <- 2;
+    } elif value <= 2097151 {
+        cont_bytes <- 3;
+    } elif value <= 67108863 {
+        cont_bytes <- 4;
+    } else {
+        cont_bytes <- 5;
+    }
+    (cont_bytes + 1) -> write unary 0;
+    floor(frac(value, 2 ^ {cont_bytes * 6})) -> write (6 - cont_bytes) unsigned;
+    for i <- cont_bytes downto 0 {
+        2 -> write 2 unsigned;
+        floor(frac(value, 2 ^ {i * 6})) % 64 -> write 6 unsigned;
+    }
+}

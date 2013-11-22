@@ -1,0 +1,81 @@
+INPUT "input PCM samples per channel, channel count, bits-per-sample, encoding parameters";
+OUTPUT "a FLAC frame";
+VAR block_size "block size";
+VAR channels "channel count";
+VAR try_mid_side "try mid side";
+VAR try_adaptive_mid_side "try adaptive mid side";
+VAR channel "channel";
+VAR average_channel "avarage channel";
+VAR difference_channel "difference channel";
+VAR left "left";
+VAR right "right";
+VAR average "average";
+VAR difference "difference";
+VAR left_len "left length";
+VAR right_len "right length";
+VAR average_len "average length";
+VAR difference_len "difference length";
+VAR bits_per_sample "bits-per-sample";
+VAR independent "independent";
+VAR independent_len "independent length";
+VAR left_difference "left/difference";
+VAR difference_right "difference/right";
+VAR average_difference "average/difference";
+VAR frame "FLAC frame";
+FUNC write_frame_header "write frame header" "flac:write_frame_header";
+FUNC encode_subframe "encode subframe" "flac:encode_subframe";
+FUNC byte_align "byte align output stream";
+FUNC write_crc16 "write calculated CRC-16" "flac:calculate_crc16";
+if (channels == 2) and (try_mid_side or try_adaptive_mid_side) {
+    for i <- 0 to block_size /*calculate subframe combinations*/ {
+        average_channel[i] <- floor((channel[0][i] + channel[1][i]) / 2);
+        difference_channel[i] <- channel[0][i] - channel[1][i];
+    }
+    left,left_len <- encode_subframe(bits_per_sample, channel[0]);
+    right,right_len <- encode_subframe(bits_per_sample, channel[1]);
+    average,average_len <- encode_subframe(bits_per_sample, average_channel);
+    difference,difference_len <- encode_subframe(bits_per_sample + 1, difference_channel);
+    independent_len <- left_len + right_len;
+    left_difference <- left_len + difference_len;
+    difference_right <- difference_len + right_len;
+    average_difference <- average_len + difference_len;
+    if try_mid_side /*store smallest subframe combination*/ {
+        if (independent_len < left_difference) and
+           (independent_len < difference_right) and
+           (independent_len < average_difference) {
+            write_frame_header(1);
+            left -> write left_len unsigned;
+            right -> write right_len unsigned;
+        } elif (left_difference < difference_right) and
+               (left_difference < average_difference) {
+            write_frame_header(8);
+            left -> write left_len unsigned;
+            difference -> write difference_len unsigned;
+        } elif difference_right < average_difference {
+            write_frame_header(9);
+            difference -> write difference_len unsigned;
+            right -> write right_len unsigned;
+        } else {
+            write_frame_header(10);
+            average -> write average_len unsigned;
+            difference -> write difference_len unsigned;
+        }
+    } elif independent_len < average_difference {
+        write_frame_header(1);
+        left -> write left_len unsigned;
+        right -> write right_len unsigned;
+    } else {
+        write_frame_header(10);
+        average -> write average_len unsigned;
+        difference -> write difference_len unsigned;
+    }
+} else /*store subframes independently*/ {
+    write_frame_header(channels - 1);
+    for c <- 0 to channels {
+        independent[c],independent_len[c] <- encode_subframe(bits_per_sample, channel[c]);
+        independent[c] -> write independent_len[c] unsigned;
+    }
+}
+byte_align();
+write_crc16();
+return frame;

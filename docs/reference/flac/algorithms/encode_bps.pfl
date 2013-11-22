@@ -1,0 +1,11 @@
+INPUT "stream's bits-per-sample";
+OUTPUT "encoded bits-per-sample as 3 bit value";
+VAR bits_per_sample "bits-per-sample";
+switch bits_per_sample {
+case {8} {return 1;}
+case {12} {return 2;}
+case {16} {return 4;}
+case {20} {return 5;}
+case {24} {return 6;}
+default {return 0;}
+}

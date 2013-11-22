@@ -68,6 +68,16 @@ flac/algorithms/decode_lpc.tex \
 flac/algorithms/decode_residual.tex \
 flac/algorithms/decorrelate_channels.tex \
 flac/encode.tex \
+flac/algorithms/write_metadata.tex \
+flac/algorithms/encode_frame.tex \
+flac/algorithms/write_frame_header.tex \
+flac/algorithms/encode_block_size.tex \
+flac/algorithms/encode_sample_rate.tex \
+flac/algorithms/encode_bps.tex \
+flac/algorithms/write_utf8.tex \
+flac/algorithms/encode_subframe.tex \
+flac/algorithms/calculate_wastedbps.tex \
+flac/algorithms/write_subframe_header.tex \
 flac/encode/fixed.tex \
 flac/encode/residual.tex \
 flac/encode/lpc.tex \

@@ -1,0 +1,20 @@
+INPUT "a list of signed PCM samples";
+OUTPUT "the number of wasted bits-per-sample as an unsigned integer";
+VAR sample "sample";
+VAR sample_count "sample count";
+VAR wasted "wasted";
+VAR wasted_BPS "wasted BPS";
+wasted_BPS <- infinity /*maximum unsigned integer*/;
+for i <- 0 to sample_count {
+    wasted[i] <- wasted(sample[i]);
+    if wasted[i] == 0 {
+        return 0;
+    } elif wasted[i] < wasted_BPS {
+        wasted_BPS <- wasted[i];
+    }
+}
+if wasted_BPS != infinity {
+    return wasted_BPS;
+} else /*all samples are 0*/ {
+    return 0;
+}

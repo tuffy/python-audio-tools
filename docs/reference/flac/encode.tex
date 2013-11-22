@@ -61,30 +61,9 @@ All of the fields in the FLAC stream are big-endian.
 
 \subsection{Writing Placeholder Metadata Blocks}
 \label{flac:write_placeholder_blocks}
-\ALGORITHM{input stream's attributes, a default block size}{1 or more metadata blocks to the FLAC file stream}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{SAMPLERATE}{sample rate}
-\SetKwData{CHANNELS}{channel count}
-\SetKwData{BPS}{bits per sample}
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{is last block}
-$0 \rightarrow$ \WRITE 7 unsigned bits\tcc*[r]{STREAMINFO type}
-$34 \rightarrow$ \WRITE 24 unsigned bits\tcc*[r]{STREAMINFO size}
-$\BLOCKSIZE \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{minimum block size}
-$\BLOCKSIZE \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{maximum block size}
-$0 \rightarrow$ \WRITE 24 unsigned bits\tcc*[r]{minimum frame size}
-$0 \rightarrow$ \WRITE 24 unsigned bits\tcc*[r]{maximum frame size}
-$\SAMPLERATE \rightarrow$ \WRITE 20 unsigned bits\;
-$\CHANNELS - 1 \rightarrow$ \WRITE 3 unsigned bits\;
-$\BPS - 1 \rightarrow$ \WRITE 5 unsigned bits\;
-$0 \rightarrow$ \WRITE 36 unsigned bits\tcc*[r]{total PCM frames}
-$0 \rightarrow$ \WRITE 16 bytes\tcc*[r]{stream's MD5 sum}
-\BlankLine
-\BlankLine
-$1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{is last block}
-$1 \rightarrow$ \WRITE 7 unsigned bits\tcc*[r]{PADDING type}
-$4096 \rightarrow$ \WRITE 24 unsigned bits\tcc*[r]{PADDING size}
-$0 \rightarrow$ \WRITE 4096 bytes\tcc*[r]{PADDING's data}
-\EALGORITHM
+{\relsize{-1}
+\input{flac/algorithms/write_metadata}
+}
 \par
 \noindent
 PADDING can be some size other than 4096 bytes.
@@ -163,236 +142,16 @@ during FLAC decoding, but performed in the opposite order.
 
 \subsection{Encoding a FLAC Frame}
 \label{flac:encode_frame}
-{\relsize{-1}
-\ALGORITHM{up to ``block size'' number of PCM frames, encoding parameters}{a single FLAC frame}
-\SetKw{AND}{and}
-\SetKw{OR}{or}
-\SetKwData{CHANNELCOUNT}{channel count}
-\SetKwData{BPS}{bits per sample}
-\SetKwData{CHANNEL}{channel}
-\SetKwData{AVERAGE}{average}
-\SetKwData{DIFFERENCE}{difference}
-\SetKwData{LEFTS}{left subframe}
-\SetKwData{RIGHTS}{right subframe}
-\SetKwData{AVGS}{average subframe}
-\SetKwData{DIFFS}{difference subframe}
-\SetKwData{IBITS}{independent}
-\SetKwData{LDBITS}{left/difference}
-\SetKwData{DRBITS}{difference/right}
-\SetKwData{ADBITS}{average/difference}
-\SetKwData{SUBFRAME}{subframe}
-\SetKwFunction{LEN}{len}
-\SetKwFunction{MIN}{min}
-\SetKwFunction{BUILDSUBFRAME}{build subframe}
-\eIf{$\CHANNELCOUNT = 2$ \AND (try mid-side \OR try adaptive mid-side)}{
-  \begin{tabular}{rcl}
-    $(\AVERAGE~,~\DIFFERENCE)$ & $\leftarrow$ & \hyperref[flac:calc_midside]{calculate average-difference of $\text{\CHANNEL}_0$ and $\text{\CHANNEL}_1$} \\
-    \LEFTS & $\leftarrow$ & \hyperref[flac:encode_subframe]{encode $\text{\CHANNEL}_0$ as subframe at $\BPS$} \\
-    \RIGHTS & $\leftarrow$ & \hyperref[flac:encode_subframe]{encode $\text{\CHANNEL}_1$ as subframe at $\BPS$} \\
-    \AVGS & $\leftarrow$ &  \hyperref[flac:encode_subframe]{encode $\text{\AVERAGE}$ as subframe at $\BPS$} \\
-    \DIFFS & $\leftarrow$ & \hyperref[flac:encode_subframe]{encode $\text{\DIFFERENCE}$ as subframe at $(\BPS + 1)$} \\
-    \IBITS & $\leftarrow$ & $\LEN(\LEFTS) + \LEN(\RIGHTS)$ \\
-    \LDBITS & $\leftarrow$ & $\LEN(\LEFTS) + \LEN(\DIFFS)$ \\
-    \DRBITS & $\leftarrow$ & $\LEN(\DIFFS) + \LEN(\RIGHTS)$ \\
-    \ADBITS & $\leftarrow$ & $\LEN(\AVGS) + \LEN(\DIFFS)$ \\
-  \end{tabular}\;
-  \BlankLine
-  \uIf{try mid-side}{
-    \uIf{$\IBITS < \MIN(\LDBITS~,~\DRBITS~,~\ADBITS)$}{
-      \hyperref[flac:write_frame_header]{write frame header with channel assignment \texttt{0x1}}\;
-      write \LEFTS\;
-      write \RIGHTS\;
-    }
-    \uElseIf{$\LDBITS < \MIN(\DRBITS~,~\ADBITS)$}{
-      \hyperref[flac:write_frame_header]{write frame header with channel assignment \texttt{0x8}}\;
-      write \LEFTS\;
-      write \DIFFS\;
-    }
-    \uElseIf{$\DRBITS < \ADBITS$}{
-      \hyperref[flac:write_frame_header]{write frame header with channel assignment \texttt{0x9}}\;
-      write \DIFFS\;
-      write \RIGHTS\;
-    }
-    \Else{
-      \hyperref[flac:write_frame_header]{write frame header with channel assignment \texttt{0xA}}\;
-      write \AVGS\;
-      write \DIFFS\;
-    }
-  }\uElseIf{$\IBITS < \ADBITS$}{
-    \hyperref[flac:write_frame_header]{write frame header with channel assignment \texttt{0x1}}\;
-    write \LEFTS\;
-    write \RIGHTS\;
-  }
-  \Else{
-    \hyperref[flac:write_frame_header]{write frame header with channel assignment \texttt{0xA}}\;
-    write \AVGS\;
-    write \DIFFS\;
-  }
-}(\tcc*[f]{store subframes independently}){
-  \hyperref[flac:write_frame_header]{write frame header with channel assignment $\CHANNELCOUNT - 1$}\;
-  \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
-    $\text{\SUBFRAME}_c \leftarrow $ \hyperref[flac:encode_subframe]{encode $\text{\CHANNEL}_c$ as subframe at $\BPS$}\;
-    write $\text{\SUBFRAME}_c$\;
-  }
-}
-byte align the stream\;
-\hyperref[flac:calculate_crc16]{write frame's CRC-16 checksum}\;
-\EALGORITHM
+{\relsize{-2}
+  \input{flac/algorithms/encode_frame}
 }
 
 \clearpage
 
-\subsubsection{Calculating Average-Difference}
-\label{flac:calc_midside}
-\ALGORITHM{block size, 2 channels of PCM data}{2 channels stored as average / difference}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{CHANNEL}{channel}
-\SetKwData{AVERAGE}{average}
-\SetKwData{DIFFERENCE}{difference}
-\For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
-  $\text{\AVERAGE}_i \leftarrow \lfloor (\text{\CHANNEL}_{0~i} + \text{\CHANNEL}_{1~i}) \div 2\rfloor$\;
-  $\text{\DIFFERENCE}_i \leftarrow \text{\CHANNEL}_{0~i} - \text{\CHANNEL}_{1~i}$\;
-}
-\Return $\left\lbrace\begin{tabular}{l}
-\AVERAGE \\
-\DIFFERENCE \\
-\end{tabular}\right.$\;
-\EALGORITHM
-\begin{align*}
-\intertext{For example, given the input samples:}
-\textsf{channel}_{0~0} &\leftarrow 10 \\
-\textsf{channel}_{1~0} &\leftarrow 15
-\intertext{Our average and difference samples are:}
-\textsf{average}_0 &\leftarrow \left\lfloor\frac{10 + 15}{2}\right\rfloor = 12 \\
-\textsf{difference}_0 &\leftarrow 10 - 15 = -5
-\intertext{Note that the \textsf{difference} channel is identical
-for left-difference, difference-right and average-difference
-channel assignments.
-For example, when recombined from left-difference\footnotemark:}
-\textsf{sample}_0 &\leftarrow 10 \\
-\textsf{sample}_1 &\leftarrow 10 - (-5) = 15
-\intertext{difference-right:}
-\textsf{sample}_0 &\leftarrow -5 + 15 = 10 \\
-\textsf{sample}_1 &\leftarrow 15
-\intertext{and average-difference:}
-\textsf{sample}_0 &\leftarrow \lfloor(((12 \times 2) + (-5 \bmod 2)) + -5) \div 2\rfloor  = \lfloor((24 + 1 - 5) \div 2\rfloor = 10 \\
-\textsf{sample}_1 &\leftarrow \lfloor(((12 \times 2) + (-5 \bmod 2)) - -5) \div 2\rfloor =  \lfloor((24 + 1 + 5) \div 2\rfloor = 15
-\end{align*}
-\footnotetext{See the recombining subframes algorithms on page
-\pageref{flac:recombine_subframes}.}
-
-\clearpage
-
-\subsubsection{Writing Frame Header}
+\subsection{Writing Frame Header}
 \label{flac:write_frame_header}
 {\relsize{-1}
-\ALGORITHM{the frame's channel assignment, the input stream's parameters}{a FLAC frame header}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{SAMPLERATE}{sample rate}
-\SetKwData{FRAMENUMBER}{frame number}
-\SetKwData{EBLOCKSIZE}{encoded block size}
-\SetKwData{ESAMPLERATE}{encoded sample rate}
-\SetKwData{EBPS}{encoded bits per sample}
-\SetKwData{ASSIGNMENT}{channel assignment}
-\SetKwData{CRC}{CRC-8}
-\SetKw{OR}{or}
-$\texttt{0x3FFE} \rightarrow$ \WRITE 14 unsigned bits\tcc*[r]{sync code}
-$0 \rightarrow$ \WRITE 1 unsigned bit\;
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{blocking strategy}
-$\EBLOCKSIZE \rightarrow$ \WRITE 4 unsigned bits\;
-$\ESAMPLERATE \rightarrow$ \WRITE 4 unsigned bits\;
-$\ASSIGNMENT \rightarrow$ \WRITE 4 unsigned bits\;
-$\EBPS \rightarrow$ \WRITE 3 unsigned bits\;
-$0 \rightarrow$ \WRITE 1 unsigned bit\;
-$\FRAMENUMBER \rightarrow$ \WRITE \hyperref[flac:write_utf8]{as UTF-8 encoded value}\;
-\uIf{$\EBLOCKSIZE = 6$}{
-  $(\BLOCKSIZE - 1) \rightarrow$ \WRITE 8 unsigned bits\;
-}
-\ElseIf{$\EBLOCKSIZE = 7$}{
-  $\BLOCKSIZE - 1 \rightarrow$ \WRITE 16 unsigned bits\;
-}
-\uIf{$\ESAMPLERATE = 12$}{
-  $\SAMPLERATE \div 1000 \rightarrow$ \WRITE 8 unsigned bits\;
-}
-\uElseIf{$\ESAMPLERATE = 13$}{
-  $\SAMPLERATE \rightarrow$ \WRITE 16 unsigned bits\;
-}
-\ElseIf{$\ESAMPLERATE = 14$}{
-  $\SAMPLERATE \div 10 \rightarrow$ \WRITE 16 unsigned bits\;
-}
-$\CRC \leftarrow$ \hyperref[flac:calculate_crc8]{calculate frame header's CRC-8}\;
-$\CRC \rightarrow$ \WRITE 8 unsigned bits\;
-\EALGORITHM
-}
-
-\subsubsection{Encoding Block Size}
-{\relsize{-1}
-\ALGORITHM{block size in samples}{encoded block size as 4 bit value}
-\SetKwData{BLOCKSIZE}{block size}
-\Switch{\BLOCKSIZE}{
-\lCase{192}{\Return 1}\;
-\lCase{256}{\Return 8}\;
-\lCase{512}{\Return 9}\;
-\lCase{576}{\Return 2}\;
-\lCase{1024}{\Return 10}\;
-\lCase{1152}{\Return 3}\;
-\lCase{2048}{\Return 11}\;
-\lCase{2304}{\Return 4}\;
-\lCase{4096}{\Return 12}\;
-\lCase{4608}{\Return 5}\;
-\lCase{8192}{\Return 13}\;
-\lCase{16384}{\Return 14}\;
-\lCase{32768}{\Return 15}\;
-\Other{
-  \lIf{$\BLOCKSIZE \leq 256$}{\Return 6}\;
-  \lElseIf{$\BLOCKSIZE \leq 65536$}{\Return 7}\;
-  \lElse{\Return 0}
-}
-}
-\EALGORITHM
-}
-
-\clearpage
-
-\subsubsection{Encoding Sample Rate}
-{\relsize{-1}
-\ALGORITHM{sample rate in Hz}{encoded sample rate as 4 bit value}
-\SetKw{AND}{and}
-\SetKwData{SAMPLERATE}{sample rate}
-\Switch{\SAMPLERATE}{
-\lCase{8000}{\Return 4}\;
-\lCase{16000}{\Return 5}\;
-\lCase{22050}{\Return 6}\;
-\lCase{24000}{\Return 7}\;
-\lCase{32000}{\Return 8}\;
-\lCase{44100}{\Return 9}\;
-\lCase{48000}{\Return 10}\;
-\lCase{88200}{\Return 1}\;
-\lCase{96000}{\Return 11}\;
-\lCase{176400}{\Return 2}\;
-\lCase{192000}{\Return 3}\;
-\Other{
-  \lIf{$(\SAMPLERATE \bmod 1000 = 0)$ \AND $(\SAMPLERATE \leq 255000)$}{\Return 12}\;
-  \lElseIf{$(\SAMPLERATE \bmod 10 = 0)$ \AND $(\SAMPLERATE \leq 655350)$}{\Return 14}\;
-  \lElseIf{$\SAMPLERATE \leq 65535$}{\Return 13}\;
-  \lElse{\Return 0}
-}
-}
-\EALGORITHM
-}
-\subsubsection{Encoding Bits Per Sample}
-{\relsize{-1}
-\ALGORITHM{bits per sample}{encoded bits per sample as 3 bit value}
-\SetKwData{BPS}{bits per sample}
-\Switch{\BPS}{
-\lCase{8}{\Return 1}\;
-\lCase{12}{\Return 2}\;
-\lCase{16}{\Return 4}\;
-\lCase{20}{\Return 5}\;
-\lCase{24}{\Return 6}\;
-\lOther{\Return 0}\;
-}
-\EALGORITHM
+  \input{flac/algorithms/write_frame_header}
 }
 \begin{figure}[h]
 \includegraphics{flac/figures/frames.pdf}
@@ -400,63 +159,48 @@ $\CRC \rightarrow$ \WRITE 8 unsigned bits\;
 
 \clearpage
 
+\subsubsection{Encoding Block Size}
+\label{flac:encode_block_size}
+{\relsize{-2}
+  \input{flac/algorithms/encode_block_size}
+}
+
+\subsubsection{Encoding Sample Rate}
+\label{flac:encode_sample_rate}
+{\relsize{-2}
+  \input{flac/algorithms/encode_sample_rate}
+}
+
+\clearpage
+
+\subsubsection{Encoding Bits Per Sample}
+\label{flac:encode_bits_per_sample}
+{\relsize{-2}
+  \input{flac/algorithms/encode_bps}
+}
+
 \subsubsection{Encoding UTF-8 Frame Number}
 \label{flac:write_utf8}
-{\relsize{-1}
-\ALGORITHM{value as unsigned integer}{1 or more UTF-8 bytes}
-\SetKwData{VALUE}{value}
-\SetKwData{TOTALBYTES}{total bytes}
-\SetKwData{SHIFT}{shift}
-\eIf{$\VALUE \leq 127$}{
-  $\VALUE \rightarrow$ \WRITE 8 unsigned bits\;
-}{
-  \uIf{$\VALUE \leq 2047$}{
-    $\TOTALBYTES \leftarrow 2$\;
-  }
-  \uElseIf{$\VALUE \leq 65535$}{
-    $\TOTALBYTES \leftarrow 3$\;
-  }
-  \uElseIf{$\VALUE \leq 2097151$}{
-    $\TOTALBYTES \leftarrow 4$\;
-  }
-  \uElseIf{$\VALUE \leq 67108863$}{
-    $\TOTALBYTES \leftarrow 5$\;
-  }
-  \ElseIf{$\VALUE \leq 2147483647$}{
-    $\TOTALBYTES \leftarrow 6$\;
-  }
-  $\SHIFT \leftarrow (\TOTALBYTES - 1) \times 6$\;
-  $\TOTALBYTES \rightarrow$ \WUNARY with stop bit 0\;
-  $\lfloor \text{\VALUE} \div 2 ^ \text{\SHIFT} \rfloor \rightarrow$ \WRITE $(7 - \TOTALBYTES)$ unsigned bits\tcc*[r]{initial value}
-  $\SHIFT \leftarrow \SHIFT - 6$\;
-  \While{$\SHIFT \geq 0$}{
-    $2 \rightarrow$ \WRITE 2 unsigned bits\tcc*[r]{continuation header}
-    $\lfloor \VALUE \div 2 ^ \text{\SHIFT} \rfloor \bmod 64 \rightarrow$ \WRITE 6 unsigned bits\tcc*[r]{continuation bits}
-    $\SHIFT \leftarrow \SHIFT - 6$\;
-  }
+{\relsize{-2}
+  \input{flac/algorithms/write_utf8}
 }
-\EALGORITHM
-}
-\par
-\noindent
-For example, encoding the frame number 4228 in UTF-8:
-\par
-\noindent
 \begin{wrapfigure}[10]{r}{2.375in}
 \includegraphics{flac/figures/utf8.pdf}
 \end{wrapfigure}
+{\relsize{-2}
+  For example, encoding the frame number 4228 in UTF-8:
 \begin{align*}
-\textsf{total bytes} &\leftarrow 3 \\
-\textsf{shift} &\leftarrow 12 \\
-& 3 \rightarrow \textbf{write unary} \text{ with stop bit 1} \\
-& 1 \rightarrow \textbf{write} \text{ in 4 unsigned bits} \\
-\textsf{shift} &\leftarrow 12 - 6 = 6 \\
-& 2 \rightarrow \textbf{write} \text{ in 2 unsigned bits} \\
-& 2 \rightarrow \textbf{write} \text{ in 6 unsigned bits} \\
-\textsf{shift} &\leftarrow 6 - 6 = 0 \\
-& 2 \rightarrow \textbf{write} \text{ in 2 unsigned bits} \\
-& 4 \rightarrow \textbf{write} \text{ in 6 unsigned bits}
+\textsf{continuation bytes} &\leftarrow 2 \\
+(2 + 1) &\rightarrow \textbf{write unary}~\text{with stop bit 1} \\
+\left\lfloor\frac{4228}{2 ^ {2 \times 6}}\right\rfloor = 1 &\rightarrow \textbf{write}~(6 - 2)~\text{unsigned bits} \\
+i &\leftarrow 1 \\
+2 &\rightarrow \textbf{write}~\text{2 unsigned bits} \\
+\left\lfloor\frac{4228}{2 ^ {1 \times 6}}\right\rfloor \bmod 64 = 2 &\rightarrow \textbf{write}~\text{6 unsigned bits} \\
+i &\leftarrow 0 \\
+2 &\rightarrow \textbf{write}~\text{2 unsigned bits} \\
+\left\lfloor\frac{4228}{2 ^ {0 \times 6}}\right\rfloor \bmod 64 = 4 &\rightarrow \textbf{write}~\text{6 unsigned bits} \\
 \end{align*}
+}
 
 \clearpage
 
@@ -527,115 +271,16 @@ Note how the CRC-8 is calculated from the preceding 5 header bytes:
 \subsection{Encoding a FLAC Subframe}
 \label{flac:encode_subframe}
 {\relsize{-1}
-\ALGORITHM{block size, signed subframe samples, subframe's bits per sample}{a FLAC subframe}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{SAMPLE}{sample}
-\SetKwData{WASTEDBPS}{wasted BPS}
-\SetKwData{BPS}{subframe's BPS}
-\SetKwData{CONSTANT}{CONSTANT subframe}
-\SetKwData{FIXED}{FIXED subframe}
-\SetKwData{VERBATIM}{VERBATIM subframe}
-\SetKwData{ORDER}{LPC order}
-\SetKwData{QLPPRECISION}{QLP precision}
-\SetKwData{QLPSHIFT}{QLP shift needed}
-\SetKwData{QLPCOEFFS}{QLP coefficients}
-\SetKwData{LPC}{LPC subframe}
-\SetKwFunction{LEN}{len}
-\SetKwFunction{MIN}{min}
-\eIf{all samples are the same}{
-  \Return \hyperref[flac:encode_constant_subframe]{\CONSTANT from}
-  $\left\lbrace\begin{tabular}{l}
-  $\text{\SAMPLE}_0$ \\
-  $\BPS$ \\
-  \end{tabular}\right.$\;
-}{
-  $\WASTEDBPS \leftarrow$ \hyperref[flac:calculate_wasted_bps]{calculate wasted bits per sample for $\text{\SAMPLE}$}\;
-  \If{$\WASTEDBPS > 0$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
-      $\text{\SAMPLE}_i \leftarrow \text{\SAMPLE}_i \div 2 ^ \text{\WASTEDBPS}$\;
-    }
-    $\BPS \leftarrow \BPS - \WASTEDBPS$\;
-  }
-  $\VERBATIM \leftarrow$ \hyperref[flac:encode_verbatim_subframe]{build VERBATIM subframe from}
-  $\left\lbrace\begin{tabular}{l}
-  \SAMPLE \\
-  \BLOCKSIZE \\
-  \BPS \\
-  \WASTEDBPS \\
-  \end{tabular}\right.$\;
-  \BlankLine
-  $\FIXED \leftarrow$ \hyperref[flac:encode_fixed_subframe]{build FIXED subframe from}
-  $\left\lbrace\begin{tabular}{l}
-  \SAMPLE \\
-  \BLOCKSIZE \\
-  \BPS \\
-  \WASTEDBPS \\
-  \end{tabular}\right.$\;
-  \BlankLine
-  \eIf(\tcc*[f]{from encoding parameters}){maximum LPC order $ > 0$}{
-    $\left.\begin{tabular}{r}
-      $\ORDER$ \\
-      $\QLPPRECISION$ \\
-      $\QLPSHIFT$ \\
-      $\QLPCOEFFS$ \\
-      \end{tabular}\right\rbrace \leftarrow$
-    \hyperref[flac:compute_lpc_params]{compute LPC parameters from \SAMPLE and \BLOCKSIZE}\;
-    $\text{\LPC} \leftarrow$ \hyperref[flac:encode_lpc_subframe]{build LPC subframe from}
-    $\left\lbrace\begin{tabular}{l}
-    \SAMPLE \\
-    \BLOCKSIZE \\
-    \BPS \\
-    \WASTEDBPS \\
-    \ORDER \\
-    \QLPPRECISION \\
-    \QLPSHIFT \\
-    \QLPCOEFFS \\
-    \end{tabular}\right.$\;
-    \BlankLine
-    \uIf{$\LEN(\VERBATIM) \leq \MIN(\LEN(\LPC)~,~\LEN(\FIXED))$}{
-      \Return \VERBATIM\;
-    }
-    \uElseIf{$\LEN(\FIXED) \leq \LEN(\LPC)$}{
-      \Return \FIXED\;
-    }
-    \Else{
-      \Return \LPC\;
-    }
-  }{
-    \eIf{$\LEN(\VERBATIM) \leq \LEN(\FIXED)$}{
-      \Return \VERBATIM\;
-    }{
-      \Return \FIXED\;
-    }
-  }
-}
-\EALGORITHM
+  \input{flac/algorithms/encode_subframe}
 }
 
 \clearpage
 
 \subsubsection{Calculating Wasted Bits Per Sample}
 \label{flac:calculate_wasted_bps}
-\ALGORITHM{a list of signed PCM samples}{an unsigned integer}
-\SetKwData{WASTEDBPS}{wasted bps}
-\SetKwData{SAMPLE}{sample}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwFunction{MIN}{min}
-\SetKwFunction{WASTED}{wasted}
-$\text{\WASTEDBPS} \leftarrow \infty$\tcc*[r]{maximum unsigned integer}
-\For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
-  $\text{\WASTEDBPS} \leftarrow \MIN(\WASTED(\text{\SAMPLE}_i)~,~\text{\WASTEDBPS})$\;
-  \If{$\text{\WASTEDBPS} = 0$}{
-    \Return 0\;
-  }
-}
-\eIf(\tcc*[f]{all samples are 0}){$\WASTEDBPS = \infty$}{
-  \Return 0\;
-}{
-  \Return \WASTEDBPS\;
-}
-\EALGORITHM
-where the \texttt{wasted} function is defined as:
+{\relsize{-1}
+  \input{flac/algorithms/calculate_wastedbps}
+  where the \texttt{wasted} function is defined as:
 \begin{equation*}
   \texttt{wasted}(x) =
   \begin{cases}
@@ -644,7 +289,16 @@ where the \texttt{wasted} function is defined as:
     1 + \texttt{wasted}(x \div 2) & \text{if } x \bmod 2 = 0 \\
   \end{cases}
 \end{equation*}
+}
 
+\subsubsection{Writing Subframe Header}
+\label{flac:write_subframe_header}
+{\relsize{-1}
+  \input{flac/algorithms/write_subframe_header}
+}
+\begin{figure}[h]
+  \includegraphics{flac/figures/subframes.pdf}
+\end{figure}
 \clearpage
 
 \subsection{Encoding a CONSTANT Subframe}

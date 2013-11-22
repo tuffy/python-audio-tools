@@ -1,0 +1,76 @@
+INPUT "a channel's PCM samples, the channel's effective bits-per-sample, encoding parameters";
+OUTPUT "a FLAC subframe and its size in bits";
+VAR samples "samples";
+VAR bits_per_sample "bits-per-sample";
+VAR all_samples_same "all samples are the same";
+VAR constant_subframe "CONSTANT subframe";
+VAR constant_subframe_length "CONSTANT length";
+VAR verbatim_subframe "VERBATIM subframe";
+VAR verbatim_subframe_length "VERBATIM length";
+VAR fixed_subframe "FIXED subframe";
+VAR fixed_subframe_length "FIXED length";
+VAR fixed_subframe_order "FIXED order";
+VAR max_lpc_order "maximum LPC order";
+VAR lpc_subframe "LPC subframe";
+VAR lpc_subframe_length "LPC length";
+VAR lpc_subframe_order "LPC order";
+VAR wasted_BPS "wasted BPS";
+VAR sample_count "sample count";
+VAR sample "sample";
+VAR header_length "subframe header length";
+VAR subframe "FLAC subframe";
+VAR subframe_length "FLAC subframe length (including subframe header)";
+FUNC encode_constant_subframe "encode CONSTANT subframe" "flac:encode_constant_subframe";
+FUNC encode_verbatim_subframe "encode VERBTIM subframe" "flac:encode_verbatim_subframe";
+FUNC encode_fixed_subframe "encode FIXED subframe" "flac:encode_fixed_subframe";
+FUNC encode_lpc_subframe "encode LPC subframe" "flac:encode_lpc_subframe";
+FUNC calculate_wasted "calculated wasted bits" "flac:calculate_wasted_bps";
+FUNC write_subframe_header "write subframe header" "flac:write_subframe_header";
+if all_samples_same {
+    constant_subframe,constant_subframe_length <-
+    encode_constant_subframe(sample, sample_count, bits_per_sample);
+    write_subframe_header(0, 0);
+    constant_subframe -> write constant_subframe_length unsigned;
+} else {
+    wasted_BPS <- calculate_wasted(sample);
+    if wasted_BPS > 0 {
+        for i <- 0 to sample_count {
+            sample[i] <- sample[i] / 2 ^ wasted_BPS;
+        }
+    }
+    verbatim_subframe,verbatim_subframe_length <-
+    encode_verbatim_subframe(sample,
+                             sample_count,
+                             bits_per_sample - wasted_BPS);
+    fixed_subframe,fixed_subframe_length,fixed_subframe_order <-
+    encode_fixed_subframe(sample,
+                          sample_count,
+                          bits_per_sample - wasted_BPS);
+    if (max_lpc_order > 0) /*from encoding parameters*/ {
+        lpc_subframe,lpc_subframe_length,lpc_subframe_order <-
+        encode_lpc_subframe(sample,
+                            sample_count,
+                            bits_per_sample - wasted_BPS);
+        if (lpc_subframe_length < fixed_subframe_length) and
+           (lpc_subframe_length < verbatim_subframe_length) {
+            write_subframe_header(31 + lpc_subframe_order,
+                                  wasted_BPS);
+            lpc_subframe -> write lpc_subframe_length unsigned;
+        } elif fixed_subframe_length < verbatim_subframe_length {
+            write_subframe_header(8 + fixed_subframe_order,
+                                  wasted_BPS);
+            fixed_subframe -> write fixed_subframe_length unsigned;
+        } else {
+            write_subframe_header(1, wasted_BPS);
+            verbatim_subframe -> write verbatim_subframe_length unsigned;
+        }
+    } elif fixed_subframe_length < verbatim_subframe_length {
+        write_subframe_header(8 + fixed_subframe_order,
+                              wasted_BPS);
+        fixed_subframe -> write fixed_subframe_length unsigned;
+    } else {
+        write_subframe_header(1, wasted_BPS);
+        verbatim_subframe -> write verbatim_subframe_length unsigned;
+    }
+}
+return subframe,subframe_length;

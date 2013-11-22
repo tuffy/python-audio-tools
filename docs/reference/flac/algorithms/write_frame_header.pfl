@@ -1,0 +1,44 @@
+INPUT "the frame's number, the number of samples per channel, the stream's sample rate, the stream's bits-per-sample, the frame's channel assignment";
+OUTPUT "a FLAC frame header";
+VAR encoded_block_size "encoded block size";
+VAR encoded_sample_rate "encoded sample rate";
+VAR channel_assignment "channel assignment";
+VAR encoded_bits_per_sample "encoded bits-per-sample";
+VAR sample_count "sample count";
+VAR sample_rate "sample rate";
+VAR bits_per_sample "bits-per-sample";
+VAR frame_number "frame number";
+VAR crc8 "CRC8";
+VAR frame_header "FLAC frame header";
+FUNC encode_block_size "encode block size" "flac:encode_block_size";
+FUNC encode_sample_rate "encode sample rate" "flac:encode_sample_rate";
+FUNC encode_bits_per_sample "encode bits-per-sample" "flac:encode_bits_per_sample";
+FUNC write_utf8 "write UTF-8 value" "flac:write_utf8";
+FUNC calculate_crc8 "write header checksum" "flac:calculate_crc8";
+encoded_block_size <- encode_block_size(sample_count);
+encoded_sample_rate <- encode_sample_rate(sample_rate);
+encoded_bits_per_sample <- encode_bits_per_sample(bits_per_sample);
+16382 -> write 14 unsigned /*sync code*/;
+0 -> write 1 unsigned /*reserved*/;
+0 -> write 1 unsigned /*blocking strategy*/;
+encoded_block_size -> write 4 unsigned;
+encoded_sample_rate -> write 4 unsigned;
+channel_assignment -> write 4 unsigned;
+encoded_bits_per_sample -> write 3 unsigned;
+0 -> write 1 unsigned /*padding*/;
+write_utf8(frame_number);
+if encoded_block_size == 6 {
+    (sample_count - 1) -> write 8 unsigned;
+} elif encoded_block_size == 7 {
+    (sample_count - 1) -> write 16 unsigned;
+}
+if encoded_sample_rate == 12 {
+    (sample_rate / 1000) -> write 8 unsigned;
+} elif encoded_sample_rate == 13 {
+    sample_rate -> write 16 unsigned;
+} elif encoded_sample_rate == 14 {
+    (sample_rate / 10) -> write 16 unsigned;
+}
+crc8 <- calculate_crc8();
+crc8 -> write 8 unsigned;
+return frame_header;
