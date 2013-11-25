@@ -4,8 +4,8 @@ VAR coding_method "coding method";
 VAR predictor_order "predictor order";
 VAR partition_order "partition order";
 VAR sample_count "sample count";
-VAR max_rice "maximum Rice";
 VAR rice "Rice";
+VAR max_rice "maximum Rice value";
 VAR partition "partition";
 VAR p_length "partition length";
 VAR unsigned_ "unsigned";
@@ -15,11 +15,11 @@ VAR residual "residual";
 FUNC calculate_partitions "calculate residual partitions"
 "flac:calculate_residual_partitions";
 partition_order,
-max_rice,
 rice,
 partition <- calculate_partitions(sample_count,
                                   predictor_order,
                                   residual);
+max_rice <- max(rice);
 if max_rice > 14 {
     coding_method <- 1;
 } else {

@@ -1,12 +1,11 @@
 INPUT "sample count, subframe's predictor order, signed residual values";
-OUTPUT "partition order, maximum Rice parameter, a list of unsigned Rice parameters, a list of partition lists containing signed residuals";
+OUTPUT "partition order, a list of unsigned Rice parameters, a list of partition lists containing signed residuals";
 VAR max_partition_order "maximum partition order";
 VAR sample_count "sample count";
 VAR predictor_order "predictor order";
 VAR p_start "partition start";
 VAR p_length "partition samples";
 VAR best_partition_order "best order";
-VAR max_rice "maximum Rice";
 VAR rice "Rice";
 VAR residual "residual";
 VAR p_sum "partition sum";
@@ -14,42 +13,36 @@ VAR partition "partition";
 VAR p_size "partition size";
 VAR best_p_size "best parititions size";
 VAR total_p_size "total partitions size";
+VAR max_rice_value "maximum Rice value";
 best_p_size <- infinity /*maximum unsigned integer*/;
 for o <- 0 to (max_partition_order + 1) {
+    /*only attempt partition orders that divide samples evenly*/;
     if (sample_count % 2 ^ o) == 0 {
-        total_p_size[o] <- 0;
         for p <- 0 to 2 ^ o {
-            p_sum[o][p] <- 0;
-            max_rice[o] <- infinity;
             if p == 0 {
+                p_start[o][0] <- 0;
                 p_length[o][0] <- sample_count / 2 ^ o - predictor_order;
-                for i <- 0 to p_length[o][0] {
-                    partition[o][p][i] <- residual[i];
-                    p_sum[o][p] <- p_sum[o][p] + |partition[o][p][i]|;
-                }
             } else {
                 p_start[o][p] <- (p * sample_count / 2 ^ o) - predictor_order;
                 p_length[o][p] <- sample_count / 2 ^ o;
-                for i <- 0 to p_length[o][p] {
-                    partition[o][p][i] <- residual[(p_start[o][p]) + i];
-                    p_sum[o][p] <- p_sum[o][p] + |partition[o][p][i]|;
-                }
             }
-            rice[o][p] <- floor(log(2, (p_sum[o][p] / p_length[o][p])));
+            for i <- 0 to p_length[o][p] /*split residuals into partitions*/ {
+                partition[o][p][i] <- residual[(p_start[o][p]) + i];
+            }
+            p_sum[o][p] <- sum i <- 0 to p_length[o][p] - 1 {|partition[o][p][i]|};
+            rice[o][p] <- min(floor(log(2, (p_sum[o][p] / p_length[o][p]))),
+                              max_rice_value);
             p_size[o][p] <- 4 + ((1 + rice[o][p]) * p_length[o][p]) +
                                 floor(frac(p_sum[o][p], 2 ^ (rice[o][p] - 1))) -
                                 floor(frac(p_length[o][p], 2));
-            total_p_size[o] <- total_p_size[o] + p_size[o][p];
-            if rice[o][p] < max_rice[o] {
-                max_rice[o] <- rice[o][p];
-            }
         }
+        total_p_size[o] <- sum p <- 0 to 2 ^ o - 1 {p_size[o][p]};
         if total_p_size[o] < best_p_size {
             best_partition_order <- o;
+            best_p_size <- total_p_size[o];
         }
     }
 }
 return best_partition_order,
-max_rice[best_partition_order],
 rice[best_partition_order],
 partition[best_partition_order];
