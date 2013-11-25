@@ -1,0 +1,53 @@
+INPUT "sample count, subframe's predictor order, signed residual values";
+OUTPUT "an encoded block of residuals";
+VAR coding_method "coding method";
+VAR predictor_order "predictor order";
+VAR partition_order "partition order";
+VAR sample_count "sample count";
+VAR max_rice "maximum Rice";
+VAR rice "Rice";
+VAR partition "partition";
+VAR p_length "partition length";
+VAR unsigned_ "unsigned";
+VAR MSB "MSB";
+VAR LSB "LSB";
+VAR residual "residual";
+FUNC calculate_partitions "calculate residual partitions"
+"flac:calculate_residual_partitions";
+partition_order,
+max_rice,
+rice,
+partition <- calculate_partitions(sample_count,
+                                  predictor_order,
+                                  residual);
+if max_rice > 14 {
+    coding_method <- 1;
+} else {
+    coding_method <- 0;
+}
+coding_method -> write 2 unsigned;
+partition_order -> write 4 unsigned;
+for p <- 0 to 2 ^ partition_order {
+    if p == 0 {
+        p_length[0] <- sample_count / 2 ^ partition_order - predictor_order;
+    } else {
+        p_length[p] <- sample_count / 2 ^ partition_order;
+    }
+    if coding_method == 0 {
+        rice[p] -> write 4 unsigned;
+    } else {
+        rice[p] -> write 5 unsigned;
+    }
+    for i <- 0 to p_length[p] {
+        if partition[p][i] >= 0 {
+            unsigned_[p][i] <- partition[p][i] * 2;
+        } else {
+            unsigned_[p][i] <- (-partition[p][i] - 1) * 2 + 1;
+        }
+        MSB[p][i] <- floor(unsigned_[p][i] / 2 ^ rice[p]);
+        LSB[p][i] <- unsigned_[p][i] - (MSB[p][i] * 2 ^ rice[p]);
+        MSB[p][i] -> write unary 1;
+        LSB[p][i] -> write rice[p] unsigned;
+    }
+}
+return residual;

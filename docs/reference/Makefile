@@ -79,6 +79,8 @@ flac/algorithms/encode_subframe.tex \
 flac/algorithms/calculate_wastedbps.tex \
 flac/algorithms/write_subframe_header.tex \
 flac/algorithms/encode_fixed_subframe.tex \
+flac/algorithms/encode_residual.tex \
+flac/algorithms/calculate_residual_partitions.tex \
 flac/encode/fixed.tex \
 flac/encode/residual.tex \
 flac/encode/lpc.tex \

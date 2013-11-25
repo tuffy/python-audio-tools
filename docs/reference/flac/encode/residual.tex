@@ -9,138 +9,19 @@
 \subsection{Residual Encoding}
 \label{flac:write_residual_block}
 {\relsize{-1}
-\ALGORITHM{a set of signed residual values, the subframe's block size and predictor order, minimum and maximum partition order from encoding parameters}{an encoded block of residuals}
-\SetKwData{MINPORDER}{minimum partition order}
-\SetKwData{MAXPORDER}{maximum partition order}
-\SetKwData{ORDER}{predictor order}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{PAORDER}{partition order}
-\SetKwData{PSIZE}{partitions size}
-\SetKwData{PSUM}{partition sum}
-\SetKwData{RICE}{Rice}
-\SetKwData{CODING}{coding method}
-\SetKwData{UNSIGNED}{unsigned}
-\SetKwData{PARTITION}{partition}
-\SetKwData{PLEN}{partition length}
-\SetKwData{MSB}{MSB}
-\SetKwData{LSB}{LSB}
-\SetKwFunction{SUM}{sum}
-\SetKwFunction{MAX}{max}
-\SetKw{BREAK}{break}
-\tcc{generate set of partitions for each partition order}
-\For{$o \leftarrow \text{\MINPORDER}$ \emph{\KwTo}(\MAXPORDER + 1)}{
-  \eIf{$(\BLOCKSIZE \bmod 2^{o}) = 0$}{
-    $\left.\begin{tabular}{r}
-      $\text{\RICE}_o$ \\
-      $\text{\PARTITION}_o$ \\
-      $\text{\PSIZE}_o$ \\
-    \end{tabular}\right\rbrace \leftarrow$ \hyperref[flac:write_residual_partition]{encode residual partitions from}
-    $\left\lbrace\begin{tabular}{l}
-    partition order $o$ \\
-    \textsf{predictor order} \\
-    \textsf{residual values} \\
-    \BLOCKSIZE \\
-    \end{tabular}\right.$
-  }{
-    \BREAK\;
-  }
+  \input{flac/algorithms/encode_residual}
 }
-\BlankLine
-choose partition order $o$ such that $\PSIZE_{o}$ is smallest\;
-\BlankLine
-\eIf{$\MAX(\text{\RICE}_{o}) > 14$}{
-  $\CODING \leftarrow 1$\;
-}{
-  $\CODING \leftarrow 0$\;
-}
-\BlankLine
-\tcc{write 1 or more residual partitions to residual block}
-$\CODING \rightarrow$ \WRITE 2 unsigned bits\;
-$o \rightarrow$ \WRITE 4 unsigned bits\;
-\For{$p \leftarrow 0$ \emph{\KwTo}$2 ^ {o}$} {
-  \eIf{$\CODING = 0$}{
-    $\text{\RICE}_{o~p} \rightarrow$ \WRITE 4 unsigned bits\;
-  }{
-    $\text{\RICE}_{o~p} \rightarrow$ \WRITE 5 unsigned bits\;
-  }
-  \BlankLine
-  \eIf{$p = 0$}{
-    $\text{\PLEN}_{o~0} \leftarrow \BLOCKSIZE \div 2 ^ {o} - \ORDER$\;
-  }{
-    $\text{\PLEN}_{o~p} \leftarrow \BLOCKSIZE \div 2 ^ {o}$\;
-  }
-  \BlankLine
-  \For(\tcc*[f]{write residual partition}){$i \leftarrow 0$ \emph{\KwTo}$\text{\PLEN}_{o~p}$}{
-    \eIf{$\text{\PARTITION}_{o~p~i} \geq 0$}{
-      $\text{\UNSIGNED}_i \leftarrow \text{\PARTITION}_{o~p~i} \times 2$\;
-    }{
-    $\text{\UNSIGNED}_i \leftarrow (-\text{\PARTITION}_{o~p~i} - 1) \times 2 + 1$\;
-    }
-    $\text{\MSB}_i \leftarrow \lfloor \text{\UNSIGNED}_i \div 2 ^ \text{\RICE} \rfloor$\;
-    $\text{\LSB}_i \leftarrow \text{\UNSIGNED}_i - (\text{\MSB}_i \times 2 ^ \text{\RICE})$\;
-    $\text{\MSB}_i \rightarrow$ \WUNARY with stop bit 1\;
-    $\text{\LSB}_i \rightarrow$ \WRITE $\text{\RICE}$ unsigned bits\;
-  }
-}
-\Return encoded residual block\;
-\EALGORITHM
-}
-
-\clearpage
-
-\subsubsection{Encoding Partitions}
-\label{flac:write_residual_partition}
-{\relsize{-1}
-\ALGORITHM{partition order $o$, predictor order, residual values, block size, maximum Rice parameter from encoding parameters}{Rice parameter, 1 or more residual partitions, total estimated size}
-\SetKwData{ORDER}{predictor order}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{PSIZE}{partitions size}
-\SetKwData{PLEN}{plength}
-\SetKwData{PARTITION}{partition}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{PSUM}{partition sum}
-\SetKwData{RICE}{Rice}
-\SetKwData{MAXPARAMETER}{maximum Rice parameter}
-\SetKw{BREAK}{break}
-$\text{\PSIZE} \leftarrow 0$\;
-\BlankLine
-\For(\tcc*[f]{split residuals into partitions}){$p \leftarrow 0$ \emph{\KwTo}$2 ^ {o}$}{
-  \eIf{$p = 0$}{
-    $\text{\PLEN}_{0} \leftarrow \BLOCKSIZE \div 2 ^ {o} - \ORDER$\;
-  }{
-    $\text{\PLEN}_{p} \leftarrow \BLOCKSIZE \div 2 ^ {o}$\;
-  }
-  $\text{\PARTITION}_{p} \leftarrow$ get next $\text{\PLEN}_{p}$ values from \RESIDUAL\;
-  \BlankLine
-  $\text{\PSUM}_{p} \leftarrow \overset{\text{\PLEN}_{p} - 1}{\underset{i = 0}{\sum}} |\text{\PARTITION}_{p~i}|$\;
-  \BlankLine
-  $\text{\RICE}_{p} \leftarrow 0$\tcc*[r]{compute best Rice parameter for partition}
-  \While{$\text{\PLEN}_{p} \times 2 ^ {\text{\RICE}_{p}} < \text{\PSUM}_{p}$}{
-    \eIf{$\text{\RICE}_{p} < \MAXPARAMETER$}{
-      $\text{\RICE}_{p} \leftarrow \text{\RICE}_{p} + 1$\;
-    }{
-      \BREAK\;
-    }
-  }
-  \BlankLine
-  \eIf(\tcc*[f]{add estimated size of partition to total size}){$\text{\RICE}_{p} > 0$}{
-    $\text{\PSIZE} \leftarrow \text{\PSIZE} + 4 + ((1 + \text{\RICE}_{p}) \times \text{\PLEN}_{p}) + \left\lfloor\frac{\text{\PSUM}_{p}}{2 ^ {\text{\RICE}_{p} - 1}}\right\rfloor - \left\lfloor\frac{\text{\PLEN}_{p}}{2}\right\rfloor$\;
-  }{
-    $\text{\PSIZE} \leftarrow \text{\PSIZE} + 4 + \text{\PLEN}_{p} + (\text{\PSUM}_{p} \times 2) - \left\lfloor\frac{\text{\PLEN}_{p}}{2}\right\rfloor$\;
-  }
-}
-\BlankLine
-\Return $\left\lbrace\begin{tabular}{l}
-$\text{\RICE}$ \\
-$\text{\PARTITION}$ \\
-$\text{\PSIZE}$ \\
-\end{tabular}\right.$\;
-\EALGORITHM
-}
-
 \begin{figure}[h]
 \includegraphics{flac/figures/residual.pdf}
 \end{figure}
+
+\clearpage
+
+\subsubsection{Calculating Residual Partitions}
+\label{flac:calculate_residual_partitions}
+{\relsize{-1}
+  \input{flac/algorithms/calculate_residual_partitions}
+}
 
 \clearpage
 
