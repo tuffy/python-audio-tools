@@ -71,12 +71,13 @@ struct variablelist {
 };
 
 typedef enum {
-    EXP_INFINITY,
+    EXP_CONSTANT,
     EXP_VARIABLE,
     EXP_INTEGER,
     EXP_FLOAT,
     EXP_BYTES,
     EXP_WRAPPED,
+    EXP_FUNCTION,
     EXP_FRACTION,
     EXP_COMPARISON,
     EXP_BOOLEAN,
@@ -88,6 +89,17 @@ typedef enum {
     EXP_READ,
     EXP_READ_UNARY
 } expression_t;
+
+typedef enum {
+    CONST_INFINITY,
+    CONST_PI
+} const_t;
+
+typedef enum {
+    FUNC_SIN,
+    FUNC_COS,
+    FUNC_TAN
+} func_type_t;
 
 typedef enum {
     WRAP_PARENTHESIZED,
@@ -135,6 +147,10 @@ struct expression {
             struct expression *denominator;
         } fraction;
         struct {
+            func_type_t function;
+            struct expression *arg;
+        } function;
+        struct {
             cmp_op_t operator;
             struct expression *sub1;
             struct expression *sub2;
@@ -169,6 +185,7 @@ struct expression {
             struct expression *to_read;
         } read;
         int read_unary;
+        const_t constant;
     } _;
     void (*output_latex)(const struct expression *self,
                          const struct definitions *defs,
@@ -181,6 +198,7 @@ struct expressionlist {
     struct expression *expression;
     struct expressionlist *next;
     unsigned (*len)(const struct expressionlist *self);
+    int (*is_tall)(const struct expressionlist *self);
     void (*free)(struct expressionlist *self);
 };
 

@@ -1,0 +1,18 @@
+INPUT "sample count";
+OUTPUT "QLP precision as unsinged integer";
+VAR sample_count "sample count";
+if 0 < sample_count <= 192 {
+    return 7;
+} elif 192 < sample_count <= 384 {
+    return 8;
+} elif 384 < sample_count <= 576 {
+    return 9;
+} elif 576 < sample_count <= 1152 {
+    return 10;
+} elif 1152 < sample_count <= 2304 {
+    return 11;
+} elif 2304 < sample_count <= 4608 {
+    return 12;
+} else {
+    return 13;
+}

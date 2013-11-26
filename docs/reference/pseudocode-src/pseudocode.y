@@ -70,7 +70,9 @@ free_pseudocode(struct pseudocode *code);
 %left NOT
 %left CARAT
 
-%token INPUT OUTPUT VAR FUNC FRAC CEIL FLOOR SUM INFINITY LOG
+%token INPUT OUTPUT VAR FUNC FRAC CEIL FLOOR SUM
+%token INFINITY PI
+%token LOG SIN COS TAN
 %token <string> STRING
 %token <identifier> IDENTIFIER
 %token <integer> INTEGER
@@ -254,7 +256,8 @@ subscript: OPEN_BRACKET expression CLOSE_BRACKET {
 expression: variable  {$$ = expression_new_variable($1);}
  | INTEGER            {$$ = expression_new_integer($1);}
  | FLOAT              {$$ = expression_new_float($1);}
- | INFINITY           {$$ = expression_new_infinity();}
+ | INFINITY           {$$ = expression_new_constant(CONST_INFINITY);}
+ | PI                 {$$ = expression_new_constant(CONST_PI);}
  | OPEN_BRACKET intlist CLOSE_BRACKET {$$ = expression_new_bytes($2);}
  | OPEN_PAREN expression CLOSE_PAREN {
      $$ = expression_new_wrapped(WRAP_PARENTHESIZED, $2);}
@@ -270,6 +273,15 @@ expression: variable  {$$ = expression_new_variable($1);}
  }
  | DASH expression {
      $$ = expression_new_wrapped(WRAP_UMINUS, $2);
+ }
+ | SIN OPEN_PAREN expression CLOSE_PAREN {
+     $$ = expression_new_function(FUNC_SIN, $3);
+ }
+ | COS OPEN_PAREN expression CLOSE_PAREN {
+     $$ = expression_new_function(FUNC_COS, $3);
+ }
+ | TAN OPEN_PAREN expression CLOSE_PAREN {
+     $$ = expression_new_function(FUNC_TAN, $3);
  }
  | FRAC OPEN_PAREN expression COMMA expression CLOSE_PAREN {
      $$ = expression_new_fraction($3, $5);

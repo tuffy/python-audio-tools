@@ -30,6 +30,7 @@ expressionlist_new(struct expression *expression, struct expressionlist *next)
     expressionlist->expression = expression;
     expressionlist->next = next;
     expressionlist->len = expressionlist_len;
+    expressionlist->is_tall = expressionlist_is_tall;
     expressionlist->free = expressionlist_free;
     return expressionlist;
 }
@@ -45,6 +46,18 @@ expressionlist_len(const struct expressionlist *self)
     }
 
     return count;
+}
+
+int
+expressionlist_is_tall(const struct expressionlist *self)
+{
+    int exp_is_tall = self->expression->is_tall(self->expression);
+
+    if (self->next == NULL) {
+        return exp_is_tall;
+    } else {
+        return exp_is_tall || self->next->is_tall(self->next);
+    }
 }
 
 void
@@ -67,6 +80,40 @@ int
 expression_isnt_tall(const struct expression *self)
 {
     return 0;
+}
+
+
+struct expression*
+expression_new_constant(const_t constant)
+{
+    struct expression *expression = malloc(sizeof(struct expression));
+    expression->type = EXP_CONSTANT;
+    expression->_.constant = constant;
+    expression->output_latex = expression_output_latex_constant;
+    expression->is_tall = expression_isnt_tall;
+    expression->free = expression_free_constant;
+    return expression;
+}
+
+void
+expression_output_latex_constant(const struct expression *self,
+                                 const struct definitions *defs,
+                                 FILE *output)
+{
+    switch (self->_.constant) {
+    case CONST_INFINITY:
+        fputs("\\infty", output);
+        break;
+    case CONST_PI:
+        fputs("\\pi", output);
+        break;
+    }
+}
+
+void
+expression_free_constant(struct expression *self)
+{
+    free(self);
 }
 
 
@@ -154,32 +201,6 @@ expression_free_float(struct expression *self)
 {
     char *float_ = self->_.float_;
     free(float_);
-    free(self);
-}
-
-
-struct expression*
-expression_new_infinity(void)
-{
-    struct expression *expression = malloc(sizeof(struct expression));
-    expression->type = EXP_INFINITY;
-    expression->output_latex = expression_output_latex_infinity;
-    expression->is_tall = expression_isnt_tall;
-    expression->free = expression_free_infinity;
-    return expression;
-}
-
-void
-expression_output_latex_infinity(const struct expression *self,
-                                 const struct definitions *defs,
-                                 FILE *output)
-{
-    fprintf(output, "\\infty");
-}
-
-void
-expression_free_infinity(struct expression *self)
-{
     free(self);
 }
 
@@ -335,6 +356,64 @@ expression_free_wrapped(struct expression *self)
 {
     struct expression *sub = self->_.wrapped.sub;
     sub->free(sub);
+    free(self);
+}
+
+struct expression*
+expression_new_function(func_type_t function, struct expression *arg)
+{
+    struct expression *expression = malloc(sizeof(struct expression));
+    expression->type = EXP_FUNCTION;
+    expression->_.function.function = function;
+    expression->_.function.arg = arg;
+    expression->output_latex = expression_output_latex_function;
+    expression->is_tall = expression_is_tall_function;
+    expression->free = expression_free_function;
+    return expression;
+}
+
+void
+expression_output_latex_function(const struct expression *self,
+                                 const struct definitions *defs,
+                                 FILE *output)
+{
+    const func_type_t function = self->_.function.function;
+    const struct expression *arg = self->_.function.arg;
+
+    switch (function) {
+    case FUNC_SIN:
+        fputs("\\sin", output);
+        break;
+    case FUNC_COS:
+        fputs("\\cos", output);
+        break;
+    case FUNC_TAN:
+        fputs("\\tan", output);
+        break;
+    }
+    if (arg->is_tall(arg)) {
+        fputs("\\left(", output);
+        arg->output_latex(arg, defs, output);
+        fputs("\\right)", output);
+    } else {
+        fputs("(", output);
+        arg->output_latex(arg, defs, output);
+        fputs(")", output);
+    }
+}
+
+int
+expression_is_tall_function(const struct expression *self)
+{
+    const struct expression *arg = self->_.function.arg;
+    return arg->is_tall(arg);
+}
+
+void
+expression_free_function(struct expression *self)
+{
+    struct expression *arg = self->_.function.arg;
+    arg->free(arg);
     free(self);
 }
 

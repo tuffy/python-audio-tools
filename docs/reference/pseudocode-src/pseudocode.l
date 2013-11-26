@@ -68,6 +68,7 @@ extract_comment(const char *token)
 "VAR"                   {return VAR;}
 "FUNC"                  {return FUNC;}
 "infinity"              {return INFINITY;}
+"pi"                    {return PI;}
 "read"                  {return READ;}
 "write"                 {return WRITE;}
 "skip"                  {return SKIP;}
@@ -80,6 +81,9 @@ extract_comment(const char *token)
 "floor"                 {return FLOOR;}
 "sum"                   {return SUM;}
 "log"                   {return LOG;}
+"sin"                   {return SIN;}
+"cos"                   {return COS;}
+"tan"                   {return TAN;}
 "<-"                    {return ASSIGN_IN;}
 "->"                    {return ASSIGN_OUT;}
 "["                     {return OPEN_BRACKET;}

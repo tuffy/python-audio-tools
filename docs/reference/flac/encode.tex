@@ -7,51 +7,11 @@
 %San Francisco, California, 94105, USA.
 
 \section{FLAC Encoding}
-
-The basic process for encoding a FLAC file is as follows:
-\par
-\noindent
-\ALGORITHM{PCM frames, various encoding parameters:
-\newline
 {\relsize{-1}
-\begin{tabular}{rll}
-parameter & possible values & typical values \\
-\hline
-block size & a positive number of PCM frames & 1152 or 4096 \\
-maximum LPC order & integer between 0 and 32, inclusive & 0, 6, 8 or 12 \\
-minimum partition order & integer between 0 and 16, inclusive & 0 \\
-maximum partition order & integer between 0 and 16, inclusive & 3, 4, 5 or 6 \\
-maximum Rice parameter & 14 if bits-per-sample $\leq 16$, otherwise 30 & \\
-try mid-side & true or false & \\
-try adaptive mid-side & true or false & \\
-QLP precision & $\begin{cases}
-7 & \text{ if } 0 < \text{block size} \leq 192 \\
-8 & \text{ if } 192 < \text{block size} \leq 384 \\
-9 & \text{ if } 384 < \text{block size} \leq 576 \\
-10 & \text{ if } 576 < \text{block size} \leq 1152 \\
-11 & \text{ if } 1152 < \text{block size} \leq 2304 \\
-12 & \text{ if } 2304 < \text{block size} \leq 4608 \\
-13 & \text{ if } \text{block size} > 4608 \\
-\end{cases}$ & \\
-exhaustive model search & true or false & \\
-\end{tabular}
+\input{flac/algorithms/encode_flac}
 }
-}{an encoded FLAC file}
-\SetKwData{BLOCKSIZE}{block size}
-$\texttt{"fLaC"} \rightarrow$ \WRITE 4 bytes\;
-\hyperref[flac:write_placeholder_blocks]{write placeholder STREAMINFO metadata block}\;
-write PADDING metadata block\;
-initialize stream's MD5 sum\;
-\While{PCM frames remain}{
-  take \BLOCKSIZE PCM frames from the input\;
-  \hyperref[flac:update_md5_w]{update the stream's MD5 sum with that PCM data}\;
-  \hyperref[flac:encode_frame]{encode a FLAC frame from PCM frames using the given encoding parameters}\;
-  update STREAMINFO's values from the FLAC frame\;
-}
-return to the start of the file and rewrite the STREAMINFO metadata block\;
-\EALGORITHM
 \begin{figure}[h]
-\includegraphics{flac/figures/stream3.pdf}
+\includegraphics{flac/figures/stream.pdf}
 \end{figure}
 \par
 \noindent

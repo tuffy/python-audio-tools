@@ -26,6 +26,9 @@ expressionlist_new(struct expression *expression, struct expressionlist *next);
 unsigned
 expressionlist_len(const struct expressionlist *self);
 
+int
+expressionlist_is_tall(const struct expressionlist *self);
+
 void
 expressionlist_free(struct expressionlist *self);
 
@@ -34,6 +37,18 @@ expression_is_tall(const struct expression *self);
 
 int
 expression_isnt_tall(const struct expression *self);
+
+
+struct expression*
+expression_new_constant(const_t constant);
+
+void
+expression_output_latex_constant(const struct expression *self,
+                                 const struct definitions *defs,
+                                 FILE *output);
+
+void
+expression_free_constant(struct expression *self);
 
 
 struct expression*
@@ -73,18 +88,6 @@ expression_free_float(struct expression *self);
 
 
 struct expression*
-expression_new_infinity(void);
-
-void
-expression_output_latex_infinity(const struct expression *self,
-                                 const struct definitions *defs,
-                                 FILE *output);
-
-void
-expression_free_infinity(struct expression *self);
-
-
-struct expression*
 expression_new_bytes(struct intlist *intlist);
 
 void
@@ -109,6 +112,21 @@ expression_is_tall_wrapped(const struct expression *self);
 
 void
 expression_free_wrapped(struct expression *self);
+
+
+struct expression*
+expression_new_function(func_type_t function, struct expression *arg);
+
+void
+expression_output_latex_function(const struct expression *self,
+                                 const struct definitions *defs,
+                                 FILE *output);
+
+int
+expression_is_tall_function(const struct expression *self);
+
+void
+expression_free_function(struct expression *self);
 
 
 struct expression*

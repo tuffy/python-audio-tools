@@ -468,7 +468,15 @@ statement_output_latex_functioncall_args(const struct statement *self,
     }
 
     if (!function_defined) {
-        fprintf(output, "(");
+        const int is_tall =
+            (input_args != NULL) && (input_args->is_tall(input_args));
+
+        if (is_tall) {
+            fputs("\\left(", output);
+        } else {
+            fputs("(", output);
+        }
+
         for (; input_args != NULL; input_args = input_args->next) {
             struct expression *expression = input_args->expression;
             expression->output_latex(expression, defs, output);
@@ -476,7 +484,12 @@ statement_output_latex_functioncall_args(const struct statement *self,
                 fprintf(output, "~,~");
             }
         }
-        fprintf(output, ")");
+
+        if (is_tall) {
+            fputs("\\right)", output);
+        } else {
+            fputs(")", output);
+        }
     } else {
         if (input_args != NULL) {
             const struct expressionlist *arg;

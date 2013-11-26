@@ -1,0 +1,29 @@
+INPUT "signed subframe samples, sample count, effective bits-per-sample, LPC order, QLP precision, QLP shift needed, QLP coefficients";
+OUTPUT "an LPC subframe, its length in bits";
+VAR sample_count "sample count";
+VAR sample "sample";
+VAR residual "residual";
+VAR bits_per_sample "bits-per-sample";
+VAR LPC_order "LPC order";
+VAR QLP_shift "QLP shift needed";
+VAR QLP_precision "QLP precision";
+VAR QLP_coeff "QLP coefficient";
+VAR lpc_subframe "LPC subframe";
+VAR lpc_subframe_length "LPC length";
+FUNC encode_residual "encode residual block" "flac:write_residual_block";
+for i <- 0 to LPC_order /*write warm-up samples*/ {
+    sample[i] -> write bits_per_sample signed;
+}
+(QLP_precision - 1) -> write 4 unsigned;
+QLP_shift -> write 5 signed;
+for i <- 0 to LPC_order {
+    QLP_coeff[i] -> write QLP_precision signed;
+}
+for i <- 0 to sample_count - LPC_order /*calculate signed residuals*/ {
+    residual[i] <- sample[i + LPC_order] -
+        floor(frac(sum j <- 0 to LPC_order - 1
+                   {QLP_coeff[j] * sample[i + LPC_order - j - 1]},
+                   2 ^ QLP_shift));
+}
+encode_residual(sample_count, LPC_order, residual);
+return lpc_subframe,lpc_subframe_length;

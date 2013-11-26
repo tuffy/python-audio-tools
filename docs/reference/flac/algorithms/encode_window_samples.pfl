@@ -1,0 +1,23 @@
+INPUT "a list of input samples as signed integers, sample count";
+OUTPUT "a list of windowed samples as floating point values";
+VAR sample_count "sample count";
+VAR sample "sample";
+VAR tukey "Tukey";
+VAR window "windowed";
+alpha <- frac(1,2);
+for i <- 0 to sample_count {
+    if i <= frac(alpha * (sample_count - 1), 2) {
+        tukey[i] <- frac(1,2) *
+            (1 +
+             cos(pi * (frac(2 * i, alpha * (sample_count - 1)) - 1)));
+    } elif i <= (sample_count - 1) * (1 - frac(alpha, 2)) {
+        tukey[i] <- 1.0;
+    } else {
+        tukey[i] <- frac(1,2) *
+            (1 +
+             cos(pi * (frac(2 * i, alpha * (sample_count - 1)) -
+             frac(2,alpha) + 1)));
+    }
+    window[i] <- sample[i] * tukey[i];
+}
+return window;

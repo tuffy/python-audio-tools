@@ -6,126 +6,26 @@
 %171 Second Street, Suite 300,
 %San Francisco, California, 94105, USA.
 
-\subsection{Computing Best LPC Parameters}
-\label{flac:compute_lpc_params}
+\subsection{Encoding LPC Subframe}
+\label{flac:encode_lpc_subframe}
 {\relsize{-1}
-\ALGORITHM{signed subframe samples, encoding parameters}{LPC order, QLP coefficients, QLP precision, QLP shift needed}
-\SetKwFunction{LEN}{len}
-\SetKw{AND}{and}
-\SetKw{NOT}{not}
-\SetKwData{SAMPLE}{sample}
-\SetKwData{WINDOWED}{windowed}
-\SetKwData{AUTOCORRELATIONS}{autocorrelation}
-\SetKwData{LPCOEFFS}{LP coefficients}
-\SetKwData{ERRORS}{error}
-\SetKwData{ORDER}{LPC order}
-\SetKwData{QLPCOEFFS}{QLP coefficients}
-\SetKwData{QLPPRECISION}{QLP precision}
-\SetKwData{QLPSHIFT}{QLP shift needed}
-\SetKwData{BESTLPCPARAMS}{best LPC parameters}
-\SetKwData{LPCPARAMS}{LPC parameters}
-\SetKwData{LPCDATA}{LPC subframe data}
-\tcc{windowed sample count equals subframe sample count}
-$\WINDOWED \leftarrow$ \hyperref[flac:window]{window \SAMPLE}\;
-\BlankLine
-\tcc{autocorrelation value count equals the maximum LPC order + 1}
-$\AUTOCORRELATIONS \leftarrow$ \hyperref[flac:autocorrelate]{autocorrelate \WINDOWED}\;
-\BlankLine
-\eIf{$\LEN(\AUTOCORRELATIONS) > 1$ \AND \AUTOCORRELATIONS aren't all 0.0}{
-  $\left.\begin{tabular}{r}
-    $\LPCOEFFS$ \\
-    $\ERRORS$ \\
-  \end{tabular}\right\rbrace \leftarrow$ \hyperref[flac:compute_lp_coeffs]{compute LP coefficients from \AUTOCORRELATIONS}\;
-  \BlankLine
-  \eIf(\tcc*[f]{from encoding parameters}){\NOT exhaustive model search}{
-    \tcc{estimate which set of LP coefficients is the smallest
-      and return those}
-    $\ORDER \leftarrow$ \hyperref[flac:estimate_best_order]{estimate best order from \ERRORS, sample count and bits per sample}\;
-    $\left.\begin{tabular}{r}
-      \QLPCOEFFS \\
-      \QLPPRECISION \\
-      \QLPSHIFT \\
-    \end{tabular}\right\rbrace \leftarrow$
-    \hyperref[flac:quantize_lp_coeffs]{quantize \LPCOEFFS at \ORDER}\;
-    \Return $\left\lbrace\begin{tabular}{l}
-    \ORDER \\
-    \QLPCOEFFS \\
-    \QLPPRECISION \\
-    \QLPSHIFT \\
-    \end{tabular}\right.$\;
-  }{
-    \tcc{build a complete LPC subframe from each set of LP coefficients
-    and return the parameters of the one which is smallest}
-    \For{$o \leftarrow 1$ \emph{\KwTo}maximum LPC order + 1}{
-      $\left.\begin{tabular}{r}
-        ${\QLPCOEFFS}_o$ \\
-        ${\QLPPRECISION}_o$ \\
-        ${\QLPSHIFT}_o$ \\
-      \end{tabular}\right\rbrace \leftarrow$
-      \hyperref[flac:quantize_lp_coeffs]{quantize \LPCOEFFS at order o}\;
-      $\text{\LPCDATA}_o \leftarrow$ \hyperref[flac:encode_lpc_subframe]{build LPC subframe from}
-      $\left\lbrace\begin{tabular}{l}
-      \SAMPLE \\
-      \textsf{block size} \\
-      \textsf{subframe's BPS} \\
-      \textsf{wasted BPS} \\
-      \ORDER $o$ \\
-      ${\QLPPRECISION}_o$ \\
-      ${\QLPSHIFT}_o$ \\
-      ${\QLPCOEFFS}_o$ \\
-      \end{tabular}\right.$\;
-    }
-    choose \ORDER $o$ whose $\text{\LPCDATA}_o$ block is smallest\;
-    \BlankLine
-    \Return $\left\lbrace\begin{tabular}{l}
-    \ORDER $o$\\
-    ${\QLPCOEFFS}_o$ \\
-    ${\QLPPRECISION}_o$ \\
-    ${\QLPSHIFT}_o$ \\
-    \end{tabular}\right.$\;
-  }
-}{
-  \tcc{all samples are 0, so return very basic coefficients}
-  \Return $\left\lbrace\begin{tabular}{lcl}
-  \ORDER & $\leftarrow$ & 1 \\
-  \QLPCOEFFS & $\leftarrow$ & \texttt{[0]} \\
-  \QLPPRECISION & $\leftarrow$ & 2 \\
-  \QLPSHIFT & $\leftarrow$ & 0 \\
-  \end{tabular}\right.$\;
-}
-\EALGORITHM
+  \input{flac/algorithms/encode_lpc_subframe}
 }
 
 \clearpage
 
+\subsubsection{Calculating QLP Precision}
+\label{flac:calculate_qlp_precision}
+{\relsize{-2}
+  \input{flac/algorithms/calculate_qlp_precision}
+}
 
 \subsubsection{Windowing the Input Samples}
 \label{flac:window}
-\ALGORITHM{a list of signed input sample integers}{a list of signed windowed samples as floats}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{SAMPLE}{sample}
-\SetKwData{WINDOWED}{windowed}
-\SetKwFunction{TUKEY}{tukey}
-\For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
-  $\text{\WINDOWED}_i = \text{\SAMPLE}_i \times \TUKEY(i)$\;
+{\relsize{-1}
+  \input{flac/algorithms/encode_window_samples}
 }
-\Return \WINDOWED\;
-\EALGORITHM
-\par
-\noindent
-The \VAR{Tukey} function is defined as:
-\begin{equation*}
-\texttt{tukey}(n) =
-\begin{cases}
-\frac{1}{2} \times \left[1 + cos\left(\pi \times \left(\frac{2 \times n}{\alpha \times (N - 1)} - 1 \right)\right)\right] & \text{ if } 0 \leq n \leq \frac{\alpha \times (N - 1)}{2} \\
-1 & \text{ if } \frac{\alpha \times (N - 1)}{2} \leq n \leq (N - 1) \times (1 - \frac{\alpha}{2}) \\
-\frac{1}{2} \times \left[1 + cos\left(\pi \times \left(\frac{2 \times n}{\alpha \times (N - 1)} - \frac{2}{\alpha} + 1 \right)\right)\right] & \text{ if } (N - 1) \times (1 - \frac{\alpha}{2}) \leq n \leq (N - 1) \\
-\end{cases}
-\end{equation*}
-\par
-\noindent
-Where $N$ is the total number of samples and $\alpha$ is $\nicefrac{1}{2}$.
-\vskip .25in
+
 \par
 For example, given the input samples: \texttt{[18, 20, 26, 24, 24, 23, 21, 24, 23, 20]}
 \begin{wrapfigure}[5]{r}{3in}
@@ -133,18 +33,18 @@ For example, given the input samples: \texttt{[18, 20, 26, 24, 24, 23, 21, 24, 2
 \end{wrapfigure}
 \begin{table}[h]
 \begin{tabular}{r|r|r|r}
-$i$ & $\textsf{sample}_i$ & $\texttt{tukey}(i)$ & $\textsf{windowed}_i$ \\
+$i$ & $\textsf{sample}_i$ & $\textsf{Tukey}_i$ & $\textsf{windowed}_i$ \\
 \hline
-0 & 18 & 0 & 0.0 \\
-1 & 20 & .41 & 8.2 \\
-2 & 26 & .97 & 25.2 \\
-3 & 24 & 1 & 24.0 \\
-4 & 24 & 1 & 24.0 \\
-5 & 23 & 1 & 23.0 \\
-6 & 21 & 1 & 21.0 \\
-7 & 24 & .97 & 23.3 \\
-8 & 23 & .41 & 9.4 \\
-9 & 20 & 0 & 0.0 \\
+0 & 18 & 0.00 & 0.0 \\
+1 & 20 & 0.41 & 8.2 \\
+2 & 26 & 0.97 & 25.2 \\
+3 & 24 & 1.00 & 24.0 \\
+4 & 24 & 1.00 & 24.0 \\
+5 & 23 & 1.00 & 23.0 \\
+6 & 21 & 1.00 & 21.0 \\
+7 & 24 & 0.97 & 23.3 \\
+8 & 23 & 0.41 & 9.4 \\
+9 & 20 & 0.00 & 0.0 \\
 \end{tabular}
 \end{table}
 
@@ -153,16 +53,7 @@ $i$ & $\textsf{sample}_i$ & $\texttt{tukey}(i)$ & $\textsf{windowed}_i$ \\
 \subsubsection{Performing Autocorrelation}
 \label{flac:autocorrelate}
 {\relsize{-1}
-  \ALGORITHM{a list of signed windowed samples, the maximum LPC order}{a list of signed autocorrelation values}
-  \SetKwData{MAXLPCORDER}{max LPC order}
-  \SetKwData{BLOCKSIZE}{block size}
-  \SetKwData{WINDOWED}{windowed}
-  \SetKwData{AUTOCORRELATED}{autocorrelated}
-  \For{$l \leftarrow 0$ \emph{\KwTo}$(\text{\MAXLPCORDER} + 1)$}{
-    $\text{\AUTOCORRELATED}_{l} = \overset{\text{\BLOCKSIZE} - l - 1}{\underset{i = 0}{\sum}}\text{\WINDOWED}_i \times \text{\WINDOWED}_{i + l}$\;
-  }
-\Return \AUTOCORRELATED\;
-\EALGORITHM
+  \input{flac/algorithms/encode_autocorrelate}
 }
 For example, given the windowed samples:
 \texttt{[0.0, 8.2, 25.2, 24.0, 24.0, 23.0, 21.0, 23.3, 9.4, 0.0]}
@@ -251,49 +142,7 @@ the maximum LPC order + 1.
 
 \subsubsection{LP Coefficient Calculation}
 \label{flac:compute_lp_coeffs}
-{\relsize{-1}
-\ALGORITHM{a list of autocorrelation floats, the maximum LPC order}{a list of LP coefficient lists, a list of error values}
-\SetKwData{MAXLPCORDER}{max LPC order}
-\SetKwData{LPCOEFF}{LP coefficient}
-\SetKwData{ERROR}{error}
-\SetKwData{AUTOCORRELATION}{autocorrelated}
-\begin{tabular}{rcl}
-$\kappa_0$ &$\leftarrow$ & $ \AUTOCORRELATION_1 \div \AUTOCORRELATION_0$ \\
-$\LPCOEFF_{0~0}$ &$\leftarrow$ & $ \kappa_0$ \\
-$\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
-\end{tabular}\;
-\For{$i \leftarrow 1$ \emph{\KwTo}\MAXLPCORDER}{
-  \tcc{"zip" all of the previous row's LP coefficients
-    \newline
-    and the reversed autocorrelation values from 1 to i + 1
-    \newline
-    into ($c$,$a$) pairs
-    \newline
-    $q_i$ is $\AUTOCORRELATION_{i + 1}$ minus the sum of those multiplied ($c$,$a$) pairs}
-  $q_i \leftarrow \AUTOCORRELATION_{i + 1}$\;
-  \For{$j \leftarrow 0$ \emph{\KwTo}i}{
-    $q_i \leftarrow q_i - (\LPCOEFF_{(i - 1)~j} \times \AUTOCORRELATION_{i - j})$\;
-  }
-  \BlankLine
-  \tcc{"zip" all of the previous row's LP coefficients
-    \newline
-    and the previous row's LP coefficients reversed
-    into ($c$,$r$) pairs}
-  $\kappa_i = q_i \div \ERROR_{i - 1}$\;
-  \For{$j \leftarrow 0$ \emph{\KwTo}i}{
-    \tcc{then build a new coefficient list of $c - (\kappa_i * r)$ for each ($c$,$r$) pair}
-    $\LPCOEFF_{i~j} \leftarrow \LPCOEFF_{(i - 1)~j} - (\kappa_i \times \LPCOEFF_{(i - 1)~(i - j - 1)})$\;
-  }
-  $\text{\LPCOEFF}_{i~i} \leftarrow \kappa_i$\tcc*[r]{and append $\kappa_i$ as the final coefficient in that list}
-  \BlankLine
-  $\ERROR_i \leftarrow \ERROR_{i - 1} \times (1 - {\kappa_i}^2)$\;
-}
-\Return $\left\lbrace\begin{tabular}{l}
-$\LPCOEFF$ \\
-$\ERROR$ \\
-\end{tabular}\right.$
-\EALGORITHM
-}
+\input{flac/algorithms/encode_lp_coeffs}
 
 \clearpage
 
@@ -347,33 +196,7 @@ With \textsf{autocorrelation} values: \texttt{[3455.53, 3130.76, 2590.90, 2055.8
 
 \subsubsection{Estimating Best Order}
 \label{flac:estimate_best_order}
-\ALGORITHM{floating point error values, block size, bits per sample,\newline QLP precision and maximum LPC order from encoding parameters}{the best estimated order value to use}
-\SetKwData{ORDER}{predictor order}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{MAXLPCORDER}{max LPC order}
-\SetKwData{HEADERBITS}{header bits}
-\SetKwData{QLPPREC}{QLP precision}
-\SetKwData{BPS}{bits per sample}
-\SetKwData{BPR}{bits per residual}
-\SetKwData{ERROR}{error}
-\SetKwData{ERRORSCALE}{error scale}
-\SetKwData{SUBFRAMEBITS}{subframe bits}
-\SetKwFunction{MAX}{max}
-\ERRORSCALE $\leftarrow \frac{({\log_e 2}) ^ 2}{\text{\BLOCKSIZE} \times 2}$\;
-\For{$i \leftarrow 0$ \emph{\KwTo}\MAXLPCORDER}{
-  $o \leftarrow i + 1$\tcc*[r]{current order}
-  \uIf{$\text{\ERROR}_i > 0.0$}{
-    $\text{\HEADERBITS}_o \leftarrow o \times (\text{\BPS} + \text{\QLPPREC})$\;
-    $\text{\BPR}_o \leftarrow \MAX\left(\frac{\log_e(\text{\ERROR}_i \times \text{\ERRORSCALE})}{({\log_e 2}) \times 2}~,~0.0\right)$\;
-    $\text{\SUBFRAMEBITS}_o \leftarrow \text{\HEADERBITS}_o + \text{\BPR}_o \times (\text{\BLOCKSIZE} - o)$\;
-  }
-  \ElseIf{$\text{\ERROR}_i = 0.0$}{
-    \Return $o$\;
-  }
-}
-\BlankLine
-\Return LPC order $o$ such that $\text{\SUBFRAMEBITS}_o$ is smallest\;
-\EALGORITHM
+\input{flac/algorithms/encode_best_order}
 
 \clearpage
 
@@ -408,56 +231,9 @@ the best LPC order to use is 1.
 
 \subsubsection{Quantizing LP Coefficients}
 \label{flac:quantize_lp_coeffs}
-\ALGORITHM{LPC order value, LP coefficients, QLP precision from encoding parameters}{QLP coefficients, QLP precision, QLP shift needed}
-\SetKwData{LPCOEFF}{LP coefficient}
-\SetKwData{QLPSHIFT}{QLP shift needed}
-\SetKwData{QLPPREC}{QLP precision}
-\SetKwData{ORDER}{order}
-\SetKwData{QLPMAX}{QLP max}
-\SetKwData{QLPMIN}{QLP min}
-\SetKwData{ERROR}{error}
-\SetKwData{QLPCOEFF}{QLP coefficient}
-\SetKwFunction{MIN}{min}
-\SetKwFunction{MAX}{max}
-\SetKwFunction{ROUND}{round}
-$l \leftarrow $ maximum $|c|$ for $c$ in $\text{\LPCOEFF}_{(\ORDER - 1)~0}$ to $\text{\LPCOEFF}_{(\ORDER - 1)~\ORDER}$\;
-$\QLPSHIFT \leftarrow (\text{\QLPPREC} - 1) - (\lfloor \log_2(l) \rfloor - 1) - 1$\;
-\uIf(\tcc*[f]{must fit into signed 5 bit field}){$\QLPSHIFT > 2 ^ 4 - 1$}{
-  $\QLPSHIFT \leftarrow 2 ^ 4 - 1$\;
+{\relsize{-1}
+  \input{flac/algorithms/encode_quantize_coeffs}
 }
-\ElseIf{$\QLPSHIFT < -(2 ^ 4)$}{
-  \Return error\tcc*[r]{too much shift required for coefficients}
-}
-
-\BlankLine
-\tcc{QLP min and max are the smallest and largest QLP coefficients that fit in a signed field that's "QLP precision" bits wide}
-$\QLPMAX \leftarrow 2 ^ {\text{\QLPPREC} - 1} - 1$\;
-$\QLPMIN \leftarrow -(2 ^ {\text{\QLPPREC} - 1})$\;
-$\ERROR \leftarrow 0.0$\;
-\eIf{$\text{\QLPSHIFT} \geq 0$}{
-  \For{$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
-    $\ERROR \leftarrow \ERROR + \text{\LPCOEFF}_{\ORDER - 1~i} \times 2 ^ \text{\QLPSHIFT}$\;
-    $\text{\QLPCOEFF}_i \leftarrow \MIN(\MAX(\ROUND(\ERROR)~,~\text{\QLPMIN})~,~\text{\QLPMAX})$\;
-    $\ERROR \leftarrow \ERROR - \text{\QLPCOEFF}_i$\;
-  }
-  \Return $\left\lbrace\begin{tabular}{l}
-  \QLPCOEFF \\
-  \QLPPREC \\
-  \QLPSHIFT \\
-  \end{tabular}\right.$\;
-}(\tcc*[f]{negative shifts are not allowed, so shrink coefficients}){
-  \For{$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
-    $\ERROR \leftarrow \ERROR + \text{\LPCOEFF}_{\ORDER - 1~i} \div 2 ^ {-\text{\QLPSHIFT}}$\;
-    $\text{\QLPCOEFF}_i \leftarrow \MIN(\MAX(\ROUND(\ERROR)~,~\text{\QLPMIN})~,~\text{\QLPMAX})$\;
-    $\ERROR \leftarrow \ERROR - \text{\QLPCOEFF}_i$\;
-  }
-  \Return $\left\lbrace\begin{tabular}{l}
-  \QLPCOEFF \\
-  \QLPPREC \\
-  0 \\
-  \end{tabular}\right.$\;
-}
-\EALGORITHM
 
 \clearpage
 
@@ -494,42 +270,11 @@ and are also used to calculate its residuals.
 
 \clearpage
 
-\subsection{Encoding an LPC Subframe}
-\label{flac:encode_lpc_subframe}
-\ALGORITHM{signed samples, block size, subframe's bits per sample, wasted BPS, LPC order, QLP precision, QLP shift needed, QLP coefficients}{an LPC subframe}
-\SetKwData{ORDER}{LPC order}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{WASTEDBPS}{wasted BPS}
-\SetKwData{BPS}{bits per sample}
-\SetKwData{SAMPLE}{sample}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{QLPPREC}{QLP precision}
-\SetKwData{QLPSHIFT}{QLP shift needed}
-\SetKwData{QLPCOEFF}{QLP coefficient}
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{pad}
-$1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{subframe type}
-$(\text{\ORDER} - 1) \rightarrow$ \WRITE 5 unsigned bits\;
-\eIf{$\WASTEDBPS > 0$}{
-  $1 \rightarrow$ \WRITE 1 unsigned bit\;
-  $(\text{\WASTEDBPS} - 1) \rightarrow$ \WUNARY with stop bit 1\;
-}{
-  $0 \rightarrow$ \WRITE 1 unsigned bit\;
+\subsection{Writing an LPC Subframe}
+\label{flac:write_lpc_subframe}
+{\relsize{-1}
+  \input{flac/algorithms/write_lpc_subframe}
 }
-\For(\tcc*[f]{warm-up samples}){$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
-  $\text{\SAMPLE}_i \rightarrow$ \WRITE $(\BPS)$ signed bits\;
-}
-$(\text{\QLPPREC} - 1) \rightarrow$ \WRITE 4 unsigned bits\;
-$\text{\QLPSHIFT} \rightarrow$ \WRITE 5 signed bits\;
-\For(\tcc*[f]{QLP coefficients}){$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
-  $\text{\QLPCOEFF}_i \rightarrow$ \WRITE $(\QLPPREC)$ signed bits\;
-}
-\BlankLine
-\For(\tcc*[f]{calculate signed residuals}){$i \leftarrow 0$ \emph{\KwTo}$\BLOCKSIZE - \ORDER$}{
-  $\text{\RESIDUAL}_i \leftarrow \text{\SAMPLE}_{i + \ORDER} - \left \lfloor \frac{\overset{\ORDER - 1}{\underset{j = 0}{\sum}} \text{\QLPCOEFF}_j \times \text{\SAMPLE}_{i + \ORDER - j - 1} }{2 ^ \text{\QLPSHIFT}} \right \rfloor$
-}
-\hyperref[flac:write_residual_block]{write encoded residual block based on \RESIDUAL, \BLOCKSIZE and \ORDER}\;
-\Return LPC subframe\;
-\EALGORITHM
 \begin{figure}[h]
 \includegraphics{flac/figures/lpc.pdf}
 \end{figure}

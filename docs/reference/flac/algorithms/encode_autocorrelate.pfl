@@ -1,0 +1,11 @@
+INPUT "a list of windowed samples as floating point values, sample count, maximum LPC order";
+OUTPUT "a list of floating point autocorrelation values";
+VAR sample_count "sample count";
+VAR window "windowed";
+VAR autocorrelated "autocorrelated";
+VAR max_LPC "maximum LPC order";
+for l <- 0 to (max_LPC + 1) {
+    autocorrelated[l] <-
+        sum i <- 0 to sample_count - l - 1 {window[i] * window[i + l]};
+}
+return autocorrelated;

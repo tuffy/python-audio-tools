@@ -68,6 +68,7 @@ flac/algorithms/decode_lpc.tex \
 flac/algorithms/decode_residual.tex \
 flac/algorithms/decorrelate_channels.tex \
 flac/encode.tex \
+flac/algorithms/encode_flac.tex \
 flac/algorithms/write_metadata.tex \
 flac/algorithms/encode_frame.tex \
 flac/algorithms/write_frame_header.tex \
@@ -81,6 +82,14 @@ flac/algorithms/write_subframe_header.tex \
 flac/algorithms/encode_fixed_subframe.tex \
 flac/algorithms/encode_residual.tex \
 flac/algorithms/calculate_residual_partitions.tex \
+flac/algorithms/encode_lpc_subframe.tex \
+flac/algorithms/calculate_qlp_precision.tex \
+flac/algorithms/encode_window_samples.tex \
+flac/algorithms/encode_autocorrelate.tex \
+flac/algorithms/encode_lp_coeffs.tex \
+flac/algorithms/encode_best_order.tex \
+flac/algorithms/encode_quantize_coeffs.tex \
+flac/algorithms/write_lpc_subframe.tex \
 flac/encode/fixed.tex \
 flac/encode/residual.tex \
 flac/encode/lpc.tex \

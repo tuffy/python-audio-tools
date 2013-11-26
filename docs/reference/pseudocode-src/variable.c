@@ -116,6 +116,7 @@ variable_output_latex(const struct variable *self,
                       const struct definitions *defs,
                       FILE *output)
 {
+    const char *identifier = self->identifier;
     const struct vardef *var;
     unsigned variable_id;
 
@@ -124,14 +125,21 @@ variable_output_latex(const struct variable *self,
     for (var = defs->variables, variable_id = 0;
          var != NULL;
          var = var->next, variable_id++) {
-        if (strcmp(self->identifier, var->identifier) == 0) {
+        if (strcmp(identifier, var->identifier) == 0) {
             fprintf(output, "\\");
             escape_latex_variable(output, variable_id);
             break;
         }
     }
     if (var == NULL) {
-        escape_latex_identifier(output, self->identifier);
+        /*see if variable has a predefined replacement of some sort*/
+        if (strcmp(identifier, "alpha") == 0) {
+            fputs("\\alpha", output);
+        } else if (strcmp(identifier, "beta") == 0) {
+            fputs("\\beta", output);
+        } else {
+            escape_latex_identifier(output, identifier);
+        }
     }
 
     if (self->subscript != NULL) {

@@ -1,0 +1,45 @@
+INPUT "signed PCM samples, stream parameters, encoding parameters such as default block size";
+OUTPUT "a FLAC encoded file";
+VAR block_size "block size";
+VAR stream_md5 "stream MD5 sum";
+VAR channels "channels";
+VAR pcm_frames "PCM frames";
+VAR PCM_frames_read "channel data not empty";
+VAR flac_file "FLAC file";
+VAR flac_frame "FLAC frame";
+VAR flac_frame_length "FLAC frame length";
+
+VAR min_frame_size "minimum frame size";
+VAR max_frame_size "maximum frame size";
+VAR total_pcm_frames "total PCM frames";
+
+FUNC write_metadata "write metadata blocks" "flac:write_placeholder_blocks";
+FUNC rewrite_metadata "rewrite metadata blocks" "flac:write_placeholder_blocks";
+FUNC initialize_stream_md5 "initialize stream MD5";
+FUNC read_frame "read PCM frames from input";
+FUNC update_md5 "update stream MD5" "flac:update_md5_w";
+FUNC encode_frame "encode a FLAC frame" "flac:encode_frame";
+FUNC return_to_start "return to start of metadata blocks";
+min_frame_size <- 16777215 /*largest unsigned 24-bit value*/;
+max_frame_size <- 0;
+total_pcm_frames <- 0;
+stream_md5 <- initialize_stream_md5();
+[102, 76, 97, 67] -> write 4 bytes;
+write_metadata(block_size, min_frame_size, max_frame_size, total_pcm_frames, stream_md5);
+channels,pcm_frames <- read_frame(block_size);
+while pcm_frames > 0 {
+    flac_frame,flac_frame_length <- encode_frame(channels, pcm_frames);
+    flac_frame -> write flac_frame_length bytes;
+    if flac_frame_length < min_frame_size {
+        min_frame_size <- flac_frame_length;
+    }
+    if flac_frame_length > max_frame_size {
+        max_frame_size <- flac_frame_length;
+    }
+    total_pcm_frames <- total_pcm_frames + pcm_frames;
+    stream_md5 <- update_md5(stream_md5, channels);
+    channels,pcm_frames <- read_frame(block_size);
+}
+return_to_start();
+rewrite_metadata(block_size, min_frame_size, max_frame_size, total_pcm_frames, stream_md5);
+return flac_file;

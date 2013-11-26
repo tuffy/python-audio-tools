@@ -1,0 +1,34 @@
+INPUT "floating point error values, sample count, bits-per-sample, QLP precision and maximum LPC order";
+OUTPUT "best estimated LPC order to use";
+VAR max_LPC "maximum LPC order";
+VAR error_scale "error scale";
+VAR error "error";
+VAR header_bits "header bits";
+VAR bits_per_sample "bits-per-sample";
+VAR QLP_precision "QLP precision";
+VAR bits_per_residual "bits-per-residual";
+VAR subframe_bits "subframe bits";
+VAR best_subframe_bits "best subframe bits";
+VAR best_order "best order";
+VAR sample_count "sample count";
+best_subframe_bits <- infinity /*maximum unsigned integer*/;
+error_scale <- frac((log(e, 2)) ^ 2, sample_count * 2);
+for i <- 0 to max_LPC {
+    o <- i + 1;
+    if error[i] > 0.0 {
+        header_bits[o] <- o * (bits_per_sample * QLP_precision);
+        bits_per_residual[o] <- max(
+            frac(log(e, (error[i] * error_scale)),
+                 2 * log(e, 2)),
+            0.0);
+        subframe_bits[o] <-
+            header_bits[o] + bits_per_residual[o] * (sample_count - o);
+        if subframe_bits[o] < best_subframe_bits {
+            best_order <- o;
+            best_subframe_bits <- subframe_bits[o];
+        }
+    } elif error[i] == 0.0 {
+        return o;
+    }
+}
+return best_order;
