@@ -1,9 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
+    <row>
+    <col style="blank" width=".25"/>
+    <col width=".375" start="0" end="7">interlacing shift</col>
+    <col width=".375" start="8" end="15">interlacing leftweight</col>
+  </row>
   <row>
-    <col start="0" end="3" width=".333333">prediction type (0)</col>
+    <col style="blank" width=".25"/>
+    <col width=".375" id="subframe_header">Subframe Header₀</col>
+    <col style="dashed" width=".375">Subframe Header₁</col>
+  </row>
+  <row>
+    <col style="blank" width=".25"/>
+    <col style="dashed" width=".75">Uncompressed LSB Samples</col>
+  </row>
+  <row>
+    <col style="blank" width=".25"/>
+    <col width=".375" >Residual Block₀</col>
+    <col style="dashed" width=".375" >Residual Block₁</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="3" width=".333333"
+         id="subframe_header_s">prediction type (0)</col>
     <col start="4" end="7" width=".333333">QLP shift needed</col>
-    <col start="8" end="10" width=".333333">Rice modifier</col>
+    <col start="8" end="10" width=".333333"
+         id="subframe_header_e">Rice modifier</col>
   </row>
   <row>
     <col start="11" end="15" width=".25">coefficient count</col>
@@ -11,4 +33,12 @@
     <col start="32" end="47" width=".25">QLP coefficient₁</col>
     <col style="dashed" width=".25">...</col>
   </row>
+  <line style="dotted">
+    <start corner="sw" id="subframe_header"/>
+    <end corner="nw" id="subframe_header_s"/>
+  </line>
+  <line style="dotted">
+    <start corner="se" id="subframe_header"/>
+    <end corner="ne" id="subframe_header_e"/>
+  </line>
 </diagram>

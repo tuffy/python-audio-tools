@@ -67,6 +67,7 @@ extract_comment(const char *token)
 "OUTPUT"                {return OUTPUT;}
 "VAR"                   {return VAR;}
 "FUNC"                  {return FUNC;}
+"break"                 {return BREAK;}
 "infinity"              {return INFINITY;}
 "pi"                    {return PI;}
 "read"                  {return READ;}
@@ -135,6 +136,7 @@ extract_comment(const char *token)
 \n                      {lineno++;}
 ";"                     {return EOS;}
 [ \t]                   { }
+#.*                     { }
 .                       {printf("mystery char %s\n", yytext);}
 
 %%

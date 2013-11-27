@@ -137,6 +137,8 @@ variable_output_latex(const struct variable *self,
             fputs("\\alpha", output);
         } else if (strcmp(identifier, "beta") == 0) {
             fputs("\\beta", output);
+        } else if (strcmp(identifier, "kappa") == 0) {
+            fputs("\\kappa", output);
         } else {
             escape_latex_identifier(output, identifier);
         }

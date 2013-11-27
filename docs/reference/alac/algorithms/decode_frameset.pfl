@@ -1,0 +1,27 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "\"mdat\" atom data, decoding parameters from \"alac\" atom";
+OUTPUT "decoded PCM frames";
+VAR channel_count "channel count";
+VAR frame_channels "frame channels";
+VAR channels "channels";
+FUNC decode_frame "decode ALAC frame" "alac:decode_frame";
+FUNC byte_align "byte align input stream";
+i <- 0;
+channel_count <- (read 3 unsigned) + 1;
+while channel_count != 8 {
+    frame_channels <- decode_frame(channel_count);
+    for j <- 0 to channel_count {
+        channels[i] <- frame_channels[j];
+        i <- i + 1;
+    }
+    channel_count <- (read 3 unsigned) + 1;
+}
+byte_align();
+return channels;

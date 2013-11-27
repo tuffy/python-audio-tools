@@ -139,119 +139,28 @@ ALAC framesets contain multiple frames,
 each of which contains 1 or 2 subframes.
 \par
 \noindent
-\ALGORITHM{\texttt{mdat} atom data, decoding parameters from \texttt{alac} atom}{decoded PCM frames}
-\SetKwData{CHANNELS}{channels}
-$\CHANNELS \leftarrow$ (\READ 3 unsigned bits) + 1\;
-\While{$\CHANNELS \neq 8$}{
-  \hyperref[alac:decode_frame]{decode ALAC frame to 1 or 2 \CHANNELS of PCM data}\;
-  $\CHANNELS \leftarrow$ (\READ 3 unsigned bits) + 1\;
-}
-byte-align file stream\;
-\Return all frames' channels as PCM frames\;
-\EALGORITHM
+\input{alac/algorithms/decode_frameset}
 \begin{figure}[h]
-\includegraphics{alac/figures/stream.pdf}
+\includegraphics{alac/figures/frameset.pdf}
 \end{figure}
 
 \clearpage
 
 \subsection{Decoding ALAC Frame}
 \label{alac:decode_frame}
-{\relsize{-2}
-\ALGORITHM{\texttt{mdat} atom data, channel count, decoding parameters from \texttt{alac} atom}{1 or 2 decoded channels of PCM data}
-\SetKwData{CHANNELCOUNT}{channel count}
-\SetKwData{SAMPLECOUNT}{sample count}
-\SetKwData{SAMPLESPERFRAME}{samples per frame}
-\SetKwData{BPS}{bits per sample}
-\SetKwData{SAMPLESIZE}{sample size}
-\SetKwData{HASSAMPLECOUNT}{has sample count}
-\SetKwData{UNCOMPRESSEDLSBS}{uncompressed LSBs}
-\SetKwData{NOTCOMPRESSED}{not compressed}
-\SetKwData{INTERLACINGSHIFT}{interlacing shift}
-\SetKwData{INTERLACINGLEFTWEIGHT}{interlacing leftweight}
-\SetKwData{SUBFRAMEHEADER}{subframe header}
-\SetKwData{QLPSHIFTNEEDED}{QLP shift needed}
-\SetKwData{COEFF}{QLP coefficient}
-\SetKwData{INITHISTORY}{initial history}
-\SetKwData{MAXIMUMK}{maximum K}
-\SetKwData{RESIDUALS}{residual block}
-\SetKwData{LSB}{LSB}
-\SetKwData{SUBFRAME}{subframe}
-\SetKwData{CHANNEL}{channel}
-\SetKw{AND}{and}
-\SKIP 16 bits\;
-$\HASSAMPLECOUNT \leftarrow$ \READ 1 unsigned bit\;
-$\UNCOMPRESSEDLSBS \leftarrow$ \READ 2 unsigned bits\;
-$\NOTCOMPRESSED \leftarrow$ \READ 1 unsigned bit\;
-\uIf{$\HASSAMPLECOUNT = 0$}{
-  \SAMPLECOUNT $\leftarrow$ \SAMPLESPERFRAME from \texttt{alac} atom\;
+{\relsize{-1}
+  \input{alac/algorithms/decode_frame}
 }
-\lElse{\SAMPLECOUNT $\leftarrow$ \READ 32 unsigned bits\;}
-\eIf(\tcc*[f]{raw, uncompressed frame}){$\NOTCOMPRESSED = 1$}{
-  \For{$i \leftarrow 0$ \emph{\KwTo}\SAMPLECOUNT}{
-    \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
-      $\text{\CHANNEL}_{c~i} \leftarrow$ \READ (\BPS) signed bits\;
-    }
-  }
-}(\tcc*[f]{compressed frame}){
-  $\SAMPLESIZE \leftarrow \BPS - (\UNCOMPRESSEDLSBS \times 8) + (\text{\CHANNELCOUNT} - 1)$\;
-  \INTERLACINGSHIFT $\leftarrow$ \READ 8 unsigned bits\;
-  \INTERLACINGLEFTWEIGHT $\leftarrow$ \READ 8 unsigned bits\;
-  \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
-    $\left.\begin{tabular}{r}
-      $\text{\QLPSHIFTNEEDED}_c$ \\
-      $\text{\COEFF}_c$ \\
-\end{tabular}\right\rbrace \leftarrow$ \hyperref[alac:read_subframe_header]{read subframe header}\;
-  }
-  \If{$\UNCOMPRESSEDLSBS > 0$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}\SAMPLECOUNT}{
-      \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
-        $\text{\LSB}_{c~i} \leftarrow$ \READ ($\UNCOMPRESSEDLSBS \times 8$) unsigned bits\;
-      }
-    }
-  }
-  \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
-    $\text{\RESIDUALS}_c \leftarrow$ \hyperref[alac:read_residual_block]{read residual block} using $\left\lbrace\begin{tabular}{ll}
-    \INITHISTORY & from \texttt{alac} atom \\
-    \MAXIMUMK & from \texttt{alac} atom \\
-    \SAMPLESIZE \\
-    \SAMPLECOUNT \\
-\end{tabular}\right.$\;
-    $\text{\SUBFRAME}_c \leftarrow$ \hyperref[alac:decode_subframe]{decode subframe using} $\left\lbrace\begin{tabular}{l}
-    $\text{\QLPSHIFTNEEDED}_c$ \\
-    $\text{\COEFF}_c$ \\
-    $\text{\RESIDUALS}_c$ \\
-    \SAMPLESIZE \\
-    \SAMPLECOUNT \\
-\end{tabular}\right.$\;
-  }
-  \uIf{$(\CHANNELCOUNT = 2)$ \AND $(\INTERLACINGLEFTWEIGHT > 0)$}{
-    $\left.\begin{tabular}{r}
-      $\text{\CHANNEL}_0$ \\
-      $\text{\CHANNEL}_1$ \\
-    \end{tabular}\right\rbrace \leftarrow$
-    \hyperref[alac:decorrelate_channels]{decorrelate channels}
-    $\left\lbrace\begin{tabular}{l}
-    $\text{\SUBFRAME}_0$ \\
-    $\text{\SUBFRAME}_1$ \\
-    \INTERLACINGSHIFT \\
-    \INTERLACINGLEFTWEIGHT \\
-    \end{tabular}\right.$\;
-  }
-  \lElse{\For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
-      $\text{\CHANNEL}_c \leftarrow \text{\SUBFRAME}_c$\;
-    }
-  }
-  \If(\tcc*[f]{prepend any LSBs to each sample}){$\UNCOMPRESSEDLSBS > 0$}{
-    \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELCOUNT}{
-      \For{$i \leftarrow 0$ \emph{\KwTo}\SAMPLECOUNT}{
-        $\text{\CHANNEL}_{c~i} \leftarrow (\text{\CHANNEL}_{c~i} \times 2 ^ {\UNCOMPRESSEDLSBS \times 8}) + \text{\LSB}_{c~i}$\;
-      }
-    }
-  }
-}
-\Return \CHANNEL\;
-\EALGORITHM
+\begin{figure}[h]
+\includegraphics{alac/figures/frame.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Decoding Compressed Frame}
+\label{alac:decode_compressed_frame}
+{\relsize{-1}
+  \input{alac/algorithms/decode_compressed_frame}
 }
 
 \clearpage
@@ -259,33 +168,14 @@ $\NOTCOMPRESSED \leftarrow$ \READ 1 unsigned bit\;
 \subsection{Reading Subframe Header}
 \label{alac:read_subframe_header}
 {\relsize{-1}
-\ALGORITHM{\texttt{mdat} atom data}{QLP shift needed, QLP coefficient list}
-\SetKw{OR}{or}
-\SetKwData{PREDICTIONTYPE}{prediction type}
-\SetKwData{QLPSHIFTNEEDED}{QLP shift needed}
-\SetKwData{RICEMODIFIER}{Rice modifier}
-\SetKwData{COEFFCOUNT}{coefficient count}
-\SetKwData{COEFF}{QLP coefficient}
-$\PREDICTIONTYPE \leftarrow$ \READ 4 unsigned bits\;
-\ASSERT $\PREDICTIONTYPE = 0$\;
-$\QLPSHIFTNEEDED \leftarrow$ \READ 4 unsigned bits\;
-$\RICEMODIFIER \leftarrow$ \READ 3 unsigned bits\tcc*[r]{unused}
-$\COEFFCOUNT \leftarrow$ \READ 5 unsigned bits\;
-\ASSERT $(\COEFFCOUNT = 4)$ \OR $(\COEFFCOUNT = 8)$\;
-\For{$i \leftarrow 0$ \emph{\KwTo}\COEFFCOUNT}{
-  $\text{\COEFF}_i \leftarrow$ \READ 16 signed bits\;
-}
-\Return $\left\lbrace\begin{tabular}{l}
-$\text{\QLPSHIFTNEEDED}$ \\
-$\text{\COEFF}$ \\
-\end{tabular}\right.$\;
-\EALGORITHM
+  \input{alac/algorithms/read_subframe_header}
 }
 \begin{figure}[h]
 \includegraphics{alac/figures/subframe_header.pdf}
 \end{figure}
-\par
-\noindent
+
+\clearpage
+
 For example, given the bytes on the opposite page,
 our frame and subframe headers are:
 \begin{table}[h]
@@ -334,82 +224,15 @@ $\textsf{coefficient}_{1~3}$ & $\leftarrow$ & \texttt{0xFEE5} &=& -283 \\
 
 \subsection{Reading Residual Block}
 \label{alac:read_residual_block}
-\ALGORITHM{\texttt{mdat} atom data, initial history and maximum K from \texttt{alac} atom, sample count, sample size}{a decoded list of signed residuals}
-\SetKwData{SAMPLECOUNT}{sample count}
-\SetKwData{INITHISTORY}{initial history}
-\SetKwData{MAXIMUMK}{maximum K}
-\SetKwData{SIGN}{sign modifier}
-\SetKwData{HISTORY}{history}
-\SetKwData{HISTORYMULT}{history multiplier}
-\SetKwData{ZEROES}{zero residuals count}
-\SetKw{AND}{and}
-\SetKwFunction{MIN}{min}
-\SetKwFunction{READRESIDUAL}{read residual}
-\SetKwData{RESIDUAL}{residual}
-$\HISTORY \leftarrow \INITHISTORY$\;
-\SIGN $\leftarrow 0$\;
-\For{$i \leftarrow 0$ \emph{\KwTo}\SAMPLECOUNT}{
-  $\kappa \leftarrow \MIN(\lfloor\log_2(\HISTORY \div 2 ^ 9 + 3)\rfloor~,~\MAXIMUMK)$\;
-  $u_i \leftarrow \READRESIDUAL(\kappa~,~\text{sample size}) + \SIGN$\;
-  \SIGN $\leftarrow 0$\;
-  \BlankLine
-  \eIf(\tcc*[f]{apply sign bit to unsigned value}){$(u_i \bmod 0) = 0$}{
-    $\text{\RESIDUAL}_i \leftarrow u_i \div 2$\;
-  }{
-    $\text{\RESIDUAL}_i \leftarrow -((u_i + 1) \div 2)$\;
-  }
-  \BlankLine
-  \eIf(\tcc*[f]{update history}){$u_i \leq 65535$}{
-    \HISTORY $\leftarrow \HISTORY + (u_i \times \HISTORYMULT) - \left\lfloor\frac{\HISTORY \times \HISTORYMULT}{2 ^ 9}\right\rfloor$\;
-    \If{$\HISTORY < 128$ \AND $(i + 1) < \SAMPLECOUNT$}{
-      \tcc{generate run of 0 residuals if history gets too small}
-      $\kappa \leftarrow \MIN(7 - \lfloor\log_2(\HISTORY)\rfloor + ((\HISTORY + 16) \div 64)~,~\MAXIMUMK)$\;
-      \ZEROES $\leftarrow \READRESIDUAL(\kappa~,~16)$\;
-      \For{$j \leftarrow 0$ \emph{\KwTo}\ZEROES}{
-        $\text{\RESIDUAL}_{i + j + 1} \leftarrow 0$\;
-      }
-      $i \leftarrow i + j$\;
-      \HISTORY $\leftarrow 0$\;
-      \If{$\ZEROES \leq 65535$}{
-        \SIGN $\leftarrow 1$\;
-      }
-    }
-  }{
-    \HISTORY $\leftarrow 65535$\;
-  }
+{\relsize{-1}
+  \input{alac/algorithms/read_residuals}
 }
-\Return \RESIDUAL\;
-\EALGORITHM
 
 \clearpage
 
 \subsubsection{Reading Residual}
-\ALGORITHM{\texttt{mdat} atom data, $\kappa$, sample size}{an unsigned residual}
-\SetKwData{MSB}{MSB}
-\SetKwData{LSB}{LSB}
-\SetKw{UNREAD}{unread}
-\MSB $\leftarrow$ \UNARY with stop bit 0, to a maximum of 8 bits\;
-\uIf{9, \texttt{1} bits encountered}{
-  \Return \READ (sample size) unsigned bits\;
-}
-\uElseIf{$\kappa = 0$}{
-  \Return \MSB\;
-}
-\Else{
-  \LSB $\leftarrow$ \READ $\kappa$ unsigned bits\;
-  \uIf{$\LSB > 1$}{
-    \Return $\MSB \times (2 ^ \kappa - 1) + (\LSB - 1)$\;
-  }
-  \uElseIf{$\LSB = 1$}{
-    \UNREAD single \texttt{1} bit back into stream\;
-    \Return $\MSB \times (2 ^ \kappa - 1)$\;
-  }
-  \Else{
-    \UNREAD single \texttt{0} bit back into stream\;
-    \Return $\MSB \times (2 ^ \kappa - 1)$\;
-  }
-}
-\EALGORITHM
+\label{alac:read_residual}
+\input{alac/algorithms/read_residual}
 
 \begin{landscape}
 \subsubsection{Residual Decoding Example}
@@ -595,63 +418,7 @@ $i$ & \kappa & \textsf{MSB}_i & \textsf{LSB}_i & \textsf{unsigned}_i &
 \subsection{Decoding Subframe}
 \label{alac:decode_subframe}
 {\relsize{-1}
-\ALGORITHM{sample count, sample size, QLP coefficients, QLP shift needed, signed residuals}{a list of signed subframe samples}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{SAMPLE}{sample}
-\SetKwData{SAMPLESIZE}{sample size}
-\SetKwData{COEFFCOUNT}{coefficient count}
-\SetKwData{SAMPLECOUNT}{sample count}
-\SetKwData{BASE}{base sample}
-\SetKwData{QLPSUM}{QLP sum}
-\SetKwData{QLPCOEFF}{QLP coefficient}
-\SetKwData{QLPSHIFT}{QLP shift needed}
-\SetKwData{DIFF}{diff}
-\SetKwData{SSIGN}{sign}
-\SetKw{BREAK}{break}
-\SetKwData{ORIGSIGN}{original sign}
-\SetKwFunction{TRUNCATE}{truncate}
-\SetKwFunction{SIGN}{sign}
-$\text{\SAMPLE}_0 \leftarrow \text{\RESIDUAL}_0$\tcc*[r]{first sample always copied verbatim}
-\eIf{$\COEFFCOUNT < 31$}{
-  \For{$i \leftarrow 1$ \emph{\KwTo}$\text{\COEFFCOUNT} + 1$}{
-    $\text{\SAMPLE}_i \leftarrow \TRUNCATE(\text{\RESIDUAL}_{i} + \text{\SAMPLE}_{i - 1}~,~\SAMPLESIZE)$\;
-  }
-  \BlankLine
-  \For{i $\leftarrow \text{\COEFFCOUNT} + 1$ \emph{\KwTo}$\text{\SAMPLECOUNT}$}{
-    $\text{\BASE}_i \leftarrow \text{\SAMPLE}_{i - \COEFFCOUNT - 1}$\;
-    $\text{\QLPSUM}_i \leftarrow \overset{\COEFFCOUNT - 1}{\underset{j = 0}{\sum}} \text{\QLPCOEFF}_j \times (\text{\SAMPLE}_{i - j - 1} - \text{\BASE}_i)$\;
-    $\text{\SAMPLE}_i \leftarrow \TRUNCATE\left(\left\lfloor\frac{\text{\QLPSUM}_i + 2 ^ \text{\QLPSHIFT - 1}}{2 ^ \text{\QLPSHIFT}}\right\rfloor + \text{\RESIDUAL}_i + \text{\BASE}_i~,~\SAMPLESIZE\right)$\;
-    \BlankLine
-    \uIf(\tcc*[f]{modify QLP coefficients}){$\text{\RESIDUAL}_i > 0$}{
-      \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\COEFFCOUNT}$}{
-        $\DIFF \leftarrow \text{\BASE}_i - \text{\SAMPLE}_{i - \COEFFCOUNT + j}$\;
-        $\SSIGN \leftarrow \SIGN(\DIFF)$\;
-        $\text{\QLPCOEFF}_{\COEFFCOUNT - j - 1} \leftarrow \text{\QLPCOEFF}_{\COEFFCOUNT - j - 1} - \SSIGN$\;
-        $\text{\RESIDUAL}_i \leftarrow \text{\RESIDUAL}_i - \left\lfloor\frac{\DIFF \times \SSIGN}{2 ^ \text{\QLPSHIFT}}\right\rfloor \times (j + 1)$\;
-        \If{$\text{\RESIDUAL}_i \leq 0$}{
-          \BREAK\;
-        }
-      }
-    }
-    \ElseIf{$\text{\RESIDUAL}_i < 0$}{
-      \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\COEFFCOUNT}$}{
-        $\DIFF \leftarrow \text{\BASE}_i - \text{\SAMPLE}_{i - \COEFFCOUNT + j}$\;
-        $\SSIGN \leftarrow \SIGN(\DIFF)$\;
-        $\text{\QLPCOEFF}_{\COEFFCOUNT - j - 1} \leftarrow \text{\QLPCOEFF}_{\COEFFCOUNT - j - 1} + \SSIGN$\;
-        $\text{\RESIDUAL}_i \leftarrow \text{\RESIDUAL}_i - \left\lfloor\frac{\DIFF \times -\SSIGN}{2 ^ \text{\QLPSHIFT}}\right\rfloor \times (j + 1)$\;
-        \If{$\text{\RESIDUAL}_i \geq 0$}{
-          \BREAK\;
-        }
-      }
-    }
-  }
-}{
-  \For{$i \leftarrow 1$ \emph{\KwTo}\SAMPLECOUNT}{
-    $\text{\SAMPLE}_i \leftarrow \TRUNCATE(\text{\RESIDUAL}_i + \text{\SAMPLE}_{i - 1}~,~\SAMPLESIZE)$\;
-  }
-}
-\Return \SAMPLE\;
-\EALGORITHM
+  \input{alac/algorithms/decode_subframe}
 }
 
 \subsubsection{The \texttt{truncate} Function}
@@ -746,21 +513,7 @@ and how the next sample's \textsf{QLP coefficient} values are shifted.
 
 \subsection{Channel Decorrelation}
 \label{alac:decorrelate_channels}
-\ALGORITHM{$\text{subframe samples}_0$, $\text{subframe samples}_1$, interlacing shift and interlacing leftweight from frame header}{left and right channels}
-\SetKwData{LEFTWEIGHT}{interlacing leftweight}
-\SetKwData{SAMPLECOUNT}{sample count}
-\SetKwData{SUBFRAME}{subframe}
-\SetKwData{LEFT}{left}
-\SetKwData{RIGHT}{right}
-\For{$i \leftarrow 0$ \emph{\KwTo}\SAMPLECOUNT}{
-  $\text{\RIGHT}_i \leftarrow \text{\SUBFRAME}_{0~i} - \left\lfloor\frac{\text{\SUBFRAME}_{1~i} \times \text{\LEFTWEIGHT}}{2 ^ \text{interlacing shift}}\right\rfloor$\;
-  $\text{\LEFT}_i \leftarrow \text{\SUBFRAME}_{1~i} + \text{\RIGHT}_i$
-}
-\Return $\left\lbrace\begin{tabular}{l}
-\LEFT \\
-\RIGHT \\
-\end{tabular}\right.$
-\EALGORITHM
+\input{alac/algorithms/channel_decorrelation}
 For example, given the $\textsf{subframe}_0$ samples of 14, 15, 19, 17, 18;
 the $\textsf{subframe}_1$ samples of 16, 17, 26, 25, 24,
 an \VAR{interlacing shift} value of 2 and an \VAR{interlacing leftweight}

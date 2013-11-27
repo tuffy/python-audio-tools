@@ -1,0 +1,61 @@
+<?xml version="1.0" ?>
+<diagram>
+  <row>
+    <col end="2" id="channels" start="0" width="0.3">channel count (+1)</col>
+    <col id="frame" width=".7">Frame</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="3" end="18" width=".25" id="frame_s">unused</col>
+    <col start="19" end="19" width=".25">has sample count</col>
+    <col start="20" end="21" width=".25">uncompressed LSBs</col>
+    <col start="22" end="22" width=".25" id="frame_e">not compressed</col>
+  </row>
+  <row>
+    <col start="23" end="54" style="dashed" width=".40">sample count</col>
+    <col width=".6" id="frame_d">Frame Data</col>
+  </row>
+  <spacer/>
+  <row>
+    <col style="blank" width=".25">not compressed = 1</col>
+    <col width=".25" id="frame_d_s">sample₀</col>
+    <col width=".25">sample₁</col>
+    <col width=".25" style="dashed" id="frame_d_e">...</col>
+  </row>
+  <spacer height=".5"/>
+  <row>
+    <col style="blank" width=".25">not compressed = 0</col>
+    <col width=".375" start="0" end="7">interlacing shift</col>
+    <col width=".375" start="8" end="15">interlacing leftweight</col>
+  </row>
+  <row>
+    <col style="blank" width=".25"/>
+    <col width=".375" >Subframe Header₀</col>
+    <col style="dashed" width=".375">Subframe Header₁</col>
+  </row>
+  <row>
+    <col style="blank" width=".25"/>
+    <col style="dashed" width=".75">Uncompressed LSB Samples</col>
+  </row>
+  <row>
+    <col style="blank" width=".25"/>
+    <col width=".375" >Residual Block₀</col>
+    <col style="dashed" width=".375" >Residual Block₁</col>
+  </row>
+  <line style="dotted" >
+    <start corner="sw" id="frame"/>
+    <end corner="nw" id="frame_s"/>
+  </line>
+  <line style="dotted" >
+    <start corner="se" id="frame"/>
+    <end corner="ne" id="frame_e"/>
+  </line>
+  <line style="dotted" >
+    <start id="frame_d" corner="sw"/>
+    <end id="frame_d_s" corner="nw"/>
+  </line>
+  <line style="dotted" >
+    <start id="frame_d" corner="se"/>
+    <end id="frame_d_e" corner="ne"/>
+  </line>
+</diagram>

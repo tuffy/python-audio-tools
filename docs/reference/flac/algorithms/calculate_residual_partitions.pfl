@@ -1,3 +1,11 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
 INPUT "sample count, subframe's predictor order, signed residual values";
 OUTPUT "partition order, a list of unsigned Rice parameters, a list of partition lists containing signed residuals";
 VAR max_partition_order "maximum partition order";

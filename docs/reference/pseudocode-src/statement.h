@@ -70,8 +70,21 @@ statement_output_latex_comment(const struct statement *self,
                                const struct definitions *defs,
                                FILE *output);
 
+
 void
 statement_free_comment(struct statement *self);
+
+
+struct statement*
+statement_new_break(char *comment);
+
+void
+statement_output_latex_break(const struct statement *self,
+                             const struct definitions *defs,
+                             FILE *output);
+
+void
+statement_free_break(struct statement *self);
 
 
 struct statement*

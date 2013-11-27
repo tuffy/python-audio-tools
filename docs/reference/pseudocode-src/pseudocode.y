@@ -70,7 +70,7 @@ free_pseudocode(struct pseudocode *code);
 %left NOT
 %left CARAT
 
-%token INPUT OUTPUT VAR FUNC FRAC CEIL FLOOR SUM
+%token INPUT OUTPUT VAR FUNC BREAK FRAC CEIL FLOOR SUM
 %token INFINITY PI
 %token LOG SIN COS TAN
 %token <string> STRING
@@ -157,6 +157,9 @@ statement: EOS {
  }
  |COMMENT EOS {
     $$ = statement_new_comment($1);
+ }
+ | BREAK comment EOS {
+    $$ = statement_new_break($2);
  }
  | variablelist ASSIGN_IN expression comment EOS {
     $$ = statement_new_assign_in($1, $3, $4);
@@ -501,6 +504,7 @@ output_pseudocode_latex(const struct pseudocode *code, FILE *output)
     fprintf(output, "\\begin{algorithm}[H]\n");
     fprintf(output, "\\DontPrintSemicolon\n");
     /*setup keywords*/
+    /*FIXME - only output keywords which are used*/
     fprintf(output, "\\SetKw{KwDownTo}{downto}\n");
     fprintf(output, "\\SetKw{READ}{read}\n");
     fprintf(output, "\\SetKw{RUNARY}{read unary}\n");
@@ -511,8 +515,10 @@ output_pseudocode_latex(const struct pseudocode *code, FILE *output)
     fprintf(output, "\\SetKw{AND}{and}\n");
     fprintf(output, "\\SetKw{OR}{or}\n");
     fprintf(output, "\\SetKw{NOT}{not}\n");
+    fprintf(output, "\\SetKw{BREAK}{break}\n");
 
     /*setup variables*/
+    /*FIXME - only output variables which are used*/
     for (vardef = code->definitions.variables, variable_id = 0;
          vardef != NULL;
          vardef = vardef->next, variable_id++) {

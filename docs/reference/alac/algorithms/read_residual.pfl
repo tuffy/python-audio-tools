@@ -1,0 +1,34 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "\"mdat\" atom data, k, sample size";
+OUTPUT "an unsigned residual";
+VAR sample_size "sample size";
+VAR MSB "MSB";
+VAR LSB "LSB";
+VAR nine_bits "9, 1 bits encountered";
+FUNC read_max_unary "read unary with stop bit 0, to a maximum of 8 bits";
+FUNC unread_0 "unread single 0 bit back into stream";
+FUNC unread_1 "unread single 1 bit back into stream";
+MSB <- read_max_unary();
+if nine_bits {
+    return (read sample_size unsigned);
+} elif k == 0 {
+    return MSB;
+} else {
+    LSB <- read kappa unsigned;
+    if LSB == 0 {
+        unread_0();
+        return MSB * (2 ^ kappa - 1);
+    } elif LSB == 1 {
+        unread_1();
+        return MSB * (2 ^ kappa - 1);
+    } elif LSB > 1 {
+        return MSB * (2 ^ kappa - 1) + (LSB - 1);
+    }
+}

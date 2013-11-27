@@ -205,6 +205,7 @@ struct expressionlist {
 typedef enum {
     STAT_BLANKLINE,
     STAT_COMMENT,
+    STAT_BREAK,
     STAT_ASSIGN_IN,
     STAT_FUNCTIONCALL,
     STAT_IF,

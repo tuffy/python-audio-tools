@@ -263,6 +263,14 @@ shorten/figures/stream.pdf \
 shorten/figures/verbatim.pdf
 
 ALAC = \
+alac/algorithms/decode_frameset.tex \
+alac/algorithms/decode_frame.tex \
+alac/algorithms/decode_compressed_frame.tex \
+alac/algorithms/read_subframe_header.tex \
+alac/algorithms/read_residuals.tex \
+alac/algorithms/read_residual.tex \
+alac/algorithms/decode_subframe.tex \
+alac/algorithms/channel_decorrelation.tex \
 alac/decode.tex \
 alac/encode.tex \
 alac/encode/atoms.tex \
@@ -279,6 +287,8 @@ alac/figures/noninterlaced_frame.pdf \
 alac/figures/residual-build.pdf \
 alac/figures/residual-parse.pdf \
 alac/figures/stream.pdf \
+alac/figures/frameset.pdf \
+alac/figures/frame.pdf \
 alac/figures/subframe-build.pdf \
 alac/figures/subframe-parse.pdf \
 alac/figures/subframe_header.pdf \

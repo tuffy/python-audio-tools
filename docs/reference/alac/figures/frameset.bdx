@@ -1,0 +1,31 @@
+<?xml version="1.0" ?>
+<diagram>
+  <row>
+    <col end="31" id="mdat_len" start="0" width=".20">mdat length</col>
+    <col end="63" start="32" width=".20">`mdat'</col>
+    <col id="frameset" start="64" width=".20">Frame Set₀</col>
+    <col width=".20">Frame Set₁</col>
+    <col id="mdat_end" style="dashed" width=".20">...</col>
+  </row>
+  <spacer height=".75"/>
+  <row>
+    <col end="2" id="channels" start="0" width="0.3">channel count₀ (+1)</col>
+    <col id="frame" width=".7">Frame₀</col>
+  </row>
+  <row>
+    <col end="2" start="0" width="0.3">channel count₁ (+1)</col>
+    <col width="0.7">Frame₁</col>
+  </row>
+  <row>
+    <col end="2" start="0" width="0.3">channel count₂ (7)</col>
+    <col id="pad" style="dashed" width=".5">byte align</col>
+  </row>
+  <line style="dotted">
+    <start corner="sw" id="frameset"/>
+    <end corner="nw" id="channels"/>
+  </line>
+  <line style="dotted">
+    <start corner="se" id="frameset"/>
+    <end corner="ne" id="frame"/>
+  </line>
+</diagram>

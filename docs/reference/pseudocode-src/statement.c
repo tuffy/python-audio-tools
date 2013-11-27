@@ -309,6 +309,42 @@ statement_free_comment(struct statement *self)
 
 
 struct statement*
+statement_new_break(char *comment)
+{
+    struct statement *statement = malloc(sizeof(struct statement));
+    statement->type = STAT_BREAK;
+    statement->_.comment = comment;
+    statement->output_latex = statement_output_latex_break;
+    statement->free = statement_free_break;
+    return statement;
+}
+
+void
+statement_output_latex_break(const struct statement *self,
+                             const struct definitions *defs,
+                             FILE *output)
+{
+    const char *comment = self->_.comment;
+
+    fputs("\\BREAK", output);
+    if (comment != NULL) {
+        fputs("\\tcc{", output);
+        escape_latex_curly_brackets(output, comment);
+        fputs("}\n", output);
+    } else {
+        fputs("\\;", output);
+    }
+}
+
+void
+statement_free_break(struct statement *self)
+{
+    free(self->_.comment);
+    free(self);
+}
+
+
+struct statement*
 statement_new_assign_in(struct variablelist *variablelist,
                         struct expression *expression,
                         char *comment)
