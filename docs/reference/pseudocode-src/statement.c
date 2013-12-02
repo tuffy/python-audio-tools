@@ -1233,15 +1233,23 @@ statement_new_write(io_t type,
                     struct expression *to_write,
                     char *comment)
 {
-    struct statement *statement = malloc(sizeof(struct statement));
-    statement->type = STAT_WRITE;
-    statement->_.write.type = type;
-    statement->_.write.value = value;
-    statement->_.write.to_write = to_write;
-    statement->_.write.comment = comment;
-    statement->output_latex = statement_output_latex_write;
-    statement->free = statement_free_write;
-    return statement;
+    if ((to_write->type == EXP_INTEGER) && (to_write->_.integer == 0)) {
+        fprintf(stderr,
+                "*** Error: writing value to 0 %s probably isn't what you want\n",
+                type == IO_BYTES ? "bytes" : "bits");
+        exit(1);
+        return NULL;
+    } else {
+        struct statement *statement = malloc(sizeof(struct statement));
+        statement->type = STAT_WRITE;
+        statement->_.write.type = type;
+        statement->_.write.value = value;
+        statement->_.write.to_write = to_write;
+        statement->_.write.comment = comment;
+        statement->output_latex = statement_output_latex_write;
+        statement->free = statement_free_write;
+        return statement;
+    }
 }
 
 void

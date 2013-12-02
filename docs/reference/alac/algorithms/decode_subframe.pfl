@@ -32,7 +32,7 @@ for i <- QLP_coeff_count + 1 to sample_count {
                           residual[i] + base_sample[i],
                           sample_size);
     /*adjust coefficients based on residual*/;
-    if residual > 0 {
+    if residual[i] > 0 {
         for j <- QLP_coeff_count downto 0 {
             diff <- base_sample[i];
 
@@ -48,7 +48,7 @@ for i <- QLP_coeff_count + 1 to sample_count {
                 break;
             }
         }
-     } elif residual < 0 {
+     } elif residual[i] < 0 {
         for j <- QLP_coeff_count downto 0 {
             diff <- base_sample[i];
 

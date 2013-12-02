@@ -8,341 +8,237 @@
 
 \subsection{Computing QLP Coefficients and Residual}
 \label{alac:compute_qlp_coeffs}
-{\relsize{-2}
-\ALGORITHM{a list of signed PCM samples, sample size, encoding parameters}{a list of 4 or 8 signed QLP coefficients, a block of residual data; or a \textit{residual overflow} exception}
-\SetKwData{SAMPLES}{subframe samples}
-\SetKwData{WINDOWED}{windowed}
-\SetKwData{AUTOCORRELATION}{autocorrelated}
-\SetKwData{LPCOEFF}{LP coefficient}
-\SetKwData{QLPCOEFF}{QLP coefficient}
-\SetKwData{SAMPLESIZE}{sample size}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{RESIDUALBLOCK}{residual block}
-$\WINDOWED \leftarrow$ \hyperref[alac:window]{window signed integer \SAMPLES}\;
-$\AUTOCORRELATION \leftarrow$ \hyperref[alac:autocorrelate]{autocorrelate \WINDOWED}\;
-\eIf{$\text{\AUTOCORRELATION}_0 \neq 0.0$}{
-  $\LPCOEFF \leftarrow$ \hyperref[alac:compute_lp_coeffs]{compute LP coefficients from \AUTOCORRELATION}\;
-  $\text{\QLPCOEFF}_3 \leftarrow$ \hyperref[alac:quantize_lp_coeffs]{quantize $\text{\LPCOEFF}_3$ at order 4}\;
-  $\text{\QLPCOEFF}_7 \leftarrow$ \hyperref[alac:quantize_lp_coeffs]{quantize $\text{\LPCOEFF}_7$ at order 8}\;
-  $\text{\RESIDUAL}_3 \leftarrow$ \hyperref[alac:calculate_residuals]{calculate residuals from $\text{\QLPCOEFF}_3$ and \SAMPLES}\;
-  $\text{\RESIDUAL}_7 \leftarrow$ \hyperref[alac:calculate_residuals]{calculate residuals from $\text{\QLPCOEFF}_7$ and \SAMPLES}\;
-  $\text{\RESIDUALBLOCK}_3 \leftarrow$ \hyperref[alac:write_residuals]{encode residual block from $\text{\RESIDUAL}_3$ with \SAMPLESIZE}\;
-  $\text{\RESIDUALBLOCK}_7 \leftarrow$ \hyperref[alac:write_residuals]{encode residual block from $\text{\RESIDUAL}_7$ with \SAMPLESIZE}\;
-  \eIf{$\LEN(\text{\RESIDUALBLOCK}_3) < (\LEN(\text{\RESIDUALBLOCK}_7) + 64~bits)$}{
-    \Return $\left\lbrace\begin{tabular}{l}
-    $\text{\QLPCOEFF}_3$ \\
-    $\text{\RESIDUALBLOCK}_3$ \\
-    \end{tabular}\right.$\;
-  }{
-    \Return $\left\lbrace\begin{tabular}{l}
-    $\text{\QLPCOEFF}_7$ \\
-    $\text{\RESIDUALBLOCK}_7$ \\
-    \end{tabular}\right.$\;
-  }
-}(\tcc*[f]{all samples are 0}){
-  \QLPCOEFF $\leftarrow$ \texttt{[0, 0, 0, 0]}\;
-  $\text{\RESIDUAL} \leftarrow$ \hyperref[alac:calculate_residuals]{calculate residuals from $\text{\QLPCOEFF}$ and \SAMPLES}\;
-  $\text{\RESIDUALBLOCK} \leftarrow$ \hyperref[alac:write_residuals]{encode residual block from $\text{\RESIDUAL}$ with \SAMPLESIZE}\;
-  \Return $\left\lbrace\begin{tabular}{l}
-    $\text{\QLPCOEFF}$ \\
-    $\text{\RESIDUALBLOCK}$ \\
-  \end{tabular}\right.$\;
-}
-\EALGORITHM
-}
+\input{alac/algorithms/compute_qlp_coeffs}
+
+\clearpage
 
 \subsubsection{Windowing the Input Samples}
 \label{alac:window}
 {\relsize{-1}
-\ALGORITHM{a list of signed input sample integers}{a list of signed windowed samples as floats}
-\SetKwFunction{TUKEY}{tukey}
-\SetKwData{SAMPLECOUNT}{sample count}
-\SetKwData{WINDOWED}{windowed}
-\SetKwData{SAMPLE}{sample}
-\For{$i \leftarrow 0$ \emph{\KwTo}\SAMPLECOUNT}{
-  $\text{\WINDOWED}_i = \text{\SAMPLE}_i \times \TUKEY(i)$\;
+  \input{flac/algorithms/encode_window_samples}
 }
-\Return \WINDOWED\;
-\EALGORITHM
-\par
-\noindent
-where the \VAR{Tukey} function is defined as:
-\begin{equation*}
-tukey(n) =
-\begin{cases}
-\frac{1}{2} \times \left[1 + cos\left(\pi \times \left(\frac{2 \times n}{\alpha \times (N - 1)} - 1 \right)\right)\right] & \text{ if } 0 \leq n \leq \frac{\alpha \times (N - 1)}{2} \\
-1 & \text{ if } \frac{\alpha \times (N - 1)}{2} \leq n \leq (N - 1) \times (1 - \frac{\alpha}{2}) \\
-\frac{1}{2} \times \left[1 + cos\left(\pi \times \left(\frac{2 \times n}{\alpha \times (N - 1)} - \frac{2}{\alpha} + 1 \right)\right)\right] & \text{ if } (N - 1) \times (1 - \frac{\alpha}{2}) \leq n \leq (N - 1) \\
-\end{cases}
-\end{equation*}
-\par
-\noindent
-$N$ is the total number of input samples and $\alpha$ is $\nicefrac{1}{2}$.
-\par
-\noindent
-{\relsize{-2}
-\begin{tabular}{r|rcrcr}
-$i$ & $\textsf{sample}_i$ & & \texttt{tukey}($i$) & & $\textsf{windowed}_i$ \\
-\hline
-0 & \texttt{0} & $\times$ & \texttt{0.00} & = & \texttt{0.00} \\
-1 & \texttt{16} & $\times$ & \texttt{0.19} & = & \texttt{3.01} \\
-2 & \texttt{31} & $\times$ & \texttt{0.61} & = & \texttt{18.95} \\
-3 & \texttt{44} & $\times$ & \texttt{0.95} & = & \texttt{41.82} \\
-4 & \texttt{54} & $\times$ & \texttt{1.00} & = & \texttt{54.00} \\
-5 & \texttt{61} & $\times$ & \texttt{1.00} & = & \texttt{61.00} \\
-6 & \texttt{64} & $\times$ & \texttt{1.00} & = & \texttt{64.00} \\
-7 & \texttt{63} & $\times$ & \texttt{1.00} & = & \texttt{63.00} \\
-8 & \texttt{58} & $\times$ & \texttt{1.00} & = & \texttt{58.00} \\
-9 & \texttt{49} & $\times$ & \texttt{1.00} & = & \texttt{49.00} \\
-10 & \texttt{38} & $\times$ & \texttt{1.00} & = & \texttt{38.00} \\
-11 & \texttt{24} & $\times$ & \texttt{0.95} & = & \texttt{22.81} \\
-12 & \texttt{8} & $\times$ & \texttt{0.61} & = & \texttt{4.89} \\
-13 & \texttt{-8} & $\times$ & \texttt{0.19} & = & \texttt{-1.51} \\
-14 & \texttt{-24} & $\times$ & \texttt{0.00} & = & \texttt{0.00} \\
-\end{tabular}
-}
-}
-
-\clearpage
 
 \subsubsection{Autocorrelating Windowed Samples}
 \label{alac:autocorrelate}
 {\relsize{-1}
-\ALGORITHM{a list of signed windowed samples}{a list of signed autocorrelation values}
-\SetKwData{LAG}{lag}
-\SetKwData{AUTOCORRELATION}{autocorrelated}
-\SetKwData{TOTALSAMPLES}{total samples}
-\SetKwData{WINDOWED}{windowed}
-\For{$\LAG \leftarrow 0$ \emph{\KwTo}9}{
-  $\text{\AUTOCORRELATION}_{\text{\LAG}} = \overset{\text{\TOTALSAMPLES} - \text{\LAG} - 1}{\underset{i = 0}{\sum}}\text{\WINDOWED}_i \times \text{\WINDOWED}_{i + \text{\LAG}}$\;
+  \input{flac/algorithms/encode_autocorrelate}
 }
-\Return \AUTOCORRELATION\;
-\EALGORITHM
-}
+%% {\relsize{-1}
+%% \ALGORITHM{a list of signed windowed samples}{a list of signed autocorrelation values}
+%% \SetKwData{LAG}{lag}
+%% \SetKwData{AUTOCORRELATION}{autocorrelated}
+%% \SetKwData{TOTALSAMPLES}{total samples}
+%% \SetKwData{WINDOWED}{windowed}
+%% \For{$\LAG \leftarrow 0$ \emph{\KwTo}9}{
+%%   $\text{\AUTOCORRELATION}_{\text{\LAG}} = \overset{\text{\TOTALSAMPLES} - \text{\LAG} - 1}{\underset{i = 0}{\sum}}\text{\WINDOWED}_i \times \text{\WINDOWED}_{i + \text{\LAG}}$\;
+%% }
+%% \Return \AUTOCORRELATION\;
+%% \EALGORITHM
+%% }
 
-\subsubsection{Autocorrelation Example}
-{\relsize{-1}
-\begin{multicols}{2}
-\begin{tabular}{rrrrr}
-  \texttt{0.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \texttt{3.01} & $\times$ & \texttt{3.01} & $=$ & \texttt{9.07} \\
-  \texttt{18.95} & $\times$ & \texttt{18.95} & $=$ & \texttt{359.07} \\
-  \texttt{41.82} & $\times$ & \texttt{41.82} & $=$ & \texttt{1749.02} \\
-  \texttt{54.00} & $\times$ & \texttt{54.00} & $=$ & \texttt{2916.00} \\
-  \texttt{61.00} & $\times$ & \texttt{61.00} & $=$ & \texttt{3721.00} \\
-  \texttt{64.00} & $\times$ & \texttt{64.00} & $=$ & \texttt{4096.00} \\
-  \texttt{63.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{3969.00} \\
-  \texttt{58.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3364.00} \\
-  \texttt{49.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{2401.00} \\
-  \texttt{38.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{1444.00} \\
-  \texttt{22.81} & $\times$ & \texttt{22.81} & $=$ & \texttt{520.37} \\
-  \texttt{4.89} & $\times$ & \texttt{4.89} & $=$ & \texttt{23.91} \\
-  \texttt{-1.51} & $\times$ & \texttt{-1.51} & $=$ & \texttt{2.27} \\
-  \texttt{0.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \hline
-  \multicolumn{3}{r}{$\textsf{autocorrelation}_0$} & $=$ & \texttt{24574.71} \\
-\end{tabular}
-\par
-\begin{tabular}{rrrrr}
-  \texttt{0.00} & $\times$ & \texttt{3.01} & $=$ & \texttt{0.00} \\
-  \texttt{3.01} & $\times$ & \texttt{18.95} & $=$ & \texttt{57.08} \\
-  \texttt{18.95} & $\times$ & \texttt{41.82} & $=$ & \texttt{792.48} \\
-  \texttt{41.82} & $\times$ & \texttt{54.00} & $=$ & \texttt{2258.35} \\
-  \texttt{54.00} & $\times$ & \texttt{61.00} & $=$ & \texttt{3294.00} \\
-  \texttt{61.00} & $\times$ & \texttt{64.00} & $=$ & \texttt{3904.00} \\
-  \texttt{64.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{4032.00} \\
-  \texttt{63.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3654.00} \\
-  \texttt{58.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{2842.00} \\
-  \texttt{49.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{1862.00} \\
-  \texttt{38.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{866.84} \\
-  \texttt{22.81} & $\times$ & \texttt{4.89} & $=$ & \texttt{111.55} \\
-  \texttt{4.89} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-7.36} \\
-  \texttt{-1.51} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \hline
-  \multicolumn{3}{r}{$\textsf{autocorrelation}_1$} & $=$ & \texttt{23666.93} \\
-\end{tabular}
-\par
-\begin{tabular}{rrrrr}
-  \texttt{0.00} & $\times$ & \texttt{18.95} & $=$ & \texttt{0.00} \\
-  \texttt{3.01} & $\times$ & \texttt{41.82} & $=$ & \texttt{125.97} \\
-  \texttt{18.95} & $\times$ & \texttt{54.00} & $=$ & \texttt{1023.25} \\
-  \texttt{41.82} & $\times$ & \texttt{61.00} & $=$ & \texttt{2551.10} \\
-  \texttt{54.00} & $\times$ & \texttt{64.00} & $=$ & \texttt{3456.00} \\
-  \texttt{61.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{3843.00} \\
-  \texttt{64.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3712.00} \\
-  \texttt{63.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{3087.00} \\
-  \texttt{58.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{2204.00} \\
-  \texttt{49.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1117.77} \\
-  \texttt{38.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{185.82} \\
-  \texttt{22.81} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-34.36} \\
-  \texttt{4.89} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \hline
-  \multicolumn{3}{r}{$\textsf{autocorrelation}_2$} & $=$ & \texttt{21271.56} \\
-\end{tabular}
-\par
-\begin{tabular}{rrrrr}
-  \texttt{0.00} & $\times$ & \texttt{41.82} & $=$ & \texttt{0.00} \\
-  \texttt{3.01} & $\times$ & \texttt{54.00} & $=$ & \texttt{162.65} \\
-  \texttt{18.95} & $\times$ & \texttt{61.00} & $=$ & \texttt{1155.89} \\
-  \texttt{41.82} & $\times$ & \texttt{64.00} & $=$ & \texttt{2676.56} \\
-  \texttt{54.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{3402.00} \\
-  \texttt{61.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3538.00} \\
-  \texttt{64.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{3136.00} \\
-  \texttt{63.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{2394.00} \\
-  \texttt{58.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1323.07} \\
-  \texttt{49.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{239.61} \\
-  \texttt{38.00} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-57.23} \\
-  \texttt{22.81} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \hline
-  \multicolumn{3}{r}{$\textsf{autocorrelation}_3$} & $=$ & \texttt{17970.57} \\
-\end{tabular}
-\par
-\begin{tabular}{rrrrr}
-  \texttt{0.00} & $\times$ & \texttt{54.00} & $=$ & \texttt{0.00} \\
-  \texttt{3.01} & $\times$ & \texttt{61.00} & $=$ & \texttt{183.74} \\
-  \texttt{18.95} & $\times$ & \texttt{64.00} & $=$ & \texttt{1212.74} \\
-  \texttt{41.82} & $\times$ & \texttt{63.00} & $=$ & \texttt{2634.74} \\
-  \texttt{54.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3132.00} \\
-  \texttt{61.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{2989.00} \\
-  \texttt{64.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{2432.00} \\
-  \texttt{63.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1437.13} \\
-  \texttt{58.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{283.62} \\
-  \texttt{49.00} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-73.80} \\
-  \texttt{38.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
-  \hline
-  \multicolumn{3}{r}{$\textsf{autocorrelation}_4$} & $=$ & \texttt{14231.18} \\
-\end{tabular}
-\end{multicols}
-}
-
-\clearpage
+%% \subsubsection{Autocorrelation Example}
+%% {\relsize{-1}
+%% \begin{multicols}{2}
+%% \begin{tabular}{rrrrr}
+%%   \texttt{0.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
+%%   \texttt{3.01} & $\times$ & \texttt{3.01} & $=$ & \texttt{9.07} \\
+%%   \texttt{18.95} & $\times$ & \texttt{18.95} & $=$ & \texttt{359.07} \\
+%%   \texttt{41.82} & $\times$ & \texttt{41.82} & $=$ & \texttt{1749.02} \\
+%%   \texttt{54.00} & $\times$ & \texttt{54.00} & $=$ & \texttt{2916.00} \\
+%%   \texttt{61.00} & $\times$ & \texttt{61.00} & $=$ & \texttt{3721.00} \\
+%%   \texttt{64.00} & $\times$ & \texttt{64.00} & $=$ & \texttt{4096.00} \\
+%%   \texttt{63.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{3969.00} \\
+%%   \texttt{58.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3364.00} \\
+%%   \texttt{49.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{2401.00} \\
+%%   \texttt{38.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{1444.00} \\
+%%   \texttt{22.81} & $\times$ & \texttt{22.81} & $=$ & \texttt{520.37} \\
+%%   \texttt{4.89} & $\times$ & \texttt{4.89} & $=$ & \texttt{23.91} \\
+%%   \texttt{-1.51} & $\times$ & \texttt{-1.51} & $=$ & \texttt{2.27} \\
+%%   \texttt{0.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
+%%   \hline
+%%   \multicolumn{3}{r}{$\textsf{autocorrelation}_0$} & $=$ & \texttt{24574.71} \\
+%% \end{tabular}
+%% \par
+%% \begin{tabular}{rrrrr}
+%%   \texttt{0.00} & $\times$ & \texttt{3.01} & $=$ & \texttt{0.00} \\
+%%   \texttt{3.01} & $\times$ & \texttt{18.95} & $=$ & \texttt{57.08} \\
+%%   \texttt{18.95} & $\times$ & \texttt{41.82} & $=$ & \texttt{792.48} \\
+%%   \texttt{41.82} & $\times$ & \texttt{54.00} & $=$ & \texttt{2258.35} \\
+%%   \texttt{54.00} & $\times$ & \texttt{61.00} & $=$ & \texttt{3294.00} \\
+%%   \texttt{61.00} & $\times$ & \texttt{64.00} & $=$ & \texttt{3904.00} \\
+%%   \texttt{64.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{4032.00} \\
+%%   \texttt{63.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3654.00} \\
+%%   \texttt{58.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{2842.00} \\
+%%   \texttt{49.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{1862.00} \\
+%%   \texttt{38.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{866.84} \\
+%%   \texttt{22.81} & $\times$ & \texttt{4.89} & $=$ & \texttt{111.55} \\
+%%   \texttt{4.89} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-7.36} \\
+%%   \texttt{-1.51} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
+%%   \hline
+%%   \multicolumn{3}{r}{$\textsf{autocorrelation}_1$} & $=$ & \texttt{23666.93} \\
+%% \end{tabular}
+%% \par
+%% \begin{tabular}{rrrrr}
+%%   \texttt{0.00} & $\times$ & \texttt{18.95} & $=$ & \texttt{0.00} \\
+%%   \texttt{3.01} & $\times$ & \texttt{41.82} & $=$ & \texttt{125.97} \\
+%%   \texttt{18.95} & $\times$ & \texttt{54.00} & $=$ & \texttt{1023.25} \\
+%%   \texttt{41.82} & $\times$ & \texttt{61.00} & $=$ & \texttt{2551.10} \\
+%%   \texttt{54.00} & $\times$ & \texttt{64.00} & $=$ & \texttt{3456.00} \\
+%%   \texttt{61.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{3843.00} \\
+%%   \texttt{64.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3712.00} \\
+%%   \texttt{63.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{3087.00} \\
+%%   \texttt{58.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{2204.00} \\
+%%   \texttt{49.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1117.77} \\
+%%   \texttt{38.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{185.82} \\
+%%   \texttt{22.81} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-34.36} \\
+%%   \texttt{4.89} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
+%%   \hline
+%%   \multicolumn{3}{r}{$\textsf{autocorrelation}_2$} & $=$ & \texttt{21271.56} \\
+%% \end{tabular}
+%% \par
+%% \begin{tabular}{rrrrr}
+%%   \texttt{0.00} & $\times$ & \texttt{41.82} & $=$ & \texttt{0.00} \\
+%%   \texttt{3.01} & $\times$ & \texttt{54.00} & $=$ & \texttt{162.65} \\
+%%   \texttt{18.95} & $\times$ & \texttt{61.00} & $=$ & \texttt{1155.89} \\
+%%   \texttt{41.82} & $\times$ & \texttt{64.00} & $=$ & \texttt{2676.56} \\
+%%   \texttt{54.00} & $\times$ & \texttt{63.00} & $=$ & \texttt{3402.00} \\
+%%   \texttt{61.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3538.00} \\
+%%   \texttt{64.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{3136.00} \\
+%%   \texttt{63.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{2394.00} \\
+%%   \texttt{58.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1323.07} \\
+%%   \texttt{49.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{239.61} \\
+%%   \texttt{38.00} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-57.23} \\
+%%   \texttt{22.81} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
+%%   \hline
+%%   \multicolumn{3}{r}{$\textsf{autocorrelation}_3$} & $=$ & \texttt{17970.57} \\
+%% \end{tabular}
+%% \par
+%% \begin{tabular}{rrrrr}
+%%   \texttt{0.00} & $\times$ & \texttt{54.00} & $=$ & \texttt{0.00} \\
+%%   \texttt{3.01} & $\times$ & \texttt{61.00} & $=$ & \texttt{183.74} \\
+%%   \texttt{18.95} & $\times$ & \texttt{64.00} & $=$ & \texttt{1212.74} \\
+%%   \texttt{41.82} & $\times$ & \texttt{63.00} & $=$ & \texttt{2634.74} \\
+%%   \texttt{54.00} & $\times$ & \texttt{58.00} & $=$ & \texttt{3132.00} \\
+%%   \texttt{61.00} & $\times$ & \texttt{49.00} & $=$ & \texttt{2989.00} \\
+%%   \texttt{64.00} & $\times$ & \texttt{38.00} & $=$ & \texttt{2432.00} \\
+%%   \texttt{63.00} & $\times$ & \texttt{22.81} & $=$ & \texttt{1437.13} \\
+%%   \texttt{58.00} & $\times$ & \texttt{4.89} & $=$ & \texttt{283.62} \\
+%%   \texttt{49.00} & $\times$ & \texttt{-1.51} & $=$ & \texttt{-73.80} \\
+%%   \texttt{38.00} & $\times$ & \texttt{0.00} & $=$ & \texttt{0.00} \\
+%%   \hline
+%%   \multicolumn{3}{r}{$\textsf{autocorrelation}_4$} & $=$ & \texttt{14231.18} \\
+%% \end{tabular}
+%% \end{multicols}
+%% }
 
 \subsubsection{LP Coefficient Calculation}
 \label{alac:compute_lp_coeffs}
 {\relsize{-1}
-\ALGORITHM{a list of autocorrelation floats}{a list of LP coefficient lists}
-\SetKwData{LPCOEFF}{LP coefficient}
-\SetKwData{ERROR}{error}
-\SetKwData{AUTOCORRELATION}{autocorrelation}
-\begin{tabular}{rcl}
-$\kappa_0$ &$\leftarrow$ & $ \AUTOCORRELATION_1 \div \AUTOCORRELATION_0$ \\
-$\LPCOEFF_{0~0}$ &$\leftarrow$ & $ \kappa_0$ \\
-$\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
-\end{tabular}\;
-\For{$i \leftarrow 1$ \emph{\KwTo}8}{
-  \tcc{"zip" all of the previous row's LP coefficients
-    \newline
-    and the reversed autocorrelation values from 1 to i + 1
-    \newline
-    into ($c$,$a$) pairs
-    \newline
-    $q_i$ is $\AUTOCORRELATION_{i + 1}$ minus the sum of those multiplied ($c$,$a$) pairs}
-  $q_i \leftarrow \AUTOCORRELATION_{i + 1}$\;
-  \For{$j \leftarrow 0$ \emph{\KwTo}i}{
-    $q_i \leftarrow q_i - (\LPCOEFF_{(i - 1)~j} \times \AUTOCORRELATION_{i - j})$\;
-  }
-  \BlankLine
-  \tcc{"zip" all of the previous row's LP coefficients
-    \newline
-    and the previous row's LP coefficients reversed
-    \newline
-    into ($c$,$r$) pairs}
-  $\kappa_i = q_i \div \ERROR_{i - 1}$\;
-  \For{$j \leftarrow 0$ \emph{\KwTo}i}{
-    \tcc{then build a new coefficient list of $c - (\kappa_i * r)$ for each ($c$,$r$) pair}
-    $\LPCOEFF_{i~j} \leftarrow \LPCOEFF_{(i - 1)~j} - (\kappa_i \times \LPCOEFF_{(i - 1)~(i - j - 1)})$\;
-  }
-  $\text{\LPCOEFF}_{i~i} \leftarrow \kappa_i$\tcc*[r]{and append $\kappa_i$ as the final coefficient in that list}
-  \BlankLine
-  $\ERROR_i \leftarrow \ERROR_{i - 1} \times (1 - {\kappa_i}^2)$\;
+  \input{flac/algorithms/encode_lp_coeffs}
 }
-\Return \LPCOEFF\;
-\EALGORITHM
-}
+%% {\relsize{-1}
+%% \ALGORITHM{a list of autocorrelation floats}{a list of LP coefficient lists}
+%% \SetKwData{LPCOEFF}{LP coefficient}
+%% \SetKwData{ERROR}{error}
+%% \SetKwData{AUTOCORRELATION}{autocorrelation}
+%% \begin{tabular}{rcl}
+%% $\kappa_0$ &$\leftarrow$ & $ \AUTOCORRELATION_1 \div \AUTOCORRELATION_0$ \\
+%% $\LPCOEFF_{0~0}$ &$\leftarrow$ & $ \kappa_0$ \\
+%% $\ERROR_0$ &$\leftarrow$ & $ \AUTOCORRELATION_0 \times (1 - {\kappa_0} ^ 2)$ \\
+%% \end{tabular}\;
+%% \For{$i \leftarrow 1$ \emph{\KwTo}8}{
+%%   \tcc{"zip" all of the previous row's LP coefficients
+%%     \newline
+%%     and the reversed autocorrelation values from 1 to i + 1
+%%     \newline
+%%     into ($c$,$a$) pairs
+%%     \newline
+%%     $q_i$ is $\AUTOCORRELATION_{i + 1}$ minus the sum of those multiplied ($c$,$a$) pairs}
+%%   $q_i \leftarrow \AUTOCORRELATION_{i + 1}$\;
+%%   \For{$j \leftarrow 0$ \emph{\KwTo}i}{
+%%     $q_i \leftarrow q_i - (\LPCOEFF_{(i - 1)~j} \times \AUTOCORRELATION_{i - j})$\;
+%%   }
+%%   \BlankLine
+%%   \tcc{"zip" all of the previous row's LP coefficients
+%%     \newline
+%%     and the previous row's LP coefficients reversed
+%%     \newline
+%%     into ($c$,$r$) pairs}
+%%   $\kappa_i = q_i \div \ERROR_{i - 1}$\;
+%%   \For{$j \leftarrow 0$ \emph{\KwTo}i}{
+%%     \tcc{then build a new coefficient list of $c - (\kappa_i * r)$ for each ($c$,$r$) pair}
+%%     $\LPCOEFF_{i~j} \leftarrow \LPCOEFF_{(i - 1)~j} - (\kappa_i \times \LPCOEFF_{(i - 1)~(i - j - 1)})$\;
+%%   }
+%%   $\text{\LPCOEFF}_{i~i} \leftarrow \kappa_i$\tcc*[r]{and append $\kappa_i$ as the final coefficient in that list}
+%%   \BlankLine
+%%   $\ERROR_i \leftarrow \ERROR_{i - 1} \times (1 - {\kappa_i}^2)$\;
+%% }
+%% \Return \LPCOEFF\;
+%% \EALGORITHM
+%% }
 
-\begin{landscape}
+%% \begin{landscape}
 
-\subsubsection{LP Coefficient Calculation Example}
-\begin{table}[h]
-{\relsize{-1}
-\begin{tabular}{r|r}
-$i$ & $\textsf{autocorrelation}_i$ \\
-\hline
-0 & \texttt{24598.25} \\
-1 & \texttt{23694.34} \\
-2 & \texttt{21304.57} \\
-3 & \texttt{18007.86} \\
-4 & \texttt{14270.30} \\
-\end{tabular}
-}
-\end{table}
+%% \subsubsection{LP Coefficient Calculation Example}
+%% \begin{table}[h]
+%% {\relsize{-1}
+%% \begin{tabular}{r|r}
+%% $i$ & $\textsf{autocorrelation}_i$ \\
+%% \hline
+%% 0 & \texttt{24598.25} \\
+%% 1 & \texttt{23694.34} \\
+%% 2 & \texttt{21304.57} \\
+%% 3 & \texttt{18007.86} \\
+%% 4 & \texttt{14270.30} \\
+%% \end{tabular}
+%% }
+%% \end{table}
 
-\begin{table}[h]
-{\relsize{-1}
-\renewcommand{\arraystretch}{1.45}
-\begin{tabular}{|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
-\hline
-k_0 &
-\multicolumn{4}{>{$}l<{$}|}{\texttt{23694.34} \div \texttt{24598.25} = \texttt{0.96}} \\
-\textsf{LP coefficient}_{0~0} & \texttt{\color{blue}0.96} & & & \\
-\textsf{error}_0 &
-\multicolumn{4}{>{$}l<{$}|}{\texttt{24598.25} \times (1 - \texttt{0.96} ^ 2) = \texttt{1774.62}} \\
-\hline
-q_1 & \multicolumn{4}{>{$}l<{$}|}{\texttt{21304.57} - (\texttt{0.96} \times \texttt{23694.34}) = \texttt{-1519.07}} \\
-k_1 & \multicolumn{4}{>{$}l<{$}|}{\texttt{-1519.07} \div \texttt{1774.62} = \texttt{-0.86}} \\
-\textsf{LP coefficient}_{1~i} &
-\texttt{0.96} -(\texttt{-0.86} \times \texttt{0.96}) = \texttt{\color{blue}1.79} &
-\texttt{\color{blue}-0.86} & & \\
-\textsf{error}_1 & \multicolumn{4}{>{$}l<{$}|}{\texttt{1774.62} \times (1 - \texttt{-0.86} ^ 2) = \texttt{474.30}} \\
-\hline
-q_2 & \multicolumn{4}{>{$}l<{$}|}{\texttt{18007.86} - (\texttt{1.79} \times \texttt{21304.57} + \texttt{-0.86} \times \texttt{23694.34}) = \texttt{201.96}} \\
-k_2 & \multicolumn{4}{>{$}l<{$}|}{\texttt{201.96} \div \texttt{474.30} = \texttt{0.43}} \\
-\textsf{LP coefficient}_{2~i} &
-\texttt{1.79} -(\texttt{0.43} \times \texttt{-0.86}) = \texttt{\color{blue}2.15} &
-\texttt{-0.86} -(\texttt{0.43} \times \texttt{1.79}) = \texttt{\color{blue}-1.62} &
-\texttt{\color{blue}0.43} & \\
-\textsf{error}_2 & \multicolumn{4}{>{$}l<{$}|}{\texttt{474.30} \times (1 - \texttt{0.43} ^ 2) = \texttt{388.31}} \\
-\hline
-q_3 & \multicolumn{4}{>{$}l<{$}|}{\texttt{14270.30} - (\texttt{2.15} \times \texttt{18007.86} + \texttt{-1.62} \times \texttt{21304.57} + \texttt{0.43} \times \texttt{23694.34}) = \texttt{-122.06}} \\
-k_3 & \multicolumn{4}{>{$}l<{$}|}{\texttt{-122.06} \div \texttt{388.31} = \texttt{-0.31}} \\
-\textsf{LP coefficient}_{3~i} &
-\texttt{2.15} -(\texttt{-0.31} \times \texttt{0.43}) = \texttt{\color{blue}2.29} &
-\texttt{-1.62} -(\texttt{-0.31} \times \texttt{-1.62}) = \texttt{\color{blue}-2.13} &
-\texttt{0.43} -(\texttt{-0.31} \times \texttt{2.15}) = \texttt{\color{blue}1.10} &
-\texttt{\color{blue}-0.31} \\
-\textsf{error}_3 & \multicolumn{4}{>{$}l<{$}|}{\texttt{388.31} \times (1 - \texttt{-0.31} ^ 2) = \texttt{349.94}} \\
-\hline
-\end{tabular}
-\renewcommand{\arraystretch}{1.0}
-}
-\end{table}
+%% \begin{table}[h]
+%% {\relsize{-1}
+%% \renewcommand{\arraystretch}{1.45}
+%% \begin{tabular}{|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
+%% \hline
+%% k_0 &
+%% \multicolumn{4}{>{$}l<{$}|}{\texttt{23694.34} \div \texttt{24598.25} = \texttt{0.96}} \\
+%% \textsf{LP coefficient}_{0~0} & \texttt{\color{blue}0.96} & & & \\
+%% \textsf{error}_0 &
+%% \multicolumn{4}{>{$}l<{$}|}{\texttt{24598.25} \times (1 - \texttt{0.96} ^ 2) = \texttt{1774.62}} \\
+%% \hline
+%% q_1 & \multicolumn{4}{>{$}l<{$}|}{\texttt{21304.57} - (\texttt{0.96} \times \texttt{23694.34}) = \texttt{-1519.07}} \\
+%% k_1 & \multicolumn{4}{>{$}l<{$}|}{\texttt{-1519.07} \div \texttt{1774.62} = \texttt{-0.86}} \\
+%% \textsf{LP coefficient}_{1~i} &
+%% \texttt{0.96} -(\texttt{-0.86} \times \texttt{0.96}) = \texttt{\color{blue}1.79} &
+%% \texttt{\color{blue}-0.86} & & \\
+%% \textsf{error}_1 & \multicolumn{4}{>{$}l<{$}|}{\texttt{1774.62} \times (1 - \texttt{-0.86} ^ 2) = \texttt{474.30}} \\
+%% \hline
+%% q_2 & \multicolumn{4}{>{$}l<{$}|}{\texttt{18007.86} - (\texttt{1.79} \times \texttt{21304.57} + \texttt{-0.86} \times \texttt{23694.34}) = \texttt{201.96}} \\
+%% k_2 & \multicolumn{4}{>{$}l<{$}|}{\texttt{201.96} \div \texttt{474.30} = \texttt{0.43}} \\
+%% \textsf{LP coefficient}_{2~i} &
+%% \texttt{1.79} -(\texttt{0.43} \times \texttt{-0.86}) = \texttt{\color{blue}2.15} &
+%% \texttt{-0.86} -(\texttt{0.43} \times \texttt{1.79}) = \texttt{\color{blue}-1.62} &
+%% \texttt{\color{blue}0.43} & \\
+%% \textsf{error}_2 & \multicolumn{4}{>{$}l<{$}|}{\texttt{474.30} \times (1 - \texttt{0.43} ^ 2) = \texttt{388.31}} \\
+%% \hline
+%% q_3 & \multicolumn{4}{>{$}l<{$}|}{\texttt{14270.30} - (\texttt{2.15} \times \texttt{18007.86} + \texttt{-1.62} \times \texttt{21304.57} + \texttt{0.43} \times \texttt{23694.34}) = \texttt{-122.06}} \\
+%% k_3 & \multicolumn{4}{>{$}l<{$}|}{\texttt{-122.06} \div \texttt{388.31} = \texttt{-0.31}} \\
+%% \textsf{LP coefficient}_{3~i} &
+%% \texttt{2.15} -(\texttt{-0.31} \times \texttt{0.43}) = \texttt{\color{blue}2.29} &
+%% \texttt{-1.62} -(\texttt{-0.31} \times \texttt{-1.62}) = \texttt{\color{blue}-2.13} &
+%% \texttt{0.43} -(\texttt{-0.31} \times \texttt{2.15}) = \texttt{\color{blue}1.10} &
+%% \texttt{\color{blue}-0.31} \\
+%% \textsf{error}_3 & \multicolumn{4}{>{$}l<{$}|}{\texttt{388.31} \times (1 - \texttt{-0.31} ^ 2) = \texttt{349.94}} \\
+%% \hline
+%% \end{tabular}
+%% \renewcommand{\arraystretch}{1.0}
+%% }
+%% \end{table}
 
-\end{landscape}
+%% \end{landscape}
 
 \subsubsection{Quantizing LP Coefficients}
 \label{alac:quantize_lp_coeffs}
-\ALGORITHM{LP coefficients, an order value of 4 or 8}{QLP coefficients as a list of signed integers}
-\SetKwData{ORDER}{order}
-\SetKwFunction{MIN}{min}
-\SetKwFunction{MAX}{max}
-\SetKwFunction{ROUND}{round}
-\SetKwData{QLPMIN}{QLP min}
-\SetKwData{QLPMAX}{QLP max}
-\SetKwData{LPCOEFF}{LP coefficient}
-\SetKwData{QLPCOEFF}{QLP coefficient}
-\tcc{QLP min and max are the smallest and largest QLP coefficients that fit in a signed field that's 16 bits wide}
-$\QLPMIN \leftarrow 2 ^ \text{15} - 1$\;
-$\QLPMAX \leftarrow -(2 ^ \text{15})$\;
-$e \leftarrow 0.0$\;
-\For{$i \leftarrow 0$ \emph{\KwTo}\ORDER}{
-  $e \leftarrow e + \text{\LPCOEFF}_{\ORDER - 1~i} \times 2 ^ 9$\;
-  $\text{\QLPCOEFF}_i \leftarrow \MIN(\MAX(\ROUND(e)~,~\text{\QLPMIN})~,~\text{\QLPMAX})$\;
-  $e \leftarrow e - \text{\QLPCOEFF}_i$\;
-}
-\Return \QLPCOEFF\;
-\EALGORITHM
-
-\clearpage
+\input{alac/algorithms/quantize_coeffs}
 
 \subsubsection{Quantizing Coefficients Example}
 \begin{align*}

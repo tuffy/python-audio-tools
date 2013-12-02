@@ -58,129 +58,37 @@ return to start of \texttt{mdat} atom and write actual length\;
 \subsection{Encoding Frameset}
 \label{alac:encode_frameset}
 {\relsize{-2}
-\ALGORITHM{1 or more channels of PCM frames}{1 or more ALAC frames as a frameset}
-\SetKwData{CHANCOUNT}{channel count}
-\SetKwData{FRAMEDATA}{frame channels}
-\Switch{\CHANCOUNT}{
-  \uCase{1}{
-    \hyperref[alac:encode_frame]{encode mono as 1 channel frame}\;
-  }
-  \uCase{2}{
-    \hyperref[alac:encode_frame]{encode left,right as 2 channel frame}\;
-  }
-  \uCase{3}{
-    \hyperref[alac:encode_frame]{encode center as 1 channel frame}\;
-    \hyperref[alac:encode_frame]{encode left,right as 2 channel frame}\;
-  }
-  \uCase{4}{
-    \hyperref[alac:encode_frame]{encode center as 1 channel frame}\;
-    \hyperref[alac:encode_frame]{encode left,right as 2 channel frame}\;
-    \hyperref[alac:encode_frame]{encode center surround as 1 channel frame}\;
-  }
-  \uCase{5}{
-    \hyperref[alac:encode_frame]{encode center as 1 channel frame}\;
-    \hyperref[alac:encode_frame]{encode left,right as 2 channel frame}\;
-    \hyperref[alac:encode_frame]{encode left surround,right surround as 2 channel frame}\;
-  }
-  \uCase{6}{
-    \hyperref[alac:encode_frame]{encode center as 1 channel frame}\;
-    \hyperref[alac:encode_frame]{encode left,right as 2 channel frame}\;
-    \hyperref[alac:encode_frame]{encode left surround,right surround as 2 channel frame}\;
-    \hyperref[alac:encode_frame]{encode LFE as 1 channel frame}\;
-  }
-  \uCase{7}{
-    \hyperref[alac:encode_frame]{encode center as 1 channel frame}\;
-    \hyperref[alac:encode_frame]{encode left,right as 2 channel frame}\;
-    \hyperref[alac:encode_frame]{encode left surround,right surround as 2 channel frame}\;
-    \hyperref[alac:encode_frame]{encode center surround as 1 channel frame}\;
-    \hyperref[alac:encode_frame]{encode LFE as 1 channel frame}\;
-  }
-  \Case{8}{
-    \hyperref[alac:encode_frame]{encode center as 1 channel frame}\;
-    \hyperref[alac:encode_frame]{encode left center,right center as 2 channel frame}\;
-    \hyperref[alac:encode_frame]{encode left,right as 2 channel frame}\;
-    \hyperref[alac:encode_frame]{encode left surround,right surround as 1 channel frame}\;
-    \hyperref[alac:encode_frame]{encode LFE as 1 channel frame}\;
-  }
-  $7 \rightarrow$ \WRITE 3 unsigned bits\;
-  byte align output stream\;
-}
-\Return encoded frameset\;
-\EALGORITHM
+  \input{alac/algorithms/encode_frameset}
 }
 
-\subsubsection{Channel Assignment}
-\begin{tabular}{r|l}
-channels & assignment \\
-\hline
-1 & mono \\
-2 & left, right \\
-3 & center, left, right \\
-4 & center, left, right, center surround \\
-5 & center, left, right, left surround, right surround \\
-6 & center, left, right, left surround, right surround, LFE \\
-7 & center, left, right, left surround, right surround, center surround, LFE \\
-8 & center, left center, right center, left, right, left surround, right surround, LFE \\
-\end{tabular}
+%% \subsubsection{Channel Assignment}
+%% \begin{tabular}{r|l}
+%% channels & assignment \\
+%% \hline
+%% 1 & mono \\
+%% 2 & left, right \\
+%% 3 & center, left, right \\
+%% 4 & center, left, right, center surround \\
+%% 5 & center, left, right, left surround, right surround \\
+%% 6 & center, left, right, left surround, right surround, LFE \\
+%% 7 & center, left, right, left surround, right surround, center surround, LFE \\
+%% 8 & center, left center, right center, left, right, left surround, right surround, LFE \\
+%% \end{tabular}
 
 \clearpage
 
 \subsection{Encoding Frame}
 \label{alac:encode_frame}
 {\relsize{-1}
-\ALGORITHM{1 or 2 channels of PCM data, encoding parameters}{a compressed or uncompressed ALAC frame}
-\SetKwData{PCMCOUNT}{PCM frame count}
-\SetKwData{CHANCOUNT}{channel count}
-\SetKwData{COMPRESSED}{compressed frame}
-\SetKwData{UNCOMPRESSED}{uncompressed frame}
-\SetKwData{BPS}{bits per sample}
-\SetKwFunction{LEN}{len}
-$\CHANCOUNT - 1 \rightarrow$ \WRITE 3 unsigned bits\;
-\eIf{$\text{\PCMCOUNT} \geq 10$}{
-  $\UNCOMPRESSED \leftarrow$ \hyperref[alac:write_uncompressed_frame]{encode channel as uncompressed frame}\;
-  $\COMPRESSED \leftarrow$ \hyperref[alac:write_compressed_frame]{encode channels as compressed frame}\;
-  \uIf{residual overflow occurred}{
-    \Return \UNCOMPRESSED\;
-  }
-  \uElseIf{$\LEN(\COMPRESSED) \geq \LEN(\UNCOMPRESSED)$}{
-    \Return \UNCOMPRESSED\;
-  }
-  \Else{
-    \Return \COMPRESSED\;
-  }
-}{
-  \Return \UNCOMPRESSED\;
+  \input{alac/algorithms/encode_frame}
 }
-\EALGORITHM
-}
+
+\clearpage
 
 \subsection{Encoding Uncompressed Frame}
 \label{alac:write_uncompressed_frame}
 {\relsize{-1}
-\ALGORITHM{1 or 2 channels of PCM data, encoding parameters}{an uncompressed ALAC frame}
-\SetKwData{PCMCOUNT}{PCM frame count}
-\SetKwData{CHANCOUNT}{channel count}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{BPS}{bits per sample}
-\SetKwData{CHANNEL}{channel}
-$0 \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{unused}
-\eIf{$\text{\PCMCOUNT} = \text{encoding parameter's \BLOCKSIZE}$}{
-  $0 \rightarrow$ \WRITE 1 unsigned bit\;
-}{
-  $1 \rightarrow$ \WRITE 1 unsigned bit\;
-}
-$0 \rightarrow$ \WRITE 2 unsigned bits\tcc*[r]{uncompressed LSBs}
-$1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{not compressed}
-\If{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
-  $\PCMCOUNT \rightarrow$ \WRITE 32 unsigned bits\;
-}
-\For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
-  \For{$c \leftarrow 0$ \emph{\KwTo}\CHANCOUNT}{
-    $\text{\CHANNEL}_{c~i} \rightarrow$ \WRITE (\BPS) signed bits\;
-  }
-}
-\Return uncompressed frame\;
-\EALGORITHM
+  \input{alac/algorithms/encode_uncompressed_frame}
 }
 
 \begin{figure}[h]
@@ -192,57 +100,7 @@ $1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{not compressed}
 \subsection{Encoding Compressed Frame}
 \label{alac:write_compressed_frame}
 {\relsize{-1}
-\ALGORITHM{1 or 2 channels of PCM data, encoding parameters}{a compressed ALAC frame, or a \textit{residual overflow} exception}
-\SetKwData{PCMCOUNT}{PCM frame count}
-\SetKwData{CHANCOUNT}{channel count}
-\SetKwData{CHANNEL}{channel}
-\SetKwData{SHIFTED}{shifted}
-\SetKwData{FRAME}{frame}
-\SetKwData{BPS}{bits per sample}
-\SetKwData{HASLSBS}{uncompressed LSBs}
-\SetKwData{ISHIFT}{interlacing shift}
-\SetKwData{MINWEIGHT}{minimum leftweight}
-\SetKwData{MAXWEIGHT}{maximum leftweight}
-\SetKwData{LSB}{LSB}
-\eIf{$\text{\BPS} \leq 16$}{
-  \HASLSBS $\leftarrow 0$\;
-  \LSB $\leftarrow$ \texttt{[]}\;
-  \For{$c \leftarrow 0$ \emph{\KwTo}\CHANCOUNT}{
-    $\text{\SHIFTED}_c \leftarrow \text{\CHANNEL}_c$\;
-  }
-}(\tcc*[f]{extract uncompressed LSBs}){
-  \HASLSBS $\leftarrow (\text{\BPS} - 16) \div 8$\;
-  \For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
-    \For{$c \leftarrow 0$ \emph{\KwTo}\CHANCOUNT}{
-      $\text{\LSB}_{(i \times \CHANCOUNT) + c} \leftarrow (\text{\CHANNEL}_{c~i}) \bmod~2^{\text{\BPS} - 16}$\;
-      $\text{\SHIFTED}_{c~i} \leftarrow \left\lfloor(\text{\CHANNEL}_{c~i}) \div 2^{\text{\BPS} - 16}\right\rfloor$\;
-    }
-  }
-}
-\eIf{$\text{\CHANCOUNT} = 1$}{
-  \Return \hyperref[alac:write_non_interlaced_frame]{non-interlaced frame}
-  $\left\lbrace\begin{tabular}{l}
-  $\text{\SHIFTED}_0$ \\
-  \HASLSBS \\
-  \LSB \\
-  \end{tabular}\right.$\;
-}{
-  \tcc{minimum/maximum leftweight, interlacing shift from encoding parameters}
-  \For{l $\leftarrow \MINWEIGHT$ \emph{\KwTo}$\text{\MAXWEIGHT} + 1$}{
-    $\text{\FRAME}_l \leftarrow$
-    \hyperref[alac:write_interlaced_frame]{interlaced frame}
-    $\left\lbrace\begin{tabular}{l}
-    $\text{\SHIFTED}_0$ \\
-    $\text{\SHIFTED}_1$ \\
-    \ISHIFT \\
-    leftweight $l$ \\
-    \HASLSBS \\
-    \LSB \\
-    \end{tabular}\right.$\;
-  }
-  \Return smallest $\text{\FRAME}_l$\;
-}
-\EALGORITHM
+  \input{alac/algorithms/encode_compressed_frame}
 }
 
 \clearpage
@@ -250,54 +108,27 @@ $1 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{not compressed}
 \subsection{Encoding Non-Interlaced Frame}
 \label{alac:write_non_interlaced_frame}
 {\relsize{-1}
-\ALGORITHM{1 channel of PCM data, uncompressed LSBs, encoding parameters}{a compressed ALAC frame, or a \textit{residual overflow} exception}
-\SetKwData{PCMCOUNT}{PCM frame count}
-\SetKwData{CHANCOUNT}{channel count}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{BPS}{bits per sample}
-\SetKwData{SAMPLESIZE}{sample size}
-\SetKwData{QLPCOEFF}{QLP coefficient}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{CHANNEL}{channel}
-\SetKwData{UNCOMPRESSEDLSB}{uncompressed LSBs}
-\SetKwData{LSB}{LSB}
-$0 \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{unused}
-\eIf{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
-  $1 \rightarrow$ \WRITE 1 unsigned bit\;
-}{
-  $0 \rightarrow$ \WRITE 1 unsigned bit\;
+  \input{alac/algorithms/encode_noninterlaced_frame}
 }
-$\text{uncompressed LSBs} \rightarrow$ \WRITE 2 unsigned bits\;
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{is compressed}
-\If{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
-  $\PCMCOUNT \rightarrow$ \WRITE 32 unsigned bits\;
-}
-$0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{interlacing shift}
-$0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{interlacing leftweight}
-\SAMPLESIZE $\leftarrow \text{\BPS} - (\text{uncompressed LSBs} \times 8)$\;
-$\left.\begin{tabular}{r}
-$\text{\QLPCOEFF}_0$ \\
-$\text{\RESIDUAL}_0$ \\
-\end{tabular}\right\rbrace \leftarrow$
-\hyperref[alac:compute_qlp_coeffs]{compute QLP coefficient}
-$\left\lbrace\begin{tabular}{l}
-$\text{\CHANNEL}_0$ \\
-\SAMPLESIZE \\
-\end{tabular}\right.$\;
-\hyperref[alac:write_subframe_header]{write subframe header with $\text{\QLPCOEFF}_0$}\;
-\If{$\text{\UNCOMPRESSEDLSB} > 0$}{
-  \For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
-    $\text{\LSB}_i \rightarrow$ \WRITE $(\text{\UNCOMPRESSEDLSB} \times 8)$ unsigned bits\;
-  }
-}
-\hyperref[alac:write_residuals]{write residual block $\text{\RESIDUAL}_0$}\;
-\BlankLine
-\Return non-interlaced ALAC frame\;
-\EALGORITHM
-}
-
 \begin{figure}[h]
   \includegraphics{alac/figures/noninterlaced_frame.pdf}
+\end{figure}
+
+\clearpage
+
+\subsection{Writing Subframe Header}
+\label{alac:write_subframe_header}
+\input{alac/algorithms/write_subframe_header}
+\begin{figure}[h]
+\includegraphics{alac/figures/subframe_header.pdf}
+\end{figure}
+\par
+\noindent
+For example, given the QLP coefficients
+\texttt{1170, -1088, 565, -161},
+the subframe header is written as:
+\begin{figure}[h]
+\includegraphics{alac/figures/subframe-build.pdf}
 \end{figure}
 
 \clearpage
@@ -305,78 +136,7 @@ $\text{\CHANNEL}_0$ \\
 \subsection{Encoding Interlaced Frame}
 \label{alac:write_interlaced_frame}
 {\relsize{-1}
-\ALGORITHM{2 channels of PCM data, interlacing shift, interlacing leftweight, uncompressed LSBs, encoding parameters}{a compressed ALAC frame, or a \textit{residual overflow} exception}
-\SetKwData{PCMCOUNT}{PCM frame count}
-\SetKwData{CHANCOUNT}{channel count}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{BPS}{bits per sample}
-\SetKwData{SAMPLESIZE}{sample size}
-\SetKwData{UNCOMPRESSEDLSB}{uncompressed LSBs}
-\SetKwData{INTERLACINGSHIFT}{interlacing shift}
-\SetKwData{INTERLACINGLEFTWEIGHT}{interlacing leftweight}
-\SetKwData{CHANNEL}{channel}
-\SetKwData{CORRELATED}{correlated}
-\SetKwData{QLPCOEFF}{QLP coefficient}
-\SetKwData{RESIDUAL}{residual}
-$0 \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{unused}
-\eIf{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
-  $1 \rightarrow$ \WRITE 1 unsigned bit\;
-}{
-  $0 \rightarrow$ \WRITE 1 unsigned bit\;
-}
-$\text{\UNCOMPRESSEDLSB} \rightarrow$ \WRITE 2 unsigned bits\;
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{is compressed}
-\If{$\text{\PCMCOUNT} \neq \text{encoding parameter's \BLOCKSIZE}$}{
-  $\text{\PCMCOUNT} \rightarrow$ \WRITE 32 unsigned bits\;
-}
-$\text{\INTERLACINGSHIFT} \rightarrow$ \WRITE 8 unsigned bits\;
-$\text{\INTERLACINGLEFTWEIGHT} \rightarrow$ \WRITE 8 unsigned bits\;
-\BlankLine
-$\left.\begin{tabular}{r}
-$\text{\CORRELATED}_0$ \\
-$\text{\CORRELATED}_1$ \\
-\end{tabular}\right\rbrace \leftarrow$
-\hyperref[alac:correlate_channels]{correlate channels}
-$\left\lbrace\begin{tabular}{l}
-$\text{\CHANNEL}_0$ \\
-$\text{\CHANNEL}_1$ \\
-\INTERLACINGSHIFT \\
-\INTERLACINGLEFTWEIGHT \\
-\end{tabular}\right.$\;
-\BlankLine
-\SAMPLESIZE $\leftarrow \text{\BPS} - (\text{uncompressed LSBs} \times 8) + 1$\;
-$\left.\begin{tabular}{r}
-$\text{\QLPCOEFF}_0$ \\
-$\text{\RESIDUAL}_0$ \\
-\end{tabular}\right\rbrace \leftarrow$
-\hyperref[alac:compute_qlp_coeffs]{compute QLP coefficient}
-$\left\lbrace\begin{tabular}{l}
-$\text{\CORRELATED}_0$ \\
-\SAMPLESIZE \\
-\end{tabular}\right.$\;
-$\left.\begin{tabular}{r}
-$\text{\QLPCOEFF}_1$ \\
-$\text{\RESIDUAL}_1$ \\
-\end{tabular}\right\rbrace \leftarrow$
-\hyperref[alac:compute_qlp_coeffs]{compute QLP coefficient}
-$\left\lbrace\begin{tabular}{l}
-$\text{\CORRELATED}_1$ \\
-\SAMPLESIZE \\
-\end{tabular}\right.$\;
-\hyperref[alac:write_subframe_header]{write subframe header with $\text{\QLPCOEFF}_0$}\;
-\hyperref[alac:write_subframe_header]{write subframe header with $\text{\QLPCOEFF}_1$}\;
-\BlankLine
-\If{$\text{\UNCOMPRESSEDLSB} > 0$}{
-  \For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
-    $\text{LSB}_i \rightarrow$ \WRITE $(\text{\UNCOMPRESSEDLSB} \times 8)$ unsigned bits\;
-  }
-}
-\BlankLine
-\hyperref[alac:write_residuals]{write residual block $\text{\RESIDUAL}_0$}\;
-\hyperref[alac:write_residuals]{write residual block $\text{\RESIDUAL}_1$}\;
-\BlankLine
-\Return interlaced ALAC frame\;
-\EALGORITHM
+  \input{alac/algorithms/encode_interlaced_frame}
 }
 
 \clearpage
@@ -388,28 +148,7 @@ $\text{\CORRELATED}_1$ \\
 \subsubsection{Correlating Channels}
 \label{alac:correlate_channels}
 {\relsize{-1}
-\ALGORITHM{2 channels of PCM data, interlacing shift, interlacing leftweight}{2 correlated channels of PCM data}
-\SetKwData{PCMCOUNT}{PCM frame count}
-\SetKwData{LEFTWEIGHT}{interlacing leftweight}
-\SetKwData{SHIFT}{interlacing shift}
-\SetKwData{CORRELATED}{correlated}
-\SetKwData{CHANNEL}{channel}
-\eIf{$\text{\LEFTWEIGHT} > 0$}{
-  \For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
-    $\text{\CORRELATED}_{0~i} \leftarrow \text{\CHANNEL}_{1~i} + \left\lfloor\frac{(\text{\CHANNEL}_{0~i} - \text{\CHANNEL}_{1~i}) \times \text{\LEFTWEIGHT}}{2 ^ \text{\SHIFT}}\right\rfloor$\;
-    $\text{\CORRELATED}_{1~i} \leftarrow \text{\CHANNEL}_{0~i} - \text{\CHANNEL}_{1~i}$\;
-  }
-}{
-  \For{$i \leftarrow 0$ \emph{\KwTo}\PCMCOUNT}{
-    $\text{\CORRELATED}_{0~i} \leftarrow \text{\CHANNEL}_{0~i}$\;
-    $\text{\CORRELATED}_{1~i} \leftarrow \text{\CHANNEL}_{1~i}$\;
-  }
-}
-\Return $\left\lbrace\begin{tabular}{l}
-$\text{\CORRELATED}_0$ \\
-$\text{\CORRELATED}_1$ \\
-\end{tabular}\right.$
-\EALGORITHM
+  \input{alac/algorithms/correlate_channels}
 \par
 \noindent
 For example, given an \VAR{interlacing shift} value of 2 and an
@@ -437,28 +176,3 @@ $i$ & $\textsf{channel}_{0~i}$ & $\textsf{channel}_{1~i}$ & \textsf{correlated}_
 
 \input{alac/encode/residual}
 
-\subsection{Writing Subframe Header}
-\label{alac:write_subframe_header}
-\ALGORITHM{4 or 8 signed QLP coefficients}{a subframe header}
-\SetKwData{COEFFCOUNT}{coefficient count}
-\SetKwData{COEFF}{QLP coefficient}
-$0 \rightarrow$ \WRITE 4 unsigned bits\tcc*[r]{prediction type}
-$9 \rightarrow$ \WRITE 4 unsigned bits\tcc*[r]{QLP shift needed}
-$4 \rightarrow$ \WRITE 3 unsigned bits\tcc*[r]{Rice modifier}
-$\text{\COEFFCOUNT} \rightarrow$ \WRITE 5 unsigned bits\;
-\For{$i \leftarrow 0$ \emph{\KwTo}\COEFFCOUNT}{
-  $\text{\COEFF}_i \rightarrow$ \WRITE 16 signed bits\;
-}
-\Return subframe header data\;
-\EALGORITHM
-\begin{figure}[h]
-\includegraphics{alac/figures/subframe_header.pdf}
-\end{figure}
-\par
-\noindent
-For example, given the QLP coefficients
-\texttt{1170, -1088, 565, -161},
-the subframe header is written as:
-\begin{figure}[h]
-\includegraphics{alac/figures/subframe-build.pdf}
-\end{figure}

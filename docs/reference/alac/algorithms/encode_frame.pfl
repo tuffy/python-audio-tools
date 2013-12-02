@@ -1,0 +1,41 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "1 or 2 channels of PCM data, channel count, sample count of each channel, bits-per-sample";
+OUTPUT "encoded ALAC frame";
+VAR channel "channel";
+VAR channel_count "channel count";
+VAR sample_count "sample count";
+VAR block_size "block size";
+VAR bits_per_sample "bits-per-sample";
+VAR uncompressed_frame "uncompressed frame";
+VAR uncompressed_frame_size "uncompressed frame size";
+VAR compressed_frame "compressed frame";
+VAR compressed_frame_size "compressed frame size";
+VAR ALAC_frame "ALAC frame";
+VAR residual_overflow_occurred "residual overflow occurred";
+FUNC encode_uncompressed_frame "encode uncompressed frame"
+"alac:write_uncompressed_frame";
+FUNC encode_compressed_frame "encode compressed frame"
+"alac:write_compressed_frame";
+(channel_count - 1) -> write 3 unsigned;
+uncompressed_frame,uncompressed_frame_size <-
+encode_uncompressed_frame(channel, channel_count, sample_count, bits_per_sample);
+if sample_count >= 10 {
+   compressed_frame,compressed_frame_size <-
+   encode_compressed_frame(channel, channel_count, sample_count, bits_per_sample);
+   if residual_overflow_occurred or
+      (compressed_frame_size >= uncompressed_frame_size) {
+       compressed_frame -> write compressed_frame_size unsigned;
+   } else {
+       uncompressed_frame -> write uncompressed_frame_size unsigned;
+   }
+} else {
+    uncompressed_frame -> write uncompressed_frame_size unsigned;
+}
+return ALAC_frame;

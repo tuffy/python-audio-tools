@@ -9,62 +9,7 @@
 \subsection{Computing Residual Values}
 \label{alac:calculate_residuals}
 {\relsize{-1}
-\ALGORITHM{a list of signed PCM samples, 4 or 8 QLP coefficients, sample size}{a list of signed residual values}
-\SetKwFunction{SIGN}{sign}
-\SetKw{BREAK}{break}
-\SetKwData{SAMPLESIZE}{sample size}
-\SetKwData{SAMPLECOUNT}{sample count}
-\SetKwData{COEFFCOUNT}{coefficient count}
-\SetKwData{COEFF}{QLP coefficient}
-\SetKwData{ERROR}{error}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{SAMPLE}{sample}
-\SetKwData{BASESAMPLE}{base sample}
-\SetKwData{QLPSUM}{QLP sum}
-\SetKwData{DIFF}{diff}
-\SetKwData{SSIGN}{sign}
-\SetKwFunction{TRUNCATE}{truncate}
-$\text{\RESIDUAL}_0 \leftarrow \text{\SAMPLE}_0$\tcc*[r]{first sample always copied verbatim}
-\eIf{$\COEFFCOUNT < 31$}{
-  \For{$i \leftarrow 1$ \emph{\KwTo}$\COEFFCOUNT + 1$}{
-    $\text{\RESIDUAL}_i \leftarrow \TRUNCATE(\text{\SAMPLE}_i - \text{\SAMPLE}_{i - 1}~,~\SAMPLESIZE)$\;
-  }
-  \For{i $\leftarrow \text{\COEFFCOUNT} + 1$ \emph{\KwTo}\SAMPLECOUNT}{
-    $\text{\BASESAMPLE}_i \leftarrow \text{\SAMPLE}_{i - \COEFFCOUNT - 1}$\;
-    $\text{\QLPSUM}_i \leftarrow \overset{\COEFFCOUNT - 1}{\underset{j = 0}{\sum}} \text{\COEFF}_j \times (\text{\SAMPLE}_{i - j - 1} - \text{\BASESAMPLE}_i)$\;
-    $\text{\ERROR} \leftarrow \TRUNCATE\left(\text{\SAMPLE}_i - \text{\BASESAMPLE}_i - \left\lfloor\frac{\text{\QLPSUM}_i + 2 ^ 8}{2 ^ 9}\right\rfloor~,~\SAMPLESIZE \right)$\;
-    $\text{\RESIDUAL}_i \leftarrow \text{\ERROR}$\;
-    \BlankLine
-    \uIf(\tcc*[f]{modify QLP coefficients}){$\text{\ERROR} > 0$}{
-      \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\COEFFCOUNT}$}{
-        $\DIFF \leftarrow \text{\BASESAMPLE}_i - \text{\SAMPLE}_{i - \COEFFCOUNT + j}$\;
-        $\SSIGN \leftarrow \SIGN(\DIFF)$\;
-        $\text{\COEFF}_{\COEFFCOUNT - j - 1} \leftarrow \text{\COEFF}_{\COEFFCOUNT - j - 1} - \SSIGN$\;
-        $\text{\ERROR} \leftarrow \text{\ERROR} - \left\lfloor\frac{\DIFF \times \SSIGN}{2 ^ 9}\right\rfloor \times (j + 1)$\;
-        \If{$\text{\ERROR} \leq 0$}{
-          \BREAK\;
-        }
-      }
-    }
-    \ElseIf{$\text{\ERROR} < 0$}{
-      \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\COEFFCOUNT}$}{
-        $\DIFF \leftarrow \text{\BASESAMPLE}_i - \text{\SAMPLE}_{i - \COEFFCOUNT + j}$\;
-        $\SSIGN \leftarrow \SIGN(\DIFF)$\;
-        $\text{\COEFF}_{\COEFFCOUNT - j - 1} \leftarrow \text{\COEFF}_{\COEFFCOUNT - j - 1} + \SSIGN$\;
-        $\text{\ERROR} \leftarrow \text{\ERROR} - \left\lfloor\frac{\DIFF \times -\SSIGN}{2 ^ 9}\right\rfloor \times (j + 1)$\;
-        \If{$\text{\ERROR} \geq 0$}{
-          \BREAK\;
-        }
-      }
-    }
-  }
-}{
-  \For{$i \leftarrow 1$ \emph{\KwTo}\SAMPLECOUNT}{
-    $\text{\RESIDUAL}_i \leftarrow \TRUNCATE(\text{\SAMPLE}_i - \text{\SAMPLE}_{i - 1}~,~\SAMPLESIZE)$\;
-  }
-}
-\Return \RESIDUAL\;
-\EALGORITHM
+  \input{alac/algorithms/encode_compute_residual}
 }
 \subsubsection{The \texttt{truncate} Function}
 {\relsize{-1}
@@ -171,85 +116,13 @@ $i$ & $\textsf{sample}_i$ & $\textsf{base}_i$ & \textsf{QLP sum}_i & \textsf{res
 
 \subsection{Encoding Residual Block}
 \label{alac:write_residuals}
-\ALGORITHM{a list of signed residual values, sample size; initial history, history multiplier, maximum K from encoding options}{a block of residual data, or a \textit{residual overflow} exception}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{UNSIGNED}{unsigned}
-\SetKwData{SAMPLESIZE}{sample size}
-\SetKwData{HISTORY}{history}
-\SetKwData{HISTORYMULT}{history multiplier}
-\SetKwData{MAXIMUMK}{maximum K}
-\SetKwData{SIGNMODIFIER}{sign modifier}
-\SetKwData{ZEROES}{zeroes}
-\SetKw{RAISE}{raise}
-\SetKwFunction{MIN}{min}
-\SetKwFunction{WRITERESIDUAL}{write residual}
-\SetKw{AND}{and}
-\HISTORY $\leftarrow$ initial history\;
-\SIGNMODIFIER $\leftarrow 0$\;
-$i \leftarrow 0$\;
-\While{$i < \text{residual count}$}{
-  \eIf(\tcc*[f]{add sign bit}){$\text{\RESIDUAL}_i \geq 0$}{
-    $\text{\UNSIGNED}_i \leftarrow \text{\RESIDUAL}_i \times 2$\;
-  }{
-    $\text{\UNSIGNED}_i \leftarrow (-\text{\RESIDUAL}_i \times 2) - 1$\;
-  }
-  \If{$\text{\UNSIGNED}_i \geq 2 ^ \text{\SAMPLESIZE}$}{
-    \RAISE residual overflow exception\footnote{in this case, we should cease building a compressed frame and write an uncompressed frame instead}\;
-  }
-  $\kappa \leftarrow \MIN(\lfloor\log_2((\HISTORY \div 2 ^ 9) + 3)\rfloor~,~\MAXIMUMK)$\;
-  $\WRITERESIDUAL(\text{\UNSIGNED}_i - \SIGNMODIFIER~,~\kappa~,~\text{\SAMPLESIZE})$\;
-  $\SIGNMODIFIER \leftarrow 0$\;
-  \BlankLine
-  \eIf(\tcc*[f]{update history}){$\text{\UNSIGNED}_i \leq 65535$}{
-    $\HISTORY \leftarrow \HISTORY + (\text{\UNSIGNED}_i \times \HISTORYMULT) - \left\lfloor\frac{\HISTORY \times \HISTORYMULT}{2 ^ 9}\right\rfloor$\;
-    $i \leftarrow i + 1$\;
-    \BlankLine
-    \If(\tcc*[f]{handle 0 residuals}){$\HISTORY < 128$ \AND $i < \text{residual count}$}{
-      $\kappa \leftarrow \MIN(7 - \lfloor\log_2(\HISTORY)\rfloor + \lfloor(\HISTORY + 16) \div 2 ^ 6\rfloor~,~\MAXIMUMK)$\;
-      $\ZEROES \leftarrow 0$\;
-      \While{$i < \text{residual count}$ \AND $\text{\RESIDUAL}_i = 0$}{
-        $\ZEROES \leftarrow \ZEROES + 1$\;
-        $i \leftarrow i + 1$\;
-      }
-      $\WRITERESIDUAL(\ZEROES~,~\kappa~,~16)$\;
-      \If{$\ZEROES < 65535$}{
-        $\SIGNMODIFIER \leftarrow 1$\;
-      }
-      $\HISTORY \leftarrow 0$\;
-    }
-  }{
-    $i \leftarrow i + 1$\;
-    $\HISTORY \leftarrow 65535$\;
-  }
-}
-\Return encoded residual block\;
-\EALGORITHM
+\input{alac/algorithms/write_residuals}
 
 \clearpage
 
 \subsubsection{Encoding Individual Residual}
-
-\ALGORITHM{an unsigned residual value, $\kappa$, sample size}{an individual encoded residual}
-\SetKwData{UNSIGNED}{unsigned}
-\SetKwData{MSB}{MSB}
-\SetKwData{LSB}{LSB}
-$\MSB \leftarrow \text{\UNSIGNED} \div 2 ^ \kappa - 1$\;
-$\LSB \leftarrow \text{\UNSIGNED} \bmod~2 ^ \kappa - 1$\;
-\eIf{$\MSB > 8$}{
-  $\texttt{0x1FF} \rightarrow$ \WRITE 9 unsigned bits\;
-  $\text{\UNSIGNED} \rightarrow$ \WRITE (sample size) unsigned bits\;
-}{
-  $\MSB \rightarrow$ \WUNARY with stop bit 0\;
-  \If{$\kappa > 1$}{
-    \eIf{$\LSB > 0$}{
-      $\LSB + 1 \rightarrow$ \WRITE $\kappa$ unsigned bits\;
-    }{
-      $0 \rightarrow$ \WRITE $(\kappa - 1)$ unsigned bits\;
-    }
-  }
-}
-\Return encoded residual data\;
-\EALGORITHM
+\label{alac:write_residual}
+\input{alac/algorithms/write_residual}
 
 \begin{landscape}
 

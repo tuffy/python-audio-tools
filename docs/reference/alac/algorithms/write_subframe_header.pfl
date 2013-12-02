@@ -1,0 +1,21 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "list of signed QLP coefficients, coefficient count";
+OUTPUT "subframe header";
+VAR QLP_coeff "QLP coefficient";
+VAR QLP_coeff_count "QLP coefficient count";
+VAR subframe_header "subframe header";
+0 -> write 4 unsigned /*prediction type*/;
+9 -> write 4 unsigned /*QLP shift needed*/;
+4 -> write 3 unsigned /*Rice modifier*/;
+QLP_coeff_count -> write 5 unsigned;
+for i <- 0 to QLP_coeff_count {
+    QLP_coeff[i] -> write 16 signed;
+}
+return subframe_header;
