@@ -1,0 +1,39 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "block samples, two channels of correlated samples, a decorrelation delta, a decorrelation weight per channel, a list of decorrelation samples per channel";
+OUTPUT "two channels of decorrelated samples";
+VAR block_samples "block samples";
+VAR correlated "correlated";
+VAR decorrelated "decorrelated";
+VAR decorrelation_delta "decorrelation delta";
+VAR decorrelation_weights "decorrelation weights";
+VAR decorrelation_samples "decorrelation samples";
+FUNC apply_weight "apply weight" "wavpack:apply_weight";
+FUNC update_weight "update weight" "wavpack:update_weight";
+decorrelated[0][(-1)] <- decorrelation_samples[1][0] /*not returned*/;
+decorrelated[1][(-1)] <- decorrelation_samples[0][0] /*not returned*/;
+for i <- 0 to block_samples {
+    decorrelated[1][i] <- apply_weight(decorrelated[0][(i - 1)],
+                                       correlated[1][i],
+                                       decorrelation_weights[1]);
+    decorrelated[0][i] <- apply_weight(decorrelated[1][i],
+                                       correlated[0][i],
+                                       decorrelation_weights[0]);
+    decorrelation_weights[1] <- update_weight(
+        decorrelated[0][(i - 1)],
+        correlated[1][i],
+        decorrelation_weights[1],
+        decorrelation_delta);
+    decorrelation_weights[0] <- update_weight(
+        decorrelated[1][i],
+        correlated[0][i],
+        decorrelation_weights[0],
+        decorrelation_delta);
+}
+return decorrelated;

@@ -1,0 +1,49 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "WavPack file stream, number of block samples, channel count, list of three entropy variables for each channel";
+OUTPUT "a list of signed residual values per channel";
+VAR block_samples "block samples";
+VAR channel_count "channel count";
+VAR undefined "undefined";
+VAR residual "residual";
+VAR entropies "entropy";
+VAR zeroes "zeroes";
+FUNC read_egc "read modified Elias gamma code" "wavpack:read_egc";
+FUNC read_residual "read residual" "wavpack:read_residual";
+u[-1] <- undefined;
+for i <- 0 to block_samples * channel_count {
+    if (u[i - 1] == undefined) and
+       (entropies[0][0] < 2) and
+       (entropies[1][0] < 2) {
+        /*handle possible run of 0 residuals*/;
+        zeroes <- read_egc();
+        if zeroes > 0 {
+            for j <- 0 to zeroes {
+                c <- i % channel_count;
+                s <- floor(i / channel_count);
+                residual[c][s] <- 0;
+                i <- i + 1;
+            }
+            if i < block_samples * channel_count {
+                entropies[0][0] <- 0;
+                entropies[0][1] <- 0;
+                entropies[0][2] <- 0;
+                entropies[1][0] <- 0;
+                entropies[1][1] <- 0;
+                entropies[1][2] <- 0;
+            } else {
+                break;
+            }
+        }
+    }
+    c <- i % channel_count;
+    s <- floor(i / channel_count);
+    residual[c][s],u[i],entropies[c] <- read_residual(u[i - 1], entropies[c]);
+}
+return residual;

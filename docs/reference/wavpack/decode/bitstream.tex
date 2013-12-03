@@ -7,151 +7,32 @@
 %San Francisco, California, 94105, USA.
 
 \subsection{Reading Bitstream}
-\label{wavpack:decode_bitstream}
-\ALGORITHM{\VAR{mono output}, \VAR{false stereo} and \VAR{block samples} from block header,
-entropy values\footnote{from the entropy variables sub block, which must be read prior to this sub block}, sub block data}{a list of signed residual values per channel\footnote{$\text{residual}_{c~i}$ indicates the $i$th residual of channel $c$}}
-\SetKwData{ENTROPY}{entropy}
-\SetKwData{MONO}{mono output}
-\SetKwData{FALSESTEREO}{false stereo}
-\SetKwData{BLOCKSAMPLES}{block samples}
-\SetKwData{CHANNELS}{channel count}
-\SetKwData{UNDEFINED}{undefined}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{ZEROES}{zeroes}
-\SetKw{AND}{and}
-\eIf{$\text{\MONO} = 0$ \AND $\text{\FALSESTEREO} = 0$}{
-  \CHANNELS $\leftarrow 2$\;
-}{
-  \CHANNELS $\leftarrow 1$\;
+\label{wavpack:read_bitstream}
+{\relsize{-1}
+  \input{wavpack/algorithms/read_bitstream}
 }
-$u_{-1} \leftarrow \UNDEFINED$\;
-$i \leftarrow 0$\;
-\While{$i < (\BLOCKSAMPLES \times \CHANNELS)$}{
-  \eIf{$(u_{i - 1} = \UNDEFINED)$ \AND
-    $(\text{\ENTROPY}_{0~0} < 2)$ \AND
-    $(\text{\ENTROPY}_{1~0} < 2)$}{
-    \tcc{handle long run of 0 residuals}
-    $\ZEROES \leftarrow$ read modified Elias gamma code\;
-    \If{$\text{\ZEROES} > 0$}{
-      \For{$j \leftarrow 0$ \emph{\KwTo}\ZEROES}{
-        $\text{\RESIDUAL}_{(i \bmod \CHANNELS)~\lfloor i \div \CHANNELS \rfloor} \leftarrow $ 0\;
-        $i \leftarrow i + 1$\;
-      }
-      \BlankLine
-      $\text{\ENTROPY}_{0~0} \leftarrow \text{\ENTROPY}_{0~1} \leftarrow \text{\ENTROPY}_{0~2} \leftarrow 0$\;
-      $\text{\ENTROPY}_{1~0} \leftarrow \text{\ENTROPY}_{1~1} \leftarrow \text{\ENTROPY}_{1~2} \leftarrow 0$\;
-    }
-    \If{$i < (\BLOCKSAMPLES \times \CHANNELS)$}{
-      $\text{\RESIDUAL}_{(i \bmod \CHANNELS)~\lfloor i \div \CHANNELS \rfloor} \leftarrow $ read residual value\;
-      $i \leftarrow i + 1$\;
-    }
-  }{
-    $\text{\RESIDUAL}_{(i \bmod \CHANNELS)~\lfloor i \div \CHANNELS \rfloor} \leftarrow $ read residual value\;
-    $i \leftarrow i + 1$\;
-  }
-}
-\Return a list of signed \RESIDUAL values per channel\;
-\EALGORITHM
+
 
 \subsubsection{Reading Modified Elias Gamma Code}
+\label{wavpack:read_egc}
 {\relsize{-1}
-  \ALGORITHM{the sub block bitstream}{an unsigned integer}
-  $t \leftarrow$ \UNARY with stop bit 0\;
-  \eIf{$t > 1$}{
-    $p \leftarrow$ \READ $(t - 1)$ unsigned bits\;
-    \Return $2 ^ {(t - 1)} + p$\;
-  }{
-    \Return $t$\;
-  }
-  \EALGORITHM
-}
-
-\subsubsection{Reading Residual Value}
-{\relsize{-1}
-\ALGORITHM{sub block bitstream, previous residual's unary value $u_{i - 1}$, \VAR{entropy} values for channel $c$}{a signed residual value; new unary value $u_i$, updated \VAR{entropy} values for channel $c$}
-\EALGORITHM
+  \input{wavpack/algorithms/read_egc}
 }
 
 \clearpage
 
+\subsubsection{Reading Residual Value}
+\label{wavpack:read_residual}
 {\relsize{-1}
-\begin{algorithm}[H]
-\DontPrintSemicolon
-\SetKw{READ}{read}
-\SetKw{UNARY}{read unary}
-\SetKwData{UNDEFINED}{undefined}
-\SetKwData{ENTROPY}{entropy}
-\SetKwData{RESIDUAL}{residual}
-\uIf(\tcc*[f]{determine new "u" and "m" values}){$u_{i - 1} = \UNDEFINED$}{
-  $u_i \leftarrow$ \UNARY with stop bit 0\;
-  \If{$u_i = 16$}{
-    $c_i \leftarrow$ read modified Elias gamma code\;
-    $u_i \leftarrow u_i + c_i$\;
-  }
-  $m_i \leftarrow \lfloor u_i \div 2\rfloor$\;
+  \input{wavpack/algorithms/read_residual}
 }
-\uElseIf{$u_{i - 1} \bmod 2 = 0$}{
-  $u_i \leftarrow \UNDEFINED$\;
-  $m_i \leftarrow 0$\;
-}
-\ElseIf{$u_{i - 1} \bmod 2 = 1$}{
-  $u_i \leftarrow$ \UNARY with stop bit 0\;
-  \If{$u_i = 16$}{
-    $c_i \leftarrow$ read modified Elias gamma code\;
-    $u_i \leftarrow u_i + c_i$\;
-  }
-  $m_i \leftarrow \lfloor u_i \div 2\rfloor + 1$\;
-}
-\BlankLine
-\Switch(\tcc*[f]{determine "base", "add" and new entropy values}){$m_i$}{
-  \uCase{0}{
-    $base \leftarrow 0$\;
-    $add \leftarrow \lfloor\text{\ENTROPY}_{c~0} \div 2 ^ 4\rfloor$\;
-    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} - \lfloor(\text{\ENTROPY}_{c~0} + 126) \div 2 ^ 7\rfloor \times 2$\;
-  }
-  \uCase{1}{
-    $base \leftarrow \lfloor\text{\ENTROPY}_{c~0} \div 2 ^ 4\rfloor + 1$\;
-    $add \leftarrow \lfloor\text{\ENTROPY}_{c~1} \div 2 ^ 4\rfloor$\;
-    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
-    $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} - \lfloor(\text{\ENTROPY}_{c~1} + 62) \div 2 ^ 6\rfloor \times 2$\;
-  }
-  \uCase{2}{
-    $base \leftarrow (\lfloor\text{\ENTROPY}_{c~0} \div 2 ^ 4\rfloor + 1) + (\lfloor\text{\ENTROPY}_{c~1} \div 2 ^ 4\rfloor + 1)$\;
-    $add \leftarrow \lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor$\;
-    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
-    $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 2 ^ 6\rfloor \times 5$\;
-    $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} - \lfloor(\text{\ENTROPY}_{c~2} + 30) \div 2 ^ 5\rfloor \times 2$\;
-  }
-  \Other{
-    $base \leftarrow (\lfloor\text{\ENTROPY}_{c~0} \div 2 ^ 4\rfloor + 1) + (\lfloor\text{\ENTROPY}_{c~1} \div 2 ^ 4\rfloor + 1) + ((\lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor + 1) \times (m_i - 2))$\;
-    $add \leftarrow \lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor$\;
-    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 2 ^ 7\rfloor \times 5$\;
-    $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 2 ^ 6\rfloor \times 5$\;
-    $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} + \lfloor(\text{\ENTROPY}_{c~2} + 32) \div 2 ^ 5\rfloor \times 5$\;
-  }
-}
-\BlankLine
-\eIf(\tcc*[f]{determine final residual value}){$add = 0$}{
-  $unsigned \leftarrow base$\;
-}{
-  $p \leftarrow \lfloor\log_2(add)\rfloor$\;
-  $e \leftarrow 2 ^ {p + 1} - add - 1$\;
-  $r_i \leftarrow$ \READ $p$ unsigned bits\;
-  \eIf{$r \geq e$}{
-    $b_i \leftarrow$ \READ 1 unsigned bit\;
-    $unsigned \leftarrow base + (r_i \times 2) - e + b_i$\;
-  }{
-    $unsigned \leftarrow base + r_i$\;
-  }
-}
-\BlankLine
-$sign \leftarrow$ \READ 1 unsigned bit\;
-\eIf{$sign = 1$}{
-  \Return $(-unsigned - 1)$ along with unary value $u_i$ and updated entropy values\;
-}{
-  \Return $unsigned$ along with unary value $u_i$ and updated entropy values\;
-}
-\EALGORITHM
+
+\clearpage
+
+\subsubsection{Determining Base and Add Values}
+\label{wavpack:decode_base_add}
+{\relsize{-1}
+  \input{wavpack/algorithms/decode_base_add}
 }
 
 \clearpage

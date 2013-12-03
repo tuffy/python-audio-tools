@@ -1,0 +1,70 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "block samples, two channels of correlated samples, a decorrelation term, a decorrelation delta, a decorrelation weight per channel, a list of decorrelation samples per channel";
+OUTPUT "two channels of decorrelated samples";
+VAR block_samples "block samples";
+VAR correlated "correlated";
+VAR decorrelated "decorrelated";
+VAR temp "temp";
+VAR decorrelation_term "decorrelation term";
+VAR decorrelation_delta "decorrelation delta";
+VAR decorrelation_weights "decorrelation weights";
+VAR decorrelation_samples "decorrelation samples";
+FUNC invalid_term "invalid decorrelation term";
+FUNC apply_weight "apply weight" "wavpack:apply_weight";
+FUNC update_weight "update weight" "wavpack:update_weight";
+FUNC decorrelate_1ch "decorrelate 1 channel" "wavpack:decorr_pass_1ch";
+FUNC decorrelate_2ch_1 "decorrelate 2 channels with term -1"
+"wavpack:decorr_pass_2ch_1";
+FUNC decorrelate_2ch_2 "decorrelate 2 channels with term -2"
+"wavpack:decorr_pass_2ch_2";
+FUNC decorrelate_2ch_3 "decorrelate 2 channels with term -3"
+"wavpack:decorr_pass_2ch_3";
+if decorrelation_term > 0 {
+    decorrelated[0] <- decorrelate_1ch(block_samples,
+                                       correlated[0],
+                                       decorrelation_term,
+                                       decorrelation_delta,
+                                       decorrelation_weights[0],
+                                       decorrelation_samples[0]);
+    decorrelated[1] <- decorrelate_1ch(block_samples,
+                                       correlated[1],
+                                       decorrelation_term,
+                                       decorrelation_delta,
+                                       decorrelation_weights[1],
+                                       decorrelation_samples[1]);
+} else {
+    switch decorrelation_term {
+        case -1 {
+            decorrelated <- decorrelate_2ch_1(block_samples,
+                                              correlated,
+                                              decorrelation_delta,
+                                              decorrelation_weights,
+                                              decorrelation_samples);
+        }
+        case -2 {
+            decorrelated <- decorrelate_2ch_2(block_samples,
+                                              correlated,
+                                              decorrelation_delta,
+                                              decorrelation_weights,
+                                              decorrelation_samples);
+        }
+        case -3 {
+            decorrelated <- decorrelate_2ch_3(block_samples,
+                                              correlated,
+                                              decorrelation_delta,
+                                              decorrelation_weights,
+                                              decorrelation_samples);
+        }
+        default {
+            invalid_term();
+        }
+    }
+}
+return decorrelated;

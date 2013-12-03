@@ -1,0 +1,47 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "WavPack file stream, sub block size, channel count from block header, decorrelation term count and decorrelation terms from terms sub-block";
+OUTPUT "a list of signed decorrelation samples per channel per decorrelation term";
+VAR sub_block_size "sub block size";
+VAR decorrelation_term_count "term count";
+VAR decorrelation_terms "decorrelation terms";
+VAR decorrelation_samples "decorrelation samples";
+VAR channel_count "channel count";
+VAR sample_count "decorrelation sample count";
+FUNC decode_wv_exp2 "decode wv_exp2" "wavpack:exp2";
+sample_count <- sub_block_size / 2 /*each sample is 16 bits*/;
+for p <- decorrelation_term_count downto 0 {
+    if (17 <= decorrelation_terms[p] <= 18) {
+        for c <- 0 to channel_count {
+            for s <- 0 to 2 {
+                if sample_count > 0 {
+                    decorrelation_samples[p][c][s] <- decode_wv_exp2(read 16 signed);
+                    sample_count <- sample_count - 1;
+                }
+            }
+        }
+    } elif (1 <= decorrelation_terms[p] <= 8) {
+        for s <- 0 to decorrelation_terms[p] {
+            for c <- 0 to channel_count {
+                if sample_count > 0 {
+                    decorrelation_samples[p][c][s] <- decode_wv_exp2(read 16 signed);
+                    sample_count <- sample_count - 1;
+                }
+            }
+        }
+    } elif (-3 <= decorrelation_terms[p] <= -1) {
+        for c <- 0 to channel_count {
+            if sample_count > 0 {
+                decorrelation_samples[p][c][0] <- decode_wv_exp2(read 16 signed);
+                sample_count <- sample_count - 1;
+            }
+        }
+    }
+}
+return decorrelation_samples;

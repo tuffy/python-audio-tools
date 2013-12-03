@@ -1,0 +1,45 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "block samples, channel count, a list of signed residuals per channel, decorrelation term count, a list of decorrelation terms and deltas, a decorrelation weight per term and channel, a list of decorrelation samples per term and channel";
+OUTPUT "a list of signed samples per channel";
+VAR block_samples "block samples";
+VAR channel_count "channel count";
+VAR decorrelation_term_count "term count";
+VAR decorrelation_terms "decorrelation terms";
+VAR decorrelation_deltas "decorrelation deltas";
+VAR decorrelation_weights "decorrelation weights";
+VAR decorrelation_samples "decorrelation samples";
+VAR residuals "residuals";
+VAR pass "pass";
+FUNC decorrelate_1ch "decorrelate 1 channel" "wavpack:decorr_pass_1ch";
+FUNC decorrelate_2ch "decorrelate 2 channels" "wavpack:decorr_pass_2ch";
+if channel_count == 1 {
+    pass[0] <- residuals[0];
+    for p <- 0 to decorrelation_term_count {
+        pass[0] <- decorrelate_1ch(block_samples,
+                                   pass[0],
+                                   decorrelation_terms[p],
+                                   decorrelation_deltas[p],
+                                   decorrelation_weights[p][0],
+                                   decorrelation_samples[p][0]);
+    }
+    return pass[0];
+} else {
+   pass[0] <- residuals[0];
+   pass[1] <- residuals[1];
+   for p <- 0 to decorrelation_term_count {
+       pass[0],pass[1] <- decorrelate_2ch(block_samples,
+                                          pass,
+                                          decorrelation_terms[p],
+                                          decorrelation_deltas[p],
+                                          decorrelation_weights[p],
+                                          decorrelation_samples[p]);
+   }
+   return pass[0],pass[1];
+}

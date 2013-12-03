@@ -6,65 +6,10 @@
 %171 Second Street, Suite 300,
 %San Francisco, California, 94105, USA.
 
-\subsection{Decoding Decorrelation Samples}
-\label{wavpack:decode_decorrelation_samples}
-{\relsize{-2}
-\ALGORITHM{\VAR{mono output} and \VAR{false stereo} from block header, decorrelation terms, sub block size and data}{a list of signed decorrelation sample lists per channel per decorrelation term\footnote{\relsize{-1}$\text{sample}_{p~c~s}$ indicates the $s$th sample of decorrelation pass $p$ for channel $c$}}
-\SetKwData{MONO}{mono output}
-\SetKwData{FALSESTEREO}{false stereo}
-\SetKwData{CHANNELS}{channel count}
-\SetKwData{SAMPLE}{sample}
-\SetKwData{TOTALSAMPLES}{sample count}
-\SetKwData{TERMCOUNT}{term count}
-\SetKwData{TERM}{term}
-\SetKwFunction{EXP}{wv\_exp2}
-\SetKw{KwDownTo}{downto}
-\SetKw{AND}{and}
-\eIf{$(\MONO = 0)$ \AND $(\FALSESTEREO = 0)$}{
-  $\CHANNELS \leftarrow 2$\;
-}{
-  $\CHANNELS \leftarrow 1$\;
-}
-\For{$p \leftarrow \TERMCOUNT$ \emph{\KwDownTo}0}{
-  \uIf(\tcc*[f]{2 samples per channel}){$17 \leq \text{\TERM}_p \leq 18$}{
-    \eIf{$\text{sub block bytes remaining} \geq (\CHANNELS \times 4)$}{
-      \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
-        $\text{\SAMPLE}_{p~c~0} \leftarrow \text{read \EXP value}$\;
-        $\text{\SAMPLE}_{p~c~1} \leftarrow \text{read \EXP value}$\;
-      }
-    }{
-      \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
-        $\text{\SAMPLE}_{p~c} \leftarrow \texttt{[0, 0]}$\;
-      }
-    }
-  }
-  \uElseIf(\tcc*[f]{"term" samples per channel}){$1 \leq \text{\TERM}_p \leq 8$}{
-    \eIf{$\text{sub block bytes remaining} \geq (\CHANNELS \times \text{\TERM}_p \times 2)$}{
-      \For{$s \leftarrow 0$ \emph{\KwTo}$\text{\TERM}_p$}{
-        \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
-          $\text{\SAMPLE}_{p~c~s} \leftarrow \text{read \EXP value}$\;
-        }
-      }
-    }{
-      \For{$s \leftarrow 0$ \emph{\KwTo}$\text{\TERM}_p$}{
-        \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
-          $\text{\SAMPLE}_{p~c~s} \leftarrow 0$\;
-        }
-      }
-    }
-  }
-  \ElseIf(\tcc*[f]{1 sample per channel}){$-3 \leq \text{\TERM}_p \leq -1$}{
-    \eIf{$\text{sub block bytes remaining} \geq 4$}{
-      $\text{\SAMPLE}_{p~0~0} \leftarrow \text{read \EXP value}$\;
-      $\text{\SAMPLE}_{p~1~0} \leftarrow \text{read \EXP value}$\;
-    }{
-      $\text{\SAMPLE}_{p~0~0} \leftarrow 0$\;
-      $\text{\SAMPLE}_{p~1~0} \leftarrow 0$\;
-    }
-  }
-}
-\Return $\text{\SAMPLE}$ lists per pass, per channel\;
-\EALGORITHM
+\subsection{Reading Decorrelation Samples}
+\label{wavpack:read_decorrelation_samples}
+{\relsize{-1}
+  \input{wavpack/algorithms/read_decorrelation_samples}
 }
 \begin{figure}[h]
   \includegraphics{wavpack/figures/decorr_samples.pdf}
@@ -72,26 +17,10 @@
 
 \clearpage
 
-\subsubsection{Reading wv\_exp2 Values}
-\label{wavpack_wvexp2}
+\subsubsection{Reading exp2 Values}
+\label{wavpack:exp2}
 {\relsize{-1}
-\ALGORITHM{2 bytes of sub block data}{a signed value}
-\SetKwFunction{EXP}{wexp}
-$value \leftarrow$ \READ 16 signed bits\;
-\BlankLine
-\uIf{$-32768 \leq value < -2304$}{
-  \Return $-(\EXP(-value \bmod{256}) \times 2 ^ {\lfloor -value \div 2 ^ 8 \rfloor - 9})$\;
-}
-\uElseIf{$-2304 \leq value < 0$}{
-  \Return $-\lfloor \EXP(-value \bmod{256}) \div 2 ^ {9 - \lfloor -value \div 2 ^ 8 \rfloor} \rfloor$\;
-}
-\uElseIf{$0 \leq value \leq 2304$}{
-  \Return $\lfloor \EXP(value \bmod{256}) \div 2 ^ {9 - \lfloor value \div 2 ^ 8 \rfloor} \rfloor$\;
-}
-\ElseIf{$2304 < value \leq 32767$}{
-  \Return $\EXP(value \bmod{256}) \times 2 ^ {\lfloor value \div 2 ^ 8 \rfloor - 9}$\;
-}
-\EALGORITHM
+  \input{wavpack/algorithms/decode_wv_exp2}
 }
 \par
 \noindent
@@ -124,6 +53,8 @@ where \texttt{wexp}(\textit{x}) is defined from the following table:
 \end{tabular}
 }
 
+\clearpage
+
 \subsubsection{Reading Decorrelation Samples Example}
 Given a stereo block containing the sub-block:
 \begin{figure}[h]
@@ -131,6 +62,7 @@ Given a stereo block containing the sub-block:
 \end{figure}
 \begin{center}
 {\relsize{-2}
+  \SetKwFunction{EXP}{wexp}
 \begin{tabular}{r|r|r|>{$}r<{$}|>{$}r<{$}}
 $p$ & $\text{term}_p$ & $s$ &
 \text{sample}_{p~0~s} &

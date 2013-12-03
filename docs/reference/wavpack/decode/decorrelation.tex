@@ -8,41 +8,7 @@
 
 \subsection{Channel Decorrelation}
 \label{wavpack:decorrelate_channels}
-\ALGORITHM{a list of signed residuals per channel, a list of decorrelation terms and deltas, a decorrelation weight per term and channel, a list of decorrelation samples per term and channel}{a list of signed samples per channel}
-\SetKwData{TERMCOUNT}{term count}
-\SetKwData{PASS}{pass}
-\SetKwData{TERM}{term}
-\SetKwData{DELTA}{delta}
-\SetKwData{WEIGHT}{weight}
-\SetKwData{SAMPLES}{sample}
-\SetKwData{RESIDUALS}{residual}
-\eIf{$\text{channel count} = 1$}{
-  $\text{\PASS}_{(-1)~0} \leftarrow \text{\RESIDUALS}_{0}$\;
-  \For{$p \leftarrow 0$ \emph{\KwTo}\TERMCOUNT}{
-    $\text{\PASS}_{p} \leftarrow$ \hyperref[wavpack:decorr_pass_1ch]{decorrelate 1 channel $\text{\PASS}_{(p - 1)}$} using $\left\lbrace\begin{tabular}{l}
-    $\text{\TERM}_{p}$ \\
-    $\text{\DELTA}_{p}$ \\
-    $\text{\WEIGHT}_{p~0}$ \\
-    $\text{\SAMPLES}_{p~0}$ \\
-    \end{tabular}\right.$\;
-  }
-  \Return $\text{\PASS}_{(\text{\TERMCOUNT} - 1)~0}$\;
-}{
-  $\text{\PASS}_{-1~0} \leftarrow \text{\RESIDUALS}_{0}$\;
-  $\text{\PASS}_{-1~1} \leftarrow \text{\RESIDUALS}_{1}$\;
-  \For{$p \leftarrow 0$ \emph{\KwTo}\TERMCOUNT}{
-    $\text{\PASS}_{p} \leftarrow$ \hyperref[wavpack:decorr_pass_2ch]{decorrelate 2 channel $\text{\PASS}_{(p - 1)}$} using $\left\lbrace\begin{tabular}{l}
-    $\text{\TERM}_{p}$ \\
-    $\text{\DELTA}_{p}$ \\
-    $\text{\WEIGHT}_{p~0}$ \\
-    $\text{\WEIGHT}_{p~1}$ \\
-    $\text{\SAMPLES}_{p~0}$ \\
-    $\text{\SAMPLES}_{p~1}$ \\
-    \end{tabular}\right.$\;
-  }
-  \Return $\text{\PASS}_{(\text{\TERMCOUNT} - 1)~0}$ and $\text{\PASS}_{(\text{\TERMCOUNT} - 1)~1}$\;
-}
-\EALGORITHM
+\input{wavpack/algorithms/decorrelate_channels}
 
 \clearpage
 
@@ -85,67 +51,7 @@ are what separate high levels of WavPack compression from low levels.
 \subsubsection{1 Channel Decorrelation Pass}
 \label{wavpack:decorr_pass_1ch}
 {\relsize{-1}
-\ALGORITHM{a list of signed correlated samples, decorrelation term and delta, decorrelation weight, list of decorrelation samples}{a list of signed decorrelated samples}
-\SetKwData{CORRELATED}{correlated}
-\SetKwData{DECORRELATED}{decorrelated}
-\SetKwData{DECORRSAMPLE}{decorrelation sample}
-\SetKwData{WEIGHT}{weight}
-\SetKwData{TEMP}{temp}
-\SetKw{OR}{or}
-\SetKw{XOR}{xor}
-\SetKwFunction{APPLYWEIGHT}{apply\_weight}
-\SetKwFunction{UPDATEWEIGHT}{update\_weight}
-$\text{\WEIGHT}_0 \leftarrow$ decorrelation weight\;
-\BlankLine
-\uIf{$term = 18$}{
-  $\text{\DECORRELATED}_0 \leftarrow \text{\DECORRSAMPLE}_1$\;
-  $\text{\DECORRELATED}_1 \leftarrow \text{\DECORRSAMPLE}_0$\;
-  \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
-    $\text{\TEMP}_{i} \leftarrow \lfloor(3 \times \text{\DECORRELATED}_{i + 1} - \text{\DECORRELATED}_{i}) \div 2 \rfloor$\;
-    $\text{\DECORRELATED}_{i + 2} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\TEMP}_{i}) + \text{\CORRELATED}_i$\;
-    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\TEMP}_{i}~,~\text{\CORRELATED}_i~,~delta)$\;
-  }
-  \Return \DECORRELATED samples starting from 2\;
-}
-\uElseIf{$term = 17$}{
-  $\text{\DECORRELATED}_0 \leftarrow \text{\DECORRSAMPLE}_1$\;
-  $\text{\DECORRELATED}_1 \leftarrow \text{\DECORRSAMPLE}_0$\;
-  \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
-    $\text{\TEMP}_{i} \leftarrow 2 \times \text{\DECORRELATED}_{i + 1} - \text{\DECORRELATED}_{i}$\;
-    $\text{\DECORRELATED}_{i + 2} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\TEMP}_{i}) + \text{\CORRELATED}_i$\;
-    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\TEMP}_{i}~,~\text{\CORRELATED}_i~,~delta)$\;
-  }
-  \Return \DECORRELATED samples starting from 2\;
-}
-\uElseIf{$1 \leq term \leq 8$}{
-  \For{$i \leftarrow 0$ \emph{\KwTo}term}{
-    $\text{\DECORRELATED}_i \leftarrow \text{\DECORRSAMPLE}_i$\;
-  }
-  \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
-    $\text{\DECORRELATED}_{i + term} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\DECORRELATED}_{i}) + \text{\CORRELATED}_i$\;
-    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\DECORRELATED}_{i}~,~\text{\CORRELATED}_i~,~delta)$\;
-  }
-  \BlankLine
-  \Return \DECORRELATED samples starting from $term$\;
-}
-\Else{
-  invalid decorrelation term\;
-}
-\EALGORITHM
-\par
-\noindent
-\begin{align*}
-\intertext{where \texttt{apply\_weight} is defined as:}
-\texttt{apply\_weight}(weight~,~sample) &= \left\lfloor\frac{weight \times sample + 2 ^ 9}{2 ^ {10}}\right\rfloor \\
-\intertext{and \texttt{update\_weight} is defined as:}
-\texttt{update\_weight}(source~,~result~,~delta) &=
-\begin{cases}
-0 & \text{ if } source = 0 \text{ or } result = 0 \\
-delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
--delta & \text{ if } (source \textbf{ xor } result) < 0
-\end{cases}
-\end{align*}
-
+  \input{wavpack/algorithms/decorrelate_1ch}
 }
 
 \clearpage
@@ -153,63 +59,39 @@ delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
 \subsubsection{2 Channel Decorrelation Pass}
 \label{wavpack:decorr_pass_2ch}
 {\relsize{-1}
-\ALGORITHM{2 lists of signed correlated samples, decorrelation term and delta, 2 decorrelation weights, 2 lists of decorrelation samples}{2 lists of signed decorrelated samples}
-\SetKwData{CORRELATED}{correlated}
-\SetKwData{DECORRELATED}{decorrelated}
-\SetKwData{DECORRSAMPLE}{decorrelation sample}
-\SetKwData{WEIGHT}{weight}
-\SetKw{OR}{or}
-\SetKw{XOR}{xor}
-\SetKwFunction{MIN}{min}
-\SetKwFunction{MAX}{max}
-\SetKwFunction{APPLYWEIGHT}{apply\_weight}
-\SetKwFunction{UPDATEWEIGHT}{update\_weight}
-\uIf{$17 \leq term \leq 18$ \OR $1 \leq term \leq 8$}{
-  $\text{\DECORRELATED}_0 \leftarrow$ 1 channel decorrelation pass of $\text{\CORRELATED}_0$\;
-  $\text{\DECORRELATED}_1 \leftarrow$ 1 channel decorrelation pass of $\text{\CORRELATED}_1$\;
-  \Return $\text{\DECORRELATED}_0$ and $\text{\DECORRELATED}_1$\;
+  \input{wavpack/algorithms/decorrelate_2ch}
 }
-\uElseIf{$-3 \leq term \leq -1$}{
-  $\text{\WEIGHT}_{0~0} \leftarrow$ decorrelation weight 0\;
-  $\text{\WEIGHT}_{1~0} \leftarrow$ decorrelation weight 1\;
-  $\text{\DECORRELATED}_{0~0} \leftarrow \text{\DECORRSAMPLE}_{1~0}$\;
-  $\text{\DECORRELATED}_{1~0} \leftarrow \text{\DECORRSAMPLE}_{0~0}$\;
-  \uIf{$term = -1$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
-      $\text{\DECORRELATED}_{0~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~i}) + \text{\CORRELATED}_{0~i}$\;
-      $\text{\DECORRELATED}_{1~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~(i + 1)}) + \text{\CORRELATED}_{1~i}$\;
-      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~i}~,~\text{\CORRELATED}_{0~i}~,~delta)$\;
-      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~(i + 1)}~,~\text{\CORRELATED}_{1~i}~,~delta)$\;
-      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
-      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
-    }
-  }
-  \uElseIf{$term = -2$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
-      $\text{\DECORRELATED}_{1~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~i}) + \text{\CORRELATED}_{1~i}$\;
-      $\text{\DECORRELATED}_{0~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~(i + 1)}) + \text{\CORRELATED}_{0~i}$\;
-      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~i}~,~\text{\CORRELATED}_{1~i}~,~delta)$\;
-      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~(i + 1)},~\text{\CORRELATED}_{0~i}~,~delta)$\;
-      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
-      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
-    }
-  }
-  \ElseIf{$term = -3$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
-      $\text{\DECORRELATED}_{0~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~i}) + \text{\CORRELATED}_{0~i}$\;
-      $\text{\DECORRELATED}_{1~(i + 1)} \leftarrow \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~i}) + \text{\CORRELATED}_{1~i}$\;
-      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~i}~,~\text{\CORRELATED}_{0~i}~,~delta)$\;
-      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~i}~,~\text{\CORRELATED}_{1~i}~,~delta)$\;
-      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
-      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
-    }
-  }
-  \Return $\text{\DECORRELATED}_0$ starting from 1 and $\text{\DECORRELATED}_1$ starting from 1\;
+
+\clearpage
+
+\subsubsection{2 Channel Decorrelation Pass, Term -1}
+\label{wavpack:decorr_pass_2ch_1}
+{\relsize{-1}
+  \input{wavpack/algorithms/decorrelate_2ch_1}
 }
-\Else{
-  invalid decorrelation term\;
+
+\subsubsection{2 Channel Decorrelation Pass, Term -2}
+\label{wavpack:decorr_pass_2ch_2}
+{\relsize{-1}
+  \input{wavpack/algorithms/decorrelate_2ch_2}
 }
-\EALGORITHM
+
+\subsubsection{2 Channel Decorrelation Pass, Term -3}
+\label{wavpack:decorr_pass_2ch_3}
+{\relsize{-1}
+  \input{wavpack/algorithms/decorrelate_2ch_3}
+}
+
+\subsubsection{Apply Weight}
+\label{wavpack:apply_weight}
+{\relsize{-1}
+  \input{wavpack/algorithms/apply_weight}
+}
+
+\subsubsection{Update Weight}
+\label{wavpack:update_weight}
+{\relsize{-1}
+  \input{wavpack/algorithms/update_weight}
 }
 
 \clearpage

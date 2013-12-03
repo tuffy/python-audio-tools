@@ -6,34 +6,9 @@
 %171 Second Street, Suite 300,
 %San Francisco, California, 94105, USA.
 
-\subsection{Decode Decorrelation Terms}
-\label{wavpack:decode_decorrelation_terms}
-\ALGORITHM{\VAR{actual size 1 less} and \VAR{sub block size} values from sub block header, sub block data}{a list of signed decorrelation term integers, a list of unsigned decorrelation delta integers\footnote{$\text{term}_p$ and $\text{delta}_p$ indicate the term and delta values for decorrelation pass $p$}}
-\SetKwData{PASSES}{passes}
-\SetKwData{SUBBLOCKSIZE}{sub block size}
-\SetKwData{ACTUALSIZEONELESS}{actual size 1 less}
-\SetKwData{TERM}{term}
-\SetKwData{DELTA}{delta}
-\SetKw{OR}{or}
-\SetKw{KwDownTo}{downto}
-\eIf{$\text{\ACTUALSIZEONELESS} = 0$}{
-  \PASSES $\leftarrow \text{\SUBBLOCKSIZE} \times 2$\;
-}{
-  \PASSES $\leftarrow \text{\SUBBLOCKSIZE} \times 2 - 1$\;
-}
-\ASSERT $\text{\PASSES} \leq 16$\;
-\BlankLine
-\For(\tcc*[f]{populate in reverse order}){$p \leftarrow \PASSES$ \emph{\KwDownTo}0}{
-  $\text{\TERM}_p \leftarrow$ (\READ 5 unsigned bits) - 5\;
-  \ASSERT $\text{\TERM}_p$ \IN \texttt{[-3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 17, 18]}
-  \BlankLine
-  $\text{\DELTA}_p \leftarrow$ \READ 3 unsigned bits\;
-}
-\Return $\left\lbrace\begin{tabular}{l}
-decorrelation \TERM \\
-decorrelation \DELTA \\
-\end{tabular}\right.$\;
-\EALGORITHM
+\subsection{Reading Decorrelation Terms}
+\label{wavpack:read_decorrelation_terms}
+\input{wavpack/algorithms/read_decorrelation_terms}
 
 \begin{figure}[h]
   \includegraphics{wavpack/figures/decorr_terms.pdf}

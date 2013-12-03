@@ -1,0 +1,55 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "WavPack file, previous residual's unary value, entropy values for residual's channel";
+OUTPUT "a signed residual value, new unary value, updated entropy values for channel";
+VAR undefined "undefined";
+VAR entropies "entropy";
+VAR base "base";
+VAR add "add";
+VAR unsigned_ "unsigned";
+VAR sign "sign";
+VAR residual "residual";
+FUNC read_egc "read modified Elias gamma code" "wavpack:read_egc";
+FUNC determine_base_add "determine base and add" "wavpack:decode_base_add";
+if u[i - 1] == undefined {
+    u[i] <- read unary 0;
+    if u[i] == 16 {
+        c[i] <- read_egc();
+        u[i] <- u[i] + c[i];
+    }
+    m[i] <- floor(u[i] / 2);
+} elif (u[i - 1] % 2) == 0 {
+    u[i] <- undefined;
+    m[i] <- 0;
+} else {
+    u[i] <- read unary 0;
+    if u[i] == 16 {
+        c[i] <- read_egc();
+        u[i] <- u[i] + c[i];
+    }
+    m[i] <- floor(u[i] / 2) + 1;
+}
+base,add,entropies <- determine_base_add(m[i], entropies);
+if add == 0 {
+    unsigned_ <- base;
+} else {
+    p <- floor(log(2, add));
+    e <- 2 ^ {p + 1} - add - 1;
+    if r >= e {
+        unsigned_ <- base + (r[i] * 2) - e + (read 1 unsigned);
+    } else {
+        unsigned_ <- base + r[i];
+    }
+}
+if (read 1 unsigned) == 0 /*sign bit*/ {
+    residual <- unsigned_;
+} else {
+    residual <- -unsigned_ - 1;
+}
+return residual,u[i],entropies;

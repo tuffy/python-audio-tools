@@ -202,6 +202,26 @@ figures/m4a/udta.pdf
 
 
 WAVPACK = \
+wavpack/algorithms/read_block_header.tex \
+wavpack/algorithms/decode_sample_rate.tex \
+wavpack/algorithms/read_block_parameters.tex \
+wavpack/algorithms/read_decorrelation_terms.tex \
+wavpack/algorithms/read_decorrelation_weights.tex \
+wavpack/algorithms/read_decorrelation_samples.tex \
+wavpack/algorithms/decode_wv_exp2.tex \
+wavpack/algorithms/read_entropy.tex \
+wavpack/algorithms/read_bitstream.tex \
+wavpack/algorithms/read_egc.tex \
+wavpack/algorithms/read_residual.tex \
+wavpack/algorithms/decode_base_add.tex \
+wavpack/algorithms/decorrelate_channels.tex \
+wavpack/algorithms/decorrelate_1ch.tex \
+wavpack/algorithms/decorrelate_2ch.tex \
+wavpack/algorithms/decorrelate_2ch_1.tex \
+wavpack/algorithms/decorrelate_2ch_2.tex \
+wavpack/algorithms/decorrelate_2ch_3.tex \
+wavpack/algorithms/apply_weight.tex \
+wavpack/algorithms/update_weight.tex \
 wavpack/decode.tex \
 wavpack/decode/terms.tex \
 wavpack/decode/weights.tex \
