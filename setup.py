@@ -51,6 +51,7 @@ LIBRARY_URLS = {"libcdio_paranoia":"http://www.gnu.org/software/libcdio/",
                 "twolame":"http://twolame.sourceforge.net",
                 "vorbisenc":"http://www.xiph.org",
                 "alsa":"http://www.alsa-project.org",
+                "libasound2":"http://www.alsa-project.org",
                 "libpulse":"http://www.freedesktop.org"}
 
 
