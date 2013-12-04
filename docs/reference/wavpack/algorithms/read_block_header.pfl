@@ -68,13 +68,12 @@ assert reserved == 0;
 CRC <- read 32 unsigned;
 return block_data_size,
 total_samples,
+block_index,
 block_samples,
-bits_per_sample,
 mono_output,
 joint_stereo,
 channel_decorrelation,
 extended_size_integers,
-initial_block,
 final_block,
 false_stereo,
 CRC;

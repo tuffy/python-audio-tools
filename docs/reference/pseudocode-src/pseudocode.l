@@ -127,9 +127,11 @@ extract_comment(const char *token)
                          return STRING;}
 [a-zA-Z_][a-zA-Z0-9_]*  {yylval.identifier = strdup(yytext);
                          return IDENTIFIER;}
-[0-9]+                  {yylval.integer = atoi(yytext);
+-?[0-9]+                {yylval.integer = strtoll(yytext, NULL, 10);
                          return INTEGER;}
--?[0-9]+\.[0-9]+       {yylval.float_ = strdup(yytext);
+-?0x[a-fA-F0-9]+        {yylval.integer = strtoll(yytext, NULL, 16);
+                         return INTEGER;}
+-?[0-9]+\.[0-9]+        {yylval.float_ = strdup(yytext);
                          return FLOAT;}
 \/\*([^*]|\*+[^/*])*\*+\/ {yylval.comment = extract_comment(yytext);
                            return COMMENT;}

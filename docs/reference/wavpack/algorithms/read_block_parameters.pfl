@@ -22,10 +22,14 @@ VAR decorrelation_weights "decorrelation weights";
 VAR decorrelation_samples "decorrelation samples";
 VAR entropies "entropy";
 VAR residuals "residuals";
+VAR zero_bits "zero bits";
+VAR one_bits "one bits";
+VAR duplicate_bits "duplicate bits";
 FUNC read_decorrelation_terms "read decorrelation terms" "wavpack:read_decorrelation_terms";
 FUNC read_decorrelation_weights "read decorrelation weights" "wavpack:read_decorrelation_weights";
 FUNC read_decorrelation_samples "read decorrelation samples" "wavpack:read_decorrelation_samples";
 FUNC read_entropy_variables "read entropy variables" "wavpack:read_entropy_variables";
+FUNC read_extended_integers "read extended integers" "wavpack:read_extended_integers";
 FUNC read_bitstream "read bitstream" "wavpack:read_bitstream";
 while block_data_size > 0 {
     metadata_function <- read 5 unsigned;
@@ -62,6 +66,10 @@ while block_data_size > 0 {
                 read_entropy_variables(sub_block_size,
                                        channel_count);
             }
+            case 9 {
+                zero_bits,one_bits,duplicate_bits <-
+                read_extended_integers();
+            }
             case 10 {
                 residuals <-
                 read_bitstream(block_samples,
@@ -85,5 +93,5 @@ decorrelation_terms,
 decorrelation_deltas,
 decorrelation_weights,
 decorrelation_samples,
-entropies,
-residuals;
+residuals,
+zero_bits,one_bits,duplicate_bits;

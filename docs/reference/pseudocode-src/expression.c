@@ -148,7 +148,7 @@ expression_free_variable(struct expression *self)
 
 
 struct expression*
-expression_new_integer(int integer)
+expression_new_integer(long long integer)
 {
     struct expression *expression = malloc(sizeof(struct expression));
     expression->type = EXP_INTEGER;
@@ -164,7 +164,7 @@ expression_output_latex_integer(const struct expression *self,
                                 const struct definitions *defs,
                                 FILE *output)
 {
-    fprintf(output, "%d", self->_.integer);
+    fprintf(output, "%lld", self->_.integer);
 }
 
 void

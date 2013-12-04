@@ -1,0 +1,19 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "WavPack file stream";
+OUTPUT "\"zero bits\", \"one bits\", \"duplicate bits\" as unsigned integers";
+VAR sent_bits "sent bits";
+VAR zero_bits "zero bits";
+VAR one_bits "one bits";
+VAR duplicate_bits "duplicate bits";
+sent_bits <- read 8 unsigned;
+zero_bits <- read 8 unsigned;
+one_bits <- read 8 unsigned;
+duplicate_bits <- read 8 unsigned;
+return zero_bits,one_bits,duplicate_bits;

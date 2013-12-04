@@ -64,7 +64,7 @@ expression_free_variable(struct expression *self);
 
 
 struct expression*
-expression_new_integer(int integer);
+expression_new_integer(long long integer);
 
 void
 expression_output_latex_integer(const struct expression *self,

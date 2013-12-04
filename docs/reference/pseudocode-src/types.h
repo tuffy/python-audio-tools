@@ -135,7 +135,7 @@ struct expression {
     expression_t type;
     union {
         struct variable *variable;
-        int integer;
+        long long integer;
         char *float_;
         struct intlist *bytes;
         struct {
@@ -345,5 +345,7 @@ struct intlist {
     int integer;
     struct intlist *next;
 };
+
+#define ITEMS_PER_COLUMN 5
 
 #endif

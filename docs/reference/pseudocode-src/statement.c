@@ -536,24 +536,63 @@ statement_output_latex_functioncall_args(const struct statement *self,
                 break;
             case 1:
                 /*one argument*/
-                fprintf(output, "(");
-                input_args->expression->output_latex(input_args->expression,
-                                                     defs,
-                                                     output);
-                fprintf(output, ")");
+                {
+                    const struct expression *expression =
+                        input_args->expression;
+                    if (expression->is_tall(expression)) {
+                        fprintf(output, "\\left(");
+                        expression->output_latex(expression, defs, output);
+                        fprintf(output, "\\right)");
+                    } else {
+                        fprintf(output, "(");
+                        expression->output_latex(expression, defs, output);
+                        fprintf(output, ")");
+                    }
+                }
                 break;
             default:
                 /*multiple arguments*/
-                fprintf(output, "\\left\\lbrace\\begin{tabular}{l}");
+                {
+                    /*divide arguments into columns if there are too many*/
+                    const unsigned args = input_args->len(input_args);
+                    const unsigned total_columns =
+                        (args / ITEMS_PER_COLUMN) +
+                        ((args % ITEMS_PER_COLUMN) ? 1 : 0);
+                    unsigned i;
 
-                for (arg = input_args; arg != NULL; arg = arg->next) {
-                    struct expression *expression = arg->expression;
-                    fprintf(output, "$");
-                    expression->output_latex(expression, defs, output);
-                    fprintf(output, "$ \\\\ ");
+                    arg = input_args;
+
+                    fputs("\\left\\lbrace\\begin{tabular}{", output);
+                    for (i = 0; i < total_columns; i++) {
+                        fputs("l", output);
+                    }
+                    fputs("}", output);
+
+                    while (arg != NULL) {
+                        for (i = 0; i < total_columns; i++) {
+                            if (arg != NULL) {
+                                const struct expression *expression =
+                                    arg->expression;
+                                fputs("$", output);
+                                expression->output_latex(expression,
+                                                         defs,
+                                                         output);
+                                fputs("$", output);
+
+                                arg = arg->next;
+                            } else {
+                                fputs(" ", output);
+                            }
+                            if ((i + 1) < total_columns) {
+                                fputs(" & ", output);
+                            } else {
+                                fputs(" \\\\ ", output);
+                            }
+                        }
+                    }
+
+                    fprintf(output, "\\end{tabular}\\right.");
                 }
-
-                fprintf(output, "\\end{tabular}\\right.");
                 break;
             }
         } else {
@@ -1143,16 +1182,39 @@ statement_output_latex_return(const struct statement *self,
                                            output);
     } else {
         /*multiple items to return*/
-        fprintf(output, "\\left\\lbrace\\begin{tabular}{l}");
+        /*divide items into columns if there are too many*/
+        const unsigned args = toreturn->len(toreturn);
+        const unsigned total_columns =
+            (args / ITEMS_PER_COLUMN) +
+            ((args % ITEMS_PER_COLUMN) ? 1 : 0);
+        unsigned i;
 
-        for (; toreturn != NULL; toreturn = toreturn->next) {
-            fprintf(output, "$");
-            toreturn->expression->output_latex(toreturn->expression,
-                                               defs,
-                                               output);
-            fprintf(output, "$\\\\ ");
+        fputs("\\left\\lbrace\\begin{tabular}{", output);
+        for (i = 0; i < total_columns; i++) {
+            fputs("l", output);
         }
+        fputs("}", output);
 
+        while (toreturn != NULL) {
+            for (i = 0; i < total_columns; i++) {
+                if (toreturn != NULL) {
+                    const struct expression *expression =
+                        toreturn->expression;
+                    fputs("$", output);
+                    expression->output_latex(expression, defs, output);
+                    fputs("$", output);
+
+                    toreturn = toreturn->next;
+                } else {
+                    fputs(" ", output);
+                }
+                if ((i + 1) < total_columns) {
+                    fputs(" & ", output);
+                } else {
+                    fputs(" \\\\ ", output);
+                }
+            }
+        }
         fprintf(output, "\\end{tabular}\\right.");
     }
 

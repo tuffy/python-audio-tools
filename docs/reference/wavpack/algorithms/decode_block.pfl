@@ -1,0 +1,102 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "WavPack file stream";
+OUTPUT "channel count, final block, block index, block samples, total samples, 1 or 2 channels of block data";
+VAR channel_count "channel count";
+VAR initial_block "initial block";
+VAR final_block "final block";
+VAR block_index "block index";
+VAR block_samples "block samples";
+VAR total_samples "total samples";
+VAR block_channel "block channel";
+VAR block_data_size "block data size";
+VAR mono_output "mono output";
+VAR joint_stereo "joint stereo";
+VAR bits_per_sample "bits-per-sample";
+VAR channel_decorrelation "channel decorrelation";
+VAR extended_size_integers "extended size integers";
+VAR false_stereo "false stereo";
+VAR CRC "CRC";
+VAR decorrelation_term_count "term count";
+VAR decorrelation_terms "decorrelation terms";
+VAR decorrelation_deltas "decorrelation deltas";
+VAR decorrelation_weights "decorrelation weights";
+VAR decorrelation_samples "decorrelation samples";
+VAR entropies "entropy";
+VAR residuals "residuals";
+VAR zero_bits "zero bits";
+VAR one_bits "one bits";
+VAR duplicate_bits "duplicate bits";
+FUNC read_block_header "read block header" "wavpack:read_block_header";
+FUNC read_block_parameters "read block parameters"
+"wavpack:read_block_parameters";
+FUNC decorrelate_channels "decorrelate channels"
+"wavpack:decorrelate_channels";
+FUNC undo_joint_stereo "undo joint stereo" "wavpack:undo_joint_stereo";
+FUNC apply_extended_integers "apply extended integers"
+"wavpack:apply_extended_integers";
+
+block_data_size,
+total_samples,
+block_index,
+block_samples,
+mono_output,
+joint_stereo,
+channel_decorrelation,
+extended_size_integers,
+final_block,
+false_stereo,
+CRC <-
+read_block_header();
+if (mono_output == 0) and (false_stereo == 0) {
+     channel_count <- 2;
+} else {
+     channel_count <- 1;
+}
+decorrelation_term_count,
+decorrelation_terms,
+decorrelation_deltas,
+decorrelation_weights,
+decorrelation_samples,
+residuals,
+zero_bits,one_bits,duplicate_bits <- read_block_parameters(
+block_data_size, block_samples, channel_count);
+
+if channel_decorrelation == 1 {
+    block_channel <- decorrelate_channels(block_samples,
+                                          channel_count,
+                                          residuals,
+                                          decorrelation_term_count,
+                                          decorrelation_terms,
+                                          decorrelation_deltas,
+                                          decorrelation_weights,
+                                          decorrelation_samples);
+} else {
+    block_channel <- residuals;
+}
+if (channel_count == 2) and (joint_stereo == 1) {
+    block_channel <- undo_joint_stereo(block_samples, block_channel);
+}
+if extended_size_integers == 1 {
+    block_channel <- apply_extended_integers(block_channel,
+                                             zero_bits,
+                                             one_bits,
+                                             duplicate_bits,
+                                             block_samples,
+                                             channel_count);
+}
+if false_stereo == 1 {
+    block_channel[1] <- block_channel[0];
+}
+return channel_count,
+final_block,
+block_index,
+block_samples,
+total_samples,
+block_channel;

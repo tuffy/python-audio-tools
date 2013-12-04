@@ -1,0 +1,25 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "block samples, channel count, 1 or 2 channels of signed sample data";
+OUTPUT "a CRC value as an unsigned integer";
+VAR block_samples "block samples";
+VAR channel_count "channel count";
+VAR channel "channel";
+VAR CRC "CRC";
+CRC <- 0xFFFFFFFF;
+for i <- 0 to block_samples {
+    for c <- 0 to channel_count {
+        CRC <- (3 * CRC) + channel[c][i];
+    }
+}
+if CRC >= 0 /*convert to unsigned value*/ {
+    return CRC % 0x100000000;
+} else {
+    return (2 ^ 32 - (-CRC)) % 0x100000000;
+}

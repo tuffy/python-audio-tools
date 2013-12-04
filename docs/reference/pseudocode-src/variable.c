@@ -65,13 +65,37 @@ variablelist_output_latex(const struct variablelist *self,
         struct variable *variable = self->variable;
         variable->output_latex(variable, defs, output);
     } else {
-        fprintf(output, "\\left.\\begin{tabular}{r}");
+        /*divide arguments into columns if there are too many*/
+        const unsigned args = self->len(self);
+        const unsigned total_columns =
+            (args / ITEMS_PER_COLUMN) +
+            ((args % ITEMS_PER_COLUMN) ? 1 : 0);
+        unsigned i;
 
-        for (; self != NULL; self = self->next) {
-            const struct variable *variable = self->variable;
-            fprintf(output, "$");
-            variable->output_latex(variable, defs, output);
-            fprintf(output, "$ \\\\ ");
+        fputs("\\left.\\begin{tabular}{", output);
+        for (i = 0; i < total_columns; i++) {
+            fputs("r", output);
+        }
+        fputs("}", output);
+
+        while (self != NULL) {
+            for (i = 0; i < total_columns; i++) {
+                if (self != NULL) {
+                    const struct variable *variable = self->variable;
+                    fputs("$", output);
+                    variable->output_latex(variable, defs, output);
+                    fputs("$", output);
+
+                    self = self->next;
+                } else {
+                    fputs(" ", output);
+                }
+                if ((i + 1) < total_columns) {
+                    fputs(" & ", output);
+                } else {
+                    fputs(" \\\\ ", output);
+                }
+            }
         }
 
         fprintf(output, "\\end{tabular}\\right\\rbrace");

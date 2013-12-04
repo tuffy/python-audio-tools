@@ -105,7 +105,7 @@ free_pseudocode(struct pseudocode *code);
 %union {
     char *string;
     char *identifier;
-    int integer;
+    long long integer;
     char *float_;
     char *comment;
     struct pseudocode *code;
@@ -516,6 +516,7 @@ output_pseudocode_latex(const struct pseudocode *code, FILE *output)
     fprintf(output, "\\SetKw{OR}{or}\n");
     fprintf(output, "\\SetKw{NOT}{not}\n");
     fprintf(output, "\\SetKw{BREAK}{break}\n");
+    fprintf(output, "\\SetKwRepeat{Repeat}{repeat}{while}\n");
 
     /*setup variables*/
     /*FIXME - only output variables which are used*/

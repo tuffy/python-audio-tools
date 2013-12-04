@@ -8,38 +8,7 @@
 
 \section{WavPack Decoding}
 
-\ALGORITHM{a WavPack encoded file}{PCM samples}
-\SetKwData{INDEX}{index}
-\SetKwData{SAMPLES}{samples}
-\SetKwData{TOTALSAMPLES}{total samples}
-\SetKwData{FINALBLOCK}{final block}
-\SetKwData{OUTPUTCHANNEL}{output channel}
-\SetKwData{BLOCKCHANNEL}{block channel}
-\SetKwData{BLOCKDATASIZE}{block data size}
-\Repeat{block header's $\text{\INDEX} + \text{\SAMPLES} >= \text{\TOTALSAMPLES}$}{
-  $c \leftarrow 0$\;
-  \Repeat{block header's $\text{\FINALBLOCK} = 1$}{
-    \hyperref[wavpack:read_block_header]{read block header}\;
-    read \BLOCKDATASIZE bytes of block data\;
-    \hyperref[wavpack:decode_block]{decode block header and block data to 1 or 2 channels of PCM data}\;
-    \eIf{2 channels}{
-      $\text{\OUTPUTCHANNEL}_c \leftarrow \text{\BLOCKCHANNEL}_0$\;
-      $\text{\OUTPUTCHANNEL}_{c + 1} \leftarrow \text{\BLOCKCHANNEL}_1$\;
-      $c \leftarrow c + 2$\;
-    }{
-      $\text{\OUTPUTCHANNEL}_c \leftarrow \text{\BLOCKCHANNEL}_0$\;
-      $c \leftarrow c + 1$\;
-    }
-  }
-  update stream MD5 sum with \OUTPUTCHANNEL data\;
-  \Return \OUTPUTCHANNEL data\;
-}
-\BlankLine
-\hyperref[wavpack:md5_sum]{attempt to read one additional block for MD5 sub block}\;
-\If{MD5 sub block found}{
-  \ASSERT sub block MD5 sum = stream MD5 sum\;
-}
-\EALGORITHM
+\input{wavpack/algorithms/decode_wavpack}
 \par
 \noindent
 For example, four blocks with the following attributes:
@@ -59,6 +28,14 @@ combine into 6 channels of PCM output as follows:
 \begin{figure}[h]
 \includegraphics{wavpack/figures/block_channels.pdf}
 \end{figure}
+
+\clearpage
+
+\subsection{Decoding Block}
+\label{wavpack:decode_block}
+{\relsize{-1}
+  \input{wavpack/algorithms/decode_block}
+}
 
 \clearpage
 
@@ -121,7 +98,7 @@ combine into 6 channels of PCM output as follows:
 
 \subsection{Reading Block Parameters}
 \label{wavpack:read_block_parameters}
-{\relsize{-1}
+{\relsize{-2}
 \input{wavpack/algorithms/read_block_parameters}
 }
 
@@ -153,17 +130,7 @@ combine into 6 channels of PCM output as follows:
 
 \subsection{Undo Joint Stereo}
 \label{wavpack:undo_joint_stereo}
-\ALGORITHM{mid and side channels of signed sample data, in that order}{left and right channels of signed sample data, in that order}
-\SetKwData{MID}{mid}
-\SetKwData{SIDE}{side}
-\SetKwData{LEFT}{left}
-\SetKwData{RIGHT}{right}
-\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
-  $\text{\RIGHT}_i \leftarrow \text{\SIDE}_i - \lfloor\text{\MID}_i \div 2\rfloor$\;
-  $\text{\LEFT}_i \leftarrow \text{\MID}_i + \text{\RIGHT}_i$\;
-}
-\Return left and right channels\;
-\EALGORITHM
+\input{wavpack/algorithms/undo_joint_stereo}
 
 \subsubsection{Joint Stereo Example}
 \begin{table}[h]
@@ -206,31 +173,9 @@ $i$ & $\textsf{mid}_i$ & $\textsf{side}_i$ & \textsf{right}_i & \textsf{left}_i 
 
 \clearpage
 
-\label{wavpack:verify_crc}
 \subsection{Checksum Calculation}
-\ALGORITHM{one or two channels of signed audio samples}{an unsigned 32-bit CRC integer}
-\SetKwData{MONO}{mono output}
-\SetKwData{CRC}{CRC}
-\SetKwData{LCRC}{LCRC}
-\SetKwData{SCRC}{SCRC}
-\SetKwData{CHANNEL}{channel}
-$\text{\CRC}_{-1} \leftarrow \texttt{0xFFFFFFFF}$\;
-\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
-  \eIf{$\text{\MONO} = 0$}{
-    $\text{\LCRC}_i \leftarrow (3 \times \text{\CRC}_{i - 1}) + \text{\CHANNEL}_{0~i}$\tcc*[r]{calculate signed CRC of left channel}
-    $\text{\SCRC}_i \leftarrow (3 \times \text{\LCRC}_{i - 1}) + \text{\CHANNEL}_{1~i}$\tcc*[r]{calculate signed CRC of right channel}
-  }{
-    $\text{\SCRC}_i \leftarrow (3 \times \text{\CRC}_{i - 1}) + \text{\CHANNEL}_{0~i}$\tcc*[r]{calculate signed CRC of channel}
-  }
-  \BlankLine
-  \eIf(\tcc*[f]{convert signed CRC to unsigned, 32-bit integer}){$\text{\SCRC}_i \geq 0$}{
-    $\text{\CRC}_i \leftarrow \text{\SCRC}_i \bmod \texttt{0x100000000}$\;
-  }{
-    $\text{\CRC}_i \leftarrow (2 ^ {32} - (-\text{\SCRC}_i)) \bmod \texttt{0x100000000}$\;
-  }
-}
-\Return $\text{\CRC}_{\text{sample count} - 1}$\;
-\EALGORITHM
+\label{wavpack:verify_crc}
+\input{wavpack/algorithms/checksum_calculation}
 
 \subsubsection{Checksum Calculation Example}
 {\relsize{-1}
@@ -287,62 +232,19 @@ Resulting in a final CRC of \texttt{0x4139F356}
 
 \clearpage
 
-\subsection{Decode Extended Integers}
-\label{wavpack:decode_extended_integers}
-\ALGORITHM{sub block data}{\VAR{zero bits}, \VAR{one bits}, \VAR{duplicate bits} values as unsigned integers}
-\SetKwData{SENTS}{sent bits}
-\SetKwData{ZEROES}{zero bits}
-\SetKwData{ONES}{one bits}
-\SetKwData{DUPLICATES}{duplicate bits}
-\SENTS $\leftarrow$ \READ 8 unsigned bits\tcc*[r]{unused}
-\ZEROES $\leftarrow$ \READ 8 unsigned bits\;
-\ONES $\leftarrow$ \READ 8 unsigned bits\;
-\DUPLICATES $\leftarrow$ \READ 8 unsigned bits\;
-\Return $\left\lbrace\begin{tabular}{l}
-\ZEROES \\
-\ONES \\
-\DUPLICATES \\
-\end{tabular}\right.$\;
-\EALGORITHM
+\subsection{Reading Extended Integers}
+\label{wavpack:read_extended_integers}
+\input{wavpack/algorithms/read_extended_integers}
 
 \begin{figure}[h]
   \includegraphics{wavpack/figures/extended_integers.pdf}
 \end{figure}
 
-\subsection{Undoing Extended Integers}
-\label{wavpack:undo_extended_integers}
-\ALGORITHM{\VAR{zero bits}, \VAR{one bits}, \VAR{duplicate bits} values; 1 or 2 channels of shifted PCM data}{1 or 2 channels of un-shifted PCM data}
-\SetKwData{ZEROES}{zero bits}
-\SetKwData{ONES}{one bits}
-\SetKwData{DUPLICATES}{duplicate bits}
-\SetKwData{SHIFTED}{shifted channel}
-\SetKwData{UNSHIFTED}{un-shifted channel}
-\For{$c \leftarrow 0$ \emph{\KwTo}channel count}{
-  \uIf{$\text{\ZEROES} > 0$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
-      $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\ZEROES}}$\;
-    }
-  }
-  \uElseIf{$\text{\ONES} > 0$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
-      $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\ONES}} + (2 ^ {\text{\ONES}} - 1)$\;
-    }
-  }
-  \uElseIf{$\text{\DUPLICATES} > 0$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
-      \eIf{$\text{\SHIFTED}_{c~i} \bmod 2 = 0$}{
-        $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\DUPLICATES}}$\;
-      }{
-        $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SHIFTED}_{c~i} \times 2 ^ {\text{\DUPLICATES}} + (2 ^ {\text{\DUPLICATES}} - 1)$\;
-      }
-    }
-  }
-  \Else{
-    $\text{\UNSHIFTED}_c \leftarrow \text{\SHIFTED}_c$\;
-  }
+\subsection{Applying Extended Integers}
+\label{wavpack:apply_extended_integers}
+{\relsize{-1}
+  \input{wavpack/algorithms/apply_extended_integers}
 }
-\Return \UNSHIFTED data\;
-\EALGORITHM
 
 \clearpage
 
