@@ -8,57 +8,22 @@
 
 \subsection{Writing Decorrelation Samples}
 \label{wavpack:write_decorr_samples}
-\ALGORITHM{a list of decorrelation sample values per pass, per channel}{decorrelation samples sub block data}
-\SetKwData{TERM}{term}
-\SetKwData{SAMPLE}{sample}
-\SetKwFunction{WVLOG}{wv\_log2}
-\SetKw{KwDownTo}{downto}
-\For{$p \leftarrow \text{decorrelation pass count}$ \emph{\KwDownTo}0}{
-  \uIf{$17 \leq \text{\TERM}_p \leq 18$}{
-    \For{$c \leftarrow 0$ \emph{\KwTo}channel count}{
-      $\WVLOG(\text{\SAMPLE}_{p~c~0}) \rightarrow$ \WRITE 16 signed bits\;
-      $\WVLOG(\text{\SAMPLE}_{p~c~1}) \rightarrow$ \WRITE 16 signed bits\;
-    }
-  }
-  \uElseIf{$1 \leq \text{\TERM}_p \leq 8$}{
-    \For{$s \leftarrow 0$ \emph{\KwTo}$\text{\TERM}_p$}{
-      \For{$c \leftarrow 0$ \emph{\KwTo}channel count}{
-        $\WVLOG(\text{\SAMPLE}_{p~c~s}) \rightarrow$ \WRITE 16 signed bits\;
-      }
-    }
-  }
-  \ElseIf{$-3 \leq \text{\TERM}_p \leq -1$}{
-    $\WVLOG(\text{\SAMPLE}_{p~0~0}) \rightarrow$ \WRITE 16 signed bits\;
-    $\WVLOG(\text{\SAMPLE}_{p~1~0}) \rightarrow$ \WRITE 16 signed bits\;
-  }
+{\relsize{-1}
+  \input{wavpack/algorithms/write_decorrelation_samples}
 }
-\Return decorrelation samples data\;
-\EALGORITHM
 
 \begin{figure}[h]
   \includegraphics{wavpack/figures/decorr_samples.pdf}
 \end{figure}
 
+\clearpage
+
 \subsubsection{The wv\_log2 Function}
-\ALGORITHM{a signed value}{a signed 16 bit value}
+\label{wavpack:encode_wv_log2}
 \SetKwFunction{LOG}{wlog}
-$a \leftarrow |value| + \lfloor |value| \div 2 ^ 9\rfloor$\;
-$c \leftarrow $\lIf{$a \neq 0$}{$\lfloor\log_2(a)\rfloor + 1$}
-\lElse{$0$}\;
-\eIf{$value \geq 0$}{
-  \eIf{$0 \leq a < 256$}{
-    \Return $c \times 2 ^ 8 + \LOG((a \times 2 ^ {9 - c}) \bmod 256)$\;
-  }{
-    \Return $c \times 2 ^ 8 + \LOG(\lfloor a \div 2 ^ {c - 9}\rfloor \bmod 256)$\;
-  }
-}{
-    \eIf{$0 \leq a < 256$}{
-    \Return $-(c \times 2 ^ 8 + \LOG((a \times 2 ^ {9 - c}) \bmod 256))$\;
-  }{
-    \Return $-(c \times 2 ^ 8 + \LOG(\lfloor a \div 2 ^ {c - 9}\rfloor \bmod 256))$\;
-  }
+{\relsize{-1}
+  \input{wavpack/algorithms/encode_wv_log2}
 }
-\EALGORITHM
 
 \clearpage
 

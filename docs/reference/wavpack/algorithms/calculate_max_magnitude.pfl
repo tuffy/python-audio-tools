@@ -1,0 +1,30 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "1 or 2 channels of signed samples, the effective channel count, the number of samples in each channel";
+OUTPUT "the maximum sample magnitude in bits as unsigned integer";
+VAR block_samples "block samples";
+VAR channel_count "channel count";
+VAR channel "channel";
+VAR maximum_magnitude "maximum magnitude";
+VAR magnitude "magnitude";
+VAR effective_channel_count "effective channel count";
+maximum_magnitude <- 0;
+for c <- 0 to effective_channel_count {
+    for i <- 0 to block_samples {
+        if |channel[c][i]| != 0 {
+            magnitude[c][i] <- floor(log(2, |channel[c][i]|)) + 1;
+        } else {
+            magnitude[c][i] <- 0;
+        }
+        if magnitude[c][i] > maximum_magnitude {
+            maximum_magnitude <- magnitude[c][i];
+        }
+    }
+}
+return maximum_magnitude;

@@ -1,0 +1,27 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "a signed value";
+OUTPUT "a signed 16 bit value";
+VAR value "value";
+a <- |value| + floor(|value| / 2 ^ 9);
+if a != 0 {
+    c <- floor(log(2, a)) + 1;
+} else {
+    c <- 0;
+}
+if 0 <= a < 256 {
+    l <- wlog((a * 2 ^ {9 - c}) % 256);
+} else {
+    l <- wlog((a / 2 ^ {c - 9}) % 256);
+}
+if value >= 0 {
+    return c * 2 ^ 8 + l;
+} else {
+    return -(c * 2 ^ 8 + l);
+}

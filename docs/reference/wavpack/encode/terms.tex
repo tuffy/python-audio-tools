@@ -8,16 +8,7 @@
 
 \subsection{Writing Decorrelation Terms}
 \label{wavpack:write_decorr_terms}
-\ALGORITHM{a list of decorrelation terms, a list of decorrelation deltas}{decorrelation terms sub block data}
-\SetKwData{TERM}{term}
-\SetKwData{DELTA}{delta}
-\SetKwData{KwDownTo}{downto}
-\For(\tcc*[f]{populate in reverse order}){$p \leftarrow \text{decorrelation pass count}$ \emph{\KwDownTo}0}{
-  $\text{\TERM}_p + 5 \rightarrow$ \WRITE 5 unsigned bits\;
-  $\text{\DELTA}_p \rightarrow$ \WRITE 3 unsigned bits\;
-}
-\Return decorrelation terms sub block data\;
-\EALGORITHM
+\input{wavpack/algorithms/write_decorrelation_terms}
 \begin{figure}[h]
   \includegraphics{wavpack/figures/decorr_terms.pdf}
 \end{figure}

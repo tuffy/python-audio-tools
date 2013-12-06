@@ -19,7 +19,7 @@ for p <- decorrelation_term_count downto 0 {
     for c <- 0 to channel_count {
         if weight_count > 0 {
             v[p][c] <- read 8 signed;
-            if v[p][c] < 0 {
+            if v[p][c] > 0 {
                 decorrelation_weights[p][c] <- v[p][c] * 2 ^ 3 +
                    floor((v[p][c] * 2 ^ 3 + 2 ^ 6) / 2 ^ 7);
             } elif v[p][c] == 0 {

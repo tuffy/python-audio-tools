@@ -113,6 +113,8 @@ statlist_aligned(const struct statlist *statlist)
         case STAT_ASSIGN_IN:
         case STAT_WRITE:
         case STAT_WRITE_UNARY:
+        case STAT_FUNCTIONCALL_WRITE:
+        case STAT_FUNCTIONCALL_WRITE_UNARY:
             return 1 + statlist_aligned(statlist->next);
         case STAT_FUNCTIONCALL:
             if (statement->_.functioncall.output_args != NULL) {
@@ -147,11 +149,7 @@ statement_output_latex_aligned(const struct statement *self,
             fprintf(output, "$ & $\\leftarrow$ & $");
             expression->output_latex(expression, defs, output);
             fprintf(output, "$ & ");
-            if (comment != NULL) {
-                fprintf(output, "\\tcc*{");
-                escape_latex_curly_brackets(output, comment);
-                fprintf(output, "}");
-            }
+            statement_output_latex_aligned_comment_text(comment, output);
             fprintf(output, "\\\\");
         }
         break;
@@ -165,37 +163,12 @@ statement_output_latex_aligned(const struct statement *self,
             fprintf(output, "$");
             value->output_latex(value, defs, output);
             fprintf(output, "$ & $\\rightarrow $ & $");
-            fprintf(output, "\\WRITE~");
-
-            to_write->output_latex(to_write, defs, output);
-            switch (type) {
-            case IO_UNSIGNED:
-                if ((to_write->type == EXP_INTEGER) &&
-                    (to_write->_.integer == 1)) {
-                    fprintf(output, "~\\textrm{unsigned bit}");
-                } else {
-                    fprintf(output, "~\\textrm{unsigned bits}");
-                }
-                break;
-            case IO_SIGNED:
-                /*signed values should always be at least 2 bits*/
-                fprintf(output, "~\\textrm{signed bits}");
-                break;
-            case IO_BYTES:
-                if ((to_write->type == EXP_INTEGER) &&
-                    (to_write->_.integer == 1)) {
-                    fprintf(output, "~\\textrm{byte}");
-                } else {
-                    fprintf(output, "~\\textrm{bytes}");
-                }
-                break;
-            }
+            statement_output_latex_write_args(type,
+                                              to_write,
+                                              defs,
+                                              output);
             fprintf(output, "$ & ");
-            if (comment != NULL) {
-                fprintf(output, "\\tcc*{");
-                escape_latex_curly_brackets(output, comment);
-                fprintf(output, "}");
-            }
+            statement_output_latex_aligned_comment_text(comment, output);
             fprintf(output, "\\\\");
         }
         break;
@@ -208,13 +181,9 @@ statement_output_latex_aligned(const struct statement *self,
             fprintf(output, "$");
             value->output_latex(value, defs, output);
             fprintf(output, "$ & $\\rightarrow $ & $");
-            fprintf(output, "\\WUNARY~\\textrm{with stop bit %d}", stop_bit);
+            statement_output_latex_write_args_unary(stop_bit, output);
             fprintf(output, "$ & ");
-            if (comment != NULL) {
-                fprintf(output, "\\tcc*{");
-                escape_latex_curly_brackets(output, comment);
-                fprintf(output, "}");
-            }
+            statement_output_latex_aligned_comment_text(comment, output);
             fprintf(output, "\\\\");
         }
         break;
@@ -232,20 +201,74 @@ statement_output_latex_aligned(const struct statement *self,
                 fprintf(output, "$ & & $");
             }
 
-            statement_output_latex_functioncall_name(self, defs, output);
+            statement_output_latex_functioncall_name(
+                self->_.functioncall.identifier, defs, output);
             statement_output_latex_functioncall_args(self, defs, output);
 
             fprintf(output, "$ & ");
-
-            if (comment != NULL) {
-                fprintf(output, "\\tcc*{");
-                escape_latex_curly_brackets(output, comment);
-                fprintf(output, "}");
-            } else {
-                fprintf(output, "\\;");
-            }
-
+            statement_output_latex_aligned_comment_text(comment, output);
             fprintf(output, "\\\\");
+        }
+        break;
+    case STAT_FUNCTIONCALL_WRITE:
+        {
+            const char *identifier =
+                self->_.functioncall_write.identifier;
+            const struct expressionlist *input_args =
+                self->_.functioncall_write.input_args;
+            io_t type =
+                self->_.functioncall_write.type;
+            const struct expression *to_write =
+                self->_.functioncall_write.to_write;
+            const char *comment =
+                self->_.functioncall_write.comment;
+
+            fputs("$", output);
+
+            statement_output_latex_functioncall_write_args(identifier,
+                                                           input_args,
+                                                           defs,
+                                                           output);
+
+            fputs("$ & $\\rightarrow$ & $", output);
+
+            statement_output_latex_write_args(type, to_write, defs, output);
+
+            fputs("$ & ", output);
+
+            statement_output_latex_aligned_comment_text(comment, output);
+
+            fputs("\\\\", output);
+        }
+        break;
+    case STAT_FUNCTIONCALL_WRITE_UNARY:
+        {
+            const char *identifier =
+                self->_.functioncall_write_unary.identifier;
+            const struct expressionlist *input_args =
+                self->_.functioncall_write_unary.input_args;
+            int stop_bit =
+                self->_.functioncall_write_unary.stop_bit;
+            const char *comment =
+                self->_.functioncall_write_unary.comment;
+
+            fputs("$", output);
+
+            statement_output_latex_functioncall_write_args(identifier,
+                                                           input_args,
+                                                           defs,
+                                                           output);
+
+            fputs("$ & $\\rightarrow$ & $", output);
+
+            statement_output_latex_write_args_unary(stop_bit, output);
+
+            fputs("$ & ", output);
+
+            statement_output_latex_aligned_comment_text(comment, output);
+
+            fputs("\\\\", output);
+
         }
         break;
     default:
@@ -308,6 +331,28 @@ statement_free_comment(struct statement *self)
 }
 
 
+void
+statement_output_latex_comment_text(const char *comment, FILE *output)
+{
+    if (comment != NULL) {
+        fputs("\\tcc*{", output);
+        escape_latex_curly_brackets(output, comment);
+        fputs("}", output);
+    } else {
+        fputs("\\;", output);
+    }
+}
+
+void
+statement_output_latex_aligned_comment_text(const char *comment, FILE *output)
+{
+    if (comment != NULL) {
+        fprintf(output, "\\tcc*{");
+        escape_latex_curly_brackets(output, comment);
+        fprintf(output, "}");
+    }
+}
+
 struct statement*
 statement_new_break(char *comment)
 {
@@ -324,16 +369,8 @@ statement_output_latex_break(const struct statement *self,
                              const struct definitions *defs,
                              FILE *output)
 {
-    const char *comment = self->_.comment;
-
     fputs("\\BREAK", output);
-    if (comment != NULL) {
-        fputs("\\tcc{", output);
-        escape_latex_curly_brackets(output, comment);
-        fputs("}\n", output);
-    } else {
-        fputs("\\;", output);
-    }
+    statement_output_latex_comment_text(self->_.comment, output);
 }
 
 void
@@ -377,13 +414,8 @@ statement_output_latex_assign_in(const struct statement *self,
 
     fprintf(output, "$");
 
-    if (self->_.assign_in.comment != NULL) {
-        fprintf(output, "\\tcc*{");
-        escape_latex_curly_brackets(output, self->_.assign_in.comment);
-        fprintf(output, "}");
-    } else {
-        fprintf(output, "\\;");
-    }
+    statement_output_latex_comment_text(self->_.assign_in.comment, output);
+
     fprintf(output, "\n");
 }
 
@@ -432,27 +464,21 @@ statement_output_latex_functioncall(const struct statement *self,
         fprintf(output, " \\leftarrow ");
     }
 
-    statement_output_latex_functioncall_name(self, defs, output);
+    statement_output_latex_functioncall_name(self->_.functioncall.identifier,
+                                             defs,
+                                             output);
     statement_output_latex_functioncall_args(self, defs, output);
 
     fprintf(output, "$");
-
-    if (comment != NULL) {
-        fprintf(output, "\\tcc*{");
-        escape_latex_curly_brackets(output, comment);
-        fprintf(output, "}");
-    } else {
-        fprintf(output, "\\;");
-    }
+    statement_output_latex_comment_text(comment, output);
     fprintf(output, "\n");
 }
 
 void
-statement_output_latex_functioncall_name(const struct statement *self,
+statement_output_latex_functioncall_name(const char *identifier,
                                          const struct definitions *defs,
                                          FILE *output)
 {
-    const char *identifier = self->_.functioncall.identifier;
     const char *description = NULL;
     const char *address = NULL;
     const struct funcdef *func;
@@ -617,6 +643,251 @@ statement_free_functioncall(struct statement *self)
     free(self->_.functioncall.functioncall_comment);
     free(self);
 }
+
+
+struct statement*
+statement_new_functioncall_write(char *identifier,
+                                 struct expressionlist *input_args,
+                                 io_t type,
+                                 struct expression *to_write,
+                                 char *comment)
+{
+    struct statement *statement = malloc(sizeof(struct statement));
+    statement->type = STAT_FUNCTIONCALL_WRITE;
+    statement->_.functioncall_write.identifier = identifier;
+    statement->_.functioncall_write.input_args = input_args;
+    statement->_.functioncall_write.type = type;
+    statement->_.functioncall_write.to_write = to_write;
+    statement->_.functioncall_write.comment = comment;
+    statement->output_latex = statement_output_latex_functioncall_write;
+    statement->free = statement_free_functioncall_write;
+    return statement;
+}
+
+void
+statement_output_latex_functioncall_write(const struct statement *self,
+                                          const struct definitions *defs,
+                                          FILE *output)
+{
+    const char *identifier =
+        self->_.functioncall_write.identifier;
+    const struct expressionlist *input_args =
+        self->_.functioncall_write.input_args;
+    io_t type =
+        self->_.functioncall_write.type;
+    const struct expression *to_write =
+        self->_.functioncall_write.to_write;
+    const char *comment =
+        self->_.functioncall_write.comment;
+
+    fputs("$", output);
+    statement_output_latex_functioncall_write_args(identifier,
+                                                   input_args,
+                                                   defs,
+                                                   output);
+
+    fputs(" \\rightarrow ", output);
+
+    statement_output_latex_write_args(type, to_write, defs, output);
+
+    fputs("$", output);
+
+    statement_output_latex_comment_text(comment, output);
+
+    fputs("\n", output);
+}
+
+void
+statement_output_latex_functioncall_write_args(
+    const char *identifier,
+    const struct expressionlist *input_args,
+    const struct definitions *defs,
+    FILE *output)
+{
+    if (input_args == NULL) {
+        /*no input arguments*/
+        statement_output_latex_functioncall_name(identifier, defs, output);
+    } else if (input_args->len(input_args) == 1) {
+        /*one input argument*/
+        const struct expression* argument = input_args->expression;
+
+        statement_output_latex_functioncall_name(identifier, defs, output);
+        if (argument->is_tall(argument)) {
+            fputs("\\left(", output);
+            argument->output_latex(argument, defs, output);
+            fputs("\\right)", output);
+        } else {
+            fputs("(", output);
+            argument->output_latex(argument, defs, output);
+            fputs(")", output);
+        }
+    } else {
+        /*multiple input arguments*/
+        /*divide arguments into columns if there are too many*/
+
+        const struct expressionlist *arg = input_args;
+        const unsigned args = input_args->len(input_args);
+        const unsigned total_columns =
+            (args / ITEMS_PER_COLUMN) +
+            ((args % ITEMS_PER_COLUMN) ? 1 : 0);
+        unsigned i;
+
+        fputs("\\left.\\begin{tabular}{", output);
+        for (i = 0; i < total_columns; i++) {
+            fputs("l", output);
+        }
+        fputs("}", output);
+
+        while (arg != NULL) {
+            for (i = 0; i < total_columns; i++) {
+                if (arg != NULL) {
+                    const struct expression *expression = arg->expression;
+                    fputs("$", output);
+                    expression->output_latex(expression, defs, output);
+                    fputs("$", output);
+
+                    arg = arg->next;
+                } else {
+                    fputs(" ", output);
+                }
+                if ((i + 1) < total_columns) {
+                    fputs(" & ", output);
+                } else {
+                    fputs(" \\\\ ", output);
+                }
+            }
+        }
+
+        fputs("\\end{tabular}\\right\\rbrace", output);
+        statement_output_latex_functioncall_name(identifier, defs, output);
+    }
+}
+
+void
+statement_output_latex_write_args(io_t type,
+                                  const struct expression *to_write,
+                                  const struct definitions *defs,
+                                  FILE *output)
+{
+    fputs("\\WRITE~", output);
+    to_write->output_latex(to_write, defs, output);
+    fputs("~", output);
+
+    switch (type) {
+    case IO_UNSIGNED:
+        if ((to_write->type == EXP_INTEGER) &&
+            (to_write->_.integer == 1)) {
+            fputs("\\textrm{unsigned bit}", output);
+        } else {
+            fputs("\\textrm{unsigned bits}", output);
+        }
+        break;
+    case IO_SIGNED:
+        /*signed values should always be at least 2 bits*/
+        fputs("\\textrm{signed bits}", output);
+        break;
+    case IO_BYTES:
+        if ((to_write->type == EXP_INTEGER) &&
+            (to_write->_.integer == 1)) {
+            fputs("\\textrm{byte}", output);
+        } else {
+            fputs("\\textrm{bytes}", output);
+        }
+        break;
+    }
+}
+
+void
+statement_output_latex_write_args_unary(int stop_bit,
+                                        FILE *output)
+{
+    fprintf(output, "\\WUNARY~\\textrm{with stop bit %d}", stop_bit);
+}
+
+void
+statement_free_functioncall_write(struct statement *self)
+{
+    char *identifier = self->_.functioncall_write.identifier;
+    struct expressionlist *input_args  = self->_.functioncall_write.input_args;
+    struct expression *to_write = self->_.functioncall_write.to_write;
+    char *comment = self->_.functioncall_write.comment;
+
+    free(identifier);
+    if (input_args != NULL) {
+        input_args->free(input_args);
+    }
+    to_write->free(to_write);
+    free(comment);
+    free(self);
+}
+
+
+struct statement*
+statement_new_functioncall_write_unary(char *identifier,
+                                       struct expressionlist *input_args,
+                                       long long stop_bit,
+                                       char *comment)
+{
+    struct statement *statement = malloc(sizeof(struct statement));
+    statement->type = STAT_FUNCTIONCALL_WRITE_UNARY;
+    statement->_.functioncall_write_unary.identifier = identifier;
+    statement->_.functioncall_write_unary.input_args = input_args;
+    statement->_.functioncall_write_unary.stop_bit = stop_bit;
+    statement->_.functioncall_write_unary.comment = comment;
+    statement->output_latex = statement_output_latex_functioncall_write_unary;
+    statement->free = statement_free_functioncall_write_unary;
+    return statement;
+}
+
+void
+statement_output_latex_functioncall_write_unary(const struct statement *self,
+                                                const struct definitions *defs,
+                                                FILE *output)
+{
+    const char *identifier =
+        self->_.functioncall_write_unary.identifier;
+    const struct expressionlist *input_args =
+        self->_.functioncall_write_unary.input_args;
+    int stop_bit =
+        self->_.functioncall_write_unary.stop_bit;
+    const char *comment =
+        self->_.functioncall_write_unary.comment;
+
+    fputs("$", output);
+    statement_output_latex_functioncall_write_args(identifier,
+                                                   input_args,
+                                                   defs,
+                                                   output);
+
+    fputs(" \\rightarrow ", output);
+
+    statement_output_latex_write_args_unary(stop_bit, output);
+
+    fputs("$", output);
+
+    statement_output_latex_comment_text(comment, output);
+
+    fputs("\n", output);
+}
+
+void
+statement_free_functioncall_write_unary(struct statement *self)
+{
+    char *identifier =
+        self->_.functioncall_write_unary.identifier;
+    struct expressionlist *input_args =
+        self->_.functioncall_write_unary.input_args;
+    char *comment =
+        self->_.functioncall_write_unary.comment;
+
+    free(identifier);
+    if (input_args != NULL) {
+        input_args->free(input_args);
+    }
+    free(comment);
+    free(self);
+}
+
 
 
 struct statement*
@@ -1220,15 +1491,8 @@ statement_output_latex_return(const struct statement *self,
 
     fprintf(output, "$");
 
-    if (self->_.return_.return_comment != NULL) {
-        fprintf(output, "\\tcc*{");
-        escape_latex_curly_brackets(
-            output,
-            self->_.return_.return_comment);
-        fprintf(output, "}");
-    } else {
-        fprintf(output, "\\;");
-    }
+    statement_output_latex_comment_text(self->_.return_.return_comment,
+                                        output);
 
     fprintf(output, "\n");
 }
@@ -1268,15 +1532,8 @@ statement_output_latex_assert(const struct statement *self,
 
     fprintf(output, "$");
 
-    if (self->_.assert.assert_comment != NULL) {
-        fprintf(output, "\\tcc*{");
-        escape_latex_curly_brackets(
-            output,
-            self->_.assert.assert_comment);
-        fprintf(output, "}");
-    } else {
-        fprintf(output, "\\;");
-    }
+    statement_output_latex_comment_text(self->_.assert.assert_comment, output);
+
     fprintf(output, "\n");
 }
 
@@ -1329,40 +1586,9 @@ statement_output_latex_write(const struct statement *self,
     value->output_latex(value, defs, output);
 
     fprintf(output, " \\rightarrow ");
-
-    fprintf(output, "\\WRITE~");
-
-    to_write->output_latex(to_write, defs, output);
-
-    switch (type) {
-    case IO_UNSIGNED:
-        if ((to_write->type == EXP_INTEGER) && (to_write->_.integer == 1)) {
-            fprintf(output, "~\\textrm{unsigned bit}");
-        } else {
-            fprintf(output, "~\\textrm{unsigned bits}");
-        }
-        break;
-    case IO_SIGNED:
-        /*signed values should always be at least 2 bits*/
-        fprintf(output, "~\\textrm{signed bits}");
-        break;
-    case IO_BYTES:
-        if ((to_write->type == EXP_INTEGER) && (to_write->_.integer == 1)) {
-            fprintf(output, "~\\textrm{byte}");
-        } else {
-            fprintf(output, "~\\textrm{bytes}");
-        }
-        break;
-    }
-
+    statement_output_latex_write_args(type, to_write, defs, output);
     fprintf(output, "$");
-    if (comment != NULL) {
-        fprintf(output, "\\tcc*{");
-        escape_latex_curly_brackets(output, comment);
-        fprintf(output, "}");
-    } else {
-        fprintf(output, "\\;");
-    }
+    statement_output_latex_comment_text(comment, output);
     fprintf(output, "\n");
 }
 
@@ -1381,7 +1607,7 @@ statement_free_write(struct statement *self)
 
 
 struct statement*
-statement_new_write_unary(int stop_bit,
+statement_new_write_unary(long long stop_bit,
                           struct expression *value,
                           char *comment)
 {
@@ -1415,16 +1641,12 @@ statement_output_latex_write_unary(const struct statement *self,
 
     fprintf(output, " \\rightarrow ");
 
-    fprintf(output, "\\WUNARY~\\textrm{with stop bit %d}", stop_bit);
+    statement_output_latex_write_args_unary(stop_bit, output);
 
     fprintf(output, "$");
-    if (comment != NULL) {
-        fprintf(output, "\\tcc*{");
-        escape_latex_curly_brackets(output, comment);
-        fprintf(output, "}");
-    } else {
-        fprintf(output, "\\;");
-    }
+
+    statement_output_latex_comment_text(comment, output);
+
     fprintf(output, "\n");
 }
 
@@ -1485,13 +1707,7 @@ statement_output_latex_skip(const struct statement *self,
     }
 
     fprintf(output, "$");
-    if (comment != NULL) {
-        fprintf(output, "\\tcc*{");
-        escape_latex_curly_brackets(output, comment);
-        fprintf(output, "}");
-    } else {
-        fprintf(output, "\\;");
-    }
+    statement_output_latex_comment_text(comment, output);
     fprintf(output, "\n");
 }
 

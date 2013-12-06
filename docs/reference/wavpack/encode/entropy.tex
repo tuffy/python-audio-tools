@@ -8,19 +8,7 @@
 
 \subsection{Writing Entropy Variables}
 \label{wavpack:write_entropy}
-\ALGORITHM{3 entropy variables per channel, channel count}{entropy variables sub block data}
-\SetKwData{ENTROPY}{entropy}
-\SetKwFunction{WVLOG}{wv\_log2}
-$\WVLOG(\text{\ENTROPY}_{0~0}) \rightarrow$ \WRITE 16 signed bits\;
-$\WVLOG(\text{\ENTROPY}_{0~1}) \rightarrow$ \WRITE 16 signed bits\;
-$\WVLOG(\text{\ENTROPY}_{0~2}) \rightarrow$ \WRITE 16 signed bits\;
-\If{$\text{channel count} = 2$}{
-  $\WVLOG(\text{\ENTROPY}_{1~0}) \rightarrow$ \WRITE 16 signed bits\;
-  $\WVLOG(\text{\ENTROPY}_{1~1}) \rightarrow$ \WRITE 16 signed bits\;
-  $\WVLOG(\text{\ENTROPY}_{1~2}) \rightarrow$ \WRITE 16 signed bits\;
-}
-\Return entropy variables sub block data\;
-\EALGORITHM
+\input{wavpack/algorithms/write_entropy_variables}
 
 \begin{figure}[h]
   \includegraphics{wavpack/figures/entropy_vars.pdf}

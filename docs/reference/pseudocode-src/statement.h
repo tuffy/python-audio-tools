@@ -75,6 +75,12 @@ void
 statement_free_comment(struct statement *self);
 
 
+void
+statement_output_latex_comment_text(const char *comment, FILE *output);
+
+void
+statement_output_latex_aligned_comment_text(const char *comment, FILE *output);
+
 struct statement*
 statement_new_break(char *comment);
 
@@ -113,7 +119,7 @@ statement_output_latex_functioncall(const struct statement *self,
                                     FILE *output);
 
 void
-statement_output_latex_functioncall_name(const struct statement *self,
+statement_output_latex_functioncall_name(const char *identifier,
                                          const struct definitions *defs,
                                          FILE *output);
 
@@ -124,6 +130,54 @@ statement_output_latex_functioncall_args(const struct statement *self,
 
 void
 statement_free_functioncall(struct statement *self);
+
+
+struct statement*
+statement_new_functioncall_write(char *identifier,
+                                 struct expressionlist *input_args,
+                                 io_t type,
+                                 struct expression *to_write,
+                                 char *comment);
+
+void
+statement_output_latex_functioncall_write(const struct statement *self,
+                                          const struct definitions *defs,
+                                          FILE *output);
+
+void
+statement_output_latex_functioncall_write_args(
+    const char *identifier,
+    const struct expressionlist *input_args,
+    const struct definitions *defs,
+    FILE *output);
+
+void
+statement_output_latex_write_args(io_t type,
+                                  const struct expression *to_write,
+                                  const struct definitions *defs,
+                                  FILE *output);
+
+void
+statement_output_latex_write_args_unary(int stop_bit,
+                                        FILE *output);
+
+void
+statement_free_functioncall_write(struct statement *self);
+
+
+struct statement*
+statement_new_functioncall_write_unary(char *identifier,
+                                       struct expressionlist *input_args,
+                                       long long stop_bit,
+                                       char *comment);
+
+void
+statement_output_latex_functioncall_write_unary(const struct statement *self,
+                                                const struct definitions *defs,
+                                                FILE *output);
+
+void
+statement_free_functioncall_write_unary(struct statement *self);
 
 
 struct statement*
@@ -281,7 +335,7 @@ statement_free_write(struct statement *self);
 
 
 struct statement*
-statement_new_write_unary(int stop_bit,
+statement_new_write_unary(long long stop_bit,
                           struct expression *value,
                           char *comment);
 

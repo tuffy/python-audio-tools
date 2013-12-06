@@ -252,337 +252,24 @@ $\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $
 
 \end{landscape}
 
-%% \subsection{Writing Block Set}
-%% {\relsize{-1}
-%% \ALGORITHM{PCM frames and their channel assignment, block index, encoding parameters}{one or more WavPack blocks}
-%% \SetKwData{CHANNEL}{channel}
-%% \SetKwData{FIRST}{first}
-%% \SetKwData{LAST}{last}
-%% \Switch(\tcc*[f]{split channels by left/right pairs}){channel assignment}{
-%%   \uCase{mono}{
-%%     \begin{tabular}{lrr}
-%%       write $\text{\CHANNEL}_0$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 1$ \\
-%%     \end{tabular}\;
-%%   }
-%%   \uCase{front left, front right}{
-%%     \begin{tabular}{lrr}
-%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 1$ \\
-%%     \end{tabular}\;
-%%   }
-%%   \uCase{front left, front right, front center}{
-%%     \begin{tabular}{lrr}
-%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
-%%       write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
-%%     \end{tabular}\;
-%%   }
-%%   \uCase{front left, front right, back left, back right}{
-%%     \begin{tabular}{lrr}
-%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
-%%       write $\text{\CHANNEL}_2/\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
-%%     \end{tabular}\;
-%%   }
-%%   \uCase{front left, front right, front center, back center}{
-%%     \begin{tabular}{lrr}
-%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
-%%       write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
-%%       write $\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
-%%     \end{tabular}\;
-%%   }
-%%   \uCase{front left, front right, front center, back left, back right}{
-%%     \begin{tabular}{lrr}
-%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
-%%       write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
-%%       write $\text{\CHANNEL}_3/\text{\CHANNEL}_4$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
-%%     \end{tabular}\;
-%%   }
-%%   \uCase{front left, front right, front center, LFE, back left, back right}{
-%%     \begin{tabular}{lrr}
-%%       write $\text{\CHANNEL}_0/\text{\CHANNEL}_1$ & $\text{\FIRST} = 1$ & $\text{\LAST} = 0$ \\
-%%       write $\text{\CHANNEL}_2$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
-%%       write $\text{\CHANNEL}_3$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 0$ \\
-%%       write $\text{\CHANNEL}_4/\text{\CHANNEL}_5$ & $\text{\FIRST} = 0$ & $\text{\LAST} = 1$ \\
-%%     \end{tabular}\;
-%%   }
-%%   \Other(\tcc*[f]{save them independently}){
-%%     \For{$i \leftarrow 0$ \emph{\KwTo}channel count}{
-%%       \lIf{$i = 0$}{$\text{\FIRST} = 1$}
-%%       \lElse{$\text{\FIRST} = 0$}\;
-%%       \lIf{$i = \text{channel count} - 1$}{$\text{\LAST} = 1$}
-%%       \lElse{$\text{\LAST} = 0$}\;
-%%       write $\text{\CHANNEL}_i$ to block\;
-%%     }
-%%   }
-%% }
-%% \Return set of encoded WavPack blocks\;
-%% \EALGORITHM
-
-
-%% \clearpage
-
-\subsection{Writing Block}
-\label{wavpack:write_block}
-{\relsize{-1}
-\ALGORITHM{1 or 2 channels of PCM frames, block index, first block, last block, encoding parameters from previous block}{a WavPack block, encoding parameters for next block}
-\SetKwData{CHANNEL}{channel}
-\SetKwData{MONO}{mono output}
-\SetKwData{JOINTSTEREO}{joint stereo}
-\SetKwData{FALSESTEREO}{false stereo}
-\SetKwData{MAGNITUDE}{magnitude}
-\SetKwData{WASTEDBPS}{wasted bps}
-\SetKwData{SHIFTED}{shifted}
-\SetKwData{CRC}{CRC}
-\SetKwData{CORRELATED}{correlated}
-\SetKwData{MID}{mid}
-\SetKwData{SIDE}{side}
-\SetKwData{TERMS}{terms}
-\SetKwData{DELTAS}{deltas}
-\SetKwData{WEIGHTS}{weights}
-\SetKwData{SAMPLES}{samples}
-\SetKwData{BITSTREAM}{bitstream}
-\SetKwData{ENTROPY}{entropy}
-\SetKwData{SUBBLOCK}{sub block}
-\SetKw{OR}{or}
-\SetKwFunction{MAX}{max}
-\SetKwFunction{MIN}{min}
-\eIf(\tcc*[f]{1 channel block}){$\text{channel count} = 1$ \OR $\text{\CHANNEL}_0 = \text{\CHANNEL}_1$}{
-  $\text{\JOINTSTEREO} \leftarrow 0$\;
-  \eIf{$\text{channel count} = 1$}{
-    $\text{\MONO} \leftarrow 1$\;
-    $\text{\FALSESTEREO} \leftarrow 0$\;
-  }{
-    $\text{\MONO} \leftarrow 0$\;
-    $\text{\FALSESTEREO} \leftarrow 1$\;
-  }
-  $\text{\MAGNITUDE} \leftarrow$ \hyperref[wavpack:maximum_magnitude]{maximum magnitude of $\text{\CHANNEL}_0$}\;
-  $\text{\WASTEDBPS} \leftarrow$ \hyperref[wavpack:wasted_bps]{wasted bps of $\text{\CHANNEL}_0$}\;
-  \uIf{$\text{\WASTEDBPS} > 0$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}block size}{
-      $\text{\SHIFTED}_{0~i} \leftarrow \lfloor\text{\CHANNEL}_{0~i} \div 2 ^ \text{\WASTEDBPS}\rfloor$\;
-    }
-  }
-  \lElse{
-    $\text{\SHIFTED}_0 \leftarrow \text{\CHANNEL}_0$\;
-  }
-  $\text{\CRC} \leftarrow$ \hyperref[wavpack:calc_crc]{calculate CRC of $\text{\SHIFTED}_0$}\;
-}(\tcc*[f]{2 channel block}){
-  $\text{\JOINTSTEREO} \leftarrow 1$\;
-  $\text{\MONO} \leftarrow \text{\FALSESTEREO} \leftarrow 0$\;
-  $\text{\MAGNITUDE} \leftarrow \hyperref[wavpack:maximum_magnitude]{\MAX(\text{maximum magnitude of \CHANNEL}_0~,~\text{maximum magnitude of \CHANNEL}_1)}$\;
-  $\text{\WASTEDBPS} \leftarrow \hyperref[wavpack:wasted_bps]{\MIN(\text{wasted bps of \CHANNEL}_0~,~\text{wasted bps of \CHANNEL}_1)}$\;
-  \eIf{$\text{\WASTEDBPS} > 0$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}block size}{
-      $\text{\SHIFTED}_{0~i} \leftarrow \lfloor\text{\CHANNEL}_{0~i} \div 2 ^ \text{\WASTEDBPS}\rfloor$\;
-      $\text{\SHIFTED}_{1~i} \leftarrow \lfloor\text{\CHANNEL}_{1~i} \div 2 ^ \text{\WASTEDBPS}\rfloor$\;
-    }
-  }{
-    $\text{\SHIFTED}_0 \leftarrow \text{\CHANNEL}_0$\;
-    $\text{\SHIFTED}_1 \leftarrow \text{\CHANNEL}_1$\;
-  }
-  $\text{\CRC} \leftarrow$ \hyperref[wavpack:calc_crc]{calculate CRC of $\text{\SHIFTED}_0$ and $\text{\SHIFTED}_1$}\;
-  $\left.\begin{tabular}{r}
-    \MID \\
-    \SIDE \\
-  \end{tabular}\right\rbrace \leftarrow$
-  \hyperref[wavpack:calc_joint_stereo]{apply joint stereo}
-  $\left\lbrace\begin{tabular}{l}
-  $\text{\SHIFTED}_0$ \\
-  $\text{\SHIFTED}_1$ \\
-  \end{tabular}\right.$\;
-}
-$i \leftarrow 0$\;
-\If{first block in file}{
-  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_wave_header]{wave header}\;
-  $i \leftarrow i + 1$\;
-}
-\If{$\text{decorrelation passes} > 0$}{
-  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_decorr_terms]{decorrelation terms sub block from \TERMS and \DELTAS}\;
-  $\text{\SUBBLOCK}_{i + 1} \leftarrow$ \hyperref[wavpack:write_decorr_weights]{decorrelation weights sub block from \WEIGHTS}\;
-  $\text{\SUBBLOCK}_{i + 2} \leftarrow$ \hyperref[wavpack:write_decorr_samples]{decorrelation samples sub block from \SAMPLES}\;
-  $i \leftarrow i + 3$\;
-}
-\If{$\text{\WASTEDBPS} > 0$}{
-  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_extended_integers]{extended integers}\;
-  $i \leftarrow i + 1$\;
-}
-\If{$\text{total channel count} > 2$}{
-  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_channel_info]{channel info}\;
-  $i \leftarrow i + 1$\;
-}
-\If{sample rate not defined in block header}{
-  $\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_sample_rate]{sample rate}\;
-  $i \leftarrow i + 1$\;
-}
-\EALGORITHM
-}
-
-%% \begin{figure}[h]
-%%   \includegraphics{wavpack/figures/typical_block.pdf}
-%% \end{figure}
-
-\clearpage
-{\relsize{-1}
-\begin{algorithm}[H]
-\DontPrintSemicolon
-\SetKwData{CHANNEL}{channel}
-\SetKwData{CORRELATED}{correlated}
-\SetKwData{SHIFTED}{shifted}
-\SetKwData{MID}{mid}
-\SetKwData{SIDE}{side}
-\SetKwData{SUBBLOCK}{sub block}
-\SetKwData{WASTEDBPS}{wasted bps}
-\SetKwData{BITSTREAM}{bitstream}
-\SetKwData{TERMS}{terms}
-\SetKwData{DELTAS}{deltas}
-\SetKwData{WEIGHTS}{weights}
-\SetKwData{SAMPLES}{samples}
-\SetKwData{ENTROPY}{entropy}
-\SetKw{NOT}{not}
-\SetKw{IN}{in}
-\SetKw{OR}{or}
-$\text{\SUBBLOCK}_i \leftarrow$ \hyperref[wavpack:write_entropy]{entropy variables sub block from \ENTROPY}\;
-\eIf(\tcc*[f]{1 channel block}){$\text{channel count} = 1$ \OR $\text{\CHANNEL}_0 = \text{\CHANNEL}_1$}{
-  $\left.\begin{tabular}{r}
-    $\text{\CORRELATED}_0$ \\
-    $\text{\WEIGHTS}'$ \\
-    $\text{\SAMPLES}'$ \\
-  \end{tabular}\right\rbrace \leftarrow$
-  \hyperref[wavpack:correlate_channels]{correlate channel}
-  $\left\lbrace\begin{tabular}{l}
-  $\text{\SHIFTED}_0$ \\
-  \TERMS \\
-  \DELTAS \\
-  \WEIGHTS \\
-  \SAMPLES \\
-  \end{tabular}\right.$\;
-  $\left.\begin{tabular}{r}
-    \BITSTREAM \\
-    $\text{\ENTROPY}'$ \\
-  \end{tabular}\right\rbrace \leftarrow$
-  \hyperref[wavpack:write_bitstream]{calculate bitstream}
-  $\left\lbrace\begin{tabular}{l}
-  $\text{\CORRELATED}_0$ \\
-  $\text{\ENTROPY}$ \\
-  \end{tabular}\right.$\;
-}(\tcc*[f]{2 channel block}){
-  $\left.\begin{tabular}{r}
-    $\text{\CORRELATED}_0$ \\
-    $\text{\CORRELATED}_1$ \\
-    $\text{\WEIGHTS}'$ \\
-    $\text{\SAMPLES}'$ \\
-  \end{tabular}\right\rbrace \leftarrow$
-  \hyperref[wavpack:correlate_channels]{correlate channels}
-  $\left\lbrace\begin{tabular}{l}
-  \MID \\
-  \SIDE \\
-  \TERMS \\
-  \DELTAS \\
-  \WEIGHTS \\
-  \SAMPLES \\
-  \end{tabular}\right.$\;
-  $\left.\begin{tabular}{r}
-    \BITSTREAM \\
-    $\text{\ENTROPY}'$ \\
-  \end{tabular}\right\rbrace \leftarrow$
-  \hyperref[wavpack:write_bitstream]{calculate bitstream}
-  $\left\lbrace\begin{tabular}{l}
-  $\text{\CORRELATED}_0$ \\
-  $\text{\CORRELATED}_1$ \\
-  $\text{\ENTROPY}$ \\
-  \end{tabular}\right.$\;
-}
-$\text{\SUBBLOCK}_{i + 1} \leftarrow$ bitstream sub block from \BITSTREAM\;
-$i \leftarrow i + 2$\;
-\BlankLine
-\hyperref[wavpack:write_block_header]{write block header to block data}
-$\left\lbrace\begin{tabular}{l}
-\textsf{total sub blocks size} \\
-\textsf{block index} \\
-\textsf{block samples} \\
-\textsf{bits per sample} \\
-\textsf{channel count} \\
-\textsf{joint stereo} \\
-\textsf{correlation pass count} \\
-\textsf{wasted bps} \\
-\textsf{initial block} \\
-\textsf{final block} \\
-\textsf{magnitude} \\
-\textsf{sample rate} \\
-\textsf{false stereo} \\
-\textsf{CRC} \\
-\end{tabular}\right.$\;
-\For{$j \leftarrow 0$ \emph{\KwTo}i}{
-  write $\text{\SUBBLOCK}_j$ to block data\;
-}
-\Return $\left\lbrace\begin{tabular}{l}
-block data \\
-$\text{\WEIGHTS}'$ \\
-$\text{\SAMPLES}'$ \\
-$\text{\ENTROPY}'$ \\
-\end{tabular}\right.$
-\end{algorithm}
+\subsection{Encoding Block}
+\label{wavpack:encode_block}
+{\relsize{-2}
+  \input{wavpack/algorithms/encode_block}
 }
 
 \clearpage
 
 \subsection{Calculating Maximum Magnitude}
-\label{wavpack:maximum_magnitude}
+\label{wavpack:calc_maximum_magnitude}
 {\relsize{-1}
-\ALGORITHM{a list of signed PCM samples for a single channel}{an unsigned integer}
-\SetKwData{MAXMAGNITUDE}{maximum magnitude}
-\SetKwData{SAMPLE}{sample}
-\SetKwFunction{MAX}{max}
-\SetKwFunction{BITS}{bits}
-$\text{\MAXMAGNITUDE} \leftarrow 0$\;
-\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
-  $\text{\MAXMAGNITUDE} \leftarrow \MAX(\BITS(|\text{\SAMPLE}_i|)~,~\text{\MAXMAGNITUDE})$\;
+  \input{wavpack/algorithms/calculate_max_magnitude}
 }
-\Return \MAXMAGNITUDE\;
-\EALGORITHM
-where the \texttt{bits} function is defined as:
-\begin{equation*}
-\texttt{bits}(x) =
-\begin{cases}
-0 & \text{if } x = 0 \\
-1 + \texttt{bits}(\lfloor x \div 2 \rfloor) & \text{if } x > 0
-\end{cases}
-\end{equation*}
-}
-\subsubsection{Maximum Magnitude Example}
-\begin{table}[h]
-{\relsize{-1}
-\begin{tabular}{r|rrrrrrrrrr}
-$i$ & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
-\hline
-$\text{sample}_i$ & 0 & 16 & 31 & 44 & 54 & 61 & 64 & 63 & 58 & 49 \\
-$\texttt{bits}(|\text{sample}_i|)$ & 0 & 5 & 5 & 6 & 6 & 6 & 7 & 6 & 6 & 6
-\end{tabular}
-}
-\end{table}
-\par
-\noindent
-for a maximum magnitude of 7.
 
 \subsection{Calculating Wasted Bits Per Sample}
-\label{wavpack:wasted_bps}
+\label{wavpack:calc_wasted_bps}
 {\relsize{-1}
-\ALGORITHM{a list of signed PCM samples for a single channel}{an unsigned integer}
-\SetKwData{WASTEDBPS}{wasted bps}
-\SetKwData{SAMPLE}{sample}
-\SetKwFunction{MIN}{min}
-\SetKwFunction{WASTED}{wasted}
-$\text{\WASTEDBPS} \leftarrow \infty$\tcc*[r]{maximum unsigned integer}
-\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
-  $\text{\WASTEDBPS} \leftarrow \MIN(\WASTED(\text{\SAMPLE}_i)~,~\text{\WASTEDBPS})$\;
-  \If{$\text{\WASTEDBPS} = 0$}{
-    \Return 0\;
-  }
-}
-\eIf(\tcc*[f]{all samples are 0}){$\WASTEDBPS = \infty$}{
-  \Return 0\;
-}{
-  \Return \WASTEDBPS\;
-}
-\EALGORITHM
+  \input{wavpack/algorithms/calculate_wasted_bps}
 where the \texttt{wasted} function is defined as:
 \begin{equation*}
 \texttt{wasted}(x) =
@@ -593,117 +280,12 @@ where the \texttt{wasted} function is defined as:
 \end{cases}
 \end{equation*}
 }
-\subsubsection{Wasted Bits Example}
-\begin{table}[h]
-{\relsize{-1}
-\begin{tabular}{r|rrrrrrrrrr}
-$i$ & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
-\hline
-$\text{sample}_i$ & 0 & 16 & 31 & 44 & 54 & 61 & 64 & 63 & 58 & 49 \\
-$\texttt{wasted}(\text{sample}_i)$ & $\infty$ & 4 & 0 & 2 & 1 & 0 & 6 & 0 & 1 & 0 \\
-\end{tabular}
-}
-\end{table}
-\par
-\noindent
-for a wasted bps of 0 (which is typical).
-
-\subsection{Calculating CRC}
-\label{wavpack:calc_crc}
-\ALGORITHM{one or two channels of signed audio samples}{an unsigned 32-bit CRC integer}
-\SetKwData{MONO}{mono output}
-\SetKwData{CRC}{CRC}
-\SetKwData{LCRC}{LCRC}
-\SetKwData{SCRC}{SCRC}
-\SetKwData{CHANNEL}{channel}
-$\text{\CRC}_{-1} \leftarrow \texttt{0xFFFFFFFF}$\;
-\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
-  \eIf{$\text{\MONO} = 0$}{
-    $\text{\LCRC}_i \leftarrow (3 \times \text{\CRC}_{i - 1}) + \text{\CHANNEL}_{0~i}$\tcc*[r]{calculate signed CRC of left channel}
-    $\text{\SCRC}_i \leftarrow (3 \times \text{\LCRC}_{i - 1}) + \text{\CHANNEL}_{1~i}$\tcc*[r]{calculate signed CRC of right channel}
-  }{
-    $\text{\SCRC}_i \leftarrow (3 \times \text{\CRC}_{i - 1}) + \text{\CHANNEL}_{0~i}$\tcc*[r]{calculate signed CRC of channel}
-  }
-  \BlankLine
-  \eIf(\tcc*[f]{convert signed CRC to unsigned, 32-bit integer}){$\text{\SCRC}_i \geq 0$}{
-    $\text{\CRC}_i \leftarrow \text{\SCRC}_i \bmod \texttt{0x100000000}$\;
-  }{
-    $\text{\CRC}_i \leftarrow (2 ^ {32} - (-\text{\SCRC}_i)) \bmod \texttt{0x100000000}$\;
-  }
-}
-\Return $\text{\CRC}_{\text{sample count} - 1}$\;
-\EALGORITHM
-
-\subsubsection{Checksum Calculation Example}
-{\relsize{-1}
-\begin{tabular}{|r|r|r||>{$}r<{$}|>{$}r<{$}|>{$}r<{$}|}
-$i$ & $\textsf{channel}_{0~i}$ & $\textsf{channel}_{1~i}$ & \textsf{LCRC}_i & \textsf{SCRC}_i & \textsf{CRC}_i \\
-\hline
-0 & 0 & 64 &
-(3 \times \texttt{FFFFFFFF}) + 0 = \texttt{2FFFFFFFD} &
-(3 \times \texttt{2FFFFFFFD}) + 64 = \texttt{900000037} &
-\texttt{00000037} \\
-1 & 16 & 62 &
-(3 \times \texttt{00000037}) + 16 = \texttt{000000B5} &
-(3 \times \texttt{000000B5}) + 62 = \texttt{0000025D} &
-\texttt{0000025D} \\
-2 & 31 & 56 &
-(3 \times \texttt{0000025D}) + 31 = \texttt{00000736} &
-(3 \times \texttt{00000736}) + 56 = \texttt{000015DA} &
-\texttt{000015DA} \\
-3 & 44 & 47 &
-(3 \times \texttt{000015DA}) + 44 = \texttt{000041BA} &
-(3 \times \texttt{000041BA}) + 47 = \texttt{0000C55D} &
-\texttt{0000C55D} \\
-4 & 54 & 34 &
-(3 \times \texttt{0000C55D}) + 54 = \texttt{0002504D} &
-(3 \times \texttt{0002504D}) + 34 = \texttt{0006F109} &
-\texttt{0006F109} \\
-5 & 61 & 20 &
-(3 \times \texttt{0006F109}) + 61 = \texttt{0014D358} &
-(3 \times \texttt{0014D358}) + 20 = \texttt{003E7A1C} &
-\texttt{003E7A1C} \\
-6 & 64 & 4 &
-(3 \times \texttt{003E7A1C}) + 64 = \texttt{00BB6E94} &
-(3 \times \texttt{00BB6E94}) + 4 = \texttt{02324BC0} &
-\texttt{02324BC0} \\
-7 & 63 & -12 &
-(3 \times \texttt{02324BC0}) + 63 = \texttt{0696E37F} &
-(3 \times \texttt{0696E37F}) - 12 = \texttt{13C4AA71} &
-\texttt{13C4AA71} \\
-8 & 58 & -27 &
-(3 \times \texttt{13C4AA71}) + 58 = \texttt{3B4DFF8D} &
-(3 \times \texttt{3B4DFF8D}) - 27 = \texttt{B1E9FE8C} &
-\texttt{B1E9FE8C} \\
-9 & 49 & -41 &
-(3 \times \texttt{B1E9FE8C}) + 49 = \texttt{215BDFBD5} &
-(3 \times \texttt{215BDFBD5}) - 41 = \texttt{64139F356} &
-\texttt{4139F356} \\
-\end{tabular}
-}
-\vskip 1em
-\par
-\noindent
-Resulting in a final CRC of \texttt{0x4139F356}
 
 \clearpage
 
 \subsection{Joint Stereo Conversion}
 \label{wavpack:calc_joint_stereo}
-\ALGORITHM{left and right channels of signed integers}{mid and side channels of signed integers}
-\SetKwData{LEFT}{left}
-\SetKwData{RIGHT}{right}
-\SetKwData{MID}{mid}
-\SetKwData{SIDE}{side}
-\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
-  $\text{\MID}_i \leftarrow \text{\LEFT}_i - \text{\RIGHT}_i$\;
-  $\text{\SIDE}_i \leftarrow \lfloor(\text{\LEFT}_i + \text{\RIGHT}_i) \div 2\rfloor$\;
-}
-\Return $\left\lbrace\begin{tabular}{l}
-\MID \\
-\SIDE \\
-\end{tabular}\right.$\;
-\EALGORITHM
+\input{wavpack/algorithms/apply_joint_stereo}
 
 \subsubsection{Joint Stereo Example}
 \begin{table}[h]
@@ -727,7 +309,17 @@ $i$ & $\textsf{left}_i$ & $\textsf{right}_i$ & \textsf{mid}_i & \textsf{side}_i 
 
 \clearpage
 
-\input{wavpack/encode/correlation}
+\subsection{Writing Block Parameters}
+\label{wavpack:write_block_parameters}
+{\relsize{-1}
+  \input{wavpack/algorithms/write_block_parameters}
+}
+
+\clearpage
+
+\subsection{Writing Sub Block Header}
+\label{wavpack:write_sub_block_header}
+\input{wavpack/algorithms/write_sub_block_header}
 
 \clearpage
 
@@ -744,6 +336,10 @@ $i$ & $\textsf{left}_i$ & $\textsf{right}_i$ & \textsf{mid}_i & \textsf{side}_i 
 \clearpage
 
 \input{wavpack/encode/entropy}
+
+\clearpage
+
+\input{wavpack/encode/correlation}
 
 \clearpage
 

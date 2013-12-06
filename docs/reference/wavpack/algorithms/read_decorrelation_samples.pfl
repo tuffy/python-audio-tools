@@ -36,7 +36,8 @@ for p <- decorrelation_term_count downto 0 {
             }
         }
     } elif (-3 <= decorrelation_terms[p] <= -1) {
-        for c <- 0 to channel_count {
+        assert channel_count == 2;
+        for c <- 0 to 2 {
             if sample_count > 0 {
                 decorrelation_samples[p][c][0] <- decode_wv_exp2(read 16 signed);
                 sample_count <- sample_count - 1;

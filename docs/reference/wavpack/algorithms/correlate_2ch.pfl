@@ -1,0 +1,79 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "2 lists of signed samples, the sample count, a correlation term, a correlation delta, a correlation weight per channel, a list of correlation sample values per channel";
+OUTPUT "2 lists of signed correlated samples, an updated correlation weight value per channel, updated correlation sample values per channel";
+VAR correlated "correlated";
+VAR block_samples "block samples";
+VAR channel "channel";
+VAR decorrelation_term "term";
+VAR decorrelation_delta "delta";
+VAR decorrelation_weights "weights";
+VAR decorrelation_samples "samples";
+FUNC correlate_1ch "correlate 1 channel" "wavpack:correlate_1ch";
+FUNC invalid_term "invalid correlation term";
+FUNC correlate_2ch_1 "correlate 2 channels wth term -1"
+"wavpack:correlate_2ch_1";
+FUNC correlate_2ch_2 "correlate 2 channels wth term -2"
+"wavpack:correlate_2ch_2";
+FUNC correlate_2ch_3 "correlate 2 channels wth term -3"
+"wavpack:correlate_2ch_3";
+if decorrelation_term > 0 {
+    correlated[0],
+    decorrelation_weights[0],
+    decorrelation_samples[0] <-
+        correlate_1ch(block_samples,
+                      channel[0],
+                      decorrelation_term,
+                      decorrelation_delta,
+                      decorrelation_weights[0],
+                      decorrelation_samples[0]);
+
+    correlated[1],
+    decorrelation_weights[1],
+    decorrelation_samples[1] <-
+        correlate_1ch(block_samples,
+                      channel[1],
+                      decorrelation_term,
+                      decorrelation_delta,
+                      decorrelation_weights[1],
+                      decorrelation_samples[1]);
+
+} elif decorrelation_term == -1 {
+    correlated,
+    decorrelation_weights,
+    decorrelation_samples <-
+        correlate_2ch_1(block_samples,
+                        channel,
+                        decorrelation_delta,
+                        decorrelation_weights,
+                        decorrelation_samples);
+} elif decorrelation_term == -2 {
+    correlated,
+    decorrelation_weights,
+    decorrelation_samples <-
+        correlate_2ch_2(block_samples,
+                        channel,
+                        decorrelation_delta,
+                        decorrelation_weights,
+                        decorrelation_samples);
+} elif decorrelation_term == -3 {
+    correlated,
+    decorrelation_weights,
+    decorrelation_samples <-
+        correlate_2ch_3(block_samples,
+                        channel,
+                        decorrelation_delta,
+                        decorrelation_weights,
+                        decorrelation_samples);
+} else {
+    invalid_term();
+}
+return correlated,
+       decorrelation_weights,
+       decorrelation_samples;

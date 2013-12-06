@@ -6,255 +6,48 @@
 %171 Second Street, Suite 300,
 %San Francisco, California, 94105, USA.
 
-\subsection{1 Channel Correlation Passes}
+\subsection{Channel Correlation}
 \label{wavpack:correlate_channels}
-\ALGORITHM{a list of signed samples; correlation terms, deltas, weights and samples}{a list of signed residuals; correlation weights and samples for the next block}
-\SetKwData{PASS}{pass}
-\SetKwData{CHANNEL}{channel}
-\SetKwData{TERMCOUNT}{term count}
-\SetKwData{TERM}{term}
-\SetKwData{DELTA}{delta}
-\SetKwData{WEIGHT}{weight}
-\SetKwData{SAMPLES}{sample}
-\SetKw{KwDownTo}{downto}
-$\text{\PASS}_{-1~0} \leftarrow \text{\CHANNEL}_0$\;
-\For(\tcc*[f]{perform passes in reverse order}){$i \leftarrow 0$ \emph{\KwTo}\TERMCOUNT}{
-  $p \leftarrow \TERMCOUNT - i - 1$\;
-  $\left.\begin{tabular}{r}
-    $\text{\PASS}_{i}$ \\
-    $\text{\WEIGHT}'_{p~0}$ \\
-    $\text{\SAMPLES}'_{p~0}$ \\
-  \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_1ch]{correlate 1 channel}
-  $\left\lbrace\begin{tabular}{l}
-  $\text{\PASS}_{i - 1}$ \\
-  $\text{\TERM}_{i}$ \\
-  $\text{\DELTA}_{i}$ \\
-  $\text{\WEIGHT}_{p~0}$ \\
-  $\text{\SAMPLES}_{p~0}$ \\
-  \end{tabular}\right.$\;
+{\relsize{-1}
+  \input{wavpack/algorithms/correlate_channels}
 }
-\Return $\left\lbrace\begin{tabular}{l}
-$\text{\PASS}_{(\TERMCOUNT - 1)}$ \\
-$\text{\WEIGHT}'$ \\
-$\text{\SAMPLES}'$ \\
-\end{tabular}\right.$\;
-\EALGORITHM
-
-\subsection{2 Channel Correlation Passes}
-\ALGORITHM{a list of signed samples per channel; correlation terms, deltas, weights and samples}{a list of signed residuals per channel; correlation weights and samples for the next block}
-\SetKwData{PASS}{pass}
-\SetKwData{CHANNEL}{channel}
-\SetKwData{TERMCOUNT}{term count}
-\SetKwData{TERM}{term}
-\SetKwData{DELTA}{delta}
-\SetKwData{WEIGHT}{weight}
-\SetKwData{SAMPLES}{sample}
-\SetKw{KwDownTo}{downto}
-$\text{\PASS}_{-1~0} \leftarrow \text{\CHANNEL}_0$\;
-$\text{\PASS}_{-1~1} \leftarrow \text{\CHANNEL}_1$\;
-\For(\tcc*[f]{perform passes in reverse order}){$i \leftarrow 0$ \emph{\KwTo}\TERMCOUNT}{
-  $p \leftarrow \TERMCOUNT - i - 1$\;
-  $\left.\begin{tabular}{r}
-    $\text{\PASS}_{i~0}$ \\
-    $\text{\PASS}_{i~1}$ \\
-    $\text{\WEIGHT}'_{p~0}$ \\
-    $\text{\WEIGHT}'_{p~1}$ \\
-    $\text{\SAMPLES}'_{p~0}$ \\
-    $\text{\SAMPLES}'_{p~1}$ \\
-  \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_2ch]{correlate 2 channel}
-  $\left\lbrace\begin{tabular}{l}
-  $\text{\PASS}_{i - 1~0}$ \\
-  $\text{\PASS}_{i - 1~1}$ \\
-  $\text{\TERM}_{i}$ \\
-  $\text{\DELTA}_{i}$ \\
-  $\text{\WEIGHT}_{p~0}$ \\
-  $\text{\WEIGHT}_{p~1}$ \\
-  $\text{\SAMPLES}_{p~0}$ \\
-  $\text{\SAMPLES}_{p~1}$ \\
-  \end{tabular}\right.$\;
-}
-\Return $\left\lbrace\begin{tabular}{l}
-$\text{\PASS}_{(\TERMCOUNT - 1)}$ \\
-$\text{\WEIGHT}'$ \\
-$\text{\SAMPLES}'$ \\
-\end{tabular}\right.$\;
-\EALGORITHM
 
 \clearpage
 
 \subsection{1 Channel Correlation Pass}
 \label{wavpack:correlate_1ch}
 {\relsize{-1}
-\ALGORITHM{a list of signed uncorrelated samples; correlation term, delta, weight and samples}{a list of signed correlated samples; updated weight and sample values}
-\SetKwData{CORRELATED}{correlated}
-\SetKwData{DECORRELATED}{uncorrelated}
-\SetKwData{DECORRSAMPLE}{correlation sample}
-\SetKwData{WEIGHT}{weight}
-\SetKwData{DELTA}{delta}
-\SetKwData{TEMP}{temp}
-\SetKw{OR}{or}
-\SetKw{XOR}{xor}
-\SetKwFunction{APPLYWEIGHT}{apply\_weight}
-\SetKwFunction{UPDATEWEIGHT}{update\_weight}
-$\text{\WEIGHT}_0 \leftarrow$ decorrelation weight\;
-\BlankLine
-\uIf{$term = 18$}{
-  $\text{\DECORRELATED}_{-2} \leftarrow \text{\DECORRSAMPLE}_1$\;
-  $\text{\DECORRELATED}_{-1} \leftarrow \text{\DECORRSAMPLE}_0$\;
-  \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
-    $\text{\TEMP}_{i} \leftarrow \lfloor(3 \times \text{\DECORRELATED}_{i - 1} - \text{\DECORRELATED}_{i - 2}) \div 2 \rfloor$\;
-    $\text{\CORRELATED}_i \leftarrow \text{\DECORRELATED}_i - \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\TEMP}_{i})$\;
-    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\TEMP}_{i}~,~\text{\CORRELATED}_i~,~\DELTA)$\;
-  }
-  \Return $\left\lbrace\begin{tabular}{l}
-  \CORRELATED \\
-  $\text{\WEIGHT}_i$ \\
-  $\DECORRSAMPLE \leftarrow$ \texttt{[}$\text{\DECORRELATED}_{(i - 2)}$, $\text{\DECORRELATED}_{(i - 1)}$ \texttt{]} \\
-  \end{tabular}\right.$\;
-}
-\uElseIf{$term = 17$}{
-  $\text{\DECORRELATED}_{-2} \leftarrow \text{\DECORRSAMPLE}_1$\;
-  $\text{\DECORRELATED}_{-1} \leftarrow \text{\DECORRSAMPLE}_0$\;
-  \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
-    $\text{\TEMP}_{i} \leftarrow 2 \times \text{\DECORRELATED}_{i - 1} - \text{\DECORRELATED}_{i - 2}$\;
-    $\text{\CORRELATED}_i \leftarrow  \text{\DECORRELATED}_i - \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\TEMP}_{i})$\;
-    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\TEMP}_{i}~,~\text{\CORRELATED}_i~,~\DELTA)$\;
-  }
-  \Return $\left\lbrace\begin{tabular}{l}
-  \CORRELATED \\
-  $\text{\WEIGHT}_i$ \\
-  $\DECORRSAMPLE \leftarrow$ \texttt{[}$\text{\DECORRELATED}_{(i - 2)}$, $\text{\DECORRELATED}_{(i - 1)}$ \texttt{]} \\
-  \end{tabular}\right.$\;
-}
-\uElseIf{$1 \leq term \leq 8$}{
-  \For{$i \leftarrow 0$ \emph{\KwTo}term}{
-    $\text{\DECORRELATED}_{i - \text{term}} \leftarrow \text{\DECORRSAMPLE}_i$\;
-  }
-  \For{$i \leftarrow 0$ \emph{\KwTo}correlated samples length}{
-    $\text{\CORRELATED}_i \leftarrow  \text{\DECORRELATED}_i - \APPLYWEIGHT(\text{\WEIGHT}_i~,~\text{\DECORRELATED}_{i - \text{term}})$\;
-    $\text{\WEIGHT}_{i + 1} \leftarrow \text{\WEIGHT}_i + \UPDATEWEIGHT(\text{\DECORRELATED}_{i - \text{term}}~,~\text{\CORRELATED}_i~,~\DELTA)$\;
-  }
-  \Return $\left\lbrace\begin{tabular}{l}
-  \CORRELATED \\
-  $\text{\WEIGHT}_i$ \\
-  $\DECORRSAMPLE \leftarrow$ last $term$ \DECORRELATED samples \\
-  \end{tabular}\right.$\;
-}
-\Else{
-  invalid decorrelation term\;
-}
-\EALGORITHM
-\par
-\noindent
-\begin{align*}
-\intertext{where \texttt{apply\_weight} is defined as:}
-\texttt{apply\_weight}(weight~,~sample) &= \left\lfloor\frac{weight \times sample + 2 ^ 9}{2 ^ {10}}\right\rfloor \\
-\intertext{and \texttt{update\_weight} is defined as:}
-\texttt{update\_weight}(source~,~result~,~delta) &=
-\begin{cases}
-0 & \text{ if } source = 0 \text{ or } result = 0 \\
-delta & \text{ if } (source \textbf{ xor } result ) \geq 0 \\
--delta & \text{ if } (source \textbf{ xor } result) < 0
-\end{cases}
-\end{align*}
+  \input{wavpack/algorithms/correlate_1ch}
 }
 
 \clearpage
 
-\subsection{2 Channel Correlation Pass}
+\subsection{2 Channel Correlation Passes}
 \label{wavpack:correlate_2ch}
 {\relsize{-1}
-\ALGORITHM{2 lists of signed uncorrelated samples; correlation term and delta, 2 correlation weights, 2 lists of correlation samples}{2 lists of signed correlated samples; updated weight and sample values per channel}
-\SetKwData{TERM}{term}
-\SetKwData{DELTA}{delta}
-\SetKwData{CORRELATED}{correlated}
-\SetKwData{DECORRELATED}{uncorrelated}
-\SetKwData{DECORRSAMPLE}{correlation sample}
-\SetKwData{WEIGHT}{weight}
-\SetKw{OR}{or}
-\SetKw{XOR}{xor}
-\SetKwFunction{MIN}{min}
-\SetKwFunction{MAX}{max}
-\SetKwFunction{APPLYWEIGHT}{apply\_weight}
-\SetKwFunction{UPDATEWEIGHT}{update\_weight}
-\uIf{$(17 \leq \TERM \leq 18)$ \OR $(1 \leq \TERM \leq 8)$}{
-  $\left.\begin{tabular}{r}
-    $\text{\CORRELATED}_{0}$ \\
-    $\text{\WEIGHT}'_{0}$ \\
-    $\text{\DECORRSAMPLE}'_{0}$ \\
-  \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_1ch]{correlate 1 channel}
-  $\left\lbrace\begin{tabular}{l}
-  $\text{\DECORRELATED}_{0}$
-  $\text{\TERM}$ \\
-  $\text{\DELTA}$ \\
-  $\text{\WEIGHT}_{0}$ \\
-  $\text{\DECORRSAMPLE}_{0}$ \\
-  \end{tabular}\right.$\;
-  $\left.\begin{tabular}{r}
-    $\text{\CORRELATED}_{1}$ \\
-    $\text{\WEIGHT}'_{1}$ \\
-    $\text{\DECORRSAMPLE}'_{1}$ \\
-  \end{tabular}\right\rbrace \leftarrow$ \hyperref[wavpack:correlate_1ch]{correlate 1 channel}
-  $\left\lbrace\begin{tabular}{l}
-  $\text{\DECORRELATED}_{1}$
-  $\text{\TERM}$ \\
-  $\text{\DELTA}$ \\
-  $\text{\WEIGHT}_{1}$ \\
-  $\text{\DECORRSAMPLE}_{1}$ \\
-  \end{tabular}\right.$\;
-  \Return $\left\lbrace\begin{tabular}{l}
-  $\text{\CORRELATED}$ \\
-  $\text{\WEIGHT}'$ \\
-  $\text{\DECORRSAMPLE}'$ \\
-  \end{tabular}\right.$\;
+  \input{wavpack/algorithms/correlate_2ch}
 }
-\uElseIf{$-3 \leq \TERM \leq -1$}{
-  $\text{\WEIGHT}_{0~0} \leftarrow$ correlation weight 0\;
-  $\text{\WEIGHT}_{1~0} \leftarrow$ correlation weight 1\;
-  $\text{\DECORRELATED}_{0~-1} \leftarrow \text{\DECORRSAMPLE}_{1~0}$\;
-  $\text{\DECORRELATED}_{1~-1} \leftarrow \text{\DECORRSAMPLE}_{0~0}$\;
-  \uIf{$\TERM = -1$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
-      $\text{\CORRELATED}_{0~i} \leftarrow  \text{\DECORRELATED}_{0~i} - \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~(i - 1)})$\;
-      $\text{\CORRELATED}_{1~i} \leftarrow \text{\DECORRELATED}_{1~i} - \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~i})$\;
-      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~(i - 1)}~,~\text{\CORRELATED}_{0~i}~,~\DELTA)$\;
-      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~i}~,~\text{\CORRELATED}_{1~i}~,~\DELTA)$\;
-      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
-      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
-    }
-  }
-  \uElseIf{$\TERM = -2$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
-      $\text{\CORRELATED}_{0~i} \leftarrow \text{\DECORRELATED}_{0~i} - \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~i})$\;
-      $\text{\CORRELATED}_{1~i} \leftarrow \text{\DECORRELATED}_{1~i} - \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~({i - 1})})$\;
-      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~i}~,~\text{\CORRELATED}_{0~i}~,~\DELTA)$\;
-      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~(i - 1)}~,~\text{\CORRELATED}_{1~i}~,~\DELTA)$\;
-      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
-      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
-    }
-  }
-  \ElseIf{$\TERM = -3$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}uncorrelated samples length}{
-      $\text{\CORRELATED}_{0~i} \leftarrow \text{\DECORRELATED}_{0~i} - \APPLYWEIGHT(\text{\WEIGHT}_{0~i}~,~\text{\DECORRELATED}_{1~(i - 1)})$\;
-      $\text{\CORRELATED}_{1~i} \leftarrow \text{\DECORRELATED}_{1~i} - \APPLYWEIGHT(\text{\WEIGHT}_{1~i}~,~\text{\DECORRELATED}_{0~(i - 1)})$\;
-      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \text{\WEIGHT}_{0~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{1~(i - 1)}~,~\text{\CORRELATED}_{0~i}~,~\DELTA)$\;
-      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \text{\WEIGHT}_{1~i} + \UPDATEWEIGHT(\text{\DECORRELATED}_{0~(i - 1)}~,~\text{\CORRELATED}_{1~i}~,~\DELTA)$\;
-      $\text{\WEIGHT}_{0~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{0~(i + 1)}~,~1024)~,~-1024)$\;
-      $\text{\WEIGHT}_{1~(i + 1)} \leftarrow \MAX(\MIN(\text{\WEIGHT}_{1~(i + 1)}~,~1024)~,~-1024)$\;
-    }
-  }
-  \Return $\left\lbrace\begin{tabular}{l}
-  $\text{\CORRELATED}$ \\
-  $\text{\WEIGHT}_{0~i}$ \\
-  $\text{\WEIGHT}_{1~i}$ \\
-  $\text{\DECORRSAMPLE}_{0~0} \leftarrow \text{\DECORRELATED}_{1~i}$ \\
-  $\text{\DECORRSAMPLE}_{1~0} \leftarrow \text{\DECORRELATED}_{0~i}$ \\
-  \end{tabular}\right.$\;
+
+\clearpage
+
+\subsubsection{2 Channel Correlation Pass, Term -1}
+\label{wavpack:correlate_2ch_1}
+{\relsize{-1}
+  \input{wavpack/algorithms/correlate_2ch_1}
 }
-\Else{
-  invalid decorrelation term\;
+
+\subsubsection{2 Channel Correlation Pass, Term -2}
+\label{wavpack:correlate_2ch_2}
+{\relsize{-1}
+  \input{wavpack/algorithms/correlate_2ch_2}
 }
-\EALGORITHM
+
+\clearpage
+
+\subsubsection{2 Channel Correlation Pass, Term -3}
+\label{wavpack:correlate_2ch_3}
+{\relsize{-1}
+  \input{wavpack/algorithms/correlate_2ch_3}
 }
 
 \clearpage

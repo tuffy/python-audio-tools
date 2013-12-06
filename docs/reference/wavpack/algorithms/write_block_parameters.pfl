@@ -1,0 +1,79 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "1 or 2 channels of signed PCM samples, effective channel count, number of samples per channel; three entropy variables per channel, number of correlation terms, a correlation term per pass, a correlation delta per pass, a correlation weight per pass per channel, a list of correlation samples per pass per channel";
+OUTPUT "number of sub blocks, a list of sub block sizes, a list of sub blocks, updated entropy variables per channel, an updated correlation weight per pass per channel, a list of updated correlation samples per pass per channel";
+VAR effective_channel_count "effective channel count";
+VAR block_samples "block samples";
+VAR sub_block_count "sub block count";
+VAR sub_block "sub block";
+VAR sub_block_size "sub block size";
+VAR channels "channels";
+VAR correlated "correlated";
+VAR entropies "entropies";
+VAR decorrelation_term_count "term count";
+VAR decorrelation_terms "terms";
+VAR decorrelation_deltas "deltas";
+VAR decorrelation_weights "weights";
+VAR decorrelation_samples "samples";
+FUNC write_decorrelation_terms "write decorrelation terms"
+"wavpack:write_decorr_terms";
+FUNC write_decorrelation_weights "write decorrelation weights"
+"wavpack:write_decorr_weights";
+FUNC write_decorrelation_samples "write decorrelation samples"
+"wavpack:write_decorr_samples";
+FUNC write_entropy_variables "write entropy variables"
+"wavpack:write_entropy";
+FUNC correlate_channels "correlate channels"
+"wavpack:correlate_channels";
+FUNC write_bitstream "write bitstream";
+
+sub_block[0],sub_block_size[0] <- write_decorrelation_terms(
+decorrelation_term_count,
+decorrelation_terms,
+decorrelation_deltas);
+
+sub_block[1],sub_block_size[1] <- write_decorrelation_weights(
+effective_channel_count,
+decorrelation_term_count,
+decorrelation_weights);
+
+sub_block[2],sub_block_size[2] <- write_decorrelation_samples(
+effective_channel_count,
+decorrelation_term_count,
+decorrelation_terms,
+decorrelation_samples);
+
+sub_block[3],sub_block_size[3] <- write_entropy_variables(
+effective_channel_count,
+entropies);
+
+correlated,
+decorrelation_weights,
+decorrelation_samples <- correlate_channels(
+    block_samples,
+    effective_channel_count,
+    channels,
+    decorrelation_term_count,
+    decorrelation_terms,
+    decorrelation_deltas,
+    decorrelation_weights,
+    decorrelation_samples);
+
+sub_block[4],sub_block_size[4],entropies <- write_bitstream(
+    block_samples,
+    effective_channel_count,
+    entropies,
+    correlated);
+
+return 5,
+sub_block_size,
+sub_block,
+entropies,
+decorrelation_weights,
+decorrelation_samples;

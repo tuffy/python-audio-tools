@@ -8,29 +8,7 @@
 
 \subsection{Writing Decorrelation Weights}
 \label{wavpack:write_decorr_weights}
-\ALGORITHM{a list of decorrelation weights per channel}{decorrelation weights sub block data}
-\SetKwData{WEIGHT}{weight}
-\SetKwFunction{STOREWEIGHT}{store\_weight}
-\SetKwData{KwDownTo}{downto}
-\For(\tcc*[f]{populate in reverse order}){$p \leftarrow \text{decorrelation pass count}$ \emph{\KwDownTo}0}{
-  $\texttt{\STOREWEIGHT}(\text{\WEIGHT}_{p~0}) \rightarrow$ \WRITE 8 signed bits\;
-  \If{$\text{channel count} = 2$}{
-    $\texttt{\STOREWEIGHT}(\text{\WEIGHT}_{p~1}) \rightarrow$ \WRITE 8 signed bits\;
-  }
-}
-\Return decorrelation weights sub block data\;
-\EALGORITHM
-\par
-\noindent
-where \texttt{store\_weight} is defined as:
-\begin{equation*}
-\texttt{store\_weight}(w) =
-\begin{cases}
-\left\lfloor\frac{\texttt{min}(w, 1024) - \lfloor(\texttt{min}(w,1024) + 2 ^ 6) \div 2 ^ 7\rfloor + 4}{2 ^ 3}\right\rfloor & \text{ if } w > 0 \\
-0 & \text{ if } w = 0 \\
-\left\lfloor \frac{\texttt{max}(w, -1024) + 4}{2 ^ 3} \right\rfloor & \text{ if } w < 0 \\
-\end{cases}
-\end{equation*}
+\input{wavpack/algorithms/write_decorrelation_weights}
 \begin{figure}[h]
   \includegraphics{wavpack/figures/decorr_weights.pdf}
 \end{figure}

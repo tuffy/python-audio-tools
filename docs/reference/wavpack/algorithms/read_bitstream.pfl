@@ -31,11 +31,11 @@ for i <- 0 to block_samples * channel_count {
                 i <- i + 1;
             }
             if i < block_samples * channel_count {
-                entropies[0][0] <- 0;
-                entropies[0][1] <- 0;
-                entropies[0][2] <- 0;
-                entropies[1][0] <- 0;
-                entropies[1][1] <- 0;
+                entropies[0][0],
+                entropies[0][1],
+                entropies[0][2],
+                entropies[1][0],
+                entropies[1][1],
                 entropies[1][2] <- 0;
             } else {
                 break;

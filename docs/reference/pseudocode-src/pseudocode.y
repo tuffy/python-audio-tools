@@ -206,6 +206,30 @@ statement: EOS {
  | expression ASSIGN_OUT WRITE UNARY INTEGER comment EOS {
      $$ = statement_new_write_unary($5, $1, $6);
  }
+ | IDENTIFIER OPEN_PAREN CLOSE_PAREN ASSIGN_OUT WRITE expression UNSIGNED comment EOS {
+     $$ = statement_new_functioncall_write($1, NULL, IO_UNSIGNED, $6, $8);
+ }
+ | IDENTIFIER OPEN_PAREN expressionlist CLOSE_PAREN ASSIGN_OUT WRITE expression UNSIGNED comment EOS {
+     $$ = statement_new_functioncall_write($1, $3, IO_UNSIGNED, $7, $9);
+ }
+ | IDENTIFIER OPEN_PAREN CLOSE_PAREN ASSIGN_OUT WRITE expression SIGNED comment EOS {
+     $$ = statement_new_functioncall_write($1, NULL, IO_SIGNED, $6, $8);
+ }
+ | IDENTIFIER OPEN_PAREN expressionlist CLOSE_PAREN ASSIGN_OUT WRITE expression SIGNED comment EOS {
+     $$ = statement_new_functioncall_write($1, $3, IO_SIGNED, $7, $9);
+ }
+ | IDENTIFIER OPEN_PAREN CLOSE_PAREN ASSIGN_OUT WRITE expression BYTES comment EOS {
+     $$ = statement_new_functioncall_write($1, NULL, IO_BYTES, $6, $8);
+ }
+ | IDENTIFIER OPEN_PAREN expressionlist CLOSE_PAREN ASSIGN_OUT WRITE expression BYTES comment EOS {
+     $$ = statement_new_functioncall_write($1, $3, IO_BYTES, $7, $9);
+ }
+ | IDENTIFIER OPEN_PAREN CLOSE_PAREN ASSIGN_OUT WRITE UNARY INTEGER comment EOS {
+     $$ = statement_new_functioncall_write_unary($1, NULL, $7, $8);
+ }
+ | IDENTIFIER OPEN_PAREN expressionlist CLOSE_PAREN ASSIGN_OUT WRITE UNARY INTEGER comment EOS {
+     $$ = statement_new_functioncall_write_unary($1, $3, $8, $9);
+ }
  | SKIP expression comment EOS  {
     $$ = statement_new_skip($2, IO_UNSIGNED, $3);
  }

@@ -15,8 +15,8 @@ entropy[0][0] <- decode_wv_exp2(read 16 signed);
 entropy[0][1] <- decode_wv_exp2(read 16 signed);
 entropy[0][2] <- decode_wv_exp2(read 16 signed);
 if channel_count == 1 {
-    entropy[1][0] <- 0;
-    entropy[1][1] <- 0;
+    entropy[1][0],
+    entropy[1][1],
     entropy[1][2] <- 0;
 } else {
     entropy[1][0] <- decode_wv_exp2(read 16 signed);

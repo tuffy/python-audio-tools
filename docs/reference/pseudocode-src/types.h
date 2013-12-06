@@ -208,6 +208,8 @@ typedef enum {
     STAT_BREAK,
     STAT_ASSIGN_IN,
     STAT_FUNCTIONCALL,
+    STAT_FUNCTIONCALL_WRITE,
+    STAT_FUNCTIONCALL_WRITE_UNARY,
     STAT_IF,
     STAT_SWITCH,
     STAT_WRITE,
@@ -240,6 +242,19 @@ struct statement {
             struct variablelist *output_args;
             char *functioncall_comment;
         } functioncall;
+        struct {
+            char *identifier;
+            struct expressionlist *input_args;
+            io_t type;
+            struct expression *to_write;
+            char *comment;
+        } functioncall_write;
+        struct {
+            char *identifier;
+            struct expressionlist *input_args;
+            int stop_bit;
+            char *comment;
+        } functioncall_write_unary;
         struct {
             struct expression *condition;
             struct statlist *then;

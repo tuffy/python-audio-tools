@@ -1,0 +1,24 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "effective channel count, a list of 3 entropy variables per channel";
+OUTPUT "an entropy variables sub block, the sub block size";
+VAR entropies "entropies";
+VAR effective_channel_count "effective channel count";
+VAR sub_block "sub block";
+FUNC write_sub_block_header "write sub block header"
+"wavpack:write_sub_block_header";
+FUNC encode_wv_log2 "encode wv_log2"
+"wavpack:encode_wv_log2";
+write_sub_block_header(5, 0, effective_channel_count * 3 * 2);
+for c <- 0 to effective_channel_count {
+    encode_wv_log2(entropies[c][0]) -> write 16 signed;
+    encode_wv_log2(entropies[c][1]) -> write 16 signed;
+    encode_wv_log2(entropies[c][2]) -> write 16 signed;
+}
+return sub_block, 2 + effective_channel_count * 3 * 2;

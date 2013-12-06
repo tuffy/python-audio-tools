@@ -39,32 +39,25 @@ if decorrelation_term > 0 {
                                        decorrelation_delta,
                                        decorrelation_weights[1],
                                        decorrelation_samples[1]);
+} elif decorrelation_term == -1 {
+     decorrelated <- decorrelate_2ch_1(block_samples,
+                                       correlated,
+                                       decorrelation_delta,
+                                       decorrelation_weights,
+                                       decorrelation_samples);
+} elif decorrelation_term == -2 {
+     decorrelated <- decorrelate_2ch_2(block_samples,
+                                       correlated,
+                                       decorrelation_delta,
+                                       decorrelation_weights,
+                                       decorrelation_samples);
+} elif decorrelation_term == -3 {
+     decorrelated <- decorrelate_2ch_3(block_samples,
+                                       correlated,
+                                       decorrelation_delta,
+                                       decorrelation_weights,
+                                       decorrelation_samples);
 } else {
-    switch decorrelation_term {
-        case -1 {
-            decorrelated <- decorrelate_2ch_1(block_samples,
-                                              correlated,
-                                              decorrelation_delta,
-                                              decorrelation_weights,
-                                              decorrelation_samples);
-        }
-        case -2 {
-            decorrelated <- decorrelate_2ch_2(block_samples,
-                                              correlated,
-                                              decorrelation_delta,
-                                              decorrelation_weights,
-                                              decorrelation_samples);
-        }
-        case -3 {
-            decorrelated <- decorrelate_2ch_3(block_samples,
-                                              correlated,
-                                              decorrelation_delta,
-                                              decorrelation_weights,
-                                              decorrelation_samples);
-        }
-        default {
-            invalid_term();
-        }
-    }
+     invalid_term();
 }
 return decorrelated;
