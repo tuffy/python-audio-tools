@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "block samples, mid and side channels of signed sample data";
+INPUT "mid and side channels of signed sample data",block_samples;
 OUTPUT "left and right channels of signed sample data";
 VAR block_samples "block samples";
 VAR mid "mid";

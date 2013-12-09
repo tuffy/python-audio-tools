@@ -6,8 +6,8 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "2 channels of signed samples, the sample count, a correlation delta, a correlation weight per channel, a list of correlation sample values per channel";
-OUTPUT "2 channels of correlated samples, an updated correlation weight per channel, a list of updated correlation samples per channel";
+INPUT block_samples,channel,decorrelation_delta,weight,decorrelation_samples;
+OUTPUT correlated,weight,decorrelation_samples;
 VAR channel "channel";
 VAR block_samples "block samples";
 VAR correlated "correlated";

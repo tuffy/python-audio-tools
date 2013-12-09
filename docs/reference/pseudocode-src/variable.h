@@ -58,3 +58,17 @@ subscript_new(struct expression *expression, struct subscript* next);
 
 void
 subscript_free(struct subscript* subscript);
+
+
+struct code_io*
+new_code_io(code_io_t type,
+            char *string,
+            struct variablelist *variables);
+
+void
+code_io_output_latex(const struct code_io *self,
+                     const struct definitions *defs,
+                     FILE *output);
+
+void
+code_io_free(struct code_io *self);

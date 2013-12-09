@@ -7,7 +7,7 @@
 #San Francisco, California, 94105, USA.
 
 INPUT "WavPack file stream";
-OUTPUT "\"zero bits\", \"one bits\", \"duplicate bits\" as unsigned integers";
+OUTPUT zero_bits,one_bits,duplicate_bits;
 VAR sent_bits "sent bits";
 VAR zero_bits "zero bits";
 VAR one_bits "one bits";

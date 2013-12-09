@@ -245,6 +245,7 @@ wavpack/algorithms/correlate_2ch.tex \
 wavpack/algorithms/correlate_2ch_1.tex \
 wavpack/algorithms/correlate_2ch_2.tex \
 wavpack/algorithms/correlate_2ch_3.tex \
+wavpack/algorithms/flush_residual.tex \
 wavpack/decode.tex \
 wavpack/decode/terms.tex \
 wavpack/decode/weights.tex \

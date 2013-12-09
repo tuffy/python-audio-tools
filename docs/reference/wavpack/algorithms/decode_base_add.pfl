@@ -6,8 +6,8 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "median value m, 3 entropy values for given channel";
-OUTPUT "base and add values as unsigned integers, updated entropy values for channel";
+INPUT m[i],entropies;
+OUTPUT base,add,entropies;
 VAR entropies "entropy";
 VAR base "base";
 VAR add "add";

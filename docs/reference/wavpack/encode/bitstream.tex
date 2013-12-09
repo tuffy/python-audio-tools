@@ -197,78 +197,7 @@ $u_{i - 1} \leftarrow \hyperref[wavpack:flush_residual]{\FLUSH(u_{i - 2}~,~\text
 \subsubsection{\texttt{flush} Function}
 \label{wavpack:flush_residual}
 {\relsize{-1}
-  \ALGORITHM{$u_{i - 2}$, $\text{zeroes}_{i - 1}$, $m_{i - 1}$, $\text{offset}_{i - 1}$, $\text{add}_{i - 1}$, $\text{sign}_{i - 1}$, $m_i$}{$u_{i - 1}$}
-  \SetKwData{UNDEFINED}{undefined}
-  \SetKwData{ZEROES}{zeroes}
-  \SetKwData{OFFSET}{offset}
-  \SetKwData{ADD}{add}
-  \SetKwData{SIGN}{sign}
-  \SetKwFunction{UNARY}{unary}
-  \SetKwFunction{WRITERESIDUAL}{write\_residual}
-  \SetKw{AND}{and}
-  \SetKw{OR}{or}
-  \If{$\text{\ZEROES}_{i - 1} \neq \text{\UNDEFINED}$}{
-    write $\text{\ZEROES}_{i - 1}$ \hyperref[wavpack:write_egc]{in modified Elias gamma code}\;
-  }
-  \eIf{$m_{i - 1} \neq \text{\UNDEFINED}$}{
-    \tcc{calculate $\text{unary}_{i - 1}$ value for $m_{i - 1}$ based on $m_i$}
-    \uIf{$(m_{i - 1} > 0)$ \AND $(m_i > 0)$}{
-      \eIf{$(u_{i - 2} = \UNDEFINED)$ \OR $(u_{i - 2} \bmod 2 = 0)$}{
-        $u_{i - 1} \leftarrow (m_{i - 1} \times 2) + 1$\;
-      }{
-        $u_{i - 1} \leftarrow (m_{i - 1} \times 2) - 1$\;
-      }
-    }
-    \uElseIf{$(m_{i - 1} = 0)$ \AND $(m_i > 0)$}{
-      \eIf{$(u_{i - 2} = \UNDEFINED)$ \OR $(u_{i - 2} \bmod 2 = 1)$}{
-        $u_{i - 1} \leftarrow 1$\;
-      }{
-        $u_{i - 1} \leftarrow \UNDEFINED$\;
-      }
-    }
-    \uElseIf{$(m_{i - 1} > 0)$ \AND $(m_i = 0)$}{
-      \eIf{$(u_{i - 2} = \UNDEFINED)$ \OR $(u_{i - 2} \bmod 2 = 0)$}{
-        $u_{i - 1} \leftarrow m_{i - 1} \times 2$\;
-      }{
-        $u_{i - 1} \leftarrow (m_{i - 1} - 1) \times 2$\;
-      }
-    }
-    \ElseIf{$(m_{i - 1} = 0)$ \AND $(m_i = 0)$}{
-      \eIf{$(u_{i - 2} = \UNDEFINED)$ \OR $(u_{i - 2} \bmod 2 = 1)$}{
-        $u_{i - 1} \leftarrow 0$\;
-      }{
-        $u_{i - 1} \leftarrow \UNDEFINED$\;
-      }
-    }
-    \BlankLine
-    \tcc{write $\text{residual}_{i - 1}$ to disk using $\text{unary}_{i - 1}$}
-    \If{$u_{i - 1} \neq \UNDEFINED$}{
-      \eIf{$u_{i - 1} < 16$}{
-        $u_{i - 1} \rightarrow$ \WUNARY with stop bit 0\;
-      }{
-        $16 \rightarrow$ \WUNARY with stop bit 0\;
-        $u_{i - 1} - 16 \rightarrow$ \hyperref[wavpack:write_egc]{write in modified Elias gamma code}\;
-      }
-    }
-    \If{$\text{\ADD}_{i - 1} > 0$}{
-      $p \leftarrow \lfloor\log_2(\text{\ADD}_{i - 1})\rfloor$\;
-      $e \leftarrow 2 ^ {p + 1} - \text{\ADD}_{i - 1} - 1$\;
-      \eIf{$\text{\OFFSET}_{i - 1} < e$}{
-        $r \leftarrow \text{\OFFSET}_{i - 1}$\;
-        $r \rightarrow$ \WRITE $p$ unsigned bits\;
-      }{
-        $r \leftarrow \lfloor(\text{\OFFSET}_{i - 1} + e) \div 2\rfloor$\;
-        $b \leftarrow (\text{\OFFSET}_{i - 1} + e) \bmod 2$\;
-        $r \rightarrow$ \WRITE $p$ unsigned bits\;
-        $b \rightarrow$ \WRITE 1 unsigned bit\;
-      }
-    }
-    $\text{\SIGN}_{i - 1} \rightarrow$ \WRITE 1 unsigned bit\;
-  }{
-    $u_{i - 1} \leftarrow \text{\UNDEFINED}$\;
-  }
-  \Return $u_{i - 1}$\;
-  \EALGORITHM
+  \input{wavpack/algorithms/flush_residual}
 }
 
 \clearpage

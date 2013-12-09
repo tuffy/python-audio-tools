@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "WavPack file stream, channel count";
+INPUT "WavPack file stream",channel_count;
 OUTPUT "a list of 3 signed entropy value integers per channel";
 VAR entropy "entropy";
 VAR channel_count "channel count";

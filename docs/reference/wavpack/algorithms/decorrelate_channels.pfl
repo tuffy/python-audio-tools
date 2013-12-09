@@ -6,8 +6,10 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "block samples, channel count, a list of signed residuals per channel, decorrelation term count, a list of decorrelation terms and deltas, a decorrelation weight per term and channel, a list of decorrelation samples per term and channel";
-OUTPUT "a list of signed samples per channel";
+INPUT block_samples,channel_count,residuals,decorrelation_term_count,
+decorrelation_terms,decorrelation_deltas,decorrelation_weights,
+decorrelation_samples;
+OUTPUT "a list of decorrelated samples per channel";
 VAR block_samples "block samples";
 VAR channel_count "channel count";
 VAR decorrelation_term_count "term count";

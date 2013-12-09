@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "a WavPack file stream; block data size, block samples from block header; channel count determined from block header";
+INPUT "a WavPack file stream",block_data_size,block_samples,channel_count;
 OUTPUT "a set of decoding paramters";
 VAR block_data_size "block data size";
 VAR block_samples "block samples";

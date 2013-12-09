@@ -6,8 +6,8 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "WavPack file stream, number of block samples, channel count, list of three entropy variables for each channel";
-OUTPUT "a list of signed residual values per channel";
+INPUT "WavPack file stream",block_samples,channel_count,entropies;
+OUTPUT "residual";
 VAR block_samples "block samples";
 VAR channel_count "channel count";
 VAR undefined "undefined";

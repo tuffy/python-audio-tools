@@ -43,15 +43,16 @@ FILE *output_file = NULL;
 output_format_t output_format = OUT_LATEX;
 
 struct pseudocode {
-    char *input;
-    char *output;
+    struct code_io *input;
+    struct code_io *output;
     struct definitions definitions;
     struct statlist *statlist;
 };
 
 
 struct pseudocode*
-new_pseudocode(char *input, char *output,
+new_pseudocode(struct code_io *input,
+               struct code_io *output,
                struct vardef *vardef,
                struct funcdef *funcdef,
                struct statlist *statlist);
@@ -88,6 +89,8 @@ free_pseudocode(struct pseudocode *code);
 %token RETURN COMMA EOS ASSERT
 
 %type <code> pseudocode
+%type <code_io> input
+%type <code_io> output
 %type <vardef> vardef
 %type <funcdef> funcdef
 %type <statlist> statlist
@@ -109,6 +112,7 @@ free_pseudocode(struct pseudocode *code);
     char *float_;
     char *comment;
     struct pseudocode *code;
+    struct code_io *code_io;
     struct vardef *vardef;
     struct funcdef *funcdef;
     struct statlist *statlist;
@@ -125,14 +129,37 @@ free_pseudocode(struct pseudocode *code);
 
 %%
 
-pseudocode: INPUT STRING EOS OUTPUT STRING EOS vardef funcdef statlist {
-    struct pseudocode *code = new_pseudocode($2, $5, $7, $8, $9);
+pseudocode: input output vardef funcdef statlist {
+    struct pseudocode *code = new_pseudocode($1, $2, $3, $4, $5);
     switch (output_format) {
     case OUT_LATEX:
         output_pseudocode_latex(code, output_file);
         break;
     }
-    free_pseudocode(code);}
+    free_pseudocode(code);
+ }
+ ;
+
+input: INPUT STRING EOS                {
+    $$ = new_code_io(PSEUDOCODE_INPUT, $2, NULL);
+ }
+ | INPUT variablelist EOS              {
+    $$ = new_code_io(PSEUDOCODE_INPUT, NULL, $2);
+ }
+ | INPUT STRING COMMA variablelist EOS {
+    $$ = new_code_io(PSEUDOCODE_INPUT, $2, $4);
+ }
+ ;
+
+output: OUTPUT STRING EOS                {
+    $$ = new_code_io(PSEUDOCODE_OUTPUT, $2, NULL);
+ }
+ | OUTPUT variablelist EOS              {
+    $$ = new_code_io(PSEUDOCODE_OUTPUT, NULL, $2);
+ }
+ | OUTPUT STRING COMMA variablelist EOS {
+    $$ = new_code_io(PSEUDOCODE_OUTPUT, $2, $4);
+ }
  ;
 
 vardef:                               {$$ = NULL;}
@@ -464,7 +491,8 @@ void yyerror(char *s)
 }
 
 struct pseudocode*
-new_pseudocode(char *input, char *output,
+new_pseudocode(struct code_io *input,
+               struct code_io *output,
                struct vardef *vardef,
                struct funcdef *funcdef,
                struct statlist *statlist)
@@ -511,8 +539,8 @@ new_pseudocode(char *input, char *output,
 void
 free_pseudocode(struct pseudocode *code)
 {
-    free(code->input);
-    free(code->output);
+    code->input->free(code->input);
+    code->output->free(code->output);
     vardef_free(code->definitions.variables);
     funcdef_free(code->definitions.functions);
     code->statlist->free(code->statlist);
@@ -554,12 +582,12 @@ output_pseudocode_latex(const struct pseudocode *code, FILE *output)
         fprintf(output, "}\n");
     }
 
-    fprintf(output, "\\KwIn{");
-    escape_latex_curly_brackets(output, code->input);
-    fprintf(output, "}\n");
-    fprintf(output, "\\KwOut{");
-    escape_latex_curly_brackets(output, code->output);
-    fprintf(output, "}\n");
+    code->input->output_latex(code->input,
+                              &(code->definitions),
+                              output);
+    code->output->output_latex(code->output,
+                              &(code->definitions),
+                              output);
     fprintf(output, "\\BlankLine\n");
     code->statlist->output_latex(code->statlist,
                                  &(code->definitions),

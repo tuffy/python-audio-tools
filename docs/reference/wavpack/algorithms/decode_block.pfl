@@ -7,7 +7,7 @@
 #San Francisco, California, 94105, USA.
 
 INPUT "WavPack file stream";
-OUTPUT "channel count, final block, block index, block samples, total samples, 1 or 2 channels of block data";
+OUTPUT channel_count,final_block,block_index,block_samples,total_samples,block_channel;
 VAR channel_count "channel count";
 VAR initial_block "initial block";
 VAR final_block "final block";

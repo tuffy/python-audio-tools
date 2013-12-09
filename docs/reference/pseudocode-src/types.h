@@ -21,6 +21,24 @@
 *******************************************************/
 
 typedef enum {
+    PSEUDOCODE_INPUT,
+    PSEUDOCODE_OUTPUT
+} code_io_t;
+
+struct variablelist;
+struct definitions;
+
+struct code_io {
+    code_io_t type;
+    char *string;
+    struct variablelist *variables;
+    void (*output_latex)(const struct code_io *self,
+                         const struct definitions *defs,
+                         FILE *output);
+    void (*free)(struct code_io *self);
+};
+
+typedef enum {
     IO_UNSIGNED,
     IO_SIGNED,
     IO_BYTES

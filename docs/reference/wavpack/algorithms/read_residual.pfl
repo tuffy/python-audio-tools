@@ -6,8 +6,8 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "WavPack file, previous residual's unary value, entropy values for residual's channel";
-OUTPUT "a signed residual value, new unary value, updated entropy values for channel";
+INPUT "WavPack file", u[i - 1], entropies;
+OUTPUT residual, u[i], entropies;
 VAR undefined "undefined";
 VAR entropies "entropy";
 VAR base "base";

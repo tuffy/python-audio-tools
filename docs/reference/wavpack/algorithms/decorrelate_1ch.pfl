@@ -6,8 +6,9 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "block samples, a channel of correlated samples, a decorrelation term, a decorrelation delta, a decorrelation weight, a list of decorrelation samples";
-OUTPUT "a channel of decorrelated samples";
+INPUT block_samples,correlated,decorrelation_term,decorrelation_delta,
+decorrelation_weight,decorrelation_samples;
+OUTPUT decorrelated;
 VAR block_samples "block samples";
 VAR correlated "correlated";
 VAR decorrelated "decorrelated";

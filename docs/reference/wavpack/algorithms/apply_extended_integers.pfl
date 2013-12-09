@@ -6,7 +6,8 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "1 or 2 channels of shifted PCM data, \"zero bits\", \"one bits\", \"duplicate bits\" as unsigned integers, block samples, channel count";
+INPUT "1 or 2 channels of shifted PCM data",
+zero_bits, one_bits, duplicate_bits,block_samples,channel_count;
 OUTPUT "1 or 2 channels of un-shifted PCM data";
 VAR block_samples "block samples";
 VAR channel_count "channel count";

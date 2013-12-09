@@ -6,8 +6,11 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "1 or 2 channels of PCM data, channel count, sample count per channel; decorrelation term count, terms, deltas, weights and samples from previous block";
-OUTPUT "a WavPack block; decorrelation terms, weights and samples for next block";
+INPUT "1 or 2 channels of PCM data",
+channel_count,block_samples,
+decorrelation_term_count,decorrelation_terms,decorrelation_deltas,
+decorrelation_weights,decorrelation_samples;
+OUTPUT "a WavPack block",decorrelation_weights,decorrelation_samples;
 VAR channel "channel";
 VAR shifted "shifted";
 VAR mid_side "mid/side";

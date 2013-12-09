@@ -6,7 +6,8 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "WavPack file stream, sub block size, channel count from block header, decorrelation term count and decorrelation terms from terms sub-block";
+INPUT "WavPack file stream",sub_block_size,channel_count,
+decorrelation_term_count,decorrelation_terms;
 OUTPUT "a list of signed decorrelation samples per channel per decorrelation term";
 VAR sub_block_size "sub block size";
 VAR decorrelation_term_count "term count";

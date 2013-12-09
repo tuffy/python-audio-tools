@@ -212,3 +212,64 @@ subscript_free(struct subscript* subscript)
         free(subscript);
     }
 }
+
+
+struct code_io*
+new_code_io(code_io_t type,
+            char *string,
+            struct variablelist *variables)
+{
+    struct code_io *code_io = malloc(sizeof(struct code_io));
+    code_io->type = type;
+    code_io->string = string;
+    code_io->variables = variables;
+    code_io->output_latex = code_io_output_latex;
+    code_io->free = code_io_free;
+    return code_io;
+}
+
+void
+code_io_output_latex(const struct code_io *self,
+                     const struct definitions *defs,
+                     FILE *output)
+{
+    const char *string = self->string;
+    const struct variablelist *variables = self->variables;
+
+    switch (self->type) {
+    case PSEUDOCODE_INPUT:
+        fputs("\\KwIn{", output);
+        break;
+    case PSEUDOCODE_OUTPUT:
+        fputs("\\KwOut{", output);
+        break;
+    }
+    if (string != NULL) {
+        escape_latex_curly_brackets(output, string);
+        if (variables != NULL) {
+            fputs(", ", output);
+        }
+    }
+
+    for (; variables != NULL; variables = variables->next) {
+        const struct variable *variable = variables->variable;
+        fputs("$", output);
+        variable->output_latex(variable, defs, output);
+        fputs("$", output);
+        if (variables->next != NULL) {
+            fputs(", ", output);
+        }
+    }
+
+    fputs("}", output);
+}
+
+void
+code_io_free(struct code_io *self)
+{
+    free(self->string);
+    if (self->variables != NULL) {
+        self->variables->free(self->variables);
+    }
+    free(self);
+}

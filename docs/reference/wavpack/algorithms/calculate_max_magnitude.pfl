@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "1 or 2 channels of signed samples, the effective channel count, the number of samples in each channel";
+INPUT "1 or 2 channels of signed samples",channel_count,block_samples;
 OUTPUT "the maximum sample magnitude in bits as unsigned integer";
 VAR block_samples "block samples";
 VAR channel_count "channel count";

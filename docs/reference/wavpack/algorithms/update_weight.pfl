@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "a decorrelated sample, a correlated sample, decorrelation weight, decorrelation delta";
+INPUT decorrelated_sample,correlated,decorrelation_weight,decorrelation_delta;
 OUTPUT "an updated decorrelation weight value";
 VAR decorrelated_sample "decorrelated sample";
 VAR correlated "correlated sample";
