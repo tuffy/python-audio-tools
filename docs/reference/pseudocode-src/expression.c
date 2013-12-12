@@ -107,6 +107,12 @@ expression_output_latex_constant(const struct expression *self,
     case CONST_PI:
         fputs("\\pi", output);
         break;
+    case CONST_TRUE:
+        fputs("\\TRUE", output);
+        break;
+    case CONST_FALSE:
+        fputs("\\FALSE", output);
+        break;
     }
 }
 
@@ -148,7 +154,7 @@ expression_free_variable(struct expression *self)
 
 
 struct expression*
-expression_new_integer(long long integer)
+expression_new_integer(int_type_t integer)
 {
     struct expression *expression = malloc(sizeof(struct expression));
     expression->type = EXP_INTEGER;
@@ -164,7 +170,7 @@ expression_output_latex_integer(const struct expression *self,
                                 const struct definitions *defs,
                                 FILE *output)
 {
-    fprintf(output, "%lld", self->_.integer);
+    fprintf(output, int_type_format, self->_.integer);
 }
 
 void
@@ -175,7 +181,7 @@ expression_free_integer(struct expression *self)
 
 
 struct expression*
-expression_new_float(char *float_)
+expression_new_float(float_type_t float_)
 {
     struct expression *expression = malloc(sizeof(struct expression));
     expression->type = EXP_FLOAT;
@@ -192,15 +198,93 @@ expression_output_latex_float(const struct expression *self,
                               const struct definitions *defs,
                               FILE *output)
 {
-    const char *float_ = self->_.float_;
+    const float_type_t float_ = self->_.float_;
+    fprintf(output, float_type_format, float_);
     fputs(float_, output);
 }
 
 void
 expression_free_float(struct expression *self)
 {
-    char *float_ = self->_.float_;
+    float_type_t float_ = self->_.float_;
     free(float_);
+    free(self);
+}
+
+
+struct expression*
+expression_new_intlist(struct intlist *intlist)
+{
+    struct expression *expression = malloc(sizeof(struct expression));
+    expression->type = EXP_INTLIST;
+    expression->_.intlist = intlist;
+    expression->output_latex = expression_output_latex_intlist;
+    expression->is_tall = expression_isnt_tall;
+    expression->free = expression_free_intlist;
+    return expression;
+}
+
+void
+expression_output_latex_intlist(const struct expression *self,
+                                const struct definitions *defs,
+                                FILE *output)
+{
+    const struct intlist *intlist;
+
+    fputs("[", output);
+    for (intlist = self->_.intlist; intlist != NULL; intlist = intlist->next) {
+        const int_type_t integer = intlist->integer;
+        fprintf(output, int_type_format, integer);
+        if (intlist->next != NULL) {
+            fputs(", ", output);
+        }
+    }
+    fputs("]", output);
+}
+
+void
+expression_free_intlist(struct expression *self)
+{
+    intlist_free(self->_.intlist);
+    free(self);
+}
+
+struct expression*
+expression_new_floatlist(struct floatlist *floatlist)
+{
+    struct expression *expression = malloc(sizeof(struct expression));
+    expression->type = EXP_FLOATLIST;
+    expression->_.floatlist = floatlist;
+    expression->output_latex = expression_output_latex_floatlist;
+    expression->is_tall = expression_isnt_tall;
+    expression->free = expression_free_floatlist;
+    return expression;
+}
+
+void
+expression_output_latex_floatlist(const struct expression *self,
+                                  const struct definitions *defs,
+                                  FILE *output)
+{
+    const struct floatlist *floatlist;
+
+    fputs("[", output);
+    for (floatlist = self->_.floatlist;
+         floatlist != NULL;
+         floatlist = floatlist->next) {
+        const float_type_t float_ = floatlist->float_;
+        fprintf(output, float_type_format, float_);
+        if (floatlist->next != NULL) {
+            fputs(", ", output);
+        }
+    }
+    fputs("]", output);
+}
+
+void
+expression_free_floatlist(struct expression *self)
+{
+    floatlist_free(self->_.floatlist);
     free(self);
 }
 
@@ -214,7 +298,9 @@ expression_new_bytes(struct intlist *intlist)
     for (i = intlist; i != NULL; i = i->next) {
         if ((i->integer < 0) || (i->integer > 255)) {
             fprintf(stderr,
-                    "*** Error: byte value %d is out of range [0-255]\n",
+                    "*** Error: byte value "
+                    int_type_format
+                    " is out of range [0-255]\n",
                     i->integer);
             exit(1);
         }
@@ -254,7 +340,7 @@ expression_output_latex_bytes(const struct expression *self,
     } else {
         fprintf(output, "[");
         for (b = bytes; b != NULL; b = b->next) {
-            fprintf(output, "%d", b->integer);
+            fprintf(output, int_type_format, b->integer);
             if (b->next != NULL) {
                 fprintf(output, ", ");
             }
@@ -935,7 +1021,7 @@ expression_free_read_unary(struct expression *self)
 
 
 struct intlist*
-intlist_new(int integer, struct intlist *next)
+intlist_new(int_type_t integer, struct intlist *next)
 {
     struct intlist *intlist = malloc(sizeof(struct intlist));
     intlist->integer = integer;
@@ -949,5 +1035,25 @@ intlist_free(struct intlist *intlist)
     if (intlist != NULL) {
         intlist_free(intlist->next);
         free(intlist);
+    }
+}
+
+
+struct floatlist*
+floatlist_new(float_type_t float_, struct floatlist *next)
+{
+    struct floatlist *floatlist = malloc(sizeof(struct floatlist));
+    floatlist->float_ = float_;
+    floatlist->next = next;
+    return floatlist;
+}
+
+void
+floatlist_free(struct floatlist *floatlist)
+{
+    if (floatlist != NULL) {
+        floatlist_free(floatlist->next);
+        free(floatlist->float_);
+        free(floatlist);
     }
 }

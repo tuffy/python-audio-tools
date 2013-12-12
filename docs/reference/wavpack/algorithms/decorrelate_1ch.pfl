@@ -18,7 +18,6 @@ VAR decorrelation_delta "decorrelation delta";
 VAR decorrelation_weight "decorrelation weight";
 VAR decorrelation_samples "decorrelation samples";
 FUNC invalid_term "invalid decorrelation term";
-FUNC apply_weight "apply weight" "wavpack:apply_weight";
 FUNC update_weight "update weight" "wavpack:update_weight";
 if 17 <= decorrelation_term <= 18 {
     decorrelated[-2] <- decorrelation_samples[1] /*not returned*/;
@@ -31,9 +30,8 @@ if 17 <= decorrelation_term <= 18 {
             temp[i] <- 2 * decorrelated[i - 1] - decorrelated[i - 2];
         }
 
-        decorrelated[i] <- apply_weight(temp[i],
-                                        correlated[i],
-                                        decorrelation_weight);
+        decorrelated[i] <- floor((decorrelation_weight * temp[i] + 2 ^ 9) /
+                                 2 ^ 10) + correlated[i];
         decorrelation_weight <- update_weight(temp[i],
                                               correlated[i],
                                               decorrelation_weight,
@@ -45,9 +43,9 @@ if 17 <= decorrelation_term <= 18 {
             decorrelation_samples[i] /*not returned*/;
     }
     for i <- 0 to block_samples {
-        decorrelated[i] <- apply_weight(decorrelated[i - decorrelation_term],
-                                        correlated[i],
-                                        decorrelation_weight);
+        decorrelated[i] <- floor((decorrelation_weight *
+                                  decorrelated[i - decorrelation_term] +
+                                  2 ^ 9) / 2 ^ 10) + correlated[i];
         decorrelation_weight <- update_weight(
             decorrelated[i - decorrelation_term],
             correlated[i],

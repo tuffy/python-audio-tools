@@ -15,17 +15,16 @@ VAR decorrelated "decorrelated";
 VAR decorrelation_delta "decorrelation delta";
 VAR decorrelation_weights "decorrelation weights";
 VAR decorrelation_samples "decorrelation samples";
-FUNC apply_weight "apply weight" "wavpack:apply_weight";
 FUNC update_weight "update weight" "wavpack:update_weight";
 decorrelated[0][(-1)] <- decorrelation_samples[1][0] /*not returned*/;
 decorrelated[1][(-1)] <- decorrelation_samples[0][0] /*not returned*/;
 for i <- 0 to block_samples {
-    decorrelated[0][i] <- apply_weight(decorrelated[1][(i - 1)],
-                                       correlated[0][i],
-                                       decorrelation_weights[0]);
-    decorrelated[1][i] <- apply_weight(decorrelated[0][i],
-                                       correlated[1][i],
-                                       decorrelation_weights[1]);
+    decorrelated[0][i] <- floor((decorrelation_weights[0] *
+                                 decorrelated[1][(i - 1)] + 2 ^ 9) / 2 ^ 10) +
+                                 correlated[0][i];
+    decorrelated[1][i] <- floor((decorrelation_weights[1] *
+                                 decorrelated[0][i] + 2 ^ 9) / 2 ^ 10) +
+                                 correlated[1][i];
     decorrelation_weights[0] <- update_weight(
         decorrelated[1][(i - 1)],
         correlated[0][i],

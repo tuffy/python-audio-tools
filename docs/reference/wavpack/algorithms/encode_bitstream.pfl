@@ -1,0 +1,72 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT block_samples,effective_channel_count,entropies,correlated;
+OUTPUT bitstream,bitstream_length;
+VAR block_samples "block samples";
+VAR effective_channel_count "effective channel count";
+VAR entropies "entropies";
+VAR correlated "correlated";
+VAR undefined "undefined";
+VAR unary_undefined "unary undefined";
+VAR zeroes "zeroes";
+VAR offset "offset";
+VAR add "add";
+VAR sign "sign";
+VAR bitstream "encoded bitstream";
+VAR bitstream_length "bitstream length in bytes";
+FUNC encode_residual "encode residual" "wavpack:encode_residual";
+FUNC encode_zeroes "encode zeroes";
+FUNC flush_residual "flush residual" "wavpack:flush_residual";
+u[-2],zeroes[-1],m[-1],offset[-1],add[-1],sign[-1] <- undefined;
+for i <- 0 to effective_channel_count * block_samples {
+    c <- i % effective_channel_count;
+    s <- floor(i / effective_channel_count);
+
+    if m[i - 1] == undefined {
+        unary_undefined[i] <- true;
+    } elif (m[i - 1] == 0) and
+           (u[i - 2] != undefined) and
+           (u[i - 2] % 2 == 0) {
+        unary_undefined[i] <- true;
+    } else {
+        unary_undefined[i] <- false;
+    }
+    if (entropies[0][0] < 2) and
+       (entropies[1][0] < 2) and
+       unary_undefined[i] {
+       zeroes[i],m[i],offset[i],add[i],sign[i],entropies[c],u[i - 1] <-
+       encode_zeroes(correlated[c][s],
+                     entropies[c],
+                     u[i - 2],
+                     zeroes[i - 1],
+                     m[i - 1],
+                     offset[i - 1],
+                     add[i - 1],
+                     sign[i - 1]);
+    } else {
+        zeroes[i] <- undefined;
+        m[i],offset[i],add[i],sign[i],entropies[c] <-
+        encode_residual(correlated[c][s], entropies[c]);
+        u[i - 1] <- flush_residual(u[i - 2],
+                                   zeroes[i - 1],
+                                   m[i - 1],
+                                   offset[i - 1],
+                                   add[i - 1],
+                                   sign[i - 1],
+                                   m[i]);
+    }
+}
+u[i - 1] <- flush_residual(u[i - 2],
+                           zeroes[i - 1],
+                           m[i - 1],
+                           offset[i - 1],
+                           add[i - 1],
+                           sign[i - 1],
+                           0);
+return bitstream,bitstream_length;

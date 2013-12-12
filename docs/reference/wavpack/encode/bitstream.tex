@@ -6,124 +6,23 @@
 %171 Second Street, Suite 300,
 %San Francisco, California, 94105, USA.
 
-\subsection{Encoding Bitstream}
+\subsection{Writing Bitstream}
 \label{wavpack:write_bitstream}
-{\relsize{-1}
-\ALGORITHM{channel count, entropy values, a list of signed residual values per channel}{bitstream sub block data}
-\SetKwData{UNDEFINED}{undefined}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{ENTROPY}{entropy}
-\SetKwData{BLOCKSAMPLES}{block samples}
-\SetKwData{CHANNELCOUNT}{channel count}
-\SetKwData{ZEROES}{zeroes}
-\SetKwData{OFFSET}{offset}
-\SetKwData{ADD}{add}
-\SetKwData{SIGN}{sign}
-\SetKw{AND}{and}
-\SetKw{OR}{or}
-\SetKw{IS}{is}
-\SetKwFunction{FLUSH}{flush}
-\SetKwFunction{UNARYUNDEFINED}{unary\_undefined}
-\SetKwFunction{ENCODERESIDUAL}{encode\_residual}
-\SetKwFunction{UNARY}{unary}
-\SetKwFunction{WRITERESIDUAL}{write\_residual}
-$u_{(-2)} \leftarrow \text{\UNDEFINED}$\;
-$\text{\ZEROES}_{(-1)} \leftarrow m_{(-1)} \leftarrow \text{\OFFSET}_{(-1)} \leftarrow \text{\ADD}_{(-1)} \leftarrow \text{\SIGN}_{(-1)} \leftarrow \text{\UNDEFINED}$\tcc*[r]{buffered $\text{residual}_{i - 1}$}
-$i \leftarrow 0$\;
-\BlankLine
-\While{$i < (\text{\BLOCKSAMPLES} \times \text{\CHANNELCOUNT})$}{
-  $c \leftarrow i \bmod \text{\CHANNELCOUNT}$\;
-  $r_i \leftarrow \text{\RESIDUAL}_{c~\lfloor i \div \text{\CHANNELCOUNT}\rfloor}$\;
-  \eIf{$(\text{\ENTROPY}_{0~0} < 2)$ \AND $(\text{\ENTROPY}_{1~0} < 2)$ \AND $\UNARYUNDEFINED(u_{i - 2}~,~m_{i - 1})$}{
-    \eIf(\tcc*[f]{in a block of zeroes}){$(\text{\ZEROES}_{i - 1} \neq \text{\UNDEFINED})$ \AND $(m_{i - 1} = \text{\UNDEFINED})$}{
-      \eIf(\tcc*[f]{continue block of zeroes}){$r_i = 0$}{
-        $\text{\ZEROES}_i \leftarrow \text{\ZEROES}_{i - 1} + 1$\;
-        $(u_{i - 1}~,~m_i~,~\text{\OFFSET}_i~,~\text{\ADD}_i~,~\text{\SIGN}_i) \leftarrow (u_{i - 2}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1})$\;
-      }(\tcc*[f]{end block of zeroes}){
-        $\text{\ZEROES}_i \leftarrow \text{\ZEROES}_{i - 1}$\;
-        $\left.\begin{tabular}{r}
-          $m_i$ \\
-          $\text{\OFFSET}_i$ \\
-          $\text{\ADD}_i$ \\
-          $\text{\SIGN}_i$ \\
-          $\text{\ENTROPY}'_{c}$ \\
-        \end{tabular}\right\rbrace \leftarrow
-        \hyperref[wavpack:encode_residual]{\ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{c})}$\;
-      }
-    }(\tcc*[f]{start a new block of zeroes}){
-      \eIf{$r_i = 0$}{
-        $\text{\ZEROES}_i \leftarrow 1$\;
-        $m_i \leftarrow \text{\OFFSET}_i \leftarrow \text{\ADD}_i \leftarrow \text{\SIGN}_i \leftarrow \text{\UNDEFINED}$\;
-        $u_{i - 1} \leftarrow \hyperref[wavpack:flush_residual]{\FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~0)}$\;
-        $\text{\ENTROPY}_{0~0} \leftarrow \text{\ENTROPY}_{0~1} \leftarrow \text{\ENTROPY}_{0~2} \leftarrow \text{\ENTROPY}_{1~0} \leftarrow \text{\ENTROPY}_{1~1} \leftarrow \text{\ENTROPY}_{1~2} \leftarrow 0$\;
-      }(\tcc*[f]{false-alarm block of zeroes}){
-        $\text{\ZEROES}_i \leftarrow 0$\;
-        $\left.\begin{tabular}{r}
-          $m_i$ \\
-          $\text{\OFFSET}_i$ \\
-          $\text{\ADD}_i$ \\
-          $\text{\SIGN}_i$ \\
-          $\text{\ENTROPY}'_{c}$ \\
-        \end{tabular}\right\rbrace \leftarrow
-        \hyperref[wavpack:encode_residual]{\ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{c})}$\;
-        $u_{i - 1} \leftarrow \hyperref[wavpack:flush_residual]{\FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~m_i)}$\;
-      }
-    }
-  }(\tcc*[f]{encode regular residual}){
-    $\text{\ZEROES}_i \leftarrow \text{\UNDEFINED}$\;
-    $\left.\begin{tabular}{r}
-      $m_i$ \\
-      $\text{\OFFSET}_i$ \\
-      $\text{\ADD}_i$ \\
-      $\text{\SIGN}_i$ \\
-      $\text{\ENTROPY}'_{c}$ \\
-    \end{tabular}\right\rbrace \leftarrow
-    \hyperref[wavpack:encode_residual]{\ENCODERESIDUAL(r_i~,~\text{\ENTROPY}_{c})}$\;
-    $u_{i - 1} \leftarrow \hyperref[wavpack:flush_residual]{\FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~m_i)}$\;
-  }
-  $i \leftarrow i + 1$\;
-}
-\BlankLine
-\tcc{flush final residual}
-$u_{i - 1} \leftarrow \hyperref[wavpack:flush_residual]{\FLUSH(u_{i - 2}~,~\text{\ZEROES}_{i - 1}~,~m_{i - 1}~,~\text{\OFFSET}_{i - 1}~,~\text{\ADD}_{i - 1}~,~\text{\SIGN}_{i - 1}~,~0)}$\;
-\BlankLine
-\Return encoded bitstream sub block\;
-\EALGORITHM
+\input{wavpack/algorithms/write_bitstream}
 
 \clearpage
 
-\subsubsection{\texttt{unary\_undefined} Function}
-\ALGORITHM{$u_{i - 2}$, $m_{i - 1}$}{whether $u_{i - 1}$ is defined}
-\SetKw{AND}{and}
-\SetKw{IS}{is}
-\SetKw{NOT}{not}
-\SetKwData{TRUE}{true}
-\SetKwData{FALSE}{false}
-\SetKwData{UNDEFINED}{undefined}
-\uIf{$m_{i - 1} = \text{\UNDEFINED}$}{
-  \Return \TRUE\tcc*[r]{$u_{i - 1}$ \IS \UNDEFINED}
+\subsection{Encoding Bitstream}
+\label{wavpack:encode_bitstream}
+{\relsize{-1}
+  \input{wavpack/algorithms/encode_bitstream}
 }
-\uElseIf{$(m_{i - 1} = 0)$ \AND $(u_{i - 2} \neq \UNDEFINED)$ \AND $(u_{i - 2} \bmod 2 = 0)$}{
-  \Return \TRUE\tcc*[r]{$u_{i - 1}$ \IS \UNDEFINED}
-}
-\Else{
-  \Return \FALSE\tcc*[r]{$u_{i - 1}$ \IS \NOT \UNDEFINED}
-}
-\EALGORITHM
-}
+
+\clearpage
 
 \subsubsection{Writing Modified Elias Gamma Code}
 \label{wavpack:write_egc}
-\ALGORITHM{a non-negative integer value}{an encoded value}
-\eIf{$v \leq 1$}{
-  $v \rightarrow$ \WUNARY with stop bit 0\;
-}{
-  $t \leftarrow \lfloor\log_2(v)\rfloor + 1$\;
-  $t \rightarrow$ \WUNARY with stop bit 0\;
-  $v \bmod 2 ^ {t - 1} \rightarrow$ \WRITE $(t - 1)$ unsigned bits\;
-}
-\Return encoded value\;
-\EALGORITHM
+\input{wavpack/algorithms/write_egc}
 
 \begin{figure}[h]
   \includegraphics{wavpack/figures/residuals.pdf}
@@ -134,62 +33,7 @@ $u_{i - 1} \leftarrow \hyperref[wavpack:flush_residual]{\FLUSH(u_{i - 2}~,~\text
 \subsubsection{\texttt{encode\_residual} Function}
 \label{wavpack:encode_residual}
 {\relsize{-1}
-  \ALGORITHM{signed residual value, entropy variables for channel}{$\text{m}_i$, $\text{offset}_i$, $\text{add}_i$, $\text{sign}_i$; updated entropy values}
-  \SetKwData{RESIDUAL}{residual}
-  \SetKwData{UNSIGNED}{unsigned}
-  \SetKwData{SIGN}{sign}
-  \SetKwData{ENTROPY}{entropy}
-  \SetKwData{MEDIAN}{median}
-  \SetKwData{MED}{m}
-  \SetKwData{ADD}{add}
-  \SetKwData{OFFSET}{offset}
-  \eIf{$\RESIDUAL \geq 0$}{
-    $\UNSIGNED \leftarrow \RESIDUAL$\;
-    $\text{\SIGN}_i \leftarrow 0$\;
-  }{
-    $\UNSIGNED \leftarrow -\RESIDUAL - 1$\;
-    $\text{\SIGN}_i \leftarrow 1$\;
-  }
-  $\text{\MEDIAN}_{c~0} \leftarrow \lfloor\text{\ENTROPY}_{c~0} \div 2 ^ 4\rfloor + 1$\;
-  $\text{\MEDIAN}_{c~1} \leftarrow \lfloor\text{\ENTROPY}_{c~1} \div 2 ^ 4\rfloor + 1$\;
-  $\text{\MEDIAN}_{c~2} \leftarrow \lfloor\text{\ENTROPY}_{c~2} \div 2 ^ 4\rfloor + 1$\;
-  \uIf{$\UNSIGNED < \text{\MEDIAN}_{c~0}$}{
-    $\text{\MED}_i \leftarrow 0$\;
-    $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED}$\tcc*[r]{offset is unsigned - base}
-    $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~0} - 1$\;
-    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} - \lfloor(\text{\ENTROPY}_{c~0} + 126) \div 128\rfloor \times 2$\;
-  }
-  \uElseIf{$(\UNSIGNED - \text{\MEDIAN}_{c~0}) < \text{\MEDIAN}_{c~1}$}{
-    $\text{\MED}_i \leftarrow 1$\;
-    $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED} - \text{\MEDIAN}_{c~0}$\;
-    $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~1} - 1$\;
-    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
-    $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} - \lfloor(\text{\ENTROPY}_{c~1} + 62) \div 64\rfloor \times 2$\;
-  }
-  \uElseIf{$(\UNSIGNED - (\text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1})) < \text{\MEDIAN}_{c~2}$}{
-    $\text{\MED}_i \leftarrow 2$\;
-    $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED} - (\text{\MEDIAN}_{c~0} + \text{\ENTROPY}_{c~1})$\;
-    $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~2} - 1$\;
-    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
-    $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 64\rfloor \times 5$\;
-    $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} - \lfloor(\text{\ENTROPY}_{c~2} + 30) \div 32\rfloor \times 2$\;
-  }
-  \Else{
-    $\text{\MED}_i \leftarrow \lfloor(\UNSIGNED - (\text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1})) \div \text{\MEDIAN}_{c~2}\rfloor + 2$\;
-    $\text{\OFFSET}_i \leftarrow \text{\UNSIGNED} - (\text{\MEDIAN}_{c~0} + \text{\MEDIAN}_{c~1} + ((\text{\MED}_i - 2) \times \text{\MEDIAN}_{c~2}))$\;
-    $\text{\ADD}_i \leftarrow \text{\MEDIAN}_{c~2} - 1$\;
-    $\text{\ENTROPY}_{c~0} \leftarrow \text{\ENTROPY}_{c~0} + \lfloor(\text{\ENTROPY}_{c~0} + 128) \div 128\rfloor \times 5$\;
-    $\text{\ENTROPY}_{c~1} \leftarrow \text{\ENTROPY}_{c~1} + \lfloor(\text{\ENTROPY}_{c~1} + 64) \div 64\rfloor \times 5$\;
-    $\text{\ENTROPY}_{c~2} \leftarrow \text{\ENTROPY}_{c~2} + \lfloor(\text{\ENTROPY}_{c~2} + 32) \div 32\rfloor \times 5$\;
-  }
-  \Return $\left\lbrace\begin{tabular}{l}
-  $\text{\MED}_i$ \\
-  $\text{\OFFSET}_i$ \\
-  $\text{\ADD}_i$ \\
-  $\text{\SIGN}_i$ \\
-  $\text{\ENTROPY}_c$ \\
-  \end{tabular}\right.$\;
-  \EALGORITHM
+  \input{wavpack/algorithms/encode_residual}
 }
 
 \clearpage
@@ -198,6 +42,14 @@ $u_{i - 1} \leftarrow \hyperref[wavpack:flush_residual]{\FLUSH(u_{i - 2}~,~\text
 \label{wavpack:flush_residual}
 {\relsize{-1}
   \input{wavpack/algorithms/flush_residual}
+}
+
+\clearpage
+
+\subsubsection{\texttt{encode\_zeroes} Function}
+\label{wavpack:encode_zeroes}
+{\relsize{-1}
+  \input{wavpack/algorithms/encode_zeroes}
 }
 
 \clearpage

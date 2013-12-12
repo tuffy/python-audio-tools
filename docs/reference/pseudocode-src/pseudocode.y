@@ -4,6 +4,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <errno.h>
+#include "types.h"
 #include "variable.h"
 #include "statement.h"
 #include "expression.h"
@@ -27,7 +28,6 @@
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
-
 
 typedef enum {
     OUT_LATEX
@@ -72,7 +72,7 @@ free_pseudocode(struct pseudocode *code);
 %left CARAT
 
 %token INPUT OUTPUT VAR FUNC BREAK FRAC CEIL FLOOR SUM
-%token INFINITY PI
+%token INFINITY PI TRUE FALSE
 %token LOG SIN COS TAN
 %token <string> STRING
 %token <identifier> IDENTIFIER
@@ -103,6 +103,7 @@ free_pseudocode(struct pseudocode *code);
 %type <expressionlist> expressionlist
 %type <subscript> subscript
 %type <intlist> intlist
+%type <floatlist> floatlist
 %type <comment> comment
 
 %union {
@@ -124,6 +125,7 @@ free_pseudocode(struct pseudocode *code);
     struct expression *expression;
     struct expressionlist *expressionlist;
     struct intlist *intlist;
+    struct floatlist *floatlist;
     struct subscript *subscript;
 }
 
@@ -310,9 +312,13 @@ subscript: OPEN_BRACKET expression CLOSE_BRACKET {
 expression: variable  {$$ = expression_new_variable($1);}
  | INTEGER            {$$ = expression_new_integer($1);}
  | FLOAT              {$$ = expression_new_float($1);}
+ | OPEN_BRACKET intlist CLOSE_BRACKET {$$ = expression_new_intlist($2);}
+ | OPEN_BRACKET floatlist CLOSE_BRACKET {$$ = expression_new_floatlist($2);}
  | INFINITY           {$$ = expression_new_constant(CONST_INFINITY);}
  | PI                 {$$ = expression_new_constant(CONST_PI);}
- | OPEN_BRACKET intlist CLOSE_BRACKET {$$ = expression_new_bytes($2);}
+ | TRUE               {$$ = expression_new_constant(CONST_TRUE);}
+ | FALSE              {$$ = expression_new_constant(CONST_FALSE);}
+ | BYTES OPEN_PAREN intlist CLOSE_PAREN {$$ = expression_new_bytes($3);}
  | OPEN_PAREN expression CLOSE_PAREN {
      $$ = expression_new_wrapped(WRAP_PARENTHESIZED, $2);}
  | OPEN_CURLYBRACE expression CLOSE_CURLYBRACE {$$ = $2;}
@@ -391,8 +397,12 @@ expressionlist: expression         {$$ = expressionlist_new($1, NULL);}
  | expression COMMA expressionlist {$$ = expressionlist_new($1, $3);}
  ;
 
-intlist: INTEGER  {$$ = intlist_new($1, NULL);}
+intlist: INTEGER         {$$ = intlist_new($1, NULL);}
  | INTEGER COMMA intlist {$$ = intlist_new($1, $3);}
+ ;
+
+floatlist: FLOAT         {$$ = floatlist_new($1, NULL);}
+ | FLOAT COMMA floatlist {$$ = floatlist_new($1, $3);}
  ;
 
 %%
@@ -568,6 +578,8 @@ output_pseudocode_latex(const struct pseudocode *code, FILE *output)
     fprintf(output, "\\SetKw{OR}{or}\n");
     fprintf(output, "\\SetKw{NOT}{not}\n");
     fprintf(output, "\\SetKw{BREAK}{break}\n");
+    fprintf(output, "\\SetKw{TRUE}{true}\n");
+    fprintf(output, "\\SetKw{FALSE}{false}\n");
     fprintf(output, "\\SetKwRepeat{Repeat}{repeat}{while}\n");
 
     /*setup variables*/

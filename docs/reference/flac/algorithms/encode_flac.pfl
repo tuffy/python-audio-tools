@@ -32,7 +32,7 @@ min_frame_size <- 16777215 /*largest unsigned 24-bit value*/;
 max_frame_size <- 0;
 total_pcm_frames <- 0;
 stream_md5 <- initialize_stream_md5();
-[102, 76, 97, 67] -> write 4 bytes;
+bytes(102, 76, 97, 67) -> write 4 bytes;
 write_metadata(block_size, min_frame_size, max_frame_size, total_pcm_frames, stream_md5);
 channels,pcm_frames <- read_frame(block_size);
 while pcm_frames > 0 {

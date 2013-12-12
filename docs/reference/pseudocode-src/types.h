@@ -20,6 +20,12 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+typedef long long int_type_t;
+typedef char* float_type_t;
+
+#define int_type_format "%lld"
+#define float_type_format "%s"
+
 typedef enum {
     PSEUDOCODE_INPUT,
     PSEUDOCODE_OUTPUT
@@ -93,6 +99,8 @@ typedef enum {
     EXP_VARIABLE,
     EXP_INTEGER,
     EXP_FLOAT,
+    EXP_INTLIST,
+    EXP_FLOATLIST,
     EXP_BYTES,
     EXP_WRAPPED,
     EXP_FUNCTION,
@@ -110,7 +118,9 @@ typedef enum {
 
 typedef enum {
     CONST_INFINITY,
-    CONST_PI
+    CONST_PI,
+    CONST_TRUE,
+    CONST_FALSE
 } const_t;
 
 typedef enum {
@@ -153,8 +163,10 @@ struct expression {
     expression_t type;
     union {
         struct variable *variable;
-        long long integer;
-        char *float_;
+        int_type_t integer;
+        float_type_t float_;
+        struct intlist *intlist;
+        struct floatlist *floatlist;
         struct intlist *bytes;
         struct {
             wrap_type_t wrapper;
@@ -375,8 +387,13 @@ struct caselist {
 };
 
 struct intlist {
-    int integer;
+    int_type_t integer;
     struct intlist *next;
+};
+
+struct floatlist {
+    float_type_t float_;
+    struct floatlist *next;
 };
 
 #define ITEMS_PER_COLUMN 5

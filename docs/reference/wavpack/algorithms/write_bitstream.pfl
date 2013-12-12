@@ -1,0 +1,28 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT block_samples,effective_channel_count,entropies,correlated;
+OUTPUT "a bitstream sub block, the sub block size";
+VAR block_samples "block samples";
+VAR effective_channel_count "effective channel count";
+VAR entropies "entropies";
+VAR correlated "correlated";
+VAR sub_block "sub block";
+VAR bitstream_length "bitstream length in bytes";
+FUNC write_sub_block_header "write sub block header"
+"wavpack:write_sub_block_header";
+FUNC encode_bitstream "encode bitstream" "wavpack:encode_bitstream";
+sub_block,bitstream_length <-
+encode_bitstream(block_samples,effective_channel_count,entropies,correlated);
+write_sub_block_header(10, 0, bitstream_length);
+if bitstream_length > (255 * 2) {
+    return sub_block,4 + bitstream_length;
+} else {
+    return sub_block,2 + bitstream_length;
+}
+

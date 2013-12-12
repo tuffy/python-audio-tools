@@ -85,6 +85,8 @@ extract_comment(const char *token)
 "sin"                   {return SIN;}
 "cos"                   {return COS;}
 "tan"                   {return TAN;}
+"true"                  {return TRUE;}
+"false"                 {return FALSE;}
 "<-"                    {return ASSIGN_IN;}
 "->"                    {return ASSIGN_OUT;}
 "["                     {return OPEN_BRACKET;}

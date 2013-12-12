@@ -37,7 +37,7 @@ VAR reserved "reserved";
 VAR CRC "CRC";
 FUNC decode_sample_rate "decode sample rate" "wavpack:decode_sample_rate";
 block_ID <- read 4 bytes;
-assert block_ID == [119, 118, 112, 107];
+assert block_ID == bytes(119, 118, 112, 107);
 block_data_size <- (read 32 unsigned) - 24;
 version <- read 16 unsigned;
 track_number <- read 8 unsigned;

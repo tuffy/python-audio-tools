@@ -1,0 +1,83 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "PCM frames, stream parameters such as channel count, bits-per-sample and total number of PCM frames, block size, number of correlation passes (either 0, 1, 2, 5, 10 or 16)";
+OUTPUT "an encoded WavPack file";
+VAR bits_per_sample "bits-per-sample";
+VAR sample_rate "sample rate";
+VAR channel_count "channel count";
+VAR correlation_passes "correlation passes";
+VAR block_size "block size";
+VAR block_index "block index";
+VAR block_channel_count "block channel count";
+VAR channels "channels";
+VAR pcm_frames "PCM frames";
+VAR initial_block "initial block";
+VAR final_block "final block";
+VAR wavpack_file "WavPack file";
+VAR decorrelation_term_count "term count";
+VAR decorrelation_terms "terms";
+VAR decorrelation_deltas "deltas";
+VAR decorrelation_weights "weights";
+VAR decorrelation_samples "samples";
+VAR block_channels "block channels";
+VAR total_pcm_frames "total PCM frames";
+VAR cross_channel_decorrelation "channel decorrelation";
+VAR wavpack_block "WavPack block";
+FUNC read_pcm_frames "read PCM frames from input";
+FUNC encoding_parameters "determine encoding parameters"
+"wavpack:encoding_parameters";
+FUNC split_channels "split channels into left/right pairs";
+FUNC encode_block "encode WavPack block" "wavpack:encode_block";
+FUNC roundtrip_weights "roundtrip weights"
+"wavpack:roundtrip_weights";
+FUNC roundtrip_samples "roundtrip samples"
+"wavpack:roundtrip_samples";
+cross_channel_decorrelation,
+decorrelation_term_count,
+decorrelation_terms,
+decorrelation_deltas,
+decorrelation_weights,
+decorrelation_samples <- encoding_parameters(channel_count,
+                                             correlation_passes);
+block_index <- 0;
+channels,pcm_frames <- read_pcm_frames(block_size);
+while pcm_frames > 0 {
+    block_channel_count,block_channels,initial_block,final_block <-
+    split_channels(channel_count);
+    wavpack_block,
+    decorrelation_weights,
+    decorrelation_samples <- encode_block(
+        block_channels,
+        total_pcm_frames,
+        block_index,
+        bits_per_sample,
+        sample_rate,
+        block_channel_count,
+        pcm_frames,
+        cross_channel_decorrelation,
+        initial_block,
+        final_block,
+        decorrelation_term_count,
+        decorrelation_terms,
+        decorrelation_deltas,
+        decorrelation_weights,
+        decorrelation_samples);
+    decorrelation_weights <- roundtrip_weights(
+        block_channels,
+        decorrelation_term_count,
+        decorrelation_weights);
+    decorrelation_samples <- roundtrip_samples(
+        block_channels,
+        decorrelation_term_count,
+        decorrelation_terms,
+        decorrelation_samples);
+    block_index <- block_index + pcm_frames;
+    channels,pcm_frames <- read_pcm_frames(block_size);
+}
+return wavpack_file;

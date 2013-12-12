@@ -7,14 +7,32 @@
 #San Francisco, California, 94105, USA.
 
 INPUT "1 or 2 channels of PCM data",
-channel_count,block_samples,
-decorrelation_term_count,decorrelation_terms,decorrelation_deltas,
-decorrelation_weights,decorrelation_samples;
+total_samples,
+block_index,
+bits_per_sample,
+sample_rate,
+channel_count,
+block_samples,
+cross_channel_decorrelation,
+initial_block,
+final_block,
+decorrelation_term_count,
+decorrelation_terms,
+decorrelation_deltas,
+decorrelation_weights,
+decorrelation_samples;
 OUTPUT "a WavPack block",decorrelation_weights,decorrelation_samples;
+VAR bits_per_sample "bits-per-sample";
+VAR sample_rate "sample rate";
+VAR initial_block "initial block";
+VAR final_block "final block";
+VAR block_index "block index";
+VAR total_samples "total samples";
 VAR channel "channel";
 VAR shifted "shifted";
 VAR mid_side "mid/side";
 VAR block_samples "block samples";
+VAR cross_channel_decorrelation "cross-channel decorrelation";
 VAR channel_count "channel count";
 VAR mono_output "mono output";
 VAR false_stereo "false stereo";
@@ -32,6 +50,7 @@ VAR decorrelation_terms "terms";
 VAR decorrelation_deltas "deltas";
 VAR decorrelation_weights "weights";
 VAR decorrelation_samples "samples";
+VAR wavpack_block "WavPack block";
 FUNC calculate_maximum_magnitude "calculate maximum magnitude"
 "wavpack:calc_maximum_magnitude";
 FUNC calculate_wasted_bps "calculated wasted bits-per-sample"
@@ -40,7 +59,7 @@ FUNC apply_joint_stereo "apply joint stereo"
 "wavpack:calc_joint_stereo";
 FUNC write_block_parameters "write block parameters"
 "wavpack:write_block_parameters";
-FUNC write_block_header "write block header";
+FUNC write_block_header "write block header" "wavpack:write_block_header";
 if (channel_count == 1) or (channel[0] == channel[1]) {
     if channel_count == 1 {
         mono_output <- 1;
@@ -87,14 +106,18 @@ decorrelation_samples <- write_block_parameters(
     decorrelation_samples);
 total_sub_block_size <- sum i <- 0 to sub_block_count - 1 {sub_block_size[i]};
 write_block_header(total_sub_block_size,
-                   block_samples,
                    total_samples,
                    block_index,
+                   block_samples,
+                   bits_per_sample,
                    mono_output,
-                   maximum_magnitude,
-                   wasted_bps,
+                   effective_channel_count == 2,
+                   cross_channel_decorrelation,
+                   wasted_bps > 0,
                    initial_block,
                    final_block,
+                   maximum_magnitude,
+                   sample_rate,
                    false_stereo,
                    CRC);
 for i <- 0 to sub_block_count {

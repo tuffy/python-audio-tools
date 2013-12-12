@@ -64,7 +64,7 @@ expression_free_variable(struct expression *self);
 
 
 struct expression*
-expression_new_integer(long long integer);
+expression_new_integer(int_type_t integer);
 
 void
 expression_output_latex_integer(const struct expression *self,
@@ -76,7 +76,7 @@ expression_free_integer(struct expression *self);
 
 
 struct expression*
-expression_new_float(char *float_);
+expression_new_float(float_type_t float_);
 
 void
 expression_output_latex_float(const struct expression *self,
@@ -85,6 +85,29 @@ expression_output_latex_float(const struct expression *self,
 
 void
 expression_free_float(struct expression *self);
+
+
+struct expression*
+expression_new_intlist(struct intlist *intlist);
+
+void
+expression_output_latex_intlist(const struct expression *self,
+                                const struct definitions *defs,
+                                FILE *output);
+
+void
+expression_free_intlist(struct expression *self);
+
+struct expression*
+expression_new_floatlist(struct floatlist *floatlist);
+
+void
+expression_output_latex_floatlist(const struct expression *self,
+                                  const struct definitions *defs,
+                                  FILE *output);
+
+void
+expression_free_floatlist(struct expression *self);
 
 
 struct expression*
@@ -284,7 +307,14 @@ expression_free_read_unary(struct expression *self);
 
 
 struct intlist*
-intlist_new(int integer, struct intlist *next);
+intlist_new(int_type_t integer, struct intlist *next);
 
 void
 intlist_free(struct intlist *intlist);
+
+
+struct floatlist*
+floatlist_new(float_type_t float_, struct floatlist *next);
+
+void
+floatlist_free(struct floatlist *floatlist);

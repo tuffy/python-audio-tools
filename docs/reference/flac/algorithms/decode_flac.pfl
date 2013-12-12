@@ -26,7 +26,7 @@ FUNC initialize_stream_md5 "initialize stream MD5";
 FUNC decode_frame "decode FLAC frame" "flac:decode_frame";
 FUNC update_md5 "update stream MD5" "flac:update_md5";
 header <- read 4 bytes;
-assert header == [102, 76, 97, 67];
+assert header == bytes(102, 76, 97, 67);
 min_block_size,max_block_size,min_frame_size,max_frame_size,
 sample_rate,channels,bps,total_frames,md5 <- read_metadata();
 stream_md5 <- initialize_stream_md5();

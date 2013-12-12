@@ -1,0 +1,59 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT total_sub_block_size, total_samples, block_index, block_samples,
+bits_per_sample, mono_output, joint_stereo, cross_channel_decorrelation,
+extended_integers, initial_block, final_block, maximum_magnitude, sample_rate,
+false_stereo,CRC;
+OUTPUT "a WavPack block header";
+VAR total_sub_block_size "total sub block size";
+VAR total_samples "total samples";
+VAR block_index "block index";
+VAR block_samples "block samples";
+VAR bits_per_sample "bits-per-sample";
+VAR mono_output "mono output";
+VAR joint_stereo "joint stereo";
+VAR cross_channel_decorrelation "cross-channel decorrelation";
+VAR extended_integers "extended integers";
+VAR initial_block "initial block";
+VAR final_block "final block";
+VAR maximum_magnitude "maximum magnitude";
+VAR sample_rate "sample rate";
+VAR false_stereo "false stereo";
+VAR CRC "CRC";
+VAR block_header "block header";
+FUNC encode_sample_rate "encode sample rate";
+bytes(119, 118, 112, 107) -> write 4 bytes;
+total_sub_block_size + 24 -> write 32 unsigned;
+0x0410 -> write 16 unsigned /*version*/;
+0 -> write 8 unsigned /*track number*/;
+0 -> write 8 unsigned /*index number*/;
+total_samples -> write 32 unsigned;
+block_index -> write 32 unsigned;
+block_samples -> write 32 unsigned;
+(bits_per_sample / 8) - 1 -> write 2 unsigned;
+mono_output -> write 1 unsigned;
+0 -> write 1 unsigned /*hybrid mode*/;
+joint_stereo -> write 1 unsigned;
+cross_channel_decorrelation -> write 1 unsigned;
+0 -> write 1 unsigned /*hybrid noise shaping*/;
+0 -> write 1 unsigned /*floating point data*/;
+extended_integers -> write 1 unsigned;
+0 -> write 1 unsigned /*hybrid controls bitrate*/;
+0 -> write 1 unsigned /*hybrid noise balanced*/;
+initial_block -> write 1 unsigned;
+final_block -> write 1 unsigned;
+0 -> write 5 unsigned /*left shift data*/;
+maximum_magnitude -> write 5 unsigned;
+encode_sample_rate(sample_rate) -> write 4 unsigned;
+0 -> write 2 unsigned /*reserved*/;
+0 -> write 1 unsigned /*use IIR*/;
+false_stereo -> write 1 unsigned;
+0 -> write 1 unsigned /*reserved*/;
+CRC -> write 32 unsigned;
+return block_header;

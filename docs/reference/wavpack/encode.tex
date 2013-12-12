@@ -8,63 +8,9 @@
 
 \section{WavPack Encoding}
 
-\ALGORITHM{PCM frames, Wave header\footnote{Everything between the file's start and the start of the \texttt{data} chunk's contents.  If one is encoding a WavPack from raw PCM input, this header will need to be generated.}, optional Wave footer\footnote{Everything between the end of the \texttt{data} chunk's contents and the file's end, if anything.}, encoding parameters:
-\newline
 {\relsize{-1}
-\begin{tabular}{rll}
-parameter & possible values & typical values \\
-\hline
-block size & a positive number of PCM frames & 22050 \\
-correlation passes & 0, 1, 2, 5, 10 or 16 & 5 \\
-\end{tabular}
+  \input{wavpack/algorithms/encode_wavpack}
 }
-}{an encoded WavPack file}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{BLOCKINDEX}{block index}
-\SetKwData{BLOCKSETCOUNT}{block count}
-\SetKwData{BLOCKSETCHANNELS}{block channels}
-\SetKwData{PASSES}{correlation passes}
-\SetKwData{PARAMS}{block params}
-\SetKwData{FIRST}{first}
-\SetKwData{LAST}{last}
-\SetKwData{BLOCK}{block}
-\SetKwData{CHANNELS}{channels}
-\SetKwData{CHANNEL}{channel}
-$(\text{\BLOCKSETCOUNT}~,~\text{\BLOCKSETCHANNELS}) \leftarrow$ \hyperref[wavpack:block_split]{determine block split}\;
-\For{$b \leftarrow 0$ \emph{\KwTo}\BLOCKSETCOUNT}{
-  $\text{\PARAMS}_{0~b} \leftarrow$ \hyperref[wavpack:initial_correlation_parameters]{determine initial correlation parameters and entropy variables from correlation passes and $\text{\BLOCKSETCHANNELS}_b$}\;
-}
-\BlankLine
-$\text{\BLOCKINDEX} \leftarrow 0$\;
-$s \leftarrow 0$\tcc*[r]{the number of block sets written}
-\While{PCM frames remain}{
-  $\text{\CHANNELS} \leftarrow$ take up to \BLOCKSIZE PCM frames from the input\;
-  update the stream's MD5 sum with that PCM data\;
-  $c \leftarrow 0$\;
-  \For(\tcc*[f]{blocks in each set}){$b \leftarrow 0$ \emph{\KwTo}\BLOCKSETCOUNT}{
-    \lIf{$b = 0$}{$\text{\FIRST} = 1$}
-    \lElse{$\text{\FIRST} = 0$}\;
-    \lIf{$b = \text{\BLOCKSETCOUNT} - 1$}{$\text{\LAST} = 1$}
-    \lElse{$\text{\LAST} = 0$}\;
-    \uIf{$\text{\BLOCKSETCHANNELS}_b = 1$}{
-      $(\text{\BLOCK}_{(s \times \text{\BLOCKSETCHANNELS}) + b}~,~\text{\PARAMS}_{(s + 1)~b}) \leftarrow$ \hyperref[wavpack:write_block]{write block}\newline
-      using $\text{\CHANNEL}_c$, \BLOCKINDEX, \FIRST, \LAST and $\text{\PARAMS}_{s~b}$\;
-      $c \leftarrow c + 1$\;
-    }
-    \ElseIf{$\text{\BLOCKSETCHANNELS}_b = 2$}{
-      $(\text{\BLOCK}_{(s \times \text{\BLOCKSETCHANNELS}) + b}~,~\text{\PARAMS}_{(s + 1)~b}) \leftarrow$ \hyperref[wavpack:write_block]{write block}\newline
-      using $\text{\CHANNEL}_c/\text{\CHANNEL}_{c + 1}$, \BLOCKINDEX, \FIRST, \LAST and $\text{\PARAMS}_{s~b}$\;
-      $c \leftarrow c + 2$\;
-    }
-  }
-  $s \leftarrow s + 1$\;
-  $\text{\BLOCKINDEX} \leftarrow \text{\BLOCKINDEX} + \text{PCM data's frame count}$\;
-}
-\BlankLine
-write final block containing optional \hyperref[wavpack:write_wave_header]{Wave footer} and \hyperref[wavpack:write_md5]{MD5 sum} sub blocks\;
-update Wave header's \texttt{data} chunk size, if generated from scratch\;
-update \VAR{total samples} field in all block headers with \BLOCKINDEX\;
-\EALGORITHM
 
 \clearpage
 
@@ -121,136 +67,15 @@ and each block must contain 1 or 2 channels.
 \includegraphics{wavpack/figures/block_channels.pdf}
 \end{figure}
 
-\begin{landscape}
-
-\subsection{Determine Correlation Parameters and Entropy Variables}
-\label{wavpack:initial_correlation_parameters}
-{\relsize{-1}
-\begin{description}
-\item[$\text{term}_{b~p}$] correlation term for block $b$, correlation pass $p$
-\item[$\text{delta}_{b~p}$] correlation delta for block $b$, correlation pass $p$
-\item[$\text{weight}_{b~p~c}$] correlation weight for block $b$, correlation pass $p$, channel $c$
-\item[$\text{sample}_{b~p~c~s}$] correlation sample $s$ for block $b$, correlation pass $p$, channel $c$
-\item[$\text{entropy}_{b~c~m}$] median $m$ for block $b$, channel $c$
-\end{description}
-\par
-\noindent
-We'll omit the block $b$ parameter since it will be the same
-throughout the block encode, but one must keep it in mind
-when transferring parameters from the block of one set of channels
-to the next block of those same channels.
-}
-\vskip .10in
-\par
-\noindent
-\ALGORITHM{correlation pass count, block's channel count of 1 or 2}{correlation term, delta, weights and samples for each pass; 3 entropy variables for each channel}
-{\relsize{-2}
-$\text{entropy}_0 \leftarrow \texttt{[0, 0, 0]}$\;
-$\text{entropy}_1 \leftarrow \texttt{[0, 0, 0]}$\;
-\BlankLine
-\If{$\text{channel count} = 1$}{
-\Switch{correlation pass count}{
-\uCase{1}{
-\begin{tabular}{r|rrrl}
-$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{samples}_{p~0}$ \\
-\hline
-0 & 18 & 2 & 0 & \texttt{[0, 0]} \\
-\end{tabular}
-}
-\uCase{2}{
-\begin{tabular}{r|rrrl}
-$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{samples}_{p~0}$ \\
-\hline
-0 & 17 & 2 & 0 & \texttt{[0, 0]} \\
-1 & 18 & 2 & 0 & \texttt{[0, 0]} \\
-\end{tabular}
-}
-\uCase(\tcc*[f]{one channel blocks don't use negative terms}){5, 10, or 16}{
-\begin{tabular}{r|rrrl}
-$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{samples}_{p~0}$ \\
-\hline
-0 & 3 & 2 & 0 & \texttt{[0, 0, 0]} \\
-1 & 17 & 2 & 0 & \texttt{[0, 0]} \\
-2 & 2 & 2 & 0 & \texttt{[0, 0]} \\
-3 & 18 & 2 & 0 & \texttt{[0, 0]} \\
-4 & 18 & 2 & 0 & \texttt{[0, 0]} \\
-\end{tabular}
-}}}}
-\EALGORITHM
-
 \clearpage
 
-\begin{algorithm}
-{\relsize{-2}
-\ElseIf{$\text{channel count} = 2$}{
-\Switch{correlation pass count}{
-\uCase{1}{
-\begin{tabular}{r|rrrrll}
-$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~1}$ \\
-\hline
-0 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-\end{tabular}
+\subsection{Encoding Parameters}
+\label{wavpack:encoding_parameters}
+{\relsize{-1}
+  \input{wavpack/algorithms/encoding_parameters}
 }
-\uCase{2}{
-\begin{tabular}{r|rrrrll}
-$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~1}$ \\
-\hline
-0 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-1 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-\end{tabular}
-}
-\uCase{5}{
-\begin{tabular}{r|rrrrll}
-$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~1}$ \\
-\hline
-0 & 3 & 2 & 48 & 48 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
-1 & 17 & 2 & 48 & 48 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-2 & 2 & 2 & 32 & 32 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-3 & 18 & 2 & 48 & 48 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-4 & 18 & 2 & 16 & 24 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-\end{tabular}
-}
-\uCase{10}{
-\begin{tabular}{r|rrrrll}
-$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~1}$ \\
-\hline
-0 & 4 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0]} & \texttt{[0, 0, 0, 0]} \\
-1 & 17 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-2 & -1 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
-3 & 5 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0]} \\
-4 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
-5 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-6 & -2 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
-7 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-8 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-9 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-\end{tabular}
-}
-\Case{16}{
-\begin{tabular}{r|rrrrll}
-$\text{pass}~p$ & $\text{term}_p$ & $\text{delta}_p$ & $\text{weight}_{p~0}$ & $\text{weight}_{p~1}$ & $\text{samples}_{p~0}$ & $\text{samples}_{p~1}$ \\
-\hline
-0 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-1 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-2 & -1 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
-3 & 8 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} \\
-4 & 6 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0]} \\
-5 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
-6 & 5 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0]} \\
-7 & 7 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0, 0, 0, 0]} & \texttt{[0, 0, 0, 0, 0, 0, 0]} \\
-8 & 4 & 2 & 0 & 0 & \texttt{[0, 0, 0, 0]} & \texttt{[0, 0, 0, 0]} \\
-9 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-10 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-11 & -2 & 2 & 0 & 0 & \texttt{[0]} & \texttt{[0]} \\
-12 & 3 & 2 & 0 & 0 & \texttt{[0, 0, 0]} & \texttt{[0, 0, 0]} \\
-13 & 2 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-14 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-15 & 18 & 2 & 0 & 0 & \texttt{[0, 0]} & \texttt{[0, 0]} \\
-\end{tabular}
-}}}}
-\end{algorithm}
 
-\end{landscape}
+\clearpage
 
 \subsection{Encoding Block}
 \label{wavpack:encode_block}
@@ -387,111 +212,27 @@ and are signed if the stream's bits-per-sample is greater than 8.
 
 \clearpage
 
-\subsection{Writing Sub Block}
-{\relsize{-1}
-\ALGORITHM{metadata function, nondecoder data flag, sub block data}{sub block header data}
-\SetKwData{DATA}{sub block data}
-\SetKwFunction{LEN}{len}
-$\text{metadata function} \rightarrow$ \WRITE 5 unsigned bits\;
-$\text{nondecoder data} \rightarrow$ \WRITE 1 unsigned bit\;
-$\LEN(\text{\DATA}) \bmod 2 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{actual size 1 less}
-\eIf(\tcc*[f]{large block}){$\LEN(\text{\DATA}) > 255 \times 2$}{
-  $1 \rightarrow$ \WRITE 1 unsigned bit\;
-  $\lceil\LEN(\text{\DATA}) \div 2\rceil \rightarrow$ \WRITE 24 unsigned bits\;
-}{
-  $0 \rightarrow$ \WRITE 1 unsigned bit\;
-  $\lceil\LEN(\text{\DATA}) \div 2\rceil \rightarrow$ \WRITE 8 unsigned bits\;
-}
-write \DATA\;
-\If{$\LEN(\text{\DATA}) \bmod 2 = 1$}{
-  $0 \rightarrow$ \WRITE 8 unsigned bits\;
-}
-\EALGORITHM
-}
-
-\begin{figure}[h]
-\includegraphics{wavpack/figures/block_header2.pdf}
-\end{figure}
-
-\clearpage
-
 \subsection{Writing Block Header}
 \label{wavpack:write_block_header}
 {\relsize{-1}
-\ALGORITHM{total sub blocks size, block index, block samples, bits per sample, channel count, joint stereo, correlation pass count, wasted BPS, initial block, final block, maximum magnitude, sample rate, false stereo, CRC}{block header data}
-\SetKwData{SUBBLOCKSSIZE}{sub blocks size}
-\SetKwData{BLOCKINDEX}{block index}
-\SetKwData{BLOCKSAMPLES}{block samples}
-\SetKwData{BITSPERSAMPLE}{bits per sample}
-\SetKwData{CHANNELCOUNT}{channel count}
-\SetKwData{PASSES}{correlation passes}
-\SetKwData{WASTEDBPS}{wasted BPS}
-\SetKwData{JOINTSTEREO}{joint stereo}
-\SetKwData{INITIALBLOCK}{initial block}
-\SetKwData{FINALBLOCK}{final block}
-\SetKwData{MAXMAGNITUDE}{maximum magnitude}
-\SetKwData{FALSESTEREO}{false stereo}
-$\texttt{"wvpk"} \rightarrow$ \WRITE 4 bytes\;
-$\SUBBLOCKSSIZE + 24 \rightarrow$ \WRITE 32 unsigned bits\;
-$\texttt{0x0410} \rightarrow$ \WRITE 16 unsigned bits\tcc*[r]{version}
-$0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{track number}
-$0 \rightarrow$ \WRITE 8 unsigned bits\tcc*[r]{index number}
-$\texttt{0xFFFFFFFF} \rightarrow$ \WRITE 32 unsigned bits\tcc*[r]{total samples placeholder}
-$\BLOCKINDEX \rightarrow$ \WRITE 32 unsigned bits\;
-$\BLOCKSAMPLES \rightarrow$ \WRITE 32 unsigned bits\;
-$\text{\BITSPERSAMPLE} \div 8 - 1 \rightarrow$ \WRITE 2 unsigned bits\;
-$2 - \text{\CHANNELCOUNT} \rightarrow$ \WRITE 1 unsigned bit\;
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{hybrid mode}
-\eIf(\tcc*[f]{joint stereo}){$\text{\CHANNELCOUNT} = 2$}{
-  $1 \rightarrow$ \WRITE 1 unsigned bit
-}{
-  $0 \rightarrow$ \WRITE 1 unsigned bit
+  \input{wavpack/algorithms/write_block_header}
 }
-\eIf(\tcc*[f]{cross channel decorrelation}){$\text{\PASSES} > 5$}{
-  $1 \rightarrow$ \WRITE 1 unsigned bit\;
-}{
-  $0 \rightarrow$ \WRITE 1 unsigned bit\;
-}
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{hybrid noise shaping}
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{floating point data}
-\eIf(\tcc*[f]{extended size integers}){$\WASTEDBPS > 0$}{
-  $1 \rightarrow$ \WRITE 1 unsigned bit\;
-}{
-  $0 \rightarrow$ \WRITE 1 unsigned bit\;
-}
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{hybrid controls bitrate}
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{hybrid noise balanced}
-$\INITIALBLOCK \rightarrow$ \WRITE 1 unsigned bit\;
-$\FINALBLOCK \rightarrow$ \WRITE 1 unsigned bit\;
-$0 \rightarrow$ \WRITE 5 unsigned bits\tcc*[r]{left shift data}
-$\MAXMAGNITUDE \rightarrow$ \WRITE 5 unsigned bits\;
-$\textit{encoded sample rate} \rightarrow$ \WRITE 4 unsigned bits\;
-\begin{tabular}{rr|rr|rr}
-  sample rate & \textit{encoded} &
-  sample rate & \textit{encoded} &
-  sample rate & \textit{encoded} \\
-  \hline
-  6000 Hz & \texttt{0} &
-  22050 Hz & \texttt{6} &
-  64000 Hz & \texttt{11} \\
-  8000 Hz & \texttt{1} &
-  24000 Hz & \texttt{7} &
-  88200 Hz & \texttt{12} \\
-  9600 Hz & \texttt{2} &
-  32000 Hz & \texttt{8} &
-  96000 Hz & \texttt{13} \\
-  11025 Hz & \texttt{3} &
-  44100 Hz & \texttt{9} &
-  192000 Hz & \texttt{14} \\
-  12000 Hz & \texttt{4} &
-  48000 Hz & \texttt{10} &
-  otherwise & \texttt{15} \\
-  16000 Hz & \texttt{5} \\
-\end{tabular} \\
-$0 \rightarrow$ \WRITE 2 unsigned bits\tcc*[r]{reserved}
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{use IIR}
-$\FALSESTEREO \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{if $\text{channel}_0 = \text{channel}_1$}
-$0 \rightarrow$ \WRITE 1 unsigned bit\tcc*[r]{reserved}
-$CRC \rightarrow$ \WRITE 32 unsigned bits\;
-\EALGORITHM
-}
+
+\clearpage
+
+\subsection{Round-Tripping Correlation Weights}
+\label{wavpack:roundtrip_weights}
+Because the final weight values of one block
+may not be exactly representable in a correlation weights sub-block,
+it's necessary to ``round-trip'' the weight values
+so that the starting values for the next block
+are the same as the values stored in the sub-block.
+
+\input{wavpack/algorithms/roundtrip_weights}
+
+\clearpage
+
+\subsection{Round-Tripping Correlation Samples}
+\label{wavpack:roundtrip_samples}
+
+\input{wavpack/algorithms/roundtrip_samples}

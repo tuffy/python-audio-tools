@@ -31,7 +31,8 @@ FUNC write_entropy_variables "write entropy variables"
 "wavpack:write_entropy";
 FUNC correlate_channels "correlate channels"
 "wavpack:correlate_channels";
-FUNC write_bitstream "write bitstream";
+FUNC write_bitstream "write bitstream"
+"wavpack:write_bitstream";
 
 sub_block[0],sub_block_size[0] <- write_decorrelation_terms(
 decorrelation_term_count,

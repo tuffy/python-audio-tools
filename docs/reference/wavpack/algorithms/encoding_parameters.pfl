@@ -1,0 +1,68 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT channel_count, correlation_passes;
+OUTPUT cross_channel_decorrelation,
+decorrelation_term_count,
+decorrelation_terms,
+decorrelation_deltas,
+decorrelation_weights,
+decorrelation_samples;
+
+VAR channel_count "channel count";
+VAR correlation_passes "correlation passes";
+VAR cross_channel_decorrelation "channel decorrelation";
+VAR decorrelation_term_count "term count";
+VAR decorrelation_terms "terms";
+VAR decorrelation_deltas "deltas";
+VAR decorrelation_weights "weights";
+VAR decorrelation_samples "samples";
+VAR undefined "undefined";
+cross_channel_decorrelation <- 0;
+if correlation_passes == 0 {
+    decorrelation_term_count <- 0;
+} elif correlation_passes == 1 {
+    decorrelation_term_count <- 1;
+    decorrelation_terms[0] <- 18;
+} elif correlation_passes == 2 {
+    decorrelation_term_count <- 2;
+    decorrelation_terms <- [17, 18];
+} elif correlation_passes == 5 or channel_count == 1 /*one-channel streams stop here*/ {
+    decorrelation_term_count <- 5;
+    decorrelation_terms <- [3, 17, 2, 18, 18];
+} elif correlation_passes == 10 {
+    decorrelation_term_count <- 10;
+    decorrelation_terms <- [4, 17, -1, 5, 3, 2, -2, 18, 18, 18];
+} elif correlation_passes == 16 {
+    decorrelation_term_count <- 16;
+    decorrelation_terms <- [2, 18, -1, 8, 6, 3, 5, 7, 4,
+                            2, 18, -2, 3, 2, 18, 18];
+}
+for p <- 0 to decorrelation_term_count {
+    decorrelation_deltas[p] <- 2;
+    for c <- 0 to channel_count {
+        decorrelation_weights[p][c] <- 0;
+        if 17 <= decorrelation_terms[p] <= 18 {
+            decorrelation_samples[p][c][0] <- 0;
+            decorrelation_samples[p][c][1] <- 0;
+        } elif 1 <= decorrelation_terms[p] <= 8 {
+            for i <- 0 to decorrelation_terms[p] {
+                decorrelation_samples[p][c][i] <- 0;
+            }
+        } elif -3 <= decorrelation_terms[p] <= -1 {
+            decorrelation_samples[p][c][0] <- 0;
+            cross_channel_decorrelation <- 1;
+        }
+    }
+}
+return cross_channel_decorrelation,
+decorrelation_term_count,
+decorrelation_terms,
+decorrelation_deltas,
+decorrelation_weights,
+decorrelation_samples;
