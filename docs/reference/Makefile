@@ -304,6 +304,22 @@ wavpack/figures/terms_parse.pdf \
 wavpack/figures/typical_block.pdf
 
 SHORTEN = \
+shorten/algorithms/read_unsigned.tex \
+shorten/algorithms/read_signed.tex \
+shorten/algorithms/read_long.tex \
+shorten/algorithms/decode_shorten.tex \
+shorten/algorithms/process_commands.tex \
+shorten/algorithms/process_audio_command.tex \
+shorten/algorithms/process_qlpc_command.tex \
+shorten/algorithms/process_verbatim.tex \
+shorten/algorithms/write_unsigned.tex \
+shorten/algorithms/write_signed.tex \
+shorten/algorithms/write_long.tex \
+shorten/algorithms/encode_shorten.tex \
+shorten/algorithms/write_shorten_header.tex \
+shorten/algorithms/encode_audio.tex \
+shorten/algorithms/calculate_wasted_bps.tex \
+shorten/algorithms/compute_diff.tex \
 shorten/decode.tex \
 shorten/encode.tex \
 shorten/figures/block1.pdf \

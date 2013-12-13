@@ -1,0 +1,18 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "Shorten stream";
+OUTPUT "1 or more bytes of non-audio file data";
+VAR total_bytes "total_bytes";
+VAR bytes_ "bytes";
+FUNC read_unsigned "read unsigned" "shorten:read_unsigned";
+total_bytes <- read_unsigned(5);
+for i <- 0 to total_bytes {
+    bytes_[i] <- read_unsigned(8);
+}
+return bytes_;

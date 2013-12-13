@@ -11,183 +11,53 @@ As with decoding, one needs \texttt{unsigned}, \texttt{signed} and \texttt{long}
 functions:
 
 \subsubsection{Writing \texttt{unsigned}}
-\ALGORITHM{a bit count $c$, an unsigned value}{a written \texttt{unsigned} value}
-\SetKwData{VALUE}{value}
-\SetKwData{MSB}{MSB}
-\SetKwData{LSB}{LSB}
-$\text{\MSB} \leftarrow \lfloor\text{\VALUE} \div 2 ^ c\rfloor$\;
-$\text{\LSB} \leftarrow \text{\VALUE} - \text{\MSB} \times 2 ^ c$\;
-$\MSB \rightarrow$ \WUNARY with stop bit 1\;
-$\LSB \rightarrow$ \WRITE $c$ unsigned bits\;
-\EALGORITHM
+\label{shorten:write_unsigned}
+{\relsize{-1}
+  \input{shorten/algorithms/write_unsigned}
+}
+
 
 \subsubsection{Writing \texttt{signed}}
-\ALGORITHM{a bit count $c$, a signed value}{a written \texttt{signed} value}
-\SetKwData{VALUE}{value}
-\eIf{$\text{\VALUE} \geq 0$}{
-  write $\texttt{unsigned}(c + 1~,~\text{\VALUE} \times 2)$\;
-}{
-  write $\texttt{unsigned}(c + 1~,~(-\text{\VALUE} - 1) \times 2 + 1)$\;
+\label{shorten:write_signed}
+{\relsize{-1}
+  \input{shorten/algorithms/write_signed}
 }
-\EALGORITHM
+
 
 \subsubsection{Writing \texttt{long}}
-\ALGORITHM{an unsigned value}{a written \texttt{long} value}
-\SetKwData{VALUE}{value}
-\eIf{$\text{\VALUE} = 0$}{
-  write $\texttt{unsigned}(2~,~0)$\;
-  write $\texttt{unsigned}(0~,~0)$\;
-}{
-  $\text{LSBs} \leftarrow \lfloor\log_2(\text{\VALUE})\rfloor + 1$\;
-  write $\texttt{unsigned}(2~,~\text{LSBs})$\;
-  write $\texttt{unsigned}(\text{LSBs}~,~\text{\VALUE})$\;
+\label{shorten:write_long}
+{\relsize{-1}
+  \input{shorten/algorithms/write_long}
 }
-\EALGORITHM
+
 
 \clearpage
 
+\subsection{Encoding Shorten File}
 {\relsize{-1}
-  \ALGORITHM{PCM frames, a block size parameter, a wave or aiff header and footer}{an encoded Shorten file}
-  \SetKwData{BITSPERSAMPLE}{bits per sample}
-  \SetKwData{CHANNELS}{channel count}
-  \SetKwData{BLOCKSIZE}{block size}
-  \SetKw{IN}{in}
-  \SetKwData{LEFTSHIFT}{left shift}
-  \SetKwData{WASTEDBITS}{wasted BPS}
-  \SetKwData{SHIFTED}{shifted}
-  \SetKwData{DIFF}{diff}
-  \SetKwData{RESIDUALS}{residual}
-  \SetKwData{ENERGY}{energy}
-  \SetKwData{SAMPLES}{samples}
-  \SetKwData{CHANNEL}{channel}
-  \hyperref[shorten:write_header]{write Shorten header with \BITSPERSAMPLE, \CHANNELS and \BLOCKSIZE}\;
-  write \texttt{unsigned}(2~,~9)\tcc*[r]{VERBATIM command}
-  write \texttt{unsigned}(5~,~header byte count)\;
-  \ForEach{byte \IN header}{
-    write \texttt{unsigned}(8~,~\textit{byte})\;
-  }
-  $\text{\LEFTSHIFT} \leftarrow 0$\;
-  \BlankLine
-  \While{PCM frames remain}{
-    $\text{\SAMPLES} \leftarrow$ take \BLOCKSIZE PCM frames from input stream\;
-    \If{$\text{\SAMPLES PCM frame count} \neq \BLOCKSIZE$}{
-      $\text{\BLOCKSIZE} \leftarrow \textit{\SAMPLES PCM frame count}$\;
-      write \texttt{unsigned}(2~,~5)\tcc*[r]{BLOCKSIZE command}
-      write \texttt{long}(\BLOCKSIZE)\;
-    }
-    \ForEach{\CHANNEL \IN \SAMPLES}{
-      \eIf{$\text{all samples in \CHANNEL} = 0$}{
-        write \texttt{unsigned}(2~,~8)\tcc*[r]{ZERO command}
-        \hyperref[shorten:wrap_samples]{wrap \CHANNEL for next set of channel data}\;
-      }{
-        $\text{\WASTEDBITS} \leftarrow$ \hyperref[shorten:calculate_wasted_bps]{calculate wasted BPS for \CHANNEL}\;
-        \If{$\text{\LEFTSHIFT} \neq \text{\WASTEDBITS}$}{
-          $\text{\LEFTSHIFT} \leftarrow \text{\WASTEDBITS}$\;
-          write \texttt{unsigned}(2~,~6)\tcc*[r]{BITSHIFT command}
-          write \texttt{unsigned}(2~,~\LEFTSHIFT)\;
-        }
-        \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
-          $\text{\SHIFTED}_i \leftarrow \text{\CHANNEL}_i \div 2 ^ {\text{\LEFTSHIFT}}$\;
-        }
-        $\left.\begin{tabular}{r}
-          \DIFF \\
-          \ENERGY \\
-          \RESIDUALS \\
-        \end{tabular}\right\rbrace \leftarrow$ \hyperref[shorten:compute_best_diff]{compute best \texttt{DIFF}, energy and residual values for \SHIFTED}\;
-        write \texttt{unsigned}(2~,~\DIFF)\tcc*[r]{DIFF command}
-        write \texttt{unsigned}(3~,~\ENERGY)\;
-        \ForEach{r \IN \RESIDUALS}{
-          write \texttt{signed}(\ENERGY~,~r)\;
-        }
-        \hyperref[shorten:wrap_samples]{wrap \SHIFTED for next set of channel data}\;
-      }
-    }
-  }
-  \BlankLine
-  \If{$\text{footer byte count} > 0$}{
-    write \texttt{unsigned}(2~,~9)\tcc*[r]{VERBATIM command}
-    write \texttt{unsigned}(5~,~footer byte count)\;
-    \ForEach{byte \IN footer}{
-      write \texttt{unsigned}(8~,~\textit{byte})\;
-    }
-  }
-  \BlankLine
-  write \texttt{unsigned}(2~,~5)\tcc*[r]{QUIT command}
-  \BlankLine
-  \tcc{Shorten output (not including 5 bytes of magic + version)
-  must be a multiple of 4 bytes, or the reference decoder's
-  bit stream reader will fail}
-  byte align the stream\;
-  \While{$(\text{total file size} - 5) \bmod 4 = 0$}{
-    \WRITE 0 in 8 unsigned bits\;
-  }
-\EALGORITHM
+  \input{shorten/algorithms/encode_shorten}
 }
 
 \clearpage
 
 \subsection{Writing Shorten Header}
 \label{shorten:write_header}
-\ALGORITHM{the input stream's bits-per-sample, sample signedness and endianness;\newline channel count and initial block size}{a Shorten header}
-\SetKwData{BITSPERSAMPLE}{bits per sample}
-\SetKwData{ENDIANNESS}{endianness}
-\SetKwData{SIGNEDNESS}{signedness}
-\SetKwData{CHANNELS}{channel count}
-\SetKwData{BLOCKSIZE}{block size}
-$\texttt{"ajkg"} \rightarrow$ \WRITE 4 bytes\;
-$2 \rightarrow$ \WRITE 8 unsigned bits\;
-\uIf{$\BITSPERSAMPLE = 8$}{
-  \eIf{$\SIGNEDNESS = signed$}{
-    write \texttt{long}(1)\tcc*[r]{signed, 8 bit}
-  }{
-    write \texttt{long}(2)\tcc*[r]{unsigned, 8 bit}
-  }
-}
-\uElseIf{$\BITSPERSAMPLE = 16$}{
-  \eIf{$\SIGNEDNESS = signed$}{
-    \eIf{$\ENDIANNESS = big$}{
-      write \texttt{long}(3)\tcc*[r]{signed, 16 bit, big-endian}
-    }{
-      write \texttt{long}(5)\tcc*[r]{signed, 16 bit, little-endian}
-    }
-  }{
-    \eIf{$\ENDIANNESS = big$}{
-      write \texttt{long}(4)\tcc*[r]{unsigned, 16 bit, big-endian}
-    }{
-      write \texttt{long}(6)\tcc*[r]{unsigned, 16 bit, little-endian}
-    }
-  }
+\input{shorten/algorithms/write_shorten_header}
 
+\clearpage
+
+\subsection{Encoding Audio Commands}
+\label{shorten:encode_audio}
+{\relsize{-1}
+  \input{shorten/algorithms/encode_audio}
 }
-\Else{
-  unsupported number of bits per sample\;
-}
-write \texttt{long}(\CHANNELS)\;
-write \texttt{long}(\BLOCKSIZE)\;
-write \texttt{long}(0)\tcc*[r]{maximum LPC}
-write \texttt{long}(0)\tcc*[r]{mean count}
-write \texttt{long}(0)\tcc*[r]{bytes to skip}
-\EALGORITHM
+
 
 \clearpage
 
 \subsection{Calculating Wasted Bits per Sample}
 \label{shorten:calculate_wasted_bps}
-\ALGORITHM{a list of signed PCM samples}{an unsigned integer}
-\SetKwData{WASTEDBPS}{wasted bps}
-\SetKwData{SAMPLE}{sample}
-\SetKwFunction{MIN}{min}
-\SetKwFunction{WASTED}{wasted}
-$\text{\WASTEDBPS} \leftarrow \infty$\tcc*[r]{maximum unsigned integer}
-\For{$i \leftarrow 0$ \emph{\KwTo}sample count}{
-  $\text{\WASTEDBPS} \leftarrow \MIN(\WASTED(\text{\SAMPLE}_i)~,~\text{\WASTEDBPS})$\;
-}
-\eIf(\tcc*[f]{all samples are 0}){$\WASTEDBPS = \infty$}{
-  \Return 0\;
-}{
-  \Return \WASTEDBPS\;
-}
-\EALGORITHM
+\input{shorten/algorithms/calculate_wasted_bps}
 where the \texttt{wasted} function is defined as:
 \begin{equation*}
   \texttt{wasted}(x) =
@@ -202,59 +72,7 @@ where the \texttt{wasted} function is defined as:
 
 \subsection{Computing Best \texttt{DIFF} Command, Energy and Residuals}
 \label{shorten:compute_best_diff}
-\ALGORITHM{a list of samples for a given channel and the channel's current block size}{a \texttt{DIFF} command, unsigned energy value and list of residuals}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{SAMPLE}{sample}
-\SetKwData{DELTA}{delta}
-\SetKwData{ENERGY}{energy}
-\SetKwData{SUM}{sum}
-\SetKwFunction{MIN}{min}
-\For{$i \leftarrow -2$ \emph{\KwTo}\BLOCKSIZE}{
-  $\text{\DELTA}_{1~i} \leftarrow \text{\SAMPLE}_i - \text{\SAMPLE}_{(i - 1)}$\;
-}
-\For{$i \leftarrow -1$ \emph{\KwTo}\BLOCKSIZE}{
-  $\text{\DELTA}_{2~i} \leftarrow \text{\DELTA}_{1~i} - \text{\DELTA}_{1~(i - 1)}$\;
-}
-\For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
-  $\text{\DELTA}_{3~i} \leftarrow \text{\DELTA}_{2~i} - \text{\DELTA}_{2~(i - 1)}$\;
-}
-\BlankLine
-\For{$d \leftarrow 1$ \emph{\KwTo}4}{
-  $\text{\SUM}_d \leftarrow \overset{\BLOCKSIZE - 1}{\underset{i = 0}{\sum}}|\text{\DELTA}_{d~i}|$\;
-}
-\BlankLine
-$\ENERGY \leftarrow 0$\;
-\uIf{$\text{\SUM}_1 < \MIN(\text{\SUM}_2~,~\text{\SUM}_3)$}{
-  \While{$\BLOCKSIZE \times 2 ^ \text{\ENERGY} < \text{\SUM}_1$}{
-    $\ENERGY \leftarrow \ENERGY + 1$\;
-  }
-  \Return $\left\lbrace\begin{tabular}{l}
-  1 \\
-  \ENERGY \\
-  $\text{\DELTA}_{1~[0 \IDOTS \BLOCKSIZE]}$ \\
-  \end{tabular}\right.$\;
-}
-\uElseIf{$\text{\SUM}_2 < \text{\SUM}_3$}{
-  \While{$\BLOCKSIZE \times 2 ^ \text{\ENERGY} < \text{\SUM}_2$}{
-    $\ENERGY \leftarrow \ENERGY + 1$\;
-  }
-  \Return $\left\lbrace\begin{tabular}{l}
-  2 \\
-  \ENERGY \\
-  $\text{\DELTA}_{2~[0 \IDOTS \BLOCKSIZE]}$ \\
-  \end{tabular}\right.$\;
-}
-\Else{
-  \While{$\BLOCKSIZE \times 2 ^ \text{\ENERGY} < \text{\SUM}_3$}{
-    $\ENERGY \leftarrow \ENERGY + 1$\;
-  }
-  \Return $\left\lbrace\begin{tabular}{l}
-  3 \\
-  \ENERGY \\
-  $\text{\DELTA}_{3~[0 \IDOTS \BLOCKSIZE]}$ \\
-  \end{tabular}\right.$\;
-}
-\EALGORITHM
+\input{shorten/algorithms/compute_diff}
 \par
 \noindent
 Negative sample values are taken from the channel's previous samples,

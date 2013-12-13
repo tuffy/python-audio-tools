@@ -8,35 +8,7 @@
 
 \section{Shorten Decoding}
 {\relsize{-1}
-\ALGORITHM{a Shorten encoded file}{PCM samples}
-\SetKwData{MAGIC}{magic number}
-\SetKwData{VERSION}{version}
-\SetKwData{FILETYPE}{file type}
-\SetKwData{CHANNELS}{channels}
-\SetKwData{BLOCKLENGTH}{block length}
-\SetKwData{MAXLPC}{max LPC}
-\SetKwData{MEANCOUNT}{mean count}
-\SetKwData{SKIPBYTES}{bytes to skip}
-\SetKwData{COMMAND}{command}
-\SetKwData{SAMPLES}{samples}
-$\MAGIC \leftarrow$ \READ 4 bytes\;
-\ASSERT $\MAGIC = \texttt{"ajkg"}$\;
-$\VERSION \leftarrow$ \READ 8 unsigned bits\;
-\ASSERT $\VERSION = 2$\;
-\BlankLine
-\tcc{read Shorten header}
-\begin{tabular}{r>{$}c<{$}l}
-  \FILETYPE & \leftarrow & read \texttt{long}()\; \\
-  \CHANNELS & \leftarrow & read \texttt{long}()\; \\
-  \BLOCKLENGTH & \leftarrow & read \texttt{long}()\; \\
-  \MAXLPC & \leftarrow & read \texttt{long}()\; \\
-  \MEANCOUNT & \leftarrow & read \texttt{long}()\; \\
-  \SKIPBYTES & \leftarrow & read \texttt{long}()\; \\
-\end{tabular}\;
-\SKIP $(\SKIPBYTES)$ bytes\;
-\BlankLine
-\hyperref[shorten:process_commands]{process Shorten commands to PCM samples}\;
-\EALGORITHM
+  \input{shorten/algorithms/decode_shorten}
 }
 
 \begin{table}[h]
@@ -146,208 +118,30 @@ The remaining fields are determined as follows:
 \subsection{Processing Shorten Commands}
 \label{shorten:process_commands}
 {\relsize{-1}
-  \begin{algorithm}[H]
-    \DontPrintSemicolon
-    \SetKw{OR}{or}
-    \SetKwData{CHANNELS}{channels}
-    \SetKwData{BLOCKLENGTH}{block length}
-    \SetKwData{COMMAND}{command}
-    \SetKwData{LEFTSHIFT}{left shift}
-    \SetKwData{SAMPLES}{samples}
-    \SetKwData{MEANCOUNT}{mean count}
-    \SetKwData{MEANS}{means}
-    \SetKwData{SHIFTED}{unshifted}
-    \tcc{setup initial variables}
-    $i \leftarrow 0$\;
-    $\LEFTSHIFT \leftarrow 0$\;
-    \BlankLine
-    \tcc{process commands}
-    \Repeat{$\COMMAND = 4$}{
-      $\COMMAND \leftarrow$ read \texttt{unsigned}(2)\;
-      \eIf(\tcc*[f]{audio data commands}){$(0 \leq \COMMAND \leq 3)$ \OR $(7 \leq \COMMAND \leq 8)$}{
-        $c \leftarrow i \bmod \CHANNELS$\tcc*{current channel}
-        $m \leftarrow \lfloor i \div \CHANNELS\rfloor$\;
-        \Switch{\COMMAND}{
-          \uCase(\tcc*[f]{DIFF0}){0}{
-            $\text{\SAMPLES}_c \leftarrow$ \hyperref[shorten:read_diff0]{read \texttt{DIFF0} with \BLOCKLENGTH,
-            and $\text{\MEANS}_{c~[m - \text{\MEANCOUNT} \IDOTS m - 1]}$}\;
-          }
-          \uCase(\tcc*[f]{DIFF1}){1}{
-            $\text{\SAMPLES}_c \leftarrow$ \hyperref[shorten:read_diff1]{read \texttt{DIFF1} with \BLOCKLENGTH and
-            previous $\text{\SAMPLES}_c$}\;
-          }
-          \uCase(\tcc*[f]{DIFF2}){2}{
-            $\text{\SAMPLES}_c \leftarrow$ \hyperref[shorten:read_diff2]{read \texttt{DIFF2} with \BLOCKLENGTH and
-            previous $\text{\SAMPLES}_c$}\;
-          }
-          \uCase(\tcc*[f]{DIFF3}){3}{
-            $\text{\SAMPLES}_c \leftarrow$ \hyperref[shorten:read_diff3]{read \texttt{DIFF3} with \BLOCKLENGTH and
-            previous $\text{\SAMPLES}_c$}\;
-          }
-          \uCase(\tcc*[f]{QLPC}){7}{
-            $\text{\SAMPLES}_c \leftarrow$ \hyperref[shorten:read_qlpc]{read \texttt{QLPC} with \BLOCKLENGTH,
-            $\text{\MEANS}_{c~[m - \text{\MEANCOUNT} \IDOTS m - 1]}$\newline and previous $\text{\SAMPLES}_c$}\;
-          }
-          \Case(\tcc*[f]{ZERO}){8}{
-            \For{$j \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
-              $\text{\SAMPLES}_{c~j} \leftarrow 0$\;
-            }
-          }
-        }
-        $\text{\MEANS}_{c~m} \leftarrow \hyperref[shorten:shnmean]{\texttt{shnmean}(\text{\SAMPLES}_c~,~\BLOCKLENGTH)}$\;
-        \hyperref[shorten:wrap_samples]{wrap $\text{\SAMPLES}_c$ for next set of channels}\;
-        $\text{\SHIFTED}_c \leftarrow$ \hyperref[shorten:apply_leftshift]{apply \LEFTSHIFT to $\text{\SAMPLES}_c$}\;
-        $i \leftarrow i + 1$\;
-        \If{$i \bmod \CHANNELS = 0$}{
-          \Return \SHIFTED as a complete set of PCM frames\;
-        }
-      }(\tcc*[f]{non audio commands}){
-        \Switch{\COMMAND}{
-          \uCase(\tcc*[f]{QUIT}){4}{
-            \tcc{do nothing}
-          }
-          \uCase(\tcc*[f]{BLOCKSIZE}){5}{
-            $\BLOCKLENGTH \leftarrow$ read \texttt{long}()\;
-          }
-          \uCase(\tcc*[f]{BITSHIFT}){6}{
-            $\LEFTSHIFT \leftarrow$ read \texttt{unsigned}(2)\;
-          }
-          \uCase(\tcc*[f]{VERBATIM}){9}{
-            \hyperref[shorten:read_verbatim]{handle verbatim block of non-audio data}\;
-          }
-          \Other{unknown command}
-        }
-      }
-    }(\tcc*[f]{QUIT command})
-  \end{algorithm}
+  \input{shorten/algorithms/process_commands}
 }
 
 \clearpage
 
-\subsubsection{The \texttt{shnmean} Function}
-\label{shorten:shnmean}
-The \texttt{shnmean} function is defined as:
-\begin{equation*}
-  \texttt{shnmean}(values~,~count) =
-  \left\lfloor
-  \frac{\left\lfloor\frac{count}{2}\right\rfloor +
-    \overset{count - 1}{\underset{i = 0}{\sum}}{values}_i }{count}
-  \right\rfloor
-\end{equation*}
-where $values$ is a list and $count$ is the length of that list.
+\subsection{Processing Audio Command}
+\label{shorten:process_audio_command}
+{\relsize{-1}
+  \input{shorten/algorithms/process_audio_command}
+}
 
+\clearpage
 
-\subsection{Handling Verbatim Data}
-\label{shorten:read_verbatim}
+\subsection{Processing Verbatim Data}
+\label{shorten:process_verbatim}
 These are non-audio blocks designed to hold Wave/AIFF headers or footers.
 They are expected to be in the Shorten file in the same order
 they would be output to disk.
 \par
 \noindent
-\ALGORITHM{Shorten stream}{1 or more bytes of non-audio file data}
-\SetKwData{BYTES}{bytes}
-$size \leftarrow$ read \texttt{unsigned}(5)\;
-\For{$i \leftarrow 0$ \emph{\KwTo}size}{
-  $\text{\BYTES}_i \leftarrow$ read \texttt{unsigned}(8)\;
-}
-\Return \BYTES\;
-\EALGORITHM
+\input{shorten/algorithms/process_verbatim}
 \begin{figure}[h]
 \includegraphics{shorten/figures/verbatim.pdf}
 \end{figure}
-
-\clearpage
-
-\subsection{Reading \texttt{DIFF0}}
-\label{shorten:read_diff0}
-{\relsize{-1}
-\ALGORITHM{block length, previous \VAR{mean count} means for channel $c$}{decoded samples}
-\SetKwData{BLOCKLENGTH}{block length}
-\SetKwData{OFFSET}{offset}
-\SetKwData{MEANS}{previous means}
-\SetKwData{ENERGY}{energy}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{SAMPLES}{samples}
-$\text{\OFFSET} \leftarrow \texttt{shnmean}(\text{\MEANS}_c~,~\text{mean count})$\;
-$\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
-\BlankLine
-\For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
-  $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
-  $\text{\SAMPLES}_{c~i} \leftarrow \text{\RESIDUAL}_i + \OFFSET$\;
-}
-\Return $\text{\SAMPLES}_c$\;
-\EALGORITHM
-}
-
-\subsection{Reading \texttt{DIFF1}}
-\label{shorten:read_diff1}
-{\relsize{-1}
-\ALGORITHM{block length, previously decoded samples}{decoded samples}
-\SetKwData{BLOCKLENGTH}{block length}
-\SetKwData{ENERGY}{energy}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{SAMPLES}{samples}
-$\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
-\BlankLine
-\For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
-  $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
-  $\text{\SAMPLES}_{c~i} \leftarrow \text{\SAMPLES}_{c~(i - 1)} + \text{\RESIDUAL}_i$\;
-}
-\Return $\text{\SAMPLES}_c$\;
-\EALGORITHM
-\par
-\noindent
-$\text{samples}_{c~(-1)}$ is from the previously
-decoded samples on channel $c$,
-or 0 if there are none
-}
-
-\subsection{Reading \texttt{DIFF2}}
-\label{shorten:read_diff2}
-{\relsize{-1}
-  \ALGORITHM{block length, previously decoded samples}{decoded samples}
-  \SetKwData{BLOCKLENGTH}{block length}
-  \SetKwData{ENERGY}{energy}
-  \SetKwData{RESIDUAL}{residual}
-  \SetKwData{SAMPLES}{samples}
-  $\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
-  \BlankLine
-  \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
-    $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
-    $\text{\SAMPLES}_{c~i} \leftarrow (2 \times \text{\SAMPLES}_{c~(i - 1)}) - \text{\SAMPLES}_{c~(i - 2)} + \text{\RESIDUAL}_i$\;
-  }
-  \Return $\text{\SAMPLES}_c$\;
-  \EALGORITHM
-  \par
-  \noindent
-  $\text{samples}_{c~(-1)}$ and $\text{samples}_{c~(-2)}$ are from
-  the previously decoded samples on channel $c$,
-  or 0 if there are none
-}
-
-\subsection{Reading \texttt{DIFF3}}
-\label{shorten:read_diff3}
-{\relsize{-1}
-  \ALGORITHM{block length, previously decoded samples}{decoded samples}
-  \SetKwData{BLOCKLENGTH}{block length}
-  \SetKwData{ENERGY}{energy}
-  \SetKwData{RESIDUAL}{residual}
-  \SetKwData{SAMPLES}{samples}
-  $\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
-  \BlankLine
-  \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
-    $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
-    $\text{\SAMPLES}_{c~i} \leftarrow (3 \times (\text{\SAMPLES}_{c~(i - 1)} - \text{\SAMPLES}_{c~(i - 2)})) + \text{\SAMPLES}_{c~(i - 3)} + \text{\RESIDUAL}_i$\;
-  }
-  \Return $\text{\SAMPLES}_c$\;
-  \EALGORITHM
-  \par
-  \noindent
-  $\text{samples}_{c~(-1)}$, $\text{samples}_{c~(-2)}$ and
-  $\text{samples}_{c~(-3)}$ are from
-  the previously decoded samples on channel $c$,
-  or 0 if there are none
-}
 
 \clearpage
 
@@ -528,76 +322,10 @@ this \texttt{DIFF} command.
 
 \clearpage
 
-\subsection{Wrapping Samples}
-\label{shorten:wrap_samples}
-
-For any given channel, in order to process \texttt{DIFF} or
-\texttt{QLPC} $\text{command}_i$,
-one requires a certain number of negative-indexed samples.
-As an example, to process a \texttt{DIFF3},
-$\textsf{sample}_{(-3)}$, $\textsf{sample}_{(-2)}$ and $\textsf{sample}_{(-1)}$
-are required.
-These samples are ``wrapped around'' from the end of $\text{command}_{(i - 1)}$
-on the same channel.
-This is what the \VAR{samples to wrap} field in the Shorten header is for.
-It indicates how many samples must be wrapped from one command
-to the next.
-
-\subsection{Applying Left Shift to Samples}
-\label{shorten:apply_leftshift}
-\ALGORITHM{a list of samples for a given channel $c$, a left shift value}{a list of unshifted samples}
-\SetKwData{LEFTSHIFT}{left shift}
-\SetKwData{SAMPLES}{samples}
-\SetKwData{BLOCKLENGTH}{block length}
-\SetKwData{UNSHIFTED}{unshifted}
-\eIf{$\LEFTSHIFT = 0$}{
-  \Return $\text{\SAMPLES}_c$\tcc*{no change}
-}{
-  \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
-    $\text{\UNSHIFTED}_{c~i} \leftarrow \text{\SAMPLES}_{c~i} \times 2 ^ {\LEFTSHIFT}$\;
-  }
-  \Return $\text{\UNSHIFTED}_{c}$\;
-}
-\EALGORITHM
-
-\clearpage
-
-\subsection{Reading \texttt{QLPC}}
-\label{shorten:read_qlpc}
+\subsection{Processing \texttt{QLPC}}
+\label{shorten:process_qlpc_command}
 {\relsize{-1}
-\ALGORITHM{block length, previous \VAR{mean count} means for channel $c$, previously decoded samples}{decoded samples}
-\SetKwData{BLOCKLENGTH}{block length}
-\SetKwData{OFFSET}{offset}
-\SetKwData{MEANS}{previous means}
-\SetKwData{ENERGY}{energy}
-\SetKwData{LPCCOUNT}{LPC count}
-\SetKwData{COEFF}{LPC coefficient}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{UNOFFSET}{unoffset}
-\SetKwData{SAMPLES}{samples}
-$\text{\OFFSET} \leftarrow \texttt{shnmean}(\text{\MEANS}_c~,~\text{mean count})$\;
-$\ENERGY \leftarrow$ read \texttt{unsigned}(3)\;
-$\LPCCOUNT \leftarrow$ read \texttt{unsigned}(2)\;
-\For{$i \leftarrow 0$ \emph{\KwTo}\LPCCOUNT}{
-  $\text{\COEFF}_i \leftarrow$ read \texttt{signed}(5)\;
-}
-\For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
-  $\text{\RESIDUAL}_i \leftarrow$ read \texttt{signed}(\ENERGY)\;
-  $\text{sum} \leftarrow 2 ^ 5$\;
-  \For{$j \leftarrow 0$ \emph{\KwTo}\LPCCOUNT}{
-    \eIf(\tcc*[f]{remove offset from warm-up samples}){$i - j - 1 < 0$}{
-      $\text{sum} \leftarrow \text{sum} + \text{\COEFF}_j \times (\text{\SAMPLES}_{c~(i - j - 1)} - \OFFSET)$\;
-    }{
-      $\text{sum} \leftarrow \text{sum} + \text{\COEFF}_j \times \text{\UNOFFSET}_{(i - j - 1)}$\;
-    }
-  }
-  $\text{\UNOFFSET}_{i} \leftarrow \left\lfloor\frac{\text{sum}}{2 ^ 5}\right\rfloor + \text{\RESIDUAL}_i$\;
-}
-\For(\tcc*[f]{add offset to output samples}){$i \leftarrow 0$ \emph{\KwTo}\BLOCKLENGTH}{
-  $\text{\SAMPLES}_{c~i} \leftarrow \text{\UNOFFSET}_i + \OFFSET$
-}
-\Return $\text{\SAMPLES}_c$\;
-\EALGORITHM
+  \input{shorten/algorithms/process_qlpc_command}
 }
 \begin{figure}[h]
 \includegraphics{shorten/figures/qlpc.pdf}

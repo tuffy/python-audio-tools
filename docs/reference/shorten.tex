@@ -14,32 +14,19 @@ A Shorten file is almost entirely comprised of three variable-length
 data types which we'll call \texttt{unsigned}, \texttt{signed} and
 \texttt{long}.
 \subsubsection{Reading \texttt{unsigned}}
+\label{shorten:read_unsigned}
 {\relsize{-1}
-  \ALGORITHM{the Shorten file stream, a bit count $c$}{an unsigned value}
-  \SetKwData{MSB}{MSB}
-  \SetKwData{LSB}{LSB}
-  $\text{\MSB} \leftarrow$ \UNARY with stop bit 1\;
-  $\text{\LSB} \leftarrow$ \READ $c$ unsigned bits\;
-  \Return $\text{\MSB} \times 2 ^ c + \text{\LSB}$\;
-  \EALGORITHM
+  \input{shorten/algorithms/read_unsigned}
 }
 \subsubsection{Reading \texttt{signed}}
+\label{shorten:read_signed}
 {\relsize{-1}
-  \ALGORITHM{the Shorten file stream, a bit count $c$}{a signed value}
-  \SetKwData{UNSIGNED}{unsigned}
-  $\text{\UNSIGNED} \leftarrow$ read \texttt{unsigned}($c + 1$)\;
-  \eIf(\tcc*[f]{positive}){$\UNSIGNED \bmod 2 = 0$}{
-    \Return $\UNSIGNED \div 2$\;
-  }(\tcc*[f]{negative}){
-    \Return $-\lfloor\UNSIGNED \div 2\rfloor - 1$\;
-  }
-  \EALGORITHM
+  \input{shorten/algorithms/read_signed}
 }
 \subsubsection{Reading \texttt{long}}
+\label{shorten:read_long}
 {\relsize{-1}
-  \ALGORITHM{the Shorten file stream}{an unsigned value}
-  \Return \texttt{unsigned}(\texttt{unsigned}(2))\;
-  \EALGORITHM
+  \input{shorten/algorithms/read_long}
 }
 
 \clearpage

@@ -25,4 +25,3 @@ if bitstream_length > (255 * 2) {
 } else {
     return sub_block,2 + bitstream_length;
 }
-

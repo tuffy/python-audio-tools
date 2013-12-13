@@ -1,0 +1,65 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "input PCM data",block_size,channels;
+OUTPUT "1 or more Shorten commands written to the stream";
+VAR block_size "block size";
+VAR channels "channels";
+VAR samples "samples";
+VAR to_wrap "to wrap";
+VAR pcm_frames "PCM frames";
+VAR left_shift "left shift";
+VAR wasted_bps "wasted BPS";
+VAR diff "diff";
+VAR energy "energy";
+VAR residual "residual";
+VAR shorten_commands "Shorten commands";
+FUNC read_pcm_frames "read PCM frames from input";
+FUNC calculate_wasted_bps "calculate wasted BPS"
+"shorten:calculate_wasted_bps";
+FUNC write_unsigned "write unsigned" "shorten:write_unsigned";
+FUNC write_signed "write signed" "shorten:write_signed";
+FUNC write_long "write long" "shorten:write_long";
+FUNC compute_best_diff "compute best DIFF"
+"shorten:compute_best_diff";
+to_wrap <- 3;
+left_shift <- 0;
+samples,pcm_frames <- read_pcm_frames(block_size);
+while pcm_frames > 0 {
+    if pcm_frames != block_size {
+        block_size <- pcm_frames;
+        write_unsigned(2, 5) /*BLOCKSIZE command*/;
+        write_long(block_size);
+    }
+    for c <- 0 to channels {
+        wasted_bps <- calculate_wasted_bps(samples[c], block_size);
+        if wasted_bps == infinity /*all samples are 0*/ {
+            write_unsigned(2, 8) /*ZERO command*/;
+        } else {
+            if wasted_bps != left_shift {
+                left_shift <- wasted_bps;
+                write_unsigned(2, 6) /*BITSHIFT command*/;
+                write_unsigned(2, left_shift);
+            }
+            for i <- 0 to block_size {
+                samples[c][i] <- samples[c][i] / 2 ^ left_shift;
+            }
+            diff,energy,residual <- compute_best_diff(samples[c], block_size);
+            write_unsigned(2, diff) /*DIFF command*/;
+            write_unsigned(3, energy);
+            for i <- 0 to block_size {
+                write_signed(energy, residual[i]);
+            }
+        }
+        for i <- 0 to to_wrap /*wrap samples for next pass*/ {
+            samples[c][(i - to_wrap)] <- samples[c][(block_size + i - to_wrap)];
+        }
+    }
+    samples,pcm_frames <- read_pcm_frames(block_size);
+}
+return shorten_commands;

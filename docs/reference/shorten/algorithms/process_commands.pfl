@@ -1,0 +1,77 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT channels, block_length, max_LPC, mean_count;
+OUTPUT "a list of signed PCM samples per channel";
+VAR channels "channels";
+VAR block_length "block length";
+VAR max_LPC "maximum LPC";
+VAR to_wrap "to wrap";
+VAR mean_count "mean count";
+VAR left_shift "left shift";
+VAR command "command";
+VAR samples "samples";
+VAR means "means";
+VAR offset "offset";
+FUNC read_unsigned "read unsigned" "shorten:read_unsigned";
+FUNC read_long "read long" "shorten:read_long";
+FUNC process_audio_command "process audio command"
+"shorten:process_audio_command";
+FUNC handle_verbatim "process verbatim block"
+"shorten:process_verbatim";
+FUNC unknown_command "unknown Shorten command error";
+if max_LPC > 3 {
+    to_wrap <- max_LPC;
+} else {
+    to_wrap <- 3;
+}
+left_shift <- 0;
+c <- 0;
+m <- 0;
+do {
+    command <- read_unsigned(2);
+    if (0 <= command <= 3) or (7 <= command <= 8) /*audio commands*/ {
+        offset[c] <- floor((floor(frac(mean_count, 2)) +
+                           sum i <- m - mean_count to m - 1 {means[c][i]})
+                           / mean_count);
+        ;
+        samples[c] <- process_audio_command(samples[c],
+                                            offset[c],
+                                            command,
+                                            block_length);
+        for i <- 0 to block_length /*apply left shift*/ {
+            samples[c][i] <- samples[c][i] * 2 ^ left_shift;
+        }
+        c <- c + 1;
+        if c == channels {
+            return samples;
+            for c <- 0 to channels  {
+                means[c][m] <-
+                    floor((floor(frac(block_length, 2)) +
+                          sum i <- 0 to block_length - 1 {samples[c][i]})
+                          / block_length);
+                for i <- 0 to to_wrap /*wrap samples*/ {
+                    samples[c][(i - to_wrap)] <-
+                        samples[c][(block_length + i - to_wrap)];
+                }
+            }
+            c <- 0;
+            m <- m + 1;
+        }
+    } elif command == 4 {
+        /*QUIT command*/;
+    } elif command == 5 /*BLOCKSIZE command*/ {
+        block_length <- read_long();
+    } elif command == 6 /*BITSHIFT command*/ {
+        left_shift <- read_unsigned(2);
+    } elif command == 7 /*VERBATIM command*/ {
+        handle_verbatim();
+    } else {
+        unknown_command();
+    }
+} while command != 4;

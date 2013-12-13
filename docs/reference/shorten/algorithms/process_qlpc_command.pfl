@@ -1,0 +1,42 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "previously decoded samples", offset, block_length;
+OUTPUT samples;
+VAR samples "samples";
+VAR offset "offset";
+VAR block_length "block length";
+VAR energy "energy";
+VAR LPC_count "LPC count";
+VAR LPC_coeff "LPC coefficient";
+VAR residual "residual";
+VAR sum_ "sum";
+VAR unoffset "unoffset";
+FUNC read_unsigned "read unsigned" "shorten:read_unsigned";
+FUNC read_signed "read signed" "shorten:read_signed";
+energy <- read_unsigned(3);
+LPC_count <- read_unsigned(2);
+for i <- 0 to LPC_count {
+    LPC_coeff[i] <- read_signed(5);
+}
+for i <- 0 to block_length {
+    residual[i] <- read_signed(energy);
+    sum_ <- 2 ^ 5;
+    for j <- 0 to LPC_count {
+        if i - j - 1 < 0 {
+            sum_ <- sum_ + LPC_coeff[j] * (samples[(i - j - 1)] - offset);
+        } else {
+            sum_ <- sum_ + LPC_coeff[j] * unoffset[(i - j - 1)];
+        }
+    }
+    unoffset[i] <- floor(sum_ / 2 ^ 5) + residual[i];
+}
+for i <- 0 to block_length /*apply offset to output samples*/ {
+    samples[i] <- unoffset[i] + offset;
+}
+return samples;

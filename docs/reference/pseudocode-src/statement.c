@@ -110,6 +110,7 @@ statlist_aligned(const struct statlist *statlist)
     if (statlist != NULL) {
         const struct statement *statement = statlist->statement;
         switch (statement->type) {
+        case STAT_BLANKLINE:
         case STAT_ASSIGN_IN:
         case STAT_WRITE:
         case STAT_WRITE_UNARY:
@@ -136,6 +137,9 @@ statement_output_latex_aligned(const struct statement *self,
                                FILE *output)
 {
     switch (self->type) {
+    case STAT_BLANKLINE:
+        fputs("& & & \\\\", output);
+        break;
     case STAT_ASSIGN_IN:
         {
             const struct variablelist *variablelist =
