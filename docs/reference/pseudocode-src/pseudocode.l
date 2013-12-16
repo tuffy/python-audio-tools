@@ -75,6 +75,7 @@ extract_comment(const char *token)
 "skip"                  {return SKIP;}
 "unary"                 {return UNARY;}
 "unsigned"              {return UNSIGNED;}
+"seek"                  {return SEEK;}
 "signed"                {return SIGNED;}
 "bytes"                 {return BYTES;}
 "frac"                  {return FRAC;}

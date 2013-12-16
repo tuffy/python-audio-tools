@@ -80,7 +80,7 @@ free_pseudocode(struct pseudocode *code);
 %token <float_> FLOAT
 %token <comment> COMMENT
 %token ASSIGN_IN ASSIGN_OUT OPEN_BRACKET CLOSE_BRACKET
-%token READ WRITE UNARY SKIP UNSIGNED SIGNED BYTES
+%token READ WRITE UNARY SKIP UNSIGNED SIGNED BYTES SEEK
 %token OPEN_PAREN CLOSE_PAREN OPEN_CURLYBRACE CLOSE_CURLYBRACE PIPE
 %token DO WHILE FOR TO DOWNTO
 %token IF ELIF ELSE SWITCH CASE DEFAULT
@@ -208,6 +208,9 @@ statement: EOS {
  | IF expression comment OPEN_CURLYBRACE statlist CLOSE_CURLYBRACE elselist {
     $$ = statement_new_if($2, $5, $3, $7);
  }
+ | variablelist ASSIGN_IN expression IF expression ELSE expression comment EOS {
+    $$ = statement_new_assign_ifelse($5, $3, $7, $1, $8);
+ }
  | SWITCH expression comment OPEN_CURLYBRACE caselist CLOSE_CURLYBRACE {
     $$ = statement_new_switch($2, $3, $5);
  }
@@ -264,6 +267,9 @@ statement: EOS {
  }
  | SKIP expression BYTES comment EOS {
     $$ = statement_new_skip($2, IO_BYTES, $4);
+ }
+ | SEEK expression comment EOS {
+    $$ = statement_new_seek($2, $3);
  }
  | RETURN expressionlist comment EOS {
     $$ = statement_new_return($2, $3);
@@ -411,7 +417,6 @@ int main(int argc, char *argv[])
 {
     char *input_filename = NULL;
     char *output_filename = NULL;
-    output_format_t output_format = OUT_LATEX;
 
     char c;
     const static struct option long_opts[] = {
@@ -573,6 +578,7 @@ output_pseudocode_latex(const struct pseudocode *code, FILE *output)
     fprintf(output, "\\SetKw{WRITE}{write}\n");
     fprintf(output, "\\SetKw{WUNARY}{write unary}\n");
     fprintf(output, "\\SetKw{SKIP}{skip}\n");
+    fprintf(output, "\\SetKw{SEEK}{seek}\n");
     fprintf(output, "\\SetKw{ASSERT}{assert}\n");
     fprintf(output, "\\SetKw{AND}{and}\n");
     fprintf(output, "\\SetKw{OR}{or}\n");

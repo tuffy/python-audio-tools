@@ -494,6 +494,16 @@ figures/ape/header.pdf \
 figures/ape/header-example.pdf
 
 TTA = \
+tta/algorithms/decode_tta.tex \
+tta/algorithms/decode_frame.tex \
+tta/algorithms/decode_hybrid_filter.tex \
+tta/algorithms/decode_fixed_prediction.tex \
+tta/algorithms/decorrelate.tex \
+tta/algorithms/encode_tta.tex \
+tta/algorithms/encode_frame.tex \
+tta/algorithms/correlate.tex \
+tta/algorithms/encode_fixed_prediction.tex \
+tta/algorithms/encode_hybrid_filter.tex \
 tta/metadata.tex \
 tta/decode.tex \
 tta/encode.tex \

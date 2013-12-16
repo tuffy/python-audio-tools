@@ -108,6 +108,22 @@ statement_free_assign_in(struct statement *self);
 
 
 struct statement*
+statement_new_assign_ifelse(struct expression *condition,
+                            struct expression *then,
+                            struct expression *else_,
+                            struct variablelist *output_args,
+                            char *comment);
+
+void
+statement_output_latex_assign_ifelse(const struct statement *self,
+                                     const struct definitions *defs,
+                                     FILE *output);
+
+void
+statement_free_assign_ifelse(struct statement *self);
+
+
+struct statement*
 statement_new_functioncall(char *identifier,
                            struct expressionlist *input_args,
                            struct variablelist *output_args,
@@ -360,3 +376,16 @@ statement_output_latex_skip(const struct statement *self,
 
 void
 statement_free_skip(struct statement *self);
+
+
+struct statement*
+statement_new_seek(struct expression *position,
+                   char *comment);
+
+void
+statement_output_latex_seek(const struct statement *self,
+                            const struct definitions *defs,
+                            FILE *output);
+
+void
+statement_free_seek(struct statement *self);

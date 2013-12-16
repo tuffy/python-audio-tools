@@ -12,43 +12,7 @@ The basic process for decoding a TTA file is as follows:
 \par
 \noindent
 {\relsize{-1}
-  \ALGORITHM{a TTA encoded file}{PCM samples}
-  \SetKwData{SIGNATURE}{signature}
-  \SetKwData{FORMAT}{format}
-  \SetKwData{CHANNELS}{channels}
-  \SetKwData{BPS}{bits per sample}
-  \SetKwData{SAMPLERATE}{sample rate}
-  \SetKwData{PCMFRAMES}{total PCM frames}
-  \SetKwData{HEADERCRC}{header CRC32}
-  \SetKwData{FRAMESIZE}{TTA frame size}
-  \SetKwData{SEEKTABLECRC}{seektable CRC32}
-  \tcc{read header}
-  \begin{tabular}{rcl}
-    \SIGNATURE & $\leftarrow$ & \READ 4 bytes\; \\
-    & & \ASSERT $\text{\SIGNATURE} = \texttt{"TTA1"}$\; \\
-    \FORMAT & $\leftarrow$ & \READ 16 unsigned bits\; \\
-    \CHANNELS & $\leftarrow$ & \READ 16 unsigned bits\; \\
-    \BPS & $\leftarrow$ & \READ 16 unsigned bits\; \\
-    \SAMPLERATE & $\leftarrow$ & \READ 32 unsigned bits\; \\
-    \PCMFRAMES & $\leftarrow$ & \READ 32 unsigned bits\; \\
-  \end{tabular}\;
-  $\HEADERCRC \leftarrow$ \READ 32 unsigned bits\tcc*{don't process this value with CRC}
-  \hyperref[tta:crc32]{validate calculated CRC32 against \HEADERCRC}\;
-  \BlankLine
-  \tcc{read seektable}
-  \For{$i \leftarrow 0$ \emph{\KwTo}$\lceil(\text{\PCMFRAMES} \times 245) \div (\text{\SAMPLERATE} \times 256)\rceil$}{
-    $\text{\FRAMESIZE}_i \leftarrow$ \READ 32 unsigned bits\;
-  }
-  $\SEEKTABLECRC \leftarrow$ \READ 32 unsigned bits\tcc*{don't process this value with CRC}
-  \hyperref[tta:crc32]{validate calculated CRC32 against \SEEKTABLECRC}\;
-  \BlankLine
-  \tcc{decode frames}
-  \While{$\PCMFRAMES > 0$}{
-     \hyperref[tta:decode_frame]{decode TTA frames to 1 or more PCM frames}\;
-     deduct frame's block size from $\PCMFRAMES$\;
-     \Return decoded PCM frames\;
-  }
-  \EALGORITHM
+  \input{tta/algorithms/decode_tta}
 }
 \begin{figure}[h]
   \includegraphics{tta/figures/frames.pdf}
@@ -59,81 +23,14 @@ The basic process for decoding a TTA file is as follows:
 \subsection{Decoding a TTA Frame}
 \label{tta:decode_frame}
 {\relsize{-1}
-  \ALGORITHM{channels, sample rate, remaining PCM frames}{1 or more PCM frames}
-  \SetKwData{BLOCKSIZE}{block size}
-  \SetKwFunction{MIN}{min}
-  \SetKwFunction{MAX}{max}
-  \SetKwData{CHANNELS}{channels}
-  \SetKwData{SAMPLERATE}{sample rate}
-  \SetKwData{PCMFRAMES}{remaining PCM frames}
-  \SetKwData{KZ}{k0}
-  \SetKwData{KO}{k1}
-  \SetKwData{SUMZ}{sum0}
-  \SetKwData{SUMO}{sum1}
-  \SetKwData{MSB}{MSB}
-  \SetKwData{LSB}{LSB}
-  \SetKwData{UNSHIFTED}{unshifted}
-  \SetKwData{UNSIGNED}{unsigned}
-  \SetKwData{RESIDUAL}{residual}
-  \SetKwData{FILTERED}{filtered}
-  \SetKwData{PREDICTED}{predicted}
-  \SetKwData{DECORRELATED}{decorrelated}
-  \SetKwData{FRAMECRC}{frame CRC32}
-  \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
-    $\text{\KZ}_c \leftarrow \text{\KO}_c \leftarrow 10$\;
-    $\text{\SUMZ}_c \leftarrow \text{\SUMO}_c \leftarrow 2 ^ {14}$\;
-  }
-  $\BLOCKSIZE \leftarrow \MIN(\lfloor(\SAMPLERATE \times 256) \div 245\rfloor~,~\PCMFRAMES)$\;
-  \BlankLine
-  \For(\tcc*[f]{decode residuals}){$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
-    \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
-      $\MSB \leftarrow$ \UNARY with stop bit 0\;
-      \eIf{$\MSB = 0$}{
-        $\UNSIGNED \leftarrow$ \READ $\text{\KZ}_c$ unsigned bits\;
-      }{
-        $\LSB \leftarrow$ \READ $\text{\KO}_c$ unsigned bits\;
-        $\UNSHIFTED \leftarrow ((\MSB - 1) \times 2 ^ {\text{\KO}_c}) + \LSB$\;
-        $\UNSIGNED \leftarrow \UNSHIFTED + 2 ^ {\text{\KZ}_c}$\;
-        $\text{\SUMO}'_c \leftarrow \text{\SUMO}_c + (\UNSHIFTED - \lfloor\text{\SUMO}_c \div 2 ^ 4\rfloor)$\;
-        \uIf{$\text{\SUMO}'_c < 2 ^ {\text{\KO}_c + 4}$}{
-        $\text{\KO}'_c \leftarrow \MAX(\text{\KO}_c - 1~,~0)$\;
-        }
-        \ElseIf{$\text{\SUMO}'_c > 2 ^ {\text{\KO}_c + 5}$}{
-          $\text{\KO}'_c \leftarrow \text{\KO}_c + 1$\;
-        }
-      }
-      $\text{\SUMZ}'_c \leftarrow \text{\SUMZ}_c + (\UNSIGNED - \lfloor\text{\SUMZ}_c \div 2 ^ 4\rfloor)$\;
-      \uIf{$\text{\SUMZ}'_c < 2 ^ {\text{\KZ}_c + 4}$}{
-        $\text{\KZ}'_c \leftarrow \MAX(\text{\KZ}_c - 1~,~0)$\;
-      }
-      \ElseIf{$\text{\SUMZ}'_c > 2 ^ {\text{\KZ}_c + 5}$}{
-        $\text{\KZ}'_c \leftarrow \text{\KZ}_c + 1$\;
-      }
-      \eIf(\tcc*[f]{apply sign bit}){$(\UNSIGNED \bmod 2) = 1$}{
-        $\text{\RESIDUAL}_{c~i} \leftarrow (\UNSIGNED + 1) \div 2$\;
-      }{
-        $\text{\RESIDUAL}_{c~i} \leftarrow -(\UNSIGNED \div 2)$\;
-      }
-    }
-  }
-  byte-align file stream\;
-  $\FRAMECRC \leftarrow$ \READ 32 unsigned bits\tcc*{don't process this value with CRC}
-  \hyperref[tta:crc32]{validate calculated CRC32 against \FRAMECRC}\;
-  \BlankLine
-  \For{$c \leftarrow 0$ \emph{\KwTo}\CHANNELS}{
-      $\text{\FILTERED}_c \leftarrow$ \hyperref[tta:hybridfilter]{run hybrid filter on $\text{\RESIDUAL}_c$}\;
-      $\text{\PREDICTED}_c \leftarrow$ \hyperref[tta:fixedprediction]{run fixed order prediction on $\text{\FILTERED}_c$}\;
-  }
-  \eIf{$\CHANNELS = 1$}{
-    \Return \PREDICTED\;
-  }{
-      $\text{\DECORRELATED} \leftarrow$ \hyperref[tta:decorrelated]{decorrelate $\text{\PREDICTED}$}\;
-      \Return \DECORRELATED\;
-  }
-  \EALGORITHM
+  \input{tta/algorithms/decode_frame}
 }
 
 \clearpage
+
+\SetKwFunction{MIN}{min}
+\SetKwFunction{MAX}{max}
+
 
 \subsubsection{Residual Decoding Example}
 In this example, the frame's \textsf{block size} is 10 and
@@ -235,79 +132,7 @@ channel count is 2.
 \subsubsection{Running Hybrid Filter}
 \label{tta:hybridfilter}
 {\relsize{-2}
-  \ALGORITHM{a list of residuals for a given channel, the frame's block size, the stream's bits per sample}{a list of filtered residuals}
-  \SetKwData{BLOCKSIZE}{block size}
-  \SetKwData{BPS}{bits per sample}
-  \SetKwData{SHIFT}{shift}
-  \SetKwData{ROUND}{round}
-  \SetKwData{QM}{qm}
-  \SetKwData{DX}{dx}
-  \SetKwData{DL}{dl}
-  \SetKwData{SUM}{sum}
-  \SetKwData{RESIDUAL}{residual}
-  \SetKwData{FILTERED}{filtered}
-  \Switch{\BPS}{
-    \uCase{8}{
-      $\SHIFT \leftarrow 10$\;
-    }
-    \uCase{16}{
-      $\SHIFT \leftarrow 9$\;
-    }
-    \Case{24}{
-      $\SHIFT \leftarrow 10$\;
-    }
-  }
-  \begin{tabular}{rcl}
-    \ROUND & $\leftarrow$ & $2 ^ {\SHIFT - 1}$ \\
-    \QM & $\leftarrow$ & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} \\
-    \DX & $\leftarrow$ & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} \\
-    \DL & $\leftarrow$ & \texttt{[0, 0, 0, 0, 0, 0, 0, 0]} \\
-  \end{tabular}\;
-  \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
-    \eIf{$i = 0$}{
-      $\text{\FILTERED}_0 \leftarrow \text{\RESIDUAL}_0 + \lfloor\ROUND \div 2 ^ {\SHIFT}\rfloor$\;
-    }{
-      \uIf{$\text{\RESIDUAL}_{i - 1} < 0$}{
-        \For{$j \leftarrow 0$ \emph{\KwTo}8}{
-          $\text{\QM}'_j \leftarrow \text{\QM}_j - \text{\DX}_j$\;
-        }
-      }
-      \ElseIf{$\text{\RESIDUAL}_{i - 1} > 0$}{
-        \For{$j \leftarrow 0$ \emph{\KwTo}8}{
-          $\text{\QM}'_j \leftarrow \text{\QM}_j + \text{\DX}_j$\;
-        }
-      }
-      $\SUM \leftarrow \ROUND + \overset{7}{\underset{j = 0}{\sum}}\text{\DL}_j \times \text{\QM}'_j$\;
-      \tcc{Due to a flaw in True Audio's hybrid filter reference implementation, sum's value must be truncated to a signed 32-bit integer.  This will result in larger files in some instances.}
-      \While{$\SUM \geq 2 ^ {31}$}{
-        $\SUM' \leftarrow \SUM - 2 ^ {32}$\;
-      }
-      \While{$\SUM < -2 ^ {31}$}{
-        $\SUM' \leftarrow \SUM + 2 ^ {32}$\;
-      }
-      $\text{\FILTERED}_i \leftarrow \text{\RESIDUAL}_i + \lfloor\SUM \div 2 ^ {\SHIFT}\rfloor$\;
-    }
-    \begin{tabular}{rcl}
-      $\text{\DX}'_0$ & $\leftarrow$ & $\text{\DX}_1$ \\
-      $\text{\DX}'_1$ & $\leftarrow$ & $\text{\DX}_2$ \\
-      $\text{\DX}'_2$ & $\leftarrow$ & $\text{\DX}_3$ \\
-      $\text{\DX}'_3$ & $\leftarrow$ & $\text{\DX}_4$ \\
-      $\text{\DX}'_4$ & $\leftarrow$ & \lIf{$\text{\DL}_4 \geq 0$}{1} \lElse{-1} \\
-      $\text{\DX}'_5$ & $\leftarrow$ & \lIf{$\text{\DL}_5 \geq 0$}{2} \lElse{-2} \\
-      $\text{\DX}'_6$ & $\leftarrow$ & \lIf{$\text{\DL}_6 \geq 0$}{2} \lElse{-2} \\
-      $\text{\DX}'_7$ & $\leftarrow$ & \lIf{$\text{\DL}_7 \geq 0$}{4} \lElse{-4} \\
-      $\text{\DL}'_0$ & $\leftarrow$ & $\text{\DL}_1$ \\
-      $\text{\DL}'_1$ & $\leftarrow$ & $\text{\DL}_2$ \\
-      $\text{\DL}'_2$ & $\leftarrow$ & $\text{\DL}_3$ \\
-      $\text{\DL}'_3$ & $\leftarrow$ & $\text{\DL}_4$ \\
-      $\text{\DL}'_4$ & $\leftarrow$ & $-\text{\DL}_5 + (-\text{\DL}_6 + (\text{\FILTERED}_i - \text{\DL}_7))$ \\
-      $\text{\DL}'_5$ & $\leftarrow$ & $-\text{\DL}_6 + (\text{\FILTERED}_i - \text{\DL}_7)$ \\
-      $\text{\DL}'_6$ & $\leftarrow$ & $\text{\FILTERED}_i - \text{\DL}_7$ \\
-      $\text{\DL}'_7$ & $\leftarrow$ & $\text{\FILTERED}_i$ \\
-    \end{tabular}\;
-  }
-  \Return \FILTERED\;
-  \EALGORITHM
+  \input{tta/algorithms/decode_hybrid_filter}
 }
 
 \clearpage
@@ -360,30 +185,7 @@ Given a \textsf{block size} of 10 and a 16 bits per sample stream:
 \subsubsection{Running Fixed Order Prediction}
 \label{tta:fixedprediction}
 {\relsize{0}
-  \ALGORITHM{a list of filtered samples for a given channel, the frame's block size, the stream's bits per sample}{a list of predicted samples}
-  \SetKwData{BLOCKSIZE}{block size}
-  \SetKwData{BPS}{bits per sample}
-  \SetKwData{SHIFT}{shift}
-  \SetKwData{FILTERED}{filtered}
-  \SetKwData{PREDICTED}{predicted}
-  \Switch{\BPS}{
-    \uCase{8}{
-      $\SHIFT \leftarrow 4$\;
-    }
-    \uCase{16}{
-      $\SHIFT \leftarrow 5$\;
-    }
-    \Case{24}{
-      $\SHIFT \leftarrow 5$\;
-    }
-  }
-  \BlankLine
-  $\text{\PREDICTED}_0 \leftarrow \text{\FILTERED}_0$\;
-  \For{$i \leftarrow 1$ \emph{\KwTo}\BLOCKSIZE}{
-    $\text{\PREDICTED}_{i} \leftarrow \text{\FILTERED}_i + \left\lfloor\frac{(\text{\PREDICTED}_{i - 1} \times 2 ^ {\text{\SHIFT}}) - \text{\PREDICTED}_{i - 1}}{2 ^ {\text{\SHIFT}}}\right\rfloor$\;
-  }
-  \Return \PREDICTED\;
-  \EALGORITHM
+  \input{tta/algorithms/decode_fixed_prediction}
 }
 
 \subsubsection{Fixed Order Prediction Example}
@@ -430,29 +232,7 @@ Given a \textsf{block size} of 10 and a 16 bits per sample stream:
 
 \subsubsection{Decorrelating Channels}
 \label{tta:decorrelated}
-\ALGORITHM{2 or more channels of predicted samples, the stream's block size and channel count}{2 or more channels of decorrelated samples}
-\SetKwData{PREDICTED}{predicted}
-\SetKwData{DECORRELATED}{decorrelated}
-\SetKwData{CHANNELS}{channels}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKw{KwDownTo}{downto}
-\For{$c \leftarrow \CHANNELS$ \emph{\KwDownTo}0}{
-  \eIf{$c = (\CHANNELS - 1)$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
-      \eIf(\tcc*[f]{round toward zero}){$\text{\PREDICTED}_{(c - 1)~i} \geq 0$}{
-        $\text{\DECORRELATED}_{c~i} \leftarrow \text{\PREDICTED}_{c~i} + \lfloor\text{\PREDICTED}_{(c - 1)~i} \div 2\rfloor$\;
-      }{
-        $\text{\DECORRELATED}_{c~i} \leftarrow \text{\PREDICTED}_{c~i} + \lceil\text{\PREDICTED}_{(c - 1)~i} \div 2\rceil$\;
-      }
-    }
-  }{
-    \For{$i \leftarrow 0$ \emph{\KwTo}\BLOCKSIZE}{
-      $\text{\DECORRELATED}_{c~i} \leftarrow \text{\DECORRELATED}_{(c + 1)~i} - \text{\PREDICTED}_{c~i}$\;
-    }
-  }
-}
-\Return \DECORRELATED\;
-\EALGORITHM
+\input{tta/algorithms/decorrelate}
 
 \subsubsection{Channel Decorrelation Example}
 \begin{table}[h]

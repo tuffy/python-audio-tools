@@ -1,0 +1,72 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "TTA file stream",bits_per_sample,channels,block_size;
+OUTPUT "decoded signed PCM samples per channel";
+VAR bits_per_sample "bits-per-sample";
+VAR channels "channels";
+VAR block_size "block size";
+VAR k0 "k0";
+VAR k1 "k1";
+VAR sum0 "sum0";
+VAR sum1 "sum1";
+VAR MSB "MSB";
+VAR LSB "LSB";
+VAR unsigned_ "unsigned";
+VAR unshifted "unshifted";
+VAR residual "residual";
+VAR frame_crc "frame CRC";
+VAR filtered "filtered";
+VAR predicted "predicted";
+VAR decorrelated "decorrelated";
+FUNC byte_align "byte align input stream";
+FUNC hybrid_filter "hybrid filter" "tta:hybridfilter";
+FUNC fixed_prediction "decode fixed prediction" "tta:fixedprediction";
+FUNC decorrelate "decorrelate channels" "tta:decorrelated";
+for c <- 0 to channels {
+    k0[c],k1[c] <- 10;
+    sum0[c],sum1[c] <- 2 ^ 14;
+}
+for i <- 0 to block_size /*decode residuals*/ {
+    for c <- 0 to channels {
+        MSB <- read unary 0;
+        if MSB == 0 {
+            unsigned_ <- read k0[c] unsigned;
+        } else {
+            LSB <- read k1[c] unsigned;
+            unshifted <- ((MSB - 1) * 2 ^ k1[c]) + LSB;
+            unsigned_ <- unshifted + 2 ^ k0[c];
+            sum1[c] <- sum1[c] + (unshifted - floor(sum1[c] / 2 ^ 4));
+            if (sum1[c] < 2 ^ {k1[c] + 4}) and (k1[c] > 0) {
+                k1[c] <- k1[c] - 1;
+            } elif sum1[c] > 2 ^ {k1[c] + 5} {
+                k1[c] <- k1[c] + 1;
+            }
+        }
+        sum0[c] <- sum0[c] + (unsigned_ - floor(sum0[c] / 2 ^ 4));
+        if (sum0[c] < 2 ^ {k0[c] + 4}) and (k0[c] > 0) {
+            k0[c] <- k0[c] - 1;
+        } elif sum0[c] > 2 ^ {k0[c] + 5} {
+            k0[c] <- k0[c] + 1;
+        }
+        if unsigned_ % 2 == 1 /*apply sign bit*/ {
+            residual[c][i] <- (unsigned_ + 1) / 2;
+        } else {
+            residual[c][i] <- -(unsigned_ / 2);
+        }
+    }
+}
+byte_align();
+frame_crc <- read 32 unsigned /*don't process with CRC*/;
+validate_crc(frame_crc);
+for c <- 0 to channels {
+    filtered[c] <- hybrid_filter(bits_per_sample, block_size, residual[c]);
+    predicted[c] <- fixed_prediction(bits_per_sample, block_size, filtered[c]);
+}
+decorrelated <- decorrelate(channels, block_size, predicted);
+return decorrelated;

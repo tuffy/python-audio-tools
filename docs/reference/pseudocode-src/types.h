@@ -237,6 +237,7 @@ typedef enum {
     STAT_COMMENT,
     STAT_BREAK,
     STAT_ASSIGN_IN,
+    STAT_ASSIGN_IFELSE,
     STAT_FUNCTIONCALL,
     STAT_FUNCTIONCALL_WRITE,
     STAT_FUNCTIONCALL_WRITE_UNARY,
@@ -245,6 +246,7 @@ typedef enum {
     STAT_WRITE,
     STAT_WRITE_UNARY,
     STAT_SKIP,
+    STAT_SEEK,
     STAT_WHILE,
     STAT_DO_WHILE,
     STAT_FOR,
@@ -266,6 +268,13 @@ struct statement {
             struct expression *expression;
             char *comment;
         } assign_in;
+        struct {
+            struct expression *condition;
+            struct expression *then;
+            struct expression *else_;
+            struct variablelist *output_args;
+            char *comment;
+        } assign_ifelse;
         struct {
             char *identifier;
             struct expressionlist *input_args;
@@ -331,6 +340,10 @@ struct statement {
             io_t type;
             char *skip_comment;
         } skip;
+        struct {
+            struct expression *position;
+            char *comment;
+        } seek;
         struct {
             struct expressionlist *toreturn;
             char *return_comment;

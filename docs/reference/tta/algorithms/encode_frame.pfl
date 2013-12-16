@@ -1,0 +1,77 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT bits_per_sample, channels, block_size, pcm_frames;
+OUTPUT "a TTA frame, the size of the TTA frame in bytes";
+VAR bits_per_sample "bits-per-sample";
+VAR channels "channels";
+VAR block_size "block size";
+VAR pcm_frames "PCM frames";
+VAR correlated "correlated";
+VAR predicted "predicted";
+VAR residual "residual";
+VAR tta_frame "TTA frame";
+VAR tta_frame_size "TTA frame size";
+VAR k0 "k0";
+VAR k1 "k1";
+VAR sum0 "sum0";
+VAR sum1 "sum1";
+VAR MSB "MSB";
+VAR LSB "LSB";
+VAR unsigned_ "unsigned";
+VAR shifted "shifted";
+VAR frame_crc "frame CRC";
+FUNC correlate "correlate channels" "tta:correlate";
+FUNC fixed_prediction "encode fixed prediction" "tta:enc_fixed";
+FUNC hybrid_filter "hybrid filter" "tta:enc_hybrid";
+FUNC byte_align "byte align output stream";
+FUNC calculate_crc "calculate frame CRC";
+correlated <- correlate(channels, block_size, pcm_frames);
+for c <- 0 to channels {
+    predicted[c] <-
+        fixed_prediction(bits_per_sample, block_size, correlated[c]);
+    residual[c] <-
+        hybrid_filter(bits_per_sample, block_size, predicted[c]);
+    k0[c],k1[c] <- 10;
+    sum0[c],sum1[c] <- 2 ^ 14;
+}
+for i <- 0 to block_size /*encode residuals*/ {
+    for c <- 0 to channels {
+        if residual[c][i] > 0 {
+            unsigned_ <- (residual[c][i] * 2) - 1;
+        } else {
+            unsigned_ <- -residual[c][i] * 2;
+        }
+        if unsigned_ < 2 ^ k0[c] {
+            0 -> write unary 0;
+            unsigned_ -> write k0[c] unsigned;
+        } else {
+            shifted <- unsigned_ - 2 ^ k0[c];
+            MSB <- 1 + floor(shifted / 2 ^ k1[c]);
+            LSB <- shifted - ((MSB - 1) * 2 ^ k1[c]);
+            MSB -> write unary 0;
+            LSB -> write k1[c] unsigned;
+            sum1[c] <- sum1[c] + (shifted - floor(sum1[c] / 2 ^ 4));
+            if (sum1[c] < 2 ^ {k1[c] + 4}) and (k1[c] > 0) {
+                k1[c] <- k1[c] - 1;
+            } elif sum1[c] > 2 ^ {k1[c] + 5} {
+                k1[c] <- k1[c] + 1;
+            }
+        }
+        sum0[c] <- sum0[c] + (unsigned_ - floor(sum0[c] / 2 ^ 4));
+        if (sum0[c] < 2 ^ {k0[c] + 4}) and (k0[c] > 0) {
+            k0[c] <- k0[c] - 1;
+        } elif sum0[c] > 2 ^ {k0[c] + 5} {
+            k0[c] <- k0[c] + 1;
+        }
+    }
+}
+byte_align();
+frame_crc <- calculate_crc();
+frame_crc -> write 32 unsigned;
+return tta_frame,tta_frame_size;

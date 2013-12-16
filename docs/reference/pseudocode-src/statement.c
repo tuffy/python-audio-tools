@@ -112,6 +112,7 @@ statlist_aligned(const struct statlist *statlist)
         switch (statement->type) {
         case STAT_BLANKLINE:
         case STAT_ASSIGN_IN:
+        case STAT_ASSIGN_IFELSE:
         case STAT_WRITE:
         case STAT_WRITE_UNARY:
         case STAT_FUNCTIONCALL_WRITE:
@@ -155,6 +156,33 @@ statement_output_latex_aligned(const struct statement *self,
             fprintf(output, "$ & ");
             statement_output_latex_aligned_comment_text(comment, output);
             fprintf(output, "\\\\");
+        }
+        break;
+    case STAT_ASSIGN_IFELSE:
+        {
+            const struct expression *condition =
+                self->_.assign_ifelse.condition;
+            const struct expression *then =
+                self->_.assign_ifelse.then;
+            const struct expression *else_ =
+                self->_.assign_ifelse.else_;
+            const struct variablelist *output_args =
+                self->_.assign_ifelse.output_args;
+            const char *comment = self->_.assign_ifelse.comment;
+
+            fputs("$", output);
+            output_args->output_latex(output_args, defs, output);
+            fputs("$ & $\\leftarrow$ & ", output);
+            fputs("\\lIf{$", output);
+            condition->output_latex(condition, defs, output);
+            fputs("$}{$", output);
+            then->output_latex(then, defs, output);
+            fputs("$}~\\lElse{$", output);
+            else_->output_latex(else_, defs, output);
+            fputs("$}", output);
+            fputs(" & ", output);
+            statement_output_latex_aligned_comment_text(comment, output);
+            fputs("\\\\", output);
         }
         break;
     case STAT_WRITE:
@@ -405,8 +433,8 @@ statement_output_latex_assign_in(const struct statement *self,
                                  const struct definitions *defs,
                                  FILE *output)
 {
-    struct variablelist *variablelist = self->_.assign_in.variablelist;
-    struct expression *expression = self->_.assign_in.expression;
+    const struct variablelist *variablelist = self->_.assign_in.variablelist;
+    const struct expression *expression = self->_.assign_in.expression;
 
     fprintf(output, "$");
 
@@ -433,6 +461,72 @@ statement_free_assign_in(struct statement *self)
     free(self->_.assign_in.comment);
     free(self);
 }
+
+struct statement*
+statement_new_assign_ifelse(struct expression *condition,
+                            struct expression *then,
+                            struct expression *else_,
+                            struct variablelist *output_args,
+                            char *comment)
+{
+    struct statement *statement = malloc(sizeof(struct statement));
+    statement->type = STAT_ASSIGN_IFELSE;
+    statement->_.assign_ifelse.condition = condition;
+    statement->_.assign_ifelse.then = then;
+    statement->_.assign_ifelse.else_ = else_;
+    statement->_.assign_ifelse.output_args = output_args;
+    statement->_.assign_ifelse.comment = comment;
+    statement->output_latex = statement_output_latex_assign_ifelse;
+    statement->free = statement_free_assign_ifelse;
+    return statement;
+}
+
+void
+statement_output_latex_assign_ifelse(const struct statement *self,
+                                     const struct definitions *defs,
+                                     FILE *output)
+{
+    const struct expression *condition = self->_.assign_ifelse.condition;
+    const struct expression *then = self->_.assign_ifelse.then;
+    const struct expression *else_ = self->_.assign_ifelse.else_;
+    const struct variablelist *output_args = self->_.assign_ifelse.output_args;
+    const char *comment = self->_.assign_ifelse.comment;
+
+    fputs("$", output);
+
+    output_args->output_latex(output_args, defs, output);
+
+    fputs(" \\leftarrow $", output);
+
+    fputs("~\\lIf{$", output);
+    condition->output_latex(condition, defs, output);
+    fputs("$}{$", output);
+    then->output_latex(then, defs, output);
+    fputs("$}~\\lElse{$", output);
+    else_->output_latex(else_, defs, output);
+    fputs("$}", output);
+
+    statement_output_latex_comment_text(comment, output);
+    fprintf(output, "\n");
+}
+
+void
+statement_free_assign_ifelse(struct statement *self)
+{
+    struct expression *condition = self->_.assign_ifelse.condition;
+    struct expression *then = self->_.assign_ifelse.then;
+    struct expression *else_ = self->_.assign_ifelse.else_;
+    struct variablelist *output_args = self->_.assign_ifelse.output_args;
+    char *comment = self->_.assign_ifelse.comment;
+
+    condition->free(condition);
+    then->free(then);
+    else_->free(else_);
+    output_args->free(output_args);
+    free(comment);
+    free(self);
+}
+
 
 struct statement*
 statement_new_functioncall(char *identifier,
@@ -1720,5 +1814,42 @@ statement_free_skip(struct statement *self)
 {
     self->_.skip.to_skip->free(self->_.skip.to_skip);
     free(self->_.skip.skip_comment);
+    free(self);
+}
+
+struct statement*
+statement_new_seek(struct expression *position,
+                   char *comment)
+{
+    struct statement *statement = malloc(sizeof(struct statement));
+    statement->type = STAT_SEEK;
+    statement->_.seek.position = position;
+    statement->_.seek.comment = comment;
+    statement->output_latex = statement_output_latex_seek;
+    statement->free = statement_free_seek;
+    return statement;
+}
+
+void
+statement_output_latex_seek(const struct statement *self,
+                            const struct definitions *defs,
+                            FILE *output)
+{
+    const struct expression *position = self->_.seek.position;
+    const char *comment = self->_.seek.comment;
+    fputs("\\SEEK to file position $", output);
+    position->output_latex(position, defs, output);
+    fputs("$", output);
+    statement_output_latex_comment_text(comment, output);
+    fputs("\n", output);
+}
+
+void
+statement_free_seek(struct statement *self)
+{
+    struct expression *position = self->_.seek.position;
+    char *comment = self->_.seek.comment;
+    position->free(position);
+    free(comment);
     free(self);
 }
