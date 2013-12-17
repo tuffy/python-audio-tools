@@ -1,0 +1,32 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "MLP substream data";
+OUTPUT fir_order[s][c],fir_shift[s][c],fir_coeff[s][c];
+VAR fir_order "FIR order";
+VAR fir_shift "FIR shift";
+VAR fir_coeff "FIR coefficient";
+VAR coeff_bits "coeff bits";
+VAR coeff_shift "coeff shift";
+fir_order[s][c] <- read 4 unsigned;
+assert fir_order[s][c] <= 8;
+if fir_order[s][c] > 0 {
+    fir_shift[s][c] <- read 4 unsigned;
+    coeff_bits <- read 5 unsigned;
+    coeff_shift <- read 3 unsigned;
+    assert 1 < coeff_bits < 16;
+    assert (coeff_bits + coeff_shift) <= 16;
+    for i <- 0 to fir_order[s][c] {
+        fir_coeff[s][c][i] <- (read (coeff_bits) signed) * 2 ^ coeff_shift;
+    }
+    assert (read 1 unsigned) == 0;
+} else {
+    fir_shift[s][c] <- 0;
+    fir_coeff[s][c] <- [];
+}
+return fir_order[s][c],fir_shift[s][c],fir_coeff[s][c];

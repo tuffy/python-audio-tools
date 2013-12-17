@@ -44,12 +44,6 @@ statlist_free(struct statlist *self);
 unsigned
 statlist_aligned(const struct statlist *statlist);
 
-void
-statement_output_latex_aligned(const struct statement *self,
-                               const struct definitions *defs,
-                               FILE *output);
-
-
 struct statement*
 statement_new_blankline(void);
 
@@ -57,6 +51,11 @@ void
 statement_output_latex_blankline(const struct statement *self,
                                  const struct definitions *defs,
                                  FILE *output);
+
+void
+statement_output_latex_aligned_blankline(const struct statement *self,
+                                         const struct definitions *defs,
+                                         FILE *output);
 
 void
 statement_free_blankline(struct statement *self);
@@ -104,6 +103,11 @@ statement_output_latex_assign_in(const struct statement *self,
                                  FILE *output);
 
 void
+statement_output_latex_aligned_assign_in(const struct statement *self,
+                                         const struct definitions *defs,
+                                         FILE *output);
+
+void
 statement_free_assign_in(struct statement *self);
 
 
@@ -120,6 +124,11 @@ statement_output_latex_assign_ifelse(const struct statement *self,
                                      FILE *output);
 
 void
+statement_output_latex_aligned_assign_ifelse(const struct statement *self,
+                                             const struct definitions *defs,
+                                             FILE *output);
+
+void
 statement_free_assign_ifelse(struct statement *self);
 
 
@@ -133,6 +142,11 @@ void
 statement_output_latex_functioncall(const struct statement *self,
                                     const struct definitions *defs,
                                     FILE *output);
+
+void
+statement_output_latex_aligned_functioncall(const struct statement *self,
+                                            const struct definitions *defs,
+                                            FILE *output);
 
 void
 statement_output_latex_functioncall_name(const char *identifier,
@@ -161,6 +175,12 @@ statement_output_latex_functioncall_write(const struct statement *self,
                                           FILE *output);
 
 void
+statement_output_latex_aligned_functioncall_write(
+    const struct statement *self,
+    const struct definitions *defs,
+    FILE *output);
+
+void
 statement_output_latex_functioncall_write_args(
     const char *identifier,
     const struct expressionlist *input_args,
@@ -168,10 +188,9 @@ statement_output_latex_functioncall_write_args(
     FILE *output);
 
 void
-statement_output_latex_write_args(io_t type,
-                                  const struct expression *to_write,
-                                  const struct definitions *defs,
-                                  FILE *output);
+io_output_latex_args(io_t type,
+                     const struct expression *quantity,
+                     FILE *output);
 
 void
 statement_output_latex_write_args_unary(int stop_bit,
@@ -186,6 +205,12 @@ statement_new_functioncall_write_unary(char *identifier,
                                        struct expressionlist *input_args,
                                        long long stop_bit,
                                        char *comment);
+
+void
+statement_output_latex_aligned_functioncall_write_unary(
+    const struct statement *self,
+    const struct definitions *defs,
+    FILE *output);
 
 void
 statement_output_latex_functioncall_write_unary(const struct statement *self,
@@ -347,6 +372,11 @@ statement_output_latex_write(const struct statement *self,
                              FILE *output);
 
 void
+statement_output_latex_aligned_write(const struct statement *self,
+                                     const struct definitions *defs,
+                                     FILE *output);
+
+void
 statement_free_write(struct statement *self);
 
 
@@ -359,6 +389,11 @@ void
 statement_output_latex_write_unary(const struct statement *self,
                                    const struct definitions *defs,
                                    FILE *output);
+
+void
+statement_output_latex_aligned_write_unary(const struct statement *self,
+                                           const struct definitions *defs,
+                                           FILE *output);
 
 void
 statement_free_write_unary(struct statement *self);
@@ -375,6 +410,11 @@ statement_output_latex_skip(const struct statement *self,
                             FILE *output);
 
 void
+statement_output_latex_aligned_skip(const struct statement *self,
+                                    const struct definitions *defs,
+                                    FILE *output);
+
+void
 statement_free_skip(struct statement *self);
 
 
@@ -389,3 +429,23 @@ statement_output_latex_seek(const struct statement *self,
 
 void
 statement_free_seek(struct statement *self);
+
+
+struct statement*
+statement_new_unread(io_t type,
+                     struct expression *to_unread,
+                     struct expression *amount,
+                     char *comment);
+
+void
+statement_output_latex_unread(const struct statement *self,
+                              const struct definitions *defs,
+                              FILE *output);
+
+void
+statement_output_latex_aligned_unread(const struct statement *self,
+                                      const struct definitions *defs,
+                                      FILE *output);
+
+void
+statement_free_unread(struct statement *self);

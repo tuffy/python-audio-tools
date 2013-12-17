@@ -1,0 +1,64 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "ATS_XX_0.IFO file";
+OUTPUT title_count,track_count,index_count,title_pts_length,track_index_number,
+track_pts_index,track_pts_length,first_sector,last_sector;
+VAR identifier "identifier";
+VAR title_count "title count";
+VAR last_byte_address "last byte address";
+VAR title_number "title number";
+VAR title_table_offset "title table offset";
+VAR track_count "track count";
+VAR index_count "index count";
+VAR title_pts_length "title PTS length";
+VAR sector_pointers_offset "sector pointers offset";
+VAR track_index_number "track index number";
+VAR track_pts_index "track PTS index";
+VAR track_pts_length "track PTS length";
+VAR first_sector "first sector";
+VAR last_sector "last sector";
+VAR index_id "index ID";
+identifier <- read 12 bytes;
+assert identifier == bytes(68, 86, 68, 65, 85, 68, 73, 79, 45, 65, 84, 83);
+seek 0x800 /*the second sector in the file*/;
+title_count <- read 16 unsigned;
+skip 16;
+last_byte_address <- read 32 unsigned;
+for i <- 0 to title_count {
+    title_number[i] <- read 8 unsigned;
+    skip 24;
+    title_table_offset[i] <- read 32 unsigned;
+}
+for i <- 0 to title_count {
+    seek 0x800 + title_table_offset[i];
+    skip 16;
+    track_count[i] <- read 8 unsigned;
+    index_count[i] <- read 8 unsigned;
+    title_pts_length[i] <- read 32 unsigned;
+    skip 32;
+    sector_pointers_offset[i] <- read 16 unsigned;
+    skip 16;
+    for j <- 0 to track_count[i] {
+        skip 32;
+        track_index_number[i] <- read 8 unsigned;
+        skip 8;
+        track_pts_index[i][j] <- read 32 unsigned;
+        track_pts_length[i][j] <- read 32 unsigned;
+        skip 48;
+    }
+    seek 0x800 + title_table_offset[i] + sector_pointers_offset[i];
+    for j <- 0 to index_count[i] {
+        index_id[i][j] <- read 32 unsigned;
+        assert index_id[i][j] == 0x01000000;
+        first_sector[i][j] <- read 32 unsigned;
+        last_sector[i][j] <- read 32 unsigned;
+    }
+}
+return title_count,track_count,index_count,title_pts_length,track_index_number,
+track_pts_index,track_pts_length,first_sector,last_sector;

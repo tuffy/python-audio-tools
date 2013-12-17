@@ -1,0 +1,21 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "MLP frame data";
+OUTPUT checkdata_present,substream_end;
+VAR checkdata_present "checkdata present";
+VAR substream_end "substream end";
+VAR extra_word_present "extra word present";
+VAR nonrestart_substream "non-restart substream";
+extra_word_present <- read 1 unsigned;
+assert extra_word_present == 0;
+nonrestart_substream <- read 1 unsigned;
+checkdata_present <- read 1 unsigned;
+skip 1;
+substream_end <- (read 12 unsigned) * 2;
+return checkdata_present,substream_end;

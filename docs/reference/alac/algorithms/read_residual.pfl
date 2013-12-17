@@ -13,8 +13,6 @@ VAR MSB "MSB";
 VAR LSB "LSB";
 VAR nine_bits "9, 1 bits encountered";
 FUNC read_max_unary "read unary with stop bit 0, to a maximum of 8 bits";
-FUNC unread_0 "unread single 0 bit back into stream";
-FUNC unread_1 "unread single 1 bit back into stream";
 MSB <- read_max_unary();
 if nine_bits {
     return (read sample_size unsigned);
@@ -23,10 +21,10 @@ if nine_bits {
 } else {
     LSB <- read kappa unsigned;
     if LSB == 0 {
-        unread_0();
+        0 -> unread 1 unsigned;
         return MSB * (2 ^ kappa - 1);
     } elif LSB == 1 {
-        unread_1();
+        1 -> unread 1 unsigned;
         return MSB * (2 ^ kappa - 1);
     } elif LSB > 1 {
         return MSB * (2 ^ kappa - 1) + (LSB - 1);

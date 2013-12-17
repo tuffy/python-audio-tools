@@ -79,7 +79,8 @@ statlist_output_latex(const struct statlist *self,
 
             /*display aligned statements as rows*/
             for (; aligned_statements > 0; aligned_statements--) {
-                statement_output_latex_aligned(s->statement, defs, output);
+                const struct statement *statement = s->statement;
+                statement->output_latex_aligned(statement, defs, output);
                 s = s->next;
             }
 
@@ -109,203 +110,13 @@ statlist_aligned(const struct statlist *statlist)
 {
     if (statlist != NULL) {
         const struct statement *statement = statlist->statement;
-        switch (statement->type) {
-        case STAT_BLANKLINE:
-        case STAT_ASSIGN_IN:
-        case STAT_ASSIGN_IFELSE:
-        case STAT_WRITE:
-        case STAT_WRITE_UNARY:
-        case STAT_FUNCTIONCALL_WRITE:
-        case STAT_FUNCTIONCALL_WRITE_UNARY:
+        if (statement->output_latex_aligned != NULL) {
             return 1 + statlist_aligned(statlist->next);
-        case STAT_FUNCTIONCALL:
-            if (statement->_.functioncall.output_args != NULL) {
-                return 1 + statlist_aligned(statlist->next);
-            } else {
-                return 0;
-            }
-        default:
+        } else {
             return 0;
         }
     } else {
         return 0;
-    }
-}
-
-void
-statement_output_latex_aligned(const struct statement *self,
-                               const struct definitions *defs,
-                               FILE *output)
-{
-    switch (self->type) {
-    case STAT_BLANKLINE:
-        fputs("& & & \\\\", output);
-        break;
-    case STAT_ASSIGN_IN:
-        {
-            const struct variablelist *variablelist =
-                self->_.assign_in.variablelist;
-            const struct expression *expression =
-                self->_.assign_in.expression;
-            const char *comment = self->_.assign_in.comment;
-
-            fprintf(output, "$");
-            variablelist->output_latex(variablelist, defs, output);
-            fprintf(output, "$ & $\\leftarrow$ & $");
-            expression->output_latex(expression, defs, output);
-            fprintf(output, "$ & ");
-            statement_output_latex_aligned_comment_text(comment, output);
-            fprintf(output, "\\\\");
-        }
-        break;
-    case STAT_ASSIGN_IFELSE:
-        {
-            const struct expression *condition =
-                self->_.assign_ifelse.condition;
-            const struct expression *then =
-                self->_.assign_ifelse.then;
-            const struct expression *else_ =
-                self->_.assign_ifelse.else_;
-            const struct variablelist *output_args =
-                self->_.assign_ifelse.output_args;
-            const char *comment = self->_.assign_ifelse.comment;
-
-            fputs("$", output);
-            output_args->output_latex(output_args, defs, output);
-            fputs("$ & $\\leftarrow$ & ", output);
-            fputs("\\lIf{$", output);
-            condition->output_latex(condition, defs, output);
-            fputs("$}{$", output);
-            then->output_latex(then, defs, output);
-            fputs("$}~\\lElse{$", output);
-            else_->output_latex(else_, defs, output);
-            fputs("$}", output);
-            fputs(" & ", output);
-            statement_output_latex_aligned_comment_text(comment, output);
-            fputs("\\\\", output);
-        }
-        break;
-    case STAT_WRITE:
-        {
-            io_t type = self->_.write.type;
-            const struct expression *value = self->_.write.value;
-            const struct expression *to_write = self->_.write.to_write;
-            char *comment = self->_.write.comment;
-
-            fprintf(output, "$");
-            value->output_latex(value, defs, output);
-            fprintf(output, "$ & $\\rightarrow $ & $");
-            statement_output_latex_write_args(type,
-                                              to_write,
-                                              defs,
-                                              output);
-            fprintf(output, "$ & ");
-            statement_output_latex_aligned_comment_text(comment, output);
-            fprintf(output, "\\\\");
-        }
-        break;
-    case STAT_WRITE_UNARY:
-        {
-            int stop_bit = self->_.write_unary.stop_bit;
-            const struct expression *value = self->_.write_unary.value;
-            const char *comment = self->_.write_unary.comment;
-
-            fprintf(output, "$");
-            value->output_latex(value, defs, output);
-            fprintf(output, "$ & $\\rightarrow $ & $");
-            statement_output_latex_write_args_unary(stop_bit, output);
-            fprintf(output, "$ & ");
-            statement_output_latex_aligned_comment_text(comment, output);
-            fprintf(output, "\\\\");
-        }
-        break;
-    case STAT_FUNCTIONCALL:
-        {
-            const struct variablelist *output_args =
-                self->_.functioncall.output_args;
-            const char *comment = self->_.functioncall.functioncall_comment;
-
-            fprintf(output, "$");
-            if (output_args != NULL) {
-                output_args->output_latex(output_args, defs, output);
-                fprintf(output, "$ & $\\leftarrow$ & $");
-            } else {
-                fprintf(output, "$ & & $");
-            }
-
-            statement_output_latex_functioncall_name(
-                self->_.functioncall.identifier, defs, output);
-            statement_output_latex_functioncall_args(self, defs, output);
-
-            fprintf(output, "$ & ");
-            statement_output_latex_aligned_comment_text(comment, output);
-            fprintf(output, "\\\\");
-        }
-        break;
-    case STAT_FUNCTIONCALL_WRITE:
-        {
-            const char *identifier =
-                self->_.functioncall_write.identifier;
-            const struct expressionlist *input_args =
-                self->_.functioncall_write.input_args;
-            io_t type =
-                self->_.functioncall_write.type;
-            const struct expression *to_write =
-                self->_.functioncall_write.to_write;
-            const char *comment =
-                self->_.functioncall_write.comment;
-
-            fputs("$", output);
-
-            statement_output_latex_functioncall_write_args(identifier,
-                                                           input_args,
-                                                           defs,
-                                                           output);
-
-            fputs("$ & $\\rightarrow$ & $", output);
-
-            statement_output_latex_write_args(type, to_write, defs, output);
-
-            fputs("$ & ", output);
-
-            statement_output_latex_aligned_comment_text(comment, output);
-
-            fputs("\\\\", output);
-        }
-        break;
-    case STAT_FUNCTIONCALL_WRITE_UNARY:
-        {
-            const char *identifier =
-                self->_.functioncall_write_unary.identifier;
-            const struct expressionlist *input_args =
-                self->_.functioncall_write_unary.input_args;
-            int stop_bit =
-                self->_.functioncall_write_unary.stop_bit;
-            const char *comment =
-                self->_.functioncall_write_unary.comment;
-
-            fputs("$", output);
-
-            statement_output_latex_functioncall_write_args(identifier,
-                                                           input_args,
-                                                           defs,
-                                                           output);
-
-            fputs("$ & $\\rightarrow$ & $", output);
-
-            statement_output_latex_write_args_unary(stop_bit, output);
-
-            fputs("$ & ", output);
-
-            statement_output_latex_aligned_comment_text(comment, output);
-
-            fputs("\\\\", output);
-
-        }
-        break;
-    default:
-        /*no output*/
-        break;
     }
 }
 
@@ -315,6 +126,8 @@ statement_new_blankline(void)
     struct statement *statement = malloc(sizeof(struct statement));
     statement->type = STAT_BLANKLINE;
     statement->output_latex = statement_output_latex_blankline;
+    statement->output_latex_aligned =
+        statement_output_latex_aligned_blankline;
     statement->free = statement_free_blankline;
     return statement;
 }
@@ -324,7 +137,15 @@ statement_output_latex_blankline(const struct statement *self,
                                  const struct definitions *defs,
                                  FILE *output)
 {
-    fprintf(output, "\\BlankLine");
+    fputs("\\BlankLine", output);
+}
+
+void
+statement_output_latex_aligned_blankline(const struct statement *self,
+                                         const struct definitions *defs,
+                                         FILE *output)
+{
+    fputs("& & & \\\\", output);
 }
 
 void
@@ -341,6 +162,7 @@ statement_new_comment(char *comment)
     statement->type = STAT_COMMENT;
     statement->_.comment = comment;
     statement->output_latex = statement_output_latex_comment;
+    statement->output_latex_aligned = NULL;
     statement->free = statement_free_comment;
     return statement;
 }
@@ -392,6 +214,7 @@ statement_new_break(char *comment)
     statement->type = STAT_BREAK;
     statement->_.comment = comment;
     statement->output_latex = statement_output_latex_break;
+    statement->output_latex_aligned = NULL;
     statement->free = statement_free_break;
     return statement;
 }
@@ -424,6 +247,8 @@ statement_new_assign_in(struct variablelist *variablelist,
     statement->_.assign_in.expression = expression;
     statement->_.assign_in.comment = comment;
     statement->output_latex = statement_output_latex_assign_in;
+    statement->output_latex_aligned =
+        statement_output_latex_aligned_assign_in;
     statement->free = statement_free_assign_in;
     return statement;
 }
@@ -435,6 +260,7 @@ statement_output_latex_assign_in(const struct statement *self,
 {
     const struct variablelist *variablelist = self->_.assign_in.variablelist;
     const struct expression *expression = self->_.assign_in.expression;
+    const char *comment = self->_.assign_in.comment;
 
     fprintf(output, "$");
 
@@ -446,9 +272,27 @@ statement_output_latex_assign_in(const struct statement *self,
 
     fprintf(output, "$");
 
-    statement_output_latex_comment_text(self->_.assign_in.comment, output);
+    statement_output_latex_comment_text(comment, output);
 
     fprintf(output, "\n");
+}
+
+void
+statement_output_latex_aligned_assign_in(const struct statement *self,
+                                         const struct definitions *defs,
+                                         FILE *output)
+{
+    const struct variablelist *variablelist = self->_.assign_in.variablelist;
+    const struct expression *expression = self->_.assign_in.expression;
+    const char *comment = self->_.assign_in.comment;
+
+    fprintf(output, "$");
+    variablelist->output_latex(variablelist, defs, output);
+    fprintf(output, "$ & $\\leftarrow$ & $");
+    expression->output_latex(expression, defs, output);
+    fprintf(output, "$ & ");
+    statement_output_latex_aligned_comment_text(comment, output);
+    fprintf(output, "\\\\");
 }
 
 void
@@ -476,7 +320,10 @@ statement_new_assign_ifelse(struct expression *condition,
     statement->_.assign_ifelse.else_ = else_;
     statement->_.assign_ifelse.output_args = output_args;
     statement->_.assign_ifelse.comment = comment;
-    statement->output_latex = statement_output_latex_assign_ifelse;
+    statement->output_latex =
+        statement_output_latex_assign_ifelse;
+    statement->output_latex_aligned =
+        statement_output_latex_aligned_assign_ifelse;
     statement->free = statement_free_assign_ifelse;
     return statement;
 }
@@ -511,6 +358,32 @@ statement_output_latex_assign_ifelse(const struct statement *self,
 }
 
 void
+statement_output_latex_aligned_assign_ifelse(const struct statement *self,
+                                             const struct definitions *defs,
+                                             FILE *output)
+{
+    const struct expression *condition = self->_.assign_ifelse.condition;
+    const struct expression *then = self->_.assign_ifelse.then;
+    const struct expression *else_ = self->_.assign_ifelse.else_;
+    const struct variablelist *output_args = self->_.assign_ifelse.output_args;
+    const char *comment = self->_.assign_ifelse.comment;
+
+    fputs("$", output);
+    output_args->output_latex(output_args, defs, output);
+    fputs("$ & $\\leftarrow$ & ", output);
+    fputs("\\lIf{$", output);
+    condition->output_latex(condition, defs, output);
+    fputs("$}{$", output);
+    then->output_latex(then, defs, output);
+    fputs("$}~\\lElse{$", output);
+    else_->output_latex(else_, defs, output);
+    fputs("$}", output);
+    fputs(" & ", output);
+    statement_output_latex_aligned_comment_text(comment, output);
+    fputs("\\\\", output);
+}
+
+void
 statement_free_assign_ifelse(struct statement *self)
 {
     struct expression *condition = self->_.assign_ifelse.condition;
@@ -540,7 +413,14 @@ statement_new_functioncall(char *identifier,
     statement->_.functioncall.input_args = input_args;
     statement->_.functioncall.output_args = output_args;
     statement->_.functioncall.functioncall_comment = comment;
-    statement->output_latex = statement_output_latex_functioncall;
+    statement->output_latex =
+        statement_output_latex_functioncall;
+    if (output_args != NULL) {
+        statement->output_latex_aligned =
+            statement_output_latex_aligned_functioncall;
+    } else {
+        statement->output_latex_aligned = NULL;
+    }
     statement->free = statement_free_functioncall;
     return statement;
 }
@@ -570,6 +450,31 @@ statement_output_latex_functioncall(const struct statement *self,
     fprintf(output, "$");
     statement_output_latex_comment_text(comment, output);
     fprintf(output, "\n");
+}
+
+void
+statement_output_latex_aligned_functioncall(const struct statement *self,
+                                            const struct definitions *defs,
+                                            FILE *output)
+{
+    const struct variablelist *output_args = self->_.functioncall.output_args;
+    const char *comment = self->_.functioncall.functioncall_comment;
+
+    fprintf(output, "$");
+    if (output_args != NULL) {
+        output_args->output_latex(output_args, defs, output);
+        fprintf(output, "$ & $\\leftarrow$ & $");
+    } else {
+        fprintf(output, "$ & & $");
+    }
+
+    statement_output_latex_functioncall_name(
+        self->_.functioncall.identifier, defs, output);
+    statement_output_latex_functioncall_args(self, defs, output);
+
+    fprintf(output, "$ & ");
+    statement_output_latex_aligned_comment_text(comment, output);
+    fprintf(output, "\\\\");
 }
 
 void
@@ -757,7 +662,11 @@ statement_new_functioncall_write(char *identifier,
     statement->_.functioncall_write.type = type;
     statement->_.functioncall_write.to_write = to_write;
     statement->_.functioncall_write.comment = comment;
-    statement->output_latex = statement_output_latex_functioncall_write;
+    statement->output_latex =
+        statement_output_latex_functioncall_write;
+    statement->output_latex_aligned =
+        statement_output_latex_aligned_functioncall_write;
+
     statement->free = statement_free_functioncall_write;
     return statement;
 }
@@ -767,16 +676,13 @@ statement_output_latex_functioncall_write(const struct statement *self,
                                           const struct definitions *defs,
                                           FILE *output)
 {
-    const char *identifier =
-        self->_.functioncall_write.identifier;
+    const char *identifier = self->_.functioncall_write.identifier;
     const struct expressionlist *input_args =
         self->_.functioncall_write.input_args;
-    io_t type =
-        self->_.functioncall_write.type;
+    io_t type = self->_.functioncall_write.type;
     const struct expression *to_write =
         self->_.functioncall_write.to_write;
-    const char *comment =
-        self->_.functioncall_write.comment;
+    const char *comment = self->_.functioncall_write.comment;
 
     fputs("$", output);
     statement_output_latex_functioncall_write_args(identifier,
@@ -786,13 +692,50 @@ statement_output_latex_functioncall_write(const struct statement *self,
 
     fputs(" \\rightarrow ", output);
 
-    statement_output_latex_write_args(type, to_write, defs, output);
+    fputs("\\WRITE~", output);
+    to_write->output_latex(to_write, defs, output);
+    fputs("~", output);
+    io_output_latex_args(type, to_write, output);
 
     fputs("$", output);
 
     statement_output_latex_comment_text(comment, output);
 
     fputs("\n", output);
+}
+
+void
+statement_output_latex_aligned_functioncall_write(
+    const struct statement *self,
+    const struct definitions *defs,
+    FILE *output)
+{
+    const char *identifier = self->_.functioncall_write.identifier;
+    const struct expressionlist *input_args =
+        self->_.functioncall_write.input_args;
+    io_t type = self->_.functioncall_write.type;
+    const struct expression *to_write = self->_.functioncall_write.to_write;
+    const char *comment = self->_.functioncall_write.comment;
+
+    fputs("$", output);
+
+    statement_output_latex_functioncall_write_args(identifier,
+                                                   input_args,
+                                                   defs,
+                                                   output);
+
+    fputs("$ & $\\rightarrow$ & $", output);
+
+    fputs("\\WRITE~", output);
+    to_write->output_latex(to_write, defs, output);
+    fputs("~", output);
+    io_output_latex_args(type, to_write, output);
+
+    fputs("$ & ", output);
+
+    statement_output_latex_aligned_comment_text(comment, output);
+
+    fputs("\\\\", output);
 }
 
 void
@@ -862,19 +805,14 @@ statement_output_latex_functioncall_write_args(
 }
 
 void
-statement_output_latex_write_args(io_t type,
-                                  const struct expression *to_write,
-                                  const struct definitions *defs,
-                                  FILE *output)
+io_output_latex_args(io_t type,
+                     const struct expression *quantity,
+                     FILE *output)
 {
-    fputs("\\WRITE~", output);
-    to_write->output_latex(to_write, defs, output);
-    fputs("~", output);
-
     switch (type) {
     case IO_UNSIGNED:
-        if ((to_write->type == EXP_INTEGER) &&
-            (to_write->_.integer == 1)) {
+        if ((quantity->type == EXP_INTEGER) &&
+            (quantity->_.integer == 1)) {
             fputs("\\textrm{unsigned bit}", output);
         } else {
             fputs("\\textrm{unsigned bits}", output);
@@ -885,8 +823,8 @@ statement_output_latex_write_args(io_t type,
         fputs("\\textrm{signed bits}", output);
         break;
     case IO_BYTES:
-        if ((to_write->type == EXP_INTEGER) &&
-            (to_write->_.integer == 1)) {
+        if ((quantity->type == EXP_INTEGER) &&
+            (quantity->_.integer == 1)) {
             fputs("\\textrm{byte}", output);
         } else {
             fputs("\\textrm{bytes}", output);
@@ -894,6 +832,7 @@ statement_output_latex_write_args(io_t type,
         break;
     }
 }
+
 
 void
 statement_output_latex_write_args_unary(int stop_bit,
@@ -932,7 +871,10 @@ statement_new_functioncall_write_unary(char *identifier,
     statement->_.functioncall_write_unary.input_args = input_args;
     statement->_.functioncall_write_unary.stop_bit = stop_bit;
     statement->_.functioncall_write_unary.comment = comment;
-    statement->output_latex = statement_output_latex_functioncall_write_unary;
+    statement->output_latex =
+        statement_output_latex_functioncall_write_unary;
+    statement->output_latex_aligned =
+        statement_output_latex_aligned_functioncall_write_unary;
     statement->free = statement_free_functioncall_write_unary;
     return statement;
 }
@@ -969,6 +911,37 @@ statement_output_latex_functioncall_write_unary(const struct statement *self,
 }
 
 void
+statement_output_latex_aligned_functioncall_write_unary(
+    const struct statement *self,
+    const struct definitions *defs,
+    FILE *output)
+{
+    const char *identifier =
+        self->_.functioncall_write_unary.identifier;
+    const struct expressionlist *input_args =
+        self->_.functioncall_write_unary.input_args;
+    int stop_bit = self->_.functioncall_write_unary.stop_bit;
+    const char *comment = self->_.functioncall_write_unary.comment;
+
+    fputs("$", output);
+
+    statement_output_latex_functioncall_write_args(identifier,
+                                                   input_args,
+                                                   defs,
+                                                   output);
+
+    fputs("$ & $\\rightarrow$ & $", output);
+
+    statement_output_latex_write_args_unary(stop_bit, output);
+
+    fputs("$ & ", output);
+
+    statement_output_latex_aligned_comment_text(comment, output);
+
+    fputs("\\\\", output);
+}
+
+void
 statement_free_functioncall_write_unary(struct statement *self)
 {
     char *identifier =
@@ -1001,6 +974,7 @@ statement_new_if(struct expression *condition,
     statement->_.if_.then_comment = then_comment;
     statement->_.if_.elselist = elselist;
     statement->output_latex = statement_output_latex_if;
+    statement->output_latex_aligned = NULL;
     statement->free = statement_free_if;
     return statement;
 }
@@ -1182,6 +1156,7 @@ statement_new_switch(struct expression *condition,
     statement->_.switch_.comment = switch_comment;
     statement->_.switch_.cases = cases;
     statement->output_latex = statement_output_latex_switch;
+    statement->output_latex_aligned = NULL;
     statement->free = statement_free_switch;
     return statement;
 }
@@ -1357,6 +1332,7 @@ statement_new_while(struct expression *condition,
     statement->_.while_.condition_comment = condition_comment;
     statement->_.while_.statements = statements;
     statement->output_latex = statement_output_latex_while;
+    statement->output_latex_aligned = NULL;
     statement->free = statement_free_while;
     return statement;
 }
@@ -1407,6 +1383,7 @@ statement_new_do_while(struct expression *condition,
     statement->_.do_while.statements = statements;
     statement->_.do_while.statements_comment = statements_comment;
     statement->output_latex = statement_output_latex_do_while;
+    statement->output_latex_aligned = NULL;
     statement->free = statement_free_do_while;
     return statement;
 }
@@ -1470,6 +1447,7 @@ statement_new_for(for_direction_t direction,
     statement->_.for_.for_comment = for_comment;
     statement->_.for_.statements = statements;
     statement->output_latex = statement_output_latex_for;
+    statement->output_latex_aligned = NULL;
     statement->free = statement_free_for;
     return statement;
 }
@@ -1531,6 +1509,7 @@ statement_new_return(struct expressionlist *toreturn,
     statement->_.return_.toreturn = toreturn;
     statement->_.return_.return_comment = return_comment;
     statement->output_latex = statement_output_latex_return;
+    statement->output_latex_aligned = NULL;
     statement->free = statement_free_return;
     return statement;
 }
@@ -1613,6 +1592,7 @@ statement_new_assert(struct expression *condition,
     statement->_.assert.condition = condition;
     statement->_.assert.assert_comment = assert_comment;
     statement->output_latex = statement_output_latex_assert;
+    statement->output_latex_aligned = NULL;
     statement->free = statement_free_assert;
     return statement;
 }
@@ -1664,6 +1644,7 @@ statement_new_write(io_t type,
         statement->_.write.to_write = to_write;
         statement->_.write.comment = comment;
         statement->output_latex = statement_output_latex_write;
+        statement->output_latex_aligned = statement_output_latex_aligned_write;
         statement->free = statement_free_write;
         return statement;
     }
@@ -1684,10 +1665,35 @@ statement_output_latex_write(const struct statement *self,
     value->output_latex(value, defs, output);
 
     fprintf(output, " \\rightarrow ");
-    statement_output_latex_write_args(type, to_write, defs, output);
+    fputs("\\WRITE~", output);
+    to_write->output_latex(to_write, defs, output);
+    fputs("~", output);
+    io_output_latex_args(type, to_write, output);
     fprintf(output, "$");
     statement_output_latex_comment_text(comment, output);
     fprintf(output, "\n");
+}
+
+void
+statement_output_latex_aligned_write(const struct statement *self,
+                                     const struct definitions *defs,
+                                     FILE *output)
+{
+    io_t type = self->_.write.type;
+    const struct expression *value = self->_.write.value;
+    const struct expression *to_write = self->_.write.to_write;
+    char *comment = self->_.write.comment;
+
+    fprintf(output, "$");
+    value->output_latex(value, defs, output);
+    fprintf(output, "$ & $\\rightarrow $ & $");
+    fputs("\\WRITE~", output);
+    to_write->output_latex(to_write, defs, output);
+    fputs("~", output);
+    io_output_latex_args(type, to_write, output);
+    fprintf(output, "$ & ");
+    statement_output_latex_aligned_comment_text(comment, output);
+    fprintf(output, "\\\\");
 }
 
 void
@@ -1715,7 +1721,10 @@ statement_new_write_unary(long long stop_bit,
         statement->_.write_unary.stop_bit = stop_bit;
         statement->_.write_unary.value = value;
         statement->_.write_unary.comment = comment;
-        statement->output_latex = statement_output_latex_write_unary;
+        statement->output_latex =
+            statement_output_latex_write_unary;
+        statement->output_latex_aligned =
+            statement_output_latex_aligned_write_unary;
         statement->free = statement_free_write_unary;
         return statement;
     } else {
@@ -1749,6 +1758,24 @@ statement_output_latex_write_unary(const struct statement *self,
 }
 
 void
+statement_output_latex_aligned_write_unary(const struct statement *self,
+                                           const struct definitions *defs,
+                                           FILE *output)
+{
+    int stop_bit = self->_.write_unary.stop_bit;
+    const struct expression *value = self->_.write_unary.value;
+    const char *comment = self->_.write_unary.comment;
+
+    fprintf(output, "$");
+    value->output_latex(value, defs, output);
+    fprintf(output, "$ & $\\rightarrow $ & $");
+    statement_output_latex_write_args_unary(stop_bit, output);
+    fprintf(output, "$ & ");
+    statement_output_latex_aligned_comment_text(comment, output);
+    fprintf(output, "\\\\");
+}
+
+void
 statement_free_write_unary(struct statement *self)
 {
     struct expression *value = self->_.write_unary.value;
@@ -1771,6 +1798,7 @@ statement_new_skip(struct expression *expression,
     statement->_.skip.type = type;
     statement->_.skip.skip_comment = skip_comment;
     statement->output_latex = statement_output_latex_skip;
+    statement->output_latex_aligned = statement_output_latex_aligned_skip;
     statement->free = statement_free_skip;
     return statement;
 }
@@ -1810,6 +1838,45 @@ statement_output_latex_skip(const struct statement *self,
 }
 
 void
+statement_output_latex_aligned_skip(const struct statement *self,
+                                    const struct definitions *defs,
+                                    FILE *output)
+{
+    const struct expression *to_skip = self->_.skip.to_skip;
+    char *comment = self->_.skip.skip_comment;
+
+    fputs("& & $\\SKIP~", output);
+
+    to_skip->output_latex(to_skip, defs, output);
+
+    switch (self->_.skip.type) {
+    case IO_UNSIGNED:
+    case IO_SIGNED:
+        if ((to_skip->type == EXP_INTEGER) &&
+            (to_skip->_.integer == 1)) {
+            fprintf(output, "~\\textrm{bit}");
+        } else {
+            fprintf(output, "~\\textrm{bits}");
+        }
+        break;
+    case IO_BYTES:
+        if ((to_skip->type == EXP_INTEGER) &&
+            (to_skip->_.integer == 1)) {
+            fprintf(output, "~\\textrm{byte}");
+        } else {
+            fprintf(output, "~\\textrm{bytes}");
+        }
+        break;
+    }
+
+    fputs("$ & ", output);
+
+    statement_output_latex_aligned_comment_text(comment, output);
+
+    fputs("\\\\", output);
+}
+
+void
 statement_free_skip(struct statement *self)
 {
     self->_.skip.to_skip->free(self->_.skip.to_skip);
@@ -1826,6 +1893,7 @@ statement_new_seek(struct expression *position,
     statement->_.seek.position = position;
     statement->_.seek.comment = comment;
     statement->output_latex = statement_output_latex_seek;
+    statement->output_latex_aligned = NULL;
     statement->free = statement_free_seek;
     return statement;
 }
@@ -1850,6 +1918,83 @@ statement_free_seek(struct statement *self)
     struct expression *position = self->_.seek.position;
     char *comment = self->_.seek.comment;
     position->free(position);
+    free(comment);
+    free(self);
+}
+
+
+struct statement*
+statement_new_unread(io_t type,
+                     struct expression *value,
+                     struct expression *to_unread,
+                     char *comment)
+{
+    struct statement *statement = malloc(sizeof(struct statement));
+    statement->type = STAT_UNREAD;
+    statement->_.unread.type = type;
+    statement->_.unread.value = value;
+    statement->_.unread.to_unread = to_unread;
+    statement->_.unread.comment = comment;
+    statement->output_latex = statement_output_latex_unread;
+    statement->output_latex_aligned = statement_output_latex_aligned_unread;
+    statement->free = statement_free_unread;
+    return statement;
+}
+
+void
+statement_output_latex_unread(const struct statement *self,
+                              const struct definitions *defs,
+                              FILE *output)
+{
+    io_t type = self->_.unread.type;
+    const struct expression *value = self->_.unread.value;
+    const struct expression *to_unread = self->_.unread.to_unread;
+    const char *comment = self->_.unread.comment;
+
+    fprintf(output, "$");
+
+    value->output_latex(value, defs, output);
+
+    fprintf(output, " \\rightarrow ");
+    fputs("\\UNREAD~", output);
+    to_unread->output_latex(to_unread, defs, output);
+    fputs("~", output);
+    io_output_latex_args(type, to_unread, output);
+    fputs("$", output);
+    statement_output_latex_comment_text(comment, output);
+    fputs("\n", output);
+}
+
+void
+statement_output_latex_aligned_unread(const struct statement *self,
+                                      const struct definitions *defs,
+                                      FILE *output)
+{
+    io_t type = self->_.write.type;
+    const struct expression *value = self->_.unread.value;
+    const struct expression *to_unread = self->_.unread.to_unread;
+    char *comment = self->_.write.comment;
+
+    fprintf(output, "$");
+    value->output_latex(value, defs, output);
+    fprintf(output, "$ & $\\rightarrow $ & $");
+    fputs("\\UNREAD~", output);
+    to_unread->output_latex(to_unread, defs, output);
+    fputs("~", output);
+    io_output_latex_args(type, to_unread, output);
+    fprintf(output, "$ & ");
+    statement_output_latex_aligned_comment_text(comment, output);
+    fprintf(output, "\\\\");
+}
+
+void
+statement_free_unread(struct statement *self)
+{
+    struct expression *value = self->_.unread.value;
+    struct expression *to_unread = self->_.unread.to_unread;
+    char *comment = self->_.unread.comment;
+    value->free(value);
+    to_unread->free(to_unread);
     free(comment);
     free(self);
 }

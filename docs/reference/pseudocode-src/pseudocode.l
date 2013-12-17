@@ -71,6 +71,7 @@ extract_comment(const char *token)
 "infinity"              {return INFINITY;}
 "pi"                    {return PI;}
 "read"                  {return READ;}
+"unread"                {return UNREAD;}
 "write"                 {return WRITE;}
 "skip"                  {return SKIP;}
 "unary"                 {return UNARY;}

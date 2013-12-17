@@ -63,63 +63,9 @@ in the \VAR{Audio Titleset Count} value.
 \clearpage
 
 \section{ATS\_XX\_0.IFO}
-
-\ALGORITHM{an \texttt{ATS\_XX\_0.IFO} file, a titleset number}{timestamps for each track in each title in the titleset, a list of sector pointers}
-\SetKw{SEEK}{seek}
-\SetKwData{IDENTIFIER}{identifier}
-\SetKwData{TITLECOUNT}{title count}
-\SetKwData{LASTADDRESS}{last byte address}
-\SetKwData{TITLENUMBER}{title number}
-\SetKwData{TITLEOFFSET}{title table offset}
-\SetKwData{TRACKCOUNT}{track count}
-\SetKwData{INDEXCOUNT}{index count}
-\SetKwData{TITLELENGTH}{title PTS length}
-\SetKwData{POINTERSOFFSET}{sector pointers offset}
-\SetKwData{TRACKINDEX}{track index number}
-\SetKwData{TRACKPTSINDEX}{track PTS index}
-\SetKwData{TRACKPTSLENGTH}{track PTS length}
-\SetKwData{INDEXID}{index ID}
-\SetKwData{FIRSTSECTOR}{first sector}
-\SetKwData{LASTSECTOR}{last sector}
-$\IDENTIFIER \leftarrow$ \READ 12 bytes\;
-\ASSERT $\IDENTIFIER = \texttt{"DVDAUDIO-ATS"}$\;
-\SEEK to file position \texttt{0x800}\tcc*[r]{seek to the second sector in the file}
-$\TITLECOUNT \leftarrow$ \READ 16 unsigned bits\;
-\SKIP 16 bits\;
-$\LASTADDRESS \leftarrow$ \READ 32 unsigned bits\;
-\For{$i \leftarrow 0$ \emph{\KwTo}\TITLECOUNT}{
-  $\text{\TITLENUMBER}_i \leftarrow$ \READ 8 unsigned bits\;
-  \SKIP 24 bits\;
-  $\text{\TITLEOFFSET}_i \leftarrow$ \READ 32 unsigned bits\;
+{\relsize{-1}
+  \input{dvda/algorithms/ats_xx_ifo}
 }
-\For(\tcc*[f]{read title information}){$i \leftarrow 0$ \emph{\KwTo}\TITLECOUNT}{
-  \SEEK to file position $(\texttt{0x800} + \text{\TITLEOFFSET}_i)$\;
-  \SKIP 16 bits\;
-  $\text{\TRACKCOUNT}_i \leftarrow$ \READ 8 unsigned bits\;
-  $\text{\INDEXCOUNT}_i \leftarrow$ \READ 8 unsigned bits\;
-  $\text{\TITLELENGTH}_i \leftarrow$ \READ 32 unsigned bits\;
-  \SKIP 32 bits\;
-  $\text{\POINTERSOFFSET}_i \leftarrow$ \READ 16 unsigned bits\;
-  \SKIP 16 bits\;
-  \For(\tcc*[f]{read track information}){$j \leftarrow 0$ \emph{\KwTo}$\text{\TRACKCOUNT}_i$}{
-    \SKIP 32 bits\;
-    $\text{\TRACKINDEX}_{i~j} \leftarrow$ \READ 8 unsigned bits\;
-    \SKIP 8 bits\;
-    $\text{\TRACKPTSINDEX}_{i~j} \leftarrow$ \READ 32 unsigned bits\;
-    $\text{\TRACKPTSLENGTH}_{i~j} \leftarrow$ \READ 32 unsigned bits\;
-    \SKIP 48 bits\;
-  }
-  \SEEK to file position $(\texttt{0x800} + \text{\TITLEOFFSET}_i + \text{\POINTERSOFFSET}_i)$\;
-  \For(\tcc*[f]{read index information}){$j \leftarrow 0$ \emph{\KwTo}$\text{\INDEXCOUNT}_i$}{
-    $\text{\INDEXID}_{i~j} \leftarrow$ \READ 32 unsigned bits\;
-    \ASSERT $\text{\INDEXID}_{i~j} = \texttt{0x01000000}$\;
-    $\text{\FIRSTSECTOR}_{i~j} \leftarrow$ \READ 32 unsigned bits\;
-    $\text{\LASTSECTOR}_{i~j} \leftarrow$ \READ 32 unsigned bits\;
-  }
-}
-\Return \TITLECOUNT, \TRACKCOUNT, \INDEXCOUNT, \TITLELENGTH, \TRACKINDEX,
-\TRACKPTSINDEX, \TRACKPTSLENGTH, \FIRSTSECTOR, \LASTSECTOR\;
-\EALGORITHM
 
 \clearpage
 
@@ -343,46 +289,10 @@ which occurs occasionally at the start of MLP frames.
 Its values are consistent throughout the stream for any given track.
 \par
 \noindent
-{\relsize{-1}
-\ALGORITHM{MLP frame data}{substream count}
-\SetKw{AND}{and}
-\SetKw{OR}{or}
-\SetKw{REWIND}{rewind stream}
-\SetKwData{SYNCWORDS}{sync words}
-\SetKwData{STREAMTYPE}{stream type}
-\SetKwData{BPS}{bits per sample}
-\SetKwFunction{BPSFUNC}{bps}
-\SetKwData{RATE}{sample rate}
-\SetKwFunction{RATEFUNC}{rate}
-\SetKwData{CHANNELCOUNT}{channel count}
-\SetKwData{CHANNELASSIGNMENT}{channel assignment}
-\SetKwFunction{CHANNELFUNC}{channels}
-\SetKwData{ISVBR}{is VBR}
-\SetKwData{PEAKBITRATE}{peak bitrate}
-\SetKwData{SUBSTREAMCOUNT}{substream count}
-$\SYNCWORDS \leftarrow$ \READ 24 unsigned bits\;
-$\STREAMTYPE \leftarrow$ \READ 8 unsigned bits\;
-\eIf(\tcc*[f]{major sync found}){$(\SYNCWORDS = 16282223)$ \AND $(\STREAMTYPE = 187)$}{
-  $\text{\BPS}_0 \leftarrow \BPSFUNC(\text{\READ 4 unsigned bits})$\;
-  $\text{\BPS}_1 \leftarrow \BPSFUNC(\text{\READ 4 unsigned bits})$\;
-  $\text{\RATE}_0 \leftarrow \RATEFUNC(\text{\READ 4 unsigned bits})$\;
-  $\text{\RATE}_1 \leftarrow \RATEFUNC(\text{\READ 4 unsigned bits})$\;
-  \SKIP 11 bits\;
-  $(\text{\CHANNELCOUNT}~,~\text{\CHANNELASSIGNMENT}) \leftarrow \CHANNELFUNC(\text{\READ 5 unsigned bits})$\;
-  \SKIP 48 bits\;
-  $\text{\ISVBR} \leftarrow$ \READ 1 unsigned bit\;
-  $\text{\PEAKBITRATE} \leftarrow$ \READ 15 unsigned bits\;
-  $\text{\SUBSTREAMCOUNT} \leftarrow$ \READ 4 unsigned bits\;
-  \ASSERT $(\text{\SUBSTREAMCOUNT} = 1)$ \OR $(\text{\SUBSTREAMCOUNT} = 2)$\;
-  \SKIP 92 bits\;
-  \Return $\text{\SUBSTREAMCOUNT}$\;
-}(\tcc*[f]{major sync not found}){
-  \REWIND 32 bits\;
-  \Return substream count from previous major sync\;
+{\relsize{0}
+  \input{dvda/algorithms/read_major_sync}
 }
-\EALGORITHM
-}
-\begin{small}
+\begin{tiny}
   \begin{tabular}{|c|r|r|r|l|}
     \hline
     value & \texttt{bps} & \texttt{rate} & channels & channel assignment \\
@@ -410,7 +320,7 @@ $\STREAMTYPE \leftarrow$ \READ 8 unsigned bits\;
     \texttt{10100} & & & 6 & front left, front right, back left, back right, front center, LFE \\
     \hline
   \end{tabular}
-\end{small}
+\end{tiny}
 
 \clearpage
 
@@ -439,22 +349,7 @@ $\STREAMTYPE \leftarrow$ \READ 8 unsigned bits\;
 \subsubsection{Substream Info}
 \label{mlp:read_substream_info}
 {\relsize{-1}
-\ALGORITHM{MLP frame data}{checkdata present, substream end}
-\SetKwData{EXTRAWORD}{extra word present}
-\SetKwData{NONRESTART}{nonrestart substream}
-\SetKwData{CHECKDATA}{checkdata present}
-\SetKwData{SUBSTREAMEND}{substream end}
-$\text{\EXTRAWORD} \leftarrow$ \READ 1 unsigned bit\;
-\ASSERT $\text{\EXTRAWORD} = 0$\;
-$\text{\NONRESTART} \leftarrow$ \READ 1 unsigned bit\;
-$\text{\CHECKDATA} \leftarrow$ \READ 1 unsigned bit\;
-\SKIP 1 bit\;
-$\text{\SUBSTREAMEND} \leftarrow (\text{\READ 12 unsigned bits}) \times 2$\;
-\Return $\left\lbrace\begin{tabular}{l}
-\CHECKDATA \\
-\SUBSTREAMEND \\
-\end{tabular}\right.$\;
-\EALGORITHM
+  \input{dvda/algorithms/read_substream_info}
 }
 \begin{figure}[h]
   \includegraphics{figures/dvda/mlp_substream_info.pdf}
@@ -557,51 +452,7 @@ $\left.\begin{tabular}{r}
 \subsection{Reading Restart Header}
 \label{mlp:readrestartheader}
 {\relsize{-1}
-\ALGORITHM{MLP substream data}{restart header parameters}
-\SetKwData{HEADERSYNC}{header sync}
-\SetKwData{NOISETYPE}{noise type}
-\SetKwData{TIMESTAMP}{output timestamp}
-\SetKwData{MINCHANNEL}{min channel}
-\SetKwData{MAXCHANNEL}{max channel}
-\SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
-\SetKwData{NOISESHIFT}{noise shift}
-\SetKwData{NOISEGENSEED}{noise gen seed}
-\SetKwData{CHECKDATAPRESENT}{check data present}
-\SetKwData{LOSSLESSCHECK}{lossless check}
-\SetKwData{CHANNELASSIGNMENT}{channel assignment}
-\SetKwData{CHECKSUM}{checksum}
-\SetKwData{RESTARTHEADER}{restart header}
-$\text{\HEADERSYNC} \leftarrow$ \READ 13 unsigned bits\;
-\ASSERT $\text{\HEADERSYNC} = \texttt{0x18F5}$\;
-$\text{\NOISETYPE} \leftarrow$ \READ 1 unsigned bit\;
-\ASSERT $\text{\NOISETYPE} = 0$\;
-$\text{\TIMESTAMP} \leftarrow$ \READ 16 unsigned bits\;
-$\text{\MINCHANNEL} \leftarrow$ \READ 4 unsigned bits\;
-$\text{\MAXCHANNEL} \leftarrow$ \READ 4 unsigned bits\;
-\ASSERT $\text{\MAXCHANNEL} \geq \text{\MINCHANNEL}$\;
-$\text{\MAXMATRIXCHANNEL} \leftarrow$ \READ 4 unsigned bits\;
-\ASSERT $\text{\MAXMATRIXCHANNEL} \geq \text{\MAXCHANNEL}$\;
-$\text{\NOISESHIFT} \leftarrow$ \READ 4 unsigned bits\;
-$\text{\NOISEGENSEED} \leftarrow$ \READ 23 unsigned bits\;
-\SKIP 19 bits\;
-$\text{\CHECKDATAPRESENT} \leftarrow$ \READ 1 unsigned bit\;
-$\text{\LOSSLESSCHECK} \leftarrow$ \READ 8 unsigned bits\;
-\SKIP 16 bits\;
-\For{$c \leftarrow 0$ \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL} + 1)$}{
-  $\text{\CHANNELASSIGNMENT}_{c} \leftarrow$ \READ 6 unsigned bits\;
-  \ASSERT $\text{\CHANNELASSIGNMENT}_{c} \leq \text{\MAXMATRIXCHANNEL}$\;
-}
-$\text{\CHECKSUM} \leftarrow$ \READ 8 unsigned bits\;
-\Return
-$\RESTARTHEADER\left\lbrace\begin{tabular}{l}
-  \MINCHANNEL \\
-  \MAXCHANNEL \\
-  \MAXMATRIXCHANNEL \\
-  \NOISESHIFT \\
-  \NOISEGENSEED \\
-  \CHANNELASSIGNMENT
-\end{tabular}\right.$\;
-\EALGORITHM
+  \input{dvda/algorithms/read_restart_header}
 }
 
 \begin{figure}[h]
@@ -810,36 +661,7 @@ $\RESTARTHEADER\left\lbrace\begin{tabular}{l}
 \subsubsection{Reading Matrix Parameters}
 \label{mlp:readmatrixparams}
 {\relsize{-1}
-  \ALGORITHM{MLP substream data, max matrix channel}{matrix parameters}
-  \SetKwData{MATRIXPARAMETERS}{matrix parameters}
-  \SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
-  \SetKwData{MATRIXOUTCH}{out channel}
-  \SetKwData{FRACTIONALBITS}{fractional bits}
-  \SetKwData{LSBBYPASS}{LSB bypass}
-  \SetKwData{BYPASSEDLSB}{bypassed LSB}
-  \SetKwData{MATRIXCOEFF}{matrix coefficient}
-  $\text{\MATRIXOUTCH}_{s~m} \leftarrow$ \READ 4 unsigned bits\;
-  \ASSERT $\text{\MATRIXOUTCH}_{s~m} \leq \text{\MAXMATRIXCHANNEL}_s$\;
-  $\text{\FRACTIONALBITS} \leftarrow$ \READ 4 unsigned bits\;
-  \ASSERT $\text{\FRACTIONALBITS} \leq 14$\;
-  $\text{\LSBBYPASS}_{s~m} \leftarrow$ \READ 1 unsigned bit\;
-  \For{$c \leftarrow 0$ \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 3)$}{
-    \eIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-      $v_{c} \leftarrow $ \READ $(\text{\FRACTIONALBITS} + 2)$ signed bits\;
-      $\text{\MATRIXCOEFF}_{s~m~c} \leftarrow v_{c} \times 2 ^ {14 - \text{\FRACTIONALBITS}}$\;
-    }{
-      $\text{\MATRIXCOEFF}_{s~m~c} \leftarrow 0$\;
-    }
-  }
-  $\text{\BYPASSEDLSB}_{s~m} \leftarrow \texttt{[]}$\tcc*[r]{populated by residual block}
-  \BlankLine
-  \Return $\text{\MATRIXPARAMETERS}_{s~m}\left\lbrace\begin{tabular}{l}
-  $\text{\MATRIXOUTCH}_{s~m}$ \\
-  $\text{\LSBBYPASS}_{s~m}$ \\
-  $\text{\MATRIXCOEFF}_{s~m}$ \\
-  $\text{\BYPASSEDLSB}_{s~m}$ \\
-  \end{tabular}\right.$\;
-  \EALGORITHM
+  \input{dvda/algorithms/read_matrix_parameters}
 }
 
 \begin{figure}[h]
@@ -931,39 +753,7 @@ $\text{\HUFFMANLSBS}_{s~m}$ \\
 \subsubsection{Reading FIR Filter Parameters}
 \label{mlp:readfirfilterparams}
 {\relsize{-1}
-  \ALGORITHM{MLP substream data}{FIR filter parameters}
-  \SetKwData{ORDER}{order}
-  \SetKwData{SHIFT}{shift}
-  \SetKwData{COEFFBITS}{coeff bits}
-  \SetKwData{COEFFSHIFT}{coeff shift}
-  \SetKwData{COEFF}{coefficient}
-  \SetKwData{STATEBITS}{state bits}
-  \SetKwData{STATESHIFT}{state shift}
-  \SetKwData{FIRPARAMS}{FIR filter parameters}
-  $\text{\ORDER}_{s~c} \leftarrow$ \READ 4 unsigned bits\;
-  \ASSERT $\text{\ORDER}_{s~c} \leq 8$\;
-  \eIf{$\text{\ORDER}_{s~c} > 0$}{
-    $\text{\SHIFT}_{s~c} \leftarrow$ \READ 4 unsigned bits\;
-    $\text{\COEFFBITS} \leftarrow$ \READ 5 unsigned bits\;
-    \ASSERT $1 < \text{\COEFFBITS} < 16$\;
-    $\text{\COEFFSHIFT} \leftarrow$ \READ 3 unsigned bits\;
-    \ASSERT $(\text{\COEFFBITS} + \text{\COEFFSHIFT}) \leq 16$\;
-    \For{$i \leftarrow 0$ \emph{\KwTo}$\text{\ORDER}_{s~c}$}{
-      $v_{i} \leftarrow$ \READ $(\text{\COEFFBITS})$ signed bits\;
-      $\text{\COEFF}_{s~c~i} \leftarrow v_{i} \times 2 ^ {\text{\COEFFSHIFT}}$\;
-    }
-    \ASSERT $(\READ~\textnormal{1 unsigned bit}) = 0$\;
-  }{
-    $\text{\SHIFT}_{s~c} \leftarrow 0$\;
-    $\text{\COEFF}_{s~c} \leftarrow \texttt{[]}$\;
-  }
-  \Return
-  $\text{\FIRPARAMS}_{s~c}\left\lbrace\begin{tabular}{l}
-  $\text{\ORDER}_{s~c}$ \\
-  $\text{\SHIFT}_{s~c}$ \\
-  $\text{\COEFF}_{s~c}$
-  \end{tabular}\right.$\;
-  \EALGORITHM
+  \input{dvda/algorithms/read_fir_parameters}
 }
 
 \begin{figure}[h]
@@ -975,52 +765,7 @@ $\text{\HUFFMANLSBS}_{s~m}$ \\
 \subsubsection{Reading IIR Filter Parameters}
 \label{mlp:readiirfilterparams}
 {\relsize{-1}
-  \ALGORITHM{MLP substream data}{IIR filter parameters}
-  \SetKw{KwDownTo}{downto}
-  \SetKwData{ORDER}{order}
-  \SetKwData{SHIFT}{shift}
-  \SetKwData{COEFFBITS}{coeff bits}
-  \SetKwData{COEFFSHIFT}{coeff shift}
-  \SetKwData{COEFF}{coefficient}
-  \SetKwData{STATEBITS}{state bits}
-  \SetKwData{STATESHIFT}{state shift}
-  \SetKwData{STATE}{state}
-  \SetKwData{IIRPARAMS}{IIR filter params}
-  $\text{\ORDER}_{s~c} \leftarrow$ \READ 4 unsigned bits\;
-  \ASSERT $\text{\ORDER}_{s~c} \leq 8$\;
-  \eIf{$\text{\ORDER}_{s~c} > 0$}{
-    $\text{\SHIFT}_{s~c} \leftarrow$ \READ 4 unsigned bits\;
-    $\text{\COEFFBITS} \leftarrow$ \READ 5 unsigned bits\;
-    \ASSERT $1 < \text{\COEFFBITS} < 16$\;
-    $\text{\COEFFSHIFT} \leftarrow$ \READ 3 unsigned bits\;
-    \ASSERT $(\text{\COEFFBITS} + \text{\COEFFSHIFT}) \leq 16$\;
-    \For{$i \leftarrow 0$ \emph{\KwTo}$\text{\ORDER}_{s~c}$}{
-      $v_{i} \leftarrow$ \READ $(\text{\COEFFBITS})$ signed bits\;
-      $\text{\COEFF}_{s~c~i} \leftarrow v_{i} \times 2 ^ {\text{\COEFFSHIFT}}$\;
-    }
-    \eIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-      $\text{\STATEBITS} \leftarrow$ \READ 4 unsigned bits\;
-      $\text{\STATESHIFT} \leftarrow$ \READ 4 unsigned bits\;
-      \For(\tcc*[f]{read state values in reverse order}){$i \leftarrow \text{\ORDER}_{s~c}$ \emph{\KwDownTo}0}{
-        $s_{i} \leftarrow$ \READ $(\text{\STATEBITS})$ signed bits\;
-        $\text{\STATE}_{s~c~i} \leftarrow s_{i} \times 2 ^ {\text{\STATESHIFT}}$\;
-      }
-    }{
-      $\text{\STATE}_{s~c} \leftarrow \texttt{[]}$\;
-    }
-  }{
-    $\text{\SHIFT}_{s~c} \leftarrow 0$\;
-    $\text{\COEFF}_{s~c} \leftarrow \texttt{[]}$\;
-    $\text{\STATE}_{s~c} \leftarrow \texttt{[]}$\;
-  }
-  \Return
-  $\text{\IIRPARAMS}_{s~c}\left\lbrace\begin{tabular}{l}
-  $\text{\ORDER}_{s~c}$ \\
-  $\text{\SHIFT}_{s~c}$ \\
-  $\text{\COEFF}_{s~c}$ \\
-  $\text{\STATE}_{s~c}$
-  \end{tabular}\right.$\;
-  \EALGORITHM
+  \input{dvda/algorithms/read_iir_parameters}
 }
 
 \begin{figure}[h]

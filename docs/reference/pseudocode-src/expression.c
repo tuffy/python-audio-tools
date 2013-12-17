@@ -113,6 +113,9 @@ expression_output_latex_constant(const struct expression *self,
     case CONST_FALSE:
         fputs("\\FALSE", output);
         break;
+    case CONST_EMPTY_LIST:
+        fputs("\\texttt{[]}", output);
+        break;
     }
 }
 

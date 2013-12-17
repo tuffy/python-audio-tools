@@ -1,0 +1,44 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "MLP frame data",previous_substream_count;
+OUTPUT substream_count;
+VAR previous_substream_count "previous substream count";
+VAR substream_count "substream count";
+VAR sync_words "sync words";
+VAR stream_type "stream type";
+VAR bits_per_sample "bits-per-sample";
+VAR sample_rate "sample rate";
+VAR channel_count "channel count";
+VAR channel_assignment "channel assignment";
+VAR is_vbr "is VBR";
+VAR peak_bitrate "peak bitrate";
+sync_words <- read 24 unsigned;
+if (sync_words != 16282223) {
+   sync_words -> unread 24 unsigned;
+   return previous_substream_count;
+}
+stream_type <- read 8 unsigned;
+if (stream_type != 187) {
+    stream_type -> unread 8 unsigned;
+    sync_words -> unread 24 unsigned;
+    return previous_substream_count;
+}
+bits_per_sample[0] <- bps(read 4 unsigned);
+bits_per_sample[1] <- bps(read 4 unsigned);
+sample_rate[0] <- rate(read 4 unsigned);
+sample_rate[1] <- rate(read 4 unsigned);
+skip 11;
+channel_count,channel_assignment <- channels(read 5 unsigned);
+skip 48;
+is_vbr <- read 1 unsigned;
+peak_bitrate <- read 15 unsigned;
+substream_count <- read 4 unsigned;
+skip 92;
+assert 1 <= substream_count <= 2;
+return substream_count;

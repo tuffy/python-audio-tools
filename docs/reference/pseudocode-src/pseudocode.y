@@ -80,7 +80,7 @@ free_pseudocode(struct pseudocode *code);
 %token <float_> FLOAT
 %token <comment> COMMENT
 %token ASSIGN_IN ASSIGN_OUT OPEN_BRACKET CLOSE_BRACKET
-%token READ WRITE UNARY SKIP UNSIGNED SIGNED BYTES SEEK
+%token READ UNREAD WRITE UNARY SKIP UNSIGNED SIGNED BYTES SEEK
 %token OPEN_PAREN CLOSE_PAREN OPEN_CURLYBRACE CLOSE_CURLYBRACE PIPE
 %token DO WHILE FOR TO DOWNTO
 %token IF ELIF ELSE SWITCH CASE DEFAULT
@@ -227,16 +227,25 @@ statement: EOS {
     $$ = statement_new_for(FOR_DOWNTO, $2, $4, $6, $7, $9);
  }
  | expression ASSIGN_OUT WRITE expression UNSIGNED comment EOS {
-     $$ = statement_new_write(IO_UNSIGNED, $1, $4, $6);
+    $$ = statement_new_write(IO_UNSIGNED, $1, $4, $6);
  }
  | expression ASSIGN_OUT WRITE expression SIGNED comment EOS {
-     $$ = statement_new_write(IO_SIGNED, $1, $4, $6);
+    $$ = statement_new_write(IO_SIGNED, $1, $4, $6);
  }
  | expression ASSIGN_OUT WRITE expression BYTES comment EOS {
-     $$ = statement_new_write(IO_BYTES, $1, $4, $6);
+    $$ = statement_new_write(IO_BYTES, $1, $4, $6);
  }
  | expression ASSIGN_OUT WRITE UNARY INTEGER comment EOS {
-     $$ = statement_new_write_unary($5, $1, $6);
+    $$ = statement_new_write_unary($5, $1, $6);
+ }
+ | expression ASSIGN_OUT UNREAD expression UNSIGNED comment EOS {
+    $$ = statement_new_unread(IO_UNSIGNED, $1, $4, $6);
+ }
+ | expression ASSIGN_OUT UNREAD expression SIGNED comment EOS {
+    $$ = statement_new_unread(IO_SIGNED, $1, $4, $6);
+ }
+ | expression ASSIGN_OUT UNREAD expression BYTES comment EOS {
+    $$ = statement_new_unread(IO_BYTES, $1, $4, $6);
  }
  | IDENTIFIER OPEN_PAREN CLOSE_PAREN ASSIGN_OUT WRITE expression UNSIGNED comment EOS {
      $$ = statement_new_functioncall_write($1, NULL, IO_UNSIGNED, $6, $8);
@@ -318,6 +327,7 @@ subscript: OPEN_BRACKET expression CLOSE_BRACKET {
 expression: variable  {$$ = expression_new_variable($1);}
  | INTEGER            {$$ = expression_new_integer($1);}
  | FLOAT              {$$ = expression_new_float($1);}
+ | OPEN_BRACKET CLOSE_BRACKET {$$ = expression_new_constant(CONST_EMPTY_LIST);}
  | OPEN_BRACKET intlist CLOSE_BRACKET {$$ = expression_new_intlist($2);}
  | OPEN_BRACKET floatlist CLOSE_BRACKET {$$ = expression_new_floatlist($2);}
  | INFINITY           {$$ = expression_new_constant(CONST_INFINITY);}
@@ -579,6 +589,7 @@ output_pseudocode_latex(const struct pseudocode *code, FILE *output)
     fprintf(output, "\\SetKw{WUNARY}{write unary}\n");
     fprintf(output, "\\SetKw{SKIP}{skip}\n");
     fprintf(output, "\\SetKw{SEEK}{seek}\n");
+    fprintf(output, "\\SetKw{UNREAD}{unread}\n");
     fprintf(output, "\\SetKw{ASSERT}{assert}\n");
     fprintf(output, "\\SetKw{AND}{and}\n");
     fprintf(output, "\\SetKw{OR}{or}\n");

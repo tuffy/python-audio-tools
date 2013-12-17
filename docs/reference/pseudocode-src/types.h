@@ -24,6 +24,7 @@ typedef long long int_type_t;
 typedef char* float_type_t;
 
 #define int_type_format "%lld"
+#define int_type_format_hex "0x%llX"
 #define float_type_format "%s"
 
 typedef enum {
@@ -120,7 +121,8 @@ typedef enum {
     CONST_INFINITY,
     CONST_PI,
     CONST_TRUE,
-    CONST_FALSE
+    CONST_FALSE,
+    CONST_EMPTY_LIST
 } const_t;
 
 typedef enum {
@@ -247,6 +249,7 @@ typedef enum {
     STAT_WRITE_UNARY,
     STAT_SKIP,
     STAT_SEEK,
+    STAT_UNREAD,
     STAT_WHILE,
     STAT_DO_WHILE,
     STAT_FOR,
@@ -345,6 +348,12 @@ struct statement {
             char *comment;
         } seek;
         struct {
+            io_t type;
+            struct expression *value;
+            struct expression *to_unread;
+            char *comment;
+        } unread;
+        struct {
             struct expressionlist *toreturn;
             char *return_comment;
         } return_;
@@ -357,6 +366,9 @@ struct statement {
     void (*output_latex)(const struct statement *self,
                          const struct definitions *defs,
                          FILE *output);
+    void (*output_latex_aligned)(const struct statement *self,
+                                 const struct definitions *defs,
+                                 FILE *output);
     void (*free)(struct statement *self);
 };
 
