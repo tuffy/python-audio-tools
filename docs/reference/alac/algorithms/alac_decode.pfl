@@ -1,0 +1,26 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "an ALAC encoded file";
+OUTPUT "PCM samples";
+VAR sample_count "sample count";
+VAR decoding_parameters "decoding parameters";
+VAR pcm_frame_count "PCM frame count";
+VAR pcm_frames "PCM frames";
+FUNC seek_to_mdat "seek to mdat atom data";
+FUNC read_alac_atom "read alac atom" "alac:read_alac_atom";
+FUNC read_mdhd_atom "read mdhd atom" "alac:read_mdhd_atom";
+FUNC decode_frameset "decode frameset" "alac:decode_frameset";
+decoding_parameters <- read_alac_atom();
+pcm_frame_count <- read_mdhd_atom();
+seek_to_mdat();
+while pcm_frame_count > 0 {
+   pcm_frames,sample_count <- decode_frameset(decoding_parameters);
+   pcm_frame_count <- pcm_frame_count - sample_count;
+   return pcm_frames;
+}

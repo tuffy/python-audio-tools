@@ -14,16 +14,7 @@ The basic process for decoding an ALAC file is as follows:
 \par
 \begin{wrapfigure}[6]{l}{4.5in}
 {\relsize{-1}
-\ALGORITHM{an ALAC encoded file}{PCM samples}
-\hyperref[alac:read_alac_atom]{read \texttt{alac} atom to obtain decoding parameters}\;
-\hyperref[alac:read_mdhd_atom]{read \texttt{mdhd} atom to obtain $PCM~frame~count$}\;
-seek to \texttt{mdat} atom's data\;
-\While{$PCM~frame~count > 0$}{
-  \hyperref[alac:decode_frameset]{decode ALAC frameset to 1 or more PCM frames}\;
-  deduct ALAC frameset's samples from stream's $PCM~frame~count$\;
-  return decoded PCM frames\;
-}
-\EALGORITHM
+  \input{alac/algorithms/alac_decode}
 }
 \par
 Seeking to a particular atom within the ALAC file is a recursive
@@ -423,18 +414,7 @@ $i$ & \kappa & \textsf{MSB}_i & \textsf{LSB}_i & \textsf{unsigned}_i &
 
 \subsubsection{The \texttt{truncate} Function}
 {\relsize{-1}
- \ALGORITHM{a signed sample, the maximum size of the sample in bits}{a truncated signed sample}
- \SetKw{BAND}{bitwise and}
- \SetKwData{SAMPLE}{sample}
-  \SetKwData{BITS}{bits}
-  \SetKwData{TRUNCATED}{truncated}
-  $\TRUNCATED \leftarrow \SAMPLE~\BAND~(2 ^ {\BITS} - 1)$\;
-  \eIf(\tcc*[f]{apply sign bit}){$(\TRUNCATED~\BAND~2 ^ {\BITS - 1}) \neq 0$}{
-    \Return $\TRUNCATED - 2 ^ {\BITS}$\;
-  }{
-    \Return \TRUNCATED\;
-  }
-  \EALGORITHM
+  \input{alac/algorithms/truncate}
 }
 
 \clearpage

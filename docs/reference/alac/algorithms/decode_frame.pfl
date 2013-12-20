@@ -7,7 +7,7 @@
 #San Francisco, California, 94105, USA.
 
 INPUT "\"mdat\" atom data, channel count; bits-per-sample, samples-per-frame from \"alac\" atom";
-OUTPUT "1 or 2 decoded channels of PCM data";
+OUTPUT "1 or 2 decoded channels of PCM data",sample_count;
 VAR bits_per_sample "bits-per-sample";
 VAR channel_count "channel count";
 VAR has_sample_count "has sample count";
@@ -38,4 +38,4 @@ if not_uncompressed == 1 /*uncompressed frame*/ {
                                        bits_per_sample,
                                        uncompressed_LSBs);
 }
-return channel;
+return channel,sample_count;

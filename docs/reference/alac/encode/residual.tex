@@ -13,18 +13,7 @@
 }
 \subsubsection{The \texttt{truncate} Function}
 {\relsize{-1}
-  \ALGORITHM{a signed sample, the maximum size of the sample in bits}{a truncated signed sample}
-  \SetKw{BAND}{bitwise and}
-  \SetKwData{SAMPLE}{sample}
-  \SetKwData{BITS}{bits}
-  \SetKwData{TRUNCATED}{truncated}
-  $\TRUNCATED \leftarrow \SAMPLE~\BAND~(2 ^ {\BITS} - 1)$\;
-  \eIf(\tcc*[f]{apply sign bit}){$(\TRUNCATED~\BAND~2 ^ {\BITS - 1}) \neq 0$}{
-    \Return $\TRUNCATED - 2 ^ {\BITS}$\;
-  }{
-    \Return \TRUNCATED\;
-  }
-  \EALGORITHM
+  \input{alac/algorithms/truncate}
 }
 
 \clearpage

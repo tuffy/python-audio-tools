@@ -332,14 +332,17 @@ shorten/figures/stream.pdf \
 shorten/figures/verbatim.pdf
 
 ALAC = \
+alac/algorithms/alac_decode.tex \
 alac/algorithms/decode_frameset.tex \
 alac/algorithms/decode_frame.tex \
 alac/algorithms/decode_compressed_frame.tex \
 alac/algorithms/read_subframe_header.tex \
 alac/algorithms/read_residuals.tex \
+alac/algorithms/truncate.tex \
 alac/algorithms/read_residual.tex \
 alac/algorithms/decode_subframe.tex \
 alac/algorithms/channel_decorrelation.tex \
+alac/algorithms/alac_encode.tex \
 alac/algorithms/encode_frameset.tex \
 alac/algorithms/encode_frame.tex \
 alac/algorithms/encode_uncompressed_frame.tex \

@@ -1,0 +1,19 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "signed sample",bits;
+OUTPUT "truncated signed sample";
+VAR sample "sample";
+VAR bits "bits";
+while sample >= 2 ^ {bits - 1} {
+    sample <- sample - 2 ^ bits;
+}
+while sample < -(2 ^ {bits - 1}) {
+    sample <- sample + 2 ^ bits;
+}
+return sample;

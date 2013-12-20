@@ -26,29 +26,9 @@ Remember, all of an ALAC's fields are big-endian.
 \clearpage
 
 \subsection{Encoding mdat Atom}
-\ALGORITHM{PCM frames, various encoding parameters:
-\newline
-\begin{tabular}{rl}
-parameter & typical value \\
-\hline
-block size & 4096 \\
-initial history & 40 \\
-history multiplier & 10 \\
-maximum K & 14 \\
-interlacing shift & 2 \\
-minimum interlacing leftweight & 0 \\
-maximum interlacing leftweight & 4 \\
-\end{tabular}
-}{an encoded \texttt{mdat} atom}
-\SetKwData{BLOCKSIZE}{block size}
-$0 \rightarrow$ \WRITE 32 unsigned bits\tcc*[r]{placeholder length}
-$\texttt{"mdat"} \rightarrow$ \WRITE 4 bytes\;
-\While{PCM frames remain}{
-  take \BLOCKSIZE PCM frames from the input\;
-  \hyperref[alac:encode_frameset]{write PCM frames to frameset}\;
+{\relsize{-1}
+  \input{alac/algorithms/alac_encode}
 }
-return to start of \texttt{mdat} atom and write actual length\;
-\EALGORITHM
 \begin{figure}[h]
 \includegraphics{alac/figures/stream.pdf}
 \end{figure}
