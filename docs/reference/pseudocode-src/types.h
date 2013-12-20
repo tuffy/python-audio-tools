@@ -144,7 +144,8 @@ typedef enum {
     MATH_SUBTRACT,
     MATH_MULTIPLY,
     MATH_DIVIDE,
-    MATH_MOD
+    MATH_MOD,
+    MATH_XOR
 } math_op_t;
 
 typedef enum {
@@ -229,6 +230,9 @@ struct expression {
 struct expressionlist {
     struct expression *expression;
     struct expressionlist *next;
+    void (*output_latex)(const struct expressionlist *self,
+                         const struct definitions *defs,
+                         FILE *output);
     unsigned (*len)(const struct expressionlist *self);
     int (*is_tall)(const struct expressionlist *self);
     void (*free)(struct expressionlist *self);
@@ -268,7 +272,7 @@ struct statement {
         char *comment;
         struct {
             struct variablelist *variablelist;
-            struct expression *expression;
+            struct expressionlist *expressionlist;
             char *comment;
         } assign_in;
         struct {

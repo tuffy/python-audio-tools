@@ -398,12 +398,24 @@ figures/mlp/substream.pdf \
 figures/mlp/substream_size.pdf
 
 DVDA = dvda/algorithms/ats_xx_ifo.tex \
+dvda/algorithms/mlp_decoding.tex \
+dvda/algorithms/decode_frame.tex \
 dvda/algorithms/read_major_sync.tex \
 dvda/algorithms/read_substream_info.tex \
+dvda/algorithms/decode_substream.tex \
+dvda/algorithms/decode_block.tex \
 dvda/algorithms/read_restart_header.tex \
+dvda/algorithms/read_decoding_parameters.tex \
 dvda/algorithms/read_matrix_parameters.tex \
+dvda/algorithms/read_channel_parameters.tex \
+dvda/algorithms/default_channel_parameters.tex \
 dvda/algorithms/read_fir_parameters.tex \
 dvda/algorithms/read_iir_parameters.tex \
+dvda/algorithms/read_residual.tex \
+dvda/algorithms/filter_channels.tex \
+dvda/algorithms/rematrix_channels.tex \
+dvda/algorithms/apply_output_shifts.tex \
+dvda/algorithms/unify_substreams.tex \
 figures/dvda/aob_mlp_payload.pdf \
 figures/dvda/aob_pack_header.pdf \
 figures/dvda/aob_pcm_payload.pdf \

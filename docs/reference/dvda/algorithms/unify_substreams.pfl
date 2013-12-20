@@ -1,0 +1,29 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT restart_header[0], output[0], total_samples[0],
+restart_header[1], output[1], total_samples[1];
+OUTPUT "a unified set of PCM frames";
+VAR restart_header "restart header";
+VAR output "output";
+VAR total_samples "total samples";
+VAR max_channel "max channel";
+VAR min_channel "min channel";
+VAR unified "unified";
+assert total_samples[0] == total_samples[1];
+min_channel[0],max_channel[0] <- restart_header[0];
+min_channel[1],max_channel[1] <- restart_header[1];
+for i <- 0 to total_samples[0] {
+    for c <- min_channel[0] to (max_channel[0] + 1) {
+        unified[c][i] <- output[0][c][i];
+    }
+    for c <- min_channel[1] to (max_channel[1] + 1) {
+        unified[c][i] <- output[1][c][i];
+    }
+}
+return unified;

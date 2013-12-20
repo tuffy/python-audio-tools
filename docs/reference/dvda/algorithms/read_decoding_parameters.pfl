@@ -1,0 +1,94 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "MLP substream data",restart_header_present[s],
+min_channel[s],max_channel[s],
+decoding_parameters[s];
+
+OUTPUT decoding_parameters[s];
+
+VAR flags "flags";
+VAR restart_header_present "restart header present";
+VAR block_size "block size";
+VAR matrix_count "matrix count";
+VAR min_channel "min channel";
+VAR max_channel "max channel";
+VAR max_matrix_channel "max matrix channel";
+VAR output_shift "output shift";
+VAR quant_step_size "quant step size";
+VAR matrix_params "matrix parameters";
+VAR channel_params "channel parameters";
+VAR decoding_parameters "decoding parameters";
+FUNC read_matrix_parameters "read matrix parameters"
+"mlp:readmatrixparams";
+FUNC read_channel_parameters "read channel parameters"
+"mlp:readchannelparams";
+FUNC default_channel_parameters "default channel parameters"
+"mlp:default_channel_parameters";
+
+flags[s],block_size[s],
+matrix_count[s],matrix_params[s],
+output_shift[s],quant_step_size[s],
+channel_params[s] <- decoding_parameters[s];
+
+if restart_header_present[s] == 1 /*parameter present flags*/ {
+    for f <- 0 to 8 {
+        flags[s][f] <- read 1 unsigned;
+    }
+} elif (flags[s][0] == 1) and ((read 1 unsigned) == 1) {
+    for f <- 0 to 8 {
+        flags[s][f] <- read 1 unsigned;
+    }
+}
+if (flags[s][7] == 1) and ((read 1 unsigned) == 1) /*block size*/ {
+    block_size[s] <- read 9 unsigned;
+    assert block_size[s] >= 8;
+} elif restart_header_present[s] == 1 {
+    block_size[s] <- 8;
+}
+if (flags[s][6] == 1) and ((read 1 unsigned) == 1) /*matrix parameters*/ {
+    matrix_count[s] <- read 4 unsigned;
+    for m <- 0 to matrix_count[s] {
+        matrix_params[s][m] <-
+        read_matrix_parameters(max_matrix_channel[s]);
+    }
+} elif restart_header_present[s] == 1 {
+    matrix_count[s] <- 0;
+}
+if (flags[s][5] == 1) and ((read 1 unsigned) == 1) /*output shifts*/ {
+    for c <- 0 to (max_matrix_channel[s] + 1) {
+        output_shift[s][c] <- read 4 signed;
+    }
+} elif restart_header_present[s] == 1 {
+    for c <- 0 to (max_matrix_channel[s] + 1) {
+        output_shift[s][c] <- 0;
+    }
+}
+if (flags[s][4] == 1) and ((read 1 unsigned) == 1) /*quant step sizes*/ {
+    for c <- min_channel[s] to (max_channel[s] + 1) {
+        quant_step_size[s][c] <- read 4 unsigned;
+    }
+} elif restart_header_present[s] == 1 {
+    quant_step_size[s][c] <- 0;
+}
+for c <- min_channel[s] to (max_channel[s] + 1) /*channel parameters*/ {
+    if (read 1 unsigned) == 1 {
+        channel_params[s][c] <-
+        read_channel_parameters(flags[s],restart_header_present[s],
+            channel_params[s][c]);
+    } elif restart_header_present[s] == 1 {
+        channel_params[s][c] <-
+        default_channel_parameters();
+    }
+}
+decoding_parameters[s] <-
+flags[s],block_size[s],
+matrix_count[s],matrix_params[s],
+output_shift[s],quant_step_size[s],
+channel_params[s];
+return decoding_parameters[s];

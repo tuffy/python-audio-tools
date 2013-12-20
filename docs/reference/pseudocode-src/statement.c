@@ -238,13 +238,13 @@ statement_free_break(struct statement *self)
 
 struct statement*
 statement_new_assign_in(struct variablelist *variablelist,
-                        struct expression *expression,
+                        struct expressionlist *expressionlist,
                         char *comment)
 {
     struct statement *statement = malloc(sizeof(struct statement));
     statement->type = STAT_ASSIGN_IN;
     statement->_.assign_in.variablelist = variablelist;
-    statement->_.assign_in.expression = expression;
+    statement->_.assign_in.expressionlist = expressionlist;
     statement->_.assign_in.comment = comment;
     statement->output_latex = statement_output_latex_assign_in;
     statement->output_latex_aligned =
@@ -259,7 +259,8 @@ statement_output_latex_assign_in(const struct statement *self,
                                  FILE *output)
 {
     const struct variablelist *variablelist = self->_.assign_in.variablelist;
-    const struct expression *expression = self->_.assign_in.expression;
+    const struct expressionlist *expressionlist =
+        self->_.assign_in.expressionlist;
     const char *comment = self->_.assign_in.comment;
 
     fprintf(output, "$");
@@ -268,7 +269,7 @@ statement_output_latex_assign_in(const struct statement *self,
 
     fprintf(output, " \\leftarrow ");
 
-    expression->output_latex(expression, defs, output);
+    expressionlist->output_latex(expressionlist, defs, output);
 
     fprintf(output, "$");
 
@@ -283,13 +284,14 @@ statement_output_latex_aligned_assign_in(const struct statement *self,
                                          FILE *output)
 {
     const struct variablelist *variablelist = self->_.assign_in.variablelist;
-    const struct expression *expression = self->_.assign_in.expression;
+    const struct expressionlist *expressionlist =
+        self->_.assign_in.expressionlist;
     const char *comment = self->_.assign_in.comment;
 
     fprintf(output, "$");
     variablelist->output_latex(variablelist, defs, output);
     fprintf(output, "$ & $\\leftarrow$ & $");
-    expression->output_latex(expression, defs, output);
+    expressionlist->output_latex(expressionlist, defs, output);
     fprintf(output, "$ & ");
     statement_output_latex_aligned_comment_text(comment, output);
     fprintf(output, "\\\\");
@@ -299,9 +301,9 @@ void
 statement_free_assign_in(struct statement *self)
 {
     struct variablelist *variablelist = self->_.assign_in.variablelist;
-    struct expression *expression = self->_.assign_in.expression;
+    struct expressionlist *expressionlist = self->_.assign_in.expressionlist;
     variablelist->free(variablelist);
-    expression->free(expression);
+    expressionlist->free(expressionlist);
     free(self->_.assign_in.comment);
     free(self);
 }
@@ -557,72 +559,20 @@ statement_output_latex_functioncall_args(const struct statement *self,
         }
     } else {
         if (input_args != NULL) {
-            const struct expressionlist *arg;
-
-            switch (input_args->len(input_args)) {
-            case 0:
-                /*no arguments, no output*/
-                break;
-            case 1:
-                /*one argument*/
-                {
-                    const struct expression *expression =
-                        input_args->expression;
-                    if (expression->is_tall(expression)) {
-                        fprintf(output, "\\left(");
-                        expression->output_latex(expression, defs, output);
-                        fprintf(output, "\\right)");
-                    } else {
-                        fprintf(output, "(");
-                        expression->output_latex(expression, defs, output);
-                        fprintf(output, ")");
-                    }
+            if (input_args->next == NULL) {
+                /*just one argument*/
+                const struct expression *expression = input_args->expression;
+                if (expression->is_tall(expression)) {
+                    fprintf(output, "\\left(");
+                    expression->output_latex(expression, defs, output);
+                    fprintf(output, "\\right)");
+                } else {
+                    fprintf(output, "(");
+                    expression->output_latex(expression, defs, output);
+                    fprintf(output, ")");
                 }
-                break;
-            default:
-                /*multiple arguments*/
-                {
-                    /*divide arguments into columns if there are too many*/
-                    const unsigned args = input_args->len(input_args);
-                    const unsigned total_columns =
-                        (args / ITEMS_PER_COLUMN) +
-                        ((args % ITEMS_PER_COLUMN) ? 1 : 0);
-                    unsigned i;
-
-                    arg = input_args;
-
-                    fputs("\\left\\lbrace\\begin{tabular}{", output);
-                    for (i = 0; i < total_columns; i++) {
-                        fputs("l", output);
-                    }
-                    fputs("}", output);
-
-                    while (arg != NULL) {
-                        for (i = 0; i < total_columns; i++) {
-                            if (arg != NULL) {
-                                const struct expression *expression =
-                                    arg->expression;
-                                fputs("$", output);
-                                expression->output_latex(expression,
-                                                         defs,
-                                                         output);
-                                fputs("$", output);
-
-                                arg = arg->next;
-                            } else {
-                                fputs(" ", output);
-                            }
-                            if ((i + 1) < total_columns) {
-                                fputs(" & ", output);
-                            } else {
-                                fputs(" \\\\ ", output);
-                            }
-                        }
-                    }
-
-                    fprintf(output, "\\end{tabular}\\right.");
-                }
-                break;
+            } else {
+                input_args->output_latex(input_args, defs, output);
             }
         } else {
             /*no arguments, no output*/
@@ -765,6 +715,9 @@ statement_output_latex_functioncall_write_args(
     } else {
         /*multiple input arguments*/
         /*divide arguments into columns if there are too many*/
+        /*this doesn't use expressionlist's output_latex method
+          because that puts the argument list bracket on the left side
+          instead of the right*/
 
         const struct expressionlist *arg = input_args;
         const unsigned args = input_args->len(input_args);
@@ -1521,51 +1474,8 @@ statement_output_latex_return(const struct statement *self,
 {
     struct expressionlist *toreturn = self->_.return_.toreturn;
 
-    fprintf(output, "$\\Return");
-    if (toreturn->len(toreturn) == 1) {
-        /*one item to return*/
-        fprintf(output, "~");
-        toreturn->expression->output_latex(toreturn->expression,
-                                           defs,
-                                           output);
-    } else {
-        /*multiple items to return*/
-        /*divide items into columns if there are too many*/
-        const unsigned args = toreturn->len(toreturn);
-        const unsigned total_columns =
-            (args / ITEMS_PER_COLUMN) +
-            ((args % ITEMS_PER_COLUMN) ? 1 : 0);
-        unsigned i;
-
-        fputs("\\left\\lbrace\\begin{tabular}{", output);
-        for (i = 0; i < total_columns; i++) {
-            fputs("l", output);
-        }
-        fputs("}", output);
-
-        while (toreturn != NULL) {
-            for (i = 0; i < total_columns; i++) {
-                if (toreturn != NULL) {
-                    const struct expression *expression =
-                        toreturn->expression;
-                    fputs("$", output);
-                    expression->output_latex(expression, defs, output);
-                    fputs("$", output);
-
-                    toreturn = toreturn->next;
-                } else {
-                    fputs(" ", output);
-                }
-                if ((i + 1) < total_columns) {
-                    fputs(" & ", output);
-                } else {
-                    fputs(" \\\\ ", output);
-                }
-            }
-        }
-        fprintf(output, "\\end{tabular}\\right.");
-    }
-
+    fprintf(output, "$\\Return~");
+    toreturn->output_latex(toreturn, defs, output);
     fprintf(output, "$");
 
     statement_output_latex_comment_text(self->_.return_.return_comment,

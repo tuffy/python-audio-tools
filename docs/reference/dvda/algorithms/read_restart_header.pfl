@@ -7,8 +7,7 @@
 #San Francisco, California, 94105, USA.
 
 INPUT "MLP substream data";
-OUTPUT min_channel,max_channel,max_matrix_channel,noise_shift,
-noise_gen_seed,channel_assignment;
+OUTPUT restart_header[s];
 VAR header_sync "header sync";
 VAR noise_type "noise type";
 VAR output_timestamp "output timestamp";
@@ -20,6 +19,7 @@ VAR noise_gen_seed "noise gen seed";
 VAR check_data_present "check data present";
 VAR lossless_check "lossless check";
 VAR channel_assignment "channel assignment";
+VAR restart_header "restart header";
 header_sync <- read 13 unsigned;
 noise_type <- read 1 unsigned;
 output_timestamp <- read 16 unsigned;
@@ -40,5 +40,6 @@ for c <- 0 to (max_matrix_channel + 1) {
     channel_assignment[c] <- read 6 unsigned;
     assert channel_assignment[c] <= max_matrix_channel;
 }
-return min_channel,max_channel,max_matrix_channel,noise_shift,
+restart_header[s] <- min_channel,max_channel,max_matrix_channel,noise_shift,
 noise_gen_seed,channel_assignment;
+return restart_header[s];

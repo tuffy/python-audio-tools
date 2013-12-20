@@ -94,7 +94,7 @@ statement_free_break(struct statement *self);
 
 struct statement*
 statement_new_assign_in(struct variablelist *variablelist,
-                        struct expression *expression,
+                        struct expressionlist *expressionlist,
                         char *comment);
 
 void

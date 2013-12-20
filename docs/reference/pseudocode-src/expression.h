@@ -23,6 +23,11 @@
 struct expressionlist*
 expressionlist_new(struct expression *expression, struct expressionlist *next);
 
+void
+expressionlist_output_latex(const struct expressionlist *self,
+                            const struct definitions *defs,
+                            FILE *output);
+
 unsigned
 expressionlist_len(const struct expressionlist *self);
 

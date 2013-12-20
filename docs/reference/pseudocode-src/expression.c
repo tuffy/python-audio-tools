@@ -29,10 +29,57 @@ expressionlist_new(struct expression *expression, struct expressionlist *next)
         malloc(sizeof(struct expressionlist));
     expressionlist->expression = expression;
     expressionlist->next = next;
+    expressionlist->output_latex = expressionlist_output_latex;
     expressionlist->len = expressionlist_len;
     expressionlist->is_tall = expressionlist_is_tall;
     expressionlist->free = expressionlist_free;
     return expressionlist;
+}
+
+void
+expressionlist_output_latex(const struct expressionlist *self,
+                            const struct definitions *defs,
+                            FILE *output)
+{
+    const unsigned args = self->len(self);
+    if (args == 1) {
+        /*just one item in list*/
+        self->expression->output_latex(self->expression, defs, output);
+    } else {
+        /*multiple items in expression list*/
+        /*divide items into columns if there are too many*/
+        const unsigned total_columns =
+            (args / ITEMS_PER_COLUMN) +
+            ((args % ITEMS_PER_COLUMN) ? 1 : 0);
+        unsigned i;
+
+        fputs("\\left\\lbrace\\begin{tabular}{", output);
+        for (i = 0; i < total_columns; i++) {
+            fputs("l", output);
+        }
+        fputs("}", output);
+
+        while (self != NULL) {
+            for (i = 0; i < total_columns; i++) {
+                if (self != NULL) {
+                    const struct expression *expression = self->expression;
+                    fputs("$", output);
+                    expression->output_latex(expression, defs, output);
+                    fputs("$", output);
+
+                    self = self->next;
+                } else {
+                    fputs(" ", output);
+                }
+                if ((i + 1) < total_columns) {
+                    fputs(" & ", output);
+                } else {
+                    fputs(" \\\\ ", output);
+                }
+            }
+        }
+        fputs("\\end{tabular}\\right.", output);
+    }
 }
 
 unsigned
@@ -756,6 +803,9 @@ expression_output_latex_math(const struct expression *self,
     case MATH_MOD:
         fprintf(output, " \\bmod ");
         break;
+    case MATH_XOR:
+        fprintf(output, "~\\XOR~");
+        break;
     }
     sub2->output_latex(sub2, defs, output);
 }
@@ -958,20 +1008,20 @@ expression_output_latex_read(const struct expression *self,
     const struct expression *to_read = self->_.read.to_read;
     const int singular = ((to_read->type == EXP_INTEGER) &&
                           (to_read->_.integer == 1));
-    fprintf(output, "{\\READ~");
+    fprintf(output, "{\\textnormal{\\READ~$");
     to_read->output_latex(to_read, defs, output);
     switch (self->_.read.type) {
     case IO_UNSIGNED:
-        fprintf(output, "~{\\textrm{unsigned %s}}", singular ? "bit" : "bits");
+        fprintf(output, "$~{\\textrm{unsigned %s}}", singular ? "bit" : "bits");
         break;
     case IO_SIGNED:
-        fprintf(output, "~{\\textrm{signed bits}}");
+        fprintf(output, "$~{\\textrm{signed bits}}");
         break;
     case IO_BYTES:
-        fprintf(output, "~{\\textrm{%s}}", singular ?  "byte" : "bytes");
+        fprintf(output, "$~{\\textrm{%s}}", singular ?  "byte" : "bytes");
         break;
     }
-    fprintf(output, "}");
+    fprintf(output, "}}");
 }
 
 int

@@ -89,6 +89,7 @@ extract_comment(const char *token)
 "tan"                   {return TAN;}
 "true"                  {return TRUE;}
 "false"                 {return FALSE;}
+"xor"                   {return XOR;}
 "<-"                    {return ASSIGN_IN;}
 "->"                    {return ASSIGN_OUT;}
 "["                     {return OPEN_BRACKET;}

@@ -1,0 +1,62 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "MLP substream data",flags[s],restart_header_present[s],
+channel_params[s][c];
+OUTPUT channel_params[s][c];
+VAR flags "flags";
+VAR restart_header_present "restart header present";
+VAR fir_order "FIR order";
+VAR fir_shift "FIR shift";
+VAR fir_coeff "FIR coefficient";
+VAR fir_state "FIR state";
+VAR iir_order "IIR order";
+VAR iir_shift "IIR shift";
+VAR iir_coeff "IIR coefficient";
+VAR iir_state "IIR state";
+VAR huffman_offset "Huffman offset";
+VAR codebook "codebook";
+VAR huffman_lsb "Huffman LSBs";
+VAR channel_params "channel parameters";
+FUNC read_fir_parameters "read FIR filter parameters"
+"mlp:readfirfilterparams";
+FUNC read_iir_parameters "read IIR filter parameters"
+"mlp:readiirfilterparams";
+fir_order[s][c],fir_shift[s][c],fir_coeff[s][c],fir_state[s][c],
+iir_order[s][c],iir_shift[s][c],iir_coeff[s][c],iir_state[s][c],
+huffman_offset[s][c],codebook[s][c],huffman_lsb[s][c] <- channel_params[s][c];
+if (flags[s][3] == 1) and ((read 1 unsigned) == 1) {
+    fir_order[s][c],fir_shift[s][c],fir_coeff[s][c] <-
+    read_fir_parameters();
+} elif restart_header_present[s] == 1 {
+    fir_order[s][c] <- 0;
+    fir_shift[s][c] <- 0;
+    fir_coeff[s][c] <- [];
+}
+if (flags[s][2] == 1) and ((read 1 unsigned) == 1) {
+    iir_order[s][c],iir_shift[s][c],iir_coeff[s][c],iir_state[s][c] <-
+    read_iir_parameters();
+} elif restart_header_present[s] == 1 {
+    iir_order[s][c] <- 0;
+    iir_shift[s][c] <- 0;
+    iir_coeff[s][c] <- [];
+    iir_state[s][c] <- [];
+}
+if (flags[s][1] == 1) and ((read 1 unsigned) == 1) {
+    huffman_offset[s][c] <- read 15 signed;
+} elif restart_header_present[s] == 1 {
+    huffman_offset[s][c] <- 0;
+}
+codebook[s][c] <- read 2 unsigned;
+huffman_lsb[s][c] <- read 5 unsigned;
+assert huffman_lsb[s][c] <= 24;
+channel_params[s][c] <-
+fir_order[s][c],fir_shift[s][c],fir_coeff[s][c],fir_state[s][c],
+iir_order[s][c],iir_shift[s][c],iir_coeff[s][c],iir_state[s][c],
+huffman_offset[s][c],codebook[s][c],huffman_lsb[s][c];
+return channel_params[s][c];

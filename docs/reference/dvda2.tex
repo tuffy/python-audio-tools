@@ -133,151 +133,19 @@ That is, a single MLP frame may span 2 or more AOB packets.
 
 \section{MLP Decoding}
 {\relsize{-1}
-\ALGORITHM{packet data containing 1 or more MLP frames}{1 or more PCM frames}
-\SetKwData{TOTALSIZE}{total frame size}
-\While{MLP frames remain}{
-  \SKIP 4 bits\;
-  $\TOTALSIZE \leftarrow (\text{\READ 12 unsigned bits}) \times 2$\;
-  \SKIP 16 bits\;
-  \hyperref[mlp:framedecoding]{decode next $(\TOTALSIZE - 4)$ bytes as MLP frame}\;
-}
-\Return PCM frames\;
-\EALGORITHM
+  \input{dvda/algorithms/mlp_decoding}
 }
 
 \begin{figure}[h]
   \includegraphics{figures/dvda/mlp_stream.pdf}
 \end{figure}
 
-\begin{landscape}
+\clearpage
 
-\subsection{MLP Frame Decoding}
-\subsubsection{Persistent Variables}
-{\relsize{-1}
-\begin{tabular}{rrl}
-\textbf{variable group} & \textbf{variable name} &
-\textbf{used for} \\
-\hline
-\hline
-\hyperref[mlp:readmajorsync]{\textbf{major sync}}
-& $\textsf{substream count}$
-& \hyperref[mlp:framedecoding]{frame decoding} \\
-\hline
-\hyperref[mlp:readrestartheader]{$\textbf{restart header}_s$}
-& $\textsf{min channel}_s$
-& read decoding parameters, reading residuals, channel filtering \\
-& $\textsf{max channel}_s$
-& read decoding parameters, reading residuals, channel filtering \\
-& $\textsf{max matrix channel}_s$
-& read decoding parameters, reading matrix params, channel rematrixing \\
-& $\textsf{noise shift}_s$
-& channel rematrixing \\
-& $\textsf{noise gen seed}_s$
-& channel rematrixing \\
-& $\textsf{channel assignment}_{s~c}$
-& channel reassignment \\
-\hline
-\hyperref[mlp:readdecodingparams]{$\textbf{decoding parameters}_s$}
-& $\textsf{flag}_{s~i}$
-& read decoding parameters \\
-& $\textsf{block size}_s$
-& reading residuals, channel filtering, channel rematrixing \\
-& $\textsf{matrix count}_s$
-& reading matrix params, reading residuals, channel rematrixing \\
-& \hyperref[mlp:readmatrixparams]{$\textbf{matrix parameters}_{s~m}$} \\
-& $\textsf{output shift}_{s~c}$
-& output shifting \\
-& $\textsf{quant step size}_{s~c}$
-& reading residuals, channel filtering, channel rematrixing \\
-& \hyperref[mlp:readchannelparams]{$\textbf{channel parameters}_{s~c}$} \\
-\hline
-\hyperref[mlp:readmatrixparams]{$\textbf{matrix parameters}_{s~m}$}
-& $\textsf{out channel}_{s~m}$
-& channel rematrixing \\
-& $\textsf{LSB bypass}_{s~m}$
-& reading residuals \\
-& $\textsf{matrix coefficient}_{s~m~c}$
-& channel rematrixing \\
-& $\textsf{bypassed LSB}_{s~m~i}$
-& channel rematrixing \\
-\hline
-\hyperref[mlp:readchannelparams]{$\textbf{channel parameters}_{s~c}$}
-& \hyperref[mlp:readfirfilterparams]{$\textbf{FIR filter parameters}_{s~c}$} \\
-& \hyperref[mlp:readiirfilterparams]{$\textbf{IIR filter parameters}_{s~c}$} \\
-& $\textsf{Huffman offset}_{s~c}$
-& reading residuals \\
-& $\textsf{codebook}_{s~c}$
-& reading residuals \\
-& $\textsf{Huffman LSBs}_{s~c}$
-& reading residuals \\
-\hline
-$\textbf{filter parameters}_{s~c}$
-& $\textsf{order}_{s~c}$
-& channel filtering \\
-& $\textsf{shift}_{s~c}$
-& channel filtering \\
-& $\textsf{coefficient}_{s~c~i}$
-& channel filtering \\
-& $\textsf{state}_{s~c~i}$
-& channel filtering \\
-\end{tabular}
-}
-
-
-\end{landscape}
-
-\subsubsection{Frame Decoding Process}
+\subsubsection{Frame Decoding}
 \label{mlp:framedecoding}
-{\relsize{-1}
-\ALGORITHM{MLP frame}{1 or more PCM frames}
-\SetKw{OR}{or}
-\SetKwData{BPS}{bits per sample}
-\SetKwData{RATE}{sample rate}
-\SetKwData{CHANNELCOUNT}{channel count}
-\SetKwData{SUBSTREAMCOUNT}{substream count}
-\SetKwData{CHECKDATA}{checkdata present}
-\SetKwData{SUBSTREAMEND}{substream end}
-\SetKwData{SUBSTREAM}{substream}
-\SetKwData{PARITY}{parity}
-\SetKwData{CRC}{CRC-8}
-\SetKwData{RESTARTHEADER}{restart header}
-\SetKwData{DECODINGPARAMS}{decoding parameters}
-$\text{\SUBSTREAMCOUNT} \leftarrow$ \hyperref[mlp:readmajorsync]{read major sync}\;
-\ASSERT $(\SUBSTREAMCOUNT = 1)$ \OR $(\SUBSTREAMCOUNT = 2)$\;
-\For{$s \leftarrow 0$ \emph{\KwTo}\SUBSTREAMCOUNT}{
-  $\left.\begin{tabular}{r}
-    $\text{\CHECKDATA}_s$ \\
-    $\text{\SUBSTREAMEND}_s$ \\
-  \end{tabular}\right\rbrace \leftarrow$
-  \hyperref[mlp:read_substream_info]{read substream info}\;
-}
-\eIf{$\text{\CHECKDATA}_0 = 1$}{
-  $\text{\SUBSTREAM}_0 \leftarrow$ \hyperref[mlp:decode_substream]{decode next $(\text{\SUBSTREAMEND}_0 - 2)$ substream bytes}\;
-  $\text{\PARITY}_0 \leftarrow$ \READ 8 unsigned bits\;
-  $\text{\CRC}_0 \leftarrow$ \READ 8 unsigned bits\;
-  \hyperref[mlp:verify_parity]{verify $\text{\PARITY}_0$, $\text{\CRC}_0$ of $\text{\SUBSTREAM}_0$}\;
-}{
-  $\text{\SUBSTREAM}_0 \leftarrow$ \hyperref[mlp:decode_substream]{decode next $\text{\SUBSTREAMEND}_0$ substream bytes}\;
-}
-\uIf{$\SUBSTREAMCOUNT = 1$}{
-  \hyperref[mlp:rematrixing]{rematrix channels using $\text{\RESTARTHEADER}_0$ and $\text{\DECODINGPARAMS}_0$}\;
-  \hyperref[mlp:output_shifts]{apply output shifts using $\text{\DECODINGPARAMS}_0$}\;
-}
-\ElseIf{$\SUBSTREAMCOUNT = 2$}{
-  \eIf{$\text{\CHECKDATA}_1 = 1$}{
-    $\text{\SUBSTREAM}_1 \leftarrow$ \hyperref[mlp:decode_substream]{decode next $(\text{\SUBSTREAMEND}_1 - \text{\SUBSTREAMEND}_0 - 2)$ substream bytes}\;
-    $\text{\PARITY}_1 \leftarrow$ \READ 8 unsigned bits\;
-    $\text{\CRC}_1 \leftarrow$ \READ 8 unsigned bits\;
-    \hyperref[mlp:verify_parity]{verify $\text{\PARITY}_1$, $\text{\CRC}_1$ of $\text{\SUBSTREAM}_1$}\;
-  }{
-    $\text{\SUBSTREAM}_1 \leftarrow$
-    \hyperref[mlp:decode_substream]{decode next $(\text{\SUBSTREAMEND}_1 - \text{\SUBSTREAMEND}_0)$ bytes}\;
-  }
-  \hyperref[mlp:rematrixing]{rematrix channels using $\text{\RESTARTHEADER}_1$ and $\text{\DECODINGPARAMS}_1$}\;
-  \hyperref[mlp:output_shifts]{apply output shifts using $\text{\DECODINGPARAMS}_1$}\;
-}
-\Return substream channels as PCM frames\;
-\EALGORITHM
+{\relsize{-3}
+  \input{dvda/algorithms/decode_frame}
 }
 
 \clearpage
@@ -386,66 +254,22 @@ means both substreams will be followed by 8 bit parity and CRC-8 values.
 \subsection{Decoding Substream}
 \label{mlp:decode_substream}
 {\relsize{-1}
-\ALGORITHM{1 or more blocks of MLP data}{1 or more channels of PCM data from multiple blocks}
-\SetKwData{MINCHANNEL}{min channel}
-\SetKwData{MAXCHANNEL}{max channel}
-\SetKwData{BLOCK}{block}
-\SetKwData{OUTPUT}{output}
-\SetKwData{LAST}{last block}
-$\text{\OUTPUT}_s \leftarrow$ decode block to 1 or more channels of PCM data\;
-$\text{\LAST} \leftarrow$ \READ 1 unsigned bit\;
-\While{$\text{\LAST} = 0$}{
-  $\text{\BLOCK}_s \leftarrow$ decode block to 1 or more channels of PCM data\;
-  $\text{\OUTPUT}_{s} \leftarrow \text{\BLOCK}_{s}$ appended to $\text{\OUTPUT}_{s}$ on a channel-by-channel basis\;
-  $\text{\LAST} \leftarrow$ \READ 1 unsigned bit\;
-}
-\BlankLine
-\Return $\text{\OUTPUT}_s$\;
-\EALGORITHM
-}
-
-\subsection{Decoding Block}
-{\relsize{-1}
-\ALGORITHM{MLP block data}{1 or more channels of PCM data}
-\SetKwData{HEADERPRESENT}{restart header present}
-\SetKwData{RESTARTHEADER}{restart header}
-\SetKwData{DECODINGPARAMS}{decoding parameters}
-\SetKwData{FILTERPARAMS}{filter parameters}
-\SetKwData{MINCHANNEL}{min channel}
-\SetKwData{MAXCHANNEL}{max channel}
-\SetKwData{BYPASSEDLSB}{bypassed LSB}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{FILTERED}{filtered}
-\eIf(\tcc*[f]{decoding parameters present}){$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-  $\text{\HEADERPRESENT} \leftarrow$ \READ 1 unsigned bit\;
-  \eIf{$\text{\HEADERPRESENT} = 1$}{
-    $\text{\RESTARTHEADER}_s \leftarrow$ \hyperref[mlp:readrestartheader]{read restart header}\;
-  }{
-    $\text{\RESTARTHEADER}_s \leftarrow$ from previous block's restart header in substream\;
-  }
-  $\text{\DECODINGPARAMS}_s \leftarrow$ \hyperref[mlp:readdecodingparams]{read decoding parameters with $\text{\HEADERPRESENT}$}\;
-}{
-  $\text{\RESTARTHEADER}_s \leftarrow$ from previous block's restart header in substream\;
-  $\text{\DECODINGPARAMS}_s \leftarrow$ from previous block's decoding parameters in substream\;
-}
-\BlankLine
-$\left.\begin{tabular}{r}
-  $\text{\BYPASSEDLSB}_s$ \\
-  $\text{\RESIDUAL}_s$ \\
-\end{tabular}\right\rbrace \leftarrow$
-\hyperref[mlp:read_residuals]{read residual data based on $\text{\DECODINGPARAMS}_s$}\;
-\BlankLine
-\For{$c \leftarrow \text{\MINCHANNEL}_s$ \emph{\KwTo}$\text{\MAXCHANNEL}_s$}{
-  $\text{\FILTERED}_{s~c} \leftarrow$ \hyperref[mlp:channel_filtering]{filter $\text{\RESIDUAL}_s$ using $\text{\FILTERPARAMS}_{s~c}$}\;
-}
-\BlankLine
-\Return $\text{\FILTERED}_{s}$\;
-\EALGORITHM
+  \input{dvda/algorithms/decode_substream}
 }
 
 \begin{figure}[h]
   \includegraphics{figures/dvda/mlp_frame.pdf}
 \end{figure}
+
+
+\clearpage
+
+\subsection{Decoding Block}
+\label{mlp:decode_block}
+{\relsize{-1}
+  \input{dvda/algorithms/decode_block}
+}
+
 
 \clearpage
 
@@ -490,169 +314,15 @@ $\left.\begin{tabular}{r}
 
 \subsection{Reading Decoding Parameters}
 \label{mlp:readdecodingparams}
-{\relsize{-1}
-\ALGORITHM{MLP substream data, restart header present flag, restart header parameters}{decoding parameters}
-\SetKw{OR}{or}
-\SetKw{AND}{and}
-\SetKwData{HEADERPRESENT}{restart header present}
-\SetKwData{MINCHANNEL}{min channel}
-\SetKwData{MAXCHANNEL}{max channel}
-\SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
-\SetKwData{PARAMSPRESENT}{parameters present}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{MATRIXPARAMS}{matrix parameters}
-\SetKwData{MATRIXCOUNT}{matrix count}
-\SetKwData{OUTPUTSHIFT}{output shift}
-\SetKwData{QUANTSTEP}{quant step size}
-\SetKwData{FLAG}{flag}
-\uIf(\tcc*[f]{parameter presence flags}){$\text{\HEADERPRESENT}_s = 1$}{
-  \uIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-    \For{$f \leftarrow 0$ \emph{\KwTo}8}{
-      $\text{\FLAG}_{s~f} \leftarrow$ \READ 1 unsigned bit\;
-    }
-  }
-  \lElse{
-    $\text{\FLAG}_s \leftarrow \texttt{[1, 1, 1, 1, 1, 1, 1, 1]}$\;
-  }
-}
-\uElseIf{$(\text{\FLAG}_{s~0} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-  \For{$f \leftarrow 0$ \emph{\KwTo}8}{
-    $\text{\FLAG}_{s~f} \leftarrow$ \READ 1 unsigned bit\;
-  }
-}
-\Else{
-  $\text{\FLAG}_s \leftarrow$ from previous block in substream\;
-}
-\uIf(\tcc*[f]{block size}){$(\text{\FLAG}_{s~7} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-  $\text{\BLOCKSIZE}_s \leftarrow$ \READ 9 unsigned bits\;
-  \ASSERT $\text{\BLOCKSIZE}_s \geq 8$\;
-}
-\uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-  $\text{\BLOCKSIZE}_s \leftarrow 8$\;
-}
-\Else{
-  $\text{\BLOCKSIZE}_s \leftarrow$ from previous block in substream\;
-}
-\uIf(\tcc*[f]{matrix parameters}){$(\text{\FLAG}_{s~6} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-  $\text{\MATRIXCOUNT}_{s} \leftarrow$ \READ 4 unsigned bits\;
-  \For{$m \leftarrow 0$ \emph{\KwTo}$\text{\MATRIXCOUNT}_{s}$}{
-    $\text{\MATRIXPARAMS}_{s~c} \leftarrow$ \hyperref[mlp:readmatrixparams]{read matrix parameters}\;
-  }
-}
-\uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-  $\text{\MATRIXCOUNT}_{s} \leftarrow 0$\;
-}
-\Else{
-  $\text{\MATRIXCOUNT}_{s} \leftarrow$ from previous block in substream\;
-  $\text{\MATRIXPARAMS}_{s} \leftarrow$ from previous block in substream\;
-}
-\uIf(\tcc*[f]{output shifts}){$(\text{\FLAG}_{s~5} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-  \For{$c \leftarrow 0$ \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 1)$}{
-    $\text{\OUTPUTSHIFT}_{s~c} \leftarrow$ \READ 4 signed bits\;
-  }
-}
-\uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-  \For{$c \leftarrow 0$ \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 1)$}{
-    $\text{\OUTPUTSHIFT}_{s~c} \leftarrow 0$\;
-  }
-}
-\Else{
-  $\text{\OUTPUTSHIFT}_{s} \leftarrow$ from previous block in substream\;
-}
-\uIf(\tcc*[f]{quant step sizes}){$(\text{\FLAG}_{s~4} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-  \For{$c \leftarrow \text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
-    $\text{\QUANTSTEP}_{s~c} \leftarrow$ \READ 4 unsigned bits\;
-  }
-}
-\uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-  \For{$c \leftarrow \text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
-    $\text{\QUANTSTEP}_{s~c} \leftarrow 0$\;
-  }
-}
-\Else{
-  $\text{\QUANTSTEP}_s \leftarrow$ from previous block in substream\;
-}
-\EALGORITHM
+{\relsize{-2}
+  \input{dvda/algorithms/read_decoding_parameters}
 }
 
 \clearpage
 
-{\relsize{-1}
-  \begin{algorithm}[H]
-    \DontPrintSemicolon
-    \SetKw{AND}{and}
-    \SetKw{READ}{read}
-    \SetKw{ASSERT}{assert}
-    \SetKwData{BLOCKSIZE}{block size}
-    \SetKwData{HEADERPRESENT}{restart header present}
-    \SetKwData{MINCHANNEL}{min channel}
-    \SetKwData{MAXCHANNEL}{max channel}
-    \SetKwData{MATRIXCOUNT}{matrix count}
-    \SetKwData{MATRIX}{matrix parameters}
-    \SetKwData{MATRIXOUTCH}{matrix out channel}
-    \SetKwData{LSBBYPASS}{LSB bypass}
-    \SetKwData{MATRIXCOEFF}{matrix coeff}
-    \SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
-    \SetKwData{OUTPUTSHIFT}{output shift}
-    \SetKwData{QUANTSTEP}{quant step size}
-    \SetKwData{CHANNELPARAMS}{channel parameters}
-    \SetKwData{FLAG}{flag}
-    \SetKwData{FIRPARAMS}{FIR filter parameters}
-    \SetKwData{FIRORDER}{FIR order}
-    \SetKwData{FIRSHIFT}{FIR shift}
-    \SetKwData{FIRCOEFF}{FIR coeff}
-    \SetKwData{FIRSTATE}{FIR state}
-    \SetKwData{IIRPARAMS}{IIR filter parameters}
-    \SetKwData{IIRORDER}{IIR order}
-    \SetKwData{IIRSHIFT}{IIR shift}
-    \SetKwData{IIRCOEFF}{IIR coeff}
-    \SetKwData{IIRSTATE}{IIR state}
-    \SetKwData{CODEBOOK}{codebook}
-    \SetKwData{HUFFMANOFFSET}{Huffman offset}
-    \SetKwData{HUFFMANLSBS}{Huffman LSBs}
-    \SetKwData{DECODINGPARAMETERS}{decoding parameters}
-    \SetKwFunction{LEN}{len}
-    \For(\tcc*[f]{channel parameters}){$c \leftarrow \text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
-      \uIf{$((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-        $\text{\CHANNELPARAMS}_{s~c} \leftarrow $ \hyperref[mlp:readchannelparams]{read channel parameters}\;
-      }
-      \uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-        $\text{\CHANNELPARAMS}_{s~c} \leftarrow \left\lbrace\begin{tabular}{ll}
-        $\text{\FIRPARAMS}_{s~c} $ & $ \leftarrow \left\lbrace\begin{tabular}{ll}
-        $\text{\FIRORDER}_{s~c}$ & $\leftarrow 0$ \\
-        $\text{\FIRSHIFT}_{s~c}$ & $\leftarrow 0$ \\
-        $\text{\FIRCOEFF}_{s~c}$ & $\leftarrow \texttt{[]}$ \\
-\end{tabular}\right.$ \\
-        $\text{\IIRPARAMS}_{s~c} $ & $ \leftarrow \left\lbrace\begin{tabular}{ll}
-        $\text{\IIRORDER}_{s~c}$ & $\leftarrow 0$ \\
-        $\text{\IIRSHIFT}_{s~c}$ & $\leftarrow 0$ \\
-        $\text{\IIRCOEFF}_{s~c}$ & $\leftarrow \texttt{[]}$ \\
-        $\text{\IIRSTATE}_{s~c}$ & $\leftarrow \texttt{[]}$ \\
-\end{tabular}\right.$ \\
-        $\text{\HUFFMANOFFSET}_{s~c} $ & $ \leftarrow 0$ \\
-        $\text{\CODEBOOK}_{s~c} $ & $ \leftarrow 0$ \\
-        $\text{\HUFFMANLSBS}_{s~c} $ & $ \leftarrow 23$ \\
-\end{tabular}\right.$\;
-      }
-      \Else{
-        $\text{\CHANNELPARAMS}_{s~c} \leftarrow $ from previous block's corresponding channel in substream\;
-      }
-    }
-    \Return $\text{\DECODINGPARAMETERS}_s\left\lbrace\begin{tabular}{l}
-    $\text{\FLAG}_s$ \\
-    $\text{\BLOCKSIZE}_s$ \\
-    $\text{\MATRIXCOUNT}_s$ \\
-    $\text{\MATRIX}_s$ \\
-    $\text{\OUTPUTSHIFT}_s$ \\
-    $\text{\QUANTSTEP}_s$ \\
-    $\text{\CHANNELPARAMS}_s$ \\
-    \end{tabular}\right.$\;
-  \end{algorithm}
-}
-
 \begin{figure}[h]
   \centering
-  \includegraphics[height=3.5in,keepaspectratio]{figures/dvda/mlp_decoding_params.pdf}
+  \includegraphics{figures/dvda/mlp_decoding_params.pdf}
 \end{figure}
 
 
@@ -672,75 +342,8 @@ $\left.\begin{tabular}{r}
 
 \subsubsection{Reading Channel Parameters}
 \label{mlp:readchannelparams}
-{\relsize{-1}
-\ALGORITHM{MLP substream data, restart header present, decoding parameter flags}{channel parameters}
-\SetKw{AND}{and}
-\SetKwData{CHANNELPARAMS}{channel parameters}
-\SetKwData{HEADERPRESENT}{restart header present}
-\SetKwData{FLAG}{flag}
-\SetKwData{FIRPARAMS}{FIR filter parameters}
-\SetKwData{FIRORDER}{FIR order}
-\SetKwData{FIRSHIFT}{FIR shift}
-\SetKwData{FIRCOEFF}{FIR coeff}
-\SetKwData{IIRPARAMS}{IIR filter parameters}
-\SetKwData{IIRORDER}{IIR order}
-\SetKwData{IIRSHIFT}{IIR shift}
-\SetKwData{IIRCOEFF}{IIR coeff}
-\SetKwData{IIRSTATE}{IIR state}
-\SetKwData{CODEBOOK}{codebook}
-\SetKwData{HUFFMANOFFSET}{Huffman offset}
-\SetKwData{HUFFMANLSBS}{Huffman LSBs}
-\uIf(\tcc*[f]{FIR filter parameters}){$(\text{\FLAG}_{s~3} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-  $\text{\FIRPARAMS}_{s~c} \leftarrow $ \hyperref[mlp:readfirfilterparams]{read FIR filter parameters}\;
-}
-\uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-  $\text{\FIRPARAMS}_{s~c} \leftarrow \left\lbrace\begin{tabular}{l}
-  $\text{\FIRORDER}_{s~c} \leftarrow 0$ \\
-  $\text{\FIRSHIFT}_{s~c} \leftarrow 0$\\
-  $\text{\FIRCOEFF}_{s~c} \leftarrow \texttt{[]}$
-  \end{tabular}\right.
-  $\;
-}
-\Else{
-  $\text{\FIRPARAMS}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
-}
-\BlankLine
-\uIf(\tcc*[f]{IIR filter parameters}){$(\text{\FLAG}_{s~2} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-  $\text{\IIRPARAMS}_{s~c} \leftarrow$ \hyperref[mlp:readiirfilterparams]{read IIR filter parameters}\;
-}
-\uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-  $\text{\IIRPARAMS}_{s~c} \leftarrow \left\lbrace\begin{tabular}{l}
-  $\text{\IIRORDER}_{s~c} \leftarrow 0$ \\
-  $\text{\IIRSHIFT}_{s~c} \leftarrow 0$\\
-  $\text{\IIRCOEFF}_{s~c} \leftarrow \texttt{[]}$ \\
-  $\text{\IIRSTATE}_{s~c} \leftarrow \texttt{[]}$
-  \end{tabular}\right.
-  $\;
-}
-\Else{
-  $\text{\IIRPARAMS}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
-}
-\BlankLine
-\uIf(\tcc*[f]{Huffman offset}){$(\text{\FLAG}_{s~1} = 1)$ \AND $((\READ~\textnormal{1 unsigned bit}) = 1)$}{
-  $\text{\HUFFMANOFFSET}_{s~c} \leftarrow$ \READ 15 signed bits\;
-}
-\uElseIf{$\text{\HEADERPRESENT}_s = 1$}{
-  $\text{\HUFFMANOFFSET}_{s~c} \leftarrow 0$\;
-}
-\Else{
-  $\text{\HUFFMANOFFSET}_{s~c} \leftarrow$ from previous block's corresponding channel in substream\;
-}
-$\text{\CODEBOOK}_{s~c} \leftarrow$ \READ 2 unsigned bits\;
-$\text{\HUFFMANLSBS}_{s~c} \leftarrow$ \READ 5 unsigned bits\;
-\ASSERT $\text{\HUFFMANLSBS}_{s~c} \leq 24$\;
-\Return $\text{\CHANNELPARAMS}_{s~m}\left\lbrace\begin{tabular}{l}
-$\text{\FIRPARAMS}_{s~m}$ \\
-$\text{\IIRPARAMS}_{s~m}$ \\
-$\text{\HUFFMANOFFSET}_{s~m}$ \\
-$\text{\CODEBOOK}_{s~m}$ \\
-$\text{\HUFFMANLSBS}_{s~m}$ \\
-\end{tabular}\right.$\;
-\EALGORITHM
+{\relsize{-2}
+  \input{dvda/algorithms/read_channel_parameters}
 }
 
 \begin{figure}[h]
@@ -856,73 +459,16 @@ our decoding parameters for a given substream are:
 
 \clearpage
 
+\subsubsection{Default Channel Parameters}
+\label{mlp:default_channel_parameters}
+\input{dvda/algorithms/default_channel_parameters}
+
+\clearpage
+
 \subsection{Reading Residual Data}
 \label{mlp:read_residuals}
 {\relsize{-1}
-\ALGORITHM{block size, min channel, max channel, matrix count; LSB bypass for each matrix;\newline quant step size, Huffman LSB, codebook, Huffman offset for each channel}{bypassed LSBs for each matrix, residuals for each channel}
-\SetKwData{MINCHANNEL}{min channel}
-\SetKwData{MAXCHANNEL}{max channel}
-\SetKwData{CODEBOOK}{codebook}
-\SetKwData{LSBBITS}{LSB bits}
-\SetKwData{HUFFMANLSBS}{Huffman LSBs}
-\SetKwData{QUANTSTEP}{quant step size}
-\SetKwData{SIGNSHIFT}{sign shift}
-\SetKwData{HUFFMANOFFSET}{Huffman offset}
-\SetKwData{SIGNEDHUFFMANOFFSET}{signed Huffman offset}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{MATRIXCOUNT}{matrix count}
-\SetKwData{LSBBYPASS}{LSB bypass}
-\SetKwData{BYPASSEDLSB}{bypassed LSB}
-\SetKwData{MSB}{MSB}
-\SetKwData{LSB}{LSB}
-\SetKwData{RESIDUAL}{residual}
-\For(\tcc*[f]{calculate signed Huffman offset}){$c \leftarrow \text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
-  $\text{\LSBBITS}_{s~c} \leftarrow \text{\HUFFMANLSBS}_{s~c} - \text{\QUANTSTEP}_{s~c}$\;
-  \eIf{$\text{\CODEBOOK}_{s~c} > 0$}{
-    $\text{\SIGNSHIFT}_{s~c} \leftarrow \text{\LSBBITS}_{s~c} + 2 - \text{\CODEBOOK}_{s~c}$\;
-    \eIf{$\text{\SIGNSHIFT}_{s~c} \geq 0$}{
-      $\text{\SIGNEDHUFFMANOFFSET}_{s~c} \leftarrow \text{\HUFFMANOFFSET}_{s~c} - 7 \times 2 ^ {\text{\LSBBITS}_{s~c}} - 2 ^ {\text{\SIGNSHIFT}_{s~c}}$\;
-    }{
-      $\text{\SIGNEDHUFFMANOFFSET}_{s~c} \leftarrow \text{\HUFFMANOFFSET}_{s~c} - 7 \times 2 ^ {\text{\LSBBITS}_{s~c}}$\;
-    }
-  }{
-    $\text{\SIGNSHIFT}_{s~c} \leftarrow \text{\LSBBITS}_{s~c} - 1$\;
-    \eIf{$\text{\SIGNSHIFT}_{s~c} \geq 0$}{
-      $\text{\SIGNEDHUFFMANOFFSET}_{s~c} \leftarrow \text{\HUFFMANOFFSET}_{s~c} - 2 ^ {\text{\SIGNSHIFT}_{s~c}}$\;
-    }{
-      $\text{\SIGNEDHUFFMANOFFSET}_{s~c} \leftarrow \text{\HUFFMANOFFSET}_{s~c}$\;
-    }
-  }
-}
-\BlankLine
-\For{$i \leftarrow 0$ \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
-  \For(\tcc*[f]{read bypassed LSBs for each matrix}){$m \leftarrow 0$ \emph{\KwTo}$\text{\MATRIXCOUNT}_s$}{
-    \eIf{$\text{\LSBBYPASS}_{s~m} = 1$}{
-      $\text{\BYPASSEDLSB}_{s~m~i} \leftarrow$ \READ 1 unsigned bit\;
-    }{
-      $\text{\BYPASSEDLSB}_{s~m~i} \leftarrow 0$\;
-    }
-  }
-  \For(\tcc*[f]{read residuals for each channel}){$c \leftarrow \text{\MINCHANNEL}_s$ \emph{\KwTo}$(\text{\MAXCHANNEL}_s + 1)$}{
-    \uIf{$\text{\CODEBOOK}_{s~c} = 0$}{
-      $\text{\MSB}_{s~c~i} \leftarrow 0$\;
-    }
-    \uElseIf{$1 \leq \text{\CODEBOOK}_{s~c} \leq 3$}{
-      $\text{\MSB}_{s~c~i} \leftarrow$ read Huffman value from $\text{\CODEBOOK}_{s~c}$\;
-    }
-    \Else{$\text{\MSB}_{s~c~i} \leftarrow -1$}
-    \ASSERT $\text{\MSB}_{s~c~i} \geq 0$\;
-    \BlankLine
-    $\text{\LSB}_{s~c~i} \leftarrow$ \READ $(\text{\LSBBITS}_{s~c})$ unsigned bits\;
-    $\text{\RESIDUAL}_{s~c~i} \leftarrow ((\text{\MSB}_{s~c~i} \times 2 ^ {\text{\LSBBITS}_{s~c}}) + \text{\LSB}_{s~c~i} + \text{\SIGNEDHUFFMANOFFSET}_{s~c}) \times 2 ^ {\text{\QUANTSTEP}_{s~c}}$\;
-  }
-}
-\BlankLine
-\Return $\left\lbrace\begin{tabular}{l}
-$\text{\BYPASSEDLSB}_s$ \\
-$\text{\RESIDUAL}_s$ \\
-\end{tabular}\right.$\;
-\EALGORITHM
+  \input{dvda/algorithms/read_residual}
 }
 
 \begin{figure}[h]
@@ -999,73 +545,8 @@ $\textsf{signed Huffman offset}_c$ & $0 - 7 \times 2 ^ 2 - 2 ^ 3 = -36$ & $0 - 7
 \subsection{Channel Filtering}
 \label{mlp:channel_filtering}
 {\relsize{-1}
-\ALGORITHM{block size, signed residual values, channel's quant step size,\newline FIR filter parameters, IIR filter parameters}{filtered residual values, new FIR state, new IIR state}
-\SetKw{AND}{and}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{SHIFT}{shift}
-\SetKwData{FIRORDER}{FIR order}
-\SetKwData{FIRSHIFT}{FIR shift}
-\SetKwData{FIRCOEFF}{FIR coeff}
-\SetKwData{FIRSTATE}{FIR state}
-\SetKwData{IIRORDER}{IIR order}
-\SetKwData{IIRSHIFT}{IIR shift}
-\SetKwData{IIRCOEFF}{IIR coeff}
-\SetKwData{IIRSTATE}{IIR state}
-\SetKwData{RESIDUAL}{residual}
-\SetKwData{SUM}{sum}
-\SetKwData{SHIFTEDSUM}{shifted sum}
-\SetKwData{FILTERED}{filtered}
-\SetKwFunction{LEN}{len}
-\SetKwFunction{MASK}{mask}
-\SetKwData{QUANTSIZE}{quant step size}
-\ASSERT $(\text{\FIRORDER}_{s~c} + \text{\IIRORDER}_{s~c}) \leq 8$\;
-\uIf{$(\text{\FIRORDER}_{s~c} > 0)$ \AND $(\text{\IIRORDER}_{s~c} > 0)$}{
-  \ASSERT $\text{\FIRSHIFT}_{s~c} = \text{\IIRSHIFT}_{s~c}$\;
-  $\text{\SHIFT} \leftarrow \text{\FIRSHIFT}_{s~c}$\;
+  \input{dvda/algorithms/filter_channels}
 }
-\uElseIf{$\text{\FIRORDER} > 0$}{
-  $\text{\SHIFT} \leftarrow \text{\FIRSHIFT}_{s~c}$\;
-}
-\Else{
-  $\text{\SHIFT} \leftarrow \text{\IIRSHIFT}_{s~c}$\;
-}
-\For{$i \leftarrow 0$ \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
-  $\text{\SUM}_i \leftarrow 0$\;
-  \For{$j \leftarrow 0$ \emph{\KwTo}$\text{\FIRORDER}_{s~c}$}{
-    $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\FIRCOEFF}_{s~c~j} \times \text{\FIRSTATE}_{s~c~(\LEN(\text{\FIRSTATE}) - j - 1)}$\;
-  }
-  \For{$k \leftarrow 0$ \emph{\KwTo}$\text{\IIRORDER}_{s~c}$}{
-    $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\IIRCOEFF}_{s~c~k} \times \text{\IIRSTATE}_{s~c~(\LEN(\text{\IIRSTATE}) - k - 1)}$\;
-  }
-  \BlankLine
-  $\text{\SHIFTEDSUM}_i \leftarrow \lfloor\text{\SUM}_i \div 2 ^ {\SHIFT}\rfloor$\;
-  \BlankLine
-  $v_i \leftarrow \MASK(\text{\SHIFTEDSUM}_i + \text{\RESIDUAL}_{s~c~i}~,~\text{\QUANTSIZE}_{s~c})$\;
-  \BlankLine
-  $\text{\FILTERED}_{s~c~i} \leftarrow v_i$\;
-  $\text{\FIRSTATE}'_{s~c~\LEN(\text{\FIRSTATE})} \leftarrow v_i$\;
-  $\text{\IIRSTATE}'_{s~c~\LEN(\text{\IIRSTATE})} \leftarrow v_i - \text{\SHIFTEDSUM}_i$\;
-}
-\Return $\left\lbrace\begin{tabular}{l}
-$\text{\FILTERED}_{s~c}$ \\
-$\text{\FIRSTATE}'_{s~c}$ \\
-$\text{\IIRSTATE}'_{s~c}$ \\
-\end{tabular}\right.$\;
-\EALGORITHM
-}
-\vskip .25in
-\par
-\noindent
-where \texttt{mask} is defined as:
-\begin{equation*}
-\texttt{mask}(x~,~q) =\begin{cases}x & \text{ if } q = 0 \\
-\lfloor x \div 2 ^ q \rfloor \times 2 ^ q & \text{ if } q > 0
-\end{cases}
-\end{equation*}
-\par
-\noindent
-Since the maximum FIR order and maximum IIR order are both 8,
-one needs to return only the last 8 values of FIR and IIR state.
 
 %%FIXME - add residual filtering example
 
@@ -1074,47 +555,7 @@ one needs to return only the last 8 values of FIR and IIR state.
 \subsection{Rematrixing Channels}
 \label{mlp:rematrixing}
 {\relsize{-1}
-\ALGORITHM{block size, filtered residuals, noise shift, noise gen seed, matrix parameters, quant step sizes, bypassed LSBs}{rematrixed channels, updated noise gen seed}
-\SetKwData{BLOCKSIZE}{block size}
-\SetKwData{NOISE}{noise}
-\SetKwData{NOISESHIFT}{noise shift}
-\SetKwData{SHIFTED}{shifted}
-\SetKwData{NOISEGENSEED}{noise gen seed}
-\SetKwData{MATRIXCOUNT}{matrix count}
-\SetKwData{SUM}{sum}
-\SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
-\SetKwData{FILTERED}{filtered}
-\SetKwData{MATRIXCOEFF}{matrix coefficient}
-\SetKwData{REMATRIXED}{rematrixed}
-\SetKwData{MATRIXOUTCHANNEL}{matrix out channel}
-\SetKwData{QUANTSTEPSIZE}{quant step size}
-\SetKwData{BYPASSEDLSB}{bypassed LSB}
-\SetKwFunction{MASK}{mask}
-\SetKwFunction{CROP}{crop}
-\For(\tcc*[f]{generate noise channels}){$i \leftarrow 0$ \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
-  $\text{\SHIFTED}_i \leftarrow \lfloor\text{\NOISEGENSEED}_s \div 2 ^ 7\rfloor \bmod{2 ^ {16}}$\;
-  $\text{\NOISE}_{0~i} \leftarrow \CROP(\lfloor\text{\NOISEGENSEED}_s \div 2 ^ {15}\rfloor) \times 2 ^ {\text{\NOISESHIFT}_s}$\;
-  $\text{\NOISE}_{1~i} \leftarrow \CROP(\text{\SHIFTED}_i) \times 2 ^ {\text{\NOISESHIFT}_s}$\;
-  $\text{\NOISEGENSEED}'_s \leftarrow ((\text{\NOISEGENSEED}_s \times 2 ^ {16}) \bmod{2 ^ {32}}) \xor \text{\SHIFTED}_i \xor (\text{\SHIFTED}_i \times 2 ^ 5)$\;
-}
-\BlankLine
-\For(\tcc*[f]{perform channel rematrixing}){$m \leftarrow 0$ \emph{\KwTo}$\text{\MATRIXCOUNT}_s$}{
-  $o \leftarrow \text{\MATRIXOUTCHANNEL}_{s~m}$\;
-  \For{$i \leftarrow 0$ \emph{\KwTo}$\text{\BLOCKSIZE}_s$}{
-    $\text{\SUM}_i \leftarrow 0$\;
-    \For{$c \leftarrow 0$ \emph{\KwTo}$\text{\MAXMATRIXCHANNEL}_s + 1$}{
-      $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\FILTERED}_{s~c~i} \times \text{\MATRIXCOEFF}_{s~m~c}$\;
-    }
-    $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\NOISE}_{0~i} \times \text{\MATRIXCOEFF}_{s~m~(\MAXMATRIXCHANNEL + 1)}$\;
-    $\text{\SUM}_i \leftarrow \text{\SUM}_i + \text{\NOISE}_{1~i} \times \text{\MATRIXCOEFF}_{s~m~(\MAXMATRIXCHANNEL + 2)}$\;
-    $\text{\FILTERED}_{s~o~i} \leftarrow \MASK(\lfloor\text{\SUM}_i \div 2 ^ {14}\rfloor~,~\text{\QUANTSTEPSIZE}_{s~o}) + \text{\BYPASSEDLSB}_{s~m~i}$\;
-  }
-}
-\Return $\left\lbrace\begin{tabular}{l}
-$\text{\FILTERED}_s$ \\
-$\text{\NOISEGENSEED}'_s$ \\
-\end{tabular}\right.$\;
-\EALGORITHM
+  \input{dvda/algorithms/rematrix_channels}
 }
 \vskip .25in
 \par
@@ -1125,10 +566,6 @@ where \texttt{crop} is defined as:
   \begin{cases}
     x \bmod{2 ^ 8} & \text{if } \lfloor (x \bmod{2 ^ 8}) \div 2 ^ 7\rfloor = 0 \\
     (x \bmod{2 ^ 7}) - 2 ^ 7 & \text{if } \lfloor (x \bmod{2 ^ 8}) \div 2 ^ 7\rfloor \neq 0
-  \end{cases}
-  \intertext{and \texttt{mask} is defined as:}
-  \texttt{mask}(x~,~q) &=\begin{cases}x & \text{ if } q = 0 \\
-  \lfloor x \div 2 ^ q \rfloor \times 2 ^ q & \text{ if } q > 0
   \end{cases}
 \end{align*}
 
@@ -1142,22 +579,7 @@ and the final result is output.
 
 \subsection{Applying Output Shifts}
 \label{mlp:output_shifts}
-\ALGORITHM{1 or more channels of rematrixed sample data, output shifts}{1 or more channels of shifted sample data}
-\SetKwData{MAXMATRIXCHANNEL}{max matrix channel}
-\SetKwData{REMATRIXED}{rematrixed}
-\SetKwData{OUTPUTSHIFT}{output shift}
-\SetKwData{SHIFTED}{shifted}
-\For{$c \leftarrow 0$ \emph{\KwTo}$(\text{\MAXMATRIXCHANNEL}_s + 1)$}{
-  \eIf{$\text{\OUTPUTSHIFT}_{s~c} > 0$}{
-    \For{$i \leftarrow 0$ \emph{\KwTo}$\LEN(\text{\REMATRIXED}_{s~c})$}{
-      $\text{\SHIFTED}_{s~c~i} \leftarrow \text{\REMATRIXED}_{s~c~i} \times 2 ^ {\text{\OUTPUTSHIFT}_{s~c}}$\;
-    }
-  }{
-    $\text{\SHIFTED}_{s~c} \leftarrow \text{\REMATRIXED}_{s~c}$\;
-  }
-}
-\Return $\text{\SHIFTED}_{s}$\;
-\EALGORITHM
+\input{dvda/algorithms/apply_output_shifts}
 
 \clearpage
 
@@ -1184,19 +606,13 @@ For example, given the substream bytes:
 \clearpage
 
 \subsection{Verifying CRC-8}
-\ALGORITHM{substream bytes, total substream length}{CRC-8 byte to verify}
-\SetKwData{SUBSTREAMBYTE}{substream byte}
-\SetKwData{SUBSTREAMLEN}{substream length}
-\SetKwData{CRC}{CRC}
-\SetKwFunction{CRCFUNC}{crc8}
-\SetKw{XOR}{xor}
-$\text{\CRC}_{(-1)} \leftarrow \texttt{0x3C}$\;
-\For{$i \leftarrow 0$ \emph{\KwTo}$(\SUBSTREAMLEN - 3)$}{
-  $\text{\CRC}_i \leftarrow \CRCFUNC(\text{\SUBSTREAMBYTE}_i~\XOR~\text{\CRC}_{i - 1})$\;
-}
-\tcc{CRC-8 calculation skips the parity and CRC-8 bytes}
-\Return $\text{\SUBSTREAMBYTE}_{(\SUBSTREAMLEN - 2)}~\XOR~\text{\CRC}_{(\SUBSTREAMLEN - 3)}$\;
-\EALGORITHM
+\label{mlp:verify_crc}
+Given a substream byte and previous CRC-8 checksum,
+or \texttt{0x3C} as an initial value:
+\begin{equation*}
+\text{CRC-8}_i = \texttt{crc8}(byte~\xor~\text{CRC-8}_{i - 1});
+\end{equation*}
+CRC-8 calculation skips the parity and CRC-8 bytes.
 \par
 \noindent
 \texttt{crc8} is taken from the following base-16 table:
@@ -1237,3 +653,9 @@ our CRC-8 calculation is as follows:
 \end{align*}
 which matches the substream's CRC-8 value
 and indicates the substream data has been read correctly.
+
+\clearpage
+
+\subsection{Unifying Substreams}
+\label{mlp:unify_substreams}
+\input{dvda/algorithms/unify_substreams}

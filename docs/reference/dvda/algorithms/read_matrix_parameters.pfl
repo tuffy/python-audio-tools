@@ -7,12 +7,13 @@
 #San Francisco, California, 94105, USA.
 
 INPUT "MLP substream data",max_matrix_channel[s];
-OUTPUT out_channel[s][m],lsb_bypass[s][m],matrix_coeff[s][m];
+OUTPUT matrix_params[s][m];
 VAR max_matrix_channel "max matrix channel";
 VAR out_channel "out channel";
 VAR fractional_bits "fractional bits";
 VAR lsb_bypass "LSB bypass";
 VAR matrix_coeff "matrix coefficient";
+VAR matrix_params "matrix parameters";
 out_channel[s][m] <- read 4 unsigned;
 fractional_bits <- read 4 unsigned;
 lsb_bypass[s][m] <- read 1 unsigned;
@@ -26,4 +27,5 @@ for c <- 0 to (max_matrix_channel[s] + 3) {
         matrix_coeff[s][m][c] <- 0;
     }
 }
-return out_channel[s][m],lsb_bypass[s][m],matrix_coeff[s][m];
+matrix_params[s][m] <- out_channel[s][m],lsb_bypass[s][m],matrix_coeff[s][m];
+return matrix_params[s][m];

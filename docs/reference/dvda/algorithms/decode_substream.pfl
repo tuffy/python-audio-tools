@@ -1,0 +1,40 @@
+#This work is licensed under the
+#Creative Commons Attribution-Share Alike 3.0 United States License.
+#To view a copy of this license, visit
+#http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+#Creative Commons,
+#171 Second Street, Suite 300,
+#San Francisco, California, 94105, USA.
+
+INPUT "MLP substream data",restart_header[s],decoding_parameters[s];
+OUTPUT output[s],total_samples[s],
+bypassed_lsbs[s],restart_header[s],decoding_parameters[s];
+VAR restart_header "restart header";
+VAR decoding_parameters "decoding parameters";
+VAR bypassed_lsbs "bypassed LSBs";
+VAR filtered "filtered";
+VAR output "output";
+VAR total_samples "total samples";
+VAR block_size "block size";
+VAR min_channel "min channel";
+VAR max_channel "max channel";
+
+FUNC decode_block "decode block" "mlp:decode_block";
+FUNC byte_align "byte align input stream";
+i <- 0;
+do {
+    filtered[s],bypassed_lsbs[s],restart_header[s],decoding_parameters[s] <-
+    decode_block(restart_header[s],decoding_parameters[s]);
+    ;
+    /*combine individual blocks into single output stream*/;
+    block_size[s] <- decoding_parameters[s];
+    min_channel[s],max_channel[s] <- restart_header[s];
+    for j <- 0 to block_size {
+        for c <- min_channel[s] to (max_channel[s] + 1) {
+            output[s][c][i] <- filtered[s][c][j];
+        }
+        i <- i + 1;
+    }
+} while (read 1 unsigned) == 0 /*last block bit*/;
+byte_align();
+return output[s],i,bypassed_lsbs[s],restart_header[s],decoding_parameters[s];

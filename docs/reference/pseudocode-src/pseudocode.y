@@ -67,7 +67,7 @@ free_pseudocode(struct pseudocode *code);
 
 %left AND OR
 %left CMP_EQ CMP_NE CMP_LT CMP_LTE CMP_GT CMP_GTE
-%left PLUS DASH STAR SLASH PERCENT
+%left PLUS DASH STAR SLASH PERCENT XOR
 %left NOT
 %left CARAT
 
@@ -190,7 +190,7 @@ statement: EOS {
  | BREAK comment EOS {
     $$ = statement_new_break($2);
  }
- | variablelist ASSIGN_IN expression comment EOS {
+ | variablelist ASSIGN_IN expressionlist comment EOS {
     $$ = statement_new_assign_in($1, $3, $4);
  }
  | IDENTIFIER OPEN_PAREN CLOSE_PAREN comment EOS {
@@ -397,6 +397,9 @@ expression: variable  {$$ = expression_new_variable($1);}
  | expression PERCENT expression {
      $$ = expression_new_math(MATH_MOD, $1, $3);
  }
+ | expression XOR expression {
+     $$ = expression_new_math(MATH_XOR, $1, $3);
+ }
  | expression CARAT expression    {
      $$ = expression_new_pow($1, $3);
  }
@@ -597,6 +600,7 @@ output_pseudocode_latex(const struct pseudocode *code, FILE *output)
     fprintf(output, "\\SetKw{BREAK}{break}\n");
     fprintf(output, "\\SetKw{TRUE}{true}\n");
     fprintf(output, "\\SetKw{FALSE}{false}\n");
+    fprintf(output, "\\SetKw{XOR}{xor}\n");
     fprintf(output, "\\SetKwRepeat{Repeat}{repeat}{while}\n");
 
     /*setup variables*/
