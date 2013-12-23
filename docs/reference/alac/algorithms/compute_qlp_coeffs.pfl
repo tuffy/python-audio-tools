@@ -6,8 +6,10 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "signed PCM samples for a subframe, sample count, effective bits-per-sample";
+INPUT "signed PCM samples for a subframe",sample_count,bits_per_sample,
+encoding_parameters;
 OUTPUT "a list of QLP coefficients, the coefficient count, an encoded residual block, the residual block size";
+VAR encoding_parameters "encoding parameters";
 VAR sample "sample";
 VAR bits_per_sample "bits-per-sample";
 VAR sample_count "sample count";
@@ -30,13 +32,27 @@ windowed <- window_samples(sample, sample_count);
 autocorrelated <- autocorrelate_samples(windowed, sample_count, 8);
 LP_coeff,error <- compute_LP_coeff(autocorrelated, 8);
 QLP_coeff[3] <- quantize_LP_coeff(LP_coeff[3], 4);
-residual[3] <- calculate_residuals(QLP_coeff[3], 4, sample, sample_count);
+residual[3] <- calculate_residuals(QLP_coeff[3],
+                                   4,
+                                   sample,
+                                   sample_count,
+                                   bits_per_sample);
 residual_block[3],
-residual_block_size[3] <- encode_residuals(residual[3], sample_count, bits_per_sample);
+residual_block_size[3] <- encode_residuals(residual[3],
+                                           sample_count,
+                                           bits_per_sample,
+                                           encoding_parameters);
 QLP_coeff[7] <- quantize_LP_coeff(LP_coeff[7], 8);
-residual[7] <- calculate_residuals(QLP_coeff[7], 8, sample, sample_count);
+residual[7] <- calculate_residuals(QLP_coeff[7],
+                                   8,
+                                   sample,
+                                   sample_count,
+                                   bits_per_sample);
 residual_block[7],
-residual_block_size[7] <- encode_residuals(residual[7], sample_count, bits_per_sample);
+residual_block_size[7] <- encode_residuals(residual[7],
+                                           sample_count,
+                                           bits_per_sample,
+                                           encoding_parameters);
 if residual_block_size[3] < (residual_block_size[7] + 64) {
    return QLP_coeff[3],4,residual_block_size[3],residual_block[3];
 } else {

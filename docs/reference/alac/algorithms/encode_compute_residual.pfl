@@ -6,7 +6,8 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "list of QLP coefficients, QLP coefficient count, list of PCM samples, sample count, sample size";
+#INPUT "list of QLP coefficients, QLP coefficient count, list of PCM samples, sample count, sample size";
+INPUT QLP_coeff,QLP_coeff_count,sample,sample_count,sample_size;
 OUTPUT "list of residual values as signed integers";
 VAR QLP_coeff "QLP coefficient";
 VAR QLP_coeff_count "QLP coefficient count";

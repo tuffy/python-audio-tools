@@ -6,8 +6,9 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "\"mdat\" atom data, channel count; bits-per-sample, samples-per-frame from \"alac\" atom";
+INPUT "\"mdat\" atom data",channel_count,decoding_parameters;
 OUTPUT "1 or 2 decoded channels of PCM data",sample_count;
+VAR decoding_parameters "decoding parameters";
 VAR bits_per_sample "bits-per-sample";
 VAR channel_count "channel count";
 VAR has_sample_count "has sample count";
@@ -17,6 +18,8 @@ VAR sample_count "sample count";
 VAR samples_per_frame "samples-per-frame";
 VAR channel "channel";
 FUNC decode_compressed_frame "decode compressed frame" "alac:decode_compressed_frame";
+bits_per_sample,
+samples_per_frame <- decoding_parameters;
 skip 16;
 has_sample_count <- read 1 unsigned;
 uncompressed_LSBs <- read 2 unsigned;
@@ -36,6 +39,7 @@ if not_uncompressed == 1 /*uncompressed frame*/ {
     channel <- decode_compressed_frame(sample_count,
                                        channel_count,
                                        bits_per_sample,
-                                       uncompressed_LSBs);
+                                       uncompressed_LSBs,
+                                       decoding_parameters);
 }
 return channel,sample_count;

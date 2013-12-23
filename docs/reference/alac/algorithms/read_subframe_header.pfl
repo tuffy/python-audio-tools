@@ -7,7 +7,7 @@
 #San Francisco, California, 94105, USA.
 
 INPUT "\"mdat\" atom data";
-OUTPUT "QLP shift needed, QLP coefficients as list of signed integers";
+OUTPUT "QLP shift needed, QLP coefficient count, QLP coefficients as list of signed integers";
 VAR prediction_type "prediction type";
 VAR rice_modifier "Rice modifier";
 VAR QLP_coeff_count "QLP coefficient count";

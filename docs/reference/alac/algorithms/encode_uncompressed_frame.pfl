@@ -6,8 +6,10 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "1 or 2 channels of PCM data, channel count, sample count of each channel, bits-per-sample; default block size from encoding parameters";
+INPUT "1 or 2 channels of PCM data",
+channel_count, sample_count, bits_per_sample, encoding_parameters;
 OUTPUT "uncompressed ALAC frame, frame's size in bits";
+VAR encoding_parameters "encoding parameters";
 VAR channel "channel";
 VAR channel_count "channel count";
 VAR sample_count "sample count";
@@ -15,6 +17,7 @@ VAR block_size "block size";
 VAR bits_per_sample "bits-per-sample";
 VAR uncompressed_frame "uncompressed frame";
 VAR uncompressed_frame_size "uncompressed frame size";
+block_size <- encoding_parameters;
 0 -> write 16 unsigned /*unused*/;
 if sample_count != block_size  {
     1 -> write 1 unsigned /*has sample count*/;

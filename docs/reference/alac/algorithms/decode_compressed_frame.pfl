@@ -6,12 +6,15 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "\"mdat\" atom data, sample count, channel count, bits-per-sample, uncompressed LSBs value; initial history, maximum K from \"alac\" atom";
+INPUT "\"mdat\" atom data",
+sample_count,channel_count,bits_per_sample,uncompressed_LSBs,
+decoding_parameters;
 OUTPUT "1 or 2 channels of PCM data";
 VAR sample_count "sample count";
 VAR channel_count "channel count";
 VAR bits_per_sample "bits-per-sample";
 VAR uncompressed_LSBs "uncompressed LSBs";
+VAR decoding_parameters "decoding parameters";
 VAR sample_size "sample size";
 VAR interlacing_shift "interlacing shift";
 VAR interlacing_leftweight "interlacing leftweight";
@@ -41,7 +44,8 @@ if uncompressed_LSBs > 0 {
 }
 for c <- 0 to channel_count {
     residuals[c] <- read_residual(sample_size,
-                                  sample_count);
+                                  sample_count,
+                                  decoding_parameters);
     subframe[c] <- decode_subframe(QLP_shift[c],
                                    QLP_coeff_count[c],
                                    QLP_coeff[c],

@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "list of signed QLP coefficients, coefficient count";
+INPUT QLP_coeff,QLP_coeff_count;
 OUTPUT "subframe header";
 VAR QLP_coeff "QLP coefficient";
 VAR QLP_coeff_count "QLP coefficient count";

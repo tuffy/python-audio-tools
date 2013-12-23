@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "\"mdat\" atom data, k, sample size";
+INPUT "\"mdat\" atom data",kappa,sample_size;
 OUTPUT "an unsigned residual";
 VAR sample_size "sample size";
 VAR MSB "MSB";

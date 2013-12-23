@@ -6,7 +6,8 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "QLP shift needed, QLP coefficient count, QLP coefficients, a list of signed residuals, sample size, sample count";
+INPUT QLP_shift, QLP_coeff_count, QLP_coeff,
+residual, sample_size, sample_count;
 OUTPUT "a list of signed subframe samples";
 VAR QLP_shift "QLP shift needed";
 VAR QLP_coeff_count "QLP coefficient count";

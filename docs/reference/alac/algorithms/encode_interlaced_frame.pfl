@@ -6,8 +6,12 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "two channels of shifted PCM samples, sample count of channels, bits-per-sample, the size of uncompressed LSBs in bytes, a list of uncompressed LSBs; default block size from encoding parameters";
-OUTPUT "non-interlaced frame, non-interlaced frame size";
+#INPUT "two channels of shifted PCM samples, sample count of channels, bits-per-sample, the size of uncompressed LSBs in bytes, a list of uncompressed LSBs; default block size from encoding parameters";
+INPUT "two channels of shifted PCM samples",
+sample_count,bits_per_sample,interlacing_shift,interlacing_leftweight,
+uncompressed_LSBs,LSB,encoding_parameters;
+OUTPUT "interlaced frame, interlaced frame size";
+VAR encoding_parameters "encoding parameters";
 VAR LSB "LSB";
 VAR uncompressed_LSBs "uncompressed LSBs";
 VAR sample_count "sample count";
@@ -29,6 +33,7 @@ FUNC compute_QLP_coeff "compute QLP coefficient and residual"
 "alac:compute_qlp_coeffs";
 FUNC write_subframe_header "write subframe header"
 "alac:write_subframe_header";
+block_size <- encoding_parameters;
 0 -> write 16 unsigned /*unused*/;
 if sample_count != block_size {
     1 -> write 1 unsigned /*has sample count*/;

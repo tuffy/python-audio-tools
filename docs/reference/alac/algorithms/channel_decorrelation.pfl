@@ -6,7 +6,8 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "2 lists of subframe samples, sample count, interlacing shift, interlacing leftweight";
+INPUT subframe[0], subframe[1], sample_count,
+interlacing_shift, interlacing_leftweight;
 OUTPUT "decorrelated left and right sample lists";
 VAR subframe "subframe";
 VAR sample_count "sample count";

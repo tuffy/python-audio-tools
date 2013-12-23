@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "an unsigned residual value, k, sample size";
+INPUT "an unsigned residual value",kappa,sample_size;
 OUTPUT "an encoded residual";
 VAR residual "residual";
 VAR sample_size "sample size";

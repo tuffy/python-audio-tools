@@ -8,6 +8,7 @@
 
 INPUT "\"mdat\" atom data, decoding parameters from \"alac\" atom";
 OUTPUT "decoded PCM frames",sample_count;
+VAR decoding_parameters "decoding parameters";
 VAR channel_count "channel count";
 VAR frame_channels "frame channels";
 VAR channels "channels";
@@ -17,7 +18,8 @@ FUNC byte_align "byte align input stream";
 i <- 0;
 channel_count <- (read 3 unsigned) + 1;
 while channel_count != 8 {
-    frame_channels,sample_count <- decode_frame(channel_count);
+    frame_channels,sample_count <- decode_frame(channel_count,
+                                                decoding_parameters);
     for j <- 0 to channel_count {
         channels[i] <- frame_channels[j];
         i <- i + 1;
