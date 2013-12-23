@@ -70,15 +70,14 @@ For example, given the metadata bytes:
 
 \subsection{Reading a FLAC Frame Header}
 \label{flac:read_frame_header}
-{\relsize{-1}
 \input{flac/algorithms/read_frame_header}
-}
 
-{\relsize{-1}
-  \subsubsection{Reading UTF-8 Frame Number}
-  \label{flac:read_utf8}
-  \input{flac/algorithms/read_utf8}
-  For example, given the UTF-8 bytes \texttt{E1 82 84}:
+\clearpage
+
+\subsubsection{Reading UTF-8 Frame Number}
+\label{flac:read_utf8}
+\input{flac/algorithms/read_utf8}
+For example, given the UTF-8 bytes \texttt{E1 82 84}:
 \par
 \begin{wrapfigure}[5]{l}{2.375in}
 \includegraphics{flac/figures/utf8.pdf}
@@ -90,7 +89,6 @@ For example, given the metadata bytes:
 &= 4228
 \end{align*}
 
-}
 \clearpage
 
 \subsubsection{Decoding Block Size}

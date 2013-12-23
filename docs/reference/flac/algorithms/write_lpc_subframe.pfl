@@ -6,8 +6,10 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "signed subframe samples, sample count, effective bits-per-sample, LPC order, QLP precision, QLP shift needed, QLP coefficients";
+INPUT encoding_parameters,sample,sample_count,bits_per_sample,
+LPC_order,QLP_precision,QLP_shift,QLP_coeff;
 OUTPUT "an LPC subframe, its length in bits";
+VAR encoding_parameters "encoding parameters";
 VAR sample_count "sample count";
 VAR sample "sample";
 VAR residual "residual";
@@ -33,5 +35,5 @@ for i <- 0 to sample_count - LPC_order /*calculate signed residuals*/ {
                    {QLP_coeff[j] * sample[i + LPC_order - j - 1]},
                    2 ^ QLP_shift));
 }
-encode_residual(sample_count, LPC_order, residual);
+encode_residual(encoding_parameters, sample_count, LPC_order, residual);
 return lpc_subframe,lpc_subframe_length;

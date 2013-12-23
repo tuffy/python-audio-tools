@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "a list of input samples as signed integers, sample count";
+INPUT sample,sample_count;
 OUTPUT "a list of windowed samples as floating point values";
 VAR sample_count "sample count";
 VAR sample "sample";

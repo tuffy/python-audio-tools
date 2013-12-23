@@ -6,8 +6,9 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "signed subframe samples, sample count, effective bits per sample, maximum LPC order from encoding parameters";
+INPUT encoding_parameters, sample, sample_count, bits_per_sample;
 OUTPUT "an LPC subframe, its length in bits and predictor order";
+VAR encoding_parameters "encoding parameters";
 VAR sample_count "sample count";
 VAR sample "sample";
 VAR bits_per_sample "bits-per-sample";
@@ -32,11 +33,12 @@ FUNC write_lpc_subframe "write LPC subframe" "flac:write_lpc_subframe";
 FUNC compute_lp_coeffs "compute LP coefficients" "flac:compute_lp_coeffs";
 FUNC estimate_best_order "estimate best order" "flac:estimate_best_order";
 FUNC quantize_coeffs "quantize coefficients" "flac:quantize_lp_coeffs";
+max_LPC_order,exhaustive_model_search <- encoding_parameters;
 QLP_precision <- calculate_qlp_precision(sample_count);
 windowed <- window(sample, sample_count);
 autocorrelated <- autocorrelate(windowed, sample_count, max_LPC_order);
 LP_coeff,error <- compute_lp_coeffs(autocorrelated, max_LPC_order);
-if not exhaustive_model_search /*from encoding parameters*/ {
+if not exhaustive_model_search {
     LPC_order <- estimate_best_order(error,
                                      sample_count,
                                      QLP_precision,
@@ -45,7 +47,8 @@ if not exhaustive_model_search /*from encoding parameters*/ {
                                            LP_coeff,
                                            QLP_precision);
     lpc_subframe,lpc_subframe_length <-
-    write_lpc_subframe(sample,
+    write_lpc_subframe(encoding_parameters,
+                       sample,
                        sample_count,
                        bits_per_sample,
                        LPC_order,
@@ -60,7 +63,8 @@ if not exhaustive_model_search /*from encoding parameters*/ {
                                                      LP_coeff,
                                                      QLP_precision);
         lpc_subframe[o],lpc_subframe_length[o] <-
-        write_lpc_subframe(sample,
+        write_lpc_subframe(encoding_parameters,
+                           sample,
                            sample_count,
                            bits_per_sample,
                            o,

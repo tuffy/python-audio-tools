@@ -6,8 +6,9 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "sample count, subframe's predictor order, signed residual values";
+INPUT encoding_parameters,sample_count,predictor_order,residual;
 OUTPUT "partition order, a list of unsigned Rice parameters, a list of partition lists containing signed residuals";
+VAR encoding_parameters "encoding parameters";
 VAR max_partition_order "maximum partition order";
 VAR sample_count "sample count";
 VAR predictor_order "predictor order";
@@ -22,6 +23,7 @@ VAR p_size "partition size";
 VAR best_p_size "best parititions size";
 VAR total_p_size "total partitions size";
 VAR max_rice_value "maximum Rice value";
+max_partition_order,max_rice_value <- encoding_parameters;
 best_p_size <- infinity /*maximum unsigned integer*/;
 for o <- 0 to (max_partition_order + 1) {
     /*only attempt partition orders that divide samples evenly*/;

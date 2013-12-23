@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "a list of signed PCM samples";
+INPUT "a list of signed PCM samples",sample_count;
 OUTPUT "the number of wasted bits-per-sample as an unsigned integer";
 VAR sample "sample";
 VAR sample_count "sample count";

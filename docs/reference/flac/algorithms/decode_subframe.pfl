@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "the FLAC file stream, block size, subframe's effective bits-per-sample";
+INPUT "the FLAC file stream",block_size,subframe_bps;
 OUTPUT "decoded signed PCM samples";
 VAR block_size "block size";
 VAR subframe_bps "subframe's bits-per-sample";

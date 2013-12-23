@@ -6,8 +6,9 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "signed subframe samples, sample count, effective bits-per-sample";
+INPUT encoding_parameters, sample, sample_count, bits_per_sample;
 OUTPUT "a FIXED subframe, its length in bits and predictor order";
+VAR encoding_parameters "encoding parameters";
 VAR sample_count "sample count";
 VAR sample "sample";
 VAR residual "residual";
@@ -42,5 +43,8 @@ if sample_count > 4 {
 for i <- 0 to fixed_order {
     sample[i] -> write bits_per_sample signed;
 }
-encode_residual(sample_count, fixed_order, residual[fixed_order]);
+encode_residual(encoding_parameters,
+                sample_count,
+                fixed_order,
+                residual[fixed_order]);
 return fixed_subframe,fixed_subframe_length,fixed_order;

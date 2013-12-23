@@ -6,7 +6,8 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "encoded block size as 4 bit value, the FLAC file stream";
+INPUT "the FLAC file stream, encoded block size as 4 bit value",
+max_block_size;
 OUTPUT "decoded block size in PCM frames";
 VAR encoded_block_size "encoded block size";
 VAR max_block_size "maximum block size from STREAMINFO";

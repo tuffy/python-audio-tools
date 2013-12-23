@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "encoded bits-per-sample as 3 bit value";
+INPUT "encoded bits-per-sample as 3 bit value", streaminfo_bps;
 OUTPUT "file's bits-per-sample";
 VAR encoded_bps "encoded bits-per-sample";
 VAR streaminfo_bps "bits-per-sample from STREAMINFO";

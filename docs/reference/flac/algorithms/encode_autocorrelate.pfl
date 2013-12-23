@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "a list of windowed samples as floating point values, sample count, maximum LPC order";
+INPUT window,sample_count,max_LPC;
 OUTPUT "a list of floating point autocorrelation values";
 VAR sample_count "sample count";
 VAR window "windowed";

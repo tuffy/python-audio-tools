@@ -30,8 +30,10 @@ assert header == bytes(102, 76, 97, 67);
 min_block_size,max_block_size,min_frame_size,max_frame_size,
 sample_rate,channels,bps,total_frames,md5 <- read_metadata();
 stream_md5 <- initialize_stream_md5();
-while (total_frames > 0) {
-    block_size,samples <- decode_frame();
+while total_frames > 0 {
+    block_size,samples <- decode_frame(max_block_size,
+                                       sample_rate,
+                                       bps);
     stream_md5 <- update_md5(stream_md5, channels, samples);
     total_frames <- total_frames - block_size;
     return samples;

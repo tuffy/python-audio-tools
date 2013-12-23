@@ -6,8 +6,14 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "STREAMINFO values and the FLAC file stream";
+INPUT "the FLAC file stream",
+max_block_size,
+streaminfo_sample_rate,
+streaminfo_bps;
 OUTPUT "decoded PCM samples";
+VAR max_block_size "maximum block size";
+VAR streaminfo_sample_rate "STREAMINFO sample rate";
+VAR streaminfo_bps "STREAMINFO bits-per-sample";
 VAR block_size "block size";
 VAR sample_rate "sample rate";
 VAR bps "bits-per-sample";
@@ -24,8 +30,11 @@ FUNC decode_subframe "decode subframe" "flac:decode_subframe";
 FUNC byte_align "byte align the stream";
 FUNC verify_checksum "verify frame's checksum" "flac:verify_crc16";
 FUNC recombine_subframes "recombine subframes" "flac:recombine_subframes";
+
 block_size,sample_rate,bps,channel_count,channel_assignment <-
-read_frame_header();
+read_frame_header(max_block_size,
+streaminfo_sample_rate,
+streaminfo_bps);
 for c <- 0 to channel_count {
     /*difference channel has 1 more bit-per-sample*/;
     if (channel_assignment == ch8) and (c == 1) {

@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "sample count";
+INPUT sample_count;
 OUTPUT "QLP precision as unsinged integer";
 VAR sample_count "sample count";
 if 0 < sample_count <= 192 {

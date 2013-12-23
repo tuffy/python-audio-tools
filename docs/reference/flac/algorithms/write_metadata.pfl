@@ -6,8 +6,8 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "stream's attributes, a default block size, minimum frame size, maximum frame size, total PCM frames, stream's MD5 sum";
-OUTPUT "placeholder metadata blocks";
+INPUT sample_rate,channels, bps, block_size, min_frame_size, max_frame_size, total_pcm_frames, MD5_sum;
+OUTPUT "FLAC metadata blocks";
 VAR block_size "block size";
 VAR min_frame_size "minimum frame size";
 VAR max_frame_size "maximum frame size";

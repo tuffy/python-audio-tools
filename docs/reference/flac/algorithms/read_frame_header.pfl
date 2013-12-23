@@ -6,8 +6,13 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "STREAMINFO values and the FLAC file stream";
+INPUT "the FLAC file stream",max_block_size,
+streaminfo_sample_rate,
+streaminfo_bps;
 OUTPUT "stream information and subframe decoding parameters";
+VAR max_block_size "maximum block size";
+VAR streaminfo_sample_rate "STREAMINFO sample rate";
+VAR streaminfo_bps "STREAMINFO bits-per-sample";
 VAR sync_code "sync code";
 VAR blocking_strategy "blocking strategy";
 VAR encoded_block_size "encoded block size";
@@ -37,9 +42,12 @@ encoded_channels <- read 4 unsigned;
 encoded_bps <- read 3 unsigned;
 skip 1;
 frame_number <- read_utf8();
-block_size <- decode_block_size(encoded_block_size);
-sample_rate <- decode_sample_rate(encoded_sample_rate);
-bps <- decode_bps(encoded_bps);
+block_size <- decode_block_size(encoded_block_size,
+                                max_block_size);
+sample_rate <- decode_sample_rate(encoded_sample_rate,
+                                  streaminfo_sample_rate);
+bps <- decode_bps(encoded_bps,
+                  streaminfo_bps);
 channel_count,channel_assignment <- decode_channels(encoded_channels);
 crc <- read 8 unsigned;
 verify_crc(crc);

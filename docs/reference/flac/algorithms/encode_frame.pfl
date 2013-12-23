@@ -6,13 +6,14 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "input PCM samples per channel, channel count, bits-per-sample, encoding parameters";
-OUTPUT "a FLAC frame";
+INPUT encoding_parameters, channels, bits_per_sample, channel, block_size;
+OUTPUT "a FLAC frame, FLAC frame size in bytes";
+VAR encoding_parameters "encoding parameters";
 VAR block_size "block size";
 VAR channels "channel count";
 VAR try_mid_side "try mid side";
 VAR try_adaptive_mid_side "try adaptive mid side";
-VAR channel "channel";
+VAR channel "channel data";
 VAR average_channel "avarage channel";
 VAR difference_channel "difference channel";
 VAR left "left";
@@ -30,10 +31,13 @@ VAR left_difference "left/difference";
 VAR difference_right "difference/right";
 VAR average_difference "average/difference";
 VAR frame "FLAC frame";
+VAR frame_size "FLAC frame size";
 FUNC write_frame_header "write frame header" "flac:write_frame_header";
 FUNC encode_subframe "encode subframe" "flac:encode_subframe";
 FUNC byte_align "byte align output stream";
 FUNC write_crc16 "write calculated CRC-16" "flac:calculate_crc16";
+try_mid_side,
+try_adaptive_mid_side <- encoding_parameters;
 if (channels == 2) and (try_mid_side or try_adaptive_mid_side) {
     for i <- 0 to block_size /*calculate subframe combinations*/ {
         average_channel[i] <- floor((channel[0][i] + channel[1][i]) / 2);
@@ -86,4 +90,4 @@ if (channels == 2) and (try_mid_side or try_adaptive_mid_side) {
 }
 byte_align();
 write_crc16();
-return frame;
+return frame,frame_size;

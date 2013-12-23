@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "block size, channel count, channel assignment, subframe samples";
+INPUT block_size,channels,channel_assignment,subframe;
 OUTPUT "decorrelated channels";
 VAR block_size "block size";
 VAR channels "channel count";

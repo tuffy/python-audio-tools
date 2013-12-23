@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "subframe's type and order, wasted bits-per-sample";
+INPUT "subframe's type and order",wasted_BPS;
 OUTPUT "a FLAC subframe header";
 VAR type_order "subframe type/order";
 VAR wasted_BPS "wasted BPS";

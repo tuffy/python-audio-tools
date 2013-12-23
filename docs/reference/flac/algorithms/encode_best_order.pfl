@@ -6,7 +6,7 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "floating point error values, sample count, bits-per-sample, QLP precision and maximum LPC order";
+INPUT error,sample_count,QLP_precision,max_LPC;
 OUTPUT "best estimated LPC order to use";
 VAR max_LPC "maximum LPC order";
 VAR error_scale "error scale";

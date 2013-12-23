@@ -6,8 +6,9 @@
 #171 Second Street, Suite 300,
 #San Francisco, California, 94105, USA.
 
-INPUT "sample count, subframe's predictor order, signed residual values";
+INPUT encoding_parameters,sample_count,predictor_order,residual;
 OUTPUT "an encoded block of residuals";
+VAR encoding_parameters "encoding parameters";
 VAR coding_method "coding method";
 VAR predictor_order "predictor order";
 VAR partition_order "partition order";
@@ -24,7 +25,8 @@ FUNC calculate_partitions "calculate residual partitions"
 "flac:calculate_residual_partitions";
 partition_order,
 rice,
-partition <- calculate_partitions(sample_count,
+partition <- calculate_partitions(encoding_parameters,
+                                  sample_count,
                                   predictor_order,
                                   residual);
 max_rice <- max(rice);
