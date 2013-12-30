@@ -285,6 +285,22 @@ expression_free_sum(struct expression *self);
 
 
 struct expression*
+expression_new_sqrt(struct expression *root,
+                    struct expression *value);
+
+void
+expression_output_latex_sqrt(const struct expression *self,
+                             const struct definitions *defs,
+                             FILE *output);
+
+int
+expression_is_tall_sqrt(const struct expression *self);
+
+void
+expression_free_sqrt(struct expression *self);
+
+
+struct expression*
 expression_new_read(io_t type, struct expression *to_read);
 
 void

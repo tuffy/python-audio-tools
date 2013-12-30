@@ -84,6 +84,7 @@ extract_comment(const char *token)
 "floor"                 {return FLOOR;}
 "sum"                   {return SUM;}
 "log"                   {return LOG;}
+"sqrt"                  {return SQRT;}
 "sin"                   {return SIN;}
 "cos"                   {return COS;}
 "tan"                   {return TAN;}

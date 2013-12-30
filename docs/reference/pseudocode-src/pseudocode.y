@@ -73,7 +73,7 @@ free_pseudocode(struct pseudocode *code);
 
 %token INPUT OUTPUT VAR FUNC BREAK FRAC CEIL FLOOR SUM
 %token INFINITY PI TRUE FALSE
-%token LOG SIN COS TAN
+%token LOG SIN COS TAN SQRT
 %token <string> STRING
 %token <identifier> IDENTIFIER
 %token <integer> INTEGER
@@ -364,6 +364,12 @@ expression: variable  {$$ = expression_new_variable($1);}
  }
  | SUM variable ASSIGN_IN expression TO expression OPEN_CURLYBRACE expression CLOSE_CURLYBRACE {
      $$ = expression_new_sum($2, $4, $6, $8);
+ }
+ | SQRT OPEN_PAREN expression CLOSE_PAREN {
+     $$ = expression_new_sqrt(expression_new_integer(2), $3);
+ }
+ | SQRT OPEN_PAREN expression COMMA expression CLOSE_PAREN {
+     $$ = expression_new_sqrt($3, $5);
  }
  | expression CMP_EQ expression {
      $$ = expression_new_comparison(CMP_OP_EQ, $1, $3);}

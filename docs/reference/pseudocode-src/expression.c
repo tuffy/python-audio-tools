@@ -986,6 +986,58 @@ expression_free_sum(struct expression *self)
 }
 
 
+struct expression*
+expression_new_sqrt(struct expression *root,
+                    struct expression *value)
+{
+    struct expression *expression = malloc(sizeof(struct expression));
+    expression->type = EXP_SQRT;
+    expression->_.sqrt.root = root;
+    expression->_.sqrt.value = value;
+    expression->output_latex = expression_output_latex_sqrt;
+    expression->is_tall = expression_is_tall_sqrt;
+    expression->free = expression_free_sqrt;
+    return expression;
+}
+
+void
+expression_output_latex_sqrt(const struct expression *self,
+                             const struct definitions *defs,
+                             FILE *output)
+{
+    struct expression *root = self->_.sqrt.root;
+    struct expression *value = self->_.sqrt.value;
+    const int is_sqrt2 = ((root->type = EXP_INTEGER) &&
+                          (root->_.integer == 2));
+
+    fputs("\\sqrt", output);
+    if (!is_sqrt2) {
+        fputs("[", output);
+        root->output_latex(root, defs, output);
+        fputs("]", output);
+    }
+    fputs("{", output);
+    value->output_latex(value, defs, output);
+    fputs("}", output);
+}
+
+int
+expression_is_tall_sqrt(const struct expression *self)
+{
+    const struct expression *value = self->_.sqrt.value;
+    return value->is_tall(value);
+}
+
+void
+expression_free_sqrt(struct expression *self)
+{
+    struct expression *root = self->_.sqrt.root;
+    struct expression *value = self->_.sqrt.value;
+    root->free(root);
+    value->free(value);
+    free(self);
+}
+
 
 struct expression*
 expression_new_read(io_t type, struct expression *to_read)

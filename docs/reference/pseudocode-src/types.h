@@ -113,6 +113,7 @@ typedef enum {
     EXP_POW,
     EXP_LOG,
     EXP_SUM,
+    EXP_SQRT,
     EXP_READ,
     EXP_READ_UNARY
 } expression_t;
@@ -213,6 +214,10 @@ struct expression {
             struct expression *to;
             struct expression *func;
         } sum;
+        struct {
+            struct expression *root;
+            struct expression *value;
+        } sqrt;
         struct {
             io_t type;
             struct expression *to_read;
