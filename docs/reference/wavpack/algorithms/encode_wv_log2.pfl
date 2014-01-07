@@ -11,7 +11,7 @@ OUTPUT "a signed 16 bit value";
 VAR value "value";
 a <- |value| + floor(|value| / 2 ^ 9);
 if a != 0 {
-    c <- floor(log(2, a)) + 1;
+    c <- floor(log 2 {a}) + 1;
 } else {
     c <- 0;
 }

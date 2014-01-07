@@ -39,7 +39,7 @@ base,add,entropies <- determine_base_add(m[i], entropies);
 if add == 0 {
     unsigned_ <- base;
 } else {
-    p <- floor(log(2, add));
+    p <- floor(log 2 {add});
     e <- 2 ^ {p + 1} - add - 1;
     if r >= e {
         unsigned_ <- base + (r[i] * 2) - e + (read 1 unsigned);

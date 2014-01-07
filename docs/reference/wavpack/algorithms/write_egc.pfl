@@ -13,7 +13,7 @@ VAR egc "Elias gamma code";
 if value <= 1 {
     value -> write unary 0;
 } else {
-    t <- floor(log(2, value)) + 1;
+    t <- floor(log 2 {value}) + 1;
     t -> write unary 0;
     value % 2 ^ {t - 1} -> write t - 1 unsigned;
 }

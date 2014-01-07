@@ -1005,9 +1005,9 @@ expression_output_latex_sqrt(const struct expression *self,
                              const struct definitions *defs,
                              FILE *output)
 {
-    struct expression *root = self->_.sqrt.root;
-    struct expression *value = self->_.sqrt.value;
-    const int is_sqrt2 = ((root->type = EXP_INTEGER) &&
+    const struct expression *root = self->_.sqrt.root;
+    const struct expression *value = self->_.sqrt.value;
+    const int is_sqrt2 = ((root->type == EXP_INTEGER) &&
                           (root->_.integer == 2));
 
     fputs("\\sqrt", output);

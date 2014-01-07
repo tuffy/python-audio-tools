@@ -20,14 +20,14 @@ VAR best_subframe_bits "best subframe bits";
 VAR best_order "best order";
 VAR sample_count "sample count";
 best_subframe_bits <- infinity /*maximum unsigned integer*/;
-error_scale <- frac((log(e, 2)) ^ 2, sample_count * 2);
+error_scale <- frac((log e {2}) ^ 2, sample_count * 2);
 for i <- 0 to max_LPC {
     o <- i + 1;
     if error[i] > 0.0 {
         header_bits[o] <- o * (bits_per_sample * QLP_precision);
         bits_per_residual[o] <- max(
-            frac(log(e, (error[i] * error_scale)),
-                 2 * log(e, 2)),
+            frac(log e {(error[i] * error_scale)},
+                 2 * log e {2}),
             0.0);
         subframe_bits[o] <-
             header_bits[o] + bits_per_residual[o] * (sample_count - o);

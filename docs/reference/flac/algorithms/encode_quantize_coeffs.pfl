@@ -24,7 +24,7 @@ for i <- 0 to LPC_order /*find largest LP coefficient*/ {
         l <- |c|;
     }
 }
-QLP_shift <- (QLP_precision - 1) - (floor(log(2, l)) - 1) - 1;
+QLP_shift <- (QLP_precision - 1) - (floor(log 2 {l}) - 1) - 1;
 if QLP_shift > 2 ^ 4 - 1 /*must fit into signed, 5-bit field*/ {
    QLP_shift <- 2 ^ 4 - 1;
 } elif (QLP_shift < -(2 ^ 4)) {

@@ -23,7 +23,7 @@ initial_history,history_multiplier,maximum_K <- decoding_parameters;
 history <- initial_history;
 sign_modifier <- 0;
 for i <- 0 to sample_count {
-    kappa <- floor(log(2, (floor(history / 2 ^ 9) + 3)));
+    kappa <- floor(log 2 {(floor(history / 2 ^ 9) + 3)});
     if kappa > maximum_K {
         kappa <- maximum_K;
     }
@@ -41,7 +41,7 @@ for i <- 0 to sample_count {
                    floor(frac(history * history_multiplier, 2 ^ 9));
         if history < 128 and (i + 1) < sample_count {
             /*generate run of 0 residuals if history gets too small*/;
-            kappa <- 7 - floor(log(2, history)) + floor((history + 16) / 64);
+            kappa <- 7 - floor(log 2 {history}) + floor((history + 16) / 64);
             if kappa > maximum_K {
                 kappa <- maximum_K;
             }

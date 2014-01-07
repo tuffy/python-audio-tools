@@ -30,9 +30,9 @@ for d <- 1 to 4 {
     sum_[d] <- sum i <- 0 to block_size - 1 {|delta[d][i]|};
 }
 if (sum_[1] < sum_[2]) and (sum_[1] < sum_[3]) {
-    return 1, floor(log(2, (sum_[1] / block_size))) + 1, delta[1];
+    return 1, floor(log 2 {(sum_[1] / block_size)}) + 1, delta[1];
 } elif sum_[2] < sum_[3] {
-    return 2, floor(log(2, (sum_[2] / block_size))) + 1, delta[2];
+    return 2, floor(log 2 {(sum_[2] / block_size)}) + 1, delta[2];
 } else {
-    return 3, floor(log(2, (sum_[3] / block_size))) + 1, delta[3];
+    return 3, floor(log 2 {(sum_[3] / block_size)}) + 1, delta[3];
 }

@@ -36,7 +36,7 @@ for i <- 0 to residual_count {
     if unsigned_[i] >= 2 ^ sample_size {
        residual_overflow();
     }
-    kappa <- floor(log(2, (floor(history / 2 ^ 9) + 3)));
+    kappa <- floor(log 2 {(floor(history / 2 ^ 9) + 3)});
     if kappa > maximum_K {
        kappa <- maximum_K;
     }
@@ -47,7 +47,7 @@ for i <- 0 to residual_count {
                    (unsigned_[i] * history_multiplier) -
                    floor(frac(history * history_multiplier, 2 ^ 9));
         if history < 128 and i < residual_count {
-            kappa <- 7 - floor(log(2, history)) + floor((history + 16) / 64);
+            kappa <- 7 - floor(log 2 {history}) + floor((history + 16) / 64);
             if kappa > maximum_K {
                 kappa <- maximum_K;
             }

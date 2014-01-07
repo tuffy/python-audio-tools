@@ -409,8 +409,8 @@ expression: variable  {$$ = expression_new_variable($1);}
  | expression CARAT expression    {
      $$ = expression_new_pow($1, $3);
  }
- | LOG OPEN_PAREN expression COMMA expression CLOSE_PAREN {
-     $$ = expression_new_log($3, $5);
+ | LOG expression OPEN_CURLYBRACE expression CLOSE_CURLYBRACE {
+     $$ = expression_new_log($2, $4);
  }
  | READ expression UNSIGNED      {$$ = expression_new_read(IO_UNSIGNED, $2);}
  | READ expression SIGNED        {$$ = expression_new_read(IO_SIGNED, $2);}

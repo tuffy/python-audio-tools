@@ -55,7 +55,7 @@ if u[i - 1] != undefined /*write unary value*/ {
     }
 }
 if add[i - 1] > 0 /*write non unary values*/ {
-   p <- floor(log(2, add[i - 1]));
+   p <- floor(log 2 {add[i - 1]});
    e <- 2 ^ {p + 1} - add[i - 1] - 1;
    if offset[i - 1] < e {
        offset[i - 1] -> write p unsigned;

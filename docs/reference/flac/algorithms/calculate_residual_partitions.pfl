@@ -40,7 +40,7 @@ for o <- 0 to (max_partition_order + 1) {
                 partition[o][p][i] <- residual[(p_start[o][p]) + i];
             }
             p_sum[o][p] <- sum i <- 0 to p_length[o][p] - 1 {|partition[o][p][i]|};
-            rice[o][p] <- min(floor(log(2, (p_sum[o][p] / p_length[o][p]))),
+            rice[o][p] <- min(floor(log 2 {(p_sum[o][p] / p_length[o][p])}),
                               max_rice_value);
             p_size[o][p] <- 4 + ((1 + rice[o][p]) * p_length[o][p]) +
                                 floor(frac(p_sum[o][p], 2 ^ (rice[o][p] - 1))) -

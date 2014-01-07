@@ -16,7 +16,7 @@ if unsigned_ == 0 {
     write_unsigned(2, 0);
     write_unsigned(0, 0);
 } else {
-    LSB <- floor(log(2, unsigned_)) + 1;
+    LSB <- floor(log 2 {unsigned_}) + 1;
     write_unsigned(2, LSB);
     write_unsigned(LSB, unsigned_);
 }
