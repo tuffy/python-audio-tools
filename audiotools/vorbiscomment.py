@@ -45,8 +45,8 @@ class VorbisComment(MetaData):
 
     for aliases in [frozenset([u'TRACKTOTAL', u'TOTALTRACKS']),
                     frozenset([u'DISCTOTAL', u'TOTALDISCS']),
-                    frozenset([u'ALBUMARTIST', u'PERFORMER']),
-                    frozenset([u'ALBUM ARTIST', u'PERFORMER'])]:
+                    frozenset([u'ALBUM ARTIST', u'PERFORMER']),
+                    frozenset([u'ALBUMARTIST', u'PERFORMER'])]:
         for alias in aliases:
             ALIASES[alias] = aliases
 
