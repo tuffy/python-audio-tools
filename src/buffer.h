@@ -2,6 +2,7 @@
 #define BUFFER_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -100,10 +101,6 @@ buf_resize(struct bs_buffer *stream, unsigned additional_bytes);
 void
 buf_copy(const struct bs_buffer *source, struct bs_buffer *target);
 
-/*appends unconsumed data in "source" to "target"*/
-void
-buf_extend(const struct bs_buffer *source, struct bs_buffer* target);
-
 /*clears out the buffer for possible reuse
 
   resets window_start, window_end and any marks in progress*/
@@ -118,12 +115,27 @@ buf_reset(struct bs_buffer *stream)
 /*** stdio-like functions for bs_buffer ***/
 
 /*analagous to fgetc, returns EOF at the end of buffer*/
-int
-buf_getc(struct bs_buffer *stream);
+static inline int
+buf_getc(struct bs_buffer *stream)
+{
+    if (stream->window_start < stream->window_end)
+        return stream->data[stream->window_start++];
+    else
+        return EOF;
+}
 
 /*analagous to fputc*/
-int
-buf_putc(int i, struct bs_buffer *stream);
+static inline int
+buf_putc(int i, struct bs_buffer *stream)
+{
+    if (stream->window_end == stream->data_size) {
+        buf_resize(stream, 1);
+    }
+
+    stream->data[stream->window_end++] = (uint8_t)i;
+
+    return i;
+}
 
 /*analagous to fread
 
@@ -154,17 +166,33 @@ buf_write(struct bs_buffer *stream, const uint8_t *data, unsigned data_size);
 
   Call buf_set_rewindable() to disable shifting out old data
   to disable rewinding in those cases.*/
-void
-buf_getpos(struct bs_buffer *stream, buf_pos_t *pos);
+static inline void
+buf_getpos(struct bs_buffer *stream, buf_pos_t *pos)
+{
+    *pos = stream->window_start;
+}
 
 /*sets the current position of the buffer in "pos"*/
-void
-buf_setpos(struct bs_buffer *stream, buf_pos_t pos);
+static inline void
+buf_setpos(struct bs_buffer *stream, buf_pos_t pos)
+{
+    stream->window_start = pos;
+}
 
 /*if rewindable is true, the buffer's window can't be moved down
   to fit more data and can only be appended to
   if false, old data can be discarded as space is needed*/
-void
-buf_set_rewindable(struct bs_buffer *stream, int rewindable);
+static inline void
+buf_set_rewindable(struct bs_buffer *stream, int rewindable)
+{
+    stream->rewindable = rewindable;
+}
+
+/*appends unconsumed data in "source" to "target"*/
+static inline void
+buf_extend(const struct bs_buffer *source, struct bs_buffer* target)
+{
+    buf_write(target, buf_window_start(source), buf_window_size(source));
+}
 
 #endif

@@ -1,6 +1,5 @@
 #include "buffer.h"
 #include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 
@@ -89,33 +88,6 @@ buf_copy(const struct bs_buffer *source, struct bs_buffer *target)
     target->window_end = source->window_end;
 }
 
-void
-buf_extend(const struct bs_buffer *source, struct bs_buffer* target)
-{
-    buf_write(target, buf_window_start(source), buf_window_size(source));
-}
-
-
-int
-buf_getc(struct bs_buffer *stream)
-{
-    if (stream->window_start < stream->window_end)
-        return stream->data[stream->window_start++];
-    else
-        return EOF;
-}
-
-int
-buf_putc(int i, struct bs_buffer *stream) {
-    if (stream->window_end == stream->data_size) {
-        buf_resize(stream, 1);
-    }
-
-    stream->data[stream->window_end++] = (uint8_t)i;
-
-    return i;
-}
-
 unsigned
 buf_read(struct bs_buffer *stream, uint8_t *data, unsigned data_size)
 {
@@ -140,22 +112,4 @@ buf_write(struct bs_buffer *stream, const uint8_t* data, unsigned data_size)
     buf_resize(stream, data_size);
     memcpy(buf_window_end(stream), data, (size_t)data_size);
     stream->window_end += data_size;
-}
-
-void
-buf_getpos(struct bs_buffer *stream, buf_pos_t *pos)
-{
-    *pos = stream->window_start;
-}
-
-void
-buf_setpos(struct bs_buffer *stream, buf_pos_t pos)
-{
-    stream->window_start = pos;
-}
-
-void
-buf_set_rewindable(struct bs_buffer *stream, int rewindable)
-{
-    stream->rewindable = rewindable;
 }
