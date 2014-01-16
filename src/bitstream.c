@@ -125,7 +125,7 @@ br_open(FILE *f, bs_endianness endianness)
     bs->read_huffman_code = br_read_huffman_code_f;
     bs->read_bytes = br_read_bytes_f;
     bs->parse = br_parse;
-    bs->substream_append = br_substream_append_f;
+    bs->substream_append = br_substream_append;
     bs->close_internal_stream = br_close_internal_stream_f;
     bs->free = br_free_f;
     bs->close = br_close;
@@ -182,7 +182,7 @@ br_substream_new(bs_endianness endianness)
     bs->read_huffman_code = br_read_huffman_code_s;
     bs->read_bytes = br_read_bytes_s;
     bs->parse = br_parse;
-    bs->substream_append = br_substream_append_s;
+    bs->substream_append = br_substream_append;
     bs->close_internal_stream = br_close_internal_stream_s;
     bs->free = br_free_s;
     bs->close = br_close;
@@ -239,7 +239,7 @@ br_open_buffer(struct bs_buffer* buffer, bs_endianness endianness)
     bs->read_huffman_code = br_read_huffman_code_s;
     bs->read_bytes = br_read_bytes_s;
     bs->parse = br_parse;
-    bs->substream_append = br_substream_append_s;
+    bs->substream_append = br_substream_append;
     bs->close_internal_stream = br_close_internal_stream_s;
     bs->free = br_free_f;
     bs->close = br_close;
@@ -306,7 +306,7 @@ br_open_external(void* user_data,
     bs->mark = br_mark_e;
     bs->rewind = br_rewind_e;
     bs->unmark = br_unmark_e;
-    bs->substream_append = br_substream_append_e;
+    bs->substream_append = br_substream_append;
 
     return bs;
 }
@@ -1280,7 +1280,6 @@ br_close_methods(BitstreamReader* bs)
     bs->mark = br_mark_c;
     bs->rewind = br_rewind_c;
     bs->unmark = br_unmark_c;
-    bs->substream_append = br_substream_append_c;
 }
 
 void
@@ -1552,138 +1551,30 @@ br_unmark_c(BitstreamReader* bs)
     return;
 }
 
+
 void
-br_substream_append_f(struct BitstreamReader_s *stream,
-                      struct BitstreamReader_s *substream,
-                      unsigned bytes)
+br_substream_append(struct BitstreamReader_s *stream,
+                    struct BitstreamReader_s *substream,
+                    unsigned bytes)
 {
     struct bs_buffer *output;
     assert(substream->type == BR_SUBSTREAM);
     output = substream->input.substream;
 
-    /*byte align the input stream*/
-    stream->state = 0;
-
     while (bytes) {
+        static uint8_t output_buffer[BUFFER_SIZE];
         const unsigned to_read = MIN(bytes, BUFFER_SIZE);
-        uint8_t *output_buffer;
-        /*make sure to resize *before* getting window_end
-          in case realloc moves the buffer data*/
-        buf_resize(output, to_read);
-        output_buffer = BUF_WINDOW_END(output);
 
-        if (fread(output_buffer,
-                  sizeof(uint8_t),
-                  to_read,
-                  stream->input.file) == to_read) {
-            struct bs_callback *callback;
+        /*read data to temporary buffer
+          (this will trigger br_abort if insufficient bytes are read)*/
+        stream->read_bytes(stream, output_buffer, to_read);
 
-            /*perform callbacks on newly read bytes*/
-            for (callback = stream->callbacks;
-                 callback != NULL;
-                 callback = callback->next) {
-                unsigned i;
-                for (i = 0; i < to_read; i++)
-                    callback->callback(output_buffer[i], callback->data);
-            }
+        /*dump bytes from temporary buffer to output buffer*/
+        buf_write(output, output_buffer, to_read);
 
-            /*increment window_end to accomodate new data*/
-            output->window_end += to_read;
-            bytes -= to_read;
-        } else {
-            /*abort if the amount of read bytes is insufficient*/
-            br_abort(stream);
-        }
+        /*decrement remaining bytes to read*/
+        bytes -= to_read;
     }
-}
-
-void
-br_substream_append_s(struct BitstreamReader_s *stream,
-                      struct BitstreamReader_s *substream,
-                      unsigned bytes)
-{
-    assert(substream->type = BR_SUBSTREAM);
-
-    if (BUF_WINDOW_SIZE(stream->input.substream) >= bytes) {
-        struct bs_buffer *input = stream->input.substream;
-        const uint8_t *input_data = BUF_WINDOW_START(input);
-        struct bs_callback *callback;
-
-        /*byte align the input stream*/
-        stream->state = 0;
-
-        /*transfer data from input stream's buffer to output stream's buffer*/
-        buf_write(substream->input.substream, input_data, bytes);
-
-        /*perform callbacks on read bytes*/
-        for (callback = stream->callbacks;
-             callback != NULL;
-             callback = callback->next) {
-            unsigned i;
-
-            for (i = 0; i < bytes; i++)
-                callback->callback(input_data[i], callback->data);
-        }
-
-        /*remove bytes from input stream's buffer*/
-        input->window_start += bytes;
-    } else {
-        /*abort if there's insufficient bytes remaining
-          in the input stream to pass to the output stream*/
-        br_abort(stream);
-    }
-}
-
-void
-br_substream_append_e(struct BitstreamReader_s *stream,
-                      struct BitstreamReader_s *substream,
-                      unsigned bytes)
-{
-    struct bs_buffer *output;
-    assert(substream->type == BR_SUBSTREAM);
-    output = substream->input.substream;
-
-    /*byte align the input stream*/
-    stream->state = 0;
-
-    while (bytes) {
-        const unsigned to_read = MIN(bytes, BUFFER_SIZE);
-        uint8_t *output_buffer;
-        /*make sure to resize *before* getting window_end
-          in case realloc moves the buffer data*/
-        buf_resize(output, to_read);
-        output_buffer = BUF_WINDOW_END(output);
-
-        if (ext_fread(stream->input.external,
-                      output_buffer,
-                      to_read) == to_read) {
-            struct bs_callback *callback;
-
-            /*perform callbacks on newly read bytes*/
-            for (callback = stream->callbacks;
-                 callback != NULL;
-                 callback = callback->next) {
-                unsigned i;
-                for (i = 0; i < to_read; i++)
-                    callback->callback(output_buffer[i], callback->data);
-            }
-
-            /*increment window_end to accomodate new data*/
-            output->window_end += to_read;
-            bytes -= to_read;
-        } else {
-            /*abort if the amount of read bytes is insufficient*/
-            br_abort(stream);
-        }
-    }
-}
-
-void
-br_substream_append_c(struct BitstreamReader_s *stream,
-                      struct BitstreamReader_s *substream,
-                      unsigned bytes)
-{
-    br_abort(stream);
 }
 
 

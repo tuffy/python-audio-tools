@@ -289,9 +289,6 @@ typedef struct BitstreamReader_s {
     /*this appends the given length of bytes from the current stream
       to the given substream
 
-      the input stream must be byte-aligned
-      but the substream need not be byte-aligned
-
       br_abort() is called if insufficient bytes
       are available on the input stream*/
     void
@@ -616,23 +613,11 @@ void
 br_unmark_c(BitstreamReader* bs);
 
 
-/*bs->substream_append(bs, substream, bytes)  methods*/
+/*bs->substream_append(bs, substream, bytes)  method*/
 void
-br_substream_append_f(struct BitstreamReader_s *stream,
-                      struct BitstreamReader_s *substream,
-                      unsigned bytes);
-void
-br_substream_append_s(struct BitstreamReader_s *stream,
-                      struct BitstreamReader_s *substream,
-                      unsigned bytes);
-void
-br_substream_append_e(struct BitstreamReader_s *stream,
-                      struct BitstreamReader_s *substream,
-                      unsigned bytes);
-void
-br_substream_append_c(struct BitstreamReader_s *stream,
-                      struct BitstreamReader_s *substream,
-                      unsigned bytes);
+br_substream_append(struct BitstreamReader_s *stream,
+                    struct BitstreamReader_s *substream,
+                    unsigned bytes);
 
 
 /*unattached, BitstreamReader functions*/
