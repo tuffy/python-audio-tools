@@ -410,7 +410,7 @@ BitstreamReader_read_bytes(bitstream_BitstreamReader *self,
 
                 buf_resize(read_buffer, to_read);
                 self->bitstream->read_bytes(self->bitstream,
-                                            BUF_WINDOW_END(read_buffer),
+                                            buf_window_end(read_buffer),
                                             to_read);
                 read_buffer->window_end += to_read;
                 byte_count -= to_read;
@@ -418,8 +418,8 @@ BitstreamReader_read_bytes(bitstream_BitstreamReader *self,
             br_etry(self->bitstream);
 
             string_obj = PyString_FromStringAndSize(
-                (char *)BUF_WINDOW_START(read_buffer),
-                (Py_ssize_t)BUF_WINDOW_SIZE(read_buffer));
+                (char *)buf_window_start(read_buffer),
+                (Py_ssize_t)buf_window_size(read_buffer));
 
             buf_close(read_buffer);
             return string_obj;
@@ -1607,8 +1607,8 @@ BitstreamRecorder_data(bitstream_BitstreamRecorder *self,
                        PyObject *args)
 {
     return PyString_FromStringAndSize(
-        (char *)BUF_WINDOW_START(self->bitstream->output.buffer),
-        BUF_WINDOW_SIZE(self->bitstream->output.buffer));
+        (char *)buf_window_start(self->bitstream->output.buffer),
+        buf_window_size(self->bitstream->output.buffer));
 }
 
 static PyObject*
@@ -2233,8 +2233,8 @@ bitstream_build_func(PyObject *dummy, PyObject *args)
             is_little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
         if (!bitstream_build(stream, format, iterator)) {
             PyObject* data = PyString_FromStringAndSize(
-                (char *)BUF_WINDOW_START(stream->output.buffer),
-                (Py_ssize_t)BUF_WINDOW_SIZE(stream->output.buffer));
+                (char *)buf_window_start(stream->output.buffer),
+                (Py_ssize_t)buf_window_size(stream->output.buffer));
             stream->close(stream);
             Py_DECREF(iterator);
             return data;

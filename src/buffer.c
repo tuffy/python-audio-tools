@@ -53,20 +53,20 @@ void
 buf_resize(struct bs_buffer *stream, unsigned additional_bytes)
 {
     /*only perform resize if space actually needed*/
-    if (additional_bytes > BUF_UNUSED_SIZE(stream)) {
+    if (additional_bytes > buf_unused_size(stream)) {
         if ((stream->window_start > 0) && !(stream->rewindable)) {
             /*we don't need to rewind the buffer
               so shift window down before extending buffer to add more space*/
-            if (BUF_WINDOW_SIZE(stream)) {
+            if (buf_window_size(stream)) {
                 memmove(stream->data,
-                        BUF_WINDOW_START(stream),
-                        BUF_WINDOW_SIZE(stream));
+                        buf_window_start(stream),
+                        buf_window_size(stream));
             }
             stream->window_end -= stream->window_start;
             stream->window_start = 0;
         }
 
-        while (additional_bytes > BUF_UNUSED_SIZE(stream)) {
+        while (additional_bytes > buf_unused_size(stream)) {
             stream->data_size *= 2;
         }
 
@@ -92,15 +92,9 @@ buf_copy(const struct bs_buffer *source, struct bs_buffer *target)
 void
 buf_extend(const struct bs_buffer *source, struct bs_buffer* target)
 {
-    buf_write(target, BUF_WINDOW_START(source), BUF_WINDOW_SIZE(source));
+    buf_write(target, buf_window_start(source), buf_window_size(source));
 }
 
-void
-buf_reset(struct bs_buffer *stream)
-{
-    stream->window_start = stream->window_end = 0;
-    stream->rewindable = 0;
-}
 
 int
 buf_getc(struct bs_buffer *stream)
@@ -125,8 +119,8 @@ buf_putc(int i, struct bs_buffer *stream) {
 unsigned
 buf_read(struct bs_buffer *stream, uint8_t *data, unsigned data_size)
 {
-    const buf_size_t to_read = MIN(data_size, BUF_WINDOW_SIZE(stream));
-    memcpy(data, BUF_WINDOW_START(stream), to_read);
+    const buf_size_t to_read = MIN(data_size, buf_window_size(stream));
+    memcpy(data, buf_window_start(stream), to_read);
     stream->window_start += to_read;
     return to_read;
 }
@@ -134,7 +128,7 @@ buf_read(struct bs_buffer *stream, uint8_t *data, unsigned data_size)
 unsigned
 buf_skip(struct bs_buffer *stream, unsigned data_size)
 {
-    const buf_size_t to_read = MIN(data_size, BUF_WINDOW_SIZE(stream));
+    const buf_size_t to_read = MIN(data_size, buf_window_size(stream));
     stream->window_start += to_read;
     return to_read;
 }
@@ -144,7 +138,7 @@ void
 buf_write(struct bs_buffer *stream, const uint8_t* data, unsigned data_size)
 {
     buf_resize(stream, data_size);
-    memcpy(BUF_WINDOW_END(stream), data, (size_t)data_size);
+    memcpy(buf_window_end(stream), data, (size_t)data_size);
     stream->window_end += data_size;
 }
 

@@ -584,10 +584,10 @@ py_read(PyObject *reader_obj, struct bs_buffer* buffer)
 int
 py_write(PyObject *writer_obj, struct bs_buffer* buffer, unsigned buffer_size)
 {
-    while (BUF_WINDOW_SIZE(buffer) >= buffer_size) {
+    while (buf_window_size(buffer) >= buffer_size) {
         PyObject* write_result =
             PyObject_CallMethod(writer_obj, "write", "s#",
-                                BUF_WINDOW_START(buffer),
+                                buf_window_start(buffer),
                                 buffer_size);
         if (write_result != NULL) {
             Py_DECREF(write_result);

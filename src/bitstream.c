@@ -574,7 +574,7 @@ br_skip_bits_s_be(BitstreamReader* bs, unsigned int count)
       and there are no set callbacks to consider*/
     if ((bs->state == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
         count /= 8;
-        if (count <= BUF_WINDOW_SIZE(bs->input.substream)) {
+        if (count <= buf_window_size(bs->input.substream)) {
             bs->input.substream->window_start += count;
         } else {
             br_abort(bs);
@@ -614,7 +614,7 @@ br_skip_bits_s_le(BitstreamReader* bs, unsigned int count)
       and there are no set callbacks to consider*/
     if ((bs->state == 0) && ((count % 8) == 0) && (bs->callbacks == NULL)) {
         count /= 8;
-        if (count <= BUF_WINDOW_SIZE(bs->input.substream)) {
+        if (count <= buf_window_size(bs->input.substream)) {
             bs->input.substream->window_start += count;
         } else {
             br_abort(bs);
@@ -2479,7 +2479,7 @@ bw_bits_written_f_p_c(BitstreamWriter* bs)
 unsigned int
 bw_bits_written_r(BitstreamWriter* bs)
 {
-    return (unsigned int)((BUF_WINDOW_SIZE(bs->output.buffer) * 8) +
+    return (unsigned int)((buf_window_size(bs->output.buffer) * 8) +
                           bs->buffer_size);
 }
 
@@ -2797,8 +2797,8 @@ bw_rec_copy(BitstreamWriter* target, BitstreamWriter* source)
 
     /*dump all the bytes from our internal buffer*/
     bw_dump_bytes(target,
-                  BUF_WINDOW_START(source->output.buffer),
-                  (unsigned)BUF_WINDOW_SIZE(source->output.buffer));
+                  buf_window_start(source->output.buffer),
+                  (unsigned)buf_window_size(source->output.buffer));
 
     /*then dump remaining bits (if any) with a partial write() call*/
     if (source->buffer_size > 0)
@@ -2813,9 +2813,9 @@ bw_rec_split(BitstreamWriter* target,
              BitstreamWriter* remaining,
              BitstreamWriter* source,
              unsigned int total_bytes) {
-    const uint8_t* buffer = BUF_WINDOW_START(source->output.buffer);
+    const uint8_t* buffer = buf_window_start(source->output.buffer);
     const unsigned buffer_size =
-        (unsigned)BUF_WINDOW_SIZE(source->output.buffer);
+        (unsigned)buf_window_size(source->output.buffer);
     const unsigned to_target = MIN(total_bytes, buffer_size);
     const unsigned to_remaining = buffer_size - to_target;
 
@@ -2849,7 +2849,7 @@ bw_rec_split(BitstreamWriter* target,
         } else {
             /*if remaining is the same as source,
               shift source's output buffer down*/
-            memmove(BUF_WINDOW_START(remaining->output.buffer),
+            memmove(buf_window_start(remaining->output.buffer),
                     buffer + to_target,
                     to_remaining);
             remaining->output.buffer->window_end -= to_target;
@@ -3058,10 +3058,10 @@ int bw_write_python(PyObject* writer,
                     struct bs_buffer* buffer,
                     unsigned buffer_size)
 {
-    while (BUF_WINDOW_SIZE(buffer) >= buffer_size) {
+    while (buf_window_size(buffer) >= buffer_size) {
         PyObject* write_result =
             PyObject_CallMethod(writer, "write", "s#",
-                                BUF_WINDOW_START(buffer),
+                                buf_window_start(buffer),
                                 buffer_size);
         if (write_result != NULL) {
             Py_DECREF(write_result);
@@ -5909,8 +5909,8 @@ int ext_fwrite_test(FILE* user_data,
                     struct bs_buffer* buffer,
                     unsigned buffer_size)
 {
-    while (BUF_WINDOW_SIZE(buffer) >= buffer_size) {
-        fwrite(BUF_WINDOW_START(buffer),
+    while (buf_window_size(buffer) >= buffer_size) {
+        fwrite(buf_window_start(buffer),
                sizeof(uint8_t),
                buffer_size,
                user_data);
@@ -5948,7 +5948,7 @@ void test_buffer(struct bs_buffer *buf)
     unsigned i;
 
     /*ensure reads from an empty buffer return nothing*/
-    assert(BUF_WINDOW_SIZE(buf) == 0);
+    assert(buf_window_size(buf) == 0);
     assert(buf_getc(buf) == EOF);
     assert(buf_getc(buf) == EOF);
     assert(buf_read(buf, temp1, 1) == 0);
@@ -5960,27 +5960,27 @@ void test_buffer(struct bs_buffer *buf)
     buf_putc(3, buf);  /*may shift window down to make room*/
     assert(buf_getc(buf) == 2);
     assert(buf_getc(buf) == 3);
-    assert(BUF_WINDOW_SIZE(buf) == 0);
+    assert(buf_window_size(buf) == 0);
 
     /*try some simple buf_write/buf_read pairs*/
     for (i = 0; i < 5; i++) {
         buf_write(buf, temp1, i);
-        assert(BUF_WINDOW_SIZE(buf) == i);
-        assert(memcmp(BUF_WINDOW_START(buf), temp1, i) == 0);
+        assert(buf_window_size(buf) == i);
+        assert(memcmp(buf_window_start(buf), temp1, i) == 0);
         assert(buf_read(buf, temp2, i) == i);
         assert(memcmp(temp1, temp2, (size_t)i) == 0);
-        assert(BUF_WINDOW_SIZE(buf) == 0);
+        assert(buf_window_size(buf) == 0);
     }
 
-    /*try a low-level resize using buf_resize() and BUF_WINDOW_END*/
+    /*try a low-level resize using buf_resize() and buf_window_end*/
     buf_putc(0, buf);
     buf_resize(buf, 4);
-    memcpy(BUF_WINDOW_END(buf), temp1, 4);
+    memcpy(buf_window_end(buf), temp1, 4);
     buf->window_end += 4;
     for (i = 0; i < 5; i++) {
         assert(buf_getc(buf) == i);
     }
-    assert(BUF_WINDOW_SIZE(buf) == 0);
+    assert(buf_window_size(buf) == 0);
 
     /*try a buf_extend to combine a couple of buffers*/
     for (i = 0; i < 4; i++) {
@@ -5992,7 +5992,7 @@ void test_buffer(struct bs_buffer *buf)
         buf_putc(i, buf);
     }
     buf_extend(buf, buf2);
-    assert(BUF_WINDOW_SIZE(buf2) == 8);
+    assert(buf_window_size(buf2) == 8);
     for (i = 0; i < 8; i++) {
         assert(buf_getc(buf2) == i);
     }

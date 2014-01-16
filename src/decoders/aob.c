@@ -694,7 +694,7 @@ read_audio_packet(DVDA_Packet_Reader* packets,
         struct bs_buffer* buffer = reader->input.substream;
         buf_reset(buffer);
         if (!read_sector(packets->sectors, buffer)) {
-            if (BUF_WINDOW_SIZE(buffer) == 0) {
+            if (buf_window_size(buffer) == 0) {
                 return 0;
             }
 
@@ -733,7 +733,7 @@ read_audio_packet(DVDA_Packet_Reader* packets,
                 }
 
                 /*read packets from sector until sector is empty*/
-                while (BUF_WINDOW_SIZE(buffer) > 0) {
+                while (buf_window_size(buffer) > 0) {
                     unsigned start_code;
                     unsigned stream_id;
                     unsigned packet_length;

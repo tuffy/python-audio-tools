@@ -46,20 +46,6 @@ struct bs_buffer {
 typedef unsigned buf_size_t;
 typedef unsigned buf_pos_t;
 
-/*the number of bytes remaining to be read as a type of size buf_size_t
-  b is evaluated twice*/
-#define BUF_WINDOW_SIZE(b) ((b)->window_end - (b)->window_start)
-
-#define BUF_UNUSED_SIZE(b) ((b)->data_size - (b)->window_end)
-
-/*the start of the buffer's data window as a uint8_t pointer
-  b is evaluated twice*/
-#define BUF_WINDOW_START(b) ((b)->data + (b)->window_start)
-
-/*the end of the buffers's data window as a uint8_t pointer
-  b is evaluated twice*/
-#define BUF_WINDOW_END(b) ((b)->data + (b)->window_end)
-
 /*returns a new bs_buffer struct which can be appended to and read from
 
   it must be closed with buf_close() when no longer needed*/
@@ -69,6 +55,37 @@ buf_new(void);
 /*deallocates buffer struct*/
 void
 buf_close(struct bs_buffer *stream);
+
+/*returns the amount of data in the buffer in bytes*/
+static inline unsigned
+buf_window_size(const struct bs_buffer *stream)
+{
+    return stream->window_end - stream->window_start;
+}
+
+/*returns the amount of data that can be added to the buffer
+  without resizing, in bytes*/
+static inline unsigned
+buf_unused_size(const struct bs_buffer *stream)
+{
+    return stream->data_size - stream->window_end;
+}
+
+/*returns the starting position of the buffer window
+  pointing to the first byte that may be read*/
+static inline uint8_t*
+buf_window_start(const struct bs_buffer *stream)
+{
+    return stream->data + stream->window_start;
+}
+
+/*returns the ending position of the buffer window
+  pointing to the first byte that may be written*/
+static inline uint8_t*
+buf_window_end(const struct bs_buffer *stream)
+{
+    return stream->data + stream->window_end;
+}
 
 /*resize buffer to fit at least "additional_bytes", if necessary
 
@@ -90,8 +107,12 @@ buf_extend(const struct bs_buffer *source, struct bs_buffer* target);
 /*clears out the buffer for possible reuse
 
   resets window_start, window_end and any marks in progress*/
-void
-buf_reset(struct bs_buffer *stream);
+static inline void
+buf_reset(struct bs_buffer *stream)
+{
+    stream->window_start = stream->window_end = 0;
+    stream->rewindable = 0;
+}
 
 
 /*** stdio-like functions for bs_buffer ***/

@@ -65,17 +65,17 @@ ext_fread(struct br_external_input* stream,
     struct bs_buffer* buffer = stream->buffer;
 
     /*if there's enough bytes in the buffer*/
-    if (data_size <= BUF_WINDOW_SIZE(buffer)) {
+    if (data_size <= buf_window_size(buffer)) {
         /*simply copy them directly to "data"
           and return the amount read*/
 
         return buf_read(buffer, data, data_size);
     } else {
         /*otherwise, populate the buffer with read() calls*/
-        while (data_size > BUF_WINDOW_SIZE(buffer)) {
-            const buf_size_t old_size = BUF_WINDOW_SIZE(buffer);
+        while (data_size > buf_window_size(buffer)) {
+            const buf_size_t old_size = buf_window_size(buffer);
             if (!stream->read(stream->user_data, buffer) &&
-                (BUF_WINDOW_SIZE(buffer) > old_size)) {
+                (buf_window_size(buffer) > old_size)) {
                 /*as long as the reads are successful
                   and the buffer continues to grow*/
                 continue;
@@ -136,7 +136,7 @@ ext_putc(int i, struct bw_external_output* stream)
     buf_putc(i, buffer);
 
     /*then flush internal buffer while it is too large*/
-    while (BUF_WINDOW_SIZE(buffer) >= stream->buffer_size) {
+    while (buf_window_size(buffer) >= stream->buffer_size) {
         stream->write(stream->user_data, buffer, stream->buffer_size);
     }
 
@@ -154,7 +154,7 @@ ext_fwrite(struct bw_external_output* stream,
     buf_write(buffer, data, data_size);
 
     /*then flush internal buffer while it is too large*/
-    while (BUF_WINDOW_SIZE(buffer) >= stream->buffer_size) {
+    while (buf_window_size(buffer) >= stream->buffer_size) {
         stream->write(stream->user_data, buffer, stream->buffer_size);
     }
 }
@@ -163,8 +163,8 @@ void
 ext_flush_w(struct bw_external_output* stream)
 {
     struct bs_buffer* buffer = stream->buffer;
-    while (BUF_WINDOW_SIZE(buffer) > 0) {
-        stream->write(stream->user_data, buffer, BUF_WINDOW_SIZE(buffer));
+    while (buf_window_size(buffer) > 0) {
+        stream->write(stream->user_data, buffer, buf_window_size(buffer));
     }
     stream->flush(stream->user_data);
 }

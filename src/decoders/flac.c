@@ -526,7 +526,7 @@ flacdec_read_vorbis_comment(BitstreamReader *comment,
             }
             buf_putc(0, line);  /*NULL terminator*/
 
-            s = (const char *)BUF_WINDOW_START(line);
+            s = (const char *)buf_window_start(line);
 
             /*if line starts with mask prefix*/
             if (strstr(s, mask_prefix) == s) {

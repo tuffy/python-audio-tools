@@ -104,7 +104,7 @@ mlp_packet_empty(MLPDecoder* decoder)
 {
     BitstreamReader* reader = decoder->reader;
     struct bs_buffer* packet = reader->input.substream;
-    const unsigned remaining_bytes = BUF_WINDOW_SIZE(packet);
+    const unsigned remaining_bytes = buf_window_size(packet);
 
     if (remaining_bytes >= 4) {
         unsigned total_frame_size;
@@ -128,14 +128,14 @@ read_mlp_frames(MLPDecoder* decoder,
     BitstreamReader* reader = decoder->reader;
     struct bs_buffer* packet = reader->input.substream;
 
-    while (BUF_WINDOW_SIZE(packet) >= 4) {
+    while (buf_window_size(packet) >= 4) {
         unsigned total_frame_size;
         unsigned frame_bytes;
 
         reader->mark(reader);
         reader->parse(reader, "4p 12u 16p", &total_frame_size);
         frame_bytes = (total_frame_size * 2) - 4;
-        if (BUF_WINDOW_SIZE(packet) >= frame_bytes) {
+        if (buf_window_size(packet) >= frame_bytes) {
             BitstreamReader* frame_reader = decoder->frame_reader;
             mlp_status status;
 

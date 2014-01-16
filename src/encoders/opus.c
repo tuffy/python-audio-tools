@@ -230,8 +230,8 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
             }
         }
 
-        packet_head.packet = BUF_WINDOW_START(header->output.buffer);
-        packet_head.bytes = BUF_WINDOW_SIZE(header->output.buffer);
+        packet_head.packet = buf_window_start(header->output.buffer);
+        packet_head.bytes = buf_window_size(header->output.buffer);
         packet_head.b_o_s = 1;
         packet_head.e_o_s = 0;
         packet_head.granulepos = 0;
@@ -256,8 +256,8 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
                              (unsigned)vendor_string_len);
         comment->write(comment, 32, 0);
 
-        packet_tags.packet = BUF_WINDOW_START(comment->output.buffer);
-        packet_tags.bytes = BUF_WINDOW_SIZE(comment->output.buffer);
+        packet_tags.packet = buf_window_start(comment->output.buffer);
+        packet_tags.bytes = buf_window_size(comment->output.buffer);
         packet_tags.b_o_s = 0;
         packet_tags.e_o_s = 0;
         packet_tags.granulepos = 0;
