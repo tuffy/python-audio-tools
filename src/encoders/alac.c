@@ -126,7 +126,7 @@ ALACEncoder_encode_alac(char *filename,
     fgetpos(output_file, &header_position);
 
     bw_add_callback(output,
-                    byte_counter,
+                    (bs_callback_f)byte_counter,
                     &frame_byte_size);
 
     /*write placeholder mdat header*/

@@ -1583,7 +1583,7 @@ br_substream_append_f(struct BitstreamReader_s *stream,
                  callback != NULL;
                  callback = callback->next) {
                 unsigned i;
-                for (i = 0; i < bytes; i++)
+                for (i = 0; i < to_read; i++)
                     callback->callback(output_buffer[i], callback->data);
             }
 
@@ -1664,7 +1664,7 @@ br_substream_append_e(struct BitstreamReader_s *stream,
                  callback != NULL;
                  callback = callback->next) {
                 unsigned i;
-                for (i = 0; i < bytes; i++)
+                for (i = 0; i < to_read; i++)
                     callback->callback(output_buffer[i], callback->data);
             }
 
@@ -3119,10 +3119,9 @@ bs_format_byte_size(const char* format)
 }
 
 void
-byte_counter(uint8_t byte, void *total_bytes)
+byte_counter(uint8_t byte, unsigned* total_bytes)
 {
-    unsigned int *u = total_bytes;
-    *u += 1;
+    *total_bytes += 1;
 }
 
 #ifndef STANDALONE

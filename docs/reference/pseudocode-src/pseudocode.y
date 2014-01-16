@@ -365,11 +365,11 @@ expression: variable  {$$ = expression_new_variable($1);}
  | SUM variable ASSIGN_IN expression TO expression OPEN_CURLYBRACE expression CLOSE_CURLYBRACE {
      $$ = expression_new_sum($2, $4, $6, $8);
  }
- | SQRT OPEN_PAREN expression CLOSE_PAREN {
+ | SQRT OPEN_CURLYBRACE expression CLOSE_CURLYBRACE {
      $$ = expression_new_sqrt(expression_new_integer(2), $3);
  }
- | SQRT OPEN_PAREN expression COMMA expression CLOSE_PAREN {
-     $$ = expression_new_sqrt($3, $5);
+ | SQRT expression OPEN_CURLYBRACE expression CLOSE_CURLYBRACE {
+     $$ = expression_new_sqrt($2, $4);
  }
  | expression CMP_EQ expression {
      $$ = expression_new_comparison(CMP_OP_EQ, $1, $3);}

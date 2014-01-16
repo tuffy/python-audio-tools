@@ -1327,6 +1327,6 @@ void bs_free_python_nodecref(PyObject* obj);
 
 /*a trivial callback which increments "total_bytes" as an unsigned int*/
 void
-byte_counter(uint8_t byte, void *total_bytes);
+byte_counter(uint8_t byte, unsigned* total_bytes);
 
 #endif

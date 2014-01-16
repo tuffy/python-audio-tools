@@ -205,39 +205,57 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
         const unsigned block_size = MIN(self->remaining_pcm_frames,
                                         self->block_size);
         status status;
+        uint32_t frame_crc = 0xFFFFFFFF;
 
-        self->remaining_pcm_frames -= block_size;
-
+        /*read "frame_size" - 4 bytes of data from stream*/
+        br_add_callback(self->bitstream, (bs_callback_f)tta_crc32, &frame_crc);
         br_substream_reset(self->frame);
+
         if (!setjmp(*br_try(self->bitstream))) {
             self->bitstream->substream_append(self->bitstream,
                                               self->frame,
-                                              frame_size);
+                                              frame_size - 4);
+
             br_etry(self->bitstream);
+            br_pop_callback(self->bitstream, NULL);
+        } else {
+            /*read error attempting to populate frame with bytes*/
+            br_etry(self->bitstream);
+            br_pop_callback(self->bitstream, NULL);
+            PyErr_SetString(PyExc_IOError, "I/O error reading frame");
+            return NULL;
+        }
+
+        /*check CRC32 at end of frame prior to decoding*/
+        if (!setjmp(*br_try(self->bitstream))) {
+            const unsigned crc32 = self->bitstream->read(self->bitstream, 32);
+
+            br_etry(self->bitstream);
+
+            if ((frame_crc ^ 0xFFFFFFFF) != crc32) {
+                /*CRC32 mismatch*/
+                PyErr_SetString(PyExc_ValueError, "CRC mismatch reading frame");
+                return NULL;
+            }
         } else {
             br_etry(self->bitstream);
             PyErr_SetString(PyExc_IOError, "I/O error reading frame");
             return NULL;
         }
 
-        status = read_frame(self->frame,
-                            &(self->cache),
-                            block_size,
-                            self->header.channels,
-                            self->header.bits_per_sample,
-                            self->framelist);
-
-        switch (status) {
-        default:
+        if ((status = read_frame(self->frame,
+                                 &(self->cache),
+                                 block_size,
+                                 self->header.channels,
+                                 self->header.bits_per_sample,
+                                 self->framelist)) == IOERROR) {
+            PyErr_SetString(PyExc_ValueError, "I/O error during frame read");
+            return NULL;
+        } else {
+            self->remaining_pcm_frames -= block_size;
             return aa_int_to_FrameList(self->audiotools_pcm,
                                        self->framelist,
                                        self->header.bits_per_sample);
-        case IOERROR:
-            PyErr_SetString(PyExc_ValueError, "I/O error during frame read");
-            return NULL;
-        case CRCMISMATCH:
-            PyErr_SetString(PyExc_ValueError, "CRC mismatch reading frame");
-            return NULL;
         }
     }
 }
@@ -432,7 +450,6 @@ read_frame(BitstreamReader* frame,
     aa_int* residual = cache->residual;
     aa_int* filtered = cache->filtered;
     aa_int* predicted = cache->predicted;
-    uint32_t frame_crc = 0xFFFFFFFF;
 
     k0->mset(k0, channels, 10);
     sum0->mset(sum0, channels, 1 << 14);
@@ -447,8 +464,6 @@ read_frame(BitstreamReader* frame,
     }
 
     /*read residuals from bitstream*/
-    br_add_callback(frame, (bs_callback_f)tta_crc32, &frame_crc);
-
     if (!setjmp(*br_try(frame))) {
         unsigned i;
 
@@ -487,20 +502,9 @@ read_frame(BitstreamReader* frame,
             }
         }
 
-        frame->byte_align(frame);
-
-        /*check CRC32 at end of frame*/
-        br_pop_callback(frame, NULL);
-        if ((frame_crc ^ 0xFFFFFFFF) != frame->read(frame, 32)) {
-            br_etry(frame);
-            return CRCMISMATCH;
-        } else {
-            br_etry(frame);
-        }
+        br_etry(frame);
     } else {
         br_etry(frame);
-        if (frame->callbacks)
-            br_pop_callback(frame, NULL);
         return IOERROR;
     }
 
