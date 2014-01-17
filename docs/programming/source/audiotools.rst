@@ -627,16 +627,16 @@ AudioFile Objects
    or ``None`` if the track contains no cuesheet.
    May raise :exc:`IOError` if an error occurs reading the file.
 
-.. method:: AudioFile.clean(fixes_performed[, output_filename])
+.. method:: AudioFile.clean([output_filename])
 
    Cleans the audio file of known data and metadata problems.
-   ``fixes_performed`` is a list-like object which is appended
-   with Unicode strings of the fixes performed.
 
    ``output_filename`` is an optional string in which the fixed
    audio file is placed.
    If omitted, no actual fixes are performed.
    Note that this method never modifies the original file.
+
+   Returns list of fixes performed as Unicode strings.
 
    Raises :exc:`IOError` if some error occurs when writing the new file.
    Raises :exc:`ValueError` if the file itself is invalid.
@@ -937,20 +937,19 @@ MetaData Objects
    Takes an :class:`Image` from this class, as returned by :meth:`images`,
    and removes it from this metadata's list of images.
 
-.. method:: MetaData.clean(fixes_performed)
+.. method:: MetaData.clean()
 
-   Returns a new :class:`MetaData` object of the same class
-   that's been cleaned of known problems including, but not limited to
+   Returns a (:class:`MetaData`, ``fixes_performed``) tuple
+   where ``MetaData`` is an object that's been cleaned of problems
+   and ``fixes_performed`` is a list of unicode strings detailing
+   those problems.
+   Problems include:
 
    * Leading whitespace in text fields
    * Trailing whitespace in text fields
    * Empty fields
    * Leading zeroes in numerical fields
    * Incorrectly labeled image metadata fields
-
-   ``fixes_performed`` is a list object with an append method.
-   Text descriptions of the fixes performed are appended
-   to that list as Unicode strings.
 
 .. method:: MetaData.raw_info()
 

@@ -6688,7 +6688,7 @@
 *** DONE Ogg FLAC
 *** DONE Ogg Vorbis
 *** DONE Opus
-** TODO Adjust MetaData.clean() interface
+** DONE Adjust MetaData.clean() interface
    Returns (MetaData, [fixes]) tuple
    where MetaData is a new, fixed metadata object
    and fixes is a list of Unicode strings.
@@ -6703,9 +6703,9 @@
     - [X] ID3v1Comment
     - [X] M4A_META_Atom
     - [X] VorbisComment
-*** TODO Update documentation
+*** DONE Update documentation
 *** DONE Update unit tests
-** TODO Adjust AudioFile.clean() interface
+** DONE Adjust AudioFile.clean() interface
    Takes optional output_filename and returns list of fixes performed.
    It would be nice not to need separate code paths
    for dry runs, like with MetaData, but that may not be feasible.
@@ -6715,39 +6715,8 @@
     - [X] FlacAudio
     - [X] WaveAudio
 *** DONE Update tracklint
-*** TODO Update documentation
+*** DONE Update documentation
 *** DONE Update unit tests
-** TODO Add Ogg stream lint
-*** TODO detect that page sequence number always increments
-*** TODO detect that packet continuation is being used correctly
-*** TODO detect that bitstream serial number is consistent
-** TODO Update coverview widget set
-   Although wxPython is available lots of places,
-   it doesn't behave the same everywhere.
-   It's like a better Tkinter.
-
-   PyGTK works well on X11 platforms, but is a non-starter on Mac OS.
-
-   Using the built-in PyObjC bridge on Mac OS is the most compatible
-   solution, if it can be implemented without making a huge mess.
-** TODO Shift the classmethods from ALACAudio to the atoms themselves
-   It's better to have them as alternate constructors
-   much closer to the actual atom definitions.
-*** TODO __ftyp_atom__
-*** TODO __moov_atom__
-*** TODO __mvhd_atom__
-*** TODO __tkhd_atom__
-*** TODO __mdhd_atom__
-*** TODO __hdlr_atom__
-*** TODO __smhd_atom__
-*** TODO __dref_atom__
-*** TODO __stsd_atom__
-*** TODO __stts_atom__
-*** TODO __stsc_atom__
-*** TODO __stsz_atom__
-*** TODO __stco_atom__
-*** TODO __meta_atom__
-*** TODO __free_atom__
 ** TODO Deprecate little-used / poorly-tested bits
    Although there's a risk of annoying people by taking out
    stuff they might be using, some utilities and formats
@@ -6775,6 +6744,19 @@
     wav files, at least it gets updated.
     Having two different, slightly incompatible M4A implementations
     needlessly complicates things.
+* TODO Finish version 2.22
+** TODO Update coverview widget set
+   Although wxPython is available lots of places,
+   it doesn't behave the same everywhere.
+   It's like a better Tkinter.
+
+   PyGTK works well on X11 platforms, but is a non-starter on Mac OS.
+
+   Using the built-in PyObjC bridge on Mac OS is the most compatible
+   solution, if it can be implemented without making a huge mess
+** TODO Add AirPlay support
+   Create AudioOutput-compatible AirPlay implementation
+   and have it returned by audiotools.player.available_outputs()
 ** TODO Add internal WavPack codec
 *** DONE update WavPack documentation to little-endian reading order
 *** TODO Add WavPack decoder
@@ -6972,6 +6954,10 @@
 *** DONE Remove WavePackAudio.BINARIES
 *** DONE Add more WavPack INVALIDFILE .verify() tests
 *** DONE Remove wvgain for ReplayGain application
+** TODO Add Ogg stream lint
+*** TODO detect that page sequence number always increments
+*** TODO detect that packet continuation is being used correctly
+*** TODO detect that bitstream serial number is consistent
 ** TODO Overhaul exception handling
    A lot of our exceptions are used haphazardly
    mixing strings with unicode and aren't as well documented as they
@@ -6982,9 +6968,6 @@
    internal exceptions themselves are documented
    with what they're for and what they take as values,
    and make sure they get caught correctly where they're supposed to.
-** TODO Add AirPlay support
-   Create AudioOutput-compatible AirPlay implementation
-   and have it returned by audiotools.player.available_outputs()
 * TODO Finish version 3.0
 ** TODO Shift to Python 3
    This lengthy transition will have to wait

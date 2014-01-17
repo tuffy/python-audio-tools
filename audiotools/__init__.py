@@ -3326,10 +3326,11 @@ class MetaData:
             raise ValueError(ERR_PICTURES_UNSUPPORTED)
 
     def clean(self):
-        """returns a new MetaData object that's been cleaned of problems
+        """returns a (MetaData, fixes_performed) tuple
+        where MetaData is an object that's been cleaned of problems
+        an fixes_performed is a list of Unicode strings.
+        Problems include:
 
-        any fixes performed are appended to fixes_performed as Unicode
-        fixes to apply to metadata include:
         * Remove leading or trailing whitespace from text fields
         * Remove empty fields
         * Remove leading zeroes from numerical fields
