@@ -1279,6 +1279,30 @@ bwpy_write_signed_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
     }
 }
 
+static int
+bwpy_verify_nonnegative_number(PyObject *value)
+{
+    if (!PyNumber_Check(value)) {
+        PyErr_SetString(PyExc_TypeError, "value must be a numeric object");
+        return 1;
+    } else {
+        PyObject *zero = PyInt_FromLong(0);
+        int cmp;
+        if (PyObject_Cmp(value, zero, &cmp) == -1) {
+            Py_DECREF(zero);
+            return 1;
+        } else {
+            Py_DECREF(zero);
+        }
+        if (cmp < 0) {
+            PyErr_SetString(PyExc_ValueError, "value must be >= 0");
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+}
+
 void
 BitstreamWriter_dealloc(bitstream_BitstreamWriter *self)
 {
@@ -1315,6 +1339,10 @@ BitstreamWriter_write(bitstream_BitstreamWriter *self, PyObject *args)
         return NULL;
     }
 
+    /*ensure value is numeric and >= 0*/
+    if (bwpy_verify_nonnegative_number(value))
+        return NULL;
+
     if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
         return NULL;
     } else {
@@ -1333,6 +1361,11 @@ BitstreamWriter_write_signed(bitstream_BitstreamWriter *self, PyObject *args)
         return NULL;
     } else if (count < 0) {
         PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
+
+    if (!PyNumber_Check(value)) {
+        PyErr_SetString(PyExc_TypeError, "value must be a numeric object");
         return NULL;
     }
 
@@ -1584,6 +1617,10 @@ BitstreamRecorder_write(bitstream_BitstreamRecorder *self,
         return NULL;
     }
 
+    /*ensure value is numeric and >= 0*/
+    if (bwpy_verify_nonnegative_number(value))
+        return NULL;
+
     if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
         return NULL;
     } else {
@@ -1603,6 +1640,11 @@ BitstreamRecorder_write_signed(bitstream_BitstreamRecorder *self,
         return NULL;
     } else if (count < 0) {
         PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
+
+    if (!PyNumber_Check(value)) {
+        PyErr_SetString(PyExc_TypeError, "value must be a numeric object");
         return NULL;
     }
 
@@ -2108,6 +2150,10 @@ BitstreamAccumulator_write(bitstream_BitstreamAccumulator *self,
         return NULL;
     }
 
+    /*ensure value is numeric and >= 0*/
+    if (bwpy_verify_nonnegative_number(value))
+        return NULL;
+
     if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
         return NULL;
     } else {
@@ -2127,6 +2173,11 @@ BitstreamAccumulator_write_signed(bitstream_BitstreamAccumulator *self,
         return NULL;
     } else if (count < 0) {
         PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+        return NULL;
+    }
+
+    if (!PyNumber_Check(value)) {
+        PyErr_SetString(PyExc_TypeError, "value must be a numeric object");
         return NULL;
     }
 
@@ -2563,7 +2614,17 @@ bitstream_build(BitstreamWriter* stream,
                 for (; times; times--) {
                     PyObject *py_value = PyIter_Next(iterator);
                     if (py_value != NULL) {
-                        int result = write_unsigned(stream, size, py_value);
+                        /*ensure value is numeric and >= 0*/
+
+                        int result;
+
+                        if (bwpy_verify_nonnegative_number(py_value)) {
+                            bw_etry(stream);
+                            Py_DECREF(py_value);
+                            return 1;
+                        }
+
+                        result = write_unsigned(stream, size, py_value);
                         Py_DECREF(py_value);
                         if (result) {
                             bw_etry(stream);
@@ -2582,7 +2643,16 @@ bitstream_build(BitstreamWriter* stream,
                 for (; times; times--) {
                     PyObject *py_value = PyIter_Next(iterator);
                     if (py_value != NULL) {
-                        int result = write_signed(stream, size, py_value);
+                        int result;
+
+                        if (!PyNumber_Check(py_value)) {
+                            PyErr_SetString(PyExc_TypeError,
+                                            "value must be a numeric object");
+                            bw_etry(stream);
+                            Py_DECREF(py_value);
+                            return 1;
+                        }
+                        result = write_signed(stream, size, py_value);
                         Py_DECREF(py_value);
                         if (result) {
                             bw_etry(stream);

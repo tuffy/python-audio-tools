@@ -3478,6 +3478,62 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(open(temp_file.name, "rb").read(), "\xB1\xED\x3B\xC1")
 
     @LIB_BITSTREAM
+    def test_write_errors(self):
+        from audiotools.bitstream import BitstreamWriter
+        from audiotools.bitstream import BitstreamRecorder
+        from audiotools.bitstream import BitstreamAccumulator
+
+        for little_endian in [False, True]:
+            for writer in [BitstreamWriter(cStringIO.StringIO(),
+                                           little_endian),
+                           BitstreamRecorder(little_endian),
+                           BitstreamAccumulator(little_endian)]:
+                #writing negative number of bits shouldn't work
+                self.assertRaises(ValueError,
+                                  writer.write,
+                                  -1, 0)
+
+                self.assertRaises(ValueError,
+                                  writer.write_signed,
+                                  -1, 0)
+
+                #writing negative value as unsigned shouldn't work
+                self.assertRaises(ValueError,
+                                  writer.write,
+                                  8, -1)
+
+                #writing some value that's not a number shouldn't work
+                self.assertRaises(TypeError,
+                                  writer.write,
+                                  8, "foo")
+
+                self.assertRaises(TypeError,
+                                  writer.write_signed,
+                                  8, "foo")
+
+                #nor should it work from the .build method
+                self.assertRaises(ValueError,
+                                  writer.build,
+                                  "8u", [-1])
+
+                self.assertRaises(TypeError,
+                                  writer.build,
+                                  "8u", ["foo"])
+
+                self.assertRaises(TypeError,
+                                  writer.build,
+                                  "8s", ["foo"])
+
+                #writing unary with non 0/1 bit shouldn't work
+                self.assertRaises(ValueError,
+                                  writer.unary,
+                                  3, 1)
+
+                self.assertRaises(ValueError,
+                                  writer.unary,
+                                  -1, 1)
+
+    @LIB_BITSTREAM
     def test_edge_cases(self):
         from audiotools.bitstream import BitstreamReader
 
