@@ -979,6 +979,14 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
             (ext_free_f)bs_free_python_nodecref);
     }
 
+    if (little_endian) {
+        self->write_unsigned = bwpy_write_unsigned_le;
+        self->write_signed = bwpy_write_signed_le;
+    } else {
+        self->write_unsigned = bwpy_write_unsigned_be;
+        self->write_signed = bwpy_write_signed_be;
+    }
+
     return 0;
 }
 
@@ -990,6 +998,285 @@ bw_close_internal_stream_python_file(BitstreamWriter* bs)
 
     /*swap write methods with closed methods*/
     bw_close_methods(bs);
+}
+
+/*this is essentially:
+  (1 << bits_to_write) - 1
+  implemented as operations on Python numberic objects
+  used by the write_unsigned() functions to eliminate
+  unneeded right-side bits*/
+static PyObject*
+bwpy_unsigned_mask(unsigned bits_to_write)
+{
+    PyObject *one;
+    PyObject *bits_to_write_obj;
+    PyObject *shifted;
+    PyObject *mask;
+
+    one = PyInt_FromLong(1);
+    bits_to_write_obj = PyInt_FromLong(bits_to_write);
+
+    if ((shifted = PyNumber_Lshift(one, bits_to_write_obj)) == NULL) {
+        Py_DECREF(one);
+        Py_DECREF(bits_to_write_obj);
+        return NULL;
+    } else {
+        Py_DECREF(bits_to_write_obj);
+    }
+    mask = PyNumber_Subtract(shifted, one); /*may return NULL*/
+    Py_DECREF(one);
+    Py_DECREF(shifted);
+    return mask;
+}
+
+/*this is essentially:
+  1 << (bits_to_write - 1)
+  implemented as operations on Python numeric objects
+  used by the write_signed() functions to
+  convert signed values to unsigned*/
+static PyObject*
+bwpy_signed_mask(unsigned bits_to_write)
+{
+    PyObject *bits;
+    PyObject *one;
+    PyObject *mask;
+
+    bits = PyInt_FromLong(bits_to_write - 1);
+    one = PyInt_FromLong(1);
+    mask = PyNumber_Rshift(one, bits); /*may return NULL*/
+    Py_DECREF(bits);
+    Py_DECREF(one);
+    return mask;
+}
+
+int
+bwpy_write_unsigned_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
+{
+    /*FIXME - make this a sensible value*/
+    const unsigned buffer_size = 16;
+
+    /*chop off up to "buffer_size" bits to write at a time*/
+    while (bits > 0) {
+        const unsigned bits_to_write = bits > buffer_size ? buffer_size : bits;
+        PyObject *shift;
+        PyObject *shifted;
+        PyObject *mask;
+        PyObject *masked;
+        long masked_value;
+        unsigned buffer;
+
+        /*shift out the unneeded left bits*/
+        shift = PyInt_FromLong((long)(bits - bits_to_write));
+        if ((shifted = PyNumber_Rshift(value, shift)) != NULL) {
+            Py_DECREF(shift);
+        } else {
+            Py_DECREF(shift);
+            return 1;
+        }
+
+        /*mask out the unneeded right bits*/
+        if ((mask = bwpy_unsigned_mask(bits_to_write)) == NULL)
+            return 1;
+        if ((masked = PyNumber_And(shifted, mask)) != NULL) {
+            Py_DECREF(mask);
+            Py_DECREF(shifted);
+        } else {
+            Py_DECREF(mask);
+            Py_DECREF(shifted);
+            return 1;
+        }
+
+        /*convert result from Python object to integer*/
+        if (((masked_value = PyInt_AsLong(masked)) == -1) &&
+            PyErr_Occurred()) {
+            Py_DECREF(masked);
+            return 1;
+        } else {
+            Py_DECREF(masked);
+            buffer = (unsigned)masked_value;
+        }
+
+        /*write the value itself*/
+        if (!setjmp(*bw_try(bw))) {
+            bw->write(bw, bits_to_write, buffer);
+            bw_etry(bw);
+        } else {
+            bw_etry(bw);
+            PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+            return 1;
+        }
+
+        /*decrement the count*/
+        bits -= bits_to_write;
+    }
+
+    return 0;
+}
+
+int
+bwpy_write_unsigned_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
+{
+    /*FIXME - make this a sensible value*/
+    const unsigned buffer_size = 16;
+    Py_INCREF(value);
+
+    while (bits > 0) {
+        const unsigned bits_to_write = bits > buffer_size ? buffer_size : bits;
+        PyObject *mask;
+        PyObject *masked;
+        PyObject *shift;
+        PyObject *shifted;
+        long masked_value;
+        unsigned buffer;
+
+        /*extract initial bits from value*/
+        if ((mask = bwpy_unsigned_mask(bits_to_write)) == NULL) {
+            return 1;
+        }
+        if ((masked = PyNumber_And(value, mask)) != NULL) {
+            Py_DECREF(mask);
+        } else {
+            Py_DECREF(mask);
+            Py_DECREF(value);
+            return 1;
+        }
+
+        /*converted result from Python object to integer*/
+        if (((masked_value = PyInt_AsLong(masked)) == -1) &&
+                PyErr_Occurred()) {
+            Py_DECREF(masked);
+            Py_DECREF(value);
+            return 1;
+        } else {
+            Py_DECREF(masked);
+            buffer = (unsigned)masked_value;
+        }
+
+        /*write the value itself*/
+        if (!setjmp(*bw_try(bw))) {
+            bw->write(bw, bits_to_write, buffer);
+            bw_etry(bw);
+        } else {
+            bw_etry(bw);
+            PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+            return 1;
+        }
+
+        /*shift out the written bits*/
+        shift = PyInt_FromLong(bits_to_write);
+        if ((shifted = PyNumber_Rshift(value, shift)) != NULL) {
+            Py_DECREF(shift);
+            Py_DECREF(value);
+            value = shifted;
+        } else {
+            Py_DECREF(shift);
+            Py_DECREF(value);
+            return 1;
+        }
+
+        /*decrement the count*/
+        bits -= bits_to_write;
+    }
+
+    Py_DECREF(value);
+
+    return 0;
+}
+
+int
+bwpy_write_signed_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
+{
+    PyObject *zero = PyInt_FromLong(0);
+    int cmp;
+    if (PyObject_Cmp(value, zero, &cmp) == -1) {
+        Py_DECREF(zero);
+        return 1;
+    } else {
+        Py_DECREF(zero);
+    }
+
+    /*write sign bit first*/
+    if (!setjmp(*bw_try(bw))) {
+        bw->write(bw, 1, cmp >= 0 ? 0 : 1);
+        bw_etry(bw);
+    } else {
+        bw_etry(bw);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return 1;
+    }
+
+    if (cmp >= 0) {
+        /*positive number*/
+        return bwpy_write_unsigned_be(bw, bits - 1, value);
+    } else {
+        /*negative number*/
+        PyObject *mask;
+        PyObject *unsigned_value;
+
+        if ((mask = bwpy_signed_mask(bits)) == NULL)
+            return 1;
+        if ((unsigned_value = PyNumber_Add(mask, value)) != NULL) {
+            int result;
+
+            Py_DECREF(mask);
+            result = bwpy_write_unsigned_be(bw, bits - 1, unsigned_value);
+            Py_DECREF(unsigned_value);
+            return result;
+        } else {
+            Py_DECREF(mask);
+            return 1;
+        }
+    }
+}
+
+int
+bwpy_write_signed_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
+{
+    PyObject *zero = PyInt_FromLong(0);
+    int cmp;
+    if (PyObject_Cmp(value, zero, &cmp) == -1) {
+        Py_DECREF(zero);
+        return 1;
+    } else {
+        Py_DECREF(zero);
+    }
+
+    if (cmp >= 0) {
+        /*positive number*/
+        int result = bwpy_write_unsigned_le(bw, bits - 1, value);
+        if (result)
+            return result;
+    } else {
+        /*negative number*/
+        PyObject *mask;
+        PyObject *unsigned_value;
+
+        if ((mask = bwpy_signed_mask(bits)) == NULL)
+            return 1;
+        if ((unsigned_value = PyNumber_Add(mask, value)) != NULL) {
+            int result;
+
+            Py_DECREF(mask);
+            result = bwpy_write_unsigned_le(bw, bits - 1, unsigned_value);
+            Py_DECREF(unsigned_value);
+            if (result)
+                return result;
+        } else {
+            Py_DECREF(mask);
+            return 1;
+        }
+    }
+
+    /*write sign bit last*/
+    if (!setjmp(*bw_try(bw))) {
+        bw->write(bw, 1, cmp >= 0 ? 0 : 1);
+        bw_etry(bw);
+        return 0;
+    } else {
+        bw_etry(bw);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return 1;
+    }
 }
 
 void
@@ -1019,24 +1306,20 @@ static PyObject*
 BitstreamWriter_write(bitstream_BitstreamWriter *self, PyObject *args)
 {
     int count;
-    unsigned int value;
+    PyObject *value;
 
-    if (!PyArg_ParseTuple(args, "iI", &count, &value)) {
+    if (!PyArg_ParseTuple(args, "iO", &count, &value)) {
         return NULL;
     } else if (count < 0) {
         PyErr_SetString(PyExc_ValueError, "count must be >= 0");
         return NULL;
     }
 
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write(self->bitstream, (unsigned)count, value);
-        bw_etry(self->bitstream);
+    if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
+        return NULL;
+    } else {
         Py_INCREF(Py_None);
         return Py_None;
-    } else {
-        bw_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-        return NULL;
     }
 }
 
@@ -1044,75 +1327,20 @@ static PyObject*
 BitstreamWriter_write_signed(bitstream_BitstreamWriter *self, PyObject *args)
 {
     int count;
-    int value;
+    PyObject *value;
 
-    if (!PyArg_ParseTuple(args, "ii", &count, &value)) {
+    if (!PyArg_ParseTuple(args, "iO", &count, &value)) {
         return NULL;
     } else if (count < 0) {
         PyErr_SetString(PyExc_ValueError, "count must be >= 0");
         return NULL;
     }
 
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_signed(self->bitstream, (unsigned)count, value);
-        bw_etry(self->bitstream);
+    if (self->write_signed(self->bitstream, (unsigned)count, value)) {
+        return NULL;
+    } else {
         Py_INCREF(Py_None);
         return Py_None;
-    } else {
-        bw_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-        return NULL;
-    }
-}
-
-static PyObject*
-BitstreamWriter_write64(bitstream_BitstreamWriter *self, PyObject *args)
-{
-    int count;
-    uint64_t value;
-
-    if (!PyArg_ParseTuple(args, "iK", &count, &value)) {
-        return NULL;
-    } else if (count < 0) {
-        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
-        return NULL;
-    }
-
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_64(self->bitstream, (unsigned)count, value);
-        bw_etry(self->bitstream);
-        Py_INCREF(Py_None);
-        return Py_None;
-    } else {
-        bw_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-        return NULL;
-    }
-}
-
-static PyObject*
-BitstreamWriter_write_signed64(bitstream_BitstreamWriter *self, PyObject *args)
-{
-    int count;
-    int64_t value;
-
-    if (!PyArg_ParseTuple(args, "iL", &count, &value)) {
-        return NULL;
-    } else if (count < 0) {
-        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
-        return NULL;
-    }
-
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_signed_64(self->bitstream,
-                                         (unsigned)count, value);
-        bw_etry(self->bitstream);
-        Py_INCREF(Py_None);
-        return Py_None;
-    } else {
-        bw_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-        return NULL;
     }
 }
 
@@ -1205,6 +1433,14 @@ BitstreamWriter_set_endianness(bitstream_BitstreamWriter *self,
                     self->bitstream,
                     little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
+    if (little_endian) {
+        self->write_unsigned = bwpy_write_unsigned_le;
+        self->write_signed = bwpy_write_signed_le;
+    } else {
+        self->write_unsigned = bwpy_write_unsigned_be;
+        self->write_signed = bwpy_write_signed_be;
+    }
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -1247,7 +1483,11 @@ BitstreamWriter_build(bitstream_BitstreamWriter *self, PyObject *args)
         return NULL;
     } else if ((iterator = PyObject_GetIter(values)) == NULL) {
         return NULL;
-    } else if (bitstream_build(self->bitstream, format, iterator)) {
+    } else if (bitstream_build(self->bitstream,
+                               self->write_unsigned,
+                               self->write_signed,
+                               format,
+                               iterator)) {
         Py_DECREF(iterator);
         return NULL;
     } else {
@@ -1335,24 +1575,20 @@ BitstreamRecorder_write(bitstream_BitstreamRecorder *self,
                         PyObject *args)
 {
     int count;
-    unsigned int value;
+    PyObject *value;
 
-    if (!PyArg_ParseTuple(args, "iI", &count, &value)) {
+    if (!PyArg_ParseTuple(args, "iO", &count, &value)) {
         return NULL;
     } else if (count < 0) {
         PyErr_SetString(PyExc_ValueError, "count must be >= 0");
         return NULL;
     }
 
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write(self->bitstream, (unsigned)count, value);
-        bw_etry(self->bitstream);
+    if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
+        return NULL;
+    } else {
         Py_INCREF(Py_None);
         return Py_None;
-    } else {
-        bw_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-        return NULL;
     }
 }
 
@@ -1361,77 +1597,20 @@ BitstreamRecorder_write_signed(bitstream_BitstreamRecorder *self,
                                PyObject *args)
 {
     int count;
-    int value;
+    PyObject *value;
 
-    if (!PyArg_ParseTuple(args, "ii", &count, &value)) {
+    if (!PyArg_ParseTuple(args, "iO", &count, &value)) {
         return NULL;
     } else if (count < 0) {
         PyErr_SetString(PyExc_ValueError, "count must be >= 0");
         return NULL;
     }
 
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_signed(self->bitstream, (unsigned)count, value);
-        bw_etry(self->bitstream);
+    if (self->write_signed(self->bitstream, (unsigned)count, value)) {
+        return NULL;
+    } else {
         Py_INCREF(Py_None);
         return Py_None;
-    } else {
-        bw_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-        return NULL;
-    }
-}
-
-static PyObject*
-BitstreamRecorder_write64(bitstream_BitstreamRecorder *self,
-                          PyObject *args)
-{
-    int count;
-    uint64_t value;
-
-    if (!PyArg_ParseTuple(args, "iK", &count, &value)) {
-        return NULL;
-    } else if (count < 0) {
-        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
-        return NULL;
-    }
-
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_64(self->bitstream, (unsigned)count, value);
-        bw_etry(self->bitstream);
-        Py_INCREF(Py_None);
-        return Py_None;
-    } else {
-        bw_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-        return NULL;
-    }
-}
-
-static PyObject*
-BitstreamRecorder_write_signed64(bitstream_BitstreamRecorder *self,
-                                 PyObject *args)
-{
-    int count;
-    int64_t value;
-
-    if (!PyArg_ParseTuple(args, "iL", &count, &value)) {
-        return NULL;
-    } else if (count < 0) {
-        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
-        return NULL;
-    }
-
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_signed_64(self->bitstream,
-                                         (unsigned)count, value);
-        bw_etry(self->bitstream);
-        Py_INCREF(Py_None);
-        return Py_None;
-    } else {
-        bw_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-        return NULL;
     }
 }
 
@@ -1546,7 +1725,11 @@ BitstreamRecorder_build(bitstream_BitstreamRecorder *self,
         return NULL;
     } else if ((iterator = PyObject_GetIter(values)) == NULL) {
         return NULL;
-    } else if (bitstream_build(self->bitstream, format, iterator)) {
+    } else if (bitstream_build(self->bitstream,
+                               self->write_unsigned,
+                               self->write_signed,
+                               format,
+                               iterator)) {
         Py_DECREF(iterator);
         return NULL;
     } else {
@@ -1582,6 +1765,14 @@ BitstreamRecorder_set_endianness(bitstream_BitstreamRecorder *self,
     self->bitstream->set_endianness(
                     self->bitstream,
                     little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+
+    if (little_endian) {
+        self->write_unsigned = bwpy_write_unsigned_le;
+        self->write_signed = bwpy_write_signed_le;
+    } else {
+        self->write_unsigned = bwpy_write_unsigned_be;
+        self->write_signed = bwpy_write_signed_be;
+    }
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -1819,6 +2010,14 @@ BitstreamRecorder_init(bitstream_BitstreamRecorder *self,
     self->bitstream = bw_open_recorder(little_endian ?
                                        BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
+    if (little_endian) {
+        self->write_unsigned = bwpy_write_unsigned_le;
+        self->write_signed = bwpy_write_signed_le;
+    } else {
+        self->write_unsigned = bwpy_write_unsigned_be;
+        self->write_signed = bwpy_write_signed_be;
+    }
+
     return 0;
 }
 
@@ -1854,6 +2053,14 @@ BitstreamAccumulator_init(bitstream_BitstreamAccumulator *self, PyObject *args)
 
     self->bitstream = bw_open_accumulator(little_endian ?
                                           BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+
+    if (little_endian) {
+        self->write_unsigned = bwpy_write_unsigned_le;
+        self->write_signed = bwpy_write_signed_le;
+    } else {
+        self->write_unsigned = bwpy_write_unsigned_be;
+        self->write_signed = bwpy_write_signed_be;
+    }
 
     return 0;
 }
@@ -1892,24 +2099,20 @@ BitstreamAccumulator_write(bitstream_BitstreamAccumulator *self,
                            PyObject *args)
 {
     int count;
-    unsigned int value;
+    PyObject *value;
 
-    if (!PyArg_ParseTuple(args, "iI", &count, &value)) {
+    if (!PyArg_ParseTuple(args, "iO", &count, &value)) {
         return NULL;
     } else if (count < 0) {
         PyErr_SetString(PyExc_ValueError, "count must be >= 0");
         return NULL;
     }
 
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write(self->bitstream, (unsigned)count, value);
-        bw_etry(self->bitstream);
+    if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
+        return NULL;
+    } else {
         Py_INCREF(Py_None);
         return Py_None;
-    } else {
-        bw_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-        return NULL;
     }
 }
 
@@ -1918,77 +2121,20 @@ BitstreamAccumulator_write_signed(bitstream_BitstreamAccumulator *self,
                                   PyObject *args)
 {
     int count;
-    int value;
+    PyObject *value;
 
-    if (!PyArg_ParseTuple(args, "ii", &count, &value)) {
+    if (!PyArg_ParseTuple(args, "iO", &count, &value)) {
         return NULL;
     } else if (count < 0) {
         PyErr_SetString(PyExc_ValueError, "count must be >= 0");
         return NULL;
     }
 
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_signed(self->bitstream, (unsigned)count, value);
-        bw_etry(self->bitstream);
+    if (self->write_signed(self->bitstream, (unsigned)count, value)) {
+        return NULL;
+    } else {
         Py_INCREF(Py_None);
         return Py_None;
-    } else {
-        bw_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-        return NULL;
-    }
-}
-
-static PyObject*
-BitstreamAccumulator_write64(bitstream_BitstreamAccumulator *self,
-                             PyObject *args)
-{
-    int count;
-    uint64_t value;
-
-    if (!PyArg_ParseTuple(args, "iK", &count, &value)) {
-        return NULL;
-    } else if (count < 0) {
-        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
-        return NULL;
-    }
-
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_64(self->bitstream, (unsigned)count, value);
-        bw_etry(self->bitstream);
-        Py_INCREF(Py_None);
-        return Py_None;
-    } else {
-        bw_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-        return NULL;
-    }
-}
-
-static PyObject*
-BitstreamAccumulator_write_signed64(bitstream_BitstreamAccumulator *self,
-                                    PyObject *args)
-{
-    int count;
-    int64_t value;
-
-    if (!PyArg_ParseTuple(args, "iL", &count, &value)) {
-        return NULL;
-    } else if (count < 0) {
-        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
-        return NULL;
-    }
-
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_signed_64(self->bitstream,
-                                         (unsigned)count, value);
-        bw_etry(self->bitstream);
-        Py_INCREF(Py_None);
-        return Py_None;
-    } else {
-        bw_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-        return NULL;
     }
 }
 
@@ -2083,6 +2229,14 @@ BitstreamAccumulator_set_endianness(bitstream_BitstreamAccumulator *self,
                     self->bitstream,
                     little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
+    if (little_endian) {
+        self->write_unsigned = bwpy_write_unsigned_le;
+        self->write_signed = bwpy_write_signed_le;
+    } else {
+        self->write_unsigned = bwpy_write_unsigned_be;
+        self->write_signed = bwpy_write_signed_be;
+    }
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -2126,7 +2280,11 @@ BitstreamAccumulator_build(bitstream_BitstreamAccumulator *self,
         return NULL;
     } else if ((iterator = PyObject_GetIter(values)) == NULL) {
         return NULL;
-    } else if (bitstream_build(self->bitstream, format, iterator)) {
+    } else if (bitstream_build(self->bitstream,
+                               self->write_unsigned,
+                               self->write_signed,
+                               format,
+                               iterator)) {
         Py_DECREF(iterator);
         return NULL;
     } else {
@@ -2229,9 +2387,23 @@ bitstream_build_func(PyObject *dummy, PyObject *args)
     } else if ((iterator = PyObject_GetIter(values)) == NULL) {
         return NULL;
     } else {
-        BitstreamWriter* stream = bw_open_recorder(
-            is_little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-        if (!bitstream_build(stream, format, iterator)) {
+        BitstreamWriter* stream;
+        write_object_f write_unsigned;
+        write_object_f write_signed;
+        if (is_little_endian) {
+            stream = bw_open_recorder(BS_LITTLE_ENDIAN);
+            write_unsigned = bwpy_write_unsigned_le;
+            write_signed = bwpy_write_signed_le;
+        } else {
+            stream = bw_open_recorder(BS_BIG_ENDIAN);
+            write_unsigned = bwpy_write_unsigned_be;
+            write_signed = bwpy_write_signed_be;
+        }
+        if (!bitstream_build(stream,
+                             write_unsigned,
+                             write_signed,
+                             format,
+                             iterator)) {
             PyObject* data = PyString_FromStringAndSize(
                 (char *)buf_window_start(stream->output.buffer),
                 (Py_ssize_t)buf_window_size(stream->output.buffer));
@@ -2373,7 +2545,10 @@ bitstream_parse(BitstreamReader* stream, const char* format, PyObject* values)
 
 int
 bitstream_build(BitstreamWriter* stream,
-                const char* format, PyObject* iterator)
+                write_object_f write_unsigned,
+                write_object_f write_signed,
+                const char* format,
+                PyObject* iterator)
 {
 
     if (!setjmp(*bw_try(stream))) {
@@ -2383,16 +2558,14 @@ bitstream_build(BitstreamWriter* stream,
             unsigned size;
 
             format = bs_parse_format(format, &times, &size, &inst);
-            if (inst == BS_INST_UNSIGNED) {
+            if ((inst == BS_INST_UNSIGNED) ||
+                (inst == BS_INST_UNSIGNED64)) {
                 for (; times; times--) {
                     PyObject *py_value = PyIter_Next(iterator);
                     if (py_value != NULL) {
-                        const unsigned long value =
-                            PyInt_AsUnsignedLongMask(py_value);
+                        int result = write_unsigned(stream, size, py_value);
                         Py_DECREF(py_value);
-                        if (!PyErr_Occurred()) {
-                            stream->write(stream, size, (unsigned)value);
-                        } else {
+                        if (result) {
                             bw_etry(stream);
                             return 1;
                         }
@@ -2404,57 +2577,14 @@ bitstream_build(BitstreamWriter* stream,
                         return 1;
                     }
                 }
-            } else if (inst == BS_INST_SIGNED) {
+            } else if ((inst == BS_INST_SIGNED) ||
+                       (inst == BS_INST_SIGNED64)) {
                 for (; times; times--) {
                     PyObject *py_value = PyIter_Next(iterator);
                     if (py_value != NULL) {
-                        const long value = PyInt_AsLong(py_value);
+                        int result = write_signed(stream, size, py_value);
                         Py_DECREF(py_value);
-                        if (!PyErr_Occurred()) {
-                            stream->write_signed(stream, size, (int)value);
-                        } else {
-                            bw_etry(stream);
-                            return 1;
-                        }
-                    } else {
-                        if (!PyErr_Occurred()) {
-                            PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
-                        }
-                        bw_etry(stream);
-                        return 1;
-                    }
-                }
-            } else if (inst == BS_INST_UNSIGNED64) {
-                for (; times; times--) {
-                    PyObject *py_value = PyIter_Next(iterator);
-                    if (py_value != NULL) {
-                        const unsigned PY_LONG_LONG value =
-                            PyInt_AsUnsignedLongLongMask(py_value);
-                        Py_DECREF(py_value);
-                        if (!PyErr_Occurred()) {
-                            stream->write_64(stream, size, (uint64_t)value);
-                        } else {
-                            bw_etry(stream);
-                            return 1;
-                        }
-                    } else {
-                        if (!PyErr_Occurred()) {
-                            PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
-                        }
-                        bw_etry(stream);
-                        return 1;
-                    }
-                }
-            } else if (inst == BS_INST_SIGNED64) {
-                for (; times; times--) {
-                    PyObject *py_value = PyIter_Next(iterator);
-                    if (py_value != NULL) {
-                        const PY_LONG_LONG u =
-                            PyLong_AsLongLong(py_value);
-                        Py_DECREF(py_value);
-                        if (!PyErr_Occurred()) {
-                            stream->write_signed_64(stream, size, (int64_t)u);
-                        } else {
+                        if (result) {
                             bw_etry(stream);
                             return 1;
                         }

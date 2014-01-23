@@ -744,7 +744,6 @@ typedef struct BitstreamWriter_s {
              unsigned int count,
              unsigned int value);
 
-
     /*writes the given value as "count" number of signed bits
       to the current stream*/
     void

@@ -56,7 +56,7 @@ def build_ieee_extended(bitstream, value):
         exponent += 16382
         mantissa = fmant * (2 ** 64)
 
-    bitstream.build("1u 15u 64U", (signed, exponent, mantissa))
+    bitstream.build("1u 15u 64U", (signed, exponent, int(mantissa)))
 
 
 def pad_data(pcm_frames, channels, bits_per_sample):

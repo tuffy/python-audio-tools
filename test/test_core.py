@@ -3040,10 +3040,10 @@ class Bitstream(unittest.TestCase):
         writer.write(32, 4294967295)
         writer.write(32, 2147483648)
         writer.write(32, 2147483647)
-        writer.write64(64, 0)
-        writer.write64(64, 0xFFFFFFFFFFFFFFFFL)
-        writer.write64(64, 9223372036854775808L)
-        writer.write64(64, 9223372036854775807L)
+        writer.write(64, 0)
+        writer.write(64, 0xFFFFFFFFFFFFFFFFL)
+        writer.write(64, 9223372036854775808L)
+        writer.write(64, 9223372036854775807L)
         validate_writer(writer, temp)
 
         #try the signed 32 and 64 bit values
@@ -3052,10 +3052,10 @@ class Bitstream(unittest.TestCase):
         writer.write_signed(32, -1)
         writer.write_signed(32, -2147483648)
         writer.write_signed(32, 2147483647)
-        writer.write_signed64(64, 0)
-        writer.write_signed64(64, -1)
-        writer.write_signed64(64, -9223372036854775808L)
-        writer.write_signed64(64, 9223372036854775807L)
+        writer.write_signed(64, 0)
+        writer.write_signed(64, -1)
+        writer.write_signed(64, -9223372036854775808L)
+        writer.write_signed(64, 9223372036854775807L)
         validate_writer(writer, temp)
 
         #try the unsigned values via build()
@@ -3068,7 +3068,7 @@ class Bitstream(unittest.TestCase):
         u_val64_2 = 0xFFFFFFFFFFFFFFFFL
         u_val64_3 = 9223372036854775808L
         u_val64_4 = 9223372036854775807L
-        writer.build("32u 32u 32u 32u 64U 64U 64U 64U",
+        writer.build("32u 32u 32u 32u 64u 64u 64u 64u",
                      [u_val_1, u_val_2, u_val_3, u_val_4,
                       u_val64_1, u_val64_2, u_val64_3, u_val64_4])
         validate_writer(writer, temp)
@@ -3083,7 +3083,7 @@ class Bitstream(unittest.TestCase):
         s_val64_2 = -1
         s_val64_3 = -9223372036854775808L
         s_val64_4 = 9223372036854775807L
-        writer.build("32s 32s 32s 32s 64S 64S 64S 64S",
+        writer.build("32s 32s 32s 32s 64s 64s 64s 64s",
                      [s_val_1, s_val_2, s_val_3, s_val_4,
                       s_val64_1, s_val64_2, s_val64_3, s_val64_4])
         validate_writer(writer, temp)
@@ -3197,8 +3197,6 @@ class Bitstream(unittest.TestCase):
 
         checks = [self.__writer_perform_write__,
                   self.__writer_perform_write_signed__,
-                  self.__writer_perform_write_64__,
-                  self.__writer_perform_write_signed_64__,
                   self.__writer_perform_write_unary_0__,
                   self.__writer_perform_write_unary_1__,
                   self.__writer_perform_write_huffman__]
@@ -3359,38 +3357,6 @@ class Bitstream(unittest.TestCase):
             writer.write_signed(19, -128545)
 
         self.assertRaises(ValueError, writer.write_signed, -1, 0)
-
-    def __writer_perform_write_64__(self, writer, endianness):
-        if (endianness == 0):
-            writer.write64(2, 2)
-            writer.write64(3, 6)
-            writer.write64(5, 7)
-            writer.write64(3, 5)
-            writer.write64(19, 342977)
-        else:
-            writer.write64(2, 1)
-            writer.write64(3, 4)
-            writer.write64(5, 13)
-            writer.write64(3, 3)
-            writer.write64(19, 395743)
-
-        self.assertRaises(ValueError, writer.write64, -1, 0)
-
-    def __writer_perform_write_signed_64__(self, writer, endianness):
-        if (endianness == 0):
-            writer.write_signed64(2, -2)
-            writer.write_signed64(3, -2)
-            writer.write_signed64(5, 7)
-            writer.write_signed64(3, -3)
-            writer.write_signed64(19, -181311)
-        else:
-            writer.write_signed64(2, 1)
-            writer.write_signed64(3, -4)
-            writer.write_signed64(5, 13)
-            writer.write_signed64(3, 3)
-            writer.write_signed64(19, -128545)
-
-        self.assertRaises(ValueError, writer.write_signed64, -1, 0)
 
     def __writer_perform_write_unary_0__(self, writer, endianness):
         if (endianness == 0):
@@ -3819,18 +3785,6 @@ class Bitstream(unittest.TestCase):
 
             f = open(temp.name, "wb")
             bitstream = BitstreamWriter(f, 0)
-            bitstream.write64(2, 2)
-            bitstream.write64(3, 6)
-            bitstream.write64(5, 7)
-            bitstream.write64(3, 5)
-            bitstream.write64(19, 342977)
-            f.close()
-            del(bitstream)
-            self.assertEqual(map(ord, open(temp.name, "rb").read()),
-                             [0xB1, 0xED, 0x3B, 0xC1])
-
-            f = open(temp.name, "wb")
-            bitstream = BitstreamWriter(f, 0)
             bitstream.write_signed(2, -2)
             bitstream.write_signed(3, -2)
             bitstream.write_signed(5, 7)
@@ -3897,18 +3851,6 @@ class Bitstream(unittest.TestCase):
             bitstream.write(5, 13)
             bitstream.write(3, 3)
             bitstream.write(19, 395743)
-            f.close()
-            del(bitstream)
-            self.assertEqual(map(ord, open(temp.name, "rb").read()),
-                             [0xB1, 0xED, 0x3B, 0xC1])
-
-            f = open(temp.name, "wb")
-            bitstream = BitstreamWriter(f, 1)
-            bitstream.write64(2, 1)
-            bitstream.write64(3, 4)
-            bitstream.write64(5, 13)
-            bitstream.write64(3, 3)
-            bitstream.write64(19, 395743)
             f.close()
             del(bitstream)
             self.assertEqual(map(ord, open(temp.name, "rb").read()),
@@ -4061,8 +4003,6 @@ class Bitstream(unittest.TestCase):
             self.assertRaises(IOError, writer.write, 1, 1)
             self.assertRaises(IOError, writer.write_signed, 2, 1)
             self.assertRaises(IOError, writer.unary, 1, 1)
-            self.assertRaises(IOError, writer.write64, 1, 1)
-            self.assertRaises(IOError, writer.write_signed64, 2, 1)
             self.assertRaises(IOError, writer.write_bytes, "foo")
             self.assertRaises(IOError, writer.build, "1u2u3u", [0, 1, 2])
 

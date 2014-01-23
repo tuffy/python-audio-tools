@@ -373,24 +373,36 @@ bitstream_format_byte_size(PyObject *dummy, PyObject *args)
     return Py_BuildValue("I", bs_format_byte_size(format_string));
 }
 
+typedef int (*write_object_f)(BitstreamWriter *bw,
+                              unsigned bits,
+                              PyObject *value);
+
 typedef struct {
     PyObject_HEAD
 
     PyObject* file_obj;
     BitstreamWriter* bitstream;
+    write_object_f write_unsigned;
+    write_object_f write_signed;
 } bitstream_BitstreamWriter;
+
+int
+bwpy_write_unsigned_be(BitstreamWriter *bw, unsigned bits, PyObject *value);
+
+int
+bwpy_write_unsigned_le(BitstreamWriter *bw, unsigned bits, PyObject *value);
+
+int
+bwpy_write_signed_be(BitstreamWriter *bw, unsigned bits, PyObject *value);
+
+int
+bwpy_write_signed_le(BitstreamWriter *bw, unsigned bits, PyObject *value);
 
 static PyObject*
 BitstreamWriter_write(bitstream_BitstreamWriter *self, PyObject *args);
 
 static PyObject*
 BitstreamWriter_write_signed(bitstream_BitstreamWriter *self, PyObject *args);
-
-static PyObject*
-BitstreamWriter_write64(bitstream_BitstreamWriter *self, PyObject *args);
-
-static PyObject*
-BitstreamWriter_write_signed64(bitstream_BitstreamWriter *self, PyObject *args);
 
 static PyObject*
 BitstreamWriter_unary(bitstream_BitstreamWriter *self, PyObject *args);
@@ -436,11 +448,9 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args);
 
 PyMethodDef BitstreamWriter_methods[] = {
     {"write", (PyCFunction)BitstreamWriter_write, METH_VARARGS,
-     "write(bits, unsigned int)\n"
-     "where bits <= 32"},
+     "write(bits, unsigned int)"},
     {"write_signed", (PyCFunction)BitstreamWriter_write_signed, METH_VARARGS,
-     "write_signed(bits, signed int)\n"
-     "where bits <= 32"},
+     "write_signed(bits, signed int)"},
     {"unary", (PyCFunction)BitstreamWriter_unary, METH_VARARGS,
      "unary(stop_bit, unsigned int)\n"
      "where \"stop_bit\" must be 0 or 1\n"
@@ -460,13 +470,6 @@ PyMethodDef BitstreamWriter_methods[] = {
     {"close", (PyCFunction)BitstreamWriter_close, METH_NOARGS,
      "close()\n"
      "closes the stream and any underlying file object"},
-    {"write64", (PyCFunction)BitstreamWriter_write64, METH_VARARGS,
-     "write64(bits, unsigned long)\n"
-     "where bits may be greater than 32"},
-    {"write_signed64", (PyCFunction)BitstreamWriter_write_signed64,
-     METH_VARARGS,
-     "write_signed64(bits, signed long)\n"
-     "where bits may be greater than 32"},
     {"set_endianness", (PyCFunction)BitstreamWriter_set_endianness,
      METH_VARARGS,
      "set_endianness(endianness)\n"
@@ -478,15 +481,13 @@ PyMethodDef BitstreamWriter_methods[] = {
      "where \"format_string\" maps to the calls:\n"
      "\"#u\" -> write(#, unsigned int value)\n"
      "\"#s\" -> write_signed(#, signed int value)\n"
-     "\"#U\" -> write64(#, unsigned long value)\n"
-     "\"#S\" -> write_signed64(#, signed long value)\n"
      "\"#p\" -> write(#, 0)\n"
      "\"#P\" -> write(# * 8, 0)\n"
      "\"#b\" -> write_bytes(#, string value)\n"
      "\"a\"  -> byte_align()\n\n"
      "for instance:\n"
-     "w.build(\"3u 4s 36U\", [1, -2, 3L])\n   ==\n"
-     "w.write(3, 1); w.write_signed(4, -2); w.write64(36, 3L)"},
+     "w.build(\"3u 4s 36u\", [1, -2, 3L])\n   ==\n"
+     "w.write(3, 1); w.write_signed(4, -2); w.write(36, 3L)"},
     {"add_callback", (PyCFunction)BitstreamWriter_add_callback, METH_VARARGS,
      "add_callback(function)\n"
      "where \"function\" takes a single byte as an argument\n"
@@ -555,6 +556,8 @@ typedef struct {
     PyObject_HEAD
 
     BitstreamWriter* bitstream;
+    write_object_f write_unsigned;
+    write_object_f write_signed;
 } bitstream_BitstreamRecorder;
 
 static PyObject*
@@ -564,14 +567,6 @@ BitstreamRecorder_write(bitstream_BitstreamRecorder *self,
 static PyObject*
 BitstreamRecorder_write_signed(bitstream_BitstreamRecorder *self,
                                PyObject *args);
-
-static PyObject*
-BitstreamRecorder_write64(bitstream_BitstreamRecorder *self,
-                          PyObject *args);
-
-static PyObject*
-BitstreamRecorder_write_signed64(bitstream_BitstreamRecorder *self,
-                                 PyObject *args);
 
 static PyObject*
 BitstreamRecorder_unary(bitstream_BitstreamRecorder *self,
@@ -656,11 +651,9 @@ BitstreamRecorder_init(bitstream_BitstreamRecorder *self,
 
 PyMethodDef BitstreamRecorder_methods[] = {
     {"write", (PyCFunction)BitstreamRecorder_write, METH_VARARGS,
-     "write(bits, unsigned int)\n"
-     "where bits <= 32"},
+     "write(bits, unsigned int)"},
     {"write_signed", (PyCFunction)BitstreamRecorder_write_signed, METH_VARARGS,
-     "write_signed(bits, signed int)\n"
-     "where bits <= 32"},
+     "write_signed(bits, signed int)"},
     {"unary", (PyCFunction)BitstreamRecorder_unary, METH_VARARGS,
      "unary(stop_bit, unsigned int)\n"
      "where \"stop_bit\" must be 0 or 1\n"
@@ -679,13 +672,6 @@ PyMethodDef BitstreamRecorder_methods[] = {
      "flushes pending data to any underlying file object"},
     {"close", (PyCFunction)BitstreamRecorder_close, METH_NOARGS,
     "close()\n"},
-    {"write64", (PyCFunction)BitstreamRecorder_write64, METH_VARARGS,
-     "write64(bits, unsigned long)\n"
-     "where bits may be greater than 32"},
-    {"write_signed64", (PyCFunction)BitstreamRecorder_write_signed64,
-     METH_VARARGS,
-     "write_signed64(bits, signed long)\n"
-     "where bits may be greater than 32"},
     {"set_endianness", (PyCFunction)BitstreamRecorder_set_endianness,
      METH_VARARGS,
      "set_endianness(endianness)\n"
@@ -720,15 +706,13 @@ PyMethodDef BitstreamRecorder_methods[] = {
      "where \"format_string\" maps to the calls:\n"
      "\"#u\" -> write(#, unsigned int value)\n"
      "\"#s\" -> write_signed(#, signed int value)\n"
-     "\"#U\" -> write64(#, unsigned long value)\n"
-     "\"#S\" -> write_signed64(#, signed long value)\n"
      "\"#p\" -> write(#, 0)\n"
      "\"#P\" -> write(# * 8, 0)\n"
      "\"#b\" -> write_bytes(#, string value)\n"
      "\"a\"  -> byte_align()\n\n"
      "for instance:\n"
-     "r.build(\"3u 4s 36U\", [1, -2, 3L])\n   ==\n"
-     "r.write(3, 1); r.write_signed(4, -2); r.write64(36, 3L)"},
+     "r.build(\"3u 4s 36u\", [1, -2, 3L])\n   ==\n"
+     "r.write(3, 1); r.write_signed(4, -2); r.write(36, 3L)"},
     {"swap", (PyCFunction)BitstreamRecorder_swap, METH_VARARGS,
      "swap(recorder)\n"
      "swaps our written data with that of another BitstreamRecorder"},
@@ -806,12 +790,17 @@ bitstream_parse(BitstreamReader* stream, const char* format, PyObject* values);
   returns 0 on success, 1 on failure (with PyErr set)*/
 int
 bitstream_build(BitstreamWriter* stream,
-                const char* format, PyObject* iterator);
+                write_object_f write_unsigned,
+                write_object_f write_signed,
+                const char* format,
+                PyObject* iterator);
 
 typedef struct {
     PyObject_HEAD
 
     BitstreamWriter* bitstream;
+    write_object_f write_unsigned;
+    write_object_f write_signed;
 } bitstream_BitstreamAccumulator;
 
 static PyObject*
@@ -821,14 +810,6 @@ BitstreamAccumulator_write(bitstream_BitstreamAccumulator *self,
 static PyObject*
 BitstreamAccumulator_write_signed(bitstream_BitstreamAccumulator *self,
                                   PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_write64(bitstream_BitstreamAccumulator *self,
-                             PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_write_signed64(bitstream_BitstreamAccumulator *self,
-                                    PyObject *args);
 
 static PyObject*
 BitstreamAccumulator_unary(bitstream_BitstreamAccumulator *self,
@@ -879,12 +860,10 @@ BitstreamAccumulator_reset(bitstream_BitstreamAccumulator *self,
 
 PyMethodDef BitstreamAccumulator_methods[] = {
     {"write", (PyCFunction)BitstreamAccumulator_write, METH_VARARGS,
-     "write(bits, unsigned int)\n"
-     "where bits <= 32"},
+     "write(bits, unsigned int)"},
     {"write_signed", (PyCFunction)BitstreamAccumulator_write_signed,
      METH_VARARGS,
-    "write_signed(bits, signed int)\n"
-     "where bits <= 32"},
+    "write_signed(bits, signed int)"},
     {"unary", (PyCFunction)BitstreamAccumulator_unary, METH_VARARGS,
      "unary(stop_bit, unsigned int)\n"
      "where \"stop_bit\" must be 0 or 1\n"
@@ -904,13 +883,6 @@ PyMethodDef BitstreamAccumulator_methods[] = {
     {"close", (PyCFunction)BitstreamAccumulator_close, METH_NOARGS,
      "close()\n"
      "closes the stream and any underlying file object"},
-    {"write64", (PyCFunction)BitstreamAccumulator_write64, METH_VARARGS,
-     "write64(bits, unsigned long)\n"
-     "where bits may be greater than 32"},
-    {"write_signed64", (PyCFunction)BitstreamAccumulator_write_signed64,
-     METH_VARARGS,
-     "write_signed64(bits, signed long)\n"
-     "where bits may be greater than 32"},
     {"set_endianness", (PyCFunction)BitstreamAccumulator_set_endianness,
      METH_VARARGS,
      "set_endianness(endianness)\n"
@@ -922,15 +894,13 @@ PyMethodDef BitstreamAccumulator_methods[] = {
      "where \"format_string\" maps to the calls:\n"
      "\"#u\" -> write(#, unsigned int value)\n"
      "\"#s\" -> write_signed(#, signed int value)\n"
-     "\"#U\" -> write64(#, unsigned long value)\n"
-     "\"#S\" -> write_signed64(#, signed long value)\n"
      "\"#p\" -> write(#, 0)\n"
      "\"#P\" -> write(# * 8, 0)\n"
      "\"#b\" -> write_bytes(#, string value)\n"
      "\"a\"  -> byte_align()\n\n"
      "for instance:\n"
-     "a.build(\"3u 4s 36U\", [1, -2, 3L])\n   ==\n"
-     "a.write(3, 1); a.write_signed(4, -2); a.write64(36, 3L)"},
+     "a.build(\"3u 4s 36\", [1, -2, 3L])\n   ==\n"
+     "a.write(3, 1); a.write_signed(4, -2); a.write(36, 3L)"},
     {"bits", (PyCFunction)BitstreamAccumulator_bits, METH_NOARGS,
      "bits() -> unsigned int\n"
      "returns the total number of bits written thus far"},
@@ -999,4 +969,3 @@ br_close_internal_stream_python_file(BitstreamReader* bs);
 
 void
 bw_close_internal_stream_python_file(BitstreamWriter* bs);
-
