@@ -74,8 +74,7 @@ initbitstream(void)
 static PyObject*
 brpy_read_unsigned_be(BitstreamReader *br, unsigned bits)
 {
-    /*FIXME - set this to some sensible value*/
-    const unsigned buffer_size = 16;
+    const unsigned buffer_size = sizeof(unsigned) * 8;
     PyObject *accumulator = PyInt_FromLong(0);
 
     while (bits > 0) {
@@ -103,7 +102,7 @@ brpy_read_unsigned_be(BitstreamReader *br, unsigned bits)
         if (shifted == NULL) {
             return NULL;
         } else {
-            PyObject *result_obj = PyInt_FromLong(result);
+            PyObject *result_obj = Py_BuildValue("I", result);
             PyObject *prepended = PyNumber_Or(shifted, result_obj);
             Py_DECREF(result_obj);
             Py_DECREF(shifted);
@@ -124,8 +123,7 @@ brpy_read_unsigned_be(BitstreamReader *br, unsigned bits)
 static PyObject*
 brpy_read_unsigned_le(BitstreamReader *br, unsigned bits)
 {
-    /*FIXME - set this to some sensible value*/
-    const unsigned buffer_size = 16;
+    const unsigned buffer_size = sizeof(unsigned) * 8;
     PyObject *accumulator = PyInt_FromLong(0);
     PyObject *shift = PyInt_FromLong(0);
 
@@ -150,7 +148,7 @@ brpy_read_unsigned_le(BitstreamReader *br, unsigned bits)
         }
 
         /*append bits to accumulator*/
-        result_obj = PyInt_FromLong(result);
+        result_obj = Py_BuildValue("I", result);
         shifted = PyNumber_Lshift(result_obj, shift);
         Py_DECREF(result_obj);
         if (shifted == NULL) {
@@ -1228,8 +1226,8 @@ bwpy_signed_mask(unsigned bits_to_write)
 int
 bwpy_write_unsigned_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
 {
-    /*FIXME - make this a sensible value*/
-    const unsigned buffer_size = 16;
+    const unsigned buffer_size = MIN((sizeof(long) * 8) - 1,
+                                     sizeof(unsigned) * 8);
 
     /*chop off up to "buffer_size" bits to write at a time*/
     while (bits > 0) {
@@ -1292,8 +1290,8 @@ bwpy_write_unsigned_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
 int
 bwpy_write_unsigned_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
 {
-    /*FIXME - make this a sensible value*/
-    const unsigned buffer_size = 16;
+    const unsigned buffer_size = MIN((sizeof(long) * 8) - 1,
+                                     sizeof(unsigned) * 8);
     Py_INCREF(value);
 
     while (bits > 0) {
