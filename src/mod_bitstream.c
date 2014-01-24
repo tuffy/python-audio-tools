@@ -1251,24 +1251,20 @@ bwpy_write_unsigned_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
         /*mask out the unneeded right bits*/
         if ((mask = bwpy_unsigned_mask(bits_to_write)) == NULL)
             return 1;
-        if ((masked = PyNumber_And(shifted, mask)) != NULL) {
-            Py_DECREF(mask);
-            Py_DECREF(shifted);
-        } else {
-            Py_DECREF(mask);
-            Py_DECREF(shifted);
+        masked = PyNumber_And(shifted, mask);
+        Py_DECREF(mask);
+        Py_DECREF(shifted);
+        if (masked == NULL) {
             return 1;
         }
 
         /*convert result from Python object to integer*/
-        if (((masked_value = PyInt_AsLong(masked)) == -1) &&
-            PyErr_Occurred()) {
-            Py_DECREF(masked);
+        masked_value = PyInt_AsLong(masked);
+        Py_DECREF(masked);
+        if ((masked_value == -1) && PyErr_Occurred()) {
             return 1;
-        } else {
-            Py_DECREF(masked);
-            buffer = (unsigned)masked_value;
         }
+        buffer = (unsigned)masked_value;
 
         /*write the value itself*/
         if (!setjmp(*bw_try(bw))) {
@@ -1307,24 +1303,21 @@ bwpy_write_unsigned_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
         if ((mask = bwpy_unsigned_mask(bits_to_write)) == NULL) {
             return 1;
         }
-        if ((masked = PyNumber_And(value, mask)) != NULL) {
-            Py_DECREF(mask);
-        } else {
-            Py_DECREF(mask);
+        masked = PyNumber_And(value, mask);
+        Py_DECREF(mask);
+        if (masked == NULL) {
             Py_DECREF(value);
             return 1;
         }
 
         /*converted result from Python object to integer*/
-        if (((masked_value = PyInt_AsLong(masked)) == -1) &&
-                PyErr_Occurred()) {
-            Py_DECREF(masked);
+        masked_value = PyInt_AsLong(masked);
+        Py_DECREF(masked);
+        if ((masked_value == -1) && PyErr_Occurred()) {
             Py_DECREF(value);
             return 1;
-        } else {
-            Py_DECREF(masked);
-            buffer = (unsigned)masked_value;
         }
+        buffer = (unsigned)masked_value;
 
         /*write the value itself*/
         if (!setjmp(*bw_try(bw))) {
@@ -1338,13 +1331,12 @@ bwpy_write_unsigned_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
 
         /*shift out the written bits*/
         shift = PyInt_FromLong(bits_to_write);
-        if ((shifted = PyNumber_Rshift(value, shift)) != NULL) {
-            Py_DECREF(shift);
-            Py_DECREF(value);
+        shifted = PyNumber_Rshift(value, shift);
+        Py_DECREF(shift);
+        Py_DECREF(value);
+        if (shifted != NULL) {
             value = shifted;
         } else {
-            Py_DECREF(shift);
-            Py_DECREF(value);
             return 1;
         }
 
