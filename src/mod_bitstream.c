@@ -72,34 +72,228 @@ initbitstream(void)
 }
 
 static PyObject*
-BitstreamReader_read(bitstream_BitstreamReader *self, PyObject *args)
+brpy_read_unsigned_be(BitstreamReader *br, unsigned bits)
 {
-    int count;
-    unsigned int result;
+    /*FIXME - set this to some sensible value*/
+    const unsigned buffer_size = 16;
+    PyObject *accumulator = PyInt_FromLong(0);
 
-    if (!PyArg_ParseTuple(args, "i", &count)) {
-        return NULL;
-    } else if (count < 0) {
-        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+    while (bits > 0) {
+        const unsigned bits_to_read = bits > buffer_size ? buffer_size : bits;
+        unsigned result;
+        PyObject *shift;
+        PyObject *shifted;
+
+        /*perform actual reading from stream*/
+        if (!setjmp(*br_try(br))) {
+            result = br->read(br, bits_to_read);
+            br_etry(br);
+        } else {
+            br_etry(br);
+            Py_DECREF(accumulator);
+            PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+            return NULL;
+        }
+
+        /*prepend bits to accumulator*/
+        shift = PyInt_FromLong(bits_to_read);
+        shifted = PyNumber_Lshift(accumulator, shift);
+        Py_DECREF(shift);
+        Py_DECREF(accumulator);
+        if (shifted == NULL) {
+            return NULL;
+        } else {
+            PyObject *result_obj = PyInt_FromLong(result);
+            PyObject *prepended = PyNumber_Or(shifted, result_obj);
+            Py_DECREF(result_obj);
+            Py_DECREF(shifted);
+            if (prepended == NULL) {
+                return NULL;
+            } else {
+                accumulator = prepended;
+            }
+        }
+
+        /*deduct count from remaining bits*/
+        bits -= bits_to_read;
+    }
+
+    return accumulator;
+}
+
+static PyObject*
+brpy_read_unsigned_le(BitstreamReader *br, unsigned bits)
+{
+    /*FIXME - set this to some sensible value*/
+    const unsigned buffer_size = 16;
+    PyObject *accumulator = PyInt_FromLong(0);
+    PyObject *shift = PyInt_FromLong(0);
+
+    while (bits > 0) {
+        const unsigned bits_to_read = bits > buffer_size ? buffer_size : bits;
+        unsigned result;
+        PyObject *bits_to_read_obj;
+        PyObject *next_shift;
+        PyObject *result_obj;
+        PyObject *shifted;
+
+        /*perform actual reading from stream*/
+        if (!setjmp(*br_try(br))) {
+            result = br->read(br, bits_to_read);
+            br_etry(br);
+        } else {
+            br_etry(br);
+            Py_DECREF(accumulator);
+            Py_DECREF(shift);
+            PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+            return NULL;
+        }
+
+        /*append bits to accumulator*/
+        result_obj = PyInt_FromLong(result);
+        shifted = PyNumber_Lshift(result_obj, shift);
+        Py_DECREF(result_obj);
+        if (shifted == NULL) {
+            Py_DECREF(accumulator);
+            Py_DECREF(shift);
+            return NULL;
+        } else {
+            PyObject *appended = PyNumber_Or(shifted, accumulator);
+            Py_DECREF(shifted);
+            Py_DECREF(accumulator);
+            if (appended == NULL) {
+                Py_DECREF(shift);
+                return NULL;
+            } else {
+                accumulator = appended;
+            }
+        }
+
+        /*increment shift for next read*/
+        bits_to_read_obj = PyInt_FromLong(bits_to_read);
+        next_shift = PyNumber_Add(shift, bits_to_read_obj);
+        Py_DECREF(bits_to_read_obj);
+        Py_DECREF(shift);
+        if (next_shift == NULL) {
+            Py_DECREF(accumulator);
+            return NULL;
+        } else {
+            shift = next_shift;
+        }
+
+        /*deduct count from remaining bits*/
+        bits -= bits_to_read;
+    }
+
+    Py_DECREF(shift);
+    return accumulator;
+}
+
+static PyObject*
+brpy_read_signed_be(BitstreamReader *br, unsigned bits)
+{
+    unsigned sign_bit;
+    PyObject* unsigned_value;
+
+    /*read sign bit*/
+    if (!setjmp(*br_try(br))) {
+        sign_bit = br->read(br, 1);
+        br_etry(br);
+    } else {
+        br_etry(br);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
     }
 
-    if (!setjmp(*br_try(self->bitstream))) {
-        result = self->bitstream->read(self->bitstream, (unsigned)count);
-        br_etry(self->bitstream);
-        return Py_BuildValue("I", result);
-    } else {
-        br_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+    /*read unsigned value*/
+    if ((unsigned_value = brpy_read_unsigned_be(br, bits - 1)) == NULL) {
+        /*pass exception to caller*/
         return NULL;
+    }
+
+    if (sign_bit == 0) {
+        /*if unsigned, return unsigned as-is*/
+        return unsigned_value;
+    } else {
+        /*otherwise, convert unsigned value to signed via:
+          signed = unsigned - (1 << (bits - 1))
+        */
+        PyObject *one;
+        PyObject *shift;
+        PyObject *shifted;
+        PyObject *signed_value;
+
+        one = PyInt_FromLong(1);
+        shift = PyInt_FromLong(bits - 1);
+        shifted = PyNumber_Lshift(one, shift);
+        Py_DECREF(one);
+        Py_DECREF(shift);
+        if (shifted == NULL) {
+            Py_DECREF(unsigned_value);
+            return NULL;
+        }
+        signed_value = PyNumber_Subtract(unsigned_value, shifted);
+        Py_DECREF(unsigned_value);
+        Py_DECREF(shifted);
+        return signed_value; /*may be NULL if subtraction failed somehow*/
     }
 }
 
 static PyObject*
-BitstreamReader_read64(bitstream_BitstreamReader *self, PyObject *args)
+brpy_read_signed_le(BitstreamReader *br, unsigned bits)
+{
+    PyObject* unsigned_value;
+    unsigned sign_bit;
+
+    /*read unsigned value*/
+    if ((unsigned_value = brpy_read_unsigned_le(br, bits - 1)) == NULL) {
+        /*pass exception to caller*/
+        return NULL;
+    }
+
+    /*read sign bit*/
+    if (!setjmp(*br_try(br))) {
+        sign_bit = br->read(br, 1);
+        br_etry(br);
+    } else {
+        br_etry(br);
+        Py_DECREF(unsigned_value);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return NULL;
+    }
+
+    if (sign_bit == 0) {
+        /*if unsigned, return unsigned as-is*/
+        return unsigned_value;
+    } else {
+        /*otherwise, convert unsigned value to signed via:
+          signed = unsigned - (1 << (bits - 1))
+        */
+        PyObject *one;
+        PyObject *shift;
+        PyObject *shifted;
+        PyObject *signed_value;
+
+        one = PyInt_FromLong(1);
+        shift = PyInt_FromLong(bits - 1);
+        shifted = PyNumber_Lshift(one, shift);
+        Py_DECREF(one);
+        Py_DECREF(shift);
+        if (shifted == NULL) {
+            Py_DECREF(unsigned_value);
+            return NULL;
+        }
+        signed_value = PyNumber_Subtract(unsigned_value, shifted);
+        Py_DECREF(unsigned_value);
+        Py_DECREF(shifted);
+        return signed_value; /*may be NULL if subtraction failed somehow*/
+    }
+}
+
+static PyObject*
+BitstreamReader_read(bitstream_BitstreamReader *self, PyObject *args)
 {
     int count;
-    uint64_t result;
 
     if (!PyArg_ParseTuple(args, "i", &count)) {
         return NULL;
@@ -108,15 +302,22 @@ BitstreamReader_read64(bitstream_BitstreamReader *self, PyObject *args)
         return NULL;
     }
 
-    if (!setjmp(*br_try(self->bitstream))) {
-        result = self->bitstream->read_64(self->bitstream, (unsigned)count);
-        br_etry(self->bitstream);
-        return Py_BuildValue("K", result);
-    } else {
-        br_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+    return self->read_unsigned(self->bitstream, (unsigned)count);
+}
+
+static PyObject*
+BitstreamReader_read_signed(bitstream_BitstreamReader *self, PyObject *args)
+{
+    int count;
+
+    if (!PyArg_ParseTuple(args, "i", &count)) {
+        return NULL;
+    } else if (count < 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
         return NULL;
     }
+
+    return self->read_signed(self->bitstream, (unsigned)count);
 }
 
 static PyObject*
@@ -193,56 +394,6 @@ BitstreamReader_unread(bitstream_BitstreamReader *self, PyObject *args)
 
     Py_INCREF(Py_None);
     return Py_None;
-}
-
-static PyObject*
-BitstreamReader_read_signed(bitstream_BitstreamReader *self, PyObject *args)
-{
-    int count;
-    int result;
-
-    if (!PyArg_ParseTuple(args, "i", &count)) {
-        return NULL;
-    } else if (count < 0) {
-        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
-        return NULL;
-    }
-
-    if (!setjmp(*br_try(self->bitstream))) {
-        result = self->bitstream->read_signed(self->bitstream,
-                                              (unsigned)count);
-        br_etry(self->bitstream);
-        return Py_BuildValue("i", result);
-    } else {
-        br_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
-        return NULL;
-    }
-}
-
-static PyObject*
-BitstreamReader_read_signed64(bitstream_BitstreamReader *self, PyObject *args)
-{
-    int count;
-    int64_t result;
-
-    if (!PyArg_ParseTuple(args, "i", &count)) {
-        return NULL;
-    } else if (count < 0) {
-        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
-        return NULL;
-    }
-
-    if (!setjmp(*br_try(self->bitstream))) {
-        result = self->bitstream->read_signed_64(self->bitstream,
-                                                 (unsigned)count);
-        br_etry(self->bitstream);
-        return Py_BuildValue("L", result);
-    } else {
-        br_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
-        return NULL;
-    }
 }
 
 
@@ -451,6 +602,14 @@ BitstreamReader_set_endianness(bitstream_BitstreamReader *self,
                                     self->little_endian ?
                                     BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
+    if (self->little_endian) {
+        self->read_unsigned = brpy_read_unsigned_le;
+        self->read_signed = brpy_read_signed_le;
+    } else {
+        self->read_unsigned = brpy_read_unsigned_be;
+        self->read_signed = brpy_read_signed_be;
+    }
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -576,6 +735,13 @@ BitstreamReader_substream_meth(bitstream_BitstreamReader *self, PyObject *args)
     obj->little_endian = self->little_endian;
     obj->bitstream = br_substream_new(obj->little_endian ?
                                       BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    if (self->little_endian) {
+        obj->read_unsigned = brpy_read_unsigned_le;
+        obj->read_signed = brpy_read_signed_le;
+    } else {
+        obj->read_unsigned = brpy_read_unsigned_be;
+        obj->read_signed = brpy_read_signed_be;
+    }
 
     if (!setjmp(*br_try(self->bitstream))) {
         self->bitstream->substream_append(self->bitstream,
@@ -679,7 +845,9 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
 
     self->file_obj = NULL;
 
-    if (!PyArg_ParseTuple(args, "Oi|i", &file_obj, &(self->little_endian),
+    if (!PyArg_ParseTuple(args, "Oi|i",
+                          &file_obj,
+                          &(self->little_endian),
                           &buffer_size)) {
         return -1;
     } else if (buffer_size <= 0) {
@@ -712,6 +880,14 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
             (ext_read_f)br_read_python,
             (ext_close_f)bs_close_python,
             (ext_free_f)bs_free_python_nodecref);
+    }
+
+    if (self->little_endian) {
+        self->read_unsigned = brpy_read_unsigned_le;
+        self->read_signed = brpy_read_signed_le;
+    } else {
+        self->read_unsigned = brpy_read_unsigned_be;
+        self->read_signed = brpy_read_signed_be;
     }
 
     return 0;

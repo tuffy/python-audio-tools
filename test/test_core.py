@@ -2039,13 +2039,6 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read(19), 0x53BC1)
 
         reader.rewind()
-        self.assertEqual(reader.read64(2), 0x2)
-        self.assertEqual(reader.read64(3), 0x6)
-        self.assertEqual(reader.read64(5), 0x07)
-        self.assertEqual(reader.read64(3), 0x5)
-        self.assertEqual(reader.read64(19), 0x53BC1)
-
-        reader.rewind()
         self.assertEqual(reader.read(2), 0x2)
         reader.skip(3)
         self.assertEqual(reader.read(5), 0x07)
@@ -2073,13 +2066,6 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read_signed(5), 7)
         self.assertEqual(reader.read_signed(3), -3)
         self.assertEqual(reader.read_signed(19), -181311)
-
-        reader.rewind()
-        self.assertEqual(reader.read_signed64(2), -2)
-        self.assertEqual(reader.read_signed64(3), -2)
-        self.assertEqual(reader.read_signed64(5), 7)
-        self.assertEqual(reader.read_signed64(3), -3)
-        self.assertEqual(reader.read_signed64(19), -181311)
 
         reader.rewind()
         self.assertEqual(reader.unary(0), 1)
@@ -2177,13 +2163,6 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read(19), 0x609DF)
 
         reader.rewind()
-        self.assertEqual(reader.read64(2), 1)
-        self.assertEqual(reader.read64(3), 4)
-        self.assertEqual(reader.read64(5), 13)
-        self.assertEqual(reader.read64(3), 3)
-        self.assertEqual(reader.read64(19), 395743)
-
-        reader.rewind()
         self.assertEqual(reader.read(2), 0x1)
         reader.skip(3)
         self.assertEqual(reader.read(5), 0x0D)
@@ -2211,13 +2190,6 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read_signed(5), 13)
         self.assertEqual(reader.read_signed(3), 3)
         self.assertEqual(reader.read_signed(19), -128545)
-
-        reader.rewind()
-        self.assertEqual(reader.read_signed64(2), 1)
-        self.assertEqual(reader.read_signed64(3), -4)
-        self.assertEqual(reader.read_signed64(5), 13)
-        self.assertEqual(reader.read_signed64(3), 3)
-        self.assertEqual(reader.read_signed64(19), -128545)
 
         reader.rewind()
         self.assertEqual(reader.unary(0), 1)
@@ -2319,11 +2291,7 @@ class Bitstream(unittest.TestCase):
 
         self.assertRaises(IOError, reader.read, 2)
         reader.rewind()
-        self.assertRaises(IOError, reader.read64, 2)
-        reader.rewind()
         self.assertRaises(IOError, reader.read_signed, 2)
-        reader.rewind()
-        self.assertRaises(IOError, reader.read_signed64, 2)
         reader.rewind()
         self.assertRaises(IOError, reader.skip, 2)
         reader.rewind()
@@ -2345,11 +2313,7 @@ class Bitstream(unittest.TestCase):
         reader.rewind()
         self.assertRaises(ValueError, reader.read, -1)
         reader.rewind()
-        self.assertRaises(ValueError, reader.read64, -1)
-        reader.rewind()
         self.assertRaises(ValueError, reader.read_signed, -1)
-        reader.rewind()
-        self.assertRaises(ValueError, reader.read_signed64, -1)
         reader.rewind()
         self.assertRaises(ValueError, reader.skip, -1)
         reader.rewind()
@@ -2424,13 +2388,6 @@ class Bitstream(unittest.TestCase):
         counter.reset()
         for i in xrange(8):
             reader.read_signed(4)
-        self.assertEqual(int(counter), 4)
-        reader.rewind()
-
-        #read_64
-        counter.reset()
-        for i in xrange(8):
-            reader.read64(4)
         self.assertEqual(int(counter), 4)
         reader.rewind()
 
@@ -2913,10 +2870,10 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read(32), 4294967295)
         self.assertEqual(reader.read(32), 2147483648)
         self.assertEqual(reader.read(32), 2147483647)
-        self.assertEqual(reader.read64(64), 0)
-        self.assertEqual(reader.read64(64), 0xFFFFFFFFFFFFFFFFL)
-        self.assertEqual(reader.read64(64), 9223372036854775808L)
-        self.assertEqual(reader.read64(64), 9223372036854775807L)
+        self.assertEqual(reader.read(64), 0)
+        self.assertEqual(reader.read(64), 0xFFFFFFFFFFFFFFFFL)
+        self.assertEqual(reader.read(64), 9223372036854775808L)
+        self.assertEqual(reader.read(64), 9223372036854775807L)
 
         #try the signed 32 and 64 bit values
         reader.rewind()
@@ -2924,10 +2881,10 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read_signed(32), -1)
         self.assertEqual(reader.read_signed(32), -2147483648)
         self.assertEqual(reader.read_signed(32), 2147483647)
-        self.assertEqual(reader.read_signed64(64), 0)
-        self.assertEqual(reader.read_signed64(64), -1)
-        self.assertEqual(reader.read_signed64(64), -9223372036854775808L)
-        self.assertEqual(reader.read_signed64(64), 9223372036854775807L)
+        self.assertEqual(reader.read_signed(64), 0)
+        self.assertEqual(reader.read_signed(64), -1)
+        self.assertEqual(reader.read_signed(64), -9223372036854775808L)
+        self.assertEqual(reader.read_signed(64), 9223372036854775807L)
 
         #try the unsigned values via parse()
         reader.rewind()
@@ -2977,10 +2934,10 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read(32), 4294967295)
         self.assertEqual(reader.read(32), 2147483648)
         self.assertEqual(reader.read(32), 2147483647)
-        self.assertEqual(reader.read64(64), 0)
-        self.assertEqual(reader.read64(64), 0xFFFFFFFFFFFFFFFFL)
-        self.assertEqual(reader.read64(64), 9223372036854775808L)
-        self.assertEqual(reader.read64(64), 9223372036854775807L)
+        self.assertEqual(reader.read(64), 0)
+        self.assertEqual(reader.read(64), 0xFFFFFFFFFFFFFFFFL)
+        self.assertEqual(reader.read(64), 9223372036854775808L)
+        self.assertEqual(reader.read(64), 9223372036854775807L)
 
         #try the signed 32 and 64 bit values
         reader.rewind()
@@ -2988,10 +2945,10 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read_signed(32), -1)
         self.assertEqual(reader.read_signed(32), -2147483648)
         self.assertEqual(reader.read_signed(32), 2147483647)
-        self.assertEqual(reader.read_signed64(64), 0)
-        self.assertEqual(reader.read_signed64(64), -1)
-        self.assertEqual(reader.read_signed64(64), -9223372036854775808L)
-        self.assertEqual(reader.read_signed64(64), 9223372036854775807L)
+        self.assertEqual(reader.read_signed(64), 0)
+        self.assertEqual(reader.read_signed(64), -1)
+        self.assertEqual(reader.read_signed(64), -9223372036854775808L)
+        self.assertEqual(reader.read_signed(64), 9223372036854775807L)
 
         #try the unsigned values via parse()
         reader.rewind()
@@ -3666,13 +3623,6 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(19), 342977)
 
             bitstream = BitstreamReader(new_temp(), 0)
-            self.assertEqual(bitstream.read64(2), 2)
-            self.assertEqual(bitstream.read64(3), 6)
-            self.assertEqual(bitstream.read64(5), 7)
-            self.assertEqual(bitstream.read64(3), 5)
-            self.assertEqual(bitstream.read64(19), 342977)
-
-            bitstream = BitstreamReader(new_temp(), 0)
             self.assertEqual(bitstream.read_signed(2), -2)
             self.assertEqual(bitstream.read_signed(3), -2)
             self.assertEqual(bitstream.read_signed(5), 7)
@@ -3747,13 +3697,6 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(5), 13)
             self.assertEqual(bitstream.read(3), 3)
             self.assertEqual(bitstream.read(19), 395743)
-
-            bitstream = BitstreamReader(new_temp(), 1)
-            self.assertEqual(bitstream.read64(2), 1)
-            self.assertEqual(bitstream.read64(3), 4)
-            self.assertEqual(bitstream.read64(5), 13)
-            self.assertEqual(bitstream.read64(3), 3)
-            self.assertEqual(bitstream.read64(19), 395743)
 
             bitstream = BitstreamReader(new_temp(), 1)
             self.assertEqual(bitstream.read_signed(2), 1)
@@ -3993,11 +3936,9 @@ class Bitstream(unittest.TestCase):
 
         def test_reader(reader):
             self.assertRaises(IOError, reader.read, 1)
-            self.assertRaises(IOError, reader.read64, 2)
             self.assertRaises(IOError, reader.skip, 3)
             self.assertRaises(IOError, reader.skip_bytes, 1)
             self.assertRaises(IOError, reader.read_signed, 2)
-            self.assertRaises(IOError, reader.read_signed64, 3)
             self.assertRaises(IOError, reader.unary, 1)
             self.assertRaises(IOError, reader.limited_unary, 1, 2)
             self.assertRaises(IOError, reader.read_bytes, 1)

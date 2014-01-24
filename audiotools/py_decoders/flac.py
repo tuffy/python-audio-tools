@@ -54,7 +54,7 @@ class FlacDecoder:
                 self.channels = block_reader.read(3) + 1
                 self.channel_mask = channel_mask
                 self.bits_per_sample = block_reader.read(5) + 1
-                self.total_frames = block_reader.read64(36)
+                self.total_frames = block_reader.read(36)
                 self.md5sum = block_reader.read_bytes(16)
 
                 #these are frame header lookup tables

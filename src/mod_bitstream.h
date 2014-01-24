@@ -56,6 +56,9 @@ PyMethodDef module_methods[] = {
     {NULL}
 };
 
+typedef PyObject* (*read_object_f)(BitstreamReader *br,
+                                   unsigned bits);
+
 /*the BitstreamReader object
   a simple wrapper around our Bitstream reading struct*/
 
@@ -65,13 +68,24 @@ typedef struct {
     PyObject* file_obj;
     BitstreamReader* bitstream;
     int little_endian;
+    read_object_f read_unsigned;
+    read_object_f read_signed;
 } bitstream_BitstreamReader;
 
 static PyObject*
-BitstreamReader_read(bitstream_BitstreamReader *self, PyObject *args);
+brpy_read_unsigned_be(BitstreamReader *br, unsigned bits);
 
 static PyObject*
-BitstreamReader_read64(bitstream_BitstreamReader *self, PyObject *args);
+brpy_read_unsigned_le(BitstreamReader *br, unsigned bits);
+
+static PyObject*
+brpy_read_signed_be(BitstreamReader *br, unsigned bits);
+
+static PyObject*
+brpy_read_signed_le(BitstreamReader *br, unsigned bits);
+
+static PyObject*
+BitstreamReader_read(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
 BitstreamReader_byte_align(bitstream_BitstreamReader *self, PyObject *args);
@@ -87,9 +101,6 @@ BitstreamReader_unread(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
 BitstreamReader_read_signed(bitstream_BitstreamReader *self, PyObject *args);
-
-static PyObject*
-BitstreamReader_read_signed64(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
 BitstreamReader_unary(bitstream_BitstreamReader *self, PyObject *args);
@@ -147,11 +158,7 @@ BitstreamReader_init(bitstream_BitstreamReader *self, PyObject *args);
 
 PyMethodDef BitstreamReader_methods[] = {
     {"read", (PyCFunction)BitstreamReader_read, METH_VARARGS,
-     "read(bits) -> unsigned int\n"
-     "where bits <= 32"},
-    {"read64", (PyCFunction)BitstreamReader_read64, METH_VARARGS,
-     "read64(bits) -> unsigned long\n"
-     "where bits may be greater than 32"},
+     "read(bits) -> unsigned int"},
     {"skip", (PyCFunction)BitstreamReader_skip, METH_VARARGS,
      "skip(bits)\n"
      "skips over the given number of bits"},
@@ -165,11 +172,7 @@ PyMethodDef BitstreamReader_methods[] = {
      "unread(bit)\n"
      "pushes a single bit back into the stream"},
     {"read_signed", (PyCFunction)BitstreamReader_read_signed, METH_VARARGS,
-     "read_signed(bits) -> signed int\n"
-     "where bits <= 32"},
-    {"read_signed64", (PyCFunction)BitstreamReader_read_signed64, METH_VARARGS,
-     "read_signed64(bits) -> signed long\n"
-     "where bits may be greater than 32"},
+     "read_signed(bits) -> signed int"},
     {"unary", (PyCFunction)BitstreamReader_unary, METH_VARARGS,
      "unary(stop_bit) -> unsigned int\n"
      "counts the number of bits until the next stop bit"},
@@ -196,14 +199,12 @@ PyMethodDef BitstreamReader_methods[] = {
      "where \"format_string\" maps to the calls:\n"
      "\"#u\" -> read(#)\n"
      "\"#s\" -> read_signed(#)\n"
-     "\"#U\" -> read64(#)\n"
-     "\"#S\" -> read_signed64(#)\n"
      "\"#p\" -> skip(#)\n"
      "\"#P\" -> skip_bytes(#)\n"
      "\"#b\" -> read_bytes(#)\n"
      "\"a\"  -> byte_align()\n\n"
      "for instance:\n"
-     "r.parse(\"3u 4s 36U\") == [r.read(3), r.read_signed(4), r.read64(36)]"},
+     "r.parse(\"3u 4s 36u\") == [r.read(3), r.read_signed(4), r.read(36)]"},
     {"close", (PyCFunction)BitstreamReader_close, METH_NOARGS,
      "close()\n"
      "closes the stream and any underlying file object"},
