@@ -63,7 +63,7 @@ OpusDecoder_init(decoders_OpusDecoder *self,
 void
 OpusDecoders_dealloc(decoders_OpusDecoder *self)
 {
-    if (self->opus_file == NULL)
+    if (self->opus_file != NULL)
         op_free(self->opus_file);
 
     Py_XDECREF(self->audiotools_pcm);

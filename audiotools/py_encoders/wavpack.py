@@ -81,7 +81,7 @@ def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
                       pcmreader.bits_per_sample,
                       22,       # CB size
                       pcmreader.bits_per_sample,
-                      pcmreader.channel_mask,
+                      int(pcmreader.channel_mask),
                       '\x01\x00\x00\x00\x00\x00\x10\x00' +
                       '\x80\x00\x00\xaa\x00\x38\x9b\x71'  # sub format
                       )

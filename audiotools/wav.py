@@ -398,7 +398,7 @@ def wave_header(sample_rate,
                       bits_per_sample,
                       22,       # CB size
                       bits_per_sample,
-                      channel_mask,
+                      int(channel_mask),
                       '\x01\x00\x00\x00\x00\x00\x10\x00' +
                       '\x80\x00\x00\xaa\x00\x38\x9b\x71'  # sub format
                       )
@@ -681,7 +681,7 @@ class WaveAudio(WaveContainer):
                                  total_pcm_frames if total_pcm_frames
                                  is not None else 0)
         except ValueError, err:
-            return EncodingError(str(err))
+            raise EncodingError(str(err))
 
         try:
             f = file(filename, "wb")

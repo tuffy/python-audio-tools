@@ -2405,10 +2405,13 @@ class FlacAudio(WaveContainer, AiffContainer):
         valid_header_types = frozenset(range(0, 6 + 1))
         f = file(self.filename, "rb")
         try:
-            f.seek(-128, 2)
-            if (f.read(3) == "TAG"):
-                self.__stream_suffix__ = 128
-            else:
+            try:
+                f.seek(-128, 2)
+                if (f.read(3) == "TAG"):
+                    self.__stream_suffix__ = 128
+                else:
+                    self.__stream_suffix__ = 0
+            except IOError:
                 self.__stream_suffix__ = 0
 
             f.seek(0, 0)

@@ -171,27 +171,25 @@ class AudioFileTest(unittest.TestCase):
 
         valid = tempfile.NamedTemporaryFile(suffix=self.suffix)
         invalid = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
-            #generate a valid file and check audiotools.file_type
-            self.audio_class.from_pcm(valid.name, BLANK_PCM_Reader(1))
-            self.assertEqual(audiotools.file_type(open(valid.name, "rb")),
-                             self.audio_class)
+        #generate a valid file and check audiotools.file_type
+        self.audio_class.from_pcm(valid.name, BLANK_PCM_Reader(1))
+        self.assertEqual(audiotools.file_type(open(valid.name, "rb")),
+                         self.audio_class)
 
-            #several invalid files and ensure audiotools.file_type
-            #returns None
-            #(though it's *possible* os.urandom might generate a valid file
-            # by virtue of being random that's extremely unlikely in practice)
-            for i in xrange(256):
-                self.assertEqual(os.path.getsize(invalid.name), i)
-                self.assertEqual(
-                    audiotools.file_type(open(invalid.name, "rb")),
-                    None)
-                invalid.write(os.urandom(1))
-                invalid.flush()
+        #several invalid files and ensure audiotools.file_type
+        #returns None
+        #(though it's *possible* os.urandom might generate a valid file
+        # by virtue of being random that's extremely unlikely in practice)
+        for i in xrange(256):
+            self.assertEqual(os.path.getsize(invalid.name), i)
+            self.assertEqual(
+                audiotools.file_type(open(invalid.name, "rb")),
+                None)
+            invalid.write(os.urandom(1))
+            invalid.flush()
 
-        finally:
-            valid.close()
-            invalid.close()
+        valid.close()
+        invalid.close()
 
     @FORMAT_AUDIOFILE
     def test_bits_per_sample(self):
@@ -199,15 +197,13 @@ class AudioFileTest(unittest.TestCase):
             return
 
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
-            for bps in (8, 16, 24):
-                track = self.audio_class.from_pcm(temp.name, BLANK_PCM_Reader(
-                        1, bits_per_sample=bps))
-                self.assertEqual(track.bits_per_sample(), bps)
-                track2 = audiotools.open(temp.name)
-                self.assertEqual(track2.bits_per_sample(), bps)
-        finally:
-            temp.close()
+        for bps in (8, 16, 24):
+            track = self.audio_class.from_pcm(temp.name, BLANK_PCM_Reader(
+                    1, bits_per_sample=bps))
+            self.assertEqual(track.bits_per_sample(), bps)
+            track2 = audiotools.open(temp.name)
+            self.assertEqual(track2.bits_per_sample(), bps)
+        temp.close()
 
     @FORMAT_AUDIOFILE_PLACEHOLDER
     def test_channels(self):
@@ -314,44 +310,64 @@ class AudioFileTest(unittest.TestCase):
         self.assert_(False)
 
     @FORMAT_AUDIOFILE
+    def test_read_leaks(self):
+        #this checks to make sure PCMReader implementations
+        #aren't leaking file handles
+
+        if (self.audio_class is audiotools.AudioFile):
+            return
+        elif (self.audio_class.NAME == "m4a"):
+            #M4A implemented using external programs
+            #so no need to check those
+            return
+
+        #make small temporary file
+        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        track = self.audio_class.from_pcm(temp.name,
+                                          BLANK_PCM_Reader(10))
+
+        #open it a large number of times
+        for i in xrange(5000):
+            pcmreader = track.to_pcm()
+            del(pcmreader)
+
+        temp.close()
+
+    @FORMAT_AUDIOFILE
     def test_convert_progress(self):
         if (self.audio_class is audiotools.AudioFile):
             return
 
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
-            track = self.audio_class.from_pcm(temp.name,
-                                              BLANK_PCM_Reader(10))
-            if (track.lossless()):
-                self.assert_(audiotools.pcm_frame_cmp(
-                        track.to_pcm(),
-                        BLANK_PCM_Reader(10)) is None)
-            for audio_class in audiotools.AVAILABLE_TYPES:
-                outfile = tempfile.NamedTemporaryFile(
-                    suffix="." + audio_class.SUFFIX)
-                log = Log()
-                try:
-                    track2 = track.convert(outfile.name,
-                                           audio_class,
-                                           progress=log.update)
-                    self.assert_(len(log.results) > 0,
-                                 "no logging converting %s to %s" %
-                                 (self.audio_class.NAME,
-                                  audio_class.NAME))
-                    self.assert_(len(set([r[1] for r in log.results])) == 1)
-                    for x, y in zip(log.results[1:], log.results):
-                        self.assert_((x[0] - y[0]) >= 0)
+        track = self.audio_class.from_pcm(temp.name,
+                                          BLANK_PCM_Reader(10))
+        if (track.lossless()):
+            self.assert_(audiotools.pcm_frame_cmp(
+                    track.to_pcm(),
+                    BLANK_PCM_Reader(10)) is None)
+        for audio_class in audiotools.AVAILABLE_TYPES:
+            outfile = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            log = Log()
+            track2 = track.convert(outfile.name,
+                                   audio_class,
+                                   progress=log.update)
+            self.assert_(len(log.results) > 0,
+                         "no logging converting %s to %s" %
+                         (self.audio_class.NAME,
+                          audio_class.NAME))
+            self.assert_(len(set([r[1] for r in log.results])) == 1)
+            for x, y in zip(log.results[1:], log.results):
+                self.assert_((x[0] - y[0]) >= 0)
 
-                    if (track.lossless() and track2.lossless()):
-                        self.assert_(audiotools.pcm_frame_cmp(
-                                track.to_pcm(), track2.to_pcm()) is None,
-                                     "PCM mismatch converting %s to %s" % (
-                                self.audio_class.NAME,
-                                audio_class.NAME))
-                finally:
-                    outfile.close()
-        finally:
-            temp.close()
+            if (track.lossless() and track2.lossless()):
+                self.assert_(audiotools.pcm_frame_cmp(
+                        track.to_pcm(), track2.to_pcm()) is None,
+                             "PCM mismatch converting %s to %s" % (
+                        self.audio_class.NAME,
+                        audio_class.NAME))
+            outfile.close()
+        temp.close()
 
     @FORMAT_AUDIOFILE
     def test_track_name(self):
@@ -1395,57 +1411,55 @@ class LossyFileTest(AudioFileTest):
 
         #check various round-trip options
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
-            track = self.audio_class.from_pcm(
-                temp.name,
-                test_streams.Sine16_Stereo(220500, 44100,
-                                           8820.0, 0.70, 4410.0, 0.29, 1.0))
-            for audio_class in audiotools.AVAILABLE_TYPES:
-                temp2 = tempfile.NamedTemporaryFile(
-                    suffix="." + audio_class.SUFFIX)
-                try:
-                    track2 = track.convert(temp2.name, audio_class)
 
-                    counter = FrameCounter(2, 16, 44100)
-                    audiotools.transfer_framelist_data(track2.to_pcm(),
-                                                       counter.update)
-                    self.assertEqual(
-                        int(counter), 5,
-                        "mismatch encoding %s" % \
-                            (self.audio_class.NAME))
+        track = self.audio_class.from_pcm(
+            temp.name,
+            test_streams.Sine16_Stereo(220500, 44100,
+                                       8820.0, 0.70, 4410.0, 0.29, 1.0))
+        for audio_class in audiotools.AVAILABLE_TYPES:
+            temp2 = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            track2 = track.convert(temp2.name, audio_class)
 
-                    self.assertRaises(audiotools.EncodingError,
-                                      track.convert,
-                                      "/dev/null/foo.%s" % \
-                                          (audio_class.SUFFIX),
-                                      audio_class)
+            counter = FrameCounter(2, 16, 44100)
+            audiotools.transfer_framelist_data(track2.to_pcm(),
+                                               counter.update)
+            self.assertEqual(
+                int(counter), 5,
+                "mismatch encoding %s" % \
+                    (self.audio_class.NAME))
 
-                    for compression in audio_class.COMPRESSION_MODES:
-                        track2 = track.convert(temp2.name,
-                                               audio_class,
-                                               compression)
+            self.assertRaises(audiotools.EncodingError,
+                              track.convert,
+                              "/dev/null/foo.%s" % \
+                                  (audio_class.SUFFIX),
+                              audio_class)
 
-                        counter = FrameCounter(2, 16, 44100)
-                        audiotools.transfer_framelist_data(track2.to_pcm(),
-                                                           counter.update)
-                        self.assertEqual(
-                            int(counter), 5,
-                            "mismatch encoding %s at quality %s" % \
-                                (self.audio_class.NAME,
-                                 compression))
+            for compression in audio_class.COMPRESSION_MODES:
+                track2 = track.convert(temp2.name,
+                                       audio_class,
+                                       compression)
 
-                        #check some obvious failures
-                        self.assertRaises(audiotools.EncodingError,
-                                          track.convert,
-                                          "/dev/null/foo.%s" % \
-                                              (audio_class.SUFFIX),
-                                          audio_class,
-                                          compression)
+                counter = FrameCounter(2, 16, 44100)
+                audiotools.transfer_framelist_data(track2.to_pcm(),
+                                                   counter.update)
+                self.assertEqual(
+                    int(counter), 5,
+                    "mismatch encoding %s at quality %s" % \
+                        (self.audio_class.NAME,
+                         compression))
 
-                finally:
-                    temp2.close()
-        finally:
-            temp.close()
+                #check some obvious failures
+                self.assertRaises(audiotools.EncodingError,
+                                  track.convert,
+                                  "/dev/null/foo.%s" % \
+                                      (audio_class.SUFFIX),
+                                  audio_class,
+                                  compression)
+
+            temp2.close()
+
+        temp.close()
 
 
 class TestForeignWaveChunks:
