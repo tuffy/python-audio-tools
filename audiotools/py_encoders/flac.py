@@ -117,8 +117,10 @@ def encode_flac(filename,
                                max_residual_partition_order,
                                14 if pcmreader.bits_per_sample <= 16 else 30)
 
-    streaminfo = STREAMINFO(block_size, block_size,
-                            2 ** 32, 0,
+    streaminfo = STREAMINFO(block_size,
+                            block_size,
+                            (2 ** 24) - 1,
+                            0,
                             pcmreader.sample_rate,
                             pcmreader.channels,
                             pcmreader.bits_per_sample,
