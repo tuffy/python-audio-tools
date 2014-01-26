@@ -1217,13 +1217,135 @@ bwpy_signed_mask(unsigned bits_to_write)
 
     bits = PyInt_FromLong(bits_to_write - 1);
     one = PyInt_FromLong(1);
-    mask = PyNumber_Rshift(one, bits); /*may return NULL*/
+    mask = PyNumber_Lshift(one, bits); /*may return NULL*/
     Py_DECREF(bits);
     Py_DECREF(one);
     return mask;
 }
 
-int
+static PyObject*
+bwpy_min_unsigned(unsigned bits)
+{
+    return PyInt_FromLong(0);
+}
+
+static PyObject*
+bwpy_max_unsigned(unsigned bits)
+{
+    /*(2 ^ bits) - 1*/
+    PyObject *one;
+    PyObject *bits_obj;
+    PyObject *shifted;
+    PyObject *value;
+
+    one = PyInt_FromLong(1);
+    bits_obj = PyInt_FromLong(bits);
+    shifted = PyNumber_Lshift(one, bits_obj);
+    Py_DECREF(bits_obj);
+    if (shifted == NULL) {
+        Py_DECREF(one);
+        return NULL;
+    }
+    value = PyNumber_Subtract(shifted, one);
+    Py_DECREF(shifted);
+    Py_DECREF(one);
+    return value;
+}
+
+static PyObject*
+bwpy_min_signed(unsigned bits)
+{
+    /*-(2 ^ (bits - 1))*/
+    PyObject *one;
+    PyObject *bits_obj;
+    PyObject *shifted;
+    PyObject *value;
+
+    one = PyInt_FromLong(1);
+    bits_obj = PyInt_FromLong(bits - 1);
+    shifted = PyNumber_Lshift(one, bits_obj);
+    Py_DECREF(one);
+    Py_DECREF(bits_obj);
+    if (shifted == NULL)
+        return NULL;
+    value = PyNumber_Negative(shifted);
+    Py_DECREF(shifted);
+    return value;
+}
+
+static PyObject*
+bwpy_max_signed(unsigned bits)
+{
+    /*(2 ^ (bits - 1)) - 1*/
+    return bwpy_max_unsigned(bits - 1);
+}
+
+static int
+bwpy_in_range(PyObject *min_value, PyObject *value, PyObject *max_value)
+{
+    int cmp_min;
+    int cmp_max;
+
+    if (PyObject_Cmp(value, min_value, &cmp_min) == -1) {
+        PyErr_Print();
+        return 0;
+    }
+    if (PyObject_Cmp(value, max_value, &cmp_max) == -1) {
+        PyErr_Print();
+        return 0;
+    }
+
+    return (cmp_min >= 0) && (cmp_max <= 0);
+}
+
+#define FUNC_VALIDATE_RANGE(FUNC_NAME, MIN_FUNC, MAX_FUNC, TYPE_STR) \
+static int                                                           \
+FUNC_NAME(unsigned bits, PyObject *value) {                          \
+    PyObject *min_value;                                             \
+    PyObject *max_value;                                             \
+                                                                     \
+    if (!PyNumber_Check(value)) {                                    \
+        PyErr_SetString(PyExc_TypeError, "value is not a number");   \
+        return 1;                                                    \
+    }                                                                \
+                                                                     \
+    min_value = MIN_FUNC(bits);                                      \
+    max_value = MAX_FUNC(bits);                                      \
+                                                                     \
+    if (min_value == NULL) {                                         \
+        Py_XDECREF(max_value);                                       \
+        return 0;                                                    \
+    } else if (max_value == NULL) {                                  \
+        Py_DECREF(min_value);                                        \
+        return 0;                                                    \
+    }                                                                \
+                                                                     \
+    if (!bwpy_in_range(min_value, value, max_value)) {               \
+        PyErr_Format(PyExc_ValueError,                               \
+                     "value does not fit in %u " TYPE_STR " %s",     \
+                     bits,                                           \
+                     bits != 1 ? "bits" : "bit");                    \
+                                                                     \
+        Py_DECREF(min_value);                                        \
+        Py_DECREF(max_value);                                        \
+        return 0;                                                    \
+    } else {                                                         \
+        Py_DECREF(min_value);                                        \
+        Py_DECREF(max_value);                                        \
+        return 1;                                                    \
+    }                                                                \
+}
+FUNC_VALIDATE_RANGE(bw_validate_unsigned_range,
+                    bwpy_min_unsigned,
+                    bwpy_max_unsigned,
+                    "unsigned")
+FUNC_VALIDATE_RANGE(bw_validate_signed_range,
+                    bwpy_min_signed,
+                    bwpy_max_signed,
+                    "signed")
+
+
+static int
 bwpy_write_unsigned_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
 {
     const unsigned buffer_size = MIN((sizeof(long) * 8) - 1,
@@ -1283,7 +1405,7 @@ bwpy_write_unsigned_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
     return 0;
 }
 
-int
+static int
 bwpy_write_unsigned_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
 {
     const unsigned buffer_size = MIN((sizeof(long) * 8) - 1,
@@ -1349,7 +1471,7 @@ bwpy_write_unsigned_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
     return 0;
 }
 
-int
+static int
 bwpy_write_signed_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
 {
     PyObject *zero = PyInt_FromLong(0);
@@ -1395,7 +1517,7 @@ bwpy_write_signed_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
     }
 }
 
-int
+static int
 bwpy_write_signed_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
 {
     PyObject *zero = PyInt_FromLong(0);
@@ -1445,30 +1567,6 @@ bwpy_write_signed_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
     }
 }
 
-static int
-bwpy_verify_nonnegative_number(PyObject *value)
-{
-    if (!PyNumber_Check(value)) {
-        PyErr_SetString(PyExc_TypeError, "value must be a numeric object");
-        return 1;
-    } else {
-        PyObject *zero = PyInt_FromLong(0);
-        int cmp;
-        if (PyObject_Cmp(value, zero, &cmp) == -1) {
-            Py_DECREF(zero);
-            return 1;
-        } else {
-            Py_DECREF(zero);
-        }
-        if (cmp < 0) {
-            PyErr_SetString(PyExc_ValueError, "value must be >= 0");
-            return 1;
-        } else {
-            return 0;
-        }
-    }
-}
-
 void
 BitstreamWriter_dealloc(bitstream_BitstreamWriter *self)
 {
@@ -1505,11 +1603,9 @@ BitstreamWriter_write(bitstream_BitstreamWriter *self, PyObject *args)
         return NULL;
     }
 
-    /*ensure value is numeric and >= 0*/
-    if (bwpy_verify_nonnegative_number(value))
+    if (!bw_validate_unsigned_range((unsigned)count, value)) {
         return NULL;
-
-    if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
+    } else if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -1530,12 +1626,9 @@ BitstreamWriter_write_signed(bitstream_BitstreamWriter *self, PyObject *args)
         return NULL;
     }
 
-    if (!PyNumber_Check(value)) {
-        PyErr_SetString(PyExc_TypeError, "value must be a numeric object");
+    if (!bw_validate_signed_range((unsigned)count, value)) {
         return NULL;
-    }
-
-    if (self->write_signed(self->bitstream, (unsigned)count, value)) {
+    } else if (self->write_signed(self->bitstream, (unsigned)count, value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -1783,11 +1876,9 @@ BitstreamRecorder_write(bitstream_BitstreamRecorder *self,
         return NULL;
     }
 
-    /*ensure value is numeric and >= 0*/
-    if (bwpy_verify_nonnegative_number(value))
+    if (!bw_validate_unsigned_range((unsigned)count, value)) {
         return NULL;
-
-    if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
+    } else if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -1809,12 +1900,10 @@ BitstreamRecorder_write_signed(bitstream_BitstreamRecorder *self,
         return NULL;
     }
 
-    if (!PyNumber_Check(value)) {
-        PyErr_SetString(PyExc_TypeError, "value must be a numeric object");
-        return NULL;
-    }
 
-    if (self->write_signed(self->bitstream, (unsigned)count, value)) {
+    if (!bw_validate_signed_range((unsigned)count, value)) {
+        return NULL;
+    } else if (self->write_signed(self->bitstream, (unsigned)count, value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -2316,11 +2405,9 @@ BitstreamAccumulator_write(bitstream_BitstreamAccumulator *self,
         return NULL;
     }
 
-    /*ensure value is numeric and >= 0*/
-    if (bwpy_verify_nonnegative_number(value))
+    if (!bw_validate_unsigned_range((unsigned)count, value)) {
         return NULL;
-
-    if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
+    } else if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -2342,12 +2429,9 @@ BitstreamAccumulator_write_signed(bitstream_BitstreamAccumulator *self,
         return NULL;
     }
 
-    if (!PyNumber_Check(value)) {
-        PyErr_SetString(PyExc_TypeError, "value must be a numeric object");
+    if (!bw_validate_signed_range((unsigned)count, value)) {
         return NULL;
-    }
-
-    if (self->write_signed(self->bitstream, (unsigned)count, value)) {
+    } else if (self->write_signed(self->bitstream, (unsigned)count, value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -2780,13 +2864,13 @@ bitstream_build(BitstreamWriter* stream,
                 for (; times; times--) {
                     PyObject *py_value = PyIter_Next(iterator);
                     if (py_value != NULL) {
-                        /*ensure value is numeric and >= 0*/
+                        /*ensure value is numeric and in the right range*/
 
                         int result;
 
-                        if (bwpy_verify_nonnegative_number(py_value)) {
-                            bw_etry(stream);
+                        if (!bw_validate_unsigned_range(size, py_value)) {
                             Py_DECREF(py_value);
+                            bw_etry(stream);
                             return 1;
                         }
 
@@ -2811,11 +2895,9 @@ bitstream_build(BitstreamWriter* stream,
                     if (py_value != NULL) {
                         int result;
 
-                        if (!PyNumber_Check(py_value)) {
-                            PyErr_SetString(PyExc_TypeError,
-                                            "value must be a numeric object");
-                            bw_etry(stream);
+                        if (!bw_validate_signed_range(size, py_value)) {
                             Py_DECREF(py_value);
+                            bw_etry(stream);
                             return 1;
                         }
                         result = write_signed(stream, size, py_value);

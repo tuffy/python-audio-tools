@@ -387,16 +387,37 @@ typedef struct {
     write_object_f write_signed;
 } bitstream_BitstreamWriter;
 
-int
+static PyObject*
+bwpy_min_unsigned(unsigned bits);
+
+static PyObject*
+bwpy_max_unsigned(unsigned bits);
+
+static PyObject*
+bwpy_min_signed(unsigned bits);
+
+static PyObject*
+bwpy_max_signed(unsigned bits);
+
+static int
+bwpy_in_range(PyObject *min_value, PyObject *value, PyObject *max_value);
+
+static int
+bw_validate_unsigned_range(unsigned bits, PyObject *value);
+
+static int
+bw_validate_signed_range(unsigned bits, PyObject *value);
+
+static int
 bwpy_write_unsigned_be(BitstreamWriter *bw, unsigned bits, PyObject *value);
 
-int
+static int
 bwpy_write_unsigned_le(BitstreamWriter *bw, unsigned bits, PyObject *value);
 
-int
+static int
 bwpy_write_signed_be(BitstreamWriter *bw, unsigned bits, PyObject *value);
 
-int
+static int
 bwpy_write_signed_le(BitstreamWriter *bw, unsigned bits, PyObject *value);
 
 static PyObject*

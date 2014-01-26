@@ -3459,6 +3459,37 @@ class Bitstream(unittest.TestCase):
                                   writer.write,
                                   8, -1)
 
+                #write unsigneed value that's too large shouldn't work
+                self.assertRaises(ValueError,
+                                  writer.write,
+                                  8, 2 ** 8)
+
+                #nor should it work from the .build method
+                self.assertRaises(ValueError,
+                                  writer.build,
+                                  "8u", [-1])
+                self.assertRaises(ValueError,
+                                  writer.build,
+                                  "8u", [2 ** 8])
+
+                #writing negative value that's too small shouldn't work
+                self.assertRaises(ValueError,
+                                  writer.write_signed,
+                                  8, -(2 ** 8))
+
+                #writing signed value that's too large shouldn't work
+                self.assertRaises(ValueError,
+                                  writer.write_signed,
+                                  8, 2 ** 8)
+
+                #nor should it work from the .build method
+                self.assertRaises(ValueError,
+                                  writer.build,
+                                  "8s", [-(2 ** 8)])
+                self.assertRaises(ValueError,
+                                  writer.build,
+                                  "8s", [2 ** 8])
+
                 #writing some value that's not a number shouldn't work
                 self.assertRaises(TypeError,
                                   writer.write,
@@ -3467,11 +3498,6 @@ class Bitstream(unittest.TestCase):
                 self.assertRaises(TypeError,
                                   writer.write_signed,
                                   8, "foo")
-
-                #nor should it work from the .build method
-                self.assertRaises(ValueError,
-                                  writer.build,
-                                  "8u", [-1])
 
                 self.assertRaises(TypeError,
                                   writer.build,
