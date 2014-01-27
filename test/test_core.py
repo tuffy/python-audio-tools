@@ -2315,6 +2315,8 @@ class Bitstream(unittest.TestCase):
         reader.rewind()
         self.assertRaises(ValueError, reader.read_signed, -1)
         reader.rewind()
+        self.assertRaises(ValueError, reader.read_signed, 0)
+        reader.rewind()
         self.assertRaises(ValueError, reader.skip, -1)
         reader.rewind()
         self.assertRaises(ValueError, reader.read_bytes, -2)
@@ -3435,6 +3437,42 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(open(temp_file.name, "rb").read(), "\xB1\xED\x3B\xC1")
 
     @LIB_BITSTREAM
+    def test_read_errors(self):
+        from audiotools.bitstream import BitstreamReader
+
+        for little_endian in [False, True]:
+            for reader in [BitstreamReader(cStringIO.StringIO("a" * 10),
+                                           little_endian),
+                           BitstreamReader(cStringIO.StringIO("a" * 10),
+                                           little_endian).substream(5)]:
+                #reading negative number of bits shouldn't work
+                self.assertRaises(ValueError,
+                                  reader.read,
+                                  -1)
+
+                self.assertRaises(ValueError,
+                                  reader.read_signed,
+                                  -1)
+
+                #reading signed value in 0 bits shouldn't work
+                self.assertRaises(ValueError,
+                                  reader.read_signed,
+                                  0)
+
+                self.assertRaises(ValueError,
+                                  reader.parse,
+                                  "0s")
+
+                #reading unary with non 0/1 bit shouldn't work
+                self.assertRaises(ValueError,
+                                  reader.unary,
+                                  3)
+
+                self.assertRaises(ValueError,
+                                  reader.unary,
+                                  -1)
+
+    @LIB_BITSTREAM
     def test_write_errors(self):
         from audiotools.bitstream import BitstreamWriter
         from audiotools.bitstream import BitstreamRecorder
@@ -3453,6 +3491,15 @@ class Bitstream(unittest.TestCase):
                 self.assertRaises(ValueError,
                                   writer.write_signed,
                                   -1, 0)
+
+                #writing signed value in 0 bits shouldn't work
+                self.assertRaises(ValueError,
+                                  writer.write_signed,
+                                  0, 0)
+
+                self.assertRaises(ValueError,
+                                  writer.build,
+                                  "0s", [0])
 
                 #writing negative value as unsigned shouldn't work
                 self.assertRaises(ValueError,
@@ -3591,6 +3638,123 @@ class Bitstream(unittest.TestCase):
         #test a bunch of little-endian values via the bitstream accumulator
         self.__test_edge_writer__(self.__get_edge_accumulator_le__,
                                   self.__validate_edge_accumulator_le__)
+
+    @LIB_BITSTREAM
+    def test_huge_values(self):
+        from audiotools.bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamWriter
+        from audiotools.bitstream import BitstreamRecorder
+        from audiotools.bitstream import BitstreamAccumulator
+
+        for b in [2, 4, 8, 16, 32, 64, 128, 256, 512]:
+            data = os.urandom(b)
+            bits = b * 8
+            for little_endian in [False, True]:
+                unsigned1 = BitstreamReader(
+                    cStringIO.StringIO(data),
+                    little_endian).read(bits)
+
+                unsigned2 = BitstreamReader(
+                    cStringIO.StringIO(data),
+                    little_endian).parse("%du" % (bits))[0]
+
+                signed1 = BitstreamReader(
+                    cStringIO.StringIO(data),
+                    little_endian).read_signed(bits)
+
+                signed2 = BitstreamReader(
+                    cStringIO.StringIO(data),
+                    little_endian).parse("%ds" % (bits))[0]
+
+                #check that reading from .read and .parse
+                #yield the same values
+                self.assertEqual(unsigned1, unsigned2)
+                self.assertEqual(signed1, signed2)
+
+                #check that writing round-trips properly
+                unsigned_data1 = cStringIO.StringIO()
+                unsigned_data2 = cStringIO.StringIO()
+                signed_data1 = cStringIO.StringIO()
+                signed_data2 = cStringIO.StringIO()
+
+                BitstreamWriter(unsigned_data1,
+                                little_endian).write(bits, unsigned1)
+                BitstreamWriter(unsigned_data2,
+                                little_endian).build("%du" % (bits),
+                                                     [unsigned1])
+                BitstreamWriter(signed_data1,
+                                little_endian).write_signed(bits, signed1)
+                BitstreamWriter(signed_data2,
+                                little_endian).build("%ds" % (bits),
+                                                     [signed1])
+
+                self.assertEqual(data, unsigned_data1.getvalue())
+                self.assertEqual(data, unsigned_data2.getvalue())
+                self.assertEqual(data, signed_data1.getvalue())
+                self.assertEqual(data, signed_data2.getvalue())
+
+                unsigned_data1 = BitstreamRecorder(little_endian)
+                unsigned_data2 = BitstreamRecorder(little_endian)
+                signed_data1 = BitstreamRecorder(little_endian)
+                signed_data2 = BitstreamRecorder(little_endian)
+
+                unsigned_data1.write(bits, unsigned1)
+                unsigned_data2.build("%du" % (bits), [unsigned1])
+                signed_data1.write_signed(bits, signed1)
+                signed_data2.build("%ds" % (bits), [signed1])
+
+                self.assertEqual(data, unsigned_data1.data())
+                self.assertEqual(data, unsigned_data2.data())
+                self.assertEqual(data, signed_data1.data())
+                self.assertEqual(data, signed_data2.data())
+
+                unsigned_data1 = BitstreamAccumulator(little_endian)
+                unsigned_data2 = BitstreamAccumulator(little_endian)
+                signed_data1 = BitstreamAccumulator(little_endian)
+                signed_data2 = BitstreamAccumulator(little_endian)
+
+                unsigned_data1.write(bits, unsigned1)
+                unsigned_data2.build("%du" % (bits), [unsigned1])
+                signed_data1.write_signed(bits, signed1)
+                signed_data2.build("%ds" % (bits), [signed1])
+
+                self.assertEqual(unsigned_data1.bits(), bits)
+                self.assertEqual(unsigned_data2.bits(), bits)
+                self.assertEqual(signed_data1.bits(), bits)
+                self.assertEqual(signed_data2.bits(), bits)
+
+                #check that endianness swapping works
+                r = BitstreamReader(
+                    cStringIO.StringIO(data),
+                    little_endian)
+
+                unsigned1 = r.read(bits / 2)
+                r.set_endianness(not little_endian)
+                unsigned2 = r.read(bits / 2)
+
+                new_data = cStringIO.StringIO()
+                w = BitstreamWriter(
+                    new_data, little_endian)
+                w.write(bits / 2, unsigned1)
+                w.set_endianness(not little_endian)
+                w.write(bits / 2, unsigned2)
+                w.flush()
+
+                self.assertEqual(data, new_data.getvalue())
+
+                w = BitstreamRecorder(little_endian)
+                w.write(bits / 2, unsigned1)
+                w.set_endianness(not little_endian)
+                w.write(bits / 2, unsigned2)
+
+                self.assertEqual(data, w.data())
+
+                w = BitstreamAccumulator(little_endian)
+                w.write(bits / 2, unsigned1)
+                w.set_endianness(not little_endian)
+                w.write(bits / 2, unsigned2)
+
+                self.assertEqual(bits, w.bits())
 
     @LIB_BITSTREAM
     def test_python_reader(self):

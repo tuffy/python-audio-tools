@@ -805,7 +805,11 @@ PyTypeObject bitstream_BitstreamRecorderType = {
   parses the format from the reader and appends Python values to the list
   returns 0 on success, 1 on failure (with PyErr set)*/
 int
-bitstream_parse(BitstreamReader* stream, const char* format, PyObject* values);
+bitstream_parse(BitstreamReader* stream,
+                read_object_f read_unsigned,
+                read_object_f read_signed,
+                const char* format,
+                PyObject* values);
 
 /*given a BitstreamWriter, format string and PySequence of Python values,
   writes those values to the writer

@@ -310,8 +310,8 @@ BitstreamReader_read_signed(bitstream_BitstreamReader *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "i", &count)) {
         return NULL;
-    } else if (count < 0) {
-        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+    } else if (count <= 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be > 0");
         return NULL;
     }
 
@@ -814,7 +814,11 @@ BitstreamReader_parse(bitstream_BitstreamReader *self, PyObject *args)
     } else {
         PyObject *values = PyList_New(0);
 
-        if (!bitstream_parse(self->bitstream, format, values)) {
+        if (!bitstream_parse(self->bitstream,
+                             self->read_unsigned,
+                             self->read_signed,
+                             format,
+                             values)) {
             return values;
         } else {
             Py_DECREF(values);
@@ -1621,8 +1625,8 @@ BitstreamWriter_write_signed(bitstream_BitstreamWriter *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "iO", &count, &value)) {
         return NULL;
-    } else if (count < 0) {
-        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+    } else if (count <= 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be > 0");
         return NULL;
     }
 
@@ -1895,8 +1899,8 @@ BitstreamRecorder_write_signed(bitstream_BitstreamRecorder *self,
 
     if (!PyArg_ParseTuple(args, "iO", &count, &value)) {
         return NULL;
-    } else if (count < 0) {
-        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+    } else if (count <= 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be > 0");
         return NULL;
     }
 
@@ -2424,8 +2428,8 @@ BitstreamAccumulator_write_signed(bitstream_BitstreamAccumulator *self,
 
     if (!PyArg_ParseTuple(args, "iO", &count, &value)) {
         return NULL;
-    } else if (count < 0) {
-        PyErr_SetString(PyExc_ValueError, "count must be >= 0");
+    } else if (count <= 0) {
+        PyErr_SetString(PyExc_ValueError, "count must be > 0");
         return NULL;
     }
 
@@ -2662,7 +2666,13 @@ bitstream_parse_func(PyObject *dummy, PyObject *args)
                 is_little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
         PyObject* values = PyList_New(0);
         buf_write(buf, (uint8_t*)data, (unsigned)data_length);
-        if (!bitstream_parse(stream, format, values)) {
+        if (!bitstream_parse(stream,
+                             is_little_endian ?
+                             brpy_read_unsigned_le : brpy_read_unsigned_be,
+                             is_little_endian ?
+                             brpy_read_signed_le : brpy_read_signed_be,
+                             format,
+                             values)) {
             stream->close(stream);
             buf_close(buf);
             return values;
@@ -2720,7 +2730,11 @@ bitstream_build_func(PyObject *dummy, PyObject *args)
 }
 
 int
-bitstream_parse(BitstreamReader* stream, const char* format, PyObject* values)
+bitstream_parse(BitstreamReader* stream,
+                read_object_f read_unsigned,
+                read_object_f read_signed,
+                const char* format,
+                PyObject* values)
 {
     if (!setjmp(*br_try(stream))) {
         bs_instruction_t inst;
@@ -2730,64 +2744,47 @@ bitstream_parse(BitstreamReader* stream, const char* format, PyObject* values)
             unsigned size;
 
             format = bs_parse_format(format, &times, &size, &inst);
-            if (inst == BS_INST_UNSIGNED) {
+            if ((inst == BS_INST_UNSIGNED) ||
+                (inst == BS_INST_UNSIGNED64)) {
                 for (; times; times--) {
-                    const unsigned value = stream->read(stream, size);
-                    PyObject *py_value;
-                    if ((py_value = Py_BuildValue("I", value)) == NULL) {
-                        br_etry(stream);
-                        return 1;
-                    } else if (PyList_Append(values, py_value) == -1) {
+                    PyObject *py_value = read_unsigned(stream, size);
+                    if (py_value != NULL) {
+                        /*append read object to list*/
+                        const int append_ok = PyList_Append(values, py_value);
                         Py_DECREF(py_value);
-                        br_etry(stream);
-                        return 1;
+                        if (append_ok == -1) {
+                            /*append error occurred*/
+                            br_etry(stream);
+                            return 1;
+                        }
                     } else {
-                        Py_DECREF(py_value);
+                        /*read error occurred*/
+                        br_etry(stream);
+                        return 1;
                     }
                 }
-            } else if (inst == BS_INST_SIGNED) {
-                for (; times; times--) {
-                    const int value = stream->read_signed(stream, size);
-                    PyObject *py_value;
-                    if ((py_value = Py_BuildValue("i", value)) == NULL) {
-                        br_etry(stream);
-                        return 1;
-                    } else if (PyList_Append(values, py_value) == -1) {
-                        Py_DECREF(py_value);
-                        br_etry(stream);
-                        return 1;
-                    } else {
-                        Py_DECREF(py_value);
-                    }
+            } else if ((inst == BS_INST_SIGNED) ||
+                       (inst == BS_INST_SIGNED64)) {
+                if (size == 0) {
+                    PyErr_SetString(PyExc_ValueError, "count must be > 0");
+                    br_etry(stream);
+                    return 1;
                 }
-            } else if (inst == BS_INST_UNSIGNED64) {
                 for (; times; times--) {
-                    const uint64_t value = stream->read_64(stream, size);
-                    PyObject *py_value;
-                    if ((py_value = Py_BuildValue("K", value)) == NULL) {
-                        br_etry(stream);
-                        return 1;
-                    } else if (PyList_Append(values, py_value) == -1) {
+                    PyObject *py_value = read_signed(stream, size);
+                    if (py_value != NULL) {
+                        /*append read object to list*/
+                        const int append_ok = PyList_Append(values, py_value);
                         Py_DECREF(py_value);
-                        br_etry(stream);
-                        return 1;
+                        if (append_ok == -1) {
+                            /*append error occurred*/
+                            br_etry(stream);
+                            return 1;
+                        }
                     } else {
-                        Py_DECREF(py_value);
-                    }
-                }
-            } else if (inst == BS_INST_SIGNED64) {
-                for (; times; times--) {
-                    const int64_t value = stream->read_signed_64(stream, size);
-                    PyObject *py_value;
-                    if ((py_value = Py_BuildValue("L", value)) == NULL) {
+                        /*read error occurred*/
                         br_etry(stream);
                         return 1;
-                    } else if (PyList_Append(values, py_value) == -1) {
-                        Py_DECREF(py_value);
-                        br_etry(stream);
-                        return 1;
-                    } else {
-                        Py_DECREF(py_value);
                     }
                 }
             } else if (inst == BS_INST_SKIP) {
@@ -2890,6 +2887,11 @@ bitstream_build(BitstreamWriter* stream,
                 }
             } else if ((inst == BS_INST_SIGNED) ||
                        (inst == BS_INST_SIGNED64)) {
+                if (size == 0) {
+                    PyErr_SetString(PyExc_ValueError, "count must be > 0");
+                    bw_etry(stream);
+                    return 1;
+                }
                 for (; times; times--) {
                     PyObject *py_value = PyIter_Next(iterator);
                     if (py_value != NULL) {
