@@ -85,6 +85,9 @@ static PyObject*
 brpy_read_signed_le(BitstreamReader *br, unsigned bits);
 
 static PyObject*
+brpy_read_bytes(BitstreamReader *reader, unsigned byte_count);
+
+static PyObject*
 BitstreamReader_read(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
