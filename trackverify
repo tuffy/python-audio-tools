@@ -303,6 +303,11 @@ if (__name__ == '__main__'):
                         default=False,
                         help=_.OPT_ACCURATERIP)
 
+    parser.add_argument("--cue",
+                        dest="cuesheet",
+                        metavar="FILENAME",
+                        help=_.OPT_CUESHEET_TRACKVERIFY)
+
     parser.add_argument("-j", "--joint",
                         type=int,
                         default=MAX_CPUS,
@@ -397,12 +402,22 @@ if (__name__ == '__main__'):
             if (((set([t.channels() for t in tracks]) == set([2])) and
                  (set([t.sample_rate() for t in tracks]) == set([44100])) and
                  (set([t.bits_per_sample() for t in tracks]) == set([16])))):
-                if (((len(tracks) == 1) and
-                     (tracks[0].get_cuesheet() is not None))):
+                if ((len(tracks) == 1) and
+                     ((options.cuesheet is not None) or
+                      (tracks[0].get_cuesheet() is not None))):
                     filename = audiotools.Filename(tracks[0].filename)
-                    sheet = tracks[0].get_cuesheet()
                     total_frames = tracks[0].total_frames()
                     sample_rate = tracks[0].sample_rate()
+                    #cuesheet from command-line takes precedence
+                    #over cuesheet embedded in file
+                    if (options.cuesheet is not None):
+                        try:
+                            sheet = audiotools.read_sheet(options.cuesheet)
+                        except audiotools.SheetException,err:
+                            msg.error(unicode(err))
+                            sys.exit(1)
+                    else:
+                        sheet = tracks[0].get_cuesheet()
 
                     #process tracks in CD image individually
                     ar_results = audiotools.accuraterip_sheet_lookup(
@@ -487,7 +502,10 @@ if (__name__ == '__main__'):
             if (err is None):
                 row.add_column(u"%8.8X" % (checksum), "right")
                 row.add_column(u"")
-                row.add_column(unicode(confidence), "right")
+                if (confidence >= 0):
+                    row.add_column(unicode(confidence), "right")
+                else:
+                    row.add_column(u"", "right")
             else:
                 row.add_column(_.ERR_READ_ERROR, "right")
                 row.add_column(u"")

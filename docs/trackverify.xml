@@ -26,6 +26,9 @@
     <option short="R" long="accuraterip">
       verify tracks against those of AccurateRip database
     </option>
+    <option long="cue" arg="FILENAME">
+      cuesheet to use when verifying CD image against AccurateRip database
+    </option>
     <option short="j" long="joint" arg="processes">
       The maximum number of tracks to verify at one time.
       If one has multiple CPUs or CPU cores, allowing

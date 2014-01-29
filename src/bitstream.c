@@ -3067,6 +3067,8 @@ int bw_write_python(PyObject* writer,
             Py_DECREF(write_result);
             buffer->window_start += buffer_size;
         } else {
+            /*write method call failed, so clear error
+              before generating Python IOError*/
             PyErr_Clear();
             return 1;
         }
@@ -3081,6 +3083,7 @@ void bw_flush_python(PyObject* writer)
     if (flush_result != NULL) {
         Py_DECREF(flush_result);
     } else {
+        /*flush method call failed, so clear error*/
         PyErr_Clear();
     }
 }
