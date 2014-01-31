@@ -1063,7 +1063,17 @@ class Flac_PICTURE(Image):
             # | Leaflet Page |               5 |          2 |
             # | Media        |               6 |          3 |
 
-            return {0: 4, 3: 0, 4: 1, 5: 2, 6: 3}.get(self.picture_type, 4)
+            from audiotools import (FRONT_COVER,
+                                    BACK_COVER,
+                                    LEAFLET_PAGE,
+                                    MEDIA,
+                                    OTHER)
+
+            return {0: OTHER,
+                    3: FRONT_COVER,
+                    4: BACK_COVER,
+                    5: LEAFLET_PAGE,
+                    6: MEDIA}.get(self.picture_type, OTHER)
         else:
             try:
                 return self.__dict__[key]
@@ -1082,7 +1092,17 @@ class Flac_PICTURE(Image):
             # | Leaflet Page |          2 |               5 |
             # | Media        |          3 |               6 |
 
-            self.picture_type = {4: 0, 0: 3, 1: 4, 2: 5, 3: 6}.get(value, 0)
+            from audiotools import (FRONT_COVER,
+                                    BACK_COVER,
+                                    LEAFLET_PAGE,
+                                    MEDIA,
+                                    OTHER)
+
+            self.picture_type = {OTHER: 0,
+                                 FRONT_COVER: 3,
+                                 BACK_COVER: 4,
+                                 LEAFLET_PAGE: 5,
+                                 MEDIA: 6}.get(value, 0)
         else:
             self.__dict__[key] = value
 

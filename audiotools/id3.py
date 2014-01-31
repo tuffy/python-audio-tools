@@ -907,23 +907,34 @@ class ID3v22_PIC_Frame(Image):
                 20: "Publisher/Studio logotype"}.get(self.pic_type, "Other")
 
     def __getattr__(self, attr):
+        from audiotools import (FRONT_COVER,
+                                BACK_COVER,
+                                LEAFLET_PAGE,
+                                MEDIA,
+                                OTHER)
+
         if (attr == 'type'):
-            return {3: 0,                    # front cover
-                    4: 1,                    # back cover
-                    5: 2,                    # leaflet page
-                    6: 3                     # media
-                    }.get(self.pic_type, 4)  # other
+            return {3: FRONT_COVER,
+                    4: BACK_COVER,
+                    5: LEAFLET_PAGE,
+                    6: MEDIA
+                    }.get(self.pic_type, OTHER)
         elif (attr == 'description'):
             return unicode(self.pic_description)
         else:
             raise AttributeError(attr)
 
     def __setattr__(self, attr, value):
+        from audiotools import (FRONT_COVER,
+                                BACK_COVER,
+                                LEAFLET_PAGE,
+                                MEDIA,
+                                OTHER)
         if (attr == 'type'):
-            self.__dict__["pic_type"] = {0: 3,            # front cover
-                                         1: 4,            # back cover
-                                         2: 5,            # leaflet page
-                                         3: 6,            # media
+            self.__dict__["pic_type"] = {FRONT_COVER: 3,
+                                         BACK_COVER: 4,
+                                         LEAFLET_PAGE: 5,
+                                         MEDIA: 6
                                          }.get(value, 0)  # other
         elif (attr == 'description'):
             if (is_latin_1(value)):
@@ -1525,11 +1536,17 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
              len(self.data))
 
     def __getattr__(self, attr):
+        from audiotools import (FRONT_COVER,
+                                BACK_COVER,
+                                LEAFLET_PAGE,
+                                MEDIA,
+                                OTHER)
+
         if (attr == 'type'):
-            return {3: 0,                    # front cover
-                    4: 1,                    # back cover
-                    5: 2,                    # leaflet page
-                    6: 3                     # media
+            return {3: FRONT_COVER,
+                    4: BACK_COVER,
+                    5: LEAFLET_PAGE,
+                    6: MEDIA
                     }.get(self.pic_type, 4)  # other
         elif (attr == 'description'):
             return unicode(self.pic_description)
@@ -1539,11 +1556,17 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
             raise AttributeError(attr)
 
     def __setattr__(self, attr, value):
+        from audiotools import (FRONT_COVER,
+                                BACK_COVER,
+                                LEAFLET_PAGE,
+                                MEDIA,
+                                OTHER)
+
         if (attr == 'type'):
-            self.__dict__["pic_type"] = {0: 3,            # front cover
-                                         1: 4,            # back cover
-                                         2: 5,            # leaflet page
-                                         3: 6,            # media
+            self.__dict__["pic_type"] = {FRONT_COVER: 3,
+                                         BACK_COVER: 4,
+                                         LEAFLET_PAGE: 5,
+                                         MEDIA: 6
                                          }.get(value, 0)  # other
         elif (attr == 'description'):
             if (is_latin_1(value)):
@@ -1869,11 +1892,17 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
              repr(self.pic_description))
 
     def __setattr__(self, attr, value):
+        from audiotools import (FRONT_COVER,
+                                BACK_COVER,
+                                LEAFLET_PAGE,
+                                MEDIA,
+                                OTHER)
+
         if (attr == 'type'):
-            self.__dict__["pic_type"] = {0: 3,            # front cover
-                                         1: 4,            # back cover
-                                         2: 5,            # leaflet page
-                                         3: 6,            # media
+            self.__dict__["pic_type"] = {FRONT_COVER: 3,
+                                         BACK_COVER: 4,
+                                         LEAFLET_PAGE: 5,
+                                         MEDIA: 6
                                          }.get(value, 0)  # other
         elif (attr == 'description'):
             if (is_latin_1(value)):

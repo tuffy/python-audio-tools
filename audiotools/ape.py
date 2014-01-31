@@ -616,13 +616,15 @@ class ApeTag(MetaData):
     def add_image(self, image):
         """embeds an Image object in this metadata"""
 
-        if (image.type == 0):
+        from audiotools import FRONT_COVER, BACK_COVER
+
+        if (image.type == FRONT_COVER):
             self['Cover Art (front)'] = self.ITEM.binary(
                 'Cover Art (front)',
                 image.description.encode('utf-8', 'replace') +
                 chr(0) +
                 image.data)
-        elif (image.type == 1):
+        elif (image.type == BACK_COVER):
             self['Cover Art (back)'] = self.ITEM.binary(
                 'Cover Art (back)',
                 image.description.encode('utf-8', 'replace') +
@@ -640,13 +642,17 @@ class ApeTag(MetaData):
     def images(self):
         """returns a list of embedded Image objects"""
 
+        from audiotools import FRONT_COVER, BACK_COVER
+
         #APEv2 supports only one value per key
         #so a single front and back cover are all that is possible
         img = []
         if ('Cover Art (front)' in self.keys()):
-            img.append(self.__parse_image__('Cover Art (front)', 0))
+            img.append(self.__parse_image__('Cover Art (front)',
+                                            FRONT_COVER))
         if ('Cover Art (back)' in self.keys()):
-            img.append(self.__parse_image__('Cover Art (back)', 1))
+            img.append(self.__parse_image__('Cover Art (back)',
+                                            BACK_COVER))
         return img
 
     @classmethod

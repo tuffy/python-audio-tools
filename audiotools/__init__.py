@@ -3272,27 +3272,27 @@ class MetaData:
     def front_covers(self):
         """returns a subset of images() which are front covers"""
 
-        return [i for i in self.images() if i.type == 0]
+        return [i for i in self.images() if i.type == FRONT_COVER]
 
     def back_covers(self):
         """returns a subset of images() which are back covers"""
 
-        return [i for i in self.images() if i.type == 1]
+        return [i for i in self.images() if i.type == BACK_COVER]
 
     def leaflet_pages(self):
         """returns a subset of images() which are leaflet pages"""
 
-        return [i for i in self.images() if i.type == 2]
+        return [i for i in self.images() if i.type == LEAFLET_PAGE]
 
     def media_images(self):
         """returns a subset of images() which are media images"""
 
-        return [i for i in self.images() if i.type == 3]
+        return [i for i in self.images() if i.type == MEDIA]
 
     def other_images(self):
         """returns a subset of images() which are other images"""
 
-        return [i for i in self.images() if i.type == 4]
+        return [i for i in self.images() if i.type == OTHER]
 
     def add_image(self, image):
         """embeds an Image object in this metadata
@@ -3374,6 +3374,8 @@ class AlbumMetaData(dict):
 #Image MetaData
 #######################
 
+(FRONT_COVER, BACK_COVER, LEAFLET_PAGE, MEDIA, OTHER) = range(5)
+
 
 class Image:
     """an image data container"""
@@ -3389,12 +3391,12 @@ class Image:
         color_depth - color depth of image (24 for JPEG, 8 for GIF, etc.)
         color_count - number of palette colors, or 0
         description - a unicode string
-        type - an integer type whose values are:
-               0 - front cover
-               1 - back cover
-               2 - leaflet page
-               3 - media
-               4 - other
+        type - an integer type whose values are one of:
+               FRONT_COVER
+               BACK_COVER
+               LEAFLET_PAGE
+               MEDIA
+               OTHER
         """
 
         self.data = data
@@ -3425,11 +3427,11 @@ class Image:
         for example, an image of type 0 returns "Front Cover"
         """
 
-        return {0: "Front Cover",
-                1: "Back Cover",
-                2: "Leaflet Page",
-                3: "Media",
-                4: "Other"}.get(self.type, "Other")
+        return {FRONT_COVER: "Front Cover",
+                BACK_COVER: "Back Cover",
+                LEAFLET_PAGE: "Leaflet Page",
+                MEDIA: "Media",
+                OTHER: "Other"}.get(self.type, "Other")
 
     def __repr__(self):
         fields = ["%s=%s" % (attr, getattr(self, attr))
