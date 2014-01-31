@@ -671,8 +671,8 @@ class MP3Audio(AudioFile):
         #display where to get libmp3lame
         messenger.info(
             ERR_LIBRARY_NEEDED %
-                {"library": u"\"libmp3lame\"",
-                 "format": format_})
+            {"library": u"\"libmp3lame\"",
+             "format": format_})
         messenger.info(
             ERR_LIBRARY_DOWNLOAD_URL %
             {"library": u"mp3lame",
@@ -681,8 +681,8 @@ class MP3Audio(AudioFile):
         #then display where to get libmpg123
         messenger.info(
             ERR_LIBRARY_NEEDED %
-                {"library": u"\"libmpg123\"",
-                 "format": format_})
+            {"library": u"\"libmpg123\"",
+             "format": format_})
         messenger.info(
             ERR_LIBRARY_DOWNLOAD_URL %
             {"library": u"mpg123",
@@ -693,6 +693,7 @@ class MP3Audio(AudioFile):
 #######################
 #MP2 AUDIO
 #######################
+
 
 class MP2Audio(MP3Audio):
     """an MP2 audio file"""
@@ -787,8 +788,8 @@ class MP2Audio(MP3Audio):
         #display where to get libtwo,ame
         messenger.info(
             ERR_LIBRARY_NEEDED %
-                {"library": u"\"libtwolame\"",
-                 "format": format_})
+            {"library": u"\"libtwolame\"",
+             "format": format_})
         messenger.info(
             ERR_LIBRARY_DOWNLOAD_URL %
             {"library": u"twolame",
@@ -797,8 +798,8 @@ class MP2Audio(MP3Audio):
         #then display where to get libmpg123
         messenger.info(
             ERR_LIBRARY_NEEDED %
-                {"library": u"\"libmpg123\"",
-                 "format": format_})
+            {"library": u"\"libmpg123\"",
+             "format": format_})
         messenger.info(
             ERR_LIBRARY_DOWNLOAD_URL %
             {"library": u"mpg123",

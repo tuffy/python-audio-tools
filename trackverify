@@ -269,7 +269,6 @@ def accuraterip_image_checksum(progress, track, track_number, track_total,
                 None)
 
 
-
 if (__name__ == '__main__'):
     import argparse
 
@@ -403,8 +402,8 @@ if (__name__ == '__main__'):
                  (set([t.sample_rate() for t in tracks]) == set([44100])) and
                  (set([t.bits_per_sample() for t in tracks]) == set([16])))):
                 if ((len(tracks) == 1) and
-                     ((options.cuesheet is not None) or
-                      (tracks[0].get_cuesheet() is not None))):
+                    ((options.cuesheet is not None) or
+                     (tracks[0].get_cuesheet() is not None))):
                     filename = audiotools.Filename(tracks[0].filename)
                     total_frames = tracks[0].total_frames()
                     sample_rate = tracks[0].sample_rate()
@@ -413,7 +412,7 @@ if (__name__ == '__main__'):
                     if (options.cuesheet is not None):
                         try:
                             sheet = audiotools.read_sheet(options.cuesheet)
-                        except audiotools.SheetException,err:
+                        except audiotools.SheetException, err:
                             msg.error(unicode(err))
                             sys.exit(1)
                     else:
@@ -481,10 +480,11 @@ if (__name__ == '__main__'):
         filename_max = (msg.terminal_size(sys.stdout)[1] -
                         (sum(map(len, [u" ",
                                        audiotools.output_text(
-                                _.LAB_TRACKVERIFY_AR_CHECKSUM1),
+                                           _.LAB_TRACKVERIFY_AR_CHECKSUM1),
                                        u" ",
                                        audiotools.output_text(
-                                _.LAB_TRACKVERIFY_AR_CONFIDENCE)]))))
+                                           _.LAB_TRACKVERIFY_AR_CONFIDENCE)]
+                                 ))))
 
         table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV])
 

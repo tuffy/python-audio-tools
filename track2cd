@@ -60,10 +60,10 @@ def convert_to_wave(progress, audiofile, wave_filename):
 def CD_reader_size(audiofile):
     """returns a (PCMReader, total_pcm_frames) of track in CD format"""
 
-    if ((audiofile.bits_per_sample() == 16) and
-        (audiofile.channels() == 2) and
-        (audiofile.sample_rate() == 44100) and
-        (audiofile.lossless())):
+    if (((audiofile.bits_per_sample() == 16) and
+         (audiofile.channels() == 2) and
+         (audiofile.sample_rate() == 44100) and
+         audiofile.lossless())):
         return (audiofile.to_pcm(), audiofile.total_frames())
     else:
         #if input audio isn't CD quality or lossless,
@@ -119,7 +119,6 @@ if (__name__ == '__main__'):
                         choices=audiotools.VERBOSITY_LEVELS,
                         default=audiotools.DEFAULT_VERBOSITY,
                         help=_.OPT_VERBOSE)
-
 
     parser.add_argument("-c", "--cdrom",
                         dest="dev",
@@ -201,9 +200,9 @@ if (__name__ == '__main__'):
                     pcmreader=(audiofiles[0].to_pcm() if
                                (write_offset == 0) else
                                audiotools.PCMReaderWindow(
-                            audiofiles[0].to_pcm(),
-                            write_offset,
-                            audiofiles[0].total_frames())),
+                                   audiofiles[0].to_pcm(),
+                                   write_offset,
+                                   audiofiles[0].total_frames())),
                     total_frames=audiofiles[0].total_frames(),
                     progress=progress.update))
 
@@ -216,9 +215,9 @@ if (__name__ == '__main__'):
                         pcmreader=(audiofiles[0].to_pcm() if
                                    (write_offset == 0) else
                                    audiotools.PCMReaderWindow(
-                                audiofiles[0].to_pcm(),
-                                write_offset,
-                                audiofiles[0].total_frames())),
+                                       audiofiles[0].to_pcm(),
+                                       write_offset,
+                                       audiofiles[0].total_frames())),
                         sample_rate=44100,
                         channels=2,
                         channel_mask=0x3,
@@ -398,7 +397,7 @@ if (__name__ == '__main__'):
                         function=convert_to_wave,
                         progress_text=filename,
                         completion_output=_.LAB_TRACK2CD_CONVERTED % {
-                            "filename":filename},
+                            "filename": filename},
                         audiofile=audiofile,
                         wave_filename=f[1])
 
@@ -429,7 +428,7 @@ if (__name__ == '__main__'):
                         progress.update))
                 wave_files.append(wave.filename)
                 progress.clear_rows()
-                msg.info(_.LAB_TRACK2CD_CONVERTED % {"filename":filename})
+                msg.info(_.LAB_TRACK2CD_CONVERTED % {"filename": filename})
 
         try:
             for wave in wave_files:

@@ -17,7 +17,8 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools._ogg import PageReader,PageWriter,Page
+from audiotools._ogg import PageReader, PageWriter, Page
+
 
 class PacketReader:
     def __init__(self, pagereader):
@@ -158,4 +159,3 @@ def packets_to_pages(packets, bitstream_serial_number,
             page.append(segment)
 
     yield page
-

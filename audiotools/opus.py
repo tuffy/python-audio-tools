@@ -224,7 +224,7 @@ class OpusAudio(VorbisAudio):
 
         raises IOError if unable to read the file"""
 
-        from audiotools.ogg import PacketReader,PageReader
+        from audiotools.ogg import PacketReader, PageReader
         from cStringIO import StringIO
         from audiotools.bitstream import BitstreamReader
 
@@ -458,7 +458,7 @@ class OpusAudio(VorbisAudio):
 
         from cStringIO import StringIO
         from audiotools.bitstream import BitstreamReader
-        from audiotools.ogg import PacketReader,PageReader
+        from audiotools.ogg import PacketReader, PageReader
 
         reader = PacketReader(PageReader(open(self.filename, "rb")))
 
@@ -549,8 +549,8 @@ class OpusAudio(VorbisAudio):
         #display where to get vorbisfile
         messenger.info(
             ERR_LIBRARY_NEEDED %
-                {"library": u"\"libopus\" and \"opusfile\"",
-                 "format": format_})
+            {"library": u"\"libopus\" and \"opusfile\"",
+             "format": format_})
         messenger.info(
             ERR_LIBRARY_DOWNLOAD_URL %
             {"library": u"libopus and opusfile",

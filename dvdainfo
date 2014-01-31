@@ -97,7 +97,7 @@ if (__name__ == '__main__'):
     row.add_column(_.LAB_DVDAINFO_TICKS)
 
     table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV,
-                     u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
+                       u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
 
     for (title_num, title) in enumerate(titleset):
         for (track_num, track) in enumerate(title.tracks):

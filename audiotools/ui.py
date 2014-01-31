@@ -2444,7 +2444,7 @@ def show_available_formats(msg):
     """given a Messenger object,
     display all the available file formats"""
 
-    from audiotools import output_table,output_text
+    from audiotools import output_table, output_text
     from audiotools.text import (LAB_AVAILABLE_FORMATS,
                                  LAB_OUTPUT_TYPE,
                                  LAB_OUTPUT_TYPE_DESCRIPTION)
@@ -2479,7 +2479,7 @@ def show_available_qualities(msg, audiotype):
     """given a Messenger object and AudioFile class,
     display all available quality types for that format"""
 
-    from audiotools import output_table,output_text
+    from audiotools import output_table, output_text
     from audiotools.text import (LAB_AVAILABLE_COMPRESSION_TYPES,
                                  LAB_OUTPUT_QUALITY_DESCRIPTION,
                                  LAB_OUTPUT_QUALITY,

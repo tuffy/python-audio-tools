@@ -42,17 +42,17 @@ VERSION = re.search(r'VERSION\s*=\s"(.+?)"',
                         "audiotools/__init__.py")).read()).group(1)
 
 
-LIBRARY_URLS = {"libcdio_paranoia":"http://www.gnu.org/software/libcdio/",
-                "libmpg123":"http://www.mpg123.org",
-                "vorbisfile":"http://xiph.org",
-                "opusfile":"http://www.opus-codec.org",
-                "opus":"http://www.opus-codec.org",
-                "mp3lame":"http://lame.sourceforge.net",
-                "twolame":"http://twolame.sourceforge.net",
-                "vorbisenc":"http://www.xiph.org",
-                "alsa":"http://www.alsa-project.org",
-                "libasound2":"http://www.alsa-project.org",
-                "libpulse":"http://www.freedesktop.org"}
+LIBRARY_URLS = {"libcdio_paranoia": "http://www.gnu.org/software/libcdio/",
+                "libmpg123": "http://www.mpg123.org",
+                "vorbisfile": "http://xiph.org",
+                "opusfile": "http://www.opus-codec.org",
+                "opus": "http://www.opus-codec.org",
+                "mp3lame": "http://lame.sourceforge.net",
+                "twolame": "http://twolame.sourceforge.net",
+                "vorbisenc": "http://www.xiph.org",
+                "alsa": "http://www.alsa-project.org",
+                "libasound2": "http://www.alsa-project.org",
+                "libpulse": "http://www.freedesktop.org"}
 
 
 class SystemLibraries:
@@ -248,9 +248,9 @@ class output_table_row:
                 return text
 
         #attribute to method mapping
-        align_meth = {"left":align_left,
-                      "right":align_right,
-                      "center":align_center}
+        align_meth = {"left": align_left,
+                      "right": align_right,
+                      "center": align_center}
 
         assert(len(column_widths) == len(self.__columns__))
 
@@ -308,8 +308,8 @@ class build_ext(_build_ext):
         libraries = {}
 
         for extension in self.extensions:
-            if (hasattr(extension, "library_manifest") and
-                callable(extension.library_manifest)):
+            if ((hasattr(extension, "library_manifest") and
+                 callable(extension.library_manifest))):
                 for (library,
                      used_for,
                      is_present) in extension.library_manifest():

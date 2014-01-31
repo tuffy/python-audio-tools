@@ -241,13 +241,12 @@ class VorbisAudio(AudioFile):
             channel_mask = int(pcmreader.channel_mask)
             if ((channel_mask != 0) and
                 (channel_mask not in
-                 (0x7,      # FR, FC, FL
-                  0x33,     # FR, FL, BR, BL
-                  0x37,     # FR, FC, FL, BL, BR
-                  0x3f,     # FR, FC, FL, BL, BR, LFE
-                  0x70f,    # FL, FC, FR, SL, SR, BC, LFE
-                  0x63f     # FL, FC, FR, SL, SR, BL, BR, LFE
-              ))):
+                 (0x7,       # FR, FC, FL
+                  0x33,      # FR, FL, BR, BL
+                  0x37,      # FR, FC, FL, BL, BR
+                  0x3f,      # FR, FC, FL, BL, BR, LFE
+                  0x70f,     # FL, FC, FR, SL, SR, BC, LFE
+                  0x63f))):  # FL, FC, FR, SL, SR, BL, BR, LFE
                 raise UnsupportedChannelMask(filename, channel_mask)
 
         try:
@@ -258,7 +257,6 @@ class VorbisAudio(AudioFile):
         except (ValueError, IOError), err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
-
 
     def update_metadata(self, metadata):
         """takes this track's current MetaData object
@@ -378,7 +376,7 @@ class VorbisAudio(AudioFile):
 
         from cStringIO import StringIO
         from audiotools.bitstream import BitstreamReader
-        from audiotools.ogg import PacketReader,PageReader
+        from audiotools.ogg import PacketReader, PageReader
         from audiotools.vorbiscomment import VorbisComment
 
         reader = PacketReader(PageReader(open(self.filename, "rb")))
@@ -524,8 +522,8 @@ class VorbisAudio(AudioFile):
         #display where to get vorbisfile
         messenger.info(
             ERR_LIBRARY_NEEDED %
-                {"library": u"\"libvorbisfile\"",
-                 "format": format_})
+            {"library": u"\"libvorbisfile\"",
+             "format": format_})
         messenger.info(
             ERR_LIBRARY_DOWNLOAD_URL %
             {"library": u"libvorbisfile",

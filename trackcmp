@@ -323,9 +323,9 @@ if (__name__ == '__main__'):
                         audiotools.output_text(
                             _.LAB_TRACKCMP_MISSING %
                             {"filename": audiotools.Filename(
-                                    os.path.basename(filename)),
+                             os.path.basename(filename)),
                              "directory": audiotools.Filename(
-                                    directory)},
+                             directory)},
                             fg_color="red").format(msg.info_isatty()))
                     sys.stdout.flush()
                     results.append((filename, None, 0))

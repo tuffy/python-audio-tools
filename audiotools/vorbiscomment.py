@@ -45,7 +45,9 @@ class VorbisComment(MetaData):
 
     for aliases in [frozenset([u'TRACKTOTAL', u'TOTALTRACKS']),
                     frozenset([u'DISCTOTAL', u'TOTALDISCS']),
-                    frozenset([u'ALBUM ARTIST', u'ALBUMARTIST', u'PERFORMER'])]:
+                    frozenset([u'ALBUM ARTIST',
+                               u'ALBUMARTIST',
+                               u'PERFORMER'])]:
         for alias in aliases:
             ALIASES[alias] = aliases
 
@@ -496,8 +498,8 @@ class VorbisComment(MetaData):
                                     from .text import (
                                         CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES)
                                     fixes_performed.append(
-                                        CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES %
-                                        {"field": key})
+                                        CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES
+                                        % {"field": key})
                             else:
                                 #fix zeroes only
                                 fix3 = fix2.lstrip(u"0")

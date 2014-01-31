@@ -1419,8 +1419,8 @@ class FlacAudio(WaveContainer, AiffContainer):
             new_file.write(old_file.read(self.__stream_offset__))
 
             if (old_file.read(4) != 'fLaC'):
-                 from .text import ERR_FLAC_INVALID_FILE
-                 raise InvalidFLAC(ERR_FLAC_INVALID_FILE)
+                from .text import ERR_FLAC_INVALID_FILE
+                raise InvalidFLAC(ERR_FLAC_INVALID_FILE)
 
             stop = 0
             reader = BitstreamReader(old_file, 0)
@@ -2960,7 +2960,7 @@ class OggFlacMetaData(FlacMetaData):
 
         returns new sequence number"""
 
-        from audiotools.bitstream import build,BitstreamRecorder,format_size
+        from audiotools.bitstream import build, BitstreamRecorder, format_size
         from audiotools.ogg import packet_to_pages
 
         #build extended Ogg FLAC STREAMINFO block
@@ -3076,7 +3076,7 @@ class OggFlacAudio(FlacAudio):
         raise ValueError if some error reading metadata
         raises IOError if unable to read the file"""
 
-        from audiotools.ogg import PacketReader,PageReader
+        from audiotools.ogg import PacketReader, PageReader
 
         try:
             return OggFlacMetaData.parse(

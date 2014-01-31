@@ -529,14 +529,14 @@ class output_text:
         if (fg_color is not None):
             try:
                 self.__open_codes__.append(
-                    {"black":30,
-                     "red":31,
-                     "green":32,
-                     "yellow":33,
-                     "blue":34,
-                     "magenta":35,
-                     "cyan":36,
-                     "white":37}[fg_color])
+                    {"black": 30,
+                     "red": 31,
+                     "green": 32,
+                     "yellow": 33,
+                     "blue": 34,
+                     "magenta": 35,
+                     "cyan": 36,
+                     "white": 37}[fg_color])
                 self.__close_codes__.append(39)
             except KeyError:
                 raise ValueError("unknown fg_color %s" % (repr(fg_color)))
@@ -544,14 +544,14 @@ class output_text:
         if (bg_color is not None):
             try:
                 self.__open_codes__.append(
-                    {"black":40,
-                     "red":41,
-                     "green":42,
-                     "yellow":43,
-                     "blue":44,
-                     "magenta":45,
-                     "cyan":46,
-                     "white":47}[bg_color])
+                    {"black": 40,
+                     "red": 41,
+                     "green": 42,
+                     "yellow": 43,
+                     "blue": 44,
+                     "magenta": 45,
+                     "cyan": 46,
+                     "white": 47}[bg_color])
                 self.__close_codes__.append(49)
             except KeyError:
                 raise ValueError("unknown bg_color %s" % (repr(bg_color)))
@@ -559,15 +559,15 @@ class output_text:
         if (style is not None):
             try:
                 self.__open_codes__.append(
-                    {"bold":1,
-                     "underline":4,
-                     "blink":5,
-                     "inverse":7}[style])
+                    {"bold": 1,
+                     "underline": 4,
+                     "blink": 5,
+                     "inverse": 7}[style])
                 self.__close_codes__.append(
-                    {"bold":22,
-                     "underline":24,
-                     "blink":25,
-                     "inverse":27}[style])
+                    {"bold": 22,
+                     "underline": 24,
+                     "blink": 25,
+                     "inverse": 27}[style])
             except KeyError:
                 raise ValueError("unknown style %s" % (repr(style)))
 
@@ -578,12 +578,12 @@ class output_text:
         """returns unicode text formatted depending on is_tty"""
 
         if (is_tty and (len(self.__open_codes__) > 0)):
-            return (u"\u001B[%sm%s\u001B[%sm" % \
-                        (";".join(map(unicode,
-                                      self.__open_codes__)),
-                         self.__string__,
-                         ";".join(map(unicode,
-                                      self.__close_codes__))))
+            return (u"\u001B[%sm%s\u001B[%sm" %
+                    (";".join(map(unicode,
+                                  self.__open_codes__)),
+                     self.__string__,
+                     ";".join(map(unicode,
+                                  self.__close_codes__))))
         else:
             return self.__string__
 
@@ -719,12 +719,12 @@ class output_list(output_text):
         """returns unicode text formatted depending on is_tty"""
 
         if (is_tty and (len(self.__open_codes__) > 0)):
-            return (u"\u001B[%sm%s\u001B[%sm" % \
-                        (";".join(map(unicode,
-                                      self.__open_codes__)),
-                         self.format(False),
-                         ";".join(map(unicode,
-                                      self.__close_codes__))))
+            return (u"\u001B[%sm%s\u001B[%sm" %
+                    (";".join(map(unicode,
+                                  self.__open_codes__)),
+                     self.format(False),
+                     ";".join(map(unicode,
+                                  self.__close_codes__))))
         else:
             return u"".join([t.format(is_tty) for t in self.__output_texts__])
 
@@ -807,13 +807,13 @@ class output_list(output_text):
                 tail_texts.append(text)
 
         return (output_list(head_texts,
-                           fg_color=self.__fg_color__,
-                           bg_color=self.__bg_color__,
-                           style=self.__style__),
+                            fg_color=self.__fg_color__,
+                            bg_color=self.__bg_color__,
+                            style=self.__style__),
                 output_list(tail_texts,
-                           fg_color=self.__fg_color__,
-                           bg_color=self.__bg_color__,
-                           style=self.__style__))
+                            fg_color=self.__fg_color__,
+                            bg_color=self.__bg_color__,
+                            style=self.__style__))
 
 
 class output_table:
@@ -915,9 +915,9 @@ class output_table_row:
                 return text.format(is_tty)
 
         #attribute to method mapping
-        align_meth = {"left":align_left,
-                      "right":align_right,
-                      "center":align_center}
+        align_meth = {"left": align_left,
+                      "right": align_right,
+                      "center": align_center}
 
         assert(len(column_widths) == len(self.__columns__))
 
@@ -1006,8 +1006,8 @@ class ProgressDisplay:
              screen_width) = self.messenger.terminal_size(sys.stdout)
 
             for row in self.progress_rows:
-                if ((row is not None) and
-                    (self.displayed_rows < screen_height)):
+                if (((row is not None) and
+                     (self.displayed_rows < screen_height))):
                     self.messenger.output(row.unicode(screen_width))
                     self.displayed_rows += 1
 
@@ -2321,8 +2321,8 @@ def threaded_transfer_framelist_data(pcmreader, to_function,
                                      signed=True, big_endian=False):
     """sends pcm.FrameLists from pcmreader to to_function via threads
 
-    frameLists are converted to strings using the signed and big_endian
-    arguments.  This continues until an empty FrameLists is returned
+    FrameLists are converted to strings using the signed and big_endian
+    arguments.  This continues until an empty FrameList is returned
     from pcmreader.  It operates by splitting reading and writing
     into threads in the hopes that an intermittant reader
     will not disrupt the writer
@@ -2342,7 +2342,6 @@ def threaded_transfer_framelist_data(pcmreader, to_function,
             queue.put(None)
 
     data_queue = Queue.Queue(10)
-    #thread.start_new_thread(send_data,(from_function,data_queue))
     thread = threading.Thread(target=send_data,
                               args=(pcmreader, data_queue))
     thread.setDaemon(True)
@@ -4702,17 +4701,18 @@ try:
             if no match can be found for the CD
             """
 
-            return metadata_lookup(first_track_number=1,
-                                   last_track_number=len(self),
-                                   offsets=[t.offset() for t in self],
-                                   lead_out_offset=self.last_sector() + 150 + 1,
-                                   total_length=self.last_sector(),
-                                   musicbrainz_server=musicbrainz_server,
-                                   musicbrainz_port=musicbrainz_port,
-                                   freedb_server=freedb_server,
-                                   freedb_port=freedb_port,
-                                   use_musicbrainz=use_musicbrainz,
-                                   use_freedb=use_freedb)
+            return metadata_lookup(
+                first_track_number=1,
+                last_track_number=len(self),
+                offsets=[t.offset() for t in self],
+                lead_out_offset=self.last_sector() + 150 + 1,
+                total_length=self.last_sector(),
+                musicbrainz_server=musicbrainz_server,
+                musicbrainz_port=musicbrainz_port,
+                freedb_server=freedb_server,
+                freedb_port=freedb_port,
+                use_musicbrainz=use_musicbrainz,
+                use_freedb=use_freedb)
 
         def accuraterip_disc_id(self):
             from .accuraterip import DiscID
@@ -4739,7 +4739,6 @@ try:
             return perform_lookup(self.accuraterip_disc_id(),
                                   accuraterip_server=accuraterip_server,
                                   accuraterip_port=accuraterip_port)
-
 
     class CDTrackReader(PCMReader):
         """a PCMReader-compatible object which reads from CDDA"""
@@ -4824,7 +4823,6 @@ try:
 except ImportError:
     #no low-level libcdio functionality present
     pass
-
 
 
 def PCMReaderWindow(pcmreader, initial_offset, pcm_frames):
@@ -5554,8 +5552,8 @@ class TemporaryFile:
         self.__temp_file__ = os.fdopen(fd, "wb")
 
     def __del__(self):
-        if ((self.__temp_path__ is not None) and
-            os.path.isfile(self.__temp_path__)):
+        if (((self.__temp_path__ is not None) and
+             os.path.isfile(self.__temp_path__))):
             os.unlink(self.__temp_path__)
 
     def write(self, data):

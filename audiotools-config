@@ -38,7 +38,6 @@ def display_defaults(config, msg):
 
         display_option(table, label, u"yes" if value else u"no", indent)
 
-
     table = audiotools.output_table()
     display_option(table,
                    _.LAB_AT_CONFIG_VERBOSITY,
@@ -92,7 +91,7 @@ def display_defaults(config, msg):
                           audiotools.BIN.can_execute(
                               audiotools.BIN[audio_type.BINARIES[0]])
                           else "red")),
-                           "right")
+                "right")
         else:
             row.add_column(
                 audiotools.output_text(u", ").join(
@@ -279,6 +278,7 @@ def display_defaults(config, msg):
 
     for row in table.format(msg.output_isatty()):
         msg.output(row)
+
 
 def apply_options(options, config):
     """given an OptionParser's options dict
@@ -590,8 +590,8 @@ if (__name__ == '__main__'):
                         audiotools.WaveAudio)
 
                     example_text = default_audio_format.track_name(
-                        file_path="file_name.%s" % \
-                            (default_audio_format.SUFFIX),
+                        file_path="file_name.%s" %
+                        (default_audio_format.SUFFIX),
                         track_metadata=audiotools.MetaData(
                             track_name=u"Track Name",
                             track_number=1,

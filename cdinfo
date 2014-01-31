@@ -101,7 +101,7 @@ if (__name__ == '__main__'):
     row = table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
 
     for track in tracks:
-        row= table.row()
+        row = table.row()
         row.add_column(unicode(track.track_number), "right")
         row.add_column(u" ")
         row.add_column(

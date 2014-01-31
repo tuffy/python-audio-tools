@@ -1466,7 +1466,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 [M4A_Tree_Atom('ilst',
                                filter(lambda atom: atom is not None,
                                       map(cleaned_atom, self.ilst_atom())))]),
-                    fixes_performed)
+                fixes_performed)
         else:
             #if no ilst atom, return a copy of the meta atom as-is
             return (M4A_META_Atom(
@@ -1474,7 +1474,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 self.flags,
                 [M4A_Tree_Atom('ilst',
                                [atom.copy() for atom in self.ilst_atom()])]),
-                    [])
+                [])
 
 
 class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
