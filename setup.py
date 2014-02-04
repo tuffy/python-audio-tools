@@ -147,6 +147,18 @@ class SystemLibraries:
             #pkg-config not found
             return []
 
+    def executable_present(self, executable, *args):
+        """returns True if the given executable
+        and any arguments execute with a 0 return status"""
+
+        try:
+            sub = subprocess.Popen([executable] + list(args),
+                                   stdout=open(os.devnull, "wb"),
+                                   stderr=open(os.devnull, "wb"))
+            return (sub.wait() == 0)
+        except OSError:
+            return False
+
 
 system_libraries = SystemLibraries(configfile)
 
@@ -558,15 +570,17 @@ class audiotools_encoders(Extension):
         extra_link_args = []
         extra_compile_args = []
 
-        if (system_libraries.present("mp3lame")):
-            if (system_libraries.guaranteed_present("mp3lame")):
-                libraries.add("mp3lame")
-            else:
-                #the LAME library doesn't seem to show in pkg-config
-                #so this may not be used
-                extra_link_args.extend(
-                    system_libraries.extra_link_args("mp3lame"))
-
+        #Since mp3lame doesn't show up in pkg-config,
+        #assume it's present if the user guarantees it is
+        #or if the lame executable is present.
+        #This may fail if the user has installed the binary
+        #with a lame-dev package of some kind.
+        mp3lame_present = system_libraries.guaranteed_present("mp3lame")
+        if (mp3lame_present is None):
+            mp3lame_present = system_libraries.executable_present(
+                "lame", "--version")
+        if (mp3lame_present):
+            libraries.add("mp3lame")
             defines.append(("HAS_MP3", None))
             sources.append("src/encoders/mp3.c")
             self.__library_manifest__.append(("mp3lame",

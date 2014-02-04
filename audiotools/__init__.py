@@ -21,8 +21,8 @@
 
 import sys
 
-if (sys.version_info < (2, 6, 0, 'final', 0)):
-    print >> sys.stderr, "*** Python 2.6.0 or better required"
+if (sys.version_info < (2, 7, 0, 'final', 0)):
+    print >> sys.stderr, "*** Python 2.7.0 or better required"
     sys.exit(1)
 
 
