@@ -787,6 +787,27 @@ if (ext_audiotools_cdio.libraries_present()):
     ext_modules.append(ext_audiotools_cdio)
     scripts.extend(["cd2track", "cdinfo", "cdplay"])
 
+# Build out data_files
+if (os.access('/etc', os.W_OK)): # See if we can place it in the system /etc
+    data_files = [("/etc", ["audiotools.cfg"])]
+else:
+    # Check that the prefixed etc directory exists
+    if (not os.path.isdir(os.path.join(sys.prefix, 'etc'))
+            and os.access(sys.prefix, os.W_OK)):
+        os.mkdir(os.path.join(sys.prefix, 'etc'))
+
+    # Check if we can place it in the prefix etc
+    if (os.access(os.path.join(sys.prefix, 'etc'), os.W_OK)):
+        data_files = [(os.path.join(sys.prefix, 'etc'), ["audiotools.cfg"])]
+    else:
+        # See if we can place it in the 'user' home dir
+        if (os.access(os.path.expanduser('~/'), os.W_OK)):
+            data_files = [(os.path.expanduser('~/'), [".audiotools.cfg"])]
+        else:
+            print >> sys.stderr, \
+                    "*** Could not find writable path to place audiotools.cfg"
+            sys.exit(1)
+
 setup(name='Python Audio Tools',
       version=VERSION,
       description='A collection of audio handling utilities',
@@ -798,5 +819,5 @@ setup(name='Python Audio Tools',
                 "audiotools.py_encoders"],
       ext_modules=ext_modules,
       cmdclass={"build_ext": build_ext},
-      data_files=[("/etc", ["audiotools.cfg"])],
+      data_files=data_files,
       scripts=scripts)
