@@ -99,6 +99,7 @@ static PyObject*
 encode_exception(result_t result)
 {
     switch (result) {
+    default:
     case ENCODE_OK:
     case ERR_CHANNEL_COUNT:
     case ERR_CHANNEL_ASSIGNMENT:

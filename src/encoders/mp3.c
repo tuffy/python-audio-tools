@@ -1,5 +1,5 @@
-#include <lame/lame.h>
 #include "../pcmconv.h"
+#include <lame/lame.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data

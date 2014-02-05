@@ -1,6 +1,8 @@
 #ifndef BITSTREAM_H
 #define BITSTREAM_H
-
+#ifndef STANDALONE
+#include <Python.h>
+#endif
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -10,9 +12,6 @@
 #include <limits.h>
 #include "buffer.h"
 #include "func_io.h"
-#ifndef STANDALONE
-#include <Python.h>
-#endif
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
