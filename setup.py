@@ -812,5 +812,4 @@ setup(name='Python Audio Tools',
                 "audiotools.py_encoders"],
       ext_modules=ext_modules,
       cmdclass={"build_ext": build_ext},
-      data_files=[("/etc", ["audiotools.cfg"])],
       scripts=scripts)

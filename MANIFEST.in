@@ -2,7 +2,6 @@ recursive-include audiotools *
 recursive-include docs *
 recursive-include src *
 recursive-include test *
-include audiotools.cfg
 include audiotools-config
 include cd2track
 include cdinfo
