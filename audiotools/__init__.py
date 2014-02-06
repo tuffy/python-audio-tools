@@ -516,10 +516,6 @@ class output_text:
             [CHAR_WIDTHS.get(unicodedata.east_asian_width(char), 1)
              for char in self.__string__])
 
-        self.__fg_color__ = fg_color
-        self.__bg_color__ = bg_color
-        self.__style__ = style
-
         self.set_format(fg_color, bg_color, style)
 
     def set_format(self, fg_color=None, bg_color=None, style=None):
@@ -571,6 +567,10 @@ class output_text:
             except KeyError:
                 raise ValueError("unknown style %s" % (repr(style)))
 
+        self.__fg_color__ = fg_color
+        self.__bg_color__ = bg_color
+        self.__style__ = style
+
     def __unicode__(self):
         return self.__string__
 
@@ -579,11 +579,9 @@ class output_text:
 
         if (is_tty and (len(self.__open_codes__) > 0)):
             return (u"\u001B[%sm%s\u001B[%sm" %
-                    (";".join(map(unicode,
-                                  self.__open_codes__)),
+                    (";".join(map(unicode, self.__open_codes__)),
                      self.__string__,
-                     ";".join(map(unicode,
-                                  self.__close_codes__))))
+                     ";".join(map(unicode, self.__close_codes__))))
         else:
             return self.__string__
 
@@ -706,10 +704,6 @@ class output_list(output_text):
                                  else output_text(t)
                                  for t in output_texts]
 
-        self.__fg_color__ = fg_color
-        self.__bg_color__ = bg_color
-        self.__style__ = style
-
         self.set_format(fg_color, bg_color, style)
 
     def __unicode__(self):
@@ -720,11 +714,9 @@ class output_list(output_text):
 
         if (is_tty and (len(self.__open_codes__) > 0)):
             return (u"\u001B[%sm%s\u001B[%sm" %
-                    (";".join(map(unicode,
-                                  self.__open_codes__)),
+                    (";".join(map(unicode, self.__open_codes__)),
                      self.format(False),
-                     ";".join(map(unicode,
-                                  self.__close_codes__))))
+                     ";".join(map(unicode, self.__close_codes__))))
         else:
             return u"".join([t.format(is_tty) for t in self.__output_texts__])
 
@@ -1175,9 +1167,9 @@ class ReplayGainProgressDisplay(ProgressDisplay):
 
         now = self.time()
         if ((now - self.last_updated) > 0.25):
-            self.clear()
+            self.clear_rows()
             self.row.update(current, total)
-            self.refresh()
+            self.display_rows()
             self.last_updated = now
 
     def update_nontty(self, current, total):
@@ -1191,7 +1183,7 @@ class ReplayGainProgressDisplay(ProgressDisplay):
         from .text import (RG_REPLAYGAIN_ADDED,
                            RG_REPLAYGAIN_APPLIED)
 
-        self.clear()
+        self.clear_rows()
         if (self.lossless_replay_gain):
             self.messenger.info(RG_REPLAYGAIN_ADDED)
         else:

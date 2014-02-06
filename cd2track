@@ -182,11 +182,13 @@ if (__name__ == '__main__'):
     #which is which depends on the track type
     metadata.add_argument("--replay-gain",
                           action="store_true",
+                          default=None,
                           dest="add_replay_gain",
                           help=_.OPT_REPLAY_GAIN)
 
     metadata.add_argument("--no-replay-gain",
                           action="store_false",
+                          default=None,
                           dest="add_replay_gain",
                           help=_.OPT_NO_REPLAY_GAIN)
 

@@ -19,7 +19,7 @@
 
 import sys
 
-if (sys.version_info < (2, 7, 0, 'final', 0)):
+if (sys.version_info < (2, 7, 0, "final", 0)):
     print >> sys.stderr, "*** Python 2.7.0 or better required"
     sys.exit(1)
 
@@ -393,7 +393,7 @@ class audiotools_cdio(Extension):
 
         Extension.__init__(
             self,
-            'audiotools.cdio',
+            "audiotools.cdio",
             sources=sources,
             libraries=list(libraries),
             extra_link_args=extra_link_args)
@@ -413,36 +413,36 @@ class audiotools_cdio(Extension):
 class audiotools_pcm(Extension):
     def __init__(self):
         Extension.__init__(self,
-                           'audiotools.pcm',
-                           sources=['src/pcm.c'])
+                           "audiotools.pcm",
+                           sources=["src/pcm.c"])
 
 
 class audiotools_pcmconverter(Extension):
     def __init__(self):
         Extension.__init__(self,
-                           'audiotools.pcmconverter',
-                           sources=['src/pcmconverter.c',
-                                    'src/pcmconv.c',
-                                    'src/array.c',
-                                    'src/bitstream.c',
-                                    'src/buffer.c',
-                                    'src/func_io.c',
-                                    'src/samplerate/samplerate.c',
-                                    'src/samplerate/src_sinc.c',
-                                    'src/samplerate/src_zoh.c',
-                                    'src/samplerate/src_linear.c'])
+                           "audiotools.pcmconverter",
+                           sources=["src/pcmconverter.c",
+                                    "src/pcmconv.c",
+                                    "src/array.c",
+                                    "src/bitstream.c",
+                                    "src/buffer.c",
+                                    "src/func_io.c",
+                                    "src/samplerate/samplerate.c",
+                                    "src/samplerate/src_sinc.c",
+                                    "src/samplerate/src_zoh.c",
+                                    "src/samplerate/src_linear.c"])
 
 
 class audiotools_replaygain(Extension):
     def __init__(self):
         Extension.__init__(self,
-                           'audiotools.replaygain',
-                           sources=['src/replaygain.c',
-                                    'src/pcmconv.c',
-                                    'src/array.c',
-                                    'src/bitstream.c',
-                                    'src/buffer.c',
-                                    'src/func_io.c'])
+                           "audiotools.replaygain",
+                           sources=["src/replaygain.c",
+                                    "src/pcmconv.c",
+                                    "src/array.c",
+                                    "src/bitstream.c",
+                                    "src/buffer.c",
+                                    "src/func_io.c"])
 
 
 class audiotools_decoders(Extension):
@@ -450,29 +450,29 @@ class audiotools_decoders(Extension):
         self.__library_manifest__ = []
 
         defines = [("VERSION", VERSION)]
-        sources = ['src/array.c',
-                   'src/pcmconv.c',
-                   'src/common/md5.c',
-                   'src/bitstream.c',
-                   'src/buffer.c',
-                   'src/func_io.c',
-                   'src/huffman.c',
-                   'src/decoders/flac.c',
-                   'src/decoders/oggflac.c',
-                   'src/common/flac_crc.c',
-                   'src/ogg.c',
-                   'src/ogg_crc.c',
-                   'src/common/tta_crc.c',
-                   'src/decoders/shn.c',
-                   'src/decoders/alac.c',
-                   'src/decoders/wavpack.c',
-                   'src/decoders/tta.c',
-                   'src/decoders/mlp.c',
-                   'src/decoders/aobpcm.c',
-                   'src/decoders/aob.c',
-                   'src/decoders/sine.c',
-                   'src/decoders/mod_cppm.c',
-                   'src/decoders.c']
+        sources = ["src/array.c",
+                   "src/pcmconv.c",
+                   "src/common/md5.c",
+                   "src/bitstream.c",
+                   "src/buffer.c",
+                   "src/func_io.c",
+                   "src/huffman.c",
+                   "src/decoders/flac.c",
+                   "src/decoders/oggflac.c",
+                   "src/common/flac_crc.c",
+                   "src/ogg.c",
+                   "src/ogg_crc.c",
+                   "src/common/tta_crc.c",
+                   "src/decoders/shn.c",
+                   "src/decoders/alac.c",
+                   "src/decoders/wavpack.c",
+                   "src/decoders/tta.c",
+                   "src/decoders/mlp.c",
+                   "src/decoders/aobpcm.c",
+                   "src/decoders/aob.c",
+                   "src/decoders/sine.c",
+                   "src/decoders/mod_cppm.c",
+                   "src/decoders.c"]
         libraries = set()
         extra_link_args = []
         extra_compile_args = []
@@ -527,16 +527,16 @@ class audiotools_decoders(Extension):
                                               "Opus decoding",
                                               False))
 
-        if (sys.platform == 'linux2'):
-            defines.extend([('DVD_STRUCT_IN_LINUX_CDROM_H', None),
-                            ('HAVE_LINUX_DVD_STRUCT', None),
-                            ('HAS_UNPROT', None)])
-            sources.extend(['src/decoders/cppm.c',
-                            'src/decoders/ioctl.c',
-                            'src/decoders/dvd_css.c'])
+        if (sys.platform == "linux2"):
+            defines.extend([("DVD_STRUCT_IN_LINUX_CDROM_H", None),
+                            ("HAVE_LINUX_DVD_STRUCT", None),
+                            ("HAS_UNPROT", None)])
+            sources.extend(["src/decoders/cppm.c",
+                            "src/decoders/ioctl.c",
+                            "src/decoders/dvd_css.c"])
 
         Extension.__init__(self,
-                           'audiotools.decoders',
+                           "audiotools.decoders",
                            sources=sources,
                            define_macros=defines,
                            libraries=list(libraries),
@@ -552,20 +552,20 @@ class audiotools_encoders(Extension):
     def __init__(self, system_libraries):
         self.__library_manifest__ = []
         defines = [("VERSION", VERSION)]
-        sources = ['src/array.c',
-                   'src/pcmconv.c',
-                   'src/bitstream.c',
-                   'src/buffer.c',
-                   'src/func_io.c',
-                   'src/common/md5.c',
-                   'src/encoders/flac.c',
-                   'src/common/flac_crc.c',
-                   'src/common/tta_crc.c',
-                   'src/encoders/shn.c',
-                   'src/encoders/alac.c',
-                   'src/encoders/wavpack.c',
-                   'src/encoders/tta.c',
-                   'src/encoders.c']
+        sources = ["src/array.c",
+                   "src/pcmconv.c",
+                   "src/bitstream.c",
+                   "src/buffer.c",
+                   "src/func_io.c",
+                   "src/common/md5.c",
+                   "src/encoders/flac.c",
+                   "src/common/flac_crc.c",
+                   "src/common/tta_crc.c",
+                   "src/encoders/shn.c",
+                   "src/encoders/alac.c",
+                   "src/encoders/wavpack.c",
+                   "src/encoders/tta.c",
+                   "src/encoders.c"]
         libraries = set()
         extra_link_args = []
         extra_compile_args = []
@@ -644,7 +644,7 @@ class audiotools_encoders(Extension):
                                               False))
 
         Extension.__init__(self,
-                           'audiotools.encoders',
+                           "audiotools.encoders",
                            sources=sources,
                            define_macros=defines,
                            libraries=list(libraries),
@@ -659,55 +659,55 @@ class audiotools_encoders(Extension):
 class audiotools_bitstream(Extension):
     def __init__(self):
         Extension.__init__(self,
-                           'audiotools.bitstream',
-                           sources=['src/mod_bitstream.c',
-                                    'src/bitstream.c',
-                                    'src/buffer.c',
-                                    'src/func_io.c',
-                                    'src/huffman.c'])
+                           "audiotools.bitstream",
+                           sources=["src/mod_bitstream.c",
+                                    "src/bitstream.c",
+                                    "src/buffer.c",
+                                    "src/func_io.c",
+                                    "src/huffman.c"])
 
 
 class audiotools_verify(Extension):
     def __init__(self):
         Extension.__init__(self,
-                           'audiotools.verify',
-                           sources=['src/verify.c',
-                                    'src/bitstream.c',
-                                    'src/buffer.c',
-                                    'src/func_io.c'])
+                           "audiotools.verify",
+                           sources=["src/verify.c",
+                                    "src/bitstream.c",
+                                    "src/buffer.c",
+                                    "src/func_io.c"])
 
 
 class audiotools_ogg(Extension):
     def __init__(self):
         Extension.__init__(self,
-                           'audiotools._ogg',
-                           sources=['src/ogg.c',
-                                    'src/ogg_crc.c',
-                                    'src/mod_ogg.c',
-                                    'src/bitstream.c',
-                                    'src/func_io.c',
-                                    'src/buffer.c'])
+                           "audiotools._ogg",
+                           sources=["src/ogg.c",
+                                    "src/ogg_crc.c",
+                                    "src/mod_ogg.c",
+                                    "src/bitstream.c",
+                                    "src/func_io.c",
+                                    "src/buffer.c"])
 
 
 class audiotools_accuraterip(Extension):
     def __init__(self):
         Extension.__init__(self,
-                           'audiotools._accuraterip',
-                           sources=['src/accuraterip.c'])
+                           "audiotools._accuraterip",
+                           sources=["src/accuraterip.c"])
 
 
 class audiotools_output(Extension):
     def __init__(self, system_libraries):
         self.__library_manifest__ = []
 
-        sources = ['src/output.c']
+        sources = ["src/output.c"]
         defines = []
         libraries = set()
         extra_link_args = []
 
         #assume MacOS X always has CoreAudio
-        if (sys.platform == 'darwin'):
-            sources.append('src/output/core_audio.c')
+        if (sys.platform == "darwin"):
+            sources.append("src/output/core_audio.c")
             defines.append(("CORE_AUDIO", "1"))
             extra_link_args.extend(["-framework", "AudioToolbox",
                                     "-framework", "AudioUnit",
@@ -754,7 +754,7 @@ class audiotools_output(Extension):
                                               False))
 
         Extension.__init__(self,
-                           'audiotools.output',
+                           "audiotools.output",
                            sources=sources,
                            define_macros=defines,
                            libraries=list(libraries),
@@ -801,12 +801,12 @@ if (ext_audiotools_cdio.libraries_present()):
     ext_modules.append(ext_audiotools_cdio)
     scripts.extend(["cd2track", "cdinfo", "cdplay"])
 
-setup(name='Python Audio Tools',
+setup(name="Python Audio Tools",
       version=VERSION,
-      description='A collection of audio handling utilities',
-      author='Brian Langenberger',
-      author_email='tuffy@users.sourceforge.net',
-      url='http://audiotools.sourceforge.net',
+      description="A collection of audio handling utilities",
+      author="Brian Langenberger",
+      author_email="tuffy@users.sourceforge.net",
+      url="http://audiotools.sourceforge.net",
       packages=["audiotools",
                 "audiotools.py_decoders",
                 "audiotools.py_encoders"],
