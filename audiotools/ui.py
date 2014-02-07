@@ -2392,7 +2392,15 @@ try:
                 self.play_pause_button.set_label(LAB_PLAY_BUTTON)
 
         def play_pause(self, user_data):
-            self.player.toggle_play_pause()
+            from audiotools.player import PLAYER_STOPPED
+
+            if (self.player.state() == PLAYER_STOPPED):
+                self.player.play()
+            else:
+                #there's a race condition here where the player's state
+                #may go from playing to stopped, in which case
+                #this will do nothing and the state will stay stopped
+                self.player.toggle_play_pause()
             self.update_status()
 
         def stop(self):

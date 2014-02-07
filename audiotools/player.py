@@ -23,6 +23,26 @@ import cPickle
 (RG_NO_REPLAYGAIN, RG_TRACK_GAIN, RG_ALBUM_GAIN) = range(3)
 DEFAULT_FORMAT = (44100, 2, 0x3, 16)
 
+(PLAYER_STOPPED, PLAYER_PAUSED, PLAYER_PLAYING) = range(3)
+
+class __state__:
+    """a piece of shared state between parent and child
+
+    the parent thread should only read this state
+    whereas the client thread may read and write it"""
+
+    def __init__(self, initial_value):
+        self.state = initial_value
+
+    def get(self):
+        return self.state
+
+    def set(self, new_state):
+        self.state = new_state
+
+    def increment(self, value):
+        self.state += value
+
 
 class Player:
     """a class for operating an audio player
@@ -43,62 +63,43 @@ class Player:
 
         Raises :exc:`ValueError` if unable to start player subprocess."""
 
-        from multiprocessing import Process, Array, Value, Pipe
-        from threading import Thread
-
-        self.__player__ = None
+        import threading
+        import Queue
 
         if (not isinstance(audio_output, AudioOutput)):
             raise TypeError("invalid output object")
 
-        def call_next_track(next_track_conn, next_track_callback):
-            response = next_track_conn.recv()
-            while (response):
-                next_track_callback()
-                response = next_track_conn.recv()
-            next_track_conn.close()
+        self.__audio_output__ = audio_output
 
-        (self.__command_conn__, client_conn) = Pipe(True)
-        (server_next_track_conn, client_next_track_conn) = Pipe(False)
-        self.__state__ = Value("i", 0)
-        self.__progress__ = Array("I", [0, 0])
+        self.__state__ = __state__(PLAYER_STOPPED)
 
-        thread = Thread(target=call_next_track,
-                        args=(server_next_track_conn, next_track_callback))
-        thread.daemon = True
-        thread.start()
+        self.__commands__ = Queue.Queue()
 
-        self.__player__ = Process(
-            target=PlayerProcess.run,
-            kwargs={"audio_output": audio_output,
-                    "command_conn": client_conn,
-                    "next_track_conn": client_next_track_conn,
-                    "state": self.__state__,
-                    "current_progress": self.__progress__,
-                    "replay_gain": replay_gain})
+        self.__current_frames__ = __state__(0)
+        self.__total_frames__ = __state__(1)
 
-        self.__player__.start()
-
-    def __del__(self):
-        if (self.__player__ is not None):
-            self.__command_conn__.send(("exit", tuple(), False))
-            self.__command_conn__.close()
-            self.__player__.join()
-            self.__player__ = None
+        self.__thread__ = threading.Thread(
+            target=__play_audio_thread__,
+            kwargs={"state":self.__state__,
+                    "commands":self.__commands__,
+                    "current_frames":self.__current_frames__,
+                    "total_frames":self.__total_frames__,
+                    "audio_output":audio_output,
+                    "next_track_callback":next_track_callback})
+        self.__thread__.daemon = False
+        self.__thread__.start()
 
     def open(self, track):
         """opens the given AudioFile for playing
 
         stops playing the current file, if any"""
 
-        self.__command_conn__.send(("open", (track,), True))
-        return self.__command_conn__.recv()
+        self.__commands__.put(("open", (track,)))
 
     def play(self):
         """begins or resumes playing an opened AudioFile, if any"""
 
-        self.__command_conn__.send(("play", tuple(), True))
-        return self.__command_conn__.recv()
+        self.__commands__.put(("play", tuple()))
 
     def set_replay_gain(self, replay_gain):
         """sets the given ReplayGain level to apply during playback
@@ -107,8 +108,7 @@ class Player:
         replayGain cannot be applied mid-playback
         one must stop() and play() a file for it to take effect"""
 
-        self.__command_conn__.send(("set_replay_gain", (replay_gain,), True))
-        return self.__command_conn__.recv()
+        self.__commands__.put(("set_replay_gain", (replay_gain,)))
 
     def set_output(self, output):
         """given an AudioOutput object,
@@ -116,388 +116,207 @@ class Player:
 
         any currently playing audio is stopped"""
 
-        if (not isinstance(output, AudioOutput)):
-            raise TypeError("invalid output object")
-        self.__command_conn__.send(("set_output", (output,), True))
-        return self.__command_conn__.recv()
+        self.__audio_output__ = output
+        self.__commands__.put(("set_output", (output,)))
 
     def pause(self):
         """pauses playback of the current file
 
         playback may be resumed with play() or toggle_play_pause()"""
 
-        self.__command_conn__.send(("pause", tuple(), True))
-        return self.__command_conn__.recv()
+        self.__commands__.put(("pause", tuple()))
 
     def toggle_play_pause(self):
         """pauses the file if playing, play the file if paused"""
 
-        self.__command_conn__.send(("toggle_play_pause", tuple(), True))
-        return self.__command_conn__.recv()
+        self.__commands__.put(("toggle_play_pause", tuple()))
 
     def stop(self):
         """stops playback of the current file
 
         if play() is called, playback will start from the beginning"""
 
-        self.__command_conn__.send(("stop_playing", tuple(), True))
-        return self.__command_conn__.recv()
+        self.__commands__.put(("stop", tuple()))
 
     def state(self):
         """returns the current state of the Player
         as either PLAYER_STOPPED, PLAYER_PAUSED, or PLAYER_PLAYING ints"""
 
-        return self.__state__.value
+        return self.__state__.get()
 
     def close(self):
         """closes the player for playback
 
         the player thread is halted and the AudioOutput is closed"""
 
-        self.__command_conn__.send(("close", tuple(), True))
-        response = self.__command_conn__.recv()
-        if (self.__player__ is not None):
-            self.__command_conn__.send(("exit", tuple(), False))
-            self.__command_conn__.close()
-            self.__player__.join()
-            self.__player__ = None
-        return response
+        self.__commands__.put(("close", tuple()))
 
     def progress(self):
         """returns a (pcm_frames_played, pcm_frames_total) tuple
 
         this indicates the current playback status in PCM frames"""
 
-        return tuple(self.__progress__)
+        return (self.__current_frames__.get(), self.__total_frames__.get())
 
     def current_output_description(self):
         """returns the human-readable description of the current output device
         as a Unicode string"""
 
-        self.__command_conn__.send(("current_output_description",
-                                    tuple(),
-                                    True))
-        return self.__command_conn__.recv()
+        return self.__audio_output__.description()
 
     def current_output_name(self):
         """returns the ``NAME`` attribute of the current output device
         as a plain string"""
 
-        self.__command_conn__.send(("current_output_name",
-                                    tuple(),
-                                    True))
-        return self.__command_conn__.recv()
+        return self.__audio_output__.NAME
 
     def get_volume(self):
         """returns the current volume level as a floating point value
         between 0.0 and 1.0, inclusive"""
 
-        self.__command_conn__.send(("get_volume", tuple(), True))
-        return self.__command_conn__.recv()
+        return self.__audio_output__.get_volume()
 
     def set_volume(self, volume):
         """given a floating point value between 0.0 and 1.0, inclusive,
         sets the current volume level to that value"""
 
-        self.__command_conn__.send(("set_volume", (volume,), False))
+        self.__audio_output__.set_volume(volume)
 
 
-(PLAYER_STOPPED, PLAYER_PAUSED, PLAYER_PLAYING) = range(3)
+def __play_audio_thread__(state,
+                          commands,
+                          current_frames,
+                          total_frames,
+                          audio_output,
+                          next_track_callback):
+    from Queue import Empty
+    from audiotools import BufferedPCMReader
 
+    audiofile = None
+    pcmreader = None
+    replay_gain = RG_NO_REPLAYGAIN
 
-class PlayerProcess:
-    """the Player class' subprocess
-
-    this should not be instantiated directly;
-    player will do so automatically"""
-
-    BUFFER_SIZE = 0.25  # in seconds
-
-    def __init__(self, audio_output,
-                 state,
-                 progress,
-                 next_track_conn,
-                 replay_gain=RG_NO_REPLAYGAIN):
-        """audio_output is an AudioOutput object
-
-        state is a shared Value of the current processing state
-
-        progress is a shared Array of current frames / total frames
-
-        next_track_conn is a Connection object
-        to be sent an object when the current track ends
-
-        replay_gain is RG_NO_REPLAYGAIN, RG_TRACK_GAIN, or RG_ALBUM_GAIN
-        """
-
-        self.__track__ = None          # the currently playing AudioFile
-        self.__pcmreader__ = None      # the currently playing PCMReader
-
-        # an AudioOutput subclass
-        self.__audio_output__ = audio_output
-        self.__buffer_size__ = 0       # the number of PCM frames to process
-
-        self.__state__ = state
-        self.__state__.value = PLAYER_STOPPED
-        self.__progress__ = progress   # an Array of current/total frames
-
-        self.set_progress(0, 1)
-
-        self.__next_track_conn__ = next_track_conn
-
-        self.__replay_gain__ = replay_gain  # the sort of ReplayGain to apply
-
-    def open(self, track):
-        self.stop_playing()
-        self.__track__ = track
-
-    def close(self):
-        self.stop_playing()
-        self.__audio_output__.close()
-
-    def pause(self):
-        if (self.__state__.value == PLAYER_PLAYING):
-            self.__audio_output__.pause()
-            self.__state__.value = PLAYER_PAUSED
-
-    def play(self):
-        if (self.__track__ is not None):
-            if (self.__state__.value == PLAYER_STOPPED):
-                self.start_playing()
-            elif (self.__state__.value == PLAYER_PAUSED):
-                self.__audio_output__.resume()
-                self.__state__.value = PLAYER_PLAYING
-            elif (self.__state__.value == PLAYER_PLAYING):
-                pass
-
-    def set_replay_gain(self, replay_gain):
-        self.__replay_gain__ = replay_gain
-
-    def set_output(self, output):
-        self.stop_playing()
+    while (True):
         try:
-            self.__audio_output__ = output
-            self.__buffer_size__ = 0
-            return True
-        except ValueError:
-            return False
+            (command, args) = commands.get(state.get() != PLAYER_PLAYING)
+            #got a command to process
+            if (command == "open"):
+                #stop whatever's playing and prepare new track for playing
+                track = args[0]
+                if (pcmreader is not None):
+                    pcmreader.close()
+                    pcmreader = None
+                audiofile = track
+                state.set(PLAYER_STOPPED)
+                current_frames.set(0)
+                total_frames.set(1)
+            elif (command == "play"):
+                if (state.get() == PLAYER_STOPPED):
+                    #begin playing track from beginning
 
-    def toggle_play_pause(self):
-        if (self.__state__.value == PLAYER_PLAYING):
-            self.pause()
-        elif ((self.__state__.value == PLAYER_PAUSED) or
-              (self.__state__.value == PLAYER_STOPPED)):
-            self.play()
+                    #first get PCMReader from track
+                    pcmreader = audiofile.to_pcm()
+                    if (replay_gain in (RG_TRACK_GAIN, RG_ALBUM_GAIN)):
+                        gain = audiofile.replay_gain()
+                        if (gain is not None):
+                            #wrap pcmreader in ReplayGainReader
+                            #if the ReplayGain is set and the track has
+                            #ReplayGain to use
+                            from audiotools.replaygain import ReplayGainReader
+                            if (replay_gain == RG_TRACK_GAIN):
+                                pcmreader = ReplayGainReader(
+                                    pcmreader,
+                                    gain.track_gain,
+                                    gain.track_peak)
+                            else:
+                                pcmreader = ReplayGainReader(
+                                    pcmreader,
+                                    gain.album_gain,
+                                    gain.album_peak)
+                    pcmreader = BufferedPCMReader(pcmreader)
 
-    def current_output_name(self):
-        return self.__audio_output__.NAME
+                    #set output to be compatible with PCMReader
+                    if (not audio_output.compatible(
+                        sample_rate=pcmreader.sample_rate,
+                        channels=pcmreader.channels,
+                        channel_mask=pcmreader.channel_mask,
+                        bits_per_sample=pcmreader.bits_per_sample)):
+                        audio_output.set_format(
+                            sample_rate=pcmreader.sample_rate,
+                            channels=pcmreader.channels,
+                            channel_mask=pcmreader.channel_mask,
+                            bits_per_sample=pcmreader.bits_per_sample)
 
-    def current_output_description(self):
-        return self.__audio_output__.description()
+                    #reset progress
+                    current_frames.set(0)
+                    total_frames.set(audiofile.total_frames())
 
-    def get_volume(self):
-        return self.__audio_output__.get_volume()
+                    buffer_size = min(int(round(0.10 *
+                                                pcmreader.sample_rate)),
+                                      4096)
 
-    def set_volume(self, volume):
-        return self.__audio_output__.set_volume(volume)
-
-    def start_playing(self):
-        from . import BufferedPCMReader
-
-        #construct pcmreader from track
-        #depending on whether ReplayGain is set
-        if (self.__replay_gain__ == RG_TRACK_GAIN):
-            from .replaygain import ReplayGainReader
-            replay_gain = self.__track__.replay_gain()
-
-            if (replay_gain is not None):
-                pcmreader = ReplayGainReader(
-                    self.__track__.to_pcm(),
-                    replay_gain.track_gain,
-                    replay_gain.track_peak)
-            else:
-                pcmreader = self.__track__.to_pcm()
-        elif (self.__replay_gain__ == RG_ALBUM_GAIN):
-            from .replaygain import ReplayGainReader
-            replay_gain = self.__track__.replay_gain()
-
-            if (replay_gain is not None):
-                pcmreader = ReplayGainReader(
-                    self.__track__.to_pcm(),
-                    replay_gain.album_gain,
-                    replay_gain.album_peak)
-            else:
-                pcmreader = self.__track__.to_pcm()
-        else:
-            pcmreader = self.__track__.to_pcm()
-
-        pcmreader = BufferedPCMReader(pcmreader)
-
-        #reopen AudioOutput if necessary based on file's parameters
-        if (not self.__audio_output__.compatible(
-                sample_rate=pcmreader.sample_rate,
-                channels=pcmreader.channels,
-                channel_mask=pcmreader.channel_mask,
-                bits_per_sample=pcmreader.bits_per_sample)):
-            self.__audio_output__.set_format(
-                sample_rate=pcmreader.sample_rate,
-                channels=pcmreader.channels,
-                channel_mask=pcmreader.channel_mask,
-                bits_per_sample=pcmreader.bits_per_sample)
-
-        self.__pcmreader__ = pcmreader
-        self.__buffer_size__ = min(int(round(self.BUFFER_SIZE *
-                                             self.__track__.sample_rate())),
-                                   4096)
-        self.__state__.value = PLAYER_PLAYING
-        self.set_progress(0, self.__track__.total_frames())
-
-    def stop_playing(self):
-        if (self.__pcmreader__ is not None):
-            self.__pcmreader__.close()
-        self.__audio_output__.close()
-        self.__state__.value = PLAYER_STOPPED
-        self.set_progress(0, 1)
-
-    def output_chunk(self):
-        frame = self.__pcmreader__.read(self.__buffer_size__)
-        if (len(frame) > 0):
-            self.__progress__[0] += frame.frames
-            self.__audio_output__.play(frame)
-        else:
-            self.__pcmreader__.close()
-            self.__state__.value = PLAYER_STOPPED
-            self.set_progress(0, 1)
-            self.__next_track_conn__.send(True)
-
-    def set_progress(self, current, total):
-        self.__progress__[1] = total
-        self.__progress__[0] = current
-
-    @classmethod
-    def run(cls, audio_output, state, command_conn, next_track_conn,
-            current_progress, replay_gain=RG_NO_REPLAYGAIN):
-        """audio_output is an AudioOutput object
-
-        state is a shared Value of the current state
-
-        command_conn is a bidirectional Connection object
-        which reads (command, (arg1, arg2, ...)) tuples
-        from the parent and writes responses back
-
-        next_track_conn is a unidirectional Connection object
-        which writes an object when the player moves to the next track
-
-        current_progress is an Array of 2 ints
-        for the playing file's current/total progress
-
-        replay_gain is RG_NO_REPLAYGAIN, RG_TRACK_GAIN, or RG_ALBUM_GAIN"""
-
-        #build PlayerProcess state management object
-        player = cls(audio_output=audio_output,
-                     state=state,
-                     progress=current_progress,
-                     next_track_conn=next_track_conn,
-                     replay_gain=replay_gain)
-
-        while (True):
-            if (state.value == PLAYER_PLAYING):
-                if (command_conn.poll()):
-                    #handle command before processing more audio, if any
-                    while (command_conn.poll()):
-                        (command, args, return_result) = command_conn.recv()
-                        if (command == "exit"):
-                            player.close()
-                            command_conn.close()
-                            next_track_conn.send(False)
-                            next_track_conn.close()
-                            return
-                        else:
-                            result = getattr(player, command)(*args)
-                            if (return_result):
-                                command_conn.send(result)
+                    #update state so audio is played on the next pass
+                    state.set(PLAYER_PLAYING)
+                elif (state.get() == PLAYER_PAUSED):
+                    #resume a paused track for play
+                    audio_output.resume()
+                    state.set(PLAYER_PLAYING)
+            elif (command == "set_replay_gain"):
+                replay_gain = args[0]
+            elif (command == "set_output"):
+                #stop whatever's playing and set new output
+                if (pcmreader is not None):
+                    pcmreader.close()
+                    pcmreader = None
+                state.set(PLAYER_STOPPED)
+                current_frames.set(0)
+                total_frames.set(1)
+                audio_output = args[0]
+            elif (command == "pause"):
+                if (state.get() == PLAYER_PLAYING):
+                    #only pause player if it's in the middle of playing
+                    #otherwise do nothing
+                    audio_output.pause()
+                    state.set(PLAYER_PAUSED)
+            elif (command == "toggle_play_pause"):
+                #switch from paused to playing or playing to paused
+                if (state.get() == PLAYER_PAUSED):
+                    state.set(PLAYER_PLAYING)
+                elif (state.get() == PLAYER_PLAYING):
+                    state.set(PLAYER_PAUSED)
+            elif (command == "stop"):
+                if (pcmreader is not None):
+                    pcmreader.close()
+                    pcmreader = None
+                state.set(PLAYER_STOPPED)
+                current_frames.set(0)
+                total_frames.set(1)
+            elif (command == "close"):
+                if (pcmreader is not None):
+                    pcmreader.close()
+                return
+        except Empty:
+            #no commands to process
+            #so output audio if playing
+            if (state.get() == PLAYER_PLAYING):
+                frame = pcmreader.read(buffer_size)
+                if (len(frame) > 0):
+                    current_frames.increment(frame.frames)
+                    audio_output.play(frame)
                 else:
-                    player.output_chunk()
-            else:
-                (command, args, return_result) = command_conn.recv()
-                if (command == "exit"):
-                    player.close()
-                    command_conn.close()
-                    next_track_conn.send(False)
-                    next_track_conn.close()
-                    return
-                else:
-                    result = getattr(player, command)(*args)
-                    if (return_result):
-                        command_conn.send(result)
+                    #no more audio to play
+                    #so change state to STOPPED
+                    #and call next_track_callback, if any
+                    pcmreader.close()
+                    pcmreader = None
+                    state.set(PLAYER_STOPPED)
+                    current_frames.set(0)
+                    total_frames.set(1)
+                    if (callable(next_track_callback)):
+                        next_track_callback()
 
 
-class CDPlayer(Player):
-    """a class for operating a CDDA player
-
-    the player itself runs in a seperate thread,
-    which this sends commands to"""
-
-    def __init__(self, cdda,
-                 audio_output,
-                 next_track_callback=lambda: None):
-        """cdda is a audiotools.CDDA object
-
-        audio_output is an AudioOutput subclass
-
-        next_track_callback is a function with no arguments
-        which is called by the player when the current track is finished"""
-
-        from multiprocessing import Process, Array, Value, Pipe
-        from threading import Thread
-
-        self.__player__ = None
-
-        if (not isinstance(audio_output, AudioOutput)):
-            raise TypeError("invalid output object")
-
-        def call_next_track(next_track_conn, next_track_callback):
-            response = next_track_conn.recv()
-            while (response):
-                next_track_callback()
-                response = next_track_conn.recv()
-            next_track_conn.close()
-
-        (self.__command_conn__, client_conn) = Pipe(True)
-        (server_next_track_conn, client_next_track_conn) = Pipe(False)
-        self.__state__ = Value("i", 0)
-        self.__progress__ = Array("I", [0, 0])
-
-        thread = Thread(target=call_next_track,
-                        args=(server_next_track_conn, next_track_callback))
-        thread.daemon = True
-        thread.start()
-
-        self.__player__ = Process(
-            target=CDPlayerProcess.run,
-            kwargs={"cdda": cdda,
-                    "audio_output": audio_output,
-                    "state": self.__state__,
-                    "command_conn": client_conn,
-                    "next_track_conn": client_next_track_conn,
-                    "current_progress": self.__progress__})
-
-        self.__player__.start()
-
-    def open(self, track_number):
-        """track_number indicates which track to open, starting from 1
-
-        stops playing the current track, if any"""
-
-        self.__command_conn__.send(("open", (track_number,), True))
-        return self.__command_conn__.recv()
-
-    def set_replay_gain(self, replay_gain):
-        #does nothing
-        pass
-
-
-class CDPlayerProcess(PlayerProcess):
+class CDPlayerProcess():
     """the CDPlayer class' subprocess
 
     this should not be instantiated directly;

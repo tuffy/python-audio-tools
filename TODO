@@ -6718,7 +6718,7 @@
 *** DONE Update documentation
 *** DONE Update unit tests
 ** TODO Update AccurateRip verification
-*** TODO Add --cue option to trackverify to work on CD images
+*** DONE Add --cue option to trackverify to work on CD images
     One can perform: trackverify -R --cue CDImage.cue CDImage.wav
     to verify a disc image against AccurateRip.
 **** DONE Update man page
