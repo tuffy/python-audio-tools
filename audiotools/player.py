@@ -281,8 +281,10 @@ def __play_audio_thread__(state,
             elif (command == "toggle_play_pause"):
                 #switch from paused to playing or playing to paused
                 if (state.get() == PLAYER_PAUSED):
+                    audio_output.resume()
                     state.set(PLAYER_PLAYING)
                 elif (state.get() == PLAYER_PLAYING):
+                    audio_output.pause()
                     state.set(PLAYER_PAUSED)
             elif (command == "stop"):
                 if (pcmreader is not None):

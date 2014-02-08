@@ -196,6 +196,8 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
     pcm_FrameList *framelist;
     unsigned i;
     snd_pcm_uframes_t to_write;
+    snd_pcm_sframes_t frames_written;
+    PyThreadState *state;
 
     if (!PyArg_ParseTuple(args, "O", &framelist_obj))
         return NULL;
@@ -223,6 +225,8 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
 
     to_write = framelist->frames;
 
+    state = PyEval_SaveThread();
+
     switch (self->bits_per_sample) {
     case 8:
         /*resize internal buffer if needed*/
@@ -239,25 +243,36 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
 
         /*output data to ALSA*/
         while (to_write > 0) {
-            const snd_pcm_sframes_t frames_written =
-                snd_pcm_writei(self->output, self->buffer.int8, to_write);
+            frames_written = snd_pcm_writei(self->output,
+                                            self->buffer.int8,
+                                            to_write);
+            if (frames_written < 0) {
+                /*try to recover a single time*/
+                frames_written = snd_pcm_recover(self->output,
+                                                 frames_written,
+                                                 0);
+            }
             if (frames_written >= 0) {
                 to_write -= frames_written;
             } else {
                 switch (-frames_written) {
                 case EBADFD:
+                    PyEval_RestoreThread(state);
                     PyErr_SetString(PyExc_IOError,
                                     "PCM not in correct state");
                     return NULL;
                 case EPIPE:
+                    PyEval_RestoreThread(state);
                     PyErr_SetString(PyExc_IOError,
                                     "buffer underrun occurred");
                     return NULL;
                 case ESTRPIPE:
+                    PyEval_RestoreThread(state);
                     PyErr_SetString(PyExc_IOError,
                                     "suspend event occurred");
                     return NULL;
                 default:
+                    PyEval_RestoreThread(state);
                     PyErr_SetString(PyExc_IOError,
                                     "unknown ALSA write error");
                     return NULL;
@@ -280,25 +295,36 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
 
         /*output data to ALSA*/
         while (to_write > 0) {
-            const snd_pcm_sframes_t frames_written =
-                snd_pcm_writei(self->output, self->buffer.int16, to_write);
+            frames_written = snd_pcm_writei(self->output,
+                                            self->buffer.int16,
+                                            to_write);
+            if (frames_written < 0) {
+                /*try to recover a single time*/
+                frames_written = snd_pcm_recover(self->output,
+                                                 frames_written,
+                                                 0);
+            }
             if (frames_written >= 0) {
                 to_write -= frames_written;
             } else {
                 switch (-frames_written) {
                 case EBADFD:
+                    PyEval_RestoreThread(state);
                     PyErr_SetString(PyExc_IOError,
                                     "PCM not in correct state");
                     return NULL;
                 case EPIPE:
+                    PyEval_RestoreThread(state);
                     PyErr_SetString(PyExc_IOError,
                                     "buffer underrun occurred");
                     return NULL;
                 case ESTRPIPE:
+                    PyEval_RestoreThread(state);
                     PyErr_SetString(PyExc_IOError,
                                     "suspend event occurred");
                     return NULL;
                 default:
+                    PyEval_RestoreThread(state);
                     PyErr_SetString(PyExc_IOError,
                                     "unknown ALSA write error");
                     return NULL;
@@ -322,25 +348,36 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
 
         /*output data to ALSA*/
         while (to_write > 0) {
-            const snd_pcm_sframes_t frames_written =
-                snd_pcm_writei(self->output, self->buffer.float32, to_write);
+            frames_written = snd_pcm_writei(self->output,
+                                            self->buffer.float32,
+                                            to_write);
+            if (frames_written < 0) {
+                /*try to recover a single time*/
+                frames_written = snd_pcm_recover(self->output,
+                                                 frames_written,
+                                                 0);
+            }
             if (frames_written >= 0) {
                 to_write -= frames_written;
             } else {
                 switch (-frames_written) {
                 case EBADFD:
+                    PyEval_RestoreThread(state);
                     PyErr_SetString(PyExc_IOError,
                                     "PCM not in correct state");
                     return NULL;
                 case EPIPE:
+                    PyEval_RestoreThread(state);
                     PyErr_SetString(PyExc_IOError,
                                     "buffer underrun occurred");
                     return NULL;
                 case ESTRPIPE:
+                    PyEval_RestoreThread(state);
                     PyErr_SetString(PyExc_IOError,
                                     "suspend event occurred");
                     return NULL;
                 default:
+                    PyEval_RestoreThread(state);
                     PyErr_SetString(PyExc_IOError,
                                     "unknown ALSA write error");
                     return NULL;
@@ -353,6 +390,7 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
         break;
     }
 
+    PyEval_RestoreThread(state);
     Py_INCREF(Py_None);
     return Py_None;
 }

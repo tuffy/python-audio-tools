@@ -68,6 +68,7 @@ static PyObject* PulseAudio_play(output_PulseAudio *self, PyObject *args)
       The callback is mostly useless
       because it doesn't allow us to adjust the data length
       like CoreAudio's does.*/
+    Py_BEGIN_ALLOW_THREADS
     pa_threaded_mainloop_lock(self->mainloop);
 
     while (data_len > 0) {
@@ -92,6 +93,7 @@ static PyObject* PulseAudio_play(output_PulseAudio *self, PyObject *args)
     }
 
     pa_threaded_mainloop_unlock(self->mainloop);
+    Py_END_ALLOW_THREADS
 
     Py_INCREF(Py_None);
     return Py_None;
