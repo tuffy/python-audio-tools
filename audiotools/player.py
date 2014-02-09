@@ -234,7 +234,6 @@ class AudioPlayer:
             #if an audiofile has been opened
 
             #get PCMReader from selected audiofile
-            #FIXME - catch errors here
             pcmreader = self.__audiofile__.to_pcm()
 
             #apply ReplayGain if requested
@@ -285,8 +284,16 @@ class AudioPlayer:
         if audio is exhausted, stop playing and call the next_track callback"""
 
         if (self.__state__ == PLAYER_PLAYING):
-            #FIXME - catch errors here
-            frame = self.__pcmreader__.read(self.__buffer_size__)
+            try:
+                frame = self.__pcmreader__.read(self.__buffer_size__)
+            except (IOError, ValueError), err:
+                #some sort of read error occurred
+                #so cease playing file and move on to next
+                self.stop()
+                if (callable(self.__next_track_callback__)):
+                    self.__next_track_callback__()
+                return
+
             if (len(frame) > 0):
                 self.__current_frames__ += frame.frames
                 self.__audio_output__.play(frame)
@@ -332,8 +339,10 @@ class AudioPlayer:
                         self.pause()
                 elif (command == "stop"):
                     self.stop()
+                    self.__audio_output__.close()
                 elif (command == "close"):
                     self.stop()
+                    self.__audio_output__.close()
                     return
             except Empty:
                 #no commands to process
