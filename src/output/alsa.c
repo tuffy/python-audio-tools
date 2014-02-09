@@ -250,7 +250,7 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
                 /*try to recover a single time*/
                 frames_written = snd_pcm_recover(self->output,
                                                  frames_written,
-                                                 0);
+                                                 1);
             }
             if (frames_written >= 0) {
                 to_write -= frames_written;
@@ -302,7 +302,7 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
                 /*try to recover a single time*/
                 frames_written = snd_pcm_recover(self->output,
                                                  frames_written,
-                                                 0);
+                                                 1);
             }
             if (frames_written >= 0) {
                 to_write -= frames_written;
@@ -355,7 +355,7 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
                 /*try to recover a single time*/
                 frames_written = snd_pcm_recover(self->output,
                                                  frames_written,
-                                                 0);
+                                                 1);
             }
             if (frames_written >= 0) {
                 to_write -= frames_written;
