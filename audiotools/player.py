@@ -350,145 +350,119 @@ class AudioPlayer:
                 self.output_audio()
 
 
-class CDPlayerProcess():
-    """the CDPlayer class' subprocess
+class CDPlayer(Player):
+    def __init__(self, cdda, audio_output, next_track_callback=lambda: None):
+        """cdda is a CDDA object
 
-    this should not be instantiated directly;
-    CDPlayer will do so automatically"""
+        audio_output is an AudioOutput object
 
-    def __init__(self, audio_output,
-                 cdda,
-                 state,
-                 progress,
-                 next_track_conn):
-        """audio_output is an AudioOutput Object
+        next_track_callback is a function with no arguments
+        which is called by the player when the current track is finished"""
 
-        cdda is a CDDA object
+        import threading
+        import Queue
 
-        state is a shared Value of the current processing state
+        if (not isinstance(audio_output, AudioOutput)):
+            raise TypeError("invalid output object")
 
-        progress is a shared Array of current frames / total frames
+        self.__audio_output__ = audio_output
+        self.__player__ = CDAudioPlayer(cdda, audio_output, next_track_callback)
+        self.__commands__ = Queue.Queue()
+        self.__responses__ = Queue.Queue()
 
-        next_track_conn is a Connection object
-        to be sent an object when the current track ends
-        """
-
-        PlayerProcess.__init__(self,
-                               audio_output,
-                               state,
-                               progress,
-                               next_track_conn,
-                               replay_gain=RG_NO_REPLAYGAIN)
-
-        self.__cdda__ = cdda
-        self.__track_number__ = None
+        self.__thread__ = threading.Thread(
+            target=self.__player__.run,
+            kwargs={"commands":self.__commands__,
+                    "responses":self.__responses__})
+        self.__thread__.daemon = False
+        self.__thread__.start()
 
     def open(self, track_number):
-        self.stop_playing()
-        self.__track_number__ = track_number
+        """opens the given track_number for playing
 
-    def play(self):
-        if (self.__track_number__ is not None):
-            if (self.__state__.value == PLAYER_STOPPED):
-                self.start_playing()
-            elif (self.__state__.value == PLAYER_PAUSED):
-                self.__audio_output__.resume()
-                self.__state__.value = PLAYER_PLAYING
-            elif (self.__state__.value == PLAYER_PLAYING):
-                pass
+        stops playing the current track, if any"""
+
+        self.__commands__.put(("open", (track_number,)))
 
     def set_replay_gain(self, replay_gain):
-        #does nothing
+        """ReplayGain not applicable to CDDA, so this does nothing"""
+
         pass
 
-    def start_playing(self):
-        from . import BufferedPCMReader
 
-        #construct pcmreader from track
-        track = self.__cdda__[self.__track_number__]
-        pcmreader = ThreadedPCMReader(BufferedPCMReader(track))
+class CDAudioPlayer(AudioPlayer):
+    def __init__(self, cdda, audio_output, next_track_callback=lambda: None):
+        """cdda is a CDDA object to play tracks from
 
-        #reopen AudioOutput if necessary
-        if (not self.__audio_output__.compatible(
+        audio_output is an AudioOutput object to play audio to
+
+        next_track_callback is an optional function
+        which is called with no arguments when the current track is finished"""
+
+        self.__state__ = PLAYER_STOPPED
+        self.__audio_output__ = audio_output
+        self.__next_track_callback__ = next_track_callback
+        self.__cdda__ = cdda
+        self.__track_number__ = None
+        self.__pcmreader__ = None
+        self.__buffer_size__ = 1
+        self.__replay_gain__ = RG_NO_REPLAYGAIN
+        self.__current_frames__ = 0
+        self.__total_frames__ = 1
+
+    def set_audiofile(self, track_number):
+        """set tracks number to play"""
+
+        #ensure track number is in the proper range
+        if ((track_number > 0) and (track_number <= len(self.__cdda__))):
+            self.__track_number__ = track_number
+
+    def play(self):
+        """if track has been selected,
+        changes current state of player to PLAYER_PLAYING"""
+
+        from audiotools import BufferedPCMReader
+
+        if (self.__state__ == PLAYER_PLAYING):
+            #already playing, so nothing to do
+            return
+        elif (self.__state__ == PLAYER_PAUSED):
+            #go from unpaused to playing
+            self.__audio_output__.resume()
+            self.__state__ = PLAYER_PLAYING
+        elif ((self.__state__ == PLAYER_STOPPED) and
+              (self.__track_number__ is not None)):
+            #go from stopped to playing
+            #if a track number has been selected
+
+            #get PCMReader from selected track
+            track = self.__cdda__[self.__track_number__]
+
+            #decode PCMReader in thread
+            #and place in buffer so one can process small chunks of data
+            self.__pcmreader__ = BufferedPCMReader(ThreadedPCMReader(track))
+
+            #calculate quarter second buffer size
+            self.__buffer_size__ = int(round(0.25 * 44100))
+
+            #set output to be compatible with PCMReader
+            if (not self.__audio_output__.compatible(
                 sample_rate=44100,
                 channels=2,
                 channel_mask=0x3,
                 bits_per_sample=16)):
-            self.__audio_output__.set_format(
-                sample_rate=44100,
-                channels=2,
-                channel_mask=0x3,
-                bits_per_sample=16)
+                self.__audio_output__.set_format(
+                    sample_rate=44100,
+                    channels=2,
+                    channel_mask=0x3,
+                    bits_per_sample=16)
 
-        self.__pcmreader__ = pcmreader
-        self.__state__.value = PLAYER_PLAYING
-        self.__buffer_size__ = min(int(round(self.BUFFER_SIZE * 44100)),
-                                   4096)
-        self.set_progress(0, track.length() * 44100 / 75)
+            #reset progress
+            self.__current_frames__ = 0
+            self.__total_frames__ = track.length() * (44100 / 75)
 
-    def stop_playing(self):
-        if (self.__pcmreader__ is not None):
-            self.__pcmreader__.close()
-        self.__audio_output__.close()
-        self.__state__.value = PLAYER_STOPPED
-        self.set_progress(0, 1)
-
-    @classmethod
-    def run(cls, cdda, audio_output, state, command_conn, next_track_conn,
-            current_progress):
-        """audio_output is an AudioOutput object
-
-        cdda is a CDDA object
-
-        state is a shared Value of the current state
-
-        command_conn is a bidirectional Connection object
-        which reads (command, (arg1, arg2, ...)) tuples
-        from the parent and writes responses back
-
-        next_track_conn is a unidirectional Connection object
-        which writes an object when the player moves to the next track
-
-        current_progress is an Array of 2 ints
-        for the playing file's current/total progress"""
-
-        #build PlayerProcess state management object
-        player = cls(audio_output=audio_output,
-                     cdda=cdda,
-                     state=state,
-                     progress=current_progress,
-                     next_track_conn=next_track_conn)
-
-        while (True):
-            if (state.value == PLAYER_PLAYING):
-                if (command_conn.poll()):
-                    #handle command before processing more audio, if any
-                    while (command_conn.poll()):
-                        (command, args, return_result) = command_conn.recv()
-                        if (command == "exit"):
-                            player.close()
-                            command_conn.close()
-                            next_track_conn.send(False)
-                            next_track_conn.close()
-                            return
-                        else:
-                            result = getattr(player, command)(*args)
-                            if (return_result):
-                                command_conn.send(result)
-                else:
-                    player.output_chunk()
-            else:
-                (command, args, return_result) = command_conn.recv()
-                if (command == "exit"):
-                    player.close()
-                    command_conn.close()
-                    next_track_conn.send(False)
-                    next_track_conn.close()
-                    return
-                else:
-                    result = getattr(player, command)(*args)
-                    if (return_result):
-                        command_conn.send(result)
+            #update state so audio begins playing
+            self.__state__ = PLAYER_PLAYING
 
 
 class ThreadedPCMReader:
