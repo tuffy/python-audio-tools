@@ -58,8 +58,8 @@ class Player:
 
         self.__thread__ = threading.Thread(
             target=self.__player__.run,
-            kwargs={"commands":self.__commands__,
-                    "responses":self.__responses__})
+            kwargs={"commands": self.__commands__,
+                    "responses": self.__responses__})
         self.__thread__.daemon = False
         self.__thread__.start()
 
@@ -187,7 +187,8 @@ class AudioPlayer:
         return self.__state__
 
     def progress(self):
-        """returns current progress as a (current frames, total frames) tuple"""
+        """returns current progress
+        as a (current frames, total frames) tuple"""
 
         return (self.__current_frames__, self.__total_frames__)
 
@@ -256,15 +257,16 @@ class AudioPlayer:
 
             #calculate quarter second buffer size
             #(or at least 4096 samples)
-            self.__buffer_size__ = min(int(round(0.25 * pcmreader.sample_rate)),
+            self.__buffer_size__ = min(int(round(0.25 *
+                                                 pcmreader.sample_rate)),
                                        4096)
 
             #set output to be compatible with PCMReader
-            if (not self.__audio_output__.compatible(
-                sample_rate=self.__pcmreader__.sample_rate,
-                channels=self.__pcmreader__.channels,
-                channel_mask=self.__pcmreader__.channel_mask,
-                bits_per_sample=self.__pcmreader__.bits_per_sample)):
+            if ((not self.__audio_output__.compatible(
+                 sample_rate=self.__pcmreader__.sample_rate,
+                 channels=self.__pcmreader__.channels,
+                 channel_mask=self.__pcmreader__.channel_mask,
+                 bits_per_sample=self.__pcmreader__.bits_per_sample))):
                 self.__audio_output__.set_format(
                     sample_rate=self.__pcmreader__.sample_rate,
                     channels=self.__pcmreader__.channels,
@@ -311,7 +313,8 @@ class AudioPlayer:
 
         while (True):
             try:
-                (command, args) = commands.get(self.__state__ != PLAYER_PLAYING)
+                (command,
+                 args) = commands.get(self.__state__ != PLAYER_PLAYING)
                 #got a command to process
                 if (command == "open"):
                     #stop whatever's playing and prepare new track for playing
@@ -366,14 +369,16 @@ class CDPlayer(Player):
             raise TypeError("invalid output object")
 
         self.__audio_output__ = audio_output
-        self.__player__ = CDAudioPlayer(cdda, audio_output, next_track_callback)
+        self.__player__ = CDAudioPlayer(cdda,
+                                        audio_output,
+                                        next_track_callback)
         self.__commands__ = Queue.Queue()
         self.__responses__ = Queue.Queue()
 
         self.__thread__ = threading.Thread(
             target=self.__player__.run,
-            kwargs={"commands":self.__commands__,
-                    "responses":self.__responses__})
+            kwargs={"commands": self.__commands__,
+                    "responses": self.__responses__})
         self.__thread__.daemon = False
         self.__thread__.start()
 
@@ -446,11 +451,11 @@ class CDAudioPlayer(AudioPlayer):
             self.__buffer_size__ = int(round(0.25 * 44100))
 
             #set output to be compatible with PCMReader
-            if (not self.__audio_output__.compatible(
-                sample_rate=44100,
-                channels=2,
-                channel_mask=0x3,
-                bits_per_sample=16)):
+            if ((not self.__audio_output__.compatible(
+                 sample_rate=44100,
+                 channels=2,
+                 channel_mask=0x3,
+                 bits_per_sample=16))):
                 self.__audio_output__.set_format(
                     sample_rate=44100,
                     channels=2,
