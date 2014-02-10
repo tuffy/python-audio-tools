@@ -2192,7 +2192,8 @@ try:
                                          LAB_PREVIOUS_BUTTON,
                                          LAB_NEXT_BUTTON,
                                          LAB_PLAY_STATUS,
-                                         LAB_PLAY_STATUS_1)
+                                         LAB_PLAY_STATUS_1,
+                                         LAB_ALBUM_NUMBER)
 
             self.player = player
 
@@ -2200,6 +2201,8 @@ try:
             self.album_name = urwid.Text(u"")
             self.artist_name = urwid.Text(u"")
             self.tracknum = urwid.Text(u"")
+            self.albumnum_label = urwid.Text(u"")
+            self.albumnum = urwid.Text(u"")
             self.play_pause_button = MappedButton(LAB_PLAY_BUTTON,
                                                   on_press=self.play_pause,
                                                   key_map={'tab': 'right'})
@@ -2247,10 +2250,20 @@ try:
                              align='right')),
                  ('weight', 1, self.tracknum)])
 
+            album_number_widget = urwid.Columns(
+                [('fixed',
+                  len(LAB_ALBUM_NUMBER) + 3,
+                  self.albumnum_label),
+                 ('weight', 1, self.albumnum)])
+
+            track_album_number = urwid.Columns(
+                [('weight', 1, track_number_widget),
+                 ('weight', 1, album_number_widget)])
+
             header = urwid.Pile([track_name_widget,
                                  artist_name_widget,
                                  album_name_widget,
-                                 track_number_widget,
+                                 track_album_number,
                                  self.progress])
 
             controls = urwid.Columns(
@@ -2342,6 +2355,8 @@ try:
                             artist_name=None,
                             track_number=None,
                             track_total=None,
+                            album_number=None,
+                            album_total=None,
                             pcm_frames=0,
                             channels=0,
                             sample_rate=0,
@@ -2350,7 +2365,8 @@ try:
             for when a new track is opened"""
 
             from audiotools.text import (LAB_X_OF_Y,
-                                         LAB_TRACK_LENGTH)
+                                         LAB_TRACK_LENGTH,
+                                         LAB_ALBUM_NUMBER)
 
             self.track_name.set_text(track_name if
                                      track_name is not None
@@ -2370,6 +2386,21 @@ try:
                     self.tracknum.set_text(unicode(track_number))
             else:
                 self.tracknum.set_text(u"")
+
+            if (album_number is not None):
+                if (album_total is not None):
+                    self.albumnum_label.set_text(('label',
+                                                  LAB_ALBUM_NUMBER + u" : "))
+                    self.albumnum.set_text(LAB_X_OF_Y %
+                                           (album_number,
+                                            album_total))
+                else:
+                    self.albumnum_label.set_text(('label',
+                                                  LAB_ALBUM_NUMBER + u" : "))
+                    self.albumnum.set_text(unicode(album_number))
+            else:
+                self.albumnum_label.set_text(u"")
+                self.albumnum.set_text(u"")
 
             try:
                 seconds_length = pcm_frames / sample_rate

@@ -62,6 +62,8 @@ if (audiotools.ui.AVAILABLE):
                         artist_name=metadata.artist_name,
                         track_number=track.track_number,
                         track_total=len(self.cdda),
+                        album_number=metadata.album_number,
+                        album_total=metadata.album_total,
                         pcm_frames=track.length() * 588,
                         channels=2,
                         sample_rate=44100,
