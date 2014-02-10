@@ -38,7 +38,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Python Audio Tools'
-copyright = u'2013, Brian Langenberger'
+copyright = u'2014, Brian Langenberger'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
