@@ -43,6 +43,7 @@ VERSION = re.search(r'VERSION\s*=\s"(.+?)"',
 
 
 LIBRARY_URLS = {"libcdio_paranoia": "http://www.gnu.org/software/libcdio/",
+                "libcdio": "http://www.gnu.org/software/libcdio/",
                 "libmpg123": "http://www.mpg123.org",
                 "vorbisfile": "http://xiph.org",
                 "opusfile": "http://www.opus-codec.org",
@@ -331,6 +332,9 @@ class build_ext(_build_ext):
                             libraries[library][1] and is_present)
                     else:
                         libraries[library] = ([used_for], is_present)
+
+        if (ext_audiotools_cdio not in self.extensions):
+            libraries["libcdio"] = (["CDDA data extraction"], False)
 
         table = output_table()
 
