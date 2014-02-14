@@ -18,8 +18,6 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-import cPickle
-
 (RG_NO_REPLAYGAIN, RG_TRACK_GAIN, RG_ALBUM_GAIN) = range(3)
 DEFAULT_FORMAT = (44100, 2, 0x3, 16)
 

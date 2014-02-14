@@ -94,12 +94,6 @@ buf_window_end(const struct bs_buffer *stream)
 void
 buf_resize(struct bs_buffer *stream, unsigned additional_bytes);
 
-/*makes target's data a duplicate of source's data
-
-  target must not be rewindable since old data will
-  no longer be reachable*/
-void
-buf_copy(const struct bs_buffer *source, struct bs_buffer *target);
 
 /*clears out the buffer for possible reuse
 

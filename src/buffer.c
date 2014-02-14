@@ -73,21 +73,6 @@ buf_resize(struct bs_buffer *stream, unsigned additional_bytes)
     }
 }
 
-void
-buf_copy(const struct bs_buffer *source, struct bs_buffer *target)
-{
-    assert(target->rewindable == 0);
-
-    if (target->data_size < source->data_size) {
-        target->data_size = source->data_size;
-        target->data = realloc(target->data, target->data_size);
-    }
-
-    memcpy(target->data, source->data, source->data_size);
-    target->window_start = source->window_start;
-    target->window_end = source->window_end;
-}
-
 unsigned
 buf_read(struct bs_buffer *stream, uint8_t *data, unsigned data_size)
 {

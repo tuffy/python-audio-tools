@@ -304,7 +304,8 @@ typedef struct BitstreamReader_s {
 
    br_function_x_yy
 
-   where "x" is "f" for raw file, "s" for substream or "p" for Python input
+   where "x" is "f" for raw file, "s" for substream
+   or "e" for external functions
    and "yy" is "be" for big endian or "le" for little endian.
    For example:
 
@@ -314,8 +315,8 @@ typedef struct BitstreamReader_s {
    | br_read_bits_f_le | raw file  | little endian |
    | br_read_bits_s_be | substream | big endian    |
    | br_read_bits_s_le | substream | little endian |
-   | br_read_bits_p_be | Python    | big endian    |
-   | br_read_bits_p_le | Python    | little endian |
+   | br_read_bits_e_be | function  | big endian    |
+   | br_read_bits_e_le | function  | little endian |
 
  *************************************************************/
 

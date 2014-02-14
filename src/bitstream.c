@@ -2798,7 +2798,7 @@ bw_rec_copy(BitstreamWriter* target, BitstreamWriter* source)
     /*dump all the bytes from our internal buffer*/
     bw_dump_bytes(target,
                   buf_window_start(source->output.buffer),
-                  (unsigned)buf_window_size(source->output.buffer));
+                  buf_window_size(source->output.buffer));
 
     /*then dump remaining bits (if any) with a partial write() call*/
     if (source->buffer_size > 0)
@@ -2814,10 +2814,8 @@ bw_rec_split(BitstreamWriter* target,
              BitstreamWriter* source,
              unsigned int total_bytes) {
     const uint8_t* buffer = buf_window_start(source->output.buffer);
-    const unsigned buffer_size =
-        (unsigned)buf_window_size(source->output.buffer);
+    const unsigned buffer_size = buf_window_size(source->output.buffer);
     const unsigned to_target = MIN(total_bytes, buffer_size);
-    const unsigned to_remaining = buffer_size - to_target;
 
     assert(source->type == BW_RECORDER);
 
@@ -2839,6 +2837,8 @@ bw_rec_split(BitstreamWriter* target,
         if (remaining != source) {
             /*then, dump the remaining bytes from source to "remaining"
               if it is a separate writer*/
+            const unsigned to_remaining = buffer_size - to_target;
+
             bw_dump_bytes(remaining, buffer + to_target, to_remaining);
 
             if (source->buffer_size > 0)
@@ -2848,11 +2848,8 @@ bw_rec_split(BitstreamWriter* target,
                     source->buffer & ((1 << source->buffer_size) - 1));
         } else {
             /*if remaining is the same as source,
-              shift source's output buffer down*/
-            memmove(buf_window_start(remaining->output.buffer),
-                    buffer + to_target,
-                    to_remaining);
-            remaining->output.buffer->window_end -= to_target;
+              remove bytes from beginning of buffer*/
+            remaining->output.buffer->window_start += to_target;
         }
     }
 
@@ -5997,20 +5994,6 @@ void test_buffer(struct bs_buffer *buf)
     buf_extend(buf, buf2);
     assert(buf_window_size(buf2) == 8);
     for (i = 0; i < 8; i++) {
-        assert(buf_getc(buf2) == i);
-    }
-
-    /*ensure buf_copy works like it should*/
-    buf_reset(buf);
-    for (i = 0; i < 4; i++) {
-        buf_putc(i, buf);
-    }
-    assert(buf_getc(buf) == 0);
-    buf_copy(buf, buf2);
-    for (i = 1; i < 4; i++) {
-        assert(buf_getc(buf) == i);
-    }
-    for (i = 1; i < 4; i++) {
         assert(buf_getc(buf2) == i);
     }
 
