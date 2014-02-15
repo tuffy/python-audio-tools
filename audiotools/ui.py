@@ -2030,22 +2030,29 @@ try:
                 return LAB_TRACK_LENGTH % (0, 0)
 
     class VolumeControl(urwid.ProgressBar):
-        def __init__(self, volume, volume_step, volume_changed=lambda v: None):
+        def __init__(self, get_volume, volume_delta, change_volume):
+            """get_volume is a function that returns the current volume
+            volume_delta is the delta as a float
+            change_volume is a function that takes a delta
+            and returns the new volume"""
+
             urwid.ProgressBar.__init__(self,
                                        normal="volume normal",
                                        complete="volume complete",
                                        current=0.0,
                                        done=1.0)
-            self.volume = volume
-            self.volume_step = volume_step
-            self.volume_changed = volume_changed
-            self.set_completion(self.volume)
+            self.get_volume = get_volume
+            self.volume_delta = volume_delta
+            self.change_volume = change_volume
+            self.set_completion(self.get_volume())
+
+        def update(self):
+            self.set_completion(self.get_volume())
 
         def get_text(self):
             from audiotools.text import LAB_VOLUME
 
-            return u"%s : %s" % \
-                (LAB_VOLUME, urwid.ProgressBar.get_text(self))
+            return u"%s : %s" % (LAB_VOLUME, urwid.ProgressBar.get_text(self))
 
         def selectable(self):
             return True
@@ -2070,18 +2077,16 @@ try:
             return c
 
         def decrease_volume(self):
-            self.set_volume(max(self.volume - self.volume_step, 0.0))
+            self.update_volume(-self.volume_delta)
 
         def increase_volume(self):
-            self.set_volume(min(self.volume + self.volume_step, 1.0))
+            self.update_volume(self.volume_delta)
 
-        def set_volume(self, volume):
-            self.volume = volume
-            self.set_completion(self.volume)
-            self.volume_changed(self.volume)
+        def update_volume(self, delta):
+            self.set_completion(self.change_volume(delta))
 
     class AdjustOutput(urwid.PopUpLauncher):
-        def __init__(self, player):
+        def __init__(self, player, volume_control):
             from .text import LAB_ADJUST_OUTPUT
 
             self.__output_button__ = urwid.Button(LAB_ADJUST_OUTPUT)
@@ -2091,12 +2096,15 @@ try:
                 'click',
                 lambda button: self.open_pop_up())
             self.player = player
+            self.volume_control = volume_control
             self.outputs = []
 
         def create_pop_up(self):
             from audiotools.player import available_outputs
             self.outputs = list(available_outputs())
-            pop_up = AdjustOutputDialog(self.player, self.outputs)
+            pop_up = AdjustOutputDialog(self.player,
+                                        self.volume_control,
+                                        self.outputs)
             urwid.connect_signal(
                 pop_up,
                 'close',
@@ -2110,23 +2118,22 @@ try:
                     'overlay_height': len(self.outputs) + 4}
 
     class AdjustOutputWidget(urwid.Pile):
-        def __init__(self, player, outputs, closed_callback=None):
+        def __init__(self, player, volume_control, outputs,
+                     closed_callback=None):
             from .text import (LAB_DECREASE_VOLUME,
                                LAB_INCREASE_VOLUME,
                                LAB_KEY_DONE)
 
             self.player = player
             self.closed_callback = closed_callback
-            self.volume = VolumeControl(player.get_volume(),
-                                        0.01,
-                                        player.set_volume)
+            self.volume_control = volume_control
 
             current_output_name = player.current_output_name()
             output_group = []
 
             urwid.Pile.__init__(
                 self,
-                [self.volume] +
+                [self.volume_control] +
                 [urwid.RadioButton(group=output_group,
                                    label=o.description(),
                                    state=current_output_name == o.NAME,
@@ -2151,22 +2158,18 @@ try:
         def change_output(self, radio_button, new_state, new_output):
             if (new_state):
                 self.player.set_output(new_output)
-                new_volume = self.player.get_volume()
-                #not calling self.volume.set_volume()
-                #avoids a round-tripping call
-                #which sets the output's volume to its current value
-                self.volume.volume = new_volume
-                self.volume.set_completion(new_volume)
+                self.volume_control.update()
 
     class AdjustOutputDialog(urwid.WidgetWrap):
         signals = ['close']
 
-        def __init__(self, player, outputs):
+        def __init__(self, player, volume_control, outputs):
             from .text import LAB_OUTPUT_OPTIONS
 
             close_button = urwid.Button(u"done")
             pile = AdjustOutputWidget(
                 player,
+                volume_control,
                 outputs,
                 closed_callback=lambda: self._emit("close"))
             self.__super.__init__(urwid.LineBox(urwid.Filler(pile),
@@ -2211,6 +2214,9 @@ try:
                                              sample_rate=0,
                                              current=0,
                                              done=100)
+            self.volume_control = VolumeControl(player.get_volume,
+                                                0.01,
+                                                player.change_volume)
 
             label_width = max([len(audiotools.output_text(s))
                                for s in [METADATA_TRACK_NAME,
@@ -2283,7 +2289,7 @@ try:
                  ("weight", 1,
                   urwid.Divider(u" ")),
                  ("fixed", 10,
-                  AdjustOutput(self.player))],
+                  AdjustOutput(self.player, self.volume_control))],
                 dividechars=2,
                 focus_column=3)
 
@@ -2417,6 +2423,7 @@ try:
             from audiotools.player import PLAYER_PLAYING
 
             self.progress.set_completion(self.player.progress()[0])
+            self.volume_control.update()
             if (self.player.state() == PLAYER_PLAYING):
                 self.play_pause_button.set_label(LAB_PAUSE_BUTTON)
             else:

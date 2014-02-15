@@ -155,6 +155,14 @@ class Player:
 
         self.__commands__.put(("set_volume", (volume,)))
 
+    def change_volume(self, delta):
+        """changes the volume by the given floating point amount
+        where delta may be positive or negative
+        and returns the new volume as a floating point value"""
+
+        self.__commands__.put(("change_volume", (delta,)))
+        return self.__responses__.get(True)
+
 
 class AudioPlayer:
     def __init__(self, audio_output, next_track_callback=lambda: None):
@@ -329,6 +337,15 @@ class AudioPlayer:
                 elif (command == "set_volume"):
                     self.__audio_output__.set_volume(args[0])
                 elif (command == "get_volume"):
+                    responses.put(self.__audio_output__.get_volume())
+                elif (command == "change_volume"):
+                    #there's a race condition here
+                    #in that we may stomp on someone else's adjustment
+                    #if changed between getting, incrementing and setting it
+                    #but that's unlikely to be a problem in practice
+                    self.__audio_output__.set_volume(
+                        min(max(self.__audio_output__.get_volume() + args[0],
+                                0.0), 1.0))
                     responses.put(self.__audio_output__.get_volume())
                 elif (command == "pause"):
                     self.pause()
@@ -1170,11 +1187,11 @@ def available_outputs():
     """iterates over all available AudioOutput objects
     this will always yield at least one output"""
 
-    if (ALSAAudioOutput.available()):
-        yield ALSAAudioOutput()
-
     if (PulseAudioOutput.available()):
         yield PulseAudioOutput()
+
+    if (ALSAAudioOutput.available()):
+        yield ALSAAudioOutput()
 
     if (CoreAudioOutput.available()):
         yield CoreAudioOutput()

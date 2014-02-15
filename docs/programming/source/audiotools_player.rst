@@ -112,6 +112,14 @@ from an opened audio file object to a given output sink.
    Given a floating point value between 0.0 and 1.0, inclusive,
    sets the current volume level to that value.
 
+.. method:: Player.change_volume(delta)
+
+   Given a floating point delta value which may be positive
+   (to increase volume) or negative (to decrease volume),
+   adjusts the current volume by that amount and returns
+   the new volume as a floating point value between 0.0 and 1.0,
+   inclusive.
+
 CDPlayer Objects
 ----------------
 
