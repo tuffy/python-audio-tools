@@ -21,6 +21,7 @@
 
 struct br_external_input*
 ext_open_r(void* user_data,
+           unsigned buffer_size,
            ext_read_f read,
            ext_close_f close,
            ext_free_f free)
@@ -33,6 +34,7 @@ ext_open_r(void* user_data,
     input->free = free;
 
     input->buffer = buf_new();
+    input->buffer_size = buffer_size;
 
     return input;
 }
@@ -41,20 +43,17 @@ int
 ext_getc(struct br_external_input* stream)
 {
     struct bs_buffer* buffer = stream->buffer;
-    const int byte = buf_getc(buffer);
-    if (byte != EOF) {
-        /*if the internal buffer isn't empty, simply return the next byte*/
-        return byte;
-    } else {
-        /*otherwise, try to refill the buffer first*/
-        if (!stream->read(stream->user_data, buffer)) {
-            /*read successful, so return next byte in buffer (if any)*/
-            return buf_getc(buffer);
-        } else {
+    if (!buf_window_size(buffer)) {
+        /*buffer is empty, so try to refill from external function*/
+        if (stream->read(stream->user_data,
+                         buffer,
+                         stream->buffer_size)) {
             /*read unsuccessful, so return EOF*/
             return EOF;
         }
     }
+    /*this may return EOF if the read was unable to add more data*/
+    return buf_getc(buffer);
 }
 
 unsigned
@@ -74,7 +73,9 @@ ext_fread(struct br_external_input* stream,
         /*otherwise, populate the buffer with read() calls*/
         while (data_size > buf_window_size(buffer)) {
             const buf_size_t old_size = buf_window_size(buffer);
-            if (!stream->read(stream->user_data, buffer) &&
+            if (!stream->read(stream->user_data,
+                              buffer,
+                              stream->buffer_size) &&
                 (buf_window_size(buffer) > old_size)) {
                 /*as long as the reads are successful
                   and the buffer continues to grow*/

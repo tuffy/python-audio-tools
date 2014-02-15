@@ -339,7 +339,7 @@ PyTypeObject ogg_PageWriterType = {
 
 
 static int
-py_read(PyObject *reader_obj, struct bs_buffer* buffer);
+py_read(PyObject *reader_obj, struct bs_buffer* buffer, unsigned buffer_size);
 
 int
 py_write(PyObject *writer_obj, struct bs_buffer* buffer, unsigned buffer_size);

@@ -351,6 +351,7 @@ br_substream_new(bs_endianness endianness);
 BitstreamReader*
 br_open_external(void* user_data,
                  bs_endianness endianness,
+                 unsigned buffer_size,
                  ext_read_f read,
                  ext_close_f close,
                  ext_free_f free);
@@ -1289,7 +1290,8 @@ bs_format_byte_size(const char* format);
  *******************************************************************/
 
 int br_read_python(PyObject *reader,
-                   struct bs_buffer* buffer);
+                   struct bs_buffer* buffer,
+                   unsigned buffer_size);
 
 int bw_write_python(PyObject* writer,
                     struct bs_buffer* buffer,

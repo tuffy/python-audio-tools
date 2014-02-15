@@ -382,6 +382,7 @@ PageReader_init(ogg_PageReader *self, PyObject *args, PyObject *kwds)
     Py_INCREF(reader_obj);
     self->reader = br_open_external(reader_obj,
                                     BS_LITTLE_ENDIAN,
+                                    4096,
                                     (ext_read_f)py_read,
                                     (ext_close_f)py_close,
                                     (ext_free_f)py_free);
@@ -552,13 +553,13 @@ init_ogg(void)
 
 
 static int
-py_read(PyObject *reader_obj, struct bs_buffer* buffer)
+py_read(PyObject *reader_obj, struct bs_buffer* buffer, unsigned buffer_size)
 {
     PyObject *string_obj;
 
     /*call read() method on reader*/
     if ((string_obj = PyObject_CallMethod(reader_obj,
-                                          "read", "i", 4096)) != NULL) {
+                                          "read", "I", buffer_size)) != NULL) {
         char *string;
         Py_ssize_t string_size;
 

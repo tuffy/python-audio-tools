@@ -90,14 +90,15 @@ buf_window_end(const struct bs_buffer *stream)
 
 /*resize buffer to fit at least "additional_bytes", if necessary
 
-  this may alter where stream's "data" points to*/
+  this may alter where window_start and window_end point to
+  unless the stream has been set to be rewindable*/
 void
 buf_resize(struct bs_buffer *stream, unsigned additional_bytes);
 
 
 /*clears out the buffer for possible reuse
 
-  resets window_start, window_end and any marks in progress*/
+  resets window_start, window_end and sets stream to be non-rewindable*/
 static inline void
 buf_reset(struct bs_buffer *stream)
 {
@@ -108,7 +109,9 @@ buf_reset(struct bs_buffer *stream)
 
 /*** stdio-like functions for bs_buffer ***/
 
-/*analagous to fgetc, returns EOF at the end of buffer*/
+/*analagous to fgetc
+  returns byte at beginning of buffer
+  returns EOF if no bytes remain in buffer*/
 static inline int
 buf_getc(struct bs_buffer *stream)
 {
@@ -118,7 +121,8 @@ buf_getc(struct bs_buffer *stream)
         return EOF;
 }
 
-/*analagous to fputc*/
+/*analagous to fputc
+  places byte "i" at end of buffer*/
 static inline int
 buf_putc(int i, struct bs_buffer *stream)
 {
@@ -134,8 +138,8 @@ buf_putc(int i, struct bs_buffer *stream)
 /*analagous to fread
 
   reads "data_size" bytes from "stream" to "data"
-  starting at stream's "window_start"
-  and returns the amount of bytes actually read
+  starting at the beginning of stream
+  returns the amount of bytes actually read
   (which may be less than the amount requested)*/
 unsigned
 buf_read(struct bs_buffer *stream, uint8_t *data, unsigned data_size);
@@ -148,25 +152,21 @@ buf_skip(struct bs_buffer *stream, unsigned data_size);
 
 /*analgous to fwrite
 
-  appends "data_size" bytes from "data" to "stream" starting at "window_end"*/
+  appends "data_size" bytes from "data" to stream starting at "window_end"*/
 void
 buf_write(struct bs_buffer *stream, const uint8_t *data, unsigned data_size);
 
-/*gets the current position of the buffer to "pos"
+/*places the current position of the buffer in "pos"
 
-  Note that subsequent calls to buf_putc/buf_write/buf_resize
-  may render the position invalid if the window's current position
-  is shifted down!
-
-  Call buf_set_rewindable() to disable shifting out old data
-  to disable rewinding in those cases.*/
+  Subsequent calls to read/write may render that position invalid
+  unless the stream has been set to be rewindable.*/
 static inline void
 buf_getpos(struct bs_buffer *stream, buf_pos_t *pos)
 {
     *pos = stream->window_start;
 }
 
-/*sets the current position of the buffer in "pos"*/
+/*sets the current position of the buffer to that of "pos"*/
 static inline void
 buf_setpos(struct bs_buffer *stream, buf_pos_t pos)
 {

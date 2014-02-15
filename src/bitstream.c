@@ -253,13 +253,18 @@ br_open_buffer(struct bs_buffer* buffer, bs_endianness endianness)
 BitstreamReader*
 br_open_external(void* user_data,
                  bs_endianness endianness,
+                 unsigned buffer_size,
                  ext_read_f read,
                  ext_close_f close,
                  ext_free_f free)
 {
     BitstreamReader *bs = malloc(sizeof(BitstreamReader));
     bs->type = BR_EXTERNAL;
-    bs->input.external = ext_open_r(user_data, read, close, free);
+    bs->input.external = ext_open_r(user_data,
+                                    buffer_size,
+                                    read,
+                                    close,
+                                    free);
     bs->state = 0;
     bs->callbacks = NULL;
     bs->exceptions = NULL;
@@ -3015,9 +3020,10 @@ byte_counter(uint8_t byte, unsigned* total_bytes)
 #ifndef STANDALONE
 
 int br_read_python(PyObject *reader,
-                   struct bs_buffer* buffer)
+                   struct bs_buffer* buffer,
+                   unsigned buffer_size)
 {
-    PyObject* read_result = PyObject_CallMethod(reader, "read", "i", 4096);
+    PyObject* read_result = PyObject_CallMethod(reader, "read", "I", buffer_size);
 
     /*call read() method on reader*/
     if (read_result != NULL) {
@@ -3265,7 +3271,9 @@ typedef void (*write_check)(BitstreamWriter*, bs_endianness);
 void
 check_output_file(void);
 
-int ext_fread_test(FILE* user_data, struct bs_buffer* buffer);
+int ext_fread_test(FILE* user_data,
+                   struct bs_buffer* buffer,
+                   unsigned buffer_size);
 
 void ext_fclose_test(FILE* user_data);
 
@@ -3372,6 +3380,7 @@ int main(int argc, char* argv[]) {
     /*test a big-endian stream using external functions*/
     reader = br_open_external(temp_file,
                               BS_BIG_ENDIAN,
+                              2,
                               (ext_read_f)ext_fread_test,
                               (ext_close_f)ext_fclose_test,
                               (ext_free_f)ext_ffree_test);
@@ -3401,6 +3410,7 @@ int main(int argc, char* argv[]) {
     /*test a little-endian stream using external functions*/
     reader = br_open_external(temp_file,
                               BS_LITTLE_ENDIAN,
+                              2,
                               (ext_read_f)ext_fread_test,
                               (ext_close_f)ext_fclose_test,
                               (ext_free_f)ext_ffree_test);
@@ -4616,7 +4626,6 @@ test_writer(bs_endianness endianness) {
     check_output_file();
     sub_writer->close(sub_writer);
     writer->close(writer);
-    fclose(output_file);
 
     output_file = fopen(temp_filename, "wb");
     writer = bw_open(output_file, endianness);
@@ -4626,7 +4635,6 @@ test_writer(bs_endianness endianness) {
     check_output_file();
     sub_writer->close(sub_writer);
     writer->close(writer);
-    fclose(output_file);
 
     sub_writer = bw_open_recorder(endianness);
     test_writer_close_errors(sub_writer);
@@ -5878,13 +5886,13 @@ test_rec_split_dumps(bs_endianness endianness,
 
 
 int ext_fread_test(FILE* user_data,
-                   struct bs_buffer* buffer)
+                   struct bs_buffer* buffer,
+                   unsigned buffer_size)
 {
-    const static unsigned desired_size = 2;
     uint8_t data[2];
     const unsigned bytes_read = (unsigned)fread(data,
                                                 sizeof(uint8_t),
-                                                (size_t)desired_size,
+                                                (size_t)buffer_size,
                                                 user_data);
 
     if (bytes_read > 0) {

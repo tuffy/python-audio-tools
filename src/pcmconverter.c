@@ -630,7 +630,8 @@ fb_export_frames(struct float_buffer *buffer, a_int *samples) {
 
 static int
 read_os_random(PyObject* os_module,
-               struct bs_buffer* buffer);
+               struct bs_buffer* buffer,
+               unsigned buffer_size);
 
 static void
 close_os_random(PyObject* os_module);

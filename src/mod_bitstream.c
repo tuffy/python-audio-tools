@@ -883,6 +883,7 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
         self->bitstream = br_open_external(
             self->file_obj,
             self->little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
+            (unsigned)buffer_size,
             (ext_read_f)br_read_python,
             (ext_close_f)bs_close_python,
             (ext_free_f)bs_free_python_nodecref);

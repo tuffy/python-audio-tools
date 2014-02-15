@@ -74,6 +74,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
         self->bitstream = br_open_external(
             self->file,
             BS_LITTLE_ENDIAN,
+            4096,
             (ext_read_f)br_read_python,
             (ext_close_f)bs_close_python,
             (ext_free_f)bs_free_python_nodecref);

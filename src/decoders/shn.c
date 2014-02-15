@@ -67,6 +67,7 @@ SHNDecoder_init(decoders_SHNDecoder *self,
         self->bitstream = br_open_external(
             self->file,
             BS_BIG_ENDIAN,
+            4096,
             (ext_read_f)br_read_python,
             (ext_close_f)bs_close_python,
             (ext_free_f)bs_free_python_nodecref);

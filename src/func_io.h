@@ -28,7 +28,8 @@
 
 /*returns 0 on successful read, 1 if a read error occurs*/
 typedef int (*ext_read_f)(void* user_data,
-                          struct bs_buffer* buffer);
+                          struct bs_buffer* buffer,
+                          unsigned buffer_size);
 typedef void (*ext_close_f)(void* user_data);
 typedef void (*ext_free_f)(void* user_data);
 
@@ -47,6 +48,7 @@ struct br_external_input {
     ext_free_f free;
 
     struct bs_buffer* buffer;
+    unsigned buffer_size;
 };
 
 struct bw_external_output {
@@ -65,6 +67,7 @@ struct bw_external_output {
 /*analagous to fopen for reading*/
 struct br_external_input*
 ext_open_r(void* user_data,
+           unsigned buffer_size,
            ext_read_f read,
            ext_close_f close,
            ext_free_f free);
