@@ -2342,7 +2342,7 @@ try:
             except IndexError:
                 if (len(self.track_group)):
                     self.player.stop()
-                    self.track_group[0].set_state(False)
+                    self.track_group[0].set_state(True)
                     self.track_list_widget.set_focus(0, "above")
 
         def previous_track(self, user_data=None):
@@ -2463,7 +2463,7 @@ try:
         import time
 
         playergui.update_status()
-        main_loop.set_alarm_at(tm=time.time() + 0.5,
+        main_loop.set_alarm_at(tm=time.time() + 0.25,
                                callback=timer,
                                user_data=playergui)
 
