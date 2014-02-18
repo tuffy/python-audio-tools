@@ -146,22 +146,22 @@ class Player:
         """returns the current volume level as a floating point value
         between 0.0 and 1.0, inclusive"""
 
-        self.__commands__.put(("get_volume", tuple()))
-        return self.__responses__.get(True)
+        return self.__audio_output__.get_volume()
 
     def set_volume(self, volume):
         """given a floating point value between 0.0 and 1.0, inclusive,
         sets the current volume level to that value"""
 
-        self.__commands__.put(("set_volume", (volume,)))
+        self.__audio_output__.set_volume(volume)
 
     def change_volume(self, delta):
         """changes the volume by the given floating point amount
         where delta may be positive or negative
         and returns the new volume as a floating point value"""
 
-        self.__commands__.put(("change_volume", (delta,)))
-        return self.__responses__.get(True)
+        self.__audio_output__.set_volume(
+            min(max(self.__audio_output__.get_volume() + delta, 0.0), 1.0))
+        return self.__audio_output__.get_volume()
 
 
 class AudioPlayer:
@@ -262,10 +262,10 @@ class AudioPlayer:
             self.__pcmreader__ = BufferedPCMReader(pcmreader)
 
             #calculate quarter second buffer size
-            #(or at least 4096 samples)
-            self.__buffer_size__ = min(int(round(0.25 *
+            #(or at least 256 samples)
+            self.__buffer_size__ = max(int(round(0.25 *
                                                  pcmreader.sample_rate)),
-                                       4096)
+                                       256)
 
             #set output to be compatible with PCMReader
             if ((not self.__audio_output__.compatible(
@@ -334,19 +334,6 @@ class AudioPlayer:
                     #stop whatever's playing and set new output
                     self.stop()
                     self.__audio_output__ = args[0]
-                elif (command == "set_volume"):
-                    self.__audio_output__.set_volume(args[0])
-                elif (command == "get_volume"):
-                    responses.put(self.__audio_output__.get_volume())
-                elif (command == "change_volume"):
-                    #there's a race condition here
-                    #in that we may stomp on someone else's adjustment
-                    #if changed between getting, incrementing and setting it
-                    #but that's unlikely to be a problem in practice
-                    self.__audio_output__.set_volume(
-                        min(max(self.__audio_output__.get_volume() + args[0],
-                                0.0), 1.0))
-                    responses.put(self.__audio_output__.get_volume())
                 elif (command == "pause"):
                     self.pause()
                 elif (command == "toggle_play_pause"):
