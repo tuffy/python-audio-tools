@@ -433,6 +433,57 @@ class MP3Audio(AudioFile):
         old_mp3.close()
         new_mp3.close()
 
+    def clean(self, output_filename=None):
+        """cleans the file of known data and metadata problems
+
+        output_filename is an optional filename of the fixed file
+        if present, a new AudioFile is written to that path
+        otherwise, only a dry-run is performed and no new file is written
+
+        return list of fixes performed as Unicode strings
+
+        raises IOError if unable to write the file or its metadata
+        raises ValueError if the file has errors of some sort
+        """
+
+        from audiotools.id3 import total_id3v2_comments
+        from audiotools import open, transfer_data
+        from audiotools.text import CLEAN_REMOVE_DUPLICATE_ID3V2
+
+        if (total_id3v2_comments(file(self.filename, "rb")) > 1):
+            file_fixes = [CLEAN_REMOVE_DUPLICATE_ID3V2]
+        else:
+            file_fixes = []
+
+        if (output_filename is None):
+            #dry run only
+            metadata = self.get_metadata()
+            if (metadata is not None):
+                (metadata, fixes) = metadata.clean()
+                return file_fixes + fixes
+            else:
+                return []
+        else:
+            #perform complete fix
+            input_f = file(self.filename, "rb")
+            output_f = file(output_filename, "wb")
+            try:
+                transfer_data(input_f.read, output_f.write)
+            finally:
+                input_f.close()
+                output_f.close()
+
+            new_track = open(output_filename)
+            metadata = self.get_metadata()
+            if (metadata is not None):
+                (metadata, fixes) = metadata.clean()
+                if (len(file_fixes + fixes) > 0):
+                    #only update metadata if fixes are actually performed
+                    new_track.update_metadata(metadata)
+                return file_fixes + fixes
+            else:
+                return []
+
     #places mp3file at the position of the next MP3 frame's start
     @classmethod
     def __find_next_mp3_frame__(cls, mp3file):

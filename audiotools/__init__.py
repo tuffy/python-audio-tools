@@ -1279,13 +1279,15 @@ class DecodingError(IOError):
 
 
 def file_type(file):
-    """given a seekable file stream rewound to the file's start
+    """given a seekable file stream
     returns an AudioFile-compatible class that stream is a type of
     or None of the stream's type is unknown
 
     the AudioFile class is not guaranteed to be available"""
 
+    start = file.tell()
     header = file.read(37)
+
     if ((header[4:8] == "ftyp") and (header[8:12] in ('mp41',
                                                       'mp42',
                                                       'M4A ',
@@ -1296,7 +1298,6 @@ def file_type(file):
         from .bitstream import BitstreamReader
         from .m4a import get_m4a_atom
 
-        file.seek(0, 0)
         reader = BitstreamReader(file, 0)
 
         #so get contents of moov->trak->mdia->minf->stbl->stsd atom
@@ -1393,72 +1394,18 @@ def file_type(file):
         #determine sync-safe tag size and skip entire tag
         tag_size = 0
         for b in header[6:10]:
-            tag_size = (tag_size << 7) | (ord(b) % 0x7F)
-        file.seek(10 + tag_size, 0)
-        b = file.read(1)
-        while (b == "\x00"):
-            #skip NULL bytes after ID3v2 tag
-            b = file.read(1)
+            tag_size = (tag_size << 7) | (ord(b) & 0x7F)
+        file.seek(start + 10 + tag_size, 0)
 
-        if (b == ""):
-            #no data after tag, so file is unknown
-            return None
-        elif (b == "\xFF"):
-            #possibly MP3 or MP2 file
-
-            from .bitstream import BitstreamReader
-
-            try:
-                (frame_sync,
-                 mpeg_id,
-                 layer_description,
-                 protection,
-                 bitrate,
-                 sample_rate,
-                 pad,
-                 private,
-                 channels,
-                 mode_extension,
-                 copy,
-                 original,
-                 emphasis) = BitstreamReader(file, 0).parse(
-                     "3u 2u 2u 1u 4u 2u 1u 1u 2u 2u 1u 1u 2u")
-                if (((frame_sync == 0x7) and
-                     (mpeg_id == 3) and
-                     (layer_description == 1) and
-                     (bitrate != 0xF) and
-                     (sample_rate != 3) and
-                     (emphasis != 2))):
-                    #MP3s are MPEG-1, Layer-III
-                    return MP3Audio
-                elif ((frame_sync == 0x7) and
-                      (mpeg_id == 3) and
-                      (layer_description == 2) and
-                      (bitrate != 0xF) and
-                      (sample_rate != 3) and
-                      (emphasis != 2)):
-                    #MP2s are MPEG-1, Layer-II
-                    return MP2Audio
-                else:
-                    #nothing else starts with an initial byte of 0xFF
-                    #so the file is unknown
-                    return None
-            except IOError:
-                return None
-        elif (b == "f"):
-            #possibly FLAC file
-            if (file.read(3) == "LaC"):
-                return FlacAudio
-            else:
-                return None
-        elif (b == "T"):
-            #possible TrueAudio file
-            if (file.read(2) == "TA"):
-                return TrueAudio
-            else:
-                return None
+        t = file_type(file)
+        #only return type which might be wrapped in ID3v2 tags
+        if ((t is None) or
+            (t is MP3Audio) or
+            (t is MP2Audio) or
+            (t is FlacAudio) or
+            (t is TrueAudio)):
+            return t
         else:
-            #unknown file after ID3 tag
             return None
     elif (header[0:4] == "TTA1"):
         return TrueAudio
@@ -4050,6 +3997,8 @@ class AudioFile:
                 (metadata, fixes) = metadata.clean()
                 new_track.set_metadata(metadata)
                 return fixes
+            else:
+                return []
 
 
 class WaveContainer(AudioFile):

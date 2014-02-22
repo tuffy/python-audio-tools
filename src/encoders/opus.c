@@ -174,7 +174,6 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
         opus_encoder_ctl(opus_encoder, OPUS_SET_COMPLEXITY(quality));
         opus_encoder_ctl(opus_encoder, OPUS_GET_LOOKAHEAD(&preskip));
     } else {
-
         if ((opus_ms_encoder =
              opus_multistream_surround_encoder_create(
                  48000,

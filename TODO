@@ -6717,6 +6717,34 @@
 *** DONE Update tracklint
 *** DONE Update documentation
 *** DONE Update unit tests
+** DONE Add lint for "double-wrapped" ID3v2 tags
+   Sometimes files are idiotically wrapped in multiple layers of ID3v2 tags
+   like nested Russian dolls.  These are currently unrecognized because
+   audiotools assumes a valid track follows the tag instead of another tag.
+*** DONE Support tracks nested arbitrarily deep in ID3v2 tags
+    In order to be fixable,
+    these files will need to be readable in the first place
+**** DONE Update file_type function to skip ID3v2 tags recursively
+     It should still only find MP2/MP3/FLAC/TTA files how matter how
+     deeply nested, but should support arbitrarily deep nesting.
+**** DONE Update FlacAudio
+***** DONE Update FlacAudio to support nested tags
+      This is basically a matter of making the offset as large
+      as it takes to hold all the tags.
+***** DONE Have FlacAudio.clean() remove all ID3v2 tags
+***** DONE Update unit tests
+**** DONE Update MP3Audio
+***** DONE Update MP3Audio to support nested tags
+***** DONE Have MP3Audio.clean() remove all ID3v2 tags except one
+***** DONE Update unit tests
+**** DONE Update MP2Audio
+***** DONE Update MP2Audio to support nested tags
+***** DONE Have MP2Audio.clean() remove all ID3v2 tags except one
+***** DONE Update unit tests
+**** DONE Update TrueAudio
+***** DONE Update TrueAudio to support nested tags
+***** DONE Have TrueAudio.clean() remove all ID3v2 tags except one
+***** DONE Update unit tests
 ** TODO Update AccurateRip verification
 *** DONE Add --cue option to trackverify to work on CD images
     One can perform: trackverify -R --cue CDImage.cue CDImage.wav
@@ -6755,6 +6783,21 @@
     Having two different, slightly incompatible M4A implementations
     needlessly complicates things.
 * TODO Finish version 2.22
+** TODO Add file selector widget
+   This could be used by utilities with interactive modes to select files
+   without having to specify them ahead of time.
+   It'll need modes for selecting individual files (like for tracksplit)
+   as well as multiple files, and should filter out anything
+   audiotools can't read.
+*** TODO Add selector to dvda2track
+    One should be able to browse for AUDIO_TS
+*** TODO Add selector to track2cd
+*** TODO Add selector to trackcat
+*** TODO Add selector to trackplay
+    One should be able to add tracks to running playlist
+*** TODO Add selector to trackrename
+*** TODO Add selector to tracksplit
+*** TODO Add selector to tracktag
 ** TODO Update coverview widget set
    Although wxPython is available lots of places,
    it doesn't behave the same everywhere.

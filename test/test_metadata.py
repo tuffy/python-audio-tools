@@ -2669,6 +2669,73 @@ class ID3v22MetaData(MetaDataTest):
                          [self.text_tag("album_number", u"foo 3 bar")])
 
     @METADATA_ID3V2
+    def test_sync_safe(self):
+        from audiotools.id3 import decode_syncsafe32, encode_syncsafe32
+        from audiotools.bitstream import BitstreamReader, BitstreamWriter
+        import cStringIO
+
+        for value in xrange(16384):
+            s = cStringIO.StringIO()
+            w = BitstreamWriter(s, False)
+            encode_syncsafe32(w, value)
+            w.flush()
+            s.seek(0, 0)
+            self.assertEqual(decode_syncsafe32(BitstreamReader(s, False)),
+                             value)
+
+    @METADATA_ID3V2
+    def test_padding(self):
+        from os.path import getsize
+        from audiotools.bitstream import BitstreamReader, BitstreamWriter
+        from operator import or_
+
+        mp3_data = open("sine.mp3", "rb").read()
+
+        #build temporary track with no metadata
+        temp_file = tempfile.NamedTemporaryFile(suffix=".mp3")
+        temp_file_name = temp_file.name
+        open(temp_file_name, "wb").write(mp3_data)
+        temp_file.write(mp3_data)
+        temp_file.flush()
+
+        mp3_track = audiotools.open(temp_file_name)
+        self.assertEqual(mp3_track.get_metadata(), None)
+
+        #tag track with our metadata
+        metadata = self.empty_metadata()
+        metadata.track_name = u"Track Name"
+        mp3_track.update_metadata(metadata)
+
+        self.assertEqual(mp3_track.get_metadata().track_name, u"Track Name")
+
+        self.assertEqual(getsize(temp_file_name),
+                         metadata.size() + len(mp3_data))
+
+        #add a bunch of padding to track's metadata
+        #and ensure it still works
+        for padding in range(1024):
+            #grab existing tag from file
+            metadata = mp3_track.get_metadata()
+            old_metadata_size = metadata.total_size
+
+            #add another padding byte
+            metadata.total_size += 1
+            mp3_track.update_metadata(metadata)
+
+            #ensure file isn't broken
+            self.assertEqual(
+                audiotools.pcm_frame_cmp(
+                    audiotools.open("sine.mp3").to_pcm(),
+                    audiotools.open(temp_file_name).to_pcm()), None)
+
+            #ensure metadata is unchanged
+            #and has the expected buffer size
+            new_metadata = audiotools.open(temp_file_name).get_metadata()
+            self.assertEqual(new_metadata.total_size, old_metadata_size + 1)
+            self.assertEqual(new_metadata, metadata)
+        temp_file.close()
+
+    @METADATA_ID3V2
     def test_clean(self):
         #check trailing whitespace
         metadata = audiotools.ID3v22Comment(
@@ -2852,6 +2919,11 @@ class ID3v23MetaData(ID3v22MetaData):
         return self.metadata_class([])
 
     @METADATA_ID3V2
+    def test_sync_safe(self):
+        #this is tested by ID3v22 and doesn't need to be tested again
+        self.assert_(True)
+
+    @METADATA_ID3V2
     def test_clean(self):
         from audiotools.text import (CLEAN_REMOVE_LEADING_WHITESPACE,
                                      CLEAN_REMOVE_TRAILING_WHITESPACE,
@@ -3017,6 +3089,11 @@ class ID3v24MetaData(ID3v22MetaData):
 
     def empty_metadata(self):
         return self.metadata_class([])
+
+    @METADATA_ID3V2
+    def test_sync_safe(self):
+        #this is tested by ID3v22 and doesn't need to be tested again
+        self.assert_(True)
 
     @METADATA_ID3V2
     def test_clean(self):

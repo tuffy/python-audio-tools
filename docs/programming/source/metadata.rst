@@ -628,7 +628,7 @@ ID3v1
 ID3v2.2
 -------
 
-.. class:: ID3v22Comment(frames)
+.. class:: ID3v22Comment(frames[, total_size])
 
    This is an ID3v2.2_ tag, one of the three ID3v2 variants used by MP3 files.
    During initialization, it takes a list of :class:`ID3v22_Frame`-compatible
@@ -671,6 +671,11 @@ ID3v2.2
    ``COM``    ``comment``                      :class:`ID3v22_COM_Frame`
    ``PIC``    ``images()``                     :class:`ID3v22_PIC_Frame`
    ========== ================================ ========================
+
+   The optional ``total_size`` field is the total size of the tag,
+   not including the 6 byte ID3 header.
+   If the total size is larger than the size of all tags,
+   the remaining space will be padded with NULL bytes.
 
 ID3v2.2 Frame
 ^^^^^^^^^^^^^
@@ -855,7 +860,7 @@ ID3v2.2 PIC Frame
 ID3v2.3
 -------
 
-.. class:: ID3v23Comment(frames)
+.. class:: ID3v23Comment(frames[, total_size])
 
    This is an ID3v2.3_ tag, one of the three ID3v2 variants used by MP3 files.
    During initialization, it takes a list of :class:`ID3v23_Frame`-compatible
@@ -898,6 +903,11 @@ ID3v2.3
    ``COMM``   ``comment``                      :class:`ID3v23_COMM_Frame`
    ``APIC``   ``images()``                     :class:`ID3v23_APIC_Frame`
    ========== ================================ ==========================
+
+   The optional ``total_size`` field is the total size of the tag,
+   not including the 6 byte ID3 header.
+   If the total size is larger than the size of all tags,
+   the remaining space will be padded with NULL bytes.
 
 ID3v2.3 Frame
 ^^^^^^^^^^^^^
@@ -1072,7 +1082,7 @@ ID3v2.3 APIC Frame
 ID3v2.4
 -------
 
-.. class:: ID3v24Comment(frames)
+.. class:: ID3v24Comment(frames[, total_size])
 
    This is an ID3v2.4_ tag, one of the three ID3v2 variants used by MP3 files.
    During initialization, it takes a list of :class:`ID3v24_Frame`-compatible
@@ -1115,6 +1125,11 @@ ID3v2.4
    ``COMM``   ``comment``                      :class:`ID3v24_COMM_Frame`
    ``APIC``   ``images()``                     :class:`ID3v24_APIC_Frame`
    ========== ================================ ==========================
+
+   The optional ``total_size`` field is the total size of the tag,
+   not including the 6 byte ID3 header.
+   If the total size is larger than the size of all tags,
+   the remaining space will be padded with NULL bytes.
 
 ID3v2.4 Frame
 ^^^^^^^^^^^^^

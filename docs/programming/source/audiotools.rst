@@ -107,9 +107,9 @@ classes and functions upon which all of the other modules depend.
 
 .. function:: file_type(file)
 
-   Given a seekable file object rewound to the file's start,
-   returns an :class:`AudioFile`-compatible class of the stream's
-   detected type, or ``None`` if the stream's type is unknown.
+   Given a seekable file object returns an :class:`AudioFile`-compatible
+   class of the stream's detected type, or ``None``
+   if the stream's type is unknown.
 
    The :class:`AudioFile` class may not be available for use
    and so its :meth:`AudioFile.available` classmethod

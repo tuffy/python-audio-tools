@@ -3926,6 +3926,30 @@ class FlacFileTest(TestForeignAiffChunks,
         finally:
             temp.close()
 
+        #check FLAC files with double ID3 tags
+        f = open("flac-id3-2.flac", "rb")
+        self.assertEqual(f.read(3), "ID3")
+        f.close()
+        track = audiotools.open("flac-id3-2.flac")
+        metadata1 = track.get_metadata()
+        fixes = track.clean()
+        self.assertEqual(fixes,
+                         [CLEAN_FLAC_REMOVE_ID3V2])
+        temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            fixes = track.clean(temp.name)
+            self.assertEqual(fixes,
+                             [CLEAN_FLAC_REMOVE_ID3V2])
+            f = open(temp.name, "rb")
+            self.assertEqual(f.read(4), "fLaC")
+            f.close()
+            track2 = audiotools.open(temp.name)
+            self.assertEqual(metadata1, track2.get_metadata())
+            self.assertEqual(audiotools.pcm_frame_cmp(
+                    track.to_pcm(), track2.to_pcm()), None)
+        finally:
+            temp.close()
+
         #check FLAC files with STREAMINFO in the wrong location
         f = open("flac-disordered.flac", "rb")
         self.assertEqual(f.read(5), "fLaC\x04")
@@ -4510,6 +4534,36 @@ class MP3FileTest(LossyFileTest):
                                      test_string_out)
         finally:
             temp_file.close()
+
+    @FORMAT_MP3
+    def test_clean(self):
+        #check MP3 file with double ID3 tags
+
+        from audiotools.text import CLEAN_REMOVE_DUPLICATE_ID3V2
+
+        original_size = os.path.getsize("id3-2.mp3")
+
+        track = audiotools.open("id3-2.mp3")
+        #ensure second ID3 tag is ignored
+        self.assertEqual(track.get_metadata().track_name, u"Title1")
+
+        #ensure duplicate ID3v2 tag is detected and removed
+        fixes = track.clean()
+        self.assertEqual(fixes,
+                         [CLEAN_REMOVE_DUPLICATE_ID3V2])
+        temp = tempfile.NamedTemporaryFile(suffix=".mp3")
+        try:
+            fixes = track.clean(temp.name)
+            self.assertEqual(fixes,
+                             [CLEAN_REMOVE_DUPLICATE_ID3V2])
+            track2 = audiotools.open(temp.name)
+            self.assertEqual(track2.get_metadata(), track.get_metadata())
+            #ensure new file is exactly one tag smaller
+            #and the padding is preserved in the old tag
+            self.assertEqual(os.path.getsize(temp.name),
+                             original_size - 0x46A)
+        finally:
+            temp.close()
 
 
 class MP2FileTest(MP3FileTest):
@@ -6978,6 +7032,37 @@ class TTAFileTest(LosslessFileTest):
                         channels=2,
                         bits_per_sample=16)),
                 pcm_frames)
+
+    @FORMAT_TTA
+    def test_clean(self):
+        #check TTA file with double ID3 tags
+
+        from audiotools.text import CLEAN_REMOVE_DUPLICATE_ID3V2
+
+        original_size = os.path.getsize("tta-id3-2.tta")
+
+        track = audiotools.open("tta-id3-2.tta")
+
+        #ensure second ID3 tag is ignored
+        self.assertEqual(track.get_metadata().track_name, u"Title1")
+
+        #ensure duplicate ID3v2 tag is detected and removed
+        fixes = track.clean()
+        self.assertEqual(fixes,
+                         [CLEAN_REMOVE_DUPLICATE_ID3V2])
+        temp = tempfile.NamedTemporaryFile(suffix=".tta")
+        try:
+            fixes = track.clean(temp.name)
+            self.assertEqual(fixes,
+                             [CLEAN_REMOVE_DUPLICATE_ID3V2])
+            track2 = audiotools.open(temp.name)
+            self.assertEqual(track2.get_metadata(), track.get_metadata())
+            #ensure new file is exactly one tag smaller
+            #and the padding is preserved in the old tag
+            self.assertEqual(os.path.getsize(temp.name),
+                             original_size - 0x46A)
+        finally:
+            temp.close()
 
 
 class SineStreamTest(unittest.TestCase):

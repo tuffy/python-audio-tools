@@ -235,9 +235,7 @@ def read_id3v2_comment(filename):
 
 def skip_id3v2_comment(file):
     """seeks past an ID3v2 comment if found in the file stream
-    returns the number of bytes skipped
-
-    the stream must be seekable, obviously"""
+    returns the number of bytes skipped"""
 
     from .bitstream import BitstreamReader
 
@@ -262,28 +260,44 @@ def skip_id3v2_comment(file):
         reader.skip_bytes(tag_size)
         bytes_skipped += tag_size
 
-        #skip any null bytes after the IDv2 tag
-        reader.mark()
-        try:
-            byte = reader.read(8)
-            while (byte == 0):
-                reader.unmark()
-                bytes_skipped += 1
-                reader.mark()
-                byte = reader.read(8)
-
-            reader.rewind()
-            reader.unmark()
-
-            return bytes_skipped
-        except IOError, err:
-            reader.unmark()
-            raise err
+        #check for additional ID3v2 tags recursively
+        del(reader)
+        return bytes_skipped + skip_id3v2_comment(file)
     else:
         reader.rewind()
         reader.unmark()
         return 0
 
+
+def total_id3v2_comments(file):
+    """returns the number of nested ID3v2 comments found in the file stream"""
+
+    from .bitstream import BitstreamReader
+
+    reader = BitstreamReader(file, 0)
+    reader.mark()
+    try:
+        (tag_id, version_major, version_minor) = reader.parse("3b 8u 8u 8p")
+    except IOError, err:
+        reader.unmark()
+        raise err
+
+    if ((tag_id == 'ID3') and (version_major in (2, 3, 4))):
+        reader.unmark()
+
+        #parse the header
+        tag_size = decode_syncsafe32(reader)
+
+        #skip to the end of its length
+        reader.skip_bytes(tag_size)
+
+        #check for additional ID3v2 tags recursively
+        del(reader)
+        return 1 + total_id3v2_comments(file)
+    else:
+        reader.rewind()
+        reader.unmark()
+        return 0
 
 ############################################################
 # ID3v2.2 Comment
@@ -1041,14 +1055,16 @@ class ID3v22Comment(MetaData):
     IMAGE_FRAME = ID3v22_PIC_Frame
     IMAGE_FRAME_ID = 'PIC'
 
-    def __init__(self, frames):
+    def __init__(self, frames, total_size=None):
         self.__dict__["frames"] = frames[:]
+        self.__dict__["total_size"] = total_size
 
     def copy(self):
         return self.__class__([frame.copy() for frame in self])
 
     def __repr__(self):
-        return "ID3v22Comment(%s)" % (repr(self.frames))
+        return "ID3v22Comment(%s, %s)" % (repr(self.frames),
+                                          repr(self.total_size))
 
     def __iter__(self):
         return iter(self.frames)
@@ -1076,11 +1092,11 @@ class ID3v22Comment(MetaData):
             raise ValueError("invalid major version")
         elif (minor_version != 0x00):
             raise ValueError("invalid minor version")
-        total_size = decode_syncsafe32(reader)
+        total_size = remaining_size = decode_syncsafe32(reader)
 
         frames = []
 
-        while (total_size > 0):
+        while (remaining_size > 6):
             (frame_id, frame_size) = reader.parse("3b 24u")
 
             if (frame_id == chr(0) * 3):
@@ -1114,30 +1130,34 @@ class ID3v22Comment(MetaData):
                     cls.RAW_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
 
-            total_size -= (6 + frame_size)
+            remaining_size -= (6 + frame_size)
 
-        return cls(frames)
+        return cls(frames, total_size)
 
     def build(self, writer):
         """writes the complete ID3v22Comment data
         to the given BitstreamWriter"""
 
-        from operator import add
+        tags_size = sum([6 + frame.size() for frame in self])
 
         writer.build("3b 8u 8u 8u", ("ID3", 0x02, 0x00, 0x00))
-        encode_syncsafe32(writer,
-                          reduce(add, [6 + frame.size() for frame in self], 0))
+        encode_syncsafe32(writer, max(tags_size, self.total_size))
 
         for frame in self:
             writer.build("3b 24u", (frame.id, frame.size()))
             frame.build(writer)
 
+        #add buffer of NULL bytes if the total size of the tags
+        #is less than the total size of the whole ID3v2.2 tag
+        if ((self.total_size is not None) and
+            ((self.total_size - tags_size) > 0)):
+            writer.write_bytes(chr(0) * (self.total_size - tags_size))
+
     def size(self):
         """returns the total size of the ID3v22Comment, including its header"""
 
-        from operator import add
-
-        return reduce(add, [6 + frame.size() for frame in self], 10)
+        return 10 + max(sum([6 + frame.size() for frame in self]),
+                        self.total_size)
 
     def __len__(self):
         return len(self.frames)
@@ -1429,7 +1449,7 @@ class ID3v22Comment(MetaData):
                 new_frames.append(filtered_frame)
             fixes_performed.extend(frame_fixes)
 
-        return (self.__class__(new_frames), fixes_performed)
+        return (self.__class__(new_frames, self.total_size), fixes_performed)
 
 
 ############################################################
@@ -1714,7 +1734,8 @@ class ID3v23Comment(ID3v22Comment):
     ITUNES_COMPILATION_ID = 'TCMP'
 
     def __repr__(self):
-        return "ID3v23Comment(%s)" % (repr(self.frames))
+        return "ID3v23Comment(%s, %s)" % (repr(self.frames),
+                                          repr(self.total_size))
 
     @classmethod
     def parse(cls, reader):
@@ -1730,11 +1751,11 @@ class ID3v23Comment(ID3v22Comment):
             raise ValueError("invalid major version")
         elif (minor_version != 0x00):
             raise ValueError("invalid minor version")
-        total_size = decode_syncsafe32(reader)
+        total_size = remaining_size = decode_syncsafe32(reader)
 
         frames = []
 
-        while (total_size > 0):
+        while (remaining_size > 10):
             (frame_id, frame_size, frame_flags) = reader.parse("4b 32u 16u")
 
             if (frame_id == chr(0) * 4):
@@ -1768,31 +1789,34 @@ class ID3v23Comment(ID3v22Comment):
                     cls.RAW_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
 
-            total_size -= (10 + frame_size)
+            remaining_size -= (10 + frame_size)
 
-        return cls(frames)
+        return cls(frames, total_size)
 
     def build(self, writer):
         """writes the complete ID3v23Comment data
         to the given BitstreamWriter"""
 
-        from operator import add
+        tags_size = sum([10 + frame.size() for frame in self])
 
         writer.build("3b 8u 8u 8u", ("ID3", 0x03, 0x00, 0x00))
-        encode_syncsafe32(writer,
-                          reduce(add,
-                                 [10 + frame.size() for frame in self], 0))
+        encode_syncsafe32(writer, max(tags_size, self.total_size))
 
         for frame in self:
             writer.build("4b 32u 16u", (frame.id, frame.size(), 0))
             frame.build(writer)
 
+        #add buffer of NULL bytes if the total size of the tags
+        #is less than the total size of the whole ID3v2.3 tag
+        if ((self.total_size is not None) and
+            ((self.total_size - tags_size) > 0)):
+            writer.write_bytes(chr(0) * (self.total_size - tags_size))
+
     def size(self):
         """returns the total size of the ID3v23Comment, including its header"""
 
-        from operator import add
-
-        return reduce(add, [10 + frame.size() for frame in self], 10)
+        return 10 + max(sum([10 + frame.size() for frame in self]),
+                        self.total_size)
 
 
 ############################################################
@@ -2130,7 +2154,8 @@ class ID3v24Comment(ID3v23Comment):
     ITUNES_COMPILATION_ID = 'TCMP'
 
     def __repr__(self):
-        return "ID3v24Comment(%s)" % (repr(self.frames))
+        return "ID3v24Comment(%s, %s)" % (repr(self.frames),
+                                          repr(self.total_size))
 
     @classmethod
     def parse(cls, reader):
@@ -2146,11 +2171,11 @@ class ID3v24Comment(ID3v23Comment):
             raise ValueError("invalid major version")
         elif (minor_version != 0x00):
             raise ValueError("invalid minor version")
-        total_size = decode_syncsafe32(reader)
+        total_size = remaining_size = decode_syncsafe32(reader)
 
         frames = []
 
-        while (total_size > 0):
+        while (remaining_size > 10):
             frame_id = reader.read_bytes(4)
             frame_size = decode_syncsafe32(reader)
             flags = reader.read(16)
@@ -2186,20 +2211,18 @@ class ID3v24Comment(ID3v23Comment):
                     cls.RAW_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
 
-            total_size -= (10 + frame_size)
+            remaining_size -= (10 + frame_size)
 
-        return cls(frames)
+        return cls(frames, total_size)
 
     def build(self, writer):
         """writes the complete ID3v24Comment data
         to the given BitstreamWriter"""
 
-        from operator import add
+        tags_size = sum([10 + frame.size() for frame in self])
 
         writer.build("3b 8u 8u 8u", ("ID3", 0x04, 0x00, 0x00))
-        encode_syncsafe32(writer,
-                          reduce(add, [10 + frame.size() for frame in self],
-                                 0))
+        encode_syncsafe32(writer, max(tags_size, self.total_size))
 
         for frame in self:
             writer.write_bytes(frame.id)
@@ -2207,12 +2230,17 @@ class ID3v24Comment(ID3v23Comment):
             writer.write(16, 0)
             frame.build(writer)
 
+        #add buffer of NULL bytes if the total size of the tags
+        #is less than the total size of the whole ID3v2.2 tag
+        if ((self.total_size is not None) and
+            ((self.total_size - tags_size) > 0)):
+            writer.write_bytes(chr(0) * (self.total_size - tags_size))
+
     def size(self):
         """returns the total size of the ID3v24Comment, including its header"""
 
-        from operator import add
-
-        return reduce(add, [10 + frame.size() for frame in self], 10)
+        return 10 + max(sum([10 + frame.size() for frame in self]),
+                        self.total_size)
 
 
 ID3v2Comment = ID3v22Comment
@@ -2237,6 +2265,9 @@ class ID3CommentPair(MetaData):
             base_comment = self.id3v1
         else:
             raise ValueError("ID3v2 and ID3v1 cannot both be blank")
+
+    def __repr__(self):
+        return "ID3CommentPair(%s, %s)" % (repr(self.id3v2), repr(self.id3v1))
 
     def __getattr__(self, key):
         if (key in self.FIELDS):

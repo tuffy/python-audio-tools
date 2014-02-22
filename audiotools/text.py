@@ -692,6 +692,7 @@ CLEAN_REMOVE_LEADING_WHITESPACE = u"removed leading whitespace from %(field)s"
 CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES = \
     u"removed leading whitespace/zeroes from %(field)s"
 CLEAN_REMOVE_LEADING_ZEROES = u"removed leading zeroes from %(field)s"
+CLEAN_REMOVE_DUPLICATE_ID3V2 = u"remove duplicate ID3v2 tag"
 CLEAN_ADD_LEADING_ZEROES = u"added leading zeroes to %(field)s"
 CLEAN_REMOVE_EMPTY_TAG = u"removed empty field %(field)s"
 CLEAN_FIX_TAG_FORMATTING = u"fixed formatting for %(field)s"
