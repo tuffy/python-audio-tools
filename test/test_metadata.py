@@ -2671,16 +2671,9 @@ class ID3v22MetaData(MetaDataTest):
     @METADATA_ID3V2
     def test_sync_safe(self):
         from audiotools.id3 import decode_syncsafe32, encode_syncsafe32
-        from audiotools.bitstream import BitstreamReader, BitstreamWriter
-        import cStringIO
 
         for value in xrange(16384):
-            s = cStringIO.StringIO()
-            w = BitstreamWriter(s, False)
-            encode_syncsafe32(w, value)
-            w.flush()
-            s.seek(0, 0)
-            self.assertEqual(decode_syncsafe32(BitstreamReader(s, False)),
+            self.assertEqual(decode_syncsafe32(encode_syncsafe32(value)),
                              value)
 
     @METADATA_ID3V2

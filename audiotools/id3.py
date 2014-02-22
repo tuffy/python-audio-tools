@@ -78,22 +78,48 @@ def __reg_ucs2__(name):
 codecs.register(__reg_ucs2__)
 
 
-def decode_syncsafe32(reader):
-    """returns a syncsafe32 integer from a BitstreamReader"""
+def decode_syncsafe32(i):
+    """given a 32 bit int, returns a 28 bit value
+    with sync-safe bits removed
 
-    from operator import or_
-    return reduce(or_,
-                  [size << (7 * (3 - i))
-                   for (i, size) in
-                   enumerate(reader.parse("1p 7u 1p 7u 1p 7u 1p 7u"))])
+    may raise ValueError if the value is negative,
+    larger than 32 bits or contains invalid sync-safe bits"""
 
+    if (i >= (2 ** 32)):
+        raise ValueError("value too large")
+    elif (i < 0):
+        raise ValueError("value cannot be negative")
 
-def encode_syncsafe32(writer, value):
-    """writes a syncsafe32 integer to a BitstreamWriter"""
+    value = 0
 
-    writer.build("1p 7u 1p 7u 1p 7u 1p 7u",
-                 [(value >> (7 * i)) & 0x7F for i in [3, 2, 1, 0]])
+    for x in xrange(4):
+        if ((i & 0x80) == 0):
+            value |= ((i & 0x7F) << (x * 7))
+            i >>= 8
+        else:
+            raise ValueError("invalid sync-safe bit")
 
+    return value
+
+def encode_syncsafe32(i):
+    """given a 28 bit int, returns a 32 bit value
+    with sync-safe bits added
+
+    may raise ValueError is the value is negative
+    or larger than 28 bits"""
+
+    if (i >= (2 ** 28)):
+        raise ValueError("value too large")
+    elif (i < 0):
+        raise ValueError("value cannot be negative")
+
+    value = 0
+
+    for x in xrange(4):
+        value |= ((i & 0x7F) << (x * 8))
+        i >>= 7
+
+    return value
 
 class C_string:
     TERMINATOR = {'ascii': chr(0),
@@ -239,11 +265,11 @@ def skip_id3v2_comment(file):
 
     from .bitstream import BitstreamReader
 
-    bytes_skipped = 0
     reader = BitstreamReader(file, 0)
     reader.mark()
     try:
         (tag_id, version_major, version_minor) = reader.parse("3b 8u 8u 8p")
+        bytes_skipped = 6
     except IOError, err:
         reader.unmark()
         raise err
@@ -252,8 +278,7 @@ def skip_id3v2_comment(file):
         reader.unmark()
 
         #parse the header
-        bytes_skipped += 6
-        tag_size = decode_syncsafe32(reader)
+        tag_size = decode_syncsafe32(reader.read(32))
         bytes_skipped += 4
 
         #skip to the end of its length
@@ -286,7 +311,7 @@ def total_id3v2_comments(file):
         reader.unmark()
 
         #parse the header
-        tag_size = decode_syncsafe32(reader)
+        tag_size = decode_syncsafe32(reader.read(32))
 
         #skip to the end of its length
         reader.skip_bytes(tag_size)
@@ -1092,7 +1117,7 @@ class ID3v22Comment(MetaData):
             raise ValueError("invalid major version")
         elif (minor_version != 0x00):
             raise ValueError("invalid minor version")
-        total_size = remaining_size = decode_syncsafe32(reader)
+        total_size = remaining_size = decode_syncsafe32(reader.read(32))
 
         frames = []
 
@@ -1140,8 +1165,9 @@ class ID3v22Comment(MetaData):
 
         tags_size = sum([6 + frame.size() for frame in self])
 
-        writer.build("3b 8u 8u 8u", ("ID3", 0x02, 0x00, 0x00))
-        encode_syncsafe32(writer, max(tags_size, self.total_size))
+        writer.build("3b 8u 8u 8u 32u",
+                     ("ID3", 0x02, 0x00, 0x00,
+                      encode_syncsafe32(max(tags_size, self.total_size))))
 
         for frame in self:
             writer.build("3b 24u", (frame.id, frame.size()))
@@ -1751,7 +1777,7 @@ class ID3v23Comment(ID3v22Comment):
             raise ValueError("invalid major version")
         elif (minor_version != 0x00):
             raise ValueError("invalid minor version")
-        total_size = remaining_size = decode_syncsafe32(reader)
+        total_size = remaining_size = decode_syncsafe32(reader.read(32))
 
         frames = []
 
@@ -1799,8 +1825,9 @@ class ID3v23Comment(ID3v22Comment):
 
         tags_size = sum([10 + frame.size() for frame in self])
 
-        writer.build("3b 8u 8u 8u", ("ID3", 0x03, 0x00, 0x00))
-        encode_syncsafe32(writer, max(tags_size, self.total_size))
+        writer.build("3b 8u 8u 8u 32u",
+                     ("ID3", 0x03, 0x00, 0x00,
+                      encode_syncsafe32(max(tags_size, self.total_size))))
 
         for frame in self:
             writer.build("4b 32u 16u", (frame.id, frame.size(), 0))
@@ -2171,13 +2198,13 @@ class ID3v24Comment(ID3v23Comment):
             raise ValueError("invalid major version")
         elif (minor_version != 0x00):
             raise ValueError("invalid minor version")
-        total_size = remaining_size = decode_syncsafe32(reader)
+        total_size = remaining_size = decode_syncsafe32(reader.read(32))
 
         frames = []
 
         while (remaining_size > 10):
             frame_id = reader.read_bytes(4)
-            frame_size = decode_syncsafe32(reader)
+            frame_size = decode_syncsafe32(reader.read(32))
             flags = reader.read(16)
 
             if (frame_id == chr(0) * 4):
@@ -2221,12 +2248,13 @@ class ID3v24Comment(ID3v23Comment):
 
         tags_size = sum([10 + frame.size() for frame in self])
 
-        writer.build("3b 8u 8u 8u", ("ID3", 0x04, 0x00, 0x00))
-        encode_syncsafe32(writer, max(tags_size, self.total_size))
+        writer.build("3b 8u 8u 8u 32u",
+                     ("ID3", 0x04, 0x00, 0x00,
+                      encode_syncsafe32(max(tags_size, self.total_size))))
 
         for frame in self:
             writer.write_bytes(frame.id)
-            encode_syncsafe32(writer, frame.size())
+            writer.write(32, encode_syncsafe32(frame.size()))
             writer.write(16, 0)
             frame.build(writer)
 
