@@ -1287,6 +1287,7 @@ def file_type(file):
 
     start = file.tell()
     header = file.read(37)
+    file.seek(start, 0)
 
     if ((header[4:8] == "ftyp") and (header[8:12] in ('mp41',
                                                       'mp42',
