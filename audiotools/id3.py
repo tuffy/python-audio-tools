@@ -86,7 +86,7 @@ def decode_syncsafe32(i):
     larger than 32 bits or contains invalid sync-safe bits"""
 
     if (i >= (2 ** 32)):
-        raise ValueError("value too large")
+        raise ValueError("value of %s is too large" % (i))
     elif (i < 0):
         raise ValueError("value cannot be negative")
 
@@ -263,65 +263,87 @@ def skip_id3v2_comment(file):
     """seeks past an ID3v2 comment if found in the file stream
     returns the number of bytes skipped"""
 
-    from .bitstream import BitstreamReader
+    from audiotools.bitstream import parse
 
-    reader = BitstreamReader(file, 0)
-    reader.mark()
+    start = file.tell()
     try:
-        (tag_id, version_major, version_minor) = reader.parse("3b 8u 8u 8p")
-        bytes_skipped = 6
-    except IOError, err:
-        reader.unmark()
-        raise err
+        #check initial header
+        if (file.read(3) == "ID3"):
+            bytes_skipped = 3
+        else:
+            file.seek(start)
+            return 0
 
-    if ((tag_id == 'ID3') and (version_major in (2, 3, 4))):
-        reader.unmark()
+        #ensure major version is valid
+        if (ord(file.read(1)) in (2, 3, 4)):
+            bytes_skipped += 1
+        else:
+            file.seek(start)
+            return 0
 
-        #parse the header
-        tag_size = decode_syncsafe32(reader.read(32))
+        #skip minor version
+        file.read(1)
+        bytes_skipped += 1
+
+        #skip flags
+        file.read(1)
+        bytes_skipped += 1
+
+        #get the whole size of the tag
+        try:
+            tag_size = decode_syncsafe32(parse("32u", False, file.read(4))[0])
+        except ValueError:
+            file.seek(start)
+            return 0
         bytes_skipped += 4
 
         #skip to the end of its length
-        reader.skip_bytes(tag_size)
+        file.read(tag_size)
         bytes_skipped += tag_size
 
         #check for additional ID3v2 tags recursively
-        del(reader)
         return bytes_skipped + skip_id3v2_comment(file)
-    else:
-        reader.rewind()
-        reader.unmark()
+    except IOError, err:
+        file.seek(start)
         return 0
-
 
 def total_id3v2_comments(file):
     """returns the number of nested ID3v2 comments found in the file stream"""
 
-    from .bitstream import BitstreamReader
+    from audiotools.bitstream import parse
 
-    reader = BitstreamReader(file, 0)
-    reader.mark()
+    start = file.tell()
     try:
-        (tag_id, version_major, version_minor) = reader.parse("3b 8u 8u 8p")
-    except IOError, err:
-        reader.unmark()
-        raise err
+        #check initial header
+        if (file.read(3) != "ID3"):
+            file.seek(start)
+            return 0
 
-    if ((tag_id == 'ID3') and (version_major in (2, 3, 4))):
-        reader.unmark()
+        #ensure major version is valid
+        if (ord(file.read(1)) not in (2, 3, 4)):
+            file.seek(start)
+            return 0
 
-        #parse the header
-        tag_size = decode_syncsafe32(reader.read(32))
+        #skip minor version
+        file.read(1)
+
+        #skip flags
+        file.read(1)
+
+        #get the whole size of the tag
+        try:
+            tag_size = decode_syncsafe32(parse("32u", False, file.read(4))[0])
+        except ValueError:
+            file.seek(start)
+            return 0
 
         #skip to the end of its length
-        reader.skip_bytes(tag_size)
+        file.read(tag_size)
 
         #check for additional ID3v2 tags recursively
-        del(reader)
         return 1 + total_id3v2_comments(file)
-    else:
-        reader.rewind()
-        reader.unmark()
+    except IOError, err:
+        file.seek(start)
         return 0
 
 ############################################################

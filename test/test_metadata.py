@@ -2672,9 +2672,31 @@ class ID3v22MetaData(MetaDataTest):
     def test_sync_safe(self):
         from audiotools.id3 import decode_syncsafe32, encode_syncsafe32
 
+        #ensure values round-trip correctly across several bytes
         for value in xrange(16384):
             self.assertEqual(decode_syncsafe32(encode_syncsafe32(value)),
                              value)
+
+        self.assertEqual(decode_syncsafe32(encode_syncsafe32(2 ** 28 - 1)),
+                         2 ** 28 - 1)
+
+        #ensure values that are too large don't decode
+        self.assertRaises(ValueError, decode_syncsafe32, 2 ** 32)
+
+        #ensure negative values don't decode
+        self.assertRaises(ValueError, decode_syncsafe32, -1)
+
+        #ensure values with invalid padding don't decode
+        self.assertRaises(ValueError, decode_syncsafe32, 0x80)
+        self.assertRaises(ValueError, decode_syncsafe32, 0x80 << 8)
+        self.assertRaises(ValueError, decode_syncsafe32, 0x80 << 16)
+        self.assertRaises(ValueError, decode_syncsafe32, 0x80 << 24)
+
+        #ensure values that are too large don't encode
+        self.assertRaises(ValueError, encode_syncsafe32, 2 ** 28)
+
+        #ensure values that are negative don't encode
+        self.assertRaises(ValueError, encode_syncsafe32, -1)
 
     @METADATA_ID3V2
     def test_padding(self):

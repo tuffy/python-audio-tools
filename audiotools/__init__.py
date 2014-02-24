@@ -5436,7 +5436,7 @@ class __ProgressQueueJob__:
         from multiprocessing import Process, Array, Pipe
 
         #construct shared memory array to store progress
-        progress = Array("I", [0, 0])
+        progress = Array("L", [0, 0])
 
         #construct one-way pipe to collect result
         (parent_conn, child_conn) = Pipe(False)
