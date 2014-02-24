@@ -355,6 +355,12 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
     return Py_BuildValue("K", pcm_frames_offset);
 }
 
+static void
+increment_offset(uint8_t value, unsigned long long *offset)
+{
+    *offset += 1;
+}
+
 static PyObject*
 FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
 {
@@ -363,12 +369,17 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
     flac_status error;
     PyObject* offsets = PyList_New(0);
     PyObject* offset_pair;
-    uint32_t samples;
-    long offset;
+    unsigned long long total_offset = 0;
+    unsigned samples;
+    unsigned long long offset;
+
+    br_add_callback(self->bitstream,
+                    (bs_callback_f)increment_offset,
+                    &total_offset);
 
     while (self->remaining_samples > 0) {
         self->subframe_data->reset(self->subframe_data);
-        offset = br_ftell(self->bitstream);
+        offset = total_offset;
 
         if (!setjmp(*br_try(self->bitstream))) {
             /*read frame header*/
@@ -407,7 +418,7 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
             self->remaining_samples -= frame_header.block_size;
 
             /*add offset pair to our list*/
-            offset_pair = Py_BuildValue("(i, I)", offset, samples);
+            offset_pair = Py_BuildValue("(K, I)", offset, samples);
             PyList_Append(offsets, offset_pair);
             Py_DECREF(offset_pair);
         } else {
@@ -420,11 +431,14 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
     }
 
     self->stream_finalized = 1;
+    br_pop_callback(self->bitstream, NULL);
 
     return offsets;
 error:
     Py_XDECREF(offsets);
     br_etry(self->bitstream);
+    br_pop_callback(self->bitstream, NULL);
+
     return NULL;
 }
 

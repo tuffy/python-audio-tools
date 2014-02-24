@@ -38,7 +38,8 @@ if (audiotools.ui.AVAILABLE):
                      (metadata.track_name is not None))):
                     return metadata.track_name
                 else:
-                    return unicode(audiotools.Filename(track.filename))
+                    return unicode(
+                        audiotools.Filename(track.filename).basename())
 
             audiotools.ui.PlayerGUI.__init__(
                 self,

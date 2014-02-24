@@ -69,7 +69,7 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     aa_int* samples;
 
-    uint64_t current_offset = 0;
+    unsigned long long current_offset = 0;
     PyObject *frame_offsets = NULL;
     PyObject *offset = NULL;
 
@@ -133,7 +133,7 @@ encoders_encode_flac(char *filename,
                      int exhaustive_model_search) {
     FILE* output_file;
     BitstreamWriter* output_stream;
-    uint64_t current_offset = 0;
+    unsigned long long current_offset = 0;
     struct flac_context encoder;
     char version_string[0xFF];
     audiotools__MD5Context md5sum;
@@ -246,7 +246,7 @@ encoders_encode_flac(char *filename,
 
     while (samples->_[0]->len > 0) {
 #ifndef STANDALONE
-        offset = Py_BuildValue("(K, i)",
+        offset = Py_BuildValue("(K, I)",
                                current_offset,
                                samples->_[0]->len);
         PyList_Append(frame_offsets, offset);

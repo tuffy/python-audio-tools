@@ -1851,11 +1851,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         from bisect import bisect_right
 
         if (offsets is None):
-            metadata_length = (self.__stream_offset__ +
-                               4 + self.metadata_length())
-            offsets = [(byte_offset - metadata_length,
-                        pcm_frames) for byte_offset, pcm_frames in
-                       self.to_pcm().offsets()]
+            offsets = self.to_pcm().offsets()
 
         if (seekpoint_interval is None):
             seekpoint_interval = self.sample_rate() * 10
