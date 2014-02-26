@@ -1708,7 +1708,7 @@ class track2track(UtilTest):
                 self.assert_(os.path.isfile(output_path))
 
                 if ("-o" not in options):
-                    self.__check_info__(
+                    self.__check_output__(
                         LAB_ENCODE %
                         {"source":
                              audiotools.Filename(self.track1.filename),
@@ -1752,7 +1752,7 @@ class track2track(UtilTest):
                         if (("-o" not in options) and
                             audiotools.ADD_REPLAYGAIN and
                             ("--no-replay-gain" not in options)):
-                            self.__check_info__(RG_REPLAYGAIN_ADDED)
+                            self.__check_output__(RG_REPLAYGAIN_ADDED)
                             self.assert_(track2.replay_gain() is not None)
                     else:
                         if ("--replay-gain" in options):
@@ -2661,7 +2661,8 @@ class trackcmp(UtilTest):
                                      LAB_TRACKCMP_MISMATCH,
                                      LAB_TRACKCMP_TYPE_MISMATCH,
                                      LAB_TRACKCMP_OK,
-                                     LAB_TRACKCMP_MISSING)
+                                     LAB_TRACKCMP_MISSING,
+                                     LAB_TRACKCMP_ERROR)
 
         #check matching file against maching file
         self.assertEqual(
@@ -2680,7 +2681,7 @@ class trackcmp(UtilTest):
             self.__run_app__(["trackcmp", "-V", "normal",
                               self.match_file1.name, self.mismatch_file.name]),
             1)
-        self.__check_info__(
+        self.__check_output__(
             (LAB_TRACKCMP_CMP %
              {"file1":audiotools.Filename(self.match_file1.name),
               "file2":audiotools.Filename(self.mismatch_file.name)}) +
@@ -2706,7 +2707,11 @@ class trackcmp(UtilTest):
             self.__run_app__(["trackcmp", "-V", "normal",
                               self.match_file1.name, self.broken_file.name]),
             1)
-        self.__check_error__(u"EOF reading frame")
+        self.__check_output__(
+            (LAB_TRACKCMP_CMP %
+             {"file1":audiotools.Filename(self.match_file1.name),
+              "file2":audiotools.Filename(self.broken_file.name)}) +
+             u" : " + LAB_TRACKCMP_ERROR)
 
         #check file against directory
         self.assertEqual(
@@ -2736,7 +2741,7 @@ class trackcmp(UtilTest):
                               self.match_dir1, self.match_dir2]),
             0)
         for i in xrange(1, 4):
-            self.__check_info__(
+            self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
                      {"file1":audiotools.Filename(
@@ -2757,7 +2762,7 @@ class trackcmp(UtilTest):
                               self.match_dir1, self.match_dir1]),
             0)
         for i in xrange(1, 4):
-            self.__check_info__(
+            self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
                      {"file1":audiotools.Filename(
@@ -2778,7 +2783,7 @@ class trackcmp(UtilTest):
                               self.match_dir1, self.mismatch_dir1]),
             1)
         for i in xrange(1, 4):
-            self.__check_info__(
+            self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
                      {"file1":audiotools.Filename(
@@ -2806,7 +2811,7 @@ class trackcmp(UtilTest):
                 "directory":audiotools.Filename(self.mismatch_dir2)})
 
         for i in xrange(1, 3):
-            self.__check_info__(
+            self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
                      {"file1":audiotools.Filename(
@@ -2833,7 +2838,7 @@ class trackcmp(UtilTest):
                 "directory":audiotools.Filename(self.match_dir1)})
 
         for i in xrange(1, 4):
-            self.__check_info__(
+            self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
                      {"file1":audiotools.Filename(
@@ -2882,7 +2887,7 @@ class trackcmp(UtilTest):
                     self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                                       image.filename] + order), 0)
                 for (i, track) in enumerate(tracks):
-                    self.__check_info__(
+                    self.__check_output__(
                         audiotools.output_progress(
                             LAB_TRACKCMP_CMP %
                             {"file1":audiotools.Filename(image.filename),

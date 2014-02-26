@@ -1012,6 +1012,13 @@ class ProgressDisplay:
             self.messenger.ansi_cleardown()
             self.displayed_rows = 0
 
+    def output_line(self, line):
+        """displays a line of text to the Messenger's output
+        after any previous rows have been cleared
+        and before any new rows have been displayed"""
+
+        self.messenger.output(line)
+
 
 class ProgressRow:
     """a class for displaying a single row of progress output
@@ -3852,14 +3859,13 @@ class AudioFile:
         return None
 
     def __eq__(self, audiofile):
-        if (isinstance(audiofile, AudioFile)):
-            p1 = self.to_pcm()
-            p2 = audiofile.to_pcm()
+        if (hasattr(audiofile, "to_pcm") and
+            callable(audiofile.to_pcm)):
             try:
-                return pcm_cmp(p1, p2)
-            finally:
-                p1.close()
-                p2.close()
+                return pcm_frame_cmp(self.to_pcm(),
+                                     audiofile.to_pcm()) is not None
+            except (ValueError, IOError), err:
+                return False
         else:
             return False
 
@@ -5316,7 +5322,7 @@ class ExecProgressQueue:
                         output = completion_output
 
                     if (output is not None):
-                        self.progress_display.messenger.info(
+                        self.progress_display.output_line(
                             output_progress(unicode(output),
                                             completed_job_number,
                                             total_jobs))

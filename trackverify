@@ -113,30 +113,22 @@ def verify(progress, track):
                 unicode(err))
 
 
-def display_results(result):
-    (filename, track_type, error) = result
-    if (error is None):
-        return _.LAB_TRACKVERIFY_RESULT % {
-            "path": filename,
-            "result": _.LAB_TRACKVERIFY_OK}
-    else:
-        return _.LAB_TRACKVERIFY_RESULT % {
-            "path": filename,
-            "result": error}
-
-
-def display_results_tty(result):
+def display_results(result, is_tty=False):
     (filename, track_type, error) = result
     if (error is None):
         return _.LAB_TRACKVERIFY_RESULT % {
             "path": filename,
             "result": audiotools.output_text(_.LAB_TRACKVERIFY_OK,
-                                             fg_color="green").format(True)}
+                                             fg_color="green").format(is_tty)}
     else:
         return _.LAB_TRACKVERIFY_RESULT % {
             "path": filename,
             "result": audiotools.output_text(error,
-                                             fg_color="red").format(True)}
+                                             fg_color="red").format(is_tty)}
+
+
+def display_results_tty(result):
+    return display_results(result, is_tty=True)
 
 
 #returned if the track isn't found in the AccurateRip database
@@ -331,7 +323,7 @@ if (__name__ == '__main__'):
                 function=verify,
                 progress_text=unicode(audiotools.Filename(track.filename)),
                 completion_output=(display_results_tty
-                                   if msg.info_isatty() else
+                                   if msg.output_isatty() else
                                    display_results),
                 track=track)
 
