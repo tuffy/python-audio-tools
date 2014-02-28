@@ -57,11 +57,15 @@ out of a larger binary file stream.
 
 .. class:: BitstreamReader(file, is_little_endian[, buffer_size=4096])
 
+   ``file`` may be a regular file object, a file-like object
+   with ``read`` and ``close`` methods, or a plain string.
+
    When operating on a raw file object
    (such as one opened with :func:`open`)
    this uses a single byte buffer.
    This allows the underlying file to be seeked safely whenever
    the :class:`BitstreamReader` is byte-aligned.
+
    However, when operating on a Python-based file object
    (with :func:`read` and :func:`close` methods)
    this uses an internal string up to ``buffer_size`` bytes large

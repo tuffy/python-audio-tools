@@ -850,6 +850,8 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
     int buffer_size = 4096;
 
     self->file_obj = NULL;
+    self->bitstream = NULL;
+    self->string_buffer = NULL;
 
     if (!PyArg_ParseTuple(args, "Oi|i",
                           &file_obj,
@@ -879,6 +881,30 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
           to the file object itself*/
         self->bitstream->close_internal_stream =
             br_close_internal_stream_python_file;
+    } else if (PyString_CheckExact(file_obj)) {
+        /*dump contents of Python string into internal buffer*/
+        char *buffer;
+        Py_ssize_t length;
+
+        if (PyString_AsStringAndSize(file_obj, &buffer, &length) == -1) {
+            /*some error during string conversion*/
+            return -1;
+        }
+
+        self->string_buffer = buf_new();
+
+        /*FIXME - this presumes buffer can holder more bytes than
+          an unsigned int, which isn't the case yet*/
+        while (length > 0) {
+            const unsigned to_write = (unsigned)MIN(length, UINT_MAX);
+            buf_write(self->string_buffer, (uint8_t*)buffer, to_write);
+            buffer += to_write;
+            length -= to_write;
+        }
+
+        self->bitstream = br_open_buffer(self->string_buffer,
+                                         self->little_endian ?
+                                         BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
     } else {
         self->bitstream = br_open_external(
             self->file_obj,
@@ -922,6 +948,10 @@ BitstreamReader_dealloc(bitstream_BitstreamReader *self)
 
         /*perform free() on rest of BitstreamReader*/
         self->bitstream->free(self->bitstream);
+    }
+
+    if (self->string_buffer != NULL) {
+        buf_close(self->string_buffer);
     }
 
     Py_XDECREF(self->file_obj);

@@ -68,6 +68,7 @@ typedef struct {
     PyObject* file_obj;
     BitstreamReader* bitstream;
     int little_endian;
+    struct bs_buffer *string_buffer;
     read_object_f read_unsigned;
     read_object_f read_signed;
 } bitstream_BitstreamReader;

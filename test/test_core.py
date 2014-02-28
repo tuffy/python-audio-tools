@@ -2767,16 +2767,22 @@ class Bitstream(unittest.TestCase):
     def test_simple_reader(self):
         from audiotools.bitstream import BitstreamReader, HuffmanTree
 
-        temp = tempfile.TemporaryFile()
-        try:
-            temp.write(chr(0xB1))
-            temp.write(chr(0xED))
-            temp.write(chr(0x3B))
-            temp.write(chr(0xC1))
-            temp.seek(0, 0)
+        data = chr(0xB1) + chr(0xED) + chr(0x3B) + chr(0xC1)
 
-            #test a big-endian stream built from a file
-            reader = BitstreamReader(temp, 0)
+        temp = tempfile.TemporaryFile()
+
+        temp.write(data)
+        temp.flush()
+        temp.seek(0, 0)
+
+        temp_s = cStringIO.StringIO()
+        temp_s.write(data)
+        temp_s.seek(0, 0)
+
+        #test a big-endian stream
+        for reader in [BitstreamReader(temp, 0),
+                       BitstreamReader(temp_s, 0),
+                       BitstreamReader(data, 0)]:
             table_be = HuffmanTree([[1, 1], 0,
                                     [1, 0], 1,
                                     [0, 1], 2,
@@ -2786,10 +2792,13 @@ class Bitstream(unittest.TestCase):
             self.__test_try__(reader, table_be)
             self.__test_callbacks_reader__(reader, 14, 18, table_be, 14)
 
-            temp.seek(0, 0)
+        temp.seek(0, 0)
+        temp_s.seek(0, 0)
 
-            #test a little-endian stream built from a file
-            reader = BitstreamReader(temp, 1)
+        #test a little-endian stream
+        for reader in [BitstreamReader(temp, 1),
+                       BitstreamReader(temp_s, 1),
+                       BitstreamReader(data, 1)]:
             table_le = HuffmanTree([[1, 1], 0,
                                     [1, 0], 1,
                                     [0, 1], 2,
@@ -2799,23 +2808,24 @@ class Bitstream(unittest.TestCase):
             self.__test_try__(reader, table_le)
             self.__test_callbacks_reader__(reader, 14, 18, table_le, 13)
 
-            #pad the stream with some additional data at both ends
-            temp.seek(0, 0)
-            temp.write(chr(0xFF))
-            temp.write(chr(0xFF))
-            temp.write(chr(0xB1))
-            temp.write(chr(0xED))
-            temp.write(chr(0x3B))
-            temp.write(chr(0xC1))
-            temp.write(chr(0xFF))
-            temp.write(chr(0xFF))
-            temp.flush()
-            temp.seek(0, 0)
+        #pad the stream with some additional data at both ends
+        data = chr(0xFF) + chr(0xFF) + data + chr(0xFF) + chr(0xFF)
 
-            reader = BitstreamReader(temp, 0)
+        temp.seek(0, 0)
+        temp.write(data)
+        temp.flush()
+        temp.seek(0, 0)
+
+        temp_s = cStringIO.StringIO()
+        temp_s.write(data)
+        temp_s.seek(0, 0)
+
+        #check a big-endian substream
+        for reader in [BitstreamReader(temp, 0),
+                       BitstreamReader(temp_s, 0),
+                       BitstreamReader(data, 0)]:
             reader.mark()
 
-            #check a big-endian substream built from a file
             reader.skip(16)
             subreader = reader.substream(4)
             self.__test_big_endian_reader__(subreader, table_be)
@@ -2833,12 +2843,15 @@ class Bitstream(unittest.TestCase):
             self.__test_callbacks_reader__(subreader2, 14, 18, table_be, 13)
             reader.unmark()
 
-            temp.seek(0, 0)
+        temp.seek(0, 0)
+        temp_s.seek(0, 0)
 
-            reader = BitstreamReader(temp, 1)
+        #check a little-endian substream built from a file
+        for reader in [BitstreamReader(temp, 1),
+                       BitstreamReader(temp_s, 1),
+                       BitstreamReader(data, 1)]:
             reader.mark()
 
-            #check a little-endian substream built from a file
             reader.skip(16)
             subreader = reader.substream(4)
             self.__test_little_endian_reader__(subreader, table_le)
@@ -2856,12 +2869,11 @@ class Bitstream(unittest.TestCase):
             self.__test_callbacks_reader__(subreader2, 14, 18, table_le, 13)
             reader.unmark()
 
-            #test the writer functions with each endianness
-            self.__test_writer__(0)
-            self.__test_writer__(1)
+        temp.close()
 
-        finally:
-            temp.close()
+        #test the writer functions with each endianness
+        self.__test_writer__(0)
+        self.__test_writer__(1)
 
     def __test_edge_reader_be__(self, reader):
         reader.mark()
