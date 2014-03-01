@@ -80,7 +80,7 @@ class SHNDecoder:
                              self.sample_rate,
                              bits_per_sample,
                              channel_mask) = parse_fmt(
-                                 wave.substream(chunk_size))
+                                wave.substream(chunk_size))
                             self.channel_mask = int(channel_mask)
                             return
                         else:
@@ -111,7 +111,7 @@ class SHNDecoder:
                              bits_per_sample,
                              self.sample_rate,
                              channel_mask) = parse_comm(
-                                 aiff.substream(chunk_size))
+                                aiff.substream(chunk_size))
                             self.channel_mask = int(channel_mask)
                             return
                         else:

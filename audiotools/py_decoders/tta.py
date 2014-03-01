@@ -219,7 +219,7 @@ class TTADecoder:
          self.bits_per_sample,
          self.sample_rate,
          self.total_pcm_frames) = self.reader.parse(
-             "4b 16u 16u 16u 32u 32u")
+            "4b 16u 16u 16u 32u 32u")
 
         self.reader.pop_callback()
         header_crc = self.reader.read(32)

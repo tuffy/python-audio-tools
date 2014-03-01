@@ -299,7 +299,7 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
             if (metadata_function == 2):
                 (decorrelation_terms,
                  decorrelation_deltas) = read_decorrelation_terms(
-                     sub_block_size, actual_size_1_less, sub_block_data)
+                    sub_block_size, actual_size_1_less, sub_block_data)
                 decorrelation_terms_read = True
             if (metadata_function == 3):
                 if (not decorrelation_terms_read):

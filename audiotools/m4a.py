@@ -315,7 +315,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                 (mp4a,
                  self.__channels__,
                  self.__bits_per_sample__) = stsd.parse(
-                     "32p 4b 48p 16p 16p 16p 4P 16u 16u 16p 16p 32p")
+                    "32p 4b 48p 16p 16p 16p 4P 16u 16u 16p 16p 32p")
             except IOError:
                 from .text import ERR_M4A_INVALID_MP4A
                 raise InvalidM4A(ERR_M4A_INVALID_MP4A)
@@ -799,10 +799,10 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                  self.__maximum_k__,
                  self.__channels__,
                  self.__sample_rate__) = stsd.parse(
-                     #ignore much of the stuff in the "high" ALAC atom
-                     "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
-                     #and use the attributes in the "low" ALAC atom instead
-                     "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
+                    #ignore much of the stuff in the "high" ALAC atom
+                    "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
+                    #and use the attributes in the "low" ALAC atom instead
+                    "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
             except IOError:
                 from .text import ERR_ALAC_INVALID_ALAC
                 raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
@@ -1018,12 +1018,12 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 (frame_byte_sizes, actual_pcm_frames) = \
                     (encode_alac if encoding_function is None else
                      encoding_function)(
-                         file=f,
-                         pcmreader=BufferedPCMReader(pcmreader),
-                         block_size=block_size,
-                         initial_history=cls.INITIAL_HISTORY,
-                         history_multiplier=cls.HISTORY_MULTIPLIER,
-                         maximum_k=cls.MAXIMUM_K)
+                        file=f,
+                        pcmreader=BufferedPCMReader(pcmreader),
+                        block_size=block_size,
+                        initial_history=cls.INITIAL_HISTORY,
+                        history_multiplier=cls.HISTORY_MULTIPLIER,
+                        maximum_k=cls.MAXIMUM_K)
             except (IOError, ValueError), err:
                 f.close()
                 self.__unlink__(filename)
@@ -1067,12 +1067,12 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 (frame_byte_sizes, total_pcm_frames) = \
                     (encode_alac if encoding_function is None else
                      encoding_function)(
-                         file=mdat_file,
-                         pcmreader=BufferedPCMReader(pcmreader),
-                         block_size=block_size,
-                         initial_history=cls.INITIAL_HISTORY,
-                         history_multiplier=cls.HISTORY_MULTIPLIER,
-                         maximum_k=cls.MAXIMUM_K)
+                        file=mdat_file,
+                        pcmreader=BufferedPCMReader(pcmreader),
+                        block_size=block_size,
+                        initial_history=cls.INITIAL_HISTORY,
+                        history_multiplier=cls.HISTORY_MULTIPLIER,
+                        maximum_k=cls.MAXIMUM_K)
             except (IOError, ValueError), err:
                 raise EncodingError(str(err))
 

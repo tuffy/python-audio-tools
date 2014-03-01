@@ -101,7 +101,7 @@ class DVDAudio:
              video_titlesets,
              audio_titlesets,
              provider_information) = BitstreamReader(f, 0).parse(
-                 "12b 32u 12P 32u 16u 4P 16u 16u 8u 4P 8u 32u 10P 8u 8u 40b")
+                "12b 32u 12P 32u 16u 4P 16u 16u 8u 4P 8u 32u 10P 8u 8u 40b")
 
             if (identifier != 'DVDAUDIO-AMG'):
                 from .text import ERR_DVDA_INVALID_AUDIO_TS
@@ -157,7 +157,7 @@ class DVDAudio:
                  indexes,
                  track_length,
                  sector_pointers_table) = ats_reader.parse(
-                     "16p 8u 8u 32u 4P 16u 2P")
+                    "16p 8u 8u 32u 4P 16u 2P")
                 timestamps = [ats_reader.parse("32p 8u 8p 32u 32u 48p")
                               for track in xrange(tracks)]
 
@@ -310,7 +310,7 @@ class DVDATitle:
              bit_rate,
              marker6,
              stuffing_length) = aob_reader.parse(
-                 "32u 2u 3u 1u 15u 1u 15u 1u 9u 1u 22u 2u 5p 3u")
+                "32u 2u 3u 1u 15u 1u 15u 1u 9u 1u 22u 2u 5p 3u")
             aob_reader.skip_bytes(stuffing_length)
             if (sync_bytes != 0x1BA):
                 from .text import ERR_DVDA_INVALID_AOB_SYNC
@@ -354,7 +354,7 @@ class DVDATitle:
                  group2_sample_rate,
                  padding3,
                  channel_assignment) = aob_reader.parse(
-                     "8u 16u 8u 4u 4u 4u 4u 8u 8u")
+                    "8u 16u 8u 4u 4u 4u 4u 8u 8u")
             else:                    # MLP
                 aob_reader.skip_bytes(aob_reader.read(8))  # skip pad2
                 #read a total frame size + MLP major sync header
@@ -368,7 +368,7 @@ class DVDATitle:
                  unknown1,
                  channel_assignment,
                  unknown2) = aob_reader.parse(
-                     "4p 12u 16p 24u 8u 4u 4u 4u 4u 11u 5u 48u")
+                    "4p 12u 16p 24u 8u 4u 4u 4u 4u 11u 5u 48u")
 
             #return the values indicated by the header
             self.sample_rate = DVDATrack.SAMPLE_RATE[group1_sample_rate]

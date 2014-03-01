@@ -102,7 +102,7 @@ class VorbisAudio(AudioFile):
              blocksize0,
              blocksize1,
              framing) = ogg_reader.parse(
-                 "8u 6b 32u 8u 32u 32u 32u 32u 4u 4u 1u")
+                "8u 6b 32u 8u 32u 32u 32u 32u 4u 4u 1u")
 
             if (vorbis_type != 1):
                 from .text import ERR_VORBIS_INVALID_TYPE

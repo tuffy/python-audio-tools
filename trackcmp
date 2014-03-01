@@ -48,9 +48,8 @@ def cmp_files(progress, audiofile1, audiofile2):
             return (audiofile1.filename,
                     audiofile2.filename,
                     audiotools.pcm_frame_cmp(
-                    audiotools.to_pcm_progress(audiofile1,
-                                               progress),
-                    audiofile2.to_pcm()))
+                        audiotools.to_pcm_progress(audiofile1, progress),
+                        audiofile2.to_pcm()))
     except (IOError, ValueError, audiotools.DecodingError):
         return (audiofile1.filename,
                 audiofile2.filename,
@@ -199,7 +198,7 @@ if (__name__ == '__main__'):
                                                      audiofiles[1])
                 if (mismatch is not None):
                     msg.output(cmp_result((path1, path2, mismatch),
-                                           msg.output_isatty()))
+                                          msg.output_isatty()))
                     sys.exit(1)
         elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):
             #comparing two directories
@@ -290,8 +289,7 @@ if (__name__ == '__main__'):
                             _.LAB_TRACKCMP_MISSING %
                             {"filename": audiotools.Filename(
                              os.path.basename(filename)),
-                             "directory": audiotools.Filename(
-                             directory)},
+                             "directory": audiotools.Filename(directory)},
                             fg_color="red").format(msg.info_isatty()))
                     sys.stdout.flush()
                     results.append((filename, None, 0))

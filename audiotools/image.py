@@ -267,8 +267,8 @@ class __BMP__(ImageMetrics):
              vertical_resolution,
              colors_used,
              important_colors_used) = BitstreamReader(file, 1).parse(
-                 "2b 32u 16p 16p 32u " +
-                 "32u 32u 32u 16u 16u 32u 32u 32u 32u 32u 32u")
+                "2b 32u 16p 16p 32u " +
+                "32u 32u 32u 16u 16u 32u 32u 32u 32u 32u 32u")
         except IOError:
             from .text import ERR_IMAGE_IOERROR_BMP
             raise InvalidBMP(ERR_IMAGE_IOERROR_BMP)
@@ -307,7 +307,7 @@ class __GIF__(ImageMetrics):
              width,
              height,
              color_table_size) = BitstreamReader(file, 1).parse(
-                 "3b 3b 16u 16u 3u 5p")
+                "3b 3b 16u 16u 3u 5p")
         except IOError:
             from .text import ERR_IMAGE_IOERROR_GIF
             raise InvalidGIF(ERR_IMAGE_IOERROR_GIF)

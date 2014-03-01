@@ -193,8 +193,8 @@ class VorbisComment(MetaData):
             #or none of them contain an integer,
             #look for slashed TRACKNUMBER/DISCNUMBER values
             try:
-                for value in self[{"track_total":u"TRACKNUMBER",
-                                   "album_total":u"DISCNUMBER"}[attr]]:
+                for value in self[{"track_total": u"TRACKNUMBER",
+                                   "album_total": u"DISCNUMBER"}[attr]]:
                     integer = re.search(r'/\D*(\d+)', value)
                     if (integer is not None):
                         return int(integer.group(1))

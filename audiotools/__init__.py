@@ -1407,11 +1407,11 @@ def file_type(file):
 
         t = file_type(file)
         #only return type which might be wrapped in ID3v2 tags
-        if ((t is None) or
-            (t is MP3Audio) or
-            (t is MP2Audio) or
-            (t is FlacAudio) or
-            (t is TrueAudio)):
+        if (((t is None) or
+             (t is MP3Audio) or
+             (t is MP2Audio) or
+             (t is FlacAudio) or
+             (t is TrueAudio))):
             return t
         else:
             return None
@@ -3859,8 +3859,7 @@ class AudioFile:
         return None
 
     def __eq__(self, audiofile):
-        if (hasattr(audiofile, "to_pcm") and
-            callable(audiofile.to_pcm)):
+        if (hasattr(audiofile, "to_pcm") and callable(audiofile.to_pcm)):
             try:
                 return pcm_frame_cmp(self.to_pcm(),
                                      audiofile.to_pcm()) is not None

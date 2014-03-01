@@ -327,7 +327,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
              initial_block,
              final_block,
              sample_rate) = reader.parse(
-                 "4b 64p 32u 64p 2u 1u 8p 1u 1u 5p 5p 4u 37p")
+                "4b 64p 32u 64p 2u 1u 8p 1u 1u 5p 5p 4u 37p")
 
             if (block_id != 'wvpk'):
                 from .text import ERR_WAVPACK_INVALID_HEADER
@@ -468,11 +468,11 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         try:
             (encode_wavpack if encoding_function is None
              else encoding_function)(
-                 filename,
-                 BufferedPCMReader(counter),
-                 total_pcm_frames=(total_pcm_frames if
-                                   total_pcm_frames is not None else 0),
-                 **cls.__options__[compression])
+                filename,
+                BufferedPCMReader(counter),
+                total_pcm_frames=(total_pcm_frames if
+                                  total_pcm_frames is not None else 0),
+                **cls.__options__[compression])
         except (ValueError, IOError), msg:
             cls.__unlink__(filename)
             raise EncodingError(str(msg))

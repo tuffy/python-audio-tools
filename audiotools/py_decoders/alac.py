@@ -75,10 +75,10 @@ class ALACDecoder:
              self.maximum_k,
              self.channels,
              self.sample_rate) = stsd.parse(
-                 #ignore much of the stuff in the "high" ALAC atom
-                 "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
-                 #and use the attributes in the "low" ALAC atom instead
-                 "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
+                #ignore much of the stuff in the "high" ALAC atom
+                "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
+                #and use the attributes in the "low" ALAC atom instead
+                "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
 
             self.channel_mask = {1: 0x0004,
                                  2: 0x0003,

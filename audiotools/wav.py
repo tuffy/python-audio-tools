@@ -611,7 +611,7 @@ class WaveAudio(WaveContainer):
                          self.__sample_rate__,
                          self.__bits_per_sample__,
                          self.__channel_mask__) = parse_fmt(
-                             BitstreamReader(chunk.data(), 1))
+                            BitstreamReader(chunk.data(), 1))
                         fmt_read = True
                         if (fmt_read and data_read):
                             break

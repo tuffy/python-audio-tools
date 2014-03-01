@@ -929,11 +929,11 @@ class Flac_CUESHEET_track:
         lines = [((u"track  : %(number)3.d  " +
                   u"offset : %(offset)9.d  " +
                   u"ISRC : %(ISRC)s") %
-                 {"number":self.number,
-                  "offset":self.offset,
-                  "type":self.track_type,
-                  "pre_emphasis":self.pre_emphasis,
-                  "ISRC":self.ISRC.strip(chr(0)).decode('ascii', 'replace')})
+                 {"number": self.number,
+                  "offset": self.offset,
+                  "type": self.track_type,
+                  "pre_emphasis": self.pre_emphasis,
+                  "ISRC": self.ISRC.strip(chr(0)).decode('ascii', 'replace')})
                  ] + [i.raw_info(1) for i in self.index_points]
 
         return linesep.decode('ascii').join(
@@ -1295,7 +1295,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 channel_mask = ChannelMask(
                     int(metadata.get_block(
                         Flac_VORBISCOMMENT.BLOCK_ID)[
-                            u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0], 16))
+                        u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0], 16))
                 if (len(channel_mask) == self.channels()):
                     return channel_mask
                 else:
@@ -2612,7 +2612,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                     (sync_code,
                      reserved1,
                      reserved2) = reader.parse(
-                         "14u 1u 1p 4p 4p 4p 3p 1u")
+                        "14u 1u 1p 4p 4p 4p 3p 1u")
                     if (((sync_code != 0x3FFE) or
                          (reserved1 != 0) or
                          (reserved2 != 0))):
@@ -2932,9 +2932,9 @@ class OggFlacMetaData(FlacMetaData):
          bits_per_sample,
          total_samples,
          md5sum) = BitstreamReader(
-             StringIO(packetreader.read_packet()),
-             False).parse(
-                 "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
+            StringIO(packetreader.read_packet()),
+            False).parse(
+            "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
 
         block_list = [Flac_STREAMINFO(minimum_block_size=minimum_block_size,
                                       maximum_block_size=maximum_block_size,
@@ -3203,7 +3203,7 @@ class OggFlacAudio(FlacAudio):
              self.__bitspersample__,
              self.__total_frames__,
              self.__md5__) = ogg_reader.parse(
-                 "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
+                "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
 
             if (packet_byte != 0x7F):
                 from .text import ERR_OGGFLAC_INVALID_PACKET_BYTE

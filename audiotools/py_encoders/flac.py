@@ -615,9 +615,9 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
                                                 error)
                 (qlp_coeffs,
                  qlp_shift_needed) = quantize_coefficients(
-                     options.qlp_precision,
-                     lp_coefficients,
-                     order)
+                    options.qlp_precision,
+                    lp_coefficients,
+                    order)
 
                 return (order, qlp_coeffs, qlp_shift_needed)
             else:
@@ -632,7 +632,7 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
                 for order in xrange(1, options.max_lpc_order + 1):
                     (qlp_coeffs,
                      qlp_shift_needed) = quantize_coefficients(
-                         options.qlp_precision, lp_coefficients, order)
+                        options.qlp_precision, lp_coefficients, order)
 
                     subframe = BitstreamAccumulator(0)
                     encode_lpc_subframe(subframe, options,

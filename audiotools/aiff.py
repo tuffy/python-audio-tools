@@ -521,7 +521,7 @@ class AiffAudio(AiffContainer):
                          self.__bits_per_sample__,
                          self.__sample_rate__,
                          self.__channel_mask__) = parse_comm(
-                             BitstreamReader(chunk.data(), 0))
+                            BitstreamReader(chunk.data(), 0))
                         break
                     except IOError:
                         continue

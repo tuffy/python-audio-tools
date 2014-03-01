@@ -944,7 +944,7 @@ class M4A_ALAC_Atom(M4A_Leaf_Atom):
          qt_compression_id,
          audio_packet_size,
          sample_rate) = reader.parse(
-             "6P 16u 16u 16u 4b 16u 16u 16u 16u 32u")
+            "6P 16u 16u 16u 4b 16u 16u 16u 16u 32u")
         (sub_alac_size, sub_alac_name) = reader.parse("32u 4b")
         sub_alac = M4A_SUB_ALAC_Atom.parse(sub_alac_name,
                                            sub_alac_size - 8,
@@ -1323,18 +1323,19 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
     def add_image(self, image):
         """embeds an Image object in this metadata"""
 
+        def not_cover(atom):
+            return not ((atom.name == 'covr') and (atom.has_child('data')))
+
         if (not self.has_ilst_atom()):
             self.add_ilst_atom()
 
         ilst_atom = self.ilst_atom()
 
         #filter out old cover image before adding new one
-        ilst_atom.leaf_atoms = filter(
-            lambda atom: not ((atom.name == 'covr') and
-                              (atom.has_child('data'))),
-            ilst_atom) + [M4A_ILST_Leaf_Atom(
-                'covr',
-                [M4A_ILST_COVR_Data_Atom.converted(image)])]
+        ilst_atom.leaf_atoms = (
+            filter(not_cover, ilst_atom) +
+            [M4A_ILST_Leaf_Atom('covr', [M4A_ILST_COVR_Data_Atom.converted(
+                image)])])
 
     def delete_image(self, image):
         """deletes an Image object from this metadata"""
@@ -1858,7 +1859,7 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
          qt_manufacturer,
          qt_reserved_flags,
          qt_reserved_flags_mask) = reader.parse(
-             "8u 24u 4b 4b 4b 32u 32u")
+            "8u 24u 4b 4b 4b 32u 32u")
         component_name = reader.read_bytes(reader.read(8))
         return cls(version, flags, qt_type, qt_subtype,
                    qt_manufacturer, qt_reserved_flags,

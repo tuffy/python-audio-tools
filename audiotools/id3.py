@@ -101,6 +101,7 @@ def decode_syncsafe32(i):
 
     return value
 
+
 def encode_syncsafe32(i):
     """given a 28 bit int, returns a 32 bit value
     with sync-safe bits added
@@ -120,6 +121,7 @@ def encode_syncsafe32(i):
         i >>= 7
 
     return value
+
 
 class C_string:
     TERMINATOR = {'ascii': chr(0),
@@ -306,6 +308,7 @@ def skip_id3v2_comment(file):
     except IOError, err:
         file.seek(start)
         return 0
+
 
 def total_id3v2_comments(file):
     """returns the number of nested ID3v2 comments found in the file stream"""
@@ -1197,8 +1200,8 @@ class ID3v22Comment(MetaData):
 
         #add buffer of NULL bytes if the total size of the tags
         #is less than the total size of the whole ID3v2.2 tag
-        if ((self.total_size is not None) and
-            ((self.total_size - tags_size) > 0)):
+        if (((self.total_size is not None) and
+             ((self.total_size - tags_size) > 0))):
             writer.write_bytes(chr(0) * (self.total_size - tags_size))
 
     def size(self):
@@ -1857,8 +1860,8 @@ class ID3v23Comment(ID3v22Comment):
 
         #add buffer of NULL bytes if the total size of the tags
         #is less than the total size of the whole ID3v2.3 tag
-        if ((self.total_size is not None) and
-            ((self.total_size - tags_size) > 0)):
+        if (((self.total_size is not None) and
+             ((self.total_size - tags_size) > 0))):
             writer.write_bytes(chr(0) * (self.total_size - tags_size))
 
     def size(self):
@@ -2282,8 +2285,8 @@ class ID3v24Comment(ID3v23Comment):
 
         #add buffer of NULL bytes if the total size of the tags
         #is less than the total size of the whole ID3v2.2 tag
-        if ((self.total_size is not None) and
-            ((self.total_size - tags_size) > 0)):
+        if (((self.total_size is not None) and
+             ((self.total_size - tags_size) > 0))):
             writer.write_bytes(chr(0) * (self.total_size - tags_size))
 
     def size(self):

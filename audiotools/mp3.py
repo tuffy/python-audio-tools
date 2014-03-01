@@ -136,7 +136,7 @@ class MP3Audio(AudioFile):
              sample_rate,
              pad,
              channels) = BitstreamReader(mp3file, 0).parse(
-                 "11u 2u 2u 1p 4u 2u 1u 1p 2u 6p")
+                "11u 2u 2u 1p 4u 2u 1u 1p 2u 6p")
 
             self.__samplerate__ = self.SAMPLE_RATE[mpeg_id][sample_rate]
             if (self.__samplerate__ is None):

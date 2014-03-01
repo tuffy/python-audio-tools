@@ -167,23 +167,23 @@ def display_defaults(config, msg):
          "id3v2.3": _.LAB_AT_CONFIG_ID3V2_ID3V23,
          "id3v2.4": _.LAB_AT_CONFIG_ID3V2_ID3V24,
          "none": _.LAB_AT_CONFIG_ID3V2_NONE}.get(
-             config.get_default("ID3", "id3v2", "id3v2.3")))
+            config.get_default("ID3", "id3v2", "id3v2.3")))
 
     display_option(
         table,
         _.LAB_AT_CONFIG_ID3V2_PADDING,
         {True: _.LAB_AT_CONFIG_ID3V2_PADDING_YES,
          False: _.LAB_AT_CONFIG_ID3V2_PADDING_NO}.get(
-             config.getboolean_default("ID3", "pad", False)))
+            config.getboolean_default("ID3", "pad", False)))
 
     display_option(
         table,
         _.LAB_AT_CONFIG_ID3V1_VERSION,
         {"id3v1.1": _.LAB_AT_CONFIG_ID3V1_ID3V11,
          "none": _.LAB_AT_CONFIG_ID3V1_NONE}.get(
-             config.get_default("ID3",
-                                "id3v1",
-                                "id3v1.1")))
+            config.get_default("ID3",
+                               "id3v1",
+                               "id3v1.1")))
 
     for row in table.format(msg.output_isatty()):
         msg.output(row)

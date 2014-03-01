@@ -64,7 +64,7 @@ class TrueAudio(AudioFile):
              self.__bits_per_sample__,
              self.__sample_rate__,
              self.__total_pcm_frames__) = reader.parse(
-                 "4b 16u 16u 16u 32u 32u 32p")
+                "4b 16u 16u 16u 32u 32u 32p")
 
             if (signature != "TTA1"):
                 raise InvalidTTA(ERR_TTA_INVALID_SIGNATURE)

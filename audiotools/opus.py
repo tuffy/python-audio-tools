@@ -62,7 +62,7 @@ class OpusAudio(VorbisAudio):
                  page_sequence_number,
                  checksum,
                  segment_count) = ogg_reader.parse(
-                     "4b 8u 8u 64S 32u 32u 32u 8u")
+                    "4b 8u 8u 64S 32u 32u 32u 8u")
 
                 if (magic_number != 'OggS'):
                     from .text import ERR_OGG_INVALID_MAGIC_NUMBER
@@ -80,7 +80,7 @@ class OpusAudio(VorbisAudio):
                  input_sample_rate,
                  output_gain,
                  mapping_family) = ogg_reader.parse(
-                     "8b 8u 8u 16u 32u 16s 8u")
+                    "8b 8u 8u 16u 32u 16s 8u")
 
                 if (opushead != "OpusHead"):
                     from .text import ERR_OPUS_INVALID_TYPE
