@@ -5149,11 +5149,11 @@ class tracktag(UtilTest):
                         self.__run_app__(["tracktag", "--replay-gain",
                                           track.filename]), 0)
                     if (audio_class.lossless_replay_gain()):
-                        self.__check_info__(RG_REPLAYGAIN_ADDED)
+                        self.__check_output__(RG_REPLAYGAIN_ADDED)
                         track2 = audiotools.open(track_file.name)
                         self.assert_(track2.replay_gain() is not None)
                     else:
-                        self.__check_info__(RG_REPLAYGAIN_APPLIED)
+                        self.__check_output__(RG_REPLAYGAIN_APPLIED)
                 finally:
                     track_file.close()
 
