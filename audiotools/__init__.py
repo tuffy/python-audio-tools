@@ -4944,7 +4944,7 @@ class CDTrackLog(dict):
 
 
 #returns the value in item_list which occurs most often
-def most_numerous(item_list, empty_list="", all_differ=""):
+def most_numerous(item_list, empty_list=None, all_differ=None):
     """returns the value in the item list which occurs most often
     if list has no items, returns 'empty_list'
     if all items differ, returns 'all_differ'"""
@@ -4964,8 +4964,6 @@ def most_numerous(item_list, empty_list="", all_differ=""):
         return all_differ
     else:
         return item
-
-__most_numerous__ = most_numerous
 
 
 #######################

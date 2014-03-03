@@ -1346,7 +1346,7 @@ br_free_f(BitstreamReader* bs)
 
     /*deallocate exceptions*/
     if (bs->exceptions != NULL) {
-        fprintf(stderr, "Warning: leftover etry entries on stack\n");
+        fprintf(stderr, "*** Warning: leftover etry entries on stack\n");
     }
     for (e_node = bs->exceptions; e_node != NULL; e_node = e_next) {
         e_next = e_node->next;
@@ -1361,7 +1361,7 @@ br_free_f(BitstreamReader* bs)
 
     /*dealloate marks*/
     if (bs->marks != NULL) {
-        fprintf(stderr, "Warning: leftover marks on stack\n");
+        fprintf(stderr, "*** Warning: leftover marks on stack\n");
     }
     for (m_node = bs->marks; m_node != NULL; m_node = m_next) {
         m_next = m_node->next;
@@ -1477,7 +1477,7 @@ br_rewind_f(BitstreamReader* bs)
         fsetpos(bs->input.file, &(bs->marks->position.file));
         bs->state = bs->marks->state;
     } else {
-        fprintf(stderr, "No marks on stack to rewind!\n");
+        fprintf(stderr, "*** Warning: no marks on stack to rewind\n");
     }
 }
 
@@ -1488,7 +1488,7 @@ br_rewind_s(BitstreamReader* bs)
         buf_setpos(bs->input.substream, bs->marks->position.substream);
         bs->state = bs->marks->state;
     } else {
-        fprintf(stderr, "No marks on stack to rewind!\n");
+        fprintf(stderr, "*** Warning: no marks on stack to rewind\n");
     }
 }
 
@@ -1499,7 +1499,7 @@ br_rewind_e(BitstreamReader* bs)
         buf_setpos(bs->input.external->buffer, bs->marks->position.external);
         bs->state = bs->marks->state;
     } else {
-        fprintf(stderr, "No marks on stack to rewind!\n");
+        fprintf(stderr, "*** Warning: no marks on stack to rewind\n");
     }
 }
 
@@ -1518,7 +1518,7 @@ br_unmark_f(BitstreamReader* bs)
         mark->next = bs->marks_used;
         bs->marks_used = mark;
     } else {
-        fprintf(stderr, "No marks on stack to remove!\n");
+        fprintf(stderr, "*** Warning: no marks on stack to remove\n");
     }
 }
 
@@ -1532,7 +1532,7 @@ br_unmark_s(BitstreamReader* bs)
         bs->marks_used = mark;
         buf_set_rewindable(bs->input.substream, bs->marks != NULL);
     } else {
-        fprintf(stderr, "No marks on stack to remove!\n");
+        fprintf(stderr, "*** Warning: no marks on stack to remove\n");
     }
 }
 
@@ -1546,7 +1546,7 @@ br_unmark_e(BitstreamReader* bs)
         bs->marks_used = mark;
         buf_set_rewindable(bs->input.external->buffer, bs->marks != NULL);
     } else {
-        fprintf(stderr, "No marks on stack to remove!\n");
+        fprintf(stderr, "*** Warning: no marks on stack to remove\n");
     }
 }
 
@@ -1611,7 +1611,8 @@ br_call_callbacks(BitstreamReader *bs, uint8_t byte)
 }
 
 void
-__br_pop_callback(BitstreamReader *bs, struct bs_callback *callback)
+__br_pop_callback(BitstreamReader *bs, struct bs_callback *callback,
+                  const char *file, int lineno)
 {
     struct bs_callback *c_node = bs->callbacks;
     if (c_node != NULL) {
@@ -1623,6 +1624,9 @@ __br_pop_callback(BitstreamReader *bs, struct bs_callback *callback)
         bs->callbacks = c_node->next;
         c_node->next = bs->callbacks_used;
         bs->callbacks_used = c_node;
+    } else {
+        fprintf(stderr, "*** Warning: %s %d: no callbacks to pop\n",
+                file, lineno);
     }
 }
 
@@ -1674,7 +1678,7 @@ br_try(BitstreamReader *bs)
 }
 
 void
-br_etry(BitstreamReader *bs)
+__br_etry(BitstreamReader *bs, const char *file, int lineno)
 {
     struct bs_exception *node = bs->exceptions;
     if (node != NULL) {
@@ -1682,7 +1686,9 @@ br_etry(BitstreamReader *bs)
         node->next = bs->exceptions_used;
         bs->exceptions_used = node;
     } else {
-        fprintf(stderr, "Warning: trying to pop from empty etry stack\n");
+        fprintf(stderr,
+                "*** Warning: %s %d: trying to pop from empty etry stack\n",
+                file, lineno);
     }
 }
 
@@ -2594,7 +2600,7 @@ bw_free_f_a(BitstreamWriter* bs)
 
     /*deallocate exceptions*/
     if (bs->exceptions != NULL) {
-        fprintf(stderr, "Warning: leftover etry entries on stack\n");
+        fprintf(stderr, "*** Warning: leftover etry entries on stack\n");
     }
     for (e_node = bs->exceptions; e_node != NULL; e_node = e_next) {
         e_next = e_node->next;
@@ -2655,7 +2661,8 @@ bw_add_callback(BitstreamWriter *bs, bs_callback_f callback, void *data)
 }
 
 void
-bw_pop_callback(BitstreamWriter* bs, struct bs_callback* callback) {
+__bw_pop_callback(BitstreamWriter* bs, struct bs_callback* callback,
+                  const char *file, int lineno) {
     struct bs_callback *c_node = bs->callbacks;
     if (c_node != NULL) {
         if (callback != NULL) {
@@ -2667,8 +2674,9 @@ bw_pop_callback(BitstreamWriter* bs, struct bs_callback* callback) {
         c_node->next = bs->callbacks_used;
         bs->callbacks_used = c_node;
     } else {
-        fprintf(stderr, "warning: no callbacks available to pop\n");
-    }
+        fprintf(stderr, "*** Warning: %s %d: no callbacks to pop\n",
+                file, lineno);
+  }
 }
 
 void
@@ -2728,7 +2736,7 @@ bw_try(BitstreamWriter *bs)
 }
 
 void
-bw_etry(BitstreamWriter *bs)
+__bw_etry(BitstreamWriter *bs, const char *file, int lineno)
 {
     struct bs_exception *node = bs->exceptions;
     if (node != NULL) {
@@ -2736,7 +2744,9 @@ bw_etry(BitstreamWriter *bs)
         node->next = bs->exceptions_used;
         bs->exceptions_used = node;
     } else {
-        fprintf(stderr, "Warning: trying to pop from empty etry stack\n");
+        fprintf(stderr,
+                "*** Warning: %s %d: trying to pop from empty etry stack\n",
+                file, lineno);
     }
 }
 
