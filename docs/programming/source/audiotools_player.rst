@@ -186,17 +186,19 @@ This is an abstract class used to implement audio output sinks.
 
    Returns ``True`` if the given attributes are compatible
    with the currently opened output stream.
-   If ``False``, one should call :meth:`set_format` in order to
-   reinitialize the output stream to play the given reader.
 
 .. method:: AudioOutput.set_format(sample_rate, channels, channel_mask, bits_per_sample)
 
-   Initializes the output stream for playing audio with the given parameters.
-   By default, the output stream is initialized for playing CD-quality
-   audio (sample rate of 44.1kHz, 2 channels, 16 bits per sample).
+   Sets the output stream to the given format.
 
-   If a format has already been set, the stream will be closed and
-   reopened if necessary to support the new format.
+   If the stream hasn't been initialized, this method initializes it
+   to that format.
+
+   If the stream has been initialized to a different format,
+   this method closes and reports the stream to the new format.
+
+   If the stream has been initialized to the same format,
+   this method does nothing.
 
 .. method:: AudioOutput.play(framelist)
 

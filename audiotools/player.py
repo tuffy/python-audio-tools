@@ -268,16 +268,11 @@ class AudioPlayer:
                                        256)
 
             #set output to be compatible with PCMReader
-            if ((not self.__audio_output__.compatible(
-                 sample_rate=self.__pcmreader__.sample_rate,
-                 channels=self.__pcmreader__.channels,
-                 channel_mask=self.__pcmreader__.channel_mask,
-                 bits_per_sample=self.__pcmreader__.bits_per_sample))):
-                self.__audio_output__.set_format(
-                    sample_rate=self.__pcmreader__.sample_rate,
-                    channels=self.__pcmreader__.channels,
-                    channel_mask=self.__pcmreader__.channel_mask,
-                    bits_per_sample=self.__pcmreader__.bits_per_sample)
+            self.__audio_output__.set_format(
+                sample_rate=self.__pcmreader__.sample_rate,
+                channels=self.__pcmreader__.channels,
+                channel_mask=self.__pcmreader__.channel_mask,
+                bits_per_sample=self.__pcmreader__.bits_per_sample)
 
             #reset progress
             self.__current_frames__ = 0
@@ -453,16 +448,11 @@ class CDAudioPlayer(AudioPlayer):
             self.__buffer_size__ = int(round(0.25 * 44100))
 
             #set output to be compatible with PCMReader
-            if ((not self.__audio_output__.compatible(
-                 sample_rate=44100,
-                 channels=2,
-                 channel_mask=0x3,
-                 bits_per_sample=16))):
-                self.__audio_output__.set_format(
-                    sample_rate=44100,
-                    channels=2,
-                    channel_mask=0x3,
-                    bits_per_sample=16)
+            self.__audio_output__.set_format(
+                sample_rate=44100,
+                channels=2,
+                channel_mask=0x3,
+                bits_per_sample=16)
 
             #reset progress
             self.__current_frames__ = 0
@@ -570,9 +560,7 @@ class AudioOutput:
 
     def compatible(self, sample_rate, channels, channel_mask, bits_per_sample):
         """returns True if the given pcmreader is compatible
-
-        if False, one is expected to open a new output stream
-        which is compatible"""
+        with the given format"""
 
         return ((self.sample_rate == sample_rate) and
                 (self.channels == channels) and
@@ -580,10 +568,15 @@ class AudioOutput:
                 (self.bits_per_sample == bits_per_sample))
 
     def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream for the given format
+        """sets the output stream to the given format
 
-        if the output stream has already been initialized,
-        this will close and reopen the stream for the new format"""
+        if the stream hasn't been initialized, this method initializes it
+
+        if the stream has been initialized to a different format,
+        this method closes and reopens the stream to the new format
+
+        if the stream has been initialized to the same format,
+        this method does nothing"""
 
         self.sample_rate = sample_rate
         self.channels = channels
@@ -729,12 +722,19 @@ class OSSAudioOutput(AudioOutput):
         return u"Open Sound System"
 
     def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream for the given format
+        """sets the output stream to the given format
 
-        if the output stream has already been initialized,
-        this will close and reopen the stream for the new format"""
+        if the stream hasn't been initialized, this method initializes it
+
+        if the stream has been initialized to a different format,
+        this method closes and reopens the stream to the new format
+
+        if the stream has been initialized to the same format,
+        this method does nothing"""
 
         if (self.__ossaudio__ is None):
+            #output hasn't been initialized
+
             import ossaudiodev
 
             AudioOutput.set_format(self, sample_rate, channels,
@@ -761,7 +761,12 @@ class OSSAudioOutput(AudioOutput):
 
             self.__ossaudio__.channels(channels)
             self.__ossaudio__.speed(sample_rate)
-        else:
+        elif (not self.compatible(sample_rate=sample_rate,
+                                  channels=channels,
+                                  channel_mask=channel_mask,
+                                  bits_per_sample=bits_per_sample)):
+            #output has been initialized to a different format
+
             self.close()
             self.set_format(sample_rate=sample_rate,
                             channels=channels,
@@ -874,12 +879,19 @@ class PulseAudioOutput(AudioOutput):
         return u"Pulse Audio"
 
     def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream for the given format
+        """sets the output stream to the given format
 
-        if the output stream has already been initialized,
-        this will close and reopen the stream for the new format"""
+        if the stream hasn't been initialized, this method initializes it
+
+        if the stream has been initialized to a different format,
+        this method closes and reopens the stream to the new format
+
+        if the stream has been initialized to the same format,
+        this method does nothing"""
 
         if (self.__pulseaudio__ is None):
+            #output hasn't been initialized
+
             from .output import PulseAudio
 
             AudioOutput.set_format(self, sample_rate, channels,
@@ -893,7 +905,12 @@ class PulseAudioOutput(AudioOutput):
                 8: lambda f: f.to_bytes(True, False),
                 16: lambda f: f.to_bytes(False, True),
                 24: lambda f: f.to_bytes(False, True)}[self.bits_per_sample]
-        else:
+        elif (not self.compatible(sample_rate=sample_rate,
+                                  channels=channels,
+                                  channel_mask=channel_mask,
+                                  bits_per_sample=bits_per_sample)):
+            #output has been initialized to a different format
+
             self.close()
             self.set_format(sample_rate=sample_rate,
                             channels=channels,
@@ -986,12 +1003,19 @@ class ALSAAudioOutput(AudioOutput):
         return u"Advanced Linux Sound Architecture"
 
     def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream for the given format
+        """sets the output stream to the given format
 
-        if the output stream has already been initialized,
-        this will close and reopen the stream for the new format"""
+        if the stream hasn't been initialized, this method initializes it
+
+        if the stream has been initialized to a different format,
+        this method closes and reopens the stream to the new format
+
+        if the stream has been initialized to the same format,
+        this method does nothing"""
 
         if (self.__alsaaudio__ is None):
+            #output hasn't been initialized
+
             from .output import ALSAAudio
 
             AudioOutput.set_format(self, sample_rate, channels,
@@ -1001,7 +1025,12 @@ class ALSAAudioOutput(AudioOutput):
                                            sample_rate,
                                            channels,
                                            bits_per_sample)
-        else:
+        elif (not self.compatible(sample_rate=sample_rate,
+                                  channels=channels,
+                                  channel_mask=channel_mask,
+                                  bits_per_sample=bits_per_sample)):
+            #output has been initialized to different format
+
             self.close()
             self.set_format(sample_rate=sample_rate,
                             channels=channels,
@@ -1092,21 +1121,34 @@ class CoreAudioOutput(AudioOutput):
         return u"Core Audio"
 
     def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
-        """initializes the output stream for the given format
+        """sets the output stream to the given format
 
-        if the output stream has already been initialized,
-        this will close and reopen the stream for the new format"""
+        if the stream hasn't been initialized, this method initializes it
+
+        if the stream has been initialized to a different format,
+        this method closes and reopens the stream to the new format
+
+        if the stream has been initialized to the same format,
+        this method does nothing"""
 
         if (self.__coreaudio__ is None):
+            #output hasn't been initialized
+
+            from .output import CoreAudio
+
             AudioOutput.set_format(self, sample_rate, channels,
                                    channel_mask, bits_per_sample)
 
-            from .output import CoreAudio
             self.__coreaudio__ = CoreAudio(sample_rate,
                                            channels,
                                            channel_mask,
                                            bits_per_sample)
-        else:
+        elif (not self.compatible(sample_rate=sample_rate,
+                                  channels=channels,
+                                  channel_mask=channel_mask,
+                                  bits_per_sample=bits_per_sample)):
+            #output has been initialized in a different format
+
             self.close()
             self.set_format(sample_rate=sample_rate,
                             channels=channels,

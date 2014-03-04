@@ -337,10 +337,8 @@ class build_ext(_build_ext):
         if (ext_audiotools_cdio not in self.extensions):
             libraries["libcdio"] = (["CDDA data extraction"], False)
 
-        print repr(libraries)
         all_libraries_present = (set([l[1] for l in libraries.values()]) ==
                                  set([True]))
-        print all_libraries_present
 
         table = output_table()
 
