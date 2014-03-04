@@ -337,6 +337,11 @@ class build_ext(_build_ext):
         if (ext_audiotools_cdio not in self.extensions):
             libraries["libcdio"] = (["CDDA data extraction"], False)
 
+        print repr(libraries)
+        all_libraries_present = (set([l[1] for l in libraries.values()]) ==
+                                 set([True]))
+        print all_libraries_present
+
         table = output_table()
 
         header = table.row()
@@ -345,10 +350,14 @@ class build_ext(_build_ext):
         header.add_column("present?")
         header.add_column(" ")
         header.add_column("used for")
-        header.add_column(" ")
-        header.add_column("download URL")
+        if (not all_libraries_present):
+            header.add_column(" ")
+            header.add_column("download URL")
 
-        table.divider_row(["-", " ", "-", " ", "-", " ", "-"])
+        if (not all_libraries_present):
+            table.divider_row(["-", " ", "-", " ", "-", " ", "-"])
+        else:
+            table.divider_row(["-", " ", "-", " ", "-"])
 
         for library in sorted(libraries.keys()):
             row = table.row()
@@ -357,11 +366,12 @@ class build_ext(_build_ext):
             row.add_column("yes" if libraries[library][1] else "no")
             row.add_column(" ")
             row.add_column(", ".join(libraries[library][0]))
-            row.add_column(" ")
-            if (not libraries[library][1]):
-                row.add_column(LIBRARY_URLS[library])
-            else:
-                row.add_column("")
+            if (not all_libraries_present):
+                row.add_column(" ")
+                if (not libraries[library][1]):
+                    row.add_column(LIBRARY_URLS[library])
+                else:
+                    row.add_column("")
 
         print "=" * table.total_width()
         print "Python Audio Tools %s Setup" % (VERSION)
