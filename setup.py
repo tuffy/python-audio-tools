@@ -189,6 +189,11 @@ class output_table:
 
         self.__rows__.append(output_table_divider(dividers))
 
+    def total_width(self):
+        return sum([
+            max([row.column_width(col) for row in self.__rows__])
+            for col in xrange(len(self.__rows__[0]))])
+
     def format(self):
         """yields one formatted string per row"""
 
@@ -313,10 +318,6 @@ class build_ext(_build_ext):
     def build_extensions(self):
         _build_ext.build_extensions(self)
 
-        print "=" * 60
-        print "Python Audio Tools %s Setup" % (VERSION)
-        print "=" * 60
-
         #lib_name -> ([used for, ...], is present)
         libraries = {}
 
@@ -361,6 +362,10 @@ class build_ext(_build_ext):
                 row.add_column(LIBRARY_URLS[library])
             else:
                 row.add_column("")
+
+        print "=" * table.total_width()
+        print "Python Audio Tools %s Setup" % (VERSION)
+        print "=" * table.total_width()
 
         for row in table.format():
             print row
