@@ -376,6 +376,7 @@ class audiotools_cdio(Extension):
         self.__library_manifest__ = []
         sources = []
         libraries = set()
+        extra_compile_args = []
         extra_link_args = []
 
         if (system_libraries.present("libcdio_paranoia")):
@@ -384,6 +385,8 @@ class audiotools_cdio(Extension):
                                       "libcdio_cdda",
                                       "libcdio_paranoia"]))
             else:
+                extra_compile_args.extend(
+                    system_libraries.extra_compile_args("libcdio_paranoia"))
                 extra_link_args.extend(
                     system_libraries.extra_link_args("libcdio_paranoia"))
             sources.append("src/cdiomodule.c")
@@ -400,6 +403,7 @@ class audiotools_cdio(Extension):
             "audiotools.cdio",
             sources=sources,
             libraries=list(libraries),
+            extra_compile_args=extra_compile_args,
             extra_link_args=extra_link_args)
 
     def library_manifest(self):
@@ -485,6 +489,8 @@ class audiotools_decoders(Extension):
             if (system_libraries.guaranteed_present("libmpg123")):
                 libraries.add("mpg123")
             else:
+                extra_compile_args.extend(
+                    system_libraries.extra_compile_args("libmpg123"))
                 extra_link_args.extend(
                     system_libraries.extra_link_args("libmpg123"))
             defines.append(("HAS_MP3", None))
@@ -501,6 +507,8 @@ class audiotools_decoders(Extension):
             if (system_libraries.guaranteed_present("vorbisfile")):
                 libraries.update(set(["vorbisfile", "vorbis", "ogg"]))
             else:
+                extra_compile_args.extend(
+                    system_libraries.extra_compile_args("vorbisfile"))
                 extra_link_args.extend(
                     system_libraries.extra_link_args("vorbisfile"))
             defines.append(("HAS_VORBIS", None))
@@ -599,6 +607,8 @@ class audiotools_encoders(Extension):
             if (system_libraries.guaranteed_present("twolame")):
                 libraries.add("twolame")
             else:
+                extra_compile_args.extend(
+                    system_libraries.extra_compile_args("twolame"))
                 extra_link_args.extend(
                     system_libraries.extra_link_args("twolame"))
 
@@ -616,6 +626,8 @@ class audiotools_encoders(Extension):
             if (system_libraries.guaranteed_present("vorbisenc")):
                 libraries.update(set(["vorbisenc", "vorbis", "ogg"]))
             else:
+                extra_compile_args.extend(
+                    system_libraries.extra_compile_args("vorbisenc"))
                 extra_link_args.extend(
                     system_libraries.extra_link_args("vorbisenc"))
 
@@ -707,6 +719,7 @@ class audiotools_output(Extension):
         sources = ["src/output.c"]
         defines = []
         libraries = set()
+        extra_compile_args = []
         extra_link_args = []
 
         #assume MacOS X always has CoreAudio
@@ -725,6 +738,8 @@ class audiotools_output(Extension):
                 if (system_libraries.guaranteed_present("alsa")):
                     libraries.add("asound")
                 else:
+                    extra_compile_args.extend(
+                        system_libraries.extra_compile_args("alsa"))
                     extra_link_args.extend(
                         system_libraries.extra_link_args("alsa"))
                 sources.append("src/output/alsa.c")
@@ -742,6 +757,8 @@ class audiotools_output(Extension):
             if (system_libraries.guaranteed_present("libpulse")):
                 libraries.add("pulse")
             else:
+                extra_compile_args.extend(
+                    system_libraries.extra_compile_args("libpulse"))
                 extra_link_args.extend(
                     system_libraries.extra_link_args("libpulse"))
             sources.append("src/output/pulseaudio.c")
@@ -762,6 +779,7 @@ class audiotools_output(Extension):
                            sources=sources,
                            define_macros=defines,
                            libraries=list(libraries),
+                           extra_compile_args=extra_compile_args,
                            extra_link_args=extra_link_args)
 
     def library_manifest(self):
