@@ -2092,6 +2092,13 @@ class track2track(UtilTest):
 
     @UTIL_TRACK2TRACK
     def test_replay_gain(self):
+        from audiotools.text import (LAB_ENCODE,
+
+                                     RG_REPLAYGAIN_ADDED,
+                                     RG_REPLAYGAIN_APPLIED,
+                                     RG_REPLAYGAIN_ADDED_TO_ALBUM,
+                                     RG_REPLAYGAIN_APPLIED_TO_ALBUM)
+
         temp_files = [os.path.join(
                 self.input_dir,
                 "%2.2d.%s" % (i + 1, self.input_format.SUFFIX))
@@ -2167,9 +2174,41 @@ class track2track(UtilTest):
                               "-d", self.output_dir,
                               "--format=%(track_name)s.%(suffix)s",
                               "-t", self.output_format.NAME,
-                              "--replay-gain",
-                              "-V", "quiet"] + \
-                                 [f.filename for f in temp_tracks]), 0)
+                              "-V", "normal",
+                              "-j", str(1),
+                              "--replay-gain"] + \
+                              [f.filename for f in temp_tracks]), 0)
+
+        #check the conversion output text
+        for (i, track) in enumerate([temp_tracks[5],
+                                     temp_tracks[6],
+                                     temp_tracks[0],
+                                     temp_tracks[1],
+                                     temp_tracks[2],
+                                     temp_tracks[3],
+                                     temp_tracks[4]], 1):
+            output_filename = audiotools.Filename(
+                os.path.join(self.output_dir,
+                    self.output_format.track_name(
+                        track.filename,
+                        track.get_metadata(),
+                        "%(track_name)s.%(suffix)s")))
+            self.__check_output__(
+                audiotools.output_progress(
+                    LAB_ENCODE % {"source": audiotools.Filename(track.filename),
+                                  "destination": output_filename},
+                    i,
+                    len(temp_tracks)))
+
+        #check the ReplayGain completed text
+        self.__check_output__(
+            audiotools.output_progress(RG_REPLAYGAIN_ADDED, 1, 3))
+        self.__check_output__(
+            audiotools.output_progress(RG_REPLAYGAIN_ADDED_TO_ALBUM % (1),
+                                       2, 3))
+        self.__check_output__(
+            audiotools.output_progress(RG_REPLAYGAIN_ADDED_TO_ALBUM % (2),
+                                       3, 3))
 
         converted_tracks = audiotools.open_files(
             [os.path.join(self.output_dir, f) for f in
@@ -5135,27 +5174,76 @@ class tracktag(UtilTest):
     @UTIL_TRACKTAG
     def test_replaygain(self):
         from audiotools.text import (RG_REPLAYGAIN_ADDED,
-                                     RG_REPLAYGAIN_APPLIED)
+                                     RG_REPLAYGAIN_APPLIED,
+                                     RG_REPLAYGAIN_ADDED_TO_ALBUM,
+                                     RG_REPLAYGAIN_APPLIED_TO_ALBUM)
 
         for audio_class in audiotools.AVAILABLE_TYPES:
             if (audio_class.supports_replay_gain()):
                 track_file = tempfile.NamedTemporaryFile(
                     suffix="." + audio_class.SUFFIX)
-                try:
-                    track = audio_class.from_pcm(
-                        track_file.name,
-                        BLANK_PCM_Reader(5))
-                    self.assertEqual(
-                        self.__run_app__(["tracktag", "--replay-gain",
-                                          track.filename]), 0)
-                    if (audio_class.lossless_replay_gain()):
-                        self.__check_output__(RG_REPLAYGAIN_ADDED)
-                        track2 = audiotools.open(track_file.name)
-                        self.assert_(track2.replay_gain() is not None)
-                    else:
-                        self.__check_output__(RG_REPLAYGAIN_APPLIED)
-                finally:
-                    track_file.close()
+
+                #try a track with no metadata
+                track = audio_class.from_pcm(
+                    track_file.name,
+                    BLANK_PCM_Reader(5))
+
+                self.assertEqual(
+                    self.__run_app__(["tracktag",
+                                      "-V", "normal",
+                                      "--replay-gain", track.filename]), 0)
+                if (audio_class.lossless_replay_gain()):
+                    self.__check_output__(RG_REPLAYGAIN_ADDED)
+                    track2 = audiotools.open(track_file.name)
+                    self.assert_(track2.replay_gain() is not None)
+                else:
+                    self.__check_output__(RG_REPLAYGAIN_APPLIED)
+
+                #try a track with track number metadata
+                track = audio_class.from_pcm(
+                    track_file.name,
+                    BLANK_PCM_Reader(5))
+                metadata = audiotools.MetaData(track_name=u"Track Name",
+                                               track_number=1,
+                                               track_total=2)
+                track.set_metadata(metadata)
+                if (track.get_metadata() is None):
+                    continue
+
+                self.assertEqual(
+                    self.__run_app__(["tracktag",
+                                      "-V", "normal",
+                                      "--replay-gain", track.filename]), 0)
+                if (audio_class.lossless_replay_gain()):
+                    self.__check_output__(RG_REPLAYGAIN_ADDED)
+                    track2 = audiotools.open(track_file.name)
+                    self.assert_(track2.replay_gain() is not None)
+                else:
+                    self.__check_output__(RG_REPLAYGAIN_APPLIED)
+
+                #try a track with album number metadata
+                track = audio_class.from_pcm(
+                    track_file.name,
+                    BLANK_PCM_Reader(5))
+                metadata = audiotools.MetaData(track_name=u"Track Name",
+                                               track_number=1,
+                                               track_total=2,
+                                               album_number=3,
+                                               album_total=4)
+                track.set_metadata(metadata)
+
+                self.assertEqual(
+                    self.__run_app__(["tracktag",
+                                      "-V", "normal",
+                                      "--replay-gain", track.filename]), 0)
+                if (audio_class.lossless_replay_gain()):
+                    self.__check_output__(RG_REPLAYGAIN_ADDED_TO_ALBUM % (3))
+                    track2 = audiotools.open(track_file.name)
+                    self.assert_(track2.replay_gain() is not None)
+                else:
+                    self.__check_output__(RG_REPLAYGAIN_APPLIED_TO_ALBUM % (3))
+
+                track_file.close()
 
     @UTIL_TRACKTAG
     def test_unicode(self):

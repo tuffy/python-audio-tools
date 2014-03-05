@@ -6745,6 +6745,7 @@
 ***** DONE Update TrueAudio to support nested tags
 ***** DONE Have TrueAudio.clean() remove all ID3v2 tags except one
 ***** DONE Update unit tests
+* TODO Finish version 2.22
 ** TODO Update AccurateRip verification
 *** DONE Add --cue option to trackverify to work on CD images
     One can perform: trackverify -R --cue CDImage.cue CDImage.wav
@@ -6782,7 +6783,6 @@
     wav files, at least it gets updated.
     Having two different, slightly incompatible M4A implementations
     needlessly complicates things.
-* TODO Finish version 2.22
 ** TODO Add file selector widget
    This could be used by utilities with interactive modes to select files
    without having to specify them ahead of time.

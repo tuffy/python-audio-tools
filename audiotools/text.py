@@ -211,11 +211,15 @@ METADATA_BASENAME = u"file name without suffix"
 #ReplayGain
 RG_ADDING_REPLAYGAIN = u"Adding ReplayGain"
 RG_APPLYING_REPLAYGAIN = u"Applying ReplayGain"
+RG_ADDING_REPLAYGAIN_TO_ALBUM = u"Adding ReplayGain to album %d"
+RG_APPLYING_REPLAYGAIN_TO_ALBUM = u"Applying ReplayGain to album %d"
 RG_ADDING_REPLAYGAIN_WAIT = \
     u"Adding ReplayGain metadata.  This may take some time."
 RG_APPLYING_REPLAYGAIN_WAIT = u"Applying ReplayGain.  This may take some time."
 RG_REPLAYGAIN_ADDED = u"ReplayGain added"
+RG_REPLAYGAIN_ADDED_TO_ALBUM = u"ReplayGain added to album %d"
 RG_REPLAYGAIN_APPLIED = u"ReplayGain applied"
+RG_REPLAYGAIN_APPLIED_TO_ALBUM = u"ReplayGain applied to album %d"
 
 #Labels
 LAB_ENCODE = u"%(source)s -> %(destination)s"

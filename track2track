@@ -685,20 +685,32 @@ if (__name__ == '__main__'):
                                     for m in
                                     [f.get_metadata() for f in album]]).pop()
 
-                #FIXME - should pull ReplayGain text from elsewhere
-                queue.execute(
-                    output_class.add_replay_gain,
-                    (u"%s ReplayGain%s" %
-                     ((u"Adding" if output_class.lossless_replay_gain() else
-                       u"Applying"),
-                      (u"" if album_number is None else
-                       (u" to album %d" % (album_number))))),
-                    (u"ReplayGain %s%s" %
-                     ((u"added" if output_class.lossless_replay_gain() else
-                       u"applied"),
-                      (u"" if album_number is None else
-                       (u" to album %d" % (album_number))))),
-                    [a.filename for a in album])
+
+                if (output_class.lossless_replay_gain() and
+                    (album_number is None)):
+                    progress_text = _.RG_ADDING_REPLAYGAIN
+                    completion_output = _.RG_REPLAYGAIN_ADDED
+                elif (output_class.lossless_replay_gain() and
+                      (album_number is not None)):
+                    progress_text = _.RG_ADDING_REPLAYGAIN_TO_ALBUM % \
+                        (album_number)
+                    completion_output = _.RG_REPLAYGAIN_ADDED_TO_ALBUM % \
+                        (album_number)
+                elif ((not output_class.lossless_replay_gain()) and
+                      (album_number is None)):
+                    progress_text = _.RG_APPLYING_REPLAYGAIN
+                    completion_output = _.RG_REPLAYGAIN_APPLIED
+                elif ((not output_class.lossless_replay_gain()) and
+                      (album_number is not None)):
+                    progress_text = _.RG_APPLYING_REPLAYGAIN_TO_ALBUM % \
+                      (album_number)
+                    completion_output = _.RG_REPLAYGAIN_APPLIED_TO_ALBUM % \
+                      (album_number)
+
+                queue.execute(output_class.add_replay_gain,
+                              progress_text,
+                              completion_output,
+                              [a.filename for a in album])
 
             try:
                 queue.run(options.max_processes)

@@ -523,20 +523,31 @@ if (__name__ == '__main__'):
             audio_type = album_tracks[0].__class__
 
             if (audio_type.can_add_replay_gain(album_tracks)):
-                #FIXME - should pull ReplayGain text
-                #from elsewhere
+                if (audio_type.lossless_replay_gain() and
+                    (album_number is None)):
+                    progress_text = _.RG_ADDING_REPLAYGAIN
+                    completion_output = _.RG_REPLAYGAIN_ADDED
+                elif (audio_type.lossless_replay_gain() and
+                      (album_number is not None)):
+                    progress_text = _.RG_ADDING_REPLAYGAIN_TO_ALBUM % \
+                        (album_number)
+                    completion_output = _.RG_REPLAYGAIN_ADDED_TO_ALBUM % \
+                        (album_number)
+                elif ((not audio_type.lossless_replay_gain()) and
+                      (album_number is None)):
+                    progress_text = _.RG_APPLYING_REPLAYGAIN
+                    completion_output = _.RG_REPLAYGAIN_APPLIED
+                elif ((not audio_type.lossless_replay_gain()) and
+                      (album_number is not None)):
+                    progress_text = _.RG_APPLYING_REPLAYGAIN_TO_ALBUM % \
+                        (album_number)
+                    completion_output = _.RG_REPLAYGAIN_APPLIED_TO_ALBUM % \
+                        (album_number)
+
                 queue.execute(
                     audio_type.add_replay_gain,
-                    (u"%s ReplayGain%s" %
-                     ((u"Adding" if audio_type.lossless_replay_gain() else
-                       u"Applying"),
-                      (u"" if album_number is None else
-                       (u" to album %d" % (album_number))))),
-                    (u"ReplayGain %s%s" %
-                     ((u"added" if audio_type.lossless_replay_gain() else
-                       u"applied"),
-                      (u"" if album_number is None else
-                       (u" to album %d" % (album_number))))),
+                    progress_text,
+                    completion_output,
                     [a.filename for a in album_tracks])
 
     #execute ReplayGain addition once all tracks have been tagged
