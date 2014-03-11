@@ -38,27 +38,21 @@ def image_metrics(file_data):
     raises InvalidImage if there is an error parsing the file
     or its type is unknown"""
 
-    import cStringIO
-
     header = imghdr.what(None, file_data)
 
-    file = cStringIO.StringIO(file_data)
-    try:
-        if (header == 'jpeg'):
-            return __JPEG__.parse(file)
-        elif (header == 'png'):
-            return __PNG__.parse(file)
-        elif (header == 'gif'):
-            return __GIF__.parse(file)
-        elif (header == 'bmp'):
-            return __BMP__.parse(file)
-        elif (header == 'tiff'):
-            return __TIFF__.parse(file)
-        else:
-            from .text import ERR_IMAGE_UNKNOWN_TYPE
-            raise InvalidImage(ERR_IMAGE_UNKNOWN_TYPE)
-    finally:
-        file.close()
+    if (header == 'jpeg'):
+        return __JPEG__.parse(file_data)
+    elif (header == 'png'):
+        return __PNG__.parse(file_data)
+    elif (header == 'gif'):
+        return __GIF__.parse(file_data)
+    elif (header == 'bmp'):
+        return __BMP__.parse(file_data)
+    elif (header == 'tiff'):
+        return __TIFF__.parse(file_data)
+    else:
+        from .text import ERR_IMAGE_UNKNOWN_TYPE
+        raise InvalidImage(ERR_IMAGE_UNKNOWN_TYPE)
 
 
 #######################
@@ -98,6 +92,10 @@ class ImageMetrics:
                 repr(self.color_count),
                 repr(self.mime_type))
 
+    @classmethod
+    def parse(cls, file_data):
+        raise NotImplementedError()
+
 
 class InvalidJPEG(InvalidImage):
     """raised if a JPEG cannot be parsed correctly"""
@@ -111,7 +109,7 @@ class __JPEG__(ImageMetrics):
                               0, u'image/jpeg')
 
     @classmethod
-    def parse(cls, file):
+    def parse(cls, file_data):
         def segments(reader):
             if (reader.read(8) != 0xFF):
                 from .text import ERR_IMAGE_INVALID_JPEG_MARKER
@@ -131,7 +129,7 @@ class __JPEG__(ImageMetrics):
 
         try:
             for (segment_type,
-                 segment_data) in segments(BitstreamReader(file, 0)):
+                 segment_data) in segments(BitstreamReader(file_data, 0)):
                 if (segment_type in (0xC0, 0xC1, 0xC2, 0xC3,
                                      0xC5, 0XC5, 0xC6, 0xC7,
                                      0xC9, 0xCA, 0xCB, 0xCD,
@@ -164,7 +162,7 @@ class __PNG__(ImageMetrics):
                               u'image/png')
 
     @classmethod
-    def parse(cls, file):
+    def parse(cls, file_data):
         def chunks(reader):
             if (reader.read_bytes(8) != '\x89\x50\x4E\x47\x0D\x0A\x1A\x0A'):
                 from .text import ERR_IMAGE_INVALID_PNG
@@ -183,7 +181,7 @@ class __PNG__(ImageMetrics):
         try:
             for (chunk_type,
                  chunk_length,
-                 chunk_data) in chunks(BitstreamReader(file, 0)):
+                 chunk_data) in chunks(BitstreamReader(file_data, 0)):
                 if (chunk_type == 'IHDR'):
                     ihdr = chunk_data
                 elif (chunk_type == 'PLTE'):
@@ -251,7 +249,7 @@ class __BMP__(ImageMetrics):
                               u'image/x-ms-bmp')
 
     @classmethod
-    def parse(cls, file):
+    def parse(cls, file_data):
         try:
             (magic_number,
              file_size,
@@ -266,7 +264,7 @@ class __BMP__(ImageMetrics):
              horizontal_resolution,
              vertical_resolution,
              colors_used,
-             important_colors_used) = BitstreamReader(file, 1).parse(
+             important_colors_used) = BitstreamReader(file_data, 1).parse(
                 "2b 32u 16p 16p 32u " +
                 "32u 32u 32u 16u 16u 32u 32u 32u 32u 32u 32u")
         except IOError:
@@ -300,13 +298,13 @@ class __GIF__(ImageMetrics):
                               u'image/gif')
 
     @classmethod
-    def parse(cls, file):
+    def parse(cls, file_data):
         try:
             (gif,
              version,
              width,
              height,
-             color_table_size) = BitstreamReader(file, 1).parse(
+             color_table_size) = BitstreamReader(file_data, 1).parse(
                 "3b 3b 16u 16u 3u 5p")
         except IOError:
             from .text import ERR_IMAGE_IOERROR_GIF
@@ -339,7 +337,9 @@ class __TIFF__(ImageMetrics):
                               u'image/tiff')
 
     @classmethod
-    def parse(cls, file):
+    def parse(cls, file_data):
+        import cStringIO
+
         def tags(file, order):
             while (True):
                 reader = BitstreamReader(file, order)
@@ -374,6 +374,7 @@ class __TIFF__(ImageMetrics):
                 else:
                     break
 
+        file = cStringIO.StringIO(file_data)
         try:
             byte_order = file.read(2)
             if (byte_order == 'II'):

@@ -7089,3 +7089,66 @@ class Test_Ogg(unittest.TestCase):
 
             ogg_writer.close()
             ogg_reader.close()
+
+
+class Test_Image(unittest.TestCase):
+    @LIB_IMAGE
+    def test_metrics(self):
+        from audiotools.image import image_metrics
+
+        jpeg = image_metrics(
+"""eJyVzkFuwjAQBdA/NrGDhdqxiBwIRVAhqINAyg2yQEK0a+7DUXqXikMU2PQmJlm0UitI1PHu643n
+h8/wBX7bvm5BRNhVD+GCDVQnUlFHqUhprWLDxnS7Jnl47HGaDAZp4lw2nk+y0ezJuelqOlu85Mt8
+OFkXa1/Mfe7rT0hrbWLTN6bvM5f5f0/4gI0hICVZCEvSUjgiAeH36DqlvynCGT1JECwZoH1ZK76l
+4mqXInGogb0NJFFJTUD8gLsnVCmaAZXPh+/SkFXO7y2VuK0St12swOkKYzxJkg==""".decode("base64").decode("zlib"))
+        self.assertEqual(jpeg.width, 3)
+        self.assertEqual(jpeg.height, 2)
+        self.assertEqual(jpeg.bits_per_pixel, 24)
+        self.assertEqual(jpeg.color_count, 0)
+        self.assertEqual(jpeg.mime_type, "image/jpeg")
+
+        png1 = image_metrics(
+"""iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA
+B3RJTUUH3gMLESsYDLmGVgAAABZJREFUCNdj/P//PwMDAwMDAxMDDAAANgYDAZcK0WQAAAAASUVO
+RK5CYII=""".decode("base64"))
+        self.assertEqual(png1.width, 3)
+        self.assertEqual(png1.height, 2)
+        self.assertEqual(png1.bits_per_pixel, 24)
+        self.assertEqual(png1.color_count, 0)
+        self.assertEqual(png1.mime_type, "image/png")
+
+        png2 = image_metrics(
+"""iVBORw0KGgoAAAANSUhEUgAAAAMAAAACAQMAAACnuvRZAAAAA1BMVEX///+nxBvIAAAACXBIWXMA
+AAsTAAALEwEAmpwYAAAAB3RJTUUH3gMLES8xKmfbPgAAAAxJREFUCNdjYGBgAAAABAABJzQnCgAA
+AABJRU5ErkJggg==""".decode("base64"))
+        self.assertEqual(png2.width, 3)
+        self.assertEqual(png2.height, 2)
+        self.assertEqual(png2.bits_per_pixel, 8)
+        self.assertEqual(png2.color_count, 1)
+        self.assertEqual(png2.mime_type, "image/png")
+
+        gif = image_metrics(
+"""R0lGODdhAwACAIAAAP///////ywAAAAAAwACAAACAoRfADs=""".decode("base64"))
+        self.assertEqual(gif.width, 3)
+        self.assertEqual(gif.height, 2)
+        self.assertEqual(gif.bits_per_pixel, 8)
+        self.assertEqual(gif.color_count, 2)
+        self.assertEqual(gif.mime_type, "image/gif")
+
+        bmp = image_metrics(
+"""eJxz8p3EAAFVQJwDxMxAzATEjAwSYHEQKcwNwTDg5B5UzEAiYELj/4cBNDYAvusVuA==""".decode("base64").decode("zlib"))
+        self.assertEqual(bmp.width, 3)
+        self.assertEqual(bmp.height, 2)
+        self.assertEqual(bmp.bits_per_pixel, 24)
+        self.assertEqual(bmp.color_count, 0)
+        self.assertEqual(bmp.mime_type, "image/x-ms-bmp")
+
+        tiff = image_metrics(
+"""eJzz9NRikGJgYPiPAQQY/jGwMDAyQAEjM5jNDGJC2UwgDGSDxD6A5KDiIMyGpIaXkYlBHUh/A2JB
+RoiZHEAshKReFMl8MSjbAYjFoeqFgFiKkRXMfgDE0lD2CyCWQTJHA8leEPCAisNoDjDUDy1OLSrW
+TyrKTMzTd8lPLs1NzSsp1s/MTUxPLdY3rjDSK8lMS2MAADSTJ+0=""".decode("base64").decode("zlib"))
+        self.assertEqual(tiff.width, 3)
+        self.assertEqual(tiff.height, 2)
+        self.assertEqual(tiff.bits_per_pixel, 24)
+        self.assertEqual(tiff.color_count, 0)
+        self.assertEqual(tiff.mime_type, "image/tiff")
