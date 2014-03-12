@@ -326,9 +326,23 @@ class AudioPlayer:
                 elif (command == "set_replay_gain"):
                     self.__replay_gain__ = args[0]
                 elif (command == "set_output"):
-                    #stop whatever's playing and set new output
-                    self.stop()
+                    #resume (if necessary) and close existing output
+                    if (self.__state__ == PLAYER_PAUSED):
+                        self.__audio_output__.resume()
+                    self.__audio_output__.close()
+
+                    #set new output and set format (if necessary)
                     self.__audio_output__ = args[0]
+                    if (self.__pcmreader__ is not None):
+                        self.__audio_output__.set_format(
+                            sample_rate=self.__pcmreader__.sample_rate,
+                            channels=self.__pcmreader__.channels,
+                            channel_mask=self.__pcmreader__.channel_mask,
+                            bits_per_sample=self.__pcmreader__.bits_per_sample)
+
+                    #if paused, reset audio output to paused
+                    if (self.__state__ == PLAYER_PAUSED):
+                        self.__audio_output__.pause()
                 elif (command == "pause"):
                     self.pause()
                 elif (command == "toggle_play_pause"):

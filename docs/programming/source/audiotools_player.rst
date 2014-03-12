@@ -60,8 +60,8 @@ from an opened audio file object to a given output sink.
    Changes where the audio will be played to the given output
    where ``audio_output`` is an :class:`AudioOutput` object.
 
-   Any currently playing audio is stopped and must be resumed
-   from the beginning on the given output device.
+   The current state and progress of the player remains unchanged,
+   but the output volume and description may change.
 
 .. method:: Player.pause()
 
