@@ -1191,7 +1191,11 @@ class CoreAudioOutput(AudioOutput):
 
         if (self.__coreaudio__ is None):
             self.set_format(*DEFAULT_FORMAT)
-        return self.__coreaudio__.get_volume()
+        try:
+            return self.__coreaudio__.get_volume()
+        except ValueError:
+            #get_volume_scalar() call was unsuccessful
+            return 1.0
 
     def set_volume(self, volume):
         """sets the output volume to a floating point value
@@ -1200,7 +1204,11 @@ class CoreAudioOutput(AudioOutput):
         if ((volume >= 0) and (volume <= 1.0)):
             if (self.__coreaudio__ is None):
                 self.set_format(*DEFAULT_FORMAT)
-            self.__coreaudio__.set_volume(volume)
+            try:
+                self.__coreaudio__.set_volume(volume)
+            except ValueError:
+                #set_volume_scalar() call was unsuccessful
+                pass
         else:
             raise ValueError("volume must be between 0.0 and 1.0")
 
