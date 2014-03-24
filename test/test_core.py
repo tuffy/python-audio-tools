@@ -5684,42 +5684,6 @@ class TestMultiChannel(unittest.TestCase):
             target_file.close()
             wav_file.close()
 
-    def __test_assignment__(self, audio_class, tone_tracks, channel_mask):
-        from audiotools import replaygain as replaygain
-
-        self.assertEqual(len(tone_tracks), len(channel_mask))
-        temp_file = tempfile.NamedTemporaryFile(suffix="." + audio_class.SUFFIX)
-        try:
-            temp_track = audio_class.from_pcm(
-                temp_file.name,
-                PCM_Reader_Multiplexer([t.to_pcm() for t in tone_tracks],
-                                       channel_mask))
-
-            gain_values = [
-                replaygain.ReplayGain(temp_track.sample_rate()).title_gain(
-                    audiotools.RemaskedPCMReader(temp_track.to_pcm(),
-                                                 1,
-                                                 mask))[0]
-                           for mask in
-                           [int(audiotools.ChannelMask.from_fields(
-                            **{channel_name:True}))
-                            for channel_name in
-                            channel_mask.channels()]]
-
-            self.assertEqual(set([True]),
-                             set([prev.replay_gain().track_gain >
-                                  curr.replay_gain().track_gain
-                                  for (prev, curr) in
-                                  zip(tone_tracks, tone_tracks[1:])]))
-
-            self.assertEqual(set([True]),
-                             set([prev > curr for (prev, curr) in
-                                  zip(gain_values, gain_values[1:])]),
-                             "channel mismatch for mask %s with format %s (gain values %s)" % (channel_mask, audio_class.NAME, gain_values))
-
-        finally:
-            temp_file.close()
-
     @LIB_CORE
     def test_channel_mask(self):
         from_fields = audiotools.ChannelMask.from_fields
@@ -5846,89 +5810,6 @@ class TestMultiChannel(unittest.TestCase):
                     self.__test_pcm_conversion__(source_audio_class,
                                                  target_audio_class,
                                                  mask)
-
-    @LIB_CORE
-    def test_channel_assignment(self):
-        from_fields = audiotools.ChannelMask.from_fields
-
-        TONE_TRACKS = map(audiotools.open,
-                          ["tone%d.flac" % (i + 1) for i in xrange(8)])
-
-        for audio_class in audiotools.AVAILABLE_TYPES:
-            self.__test_assignment__(audio_class,
-                                     TONE_TRACKS[0:2],
-                                     from_fields(front_left=True,
-                                                 front_right=True))
-
-        for audio_class in (self.wav_channel_masks +
-                            self.flac_channel_masks +
-                            self.vorbis_channel_masks):
-            for mask in [from_fields(front_left=True,
-                                     front_right=True,
-                                     front_center=True),
-                         from_fields(front_right=True,
-                                     front_left=True,
-                                     back_right=True,
-                                     back_left=True),
-                         from_fields(front_right=True,
-                                     front_center=True,
-                                     front_left=True,
-                                     back_right=True,
-                                     back_left=True),
-                         from_fields(front_right=True,
-                                     front_center=True,
-                                     low_frequency=True,
-                                     front_left=True,
-                                     back_right=True,
-                                     back_left=True)]:
-
-                #Encoding 6 channel audio with neroAacEnc
-                #with this batch of tones causes Nero to essentially
-                #zero out the LFE channel,
-                #as does newer versions of oggenc.
-                #This is likely due to the characteristics of
-                #my input samples.
-                if ((len(mask) == 6) and
-                    ((audio_class is audiotools.m4a.M4AAudio_nero) or
-                     (audio_class is audiotools.VorbisAudio))):
-                    continue
-
-                self.__test_assignment__(audio_class,
-                                         TONE_TRACKS[0:len(mask)],
-                                         mask)
-
-        for audio_class in (self.wav_channel_masks +
-                            self.vorbis_channel_masks):
-            for mask in [from_fields(front_left=True, front_right=True,
-                                     front_center=True,
-                                     side_left=True, side_right=True,
-                                     back_center=True, low_frequency=True),
-                         from_fields(front_left=True, front_right=True,
-                                     side_left=True, side_right=True,
-                                     back_left=True, back_right=True,
-                                     front_center=True, low_frequency=True)]:
-                self.__test_assignment__(audio_class,
-                                         TONE_TRACKS[0:len(mask)],
-                                         mask)
-
-        for audio_class in self.wav_channel_masks:
-            for mask in [from_fields(front_left=True, front_right=True,
-                                     side_left=True, side_right=True,
-                                     back_left=True, back_right=True,
-                                     front_center=True, back_center=True)]:
-                self.__test_assignment__(audio_class,
-                                         TONE_TRACKS[0:len(mask)],
-                                         mask)
-
-        # for mask in [from_fields(front_left=True, front_right=True),
-        #              from_fields(front_left=True, front_right=True,
-        #                          back_left=True, back_right=True),
-        #              from_fields(front_left=True, side_left=True,
-        #                          front_center=True, front_right=True,
-        #                          side_right=True, back_center=True)]:
-        #     self.__test_assignment__(audiotools.AiffAudio,
-        #                              TONE_TRACKS[0:len(mask)],
-        #                              mask)
 
     @LIB_CORE
     def test_unsupported_channel_mask_from_pcm(self):

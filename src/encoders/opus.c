@@ -378,26 +378,39 @@ cleanup:
     return result;
 }
 
+
 static void
 reorder_channels(unsigned channel_mask, aa_int *samples)
 {
+    enum {
+        fL  = 0x1,
+        fR  = 0x2,
+        fC  = 0x4,
+        LFE = 0x8,
+        bL  = 0x10,
+        bR  = 0x20,
+        bC  = 0x100,
+        sL  = 0x200,
+        sR  = 0x400
+    };
+
     /*reorder channels if necessary based on assignment*/
     switch (channel_mask) {
     default:
         break;
-    case (0x1 | 0x2 | 0x4):
+    case (fL | fR | fC):
         /*fL fR fC -> fL fC fR*/
         a_int_swap(samples->_[1], samples->_[2]);
         break;
-    case (0x1 | 0x2 | 0x10 | 0x20):
+    case (fL | fR | bL | bR):
         /*fL fR bL bR -> fL fR bL bR*/
         /*no change*/
         break;
-    case (0x1 | 0x2 | 0x4 | 0x10 | 0x20):
+    case (fL | fR | fC | bL | bR):
         /*fL fR fC bL bR -> fL fC fR bL bR*/
         a_int_swap(samples->_[1], samples->_[2]);
         break;
-    case (0x1 | 0x2 | 0x4 | 0x8 | 0x10 | 0x20):
+    case (fL | fR | fC | LFE | bL | bR):
         /*fL fR fC LFE bL bR -> fL fR fC LFE bR bL*/
         a_int_swap(samples->_[4], samples->_[5]);
 
@@ -407,7 +420,7 @@ reorder_channels(unsigned channel_mask, aa_int *samples)
         /*fL fR fC bL bR LFE -> fL fC fR bL bR LFE*/
         a_int_swap(samples->_[1], samples->_[2]);
         break;
-    case (0x1 | 0x2 | 0x4 | 0x8 | 0x100 | 0x200 | 0x400):
+    case (fL | fR | fC | LFE | bC | sL | sR):
         /*fL fR fC LFE bC sL sR -> fL fR fC LFE bC sR sL*/
         a_int_swap(samples->_[5], samples->_[6]);
 
@@ -420,7 +433,7 @@ reorder_channels(unsigned channel_mask, aa_int *samples)
         /*fL fR fC sL sR bC LFE -> fL fC fR sL sR bC LFE*/
         a_int_swap(samples->_[1], samples->_[2]);
         break;
-    case (0x1 | 0x2 | 0x4 | 0x8 | 0x10 | 0x20 | 0x200 | 0x400):
+    case (fL | fR | fC | LFE | bL | bR | sL | sR):
         /*fL fR fC LFE bL bR sL sR -> fL fR fC LFE bL bR sR sL*/
         a_int_swap(samples->_[6], samples->_[7]);
 

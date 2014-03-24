@@ -108,38 +108,50 @@ OpusDecoder_channel_mask(decoders_OpusDecoder *self, void *closure)
     /*use same channel mapping as Ogg Vorbis*/
     int channel_mask;
 
+    enum {
+        fL  = 0x1,
+        fR  = 0x2,
+        fC  = 0x4,
+        LFE = 0x8,
+        bL  = 0x10,
+        bR  = 0x20,
+        bC  = 0x100,
+        sL  = 0x200,
+        sR  = 0x400
+    };
+
     switch (self->channel_count) {
     case 1:
         /*fC*/
-        channel_mask = 0x4;
+        channel_mask = fC;
         break;
     case 2:
         /*fL fR*/
-        channel_mask = 0x1 | 0x2;
+        channel_mask = fC | fR;
         break;
     case 3:
         /*fL fR fC*/
-        channel_mask = 0x1 | 0x2 | 0x4;
+        channel_mask = fC | fR | fC;
         break;
     case 4:
         /*fL fR bL bR*/
-        channel_mask = 0x1 | 0x2 | 0x10 | 0x20;
+        channel_mask = fC | fR | bL | bR;
         break;
     case 5:
         /*fL fR fC bL bR*/
-        channel_mask = 0x1 | 0x2 | 0x4 | 0x10 | 0x20;
+        channel_mask = fC | fR | fC | bL | bR;
         break;
     case 6:
         /*fL fR fC LFE bL bR*/
-        channel_mask = 0x1 | 0x2 | 0x4 | 0x8 | 0x10 | 0x20;
+        channel_mask = fC | fR | fC | LFE | bL | bR;
         break;
     case 7:
         /*fL fR fC LFE bC sL sR*/
-        channel_mask = 0x1 | 0x2 | 0x4 | 0x8 | 0x100 | 0x200 | 0x400;
+        channel_mask = fC | fR | fC | LFE | bC | sL | sR;
         break;
     case 8:
         /*fL fR fC LFE bL bR sL sR*/
-        channel_mask = 0x1 | 0x2 | 0x4 | 0x8 | 0x10 | 0x20 | 0x200 | 0x400;
+        channel_mask = fC | fR | fC | LFE | bL | bR | sL | sR;
         break;
     default:
         /*undefined*/
