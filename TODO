@@ -5983,6 +5983,145 @@
     - [X] parsing database entries from the server
     - [X] calculating a track's CRC
     - [X] checking the confidence level
+* DONE Finish version 2.21
+** DONE Bump minimum required Python version to 2.7
+   Python 2.7 is pretty common these days and offers useful
+   features that have been backported from 3.
+** DONE Cleanup ProgressDisplay design
+   Replace row_id indicators with a ProgressDisplayRow object
+   which is created by ProgressDisplay and features
+   update() and delete() methods that update the main ProgressDisplay.
+
+   This removes the need to specify row_id values and the
+   main ProgressDisplay can assign empty slots as needed.
+*** DONE Update documentation
+** DONE Update temporary file management
+   Some of the metadata functions update via tempfile.TemporaryFile
+   then overwrite the original once the file's been completed.
+
+   This would be a bad idea in the edge case of a full disk.
+
+   So it may be preferable to write to a temp file alongside the original
+   and then rename over it.  That way the original wouldn't be changed
+   until commit-time.
+   - [X] aiff.py
+   - [X] ape.py
+   - [X] flac.py
+   - [X] m4a.py
+   - [X] tta.py
+   - [X] wav.py
+*** DONE Add unit tests
+    Ensure tracks retain permissions when metadata is updated.
+** DONE Convert utilties from optparse to argparse
+   argparse seems a bit nicer and more user-friendly
+   since it generates usage lines automatically.
+   - [X] audiotools-config
+   - [X] cd2track
+   - [X] cdinfo
+   - [X] cdplay
+   - [X] coverdump
+   - [X] covertag
+   - [X] coverview
+   - [X] dvda2track
+   - [X] dvdainfo
+   - [X] track2cd
+   - [X] track2track
+   - [X] trackcat
+   - [X] trackcmp
+   - [X] trackinfo
+   - [X] tracklength
+   - [X] tracklint
+   - [X] trackplay
+   - [X] trackrename
+   - [X] tracksplit
+   - [X] tracktag
+   - [X] trackverify
+*** DONE Ensure all utilities have a working --version option
+    Now that it's no longer built-in, I'll need to add and check
+    the option by hand.
+    - [X] audiotools-config
+    - [X] cd2track
+    - [X] cdinfo
+    - [X] cdplay
+    - [X] coverdump
+    - [X] covertag
+    - [X] coverview
+    - [X] dvda2track
+    - [X] dvdainfo
+    - [X] track2cd
+    - [X] track2track
+    - [X] trackcat
+    - [X] trackcmp
+    - [X] trackinfo
+    - [X] tracklength
+    - [X] tracklint
+    - [X] trackplay
+    - [X] trackrename
+    - [X] tracksplit
+    - [X] tracktag
+    - [X] trackverify
+** DONE Improve Ogg format metadata speeds
+   Reading/writing should be faster for all Ogg-based formats.
+*** DONE Ogg FLAC
+*** DONE Ogg Vorbis
+*** DONE Opus
+** DONE Adjust MetaData.clean() interface
+   Returns (MetaData, [fixes]) tuple
+   where MetaData is a new, fixed metadata object
+   and fixes is a list of Unicode strings.
+*** DONE Fix MetaData objects
+    - [X] MetaData
+    - [X] APEv2
+    - [X] FlacMetaData
+    - [X] ID3v22Comment
+    - [X] ID3v23Comment
+    - [X] ID3v24Comment
+    - [X] ID3CommentPair
+    - [X] ID3v1Comment
+    - [X] M4A_META_Atom
+    - [X] VorbisComment
+*** DONE Update documentation
+*** DONE Update unit tests
+** DONE Adjust AudioFile.clean() interface
+   Takes optional output_filename and returns list of fixes performed.
+   It would be nice not to need separate code paths
+   for dry runs, like with MetaData, but that may not be feasible.
+*** DONE Fix AudioFile objects
+    - [X] AudioFile
+    - [X] AiffAudio
+    - [X] FlacAudio
+    - [X] WaveAudio
+*** DONE Update tracklint
+*** DONE Update documentation
+*** DONE Update unit tests
+** DONE Add lint for "double-wrapped" ID3v2 tags
+   Sometimes files are idiotically wrapped in multiple layers of ID3v2 tags
+   like nested Russian dolls.  These are currently unrecognized because
+   audiotools assumes a valid track follows the tag instead of another tag.
+*** DONE Support tracks nested arbitrarily deep in ID3v2 tags
+    In order to be fixable,
+    these files will need to be readable in the first place
+**** DONE Update file_type function to skip ID3v2 tags recursively
+     It should still only find MP2/MP3/FLAC/TTA files how matter how
+     deeply nested, but should support arbitrarily deep nesting.
+**** DONE Update FlacAudio
+***** DONE Update FlacAudio to support nested tags
+      This is basically a matter of making the offset as large
+      as it takes to hold all the tags.
+***** DONE Have FlacAudio.clean() remove all ID3v2 tags
+***** DONE Update unit tests
+**** DONE Update MP3Audio
+***** DONE Update MP3Audio to support nested tags
+***** DONE Have MP3Audio.clean() remove all ID3v2 tags except one
+***** DONE Update unit tests
+**** DONE Update MP2Audio
+***** DONE Update MP2Audio to support nested tags
+***** DONE Have MP2Audio.clean() remove all ID3v2 tags except one
+***** DONE Update unit tests
+**** DONE Update TrueAudio
+***** DONE Update TrueAudio to support nested tags
+***** DONE Have TrueAudio.clean() remove all ID3v2 tags except one
+***** DONE Update unit tests
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -6606,146 +6745,86 @@
 *** TODO Add Monkey's Audio-specific unit tests
 *** TODO Test encoder/decoder against reference
 *** TODO Restore AudioFile-compatible Python interface
-* TODO Finish version 2.21
-** DONE Bump minimum required Python version to 2.7
-   Python 2.7 is pretty common these days and offers useful
-   features that have been backported from 3.
-** DONE Cleanup ProgressDisplay design
-   Replace row_id indicators with a ProgressDisplayRow object
-   which is created by ProgressDisplay and features
-   update() and delete() methods that update the main ProgressDisplay.
-
-   This removes the need to specify row_id values and the
-   main ProgressDisplay can assign empty slots as needed.
-*** DONE Update documentation
-** DONE Update temporary file management
-   Some of the metadata functions update via tempfile.TemporaryFile
-   then overwrite the original once the file's been completed.
-
-   This would be a bad idea in the edge case of a full disk.
-
-   So it may be preferable to write to a temp file alongside the original
-   and then rename over it.  That way the original wouldn't be changed
-   until commit-time.
-   - [X] aiff.py
-   - [X] ape.py
-   - [X] flac.py
-   - [X] m4a.py
-   - [X] tta.py
-   - [X] wav.py
-*** DONE Add unit tests
-    Ensure tracks retain permissions when metadata is updated.
-** DONE Convert utilties from optparse to argparse
-   argparse seems a bit nicer and more user-friendly
-   since it generates usage lines automatically.
-   - [X] audiotools-config
-   - [X] cd2track
-   - [X] cdinfo
-   - [X] cdplay
-   - [X] coverdump
-   - [X] covertag
-   - [X] coverview
-   - [X] dvda2track
-   - [X] dvdainfo
-   - [X] track2cd
-   - [X] track2track
-   - [X] trackcat
-   - [X] trackcmp
-   - [X] trackinfo
-   - [X] tracklength
-   - [X] tracklint
-   - [X] trackplay
-   - [X] trackrename
-   - [X] tracksplit
-   - [X] tracktag
-   - [X] trackverify
-*** DONE Ensure all utilities have a working --version option
-    Now that it's no longer built-in, I'll need to add and check
-    the option by hand.
-    - [X] audiotools-config
-    - [X] cd2track
-    - [X] cdinfo
-    - [X] cdplay
-    - [X] coverdump
-    - [X] covertag
-    - [X] coverview
-    - [X] dvda2track
-    - [X] dvdainfo
-    - [X] track2cd
-    - [X] track2track
-    - [X] trackcat
-    - [X] trackcmp
-    - [X] trackinfo
-    - [X] tracklength
-    - [X] tracklint
-    - [X] trackplay
-    - [X] trackrename
-    - [X] tracksplit
-    - [X] tracktag
-    - [X] trackverify
-** DONE Improve Ogg format metadata speeds
-   Reading/writing should be faster for all Ogg-based formats.
-*** DONE Ogg FLAC
-*** DONE Ogg Vorbis
-*** DONE Opus
-** DONE Adjust MetaData.clean() interface
-   Returns (MetaData, [fixes]) tuple
-   where MetaData is a new, fixed metadata object
-   and fixes is a list of Unicode strings.
-*** DONE Fix MetaData objects
-    - [X] MetaData
-    - [X] APEv2
-    - [X] FlacMetaData
-    - [X] ID3v22Comment
-    - [X] ID3v23Comment
-    - [X] ID3v24Comment
-    - [X] ID3CommentPair
-    - [X] ID3v1Comment
-    - [X] M4A_META_Atom
-    - [X] VorbisComment
-*** DONE Update documentation
-*** DONE Update unit tests
-** DONE Adjust AudioFile.clean() interface
-   Takes optional output_filename and returns list of fixes performed.
-   It would be nice not to need separate code paths
-   for dry runs, like with MetaData, but that may not be feasible.
-*** DONE Fix AudioFile objects
-    - [X] AudioFile
-    - [X] AiffAudio
-    - [X] FlacAudio
-    - [X] WaveAudio
-*** DONE Update tracklint
-*** DONE Update documentation
-*** DONE Update unit tests
-** DONE Add lint for "double-wrapped" ID3v2 tags
-   Sometimes files are idiotically wrapped in multiple layers of ID3v2 tags
-   like nested Russian dolls.  These are currently unrecognized because
-   audiotools assumes a valid track follows the tag instead of another tag.
-*** DONE Support tracks nested arbitrarily deep in ID3v2 tags
-    In order to be fixable,
-    these files will need to be readable in the first place
-**** DONE Update file_type function to skip ID3v2 tags recursively
-     It should still only find MP2/MP3/FLAC/TTA files how matter how
-     deeply nested, but should support arbitrarily deep nesting.
-**** DONE Update FlacAudio
-***** DONE Update FlacAudio to support nested tags
-      This is basically a matter of making the offset as large
-      as it takes to hold all the tags.
-***** DONE Have FlacAudio.clean() remove all ID3v2 tags
-***** DONE Update unit tests
-**** DONE Update MP3Audio
-***** DONE Update MP3Audio to support nested tags
-***** DONE Have MP3Audio.clean() remove all ID3v2 tags except one
-***** DONE Update unit tests
-**** DONE Update MP2Audio
-***** DONE Update MP2Audio to support nested tags
-***** DONE Have MP2Audio.clean() remove all ID3v2 tags except one
-***** DONE Update unit tests
-**** DONE Update TrueAudio
-***** DONE Update TrueAudio to support nested tags
-***** DONE Have TrueAudio.clean() remove all ID3v2 tags except one
-***** DONE Update unit tests
 * TODO Finish version 2.22
+** TODO Update ReplayGain interface
+   All ReplayGain should be lossless (if supported at all) and needs an interface
+   that's less dependant on external tools.
+*** TODO Remove add_replay_gain() classmethod
+*** TODO Add add_replay_gain() function
+    Takes an album's worth of audiofile objects and optional progress function
+    and if any of their classes support it (via the supports_replay_gain() classmethod)
+    calls calculate_replay_gain() on all of them and applies the result
+    using set_replay_gain()
+*** TODO Remove can_add_replay_gain() classmethod
+    If supports_replay_gain() classmethod returns True,
+    set_replay_gain() will be able to do something useful.
+    - [ ] ALACAudio
+    - [ ] AiffAudio
+    - [ ] AuAudio
+    - [ ] FlacAudio
+    - [ ] M4AAudio
+    - [ ] MP2Audio
+    - [ ] MP3Audio
+    - [ ] OggFlacAudio
+    - [ ] OpusAudio
+    - [ ] ShortenAudio
+    - [ ] TrueAudio
+    - [ ] VorbisAudio
+    - [ ] WavPackAudio
+    - [ ] WaveAudio
+*** TODO Remove lossless_replay_gain classmethod
+    All ReplayGain will be lossless
+    - [ ] ALACAudio
+    - [ ] AiffAudio
+    - [ ] AuAudio
+    - [ ] FlacAudio
+    - [ ] M4AAudio
+    - [ ] MP2Audio
+    - [ ] MP3Audio
+    - [ ] OggFlacAudio
+    - [ ] OpusAudio
+    - [ ] ShortenAudio
+    - [ ] TrueAudio
+    - [ ] VorbisAudio
+    - [ ] WavPackAudio
+    - [ ] WaveAudio
+*** TODO Add to_replay_gain_pcm(track_gain) method
+    Returns a PCMReader object with ReplayGain applied, if any.
+
+    For formats which store ReplayGain in a tag, this returns
+    a PCMReader from to_pcm() wrapped in a ReplayGainReader
+    depending on how track_gain is set.
+
+    For formats which store ReplayGain by modifying the file itself,
+    or contain no ReplayGain data at all, this returns the PCMReader
+    of to_pcm() unmodified.
+
+    - [ ] ALACAudio
+    - [ ] AiffAudio
+    - [ ] AuAudio
+    - [ ] FlacAudio
+    - [ ] M4AAudio
+    - [ ] MP2Audio
+    - [ ] MP3Audio
+    - [ ] OggFlacAudio
+    - [ ] OpusAudio
+    - [ ] ShortenAudio
+    - [ ] TrueAudio
+    - [ ] VorbisAudio
+    - [ ] WavPackAudio
+    - [ ] WaveAudio
+*** TODO Convert replay_gain() method to get_replay_gain()
+    Returns a ReplayGain object or None, as it does now.
+    Analagous to get_metadata()
+*** TODO Add set_replay_gain() method
+    Takes a ReplayGain object or None and sets the file's values
+    by updating metadata, or deletes the values if None
+    Analagous to set_metadata()
+*** TODO Add delete_replay_gain() method
+    Deletes any ReplayGain values, if any
+    Analagous to delete_metadata()
+*** TODO Update documentation
+*** TODO Update unit tests
 ** TODO Update AccurateRip verification
 *** DONE Add --cue option to trackverify to work on CD images
     One can perform: trackverify -R --cue CDImage.cue CDImage.wav
