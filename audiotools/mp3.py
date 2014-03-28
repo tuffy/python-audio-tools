@@ -657,44 +657,6 @@ class MP3Audio(AudioFile):
         if (progress is not None):
             progress(1, 1)
 
-    def verify(self, progress=None):
-        """verifies the current file for correctness
-
-        returns True if the file is okay
-        raises an InvalidFile with an error message if there is
-        some problem with the file"""
-
-        from . import verify
-        try:
-            f = open(self.filename, 'rb')
-        except IOError, err:
-            raise InvalidMP3(str(err))
-
-        #MP3 verification is likely to be so fast
-        #that individual calls to progress() are
-        #a waste of time.
-        if (progress is not None):
-            progress(0, 1)
-
-        try:
-            try:
-                #skip ID3v2/ID3v1 tags during verification
-                self.__find_mp3_start__(f)
-                start = f.tell()
-                self.__find_last_mp3_frame__(f)
-                end = f.tell()
-                f.seek(start, 0)
-
-                verify.mpeg(f, start, end)
-                if (progress is not None):
-                    progress(1, 1)
-
-                return True
-            except (IOError, ValueError), err:
-                raise InvalidMP3(str(err))
-        finally:
-            f.close()
-
     @classmethod
     def available(cls, system_binaries):
         """returns True if all necessary compenents are available

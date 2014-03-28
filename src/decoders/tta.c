@@ -470,14 +470,14 @@ read_frame(BitstreamReader* frame,
 
         for (i = 0; i < block_size; i++) {
             for (c = 0; c < channels; c++) {
-                unsigned MSB = frame->read_unary(frame, 0);
+                const unsigned MSB = frame->read_unary(frame, 0);
                 unsigned u;
 
                 if (MSB == 0) {
                     u = frame->read(frame, k0->_[c]);
                 } else {
-                    unsigned LSB = frame->read(frame, k1->_[c]);
-                    unsigned unshifted = ((MSB - 1) << k1->_[c]) + LSB;
+                    const unsigned LSB = frame->read(frame, k1->_[c]);
+                    const unsigned unshifted = ((MSB - 1) << k1->_[c]) + LSB;
                     u = unshifted + (1 << k0->_[c]);
                     sum1->_[c] += unshifted - (sum1->_[c] >> 4);
                     if ((k1->_[c] > 0) &&

@@ -24,19 +24,6 @@ class InvalidVorbis(InvalidFile):
     pass
 
 
-def verify_ogg_stream(stream):
-    """verifies an Ogg stream file object
-
-    this file must be rewound to the start of a page
-    returns True if the file is valid
-    raises IOError or ValueError if there is some problem with the file
-    """
-
-    from . import verify
-    verify.ogg(stream)
-    return True
-
-
 #######################
 #Vorbis File
 #######################
