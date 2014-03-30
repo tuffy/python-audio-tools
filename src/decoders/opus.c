@@ -127,31 +127,31 @@ OpusDecoder_channel_mask(decoders_OpusDecoder *self, void *closure)
         break;
     case 2:
         /*fL fR*/
-        channel_mask = fC | fR;
+        channel_mask = fL | fR;
         break;
     case 3:
         /*fL fR fC*/
-        channel_mask = fC | fR | fC;
+        channel_mask = fL | fR | fC;
         break;
     case 4:
         /*fL fR bL bR*/
-        channel_mask = fC | fR | bL | bR;
+        channel_mask = fL | fR | bL | bR;
         break;
     case 5:
         /*fL fR fC bL bR*/
-        channel_mask = fC | fR | fC | bL | bR;
+        channel_mask = fL | fR | fC | bL | bR;
         break;
     case 6:
         /*fL fR fC LFE bL bR*/
-        channel_mask = fC | fR | fC | LFE | bL | bR;
+        channel_mask = fL | fR | fC | LFE | bL | bR;
         break;
     case 7:
         /*fL fR fC LFE bC sL sR*/
-        channel_mask = fC | fR | fC | LFE | bC | sL | sR;
+        channel_mask = fL | fR | fC | LFE | bC | sL | sR;
         break;
     case 8:
         /*fL fR fC LFE bL bR sL sR*/
-        channel_mask = fC | fR | fC | LFE | bL | bR | sL | sR;
+        channel_mask = fL | fR | fC | LFE | bL | bR | sL | sR;
         break;
     default:
         /*undefined*/

@@ -153,13 +153,14 @@ class MP3Audio(AudioFile):
                                                          sample_rate,
                                                          pad) - 4)
 
-            if ("Xing" in first_frame):
+            if (("Xing" in first_frame) and
+                (len(first_frame[first_frame.index("Xing"):
+                                 first_frame.index("Xing") + 160]) == 160)):
                 #pull length from Xing header, if present
                 self.__pcm_frames__ = (
                     BitstreamReader(
-                        cStringIO.StringIO(
-                            first_frame[first_frame.index("Xing"):
-                                        first_frame.index("Xing") + 160]),
+                        first_frame[first_frame.index("Xing"):
+                                    first_frame.index("Xing") + 160],
                         0).parse("32p 32p 32u 32p 832p")[0] *
                     self.PCM_FRAMES_PER_MPEG_FRAME[layer])
             else:
