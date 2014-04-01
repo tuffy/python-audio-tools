@@ -518,70 +518,131 @@ class output_text:
 
         self.set_format(fg_color, bg_color, style)
 
+    def __unicode__(self):
+        return self.__string__
+
     def set_format(self, fg_color=None, bg_color=None, style=None):
-        self.__open_codes__ = []
-        self.__close_codes__ = []
-
-        if (fg_color is not None):
-            try:
-                self.__open_codes__.append(
-                    {"black": 30,
-                     "red": 31,
-                     "green": 32,
-                     "yellow": 33,
-                     "blue": 34,
-                     "magenta": 35,
-                     "cyan": 36,
-                     "white": 37}[fg_color])
-                self.__close_codes__.append(39)
-            except KeyError:
-                raise ValueError("unknown fg_color %s" % (repr(fg_color)))
-
-        if (bg_color is not None):
-            try:
-                self.__open_codes__.append(
-                    {"black": 40,
-                     "red": 41,
-                     "green": 42,
-                     "yellow": 43,
-                     "blue": 44,
-                     "magenta": 45,
-                     "cyan": 46,
-                     "white": 47}[bg_color])
-                self.__close_codes__.append(49)
-            except KeyError:
-                raise ValueError("unknown bg_color %s" % (repr(bg_color)))
-
-        if (style is not None):
-            try:
-                self.__open_codes__.append(
-                    {"bold": 1,
-                     "underline": 4,
-                     "blink": 5,
-                     "inverse": 7}[style])
-                self.__close_codes__.append(
-                    {"bold": 22,
-                     "underline": 24,
-                     "blink": 25,
-                     "inverse": 27}[style])
-            except KeyError:
-                raise ValueError("unknown style %s" % (repr(style)))
-
         self.__fg_color__ = fg_color
         self.__bg_color__ = bg_color
         self.__style__ = style
 
-    def __unicode__(self):
-        return self.__string__
+    def has_formatting(self):
+        """returns True if the text has formatting set"""
+
+        return ((self.__fg_color__ in ["black",
+                                       "red",
+                                       "green",
+                                       "yellow",
+                                       "blue",
+                                       "magenta",
+                                       "cyan",
+                                       "white"]) or
+                (self.__bg_color__ in ["black",
+                                       "red",
+                                       "green",
+                                       "yellow",
+                                       "blue",
+                                       "magenta",
+                                       "cyan",
+                                       "white"]) or
+                (self.__style__ in ["bold",
+                                    "underline",
+                                    "blink",
+                                    "inverse"]))
+
+    def __open_codes__(self, is_tty=False):
+        """returns an ANSI escape sequence of codes as a unicode string"""
+
+        if (is_tty):
+            open_codes = []
+
+            try:
+                open_codes.append({"black": 30,
+                                   "red": 31,
+                                   "green": 32,
+                                   "yellow": 33,
+                                   "blue": 34,
+                                   "magenta": 35,
+                                   "cyan": 36,
+                                   "white": 37}[self.__fg_color__])
+            except KeyError:
+                pass
+
+            try:
+                open_codes.append({"black": 40,
+                                   "red": 41,
+                                   "green": 42,
+                                   "yellow": 43,
+                                   "blue": 44,
+                                   "magenta": 45,
+                                   "cyan": 46,
+                                   "white": 47}[self.__bg_color__])
+            except KeyError:
+                pass
+
+            try:
+                open_codes.append({"bold": 1,
+                                   "underline": 4,
+                                   "blink": 5,
+                                   "inverse": 7}[self.__style__])
+            except KeyError:
+                pass
+
+            if (len(open_codes) > 0):
+                return u"\u001B[%sm" % (";".join(map(unicode, open_codes)))
+            else:
+                return u""
+        else:
+            return u""
+
+    def __close_codes__(self, is_tty=False):
+        """returns an ANSI escape sequence of codes as a unicode string"""
+
+        if (is_tty):
+            close_codes = []
+
+            if (self.__fg_color__ in ["black",
+                                      "red",
+                                      "green",
+                                      "yellow",
+                                      "blue",
+                                      "magenta",
+                                      "cyan",
+                                      "white"]):
+                close_codes.append(39)
+
+            if (self.__bg_color__ in ["black",
+                                      "red",
+                                      "green",
+                                      "yellow",
+                                      "blue",
+                                      "magenta",
+                                      "cyan",
+                                      "white"]):
+                close_codes.append(49)
+
+            try:
+                close_codes.append({"bold": 22,
+                                    "underline": 24,
+                                    "blink": 25,
+                                    "inverse": 27}[self.__style__])
+            except KeyError:
+                pass
+
+            if (len(close_codes) > 0):
+                return u"\u001B[%sm" % (";".join(map(unicode, close_codes)))
+            else:
+                return u""
+        else:
+            return u""
 
     def format(self, is_tty=False):
         """returns unicode text formatted depending on is_tty"""
 
-        if (is_tty and (len(self.__open_codes__) > 0)):
-            return (u"\u001B[%sm%s\u001B[%sm" %
-                    (";".join(map(unicode, self.__open_codes__)),
-                     self.__string__,
-                     ";".join(map(unicode, self.__close_codes__))))
+        if (is_tty):
+            return u"%s%s%s" % (self.__open_codes__(True),
+                                self.__string__,
+                                self.__close_codes__(True))
         else:
             return self.__string__
 
@@ -712,11 +773,15 @@ class output_list(output_text):
     def format(self, is_tty=False):
         """returns unicode text formatted depending on is_tty"""
 
-        if (is_tty and (len(self.__open_codes__) > 0)):
-            return (u"\u001B[%sm%s\u001B[%sm" %
-                    (";".join(map(unicode, self.__open_codes__)),
-                     self.format(False),
-                     ";".join(map(unicode, self.__close_codes__))))
+        #display escape codes around entire list
+        #or on individual text items
+        #but not both
+
+        if (is_tty and self.has_formatting()):
+            return u"%s%s%s" % (
+                self.__open_codes__(is_tty),
+                u"".join([t.format(False) for t in self.__output_texts__]),
+                self.__close_codes__(is_tty))
         else:
             return u"".join([t.format(is_tty) for t in self.__output_texts__])
 
