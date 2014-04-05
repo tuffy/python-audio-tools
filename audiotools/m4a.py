@@ -43,8 +43,11 @@ def get_m4a_atom(reader, *atoms):
         try:
             (length, stream_atom) = reader.parse("32u 4b")
             while (stream_atom != next_atom):
-                reader.skip_bytes(length - 8)
-                (length, stream_atom) = reader.parse("32u 4b")
+                if ((length - 8) >= 0):
+                    reader.skip_bytes(length - 8)
+                    (length, stream_atom) = reader.parse("32u 4b")
+                else:
+                    raise KeyError(next_atom)
             if (last):
                 return (length - 8, reader.substream(length - 8))
             else:
