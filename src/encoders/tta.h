@@ -42,20 +42,20 @@ cache_free(struct tta_cache* cache);
 static int
 encode_frame(BitstreamWriter* output,
              struct tta_cache* cache,
-             aa_int* framelist,
+             const aa_int* framelist,
              unsigned bits_per_sample);
 
 static void
-correlate_channels(aa_int* channels,
+correlate_channels(const aa_int* channels,
                    aa_int* correlated);
 
 static void
-fixed_prediction(a_int* channel,
+fixed_prediction(const a_int* channel,
                  unsigned bits_per_sample,
                  a_int* predicted);
 
 static void
-hybrid_filter(a_int* predicted,
+hybrid_filter(const a_int* predicted,
               unsigned bits_per_sample,
               a_int* residual);
 
@@ -72,5 +72,5 @@ write_header(BitstreamWriter* output,
 
 static void
 write_seektable(BitstreamWriter* output,
-                a_int* frame_sizes);
+                const a_int* frame_sizes);
 #endif

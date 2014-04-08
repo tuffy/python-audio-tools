@@ -144,7 +144,7 @@ cache_free(struct tta_cache* cache)
 int
 encode_frame(BitstreamWriter* output,
              struct tta_cache* cache,
-             aa_int* framelist,
+             const aa_int* framelist,
              unsigned bits_per_sample)
 {
     const unsigned channels = framelist->len;
@@ -259,7 +259,7 @@ encode_frame(BitstreamWriter* output,
 }
 
 static void
-correlate_channels(aa_int* channels,
+correlate_channels(const aa_int* channels,
                    aa_int* correlated)
 {
     const unsigned block_size = channels->_[0]->len;
@@ -287,28 +287,13 @@ correlate_channels(aa_int* channels,
 }
 
 static void
-fixed_prediction(a_int* channel,
+fixed_prediction(const a_int* channel,
                  unsigned bits_per_sample,
                  a_int* predicted)
 {
     const unsigned block_size = channel->len;
+    const unsigned shift = (bits_per_sample == 8) ? 4 : 5;
     unsigned i;
-    unsigned shift;
-
-    switch (bits_per_sample) {
-    case 8:
-        shift = 4;
-        break;
-    case 16:
-        shift = 5;
-        break;
-    case 24:
-        shift = 5;
-        break;
-    default:
-        shift = 5;
-        break;
-    }
 
     predicted->reset_for(predicted, block_size);
     a_append(predicted, channel->_[0]);
@@ -320,33 +305,18 @@ fixed_prediction(a_int* channel,
 }
 
 static void
-hybrid_filter(a_int* predicted,
+hybrid_filter(const a_int* predicted,
               unsigned bits_per_sample,
               a_int* residual)
 {
     const unsigned block_size = predicted->len;
-    unsigned i;
-    int32_t shift;
-    int32_t round;
+    const int32_t shift = (bits_per_sample == 16) ? 9 : 10;
+    const int32_t round = (1 << (shift - 1));
     int32_t qm[] = {0, 0, 0, 0, 0, 0, 0, 0};
     int32_t dx[] = {0, 0, 0, 0, 0, 0, 0, 0};
     int32_t dl[] = {0, 0, 0, 0, 0, 0, 0, 0};
+    unsigned i;
 
-    switch (bits_per_sample) {
-    case 8:
-        shift = 10;
-        break;
-    case 16:
-        shift = 9;
-        break;
-    case 24:
-        shift = 10;
-        break;
-    default:
-        shift = 10;
-        break;
-    }
-    round = (1 << (shift - 1));
     residual->reset_for(residual, block_size);
 
     for (i = 0; i < block_size; i++) {
@@ -612,7 +582,7 @@ write_header(BitstreamWriter* output,
 
 static void
 write_seektable(BitstreamWriter* output,
-                a_int* frame_sizes)
+                const a_int* frame_sizes)
 {
     unsigned i;
     unsigned seektable_crc = 0xFFFFFFFF;

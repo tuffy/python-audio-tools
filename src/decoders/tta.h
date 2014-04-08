@@ -196,15 +196,15 @@ read_frame(BitstreamReader* frame,
            aa_int* framelist);
 
 static void
-hybrid_filter(a_int* residual,
+hybrid_filter(const a_int* residual,
               unsigned bits_per_sample,
               a_int* filtered);
 
 static void
-fixed_prediction(a_int* filtered,
+fixed_prediction(const a_int* filtered,
                  unsigned bits_per_sample,
                  a_int* predicted);
 
 static void
-decorrelate_channels(aa_int* predicted,
+decorrelate_channels(const aa_int* predicted,
                      aa_int* decorrelated);

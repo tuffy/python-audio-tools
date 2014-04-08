@@ -544,33 +544,18 @@ read_frame(BitstreamReader* frame,
 }
 
 static void
-hybrid_filter(a_int* residual,
+hybrid_filter(const a_int* residual,
               unsigned bits_per_sample,
               a_int* filtered)
 {
     const unsigned block_size = residual->len;
+    const int32_t shift = (bits_per_sample == 16) ? 9 : 10;
+    const int32_t round = (1 << (shift - 1));
     unsigned i;
-    int32_t shift;
-    int32_t round;
     int32_t qm[] = {0, 0, 0, 0, 0, 0, 0, 0};
     int32_t dx[] = {0, 0, 0, 0, 0, 0, 0, 0};
     int32_t dl[] = {0, 0, 0, 0, 0, 0, 0, 0};
 
-    switch (bits_per_sample) {
-    case 8:
-        shift = 10;
-        break;
-    case 16:
-        shift = 9;
-        break;
-    case 24:
-        shift = 10;
-        break;
-    default:
-        shift = 10;
-        break;
-    }
-    round = (1 << (shift - 1));
     filtered->reset_for(filtered, block_size);
 
     for (i = 0; i < block_size; i++) {
@@ -634,28 +619,13 @@ hybrid_filter(a_int* residual,
 }
 
 static void
-fixed_prediction(a_int* filtered,
+fixed_prediction(const a_int* filtered,
                  unsigned bits_per_sample,
                  a_int* predicted)
 {
     const unsigned block_size = filtered->len;
+    const unsigned shift = (bits_per_sample == 8) ? 4 : 5;
     unsigned i;
-    unsigned shift;
-
-    switch (bits_per_sample) {
-    case 8:
-        shift = 4;
-        break;
-    case 16:
-        shift = 5;
-        break;
-    case 24:
-        shift = 5;
-        break;
-    default:
-        shift = 5;
-        break;
-    }
 
     predicted->reset_for(predicted, block_size);
     a_append(predicted, filtered->_[0]);
@@ -667,35 +637,47 @@ fixed_prediction(a_int* filtered,
 }
 
 static void
-decorrelate_channels(aa_int* predicted,
+decorrelate_channels(const aa_int* predicted,
                      aa_int* decorrelated)
 {
     const unsigned channels = predicted->len;
     const unsigned block_size = predicted->_[0]->len;
-    unsigned c;
 
     decorrelated->reset(decorrelated);
-    predicted->reverse(predicted);
-    for (c = 0; c < channels; c++) {
+
+    if (channels == 1) {
         unsigned i;
         a_int* decorrelated_ch = decorrelated->append(decorrelated);
         decorrelated_ch->resize(decorrelated_ch, block_size);
 
-        if (c == 0) {
+        for (i = 0; i < block_size; i++) {
+            a_append(decorrelated_ch, predicted->_[0]->_[i]);
+        }
+    } else if (channels > 1) {
+        unsigned i;
+        unsigned j;
+        unsigned c = channels - 1;
+        a_int* decorrelated_ch = decorrelated->append(decorrelated);
+        decorrelated_ch->resize(decorrelated_ch, block_size);
+
+        for (i = 0; i < block_size; i++) {
+            a_append(decorrelated_ch,
+                     predicted->_[c]->_[i] +
+                     (predicted->_[c - 1]->_[i] / 2));
+        }
+
+        for (j = 1; j < channels; j++) {
+            decorrelated_ch = decorrelated->append(decorrelated);
+            decorrelated_ch->resize(decorrelated_ch, block_size);
+            c = channels - j - 1;
             for (i = 0; i < block_size; i++) {
                 a_append(decorrelated_ch,
-                         predicted->_[c]->_[i] +
-                         (predicted->_[c + 1]->_[i] / 2));
-            }
-        } else {
-            for (i = 0; i < block_size; i++) {
-                a_append(decorrelated_ch,
-                         decorrelated->_[c - 1]->_[i] - predicted->_[c]->_[i]);
+                         decorrelated->_[j - 1]->_[i] - predicted->_[c]->_[i]);
             }
         }
     }
+
     decorrelated->reverse(decorrelated);
-    predicted->reverse(predicted);
 }
 
 #ifdef STANDALONE
