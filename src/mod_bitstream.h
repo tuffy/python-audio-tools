@@ -85,6 +85,39 @@ brpy_read_signed_be(BitstreamReader *br, unsigned bits);
 static PyObject*
 brpy_read_signed_le(BitstreamReader *br, unsigned bits);
 
+/*reads byte_count bytes from reader to buffer
+  returns 0 on success, 1 if a read error occurs with PyErr set accordingly*/
+int
+brpy_read_bytes_chunk(BitstreamReader *reader,
+                      unsigned byte_count,
+                      struct bs_buffer *buffer);
+
+/*sets "minimum" to the smaller value of x or y
+  returns the smaller object on success, or NULL with PyErr set
+  if some comparison or conversion error occurs
+
+  the reference count of either is *not* incremented*/
+PyObject*
+brpy_read_bytes_min(PyObject *x, PyObject *y, long *minimum);
+
+/*given a byte count as a Python object (presumably numeric)
+  returns a Python string of bytes read or NULL on error*/
+static PyObject*
+brpy_read_bytes_obj(BitstreamReader *reader, PyObject *byte_count);
+
+/*skips byte_count bytes from reader
+  returns 0 on success, 1 if a read error occurs with PyErr set accordingly*/
+int
+brpy_skip_bytes_chunk(BitstreamReader *reader,
+                      unsigned byte_count);
+
+/*given a byte count as a Python object (presumably numeric)
+  returns 0 on success, 1 if a read error occurs with PyErr set accordingly*/
+int
+brpy_skip_bytes_obj(BitstreamReader *reader, PyObject *byte_count);
+
+/*given a byte count, returns a Python string of bytes read
+  or NULL on error*/
 static PyObject*
 brpy_read_bytes(BitstreamReader *reader, unsigned byte_count);
 

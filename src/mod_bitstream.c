@@ -345,24 +345,17 @@ BitstreamReader_skip(bitstream_BitstreamReader *self, PyObject *args)
 static PyObject*
 BitstreamReader_skip_bytes(bitstream_BitstreamReader *self, PyObject *args)
 {
-    int count;
+    PyObject *count;
 
-    if (!PyArg_ParseTuple(args, "i", &count)) {
-        return NULL;
-    } else if (count < 0) {
-        PyErr_SetString(PyExc_ValueError, "byte count must be >= 0");
+    if (!PyArg_ParseTuple(args, "O", &count)) {
         return NULL;
     }
 
-    if (!setjmp(*br_try(self->bitstream))) {
-        self->bitstream->skip_bytes(self->bitstream, (unsigned)count);
-        br_etry(self->bitstream);
+    if (brpy_skip_bytes_obj(self->bitstream, count)) {
+        return NULL;
+    } else {
         Py_INCREF(Py_None);
         return Py_None;
-    } else {
-        br_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
-        return NULL;
     }
 }
 
@@ -515,58 +508,268 @@ BitstreamReader_read_huffman_code(bitstream_BitstreamReader *self,
     }
 }
 
-#define BUFFER_SIZE 4096
+#define CHUNK_SIZE 4096
+
+int
+brpy_read_bytes_chunk(BitstreamReader *reader,
+                      unsigned byte_count,
+                      struct bs_buffer *buffer)
+{
+    if (!setjmp(*br_try(reader))) {
+        while (byte_count > 0) {
+            const unsigned to_read = MIN(byte_count, CHUNK_SIZE);
+            static uint8_t temp[CHUNK_SIZE];
+
+            reader->read_bytes(reader, temp, to_read);
+            buf_write(buffer, temp, to_read);
+            byte_count -= to_read;
+        }
+
+        br_etry(reader);
+        return 0;
+    } else {
+        br_etry(reader);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return 1;
+    }
+}
+
+PyObject*
+brpy_read_bytes_min(PyObject *x, PyObject *y, long *minimum)
+{
+    const int cmp = PyObject_RichCompareBool(x, y, Py_LT);
+    PyObject *smaller;
+
+    if (cmp == 0) {
+        smaller = y;
+    } else if (cmp == 1) {
+        smaller = x;
+    } else {
+        return NULL;
+    }
+
+    *minimum = PyInt_AsLong(smaller);
+    if ((*minimum != -1) || (!PyErr_Occurred())) {
+        return smaller;
+    } else {
+        return NULL;
+    }
+}
+
+static PyObject*
+brpy_read_bytes_obj(BitstreamReader *reader, PyObject *byte_count)
+{
+    PyObject *zero = PyInt_FromLong(0);
+    int zero_cmp = PyObject_RichCompareBool(byte_count, zero, Py_GE);
+    PyObject *chunk_size_obj;
+    struct bs_buffer *buffer;
+
+    /*ensure we've gotten a positive byte count*/
+    if (zero_cmp == 0) {
+        PyErr_SetString(PyExc_ValueError, "byte count must be >= 0");
+        Py_DECREF(zero);
+        return NULL;
+    } else if (zero_cmp == -1) {
+        /*some error during comparison*/
+        Py_DECREF(zero);
+        return NULL;
+    }
+
+    /*allocate temporary objects and buffer*/
+    Py_INCREF(byte_count);
+    buffer = buf_new();
+    chunk_size_obj = PyInt_FromLong(MIN(UINT_MAX, LONG_MAX));
+
+    /*read up to chunk_size bytes at a time from reader to buffer*/
+    zero_cmp = PyObject_RichCompareBool(byte_count, zero, Py_GT);
+    while (zero_cmp == 1) {
+        /*the size of the chunk to read is chunk_size or byte_count,
+          whichever is smaller*/
+        long to_read;
+        PyObject *to_read_obj;
+        PyObject *subtracted;
+
+        if ((to_read_obj = brpy_read_bytes_min(byte_count,
+                                               chunk_size_obj,
+                                               &to_read)) == NULL) {
+            /*some error occurred during comparison*/
+            goto error;
+        }
+
+        /*perform read from reader to buffer based on size*/
+        if (brpy_read_bytes_chunk(reader, (unsigned)to_read, buffer)) {
+            /*some error occurring during reading*/
+            goto error;
+        }
+
+        /*deduct size of chunk from byte_count*/
+        if ((subtracted = PyNumber_Subtract(byte_count, to_read_obj)) != NULL) {
+            Py_DECREF(byte_count);
+            byte_count = subtracted;
+        } else {
+            /*some error occurred during subtracting*/
+            goto error;
+        }
+
+        /*check that byte_count is still greater than zero*/
+        zero_cmp = PyObject_RichCompareBool(byte_count, zero, Py_GT);
+    }
+
+    if (zero_cmp == 0) {
+        /*byte_count no longer greater than 0*/
+
+        /*convert buffer to Python string*/
+        PyObject *string_obj = PyString_FromStringAndSize(
+            (char *)buf_window_start(buffer),
+            buf_window_size(buffer));
+
+        /*deallocate temporary objects and buffer*/
+        Py_DECREF(byte_count);
+        Py_DECREF(zero);
+        buf_close(buffer);
+        Py_DECREF(chunk_size_obj);
+
+        /*return Python string*/
+        return string_obj;
+    } else {
+        /*some error occurred during comparison*/
+        goto error;
+    }
+
+error:
+    /*deallocate temporary objects and buffer*/
+    Py_DECREF(byte_count);
+    Py_DECREF(zero);
+    buf_close(buffer);
+    Py_DECREF(chunk_size_obj);
+
+    /*forward error to caller*/
+    return NULL;
+}
+
+
+int
+brpy_skip_bytes_chunk(BitstreamReader *reader,
+                      unsigned byte_count)
+{
+    if (!setjmp(*br_try(reader))) {
+        reader->skip_bytes(reader, byte_count);
+
+        br_etry(reader);
+        return 0;
+    } else {
+        br_etry(reader);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return 1;
+    }
+}
+
+int
+brpy_skip_bytes_obj(BitstreamReader *reader, PyObject *byte_count)
+{
+    PyObject *zero = PyInt_FromLong(0);
+    int zero_cmp = PyObject_RichCompareBool(byte_count, zero, Py_GE);
+    PyObject *chunk_size_obj;
+
+    /*ensure we've gotten a positive byte count*/
+    if (zero_cmp == 0) {
+        PyErr_SetString(PyExc_ValueError, "byte count must be >= 0");
+        Py_DECREF(zero);
+        return 1;
+    } else if (zero_cmp == -1) {
+        /*some error during comparison*/
+        Py_DECREF(zero);
+        return 1;
+    }
+
+    /*allocate temporary objects*/
+    Py_INCREF(byte_count);
+    chunk_size_obj = PyInt_FromLong(MIN(UINT_MAX, LONG_MAX));
+
+    /*read up to chunk_size bytes at a time from reader*/
+    zero_cmp = PyObject_RichCompareBool(byte_count, zero, Py_GT);
+    while (zero_cmp == 1) {
+        /*the size of the chunk to read is chunk_size or byte_count,
+          whichever is smaller*/
+        long to_read;
+        PyObject *to_read_obj;
+        PyObject *subtracted;
+
+        if ((to_read_obj = brpy_read_bytes_min(byte_count,
+                                               chunk_size_obj,
+                                               &to_read)) == NULL) {
+            /*some error occurred during comparison*/
+            goto error;
+        }
+
+        /*perform read from reader to buffer based on size*/
+        if (brpy_skip_bytes_chunk(reader, (unsigned)to_read)) {
+            /*some error occurring during reading*/
+            goto error;
+        }
+
+        /*deduct size of chunk from byte_count*/
+        if ((subtracted = PyNumber_Subtract(byte_count, to_read_obj)) != NULL) {
+            Py_DECREF(byte_count);
+            byte_count = subtracted;
+        } else {
+            /*some error occurred during subtracting*/
+            goto error;
+        }
+
+        /*check that byte_count is still greater than zero*/
+        zero_cmp = PyObject_RichCompareBool(byte_count, zero, Py_GT);
+    }
+
+    if (zero_cmp == 0) {
+        /*byte_count no longer greater than 0*/
+
+        /*deallocate temporary objects and buffer*/
+        Py_DECREF(byte_count);
+        Py_DECREF(zero);
+        Py_DECREF(chunk_size_obj);
+
+        /*return success*/
+        return 0;
+    } else {
+        /*some error occurred during comparison*/
+        goto error;
+    }
+
+error:
+    /*deallocate temporary objects and buffer*/
+    Py_DECREF(byte_count);
+    Py_DECREF(zero);
+    Py_DECREF(chunk_size_obj);
+
+    /*return read error*/
+    return 1;
+}
 
 static PyObject*
 brpy_read_bytes(BitstreamReader *reader, unsigned byte_count)
 {
-    if (byte_count <= BUFFER_SIZE) {
-        static uint8_t read_buffer[BUFFER_SIZE];
+    struct bs_buffer *buffer = buf_new();
 
-        /*read the entire string using a single static buffer*/
-        if (!setjmp(*br_try(reader))) {
-            reader->read_bytes(reader,
-                               read_buffer,
-                               (unsigned)byte_count);
-            br_etry(reader);
+    if (brpy_read_bytes_chunk(reader, byte_count, buffer)) {
+        /*some error occurring during reading*/
 
-            return PyString_FromStringAndSize((char*)read_buffer,
-                                              (Py_ssize_t)byte_count);
-        } else {
-            br_etry(reader);
-            PyErr_SetString(PyExc_IOError, "I/O error reading stream");
-            return NULL;
-        }
+        /*deallocate buffer*/
+        buf_close(buffer);
+
+        /*pass error along to caller*/
+        return NULL;
     } else {
-        /*use multiple read buffers to fetch entire set of bytes*/
-        struct bs_buffer* read_buffer = buf_new();
-        PyObject* string_obj;
+        /*convert buffer to Python string*/
+        PyObject *string = PyString_FromStringAndSize(
+            (char *)buf_window_start(buffer),
+            buf_window_size(buffer));
 
-        if (!setjmp(*br_try(reader))) {
-            while (byte_count > 0) {
-                const unsigned to_read = MIN(byte_count, BUFFER_SIZE);
+        /*deallocate buffer*/
+        buf_close(buffer);
 
-                buf_resize(read_buffer, to_read);
-                reader->read_bytes(reader,
-                                   buf_window_end(read_buffer),
-                                   to_read);
-                read_buffer->window_end += to_read;
-                byte_count -= to_read;
-            }
-            br_etry(reader);
-
-            string_obj = PyString_FromStringAndSize(
-                (char *)buf_window_start(read_buffer),
-                (Py_ssize_t)buf_window_size(read_buffer));
-
-            buf_close(read_buffer);
-            return string_obj;
-        } else {
-            br_etry(reader);
-            buf_close(read_buffer);
-            PyErr_SetString(PyExc_IOError, "I/O error reading stream");
-            return NULL;
-        }
+        /*return string*/
+        return string;
     }
 }
 
@@ -574,16 +777,13 @@ static PyObject*
 BitstreamReader_read_bytes(bitstream_BitstreamReader *self,
                            PyObject *args)
 {
-    int byte_count;
+    PyObject *byte_count;
 
-    if (!PyArg_ParseTuple(args, "i", &byte_count)) {
-        return NULL;
-    } else if (byte_count < 0) {
-        PyErr_SetString(PyExc_ValueError, "byte count must be >= 0");
+    if (!PyArg_ParseTuple(args, "O", &byte_count)) {
         return NULL;
     }
 
-    return brpy_read_bytes(self->bitstream, (unsigned)byte_count);
+    return brpy_read_bytes_obj(self->bitstream, byte_count);
 }
 
 static PyObject*
