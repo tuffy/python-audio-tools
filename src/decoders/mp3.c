@@ -50,7 +50,7 @@ MP3Decoder_init(decoders_MP3Decoder *self,
     if (!PyArg_ParseTuple(args, "s", &filename))
         return -1;
 
-    if ((self->handle = mpg123_new(NULL, NULL)) == NULL) {
+    if ((self->handle = mpg123_new(NULL, &error)) == NULL) {
         PyErr_SetString(PyExc_ValueError, "error initializing decoder");
         return -1;
     }

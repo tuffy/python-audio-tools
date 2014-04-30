@@ -188,8 +188,8 @@ class TrueAudio(AudioFile):
                          pcmreader.sample_rate,
                          total_pcm_frames)
 
-            total_tta_frames = div_ceil(total_pcm_frames * 245,
-                                        pcmreader.sample_rate * 256)
+            block_size = (pcmreader.sample_rate * 256) // 245
+            total_tta_frames = div_ceil(total_pcm_frames, block_size)
 
             #write temporary seektable to disk
             write_seektable(writer, [0] * total_tta_frames)
@@ -211,6 +211,10 @@ class TrueAudio(AudioFile):
                 cls.__unlink__(filename)
                 raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
 
+            if (len(frame_sizes) != total_tta_frames):
+                print "total_pcm_frames : %d" % (total_pcm_frames)
+                print "%d != %d" % (len(frame_sizes), total_tta_frames)
+
             assert(len(frame_sizes) == total_tta_frames)
 
             #go back and rewrite seektable with completed one
@@ -230,9 +234,6 @@ class TrueAudio(AudioFile):
                 file.close()
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
-
-            assert(len(frame_sizes) == div_ceil(counter.frames_written * 245,
-                                                pcmreader.sample_rate * 256))
 
             #write header to disk
             write_header(writer,

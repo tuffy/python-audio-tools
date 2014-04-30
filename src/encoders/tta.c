@@ -495,6 +495,8 @@ int main(int argc, char* argv[]) {
     block_size = (sample_rate * 256) / 245;
 
     total_tta_frames = DIV_CEIL(total_pcm_frames, block_size);
+    printf("block size       %u\n", block_size);
+    printf("total TTA frames %u\n", total_tta_frames);
 
     /*open output file for writing*/
     if ((file = fopen(output_file, "wb")) == NULL) {

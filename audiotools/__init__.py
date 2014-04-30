@@ -3859,8 +3859,9 @@ class AudioFile:
                 os.path.basename(file_path))[0].decode(FS_ENCODING,
                                                        'replace')
 
+            #apply format dictionary and ensure filename isn't absolute
             return (format.decode('utf-8', 'replace') % format_dict).encode(
-                FS_ENCODING, 'replace')
+                FS_ENCODING, 'replace').lstrip(os.sep)
         except KeyError, error:
             raise UnsupportedTracknameField(unicode(error.args[0]))
         except TypeError:

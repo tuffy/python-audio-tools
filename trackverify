@@ -43,7 +43,7 @@ class FailedAudioFile:
         self.filename = filename
         self.err = err
 
-    def verify(self):
+    def verify(self, progress=None):
         raise self.err
 
 
