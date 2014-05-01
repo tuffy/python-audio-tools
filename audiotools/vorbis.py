@@ -41,7 +41,6 @@ class VorbisAudio(AudioFile):
     COMPRESSION_MODES = tuple([str(i) for i in range(0, 11)])
     COMPRESSION_DESCRIPTIONS = {"0": COMP_VORBIS_0,
                                 "10": COMP_VORBIS_10}
-    REPLAYGAIN_BINARIES = ("vorbisgain", )
 
     def __init__(self, filename):
         """filename is a plain string"""
@@ -398,65 +397,12 @@ class VorbisAudio(AudioFile):
         self.set_metadata(MetaData())
 
     @classmethod
-    def add_replay_gain(cls, filenames, progress=None):
-        """adds ReplayGain values to a list of filename strings
-
-        all the filenames must be of this AudioFile type
-        raises ValueError if some problem occurs during ReplayGain application
-        """
-
-        from . import BIN
-        from . import open_files
-        import subprocess
-        import os
-
-        track_names = [track.filename for track in
-                       open_files(filenames) if
-                       isinstance(track, cls)]
-
-        if (progress is not None):
-            progress(0, 1)
-
-        if ((len(track_names) > 0) and BIN.can_execute(BIN['vorbisgain'])):
-            devnull = file(os.devnull, 'ab')
-
-            sub = subprocess.Popen([BIN['vorbisgain'],
-                                    '-q', '-a'] + track_names,
-                                   stdout=devnull,
-                                   stderr=devnull)
-            sub.wait()
-            devnull.close()
-
-        if (progress is not None):
-            progress(1, 1)
-
-    @classmethod
-    def can_add_replay_gain(cls, audiofiles):
-        """given a list of audiofiles,
-        returns True if this class can add ReplayGain to those files
-        returns False if not"""
-
-        for audiofile in audiofiles:
-            if (not isinstance(audiofile, VorbisAudio)):
-                return False
-        else:
-            from . import BIN
-
-            return BIN.can_execute(BIN['vorbisgain'])
-
-    @classmethod
     def supports_replay_gain(cls):
         """returns True if this class supports ReplayGain"""
 
         return True
 
-    @classmethod
-    def lossless_replay_gain(cls):
-        """returns True"""
-
-        return True
-
-    def replay_gain(self):
+    def get_replay_gain(self):
         """returns a ReplayGain object of our ReplayGain values
 
         returns None if we have no values"""
@@ -481,6 +427,50 @@ class VorbisAudio(AudioFile):
                 return None
         else:
             return None
+
+    def set_replay_gain(self, replaygain):
+        """given a ReplayGain object, sets the track's gain to those values
+
+        may raise IOError if unable to modify the file"""
+
+        vorbis_comment = self.get_metadata()
+        if (vorbis_comment is None):
+            from audiotools.vorbiscomment import VorbisComment
+            from audiotools import VERSION
+
+            vorbis_comment = VorbisComment(
+                [], u"Python Audio Tools %s" % (VERSION))
+
+        vorbis_comment["REPLAYGAIN_TRACK_GAIN"] = [
+                "%1.2f dB" % (replaygain.track_gain)]
+        vorbis_comment["REPLAYGAIN_TRACK_PEAK"] = [
+                "%1.8f" % (replaygain.track_peak)]
+        vorbis_comment["REPLAYGAIN_ALBUM_GAIN"] = [
+                "%1.2f dB" % (replaygain.album_gain)]
+        vorbis_comment["REPLAYGAIN_ALBUM_PEAK"] = [
+                "%1.8f" % (replaygain.album_peak)]
+        vorbis_comment["REPLAYGAIN_REFERENCE_LOUDNESS"] = [u"89.0 dB"]
+
+        self.update_metadata(vorbis_comment)
+
+    def delete_replay_gain(self):
+        """removes ReplayGain values from file, if any
+
+        may raise IOError if unable to modify the file"""
+
+        vorbis_comment = self.get_metadata()
+        if (vorbis_comment is not None):
+            for field in ["REPLAYGAIN_TRACK_GAIN",
+                          "REPLAYGAIN_TRACK_PEAK",
+                          "REPLAYGAIN_ALBUM_GAIN",
+                          "REPLAYGAIN_ALBUM_PEAK",
+                          "REPLAYGAIN_REFERENCE_LOUDNESS"]:
+                try:
+                    del(vorbis_comment[field])
+                except KeyError:
+                    pass
+
+            self.update_metadata(vorbis_comment)
 
     @classmethod
     def available(cls, system_binaries):

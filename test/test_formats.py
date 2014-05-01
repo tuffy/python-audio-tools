@@ -590,96 +590,49 @@ class AudioFileTest(unittest.TestCase):
 
     @FORMAT_AUDIOFILE
     def test_replay_gain(self):
-        if (self.audio_class.supports_replay_gain() and
-            self.audio_class.lossless_replay_gain()):
-            track_data1 = test_streams.Sine16_Stereo(44100, 44100,
-                                                     441.0, 0.50,
-                                                     4410.0, 0.49, 1.0)
-
-            track_data2 = test_streams.Sine16_Stereo(66150, 44100,
-                                                     8820.0, 0.70,
-                                                     4410.0, 0.29, 1.0)
-
-            track_data3 = test_streams.Sine16_Stereo(52920, 44100,
-                                                     441.0, 0.50,
-                                                     441.0, 0.49, 0.5)
-
-            track_file1 = tempfile.NamedTemporaryFile(
+        if (self.audio_class.supports_replay_gain()):
+            #make test file
+            temp_file = tempfile.NamedTemporaryFile(
                 suffix="." + self.audio_class.SUFFIX)
-            track_file2 = tempfile.NamedTemporaryFile(
-                suffix="." + self.audio_class.SUFFIX)
-            track_file3 = tempfile.NamedTemporaryFile(
-                suffix="." + self.audio_class.SUFFIX)
-            try:
-                track1 = self.audio_class.from_pcm(track_file1.name,
-                                                   track_data1)
-                track2 = self.audio_class.from_pcm(track_file2.name,
-                                                   track_data2)
-                track3 = self.audio_class.from_pcm(track_file3.name,
-                                                   track_data3)
+            track = self.audio_class.from_pcm(
+                temp_file.name,
+                test_streams.Sine16_Stereo(44100, 44100,
+                                           441.0, 0.50,
+                                           4410.0, 0.49, 1.0))
 
-                self.assert_(track1.replay_gain() is None)
-                self.assert_(track2.replay_gain() is None)
-                self.assert_(track3.replay_gain() is None)
+            #ensure get_replay_gain() returns None
+            self.assertEqual(track.get_replay_gain(), None)
 
-                self.audio_class.add_replay_gain([track_file1.name,
-                                                  track_file2.name,
-                                                  track_file3.name])
+            #set dummy gain with set_replay_gain()
+            dummy_gain = audiotools.ReplayGain(
+                track_gain=0.25,
+                track_peak=0.125,
+                album_gain=0.50,
+                album_peak=1.0)
+            track.set_replay_gain(dummy_gain)
 
-                self.assert_(track1.replay_gain() is not None)
-                self.assert_(track2.replay_gain() is not None)
-                self.assert_(track3.replay_gain() is not None)
+            #ensure get_replay_gain() returns dummy gain
+            self.assertEqual(track.get_replay_gain(), dummy_gain)
 
-                gains = audiotools.replaygain.ReplayGain(44100)
+            #delete gain with delete_replay_gain()
+            track.delete_replay_gain()
 
-                track_data1.reset()
-                track_gain1 = track1.replay_gain()
-                (track_gain, track_peak) = gains.title_gain(track_data1)
-                self.assertEqual(round(track_gain1.track_gain, 4),
-                                 round(track_gain, 4))
-                self.assertEqual(round(track_gain1.track_peak, 4),
-                                 round(track_peak, 4))
+            #ensure get_replay_gain() returns None again
+            self.assertEqual(track.get_replay_gain(), None)
 
-                track_data2.reset()
-                track_gain2 = track2.replay_gain()
-                (track_gain, track_peak) = gains.title_gain(track_data2)
-                self.assertEqual(round(track_gain2.track_gain, 4),
-                                 round(track_gain, 4))
-                self.assertEqual(round(track_gain2.track_peak, 4),
-                                 round(track_peak, 4))
+            #calling delete_replay_gain() again is okay
+            track.delete_replay_gain()
+            self.assertEqual(track.get_replay_gain(), None)
 
-                track_data3.reset()
-                track_gain3 = track3.replay_gain()
-                (track_gain, track_peak) = gains.title_gain(track_data3)
-                self.assertEqual(round(track_gain3.track_gain, 4),
-                                 round(track_gain, 4))
-                self.assertEqual(round(track_gain3.track_peak, 4),
-                                 round(track_peak, 4))
+            #ensure setting replay_gain on unwritable file
+            #raises IOError
+            #FIXME
 
-                album_gains = [round(t.replay_gain().album_gain, 4) for t in
-                               [track1, track2, track3]]
-                self.assertEqual(len(set(album_gains)), 1)
-                album_peaks = [round(t.replay_gain().album_peak, 4) for t in
-                               [track1, track2, track3]]
-                self.assertEqual(len(set(album_peaks)), 1)
+            #ensure getting replay_gain on unreadable file
+            #raises IOError
+            #FIXME
 
-                (album_gain, album_peak) = gains.album_gain()
-                self.assertEqual(album_gains[0], round(album_gain, 4))
-                self.assertEqual(album_peaks[0], round(album_peak, 4))
-
-                #FIXME - check that add_replay_gain raises
-                #an exception when files are unreadable
-
-                #FIXME - check that add_replay_gain raises
-                #an exception when files are unwritable
-
-                #FIXME - check that add_replay_gain raises
-                #an exception when reading files produces an error
-
-            finally:
-                track_file1.close()
-                track_file2.close()
-                track_file3.close()
+            temp_file.close()
 
     @FORMAT_AUDIOFILE
     def test_read_after_eof(self):
@@ -5290,19 +5243,6 @@ class VorbisFileTest(OggVerify, LossyFileTest):
                              new_pcm_sum.hexdigest())
         finally:
             track_file.close()
-
-    @FORMAT_AUDIOFILE
-    def test_replay_gain(self):
-        self.assert_(True)
-        #FIXME
-
-        #ReplayGain gets punted to vorbisgain,
-        #so we won't test it directly.
-        #In the future, I should fold libvorbis
-        #into the tools directly
-        #and handle gain calculation/application
-        #as floats from end-to-end
-        #which should eliminate the vorbisgain requirement.
 
 
 class OpusFileTest(OggVerify, LossyFileTest):

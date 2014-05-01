@@ -120,6 +120,22 @@ class VorbisComment(MetaData):
 
         self.__dict__["comment_strings"] = new_comment_strings
 
+    def __delitem__(self, key):
+        new_comment_strings = []
+        matching_keys = self.ALIASES.get(key.upper(), frozenset([key.upper()]))
+
+        for comment in self.comment_strings:
+            if (u"=" in comment):
+                (c_key, c_value) = comment.split(u"=", 1)
+                if (c_key.upper() not in matching_keys):
+                    #passthrough unmatching values
+                    new_comment_strings.append(comment)
+            else:
+                #passthrough values with no "=" sign
+                new_comment_strings.append(comment)
+
+        self.__dict__["comment_strings"] = new_comment_strings
+
     def __repr__(self):
         return "VorbisComment(%s, %s)" % \
             (repr(self.comment_strings), repr(self.vendor_string))

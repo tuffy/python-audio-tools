@@ -106,7 +106,7 @@ if (__name__ == '__main__'):
                 if (metadata is not None):
                     msg.output(unicode(metadata))
                     msg.output(u"")
-                replay_gain = file.replay_gain()
+                replay_gain = file.get_replay_gain()
                 if (replay_gain is not None):
                     table = audiotools.output_table()
 

@@ -530,18 +530,6 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
             from .text import ERR_WAVPACK_NO_FMT
             raise InvalidWavPack(ERR_WAVPACK_NO_FMT)
 
-    @classmethod
-    def can_add_replay_gain(cls, audiofiles):
-        """given a list of audiofiles,
-        returns True if this class can add ReplayGain to those files
-        returns False if not"""
-
-        for audiofile in audiofiles:
-            if (not isinstance(audiofile, WavPackAudio)):
-                return False
-        else:
-            return True
-
     def get_cuesheet(self):
         """returns the embedded Cuesheet-compatible object, or None
 

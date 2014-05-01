@@ -2912,6 +2912,22 @@ def calculate_replay_gain(tracks, progress=None):
         yield (track, track_gain, track_peak, album_gain, album_peak)
 
 
+def add_replay_gain(tracks, progress=None):
+    """given an iterable set of AudioFile objects
+    and optional progress function
+    calculates the ReplayGain for them and adds it
+    via their set_replay_gain method"""
+
+    for (track,
+         track_gain,
+         track_peak,
+         album_gain,
+         album_peak) in calculate_replay_gain(tracks, progress):
+        track.set_replay_gain(ReplayGain(track_gain=track_gain,
+                                         track_peak=track_peak,
+                                         album_gain=album_gain,
+                                         album_peak=album_peak))
+
 def ignore_sigint():
     """sets the SIGINT signal to SIG_IGN
 
@@ -3873,42 +3889,34 @@ class AudioFile:
     def supports_replay_gain(cls):
         """returns True if this class supports ReplayGain"""
 
+        #implement this in subclass if necessary
         return False
 
-    @classmethod
-    def add_replay_gain(cls, filenames, progress=None):
-        """adds ReplayGain values to a list of filename strings
-
-        raises ValueError if some problem occurs during ReplayGain application
-        """
-
-        return
-
-    @classmethod
-    def can_add_replay_gain(cls, audiofiles):
-        """given a list of audiofiles,
-        returns True if this class can add ReplayGain to those files
-        returns False if not"""
-
-        return False
-
-    @classmethod
-    def lossless_replay_gain(cls):
-        """returns True of applying ReplayGain is a lossless process
-
-        for example, if it is applied by adding metadata tags
-        rather than altering the file's data itself"""
-
-        return False
-
-    def replay_gain(self):
+    def get_replay_gain(self):
         """returns a ReplayGain object of our ReplayGain values
 
         returns None if we have no values
-        note that if applying ReplayGain is a lossy process,
-        this will typically also return None"""
 
+        may raise IOError if unable to read the file"""
+
+        #implement this in subclass if necessary
         return None
+
+    def set_replay_gain(self, replaygain):
+        """given a ReplayGain object, sets the track's gain to those values
+
+        may raise IOError if unable to modify the file"""
+
+        #implement this in subclass if necessary
+        pass
+
+    def delete_replay_gain(self):
+        """removes ReplayGain values from file, if any
+
+        may raise IOError if unable to modify the file"""
+
+        #implement this in subclass if necessary
+        pass
 
     def set_cuesheet(self, cuesheet):
         """imports cuesheet data from a Sheet object

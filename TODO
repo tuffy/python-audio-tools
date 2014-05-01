@@ -6749,45 +6749,62 @@
 ** TODO Update ReplayGain interface
    All ReplayGain should be lossless (if supported at all) and needs an interface
    that's less dependant on external tools.
-*** TODO Remove add_replay_gain() classmethod
+*** DONE Remove add_replay_gain() classmethod
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
 *** TODO Add add_replay_gain() function
     Takes an album's worth of audiofile objects and optional progress function
     and if any of their classes support it (via the supports_replay_gain() classmethod)
     calls calculate_replay_gain() on all of them and applies the result
     using set_replay_gain()
-*** TODO Remove can_add_replay_gain() classmethod
+*** DONE Remove can_add_replay_gain() classmethod
     If supports_replay_gain() classmethod returns True,
     set_replay_gain() will be able to do something useful.
-    - [ ] ALACAudio
-    - [ ] AiffAudio
-    - [ ] AuAudio
-    - [ ] FlacAudio
-    - [ ] M4AAudio
-    - [ ] MP2Audio
-    - [ ] MP3Audio
-    - [ ] OggFlacAudio
-    - [ ] OpusAudio
-    - [ ] ShortenAudio
-    - [ ] TrueAudio
-    - [ ] VorbisAudio
-    - [ ] WavPackAudio
-    - [ ] WaveAudio
-*** TODO Remove lossless_replay_gain classmethod
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Remove lossless_replay_gain classmethod
     All ReplayGain will be lossless
-    - [ ] ALACAudio
-    - [ ] AiffAudio
-    - [ ] AuAudio
-    - [ ] FlacAudio
-    - [ ] M4AAudio
-    - [ ] MP2Audio
-    - [ ] MP3Audio
-    - [ ] OggFlacAudio
-    - [ ] OpusAudio
-    - [ ] ShortenAudio
-    - [ ] TrueAudio
-    - [ ] VorbisAudio
-    - [ ] WavPackAudio
-    - [ ] WaveAudio
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
 *** TODO Add to_replay_gain_pcm(track_gain) method
     Returns a PCMReader object with ReplayGain applied, if any.
 
@@ -6799,6 +6816,7 @@
     or contain no ReplayGain data at all, this returns the PCMReader
     of to_pcm() unmodified.
 
+    - [ ] AudioFile
     - [ ] ALACAudio
     - [ ] AiffAudio
     - [ ] AuAudio
@@ -6813,16 +6831,69 @@
     - [ ] VorbisAudio
     - [ ] WavPackAudio
     - [ ] WaveAudio
-*** TODO Convert replay_gain() method to get_replay_gain()
+*** DONE Convert replay_gain() method to get_replay_gain()
     Returns a ReplayGain object or None, as it does now.
     Analagous to get_metadata()
-*** TODO Add set_replay_gain() method
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Add set_replay_gain() method
     Takes a ReplayGain object or None and sets the file's values
     by updating metadata, or deletes the values if None
     Analagous to set_metadata()
-*** TODO Add delete_replay_gain() method
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Add delete_replay_gain() method
     Deletes any ReplayGain values, if any
     Analagous to delete_metadata()
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Update utilities to use new ReplayGain interface
+    - [ ] cd2track
+    - [ ] dvda2track
+    - [X] track2track
+    - [X] trackinfo
+    - [ ] trackplay
+    - [ ] tracksplit
+    - [ ] tracktag
 *** TODO Update documentation
 *** TODO Update unit tests
 ** TODO Update AccurateRip verification

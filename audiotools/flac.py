@@ -2462,76 +2462,12 @@ class FlacAudio(WaveContainer, AiffContainer):
             f.close()
 
     @classmethod
-    def can_add_replay_gain(cls, audiofiles):
-        """given a list of audiofiles,
-        returns True if this class can add ReplayGain to those files
-        returns False if not"""
-
-        for audiofile in audiofiles:
-            if (not isinstance(audiofile, FlacAudio)):
-                return False
-        else:
-            return True
-
-    @classmethod
-    def add_replay_gain(cls, filenames, progress=None):
-        """adds ReplayGain values to a list of filename strings
-
-        all the filenames must be of this AudioFile type
-        raises ValueError if some problem occurs during ReplayGain application
-        """
-
-        from . import open_files
-        from . import calculate_replay_gain
-
-        tracks = [track for track in open_files(filenames) if
-                  isinstance(track, cls)]
-
-        if (len(tracks) > 0):
-            for (track,
-                 track_gain,
-                 track_peak,
-                 album_gain,
-                 album_peak) in calculate_replay_gain(tracks, progress):
-                try:
-                    metadata = track.get_metadata()
-                    if (metadata is None):
-                        return
-                except IOError:
-                    return
-                try:
-                    comment = metadata.get_block(
-                        Flac_VORBISCOMMENT.BLOCK_ID)
-                except IndexError:
-                    from . import VERSION
-
-                    comment = Flac_VORBISCOMMENT(
-                        [], u"Python Audio Tools %s" % (VERSION))
-                    metadata.add_block(comment)
-
-                comment["REPLAYGAIN_TRACK_GAIN"] = [
-                    "%1.2f dB" % (track_gain)]
-                comment["REPLAYGAIN_TRACK_PEAK"] = [
-                    "%1.8f" % (track_peak)]
-                comment["REPLAYGAIN_ALBUM_GAIN"] = [
-                    "%1.2f dB" % (album_gain)]
-                comment["REPLAYGAIN_ALBUM_PEAK"] = ["%1.8f" % (album_peak)]
-                comment["REPLAYGAIN_REFERENCE_LOUDNESS"] = [u"89.0 dB"]
-                track.update_metadata(metadata)
-
-    @classmethod
     def supports_replay_gain(cls):
         """returns True if this class supports ReplayGain"""
 
         return True
 
-    @classmethod
-    def lossless_replay_gain(cls):
-        """returns True"""
-
-        return True
-
-    def replay_gain(self):
+    def get_replay_gain(self):
         """returns a ReplayGain object of our ReplayGain values
 
         returns None if we have no values"""
@@ -2562,6 +2498,56 @@ class FlacAudio(WaveContainer, AiffContainer):
                 return None
         else:
             return None
+
+    def set_replay_gain(self, replaygain):
+        """given a ReplayGain object, sets the track's gain to those values
+
+        may raise IOError if unable to modify the file"""
+
+        metadata = self.get_metadata()
+
+        if (metadata.has_block(Flac_VORBISCOMMENT.BLOCK_ID)):
+            vorbis_comment = metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
+        else:
+            from . import VERSION
+
+            vorbis_comment = Flac_VORBISCOMMENT(
+                [], u"Python Audio Tools %s" % (VERSION))
+            metadata.add_block(vorbis_comment)
+
+        vorbis_comment["REPLAYGAIN_TRACK_GAIN"] = [
+                "%1.2f dB" % (replaygain.track_gain)]
+        vorbis_comment["REPLAYGAIN_TRACK_PEAK"] = [
+                "%1.8f" % (replaygain.track_peak)]
+        vorbis_comment["REPLAYGAIN_ALBUM_GAIN"] = [
+                "%1.2f dB" % (replaygain.album_gain)]
+        vorbis_comment["REPLAYGAIN_ALBUM_PEAK"] = [
+                "%1.8f" % (replaygain.album_peak)]
+        vorbis_comment["REPLAYGAIN_REFERENCE_LOUDNESS"] = [u"89.0 dB"]
+
+        self.update_metadata(metadata)
+
+    def delete_replay_gain(self):
+        """removes ReplayGain values from file, if any
+
+        may raise IOError if unable to modify the file"""
+
+        metadata = self.get_metadata()
+
+        if (metadata.has_block(Flac_VORBISCOMMENT.BLOCK_ID)):
+            vorbis_comment = metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
+
+            for field in ["REPLAYGAIN_TRACK_GAIN",
+                          "REPLAYGAIN_TRACK_PEAK",
+                          "REPLAYGAIN_ALBUM_GAIN",
+                          "REPLAYGAIN_ALBUM_PEAK",
+                          "REPLAYGAIN_REFERENCE_LOUDNESS"]:
+                try:
+                    del(vorbis_comment[field])
+                except KeyError:
+                    pass
+
+            self.update_metadata(metadata)
 
     def __eq__(self, audiofile):
         if (isinstance(audiofile, FlacAudio)):

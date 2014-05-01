@@ -1001,57 +1001,12 @@ class ApeTaggedAudio:
 
 class ApeGainedAudio:
     @classmethod
-    def add_replay_gain(cls, filenames, progress=None):
-        """adds ReplayGain values to a list of filename strings
-
-        all the filenames must be of this AudioFile type
-        raises ValueError if some problem occurs during ReplayGain application
-        """
-
-        from . import open_files
-        from . import calculate_replay_gain
-
-        tracks = [track for track in open_files(filenames) if
-                  isinstance(track, cls)]
-
-        if (len(tracks) > 0):
-            for (track,
-                 track_gain,
-                 track_peak,
-                 album_gain,
-                 album_peak) in calculate_replay_gain(tracks, progress):
-                metadata = track.get_metadata()
-                if (metadata is None):
-                    metadata = ApeTag([])
-
-                metadata["replaygain_track_gain"] = ApeTagItem.string(
-                    "replaygain_track_gain",
-                    u"%+1.2f dB" % (track_gain))
-                metadata["replaygain_track_peak"] = ApeTagItem.string(
-                    "replaygain_track_peak",
-                    u"%1.6f" % (track_peak))
-                metadata["replaygain_album_gain"] = ApeTagItem.string(
-                    "replaygain_album_gain",
-                    u"%+1.2f dB" % (album_gain))
-                metadata["replaygain_album_peak"] = ApeTagItem.string(
-                    "replaygain_album_peak",
-                    u"%1.6f" % (album_peak))
-
-                track.update_metadata(metadata)
-
-    @classmethod
     def supports_replay_gain(cls):
         """returns True if this class supports ReplayGain"""
 
         return True
 
-    @classmethod
-    def lossless_replay_gain(cls):
-        """returns True"""
-
-        return True
-
-    def replay_gain(self):
+    def get_replay_gain(self):
         """returns a ReplayGain object of our ReplayGain values
 
         returns None if we have no values"""
@@ -1075,6 +1030,48 @@ class ApeGainedAudio:
                 return None
         else:
             return None
+
+    def set_replay_gain(self, replaygain):
+        """given a ReplayGain object, sets the track's gain to those values
+
+        may raise IOError if unable to read or write the file"""
+
+        metadata = self.get_metadata()
+        if (metadata is None):
+            metadata = ApeTag([])
+
+        metadata["replaygain_track_gain"] = ApeTagItem.string(
+            "replaygain_track_gain",
+            u"%+1.2f dB" % (replaygain.track_gain))
+        metadata["replaygain_track_peak"] = ApeTagItem.string(
+            "replaygain_track_peak",
+            u"%1.6f" % (replaygain.track_peak))
+        metadata["replaygain_album_gain"] = ApeTagItem.string(
+            "replaygain_album_gain",
+            u"%+1.2f dB" % (replaygain.album_gain))
+        metadata["replaygain_album_peak"] = ApeTagItem.string(
+            "replaygain_album_peak",
+            u"%1.6f" % (replaygain.album_peak))
+
+        self.update_metadata(metadata)
+
+    def delete_replay_gain(self):
+        """removes ReplayGain values from file, if any
+
+        may raise IOError if unable to modify the file"""
+
+        metadata = self.get_metadata()
+        if (metadata is not None):
+            for field in ["replaygain_track_gain",
+                          "replaygain_track_peak",
+                          "replaygain_album_gain",
+                          "replaygain_album_peak"]:
+                try:
+                    del(metadata[field])
+                except KeyError:
+                    pass
+
+            self.update_metadata(metadata)
 
 
 class ApeAudio(ApeTaggedAudio, AudioFile):

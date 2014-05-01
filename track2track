@@ -34,9 +34,16 @@ import termios
 MAX_CPUS = audiotools.MAX_JOBS
 
 
-def convert(progress, source_audiofile, destination_filename,
-            destination_class, compression, metadata,
-            sample_rate, channels, bits_per_sample):
+def convert(progress,
+            source_audiofile,
+            destination_filename,
+            destination_class,
+            compression,
+            metadata,
+            replay_gain,
+            sample_rate,
+            channels,
+            bits_per_sample):
     if (((sample_rate is None) and
          (channels is None) and
          (bits_per_sample is None))):
@@ -72,6 +79,9 @@ def convert(progress, source_audiofile, destination_filename,
 
     if (metadata is not None):
         destination_audiofile.set_metadata(metadata)
+
+    if (replay_gain is not None):
+        destination_audiofile.set_replay_gain(replay_gain)
 
     existing_cuesheet = source_audiofile.get_cuesheet()
     if (existing_cuesheet is not None):
@@ -199,11 +209,14 @@ if (audiotools.ui.AVAILABLE):
                                            "select_next_item"))):
                 self.__current_page__.select_next_item()
 
-        def output_tracks(self):
-            """yields (output_class,
+        def output_albums(self):
+            """for each album
+               yields (output_class,
                        output_filename,
                        output_quality,
                        output_metadata) tuple for each input audio file
+
+            as a nested iterator
 
             output_metadata is a newly created MetaData object"""
 
@@ -213,16 +226,14 @@ if (audiotools.ui.AVAILABLE):
              quality,
              output_filenames) = self.options.selected_options()
 
-            output_filenames = iter(output_filenames)
-
             for widget in self.metadatas:
-                for (metadata,
-                     output_filename) in izip(widget.populated_metadata(),
-                                              output_filenames):
-                    yield (audiofile_class,
-                           output_filename,
-                           quality,
-                           metadata)
+                album = []
+                for metadata in widget.populated_metadata():
+                    album.append((audiofile_class,
+                                  output_filenames.pop(0),
+                                  quality,
+                                  metadata))
+                yield album
 
 
 if (__name__ == '__main__'):
@@ -403,6 +414,14 @@ if (__name__ == '__main__'):
                 exp.error_msg(msg)
                 sys.exit(1)
 
+    #whether to add ReplayGain to newly converted files
+    if (AudioType.supports_replay_gain()):
+        add_replay_gain = ((options.add_replay_gain if
+                            (options.add_replay_gain is not None) else
+                           audiotools.ADD_REPLAYGAIN))
+    else:
+        add_replay_gain = False
+
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         audiotools.ui.show_available_qualities(msg, AudioType)
@@ -454,7 +473,6 @@ if (__name__ == '__main__'):
     if (options.output is None):
         #the default encoding method, without an output file
 
-        previous_output_widget = None
         queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
 
         #split tracks by album only if metadata lookups are required
@@ -526,8 +544,14 @@ if (__name__ == '__main__'):
         #           output_class,
         #           output_filename,
         #           output_quality,
-        #           output_metadata) tuples to be executed
+        #           output_metadata,
+        #           output_replay_gain) tuples to be executed
         conversion_jobs = []
+
+        #a list of [audiofile, audiofile, ...] lists
+        #each containing an album of tracks to add ReplayGain to
+        #once conversion is finished
+        replaygain_jobs = []
 
         if (options.interactive):
             #pick options using interactive widget
@@ -561,38 +585,58 @@ if (__name__ == '__main__'):
             if (output_widget.cancelled()):
                 sys.exit(0)
 
-            for (input_track,
-                 current_metadata,
-                 (output_class,
-                  output_filename,
-                  output_quality,
-                  output_metadata)) in izip(iter(reduce(concat,
-                                                        input_tracks)),
-                                            iter(reduce(concat,
-                                                        input_metadatas)),
-                                            output_widget.output_tracks()):
-                #merge current track metadata (if any)
-                #with metadata returned from widget
-                if (current_metadata is not None):
-                    for attr in audiotools.MetaData.FIELDS:
-                        original_value = getattr(current_metadata, attr)
-                        updated_value = getattr(output_metadata, attr)
-                        if (original_value != updated_value):
-                            setattr(current_metadata, attr, updated_value)
-                    #and queue up conversion job to be executed
-                    conversion_jobs.append((input_track,
-                                            output_class,
-                                            output_filename,
-                                            output_quality,
-                                            current_metadata))
+            for (album_tracks,
+                 album_metadatas,
+                 album_output) in izip(input_tracks,
+                                       input_metadatas,
+                                       output_widget.output_albums()):
+
+                #use existing ReplayGain values if we're to add it
+                #and *all* input tracks have it
+                if (add_replay_gain):
+                    album_track_gains = [t.get_replay_gain() for t in
+                                         album_tracks]
+                    if (None in album_track_gains):
+                        album_track_gains = [None for t in album_tracks]
+                        replaygain_jobs.append(
+                            [str(o[1]) for o in album_output])
                 else:
-                    #or simply queue up conversion job to be executed
-                    #using only new metadata
-                    conversion_jobs.append((input_track,
-                                            output_class,
-                                            output_filename,
-                                            output_quality,
-                                            output_metadata))
+                    album_track_gains = [None for t in album_tracks]
+
+                for (input_track,
+                     current_metadata,
+                     (output_class,
+                      output_filename,
+                      output_quality,
+                      output_metadata),
+                     output_replay_gain) in izip(album_tracks,
+                                                 album_metadatas,
+                                                 album_output,
+                                                 album_track_gains):
+                    #merge current track metadata (if any)
+                    #with metadata returned from widget
+                    if (current_metadata is not None):
+                        for attr in audiotools.MetaData.FIELDS:
+                            original_value = getattr(current_metadata, attr)
+                            updated_value = getattr(output_metadata, attr)
+                            if (original_value != updated_value):
+                                setattr(current_metadata, attr, updated_value)
+                        #and queue up conversion job to be executed
+                        conversion_jobs.append((input_track,
+                                                output_class,
+                                                output_filename,
+                                                output_quality,
+                                                current_metadata,
+                                                output_replay_gain))
+                    else:
+                        #or simply queue up conversion job to be executed
+                        #using only new metadata
+                        conversion_jobs.append((input_track,
+                                                output_class,
+                                                output_filename,
+                                                output_quality,
+                                                output_metadata,
+                                                output_replay_gain))
 
         else:
             #pick options without using GUI
@@ -602,7 +646,7 @@ if (__name__ == '__main__'):
                                          metadata_choices,
                                          input_filenames):
                 try:
-                    output_tracks = audiotools.ui.process_output_options(
+                    output_tracks = list(audiotools.ui.process_output_options(
                         metadata_choices=album_metadata_choices,
                         input_filenames=album_filenames,
                         output_directory=options.dir,
@@ -610,20 +654,35 @@ if (__name__ == '__main__'):
                         output_class=AudioType,
                         quality=options.quality,
                         msg=msg,
-                        use_default=options.use_default)
+                        use_default=options.use_default))
+
+                    #use existing ReplayGain values if we're to add it
+                    #and *all* input tracks have it
+                    if (add_replay_gain):
+                        album_track_gains = [t.get_replay_gain() for t in
+                                             album_tracks]
+                        if (None in album_track_gains):
+                            album_track_gains = [None for t in album_tracks]
+                            replaygain_jobs.append(
+                                [str(o[1]) for o in output_tracks])
+                    else:
+                        album_track_gains = [None for t in album_tracks]
 
                     #queue jobs to be executed
                     for (album_track,
                          (output_class,
                           output_filename,
                           output_quality,
-                          output_metadata)) in izip(album_tracks,
-                                                    output_tracks):
+                          output_metadata),
+                         output_replay_gain) in izip(album_tracks,
+                                                     output_tracks,
+                                                     album_track_gains):
                         conversion_jobs.append((album_track,
                                                 output_class,
                                                 output_filename,
                                                 output_quality,
-                                                output_metadata))
+                                                output_metadata,
+                                                output_replay_gain))
                 except audiotools.UnsupportedTracknameField, err:
                     err.error_msg(msg)
                     sys.exit(1)
@@ -638,7 +697,8 @@ if (__name__ == '__main__'):
              output_class,
              output_filename,
              output_quality,
-             output_metadata) in conversion_jobs:
+             output_metadata,
+             output_replay_gain) in conversion_jobs:
             #try to create subdirectories in advance
             #so to bail out early if there's an error creating one
             try:
@@ -659,6 +719,7 @@ if (__name__ == '__main__'):
                 destination_class=output_class,
                 compression=output_quality,
                 metadata=output_metadata,
+                replay_gain=output_replay_gain,
                 sample_rate=options.sample_rate,
                 channels=options.channels,
                 bits_per_sample=options.bits_per_sample)
@@ -672,51 +733,35 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
         #add ReplayGain to converted files, if necessary
-        if ((audiotools.ADD_REPLAYGAIN and
-             (options.add_replay_gain if (options.add_replay_gain is not None)
-              else output_class.lossless_replay_gain()) and
-             output_class.can_add_replay_gain(output_files))):
-            #separate encoded files by album_name and album_number
-            for album in audiotools.group_tracks(output_files):
-                #add ReplayGain to groups of files
-                #belonging to the same album
 
-                album_number = set([(m.album_number if m is not None else None)
-                                    for m in
-                                    [f.get_metadata() for f in album]]).pop()
+        #separate encoded files by album_name and album_number
+        for album in [map(audiotools.open, fs) for fs in replaygain_jobs]:
+            #add ReplayGain to groups of files
+            #belonging to the same album
 
+            album_number = set([(m.album_number if m is not None else None)
+                                for m in
+                                [f.get_metadata() for f in album]]).pop()
 
-                if (output_class.lossless_replay_gain() and
-                    (album_number is None)):
-                    progress_text = _.RG_ADDING_REPLAYGAIN
-                    completion_output = _.RG_REPLAYGAIN_ADDED
-                elif (output_class.lossless_replay_gain() and
-                      (album_number is not None)):
-                    progress_text = _.RG_ADDING_REPLAYGAIN_TO_ALBUM % \
-                        (album_number)
-                    completion_output = _.RG_REPLAYGAIN_ADDED_TO_ALBUM % \
-                        (album_number)
-                elif ((not output_class.lossless_replay_gain()) and
-                      (album_number is None)):
-                    progress_text = _.RG_APPLYING_REPLAYGAIN
-                    completion_output = _.RG_REPLAYGAIN_APPLIED
-                elif ((not output_class.lossless_replay_gain()) and
-                      (album_number is not None)):
-                    progress_text = _.RG_APPLYING_REPLAYGAIN_TO_ALBUM % \
-                      (album_number)
-                    completion_output = _.RG_REPLAYGAIN_APPLIED_TO_ALBUM % \
-                      (album_number)
+            if (album_number is None):
+                progress_text = _.RG_ADDING_REPLAYGAIN
+                completion_output = _.RG_REPLAYGAIN_ADDED
+            else:
+                progress_text = _.RG_ADDING_REPLAYGAIN_TO_ALBUM % \
+                    (album_number)
+                completion_output = _.RG_REPLAYGAIN_ADDED_TO_ALBUM % \
+                    (album_number)
 
-                queue.execute(output_class.add_replay_gain,
-                              progress_text,
-                              completion_output,
-                              [a.filename for a in album])
+            queue.execute(function=audiotools.add_replay_gain,
+                          progress_text=progress_text,
+                          completion_output=completion_output,
+                          tracks=album)
 
-            try:
-                queue.run(options.max_processes)
-            except ValueError, err:
-                msg.error(unicode(err))
-                sys.exit(1)
+        try:
+            queue.run(options.max_processes)
+        except ValueError, err:
+            msg.error(unicode(err))
+            sys.exit(1)
     else:
         #encoding only a single file
         audiofile = audiofiles[0]

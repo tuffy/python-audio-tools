@@ -188,6 +188,29 @@ class OpusAudio(VorbisAudio):
 
         return False
 
+    def get_replay_gain(self):
+        """returns a ReplayGain object of our ReplayGain values
+
+        returns None if we have no values
+
+        may raise IOError if unable to read the file"""
+
+        return None
+
+    def set_replay_gain(self, replaygain):
+        """given a ReplayGain object, sets the track's gain to those values
+
+        may raise IOError if unable to modify the file"""
+
+        pass
+
+    def delete_replay_gain(self):
+        """removes ReplayGain values from file, if any
+
+        may raise IOError if unable to modify the file"""
+
+        pass
+
     def set_metadata(self, metadata):
         """takes a MetaData object and sets this track's metadata
 

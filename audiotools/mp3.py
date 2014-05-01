@@ -56,7 +56,6 @@ class MP3Audio(AudioFile):
                                 "standard": COMP_LAME_STANDARD,
                                 "extreme": COMP_LAME_EXTREME,
                                 "insane": COMP_LAME_INSANE}
-    REPLAYGAIN_BINARIES = ("mp3gain", )
 
     SAMPLE_RATE = ((11025, 12000, 8000, None),   # MPEG-2.5
                    (None, None, None, None),     # reserved
@@ -598,65 +597,6 @@ class MP3Audio(AudioFile):
         """returns the total PCM frames of the track as an integer"""
 
         return self.__pcm_frames__
-
-    @classmethod
-    def can_add_replay_gain(cls, audiofiles):
-        """given a list of audiofiles,
-        returns True if this class can add ReplayGain to those files
-        returns False if not"""
-
-        for audiofile in audiofiles:
-            if (not isinstance(audiofile, MP3Audio)):
-                return False
-        else:
-            from . import BIN
-
-            return BIN.can_execute(BIN['mp3gain'])
-
-    @classmethod
-    def supports_replay_gain(cls):
-        """returns True if this class supports ReplayGain"""
-
-        return True
-
-    @classmethod
-    def lossless_replay_gain(cls):
-        """returns False"""
-
-        return False
-
-    @classmethod
-    def add_replay_gain(cls, filenames, progress=None):
-        """adds ReplayGain values to a list of filename strings
-
-        all the filenames must be of this AudioFile type
-        raises ValueError if some problem occurs during ReplayGain application
-        """
-
-        from . import BIN
-        from . import open_files
-        import subprocess
-        import os
-
-        track_names = [track.filename for track in
-                       open_files(filenames) if
-                       isinstance(track, cls)]
-
-        if (progress is not None):
-            progress(0, 1)
-
-        if ((len(track_names) > 0) and (BIN.can_execute(BIN['mp3gain']))):
-            devnull = file(os.devnull, 'ab')
-            sub = subprocess.Popen([BIN['mp3gain'], '-f', '-k', '-q', '-r'] +
-                                   track_names,
-                                   stdout=devnull,
-                                   stderr=devnull)
-            sub.wait()
-
-            devnull.close()
-
-        if (progress is not None):
-            progress(1, 1)
 
     @classmethod
     def available(cls, system_binaries):
