@@ -123,6 +123,7 @@ OPT_ALBUM_TOTAL = \
     u"the total albums of this disc\'s set, if it is one of a series of albums"
 OPT_REPLAY_GAIN = u"add ReplayGain metadata to newly created tracks"
 OPT_REPLAY_GAIN_TRACKTAG = u"add ReplayGain metadata to tracks"
+OPT_REMOVE_REPLAY_GAIN_TRACKTAG = u"remove ReplayGain metadata from tracks"
 OPT_NO_REPLAY_GAIN = u"do not add ReplayGain metadata in newly created tracks"
 OPT_PLAYBACK_TRACK_GAIN = u"apply track ReplayGain during playback, if present"
 OPT_PLAYBACK_ALBUM_GAIN = u"apply album ReplayGain during playback, if present"
@@ -218,6 +219,8 @@ RG_ADDING_REPLAYGAIN_WAIT = \
 RG_APPLYING_REPLAYGAIN_WAIT = u"Applying ReplayGain.  This may take some time."
 RG_REPLAYGAIN_ADDED = u"ReplayGain added"
 RG_REPLAYGAIN_ADDED_TO_ALBUM = u"ReplayGain added to album %d"
+RG_REPLAYGAIN_REMOVED = u"ReplayGain removed"
+RG_REPLAYGAIN_REMOVED_FROM_ALBUM = u"ReplayGain removed from album %d"
 RG_REPLAYGAIN_APPLIED = u"ReplayGain applied"
 RG_REPLAYGAIN_APPLIED_TO_ALBUM = u"ReplayGain applied to album %d"
 

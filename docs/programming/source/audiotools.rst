@@ -581,38 +581,26 @@ AudioFile Objects
    ``%(basename)s``           ``file_path`` basename without suffix
    ========================== ===============================================
 
-.. classmethod:: AudioFile.add_replay_gain(filenames[, progress])
-
-   Given a list of filename strings of the same class as this
-   :class:`AudioFile` class, calculates and adds ReplayGain metadata
-   to those files.
-   Raises :exc:`ValueError` if some problem occurs during ReplayGain
-   calculation or application.
-   ``progress``, if indicated, is a function which takes two arguments
-   that is called as needed during ReplayGain application to indicate
-   progress - identical to the argument used by :meth:`convert`.
-
 .. classmethod:: AudioFile.supports_replay_gain()
 
    Returns ``True`` if this class supports ReplayGain metadata.
 
-.. classmethod:: AudioFile.lossless_replay_gain()
-
-   Returns ``True`` if this audio class applies ReplayGain via a
-   lossless process - such as by adding a metadata tag of some sort.
-   Returns ``False`` if applying metadata modifies the audio file
-   data itself.
-
-.. classmethod:: AudioFile.can_add_replay_gain(audiofiles)
-
-   Given a list of :class:`AudioFile` objects,
-   returns ``True`` if this class can run :meth:`AudioFile.add_replay_gain`
-   on those objects, ``False`` if not.
-
-.. method:: AudioFile.replay_gain()
+.. method:: AudioFile.get_replay_gain()
 
    Returns this audio file's ReplayGain values as a
    :class:`ReplayGain` object, or ``None`` if this audio file has no values.
+
+.. method:: AudioFile.set_replay_gain(replaygain)
+
+   Given a :class:`ReplayGain` object, sets the audio file's gain values.
+
+   Raises :exc:`IOError` if unable to modify the file.
+
+.. method:: AudioFile.delete_replay_gain()
+
+   Removes any gain values from the file.
+
+   Raises :exc:`IOError` if unable to modify the file.
 
 .. method:: AudioFile.set_cuesheet(cuesheet)
 

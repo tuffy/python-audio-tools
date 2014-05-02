@@ -6746,7 +6746,7 @@
 *** TODO Test encoder/decoder against reference
 *** TODO Restore AudioFile-compatible Python interface
 * TODO Finish version 2.22
-** TODO Update ReplayGain interface
+** DONE Update ReplayGain interface
    All ReplayGain should be lossless (if supported at all) and needs an interface
    that's less dependant on external tools.
 *** DONE Remove add_replay_gain() classmethod
@@ -6805,32 +6805,6 @@
     - [X] VorbisAudio
     - [X] WavPackAudio
     - [X] WaveAudio
-*** TODO Add to_replay_gain_pcm(track_gain) method
-    Returns a PCMReader object with ReplayGain applied, if any.
-
-    For formats which store ReplayGain in a tag, this returns
-    a PCMReader from to_pcm() wrapped in a ReplayGainReader
-    depending on how track_gain is set.
-
-    For formats which store ReplayGain by modifying the file itself,
-    or contain no ReplayGain data at all, this returns the PCMReader
-    of to_pcm() unmodified.
-
-    - [ ] AudioFile
-    - [ ] ALACAudio
-    - [ ] AiffAudio
-    - [ ] AuAudio
-    - [ ] FlacAudio
-    - [ ] M4AAudio
-    - [ ] MP2Audio
-    - [ ] MP3Audio
-    - [ ] OggFlacAudio
-    - [ ] OpusAudio
-    - [ ] ShortenAudio
-    - [ ] TrueAudio
-    - [ ] VorbisAudio
-    - [ ] WavPackAudio
-    - [ ] WaveAudio
 *** DONE Convert replay_gain() method to get_replay_gain()
     Returns a ReplayGain object or None, as it does now.
     Analagous to get_metadata()
@@ -6894,8 +6868,8 @@
     - [X] trackplay
     - [X] tracksplit
     - [X] tracktag
-*** TODO Update documentation
-*** TODO Update unit tests
+*** DONE Update documentation
+*** DONE Update unit tests
 ** TODO Update AccurateRip verification
 *** DONE Add --cue option to trackverify to work on CD images
     One can perform: trackverify -R --cue CDImage.cue CDImage.wav

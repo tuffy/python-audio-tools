@@ -294,6 +294,12 @@ if (__name__ == '__main__'):
                         dest="add_replay_gain",
                         help=_.OPT_REPLAY_GAIN_TRACKTAG)
 
+    parser.add_argument("--remove-replay-gain",
+                        action="store_true",
+                        default=False,
+                        dest="remove_replay_gain",
+                        help=_.OPT_REMOVE_REPLAY_GAIN_TRACKTAG)
+
     parser.add_argument("-j", "--joint",
                         type=int,
                         default=audiotools.MAX_JOBS,
@@ -511,33 +517,48 @@ if (__name__ == '__main__'):
                     sys.exit(1)
 
     #add ReplayGain to tracks, if indicated
-    queue = audiotools.ExecProgressQueue(
-        audiotools.ProgressDisplay(msg))
+    display = audiotools.ProgressDisplay(msg)
+    queue = audiotools.ExecProgressQueue(display)
 
-    for album_tracks in audiotools.group_tracks(tracks):
-        if (options.add_replay_gain and (len(album_tracks) > 0)):
+    if (len(tracks) > 0):
+        for album_tracks in audiotools.group_tracks(tracks):
+
             album_number = set(
                 [(m.album_number if m is not None else None)
                  for m in [f.get_metadata() for f in album_tracks]]).pop()
 
-            if (album_number is None):
-                progress_text = _.RG_ADDING_REPLAYGAIN
-                completion_output = _.RG_REPLAYGAIN_ADDED
-            else:
-                progress_text = _.RG_ADDING_REPLAYGAIN_TO_ALBUM % \
-                    (album_number)
-                completion_output = _.RG_REPLAYGAIN_ADDED_TO_ALBUM % \
-                    (album_number)
+            #if both --add-replay-gain and --remove-replay-gain
+            #are specified, do nothing
 
-            queue.execute(
-                function=audiotools.add_replay_gain,
-                progress_text=progress_text,
-                completion_output=completion_output,
-                tracks=album_tracks)
+            if (options.add_replay_gain and not options.remove_replay_gain):
+                if (album_number is None):
+                    progress_text = _.RG_ADDING_REPLAYGAIN
+                    completion_output = _.RG_REPLAYGAIN_ADDED
+                else:
+                    progress_text = _.RG_ADDING_REPLAYGAIN_TO_ALBUM % \
+                        (album_number)
+                    completion_output = _.RG_REPLAYGAIN_ADDED_TO_ALBUM % \
+                        (album_number)
+
+                queue.execute(
+                    function=audiotools.add_replay_gain,
+                    progress_text=progress_text,
+                    completion_output=completion_output,
+                    tracks=album_tracks)
+            elif (options.remove_replay_gain and not options.add_replay_gain):
+                for track in album_tracks:
+                    try:
+                        track.delete_replay_gain()
+                    except IOError, err:
+                        msg.error(unicode(err))
+                        sys.exit(1)
+                display.output_line(
+                    _.RG_REPLAYGAIN_REMOVED if album_number is None else
+                    (_.REPLAYGAIN_REMOVED_FROM_ALBUM % (album_number)))
 
     #execute ReplayGain addition once all tracks have been tagged
     try:
         queue.run(options.max_processes)
-    except ValueError, err:
+    except (ValueError, IOError), err:
         msg.error(unicode(err))
         sys.exit(1)
