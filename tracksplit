@@ -453,12 +453,10 @@ if (__name__ == '__main__'):
                     i + 1, len(output_tracks)))
 
     #apply ReplayGain to split tracks, if requested
-    if ((audiotools.ADD_REPLAYGAIN and
-         (options.add_replay_gain if (options.add_replay_gain is not None)
-          else output_class.lossless_replay_gain()) and
-         output_class.can_add_replay_gain(encoded_tracks))):
-        rg_progress = audiotools.ReplayGainProgressDisplay(
-            msg, output_class.lossless_replay_gain())
+    if (output_class.supports_replay_gain() and
+        (options.add_replay_gain if options.add_replay_gain is not None else
+         audiotools.ADD_REPLAYGAIN)):
+        rg_progress = audiotools.ReplayGainProgressDisplay(msg)
         rg_progress.initial_message()
         try:
             #separate encoded files by album_name and album_number
@@ -466,8 +464,7 @@ if (__name__ == '__main__'):
                 #add ReplayGain to groups of files
                 #belonging to the same album
 
-                output_class.add_replay_gain([a.filename for a in album],
-                                             rg_progress.update)
+                audiotools.add_replay_gain(album, rg_progress.update)
         except ValueError, err:
             rg_progress.clear()
             msg.error(unicode(err))

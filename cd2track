@@ -398,17 +398,14 @@ if (__name__ == '__main__'):
     cdda.close()
 
     #add ReplayGain to ripped tracks, if necessary
-    if ((audiotools.ADD_REPLAYGAIN and
-         (options.add_replay_gain if (options.add_replay_gain is not None)
-          else output_class.lossless_replay_gain()) and
-         output_class.can_add_replay_gain(encoded))):
-        rg_progress = audiotools.ReplayGainProgressDisplay(
-            msg, output_class.lossless_replay_gain())
+    if (output_class.supports_replay_gain() and
+        (options.add_replay_gain if options.add_replay_gain is not None else
+         audiotools.ADD_REPLAYGAIN)):
+        rg_progress = audiotools.ReplayGainProgressDisplay(msg)
         rg_progress.initial_message()
         try:
             #all audio files must belong to the same album, by definition
-            output_class.add_replay_gain([f.filename for f in encoded],
-                                         rg_progress.update)
+            audiotools.add_replay_gain(encoded, rg_progress.update)
         except ValueError, err:
             rg_progress.clear()
             msg.error(unicode(err))

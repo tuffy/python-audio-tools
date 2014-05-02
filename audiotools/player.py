@@ -50,7 +50,9 @@ class Player:
             raise TypeError("invalid output object")
 
         self.__audio_output__ = audio_output
-        self.__player__ = AudioPlayer(audio_output, next_track_callback)
+        self.__player__ = AudioPlayer(audio_output,
+                                      next_track_callback,
+                                      replay_gain)
         self.__commands__ = Queue.Queue()
         self.__responses__ = Queue.Queue()
 
@@ -165,7 +167,9 @@ class Player:
 
 
 class AudioPlayer:
-    def __init__(self, audio_output, next_track_callback=lambda: None):
+    def __init__(self, audio_output,
+                 next_track_callback=lambda: None,
+                 replay_gain=RG_NO_REPLAYGAIN):
         """audio_output is an AudioOutput object to play audio to
 
         next_track_callback is an optional function which
@@ -177,7 +181,7 @@ class AudioPlayer:
         self.__audiofile__ = None
         self.__pcmreader__ = None
         self.__buffer_size__ = 1
-        self.__replay_gain__ = RG_NO_REPLAYGAIN
+        self.__replay_gain__ = replay_gain
         self.__current_frames__ = 0
         self.__total_frames__ = 1
 
@@ -245,11 +249,11 @@ class AudioPlayer:
 
             #apply ReplayGain if requested
             if (self.__replay_gain__ in (RG_TRACK_GAIN, RG_ALBUM_GAIN)):
-                gain = self.__audiofile__.replay_gain()
+                gain = self.__audiofile__.get_replay_gain()
                 if (gain is not None):
                     from audiotools.replaygain import ReplayGainReader
 
-                    if (replay_gain == RG_TRACK_GAIN):
+                    if (self.__replay_gain__ == RG_TRACK_GAIN):
                         pcmreader = ReplayGainReader(pcmreader,
                                                      gain.track_gain,
                                                      gain.track_peak)

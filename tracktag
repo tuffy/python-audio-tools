@@ -520,35 +520,20 @@ if (__name__ == '__main__'):
                 [(m.album_number if m is not None else None)
                  for m in [f.get_metadata() for f in album_tracks]]).pop()
 
-            audio_type = album_tracks[0].__class__
+            if (album_number is None):
+                progress_text = _.RG_ADDING_REPLAYGAIN
+                completion_output = _.RG_REPLAYGAIN_ADDED
+            else:
+                progress_text = _.RG_ADDING_REPLAYGAIN_TO_ALBUM % \
+                    (album_number)
+                completion_output = _.RG_REPLAYGAIN_ADDED_TO_ALBUM % \
+                    (album_number)
 
-            if (audio_type.can_add_replay_gain(album_tracks)):
-                if (audio_type.lossless_replay_gain() and
-                    (album_number is None)):
-                    progress_text = _.RG_ADDING_REPLAYGAIN
-                    completion_output = _.RG_REPLAYGAIN_ADDED
-                elif (audio_type.lossless_replay_gain() and
-                      (album_number is not None)):
-                    progress_text = _.RG_ADDING_REPLAYGAIN_TO_ALBUM % \
-                        (album_number)
-                    completion_output = _.RG_REPLAYGAIN_ADDED_TO_ALBUM % \
-                        (album_number)
-                elif ((not audio_type.lossless_replay_gain()) and
-                      (album_number is None)):
-                    progress_text = _.RG_APPLYING_REPLAYGAIN
-                    completion_output = _.RG_REPLAYGAIN_APPLIED
-                elif ((not audio_type.lossless_replay_gain()) and
-                      (album_number is not None)):
-                    progress_text = _.RG_APPLYING_REPLAYGAIN_TO_ALBUM % \
-                        (album_number)
-                    completion_output = _.RG_REPLAYGAIN_APPLIED_TO_ALBUM % \
-                        (album_number)
-
-                queue.execute(
-                    audio_type.add_replay_gain,
-                    progress_text,
-                    completion_output,
-                    [a.filename for a in album_tracks])
+            queue.execute(
+                function=audiotools.add_replay_gain,
+                progress_text=progress_text,
+                completion_output=completion_output,
+                tracks=album_tracks)
 
     #execute ReplayGain addition once all tracks have been tagged
     try:

@@ -475,11 +475,8 @@ if (__name__ == '__main__'):
 
         queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
 
-        #split tracks by album only if metadata lookups are required
-        if (options.metadata_lookup):
-            albums_iter = audiotools.group_tracks(audiofiles)
-        else:
-            albums_iter = iter([audiofiles])
+        #split tracks by album
+        albums_iter = audiotools.group_tracks(audiofiles)
 
         filename_format = (audiotools.FILENAME_FORMAT if
                            options.format is None else

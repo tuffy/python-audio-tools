@@ -6765,7 +6765,7 @@
     - [X] VorbisAudio
     - [X] WavPackAudio
     - [X] WaveAudio
-*** TODO Add add_replay_gain() function
+*** DONE Add add_replay_gain() function
     Takes an album's worth of audiofile objects and optional progress function
     and if any of their classes support it (via the supports_replay_gain() classmethod)
     calls calculate_replay_gain() on all of them and applies the result
@@ -6887,13 +6887,13 @@
     - [X] WavPackAudio
     - [X] WaveAudio
 *** DONE Update utilities to use new ReplayGain interface
-    - [ ] cd2track
-    - [ ] dvda2track
+    - [X] cd2track
+    - [X] dvda2track
     - [X] track2track
     - [X] trackinfo
-    - [ ] trackplay
-    - [ ] tracksplit
-    - [ ] tracktag
+    - [X] trackplay
+    - [X] tracksplit
+    - [X] tracktag
 *** TODO Update documentation
 *** TODO Update unit tests
 ** TODO Update AccurateRip verification

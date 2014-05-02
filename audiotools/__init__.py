@@ -1191,7 +1191,7 @@ class SingleProgressDisplay(ProgressDisplay):
 class ReplayGainProgressDisplay(ProgressDisplay):
     """a specialized ProgressDisplay for handling ReplayGain application"""
 
-    def __init__(self, messenger, lossless_replay_gain):
+    def __init__(self, messenger):
         """takes a Messenger and whether ReplayGain is lossless or not"""
 
         ProgressDisplay.__init__(self, messenger)
@@ -1203,11 +1203,7 @@ class ReplayGainProgressDisplay(ProgressDisplay):
         self.time = time
         self.last_updated = 0
 
-        self.lossless_replay_gain = lossless_replay_gain
-        if (lossless_replay_gain):
-            self.row = self.add_row(RG_ADDING_REPLAYGAIN)
-        else:
-            self.row = self.add_row(RG_APPLYING_REPLAYGAIN)
+        self.row = self.add_row(RG_ADDING_REPLAYGAIN)
 
         if (sys.stdout.isatty()):
             self.initial_message = self.initial_message_tty
@@ -1226,13 +1222,9 @@ class ReplayGainProgressDisplay(ProgressDisplay):
     def initial_message_nontty(self):
         """displays a message that ReplayGain application has started"""
 
-        from .text import (RG_ADDING_REPLAYGAIN_WAIT,
-                           RG_APPLYING_REPLAYGAIN_WAIT)
+        from .text import RG_ADDING_REPLAYGAIN_WAIT
 
-        if (self.lossless_replay_gain):
-            self.messenger.info(RG_ADDING_REPLAYGAIN_WAIT)
-        else:
-            self.messenger.info(RG_APPLYING_REPLAYGAIN_WAIT)
+        self.messenger.info(RG_ADDING_REPLAYGAIN_WAIT)
 
     def update_tty(self, current, total):
         """updates the current status of ReplayGain application"""
@@ -1252,14 +1244,10 @@ class ReplayGainProgressDisplay(ProgressDisplay):
     def final_message_tty(self):
         """displays a message that ReplayGain application is complete"""
 
-        from .text import (RG_REPLAYGAIN_ADDED,
-                           RG_REPLAYGAIN_APPLIED)
+        from .text import RG_REPLAYGAIN_ADDED
 
         self.clear_rows()
-        if (self.lossless_replay_gain):
-            self.messenger.info(RG_REPLAYGAIN_ADDED)
-        else:
-            self.messenger.info(RG_REPLAYGAIN_APPLIED)
+        self.messenger.info(RG_REPLAYGAIN_ADDED)
 
     def final_message_nontty(self):
         """displays a message that ReplayGain application is complete"""
