@@ -1197,8 +1197,7 @@ class ReplayGainProgressDisplay(ProgressDisplay):
         ProgressDisplay.__init__(self, messenger)
 
         from time import time
-        from .text import (RG_ADDING_REPLAYGAIN,
-                           RG_APPLYING_REPLAYGAIN)
+        from .text import RG_ADDING_REPLAYGAIN
 
         self.time = time
         self.last_updated = 0

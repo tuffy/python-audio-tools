@@ -689,6 +689,20 @@ if (__name__ == '__main__'):
                     msg.error(unicode(err))
                     sys.exit(1)
 
+        #re-check that the same output file doesn't occur more than once
+        #(although process_output_options also performs that check,
+        # it's possible processing multiple albums at once
+        # may result in the same output file occurring across the whole
+        # job, but not in any individual album)
+        output_filenames = set([])
+        for job in conversion_jobs:
+            output_filename = job[2]
+            if (output_filename not in output_filenames):
+                output_filenames.add(output_filename)
+            else:
+                msg.error(_.ERR_DUPLICATE_OUTPUT_FILE % (output_filename,))
+                sys.exit(1)
+
         #queue conversion jobs to ProgressQueue
         for (audiofile,
              output_class,
@@ -812,6 +826,8 @@ if (__name__ == '__main__'):
                     destination_class=destination_class,
                     compression=compression,
                     metadata=track_metadata,
+                    replay_gain=(audiofile.get_replay_gain() if
+                                 add_replay_gain else None),
                     sample_rate=options.sample_rate,
                     channels=options.channels,
                     bits_per_sample=options.bits_per_sample)

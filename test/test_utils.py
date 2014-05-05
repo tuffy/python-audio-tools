@@ -1748,15 +1748,11 @@ class track2track(UtilTest):
                     self.assertEqual(image.height, self.cover.height)
 
                 if (output_class.supports_replay_gain()):
-                    if (output_class.lossless_replay_gain()):
-                        if (("-o" not in options) and
-                            audiotools.ADD_REPLAYGAIN and
-                            ("--no-replay-gain" not in options)):
-                            self.__check_output__(RG_REPLAYGAIN_ADDED)
-                            self.assert_(track2.replay_gain() is not None)
-                    else:
-                        if ("--replay-gain" in options):
-                            self.__check_info__(RG_REPLAYGAIN_APPLIED)
+                    if (("-o" not in options) and
+                        audiotools.ADD_REPLAYGAIN and
+                        ("--no-replay-gain" not in options)):
+                        self.__check_output__(RG_REPLAYGAIN_ADDED)
+                        self.assert_(track2.get_replay_gain() is not None)
 
     @UTIL_TRACK2TRACK
     def test_unicode(self):
@@ -1989,10 +1985,10 @@ class track2track(UtilTest):
             (audiotools.Filename(self.track1.filename),))
 
         #check duplicate output files
-        self.assertEqual(self.__run_app__(["track2track",
+        self.__run_app__(["track2track",
                                            "--format", "foo",
                                            self.track1.filename,
-                                           self.track2.filename]), 1)
+                                           self.track2.filename])
         self.__check_error__(
             ERR_DUPLICATE_OUTPUT_FILE % (
                 audiotools.Filename(os.path.join(".", "foo")),))
@@ -2093,7 +2089,6 @@ class track2track(UtilTest):
     @UTIL_TRACK2TRACK
     def test_replay_gain(self):
         from audiotools.text import (LAB_ENCODE,
-
                                      RG_REPLAYGAIN_ADDED,
                                      RG_REPLAYGAIN_APPLIED,
                                      RG_REPLAYGAIN_ADDED_TO_ALBUM,
@@ -2219,9 +2214,9 @@ class track2track(UtilTest):
         for (i, track) in enumerate(converted_tracks):
             self.assertEqual(track.get_metadata().track_name,
                              u"Track %d" % (i + 1))
-            self.assert_(track.replay_gain() is not None)
+            self.assert_(track.get_replay_gain() is not None)
 
-        replay_gains = [track.replay_gain() for track in
+        replay_gains = [track.get_replay_gain() for track in
                         converted_tracks]
 
         #tracks 0 and 1 should be on the same album
@@ -4476,6 +4471,8 @@ class tracksplit(UtilTest):
 
     @UTIL_TRACKSPLIT
     def tearDown(self):
+        from shutil import rmtree
+
         os.chdir(self.original_dir)
 
         self.unsplit_file.close()
@@ -4488,9 +4485,7 @@ class tracksplit(UtilTest):
             os.unlink(os.path.join(self.output_dir, f))
         os.rmdir(self.output_dir)
 
-        for f in os.listdir(self.cwd_dir):
-            os.unlink(os.path.join(self.cwd_dir, f))
-        os.rmdir(self.cwd_dir)
+        rmtree(self.cwd_dir)
 
         os.chmod(self.unwritable_dir, 0700)
         os.rmdir(self.unwritable_dir)
@@ -4691,6 +4686,7 @@ class tracksplit(UtilTest):
                                       "-j", "1",
                                       "--no-freedb", "--no-musicbrainz"] +
                                      options + [track.filename]), 0)
+
                 if ("--format" in options):
                     output_format = self.format
                 else:
@@ -5192,12 +5188,9 @@ class tracktag(UtilTest):
                     self.__run_app__(["tracktag",
                                       "-V", "normal",
                                       "--replay-gain", track.filename]), 0)
-                if (audio_class.lossless_replay_gain()):
-                    self.__check_output__(RG_REPLAYGAIN_ADDED)
-                    track2 = audiotools.open(track_file.name)
-                    self.assert_(track2.replay_gain() is not None)
-                else:
-                    self.__check_output__(RG_REPLAYGAIN_APPLIED)
+                self.__check_output__(RG_REPLAYGAIN_ADDED)
+                track2 = audiotools.open(track_file.name)
+                self.assert_(track2.get_replay_gain() is not None)
 
                 #try a track with track number metadata
                 track = audio_class.from_pcm(
@@ -5214,12 +5207,9 @@ class tracktag(UtilTest):
                     self.__run_app__(["tracktag",
                                       "-V", "normal",
                                       "--replay-gain", track.filename]), 0)
-                if (audio_class.lossless_replay_gain()):
-                    self.__check_output__(RG_REPLAYGAIN_ADDED)
-                    track2 = audiotools.open(track_file.name)
-                    self.assert_(track2.replay_gain() is not None)
-                else:
-                    self.__check_output__(RG_REPLAYGAIN_APPLIED)
+                self.__check_output__(RG_REPLAYGAIN_ADDED)
+                track2 = audiotools.open(track_file.name)
+                self.assert_(track2.get_replay_gain() is not None)
 
                 #try a track with album number metadata
                 track = audio_class.from_pcm(
@@ -5236,12 +5226,9 @@ class tracktag(UtilTest):
                     self.__run_app__(["tracktag",
                                       "-V", "normal",
                                       "--replay-gain", track.filename]), 0)
-                if (audio_class.lossless_replay_gain()):
-                    self.__check_output__(RG_REPLAYGAIN_ADDED_TO_ALBUM % (3))
-                    track2 = audiotools.open(track_file.name)
-                    self.assert_(track2.replay_gain() is not None)
-                else:
-                    self.__check_output__(RG_REPLAYGAIN_APPLIED_TO_ALBUM % (3))
+                self.__check_output__(RG_REPLAYGAIN_ADDED_TO_ALBUM % (3))
+                track2 = audiotools.open(track_file.name)
+                self.assert_(track2.get_replay_gain() is not None)
 
                 track_file.close()
 

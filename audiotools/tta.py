@@ -51,7 +51,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         try:
             f = open(filename, "rb")
-            self.__stream_offset__ = skip_id3v2_comment(f)
+            skip_id3v2_comment(f)
 
             from .bitstream import BitstreamReader
             from .text import (ERR_TTA_INVALID_SIGNATURE,
@@ -125,11 +125,11 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         from . import decoders
         from . import PCMReaderError
+        from .id3 import skip_id3v2_comment
 
         try:
             tta = open(self.filename, "rb")
-            if (self.__stream_offset__ > 0):
-                tta.seek(self.__stream_offset__)
+            skip_id3v2_comment(tta)
             return decoders.TTADecoder(tta)
         except (IOError, ValueError), msg:
             #This isn't likely unless the TTA file is modified
