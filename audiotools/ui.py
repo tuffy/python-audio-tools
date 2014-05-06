@@ -2747,39 +2747,42 @@ class PlayerTTY:
 
         try:
             tty.setcbreak(stdin.fileno())
-            while (not self.playing_finished):
-                (frames_sent, frames_total) = self.progress()
-                output_line = self.progress_line(frames_sent, frames_total)
-                msg.ansi_clearline()
-                if (len(output_line) > output_line_len):
-                    output_line_len = len(output_line)
-                    msg.partial_output(output_line)
-                else:
-                    msg.partial_output(output_line +
-                                       (u" " * (output_line_len -
-                                                len(output_line))))
-
-                (r_list, w_list, x_list) = select.select([stdin.fileno()],
-                                                         [], [], 1)
-                if (len(r_list) > 0):
-                    char = os.read(stdin.fileno(), 1)
-                    if (((char == 'q') or
-                         (char == 'Q') or
-                         (char == '\x1B'))):
-                        self.playing_finished = True
-                    elif (char == ' '):
-                        self.toggle_play_pause()
-                    elif ((char == 'n') or
-                          (char == 'N')):
-                        self.next_track()
-                    elif ((char == 'p') or
-                          (char == 'P')):
-                        self.previous_track()
-                    elif ((char == 's') or
-                          (char == 'S')):
-                        self.stop()
+            try:
+                while (not self.playing_finished):
+                    (frames_sent, frames_total) = self.progress()
+                    output_line = self.progress_line(frames_sent, frames_total)
+                    msg.ansi_clearline()
+                    if (len(output_line) > output_line_len):
+                        output_line_len = len(output_line)
+                        msg.partial_output(output_line)
                     else:
-                        pass
+                        msg.partial_output(output_line +
+                                           (u" " * (output_line_len -
+                                                    len(output_line))))
+
+                    (r_list, w_list, x_list) = select.select([stdin.fileno()],
+                                                             [], [], 1)
+                    if (len(r_list) > 0):
+                        char = os.read(stdin.fileno(), 1)
+                        if (((char == 'q') or
+                             (char == 'Q') or
+                             (char == '\x1B'))):
+                            self.playing_finished = True
+                        elif (char == ' '):
+                            self.toggle_play_pause()
+                        elif ((char == 'n') or
+                              (char == 'N')):
+                            self.next_track()
+                        elif ((char == 'p') or
+                              (char == 'P')):
+                            self.previous_track()
+                        elif ((char == 's') or
+                              (char == 'S')):
+                            self.stop()
+                        else:
+                            pass
+            except KeyboardInterrupt:
+                pass
 
             msg.ansi_clearline()
             self.player.close()

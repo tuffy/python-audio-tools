@@ -691,6 +691,7 @@ ERR_OUTPUT_DUPLICATE_NAME = u"all output tracks must have different names"
 ERR_OUTPUT_OUTPUTS_ARE_INPUT = \
     u"output tracks must have different names than input tracks"
 ERR_OUTPUT_INVALID_FORMAT = u"output tracks must have valid format string"
+ERR_CANCELLED = u"cancelled"
 
 #Cleaning messages
 CLEAN_REMOVE_DUPLICATE_TAG = u"removed duplicate tag %(field)s"

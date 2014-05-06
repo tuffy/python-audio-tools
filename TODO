@@ -6870,6 +6870,22 @@
     - [X] tracktag
 *** DONE Update documentation
 *** DONE Update unit tests
+** TODO Catch interrupts more cleanly in utilities
+   When the user cancels a long-running job, utilities should clean the screen
+   as well as possible, delete any partial files and display a "cancelled" message
+   instead of delivering stack traces like they do now.
+   - [X] cd2track
+   - [X] cdplay
+   - [ ] dvda2track
+   - [ ] track2cd
+   - [X] track2track
+   - [X] trackcat
+   - [X] trackcmp
+   - [X] tracklength
+   - [X] trackplay
+   - [X] tracksplit
+   - [X] tracktag
+   - [X] trackverify
 ** TODO Update AccurateRip verification
 *** DONE Add --cue option to trackverify to work on CD images
     One can perform: trackverify -R --cue CDImage.cue CDImage.wav

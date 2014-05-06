@@ -111,6 +111,10 @@ def verify(progress, track):
         return (unicode(audiotools.Filename(track.filename)),
                 track.NAME,
                 unicode(err))
+    except KeyboardInterrupt:
+        return (unicode(audiotools.Filename(track.filename)),
+                track.NAME,
+                _.ERR_CANCELLED)
 
 
 def display_results(result, is_tty=False):
@@ -328,7 +332,11 @@ if (__name__ == '__main__'):
                 track=track)
 
         msg.ansi_clearline()
-        results = queue.run(options.max_processes)
+        try:
+            results = queue.run(options.max_processes)
+        except KeyboardInterrupt:
+            msg.error(_.ERR_CANCELLED)
+            sys.exit(1)
 
         formats = sorted(list(set([r[1] for r in results])))
         success_total = len([r for r in results if r[2] is None])

@@ -50,7 +50,7 @@ def cmp_files(progress, audiofile1, audiofile2):
                     audiotools.pcm_frame_cmp(
                         audiotools.to_pcm_progress(audiofile1, progress),
                         audiofile2.to_pcm()))
-    except (IOError, ValueError, audiotools.DecodingError):
+    except (IOError, ValueError, KeyboardInterrupt, audiotools.DecodingError):
         return (audiofile1.filename,
                 audiofile2.filename,
                 -2)
@@ -104,16 +104,19 @@ def image_compare(progress, image_audiofile, track_audiofile,
     if (hasattr(image_pcmreader, "seek") and callable(image_pcmreader.seek)):
         pcm_frames_offset -= image_pcmreader.seek(pcm_frames_offset)
 
-    return (
-        audiotools.pcm_frame_cmp(
-            audiotools.PCMReaderWindow(image_pcmreader,
-                                       pcm_frames_offset,
-                                       total_pcm_frames),
-            audiotools.PCMReaderProgress(track_audiofile.to_pcm(),
-                                         total_pcm_frames,
-                                         progress)),
-        unicode(image_filename),
-        unicode(track_filename))
+    try:
+        return (
+            audiotools.pcm_frame_cmp(
+                audiotools.PCMReaderWindow(image_pcmreader,
+                                           pcm_frames_offset,
+                                           total_pcm_frames),
+                audiotools.PCMReaderProgress(track_audiofile.to_pcm(),
+                                             total_pcm_frames,
+                                             progress)),
+            unicode(image_filename),
+            unicode(track_filename))
+    except (IOError, ValueError, KeyboardInterrupt, audiotools.DecodingError):
+        return (-2, unicode(image_filename), unicode(track_filename))
 
 
 def image_compare_results(result, is_tty=False):
@@ -311,7 +314,11 @@ if (__name__ == '__main__'):
                     audiofile1=track1,
                     audiofile2=track2)
 
-            results.extend(queue.run(options.max_processes))
+            try:
+                results.extend(queue.run(options.max_processes))
+            except KeyboardInterrupt:
+                msg.error(_.ERR_CANCELLED)
+                sys.exit(1)
             successes = len([r for r in results if r[2] is None])
             failures = len(results) - successes
 
@@ -395,8 +402,12 @@ if (__name__ == '__main__'):
 
             pcm_offset += track.total_frames()
 
-        if (set([r[0] for r in
-                 queue.run(options.max_processes)]) != set([None])):
+        try:
+            if (set([r[0] for r in
+                     queue.run(options.max_processes)]) != set([None])):
+                sys.exit(1)
+        except KeyboardInterrupt:
+            msg.error(_.ERR_CANCELLED)
             sys.exit(1)
     else:
         msg.usage(_.USAGE_TRACKCMP_FILES)

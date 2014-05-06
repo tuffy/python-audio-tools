@@ -34,25 +34,32 @@ def has_embedded_cuesheet(audiofile):
 def split(progress, source_audiofile, destination_filename,
           destination_class, compression, metadata,
           pcm_frames_offset, total_pcm_frames):
-    pcmreader = source_audiofile.to_pcm()
+    try:
+        pcmreader = source_audiofile.to_pcm()
 
-    #if PCMReader has seek(), use it to reduce the amount of frames to skip
-    if (hasattr(pcmreader, "seek") and callable(pcmreader.seek)):
-        pcm_frames_offset -= pcmreader.seek(pcm_frames_offset)
+        #if PCMReader has seek(), use it to reduce the amount of frames to skip
+        if (hasattr(pcmreader, "seek") and callable(pcmreader.seek)):
+            pcm_frames_offset -= pcmreader.seek(pcm_frames_offset)
 
-    destination_audiofile = destination_class.from_pcm(
-        str(destination_filename),
-        audiotools.PCMReaderProgress(
-            audiotools.PCMReaderWindow(pcmreader,
-                                       pcm_frames_offset,
-                                       total_pcm_frames),
-            total_pcm_frames,
-            progress),
-        compression,
-        total_pcm_frames)
+        destination_audiofile = destination_class.from_pcm(
+            str(destination_filename),
+            audiotools.PCMReaderProgress(
+                audiotools.PCMReaderWindow(pcmreader,
+                                           pcm_frames_offset,
+                                           total_pcm_frames),
+                total_pcm_frames,
+                progress),
+            compression,
+            total_pcm_frames)
 
-    if (metadata is not None):
-        destination_audiofile.set_metadata(metadata)
+        if (metadata is not None):
+            destination_audiofile.set_metadata(metadata)
+    except KeyboardInterrupt:
+        #remove partially split file, if any
+        try:
+            os.unlink(str(destination_filename))
+        except OSError:
+            pass
 
     return str(destination_filename)
 
@@ -256,19 +263,24 @@ if (__name__ == '__main__'):
     output_track_count = len(pcm_lengths)
 
     #use cuesheet to query metadata services for metadata choices
-    metadata_choices = audiotools.metadata_lookup(
-        first_track_number=1,
-        last_track_number=output_track_count,
-        offsets=[int((t.index(1).offset() + 2) * 75) for t in
-                 cuesheet.tracks()],
-        lead_out_offset=audiofile.cd_frames() + 150,
-        total_length=audiofile.cd_frames(),
-        musicbrainz_server=options.musicbrainz_server,
-        musicbrainz_port=options.musicbrainz_port,
-        freedb_server=options.freedb_server,
-        freedb_port=options.freedb_port,
-        use_musicbrainz=options.use_musicbrainz,
-        use_freedb=options.use_freedb)
+    try:
+        metadata_choices = audiotools.metadata_lookup(
+            first_track_number=1,
+            last_track_number=output_track_count,
+            offsets=[int((t.index(1).offset() + 2) * 75) for t in
+                     cuesheet.tracks()],
+            lead_out_offset=audiofile.cd_frames() + 150,
+            total_length=audiofile.cd_frames(),
+            musicbrainz_server=options.musicbrainz_server,
+            musicbrainz_port=options.musicbrainz_port,
+            freedb_server=options.freedb_server,
+            freedb_port=options.freedb_port,
+            use_musicbrainz=options.use_musicbrainz,
+            use_freedb=options.use_freedb)
+    except KeyboardInterrupt:
+        msg.ansi_clearline()
+        msg.error(_.ERR_CANCELLED)
+        sys.exit(1)
 
     #populate any empty Album-level metadata fields
     #with those from original file
@@ -413,6 +425,9 @@ if (__name__ == '__main__'):
         except audiotools.EncodingError, err:
             msg.error(unicode(err))
             sys.exit(1)
+        except KeyboardInterrupt:
+            msg.error(_.ERR_CANCELLED)
+            sys.exit(1)
 
     else:
         total_pcm = audiotools.BufferedPCMReader(audiofile.to_pcm())
@@ -444,6 +459,14 @@ if (__name__ == '__main__'):
                 progress.clear_rows()
                 msg.error(unicode(err))
                 sys.exit(1)
+            except KeyboardInterrupt:
+                progress.clear_rows()
+                try:
+                    os.unlink(str(output_filename))
+                except OSError:
+                    pass
+                msg.error(_.ERR_CANCELLED)
+                sys.exit(1)
 
             encoded_tracks[-1].set_metadata(output_metadata)
             progress.clear_rows()
@@ -466,7 +489,11 @@ if (__name__ == '__main__'):
 
                 audiotools.add_replay_gain(album, rg_progress.update)
         except ValueError, err:
-            rg_progress.clear()
+            rg_progress.clear_rows()
             msg.error(unicode(err))
+            sys.exit(1)
+        except KeyboardInterrupt:
+            rg_progress.clear_rows()
+            msg.error(_.ERR_CANCELLED)
             sys.exit(1)
         rg_progress.final_message()

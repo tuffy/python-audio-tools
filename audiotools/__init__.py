@@ -5355,71 +5355,79 @@ class ExecProgressQueue:
             job_pool[job.job_fd()] = job
 
         #while the pool still contains running jobs
-        while (len(job_pool) > 0):
-            #wait for zero or more jobs to finish (may timeout)
-            (rlist,
-             wlist,
-             elist) = select(job_pool.keys(), [], [], 0.25)
+        try:
+            while (len(job_pool) > 0):
+                #wait for zero or more jobs to finish (may timeout)
+                (rlist,
+                 wlist,
+                 elist) = select(job_pool.keys(), [], [], 0.25)
 
-            #clear out old display
-            self.progress_display.clear_rows()
+                #clear out old display
+                self.progress_display.clear_rows()
 
-            for finished_job in [job_pool[fd] for fd in rlist]:
-                job_fd = finished_job.job_fd()
+                for finished_job in [job_pool[fd] for fd in rlist]:
+                    job_fd = finished_job.job_fd()
 
-                (exception, result) = finished_job.result()
+                    (exception, result) = finished_job.result()
 
-                if (not exception):
-                    #job completed successfully
+                    if (not exception):
+                        #job completed successfully
 
-                    #display any output message attached to job
-                    completion_output = finished_job.completion_output
-                    if (callable(completion_output)):
-                        output = completion_output(result)
+                        #display any output message attached to job
+                        completion_output = finished_job.completion_output
+                        if (callable(completion_output)):
+                            output = completion_output(result)
+                        else:
+                            output = completion_output
+
+                        if (output is not None):
+                            self.progress_display.output_line(
+                                output_progress(unicode(output),
+                                                completed_job_number,
+                                                total_jobs))
+
+                        #attach result to output in the order it was received
+                        results[finished_job.job_index] = result
                     else:
-                        output = completion_output
+                        #job raised an exception
 
-                    if (output is not None):
-                        self.progress_display.output_line(
-                            output_progress(unicode(output),
-                                            completed_job_number,
-                                            total_jobs))
+                        #remove all other jobs from queue
+                        #then raise exception to caller
+                        #once working jobs are finished
+                        self.__raised_exception__ = result
+                        while (len(self.__queued_jobs__) > 0):
+                            self.__queued_jobs__.pop(0)
 
-                    #attach result to output in the order it was received
-                    results[finished_job.job_index] = result
-                else:
-                    #job raised an exception
+                    #remove job from pool
+                    del(job_pool[job_fd])
 
-                    #remove all other jobs from queue
-                    #then raise exception to caller
-                    #once working jobs are finished
-                    self.__raised_exception__ = result
-                    while (len(self.__queued_jobs__) > 0):
-                        self.__queued_jobs__.pop(0)
+                    #remove job from progress display, if present
+                    if (job_fd in self.__displayed_rows__):
+                        self.__displayed_rows__[job_fd].finish()
 
-                #remove job from pool
-                del(job_pool[job_fd])
+                    #add new jobs from the job queue, if any
+                    if (len(self.__queued_jobs__) > 0):
+                        job = execute_next_job()
+                        job_pool[job.job_fd()] = job
 
-                #remove job from progress display, if present
-                if (job_fd in self.__displayed_rows__):
-                    self.__displayed_rows__[job_fd].finish()
+                    #updated completed job number for X/Y display
+                    completed_job_number += 1
 
-                #add new jobs from the job queue, if any
-                if (len(self.__queued_jobs__) > 0):
-                    job = execute_next_job()
-                    job_pool[job.job_fd()] = job
+                #update progress rows with progress taken from shared memory
+                for job in job_pool.values():
+                    if (job.job_fd() in self.__displayed_rows__):
+                        self.__displayed_rows__[job.job_fd()].update(
+                            job.current(), job.total())
 
-                #updated completed job number for X/Y display
-                completed_job_number += 1
-
-            #update progress rows with progress taken from shared memory
-            for job in job_pool.values():
-                if (job.job_fd() in self.__displayed_rows__):
-                    self.__displayed_rows__[job.job_fd()].update(
-                        job.current(), job.total())
-
-            #display new set of progress rows
-            self.progress_display.display_rows()
+                #display new set of progress rows
+                self.progress_display.display_rows()
+        except:
+            #an exception occurred (perhaps KeyboardInterrupt)
+            #so kill any running child jobs
+            #clear any progress rows
+            self.progress_display.clear_rows()
+            #and pass exception to caller
+            raise
 
         #if any jobs have raised an exception,
         #re-raise it in the main process

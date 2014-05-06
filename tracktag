@@ -26,6 +26,15 @@ import audiotools.text as _
 import termios
 
 
+def add_replay_gain(tracks, progress=None):
+    """a wrapper around add_replay_gain that catches KeyboardInterrupt"""
+
+    try:
+        audiotools.add_replay_gain(tracks=tracks, progress=progress)
+    except KeyboardInterrupt:
+        pass
+
+
 if (audiotools.ui.AVAILABLE):
     urwid_present = True
     urwid = audiotools.ui.urwid
@@ -372,15 +381,20 @@ if (__name__ == '__main__'):
 
             album_current_metadatas.append([t.get_metadata() for t in album])
 
-            album_metadata_choices.append(
-                audiotools.track_metadata_lookup(
-                    audiofiles=album,
-                    musicbrainz_server=options.musicbrainz_server,
-                    musicbrainz_port=options.musicbrainz_port,
-                    freedb_server=options.freedb_server,
-                    freedb_port=options.freedb_port,
-                    use_musicbrainz=options.use_musicbrainz,
-                    use_freedb=options.use_freedb))
+            try:
+                album_metadata_choices.append(
+                    audiotools.track_metadata_lookup(
+                        audiofiles=album,
+                        musicbrainz_server=options.musicbrainz_server,
+                        musicbrainz_port=options.musicbrainz_port,
+                        freedb_server=options.freedb_server,
+                        freedb_port=options.freedb_port,
+                        use_musicbrainz=options.use_musicbrainz,
+                        use_freedb=options.use_freedb))
+            except KeyboardInterrupt:
+                msg.ansi_clearline()
+                msg.error(_.ERR_CANCELLED)
+                sys.exit(1)
 
             #avoid performing too many lookups too quickly
             from time import sleep
@@ -541,7 +555,7 @@ if (__name__ == '__main__'):
                         (album_number)
 
                 queue.execute(
-                    function=audiotools.add_replay_gain,
+                    function=add_replay_gain,
                     progress_text=progress_text,
                     completion_output=completion_output,
                     tracks=album_tracks)
@@ -561,4 +575,7 @@ if (__name__ == '__main__'):
         queue.run(options.max_processes)
     except (ValueError, IOError), err:
         msg.error(unicode(err))
+        sys.exit(1)
+    except KeyboardInterrupt:
+        msg.error(_.ERR_CANCELLED)
         sys.exit(1)

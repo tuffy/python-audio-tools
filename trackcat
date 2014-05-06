@@ -348,3 +348,11 @@ if (__name__ == '__main__'):
         progress.clear_rows()
         msg.error(unicode(err))
         sys.exit(1)
+    except KeyboardInterrupt:
+        progress.clear_rows()
+        msg.error(_.ERR_CANCELLED)
+        try:
+            os.unlink(str(output_filename))
+        except OSError:
+            pass
+        sys.exit(1)

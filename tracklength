@@ -108,11 +108,17 @@ if (__name__ == '__main__'):
     format_summaries = {}
     total_summary = FormatSummary()
 
-    for audio_file in audio_files(msg, options.filenames):
-        if (audio_file.NAME not in format_summaries.keys()):
-            format_summaries[audio_file.NAME] = FormatSummary()
-        format_summaries[audio_file.NAME].add(audio_file)
-        total_summary.add(audio_file)
+    try:
+        for audio_file in audio_files(msg, options.filenames):
+            if (audio_file.NAME not in format_summaries.keys()):
+                format_summaries[audio_file.NAME] = FormatSummary()
+            format_summaries[audio_file.NAME].add(audio_file)
+            total_summary.add(audio_file)
+    except KeyboardInterrupt:
+        import sys
+        msg.ansi_clearline()
+        msg.error(_.ERR_CANCELLED)
+        sys.exit(1)
 
     if (total_summary.file_count > 0):
         table = audiotools.output_table()

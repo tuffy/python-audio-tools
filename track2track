@@ -44,50 +44,66 @@ def convert(progress,
             sample_rate,
             channels,
             bits_per_sample):
-    if (((sample_rate is None) and
-         (channels is None) and
-         (bits_per_sample is None))):
-        destination_audiofile = source_audiofile.convert(
-            destination_filename,
-            destination_class,
-            compression,
-            progress)
-    else:
-        pcmreader = source_audiofile.to_pcm()
-        destination_audiofile = destination_class.from_pcm(
-            destination_filename,
-            audiotools.PCMConverter(
-                audiotools.PCMReaderProgress(
-                    pcmreader,
-                    source_audiofile.total_frames(),
-                    progress),
-                sample_rate if
-                (sample_rate is not None) else
-                pcmreader.sample_rate,
-                channels if
-                (channels is not None) else
-                pcmreader.channels,
-                0 if
-                (channels is not None) else
-                pcmreader.channel_mask,
-                bits_per_sample if (bits_per_sample is not None) else
-                pcmreader.bits_per_sample),
-            compression,
-            source_audiofile.total_frames() if
-            (source_audiofile.lossless() and (sample_rate is None))
-            else None)
+    try:
+        if (((sample_rate is None) and
+             (channels is None) and
+             (bits_per_sample is None))):
+            destination_audiofile = source_audiofile.convert(
+                destination_filename,
+                destination_class,
+                compression,
+                progress)
+        else:
+            pcmreader = source_audiofile.to_pcm()
+            destination_audiofile = destination_class.from_pcm(
+                destination_filename,
+                audiotools.PCMConverter(
+                    audiotools.PCMReaderProgress(
+                        pcmreader,
+                        source_audiofile.total_frames(),
+                        progress),
+                    sample_rate if
+                    (sample_rate is not None) else
+                    pcmreader.sample_rate,
+                    channels if
+                    (channels is not None) else
+                    pcmreader.channels,
+                    0 if
+                    (channels is not None) else
+                    pcmreader.channel_mask,
+                    bits_per_sample if (bits_per_sample is not None) else
+                    pcmreader.bits_per_sample),
+                compression,
+                source_audiofile.total_frames() if
+                (source_audiofile.lossless() and (sample_rate is None))
+                else None)
 
-    if (metadata is not None):
-        destination_audiofile.set_metadata(metadata)
+        if (metadata is not None):
+            destination_audiofile.set_metadata(metadata)
 
-    if (replay_gain is not None):
-        destination_audiofile.set_replay_gain(replay_gain)
+        if (replay_gain is not None):
+            destination_audiofile.set_replay_gain(replay_gain)
 
-    existing_cuesheet = source_audiofile.get_cuesheet()
-    if (existing_cuesheet is not None):
-        destination_audiofile.set_cuesheet(existing_cuesheet)
+        existing_cuesheet = source_audiofile.get_cuesheet()
+        if (existing_cuesheet is not None):
+            destination_audiofile.set_cuesheet(existing_cuesheet)
+    except KeyboardInterrupt:
+        #delete partially-encoded file
+        try:
+            os.unlink(destination_filename)
+        except OSError:
+            pass
 
     return destination_filename
+
+
+def __add_replay_gain__(tracks, progress=None):
+    """a wrapper around add_replay_gain that catches KeyboardInterrupt"""
+
+    try:
+        audiotools.add_replay_gain(tracks=tracks, progress=progress)
+    except KeyboardInterrupt:
+        pass
 
 
 if (audiotools.ui.AVAILABLE):
@@ -517,14 +533,19 @@ if (__name__ == '__main__'):
                                           album_tracks]])
             else:
                 #perform CD lookup for existing files
-                metadata_choices.append(audiotools.track_metadata_lookup(
-                    audiofiles=album_tracks,
-                    musicbrainz_server=options.musicbrainz_server,
-                    musicbrainz_port=options.musicbrainz_port,
-                    freedb_server=options.freedb_server,
-                    freedb_port=options.freedb_port,
-                    use_musicbrainz=options.use_musicbrainz,
-                    use_freedb=options.use_freedb))
+                try:
+                    metadata_choices.append(audiotools.track_metadata_lookup(
+                        audiofiles=album_tracks,
+                        musicbrainz_server=options.musicbrainz_server,
+                        musicbrainz_port=options.musicbrainz_port,
+                        freedb_server=options.freedb_server,
+                        freedb_port=options.freedb_port,
+                        use_musicbrainz=options.use_musicbrainz,
+                        use_freedb=options.use_freedb))
+                except KeyboardInterrupt:
+                    msg.ansi_clearline()
+                    msg.error(_.ERR_CANCELLED)
+                    sys.exit(1)
 
                 #and prepend metadata from existing files as an option, if any
                 if (track_metadatas != [None] * len(track_metadatas)):
@@ -742,6 +763,9 @@ if (__name__ == '__main__'):
         except audiotools.EncodingError, err:
             msg.error(unicode(err))
             sys.exit(1)
+        except KeyboardInterrupt:
+            msg.error(_.ERR_CANCELLED)
+            sys.exit(1)
 
         #add ReplayGain to converted files, if necessary
 
@@ -763,7 +787,7 @@ if (__name__ == '__main__'):
                 completion_output = _.RG_REPLAYGAIN_ADDED_TO_ALBUM % \
                     (album_number)
 
-            queue.execute(function=audiotools.add_replay_gain,
+            queue.execute(function=__add_replay_gain__,
                           progress_text=progress_text,
                           completion_output=completion_output,
                           tracks=album)
@@ -772,6 +796,9 @@ if (__name__ == '__main__'):
             queue.run(options.max_processes)
         except ValueError, err:
             msg.error(unicode(err))
+            sys.exit(1)
+        except KeyboardInterrupt:
+            msg.error(_.ERR_CANCELLED)
             sys.exit(1)
     else:
         #encoding only a single file
@@ -838,4 +865,12 @@ if (__name__ == '__main__'):
         except audiotools.EncodingError, err:
             progress.clear_rows()
             msg.error(unicode(err))
+            sys.exit(1)
+        except KeyboardInterrupt:
+            progress.clear_rows()
+            try:
+                os.unlink(str(output_filename))
+            except OSError:
+                pass
+            msg.error(_.ERR_CANCELLED)
             sys.exit(1)
