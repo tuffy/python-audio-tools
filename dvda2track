@@ -233,18 +233,23 @@ if (__name__ == '__main__'):
 
     #get selected DVDATitle from DVDAudio object
     if (options.title < 1):
-        msg.error(ERR_INVALID_TITLE_NUMBER)
+        msg.error(_.ERR_INVALID_TITLE_NUMBER)
         sys.exit(1)
     title = dvda[0][options.title - 1]
 
     #use DVDATtitle object to query metadata services for metadata choices
-    metadata_choices = title.metadata_lookup(
-        musicbrainz_server=options.musicbrainz_server,
-        musicbrainz_port=options.musicbrainz_port,
-        freedb_server=options.freedb_server,
-        freedb_port=options.freedb_port,
-        use_musicbrainz=options.use_musicbrainz,
-        use_freedb=options.use_freedb)
+    try:
+        metadata_choices = title.metadata_lookup(
+            musicbrainz_server=options.musicbrainz_server,
+            musicbrainz_port=options.musicbrainz_port,
+            freedb_server=options.freedb_server,
+            freedb_port=options.freedb_port,
+            use_musicbrainz=options.use_musicbrainz,
+            use_freedb=options.use_freedb)
+    except KeyboardInterrupt:
+        msg.ansi_clearline()
+        msg.error(_.ERR_CANCELLED)
+        sys.exit(1)
 
     #update MetaData with command-line
     #track_start, track_total, album_number, album_total - if given
@@ -369,7 +374,16 @@ if (__name__ == '__main__'):
                         output_quality,
                         total_pcm_frames=pcm_frames))
             except audiotools.EncodingError, err:
+                progress.clear_rows()
                 msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
+                sys.exit(1)
+            except KeyboardInterrupt:
+                progress.clear_rows()
+                msg.error(_.ERR_CANCELLED)
+                try:
+                    os.unlink(str(output_filename))
+                except OSError:
+                    pass
                 sys.exit(1)
 
             encoded[-1].set_metadata(output_metadata)
@@ -400,5 +414,9 @@ if (__name__ == '__main__'):
         except ValueError, err:
             rg_progress.clear_rows()
             msg.error(unicode(err))
+            sys.exit(1)
+        except KeyboardInterrupt:
+            rg_progress.clear_rows()
+            msg.error(_.ERR_CANCELLED)
             sys.exit(1)
         rg_progress.final_message()

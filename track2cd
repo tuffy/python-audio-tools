@@ -52,8 +52,9 @@ def convert_to_wave(progress, audiofile, wave_filename):
                 progress=progress)
             audiotools.WaveAudio.from_pcm(wave_filename, pcm)
             pcm.close()
-
     except audiotools.EncodingError, err:
+        pass
+    except KeyboardInterrupt:
         pass
 
 
@@ -190,42 +191,48 @@ if (__name__ == '__main__'):
         progress = audiotools.SingleProgressDisplay(
             msg, _.LAB_CONVERTING_FILE)
 
-        if (((audiofiles[0].sample_rate() == 44100) and
-             (audiofiles[0].channels() == 2) and
-             (audiofiles[0].bits_per_sample() == 16))):
-            #already CD quality, so no additional conversion necessary
-            temptrack = audiotools.WaveAudio.from_pcm(
-                tempwav.name,
-                audiotools.PCMReaderProgress(
-                    pcmreader=(audiofiles[0].to_pcm() if
-                               (write_offset == 0) else
-                               audiotools.PCMReaderWindow(
-                                   audiofiles[0].to_pcm(),
-                                   write_offset,
-                                   audiofiles[0].total_frames())),
-                    total_frames=audiofiles[0].total_frames(),
-                    progress=progress.update))
-
-        else:
-            #not CD quality, so convert and adjust total frames as needed
-            temptrack = audiotools.WaveAudio.from_pcm(
-                tempwav.name,
-                audiotools.PCMReaderProgress(
-                    pcmreader=audiotools.PCMConverter(
+        try:
+            if (((audiofiles[0].sample_rate() == 44100) and
+                 (audiofiles[0].channels() == 2) and
+                 (audiofiles[0].bits_per_sample() == 16))):
+                #already CD quality, so no additional conversion necessary
+                temptrack = audiotools.WaveAudio.from_pcm(
+                    tempwav.name,
+                    audiotools.PCMReaderProgress(
                         pcmreader=(audiofiles[0].to_pcm() if
                                    (write_offset == 0) else
                                    audiotools.PCMReaderWindow(
                                        audiofiles[0].to_pcm(),
                                        write_offset,
                                        audiofiles[0].total_frames())),
-                        sample_rate=44100,
-                        channels=2,
-                        channel_mask=0x3,
-                        bits_per_sample=16),
-                    total_frames=(audiofiles[0].total_frames() *
-                                  44100 /
-                                  audiofiles[0].sample_rate()),
-                    progress=progress.update))
+                        total_frames=audiofiles[0].total_frames(),
+                        progress=progress.update))
+
+            else:
+                #not CD quality, so convert and adjust total frames as needed
+                temptrack = audiotools.WaveAudio.from_pcm(
+                    tempwav.name,
+                    audiotools.PCMReaderProgress(
+                        pcmreader=audiotools.PCMConverter(
+                            pcmreader=(audiofiles[0].to_pcm() if
+                                       (write_offset == 0) else
+                                       audiotools.PCMReaderWindow(
+                                           audiofiles[0].to_pcm(),
+                                           write_offset,
+                                           audiofiles[0].total_frames())),
+                            sample_rate=44100,
+                            channels=2,
+                            channel_mask=0x3,
+                            bits_per_sample=16),
+                        total_frames=(audiofiles[0].total_frames() *
+                                      44100 /
+                                      audiofiles[0].sample_rate()),
+                        progress=progress.update))
+        except KeyboardInterrupt:
+            progress.clear_rows()
+            tempwav.close()
+            msg.error(_.ERR_CANCELLED)
+            sys.exit(1)
 
         progress.clear_rows()
 
@@ -314,22 +321,28 @@ if (__name__ == '__main__'):
         progress = audiotools.SingleProgressDisplay(
             msg, _.LAB_CONVERTING_FILE)
 
-        if (write_offset == 0):
-            temptrack = audiotools.WaveAudio.from_pcm(
-                tempwav.name,
-                audiotools.PCMReaderProgress(
-                    pcmreader=pcmreader,
-                    total_frames=output_frames,
-                    progress=progress.update))
-        else:
-            temptrack = audiotools.WaveAudio.from_pcm(
-                tempwav.name,
-                audiotools.PCMReaderProgress(
-                    pcmreader=audiotools.PCMReaderWindow(pcmreader,
-                                                         write_offset,
-                                                         input_frames),
-                    total_frames=output_frames,
-                    progress=progress.update))
+        try:
+            if (write_offset == 0):
+                temptrack = audiotools.WaveAudio.from_pcm(
+                    tempwav.name,
+                    audiotools.PCMReaderProgress(
+                        pcmreader=pcmreader,
+                        total_frames=output_frames,
+                        progress=progress.update))
+            else:
+                temptrack = audiotools.WaveAudio.from_pcm(
+                    tempwav.name,
+                    audiotools.PCMReaderProgress(
+                        pcmreader=audiotools.PCMReaderWindow(pcmreader,
+                                                             write_offset,
+                                                             input_frames),
+                        total_frames=output_frames,
+                        progress=progress.update))
+        except KeyboardInterrupt:
+            progress.clear_rows()
+            tempwav.close()
+            msg.error(_.ERR_CANCELLED)
+            sys.exit(1)
 
         progress.clear_rows()
 
@@ -401,34 +414,49 @@ if (__name__ == '__main__'):
                         audiofile=audiofile,
                         wave_filename=f[1])
 
-            queue.run(max_processes)
+            try:
+                queue.run(max_processes)
+            except KeyboardInterrupt:
+                msg.error(_.ERR_CANCELLED)
+                for (fd, f) in temp_pool:
+                    os.close(fd)
+                    os.unlink(f)
+                sys.exit(1)
         else:
             #a list of (PCMReader, total_pcm_frames) pairs
-            lossless_tracks = [CD_reader_size(t) for t in audiofiles]
+            try:
+                lossless_tracks = [CD_reader_size(t) for t in audiofiles]
 
-            realigned_stream = audiotools.BufferedPCMReader(
-                audiotools.PCMReaderWindow(
-                    audiotools.PCMCat([t[0] for t in lossless_tracks]),
-                    write_offset,
-                    sum([t[1] for t in lossless_tracks])))
+                realigned_stream = audiotools.BufferedPCMReader(
+                    audiotools.PCMReaderWindow(
+                        audiotools.PCMCat([t[0] for t in lossless_tracks]),
+                        write_offset,
+                        sum([t[1] for t in lossless_tracks])))
 
-            for audiofile in audiofiles:
-                filename = audiotools.Filename(audiofile.filename)
+                for audiofile in audiofiles:
+                    filename = audiotools.Filename(audiofile.filename)
 
-                progress = audiotools.SingleProgressDisplay(msg, filename)
+                    progress = audiotools.SingleProgressDisplay(msg, filename)
 
-                f = tempfile.mkstemp(suffix=".wav")
-                temp_pool.append(f)
-                wave = audiotools.WaveAudio.from_pcm(
-                    f[1],
-                    audiotools.PCMReaderProgress(
-                        audiotools.LimitedPCMReader(realigned_stream,
-                                                    audiofile.total_frames()),
-                        audiofile.total_frames(),
-                        progress.update))
-                wave_files.append(wave.filename)
+                    f = tempfile.mkstemp(suffix=".wav")
+                    temp_pool.append(f)
+                    wave = audiotools.WaveAudio.from_pcm(
+                        f[1],
+                        audiotools.PCMReaderProgress(
+                            audiotools.LimitedPCMReader(
+                                realigned_stream, audiofile.total_frames()),
+                            audiofile.total_frames(),
+                            progress.update))
+                    wave_files.append(wave.filename)
+                    progress.clear_rows()
+                    msg.info(_.LAB_TRACK2CD_CONVERTED % {"filename": filename})
+            except KeyboardInterrupt:
                 progress.clear_rows()
-                msg.info(_.LAB_TRACK2CD_CONVERTED % {"filename": filename})
+                msg.error(_.ERR_CANCELLED)
+                for (fd, f) in temp_pool:
+                    os.close(fd)
+                    os.unlink(f)
+                sys.exit(1)
 
         try:
             for wave in wave_files:
