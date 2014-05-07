@@ -117,6 +117,11 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         return self.__sample_rate__
 
+    def seekable(self):
+        """returns True if the file is seekable"""
+
+        return True
+
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data
 

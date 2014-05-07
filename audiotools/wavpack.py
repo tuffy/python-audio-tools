@@ -439,6 +439,11 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
         return self.__samplerate__
 
+    def seekable(self):
+        """returns True if the file is seekable"""
+
+        return True
+
     @classmethod
     def from_pcm(cls, filename, pcmreader,
                  compression=None,

@@ -3776,6 +3776,15 @@ class AudioFile:
             total_pcm_frames=(self.total_frames() if self.lossless()
                               else None))
 
+    def seekable(self):
+        """returns True if the file is seekable
+
+        that is, if its PCMReader has a .seek() method
+        and that method supports some sort of fine-grained seeking
+        when the PCMReader is working from on-disk files"""
+
+        return False
+
     @classmethod
     def __unlink__(cls, filename):
         try:

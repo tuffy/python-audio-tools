@@ -71,16 +71,43 @@ def get_m4a_atom_offset(reader, *atoms):
             (length, stream_atom) = reader.parse("32u 4b")
             offset += 8
             while (stream_atom != next_atom):
-                reader.skip_bytes(length - 8)
-                offset += (length - 8)
-                (length, stream_atom) = reader.parse("32u 4b")
-                offset += 8
+                if ((length - 8) > 0):
+                    reader.skip_bytes(length - 8)
+                    offset += (length - 8)
+                    (length, stream_atom) = reader.parse("32u 4b")
+                    offset += 8
+                else:
+                    raise KeyError(next_atom)
             if (last):
                 return (length, offset - 8)
             else:
                 reader = reader.substream(length - 8)
         except IOError:
             raise KeyError(next_atom)
+
+
+def has_m4a_atom(reader, *atoms):
+    """given a BitstreamReader and atom name strings
+    returns True if the final atom is present
+    after traversing the parent atoms"""
+
+    from . import iter_last
+
+    for (last, next_atom) in iter_last(iter(atoms)):
+        try:
+            (length, stream_atom) = reader.parse("32u 4b")
+            while (stream_atom != next_atom):
+                if ((length - 8) > 0):
+                    reader.skip_bytes(length - 8)
+                    (length, stream_atom) = reader.parse("32u 4b")
+                else:
+                    return False
+            if (last):
+                return True
+            else:
+                reader = reader.substream(length - 8)
+        except IOError:
+            return False
 
 
 class M4ATaggedAudio:
@@ -871,6 +898,27 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         """returns True"""
 
         return True
+
+    def seekable(self):
+        """returns True if the file is seekable"""
+
+        from .bitstream import BitstreamReader
+
+        reader = BitstreamReader(file(self.filename, "rb"), 0)
+        reader.mark()
+        try:
+            has_stts = has_m4a_atom(reader,
+                "moov", "trak", "mdia", "minf", "stbl", "stts")
+            reader.rewind()
+            has_stsc = has_m4a_atom(reader,
+                "moov", "trak", "mdia", "minf", "stbl", "stsc")
+            reader.rewind()
+            has_stco = has_m4a_atom(reader,
+                "moov", "trak", "mdia", "minf", "stbl", "stco")
+            return has_stts and has_stsc and has_stco
+        finally:
+            reader.unmark()
+            reader.close()
 
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""

@@ -529,6 +529,13 @@ AudioFile Objects
    ...                                       audiotools.WavPackAudio,
    ...                                       progress=print_progress)
 
+.. method:: AudioFile.seekable()
+
+   Returns ``True`` if the file is seekable.
+   That is, if its :class:`PCMReader` has a .seek() method
+   and that method supports some fine-grained seeking
+   when the PCMReader is working from on-disk files.
+
 .. method:: AudioFile.verify([progress])
 
    Verifies the track for correctness.

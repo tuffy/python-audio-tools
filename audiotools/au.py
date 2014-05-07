@@ -172,6 +172,11 @@ class AuAudio(AudioFile):
                 (self.__bits_per_sample__ / 8) /
                 self.__channels__)
 
+    def seekable(self):
+        """returns True if the file is seekable"""
+
+        return True
+
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 

@@ -710,7 +710,7 @@ class AudioFileTest(unittest.TestCase):
         self.assert_(not os.path.isfile(dummy_filename))
 
     @FORMAT_AUDIOFILE
-    def test_seek(self):
+    def test_seekable(self):
         from hashlib import md5
         from random import randrange
 
@@ -728,67 +728,94 @@ class AudioFileTest(unittest.TestCase):
                 EXACT_SILENCE_PCM_Reader(total_pcm_frames),
                 total_pcm_frames=total_pcm_frames)
 
-            #get a PCMReader of our format
-            pcmreader = temp_track.to_pcm()
+            if (temp_track.seekable()):
+                #get a PCMReader of our format
+                pcmreader = temp_track.to_pcm()
 
-            #ensure format is seekable
-            if (not (hasattr(pcmreader, "seek") and
-                     (callable(pcmreader.seek)))):
-                return
+                #ensure format is seekable
+                if (not (hasattr(pcmreader, "seek") and
+                         (callable(pcmreader.seek)))):
+                    return
 
-            #hash its data when read to end
-            raw_data = md5()
-            audiotools.transfer_framelist_data(pcmreader, raw_data.update)
+                #hash its data when read to end
+                raw_data = md5()
+                audiotools.transfer_framelist_data(pcmreader, raw_data.update)
 
-            #seeking to negative values should raise ValueError
-            self.assertRaises(ValueError,
-                              pcmreader.seek,
-                              -1)
-
-            #seeking to offset 0 should always work
-            #(since it's a very basic rewind)
-            self.assertEqual(pcmreader.seek(0), 0)
-
-            #hash its data again and ensure a match
-            rewound_raw_data = md5()
-            audiotools.transfer_framelist_data(pcmreader,
-                                               rewound_raw_data.update)
-            self.assertEqual(raw_data.digest(), rewound_raw_data.digest())
-
-            #try a bunch of random seeks
-            #and ensure the offset is always <= the seeked value
-            for i in xrange(10):
-                position = randrange(0, total_pcm_frames)
-                actual_position = pcmreader.seek(position)
-                self.assert_(actual_position <= position)
-
-                #if lossless, ensure seeking works as advertised
-                #by comparing stream to file window
-                self.assertEqual(
-                    audiotools.pcm_frame_cmp(
-                        pcmreader,
-                        audiotools.PCMReaderWindow(
-                            EXACT_SILENCE_PCM_Reader(total_pcm_frames),
-                            actual_position,
-                            total_pcm_frames - actual_position)),
-                    None)
-
-            #seeking to some huge value should work
-            #even if its position doesn't get to the end of the file
-            for value in [2 ** 31, 2 ** 34, 2 ** 38]:
-                seeked = pcmreader.seek(value)
-                self.assert_(seeked <= value, "%s > %s" % (seeked, value))
-
-            #a PCMReader that's closed should raise ValueError
-            #whenever seek is called
-            pcmreader.close()
-            self.assertRaises(ValueError,
-                              pcmreader.seek,
-                              0)
-            for i in xrange(10):
+                #seeking to negative values should raise ValueError
                 self.assertRaises(ValueError,
                                   pcmreader.seek,
-                                  randrange(0, total_pcm_frames))
+                                  -1)
+
+                #seeking to offset 0 should always work
+                #(since it's a very basic rewind)
+                self.assertEqual(pcmreader.seek(0), 0)
+
+                #hash its data again and ensure a match
+                rewound_raw_data = md5()
+                audiotools.transfer_framelist_data(pcmreader,
+                                                   rewound_raw_data.update)
+                self.assertEqual(raw_data.digest(), rewound_raw_data.digest())
+
+                #try a bunch of random seeks
+                #and ensure the offset is always <= the seeked value
+                for i in xrange(10):
+                    position = randrange(0, total_pcm_frames)
+                    actual_position = pcmreader.seek(position)
+                    self.assert_(actual_position <= position)
+
+                    #if lossless, ensure seeking works as advertised
+                    #by comparing stream to file window
+                    self.assertEqual(
+                        audiotools.pcm_frame_cmp(
+                            pcmreader,
+                            audiotools.PCMReaderWindow(
+                                EXACT_SILENCE_PCM_Reader(total_pcm_frames),
+                                actual_position,
+                                total_pcm_frames - actual_position)),
+                        None)
+
+                #seeking to some huge value should work
+                #even if its position doesn't get to the end of the file
+                for value in [2 ** 31, 2 ** 34, 2 ** 38]:
+                    seeked = pcmreader.seek(value)
+                    self.assert_(seeked <= value, "%s > %s" % (seeked, value))
+
+                #a PCMReader that's closed should raise ValueError
+                #whenever seek is called
+                pcmreader.close()
+                self.assertRaises(ValueError,
+                                  pcmreader.seek,
+                                  0)
+                for i in xrange(10):
+                    self.assertRaises(ValueError,
+                                      pcmreader.seek,
+                                      randrange(0, total_pcm_frames))
+            else:
+                #ensure PCMReader has no .seek() method
+                #or that method always returns to the start of the file
+                pcmreader = temp_track.to_pcm()
+                if (hasattr(pcmreader, "seek") and callable(pcmreader.seek)):
+                    #try a bunch of random seeks
+                    #and ensure the offset is always 0
+                    for i in xrange(10):
+                        position = randrange(0, total_pcm_frames)
+                        self.assertEqual(pcmreader.seek(position), 0)
+
+                    #seeking to some huge value should work
+                    #even if its position doesn't get to the end of the file
+                    for value in [2 ** 31, 2 ** 34, 2 ** 38]:
+                        self.assertEqual(pcmreader.seek(value), 0)
+
+                    #a PCMReader that's closed should raise ValueError
+                    #whenever seek is called
+                    pcmreader.close()
+                    self.assertRaises(ValueError,
+                                      pcmreader.seek,
+                                      0)
+                    for i in xrange(10):
+                        self.assertRaises(ValueError,
+                                          pcmreader.seek,
+                                          randrange(0, total_pcm_frames))
         finally:
             temp_file.close()
 

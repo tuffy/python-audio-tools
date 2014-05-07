@@ -1844,6 +1844,11 @@ class FlacAudio(WaveContainer, AiffContainer):
             cls.__unlink__(filename)
             raise err
 
+    def seekable(self):
+        """returns True if the file is seekable"""
+
+        return self.get_metadata().has_block(Flac_SEEKTABLE.BLOCK_ID)
+
     def seektable(self, offsets=None, seekpoint_interval=None):
         """returns a new Flac_SEEKTABLE object
         created from parsing the FLAC file itself"""

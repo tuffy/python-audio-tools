@@ -558,6 +558,11 @@ class AiffAudio(AiffContainer):
 
         return self.__sample_rate__
 
+    def seekable(self):
+        """returns True if the file is seekable"""
+
+        return True
+
     def chunks(self):
         """yields a AIFF_Chunk compatible objects for each chunk in file"""
 

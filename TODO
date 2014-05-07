@@ -6886,281 +6886,35 @@
    - [X] tracksplit
    - [X] tracktag
    - [X] trackverify
-** TODO Update AccurateRip verification
-*** DONE Add --cue option to trackverify to work on CD images
-    One can perform: trackverify -R --cue CDImage.cue CDImage.wav
-    to verify a disc image against AccurateRip.
-**** DONE Update man page
-*** TODO Perform AccurateRip offset checking
-    If the disc has been ripped accurately but offset by some
-    small amount of samples, the correctness and offset should be detectable.
-**** TODO Update cd2track
-**** TODO Update trackverify
-** TODO Deprecate little-used / poorly-tested bits
-   Although there's a risk of annoying people by taking out
-   stuff they might be using, some utilities and formats
-   were added simply because it was easy and aren't tested
-   enough for my liking.
-*** DONE record2track
-    This needs to be rewritten to support multiple audio sources
-    and constructed with a threaded GUI, or dropped.
-    The current implementation is entirely too half-assed.
-*** DONE AACAudio
-*** DONE SpeexAudio
-    I don't believe this format was ever meant for standalone use,
-    and I doubt anybody is using it that way either.
-    I just threw it in because it was easy and because
-    I already had a lot of Ogg stream parsing infrastructure in place.
-*** TODO Ogg FLAC
-    I've kept this around for parity with the reference implementation
-    and for something to point my existing Ogg routines at.
-    In practice, nobody really uses it and there's no reason
-    to use it since it just makes your files slightly larger
-    than native FLAC and harder to tag for no real benefit.
-*** TODO M4AAudio_faac
-    The authors of faad/faac have moved on to neroAacEnc/neroAacDec.
-    Even though M4AAudio_nero is also a hack involving intermediate
-    wav files, at least it gets updated.
-    Having two different, slightly incompatible M4A implementations
-    needlessly complicates things.
-** TODO Add file selector widget
-   This could be used by utilities with interactive modes to select files
-   without having to specify them ahead of time.
-   It'll need modes for selecting individual files (like for tracksplit)
-   as well as multiple files, and should filter out anything
-   audiotools can't read.
-*** TODO Add selector to dvda2track
-    One should be able to browse for AUDIO_TS
-*** TODO Add selector to track2cd
-*** TODO Add selector to trackcat
-*** TODO Add selector to trackplay
-    One should be able to add tracks to running playlist
-*** TODO Add selector to trackrename
-*** TODO Add selector to tracksplit
-*** TODO Add selector to tracktag
-** TODO Update coverview widget set
-   Although wxPython is available lots of places,
-   it doesn't behave the same everywhere.
-   It's like a better Tkinter.
-
-   PyGTK works well on X11 platforms, but is a non-starter on Mac OS.
-
-   Using the built-in PyObjC bridge on Mac OS is the most compatible
-   solution, if it can be implemented without making a huge mess
-** TODO Add AirPlay support
-   Create AudioOutput-compatible AirPlay implementation
-   and have it returned by audiotools.player.available_outputs()
-** TODO Add internal WavPack codec
-*** DONE update WavPack documentation to little-endian reading order
-*** TODO Add WavPack decoder
-**** DONE Add audiotools.decoders.WavPackDecoder object
-     Must include the following attributes:
-     - [X] sample_rate
-     - [X] bits_per_sample
-     - [X] channels
-     - [X] channel_mask
-     And the following methods:
-     - [X] __init__
-     - [X] read()
-     - [X] analyze_frame()
-     - [X] close()
-**** DONE Add block header parsing
-**** DONE Add sub-block header parsing
-**** DONE Parse sub-blocks
-     - [X] decorr_terms
-     - [X] decorr_weights
-     - [X] decorr_samples
-     - [X] entropy_vars
-     - [X] wv_bitstream
-**** DONE Decode 1 or more blocks in read()
-**** DONE Check for EOFs during decoding
-**** DONE Return pcm.FrameList objects on calls to read()
-**** DONE Return dict objects on calls to analyze_frame()
-**** DONE Ensure different bits-per-sample work correctly
-     - [X] 8 bps
-     - [X] 16 bps
-     - [X] 24 bps
-**** DONE Ensure different number of channels work correctly
-     - [X] 1 channel
-     - [X] 2 channels
-     - [X] 3 channels
-     - [X] 4 channels
-     - [X] 5 channels
-     - [X] 6 channels
-     - [X] 7 channels
-     - [X] 8 channels
-**** DONE Ensure different sample rates work correctly
-     - [X] 44100Hz
-     - [X] 48000Hz
-     - [X] 96000Hz
-     - [X] 192000Hz
-**** TODO Ensure test files decode correctly
-***** TODO bit_depths
-      - [X] 8bit.wv
-      - [ ] 12bit.wv
-      - [X] 16bit.wv
-      - [ ] 20bit.wv
-      - [X] 24bit.wv
-      - [ ] 32bit_int.wv
-      - [ ] 32bit_int_p.wv
-      - [ ] 32bit_float_p.wv
-      - [ ] 32bit_float.wv
-      (I may omit the odd bit depths in the short term)
-***** TODO hybrid_bitrates
-      - [ ] 24kbps.wv
-      - [ ] 32kbps.wv
-      - [ ] 48kbps.wv
-      - [ ] 64kbps.wv
-      - [ ] 128kbps.wv
-      - [ ] 160kbps.wv
-      - [ ] 256kbps.wv
-      - [ ] 320kbps.wv
-      - [ ] 384kbps.wv
-      - [ ] 512kbps.wv
-      - [ ] 1024kbps.wv
-***** TODO hybrid_bitrates/wvc_files
-      - [ ] 24kbps.wvc
-      - [ ] 32kbps.wvc
-      - [ ] 48kbps.wvc
-      - [ ] 64kbps.wvc
-      - [ ] 128kbps.wvc
-      - [ ] 160kbps.wvc
-      - [ ] 256kbps.wvc
-      - [ ] 320kbps.wvc
-      - [ ] 384kbps.wvc
-      - [ ] 512kbps.wvc
-      - [ ] 1024kbps.wvc
-***** DONE num_channels
-      - [X] mono-1.wv
-      - [X] stereo-2.wv
-***** TODO special_cases
-      - [ ] cue_sheet.wv
-      - [ ] cue_sheet.wvc
-      - [X] false_stereo.wv
-      - [ ] win_executable.wv
-      - [X] zero_lsbs.wv
-***** DONE speed_modes
-      - [X] default.wv
-      - [X] fast.wv
-      - [X] high.wv
-      - [X] vhigh.wv
-**** DONE Ensure block CRC is checked
-**** DONE Ensure trailing MD5 is checked, if present
-*** DONE Add WavPack encoder
-**** DONE Add audiotools.encoders.encode_wavpack function
-**** DONE Split samples into blocks based on channel count
-**** DONE Write one block per block-size number of channels, per channel pair
-***** DONE Calculate block CRC
-***** DONE Write placeholder block header
-***** DONE Determine tunable data per block
-      - [X] decorrelation terms
-      - [X] decorrelation deltas
-      - [X] decorrelation weights
-      - [X] decorrelation samples
-      - [X] entropy variables (medians)
-***** DONE Write sub-blocks containing tunables data
-****** DONE decorrelation terms/deltas
-****** DONE decorrelation weights
-****** DONE decorrelation samples
-****** DONE entropy variables
-***** DONE Calculate bitstream values from entropy variables and PCM data
-***** DONE Write bitstream sub-block
-***** DONE Calculate joint-stereo
-***** DONE Add channel mask sub-block for multi-channel audio
-**** DONE Rewrite block headers with final "total samples" data
-     Using from_pcm(), this data won't be known in advance
-**** DONE Allow external RIFF WAVE header/footer
-     As with Shorten, these may be passed in from outside.
-**** DONE Rewrite RIFF WAVE data block header with final size
-     If we're building the file with from_pcm(), this header
-     will need to be built and then filled-in at finalize-time.
-**** DONE Update for standalone operation
-     Not necessarily to generate fully compliant files,
-     but to ensure there are no memory leaks and prep
-     for gprof-style optimizing.
-**** DONE Generate trailing MD5
-**** DONE Unify the Python and standalone encode_wavpack functions
-     Much like FLAC's, making them more similar should reduce potential bugs.
-**** DONE Identify/Optimize false stereo files
-**** DONE Identify/Optimize wasted left bits
-**** DONE Optimize memory usage
-     Perform less memory allocation/freeing over the course of encoding.
-**** DONE Optimize for speed
-*** DONE Add WavPack-specific unit tests
-    - [X] test_small_files
-    - [X] test_full_scale_deflection
-    - [X] test_sines
-    - [X] test_wasted_bps
-    - [X] test_blocksizes
-    - [X] test_option_variations
-    - [X] test_silence
-    - [X] test_noise
-    - [X] test_fractional
-    - [X] test_multichannel
-    A combination of converted FLAC unit tests
-    and stuff that's bitten me during initial implementation.
-*** DONE Document WavPack
-**** DONE the WavPack file stream
-**** DONE WavPack decoding
-***** DONE WavPack sub-blocks
-      - [X] decorr_terms
-      - [X] decorr_weights
-      - [X] decorr_samples
-      - [X] entropy_vars
-      - [X] wv_bitstream
-***** DONE decorrelation passes
-***** DONE joint stereo
-***** DONE int32 info
-      - [X] zeroes
-      - [X] ones
-      - [X] dupes
-      - [X] shift
-***** DONE channel info
-***** DONE checksum
-***** DONE RIFF sub-blocks
-***** DONE MD5 sub-block
-***** DONE false stereo
-**** DONE WavPack encoding
-***** DONE false stereo
-***** DONE int32_info
-      for left shifting zeroes, in particular
-***** DONE checksum
-***** DONE joint stereo
-***** DONE WavPack block header
-***** DONE decorrelation passes
-***** DONE WavPack sub-blocks
-      - [X] decorr_terms
-      - [X] decorr_weights
-      - [X] decorr_samples
-      - [X] entropy_vars
-      - [X] extended integers
-      - [X] channel info
-      - [X] wv_bitstream
-      - [X] RIFF sub-blocks
-      - [X] MD5 sub-block
-***** DONE bitstream generation
-**** DONE Ensure section capitalization is consistent
-**** DONE Spell-check
-**** DONE Verify A4 layout is correct
-*** DONE Test encoder/decoder against reference
-    Ensure a wide range of lossless audio round-trips correctly
-*** DONE Remove WavePackAudio.BINARIES
-*** DONE Add more WavPack INVALIDFILE .verify() tests
-*** DONE Remove wvgain for ReplayGain application
-** TODO Add Ogg stream lint
-*** TODO detect that page sequence number always increments
-*** TODO detect that packet continuation is being used correctly
-*** TODO detect that bitstream serial number is consistent
-** TODO Overhaul exception handling
-   A lot of our exceptions are used haphazardly
-   mixing strings with unicode and aren't as well documented as they
-   should be.
-
-   It'd be a good idea to ensure every function/method that
-   throws an exception has that documented,
-   internal exceptions themselves are documented
-   with what they're for and what they take as values,
-   and make sure they get caught correctly where they're supposed to.
+** TODO Add AudioFile.seekable() method
+   This returns True if the format's PCMReader has a .seek() method
+   and that method supports some sort of fine-grained seeking
+   (i.e. not just return to the beginning of the file).
+*** DONE Update audio formats
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Update documentation
+*** TODO Update utilities
+**** TODO tracksplit
+     If the file being split isn't seekable, decompress it to a temp file
+     so it can be processed across multiple jobs.
+**** TODO trackcmp
+     If comparing multiple tracks against a non-seekable image,
+     decompress it to a temp file so it can be processed across multiple jobs.
+*** DONE Update unit tests
 * TODO Finish version 3.0
 ** TODO Shift to Python 3
    This lengthy transition will have to wait

@@ -750,6 +750,11 @@ class WaveAudio(WaveContainer):
 
         return self.__bits_per_sample__
 
+    def seekable(self):
+        """returns True if the file is seekable"""
+
+        return True
+
     @classmethod
     def track_name(cls, file_path, track_metadata=None, format=None):
         """constructs a new filename string
