@@ -616,6 +616,13 @@ class M4AAudio_nero(M4AAudio_faac):
             else:
                 tempwavefile.close_called = True
 
+    def seekable(self):
+        """returns True if the file is seekable"""
+
+        #because decoding dumps everything to a temp file
+        #it's actually seekable
+        return True
+
     def to_pcm(self):
         import tempfile
         from . import EncodingError
