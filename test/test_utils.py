@@ -4551,7 +4551,8 @@ class tracksplit(UtilTest):
                     ("1" not in output_type.COMPRESSION_MODES)):
                     self.assertEqual(
                         self.__run_app__(["tracksplit", "-V", "normal",
-                                          "--no-freedb", "--no-musicbrainz"] +
+                                          "--no-freedb", "--no-musicbrainz",
+                                          "--no-replay-gain"] +
                                          options + [track.filename]), 1)
                     self.__check_error__(
                         ERR_UNSUPPORTED_COMPRESSION_MODE %
@@ -4562,7 +4563,8 @@ class tracksplit(UtilTest):
                 if ("--cue" not in options):
                     self.assertEqual(
                         self.__run_app__(["tracksplit", "-V", "normal",
-                                          "--no-freedb", "--no-musicbrainz"] +
+                                          "--no-freedb", "--no-musicbrainz",
+                                          "--no-replay-gain"] +
                                          options + [track.filename]), 1)
                     self.__check_error__(ERR_TRACKSPLIT_NO_CUESHEET)
                     continue
@@ -4570,7 +4572,8 @@ class tracksplit(UtilTest):
                 self.assertEqual(
                     self.__run_app__(["tracksplit", "-V", "normal",
                                       "-j", "1",
-                                      "--no-freedb", "--no-musicbrainz"] +
+                                      "--no-freedb", "--no-musicbrainz",
+                                      "--no-replay-gain"] +
                                      options + [track.filename]), 0)
                 if ("--format" in options):
                     output_format = self.format
@@ -4602,7 +4605,7 @@ class tracksplit(UtilTest):
 
                 #check that the output is being generated correctly
                 for (i, path) in enumerate(output_filenames):
-                    self.__check_info__(
+                    self.__check_output__(
                         audiotools.output_progress(
                             u"%(source)s -> %(destination)s" %
                             {"source":
@@ -4673,7 +4676,8 @@ class tracksplit(UtilTest):
                     ("1" not in output_type.COMPRESSION_MODES)):
                     self.assertEqual(
                         self.__run_app__(["tracksplit", "-V", "normal",
-                                          "--no-freedb", "--no-musicbrainz"] +
+                                          "--no-freedb", "--no-musicbrainz",
+                                          "--no-replay-gain"] +
                                          options + [track.filename]), 1)
                     self.__check_error__(
                         ERR_UNSUPPORTED_COMPRESSION_MODE %
@@ -4684,7 +4688,8 @@ class tracksplit(UtilTest):
                 self.assertEqual(
                     self.__run_app__(["tracksplit", "-V", "normal",
                                       "-j", "1",
-                                      "--no-freedb", "--no-musicbrainz"] +
+                                      "--no-freedb", "--no-musicbrainz",
+                                      "--no-replay-gain"] +
                                      options + [track.filename]), 0)
 
                 if ("--format" in options):
@@ -4716,7 +4721,7 @@ class tracksplit(UtilTest):
 
                 #check that the output is being generated correctly
                 for (i, path) in enumerate(output_filenames):
-                    self.__check_info__(
+                    self.__check_output__(
                         audiotools.output_progress(
                             LAB_ENCODE %
                             {"source":

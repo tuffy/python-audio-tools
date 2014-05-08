@@ -6908,7 +6908,7 @@
     - [X] WaveAudio
 *** DONE Update documentation
 *** TODO Update utilities
-**** TODO tracksplit
+**** DONE tracksplit
      If the file being split isn't seekable, decompress it to a temp file
      so it can be processed across multiple jobs.
 **** TODO trackcmp
