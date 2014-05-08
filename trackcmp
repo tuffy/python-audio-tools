@@ -118,6 +118,31 @@ def image_compare(progress, image_audiofile, track_audiofile,
     except (IOError, ValueError, KeyboardInterrupt, audiotools.DecodingError):
         return (-2, unicode(image_filename), unicode(track_filename))
 
+def image_compare_raw(progress, source_filename,
+                      sample_rate, channels, channel_mask, bits_per_sample,
+                      track_audiofile, image_filename, track_filename,
+                      pcm_frames_offset, total_pcm_frames):
+    f = open(source_filename, "rb")
+    try:
+        #skip initial offset
+        f.seek(pcm_frames_offset * channels * (bits_per_sample / 8))
+
+        return (
+            audiotools.pcm_frame_cmp(
+                audiotools.PCMReaderHead(
+                    audiotools.PCMReader(file=f,
+                                         sample_rate=sample_rate,
+                                         channels=channels,
+                                         channel_mask=channel_mask,
+                                         bits_per_sample=bits_per_sample),
+                    total_pcm_frames),
+                audiotools.PCMReaderProgress(track_audiofile.to_pcm(),
+                                             total_pcm_frames,
+                                             progress)),
+            unicode(image_filename),
+            unicode(track_filename))
+    finally:
+        f.close()
 
 def image_compare_results(result, is_tty=False):
     (mismatch, image_name, track_name) = result
@@ -384,31 +409,97 @@ if (__name__ == '__main__'):
 
         pcm_offset = 0
 
-        for (i, track) in enumerate(tracks):
-            track_name = audiotools.Filename(track.filename)
-            queue.execute(
-                function=image_compare,
-                progress_text=_.LAB_TRACKCMP_CMP %
-                {"file1": image_name, "file2": track_name},
-                completion_output=(image_compare_results_tty
-                                   if msg.output_isatty()
-                                   else image_compare_results),
-                image_audiofile=cd_image,
-                track_audiofile=track,
-                image_filename=image_name,
-                track_filename=track_name,
-                pcm_frames_offset=pcm_offset,
-                total_pcm_frames=track.total_frames())
+        if (cd_image.seekable()):
+            for (i, track) in enumerate(tracks):
+                track_name = audiotools.Filename(track.filename)
+                queue.execute(
+                    function=image_compare,
+                    progress_text=_.LAB_TRACKCMP_CMP %
+                    {"file1": image_name, "file2": track_name},
+                    completion_output=(image_compare_results_tty
+                                       if msg.output_isatty()
+                                       else image_compare_results),
+                    image_audiofile=cd_image,
+                    track_audiofile=track,
+                    image_filename=image_name,
+                    track_filename=track_name,
+                    pcm_frames_offset=pcm_offset,
+                    total_pcm_frames=track.total_frames())
 
-            pcm_offset += track.total_frames()
+                pcm_offset += track.total_frames()
 
-        try:
-            if (set([r[0] for r in
-                     queue.run(options.max_processes)]) != set([None])):
+            try:
+                if (set([r[0] for r in
+                         queue.run(options.max_processes)]) != set([None])):
+                    sys.exit(1)
+            except KeyboardInterrupt:
+                msg.error(_.ERR_CANCELLED)
                 sys.exit(1)
-        except KeyboardInterrupt:
-            msg.error(_.ERR_CANCELLED)
-            sys.exit(1)
+        else:
+            import tempfile
+
+            #if file isn't seekable
+
+            #decode it to a single PCM blob of binary data
+            temp_blob = tempfile.NamedTemporaryFile()
+            cache_progress = audiotools.SingleProgressDisplay(
+                msg, _.LAB_CACHING_FILE)
+            try:
+                audiotools.transfer_framelist_data(
+                    audiotools.PCMReaderProgress(
+                        cd_image.to_pcm(),
+                        cd_image.total_frames(),
+                        cache_progress.update),
+                    temp_blob.write)
+            except audiotools.DecodingError, err:
+                cache_progress.clear_rows()
+                msg.error(unicode(err))
+                temp_blob.close()
+                sys.exit(1)
+            except KeyboardInterrupt:
+                cache_progress.clear_rows()
+                msg.error(_.ERR_CANCELLED)
+                temp_blob.close()
+                sys.exit(1)
+
+            cache_progress.clear_rows()
+            temp_blob.flush()
+
+            #compare the blob using multiple jobs
+            for (i, track) in enumerate(tracks):
+                track_name = audiotools.Filename(track.filename)
+                queue.execute(
+                    function=image_compare_raw,
+                    progress_text=_.LAB_TRACKCMP_CMP %
+                    {"file1": image_name, "file2": track_name},
+                    completion_output=(image_compare_results_tty
+                                       if msg.output_isatty()
+                                       else image_compare_results),
+                    source_filename=temp_blob.name,
+                    sample_rate=cd_image.sample_rate(),
+                    channels=cd_image.channels(),
+                    channel_mask=int(cd_image.channel_mask()),
+                    bits_per_sample=cd_image.bits_per_sample(),
+                    track_audiofile=track,
+                    image_filename=image_name,
+                    track_filename=track_name,
+                    pcm_frames_offset=pcm_offset,
+                    total_pcm_frames=track.total_frames())
+
+                pcm_offset += track.total_frames()
+
+            try:
+                if (set([r[0] for r in
+                         queue.run(options.max_processes)]) != set([None])):
+                    temp_blob.close()
+                    sys.exit(1)
+            except KeyboardInterrupt:
+                msg.error(_.ERR_CANCELLED)
+                temp_blob.close()
+                sys.exit(1)
+
+            #then delete the blob when finished
+            temp_blob.close()
     else:
         msg.usage(_.USAGE_TRACKCMP_FILES)
         sys.exit(1)

@@ -519,7 +519,7 @@ if (__name__ == '__main__'):
                 source_filename=temp_blob.name,
                 sample_rate=audiofile.sample_rate(),
                 channels=audiofile.channels(),
-                channel_mask=audiofile.channel_mask(),
+                channel_mask=int(audiofile.channel_mask()),
                 bits_per_sample=audiofile.bits_per_sample(),
                 destination_filename=output_filename,
                 destination_class=output_class,

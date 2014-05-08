@@ -6886,7 +6886,7 @@
    - [X] tracksplit
    - [X] tracktag
    - [X] trackverify
-** TODO Add AudioFile.seekable() method
+** DONE Add AudioFile.seekable() method
    This returns True if the format's PCMReader has a .seek() method
    and that method supports some sort of fine-grained seeking
    (i.e. not just return to the beginning of the file).
@@ -6907,11 +6907,11 @@
     - [X] WavPackAudio
     - [X] WaveAudio
 *** DONE Update documentation
-*** TODO Update utilities
+*** DONE Update utilities
 **** DONE tracksplit
      If the file being split isn't seekable, decompress it to a temp file
      so it can be processed across multiple jobs.
-**** TODO trackcmp
+**** DONE trackcmp
      If comparing multiple tracks against a non-seekable image,
      decompress it to a temp file so it can be processed across multiple jobs.
 *** DONE Update unit tests
