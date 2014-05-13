@@ -836,7 +836,7 @@ if (ext_audiotools_cdio.libraries_present()):
     ext_modules.append(ext_audiotools_cdio)
     scripts.extend(["cd2track", "cdinfo", "cdplay"])
 
-setup(name="Python Audio Tools",
+setup(name="audiotools",
       version=VERSION,
       description="A collection of audio handling utilities",
       author="Brian Langenberger",

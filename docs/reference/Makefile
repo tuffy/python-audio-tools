@@ -49,8 +49,6 @@ figures/id3v24/w___.pdf \
 figures/id3v24/wxxx.pdf
 
 FLAC = \
-flac/metadata.tex \
-flac/decode.tex \
 flac/algorithms/decode_flac.tex \
 flac/algorithms/read_metadata.tex \
 flac/algorithms/decode_frame.tex \
@@ -67,7 +65,6 @@ flac/algorithms/decode_fixed.tex \
 flac/algorithms/decode_lpc.tex \
 flac/algorithms/decode_residual.tex \
 flac/algorithms/decorrelate_channels.tex \
-flac/encode.tex \
 flac/algorithms/encode_flac.tex \
 flac/algorithms/write_metadata.tex \
 flac/algorithms/encode_frame.tex \
@@ -90,9 +87,6 @@ flac/algorithms/encode_lp_coeffs.tex \
 flac/algorithms/encode_best_order.tex \
 flac/algorithms/encode_quantize_coeffs.tex \
 flac/algorithms/write_lpc_subframe.tex \
-flac/encode/fixed.tex \
-flac/encode/residual.tex \
-flac/encode/lpc.tex \
 flac/figures/application.pdf \
 flac/figures/block_header.pdf \
 flac/figures/constant.pdf \
@@ -255,20 +249,6 @@ wavpack/algorithms/encode_zeroes.tex \
 wavpack/algorithms/write_block_header.tex \
 wavpack/algorithms/roundtrip_weights.tex \
 wavpack/algorithms/roundtrip_samples.tex \
-wavpack/decode.tex \
-wavpack/decode/terms.tex \
-wavpack/decode/weights.tex \
-wavpack/decode/samples.tex \
-wavpack/decode/entropy.tex \
-wavpack/decode/bitstream.tex \
-wavpack/decode/decorrelation.tex \
-wavpack/encode.tex \
-wavpack/encode/correlation.tex \
-wavpack/encode/terms.tex \
-wavpack/encode/weights.tex \
-wavpack/encode/samples.tex \
-wavpack/encode/entropy.tex \
-wavpack/encode/bitstream.tex \
 wavpack/figures/block_channels.pdf \
 wavpack/figures/block_header.pdf \
 wavpack/figures/block_header2.pdf \
@@ -320,8 +300,6 @@ shorten/algorithms/write_shorten_header.tex \
 shorten/algorithms/encode_audio.tex \
 shorten/algorithms/calculate_wasted_bps.tex \
 shorten/algorithms/compute_diff.tex \
-shorten/decode.tex \
-shorten/encode.tex \
 shorten/figures/block1.pdf \
 shorten/figures/block2.pdf \
 shorten/figures/filetype.pdf \
@@ -359,11 +337,6 @@ alac/algorithms/quantize_coeffs.tex \
 alac/algorithms/encode_compute_residual.tex \
 alac/algorithms/write_residuals.tex \
 alac/algorithms/write_residual.tex \
-alac/decode.tex \
-alac/encode.tex \
-alac/encode/atoms.tex \
-alac/encode/lpc.tex \
-alac/encode/residual.tex \
 alac/figures/alac_atom.pdf \
 alac/figures/alac-atom-parse.pdf \
 alac/figures/atom.pdf \
@@ -526,9 +499,6 @@ tta/algorithms/encode_frame.tex \
 tta/algorithms/correlate.tex \
 tta/algorithms/encode_fixed_prediction.tex \
 tta/algorithms/encode_hybrid_filter.tex \
-tta/metadata.tex \
-tta/decode.tex \
-tta/encode.tex \
 tta/figures/header.pdf \
 tta/figures/header-example.pdf \
 tta/figures/seektable.pdf \
@@ -602,14 +572,44 @@ wav.tex \
 aiff.tex \
 au.tex \
 shorten.tex \
+shorten/decode.tex \
+shorten/encode.tex \
 flac.tex \
+flac/metadata.tex \
+flac/decode.tex \
+flac/encode.tex \
+flac/encode/fixed.tex \
+flac/encode/residual.tex \
+flac/encode/lpc.tex \
 tta.tex \
+tta/metadata.tex \
+tta/decode.tex \
+tta/encode.tex \
 wavpack.tex \
+wavpack/decode.tex \
+wavpack/decode/terms.tex \
+wavpack/decode/weights.tex \
+wavpack/decode/samples.tex \
+wavpack/decode/entropy.tex \
+wavpack/decode/bitstream.tex \
+wavpack/decode/decorrelation.tex \
+wavpack/encode.tex \
+wavpack/encode/correlation.tex \
+wavpack/encode/terms.tex \
+wavpack/encode/weights.tex \
+wavpack/encode/samples.tex \
+wavpack/encode/entropy.tex \
+wavpack/encode/bitstream.tex \
 apev2.tex \
 ape.tex \
 mp3.tex \
 m4a.tex \
 alac.tex \
+alac/decode.tex \
+alac/encode.tex \
+alac/encode/atoms.tex \
+alac/encode/lpc.tex \
+alac/encode/residual.tex \
 vorbis.tex \
 oggflac.tex \
 speex.tex \
@@ -636,7 +636,7 @@ all: audioformats-letter.pdf audioformats-a4.pdf
 clean:
 	rm -f *.toc *.aux *.log *.out $(FIGURES)
 	rm -f figures/pcm.fig flac/figures/tukey.fig
-	rm -f audiotools-a4.tex audiotools-letter.tex
+	rm -f audioformats-a4.tex audioformats-letter.tex
 
 audioformats-letter.pdf: audioformats-letter.tex $(CHAPTERS) $(FIGURES)
 	python pdflatexbuild.py -halt-on-error audioformats-letter.tex
