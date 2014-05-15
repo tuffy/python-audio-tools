@@ -64,6 +64,8 @@ all: $(TARGETS)
 
 clean: .FORCE
 	rm -fv $(TARGETS)
+	cd programming && make clean
+	cd reference && make clean
 
 .FORCE:
 

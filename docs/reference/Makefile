@@ -267,6 +267,12 @@ wavpack/figures/decorrelation2.pdf \
 wavpack/figures/decorrelation3.pdf \
 wavpack/figures/decorrelation4.pdf \
 wavpack/figures/decorrelation5.pdf \
+wavpack/figures/decorrelation0.fig \
+wavpack/figures/decorrelation1.fig \
+wavpack/figures/decorrelation2.fig \
+wavpack/figures/decorrelation3.fig \
+wavpack/figures/decorrelation4.fig \
+wavpack/figures/decorrelation5.fig \
 wavpack/figures/entropy_vars.pdf \
 wavpack/figures/entropy_vars_parse.pdf \
 wavpack/figures/extended_integers.pdf \
@@ -637,6 +643,9 @@ clean:
 	rm -f *.toc *.aux *.log *.out $(FIGURES)
 	rm -f figures/pcm.fig flac/figures/tukey.fig
 	rm -f audioformats-a4.tex audioformats-letter.tex
+	rm -f audioformats-a4.pdf audioformats-letter.pdf
+	rm -f pseudocode $(PS_DIR)/pseudocode.tab.c $(PS_DIR)/lex.yy.c $(PSEUDOCODE_OBJECTS)
+	rm -f $(PS_DIR)/pseudocode.tab.h
 
 audioformats-letter.pdf: audioformats-letter.tex $(CHAPTERS) $(FIGURES)
 	python pdflatexbuild.py -halt-on-error audioformats-letter.tex

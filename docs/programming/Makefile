@@ -27,7 +27,7 @@ help:
 	@echo "  doctest   to run all doctests embedded in the documentation (if enabled)"
 
 clean:
-	-rm -rf build/*
+	-rm -rf build
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) build/html
