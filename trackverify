@@ -234,7 +234,7 @@ def accuraterip_image_checksum(progress, track, track_number, track_total,
     checksum = ChecksumV1(track_number == 1,
                           track_number == track_total,
                           track.sample_rate(),
-                          track.total_frames())
+                          total_pcm_frames)
 
     try:
         audiotools.transfer_data(reader.read, checksum.update)
@@ -434,7 +434,7 @@ if (__name__ == '__main__'):
                             completion_output=accuraterip_display_result,
                             track=tracks[0],
                             track_number=i,
-                            track_total=len(tracks),
+                            track_total=len(sheet),
                             ar_matches=ar_results.get(i, []),
                             displayed_filename=filename,
                             pcm_frames_offset=pcm_frames_offset,

@@ -4299,6 +4299,9 @@ class Sheet:
         self.__tracks__ = list(sheet_tracks)
         self.__catalog_number__ = catalog_number
 
+    def __len__(self):
+        return len(self.__tracks__)
+
     def __repr__(self):
         return "Sheet(%s, %s)" % (repr(self.__tracks__),
                                   repr(self.__catalog_number__))
