@@ -6915,6 +6915,27 @@
      If comparing multiple tracks against a non-seekable image,
      decompress it to a temp file so it can be processed across multiple jobs.
 *** DONE Update unit tests
+** TODO Have AccurateRip detect offset tracks
+   If the tracks have been ripped accurately but are merely offset
+   by some small positive or negative number of samples,
+   this should be detected and indicated in the AccurateRip results screens.
+*** TODO Update ChecksumV1
+**** TODO Add keyword parameters with sensible defaults
+**** TODO Add range option
+     This indicates the total range of the window size.
+     Defaults to 1, indicating only a single checksum to be generated.
+**** TODO Change .checksum() method to .checksums()
+     Returns a list of all calculated checksums over the whole range.
+*** TODO Add unit tests
+    Ensure ranged and non-ranged checksums are calculated properly
+    and update tests for new interface.
+*** TODO Update utilities
+    When verifying AccurateRip, make sure to populate the checksum
+    with the last few samples of the previous track (if any)
+    and the next few samples of the next track (if any)
+    in order to find the checksum's offset.
+**** TODO trackverify
+**** TODO cd2track
 * TODO Finish version 3.0
 ** TODO Shift to Python 3
    This lengthy transition will have to wait

@@ -18,6 +18,49 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
+from audiotools._accuraterip import ChecksumV2
+
+
+class ChecksumV1:
+    def __init__(self, is_first, is_last, sample_rate, total_pcm_frames):
+        if (sample_rate <= 0):
+            raise ValueError("sample rate must be > 0")
+        if (total_pcm_frames <= 0):
+            raise ValueError("total PCM frames must be > 0")
+
+        self.__checksum__ = 0
+        self.__track_index__ = 1;
+
+        if (is_first):
+            self.__start_offset__ = ((sample_rate // 75) * 5)
+        else:
+            self.__start_offset__ = 0
+
+        if (is_last):
+            self.__end_offset__ = total_pcm_frames - ((sample_rate // 75) * 5)
+        else:
+            self.__end_offset__ = total_pcm_frames
+
+    def update(self, framelist):
+        from itertools import izip
+
+        def unsigned(v):
+            return (v if (v >= 0) else ((1 << 16) - (-v)))
+
+        values = [(unsigned(r) << 16) | unsigned(l)
+                  for (l, r) in izip(framelist.channel(0),
+                                     framelist.channel(1))]
+
+        self.__checksum__ += sum([((i * v) if ((i >= self.__start_offset__) and
+                                               (i <= self.__end_offset__))
+                                   else 0) for (i, v) in
+                                  enumerate(values, self.__track_index__)])
+        self.__track_index__ += len(values)
+
+    def checksum(self):
+        return self.__checksum__ & 0xFFFFFFFF
+
+
 class DiscID:
     def __init__(self, track_numbers, track_offsets,
                  lead_out_offset, freedb_disc_id):

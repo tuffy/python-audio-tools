@@ -43,11 +43,11 @@ class AccurateRipReader:
         self.channel_mask = pcmreader.channel_mask
         self.bits_per_sample = pcmreader.bits_per_sample
 
-        from audiotools._accuraterip import ChecksumV1
-        self.__checksum__ = ChecksumV1(track_number == 1,
-                                       track_number == track_total,
-                                       pcmreader.sample_rate,
-                                       total_pcm_frames)
+        from audiotools.accuraterip import ChecksumV1
+        self.__checksum__ = ChecksumV1(is_first=track_number == 1,
+                                       is_last=track_number == track_total,
+                                       sample_rate=pcmreader.sample_rate,
+                                       total_pcm_frames=total_pcm_frames)
 
     def read(self, pcm_frames):
         frame = self.pcmreader.read(pcm_frames)

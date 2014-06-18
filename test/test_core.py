@@ -5918,64 +5918,78 @@ class TestMultiChannel(unittest.TestCase):
 class Test_Accuraterip(unittest.TestCase):
     @LIB_ACCURATERIP
     def test_checksum_v1(self):
-        from audiotools._accuraterip import ChecksumV1
+        from audiotools.accuraterip import ChecksumV1
 
         #sanity checking
         self.assertRaises(ValueError,
                           ChecksumV1,
-                          False, False,
-                          0, 10)
+                          is_first=False,
+                          is_last=False,
+                          sample_rate=0,
+                          total_pcm_frames=10)
 
         self.assertRaises(ValueError,
                           ChecksumV1,
-                          False, False,
-                          -1, 10)
+                          is_first=False,
+                          is_last=False,
+                          sample_rate=-1,
+                          total_pcm_frames=10)
 
         self.assertRaises(ValueError,
                           ChecksumV1,
-                          False, False,
-                          44100, 0)
+                          is_first=False,
+                          is_last=False,
+                          sample_rate=44100,
+                          total_pcm_frames=0)
 
         self.assertRaises(ValueError,
                           ChecksumV1,
-                          False, False,
-                          44100, -1)
+                          is_first=False,
+                          is_last=False,
+                          sample_rate=44100,
+                          total_pcm_frames=-1)
 
         self.assertRaises(ValueError,
                           ChecksumV1,
-                          False, False,
-                          -1, -1)
+                          is_first=False,
+                          is_last=False,
+                          sample_rate=-1,
+                          total_pcm_frames=-1)
 
         track = audiotools.open("tone.flac")
 
-        first_track = ChecksumV1(True, False,
-                                 track.sample_rate(),
-                                 track.total_frames())
+        first_track = ChecksumV1(is_first=True,
+                                 is_last=False,
+                                 sample_rate=track.sample_rate(),
+                                 total_pcm_frames=track.total_frames())
 
         audiotools.transfer_data(track.to_pcm().read, first_track.update)
 
         #values taken from reference implementation
         self.assertEqual(first_track.checksum(), 0xEE4DBEB4)
 
-        middle_track = ChecksumV1(False, False,
-                                  track.sample_rate(),
-                                  track.total_frames())
+        middle_track = ChecksumV1(is_first=False,
+                                  is_last=False,
+                                  sample_rate=track.sample_rate(),
+                                  total_pcm_frames=track.total_frames())
 
         audiotools.transfer_data(track.to_pcm().read, middle_track.update)
 
         self.assertEqual(middle_track.checksum(), 0xF6E4AD26)
 
-        last_track = ChecksumV1(False, True,
-                                track.sample_rate(),
-                                track.total_frames())
+        last_track = ChecksumV1(is_first=False,
+                                is_last=True,
+                                sample_rate=track.sample_rate(),
+                                total_pcm_frames=track.total_frames())
 
         audiotools.transfer_data(track.to_pcm().read, last_track.update)
 
         self.assertEqual(last_track.checksum(), 0xF819E862)
 
-        only_track = ChecksumV1(True, True,
-                                track.sample_rate(),
-                                track.total_frames())
+        only_track = ChecksumV1(is_first=True,
+                                is_last=True,
+                                sample_rate=track.sample_rate(),
+                                total_pcm_frames=track.total_frames())
 
         audiotools.transfer_data(track.to_pcm().read, only_track.update)
 
@@ -5983,7 +5997,7 @@ class Test_Accuraterip(unittest.TestCase):
 
     @LIB_ACCURATERIP
     def test_checksum_v2(self):
-        from audiotools._accuraterip import ChecksumV2
+        from audiotools.accuraterip import ChecksumV2
 
         #sanity checking
         self.assertRaises(ValueError,
