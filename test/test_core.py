@@ -5923,77 +5923,142 @@ class Test_Accuraterip(unittest.TestCase):
         #sanity checking
         self.assertRaises(ValueError,
                           ChecksumV1,
-                          is_first=False,
-                          is_last=False,
+                          total_pcm_frames=10,
                           sample_rate=0,
-                          total_pcm_frames=10)
+                          is_first=False,
+                          is_last=False)
 
         self.assertRaises(ValueError,
                           ChecksumV1,
-                          is_first=False,
-                          is_last=False,
+                          total_pcm_frames=10,
                           sample_rate=-1,
-                          total_pcm_frames=10)
+                          is_first=False,
+                          is_last=False)
 
         self.assertRaises(ValueError,
                           ChecksumV1,
-                          is_first=False,
-                          is_last=False,
+                          total_pcm_frames=0,
                           sample_rate=44100,
-                          total_pcm_frames=0)
+                          is_first=False,
+                          is_last=False)
 
         self.assertRaises(ValueError,
                           ChecksumV1,
-                          is_first=False,
-                          is_last=False,
+                          total_pcm_frames=-1,
                           sample_rate=44100,
-                          total_pcm_frames=-1)
+                          is_first=False,
+                          is_last=False)
 
         self.assertRaises(ValueError,
                           ChecksumV1,
-                          is_first=False,
-                          is_last=False,
+                          total_pcm_frames=-1,
                           sample_rate=-1,
-                          total_pcm_frames=-1)
+                          is_first=False,
+                          is_last=False)
+
+        self.assertRaises(ValueError,
+                          ChecksumV1,
+                          total_pcm_frames=10,
+                          sample_rate=44100,
+                          is_first=False,
+                          is_last=False,
+                          pcm_frame_range=0)
+
+        self.assertRaises(ValueError,
+                          ChecksumV1,
+                          total_pcm_frames=10,
+                          sample_rate=44100,
+                          is_first=False,
+                          is_last=False,
+                          pcm_frame_range=-1)
 
         track = audiotools.open("tone.flac")
 
-        first_track = ChecksumV1(is_first=True,
-                                 is_last=False,
-                                 sample_rate=track.sample_rate(),
-                                 total_pcm_frames=track.total_frames())
-
-        audiotools.transfer_data(track.to_pcm().read, first_track.update)
-
         #values taken from reference implementation
-        self.assertEqual(first_track.checksum(), 0xEE4DBEB4)
 
-        middle_track = ChecksumV1(is_first=False,
-                                  is_last=False,
+        middle_track = ChecksumV1(total_pcm_frames=track.total_frames(),
                                   sample_rate=track.sample_rate(),
-                                  total_pcm_frames=track.total_frames())
-
+                                  is_first=False,
+                                  is_last=False)
         audiotools.transfer_data(track.to_pcm().read, middle_track.update)
+        self.assertEqual(middle_track.checksums(), [0xF6E4AD26])
 
-        self.assertEqual(middle_track.checksum(), 0xF6E4AD26)
+        middle_track = ChecksumV1(total_pcm_frames=track.total_frames(),
+                                  sample_rate=track.sample_rate(),
+                                  is_first=False,
+                                  is_last=False,
+                                  pcm_frame_range=3)
+        audiotools.transfer_data(
+            audiotools.PCMReaderWindow(track.to_pcm(),
+                                       -1,
+                                       track.total_frames() + 2).read,
+            middle_track.update)
+        self.assertEqual(middle_track.checksums(), [0xCA705E69,
+                                                    0xF6E4AD26,
+                                                    0x951FB12F])
 
-        last_track = ChecksumV1(is_first=False,
-                                is_last=True,
+        first_track = ChecksumV1(total_pcm_frames=track.total_frames(),
+                                 sample_rate=track.sample_rate(),
+                                 is_first=True,
+                                 is_last=False)
+        audiotools.transfer_data(track.to_pcm().read, first_track.update)
+        self.assertEqual(first_track.checksums(), [0xEE4DBEB4])
+
+        first_track = ChecksumV1(total_pcm_frames=track.total_frames(),
+                                 sample_rate=track.sample_rate(),
+                                 is_first=True,
+                                 is_last=False,
+                                 pcm_frame_range=3)
+        audiotools.transfer_data(
+            audiotools.PCMReaderWindow(track.to_pcm(),
+                                       -1,
+                                       track.total_frames() + 2).read,
+            first_track.update)
+        self.assertEqual(first_track.checksums(), [0x7CC66A55,
+                                                   0xEE4DBEB4,
+                                                   0x9A58C7EC])
+
+        last_track = ChecksumV1(total_pcm_frames=track.total_frames(),
                                 sample_rate=track.sample_rate(),
-                                total_pcm_frames=track.total_frames())
-
+                                is_first=False,
+                                is_last=True)
         audiotools.transfer_data(track.to_pcm().read, last_track.update)
+        self.assertEqual(last_track.checksums(), [0xF819E862])
 
-        self.assertEqual(last_track.checksum(), 0xF819E862)
-
-        only_track = ChecksumV1(is_first=True,
-                                is_last=True,
+        last_track = ChecksumV1(total_pcm_frames=track.total_frames(),
                                 sample_rate=track.sample_rate(),
-                                total_pcm_frames=track.total_frames())
+                                is_first=False,
+                                is_last=True,
+                                pcm_frame_range=3)
+        audiotools.transfer_data(
+            audiotools.PCMReaderWindow(track.to_pcm(),
+                                       -1,
+                                       track.total_frames() + 2).read,
+            last_track.update)
+        self.assertEqual(last_track.checksums(), [0x682F9316,
+                                                  0xF819E862,
+                                                  0x00DBAF4E])
 
+        only_track = ChecksumV1(total_pcm_frames=track.total_frames(),
+                                sample_rate=track.sample_rate(),
+                                is_first=True,
+                                is_last=True)
         audiotools.transfer_data(track.to_pcm().read, only_track.update)
+        self.assertEqual(only_track.checksums(), [0xEF82F9F0])
 
-        self.assertEqual(only_track.checksum(), 0xEF82F9F0)
+        only_track = ChecksumV1(total_pcm_frames=track.total_frames(),
+                                sample_rate=track.sample_rate(),
+                                is_first=True,
+                                is_last=True,
+                                pcm_frame_range=3)
+        audiotools.transfer_data(
+            audiotools.PCMReaderWindow(track.to_pcm(),
+                                       -1,
+                                       track.total_frames() + 2).read,
+            only_track.update)
+        self.assertEqual(only_track.checksums(), [0x1A859F02,
+                                                  0xEF82F9F0,
+                                                  0x0614C60B])
 
     @LIB_ACCURATERIP
     def test_checksum_v2(self):

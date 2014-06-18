@@ -6926,7 +6926,7 @@
      Defaults to 1, indicating only a single checksum to be generated.
 **** TODO Change .checksum() method to .checksums()
      Returns a list of all calculated checksums over the whole range.
-*** TODO Add unit tests
+*** DONE Add unit tests
     Ensure ranged and non-ranged checksums are calculated properly
     and update tests for new interface.
 *** TODO Update utilities

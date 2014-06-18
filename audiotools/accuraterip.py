@@ -22,43 +22,78 @@ from audiotools._accuraterip import ChecksumV2
 
 
 class ChecksumV1:
-    def __init__(self, is_first, is_last, sample_rate, total_pcm_frames):
-        if (sample_rate <= 0):
-            raise ValueError("sample rate must be > 0")
+    def __init__(self, total_pcm_frames,
+                 sample_rate=44100,
+                 is_first=False,
+                 is_last=False,
+                 pcm_frame_range=1):
         if (total_pcm_frames <= 0):
             raise ValueError("total PCM frames must be > 0")
+        if (sample_rate <= 0):
+            raise ValueError("sample rate must be > 0")
+        if (pcm_frame_range <= 0):
+            raise ValueError("PCM frame range must be > 0")
 
-        self.__checksum__ = 0
-        self.__track_index__ = 1;
+        self.__total_pcm_frames__ = total_pcm_frames
+        self.__pcm_frame_range__ = pcm_frame_range
+        self.__i__ = 0
+        self.__checksums__ = [0]
+        self.__initial_values__ = []
+        self.__final_values__ = []
+        self.__values_sum__ = 0
 
         if (is_first):
-            self.__start_offset__ = ((sample_rate // 75) * 5)
+            self.__start_offset__ = ((sample_rate // 75) * 5) - 1
         else:
             self.__start_offset__ = 0
 
         if (is_last):
-            self.__end_offset__ = total_pcm_frames - ((sample_rate // 75) * 5)
+            self.__end_offset__ = (total_pcm_frames -
+                                   ((sample_rate // 75) * 5))
         else:
             self.__end_offset__ = total_pcm_frames
 
     def update(self, framelist):
         from itertools import izip
 
+        def value(l, r):
+            return (unsigned(r) << 16) | unsigned(l)
+
         def unsigned(v):
             return (v if (v >= 0) else ((1 << 16) - (-v)))
 
-        values = [(unsigned(r) << 16) | unsigned(l)
-                  for (l, r) in izip(framelist.channel(0),
-                                     framelist.channel(1))]
+        for (i, (l, r)) in enumerate(izip(framelist.channel(0),
+                                          framelist.channel(1)), self.__i__):
+            v = value(l, r)
 
-        self.__checksum__ += sum([((i * v) if ((i >= self.__start_offset__) and
-                                               (i <= self.__end_offset__))
-                                   else 0) for (i, v) in
-                                  enumerate(values, self.__track_index__)])
-        self.__track_index__ += len(values)
+            #calculate initial checksum
+            if ((i >= self.__start_offset__) and (i < self.__end_offset__)):
+                if ((i - self.__start_offset__) <
+                    (self.__pcm_frame_range__ - 1)):
+                    self.__initial_values__.append(v)
+                self.__checksums__[0] += (v * (i + 1))
+                self.__values_sum__ += v
+            elif ((i >= self.__end_offset__) and
+                  ((i - self.__end_offset__) <
+                   (self.__pcm_frame_range__ - 1))):
+                self.__final_values__.append(v)
 
-    def checksum(self):
-        return self.__checksum__ & 0xFFFFFFFF
+            #calculate incremental checksums
+            if (i >= self.__total_pcm_frames__):
+                j = i - self.__total_pcm_frames__
+                self.__checksums__.append(
+                    self.__checksums__[-1] +
+                    (self.__end_offset__ * self.__final_values__[j]) -
+                    self.__values_sum__ -
+                    (self.__start_offset__ *
+                     self.__initial_values__[j]))
+                self.__values_sum__ -= self.__initial_values__[j]
+                self.__values_sum__ += self.__final_values__[j]
+
+        self.__i__ += framelist.frames
+
+    def checksums(self):
+        return [c & 0xFFFFFFFF for c in self.__checksums__]
 
 
 class DiscID:
