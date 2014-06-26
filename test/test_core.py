@@ -5919,8 +5919,9 @@ class Test_Accuraterip(unittest.TestCase):
     @LIB_ACCURATERIP
     def test_checksum_v1(self):
         from audiotools.accuraterip import ChecksumV1
+        from test_streams import Simple_Sine,Generate02
 
-        #sanity checking
+        #sanity checking for initial options
         self.assertRaises(ValueError,
                           ChecksumV1,
                           total_pcm_frames=10,
@@ -5972,8 +5973,77 @@ class Test_Accuraterip(unittest.TestCase):
                           is_last=False,
                           pcm_frame_range=-1)
 
+        #sanity checking for stream parameters
+        for params in [[200000, 44100, 0x04, 8, (25, 10000)],  # 8bps 1ch
+                       [200000, 44100, 0x03, 8, (25, 10000),
+                                                (50, 20000)],  # 8bps 2ch
+                       [200000, 44100, 0x07, 8, (25, 10000),
+                                                (50, 20000),
+                                                (120, 30000)], # 8bps 3ch
+                       [200000, 44100, 0x04, 16, (6400, 10000)],  # 16bps 1ch
+                       [200000, 44100, 0x07, 16, (6400, 10000),
+                                                 (12800, 20000),
+                                                 (30720, 30000)], # 16bps 3ch
+                       [200000, 44100, 0x04, 24,
+                        (1638400, 10000)],                        # 24bps 1ch
+                       [200000, 44100, 0x03, 24,
+                        (1638400, 10000),
+                        (3276800, 20000)],                        # 24bps 2ch
+                       [200000, 44100, 0x07, 24,
+                        (1638400, 10000),
+                        (3276800, 20000),
+                        (7864320, 30000)]]:                       # 24bps 3ch
+            sine = Simple_Sine(*params)
+            checksum = ChecksumV1(total_pcm_frames=200000,
+                                  sample_rate=44100,
+                                  is_first=False,
+                                  is_last=False,
+                                  pcm_frame_range=1)
+            self.assertRaises(ValueError,
+                              audiotools.transfer_data,
+                              sine.read, checksum.update)
+
+        #ensure very short streams work correctly
+        #whether middle, first, last or only track
+        short_track = ChecksumV1(total_pcm_frames=1,
+                                 sample_rate=44100,
+                                 is_first=False,
+                                 is_last=False,
+                                 pcm_frame_range=1)
+        audiotools.transfer_data(
+            Generate02(44100).read, short_track.update)
+        self.assertEqual(short_track.checksums(), [0x7FFF8000])
+
+        short_track = ChecksumV1(total_pcm_frames=1,
+                                 sample_rate=44100,
+                                 is_first=True,
+                                 is_last=False,
+                                 pcm_frame_range=1)
+        audiotools.transfer_data(
+            Generate02(44100).read, short_track.update)
+        self.assertEqual(short_track.checksums(), [0])
+
+        short_track = ChecksumV1(total_pcm_frames=1,
+                                 sample_rate=44100,
+                                 is_first=False,
+                                 is_last=True,
+                                 pcm_frame_range=1)
+        audiotools.transfer_data(
+            Generate02(44100).read, short_track.update)
+        self.assertEqual(short_track.checksums(), [0])
+
+        short_track = ChecksumV1(total_pcm_frames=1,
+                                 sample_rate=44100,
+                                 is_first=True,
+                                 is_last=True,
+                                 pcm_frame_range=1)
+        audiotools.transfer_data(
+            Generate02(44100).read, short_track.update)
+        self.assertEqual(short_track.checksums(), [0])
+
         track = audiotools.open("tone.flac")
 
+        #ensure various checksum range options work correctly
         #values taken from reference implementation
 
         middle_track = ChecksumV1(total_pcm_frames=track.total_frames(),
@@ -6059,6 +6129,54 @@ class Test_Accuraterip(unittest.TestCase):
         self.assertEqual(only_track.checksums(), [0x1A859F02,
                                                   0xEF82F9F0,
                                                   0x0614C60B])
+
+        #ensure feeding checksum with not enough samples
+        #raises ValueError at checksums()-time
+        insufficient_samples = ChecksumV1(
+            total_pcm_frames=track.total_frames() + 1,
+            sample_rate=track.sample_rate(),
+            is_first=False,
+            is_last=False,
+            pcm_frame_range=1)
+        audiotools.transfer_data(track.to_pcm().read,
+                                 insufficient_samples.update)
+        self.assertRaises(ValueError, insufficient_samples.checksums)
+
+        #ensure insufficient samples also works with a range
+        insufficient_samples = ChecksumV1(
+            total_pcm_frames=track.total_frames(),
+            sample_rate=track.sample_rate(),
+            is_first=False,
+            is_last=False,
+            pcm_frame_range=2)
+        audiotools.transfer_data(track.to_pcm().read,
+                                 insufficient_samples.update)
+        self.assertRaises(ValueError, insufficient_samples.checksums)
+
+        #ensure feeding checksum with too many samples
+        #raises ValueError at update()-time
+        too_many_samples = ChecksumV1(
+            total_pcm_frames=track.total_frames() - 1,
+            sample_rate=track.sample_rate(),
+            is_first=False,
+            is_last=False,
+            pcm_frame_range=1)
+        self.assertRaises(ValueError,
+                          audiotools.transfer_data,
+                          track.to_pcm().read,
+                          too_many_samples.update)
+
+        #ensure too many samples also works with a range
+        too_many_samples = ChecksumV1(
+            total_pcm_frames=track.total_frames() - 2,
+            sample_rate=track.sample_rate(),
+            is_first=False,
+            is_last=False,
+            pcm_frame_range=2)
+        self.assertRaises(ValueError,
+                          audiotools.transfer_data,
+                          track.to_pcm().read,
+                          too_many_samples.update)
 
     @LIB_ACCURATERIP
     def test_checksum_v2(self):

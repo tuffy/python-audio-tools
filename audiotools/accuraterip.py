@@ -62,6 +62,16 @@ class ChecksumV1:
         def unsigned(v):
             return (v if (v >= 0) else ((1 << 16) - (-v)))
 
+        if (framelist.channels != 2):
+            raise ValueError("FrameList must have 2 channels")
+        elif (framelist.bits_per_sample != 16):
+            raise ValueError("FrameList must have 16 bits-per-sample")
+
+        if ((self.__i__ + framelist.frames) >
+            (self.__total_pcm_frames__ +
+             self.__pcm_frame_range__ - 1)):
+             raise ValueError("too many samples for checksum")
+
         for (i, (l, r)) in enumerate(izip(framelist.channel(0),
                                           framelist.channel(1)), self.__i__):
             v = value(l, r)
@@ -93,6 +103,10 @@ class ChecksumV1:
         self.__i__ += framelist.frames
 
     def checksums(self):
+        if (self.__i__ < ((self.__total_pcm_frames__ +
+                           self.__pcm_frame_range__ - 1))):
+            raise ValueError("insufficient samples for checksums")
+
         return [c & 0xFFFFFFFF for c in self.__checksums__]
 
 
