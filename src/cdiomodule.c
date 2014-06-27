@@ -43,6 +43,10 @@ initcdio(void)
     if (PyType_Ready(&cdio_CDImageType) < 0)
         return;
 
+    cdio_CDDAReaderType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&cdio_CDDAReaderType) < 0)
+        return;
+
     m = Py_InitModule3("cdio", cdioMethods,
                        "A CDDA reading module.");
 
@@ -52,6 +56,8 @@ initcdio(void)
     Py_INCREF(&cdio_CDImageType);
     PyModule_AddObject(m, "CDImage", (PyObject *)&cdio_CDImageType);
 
+    Py_INCREF(&cdio_CDDAReaderType);
+    PyModule_AddObject(m, "CDDAReader", (PyObject *)&cdio_CDDAReaderType);
 
     PyModule_AddIntConstant(m, "CD_IMAGE", CD_IMAGE);
     PyModule_AddIntConstant(m, "DEVICE_FILE", DEVICE_FILE);
@@ -597,4 +603,346 @@ cdio_identify_cdrom(PyObject *dummy, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "unknown device");
         return NULL;
     }
+}
+static PyObject*
+CDDAReader_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    cdio_CDDAReader *self;
+
+    self = (cdio_CDDAReader *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
+}
+
+static int
+CDDAReader_init(cdio_CDDAReader *self, PyObject *args, PyObject *kwds)
+{
+    char *device = NULL;
+    struct stat buf;
+
+    if (!PyArg_ParseTuple(args, "s", &device))
+        return -1;
+
+    /*identify whether drive is physical or a CD image*/
+    if (stat(device, &buf)) {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return -1;
+    }
+    if (S_ISREG(buf.st_mode)) {
+        if (cdio_is_cuefile(device) ||
+            cdio_is_binfile(device) ||
+            cdio_is_tocfile(device) ||
+            cdio_is_nrg(device)) {
+            /*open CD image and set function pointers*/
+            return CDDAReader_init_image(self, device);
+        } else {
+            /*unsupported file*/
+            PyErr_SetString(PyExc_ValueError, "unsupported CD image type");
+            return -1;
+        }
+    } else if (S_ISBLK(buf.st_mode)) {
+        if (cdio_is_device(device, DRIVER_LINUX)) {
+            /*open CD device and set function pointers*/
+            return CDDAReader_init_device(self, device);
+        } else {
+            /*unsupported block device*/
+            PyErr_SetString(PyExc_ValueError, "unsupported block device");
+            return -1;
+        }
+    } else {
+        /*unsupported file type*/
+        PyErr_SetString(PyExc_ValueError, "unsupported file type");
+        return -1;
+    }
+}
+
+static int
+CDDAReader_init_image(cdio_CDDAReader *self, const char *device)
+{
+    self->_.image.image = NULL;
+    self->first_track_num  = CDDAReader_first_track_num_image;
+    self->last_track_num = CDDAReader_last_track_num_image;
+    self->track_lsn = CDDAReader_track_lsn_image;
+    self->track_last_lsn = CDDAReader_track_last_lsn_image;
+    self->first_sector = CDDAReader_first_sector_image;
+    self->last_sector = CDDAReader_last_sector_image;
+    self->dealloc = CDDAReader_dealloc_image;
+
+    /*open CD image based on what type it is*/
+    if (cdio_is_cuefile(device)) {
+        self->_.image.image = cdio_open_cue(device);
+    } else if (cdio_is_tocfile(device)) {
+        self->_.image.image = cdio_open_bincue(device);
+    } else if (cdio_is_tocfile(device)) {
+        self->_.image.image = cdio_open_cdrdao(device);
+    } else if (cdio_is_nrg(device)) {
+        self->_.image.image = cdio_open_nrg(device);
+    }
+    if (self->_.image.image == NULL) {
+        PyErr_SetString(PyExc_IOError, "unable to open CD image");
+        return -1;
+    }
+    return 0;
+}
+
+static int
+CDDAReader_init_device(cdio_CDDAReader *self, const char *device)
+{
+    /*FIXME*/
+    self->first_track_num  = CDDAReader_first_track_num_device;
+    self->last_track_num = CDDAReader_last_track_num_device;
+    self->track_lsn = CDDAReader_track_lsn_device;
+    self->track_last_lsn = CDDAReader_track_last_lsn_device;
+    self->first_sector = CDDAReader_first_sector_device;
+    self->last_sector = CDDAReader_last_sector_device;
+    self->dealloc = CDDAReader_dealloc_device;
+    return 0;
+}
+
+static void
+CDDAReader_dealloc(cdio_CDDAReader *self)
+{
+    self->dealloc(self);
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static void
+CDDAReader_dealloc_image(cdio_CDDAReader *self)
+{
+    if (self->_.image.image != NULL) {
+        cdio_destroy(self->_.image.image);
+    }
+}
+
+static void
+CDDAReader_dealloc_device(cdio_CDDAReader *self)
+{
+    /*FIXME*/
+}
+
+static PyObject*
+CDDAReader_sample_rate(cdio_CDDAReader *self, void *closure)
+{
+    const int sample_rate = 44100;
+    return Py_BuildValue("i", sample_rate);
+}
+
+static PyObject*
+CDDAReader_bits_per_sample(cdio_CDDAReader *self, void *closure)
+{
+    const int bits_per_sample = 16;
+    return Py_BuildValue("i", bits_per_sample);
+}
+
+static PyObject*
+CDDAReader_channels(cdio_CDDAReader *self, void *closure)
+{
+    const int channels = 2;
+    return Py_BuildValue("i", channels);
+}
+
+static PyObject*
+CDDAReader_channel_mask(cdio_CDDAReader *self, void *closure)
+{
+    const int channel_mask = 0x3;
+    return Py_BuildValue("i", channel_mask);
+}
+
+static int
+CDDAReader_first_track_num_image(cdio_CDDAReader *self)
+{
+    return cdio_get_first_track_num(self->_.image.image);
+}
+
+static int
+CDDAReader_first_track_num_device(cdio_CDDAReader *self)
+{
+    /*FIXME*/
+    return 0;
+}
+
+static int
+CDDAReader_last_track_num_image(cdio_CDDAReader *self)
+{
+    return cdio_get_last_track_num(self->_.image.image);
+}
+
+static int
+CDDAReader_last_track_num_device(cdio_CDDAReader *self)
+{
+    /*FIXME*/
+    return 0;
+}
+
+static int
+CDDAReader_track_lsn_image(cdio_CDDAReader *self, int track_num)
+{
+    const lsn_t lsn = cdio_get_track_lsn(self->_.image.image,
+                                         (track_t)track_num);
+    return (int)lsn;
+}
+
+static int
+CDDAReader_track_lsn_device(cdio_CDDAReader *self, int track_num)
+{
+    /*FIXME*/
+    return 0;
+}
+
+static int
+CDDAReader_track_last_lsn_image(cdio_CDDAReader *self, int track_num)
+{
+    const lsn_t lsn = cdio_get_track_last_lsn(self->_.image.image,
+                                              (track_t)track_num);
+    return (int)lsn;
+}
+
+static int
+CDDAReader_track_last_lsn_device(cdio_CDDAReader *self, int track_num)
+{
+    /*FIXME*/
+    return 0;
+}
+
+static PyObject*
+CDDAReader_track_offsets(cdio_CDDAReader *self, void *closure)
+{
+    const int first_track_num = self->first_track_num(self);
+    const int last_track_num = self->last_track_num(self);
+    int i;
+    PyObject *offsets = PyDict_New();
+
+    if (offsets == NULL) {
+        /*error creating the dict*/
+        return NULL;
+    }
+
+    for (i = first_track_num; i <= last_track_num; i++) {
+        PyObject *track_num = PyInt_FromLong(i);
+        PyObject *track_offset = PyInt_FromLong(
+            self->track_lsn(self, i) * 588);
+        int result;
+        if ((track_num == NULL) || (track_offset == NULL)) {
+            /*error creating one of the two int values*/
+            Py_XDECREF(track_num);
+            Py_XDECREF(track_offset);
+            Py_DECREF(offsets);
+            return NULL;
+        }
+        result = PyDict_SetItem(offsets, track_num, track_offset);
+        Py_DECREF(track_num);
+        Py_DECREF(track_offset);
+        if (result == -1) {
+            /*error setting dictionary item*/
+            Py_DECREF(offsets);
+            return NULL;
+        }
+    }
+
+    return offsets;
+}
+
+static PyObject*
+CDDAReader_track_lengths(cdio_CDDAReader *self, void *closure)
+{
+    const int first_track_num = self->first_track_num(self);
+    const int last_track_num = self->last_track_num(self);
+    int i;
+    PyObject *lengths = PyDict_New();
+
+    if (lengths == NULL) {
+        /*error creating the dict*/
+        return NULL;
+    }
+
+    for (i = first_track_num; i <= last_track_num; i++) {
+        PyObject *track_num = PyInt_FromLong(i);
+        PyObject *track_length = PyInt_FromLong(
+            (self->track_last_lsn(self, i) -
+             self->track_lsn(self, i) + 1) * 588);
+        int result;
+        if ((track_num == NULL) || (track_length == NULL)) {
+            /*error creating one of the two int values*/
+            Py_XDECREF(track_num);
+            Py_XDECREF(track_length);
+            Py_DECREF(lengths);
+            return NULL;
+        }
+        result = PyDict_SetItem(lengths, track_num, track_length);
+        Py_DECREF(track_num);
+        Py_DECREF(track_length);
+        if (result == -1) {
+            /*error setting dictionary item*/
+            Py_DECREF(lengths);
+            return NULL;
+        }
+    }
+
+    return lengths;
+}
+
+static PyObject*
+CDDAReader_first_sector(cdio_CDDAReader *self, void *closure)
+{
+    const int first_sector = self->first_sector(self);
+    return Py_BuildValue("i", first_sector);
+}
+
+static int
+CDDAReader_first_sector_image(cdio_CDDAReader *self)
+{
+    return cdio_get_track_lsn(self->_.image.image,
+                              self->first_track_num(self));
+}
+
+static int
+CDDAReader_first_sector_device(cdio_CDDAReader *self)
+{
+    /*FIXME*/
+    return 0;
+}
+
+static PyObject*
+CDDAReader_last_sector(cdio_CDDAReader *self, void *closure)
+{
+    const int last_sector = self->last_sector(self);
+    return Py_BuildValue("i", last_sector);
+}
+
+static int
+CDDAReader_last_sector_image(cdio_CDDAReader *self)
+{
+    return cdio_get_track_last_lsn(self->_.image.image,
+                                   self->last_track_num(self));
+}
+
+static int
+CDDAReader_last_sector_device(cdio_CDDAReader *self)
+{
+    /*FIXME*/
+    return 0;
+}
+
+static PyObject*
+CDDAReader_read(cdio_CDDAReader* self, PyObject *args)
+{
+    /*FIXME*/
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+CDDAReader_seek(cdio_CDDAReader* self, PyObject *args)
+{
+    /*FIXME*/
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+CDDAReader_close(cdio_CDDAReader* self, PyObject *args)
+{
+    /*FIXME*/
+    Py_INCREF(Py_None);
+    return Py_None;
 }

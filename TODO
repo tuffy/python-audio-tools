@@ -6929,6 +6929,45 @@
 *** DONE Add unit tests
     Ensure ranged and non-ranged checksums are calculated properly
     and update tests for new interface.
+*** TODO Build audiotools.cdio.CDDAReader object
+    This functions like a PCMReader object over the entire CDDA device.
+    It should work transparently on physical CD devices as well as CD images
+    and by PCM-frame centric by doing all the CD sector conversions
+    behind-the-scenes.
+**** TODO Add methods and attributes
+***** DONE CDDAReader.sample_rate
+***** DONE CDDAReader.channels
+***** DONE CDDAReader.channel_mask
+***** DONE CDDAReader.bits_per_sample
+***** TODO CDDAReader.track_offsets
+      - [X] CD image
+      - [ ] CD drive
+      Returns starting offset of each track, in PCM frames
+***** TODO CDDAReader.track_lengths
+      - [X] CD image
+      - [ ] CD drive
+      Returns length of each track, in PCM frames
+***** TODO CDDAReader.first_sector
+      - [X] CD image
+      - [ ] CD drive
+      Used for calculating various disc IDs
+***** TODO CDDAReader.last_sector
+      - [X] CD image
+      - [ ] CD drive
+      Used for calculating various disc IDs
+***** TODO CDDAReader.read(pcm_frames)
+      - [ ] CD image
+      - [ ] CD drive
+***** TODO CDDAReader.seek(pcm_frames)
+      - [ ] CD image
+      - [ ] CD drive
+***** TODO CDDAReader.close()
+**** TODO Update documentation
+**** TODO Update unit tests
+**** TODO Update utilities
+***** TODO cd2track
+***** TODO cdinfo
+***** TODO cdplay
 *** TODO Update utilities
     When verifying AccurateRip, make sure to populate the checksum
     with the last few samples of the previous track (if any)
