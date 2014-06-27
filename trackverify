@@ -142,55 +142,159 @@ AR_NOT_FOUND = -1
 #but our track doesn't match any of the checksums
 AR_MISMATCH = -2
 
+PREVIOUS_TRACK_FRAMES = 1
+NEXT_TRACK_FRAMES = 1
 
-def accuraterip_checksum(progress, track, track_number, track_total,
+def accuraterip_checksum(progress,
+                         track,
+                         previous_track,
+                         next_track,
                          ar_matches):
-    from audiotools.accuraterip import ChecksumV1
+    from audiotools import (transfer_data,
+                            PCMCat,
+                            PCMReader,
+                            PCMReaderHead,
+                            PCMReaderDeHead,
+                            PCMReaderProgress)
+    from audiotools.accuraterip import ChecksumV1,match_offset
+    from cStringIO import StringIO
 
-    reader = audiotools.PCMReaderProgress(track.to_pcm(),
-                                          track.total_frames(),
-                                          progress)
+    #unify previous track, current track and next track into a single stream
 
-    metadata = track.get_metadata()
-    if (metadata is not None):
-        if (metadata.track_number is not None):
-            is_first = (metadata.track_number == 1)
-            if (metadata.track_total is not None):
-                is_last = (metadata.track_number == metadata.track_total)
-            else:
-                is_last = (metadata.track_number == track_total)
-        else:
-            is_first = (track_number == 1)
-            is_last = (track_number == track_total)
+    pcmreaders = []
+    if (previous_track is not None):
+        frames_to_skip = previous_track.total_frames() - PREVIOUS_TRACK_FRAMES
+        prev_pcmreader = previous_track.to_pcm()
+        if (hasattr(prev_pcmreader, "seek") and
+            callable(prev_pcmreader.seek)):
+            frames_to_skip -= prev_pcmreader.seek(frames_to_skip)
+        pcmreaders.append(PCMReaderDeHead(prev_pcmreader, frames_to_skip))
     else:
-        is_first = (track_number == 1)
-        is_last = (track_number == track_total)
+        pcmreaders.append(
+            PCMReader(StringIO(chr(0) *
+                               (track.bits_per_sample() // 8) *
+                               track.channels() *
+                               PREVIOUS_TRACK_FRAMES),
+                      track.sample_rate(),
+                      track.channels(),
+                      int(track.channel_mask()),
+                      track.bits_per_sample()))
 
-    checksum = ChecksumV1(total_pcm_frames=track.total_frames(),
-                          sample_rate=track.sample_rate(),
-                          is_first=is_first,
-                          is_last=is_last)
+    pcmreaders.append(track.to_pcm())
+
+    if (next_track is not None):
+        pcmreaders.append(PCMReaderHead(next_track.to_pcm(), NEXT_TRACK_FRAMES))
+    else:
+        pcmreaders.append(
+            PCMReader(StringIO(chr(0) *
+                               (track.bits_per_sample() // 8) *
+                               track.channels() *
+                               NEXT_TRACK_FRAMES),
+                      track.sample_rate(),
+                      track.channels(),
+                      int(track.channel_mask()),
+                      track.bits_per_sample()))
+
+    #feed stream to checksummer
+    checksum = ChecksumV1(
+        total_pcm_frames=track.total_frames(),
+        sample_rate=track.sample_rate(),
+        is_first=(previous_track is None),
+        is_last=(next_track is None),
+        pcm_frame_range=PREVIOUS_TRACK_FRAMES + 1 + NEXT_TRACK_FRAMES)
 
     try:
-        audiotools.transfer_data(reader.read, checksum.update)
+        transfer_data(
+            PCMReaderProgress(
+                PCMCat(pcmreaders),
+                (PREVIOUS_TRACK_FRAMES +
+                 track.total_frames() +
+                 NEXT_TRACK_FRAMES),
+                progress).read,
+            checksum.update)
     except (IOError, ValueError), err:
-        return (track.filename, None, None, str(err))
+        return (track.filename, None, None, None, str(err))
 
-    #FIXME - handle checksum range here
-    checksum = checksum.checksums()[0]
+    #determine checksum, confidence and offset from
+    #the calculated checksums and possible AccurateRip matches
+    (checksum,
+     confidence,
+     offset) = match_offset(ar_matches=ar_matches,
+                            checksums=checksum.checksums(),
+                            initial_offset=-PREVIOUS_TRACK_FRAMES)
 
-    if (len(ar_matches) > 0):
-        for (confidence, ar_checksum, ar_crc2) in ar_matches:
-            if (checksum == ar_checksum):
-                return (track.filename, checksum, confidence, None)
-        else:
-            return (track.filename, checksum, AR_MISMATCH, None)
+    if (len(ar_matches) == 0):
+        return (track.filename, checksum, offset, AR_NOT_FOUND, None)
+    elif (confidence is None):
+        return (track.filename, checksum, offset, AR_MISMATCH, None)
     else:
-        return (track.filename, checksum, AR_NOT_FOUND, None)
+        return (track.filename, checksum, offset, confidence, None)
+
+
+def accuraterip_image_checksum(progress,
+                               track,
+                               is_first,
+                               is_last,
+                               ar_matches,
+                               displayed_filename,
+                               pcm_frames_offset,
+                               total_pcm_frames):
+    from audiotools import (transfer_data,
+                            PCMReaderProgress,
+                            PCMReaderWindow)
+    from audiotools.accuraterip import ChecksumV1,match_offset
+
+    reader = track.to_pcm()
+
+    pcm_frames_offset -= PREVIOUS_TRACK_FRAMES
+
+    #if PCMReader has seek(), use it to reduce the amount of frames to skip
+    if (hasattr(reader, "seek") and
+        callable(reader.seek) and
+        (pcm_frames_offset > 0)):
+        pcm_frames_offset -= reader.seek(pcm_frames_offset)
+
+    #feed stream to checksummer
+    checksum = ChecksumV1(
+        total_pcm_frames=total_pcm_frames,
+        sample_rate=track.sample_rate(),
+        is_first=is_first,
+        is_last=is_last,
+        pcm_frame_range=PREVIOUS_TRACK_FRAMES + 1 + NEXT_TRACK_FRAMES)
+
+    try:
+        transfer_data(
+            audiotools.PCMReaderProgress(
+                audiotools.PCMReaderWindow(
+                    reader,
+                    pcm_frames_offset,
+                    PREVIOUS_TRACK_FRAMES +
+                    total_pcm_frames +
+                    NEXT_TRACK_FRAMES),
+                PREVIOUS_TRACK_FRAMES + total_pcm_frames + NEXT_TRACK_FRAMES,
+                progress).read,
+            checksum.update)
+    except (IOError, ValueError), err:
+        return (displayed_filename, None, None, None, str(err))
+
+    #determine checksum, confidence and offset from
+    #the calculated checksums and possible AccurateRip matches
+    (checksum,
+     confidence,
+     offset) = match_offset(ar_matches=ar_matches,
+                            checksums=checksum.checksums(),
+                            initial_offset=-PREVIOUS_TRACK_FRAMES)
+
+    if (len(ar_matches) == 0):
+        return (displayed_filename, checksum, offset, AR_NOT_FOUND, None)
+    elif (confidence is None):
+        return (displayed_filename, checksum, offset, AR_MISMATCH, None)
+    else:
+        return (displayed_filename, checksum, offset, confidence, None)
 
 
 def accuraterip_display_result(result):
-    (filename, checksum, confidence, error) = result
+    (filename, checksum, offset, confidence, error) = result
 
     if (error is None):
         if (confidence == AR_NOT_FOUND):
@@ -211,59 +315,6 @@ def accuraterip_display_result(result):
     else:
         #FIXME - display actual error
         return u"read error"
-
-
-def accuraterip_image_checksum(progress, track, track_number, track_total,
-                               ar_matches,
-                               displayed_filename,
-                               pcm_frames_offset, total_pcm_frames):
-    from audiotools._accuraterip import ChecksumV1
-
-    reader = track.to_pcm()
-
-    #if PCMReader has seek(), use it to reduce the amount of frames to skip
-    if (hasattr(reader, "seek") and callable(reader.seek)):
-        pcm_frames_offset -= reader.seek(pcm_frames_offset)
-
-    reader = audiotools.PCMReaderProgress(
-        audiotools.PCMReaderWindow(reader,
-                                   pcm_frames_offset,
-                                   total_pcm_frames),
-        total_pcm_frames,
-        progress)
-
-    checksum = ChecksumV1(track_number == 1,
-                          track_number == track_total,
-                          track.sample_rate(),
-                          total_pcm_frames)
-
-    try:
-        audiotools.transfer_data(reader.read, checksum.update)
-    except (IOError, ValueError), err:
-        return (displayed_filename,
-                None,
-                None,
-                str(err))
-
-    checksum = checksum.checksum()
-
-    if (len(ar_matches) > 0):
-        for (confidence, ar_checksum, ar_crc2) in ar_matches:
-            if (checksum == ar_checksum):
-                return (displayed_filename,
-                        checksum,
-                        confidence,
-                        None)
-        else:
-            return (displayed_filename,
-                    checksum,
-                    AR_MISMATCH,
-                    None)
-    else:
-        return (track.filename,
-                None,
-                AR_NOT_FOUND,
-                None)
 
 
 if (__name__ == '__main__'):
@@ -434,8 +485,8 @@ if (__name__ == '__main__'):
                             progress_text=filename,
                             completion_output=accuraterip_display_result,
                             track=tracks[0],
-                            track_number=i,
-                            track_total=len(sheet),
+                            is_first=(i == 1),
+                            is_last=(i == len(sheet)),
                             ar_matches=ar_results.get(i, []),
                             displayed_filename=filename,
                             pcm_frames_offset=pcm_frames_offset,
@@ -443,11 +494,17 @@ if (__name__ == '__main__'):
 
                         pcm_frames_offset += pcm_frames
                 else:
-                    #process each track as if it were a CD
+                    #process each track as if it were part of a CD
                     tracks = audiotools.sorted_tracks(tracks)
                     ar_results = audiotools.accuraterip_lookup(tracks)
 
-                    for (i, track) in enumerate(tracks, 1):
+                    for (i,
+                         previous_track,
+                         track,
+                         next_track) in zip(range(len(tracks)),
+                                            [None] + tracks,
+                                            tracks,
+                                            tracks[1:] + [None]):
                         filename = audiotools.Filename(track.filename)
 
                         queue.execute(
@@ -455,8 +512,8 @@ if (__name__ == '__main__'):
                             progress_text=unicode(filename),
                             completion_output=accuraterip_display_result,
                             track=track,
-                            track_number=i,
-                            track_total=len(tracks),
+                            previous_track=previous_track,
+                            next_track=next_track,
                             ar_matches=ar_results.get(
                                 track_number(track, i), []))
             else:
@@ -476,6 +533,8 @@ if (__name__ == '__main__'):
         row.add_column(u" ")
         row.add_column(_.LAB_TRACKVERIFY_AR_CHECKSUM1)
         row.add_column(u" ")
+        row.add_column(_.LAB_TRACKVERIFY_AR_OFFSET)
+        row.add_column(u" ")
         row.add_column(_.LAB_TRACKVERIFY_AR_CONFIDENCE)
 
         filename_max = (msg.terminal_size(sys.stdout)[1] -
@@ -484,12 +543,15 @@ if (__name__ == '__main__'):
                                            _.LAB_TRACKVERIFY_AR_CHECKSUM1),
                                        u" ",
                                        audiotools.output_text(
+                                           _.LAB_TRACKVERIFY_AR_OFFSET),
+                                       u" ",
+                                       audiotools.output_text(
                                            _.LAB_TRACKVERIFY_AR_CONFIDENCE)]
                                  ))))
 
-        table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV])
+        table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
 
-        for (filename, checksum, confidence, err) in results:
+        for (filename, checksum, offset, confidence, err) in results:
             row = table.row()
             #truncate long filenames if necessary
             filename = audiotools.output_text(
@@ -503,12 +565,16 @@ if (__name__ == '__main__'):
             if (err is None):
                 row.add_column(u"%8.8X" % (checksum), "right")
                 row.add_column(u"")
+                row.add_column(unicode(offset), "right")
+                row.add_column(u"")
                 if (confidence >= 0):
                     row.add_column(unicode(confidence), "right")
                 else:
                     row.add_column(u"", "right")
             else:
                 row.add_column(_.ERR_READ_ERROR, "right")
+                row.add_column(u"")
+                row.add_column(u"")
                 row.add_column(u"")
                 row.add_column(u"")
 

@@ -6934,7 +6934,7 @@
     with the last few samples of the previous track (if any)
     and the next few samples of the next track (if any)
     in order to find the checksum's offset.
-**** TODO trackverify
+**** DONE trackverify
 **** TODO cd2track
 * TODO Finish version 3.0
 ** TODO Shift to Python 3

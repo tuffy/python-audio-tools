@@ -110,6 +110,38 @@ class ChecksumV1:
         return [c & 0xFFFFFFFF for c in self.__checksums__]
 
 
+def match_offset(ar_matches, checksums, initial_offset):
+    """ar_matches is a list of (confidence, crc, crc2) tuples
+
+    checksums is a list of calculated AccurateRip crcs
+
+    initial_offset is the starting offset of the checksums
+
+    returns (checksum, confidence, offset) of the best match found
+if no matches are found, confidence is None and offset is 0
+"""
+
+    matches = dict([(crc, confidence) for (confidence, crc, crc2) in
+                    ar_matches])  # all crcs have difference confidence
+
+    best_match = None  #a (crc, confidence, offset) tuple, or None
+
+    for (offset, crc) in enumerate(checksums, initial_offset):
+        if (crc in matches):
+            confidence = matches[crc]
+            if ((best_match is None) or (confidence > best_match[0])):
+                best_match = (crc, confidence, offset)
+
+    if (best_match is not None):
+        return best_match
+    else:
+        #return checksum at offset 0, or as close as possible
+        if (initial_offset <= 0):
+            return (checksums[-initial_offset], None, 0)
+        else:
+            return (checksums[0], None, initial_offset)
+
+
 class DiscID:
     def __init__(self, track_numbers, track_offsets,
                  lead_out_offset, freedb_disc_id):
