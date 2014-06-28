@@ -709,7 +709,23 @@ CDDAReader_init_image(cdio_CDDAReader *self, const char *device)
 static int
 CDDAReader_init_device(cdio_CDDAReader *self, const char *device)
 {
-    /*FIXME*/
+    self->_.drive.drive = NULL;
+    self->_.drive.paranoia = NULL;
+    self->_.drive.current_sector = 0;
+    self->_.drive.final_sector = 0;
+
+    if ((self->_.drive.drive = cdio_cddap_identify(device, 0, NULL)) == NULL) {
+        PyErr_SetString(PyExc_IOError, "error opening CD-ROM");
+        return -1;
+    }
+    if (cdio_cddap_open(self->_.drive.drive) != 0) {
+        PyErr_SetString(PyExc_IOError, "error opening CD-ROM");
+        return -1;
+    }
+    self->_.drive.paranoia = cdio_paranoia_init(self->_.drive.drive);
+    paranoia_modeset(self->_.drive.paranoia,
+                     PARANOIA_MODE_FULL^PARANOIA_MODE_NEVERSKIP);
+
     self->first_track_num  = CDDAReader_first_track_num_device;
     self->last_track_num = CDDAReader_last_track_num_device;
     self->track_lsn = CDDAReader_track_lsn_device;
@@ -719,6 +735,9 @@ CDDAReader_init_device(cdio_CDDAReader *self, const char *device)
     self->read = CDDAReader_read_device;
     self->seek = CDDAReader_seek_device;
     self->dealloc = CDDAReader_dealloc_device;
+
+    self->_.drive.final_sector = self->last_sector(self);
+
     return 0;
 }
 
@@ -743,7 +762,12 @@ CDDAReader_dealloc_image(cdio_CDDAReader *self)
 static void
 CDDAReader_dealloc_device(cdio_CDDAReader *self)
 {
-    /*FIXME*/
+    if (self->_.drive.paranoia) {
+        cdio_paranoia_free(self->_.drive.paranoia);
+    }
+    if (self->_.drive.drive) {
+        cdio_cddap_close(self->_.drive.drive);
+    }
 }
 
 static PyObject*
@@ -783,8 +807,8 @@ CDDAReader_first_track_num_image(cdio_CDDAReader *self)
 static int
 CDDAReader_first_track_num_device(cdio_CDDAReader *self)
 {
-    /*FIXME*/
-    return 0;
+    /*FIXME - not sure if there's a more accurate way to get this*/
+    return 1;
 }
 
 static int
@@ -796,8 +820,8 @@ CDDAReader_last_track_num_image(cdio_CDDAReader *self)
 static int
 CDDAReader_last_track_num_device(cdio_CDDAReader *self)
 {
-    /*FIXME*/
-    return 0;
+    /*FIXME - not sure if there's a more accurate way to get this*/
+    return cdio_cddap_tracks(self->_.drive.drive);
 }
 
 static int
@@ -811,8 +835,9 @@ CDDAReader_track_lsn_image(cdio_CDDAReader *self, int track_num)
 static int
 CDDAReader_track_lsn_device(cdio_CDDAReader *self, int track_num)
 {
-    /*FIXME*/
-    return 0;
+    const lsn_t lsn = cdio_cddap_track_firstsector(self->_.drive.drive,
+                                                   (track_t)track_num);
+    return lsn;
 }
 
 static int
@@ -826,8 +851,9 @@ CDDAReader_track_last_lsn_image(cdio_CDDAReader *self, int track_num)
 static int
 CDDAReader_track_last_lsn_device(cdio_CDDAReader *self, int track_num)
 {
-    /*FIXME*/
-    return 0;
+    const lsn_t lsn = cdio_cddap_track_lastsector(self->_.drive.drive,
+                                                  (track_t)track_num);
+    return lsn;
 }
 
 static PyObject*
@@ -924,8 +950,8 @@ CDDAReader_first_sector_image(cdio_CDDAReader *self)
 static int
 CDDAReader_first_sector_device(cdio_CDDAReader *self)
 {
-    /*FIXME*/
-    return 0;
+    return cdio_cddap_track_firstsector(self->_.drive.drive,
+                                        self->first_track_num(self));
 }
 
 static PyObject*
@@ -945,8 +971,8 @@ CDDAReader_last_sector_image(cdio_CDDAReader *self)
 static int
 CDDAReader_last_sector_device(cdio_CDDAReader *self)
 {
-    /*FIXME*/
-    return 0;
+    return cdio_cddap_track_lastsector(self->_.drive.drive,
+                                       self->last_track_num(self));
 }
 
 static PyObject*
@@ -1004,8 +1030,8 @@ CDDAReader_read_image(cdio_CDDAReader *self,
 
         if (result == DRIVER_OP_SUCCESS) {
             unsigned i;
-            samples->resize_for(samples, 588 * 2);
-            for (i = 0; i < (588 * 2); i++) {
+            samples->resize_for(samples, (44100 / 75) * 2);
+            for (i = 0; i < ((44100 / 75) * 2); i++) {
                 a_append(samples, FrameList_SL16_char_to_int(data));
                 data += 2;
             }
@@ -1024,8 +1050,24 @@ CDDAReader_read_device(cdio_CDDAReader *self,
                        unsigned sectors_to_read,
                        a_int *samples)
 {
-    /*FIXME*/
-    return 1;
+    while (sectors_to_read &&
+           (self->_.drive.current_sector <= self->_.drive.final_sector)) {
+        int16_t *raw_sector =
+            cdio_paranoia_read_limited(self->_.drive.paranoia,
+                                       NULL,
+                                       10);
+        unsigned i;
+
+        samples->resize_for(samples, (44100 / 75) * 2);
+        for (i = 0; i < ((44100 / 75) * 2); i++) {
+            a_append(samples, raw_sector[i]);
+        }
+
+        self->_.drive.current_sector++;
+        sectors_to_read--;
+    }
+
+    return 0;
 }
 
 static PyObject*
@@ -1062,8 +1104,13 @@ CDDAReader_seek_image(cdio_CDDAReader *self, unsigned sector)
 unsigned
 CDDAReader_seek_device(cdio_CDDAReader *self, unsigned sector)
 {
-    /*FIXME*/
-    return 0;
+    const unsigned desired_sector = MIN(sector, self->_.drive.final_sector - 1);
+    /*not sure what this returns, but it isn't the sector seeked to*/
+    cdio_paranoia_seek(self->_.drive.paranoia,
+                       (int32_t)desired_sector,
+                       (int)SEEK_SET);
+    self->_.drive.current_sector = desired_sector;
+    return self->_.drive.current_sector;
 }
 
 static PyObject*

@@ -288,6 +288,12 @@ typedef struct cdio_CDDAReader_s {
             lsn_t current_sector;
             lsn_t final_sector;
         } image;
+        struct {
+            cdrom_drive_t *drive;
+            cdrom_paranoia_t *paranoia;
+            lsn_t current_sector;
+            lsn_t final_sector;
+        } drive;
     } _;
     int (*first_track_num)(struct cdio_CDDAReader_s *self);
     int (*last_track_num)(struct cdio_CDDAReader_s *self);
