@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <cdio/cdda.h>
 #include <cdio/paranoia.h>
+#include "array.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -284,15 +285,24 @@ typedef struct cdio_CDDAReader_s {
     union {
         struct {
             CdIo_t *image;
+            lsn_t current_sector;
+            lsn_t final_sector;
         } image;
     } _;
-    int (*first_track_num)(struct cdio_CDDAReader_s *);
-    int (*last_track_num)(struct cdio_CDDAReader_s *);
-    int (*track_lsn)(struct cdio_CDDAReader_s *, int);
-    int (*track_last_lsn)(struct cdio_CDDAReader_s *, int);
-    int (*first_sector)(struct cdio_CDDAReader_s *);
-    int (*last_sector)(struct cdio_CDDAReader_s *);
-    void (*dealloc)(struct cdio_CDDAReader_s *);
+    int (*first_track_num)(struct cdio_CDDAReader_s *self);
+    int (*last_track_num)(struct cdio_CDDAReader_s *self);
+    int (*track_lsn)(struct cdio_CDDAReader_s *self, int track_num);
+    int (*track_last_lsn)(struct cdio_CDDAReader_s *self, int track_num);
+    int (*first_sector)(struct cdio_CDDAReader_s *self);
+    int (*last_sector)(struct cdio_CDDAReader_s *self);
+    int (*read)(struct cdio_CDDAReader_s *self,
+                unsigned to_read,
+                a_int *samples);
+    unsigned (*seek)(struct cdio_CDDAReader_s *self, unsigned sector);
+    void (*dealloc)(struct cdio_CDDAReader_s *self);
+
+    int closed;
+    PyObject *audiotools_pcm;
 } cdio_CDDAReader;
 
 static PyObject*
@@ -399,8 +409,24 @@ static PyGetSetDef CDDAReader_getseters[] = {
 static PyObject*
 CDDAReader_read(cdio_CDDAReader* self, PyObject *args);
 
+int
+CDDAReader_read_image(cdio_CDDAReader *self,
+                      unsigned sectors_to_read,
+                      a_int *samples);
+
+int
+CDDAReader_read_device(cdio_CDDAReader *self,
+                       unsigned sectors_to_read,
+                       a_int *samples);
+
 static PyObject*
 CDDAReader_seek(cdio_CDDAReader* self, PyObject *args);
+
+unsigned
+CDDAReader_seek_image(cdio_CDDAReader *self, unsigned sector);
+
+unsigned
+CDDAReader_seek_device(cdio_CDDAReader *self, unsigned sector);
 
 static PyObject*
 CDDAReader_close(cdio_CDDAReader* self, PyObject *args);

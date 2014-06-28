@@ -402,7 +402,10 @@ class audiotools_cdio(Extension):
                     system_libraries.extra_compile_args("libcdio_paranoia"))
                 extra_link_args.extend(
                     system_libraries.extra_link_args("libcdio_paranoia"))
-            sources.append("src/cdiomodule.c")
+            sources.extend(["src/cdiomodule.c",
+                            "src/array.c",
+                            "src/pcmconv.c",
+                            "src/pcm.c"])
             self.__library_manifest__.append(("libcdio",
                                               "CDDA data extraction",
                                               True))

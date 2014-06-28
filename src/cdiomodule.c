@@ -1,9 +1,11 @@
 #include "cdiomodule.h"
+#include <limits.h>
 #include <cdio/cd_types.h>
 #include <cdio/audio.h>
 #include <cdio/track.h>
 #include <cdio/types.h>
 #include "pcm.h"
+#include "pcmconv.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -26,6 +28,13 @@
 
 #if PY_MAJOR_VERSION >= 3
 #define IS_PY3K
+#endif
+
+#ifndef MIN
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+#endif
+#ifndef MAX
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
 static PyObject *read_callback = NULL;
@@ -620,7 +629,14 @@ CDDAReader_init(cdio_CDDAReader *self, PyObject *args, PyObject *kwds)
     char *device = NULL;
     struct stat buf;
 
+    self->dealloc = NULL;
+    self->closed = 0;
+    self->audiotools_pcm = NULL;
+
     if (!PyArg_ParseTuple(args, "s", &device))
+        return -1;
+
+    if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
     /*identify whether drive is physical or a CD image*/
@@ -660,12 +676,16 @@ static int
 CDDAReader_init_image(cdio_CDDAReader *self, const char *device)
 {
     self->_.image.image = NULL;
+    self->_.image.current_sector = 0;
+    self->_.image.final_sector = 0;
     self->first_track_num  = CDDAReader_first_track_num_image;
     self->last_track_num = CDDAReader_last_track_num_image;
     self->track_lsn = CDDAReader_track_lsn_image;
     self->track_last_lsn = CDDAReader_track_last_lsn_image;
     self->first_sector = CDDAReader_first_sector_image;
     self->last_sector = CDDAReader_last_sector_image;
+    self->read = CDDAReader_read_image;
+    self->seek = CDDAReader_seek_image;
     self->dealloc = CDDAReader_dealloc_image;
 
     /*open CD image based on what type it is*/
@@ -682,6 +702,7 @@ CDDAReader_init_image(cdio_CDDAReader *self, const char *device)
         PyErr_SetString(PyExc_IOError, "unable to open CD image");
         return -1;
     }
+    self->_.image.final_sector = (lsn_t)self->last_sector(self);
     return 0;
 }
 
@@ -695,6 +716,8 @@ CDDAReader_init_device(cdio_CDDAReader *self, const char *device)
     self->track_last_lsn = CDDAReader_track_last_lsn_device;
     self->first_sector = CDDAReader_first_sector_device;
     self->last_sector = CDDAReader_last_sector_device;
+    self->read = CDDAReader_read_device;
+    self->seek = CDDAReader_seek_device;
     self->dealloc = CDDAReader_dealloc_device;
     return 0;
 }
@@ -702,7 +725,10 @@ CDDAReader_init_device(cdio_CDDAReader *self, const char *device)
 static void
 CDDAReader_dealloc(cdio_CDDAReader *self)
 {
-    self->dealloc(self);
+    if (self->dealloc) {
+        self->dealloc(self);
+    }
+    Py_XDECREF(self->audiotools_pcm);
     self->ob_type->tp_free((PyObject*)self);
 }
 
@@ -926,23 +952,125 @@ CDDAReader_last_sector_device(cdio_CDDAReader *self)
 static PyObject*
 CDDAReader_read(cdio_CDDAReader* self, PyObject *args)
 {
+    int pcm_frames;
+    unsigned sectors_to_read;
+    a_int *samples = a_int_new();
+    int successful;
+    PyObject *to_return;
+
+    if (!PyArg_ParseTuple(args, "i", &pcm_frames)) {
+        return NULL;
+    }
+
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
+        return NULL;
+    }
+
+    sectors_to_read = MAX(pcm_frames, 0) / (44100 / 75);
+    if (sectors_to_read < 1) {
+        sectors_to_read = 1;
+    }
+
+    Py_BEGIN_ALLOW_THREADS
+    successful = !self->read(self, sectors_to_read, samples);
+    Py_END_ALLOW_THREADS
+
+    if (successful) {
+        to_return = a_int_to_FrameList(self->audiotools_pcm,
+                                       samples, 2, 16);
+        samples->del(samples);
+        return to_return;
+    } else {
+        samples->del(samples);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return NULL;
+    }
+}
+
+int
+CDDAReader_read_image(cdio_CDDAReader *self,
+                      unsigned sectors_to_read,
+                      a_int *samples)
+{
+    while (sectors_to_read &&
+           (self->_.image.current_sector <= self->_.image.final_sector)) {
+        uint8_t sector[CDIO_CD_FRAMESIZE_RAW];
+        uint8_t *data = sector;
+        const int result = cdio_read_audio_sector(
+            self->_.image.image,
+            sector,
+            self->_.image.current_sector);
+
+        if (result == DRIVER_OP_SUCCESS) {
+            unsigned i;
+            samples->resize_for(samples, 588 * 2);
+            for (i = 0; i < (588 * 2); i++) {
+                a_append(samples, FrameList_SL16_char_to_int(data));
+                data += 2;
+            }
+            self->_.image.current_sector++;
+            sectors_to_read--;
+        } else {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int
+CDDAReader_read_device(cdio_CDDAReader *self,
+                       unsigned sectors_to_read,
+                       a_int *samples)
+{
     /*FIXME*/
-    Py_INCREF(Py_None);
-    return Py_None;
+    return 1;
 }
 
 static PyObject*
 CDDAReader_seek(cdio_CDDAReader* self, PyObject *args)
 {
+    long long seeked_offset;
+    unsigned seeked_sector;
+    unsigned found_sector;
+
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot seek closed stream");
+        return NULL;
+    }
+    if (!PyArg_ParseTuple(args, "L", &seeked_offset))
+        return NULL;
+
+    if (seeked_offset < 0) {
+        seeked_offset = 0;
+    }
+
+    seeked_sector = MIN(seeked_offset / (44100 / 75), UINT_MAX);
+    found_sector = self->seek(self, seeked_sector);
+    return Py_BuildValue("I", found_sector * (44100 / 75));
+}
+
+unsigned
+CDDAReader_seek_image(cdio_CDDAReader *self, unsigned sector)
+{
+    self->_.image.current_sector =
+        MIN(sector, self->_.image.final_sector - 1);
+    return self->_.image.current_sector;
+}
+
+unsigned
+CDDAReader_seek_device(cdio_CDDAReader *self, unsigned sector)
+{
     /*FIXME*/
-    Py_INCREF(Py_None);
-    return Py_None;
+    return 0;
 }
 
 static PyObject*
 CDDAReader_close(cdio_CDDAReader* self, PyObject *args)
 {
-    /*FIXME*/
+    self->closed = 1;
+
     Py_INCREF(Py_None);
     return Py_None;
 }

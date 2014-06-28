@@ -6956,12 +6956,12 @@
       - [ ] CD drive
       Used for calculating various disc IDs
 ***** TODO CDDAReader.read(pcm_frames)
-      - [ ] CD image
+      - [X] CD image
       - [ ] CD drive
 ***** TODO CDDAReader.seek(pcm_frames)
-      - [ ] CD image
+      - [X] CD image
       - [ ] CD drive
-***** TODO CDDAReader.close()
+***** DONE CDDAReader.close()
 **** TODO Update documentation
 **** TODO Update unit tests
 **** TODO Update utilities
