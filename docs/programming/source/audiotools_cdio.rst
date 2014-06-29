@@ -8,127 +8,99 @@
 
 The :mod:`audiotools.cdio` module contains the CDDA class
 for accessing raw CDDA data.
-One does not typically use this module directly.
-Instead, the :class:`audiotools.CDDA` class provides encapsulation
-to hide many of these low-level details.
 
-CDDA Objects
-------------
+CDDAReader Objects
+------------------
 
-.. class:: CDDA(device)
+.. class:: CDDAReader(device, [perform_logging])
 
-   This class is used to access a specific CD-ROM device,
-   which should be given as a string such as ``"/dev/cdrom"``
-   during instantiation.
+   A :class:`audiotools.PCMReader` object which treats the CD audio
+   as a single continuous stream of audio data.
+   ``device`` may be a physical CD device (like ``/dev/cdrom``) or
+   a CD image file (like ``CDImage.cue``).
+   If ``perform_logging`` is indicated and ``device`` is a physical
+   drive, reads will perform logging.
 
-   Note that audio CDs are accessed by sectors, each 1/75th of a
-   second long - or 588 PCM frames.
-   Thus, many of this object's methods take and return sector
-   integer values.
+.. data:: CDDAReader.sample_rate
 
-.. method:: CDDA.total_tracks()
+   The sample rate of this stream, always ``44100``.
 
-   Returns the total number of tracks on the CD as an integer.
+.. data:: CDDAReader.channels
 
-   >>> cd = CDDA("/dev/cdrom")
-   >>> cd.total_tracks()
-   17
+   The channel count of this stream, always ``2``.
 
-.. method:: CDDA.track_offsets(track_number)
+.. data:: CDDAReader.channel_mask
 
-   Given a track_number integer (starting from 1),
-   returns a pair of sector values.
-   The first is the track's first sector on the CD.
-   The second is the track's last sector on the CD.
+   This channel mask of this stream, always ``3``.
 
-   >>> cd.track_offsets(1)
-   (0, 15774)
-   >>> cd.track_offsets(2)
-   (15775, 31836)
+.. data:: CDDAReader.bits_per_sample
 
-.. method:: CDDA.first_sector()
+   The bits-per-sample of this stream, always ``16``.
 
-   Returns the first sector of the entire CD as an integer, typically 0.
+.. method:: CDDAReader.read(pcm_frames)
 
-   >>> cd.first_sector()
-   0
+   Try to read a :class:`pcm.FrameList` object with the given number
+   of PCM frames, if possible.
+   This method will return sector-aligned chunks of data,
+   each divisible by 588 frames.
+   Once the end of the CD is reached, subsequent calls will return
+   empty FrameLists.
 
-.. method:: CDDA.last_sector()
+   May raise :exc:`IOError` if a problem occurs reading the CD.
 
-   Returns the last sector of the entire CD as an integer.
+.. method:: CDDAReader.seek(pcm_frames)
 
-   >>> cd.last_sector()
-   240449
+   Try to seek to the given absolute position on the disc as a PCM
+   frame value.
+   Returns the position actually reached as a PCM frame value.
+   This method will always seek to a sector-aligned position,
+   each divisible by 588 frames.
 
-.. method:: CDDA.length_in_seconds()
+.. method:: CDDAReader.close()
 
-   Returns the length of the entire CD in seconds as an integer.
+   Closes the stream for further reading.
+   Subsequent calls to :meth:`CDDAReader.read` and
+   :meth:`CDDAReader.seek` will raise :exc:`ValueError`.
 
-   >>> cd.length_in_seconds()
-   3206
+.. data:: CDDAReader.is_cd_image
 
-.. method:: CDDA.track_type(track_number)
+   Whether the disc is a physical device or CD image.
+   This is useful for determining whether disc read offset
+   should be applied.
 
-   Given a track_number integer (starting from 1),
-   returns the type of track it is as an integer.
+.. data:: CDDAReader.first_sector
 
-.. method:: CDDA.set_speed(speed)
+   The first sector of the disc as an integer.
+   This is mostly for calculating disc IDs for various lookup services.
 
-   Sets the CD-ROM's reading speed to the new integer value.
+.. data:: CDDAReader.last_sector
 
-.. method:: CDDA.seek(sector)
+   The last sector of the disc as an integer.
 
-   Sets our current position on the CD to the given sector.
-   For example, to begin reading audio data from the second track:
+.. data:: CDDAReader.track_lengths
 
-   >>> cd.track_offsets(2)[0]
-   15775
-   >>> cd.seek(15775)
+   A dict whose keys are track numbers and whose values
+   are the lengths of those tracks in PCM frames.
 
-.. method:: CDDA.read_sector()
+.. data:: CDDAReader.track_offsets
 
-   Reads a single sector from the CD as a :class:`pcm.FrameList` object
-   and moves our current read position ahead by 1.
+   A disc whose keys are track numbers and whose values
+   are the offsets of those tracks in PCM frames.
 
-   >>> f = cd.read_sector()
-   >>> f
-   <pcm.FrameList object at 0x2ca16f0>
-   >>> len(f)
-   1176
+.. method:: CDDAReader.set_speed(speed)
 
-.. method:: CDDA.read_sectors(sectors)
+   Sets the reading speed of the drive to the given integer.
+   This has no effect on CD images.
 
-   Given a number of sectors, reads as many as possible
-   from the CD as a :class:`pcm.FrameList` object
-   and moves our current read position ahead by that many sectors.
+.. method:: CDDAReader.log()
 
-   >>> f = cd.read_sectors(10)
-   >>> f
-   <pcm.FrameList object at 0x7f022e0d6c60>
-   >>> len(f)
-   11760
+   Returns the read log as a dictionary.
+   If logging is active, these values will be updated on
+   each call to :meth:`CDDAReader.read`.
+   If logging is inactive or not supported, all values will be 0.
 
-.. function:: set_read_callback(function)
+.. method:: CDDAReader.reset_log()
 
-   Sets a global callback function which takes two integer values
-   as arguments.
-   The second argument is a cdparanoia value corresponding
-   to errors fixed, if any:
-
-   ===== ========================== ======================
-   Value CDParanoia Value           Meaning
-   ----- -------------------------- ----------------------
-       0 PARANOIA_CB_READ           Read off adjust ???
-       1 PARANOIA_CB_VERIFY         Verifying jitter
-       2 PARANOIA_CB_FIXUP_EDGE     Fixed edge jitter
-       3 PARANOIA_CB_FIXUP_ATOM     Fixed atom jitter
-       4 PARANOIA_CB_SCRATCH        Unsupported
-       5 PARANOIA_CB_REPAIR         Unsupported
-       6 PARANOIA_CB_SKIP           Skip exhausted retry
-       7 PARANOIA_CB_DRIFT          Skip exhausted retry
-       8 PARANOIA_CB_BACKOFF        Unsupported
-       9 PARANOIA_CB_OVERLAP        Dynamic overlap adjust
-      10 PARANOIA_CB_FIXUP_DROPPED  Fixed dropped bytes
-      11 PARANOIA_CB_FIXUP_DUPED    Fixed duplicate bytes
-      12 PARANOIA_CB_READERR        Hard read error
-   ===== ========================== ======================
+   Resets all log values to 0.
+   This is useful if one wants to get the log values for
+   many tracks individually.

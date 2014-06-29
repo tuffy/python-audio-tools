@@ -460,130 +460,87 @@ class Sines(unittest.TestCase):
 
 
 class CDDA(unittest.TestCase):
-    @LIB_CORE
+    @LIB_CDIO
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
         self.bin = os.path.join(self.temp_dir, "Test.BIN")
         self.cue = os.path.join(self.temp_dir, "Test.CUE")
 
         bin_file = open(self.bin, "wb")
-        self.reader = test_streams.Sine16_Stereo(69470436, 44100,
+        self.reader = test_streams.Sine16_Stereo(43646652, 44100,
                                                  441.0, 0.50,
                                                  4410.0, 0.49, 1.0)
         audiotools.transfer_framelist_data(self.reader, bin_file.write)
         bin_file.close()
 
         f = open(self.cue, "w")
-        f.write("""eJydkF1LwzAUQN8L/Q+X/oBxk6YfyVtoM4mu68iy6WudQ8qkHbNu+u9NneCc1IdCnk649xyuUQXk
-epnpHGiOMU2Q+Z5xMCuLQs0tBOq92nTy7alus3b/AUeccL5/ZIHvZdLKWXkDjKcpIg2RszjxvYUy
-09IUykCwanZNe2pAHrr6tXMjVtuZ+uG27l62Dk91T03VPG8np+oYwL1cK98DsEZmd4AE5CrXZU8c
-O++wh2qzQxKc4X/S/l8vTQa3i7V2kWEap/iN57l66Pcjiq93IaWDUjpOyn9LETAVyASh1y0OR4Il
-Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64').decode('zlib'))
+        f.write("""eJyV0E9rwjAcxvF7oe/hR++T/Gu39haaCGGrHVncdq3OQ3G0olW3d79EA5NChEJO38DzIdGyAqHe
+SiWAcUSFQFkcaRvLuqrkwkAif5r1wI9fbV/2u184oVme71ZpEkevUs9rXUkNybLbdv25A74f2sNg
+74wyL/K/m3b43tg8V65uevqw6rvjYXZuTgl88HcZRwBG8/IZEAa+FKp2xbbrjtk36y3CyTXeg929
+Wgj56YYQKi7nZp0E18m0dQSIunWCx6jNxGeP0iBKJ6OZQzEdo5lD8S3KgiibjD4VhBaUjFGbU589
+mgbRdCqK7Sc+FgyNUJdznz2aBdFsMsrsewqUjlGb2SX/Acrmwq4=""".decode('base64').decode('zlib'))
         f.close()
 
-        self.sample_offset = audiotools.config.get_default("System",
-                                                           "cdrom_read_offset",
-                                                           "0")
-
-    @LIB_CORE
+    @LIB_CDIO
     def tearDown(self):
-        for f in os.listdir(self.temp_dir):
-            os.unlink(os.path.join(self.temp_dir, f))
+        os.unlink(self.bin)
+        os.unlink(self.cue)
         os.rmdir(self.temp_dir)
 
-        audiotools.config.set_default("System",
-                                      "cdrom_read_offset",
-                                      self.sample_offset)
-
-    @LIB_CORE
-    def test_init(self):
-        from audiotools.cdio import CDDA
-        from audiotools.cdio import CDImage
-
-        self.assertRaises(TypeError, CDDA)
-        self.assertRaises(TypeError, CDDA, None)
-        self.assertRaises(TypeError, CDImage)
-        self.assertRaises(ValueError, CDImage, "", -1)
-
-    @LIB_CORE
+    @LIB_CDIO
     def test_cdda(self):
-        cdda = audiotools.CDDA(self.cue)
-        self.assertEqual(len(cdda), 4)
+        from audiotools.cdio import CDDAReader
+
+        cdda = CDDAReader(self.cue)
+
+        self.assertEqual(cdda.is_cd_image, True)
+        self.assertEqual(cdda.sample_rate, 44100)
+        self.assertEqual(cdda.channels, 2)
+        self.assertEqual(cdda.channel_mask, 0x3)
+        self.assertEqual(cdda.bits_per_sample, 16)
+        self.assertEqual(cdda.first_sector, 0)
+        self.assertEqual(cdda.last_sector, (43646652 // 588) - 1)
+        self.assertEqual(cdda.track_lengths,
+                         {1: 8038548,
+                          2: 7932120,
+                          3: 6318648,
+                          4: 10765104,
+                          5: 5491920,
+                          6: 5100312})
+        self.assertEqual(cdda.track_offsets,
+                         {1: 0,
+                          2: 8038548,
+                          3: 15970668,
+                          4: 22289316,
+                          5: 33054420,
+                          6: 38546340})
+
+        #verify whole disc
         checksum = md5()
-        audiotools.transfer_framelist_data(audiotools.PCMCat(iter(cdda)),
-                                           checksum.update)
+        audiotools.transfer_framelist_data(cdda, checksum.update)
         self.assertEqual(self.reader.hexdigest(),
                          checksum.hexdigest())
 
-    @LIB_CORE
-    def test_cdda_pcm(self):
-        cdda = audiotools.CDDA(self.cue)
+        #ensure subsequent reads keep generating empty framelists
+        for i in xrange(10):
+            self.assertEqual(cdda.read(44100).frames, 0)
 
-        for track in cdda:
-            #ensure all track data reads correctly
-            track_frames = track.length() * 588
-            total_frames = 0
-            f = track.read(4096)
-            while (len(f) > 0):
-                total_frames += f.frames
-                f = track.read(4096)
-            self.assertEqual(total_frames, track_frames)
+        #verify individual track sections
+        for track_num in sorted(cdda.track_offsets.keys()):
+            offset = cdda.track_offsets[track_num]
+            length = cdda.track_lengths[track_num]
+            remaining_offset = offset - cdda.seek(offset)
+            self.reader.reset()
+            self.assertEqual(audiotools.pcm_frame_cmp(
+                audiotools.PCMReaderWindow(cdda, remaining_offset, length),
+                audiotools.PCMReaderWindow(self.reader, offset, length)),
+                None)
 
-            #ensure further reads return empty FrameLists
-            for i in xrange(10):
-                self.assertEqual(len(track.read(4096)), 0)
+        #verify close raises exceptions when reading/seeking
+        cdda.close()
+        self.assertRaises(ValueError, cdda.read, 10)
 
-            #ensure closing the reader raises ValueErrors
-            #on subsequent reads
-            track.close()
-
-            self.assertRaises(ValueError, track.read, 4096)
-
-    @LIB_CORE
-    def test_cdda_positive_offset(self):
-        #offset values don't apply to CD images
-        #so this test doesn't do much
-
-        audiotools.config.set_default("System",
-                                      "cdrom_read_offset",
-                                      str(10))
-        cdda = audiotools.CDDA(self.cue)
-        reader_checksum = md5()
-        cdrom_checksum = md5()
-        audiotools.transfer_framelist_data(
-            audiotools.PCMCat(iter(cdda)),
-            cdrom_checksum.update)
-        self.reader.reset()
-        audiotools.transfer_framelist_data(
-            audiotools.PCMReaderWindow(self.reader,
-                                       0,
-                                       69470436),
-            reader_checksum.update)
-        self.assertEqual(reader_checksum.hexdigest(),
-                         cdrom_checksum.hexdigest())
-
-    @LIB_CORE
-    def test_cdda_negative_offset(self):
-        #offset values don't apply to CD images
-        #so this test doesn't do much
-
-        audiotools.config.set_default("System",
-                                      "cdrom_read_offset",
-                                      str(-10))
-        cdda = audiotools.CDDA(self.cue)
-        reader_checksum = md5()
-        cdrom_checksum = md5()
-        audiotools.transfer_framelist_data(
-            audiotools.PCMCat(iter(cdda)),
-            cdrom_checksum.update)
-        self.reader.reset()
-        audiotools.transfer_framelist_data(
-            audiotools.PCMReaderWindow(self.reader,
-                                       0,
-                                       69470436),
-            reader_checksum.update)
-        self.assertEqual(reader_checksum.hexdigest(),
-                         cdrom_checksum.hexdigest())
+        self.assertRaises(ValueError, cdda.seek, 10)
 
 
 class ChannelMask(unittest.TestCase):

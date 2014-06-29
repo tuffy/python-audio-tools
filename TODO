@@ -6972,8 +6972,8 @@
       - [X] CD drive
 ***** DONE CDDAReader.reset_log()
 ***** DONE CDDAReader.close()
-**** TODO Update documentation
-**** TODO Update unit tests
+**** DONE Update documentation
+**** DONE Update unit tests
 **** TODO Update utilities
 ***** TODO cd2track
 ***** TODO cdinfo
