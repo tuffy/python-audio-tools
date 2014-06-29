@@ -279,9 +279,35 @@ static PyTypeObject cdio_CDImageType = {
     CDImage_new,               /* tp_new */
 };
 
+struct cdio_log {
+    int read;
+    int verify;
+    int fixup_edge;
+    int fixup_atom;
+    int scratch;
+    int repair;
+    int skip;
+    int drift;
+    int backoff;
+    int overlap;
+    int fixup_dropped;
+    int fixup_duped;
+    int readerr;
+};
+
+/*global pointer to the current cdio_log state
+  to be used by the cddareader_callback*/
+struct cdio_log *log_state = NULL;
+
+static void
+cddareader_callback(long int i, paranoia_cb_mode_t mode);
+
 /*audiotools.cdio.CDDAReader object*/
 typedef struct cdio_CDDAReader_s {
     PyObject_HEAD
+    int is_cd_image;
+    int is_logging;
+    struct cdio_log log;
     union {
         struct {
             CdIo_t *image;
@@ -305,6 +331,7 @@ typedef struct cdio_CDDAReader_s {
                 unsigned to_read,
                 a_int *samples);
     unsigned (*seek)(struct cdio_CDDAReader_s *self, unsigned sector);
+    void (*set_speed)(struct cdio_CDDAReader_s *self, int new_speed);
     void (*dealloc)(struct cdio_CDDAReader_s *self);
 
     int closed;
@@ -343,6 +370,9 @@ CDDAReader_channels(cdio_CDDAReader *self, void *closure);
 
 static PyObject*
 CDDAReader_channel_mask(cdio_CDDAReader *self, void *closure);
+
+static PyObject*
+CDDAReader_is_cd_image(cdio_CDDAReader *self, void *closure);
 
 static int
 CDDAReader_first_track_num_image(cdio_CDDAReader *self);
@@ -401,6 +431,8 @@ static PyGetSetDef CDDAReader_getseters[] = {
      (getter)CDDAReader_channels, NULL, "channels", NULL},
     {"channel_mask",
      (getter)CDDAReader_channel_mask, NULL, "channel mask", NULL},
+    {"is_cd_image",
+     (getter)CDDAReader_is_cd_image, NULL, "is CD image", NULL},
     {"track_offsets",
      (getter)CDDAReader_track_offsets, NULL, "track offsets", NULL},
     {"track_lengths",
@@ -415,12 +447,12 @@ static PyGetSetDef CDDAReader_getseters[] = {
 static PyObject*
 CDDAReader_read(cdio_CDDAReader* self, PyObject *args);
 
-int
+static int
 CDDAReader_read_image(cdio_CDDAReader *self,
                       unsigned sectors_to_read,
                       a_int *samples);
 
-int
+static int
 CDDAReader_read_device(cdio_CDDAReader *self,
                        unsigned sectors_to_read,
                        a_int *samples);
@@ -428,14 +460,35 @@ CDDAReader_read_device(cdio_CDDAReader *self,
 static PyObject*
 CDDAReader_seek(cdio_CDDAReader* self, PyObject *args);
 
-unsigned
+static unsigned
 CDDAReader_seek_image(cdio_CDDAReader *self, unsigned sector);
 
-unsigned
+static unsigned
 CDDAReader_seek_device(cdio_CDDAReader *self, unsigned sector);
 
 static PyObject*
 CDDAReader_close(cdio_CDDAReader* self, PyObject *args);
+
+static PyObject*
+CDDAReader_set_speed(cdio_CDDAReader *self, PyObject *args);
+
+static void
+CDDAReader_set_speed_image(cdio_CDDAReader *self, int new_speed);
+
+static void
+CDDAReader_set_speed_device(cdio_CDDAReader *self, int new_speed);
+
+static int
+cddareader_set_log_item(PyObject *dict, const char *key, int value);
+
+static PyObject*
+CDDAReader_log(cdio_CDDAReader *self, PyObject *args);
+
+static PyObject*
+CDDAReader_reset_log(cdio_CDDAReader *self, PyObject *args);
+
+static void
+cddareader_reset_log(struct cdio_log *log);
 
 static PyMethodDef CDDAReader_methods[] = {
     {"read", (PyCFunction)CDDAReader_read,
@@ -444,6 +497,12 @@ static PyMethodDef CDDAReader_methods[] = {
      METH_VARARGS, "Seeks to position in CD stream"},
     {"close", (PyCFunction)CDDAReader_close,
      METH_NOARGS, "Closes CD stream"},
+    {"set_speed", (PyCFunction)CDDAReader_set_speed,
+     METH_VARARGS, "Sets CD speed"},
+    {"log", (PyCFunction)CDDAReader_log,
+     METH_NOARGS, "Gets read log"},
+    {"reset_log", (PyCFunction)CDDAReader_reset_log,
+     METH_NOARGS, "Resets read log"},
     {NULL}
 };
 

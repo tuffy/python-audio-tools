@@ -6934,7 +6934,7 @@
     It should work transparently on physical CD devices as well as CD images
     and be PCM-frame centric by doing all the CD sector conversions
     behind-the-scenes.
-**** TODO Add methods and attributes
+**** DONE Add methods and attributes
 ***** DONE CDDAReader.sample_rate
 ***** DONE CDDAReader.channels
 ***** DONE CDDAReader.channel_mask
@@ -6955,22 +6955,22 @@
       - [X] CD image
       - [X] CD drive
       Used for calculating various disc IDs
-***** TODO CDDAReader.is_image
-      - [ ] CD drive
-      - [ ] CD image
+***** DONE CDDAReader.is_image
+      - [X] CD drive
+      - [X] CD image
 ***** DONE CDDAReader.read(pcm_frames)
       - [X] CD image
       - [X] CD drive
 ***** DONE CDDAReader.seek(pcm_frames)
       - [X] CD image
       - [X] CD drive
-***** TODO CDDAReader.set_speed(speed)
-      - [ ] CD image
-      - [ ] CD drive
-***** TODO CDDAReader.log()
-      - [ ] CD image
-      - [ ] CD drive
-***** TODO CDDAReader.reset_log()
+***** DONE CDDAReader.set_speed(speed)
+      - [X] CD image
+      - [X] CD drive
+***** DONE CDDAReader.log()
+      - [X] CD image
+      - [X] CD drive
+***** DONE CDDAReader.reset_log()
 ***** DONE CDDAReader.close()
 **** TODO Update documentation
 **** TODO Update unit tests

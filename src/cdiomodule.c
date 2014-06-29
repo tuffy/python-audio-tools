@@ -629,11 +629,14 @@ CDDAReader_init(cdio_CDDAReader *self, PyObject *args, PyObject *kwds)
     char *device = NULL;
     struct stat buf;
 
+    self->is_cd_image = 0;
+    self->is_logging = 0;
     self->dealloc = NULL;
     self->closed = 0;
     self->audiotools_pcm = NULL;
+    cddareader_reset_log(&(self->log));
 
-    if (!PyArg_ParseTuple(args, "s", &device))
+    if (!PyArg_ParseTuple(args, "s|i", &device, &(self->is_logging)))
         return -1;
 
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
@@ -650,6 +653,8 @@ CDDAReader_init(cdio_CDDAReader *self, PyObject *args, PyObject *kwds)
             cdio_is_tocfile(device) ||
             cdio_is_nrg(device)) {
             /*open CD image and set function pointers*/
+            self->is_cd_image = 1;
+            self->is_logging = 0;
             return CDDAReader_init_image(self, device);
         } else {
             /*unsupported file*/
@@ -659,6 +664,7 @@ CDDAReader_init(cdio_CDDAReader *self, PyObject *args, PyObject *kwds)
     } else if (S_ISBLK(buf.st_mode)) {
         if (cdio_is_device(device, DRIVER_LINUX)) {
             /*open CD device and set function pointers*/
+            self->is_cd_image = 0;
             return CDDAReader_init_device(self, device);
         } else {
             /*unsupported block device*/
@@ -686,6 +692,7 @@ CDDAReader_init_image(cdio_CDDAReader *self, const char *device)
     self->last_sector = CDDAReader_last_sector_image;
     self->read = CDDAReader_read_image;
     self->seek = CDDAReader_seek_image;
+    self->set_speed = CDDAReader_set_speed_image;
     self->dealloc = CDDAReader_dealloc_image;
 
     /*open CD image based on what type it is*/
@@ -734,6 +741,7 @@ CDDAReader_init_device(cdio_CDDAReader *self, const char *device)
     self->last_sector = CDDAReader_last_sector_device;
     self->read = CDDAReader_read_device;
     self->seek = CDDAReader_seek_device;
+    self->set_speed = CDDAReader_set_speed_device;
     self->dealloc = CDDAReader_dealloc_device;
 
     self->_.drive.final_sector = self->last_sector(self);
@@ -796,6 +804,12 @@ CDDAReader_channel_mask(cdio_CDDAReader *self, void *closure)
 {
     const int channel_mask = 0x3;
     return Py_BuildValue("i", channel_mask);
+}
+
+static PyObject*
+CDDAReader_is_cd_image(cdio_CDDAReader *self, void *closure)
+{
+    return PyBool_FromLong(self->is_cd_image);
 }
 
 static int
@@ -982,6 +996,7 @@ CDDAReader_read(cdio_CDDAReader* self, PyObject *args)
     unsigned sectors_to_read;
     a_int *samples = a_int_new();
     int successful;
+    PyThreadState *thread_state = NULL;
     PyObject *to_return;
 
     if (!PyArg_ParseTuple(args, "i", &pcm_frames)) {
@@ -998,9 +1013,19 @@ CDDAReader_read(cdio_CDDAReader* self, PyObject *args)
         sectors_to_read = 1;
     }
 
-    Py_BEGIN_ALLOW_THREADS
+    /*if logging is in progress, only let a single thread
+      into this function at once so that the global callback
+      can be set and used atomically
+
+      since the callback function doesn't take any state
+      we're forced to stick it in a global variable*/
+    if (!self->is_logging) {
+        thread_state = PyEval_SaveThread();
+    }
     successful = !self->read(self, sectors_to_read, samples);
-    Py_END_ALLOW_THREADS
+    if (!self->is_logging) {
+        PyEval_RestoreThread(thread_state);
+    }
 
     if (successful) {
         to_return = a_int_to_FrameList(self->audiotools_pcm,
@@ -1014,7 +1039,7 @@ CDDAReader_read(cdio_CDDAReader* self, PyObject *args)
     }
 }
 
-int
+static int
 CDDAReader_read_image(cdio_CDDAReader *self,
                       unsigned sectors_to_read,
                       a_int *samples)
@@ -1045,17 +1070,22 @@ CDDAReader_read_image(cdio_CDDAReader *self,
     return 0;
 }
 
-int
+static int
 CDDAReader_read_device(cdio_CDDAReader *self,
                        unsigned sectors_to_read,
                        a_int *samples)
 {
+    if (self->is_logging) {
+        log_state = &(self->log);
+    }
+
     while (sectors_to_read &&
            (self->_.drive.current_sector <= self->_.drive.final_sector)) {
         int16_t *raw_sector =
-            cdio_paranoia_read_limited(self->_.drive.paranoia,
-                                       NULL,
-                                       10);
+            cdio_paranoia_read_limited(
+                self->_.drive.paranoia,
+                self->is_logging ? cddareader_callback : NULL,
+                10);
         unsigned i;
 
         samples->resize_for(samples, (44100 / 75) * 2);
@@ -1065,6 +1095,10 @@ CDDAReader_read_device(cdio_CDDAReader *self,
 
         self->_.drive.current_sector++;
         sectors_to_read--;
+    }
+
+    if (self->is_logging) {
+        log_state = NULL;
     }
 
     return 0;
@@ -1093,7 +1127,7 @@ CDDAReader_seek(cdio_CDDAReader* self, PyObject *args)
     return Py_BuildValue("I", found_sector * (44100 / 75));
 }
 
-unsigned
+static unsigned
 CDDAReader_seek_image(cdio_CDDAReader *self, unsigned sector)
 {
     self->_.image.current_sector =
@@ -1101,7 +1135,7 @@ CDDAReader_seek_image(cdio_CDDAReader *self, unsigned sector)
     return self->_.image.current_sector;
 }
 
-unsigned
+static unsigned
 CDDAReader_seek_device(cdio_CDDAReader *self, unsigned sector)
 {
     const unsigned desired_sector = MIN(sector, self->_.drive.final_sector - 1);
@@ -1118,6 +1152,168 @@ CDDAReader_close(cdio_CDDAReader* self, PyObject *args)
 {
     self->closed = 1;
 
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+CDDAReader_set_speed(cdio_CDDAReader *self, PyObject *args)
+{
+    int new_speed;
+
+    if (!PyArg_ParseTuple(args, "i", &new_speed))
+        return NULL;
+
+    self->set_speed(self, new_speed);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static void
+CDDAReader_set_speed_image(cdio_CDDAReader *self, int new_speed)
+{
+    /*not an actual CD device, so do nothing*/
+}
+
+static void
+CDDAReader_set_speed_device(cdio_CDDAReader *self, int new_speed)
+{
+    cdio_cddap_speed_set(self->_.drive.drive, new_speed);
+}
+
+static void
+cddareader_callback(long int i, paranoia_cb_mode_t mode)
+{
+    if (log_state) {
+        switch (mode) {
+        case PARANOIA_CB_READ:
+            log_state->read++;
+            break;
+        case PARANOIA_CB_VERIFY:
+            log_state->verify++;
+            break;
+        case PARANOIA_CB_FIXUP_EDGE:
+            log_state->fixup_edge++;
+            break;
+        case PARANOIA_CB_FIXUP_ATOM:
+            log_state->fixup_atom++;
+            break;
+        case PARANOIA_CB_SCRATCH:
+            log_state->scratch++;
+            break;
+        case PARANOIA_CB_REPAIR:
+            log_state->repair++;
+            break;
+        case PARANOIA_CB_SKIP:
+            log_state->skip++;
+            break;
+        case PARANOIA_CB_DRIFT:
+            log_state->drift++;
+            break;
+        case PARANOIA_CB_BACKOFF:
+            log_state->backoff++;
+            break;
+        case PARANOIA_CB_OVERLAP:
+            log_state->overlap++;
+            break;
+        case PARANOIA_CB_FIXUP_DROPPED:
+            log_state->fixup_dropped++;
+            break;
+        case PARANOIA_CB_FIXUP_DUPED:
+            log_state->fixup_duped++;
+            break;
+        case PARANOIA_CB_READERR:
+            log_state->readerr++;
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+static void
+cddareader_reset_log(struct cdio_log *log)
+{
+    log->read = 0;
+    log->verify = 0;
+    log->fixup_edge = 0;
+    log->fixup_atom = 0;
+    log->scratch = 0;
+    log->repair = 0;
+    log->skip = 0;
+    log->drift = 0;
+    log->backoff = 0;
+    log->overlap = 0;
+    log->fixup_dropped = 0;
+    log->fixup_duped = 0;
+    log->readerr = 0;
+}
+
+static int
+cddareader_set_log_item(PyObject *dict, const char *key, int value)
+{
+    PyObject *value_obj = Py_BuildValue("i", value);
+    if (value_obj) {
+        const int result = PyDict_SetItemString(dict, key, value_obj);
+        Py_DECREF(value_obj);
+        if (result == 0) {
+            return 0;
+        } else {
+            return 1;
+        }
+    } else {
+        return 1;
+    }
+}
+
+static PyObject*
+CDDAReader_log(cdio_CDDAReader *self, PyObject *args)
+{
+    const struct cdio_log *log = &(self->log);
+    PyObject *log_obj = PyDict_New();
+    if (log_obj) {
+        if (cddareader_set_log_item(log_obj, "read", log->read))
+            goto error;
+        if (cddareader_set_log_item(log_obj, "verify", log->verify))
+            goto error;
+        if (cddareader_set_log_item(log_obj, "fixup_edge", log->fixup_edge))
+            goto error;
+        if (cddareader_set_log_item(log_obj, "fixup_atom", log->fixup_atom))
+            goto error;
+        if (cddareader_set_log_item(log_obj, "scratch", log->scratch))
+            goto error;
+        if (cddareader_set_log_item(log_obj, "repair", log->repair))
+            goto error;
+        if (cddareader_set_log_item(log_obj, "skip", log->skip))
+            goto error;
+        if (cddareader_set_log_item(log_obj, "drift", log->drift))
+            goto error;
+        if (cddareader_set_log_item(log_obj, "backoff", log->backoff))
+            goto error;
+        if (cddareader_set_log_item(log_obj, "overlap", log->overlap))
+            goto error;
+        if (cddareader_set_log_item(log_obj, "fixup_dropped",
+                                    log->fixup_dropped))
+            goto error;
+        if (cddareader_set_log_item(log_obj, "fixup_duped", log->fixup_duped))
+            goto error;
+        if (cddareader_set_log_item(log_obj, "readerr", log->readerr))
+            goto error;
+
+        return log_obj;
+error:
+        Py_DECREF(log_obj);
+        return NULL;
+    } else {
+        return NULL;
+    }
+}
+
+static PyObject*
+CDDAReader_reset_log(cdio_CDDAReader *self, PyObject *args)
+{
+    cddareader_reset_log(&(self->log));
     Py_INCREF(Py_None);
     return Py_None;
 }
