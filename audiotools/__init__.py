@@ -5113,6 +5113,37 @@ def metadata_lookup(first_track_number, last_track_number,
     else:
         return matches
 
+def cddareader_metadata_lookup(cddareader,
+                               musicbrainz_server="musicbrainz.org",
+                               musicbrainz_port=80,
+                               freedb_server="us.freedb.org",
+                               freedb_port=80,
+                               use_musicbrainz=True,
+                               use_freedb=True):
+    """given a CDDAReader object
+    returns a metadata[c][t] list of lists
+    where 'c' is a possible choice
+    and 't' is the MetaData for a given track (starting from 0)
+
+    this will always return at least once choice,
+    which may be a list of largely empty MetaData objects
+    if no match can be found for the CD
+    """
+
+    offsets = cddareader.track_offsets
+
+    return metadata_lookup(
+        first_track_number=min(offsets.keys()),
+        last_track_number=max(offsets.keys()),
+        offsets=[(offsets[k] // 588) + 150 for k in sorted(offsets.keys())],
+        lead_out_offset=cddareader.last_sector + 150 + 1,
+        total_length=cddareader.last_sector,
+        musicbrainz_server=musicbrainz_server,
+        musicbrainz_port=musicbrainz_port,
+        freedb_server=freedb_server,
+        freedb_port=freedb_port,
+        use_musicbrainz=use_musicbrainz,
+        use_freedb=use_freedb)
 
 def track_metadata_lookup(audiofiles,
                           musicbrainz_server="musicbrainz.org",

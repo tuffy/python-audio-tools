@@ -27,59 +27,74 @@ import cStringIO
 import audiotools
 import audiotools.ui
 import audiotools.player
+from audiotools.cdio import CDDAReader
 import audiotools.text as _
 
 if (audiotools.ui.AVAILABLE):
     urwid = audiotools.ui.urwid
 
     class CDplayGUI(audiotools.ui.PlayerGUI):
-        def __init__(self, cdda, metadata, track_list, audio_output):
-            self.cdda = cdda
+        def __init__(self, cddareader, track_numbers, metadata, audio_output):
+            """cddareader is a CDDAReader object
+
+            track_numbers is a list of track numbers to play
+
+            metadata is a dict of tracknum -> MetaData values
+
+            audio_output is an AudioOutput object"""
+
+            self.cddareader = cddareader
+            track_lengths = cddareader.track_lengths
 
             audiotools.ui.PlayerGUI.__init__(
                 self,
                 audiotools.player.CDPlayer(
-                    cdda=cdda,
+                    cddareader=cddareader,
                     audio_output=audio_output,
                     next_track_callback=self.next_track),
-                [(metadata[track.track_number].track_name
-                  if (metadata[track.track_number].track_name is not None)
-                  else (u"track %2.2d" % (track.track_number)),
-                  track.length() / 75,
-                  (track, metadata[track.track_number]))
-                 for track in track_list],
-                cdda.length() / 75)
+                [(metadata[track_number].track_name
+                  if (metadata[track_number].track_name is not None)
+                  else (u"track %2.2d" % (track_number)),
+                  track_lengths[track_number] // 44100,
+                  (track_number, metadata[track_number]))
+                 for track_number in track_numbers],
+                sum([track_lengths[track_number] for track_number in
+                     track_numbers]) // 44100)
 
         def select_track(self, radio_button, new_state, user_data,
                          auto_play=True):
             if (new_state):
-                (track, metadata) = user_data
+                (track_number, metadata) = user_data
+                track_lengths = self.cddareader.track_lengths
 
                 if (metadata is not None):
                     self.update_metadata(
                         track_name=metadata.track_name,
                         album_name=metadata.album_name,
                         artist_name=metadata.artist_name,
-                        track_number=track.track_number,
-                        track_total=len(self.cdda),
+                        track_number=track_number,
+                        track_total=len(track_lengths),
                         album_number=metadata.album_number,
                         album_total=metadata.album_total,
-                        pcm_frames=track.length() * 588,
+                        pcm_frames=track_lengths[track_number],
                         channels=2,
                         sample_rate=44100,
                         bits_per_sample=16)
                 else:
                     self.update_metadata(
-                        track_total=len(self.cdda),
-                        pcm_frames=track.length() * 588,
+                        track_total=len(track_lengths),
+                        pcm_frames=track_lengths[track_number],
                         channels=2,
                         sample_rate=44100,
                         bits_per_sample=16)
 
-                self.player.open(track.track_number)
+                self.player.open(track_number)
                 if (auto_play):
                     self.player.play()
                     self.play_pause_button.set_label(_.LAB_PAUSE_BUTTON)
+
+        def select_first_track(self):
+            self.select_track(None, True, (1, metadata[1]), False)
 
     interactive_available = True
 else:
@@ -87,41 +102,47 @@ else:
 
 
 class CDplayTTY(audiotools.ui.PlayerTTY):
-    def __init__(self, cdda, track_list, audio_output):
-        self.track_index = -1
+    def __init__(self, cddareader, track_list, audio_output):
+        """cddareader is a CDDAReader object
+
+        track_list is a list of track numbers in the order to be played
+
+        audio_output is an AudioOutput object"""
+
+        self.cddareader = cddareader
         self.track_list = track_list
-        self.cdda = cdda
+        self.track_index = -1
         audiotools.ui.PlayerTTY.__init__(
             self,
             audiotools.player.CDPlayer(
-                cdda=cdda,
+                cddareader=cddareader,
                 audio_output=audio_output,
                 next_track_callback=self.next_track))
 
     def previous_track(self):
         if (self.track_index > 0):
             self.track_index -= 1
-            current_track = self.track_list[self.track_index]
+            current_track_number = self.track_list[self.track_index]
             self.set_metadata(
                 track_number=self.track_index + 1,
-                track_total=len(self.cdda),
+                track_total=len(self.track_list),
                 channels=2,
                 sample_rate=44100,
                 bits_per_sample=16)
-            self.player.open(current_track.track_number)
+            self.player.open(current_track_number)
             self.player.play()
 
     def next_track(self):
         try:
             self.track_index += 1
-            current_track = self.track_list[self.track_index]
+            current_track_number = self.track_list[self.track_index]
             self.set_metadata(
                 track_number=self.track_index + 1,
-                track_total=len(self.cdda),
+                track_total=len(self.track_list),
                 channels=2,
                 sample_rate=44100,
                 bits_per_sample=16)
-            self.player.open(current_track.track_number)
+            self.player.open(current_track_number)
             self.player.play()
         except IndexError:
             self.playing_finished = True
@@ -225,36 +246,30 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     try:
-        cdda = audiotools.CDDA(options.cdrom, perform_logging=False)
+        cddareader = CDDAReader(options.cdrom)
     except IOError, err:
         msg.error(unicode(err) + _.ERR_INVALID_CDDA)
         sys.exit(-1)
 
-    if (len(cdda) == 0):
-        msg.error(ERR_NO_CDDA)
-        sys.exit(1)
-
     if (len(options.tracks) == 0):
-        tracks = [cdda[i] for i in xrange(1, len(cdda) + 1)]
+        track_numbers = sorted(cddareader.track_offsets.keys())
     else:
-        tracks = []
-        for tracknum in options.tracks:
-            try:
-                tracks.append(cdda[int(tracknum)])
-            except (ValueError, IndexError):
-                pass
+        available_numbers = frozenset(cddareader.track_offsets.keys())
+        track_numbers = [t for t in options.tracks
+                         if t in available_numbers]
 
     if (options.shuffle):
         import random
 
-        random.shuffle(tracks)
+        random.shuffle(track_numbers)
 
     if (options.interactive):
         #a track_number -> MetaData dictionary
         #where track_number typically starts from 1
         metadata = dict(
             [(m.track_number, m) for m in
-             cdda.metadata_lookup(
+             audiotools.cddareader_metadata_lookup(
+                 cddareader=cddareader,
                  musicbrainz_server=options.musicbrainz_server,
                  musicbrainz_port=options.musicbrainz_port,
                  freedb_server=options.freedb_server,
@@ -263,15 +278,13 @@ if (__name__ == '__main__'):
                  use_freedb=options.use_freedb)[0]])
 
         cdplay = CDplayGUI(
-            cdda=cdda,
+            cddareader=cddareader,
+            track_numbers=track_numbers,
             metadata=metadata,
-            track_list=tracks,
             audio_output=audiotools.player.open_output(options.output))
-        if (len(cdda) > 0):
-            cdplay.select_track(None, True,
-                                (tracks[0],
-                                 metadata[tracks[0].track_number]),
-                                False)
+
+        if (len(cddareader.track_offsets) > 0):
+            cdplay.select_first_track()
 
         loop = urwid.MainLoop(cdplay,
                               audiotools.ui.style(),
@@ -291,8 +304,8 @@ if (__name__ == '__main__'):
             msg.info(audiotools.ui.xargs_suggestion(sys.argv))
             sys.exit(1)
     else:
-        trackplay = CDplayTTY(
-            cdda=cdda,
-            track_list=tracks,
+        cdplay = CDplayTTY(
+            cddareader=cddareader,
+            track_list=track_numbers,
             audio_output=audiotools.player.open_output(options.output))
-        sys.exit(trackplay.run(msg, sys.stdin))
+        sys.exit(cdplay.run(msg, sys.stdin))

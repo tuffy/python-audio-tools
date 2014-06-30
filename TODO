@@ -6980,7 +6980,9 @@
 **** TODO Update utilities
 ***** TODO cd2track
 ***** DONE cdinfo
-***** TODO cdplay
+***** DONE cdplay
+**** TODO Clean out old audiotools.CDDA object
+     Remove outdated interface, its documentation and unit tests.
 *** TODO Update utilities
     When verifying AccurateRip, make sure to populate the checksum
     with the last few samples of the previous track (if any)

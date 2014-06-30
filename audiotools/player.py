@@ -213,7 +213,6 @@ class AudioPlayer:
                 self.__audio_output__.resume()
 
             self.__state__ = PLAYER_STOPPED
-            self.__pcmreader__.close()
             self.__pcmreader__ = None
             self.__current_frames__ = 0
             self.__total_frames__ = 1
@@ -369,8 +368,9 @@ class AudioPlayer:
 
 
 class CDPlayer(Player):
-    def __init__(self, cdda, audio_output, next_track_callback=lambda: None):
-        """cdda is a CDDA object
+    def __init__(self, cddareader, audio_output,
+                 next_track_callback=lambda: None):
+        """cdda is a CDDAReader object
 
         audio_output is an AudioOutput object
 
@@ -384,7 +384,7 @@ class CDPlayer(Player):
             raise TypeError("invalid output object")
 
         self.__audio_output__ = audio_output
-        self.__player__ = CDAudioPlayer(cdda,
+        self.__player__ = CDAudioPlayer(cddareader,
                                         audio_output,
                                         next_track_callback)
         self.__commands__ = Queue.Queue()
@@ -411,8 +411,9 @@ class CDPlayer(Player):
 
 
 class CDAudioPlayer(AudioPlayer):
-    def __init__(self, cdda, audio_output, next_track_callback=lambda: None):
-        """cdda is a CDDA object to play tracks from
+    def __init__(self, cddareader, audio_output,
+                 next_track_callback=lambda: None):
+        """cdda is a CDDAReader object to play tracks from
 
         audio_output is an AudioOutput object to play audio to
 
@@ -422,7 +423,9 @@ class CDAudioPlayer(AudioPlayer):
         self.__state__ = PLAYER_STOPPED
         self.__audio_output__ = audio_output
         self.__next_track_callback__ = next_track_callback
-        self.__cdda__ = cdda
+        self.__cddareader__ = cddareader
+        self.__offsets__ = cddareader.track_offsets
+        self.__lengths__ = cddareader.track_lengths
         self.__track_number__ = None
         self.__pcmreader__ = None
         self.__buffer_size__ = 1
@@ -434,14 +437,14 @@ class CDAudioPlayer(AudioPlayer):
         """set tracks number to play"""
 
         #ensure track number is in the proper range
-        if ((track_number > 0) and (track_number <= len(self.__cdda__))):
+        if (track_number in self.__offsets__.keys()):
             self.__track_number__ = track_number
 
     def play(self):
         """if track has been selected,
         changes current state of player to PLAYER_PLAYING"""
 
-        from audiotools import BufferedPCMReader
+        from audiotools import BufferedPCMReader,PCMReaderHead
 
         if (self.__state__ == PLAYER_PLAYING):
             #already playing, so nothing to do
@@ -455,8 +458,10 @@ class CDAudioPlayer(AudioPlayer):
             #go from stopped to playing
             #if a track number has been selected
 
-            #get PCMReader from selected track
-            track = self.__cdda__[self.__track_number__]
+            #seek to specified track number
+            self.__cddareader__.seek(self.__offsets__[self.__track_number__])
+            track = PCMReaderHead(self.__cddareader__,
+                                  self.__lengths__[self.__track_number__])
 
             #decode PCMReader in thread
             #and place in buffer so one can process small chunks of data
@@ -474,7 +479,7 @@ class CDAudioPlayer(AudioPlayer):
 
             #reset progress
             self.__current_frames__ = 0
-            self.__total_frames__ = track.length() * (44100 / 75)
+            self.__total_frames__ = self.__lengths__[self.__track_number__]
 
             #update state so audio begins playing
             self.__state__ = PLAYER_PLAYING
