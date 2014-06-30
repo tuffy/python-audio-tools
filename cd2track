@@ -23,43 +23,9 @@ import os
 import audiotools
 import audiotools.ui
 import audiotools.accuraterip
+from audiotools.cdio import CDDAReader
 import termios
 import audiotools.text as _
-
-
-def limit(l, indexes):
-    """given a list and set of indexes (starting from 1)
-    returns a new list with only those items"""
-
-    return [item for (index, item) in enumerate(l)
-            if ((index + 1) in indexes)]
-
-
-class AccurateRipReader:
-    def __init__(self, pcmreader, track_number, track_total, total_pcm_frames):
-        self.pcmreader = pcmreader
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
-
-        from audiotools.accuraterip import ChecksumV1
-        self.__checksum__ = ChecksumV1(total_pcm_frames=total_pcm_frames,
-                                       sample_rate=pcmreader.sample_rate,
-                                       is_first=track_number == 1,
-                                       is_last=track_number == track_total)
-
-    def read(self, pcm_frames):
-        frame = self.pcmreader.read(pcm_frames)
-        self.__checksum__.update(frame)
-        return frame
-
-    def close(self):
-        self.pcmreader.close()
-
-    def checksum(self):
-        #FIXME - handle checksum range here
-        return self.__checksum__.checksums()[0]
 
 
 if (__name__ == '__main__'):
@@ -231,20 +197,31 @@ if (__name__ == '__main__'):
     base_directory = options.dir
 
     try:
-        cdda = audiotools.CDDA(options.cdrom, options.speed)
-    except IOError, err:
+        cddareader = CDDAReader(options.cdrom, True)
+        track_offsets = cddareader.track_offsets
+        track_lengths = cddareader.track_lengths
+    except (IOError, ValueError), err:
         msg.error(unicode(err) + _.ERR_INVALID_CDDA)
         sys.exit(-1)
 
-    if (len(cdda) == 0):
-        msg.error(_.ERR_NO_CDDA)
-        sys.exit(1)
+    #only apply read_offset if cddareader is a physical drive
+    if (not cddareader.is_cd_image):
+        try:
+            read_offset = audiotools.config.getint_default(
+                "System", "cdrom_read_offset", 0)
+        except ValueError:
+            read_offset = 0
     else:
-        cd_track_count = len(cdda)
+        read_offset = 0
+
+    #set speed, if any
+    if (options.speed is not None):
+        cddareader.set_speed(options.speed)
 
     #use CDDA object to query metadata services for metadata choices
     try:
-        metadata_choices = cdda.metadata_lookup(
+        metadata_choices = audiotools.cddareader_metadata_lookup(
+            cddareader=cddareader,
             musicbrainz_server=options.musicbrainz_server,
             musicbrainz_port=options.musicbrainz_port,
             freedb_server=options.freedb_server,
@@ -267,26 +244,23 @@ if (__name__ == '__main__'):
             for m in c:
                 m.album_total = options.album_total
 
-    #use CDDA object to perform AccurateRip lookup
-    try:
-        accuraterip_checksums = cdda.accuraterip_lookup()
-    except KeyboardInterrupt:
-        msg.ansi_clearline()
-        msg.error(_.ERR_CANCELLED)
-        sys.exit(1)
-
+#FIXME
+#    #use CDDA object to perform AccurateRip lookup
+#    try:
+#        accuraterip_checksums = cdda.accuraterip_lookup()
+#    except KeyboardInterrupt:
+#        msg.ansi_clearline()
+#        msg.error(_.ERR_CANCELLED)
+#        sys.exit(1)
+#
     #determine tracks to be ripped
     if (len(options.tracks) == 0):
-        tracks_to_rip = set(range(1, len(cdda) + 1))
+        tracks_to_rip = list(sorted(track_offsets.keys()))
     else:
-        tracks_to_rip = set([])
-        for arg in options.tracks:
-            try:
-                tracks_to_rip.add(int(arg))
-            except ValueError:
-                continue
+        tracks_to_rip = [t for t in options.tracks if
+                         t in track_offsets.keys()]
 
-    if (len(limit(range(cd_track_count), tracks_to_rip)) == 0):
+    if (len(tracks_to_rip) == 0):
         #no tracks selected to rip, so do nothing
         sys.exit(0)
 
@@ -294,15 +268,12 @@ if (__name__ == '__main__'):
     if (options.interactive):
         #pick options using interactive widget
         output_widget = audiotools.ui.OutputFiller(
-            track_labels=limit([_.LAB_TRACK_X_OF_Y % (i + 1, cd_track_count)
-                                for i in xrange(cd_track_count)],
-                               tracks_to_rip),
-            metadata_choices=[limit(c, tracks_to_rip)
+            track_labels=[_.LAB_TRACK_X_OF_Y % (i, max(track_offsets.keys()))
+                          for i in tracks_to_rip],
+            metadata_choices=[[c[i - 1] for i in tracks_to_rip]
                               for c in metadata_choices],
-            input_filenames=limit(
-                [audiotools.Filename("track%2.2d.cdda.wav" % (i + 1))
-                 for i in xrange(cd_track_count)],
-                tracks_to_rip),
+            input_filenames=[audiotools.Filename("track%2.2d.cdda.wav" % (i))
+                             for i in tracks_to_rip],
             output_directory=options.dir,
             format_string=options.format,
             output_class=AudioType,
@@ -332,12 +303,11 @@ if (__name__ == '__main__'):
         try:
             output_tracks = list(
                 audiotools.ui.process_output_options(
-                    metadata_choices=[limit(c, tracks_to_rip)
+                    metadata_choices=[[c[i - 1] for i in tracks_to_rip]
                                       for c in metadata_choices],
-                    input_filenames=limit(
-                        [audiotools.Filename("track%2.2d.cdda.wav" % (i + 1))
-                         for i in xrange(cd_track_count)],
-                        tracks_to_rip),
+                    input_filenames=[
+                        audiotools.Filename("track%2.2d.cdda.wav" % (i))
+                        for i in tracks_to_rip],
                     output_directory=options.dir,
                     format_string=options.format,
                     output_class=AudioType,
@@ -358,38 +328,51 @@ if (__name__ == '__main__'):
     rip_log = {}
     accuraterip_log = {}
 
-    for (i, (cd_track,
-             (output_class,
-              output_filename,
-              output_quality,
-              output_metadata))) in enumerate(zip(limit(cdda,
-                                                        tracks_to_rip),
-                                                  output_tracks)):
+    for (track_number,
+         index,
+         (output_class,
+          output_filename,
+          output_quality,
+          output_metadata)) in zip(tracks_to_rip,
+                                   range(1, len(tracks_to_rip) + 1),
+                                   output_tracks):
+        cddareader.reset_log()
+        track_offset = track_offsets[track_number] + read_offset
+        track_length = track_lengths[track_number]
+
+        #seek to indicated starting offset
+        if (track_offset > 0):
+            seeked_offset = cddareader.seek(track_offset)
+        else:
+            seeked_offset = 0
+
+        #make leading directories, if necessary
         try:
             audiotools.make_dirs(str(output_filename))
         except OSError, err:
             msg.os_error(err)
             sys.exit(1)
 
-        progress = audiotools.SingleProgressDisplay(
-            msg, unicode(output_filename))
+        progress = audiotools.SingleProgressDisplay(msg,
+                                                    unicode(output_filename))
 
-        accuraterip_reader = AccurateRipReader(
-            cd_track,
-            cd_track.track_number,
-            len(cdda),
-            cd_track.length() * (44100 / 75))
+        #FIXME - support AccurateRip reading range here
+        track_data = audiotools.PCMReaderWindow(
+            cddareader,
+            track_offset - seeked_offset,
+            track_length)
+        #ensure closing track doesn't close whole CD
+        track_data.close = lambda self: None
 
         try:
-            encoded.append(
-                output_class.from_pcm(
-                    str(output_filename),
-                    audiotools.PCMReaderProgress(
-                        accuraterip_reader,
-                        cd_track.length() * (44100 / 75),
-                        progress.update),
-                    output_quality,
-                    total_pcm_frames=cd_track.length() * (44100 / 75)))
+            track = output_class.from_pcm(
+                str(output_filename),
+                audiotools.PCMReaderProgress(track_data,
+                                             track_length,
+                                             progress.update),
+                output_quality,
+                total_pcm_frames=track_length)
+            encoded.append(track)
         except audiotools.EncodingError, err:
             progress.clear_rows()
             msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
@@ -403,19 +386,18 @@ if (__name__ == '__main__'):
             msg.error(_.ERR_CANCELLED)
             sys.exit(1)
 
-        encoded[-1].set_metadata(output_metadata)
+        track.set_metadata(output_metadata)
         progress.clear_rows()
 
-        rip_log[cd_track.track_number] = cd_track.rip_log
-        accuraterip_log[cd_track.track_number] = accuraterip_reader.checksum()
+        rip_log[track_number] = cddareader.log()
+        #accuraterip_log[cd_track.track_number] = accuraterip_reader.checksum()
 
         msg.info(
             audiotools.output_progress(
                 _.LAB_CD2TRACK_PROGRESS %
-                {"track_number": cd_track.track_number,
-                 "filename": output_filename}, i + 1, len(output_tracks)))
-
-    cdda.close()
+                {"track_number": track_number,
+                 "filename": output_filename},
+                index, len(tracks_to_rip)))
 
     #add ReplayGain to ripped tracks, if necessary
     if (output_class.supports_replay_gain() and
@@ -442,11 +424,24 @@ if (__name__ == '__main__'):
     table = audiotools.output_table()
 
     row = table.row()
-    extract_headers = [u"track", u"rderr", u"skip", u"atom",
-                       u"edge", u"drop", u"dup", u"drift",
-                       _.LAB_ACCURATERIP_CHECKSUM,
-                       _.LAB_ACCURATERIP_RESULT]
-    extract_keys = ["rderr", "skip", "atom", "edge", "drop", "dup", "drift"]
+    extract_headers = [u"track",
+                       u"error",
+                       u"skip",
+                       u"atom",
+                       u"edge",
+                       u"drop",
+                       u"dup",
+                       u"drift",
+                       _.LAB_TRACKVERIFY_AR_CHECKSUM1,
+                       _.LAB_TRACKVERIFY_AR_OFFSET,
+                       _.LAB_TRACKVERIFY_AR_CONFIDENCE]
+    extract_keys = ["readrr",
+                    "skip",
+                    "fixup_atom",
+                    "fixup_edge",
+                    "fixup_dropped",
+                    "fixup_duped",
+                    "drift"]
 
     dividers = []
 
@@ -460,7 +455,7 @@ if (__name__ == '__main__'):
 
     table.divider_row(dividers)
 
-    for track_number in sorted(rip_log.keys()):
+    for track_number in tracks_to_rip:
         row = table.row()
         row.add_column(unicode(track_number), "right")
         log = rip_log[track_number]
@@ -468,21 +463,13 @@ if (__name__ == '__main__'):
             row.add_column(u" ")
             row.add_column(unicode(log.get(key, 0)), "right")
 
-        track_checksum = accuraterip_log[track_number]
-        row.add_column(u" ")
-        row.add_column(u"%8.8X" % (track_checksum))
-        row.add_column(u" ")
-        ar_matches = accuraterip_checksums.get(track_number, [])
-        if (len(ar_matches) == 0):
-            row.add_column(_.LAB_ACCURATERIP_NOT_FOUND)
-        else:
-            for (confidence, ar_checksum, ar_crc2) in ar_matches:
-                if (track_checksum == ar_checksum):
-                    row.add_column(
-                        _.LAB_ACCURATERIP_CONFIDENCE % (confidence))
-                    break
-            else:
-                row.add_column(_.LAB_ACCURATERIP_MISMATCH)
+        #FIXME - add AccurateRip columns here
+        row.add_column(u"")
+        row.add_column(u"?", "right")        # checksum
+        row.add_column(u"")
+        row.add_column(unicode(0), "right")  # offset
+        row.add_column(u"")
+        row.add_column(unicode(1), "right")  # confidence
 
     for row in table.format(msg.output_isatty()):
         msg.output(row)

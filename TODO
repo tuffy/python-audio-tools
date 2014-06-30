@@ -6977,8 +6977,8 @@
 **** TODO Detect nonexistent discs
      CDDAReader should detect when a physical drive doesn't contain a disc
      and raise an appropriate exception.
-**** TODO Update utilities
-***** TODO cd2track
+**** DONE Update utilities
+***** DONE cd2track
 ***** DONE cdinfo
 ***** DONE cdplay
 **** TODO Clean out old audiotools.CDDA object
