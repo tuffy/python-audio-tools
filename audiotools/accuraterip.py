@@ -162,6 +162,20 @@ class DiscID:
         self.__lead_out_offset__ = lead_out_offset
         self.__freedb_disc_id__ = freedb_disc_id
 
+    @classmethod
+    def from_cddareader(cls, cddareader):
+        """given a CDDAReader object, returns a DiscID for that object"""
+
+        import audiotools.freedb
+
+        offsets = cddareader.track_offsets
+        return cls(track_numbers=list(sorted(offsets.keys())),
+                   track_offsets=[(offsets[k] // 588) for k in
+                                  sorted(offsets.keys())],
+                   lead_out_offset = cddareader.last_sector + 1,
+                   freedb_disc_id=audiotools.freedb.DiscID.from_cddareader(
+                       cddareader))
+
     def track_numbers(self):
         return self.__track_numbers__[:]
 

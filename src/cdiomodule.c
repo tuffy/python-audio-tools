@@ -562,7 +562,11 @@ CDDAReader_seek(cdio_CDDAReader* self, PyObject *args)
         seeked_offset = 0;
     }
 
-    seeked_sector = MIN(seeked_offset / (44100 / 75), UINT_MAX);
+    if (seeked_offset > UINT_MAX) {
+        seeked_sector = UINT_MAX;
+    } else {
+        seeked_sector = (unsigned)(seeked_offset / (44100 / 75));
+    }
     found_sector = self->seek(self, seeked_sector);
     return Py_BuildValue("I", found_sector * (44100 / 75));
 }

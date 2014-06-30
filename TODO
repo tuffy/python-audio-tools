@@ -6974,9 +6974,12 @@
 ***** DONE CDDAReader.close()
 **** DONE Update documentation
 **** DONE Update unit tests
+**** TODO Detect nonexistent discs
+     CDDAReader should detect when a physical drive doesn't contain a disc
+     and raise an appropriate exception.
 **** TODO Update utilities
 ***** TODO cd2track
-***** TODO cdinfo
+***** DONE cdinfo
 ***** TODO cdplay
 *** TODO Update utilities
     When verifying AccurateRip, make sure to populate the checksum

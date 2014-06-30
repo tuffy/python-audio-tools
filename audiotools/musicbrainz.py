@@ -33,6 +33,17 @@ class DiscID:
         self.lead_out_offset = lead_out_offset
         self.offsets = offsets
 
+    @classmethod
+    def from_cddareader(cls, cddareader):
+        """given a CDDAReader object, returns a DiscID for that object"""
+
+        offsets = cddareader.track_offsets
+        return cls(first_track_number=min(offsets.keys()),
+                   last_track_number=max(offsets.keys()),
+                   lead_out_offset=cddareader.last_sector + 150 + 1,
+                   offsets=[(offsets[k] // 588) + 150 for k in
+                            sorted(offsets.keys())])
+
     def __repr__(self):
         return "DiscID(%s, %s, %s, %s)" % \
             (self.first_track_number,

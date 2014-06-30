@@ -32,6 +32,16 @@ class DiscID:
         self.total_length = total_length
         self.track_count = track_count
 
+    @classmethod
+    def from_cddareader(cls, cddareader):
+        """given a CDDAReader object, returns a DiscID for that object"""
+
+        offsets = cddareader.track_offsets
+        return cls(offsets=[(offsets[k] // 588) + 150 for k in
+                            sorted(offsets.keys())],
+                   total_length=cddareader.last_sector,
+                   track_count=len(offsets))
+
     def __repr__(self):
         return "DiscID(%s, %s, %s)" % \
             (repr(self.offsets),

@@ -21,6 +21,10 @@
 import os.path
 import sys
 import audiotools
+from audiotools.cdio import CDDAReader
+import audiotools.freedb
+import audiotools.musicbrainz
+import audiotools.accuraterip
 import audiotools.text as _
 
 
@@ -41,47 +45,45 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("cd2info", options)
 
     try:
-        cdda = audiotools.CDDA(options.cdrom, perform_logging=False)
-    except ValueError, err:
+        cdda = CDDAReader(options.cdrom)
+    except (ValueError, IOError), err:
         msg.error(unicode(err))
         sys.exit(1)
 
-    if (len(cdda) == 255):
-        msg.error(_.ERR_NO_CDDA)
-        sys.exit(1)
-    elif (len(cdda) < 1):
-        msg.error(_.ERR_NO_EMPTY_CDDA)
-        sys.exit(1)
-
-    tracks = list(cdda)
+    offsets = cdda.track_offsets
+    lengths = cdda.track_lengths
+    total_length = cdda.last_sector + 150 + 1
 
     table = audiotools.output_table()
     row = table.row()
     row.add_column(_.LAB_TOTAL_TRACKS, "right")
     row.add_column(u" : ")
-    row.add_column(unicode(len(cdda)))
+    row.add_column(unicode(max(offsets.keys())))
 
     row = table.row()
     row.add_column(_.LAB_TOTAL_LENGTH, "right")
     row.add_column(u" : ")
-    row.add_column(_.LAB_TRACK_LENGTH_FRAMES % (cdda.length() / 75 / 60,
-                                                cdda.length() / 75 % 60,
-                                                cdda.length()))
+    row.add_column(_.LAB_TRACK_LENGTH_FRAMES % (total_length / 75 / 60,
+                                                total_length / 75 % 60,
+                                                total_length))
 
     row = table.row()
     row.add_column(_.LAB_FREEDB_ID, "right")
     row.add_column(u" : ")
-    row.add_column(str(cdda.freedb_disc_id()).decode('ascii'))
+    row.add_column(str(
+        audiotools.freedb.DiscID.from_cddareader(cdda)).decode('ascii'))
 
     row = table.row()
     row.add_column(_.LAB_MUSICBRAINZ_ID, "right")
     row.add_column(u" : ")
-    row.add_column(str(cdda.musicbrainz_disc_id()).decode('ascii'))
+    row.add_column(str(
+        audiotools.musicbrainz.DiscID.from_cddareader(cdda)).decode('ascii'))
 
     row = table.row()
     row.add_column(_.LAB_ACCURATERIP_ID, "right")
     row.add_column(u" : ")
-    row.add_column(str(cdda.accuraterip_disc_id()).decode('ascii'))
+    row.add_column(str(
+        audiotools.accuraterip.DiscID.from_cddareader(cdda)).decode('ascii'))
 
     for row in table.format(sys.stdout.isatty()):
         msg.output(row)
@@ -100,19 +102,18 @@ if (__name__ == '__main__'):
 
     row = table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
 
-    for track in tracks:
+    for key in sorted(offsets.keys()):
+        track_length = lengths[key] // 588
         row = table.row()
-        row.add_column(unicode(track.track_number), "right")
+        row.add_column(unicode(key), "right")
         row.add_column(u" ")
         row.add_column(
-            _.LAB_TRACK_LENGTH % (track.length() / 75 / 60,
-                                  track.length() / 75 % 60), "right")
+            _.LAB_TRACK_LENGTH % (track_length // 75 // 60,
+                                  track_length // 75 % 60), "right")
         row.add_column(u" ")
-        row.add_column(unicode(track.length()), "right")
+        row.add_column(unicode(track_length), "right")
         row.add_column(u" ")
-        row.add_column(unicode(track.offset()), "right")
+        row.add_column(unicode((offsets[key] // 588) + 150), "right")
 
     for row in table.format(sys.stdout.isatty()):
         msg.output(row)
-
-    cdda.close()
