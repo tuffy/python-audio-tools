@@ -527,7 +527,8 @@ if (__name__ == '__main__'):
         row.add_column(u"")
         row.add_column(unicode(offset), "right")
         row.add_column(u"")
-        row.add_column(unicode(confidence), "right")
+        row.add_column(unicode(confidence) if (confidence is not None) else
+                       u"", "right")
 
     for row in table.format(msg.output_isatty()):
         msg.output(row)
