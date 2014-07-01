@@ -4878,6 +4878,10 @@ class PCMReaderHead:
         self.bits_per_sample = pcmreader.bits_per_sample
         self.pcm_frames = pcm_frames
 
+    def __repr__(self):
+        return "PCMReaderHead(%s, %s)" % (repr(self.pcmreader),
+                                          self.pcm_frames)
+
     def read(self, pcm_frames):
         if (self.pcm_frames > 0):
             #data left in window
@@ -4940,6 +4944,10 @@ class PCMReaderDeHead:
         self.channel_mask = pcmreader.channel_mask
         self.bits_per_sample = pcmreader.bits_per_sample
         self.pcm_frames = pcm_frames
+
+    def __repr__(self):
+        return "PCMReaderDeHead(%s, %s)" % (repr(self.pcmreader),
+                                            self.pcm_frames)
 
     def read(self, pcm_frames):
         if (self.pcm_frames == 0):
