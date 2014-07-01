@@ -18,10 +18,12 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools._accuraterip import ChecksumV2
+from audiotools._accuraterip import ChecksumV1,ChecksumV2
 
 
-class ChecksumV1:
+class __ChecksumV1__:
+    """Python implementation of checksum calculator"""
+
     def __init__(self, total_pcm_frames,
                  sample_rate=44100,
                  is_first=False,

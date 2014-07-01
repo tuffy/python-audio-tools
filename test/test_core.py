@@ -5930,6 +5930,17 @@ class Test_Accuraterip(unittest.TestCase):
                           is_last=False,
                           pcm_frame_range=-1)
 
+        checksum = ChecksumV1(total_pcm_frames=200000,
+                              sample_rate=44100,
+                              is_first=False,
+                              is_last=False,
+                              pcm_frame_range=1)
+
+        for v in [None, 0, 1, "foo", "bar"]:
+            self.assertRaises(TypeError,
+                              checksum.update,
+                              v)
+
         #sanity checking for stream parameters
         for params in [[200000, 44100, 0x04, 8, (25, 10000)],  # 8bps 1ch
                        [200000, 44100, 0x03, 8, (25, 10000),

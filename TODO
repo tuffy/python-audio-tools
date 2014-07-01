@@ -6919,12 +6919,12 @@
    If the tracks have been ripped accurately but are merely offset
    by some small positive or negative number of samples,
    this should be detected and indicated in the AccurateRip results screens.
-*** TODO Update ChecksumV1
-**** TODO Add keyword parameters with sensible defaults
-**** TODO Add range option
+*** DONE Update ChecksumV1
+**** DONE Add keyword parameters with sensible defaults
+**** DONE Add range option
      This indicates the total range of the window size.
      Defaults to 1, indicating only a single checksum to be generated.
-**** TODO Change .checksum() method to .checksums()
+**** DONE Change .checksum() method to .checksums()
      Returns a list of all calculated checksums over the whole range.
 *** DONE Add unit tests
     Ensure ranged and non-ranged checksums are calculated properly

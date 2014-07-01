@@ -23,10 +23,15 @@
 typedef struct {
     PyObject_HEAD
 
-    uint32_t checksum;
-    uint32_t track_index;
-    uint32_t start_offset;
-    uint32_t end_offset;
+    unsigned total_pcm_frames;
+    unsigned pcm_frame_range;
+    unsigned i;
+    uint32_t *checksums;
+    uint32_t *initial_values;
+    uint32_t *final_values;
+    uint32_t values_sum;
+    unsigned start_offset;
+    unsigned end_offset;
 
     PyObject* framelist_class;
 } accuraterip_ChecksumV1;
@@ -44,13 +49,13 @@ static PyObject*
 ChecksumV1_update(accuraterip_ChecksumV1* self, PyObject *args);
 
 static PyObject*
-ChecksumV1_checksum(accuraterip_ChecksumV1* self, PyObject *args);
+ChecksumV1_checksums(accuraterip_ChecksumV1* self, PyObject *args);
 
 static PyMethodDef ChecksumV1_methods[] = {
     {"update", (PyCFunction)ChecksumV1_update,
-     METH_VARARGS, "update(framelist) updates with the given FrameList"},
-    {"checksum", (PyCFunction)ChecksumV1_checksum,
-     METH_NOARGS, "checksum() -> calculcated 32-bit checksum"},
+     METH_VARARGS, "update(framelist)"},
+    {"checksums", (PyCFunction)ChecksumV1_checksums,
+     METH_NOARGS, "checksums() -> [crc, crc, ...]"},
     {NULL}
 };
 
