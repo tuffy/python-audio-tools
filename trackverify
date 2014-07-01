@@ -142,8 +142,8 @@ AR_NOT_FOUND = -1
 #but our track doesn't match any of the checksums
 AR_MISMATCH = -2
 
-PREVIOUS_TRACK_FRAMES = 1
-NEXT_TRACK_FRAMES = 1
+PREVIOUS_TRACK_FRAMES = (5880 // 2)
+NEXT_TRACK_FRAMES = (5880 // 2)
 
 def accuraterip_checksum(progress,
                          track,

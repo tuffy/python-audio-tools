@@ -27,8 +27,9 @@ from audiotools.cdio import CDDAReader
 import termios
 import audiotools.text as _
 
-PREVIOUS_TRACK_FRAMES = 1
-NEXT_TRACK_FRAMES = 1
+PREVIOUS_TRACK_FRAMES = (5880 // 2)
+NEXT_TRACK_FRAMES = (5880 // 2)
+
 
 class AccurateRipReader:
     def __init__(self, pcmreader, total_pcm_frames, is_first, is_last):
@@ -515,9 +516,7 @@ if (__name__ == '__main__'):
             row.add_column(u" ")
             row.add_column(unicode(log.get(key, 0)), "right")
 
-        (checksum,
-         confidence,
-         offset) = audiotools.accuraterip.match_offset(
+        (checksum, confidence, offset) = audiotools.accuraterip.match_offset(
             ar_result.get(track_number, []),
             accuraterip_log[track_number],
             -PREVIOUS_TRACK_FRAMES)
