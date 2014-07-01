@@ -196,6 +196,12 @@ CDDAReader_init_device(cdio_CDDAReader *self, const char *device)
 
     self->_.drive.final_sector = self->last_sector(self);
 
+    if ((self->_.drive.final_sector == -1) ||
+            (self->first_sector(self) == -1)) {
+        PyErr_SetString(PyExc_IOError, "no disc in CD-ROM drive");
+        return -1;
+    }
+
     return 0;
 }
 

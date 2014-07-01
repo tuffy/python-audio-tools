@@ -131,7 +131,7 @@ if no matches are found, confidence is None and offset is 0
     for (offset, crc) in enumerate(checksums, initial_offset):
         if (crc in matches):
             confidence = matches[crc]
-            if ((best_match is None) or (confidence > best_match[0])):
+            if ((best_match is None) or (confidence > best_match[1])):
                 best_match = (crc, confidence, offset)
 
     if (best_match is not None):

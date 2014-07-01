@@ -6915,7 +6915,7 @@
      If comparing multiple tracks against a non-seekable image,
      decompress it to a temp file so it can be processed across multiple jobs.
 *** DONE Update unit tests
-** TODO Have AccurateRip detect offset tracks
+** DONE Have AccurateRip detect offset tracks
    If the tracks have been ripped accurately but are merely offset
    by some small positive or negative number of samples,
    this should be detected and indicated in the AccurateRip results screens.
@@ -6929,7 +6929,7 @@
 *** DONE Add unit tests
     Ensure ranged and non-ranged checksums are calculated properly
     and update tests for new interface.
-*** TODO Build audiotools.cdio.CDDAReader object
+*** DONE Build audiotools.cdio.CDDAReader object
     This functions like a PCMReader object over the entire CDDA device.
     It should work transparently on physical CD devices as well as CD images
     and be PCM-frame centric by doing all the CD sector conversions
@@ -6974,7 +6974,7 @@
 ***** DONE CDDAReader.close()
 **** DONE Update documentation
 **** DONE Update unit tests
-**** TODO Detect nonexistent discs
+**** DONE Detect nonexistent discs
      CDDAReader should detect when a physical drive doesn't contain a disc
      and raise an appropriate exception.
 **** DONE Update utilities
@@ -6990,6 +6990,7 @@
     in order to find the checksum's offset.
 **** DONE trackverify
 **** DONE cd2track
+** TODO Upload to PyPI
 * TODO Finish version 3.0
 ** TODO Shift to Python 3
    This lengthy transition will have to wait
