@@ -6990,6 +6990,10 @@
     in order to find the checksum's offset.
 **** DONE trackverify
 **** DONE cd2track
+** TODO Add documentation for lookup services
+   - [ ] audiotools.accuraterip
+   - [ ] audiotools.freedb
+   - [ ] audiotools.musicbrainz
 ** TODO Upload to PyPI
 * TODO Finish version 3.0
 ** TODO Shift to Python 3

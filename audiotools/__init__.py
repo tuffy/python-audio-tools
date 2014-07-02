@@ -131,7 +131,7 @@ MUSICBRAINZ_PORT = config.getint_default("MusicBrainz", "port", 80)
 ADD_REPLAYGAIN = config.getboolean_default("ReplayGain", "add_by_default",
                                            True)
 
-VERSION = "2.22alpha1"
+VERSION = "2.22alpha2"
 
 DEFAULT_FILENAME_FORMAT = '%(track_number)2.2d - %(track_name)s.%(suffix)s'
 FILENAME_FORMAT = config.get_default("Filenames", "format",
@@ -4691,38 +4691,6 @@ class PCMReaderDeHead:
     def close(self):
         self.pcmreader.close()
         self.read = self.read_closed
-
-
-class CDTrackLog(dict):
-    """a container for CD reading log information, implemented as a dict"""
-
-    #PARANOIA_CB_READ           Read off adjust ???
-    #PARANOIA_CB_VERIFY         Verifying jitter
-    #PARANOIA_CB_FIXUP_EDGE     Fixed edge jitter
-    #PARANOIA_CB_FIXUP_ATOM     Fixed atom jitter
-    #PARANOIA_CB_SCRATCH        Unsupported
-    #PARANOIA_CB_REPAIR         Unsupported
-    #PARANOIA_CB_SKIP           Skip exhausted retry
-    #PARANOIA_CB_DRIFT          Skip exhausted retry
-    #PARANOIA_CB_BACKOFF        Unsupported
-    #PARANOIA_CB_OVERLAP        Dynamic overlap adjust
-    #PARANOIA_CB_FIXUP_DROPPED  Fixed dropped bytes
-    #PARANOIA_CB_FIXUP_DUPED    Fixed duplicate bytes
-    #PARANOIA_CB_READERR        Hard read error
-
-    #log format is similar to cdda2wav's
-    def __str__(self):
-        fields = {"edge": self.get(2, 0),
-                  "atom": self.get(3, 0),
-                  "skip": self.get(6, 0),
-                  "drift": self.get(7, 0),
-                  "drop": self.get(10, 0),
-                  "dup": self.get(11, 0),
-                  "rderr": self.get(12, 0)}
-        return ", ".join(["%%(%s)d %s" % (field, field)
-                          for field in
-                          ("rderr", "skip", "atom", "edge",
-                           "drop", "dup", "drift")]) % fields
 
 
 #returns the value in item_list which occurs most often

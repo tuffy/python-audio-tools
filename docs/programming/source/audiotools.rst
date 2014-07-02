@@ -1420,69 +1420,6 @@ ChannelMask Objects
    and is meant purely as a convenience method for mono or stereo streams.
    All other values will trigger a :exc:`ValueError`
 
-CDDA Objects
-------------
-
-.. class:: CDDA(device[, speed[, perform_logging]])
-
-   This class is used to access a CD-ROM device.
-   It functions as a list of :class:`CDTrackReader` objects,
-   each representing a CD track and starting from index 1.
-
-   >>> cd = CDDA("/dev/cdrom")
-   >>> len(cd)
-   17
-   >>> cd[1]
-   <audiotools.CDTrackReader instance at 0x170def0>
-   >>> cd[17]
-   <audiotools.CDTrackReader instance at 0x1341b00>
-
-   If ``True``, ``perform_logging`` indicates that track reads
-   should generate :class:`CDTrackLog` entries.
-   Otherwise, no logging is performed.
-
-.. warning::
-
-   ``perform_logging`` also determines the level of multithreading allowed
-   during CD reading.
-   If logging is active, :class:`CDTrackReader`'s read method
-   will block all other threads until the read is complete.
-   If logging is inactive, a read will not block other threads.
-   This is an unfortunate necessity due to libcdio's callback
-   mechanism implementation.
-
-.. method:: CDDA.length()
-
-   The length of the entire CD, in sectors.
-
-.. method:: CDDA.first_sector()
-
-   The position of the first sector on the CD, typically 0.
-
-.. method:: CDDA.last_sector()
-
-   The position of the last sector on the CD.
-
-.. method:: CDDA.freedb_disc_id()
-
-   A :class:`freedb.DiscID` object from this CD's table-of-contents.
-
-.. method:: CDDA.musicbrainz_disc_id()
-
-   A :class:`musicbrainz.DiscID` object from this CD's table-of-contents.
-
-.. method:: CDDA.metadata_lookup([musicbrainz_server], [musicbrainz_port], [freedb_server], [freedb_port], [use_musicbrainz], [use_freedb])
-
-   Calls :func:`metadata_lookup` using this CD's table-of-contents.
-
-.. method:: CDDA.accuraterip_disc_id()
-
-   A :class:`accuraterip.DiscID` object from this CD's table-of-contents.
-
-.. method:: CDDA.accuraterip_lookup([server][, port])
-
-   Calls :func:`accuraterip_lookup` using this CD's table-of-contents.
-
 CD Lookups
 ^^^^^^^^^^
 
@@ -1495,6 +1432,19 @@ CD Lookups
    ``total_length`` is the total length of the disc, in CD frames.
 
    Returns a ``metadata[c][t]`` list of lists
+   where ``c`` is a possible choice and ``t`` is the :class:`MetaData`
+   for a given track (starting from 0).
+
+   This will always return a list of :class:`MetaData` objects
+   for at least one choice.
+   In the event that no matches for the CD can be found,
+   those objects will only contain ``track_number`` and ``track_total``
+   fields.
+
+.. function:: cddareader_metadata_lookup(cddareader, [musicbrainz_server], [musicbrainz_port], [freedb_server], [freedb_port], [use_musicbrainz], [use_freedb])
+
+   Given a :class:`cdio.CDDAReader` object,
+   returns ``metadata[c][t]`` list of lists
    where ``c`` is a possible choice and ``t`` is the :class:`MetaData`
    for a given track (starting from 0).
 
@@ -1533,42 +1483,6 @@ CD Lookups
 
    May return :exc:`urllib2.HTTPError` if an error occurs
    querying the server.
-
-CDTrackReader Objects
-^^^^^^^^^^^^^^^^^^^^^
-
-.. class:: CDTrackReader(cdda, track_number[, perform_logging])
-
-   These objects are usually retrieved from :class:`CDDA` objects
-   rather than instantiated directly.
-   Each is a :class:`PCMReader`-compatible object
-   with a few additional methods specific to CD reading.
-
-.. data:: CDTrackReader.rip_log
-
-   A :class:`CDTrackLog` object indicating cdparanoia's
-   results from reading this track from the CD.
-   This attribute should be checked only after the track
-   has been fully read.
-
-.. method:: CDTrackReader.offset()
-
-   Returns the offset of this track within the CD, in sectors.
-
-.. method:: CDTrackReader.length()
-
-   Returns the total length of this track, in sectors.
-
-CDTrackLog Objects
-^^^^^^^^^^^^^^^^^^
-
-.. class:: CDTrackLog()
-
-   This is a dictionary-like object which should be retrieved
-   from :class:`CDTrackReader` rather than instantiated directly.
-   Its :meth:`__str__` method will return a human-readable
-   collection of error statistics comparable to what's
-   returned by the cdda2wav program.
 
 Cuesheets
 ---------
