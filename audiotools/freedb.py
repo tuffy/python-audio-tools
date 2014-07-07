@@ -39,7 +39,8 @@ class DiscID:
         offsets = cddareader.track_offsets
         return cls(offsets=[(offsets[k] // 588) + 150 for k in
                             sorted(offsets.keys())],
-                   total_length=cddareader.last_sector,
+                   total_length=(cddareader.last_sector -
+                                 cddareader.first_sector),
                    track_count=len(offsets))
 
     def __repr__(self):
