@@ -5872,7 +5872,262 @@ class TestMultiChannel(unittest.TestCase):
                                                    False)
 
 
-class Test_Accuraterip(unittest.TestCase):
+class Test_FreeDB(unittest.TestCase):
+    def __test_disc_id_tracks__(self, disc_id_obj,
+                                track_lengths,
+                                cuesheet,
+                                disc_id):
+        from audiotools.cdio import CDDAReader
+        from shutil import rmtree
+
+        dir = tempfile.mkdtemp()
+        try:
+            #dump cuesheet to temporary directory
+            f = open(os.path.join(dir, "CDImage.cue"), "wb")
+            f.write(cuesheet)
+            f.close()
+
+            #build CD image from track lengths
+            f = open(os.path.join(dir, "CDImage.bin"), "wb")
+            f.write(chr(0) * 2 * 2 * sum(track_lengths))
+            f.close()
+
+            #open disc image with CDDAReader
+            cddareader = CDDAReader(os.path.join(dir, "CDImage.cue"))
+
+            #ensure DiscID from CDDAReader matches
+            self.assertEqual(str(disc_id_obj.from_cddareader(cddareader)),
+                             disc_id)
+
+            #dump contents of CDDAReader to individual tracks
+            tracks = []
+            for i in sorted(cddareader.track_offsets.keys()):
+                offset = cddareader.track_offsets[i]
+                length = cddareader.track_lengths[i]
+                self.assertEqual(length, track_lengths[i - 1])
+                self.assertEqual(cddareader.seek(offset), offset)
+                tracks.append(audiotools.WaveAudio.from_pcm(
+                    os.path.join(dir, "track%d.wav"),
+                    audiotools.PCMReaderHead(cddareader, length),
+                    total_pcm_frames=length))
+
+            #ensure DiscID from tracks matches
+            self.assertEqual(str(disc_id_obj.from_tracks(tracks)),
+                             str(disc_id_obj.from_cddareader(cddareader)))
+
+            #open cuesheet as a Sheet object
+            sheet = audiotools.read_sheet(os.path.join(dir, "CDImage.cue"))
+
+            #ensure DiscID from sheet matches
+            self.assertEqual(str(disc_id_obj.from_sheet(sheet,
+                                                        sum(track_lengths),
+                                                        44100)),
+                             str(disc_id_obj.from_cddareader(cddareader)))
+        finally:
+            rmtree(dir)
+
+    def __test_disc_id__(self, disc_id_obj,
+                         total_length,
+                         cuesheet,
+                         disc_id):
+        from audiotools.cdio import CDDAReader
+        from shutil import rmtree
+
+        dir = tempfile.mkdtemp()
+        try:
+            #dump cuesheet to temporary directory
+            f = open(os.path.join(dir, "CDImage.cue"), "wb")
+            f.write(cuesheet)
+            f.close()
+
+            #build CD image from total length
+            f = open(os.path.join(dir, "CDImage.bin"), "wb")
+            f.write(chr(0) * 2 * 2 * total_length)
+            f.close()
+
+            #open disc image with CDDAReader
+            cddareader = CDDAReader(os.path.join(dir, "CDImage.cue"))
+
+            #ensure DiscID from CDDAReader matches
+            self.assertEqual(str(disc_id_obj.from_cddareader(cddareader)),
+                             disc_id)
+
+            #open cuesheet as a Sheet object
+            sheet = audiotools.read_sheet(os.path.join(dir, "CDImage.cue"))
+
+            #ensure DiscID from sheet matches
+            self.assertEqual(str(disc_id_obj.from_sheet(sheet,
+                                                        total_length,
+                                                        44100)),
+                             str(disc_id_obj.from_cddareader(cddareader)))
+        finally:
+            rmtree(dir)
+
+    @LIB_FREEDB
+    def test_discid(self):
+        from audiotools.freedb import DiscID
+
+        self.__test_disc_id_tracks__(
+            disc_id_obj=DiscID,
+            track_lengths=[7939176, 4799256, 6297480, 5383140,
+                           5246136, 5052684, 5013876],
+            cuesheet=
+"""eJxt0E0KwjAQhuF9TzH0ADLT/JnZRVshKBWKgi4DHkH0+k6zicZAVi/fQ0IO8TRB/0jPtHmnVw+7
+OIfl3gFclrA/AhKE6xjPEgDiPE63NSFyPmU2/M9QKhvHZqiwyngoWDWxZm2ZXIWlbtnqgnUTO0bP
+SBV2TMTaF2ya2OeZrbBUxebrZtvCIgll+YvXKp9BBbsmlq9R7HSFpcrLffcBb7NY9w==""".decode("base64").decode("zlib"),
+             disc_id="5A038407")
+
+        self.__test_disc_id__(
+            disc_id_obj=DiscID,
+            total_length=190928304,
+            cuesheet=
+"""eJyV0t1qgzAYgOFzwXsIXkDJj3/JWdAUZLMOZ7udurYw6aajte1290tqYY02g0CO3sD3JCGlyEGa
+PSdZCniIoKCQu04pY1LkuVhUwBPf9brnx03TJd3XDzihGXzDnus8iXJelLkogbdsd213bgHf982h
+l3tVVj2Kv141/cdW5nmm6vFQt5v+ffs5O9cnD7zwlXAdAKqSJw8AIsCXaVaoItswp9rX6x1E3hD/
+g9V+tkjFK4BQLnZZWkbXTMgNio0otkPl9Jghok8nxunE9kpyNPav029QlSMd9Y2ob4tixAIyRVUO
+dDQwooE1GjEM76AyYx0NjWhoixJ093lVDnU0MqKRNRozSBnxx6j8SKObxkY0tkV9+WPQFFV59Hup
+EaXWKGV+NH1elamGImhCEbRFQ3S5UjBCVR7O8gvDoy0r""".decode("base64").decode("zlib"),
+            disc_id="A610E90A")
+
+        self.__test_disc_id__(
+            disc_id_obj=DiscID,
+            total_length=127937040,
+            cuesheet=
+"""eJxtkm1LwzAQx9/vUxx7vy6Xx/be1bVCcbXSzQcQKbWpMJirqNP57U3HsB0GDpIcv/zvcv+UaQ7N
+e1t/thaef6Cxtubf9ReIgGHNZbXd7PaHSgQoZzirX62W1SHU1d8CzMyZnnOGbsuJIykON/mkdLqL
+pFwXxXLVHyaX2TKF6YXTs5C3224Hj6tu//YEdvPRAEL3Ahi4ylO4j+/SCcC6jBdXwBDi2yQrXAIg
+u07SB2DMBR1jnMW+Pp6yp8v8/2WHKZJ4hgkvFvWYGGHShyEnZYjxAVNeTJJSZ0W1Fwvp+IoBMz6M
+M5IRmREWejHp+ic96i3yYoZQkB7UkHkxNxBJfFBDjzcIQvS/QI4wrwvCkCOVGjCvC71T0Xgg6HXB
+NSZFP5Bf/ZugqA==""".decode("base64").decode("zlib"),
+            disc_id="CE0AD30E")
+
+        self.__test_disc_id__(
+            disc_id_obj=DiscID,
+            total_length=119882616,
+            cuesheet=
+"""eJydlcFu2zAMhu8B8g5CHqAQSUuyeTMcB/C6NIXrbrumXbEF3eIh89r17Se1ASoT0A4CfPpt+KNE
+6lPfbtW6u2m6tdo0uq5aKJaL3ofNbrttrwa1av/u76f6z9fD2Iy/XtQTXOg7Wi0X122/2fXbtler
+2+PjcXw+qvo0HX5P/t3QDR/b93w4TD8efLzpQvrz5fhw+Pb9bjxN4zSexovn/dNKfa4/tcuFUkNf
+N5dKg6pv190uJD57+91w2t8/ali9hf/jh/fdTd+oD9fDpS7LUhsN5/hq3X4J/9eaX58IikkoZkJR
+QpELYocRlJJQyoSShBaMyMZF0CIJLTKhhYQaLiyjmcWotM8sWz2LKcRGn78+l2iSJZrMEo0s0TFq
+LuJ9sUmozYRaCS0ZgU28UpeEukyok9CKQz9iaJmElpnQUkDBN7ScH7AqCa0yoZWEAlPBNlop6BQU
+dB4UtIQaxopJzjq4MOsUzRcktQaZWgOpNSjZPzbadUhqDTK1BlJr/hgRsY1XmtQaZGoNpNbwVWux
+MyCpNcjUGkitoWPyh8mJVvtB93vg5vtCyk8F0uzcQVJrkKk1kFojzYBsUZRIwGEgq6iWpO0g03Yg
+bUcYptFoWQuxNz5F1yAkJQiZEgQpQe8Ff8fM1JCUIGRKEKQEybG/8zFeaVKCkClBkBKkMrQ6vvAx
+KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
+            disc_id="FC0A9E14")
+
+
+class Test_MusicBrainz(Test_FreeDB):
+    @LIB_MUSICBRAINZ
+    def test_discid(self):
+        from audiotools.musicbrainz import DiscID
+
+        self.__test_disc_id_tracks__(
+            disc_id_obj=DiscID,
+            track_lengths=[7939176, 4799256, 6297480, 5383140,
+                           5246136, 5052684, 5013876],
+            cuesheet=
+"""eJxt0E0KwjAQhuF9TzH0ADLT/JnZRVshKBWKgi4DHkH0+k6zicZAVi/fQ0IO8TRB/0jPtHmnVw+7
+OIfl3gFclrA/AhKE6xjPEgDiPE63NSFyPmU2/M9QKhvHZqiwyngoWDWxZm2ZXIWlbtnqgnUTO0bP
+SBV2TMTaF2ya2OeZrbBUxebrZtvCIgll+YvXKp9BBbsmlq9R7HSFpcrLffcBb7NY9w==""".decode("base64").decode("zlib"),
+            disc_id="SJco4q4a9rzKdBw7HcFvBQugKc8-")
+
+        self.__test_disc_id__(
+            disc_id_obj=DiscID,
+            total_length=190928304,
+            cuesheet=
+"""eJyV0t1qgzAYgOFzwXsIXkDJj3/JWdAUZLMOZ7udurYw6aajte1290tqYY02g0CO3sD3JCGlyEGa
+PSdZCniIoKCQu04pY1LkuVhUwBPf9brnx03TJd3XDzihGXzDnus8iXJelLkogbdsd213bgHf982h
+l3tVVj2Kv141/cdW5nmm6vFQt5v+ffs5O9cnD7zwlXAdAKqSJw8AIsCXaVaoItswp9rX6x1E3hD/
+g9V+tkjFK4BQLnZZWkbXTMgNio0otkPl9Jghok8nxunE9kpyNPav029QlSMd9Y2ob4tixAIyRVUO
+dDQwooE1GjEM76AyYx0NjWhoixJ093lVDnU0MqKRNRozSBnxx6j8SKObxkY0tkV9+WPQFFV59Hup
+EaXWKGV+NH1elamGImhCEbRFQ3S5UjBCVR7O8gvDoy0r""".decode("base64").decode("zlib"),
+            disc_id="naJ8mpfbMHx_qQnJbyRx4lE_h4E-")
+
+        self.__test_disc_id__(
+            disc_id_obj=DiscID,
+            total_length=127937040,
+            cuesheet=
+"""eJxtkm1LwzAQx9/vUxx7vy6Xx/be1bVCcbXSzQcQKbWpMJirqNP57U3HsB0GDpIcv/zvcv+UaQ7N
+e1t/thaef6Cxtubf9ReIgGHNZbXd7PaHSgQoZzirX62W1SHU1d8CzMyZnnOGbsuJIykON/mkdLqL
+pFwXxXLVHyaX2TKF6YXTs5C3224Hj6tu//YEdvPRAEL3Ahi4ylO4j+/SCcC6jBdXwBDi2yQrXAIg
+u07SB2DMBR1jnMW+Pp6yp8v8/2WHKZJ4hgkvFvWYGGHShyEnZYjxAVNeTJJSZ0W1Fwvp+IoBMz6M
+M5IRmREWejHp+ic96i3yYoZQkB7UkHkxNxBJfFBDjzcIQvS/QI4wrwvCkCOVGjCvC71T0Xgg6HXB
+NSZFP5Bf/ZugqA==""".decode("base64").decode("zlib"),
+            disc_id="1o5aDeltYCEwCecU1cMMi1cvees-")
+
+        self.__test_disc_id__(
+            disc_id_obj=DiscID,
+            total_length=119882616,
+            cuesheet=
+"""eJydlcFu2zAMhu8B8g5CHqAQSUuyeTMcB/C6NIXrbrumXbEF3eIh89r17Se1ASoT0A4CfPpt+KNE
+6lPfbtW6u2m6tdo0uq5aKJaL3ofNbrttrwa1av/u76f6z9fD2Iy/XtQTXOg7Wi0X122/2fXbtler
+2+PjcXw+qvo0HX5P/t3QDR/b93w4TD8efLzpQvrz5fhw+Pb9bjxN4zSexovn/dNKfa4/tcuFUkNf
+N5dKg6pv190uJD57+91w2t8/ali9hf/jh/fdTd+oD9fDpS7LUhsN5/hq3X4J/9eaX58IikkoZkJR
+QpELYocRlJJQyoSShBaMyMZF0CIJLTKhhYQaLiyjmcWotM8sWz2LKcRGn78+l2iSJZrMEo0s0TFq
+LuJ9sUmozYRaCS0ZgU28UpeEukyok9CKQz9iaJmElpnQUkDBN7ScH7AqCa0yoZWEAlPBNlop6BQU
+dB4UtIQaxopJzjq4MOsUzRcktQaZWgOpNSjZPzbadUhqDTK1BlJr/hgRsY1XmtQaZGoNpNbwVWux
+MyCpNcjUGkitoWPyh8mJVvtB93vg5vtCyk8F0uzcQVJrkKk1kFojzYBsUZRIwGEgq6iWpO0g03Yg
+bUcYptFoWQuxNz5F1yAkJQiZEgQpQe8Ff8fM1JCUIGRKEKQEybG/8zFeaVKCkClBkBKkMrQ6vvAx
+KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
+            disc_id="aS0RfXDrxs718yypC2AlgpNEIE0-")
+
+class Test_Accuraterip(Test_FreeDB):
+    @LIB_ACCURATERIP
+    def test_discid(self):
+        from audiotools.accuraterip import DiscID
+
+        self.__test_disc_id_tracks__(
+            disc_id_obj=DiscID,
+            track_lengths=[7939176, 4799256, 6297480, 5383140,
+                           5246136, 5052684, 5013876],
+            cuesheet=
+"""eJxt0E0KwjAQhuF9TzH0ADLT/JnZRVshKBWKgi4DHkH0+k6zicZAVi/fQ0IO8TRB/0jPtHmnVw+7
+OIfl3gFclrA/AhKE6xjPEgDiPE63NSFyPmU2/M9QKhvHZqiwyngoWDWxZm2ZXIWlbtnqgnUTO0bP
+SBV2TMTaF2ya2OeZrbBUxebrZtvCIgll+YvXKp9BBbsmlq9R7HSFpcrLffcBb7NY9w==""".decode("base64").decode("zlib"),
+            disc_id="dBAR-007-00045db7-0019b8d8-5a038407.bin")
+
+        self.__test_disc_id__(
+            disc_id_obj=DiscID,
+            total_length=190928304,
+            cuesheet=
+"""eJyV0t1qgzAYgOFzwXsIXkDJj3/JWdAUZLMOZ7udurYw6aajte1290tqYY02g0CO3sD3JCGlyEGa
+PSdZCniIoKCQu04pY1LkuVhUwBPf9brnx03TJd3XDzihGXzDnus8iXJelLkogbdsd213bgHf982h
+l3tVVj2Kv141/cdW5nmm6vFQt5v+ffs5O9cnD7zwlXAdAKqSJw8AIsCXaVaoItswp9rX6x1E3hD/
+g9V+tkjFK4BQLnZZWkbXTMgNio0otkPl9Jghok8nxunE9kpyNPav029QlSMd9Y2ob4tixAIyRVUO
+dDQwooE1GjEM76AyYx0NjWhoixJ093lVDnU0MqKRNRozSBnxx6j8SKObxkY0tkV9+WPQFFV59Hup
+EaXWKGV+NH1elamGImhCEbRFQ3S5UjBCVR7O8gvDoy0r""".decode("base64").decode("zlib"),
+            disc_id="dBAR-010-00193b54-00c9f723-a610e90a.bin")
+
+        self.__test_disc_id__(
+            disc_id_obj=DiscID,
+            total_length=127937040,
+            cuesheet=
+"""eJxtkm1LwzAQx9/vUxx7vy6Xx/be1bVCcbXSzQcQKbWpMJirqNP57U3HsB0GDpIcv/zvcv+UaQ7N
+e1t/thaef6Cxtubf9ReIgGHNZbXd7PaHSgQoZzirX62W1SHU1d8CzMyZnnOGbsuJIykON/mkdLqL
+pFwXxXLVHyaX2TKF6YXTs5C3224Hj6tu//YEdvPRAEL3Ahi4ylO4j+/SCcC6jBdXwBDi2yQrXAIg
+u07SB2DMBR1jnMW+Pp6yp8v8/2WHKZJ4hgkvFvWYGGHShyEnZYjxAVNeTJJSZ0W1Fwvp+IoBMz6M
+M5IRmREWejHp+ic96i3yYoZQkB7UkHkxNxBJfFBDjzcIQvS/QI4wrwvCkCOVGjCvC71T0Xgg6HXB
+NSZFP5Bf/ZugqA==""".decode("base64").decode("zlib"),
+            disc_id="dBAR-014-001977f9-01097144-ce0ad30e.bin")
+
+        self.__test_disc_id__(
+            disc_id_obj=DiscID,
+            total_length=119882616,
+            cuesheet=
+"""eJydlcFu2zAMhu8B8g5CHqAQSUuyeTMcB/C6NIXrbrumXbEF3eIh89r17Se1ASoT0A4CfPpt+KNE
+6lPfbtW6u2m6tdo0uq5aKJaL3ofNbrttrwa1av/u76f6z9fD2Iy/XtQTXOg7Wi0X122/2fXbtler
+2+PjcXw+qvo0HX5P/t3QDR/b93w4TD8efLzpQvrz5fhw+Pb9bjxN4zSexovn/dNKfa4/tcuFUkNf
+N5dKg6pv190uJD57+91w2t8/ali9hf/jh/fdTd+oD9fDpS7LUhsN5/hq3X4J/9eaX58IikkoZkJR
+QpELYocRlJJQyoSShBaMyMZF0CIJLTKhhYQaLiyjmcWotM8sWz2LKcRGn78+l2iSJZrMEo0s0TFq
+LuJ9sUmozYRaCS0ZgU28UpeEukyok9CKQz9iaJmElpnQUkDBN7ScH7AqCa0yoZWEAlPBNlop6BQU
+dB4UtIQaxopJzjq4MOsUzRcktQaZWgOpNSjZPzbadUhqDTK1BlJr/hgRsY1XmtQaZGoNpNbwVWux
+MyCpNcjUGkitoWPyh8mJVvtB93vg5vtCyk8F0uzcQVJrkKk1kFojzYBsUZRIwGEgq6iWpO0g03Yg
+bUcYptFoWQuxNz5F1yAkJQiZEgQpQe8Ff8fM1JCUIGRKEKQEybG/8zFeaVKCkClBkBKkMrQ6vvAx
+KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
+            disc_id="dBAR-020-001d4d13-01bab5f6-fc0a9e14.bin")
+
     @LIB_ACCURATERIP
     def test_checksum_v1(self):
         from audiotools.accuraterip import ChecksumV1

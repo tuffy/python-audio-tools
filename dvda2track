@@ -239,7 +239,9 @@ if (__name__ == '__main__'):
 
     #use DVDATtitle object to query metadata services for metadata choices
     try:
-        metadata_choices = title.metadata_lookup(
+        metadata_choices = audiotools.metadata_lookup(
+            musicbrainz_disc_id=title.musicbrainz_disc_id(),
+            freedb_disc_id=title.freedb_disc_id(),
             musicbrainz_server=options.musicbrainz_server,
             musicbrainz_port=options.musicbrainz_port,
             freedb_server=options.freedb_server,

@@ -168,15 +168,47 @@ class DiscID:
     def from_cddareader(cls, cddareader):
         """given a CDDAReader object, returns a DiscID for that object"""
 
-        import audiotools.freedb
+        from audiotools.freedb import DiscID as FDiscID
 
         offsets = cddareader.track_offsets
         return cls(track_numbers=list(sorted(offsets.keys())),
                    track_offsets=[(offsets[k] // 588) for k in
                                   sorted(offsets.keys())],
-                   lead_out_offset = cddareader.last_sector + 1,
-                   freedb_disc_id=audiotools.freedb.DiscID.from_cddareader(
-                       cddareader))
+                   lead_out_offset=cddareader.last_sector + 1,
+                   freedb_disc_id=FDiscID.from_cddareader(cddareader))
+
+    @classmethod
+    def from_tracks(cls, tracks):
+        """given a sorted list of tracks,
+        returns DiscID for those tracks as if they were a CD"""
+
+        from audiotools.freedb import DiscID as FDiscID
+
+        offsets = [0]
+        for track in tracks[0:-1]:
+            offsets.append(offsets[-1] + track.cd_frames())
+
+        return cls(track_numbers=range(1, len(tracks) + 1),
+                   track_offsets=offsets,
+                   lead_out_offset=sum([t.cd_frames() for t in tracks]),
+                   freedb_disc_id=FDiscID.from_tracks(tracks))
+
+    @classmethod
+    def from_sheet(cls, sheet, total_pcm_frames, sample_rate):
+        """given a Sheet object
+        length of the album in PCM frames
+        and sample rate of the disc,
+        returns a DiscID for that CD"""
+
+        from audiotools.freedb import DiscID as FDiscID
+
+        return cls(track_numbers=range(1, len(sheet) + 1),
+                   track_offsets=[(int(t.index(1).offset() * 75))
+                                  for t in sheet.tracks()],
+                   lead_out_offset=total_pcm_frames * 75 // sample_rate,
+                   freedb_disc_id=FDiscID.from_sheet(sheet,
+                                                     total_pcm_frames,
+                                                     sample_rate))
 
     def track_numbers(self):
         return self.__track_numbers__[:]

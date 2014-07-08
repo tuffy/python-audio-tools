@@ -427,23 +427,25 @@ class DVDATitle:
                     self.sample_rate).quantize(decimal.Decimal(1),
                                                rounding=decimal.ROUND_UP))
 
-    def metadata_lookup(self, musicbrainz_server="musicbrainz.org",
-                        musicbrainz_port=80,
-                        freedb_server="us.freedb.org",
-                        freedb_port=80,
-                        use_musicbrainz=True,
-                        use_freedb=True):
-        """generates a set of MetaData objects from DVD title
+    def freedb_disc_id(self):
+        """returns a FreeDB DiscID object"""
 
-        returns a metadata[c][t] list of lists
-        where 'c' is a possible choice
-        and 't' is the MetaData for a given track (starting from 0)
+        from audiotools.freedb import DiscID
 
-        this will always return at least one choice,
-        which may be a list of largely empty MetaData objects
-        if no match can be found for the title"""
+        PTS_PER_FRAME = DVDAudio.PTS_PER_SECOND / 75
 
-        from audiotools import metadata_lookup
+        offsets = [150]
+        for track in self.tracks[0:-1]:
+            offsets.append(offsets[-1] + (track.pts_length // PTS_PER_FRAME))
+
+        return DiscID(offsets=offsets,
+                      total_length=self.pts_length // DVDAudio.PTS_PER_SECOND,
+                      track_count=len(self))
+
+    def musicbrainz_disc_id(self):
+        """returns a MusicBrainz DiscID object"""
+
+        from audiotools.musicbrainz import DiscID
 
         PTS_PER_FRAME = DVDAudio.PTS_PER_SECOND / 75
 
@@ -451,17 +453,10 @@ class DVDATitle:
         for track in self.tracks[0:-1]:
             offsets.append(offsets[-1] + (track.pts_length / PTS_PER_FRAME))
 
-        return metadata_lookup(first_track_number=1,
-                               last_track_number=len(self),
-                               offsets=offsets,
-                               lead_out_offset=self.pts_length / PTS_PER_FRAME,
-                               total_length=self.pts_length / PTS_PER_FRAME,
-                               musicbrainz_server=musicbrainz_server,
-                               musicbrainz_port=musicbrainz_port,
-                               freedb_server=freedb_server,
-                               freedb_port=freedb_port,
-                               use_musicbrainz=use_musicbrainz,
-                               use_freedb=use_freedb)
+        return DiscID(first_track_number=1,
+                      last_track_number=len(self),
+                      lead_out_offset=self.pts_length / PTS_PER_FRAME,
+                      offsets=offsets)
 
 
 class DVDATrack:

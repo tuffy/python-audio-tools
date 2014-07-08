@@ -18,10 +18,20 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
+def digit_sum(i):
+    """returns the sum of all digits for the given integer"""
+
+    s = 0
+    while (i > 0):
+        s += i % 10
+        i /= 10
+    return s
+
+
 class DiscID:
     def __init__(self, offsets, total_length, track_count):
         """offsets is a list of track offsets, in CD frames
-        total_length is the total length of the disc, in CD frames
+        total_length is the total length of the disc, in seconds
         track_count is the total number of tracks on the disc"""
 
         assert(len(offsets) == track_count)
@@ -39,36 +49,54 @@ class DiscID:
         offsets = cddareader.track_offsets
         return cls(offsets=[(offsets[k] // 588) + 150 for k in
                             sorted(offsets.keys())],
-                   total_length=(cddareader.last_sector -
-                                 cddareader.first_sector),
+                   total_length=((cddareader.last_sector // 75) -
+                                 (cddareader.first_sector // 75)),
                    track_count=len(offsets))
 
+    @classmethod
+    def from_tracks(cls, tracks):
+        """given a sorted list of tracks,
+        returns DiscID for those tracks as if they were a CD"""
+
+        offsets = [150]
+        for track in tracks[0:-1]:
+            offsets.append(offsets[-1] + track.cd_frames())
+
+        return cls(offsets=offsets,
+                   total_length=sum([t.cd_frames() for t in tracks]) // 75,
+                   track_count=len(tracks))
+
+    @classmethod
+    def from_sheet(cls, sheet, total_pcm_frames, sample_rate):
+        """given a Sheet object
+        length of the album in PCM frames
+        and sample rate of the disc,
+        returns a DiscID for that CD"""
+
+        return cls(offsets=[int(t.index(1).offset() * 75 + 150)
+                            for t in sheet.tracks()],
+                   total_length=((total_pcm_frames // sample_rate) -
+                                 int(sheet.track(1).index(1).offset())),
+                   track_count=len(sheet))
+
     def __repr__(self):
-        return "DiscID(%s, %s, %s)" % \
-            (repr(self.offsets),
-             repr(self.total_length),
-             repr(self.track_count))
+        return "DiscID(%s)" % \
+            ", ".join(["%s=%s" % (attr, getattr(self, attr))
+                       for attr in ["offsets",
+                                    "total_length",
+                                    "track_count"]])
 
     def __str__(self):
         return "%8.8X" % (int(self))
 
     def __int__(self):
-        digitsum = sum(
-            map(int, "".join([str(o // 75) for o in self.offsets]))) % 255
-        seconds_length = self.total_length // 75
-        track_count = self.track_count
-
-        return ((digitsum << 24) |
-                ((seconds_length & 0xFFFF) << 8) |
-                (track_count & 0xFF))
+        return ((sum([digit_sum(o // 75) for o in self.offsets]) << 24) |
+                ((self.total_length & 0xFFFF) << 8) |
+                (self.track_count & 0xFF))
 
 
-def perform_lookup(offsets, total_length, track_count,
-                   freedb_server, freedb_port):
-    """performs a web-based lookup using
-    a list of track offsets (in CD frames),
-    total length of the disc (in CD frames),
-    and track count
+def perform_lookup(disc_id, freedb_server, freedb_port):
+    """performs a web-based lookup using a DiscID
     on the given freedb_server string and freedb_int port
 
     iterates over a list of MetaData objects per successful match, like:
@@ -90,8 +118,6 @@ def perform_lookup(offsets, total_length, track_count,
     QUERY_RESULT = re.compile(r'(\S+) ([0-9a-fA-F]{8}) (.+)')
     FREEDB_LINE = re.compile(r'(\S+?)=(.+?)[\r\n]+')
 
-    disc_id = DiscID(offsets, total_length, track_count)
-
     #perform initial FreeDB query
     #and get a list of category/disc id/title results
     #if any matches are found
@@ -104,9 +130,9 @@ def perform_lookup(offsets, total_length, track_count,
                            "cmd": ("cddb query %(disc_id)s %(track_count)d " +
                                    "%(offsets)s %(seconds)d") %
                            {"disc_id": disc_id,
-                            "track_count": track_count,
-                            "offsets": " ".join(map(str, offsets)),
-                            "seconds": total_length / 75}}))
+                            "track_count": disc_id.track_count,
+                            "offsets": " ".join(map(str, disc_id.offsets)),
+                            "seconds": disc_id.total_length}}))
 
     response = RESPONSE.match(m.readline())
     if (response is None):

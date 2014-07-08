@@ -44,12 +44,40 @@ class DiscID:
                    offsets=[(offsets[k] // 588) + 150 for k in
                             sorted(offsets.keys())])
 
+    @classmethod
+    def from_tracks(cls, tracks):
+        """given a sorted list of tracks,
+        returns DiscID for those tracks as if they were a CD"""
+
+        offsets = [150]
+        for track in tracks[0:-1]:
+            offsets.append(offsets[-1] + track.cd_frames())
+
+        return cls(first_track_number=1,
+                   last_track_number=len(tracks),
+                   lead_out_offset=sum([t.cd_frames() for t in tracks]) + 150,
+                   offsets=offsets)
+
+    @classmethod
+    def from_sheet(cls, sheet, total_pcm_frames, sample_rate):
+        """given a Sheet object
+        length of the album in PCM frames
+        and sample rate of the disc,
+        returns a DiscID for that CD"""
+
+        return cls(first_track_number=1,
+                   last_track_number=len(sheet),
+                   lead_out_offset=(total_pcm_frames * 75 // sample_rate) + 150,
+                   offsets=[int(t.index(1).offset() * 75 + 150)
+                            for t in sheet.tracks()])
+
     def __repr__(self):
-        return "DiscID(%s, %s, %s, %s)" % \
-            (self.first_track_number,
-             self.last_track_number,
-             self.lead_out_offset,
-             self.offsets)
+        return "DiscID(%s)" % \
+            ", ".join(["%s=%s" % (attr, getattr(self, attr))
+                       for attr in ["first_track_number",
+                                    "last_track_number",
+                                    "lead_out_offset",
+                                    "offsets"]])
 
     def __str__(self):
         from hashlib import sha1
@@ -70,12 +98,8 @@ class DiscID:
         return str(self).decode('ascii')
 
 
-def perform_lookup(first_track_number, last_track_number,
-                   lead_out_offset, offsets,
-                   musicbrainz_server, musicbrainz_port):
-    """performs a web-based lookup using
-    first_track_number, last_track_number, lead_out_offset
-    and a list of offset ints
+def perform_lookup(disc_id, musicbrainz_server, musicbrainz_port):
+    """performs a web-based lookup using the given DiscID
 
     iterates over a list of MetaData objects per successful match, like:
     [track1, track2, ...], [track1, track2, ...], ...
@@ -88,12 +112,6 @@ def perform_lookup(first_track_number, last_track_number,
     from urllib import urlencode
     import xml.dom.minidom
     from itertools import izip
-
-    #build DiscID from input parameters
-    disc_id = DiscID(first_track_number,
-                     last_track_number,
-                     lead_out_offset,
-                     offsets)
 
     #query MusicBrainz web service (version 2) for <metadata>
     m = urlopen("http://%s:%d/ws/2/discid/%s?%s" %

@@ -4721,8 +4721,8 @@ def most_numerous(item_list, empty_list=None, all_differ=None):
 #######################
 
 
-def metadata_lookup(first_track_number, last_track_number,
-                    offsets, lead_out_offset, total_length,
+def metadata_lookup(musicbrainz_disc_id,
+                    freedb_disc_id,
                     musicbrainz_server="musicbrainz.org",
                     musicbrainz_port=80,
                     freedb_server="us.freedb.org",
@@ -4745,9 +4745,7 @@ def metadata_lookup(first_track_number, last_track_number,
     if no match can be found for the CD
     """
 
-    assert(last_track_number >= first_track_number)
-    track_count = (last_track_number + 1) - first_track_number
-    assert(track_count == len(offsets))
+    assert(musicbrainz_disc_id.offsets == freedb_disc_id.offsets)
 
     matches = []
 
@@ -4759,10 +4757,7 @@ def metadata_lookup(first_track_number, last_track_number,
         try:
             matches.extend(
                 musicbrainz.perform_lookup(
-                    first_track_number=first_track_number,
-                    last_track_number=last_track_number,
-                    lead_out_offset=lead_out_offset,
-                    offsets=offsets,
+                    disc_id=musicbrainz_disc_id,
                     musicbrainz_server=musicbrainz_server,
                     musicbrainz_port=musicbrainz_port))
         except (HTTPError, ExpatError):
@@ -4774,9 +4769,7 @@ def metadata_lookup(first_track_number, last_track_number,
         try:
             matches.extend(
                 freedb.perform_lookup(
-                    offsets=offsets,
-                    total_length=total_length,
-                    track_count=track_count,
+                    disc_id=freedb_disc_id,
                     freedb_server=freedb_server,
                     freedb_port=freedb_port))
         except (HTTPError, ValueError), err:
@@ -4784,9 +4777,9 @@ def metadata_lookup(first_track_number, last_track_number,
 
     if (len(matches) == 0):
         #no matches, so build a set of dummy metadata
-        return [[MetaData(track_number=i,
-                          track_total=track_count)
-                 for i in xrange(first_track_number, last_track_number + 1)]]
+        track_count = len(musicbrainz_disc_id.offsets)
+        return [[MetaData(track_number=i, track_total=track_count)
+                 for i in xrange(1, track_count + 1)]]
     else:
         return matches
 
@@ -4808,14 +4801,12 @@ def cddareader_metadata_lookup(cddareader,
     if no match can be found for the CD
     """
 
-    offsets = cddareader.track_offsets
+    from audiotools.freedb import DiscID as FDiscID
+    from audiotools.musicbrainz import DiscID as MDiscID
 
     return metadata_lookup(
-        first_track_number=min(offsets.keys()),
-        last_track_number=max(offsets.keys()),
-        offsets=[(offsets[k] // 588) + 150 for k in sorted(offsets.keys())],
-        lead_out_offset=cddareader.last_sector + 150 + 1,
-        total_length=cddareader.last_sector,
+        freedb_disc_id=FDiscID.from_cddareader(cddareader),
+        musicbrainz_disc_id=MDiscID.from_cddareader(cddareader),
         musicbrainz_server=musicbrainz_server,
         musicbrainz_port=musicbrainz_port,
         freedb_server=freedb_server,
@@ -4844,21 +4835,12 @@ def track_metadata_lookup(audiofiles,
     if no match can be found for the CD
     """
 
-    audiofiles = sorted_tracks(audiofiles)
-    track_frames = [f.cd_frames() for f in audiofiles]
-    track_numbers = [(m.track_number if m is not None else None)
-                     for m in [f.get_metadata() for f in audiofiles]]
+    from audiotools.freedb import DiscID as FDiscID
+    from audiotools.musicbrainz import DiscID as MDiscID
 
     return metadata_lookup(
-        first_track_number=(min(track_numbers)
-                            if None not in track_numbers else 1),
-        last_track_number=(max(track_numbers)
-                           if None not in track_numbers else
-                           len(track_numbers)),
-        offsets=[150 + sum(track_frames[0:i]) for i in
-                 xrange(len(track_frames))],
-        lead_out_offset=150 + sum(track_frames),
-        total_length=sum(track_frames) - 1,
+        freedb_disc_id=FDiscID.from_tracks(audiofiles),
+        musicbrainz_disc_id=MDiscID.from_tracks(audiofiles),
         musicbrainz_server=musicbrainz_server,
         musicbrainz_port=musicbrainz_port,
         freedb_server=freedb_server,
@@ -4866,6 +4848,45 @@ def track_metadata_lookup(audiofiles,
         use_musicbrainz=use_musicbrainz,
         use_freedb=use_freedb)
 
+
+def sheet_metadata_lookup(sheet,
+                          total_pcm_frames,
+                          sample_rate,
+                          musicbrainz_server="musicbrainz.org",
+                          musicbrainz_port=80,
+                          freedb_server="us.freedb.org",
+                          freedb_port=80,
+                          use_musicbrainz=True,
+                          use_freedb=True):
+    """given a Sheet object,
+    length of the album in PCM frames
+    and sample rate of the disc,
+
+    returns a metadata[c][t] list of lists
+    where 'c' is a possible choice
+    and 't' is the MetaData for a given track (starting from 0)
+
+    this will always return at least one choice,
+    which may be a list of largely empty MetaData objects
+    if no match can be found for the CD
+    """
+
+    from audiotools.freedb import DiscID as FDiscID
+    from audiotools.musicbrainz import DiscID as MDiscID
+
+    return metadata_lookup(
+        freedb_disc_id=FDiscID.from_sheet(sheet,
+                                          total_pcm_frames,
+                                          sample_rate),
+        musicbrainz_disc_id=MDiscID.from_sheet(sheet,
+                                               total_pcm_frames,
+                                               sample_rate),
+        musicbrainz_server=musicbrainz_server,
+        musicbrainz_port=musicbrainz_port,
+        freedb_server=freedb_server,
+        freedb_port=freedb_port,
+        use_musicbrainz=use_musicbrainz,
+        use_freedb=use_freedb)
 
 def accuraterip_lookup(sorted_tracks,
                        accuraterip_server="www.accuraterip.com",
@@ -4894,27 +4915,9 @@ def accuraterip_lookup(sorted_tracks,
     if (len(sorted_tracks) == 0):
         return {}
     else:
-        from .accuraterip import DiscID as ARDiscID
-        from .accuraterip import perform_lookup
-        from .freedb import DiscID as FreeDBDiscID
+        from audiotools.accuraterip import DiscID,perform_lookup
 
-        #generate artificial DiscID from tracks
-        track_numbers = [track_number(track, i + 1) for (i, track) in
-                         enumerate(sorted_tracks)]
-        track_offsets = [0]
-        for length in [track.cd_frames() for track in sorted_tracks[0:-1]]:
-            track_offsets.append(length + track_offsets[-1])
-        lead_out_offset = sum(track.cd_frames() for track in sorted_tracks)
-
-        freedb_disc_id = FreeDBDiscID(
-            offsets=[o + 150 for o in track_offsets],
-            total_length=sum([track.cd_frames() for track in sorted_tracks]),
-            track_count=len(sorted_tracks))
-
-        return perform_lookup(ARDiscID(track_numbers,
-                                       track_offsets,
-                                       lead_out_offset,
-                                       freedb_disc_id),
+        return perform_lookup(DiscID.from_tracks(tracks),
                               accuraterip_server,
                               accuraterip_port)
 
@@ -4932,24 +4935,11 @@ def accuraterip_sheet_lookup(sheet, total_pcm_frames, sample_rate,
     may raise urllib2.HTTPError if an error occurs querying the server
     """
 
-    from .accuraterip import DiscID as ARDiscID
-    from .accuraterip import perform_lookup
-    from .freedb import DiscID as FreeDBDiscID
+    from audiotools.accuraterip import DiscID,perform_lookup
 
-    #generate artificial DiscID from sheet's tracks
-    track_numbers = [t.number() for t in sheet.tracks()]
-    track_offsets = [max([int(i.offset() * 75) for i in t.indexes()])
-                     for t in sheet.tracks()]
-    lead_out_offset = (total_pcm_frames * 75) // sample_rate
-    freedb_disc_id = FreeDBDiscID(
-        offsets=[o + 150 for o in track_offsets],
-        total_length=(total_pcm_frames * 75) // sample_rate,
-        track_count=len(list(sheet.tracks())))
-
-    return perform_lookup(ARDiscID(track_numbers,
-                                   track_offsets,
-                                   lead_out_offset,
-                                   freedb_disc_id),
+    return perform_lookup(DiscID.from_sheet(sheet,
+                                            total_pcm_frames,
+                                            sample_rate),
                           accuraterip_server,
                           accuraterip_port)
 

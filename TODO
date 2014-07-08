@@ -6990,6 +6990,22 @@
     in order to find the checksum's offset.
 **** DONE trackverify
 **** DONE cd2track
+** TODO Simplify lookup services interface
+   The perform_lookup() functions should work on DiscID objects
+   and DiscID objects should be generated from
+   CDDAReaders, track lists or cuesheet/length combinations.
+*** DONE FreeDB
+    - [X] Add from_tracks classmethod
+    - [X] Add from_sheet classmethod
+    - [X] Add unit tests
+*** DONE MusicBrainz
+    - [X] Add from_tracks classmethod
+    - [X] Add from_sheet classmethod
+    - [X] Add unit tests
+*** DONE AccurateRip
+    - [X] Add from_tracks classmethod
+    - [X] Add from_sheet classmethod
+    - [X] Add unit tests
 ** TODO Add documentation for lookup services
    - [ ] audiotools.accuraterip
    - [ ] audiotools.freedb

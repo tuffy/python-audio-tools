@@ -302,13 +302,10 @@ if (__name__ == '__main__'):
 
     #use cuesheet to query metadata services for metadata choices
     try:
-        metadata_choices = audiotools.metadata_lookup(
-            first_track_number=1,
-            last_track_number=output_track_count,
-            offsets=[int((t.index(1).offset() + 2) * 75) for t in
-                     cuesheet.tracks()],
-            lead_out_offset=audiofile.cd_frames() + 150,
-            total_length=audiofile.cd_frames(),
+        metadata_choices = audiotools.sheet_metadata_lookup(
+            sheet=cuesheet,
+            total_pcm_frames=audiofile.total_frames(),
+            sample_rate=audiofile.sample_rate(),
             musicbrainz_server=options.musicbrainz_server,
             musicbrainz_port=options.musicbrainz_port,
             freedb_server=options.freedb_server,
