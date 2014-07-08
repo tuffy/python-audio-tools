@@ -6,7 +6,7 @@
 
 
 
-The :mod:`audiotools.cdio` module contains the CDDA class
+The :mod:`audiotools.cdio` module contains the CDDAReader class
 for accessing raw CDDA data.
 
 CDDAReader Objects

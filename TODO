@@ -6990,7 +6990,7 @@
     in order to find the checksum's offset.
 **** DONE trackverify
 **** DONE cd2track
-** TODO Simplify lookup services interface
+** DONE Simplify lookup services interface
    The perform_lookup() functions should work on DiscID objects
    and DiscID objects should be generated from
    CDDAReaders, track lists or cuesheet/length combinations.
@@ -7006,10 +7006,10 @@
     - [X] Add from_tracks classmethod
     - [X] Add from_sheet classmethod
     - [X] Add unit tests
-** TODO Add documentation for lookup services
-   - [ ] audiotools.accuraterip
-   - [ ] audiotools.freedb
-   - [ ] audiotools.musicbrainz
+** DONE Add documentation for lookup services
+   - [X] audiotools.freedb
+   - [X] audiotools.musicbrainz
+   - [X] audiotools.accuraterip
 ** TODO Upload to PyPI
 * TODO Finish version 3.0
 ** TODO Shift to Python 3
