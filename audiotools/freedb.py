@@ -21,11 +21,7 @@
 def digit_sum(i):
     """returns the sum of all digits for the given integer"""
 
-    s = 0
-    while (i > 0):
-        s += i % 10
-        i /= 10
-    return s
+    return sum(map(int, str(i)))
 
 
 class DiscID:
@@ -90,7 +86,8 @@ class DiscID:
         return "%8.8X" % (int(self))
 
     def __int__(self):
-        return ((sum([digit_sum(o // 75) for o in self.offsets]) << 24) |
+        digit_sum_ = sum([digit_sum(o // 75) for o in self.offsets])
+        return (((digit_sum_ % 255) << 24) |
                 ((self.total_length & 0xFFFF) << 8) |
                 (self.track_count & 0xFF))
 
