@@ -4917,7 +4917,7 @@ def accuraterip_lookup(sorted_tracks,
     else:
         from audiotools.accuraterip import DiscID,perform_lookup
 
-        return perform_lookup(DiscID.from_tracks(tracks),
+        return perform_lookup(DiscID.from_tracks(sorted_tracks),
                               accuraterip_server,
                               accuraterip_port)
 
