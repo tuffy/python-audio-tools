@@ -232,11 +232,13 @@ class DiscID:
              "freedb": int(self.__freedb_disc_id__)}
 
     def __repr__(self):
-        return "AccurateRipDiscID(%s, %s, %s, %s)" % \
-            (repr(self.__track_numbers__),
-             repr(self.__track_offsets__),
-             repr(self.__lead_out_offset__),
-             repr(self.__freedb_disc_id__))
+        return "AccurateRipDiscID(%s)" % \
+            (", ".join(["%s=%s" % (key, repr(getattr(self, attr)))
+                        for (key, attr) in
+                        [("track_numbers", "__track_numbers__"),
+                         ("track_offsets", "__track_offsets__"),
+                         ("lead_out_offset", "__lead_out_offset__"),
+                         ("freedb_disc_id", "__freedb_disc_id__")]]))
 
 
 def perform_lookup(disc_id,

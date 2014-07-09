@@ -5977,6 +5977,30 @@ OIfl3gFclrA/AhKE6xjPEgDiPE63NSFyPmU2/M9QKhvHZqiwyngoWDWxZm2ZXIWlbtnqgnUTO0bP
 SBV2TMTaF2ya2OeZrbBUxebrZtvCIgll+YvXKp9BBbsmlq9R7HSFpcrLffcBb7NY9w==""".decode("base64").decode("zlib"),
              disc_id="5A038407")
 
+        self.__test_disc_id_tracks__(
+            disc_id_obj=DiscID,
+            track_lengths=[1339464, 4048380, 692076, 10600464, 10602816,
+                           1178940, 7454664, 2664816, 989604, 7008960,
+                           9632616, 1070160, 6094620, 1622880, 13361124,
+                           403956, 5208504, 7373520, 483336, 12012840,
+                           8534820, 439824, 7626360, 1262436, 4874520,
+                           398664, 11229036, 483924, 9003456, 883764,
+                           5018580],
+            cuesheet=
+"""eJydl8Fu2zAMhu8B8g6C7ytESrIt3TzHGbw1TeG63a5J10PQISm6rO3efpI7YHIYDrACnxjEn6X8
+/Ch3zUos2pu6XYiPjVzYCpbzWeeL9Xq1aq56kTVvm/tj9ev77lAfnn6LF7iQW5XNZ3XVV5frT0LG
+n/nsuumW627VdCK73T/uD697UT0fdz+P/id92182/+r97vjjwZeXbahuH7aHpw/bwxtcvG5eMvG1
+umvmMyH6rqq/CAmiul2061Dxtfcb9c+b+0cJ2Xvxf+TwfXvT1eLz9V0rJYKSWv4tXy2ab+H+Urrh
+iqDIQnEy1JbKGDwDVdJhGUEVC1VpK80JFJ2/QEVQzUJ1GrQ4A4XC5SaCGhZq0qAlgeYOSn9F0JyF
+5mlQewoFGaAmDlLBQoskKMgzUG18liJoyULLNCgQqHJKOxUHybJQmwYlLQM6QOMggeSgIBP6VFpl
+zkBN4TBaKbBGgulGsiUikpbx/aLyUXqBNRJMN1LYXkW2F8GFxUZBAtZIkGYkINvroap0RQxljQRp
+RgKiQVThP4UYyhoJphvJWlmUFBr6ZbxS1kiQZiQgGkQbgpTHQWKNBIlGIhr0UJ07GfcpaySYbqSh
+T4kGFTitR6MNWCNBmpGQaDA4EEZDHFkj4XQjDVDSpx6q0WG0vcgaCRONRIKk7CCHGMoaCdOMhORg
+FpZZOoxaBlkjYZqRkBjJQ9X45ICskTDNSEjkECY4jNKLrJEw7YxEp4yHGuvyeHtZI2GakWiQdOFH
+zDi9rJFwupEGOdCVFmGloz5ljYRpZ6RTI0lh/LnXB9iePEso69HbBrKiwgRRARo6fDzUz58iypdi
+RaXSRKWIHY1x2o7GrGJFpRJFhWTX/eQpnIbTZ/FlOzTYH4ZCeUM=""".decode("base64").decode("zlib"),
+            disc_id="BE0D9A1F")
+
         self.__test_disc_id__(
             disc_id_obj=DiscID,
             total_length=190928304,
@@ -6033,6 +6057,30 @@ OIfl3gFclrA/AhKE6xjPEgDiPE63NSFyPmU2/M9QKhvHZqiwyngoWDWxZm2ZXIWlbtnqgnUTO0bP
 SBV2TMTaF2ya2OeZrbBUxebrZtvCIgll+YvXKp9BBbsmlq9R7HSFpcrLffcBb7NY9w==""".decode("base64").decode("zlib"),
             disc_id="SJco4q4a9rzKdBw7HcFvBQugKc8-")
 
+        self.__test_disc_id_tracks__(
+            disc_id_obj=DiscID,
+            track_lengths=[1339464, 4048380, 692076, 10600464, 10602816,
+                           1178940, 7454664, 2664816, 989604, 7008960,
+                           9632616, 1070160, 6094620, 1622880, 13361124,
+                           403956, 5208504, 7373520, 483336, 12012840,
+                           8534820, 439824, 7626360, 1262436, 4874520,
+                           398664, 11229036, 483924, 9003456, 883764,
+                           5018580],
+            cuesheet=
+"""eJydl8Fu2zAMhu8B8g6C7ytESrIt3TzHGbw1TeG63a5J10PQISm6rO3efpI7YHIYDrACnxjEn6X8
+/Ch3zUos2pu6XYiPjVzYCpbzWeeL9Xq1aq56kTVvm/tj9ev77lAfnn6LF7iQW5XNZ3XVV5frT0LG
+n/nsuumW627VdCK73T/uD697UT0fdz+P/id92182/+r97vjjwZeXbahuH7aHpw/bwxtcvG5eMvG1
+umvmMyH6rqq/CAmiul2061Dxtfcb9c+b+0cJ2Xvxf+TwfXvT1eLz9V0rJYKSWv4tXy2ab+H+Urrh
+iqDIQnEy1JbKGDwDVdJhGUEVC1VpK80JFJ2/QEVQzUJ1GrQ4A4XC5SaCGhZq0qAlgeYOSn9F0JyF
+5mlQewoFGaAmDlLBQoskKMgzUG18liJoyULLNCgQqHJKOxUHybJQmwYlLQM6QOMggeSgIBP6VFpl
+zkBN4TBaKbBGgulGsiUikpbx/aLyUXqBNRJMN1LYXkW2F8GFxUZBAtZIkGYkINvroap0RQxljQRp
+RgKiQVThP4UYyhoJphvJWlmUFBr6ZbxS1kiQZiQgGkQbgpTHQWKNBIlGIhr0UJ07GfcpaySYbqSh
+T4kGFTitR6MNWCNBmpGQaDA4EEZDHFkj4XQjDVDSpx6q0WG0vcgaCRONRIKk7CCHGMoaCdOMhORg
+FpZZOoxaBlkjYZqRkBjJQ9X45ICskTDNSEjkECY4jNKLrJEw7YxEp4yHGuvyeHtZI2GakWiQdOFH
+zDi9rJFwupEGOdCVFmGloz5ljYRpZ6RTI0lh/LnXB9iePEso69HbBrKiwgRRARo6fDzUz58iypdi
+RaXSRKWIHY1x2o7GrGJFpRJFhWTX/eQpnIbTZ/FlOzTYH4ZCeUM=""".decode("base64").decode("zlib"),
+            disc_id="yrelpXuXXP2WKDpTUqrS62keIFE-")
+
         self.__test_disc_id__(
             disc_id_obj=DiscID,
             total_length=190928304,
@@ -6087,6 +6135,30 @@ class Test_Accuraterip(Test_FreeDB):
 OIfl3gFclrA/AhKE6xjPEgDiPE63NSFyPmU2/M9QKhvHZqiwyngoWDWxZm2ZXIWlbtnqgnUTO0bP
 SBV2TMTaF2ya2OeZrbBUxebrZtvCIgll+YvXKp9BBbsmlq9R7HSFpcrLffcBb7NY9w==""".decode("base64").decode("zlib"),
             disc_id="dBAR-007-00045db7-0019b8d8-5a038407.bin")
+
+        self.__test_disc_id_tracks__(
+            disc_id_obj=DiscID,
+            track_lengths=[1339464, 4048380, 692076, 10600464, 10602816,
+                           1178940, 7454664, 2664816, 989604, 7008960,
+                           9632616, 1070160, 6094620, 1622880, 13361124,
+                           403956, 5208504, 7373520, 483336, 12012840,
+                           8534820, 439824, 7626360, 1262436, 4874520,
+                           398664, 11229036, 483924, 9003456, 883764,
+                           5018580],
+            cuesheet=
+"""eJydl8Fu2zAMhu8B8g6C7ytESrIt3TzHGbw1TeG63a5J10PQISm6rO3efpI7YHIYDrACnxjEn6X8
+/Ch3zUos2pu6XYiPjVzYCpbzWeeL9Xq1aq56kTVvm/tj9ev77lAfnn6LF7iQW5XNZ3XVV5frT0LG
+n/nsuumW627VdCK73T/uD697UT0fdz+P/id92182/+r97vjjwZeXbahuH7aHpw/bwxtcvG5eMvG1
+umvmMyH6rqq/CAmiul2061Dxtfcb9c+b+0cJ2Xvxf+TwfXvT1eLz9V0rJYKSWv4tXy2ab+H+Urrh
+iqDIQnEy1JbKGDwDVdJhGUEVC1VpK80JFJ2/QEVQzUJ1GrQ4A4XC5SaCGhZq0qAlgeYOSn9F0JyF
+5mlQewoFGaAmDlLBQoskKMgzUG18liJoyULLNCgQqHJKOxUHybJQmwYlLQM6QOMggeSgIBP6VFpl
+zkBN4TBaKbBGgulGsiUikpbx/aLyUXqBNRJMN1LYXkW2F8GFxUZBAtZIkGYkINvroap0RQxljQRp
+RgKiQVThP4UYyhoJphvJWlmUFBr6ZbxS1kiQZiQgGkQbgpTHQWKNBIlGIhr0UJ07GfcpaySYbqSh
+T4kGFTitR6MNWCNBmpGQaDA4EEZDHFkj4XQjDVDSpx6q0WG0vcgaCRONRIKk7CCHGMoaCdOMhORg
+FpZZOoxaBlkjYZqRkBjJQ9X45ICskTDNSEjkECY4jNKLrJEw7YxEp4yHGuvyeHtZI2GakWiQdOFH
+zDi9rJFwupEGOdCVFmGloz5ljYRpZ6RTI0lh/LnXB9iePEso69HbBrKiwgRRARo6fDzUz58iypdi
+RaXSRKWIHY1x2o7GrGJFpRJFhWTX/eQpnIbTZ/FlOzTYH4ZCeUM=""".decode("base64").decode("zlib"),
+            disc_id="dBAR-031-003fee31-058c64b9-be0d9a1f.bin")
 
         self.__test_disc_id__(
             disc_id_obj=DiscID,
@@ -6465,6 +6537,283 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
         audiotools.transfer_data(track.to_pcm().read, only_track.update)
 
         self.assertEqual(only_track.checksum(), 0x197662C7)
+
+    @LIB_ACCURATERIP
+    def test_perform_lookup(self):
+        from audiotools.freedb import DiscID as FDiscID
+        from audiotools.accuraterip import DiscID,perform_lookup
+        import time
+
+        offsets = [0, 2278, 9163, 10340, 28368, 46400, 48405,
+                   61083, 65615, 67298, 79218, 95600, 97420,
+                   107785, 110545, 133268, 133955, 142813,
+                   155353, 156175, 176605, 191120, 191868,
+                   204838, 206985, 215275, 215953, 235050,
+                   235873, 251185, 252688]
+
+        freedb_disc_id = FDiscID(
+            offsets=offsets,
+            total_length=3482,
+            track_count=31)
+
+        disc_id = DiscID(
+            track_numbers=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                           13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                           23, 24, 25, 26, 27, 28, 29, 30, 31],
+            track_offsets=offsets,
+            lead_out_offset=261223,
+            freedb_disc_id=freedb_disc_id)
+
+        matches = perform_lookup(disc_id)
+        time.sleep(1)
+
+        self.assertEqual(set(matches.keys()), set(range(1, 32)))
+
+    @LIB_ACCURATERIP
+    def test_accuraterip_lookup(self):
+        import time
+
+        lengths = [1339464, 4048380, 692076, 10600464, 10602816,
+                   1178940, 7454664, 2664816, 989604, 7008960,
+                   9632616, 1070160, 6094620, 1622880, 13361124,
+                   403956, 5208504, 7373520, 483336, 12012840,
+                   8534820, 439824, 7626360, 1262436, 4874520,
+                   398664, 11229036, 483924, 9003456, 883764, 5018580]
+        tempfiles = [tempfile.NamedTemporaryFile(suffix=".flac")
+                     for l in lengths]
+
+        tracks = [audiotools.FlacAudio.from_pcm(
+                      t.name,
+                      audiotools.PCMReader(
+                          cStringIO.StringIO(chr(0) * 2 * 2 * l),
+                          sample_rate=44100,
+                          channels=2,
+                          channel_mask=0x3,
+                          bits_per_sample=16),
+                      total_pcm_frames=l)
+                  for (t,l) in zip(tempfiles, lengths)]
+
+        matches = audiotools.accuraterip_lookup(tracks)
+        time.sleep(1)
+
+        for t in tempfiles:
+            t.close()
+
+        self.assertEqual(set(matches.keys()), set(range(1, 32)))
+
+    @LIB_ACCURATERIP
+    def test_accuraterip_sheet_lookup(self):
+        import time
+
+        cuesheet = tempfile.NamedTemporaryFile(suffix=".cue")
+        cuesheet.write(
+"""eJydl8Fu2zAMhu8B8g6C7ytESrIt3TzHGbw1TeG63a5J10PQISm6rO3efpI7YHIYDrACnxjEn6X8
+/Ch3zUos2pu6XYiPjVzYCpbzWeeL9Xq1aq56kTVvm/tj9ev77lAfnn6LF7iQW5XNZ3XVV5frT0LG
+n/nsuumW627VdCK73T/uD697UT0fdz+P/id92182/+r97vjjwZeXbahuH7aHpw/bwxtcvG5eMvG1
+umvmMyH6rqq/CAmiul2061Dxtfcb9c+b+0cJ2Xvxf+TwfXvT1eLz9V0rJYKSWv4tXy2ab+H+Urrh
+iqDIQnEy1JbKGDwDVdJhGUEVC1VpK80JFJ2/QEVQzUJ1GrQ4A4XC5SaCGhZq0qAlgeYOSn9F0JyF
+5mlQewoFGaAmDlLBQoskKMgzUG18liJoyULLNCgQqHJKOxUHybJQmwYlLQM6QOMggeSgIBP6VFpl
+zkBN4TBaKbBGgulGsiUikpbx/aLyUXqBNRJMN1LYXkW2F8GFxUZBAtZIkGYkINvroap0RQxljQRp
+RgKiQVThP4UYyhoJphvJWlmUFBr6ZbxS1kiQZiQgGkQbgpTHQWKNBIlGIhr0UJ07GfcpaySYbqSh
+T4kGFTitR6MNWCNBmpGQaDA4EEZDHFkj4XQjDVDSpx6q0WG0vcgaCRONRIKk7CCHGMoaCdOMhORg
+FpZZOoxaBlkjYZqRkBjJQ9X45ICskTDNSEjkECY4jNKLrJEw7YxEp4yHGuvyeHtZI2GakWiQdOFH
+zDi9rJFwupEGOdCVFmGloz5ljYRpZ6RTI0lh/LnXB9iePEso69HbBrKiwgRRARo6fDzUz58iypdi
+RaXSRKWIHY1x2o7GrGJFpRJFhWTX/eQpnIbTZ/FlOzTYH4ZCeUM=""".decode("base64").decode("zlib"))
+        cuesheet.flush()
+        sheet = audiotools.read_sheet(cuesheet.name)
+        cuesheet.close()
+
+        matches = audiotools.accuraterip_sheet_lookup(sheet, 153599124, 44100)
+        time.sleep(1)
+
+        self.assertEqual(set(matches.keys()), set(range(1, 32)))
+
+class Test_Lookup(unittest.TestCase):
+    @LIB_FREEDB
+    @LIB_MUSICBRAINZ
+    def test_metadata_lookup(self):
+        from audiotools.freedb import DiscID as FDiscID
+        from audiotools.musicbrainz import DiscID as MDiscID
+        import time
+
+        freedb_disc_id = FDiscID(
+            offsets=[150, 2428, 9313, 10490, 28518, 46550, 48555, 61233,
+                     65765, 67448, 79368, 95750, 97570, 107935, 110695,
+                     133418, 134105, 142963, 155503, 156325, 176755,
+                     191270, 192018, 204988, 207135, 215425, 216103,
+                     235200, 236023, 251335, 252838],
+            total_length=3482,
+            track_count=31)
+        musicbrainz_disc_id = MDiscID(
+            first_track_number=1,
+            last_track_number=31,
+            lead_out_offset=261373,
+            offsets=[150, 2428, 9313, 10490, 28518, 46550, 48555, 61233,
+                     65765, 67448, 79368, 95750, 97570, 107935, 110695,
+                     133418, 134105, 142963, 155503, 156325, 176755,
+                     191270, 192018, 204988, 207135, 215425, 216103,
+                     235200, 236023, 251335, 252838])
+        total_tracks = 31
+
+        self.assertEqual(str(freedb_disc_id),
+                         "BE0D9A1F")
+        self.assertEqual(str(musicbrainz_disc_id),
+                         "yrelpXuXXP2WKDpTUqrS62keIFE-")
+
+        #since the contents of lookup services
+        #can change over time, all we can really verify
+        #is the track count
+        for choice in audiotools.metadata_lookup(
+            musicbrainz_disc_id=musicbrainz_disc_id,
+            freedb_disc_id=freedb_disc_id):
+            self.assertEqual(len(choice), total_tracks)
+        time.sleep(1)
+
+    @LIB_FREEDB
+    @LIB_MUSICBRAINZ
+    def test_cddareader_lookup(self):
+        from shutil import rmtree
+        from audiotools.cdio import CDDAReader
+        from audiotools.freedb import DiscID as FDiscID
+        from audiotools.musicbrainz import DiscID as MDiscID
+        import time
+
+        dir = tempfile.mkdtemp()
+        try:
+            #dump cuesheet to file
+            f = open(os.path.join(dir, "CDImage.cue"), "wb")
+            f.write(
+"""eJydl8Fu2zAMhu8B8g6C7ytESrIt3TzHGbw1TeG63a5J10PQISm6rO3efpI7YHIYDrACnxjEn6X8
+/Ch3zUos2pu6XYiPjVzYCpbzWeeL9Xq1aq56kTVvm/tj9ev77lAfnn6LF7iQW5XNZ3XVV5frT0LG
+n/nsuumW627VdCK73T/uD697UT0fdz+P/id92182/+r97vjjwZeXbahuH7aHpw/bwxtcvG5eMvG1
+umvmMyH6rqq/CAmiul2061Dxtfcb9c+b+0cJ2Xvxf+TwfXvT1eLz9V0rJYKSWv4tXy2ab+H+Urrh
+iqDIQnEy1JbKGDwDVdJhGUEVC1VpK80JFJ2/QEVQzUJ1GrQ4A4XC5SaCGhZq0qAlgeYOSn9F0JyF
+5mlQewoFGaAmDlLBQoskKMgzUG18liJoyULLNCgQqHJKOxUHybJQmwYlLQM6QOMggeSgIBP6VFpl
+zkBN4TBaKbBGgulGsiUikpbx/aLyUXqBNRJMN1LYXkW2F8GFxUZBAtZIkGYkINvroap0RQxljQRp
+RgKiQVThP4UYyhoJphvJWlmUFBr6ZbxS1kiQZiQgGkQbgpTHQWKNBIlGIhr0UJ07GfcpaySYbqSh
+T4kGFTitR6MNWCNBmpGQaDA4EEZDHFkj4XQjDVDSpx6q0WG0vcgaCRONRIKk7CCHGMoaCdOMhORg
+FpZZOoxaBlkjYZqRkBjJQ9X45ICskTDNSEjkECY4jNKLrJEw7YxEp4yHGuvyeHtZI2GakWiQdOFH
+zDi9rJFwupEGOdCVFmGloz5ljYRpZ6RTI0lh/LnXB9iePEso69HbBrKiwgRRARo6fDzUz58iypdi
+RaXSRKWIHY1x2o7GrGJFpRJFhWTX/eQpnIbTZ/FlOzTYH4ZCeUM=""".decode("base64").decode("zlib"))
+            f.close()
+
+            #dump CD image to file
+            f = open(os.path.join(dir, "CDImage.bin"), "wb")
+            f.write(chr(0) * 2 * 2 * 153599124)
+            f.close()
+
+            r = CDDAReader(os.path.join(dir, "CDImage.cue"))
+
+            freedb_disc_id = FDiscID.from_cddareader(r)
+            musicbrainz_disc_id = MDiscID.from_cddareader(r)
+            total_tracks = 31
+
+            self.assertEqual(str(freedb_disc_id),
+                             "BE0D9A1F")
+            self.assertEqual(str(musicbrainz_disc_id),
+                             "yrelpXuXXP2WKDpTUqrS62keIFE-")
+
+            #since the contents of lookup services
+            #can change over time, all we can really verify
+            #is the track count
+            for choice in audiotools.metadata_lookup(
+                musicbrainz_disc_id=musicbrainz_disc_id,
+                freedb_disc_id=freedb_disc_id):
+                self.assertEqual(len(choice), total_tracks)
+            time.sleep(1)
+        finally:
+            rmtree(dir)
+
+    @LIB_FREEDB
+    @LIB_MUSICBRAINZ
+    def test_track_lookup(self):
+        from audiotools.freedb import DiscID as FDiscID
+        from audiotools.musicbrainz import DiscID as MDiscID
+        import time
+
+        lengths = [1339464, 4048380, 692076, 10600464, 10602816,
+                   1178940, 7454664, 2664816, 989604, 7008960,
+                   9632616, 1070160, 6094620, 1622880, 13361124,
+                   403956, 5208504, 7373520, 483336, 12012840,
+                   8534820, 439824, 7626360, 1262436, 4874520,
+                   398664, 11229036, 483924, 9003456, 883764, 5018580]
+        tempfiles = [tempfile.NamedTemporaryFile(suffix=".flac")
+                     for l in lengths]
+
+        tracks = [audiotools.FlacAudio.from_pcm(
+                      t.name,
+                      audiotools.PCMReader(
+                          cStringIO.StringIO(chr(0) * 2 * 2 * l),
+                          sample_rate=44100,
+                          channels=2,
+                          channel_mask=0x3,
+                          bits_per_sample=16),
+                      total_pcm_frames=l)
+                  for (t,l) in zip(tempfiles, lengths)]
+
+        freedb_disc_id = FDiscID.from_tracks(tracks)
+        musicbrainz_disc_id = MDiscID.from_tracks(tracks)
+        total_tracks = 31
+
+        self.assertEqual(str(freedb_disc_id),
+                         "BE0D9A1F")
+        self.assertEqual(str(musicbrainz_disc_id),
+                         "yrelpXuXXP2WKDpTUqrS62keIFE-")
+
+        #since the contents of lookup services
+        #can change over time, all we can really verify
+        #is the track count
+        for choice in audiotools.metadata_lookup(
+            musicbrainz_disc_id=musicbrainz_disc_id,
+            freedb_disc_id=freedb_disc_id):
+            self.assertEqual(len(choice), total_tracks)
+        time.sleep(1)
+
+        for t in tempfiles:
+            t.close()
+
+    @LIB_FREEDB
+    @LIB_MUSICBRAINZ
+    def test_sheet_lookup(self):
+        from audiotools.freedb import DiscID as FDiscID
+        from audiotools.musicbrainz import DiscID as MDiscID
+        import time
+
+        cuesheet = tempfile.NamedTemporaryFile(suffix=".cue")
+        cuesheet.write(
+"""eJydl8Fu2zAMhu8B8g6C7ytESrIt3TzHGbw1TeG63a5J10PQISm6rO3efpI7YHIYDrACnxjEn6X8
+/Ch3zUos2pu6XYiPjVzYCpbzWeeL9Xq1aq56kTVvm/tj9ev77lAfnn6LF7iQW5XNZ3XVV5frT0LG
+n/nsuumW627VdCK73T/uD697UT0fdz+P/id92182/+r97vjjwZeXbahuH7aHpw/bwxtcvG5eMvG1
+umvmMyH6rqq/CAmiul2061Dxtfcb9c+b+0cJ2Xvxf+TwfXvT1eLz9V0rJYKSWv4tXy2ab+H+Urrh
+iqDIQnEy1JbKGDwDVdJhGUEVC1VpK80JFJ2/QEVQzUJ1GrQ4A4XC5SaCGhZq0qAlgeYOSn9F0JyF
+5mlQewoFGaAmDlLBQoskKMgzUG18liJoyULLNCgQqHJKOxUHybJQmwYlLQM6QOMggeSgIBP6VFpl
+zkBN4TBaKbBGgulGsiUikpbx/aLyUXqBNRJMN1LYXkW2F8GFxUZBAtZIkGYkINvroap0RQxljQRp
+RgKiQVThP4UYyhoJphvJWlmUFBr6ZbxS1kiQZiQgGkQbgpTHQWKNBIlGIhr0UJ07GfcpaySYbqSh
+T4kGFTitR6MNWCNBmpGQaDA4EEZDHFkj4XQjDVDSpx6q0WG0vcgaCRONRIKk7CCHGMoaCdOMhORg
+FpZZOoxaBlkjYZqRkBjJQ9X45ICskTDNSEjkECY4jNKLrJEw7YxEp4yHGuvyeHtZI2GakWiQdOFH
+zDi9rJFwupEGOdCVFmGloz5ljYRpZ6RTI0lh/LnXB9iePEso69HbBrKiwgRRARo6fDzUz58iypdi
+RaXSRKWIHY1x2o7GrGJFpRJFhWTX/eQpnIbTZ/FlOzTYH4ZCeUM=""".decode("base64").decode("zlib"))
+        cuesheet.flush()
+        sheet = audiotools.read_sheet(cuesheet.name)
+        cuesheet.close()
+
+        freedb_disc_id = FDiscID.from_sheet(sheet, 153599124, 44100)
+        musicbrainz_disc_id = MDiscID.from_sheet(sheet, 153599124, 44100)
+        total_tracks = 31
+
+        self.assertEqual(str(freedb_disc_id),
+                         "BE0D9A1F")
+        self.assertEqual(str(musicbrainz_disc_id),
+                         "yrelpXuXXP2WKDpTUqrS62keIFE-")
+
+        #since the contents of lookup services
+        #can change over time, all we can really verify
+        #is the track count
+        for choice in audiotools.metadata_lookup(
+            musicbrainz_disc_id=musicbrainz_disc_id,
+            freedb_disc_id=freedb_disc_id):
+            self.assertEqual(len(choice), total_tracks)
+        time.sleep(1)
 
 
 class Test_Ogg(unittest.TestCase):
