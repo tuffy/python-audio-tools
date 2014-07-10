@@ -42,6 +42,7 @@ extern PyTypeObject decoders_DVDA_Title_Type;
 extern PyTypeObject decoders_Sine_Mono_Type;
 extern PyTypeObject decoders_Sine_Stereo_Type;
 extern PyTypeObject decoders_Sine_Simple_Type;
+extern PyTypeObject decoders_SameSample_Type;
 extern PyTypeObject decoders_CPPMDecoderType;
 
 PyMODINIT_FUNC
@@ -111,6 +112,10 @@ initdecoders(void)
     if (PyType_Ready(&decoders_Sine_Simple_Type) < 0)
         return;
 
+    decoders_SameSample_Type.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&decoders_SameSample_Type) < 0)
+        return;
+
     m = Py_InitModule3("decoders", module_methods,
                        "Low-level audio format decoders");
 
@@ -175,6 +180,10 @@ initdecoders(void)
     Py_INCREF(&decoders_Sine_Simple_Type);
     PyModule_AddObject(m, "Sine_Simple",
                        (PyObject *)&decoders_Sine_Simple_Type);
+
+    Py_INCREF(&decoders_SameSample_Type);
+    PyModule_AddObject(m, "SameSample",
+                       (PyObject *)&decoders_SameSample_Type);
 
     #ifdef HAS_MP3
     /*this initializes the library's static decoding tables

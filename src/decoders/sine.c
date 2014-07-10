@@ -465,3 +465,160 @@ static PyObject*
 Sine_Simple_channel_mask(decoders_Sine_Simple *self, void *closure) {
     return Py_BuildValue("i", 0x4);
 }
+
+PyObject*
+SameSample_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    decoders_SameSample *self;
+
+    self = (decoders_SameSample *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
+}
+
+int
+SameSample_init(decoders_SameSample* self, PyObject *args, PyObject *kwds)
+{
+    static char *kwlist[] = {"sample",
+                             "total_pcm_frames",
+                             "sample_rate",
+                             "channels",
+                             "channel_mask",
+                             "bits_per_sample",
+                             NULL};
+
+    self->closed = 0;
+    self->buffer = a_int_new();
+    if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
+        return -1;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "iiiiii", kwlist,
+                                     &(self->sample),
+                                     &(self->total_pcm_frames),
+                                     &(self->sample_rate),
+                                     &(self->channels),
+                                     &(self->channel_mask),
+                                     &(self->bits_per_sample)))
+        return -1;
+
+    /*sanity-check input parameters*/
+    if (self->total_pcm_frames < 0) {
+        PyErr_SetString(PyExc_ValueError, "invalid number of total_pcm_frames");
+        return -1;
+    }
+    if (self->sample_rate <= 0) {
+        PyErr_SetString(PyExc_ValueError, "invalid sample_rate");
+        return -1;
+    }
+    if (self->channels <= 0) {
+        PyErr_SetString(PyExc_ValueError, "invalid channels");
+    }
+    switch (self->bits_per_sample) {
+    case 8:
+        if ((-128 <= self->sample) && (self->sample <= 127)) {
+            break;
+        } else {
+            PyErr_SetString(PyExc_ValueError, "invalid sample value");
+            return -1;
+        }
+    case 16:
+        if ((-32768 <= self->sample) && (self->sample <= 32767)) {
+            break;
+        } else {
+            PyErr_SetString(PyExc_ValueError, "invalid sample value");
+            return -1;
+        }
+    case 24:
+        if ((-8388608 <= self->sample) && (self->sample <= 8388607)) {
+            break;
+        } else {
+            PyErr_SetString(PyExc_ValueError, "invalid sample value");
+            return -1;
+        }
+    default:
+        PyErr_SetString(PyExc_ValueError, "invalid bits_per_sample");
+        return -1;
+    }
+
+    self->remaining_pcm_frames = self->total_pcm_frames;
+
+    return 0;
+}
+
+void SameSample_dealloc(decoders_SameSample* self)
+{
+    self->buffer->del(self->buffer);
+    Py_XDECREF(self->audiotools_pcm);
+
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static PyObject*
+SameSample_read(decoders_SameSample* self, PyObject* args)
+{
+    int pcm_frames;
+
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "unable to read closed stream");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTuple(args, "i", &pcm_frames))
+        return NULL;
+
+    pcm_frames = MIN(MAX(pcm_frames, 1), self->remaining_pcm_frames);
+
+    self->buffer->mset(self->buffer,
+                       pcm_frames * self->channels,
+                       self->sample);
+
+    self->remaining_pcm_frames -= pcm_frames;
+
+    return a_int_to_FrameList(self->audiotools_pcm,
+                              self->buffer,
+                              self->channels,
+                              self->bits_per_sample);
+}
+
+static PyObject*
+SameSample_close(decoders_SameSample* self, PyObject* args)
+{
+    self->closed = 1;
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+SameSample_reset(decoders_SameSample* self, PyObject* args)
+{
+    self->closed = 0;
+    self->remaining_pcm_frames = self->total_pcm_frames;
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+SameSample_channels(decoders_SameSample *self, void *closure)
+{
+    return Py_BuildValue("i", self->channels);
+}
+
+static PyObject*
+SameSample_bits_per_sample(decoders_SameSample *self, void *closure)
+{
+    return Py_BuildValue("i", self->bits_per_sample);
+}
+
+static PyObject*
+SameSample_sample_rate(decoders_SameSample *self, void *closure)
+{
+    return Py_BuildValue("i", self->sample_rate);
+}
+
+static PyObject*
+SameSample_channel_mask(decoders_SameSample *self, void *closure)
+{
+    return Py_BuildValue("i", self->channel_mask);
+}

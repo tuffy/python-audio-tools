@@ -364,3 +364,114 @@ PyTypeObject decoders_Sine_Simple_Type = {
     0,                         /* tp_alloc */
     Sine_Simple_new,           /* tp_new */
 };
+
+typedef struct {
+    PyObject_HEAD
+
+    int total_pcm_frames;
+    int remaining_pcm_frames;
+    int sample;
+    int sample_rate;
+    int channels;
+    int channel_mask;
+    int bits_per_sample;
+
+    int closed;
+
+    a_int* buffer;
+    PyObject* audiotools_pcm;
+} decoders_SameSample;
+
+int
+SameSample_init(decoders_SameSample* self, PyObject *args, PyObject *kwds);
+
+void SameSample_dealloc(decoders_SameSample* self);
+
+PyObject*
+SameSample_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+
+
+static PyObject*
+SameSample_read(decoders_SameSample* self, PyObject* args);
+
+static PyObject*
+SameSample_close(decoders_SameSample* self, PyObject* args);
+
+static PyObject*
+SameSample_reset(decoders_SameSample* self, PyObject* args);
+
+static PyObject*
+SameSample_channels(decoders_SameSample *self, void *closure);
+
+static PyObject*
+SameSample_bits_per_sample(decoders_SameSample *self, void *closure);
+
+static PyObject*
+SameSample_sample_rate(decoders_SameSample *self, void *closure);
+
+static PyObject*
+SameSample_channel_mask(decoders_SameSample *self, void *closure);
+
+PyMethodDef SameSample_methods[] = {
+    {"read", (PyCFunction)SameSample_read,
+     METH_VARARGS, "Reads a frame of data"},
+    {"close", (PyCFunction)SameSample_close,
+     METH_NOARGS, "Closes the stream"},
+    {"reset", (PyCFunction)SameSample_reset,
+     METH_NOARGS, "Resets the stream to be read again"},
+    {NULL}
+};
+
+PyGetSetDef SameSample_getseters[] = {
+    {"channels",
+     (getter)SameSample_channels, NULL, "channels", NULL},
+    {"bits_per_sample",
+     (getter)SameSample_bits_per_sample, NULL, "bits_per_sample", NULL},
+    {"sample_rate",
+     (getter)SameSample_sample_rate, NULL, "sample_rate", NULL},
+    {"channel_mask",
+     (getter)SameSample_channel_mask, NULL, "channel_mask", NULL},
+    {NULL}
+};
+
+PyTypeObject decoders_SameSample_Type = {
+    PyObject_HEAD_INIT(NULL)
+    0,                         /*ob_size*/
+    "decoders.SameSample",    /*tp_name*/
+    sizeof(decoders_SameSample),/*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)SameSample_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "SameSample objects",     /* tp_doc */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    SameSample_methods,       /* tp_methods */
+    0,                         /* tp_members */
+    SameSample_getseters,     /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)SameSample_init, /* tp_init */
+    0,                         /* tp_alloc */
+    SameSample_new,           /* tp_new */
+};

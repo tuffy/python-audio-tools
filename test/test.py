@@ -50,7 +50,22 @@ for section in parser.sections():
                               option.upper())] = lambda function: do_nothing
 
 
-class BLANK_PCM_Reader:
+def BLANK_PCM_Reader(length, sample_rate=44100, channels=2,
+                     bits_per_sample=16, channel_mask=None):
+    from audiotools.decoders import SameSample
+
+    if (channel_mask is None):
+        channel_mask = audiotools.ChannelMask.from_channels(channels)
+
+    return SameSample(sample=1,
+                      total_pcm_frames=length * sample_rate,
+                      sample_rate=sample_rate,
+                      channels=channels,
+                      channel_mask=channel_mask,
+                      bits_per_sample=bits_per_sample)
+
+
+class RANDOM_PCM_Reader:
     def __init__(self, length,
                  sample_rate=44100, channels=2, bits_per_sample=16,
                  channel_mask=None):
@@ -66,31 +81,6 @@ class BLANK_PCM_Reader:
         self.total_frames = length * sample_rate
         self.original_frames = self.total_frames
 
-        self.single_pcm_frame = audiotools.pcm.from_list(
-            [1] * channels, channels, bits_per_sample, True)
-
-    def read(self, pcm_frames):
-        if (self.total_frames > 0):
-            frame = audiotools.pcm.from_frames(
-                [self.single_pcm_frame] *
-                min(pcm_frames, self.total_frames))
-            self.total_frames -= frame.frames
-            return frame
-        else:
-            return audiotools.pcm.FrameList(
-                "", self.channels, self.bits_per_sample, True, True)
-
-    def read_error(self, pcm_frames):
-        raise ValueError("unable to read closed stream")
-
-    def close(self):
-        self.read = self.read_error
-
-    def reset(self):
-        self.total_frames = self.original_frames
-
-
-class RANDOM_PCM_Reader(BLANK_PCM_Reader):
     def read(self, pcm_frames):
         if (self.total_frames > 0):
             frames_to_read = min(pcm_frames, self.total_frames)
@@ -108,43 +98,44 @@ class RANDOM_PCM_Reader(BLANK_PCM_Reader):
             return audiotools.pcm.FrameList(
                 "", self.channels, self.bits_per_sample, True, True)
 
+    def read_error(self, pcm_frames):
+        raise ValueError("unable to read closed stream")
 
-class EXACT_BLANK_PCM_Reader(BLANK_PCM_Reader):
-    def __init__(self, pcm_frames,
-                 sample_rate=44100, channels=2, bits_per_sample=16,
-                 channel_mask=None):
-        self.sample_rate = sample_rate
-        self.channels = channels
-        if (channel_mask is None):
-            self.channel_mask = audiotools.ChannelMask.from_channels(channels)
-        else:
-            self.channel_mask = channel_mask
-        self.bits_per_sample = bits_per_sample
+    def close(self):
+        self.read = self.read_error
 
-        self.total_frames = pcm_frames
-        self.original_frames = self.total_frames
-
-        self.single_pcm_frame = audiotools.pcm.from_list(
-            [1] * channels, channels, bits_per_sample, True)
+    def reset(self):
+        self.total_frames = self.original_frames
 
 
-class EXACT_SILENCE_PCM_Reader(BLANK_PCM_Reader):
-    def __init__(self, pcm_frames,
-                 sample_rate=44100, channels=2, bits_per_sample=16,
-                 channel_mask=None):
-        self.sample_rate = sample_rate
-        self.channels = channels
-        if (channel_mask is None):
-            self.channel_mask = audiotools.ChannelMask.from_channels(channels)
-        else:
-            self.channel_mask = channel_mask
-        self.bits_per_sample = bits_per_sample
+def EXACT_BLANK_PCM_Reader(pcm_frames, sample_rate=44100, channels=2,
+                           bits_per_sample=16, channel_mask=None):
+    from audiotools.decoders import SameSample
 
-        self.total_frames = pcm_frames
-        self.original_frames = self.total_frames
+    if (channel_mask is None):
+        channel_mask = audiotools.ChannelMask.from_channels(channels)
 
-        self.single_pcm_frame = audiotools.pcm.from_list(
-            [0] * channels, channels, bits_per_sample, True)
+    return SameSample(sample=1,
+                      total_pcm_frames=pcm_frames,
+                      sample_rate=sample_rate,
+                      channels=channels,
+                      channel_mask=channel_mask,
+                      bits_per_sample=bits_per_sample)
+
+
+def EXACT_SILENCE_PCM_Reader(pcm_frames, sample_rate=44100, channels=2,
+                             bits_per_sample=16, channel_mask=None):
+    from audiotools.decoders import SameSample
+
+    if (channel_mask is None):
+        channel_mask = audiotools.ChannelMask.from_channels(channels)
+
+    return SameSample(sample=0,
+                      total_pcm_frames=pcm_frames,
+                      sample_rate=sample_rate,
+                      channels=channels,
+                      channel_mask=channel_mask,
+                      bits_per_sample=bits_per_sample)
 
 
 class EXACT_RANDOM_PCM_Reader(RANDOM_PCM_Reader):

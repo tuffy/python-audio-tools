@@ -4713,7 +4713,8 @@ LhbnLpfmvzXgxPgLE4nhKA==""".decode('base64').decode('zlib')]
                 try:
                     f = audio_class.from_pcm(
                         temp_file.name,
-                        EXACT_BLANK_PCM_Reader(sum(pcm_lengths)))
+                        EXACT_SILENCE_PCM_Reader(sum(pcm_lengths)),
+                        total_pcm_frames=sum(pcm_lengths))
                     f.set_cuesheet(sheet)
                     f_sheet = audiotools.open(temp_file.name).get_cuesheet()
 
@@ -5469,8 +5470,9 @@ class testflaccuesheet(testcuesheet):
             try:
                 tempflac = audiotools.FlacAudio.from_pcm(
                     tempflacfile.name,
-                    EXACT_BLANK_PCM_Reader(191795016),
-                    "1")
+                    EXACT_SILENCE_PCM_Reader(191795016),
+                    "1",
+                    total_pcm_frames=191795016)
                 metadata = tempflac.get_metadata()
                 metadata.replace_blocks(
                     audiotools.flac.Flac_CUESHEET.BLOCK_ID,
@@ -6584,8 +6586,8 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
 
         tracks = [audiotools.FlacAudio.from_pcm(
                       t.name,
-                      audiotools.PCMReader(
-                          cStringIO.StringIO(chr(0) * 2 * 2 * l),
+                      EXACT_SILENCE_PCM_Reader(
+                          pcm_frames=l,
                           sample_rate=44100,
                           channels=2,
                           channel_mask=0x3,
@@ -6742,8 +6744,8 @@ RaXSRKWIHY1x2o7GrGJFpRJFhWTX/eQpnIbTZ/FlOzTYH4ZCeUM=""".decode("base64").decode(
 
         tracks = [audiotools.FlacAudio.from_pcm(
                       t.name,
-                      audiotools.PCMReader(
-                          cStringIO.StringIO(chr(0) * 2 * 2 * l),
+                      EXACT_SILENCE_PCM_Reader(
+                          pcm_frames=l,
                           sample_rate=44100,
                           channels=2,
                           channel_mask=0x3,

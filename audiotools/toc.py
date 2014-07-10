@@ -33,7 +33,7 @@ class TOCException(SheetException):
 
 
 def __parse__(lines):
-    """returns a TOCFile object from an iterator of lines
+    """returns a Sheet object from an iterator of lines
 
     raises TOCException if some problem occurs parsing the file"""
 
@@ -142,7 +142,7 @@ def __parse__(lines):
 
 
 def read_tocfile(filename):
-    """returns a TOCFile from a TOC filename on disk
+    """returns a Sheet from a TOC filename on disk
 
     raises TOCException if some error occurs reading or parsing the file
     """

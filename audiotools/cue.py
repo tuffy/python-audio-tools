@@ -127,7 +127,7 @@ def get_value(tokens, accept, error):
 
 
 def __parse__(tokens):
-    """returns a Cuesheet object from the token iterator stream
+    """returns a Sheet object from the token iterator stream
 
     raises CueException if a parsing error occurs
     """
