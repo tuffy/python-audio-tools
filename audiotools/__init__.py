@@ -4301,7 +4301,7 @@ class Sheet:
         self.__catalog_number__ = catalog_number
 
     def __len__(self):
-        return len(self.__tracks__)
+        return len(self.tracks())
 
     def __repr__(self):
         return "Sheet(%s, %s)" % (repr(self.__tracks__),
@@ -4328,7 +4328,9 @@ class Sheet:
             raise KeyError(track_number)
 
     def tracks(self):
-        return iter(self.__tracks__)
+        """returns a list of all SheetTrack objects in the cuesheet"""
+
+        return list(self.__tracks__)
 
     def catalog(self):
         """returns sheet's catalog number as a plain string, or None"""
@@ -4357,10 +4359,12 @@ class Sheet:
         """given the stream's total PCM frames and sample rate,
         returns an iterator of track lengths, in PCM frames"""
 
-        if (len(self.__tracks__) == 0):
+        tracks = self.tracks()
+
+        if (len(tracks) == 0):
             return
         else:
-            for (prev, track) in zip(self.__tracks__, self.__tracks__[1:]):
+            for (prev, track) in zip(tracks, tracks[1:]):
                 track_pcm_frames = int((track.index(1).offset() -
                                         prev.index(1).offset()) * sample_rate)
                 total_pcm_frames -= track_pcm_frames
@@ -4380,6 +4384,9 @@ class SheetTrack:
         self.__indexes__ = list(indexes)
         self.__audio__ = audio
         self.__ISRC__ = ISRC
+
+    def __len__(self):
+        return len(self.indexes())
 
     def __repr__(self):
         return "SheetTrack(%s, %s, %s, %s)" % (repr(self.__number__),
@@ -4410,7 +4417,7 @@ class SheetTrack:
             raise KeyError(index_number)
 
     def indexes(self):
-        return iter(self.__indexes__)
+        return list(self.__indexes__)
 
     def number(self):
         """returns track's number as an integer"""
