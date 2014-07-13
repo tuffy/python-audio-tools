@@ -59,9 +59,8 @@ def t_ISRC(t):
 
 def t_TIMESTAMP(t):
     r'[0-9]{1,3}:[0-9]{1,2}:[0-9]{1,2}'
-    t.value = ((int(t.value[0:2]) * 75 * 60) +
-               (int(t.value[3:5]) * 75) +
-               (int(t.value[6:8])))
+    (m, s, f) = t.value.split(":")
+    t.value = ((int(m) * 75 * 60) + (int(s) * 75) + (int(f)))
     return t
 
 def t_MP3(t):
@@ -69,11 +68,11 @@ def t_MP3(t):
     return t
 
 def t_MODE(t):
-    r'MODE[1-2]/2[0-9]{3}'
+    r'MODE1/2048|MODE1/2352|MODE2/2336|MODE2/2352'
     return t
 
 def t_CDI(t):
-    r'CDI/2[0-9]{3}'
+    r'CDI/2336|CDI/2352'
     return t
 
 def t_NUMBER(t):
