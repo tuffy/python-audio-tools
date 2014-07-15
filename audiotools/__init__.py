@@ -4292,206 +4292,238 @@ class Sheet:
     """an object representing a CDDA layout
     such as provided by a .cue or .toc file"""
 
-    def __init__(self, sheet_tracks, catalog_number=None):
-        """takes a list of SheetTrack objects
-        and optional catalog_number plain string"""
+    def __init__(self, sheet_tracks, metadata=None):
+        """sheet_tracks is a list of SheetTrack objects
+        metadata is a MetaData object, or None"""
 
-        self.__tracks__ = list(sheet_tracks)
-        self.__catalog_number__ = catalog_number
+        self.__sheet_tracks__ = sheet_tracks
+        self.__metadata__ = metadata
 
-    def __len__(self):
-        return len(self.tracks())
+    @classmethod
+    def converted(cls, sheet):
+        """given a Sheet-compatible object, returns a Sheet"""
+
+        return cls(sheet_tracks=map(SheetTrack.converted, sheet),
+                   metadata=sheet.get_metadata())
 
     def __repr__(self):
-        return "Sheet(%s, %s)" % (repr(self.__tracks__),
-                                  repr(self.__catalog_number__))
+        return "Sheet(sheet_tracks=%s, metadata=%s)" % \
+            (repr(self.__sheet_tracks__), repr(self.__metadata__))
+
+    def __len__(self):
+        return len(self.__sheet_tracks__)
+
+    def __getitem__(self, index):
+        return self.__sheet_tracks__[index]
 
     def __eq__(self, sheet):
-        if not (hasattr(sheet, "catalog") and
-                callable(sheet.catalog) and
-                self.catalog() == sheet.catalog()):
-            return False
-        elif (hasattr(sheet, "tracks") and callable(sheet.tracks)):
-            return list(self.tracks()) == list(sheet.tracks())
-        else:
+        try:
+            if (self.get_metadata() != sheet.get_metadata()):
+                return False
+            if (len(self) != len(sheet)):
+                return False
+            for (t1, t2) in zip(self, sheet):
+                if (t1 != t2):
+                    return False
+            else:
+                return True
+        except (AttributeError, TypeError):
             return False
 
     def track(self, track_number):
         """given a track_number (typically starting from 1),
         returns a SheetTrack object or raises KeyError if not found"""
 
-        for track in self.tracks():
+        for track in self:
             if (track_number == track.number()):
                 return track
         else:
             raise KeyError(track_number)
 
-    def tracks(self):
-        """returns a list of all SheetTrack objects in the cuesheet"""
+    def get_metadata(self):
+        """returns MetaData of Sheet, or None
+        this metadata often contains information such as catalog number
+        or CD-TEXT values"""
 
-        return list(self.__tracks__)
-
-    def catalog(self):
-        """returns sheet's catalog number as a plain string, or None"""
-
-        return self.__catalog_number__
-
-    def image_formatted(self):
-        """returns True if the cuesheet is formatted for a CD image
-        instead of for multiple individual tracks"""
-
-        #in a CD image, the initial index for each track
-        #should be ascending
-        first_indexes = [min([i.offset() for i in t.indexes()])
-                         for t in self.tracks()]
-
-        if (len(first_indexes) > 1):
-            for (prev, index) in zip(first_indexes, first_indexes[1:]):
-                if (index <= prev):
-                    return False
-            else:
-                return True
-        else:
-            return True
-
-    def pcm_lengths(self, total_pcm_frames, sample_rate):
-        """given the stream's total PCM frames and sample rate,
-        returns an iterator of track lengths, in PCM frames"""
-
-        tracks = self.tracks()
-
-        if (len(tracks) == 0):
-            return
-        else:
-            for (prev, track) in zip(tracks, tracks[1:]):
-                track_pcm_frames = int((track.index(1).offset() -
-                                        prev.index(1).offset()) * sample_rate)
-                total_pcm_frames -= track_pcm_frames
-                yield track_pcm_frames
-
-            yield total_pcm_frames
+        return self.__metadata__
 
 
 class SheetTrack:
-    def __init__(self, number, indexes, audio=True, ISRC=None):
-        """number is the track's number (typically starts from 1)
-        indexes is a list of SheetIndex objects
-        audio is optional indicator that track contains audio data
-        ISRC is optional plain string of ISRC info"""
+    def __init__(self, number,
+                 track_indexes,
+                 offset,
+                 length=None,
+                 metadata=None,
+                 filename="CDImage.wav",
+                 is_audio=True,
+                 pre_emphasis=False,
+                 copy_permitted=False):
+        """
+| argument       | type         | value                                 |
+|----------------+--------------+---------------------------------------|
+| number         | int          | track number, starting from 1         |
+| track_indexes  | [SheetIndex] | list of SheetIndex objects            |
+| offset         | Fraction     | offset of track in stream, in seconds |
+| length         | Fracion      | length of track, in seconds           |
+| metadata       | MetaData     | track's metadata, or None             |
+| filename       | str          | track's filename on disc              |
+| is_audio       | boolean      | whether track contains audio data     |
+| pre_emphasis   | boolean      | whether track has pre-emphasis        |
+| copy_permitted | boolean      | whether copying is permitted          |
+        """
 
         self.__number__ = number
-        self.__indexes__ = list(indexes)
-        self.__audio__ = audio
-        self.__ISRC__ = ISRC
+        self.__track_indexes__ = list(track_indexes)
+        self.__offset__ = offset
+        self.__length__ = length
+        self.__metadata__ = metadata
+        self.__filename__ = filename
+        self.__is_audio__ = is_audio
+        self.__pre_emphasis__ = pre_emphasis
+        self.__copy_permitted__ = copy_permitted
 
-    def __len__(self):
-        return len(self.indexes())
+    @classmethod
+    def converted(cls, sheet_track):
+        """Given a SheetTrack-compatible object, returns a SheetTrack"""
+
+        return cls(number=sheet_track.number(),
+                   track_indexes=map(SheetIndex.convert, sheet_track),
+                   offset=sheet_track.offset(),
+                   length=sheet_track.length(),
+                   metadata=sheet_track.get_metadata(),
+                   filename=sheet_track.filename(),
+                   is_audio=sheet_track.is_audio(),
+                   pre_emphasis=sheet_track.pre_emphasis(),
+                   copy_permitted=sheet_track.copy_permitted())
 
     def __repr__(self):
-        return "SheetTrack(%s, %s, %s, %s)" % (repr(self.__number__),
-                                               repr(self.__indexes__),
-                                               repr(self.__audio__),
-                                               repr(self.__ISRC__))
+        return "SheetTrack(%s)" % \
+            ", ".join(["%s=%s" % (attr, repr(getattr(self, "__" + attr + "__")))
+                       for attr in ["number",
+                                    "track_indexes",
+                                    "offset",
+                                    "length",
+                                    "metadata",
+                                    "filename",
+                                    "is_audio",
+                                    "pre_emphasis",
+                                    "copy_permitted"]])
 
-    def __eq__(self, track):
-        for method in ["number", "audio", "ISRC"]:
-            if not (hasattr(track, method) and
-                    callable(getattr(track, method)) and
-                    getattr(self, method)() == getattr(track, method)()):
-                return False
-        else:
-            if (hasattr(track, "indexes") and callable(track.indexes)):
-                return list(self.indexes()) == list(track.indexes())
-            else:
-                return False
+    def __len__(self):
+        return len(self.__track_indexes__)
+
+    def __getitem__(self, i):
+        return self.__track_indexes__[i]
 
     def index(self, index_number):
-        """given index number (often starting from 1)
-        returns SheetIndex object or raises KeyError if not found"""
+        """given an index_number (0 for pre-gap, 1 for track start, etc.)
+        returns a SheetIndex object or raises KeyError if not found"""
 
-        for index in self.indexes():
-            if (index_number == index.number()):
-                return index
+        for sheet_index in self:
+            if (index_number == sheet_index.number()):
+                return sheet_index
         else:
             raise KeyError(index_number)
 
-    def indexes(self):
-        return list(self.__indexes__)
+    def __eq__(self, sheet):
+        try:
+            for method in ["filename",
+                           "number",
+                           "get_metadata",
+                           "is_audio",
+                           "pre_emphasis",
+                           "copy_permitted",
+                           "offset",
+                           "length"]
+                if (getattr(self, method)() != getattr(sheet, method)()):
+                    return False
 
-    def number(self):
-        """returns track's number as an integer"""
-
-        return self.__number__
-
-    def ISRC(self):
-        """returns track's ISRC value as plain string, or None"""
-
-        return self.__ISRC__
-
-    def audio(self):
-        """returns True if track contains audio data"""
-
-        return self.__audio__
-
-
-class SheetIndex:
-    def __init__(self, number, offset):
-        """number is the index's number, typically starting from 1
-        offset is the index's offset from the start of the stream
-        in seconds as a Fraction object"""
-
-        self.__number__ = number
-        self.__offset__ = offset
-
-    def __repr__(self):
-        return "SheetIndex(%s, %s)" % (repr(self.__number__),
-                                       repr(self.__offset__))
-
-    def __eq__(self, index):
-        for method in ["number", "offset"]:
-            if not (hasattr(index, method) and
-                    callable(getattr(index, method)) and
-                    getattr(self, method)() == getattr(index, method)()):
+            if (len(self) != len(sheet)):
                 return False
-        else:
-            return True
+            for (t1, t2) in zip(self, sheet):
+                if (t1 != t2):
+                    return False
+            else:
+                return True
+        except (AttributeError, TypeError):
+            return False
 
     def number(self):
-        """returns the index's number (typically starting from 1)"""
+        """return SheetTrack's number, starting from 1"""
 
         return self.__number__
 
     def offset(self):
-        """returns the index's offset from the start of the stream
-        in seconds as a Fraction object"""
+        """returns offset of SheetTrack from start of stream
+        as Fraction number of seconds"""
 
         return self.__offset__
 
+    def length(self):
+        """returns length of SheetTrack as Fraction number of seconds
+        or None if unknown"""
 
-def parse_timestamp(s):
-    """parses a timestamp string into an integer
+        return self.__length__
 
-    this presumes the stamp is stored: "hours:minutes:frames"
-    where each CD frame is 1/75th of a second
-    or, if the stamp is a plain integer, it is returned directly
-    this does no error checking.  Presumably a regex will ensure
-    the stamp is formatted correctly before parsing it to an int
-    """
+    def get_metadata(self):
+        """returns SheetTrack's MetaData, or None"""
 
-    if (":" in s):
-        (m, s, f) = map(int, s.split(":"))
-        return (m * 60 * 75) + (s * 75) + f
-    else:
-        return int(s)
+        return self.__metadata__
+
+    def filename(self):
+        """returns SheetTrack's filename as a string"""
+
+        return self.__filename__
+
+    def is_audio(self):
+        """returns whether SheetTrack contains audio data"""
+
+        return self.__is_audio__
+
+    def pre_emphasis(self):
+        """returns whether SheetTrack has pre-emphasis"""
+
+        return self.__pre_emphasis__
+
+    def copy_permitted(self):
+        """returns whether copying is permitted"""
+
+        return self.__copy_permitted__
 
 
-def build_timestamp(i):
-    """returns a timestamp string from an integer number of CD frames
+class SheetIndex:
+    def __init__(self, number, offset):
+        """number is the index number, 0 for pre-gap index
 
-    each CD frame is 1/75th of a second
-    """
+        offset is the offset from the start of the track
+        as a Fraction number of seconds"""
 
-    return "%2.2d:%2.2d:%2.2d" % ((i / 75) / 60, (i / 75) % 60, i % 75)
+        self.__number__ = number
+        self.__offset__ = offset
+
+    @classmethod
+    def converted(cls, sheet_index):
+        """given a SheetIndex-compatible object, returns a SheetIndex"""
+
+        return cls(number=sheet_index.number(),
+                   offset=sheet_index.offset())
+
+    def __repr__(self):
+        return "SheetIndex(number=%s, offset=%s)" % \
+            (repr(self.__number__), repr(self.__offset__))
+
+    def __eq__(self, sheet_index):
+        try:
+            return ((self.number() == sheet_index.number()) and
+                    (self.offset() == sheet_index.offset()))
+        except (TypeError, AttributeError):
+            return False
+
+    def number(self):
+        return self.__number__
+
+    def offset(self):
+        return self.__offset__
 
 
 def at_a_time(total, per):
