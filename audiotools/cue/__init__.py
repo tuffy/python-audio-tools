@@ -325,9 +325,9 @@ def read_cuesheet_string(cuesheet):
 
     raises SheetException if some error occurs parsing the file"""
 
-    import ply.lex as lex
-    import ply.yacc as yacc
-    from ply.yacc import NullLogger
+    import audiotools.ply.lex as lex
+    import audiotools.ply.yacc as yacc
+    from audiotools.ply.yacc import NullLogger
     import audiotools.cue.tokrules
     import audiotools.cue.yaccrules
 

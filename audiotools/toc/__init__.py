@@ -383,9 +383,9 @@ def read_tocfile(filename):
     raises TOCException if some error occurs reading or parsing the file
     """
 
-    import ply.lex as lex
-    import ply.yacc as yacc
-    from ply.yacc import NullLogger
+    import audiotools.ply.lex as lex
+    import audiotools.ply.yacc as yacc
+    from audiotools.ply.yacc import NullLogger
     import audiotools.toc.tokrules
     import audiotools.toc.yaccrules
 
