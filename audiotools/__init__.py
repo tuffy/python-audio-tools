@@ -4279,14 +4279,13 @@ def read_sheet(filename):
 
     may raise a SheetException if the file cannot be parsed correctly"""
 
-    import toc
-    import cue
+    from audiotools.cue import read_cuesheet
+    from audiotools.toc import read_tocfile
 
     try:
-        #try TOC first, since its CD_DA header makes it easier to spot
-        return toc.read_tocfile(filename)
+        return read_cuesheet(filename)
     except SheetException:
-        return cue.read_cuesheet(filename)
+        return read_tocfile(filename)
 
 
 class Sheet:

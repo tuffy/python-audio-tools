@@ -6122,10 +6122,6 @@
 ***** DONE Update TrueAudio to support nested tags
 ***** DONE Have TrueAudio.clean() remove all ID3v2 tags except one
 ***** DONE Update unit tests
-* TODO Ensure non-image cuesheets are handled properly
-  There are 4 different types of cuesheets,
-  1 single file type and 3 different multiple file variants.
-  We should be able to translate between them if necessary, and if possible.
 * TODO Add support for genre tag?
   I'm not a big fan of the genre tag.
   Unlike track number, album name, ISRC, etc. in which a value
@@ -6140,12 +6136,6 @@
 
   That said, the genre field shows up in a lot of players.
   So, some grudging support for it would probably be appreciated.
-* TODO Convert TOC and CUE handling to proper grammars
-  Although the current ad-hoc method works in most cases,
-  it would be better to use a more formal method to parse these files
-  which can be proven to handle all legal files.
-  I expect this will require PLY or some similar lexx/yacc mechanism
-  which I'll bundle to avoid adding any extra depencies.
 * TODO Replace magic numbers with named constants
   There's still a few instances of magic numbers in use,
   in the __flac__.py module, for instance.
@@ -7010,6 +7000,17 @@
    - [X] audiotools.freedb
    - [X] audiotools.musicbrainz
    - [X] audiotools.accuraterip
+** TODO Convert TOC and CUE handling to proper grammars
+*** TODO Convert audiotools.cue
+*** TODO Convert audiotools.toc
+** TODO Update Sheet interface
+   Although cuesheets are mostly a repository of index points,
+   it would be useful to support a wider subset of options
+   when converting one form to another.
+*** TODO Update audiotools.cue.Cuesheet
+*** TODO Update audiotools.toc.TOCFile
+*** TODO Update audiotools.flac.Flac_CUESHEET
+*** TODO Ensure non-image cuesheets are handled properly
 ** TODO Upload to PyPI
 * TODO Finish version 3.0
 ** TODO Shift to Python 3

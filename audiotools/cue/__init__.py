@@ -311,19 +311,19 @@ def format_timestamp(t):
 def read_cuesheet(filename):
     """returns a Cuesheet from a cuesheet filename on disk
 
-    raises CueException if some error occurs reading or parsing the file
+    raises SheetException if some error occurs reading or parsing the file
     """
 
     try:
         return read_cuesheet_string(open(filename, "rb").read())
     except IOError:
-        raise CueException("unable to open file")
+        raise SheetException("unable to open file")
 
 
 def read_cuesheet_string(cuesheet):
     """given a plain string of cuesheet data returns a Cuesheet object
 
-    raises CueException if some error occurs parsing the file"""
+    raises SheetException if some error occurs parsing the file"""
 
     import ply.lex as lex
     import ply.yacc as yacc
@@ -337,7 +337,10 @@ def read_cuesheet_string(cuesheet):
                        debug=0,
                        errorlog=NullLogger(),
                        write_tables=0)
-    return parser.parse(lexer=lexer)
+    try:
+        return parser.parse(lexer=lexer)
+    except ValueError, err:
+        raise SheetException(str(err))
 
 
 def write_cuesheet(sheet, filename, file):
