@@ -4330,6 +4330,11 @@ class Sheet:
         except (AttributeError, TypeError):
             return False
 
+    def track_numbers():
+        """returns a list of all track numbers in the sheet"""
+
+        return [track.number() for track in self]
+
     def track(self, track_number):
         """given a track_number (typically starting from 1),
         returns a SheetTrack object or raises KeyError if not found"""
@@ -4351,8 +4356,6 @@ class Sheet:
 class SheetTrack:
     def __init__(self, number,
                  track_indexes,
-                 offset,
-                 length=None,
                  metadata=None,
                  filename="CDImage.wav",
                  is_audio=True,
@@ -4363,8 +4366,6 @@ class SheetTrack:
 |----------------+--------------+---------------------------------------|
 | number         | int          | track number, starting from 1         |
 | track_indexes  | [SheetIndex] | list of SheetIndex objects            |
-| offset         | Fraction     | offset of track in stream, in seconds |
-| length         | Fracion      | length of track, in seconds           |
 | metadata       | MetaData     | track's metadata, or None             |
 | filename       | str          | track's filename on disc              |
 | is_audio       | boolean      | whether track contains audio data     |
@@ -4374,8 +4375,6 @@ class SheetTrack:
 
         self.__number__ = number
         self.__track_indexes__ = list(track_indexes)
-        self.__offset__ = offset
-        self.__length__ = length
         self.__metadata__ = metadata
         self.__filename__ = filename
         self.__is_audio__ = is_audio
@@ -4388,8 +4387,6 @@ class SheetTrack:
 
         return cls(number=sheet_track.number(),
                    track_indexes=map(SheetIndex.convert, sheet_track),
-                   offset=sheet_track.offset(),
-                   length=sheet_track.length(),
                    metadata=sheet_track.get_metadata(),
                    filename=sheet_track.filename(),
                    is_audio=sheet_track.is_audio(),
@@ -4401,8 +4398,6 @@ class SheetTrack:
             ", ".join(["%s=%s" % (attr, repr(getattr(self, "__" + attr + "__")))
                        for attr in ["number",
                                     "track_indexes",
-                                    "offset",
-                                    "length",
                                     "metadata",
                                     "filename",
                                     "is_audio",
@@ -4415,6 +4410,11 @@ class SheetTrack:
     def __getitem__(self, i):
         return self.__track_indexes__[i]
 
+    def indexes(self):
+        """returns a list of all indexes in the current track"""
+
+        return [index.number() for index in self]
+
     def index(self, index_number):
         """given an index_number (0 for pre-gap, 1 for track start, etc.)
         returns a SheetIndex object or raises KeyError if not found"""
@@ -4425,45 +4425,34 @@ class SheetTrack:
         else:
             raise KeyError(index_number)
 
-    def __eq__(self, sheet):
+    def __eq__(self, sheet_track):
         try:
             for method in ["filename",
                            "number",
                            "get_metadata",
                            "is_audio",
                            "pre_emphasis",
-                           "copy_permitted",
-                           "offset",
-                           "length"]
-                if (getattr(self, method)() != getattr(sheet, method)()):
+                           "copy_permitted"]:
+                if (getattr(self, method)() != getattr(sheet_track, method)()):
                     return False
 
-            if (len(self) != len(sheet)):
+            if (len(self) != len(sheet_track)):
                 return False
-            for (t1, t2) in zip(self, sheet):
+            for (t1, t2) in zip(self, sheet_track):
                 if (t1 != t2):
                     return False
             else:
                 return True
-        except (AttributeError, TypeError):
+        except (AttributeError, TypeError), msg:
             return False
+
+    def __ne__(self, sheet_track):
+        return not self.__eq__(sheet_track)
 
     def number(self):
         """return SheetTrack's number, starting from 1"""
 
         return self.__number__
-
-    def offset(self):
-        """returns offset of SheetTrack from start of stream
-        as Fraction number of seconds"""
-
-        return self.__offset__
-
-    def length(self):
-        """returns length of SheetTrack as Fraction number of seconds
-        or None if unknown"""
-
-        return self.__length__
 
     def get_metadata(self):
         """returns SheetTrack's MetaData, or None"""
@@ -4495,7 +4484,7 @@ class SheetIndex:
     def __init__(self, number, offset):
         """number is the index number, 0 for pre-gap index
 
-        offset is the offset from the start of the track
+        offset is the offset from the start of the stream
         as a Fraction number of seconds"""
 
         self.__number__ = number
@@ -4518,6 +4507,9 @@ class SheetIndex:
                     (self.offset() == sheet_index.offset()))
         except (TypeError, AttributeError):
             return False
+
+    def __ne__(self, sheet_index):
+        return not self.__eq__(sheet_index)
 
     def number(self):
         return self.__number__

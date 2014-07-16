@@ -4382,1107 +4382,133 @@ class TestReplayGain(unittest.TestCase):
 
 
 class testcuesheet(unittest.TestCase):
-    @LIB_CUESHEET
     def setUp(self):
-        import audiotools.cue
+        from audiotools.cue import Cuesheet,read_cuesheet,write_cuesheet
+        self.suffix = ".cue"
+        self.sheet_class = Cuesheet
+        self.read_sheet = read_cuesheet
 
-        self.test_sheets = [
-"""eJydlt1q20AQRu8NfofFDxB2Zv/nTshyUBvHQVHa3rppKCbFDqmbtG/f3VqQzZjtxYKvPiOdz6Od
-Iw/dWiz727ZfCm1ArpZg57Mhhu1mve6uR7Hofm/vj82vb7tDe3j6I17kRQhPX/ViPmubsbnaXMYL
-vUS0xqpgzHx20w2rzbDuBrG42z/uD6970Twfdz+P8ZKxH6+6t3zcHX88xHjVp3TY7r8/XLxuXxbi
-c/Opm8+EGIem/SgkiOZu2W9SErPTPcbn7f2jhMUp/B80fd/fDq34cHPpjPRSgldTfL3svqT7S0n/
-PhkUi1CsgiIgh2pSnpTJoKoIVZVQ/Q4qhQyESCrwLjE2pGzWRRe76KouTvIuIMlY0nwuKQ6kfdbF
-FLuYyi6GQ4G0IgwZ1BahthJqOdQQ+jiDDOqKUFcJdQyKQICRm0F9EeoroZ49arQElhzwLjEOJPMV
-CMUuoXIF+FlXkhI3GwDIEhRk3QAQ2QAiVBsy/ryLdtMKTF2KtoM62zl5NgCduiiXQYu2g0rbBcmh
-jhRM4pmgRdtBre34eHXcaiSbLRgUtQaVWgPJHnUkJpXwAaRYk1NZl6LWoE5rCHzZIzFOHfPzVdQa
-1GnNKL7V6XApguxtCkWtQZ3WELnAjUy/FCCDFrUGlVoDYI/a6CgvOlNsih2hzroUtQZ1WgPPj51J
-IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
-2L8vEA7SCz8do7+XaqGL""".decode('base64').decode('zlib'),
+    def __sheets__(self):
+        from audiotools import Sheet,SheetTrack,SheetIndex
 
-"""eJydlcFu2zAMhu8B8g5CHqAQSUuyeTMcB/C6NIXrbrumXbEF3eIh89r17Se1ASoT0A4CfPpt+KNE
-6lPfbtW6u2m6tdo0uq5aKJaL3ofNbrttrwa1av/u76f6z9fD2Iy/XtQTXOg7Wi0X122/2fXbtler
-2+PjcXw+qvo0HX5P/t3QDR/b93w4TD8efLzpQvrz5fhw+Pb9bjxN4zSexovn/dNKfa4/tcuFUkNf
-N5dKg6pv190uJD57+91w2t8/ali9hf/jh/fdTd+oD9fDpS7LUhsN5/hq3X4J/9eaX58IikkoZkJR
-QpELYocRlJJQyoSShBaMyMZF0CIJLTKhhYQaLiyjmcWotM8sWz2LKcRGn78+l2iSJZrMEo0s0TFq
-LuJ9sUmozYRaCS0ZgU28UpeEukyok9CKQz9iaJmElpnQUkDBN7ScH7AqCa0yoZWEAlPBNlop6BQU
-dB4UtIQaxopJzjq4MOsUzRcktQaZWgOpNSjZPzbadUhqDTK1BlJr/hgRsY1XmtQaZGoNpNbwVWux
-MyCpNcjUGkitoWPyh8mJVvtB93vg5vtCyk8F0uzcQVJrkKk1kFojzYBsUZRIwGEgq6iWpO0g03Yg
-bUcYptFoWQuxNz5F1yAkJQiZEgQpQe8Ff8fM1JCUIGRKEKQEybG/8zFeaVKCkClBkBKkMrQ6vvAx
-KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode('base64').decode('zlib'),
+        def timestamp_to_frac(m, s, f):
+            from fractions import Fraction
+            return Fraction((m * 60 * 75) + (s * 75) + f, 75)
 
-"""eJyVlU9rGzEQxe8Gfwfhe4Nm9Hfntl1vYGkdl+2m7dVNCzUxdkldp/32HW0MWY9RQaDTE+j99GY0
-6tuVWnYfm26p3mrQvtHNfNaz2KxXq/ZuUIv2z+bhWP/+tj00h59/1Qlu9FezmM8+tP3tul+1vVrc
-7x/3h+e9qp+O219H3hu64X37qg/b4+47y7ddUn9sdgd8czrs8OZ5c1qoz/Wndj5Taujr5p3SoOr7
-ZbdOCmsvBw1Pm4dHDYsX8X/Oab+7W7Zf0kFa07guZEwyVOTjhWySbCOZasKCWRYsY9F8FhlH2khE
-lj35K0RLRlMwEjESL2svZKuAL8TwbkJusuSmlByQIFLQgpxl1OQkORiyHK4kB0/GkpuGa7OIthix
-Ig3kg0Rk2ZwRz6Yua+pKTRFJB7IgTJNcERqRC3quG0EQuWAcczGioliRs+cLncl9ltyXkpvxAQQU
-5CwjkJu2UciahmJT7nRgA2nKsiHtRFzprTjyTsRlQuou1CIuO14Ip4WOWfJYSm65h/h02V1cTm66
-K3IbyESuniDn0cIXCnaCWGURq1JEx8n664ommVnw1RR0zhR0sSkPKZQ3hVHmFUUuzqcAHIhcXOS3
-cv0APM8zLuokLsh+DFD4MWjlzTgvvCBPchpfgtzbcdLFCUv2Y4Dij8F7SjNTjtckO0KULCENYy9T
-9FX6L5L8D7C+vb8=""".decode('base64').decode('zlib'),
+        #an ordinary cuesheet with no pre-gaps
+        yield Sheet([SheetTrack(number=1,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(0, 0, 0))]),
+                     SheetTrack(number=2,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(5, 50, 65))]),
+                     SheetTrack(number=3,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(9, 47, 50))]),
+                     SheetTrack(number=4,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(15, 12, 53))]),
+                     SheetTrack(number=5,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(25, 2, 40))]),
+                     SheetTrack(number=6,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(27, 34, 05))]),
+                     SheetTrack(number=7,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(31, 58, 53))]),
+                     SheetTrack(number=8,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(35, 8, 65))])])
 
-"""eJyVlU9r20AQxe8Gf4dF94aZ/afV3IQlg2gdF1Vpe3WSQk2CXVI3ab99Z2OVrAe2sKDTWzPz2zez
-z2O/Ud3waTV0qjPQ1y2sl4uRxdV2s+mvJ1X1v3d3p/bX/f64Ov74o57xCm5NtVx87Mf1dtz0o6pu
-Dg+H48tBtU+n/c8Tn03D9KF/06f96fEby+shqt93j0fzDq9eds+V+tJ+7pcLpaaxXb1XgKq96YZt
-VFg7V5medncPgNVZ/F/beD5cd/3XWAiAXr+kus5W12XVQYEhbai2sinLjvBS1goc2XhyIRsFnmwg
-lyKaLKIpNiCQjX0FCwIZJjdJU5ttakt9QU1GE3rBEuV/LHNTl23qSm+KjjSSa+RNa+J5WC1cZ9nY
-eRgzi8+y+GKWhvjzXrI05GqyXrAwdtyAS3KreLWY8sKuOotYl85I8+09GRDkUWZrtCCPWkMmJCwh
-yxJK7dINgSUfRFMDhEi+FnYZJOSJOmEXbxwP+vzqZsQmi9iUInJ1y9OT7yjuEM86SERPwHfCNxaE
-HAtCMYvnuCBIhoHZyMTCyARlQlzSGmVTloPMOq0sRF9AGmDZLssrkyBmcxcLcxcVl+Y9dT6pno1M
-LI5MW0d7UT7e1/HPOZ3clH/KHmB602ySYmGSouKO/DJsLVgcexvIyJfhPHEKijdtFY+TR5e+DMzm
-LhbnLpfmvzXgxPgLE4nhKA==""".decode('base64').decode('zlib')]
+        #a cuesheet spread across a couple of different files
+        yield Sheet([SheetTrack(number=1,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(0, 0, 0))],
+                                filename="TRACK1.WAV"),
+                     SheetTrack(number=2,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(5, 50, 65))],
+                                filename="TRACK1.WAV"),
+                     SheetTrack(number=3,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(9, 47, 50))],
+                                filename="TRACK1.WAV"),
+                     SheetTrack(number=4,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(15, 12, 53))],
+                                filename="TRACK1.WAV"),
+                     SheetTrack(number=5,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(0, 0, 0))],
+                                filename="TRACK2.WAV"),
+                     SheetTrack(number=6,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(2, 31, 40))],
+                                filename="TRACK2.WAV"),
+                     SheetTrack(number=7,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(6, 56, 13))],
+                                filename="TRACK2.WAV"),
+                     SheetTrack(number=8,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(10, 6, 25))],
+                                filename="TRACK2.WAV")])
 
-        self.suffix = '.cue'
+        #mix in some pre-gaps
+        yield Sheet([SheetTrack(number=1,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(0, 0, 0))]),
+                     SheetTrack(number=2,
+                                track_indexes=[
+                         SheetIndex(0, timestamp_to_frac(5, 49, 65)),
+                         SheetIndex(1, timestamp_to_frac(5, 50, 65))]),
+                     SheetTrack(number=3,
+                                track_indexes=[
+                         SheetIndex(0, timestamp_to_frac(9, 45, 50)),
+                         SheetIndex(1, timestamp_to_frac(9, 47, 50))]),
+                     SheetTrack(number=4,
+                                track_indexes=[
+                         SheetIndex(0, timestamp_to_frac(15, 9, 53)),
+                         SheetIndex(1, timestamp_to_frac(15, 12, 53))])])
 
-    def sheets(self):
-        for test_sheet in self.test_sheets:
-            tempsheetfile = tempfile.NamedTemporaryFile(suffix=self.suffix)
-            try:
-                tempsheetfile.write(test_sheet)
-                tempsheetfile.flush()
-                sheet = audiotools.read_sheet(tempsheetfile.name)
-            finally:
-                tempsheetfile.close()
-            yield sheet
-
-    def catalogs(self):
-        yield '4580226563955'
-        yield None
-        yield None
-        yield None
-
-    def ISRCs(self):
-        yield ['JPG750800183',
-               'JPG750800212',
-               'JPG750800214',
-               'JPG750800704',
-               'JPG750800705',
-               'JPG750800706',
-               'JPG750800707',
-               'JPG750800708',
-               'JPG750800219',
-               'JPG750800722',
-               'JPG750800709',
-               'JPG750800290',
-               'JPG750800218',
-               'JPG750800710',
-               'JPG750800217',
-               'JPG750800531',
-               'JPG750800225',
-               'JPG750800711',
-               'JPG750800180',
-               'JPG750800712',
-               'JPG750800713',
-               'JPG750800714']
-        yield ['JPTK08880501',
-               'JPTK08880502',
-               'JPTK08880503',
-               'JPTK08880504',
-               'JPTK08880505',
-               'JPTK08880506',
-               'JPTK08880507',
-               'JPTK08880508',
-               'JPTK08880509',
-               'JPTK08880510',
-               'JPTK08880511',
-               'JPTK08880512',
-               'JPTK08880513',
-               'JPTK08880514',
-               'JPTK08880515',
-               'JPTK08880516',
-               'JPTK08880517',
-               'JPTK08880518',
-               'JPTK08880519',
-               'JPTK08880520']
-        yield [None] * 12
-        yield [None] * 15
-
-    def indexes(self):
-        yield [[0, ],
-               [20885, ],
-               [42189,  42411],
-               [49242,  49473],
-               [52754, ],
-               [69656, ],
-               [95428, ],
-               [118271,  118430],
-               [136968, ],
-               [138433,  138567],
-               [156412, ],
-               [168864, ],
-               [187716, ],
-               [192245, 192373],
-               [200347, ],
-               [204985, ],
-               [227336, ],
-               [243382, 243549],
-               [265893, 266032],
-               [292606, 292942],
-               [302893, 303123],
-               [321611, ]]
-        yield [[0],
-               [12297],
-               [19707],
-               [25975, 29010, 30775],
-               [33047],
-               [37630],
-               [40920],
-               [47100],
-               [52115],
-               [69710, 78487],
-               [82410],
-               [92542],
-               [109675],
-               [124432, 127572, 132270],
-               [135962, 140804],
-               [145400, 148982],
-               [156815],
-               [166672],
-               [172332],
-               [191466, 191652]]
-        yield [[0, 1493, 3639],
-               [11628, 11760, 20323, 36644, 45795],
-               [55420, 55550, 62238, 74609],
-               [85642, 85775],
-               [99566, 99698, 120317, 128603, 134617],
-               [136497, 136630],
-               [146346, 146480, 157940, 170195, 181445],
-               [197952, 198080, 214404, 216449],
-               [231522, 231652],
-               [245454, 245588, 252426, 262778, 273014],
-               [283641, 283774, 289558],
-               [298015, 298147, 302911, 312811]]
-        yield [[0],
-               [15299, 15389, 25750, 30650],
-               [39418, 47548],
-               [56416, 56668],
-               [69134, 76767, 79075],
-               [86991, 89821, 98159, 104818],
-               [109980, 110057, 124463],
-               [130868, 135892, 140520, 144239],
-               [147728, 155193, 162676],
-               [165758],
-               [175346, 175424, 183683, 192339],
-               [199856],
-               [215266, 224525, 228019],
-               [238847, 245887, 253155, 260864],
-               [264227]]
-
-    def pcm_lengths(self):
-        yield [12280380,
-               12657288,
-               4152456,
-               1929228,
-               9938376,
-               15153936,
-               13525176,
-               10900344,
-               940212,
-               10492860,
-               7321776,
-               11084976,
-               2738316,
-               4688712,
-               2727144,
-               13142388,
-               9533244,
-               13220004,
-               15823080,
-               5986428,
-               10870944,
-               2687748]
-        yield [7230636,
-               4357080,
-               3685584,
-               4158336,
-               2694804,
-               1934520,
-               3633840,
-               2948820,
-               10345860,
-               7467600,
-               5957616,
-               10074204,
-               8677116,
-               6779640,
-               5549544,
-               6712020,
-               5795916,
-               3328080,
-               11360160,
-               7191240]
-        yield [6914880,
-               25748520,
-               17772300,
-               8186724,
-               21716016,
-               5791800,
-               30340800,
-               19740336,
-               8194368,
-               22453368,
-               8451324,
-               10101840]
-        yield [9048732,
-               14129052,
-               10143000,
-               7330008,
-               10499916,
-               13562808,
-               12236868,
-               9913680,
-               10601640,
-               5683608,
-               14366016,
-               9061080,
-               13865628,
-               14923440,
-               8108520]
+        #add catalog numbers, ISRCs and multiple index points
+        yield Sheet([SheetTrack(number=1,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(0, 0, 0)),
+                         SheetIndex(2, timestamp_to_frac(2, 0, 0)),
+                         SheetIndex(3, timestamp_to_frac(4, 0, 0))],
+                                metadata=audiotools.MetaData(
+                         ISRC=u"ABCDE1234567"),
+                                filename="MYAUDIO1.WAV"),
+                     SheetTrack(number=2,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(0, 0, 0))],
+                                metadata=audiotools.MetaData(
+                         ISRC=u"XYZZY0000000"),
+                                filename="MYAUDIO2.WAV"),
+                     SheetTrack(number=3,
+                                track_indexes=[
+                         SheetIndex(0, timestamp_to_frac(3, 0, 0)),
+                         SheetIndex(1, timestamp_to_frac(3, 2, 0)),
+                         SheetIndex(2, timestamp_to_frac(5, 34, 32)),
+                         SheetIndex(3, timestamp_to_frac(8, 12, 49)),
+                         SheetIndex(4, timestamp_to_frac(10, 1, 74))],
+                                metadata=audiotools.MetaData(
+                         ISRC=u"123456789012"),
+                                filename="MYAUDIO2.WAV")],
+                    metadata=audiotools.MetaData(catalog=u"3898347789120"))
 
     @LIB_CUESHEET
-    def testreadsheet(self):
-        from itertools import izip
-
-        for (sheet,
-             catalog,
-             ISRCs,
-             indexes,
-             pcm_lengths) in izip(self.sheets(),
-                                  self.catalogs(),
-                                  self.ISRCs(),
-                                  self.indexes(),
-                                  self.pcm_lengths()):
-            self.assertEqual(sheet.catalog(), catalog)
-            self.assertEqual([t.ISRC() for t in sheet.tracks()], ISRCs)
-
-            self.assertEqual([[int(i.offset() * 75) for i in t.indexes()]
-                              for t in sheet.tracks()], indexes)
-
-            self.assertEqual(list(sheet.pcm_lengths(sum(pcm_lengths), 44100)),
-                             pcm_lengths)
-
-    @LIB_CUESHEET
-    def testconvertsheet(self):
-        import audiotools.cue
-        import audiotools.toc
-        from itertools import izip
-
-        for (sheet,
-             pcm_lengths) in izip(self.sheets(),
-                                  self.pcm_lengths()):
-            #convert to CUE and test for equality
-            temp_cue_file = tempfile.NamedTemporaryFile(suffix='.cue')
-            try:
-                audiotools.cue.write_cuesheet(
-                    sheet,
-                    os.path.basename(temp_cue_file.name),
-                    temp_cue_file)
-                temp_cue_file.flush()
-
-                cue_sheet = audiotools.read_sheet(temp_cue_file.name)
-
-                self.assertEqual(sheet, cue_sheet)
-            finally:
-                temp_cue_file.close()
-
-            #convert to TOC and test for equality
-            temp_toc_file = tempfile.NamedTemporaryFile(suffix='.toc')
-            try:
-                audiotools.toc.write_tocfile(
-                    sheet,
-                    os.path.basename(temp_toc_file.name),
-                    temp_toc_file)
-                temp_toc_file.flush()
-
-                toc_sheet = audiotools.read_sheet(temp_toc_file.name)
-
-                for (track1, track2) in izip(sheet.tracks(),
-                                             toc_sheet.tracks()):
-                    self.assertEqual(track1, track2)
-                self.assertEqual(sheet, toc_sheet)
-            finally:
-                temp_toc_file.close()
-
-            #convert to embedded cuesheets and test for equality
-            for audio_class in [audiotools.FlacAudio,
-                                audiotools.OggFlacAudio,
-                                audiotools.WavPackAudio,
-                                audiotools.TrueAudio]:
-                temp_file = tempfile.NamedTemporaryFile(
-                    suffix="." + audio_class.SUFFIX)
-                try:
-                    f = audio_class.from_pcm(
-                        temp_file.name,
-                        EXACT_SILENCE_PCM_Reader(sum(pcm_lengths)),
-                        total_pcm_frames=sum(pcm_lengths))
-                    f.set_cuesheet(sheet)
-                    f_sheet = audiotools.open(temp_file.name).get_cuesheet()
-
-                    self.assertEqual(sheet, f_sheet)
-                finally:
-                    temp_file.close()
-
-
-class testtocsheet(testcuesheet):
-    @LIB_CUESHEET
-    def setUp(self):
-        import audiotools.toc
-
-        self.test_sheets = [
-"""eJytlr1uG0EMhPt7isU9QExyf4/d4aTYShRJkM4IUglC0qULguT1Q15c7MJbspIhGPhmR8Mhl919
-Nw/DMq/z8fzsxhALEKWY/BTjOAxPT2799fj+0+GwXufls5tfd4fzcDq75Xz5pp+X6/6+/3J5mW+H
-27B+Pd+Xl/l02h/v///zcLsubvx0ec4RCgAWPw4fD8e9G388fj8+/H38GR04COwL+zhURLIhElKH
-+MbTP0JgCDXYW4FDBzwxEfvJAbIXsB9u63xdHQADcaZaR7DRkaGjA4Fj4kAKDokTVTo8Q6p1RCsd
-saMDOXgm8cNziEy5BicrcOqABVbEAwdRFYQGnK3A+T2YkJGErWBNn6/BxQpcOuDEmDijZn6LYRM9
-mGodk9UITO91eGCVUhSMEweowQhGDlBn6oUsGYtFwxYnjqFyAOWbRohR4WXoWRBUiM9OjJfpg2bs
-0ar4JuiQM3vc+iewzF47b2jWfJ34BZl04pS0+cRwat226jrsvFmw2jGg5FDU7eZnbwYQjcqOsDP6
-smnEfKLNAuTUko3aLnrskCVtnnFbtFEswIZsVHdEnYKPoG9G1JkTCbklW/Uddt4cpeakYvNWtFI1
-2PQdtsk3KjwsnfxJ1YgE3Bpfli76Jn+puT3Iqv96V0+KCvTotvfLGqqESDSbpU9W/Yedgy8JvMhQ
-vq2i4Nvroz0Djeow986xjHoFaDq3UtJ0/gOiA7rW""".decode('base64').decode('zlib'),
-
-"""eJytl21v2jAQx1+TT2HxAcAPsRNO07QIUsTaUpQGqe8qHiKKOsgU0nXVxHffnYsEvNlsyShCke3E
-vzvf3f/S77Nxta+aRVut2fKDrd4q2dYrxntx1O+zovpZNy1bvm0OrK3Zl3XV7BbtYfXybbP73VtX
-X6Ph6HmU0X+ZP5XsT8Twd5dNx/NsnD/fZzMc6nAGLJ/aqePVAsZpupyUdznrzvev+/p9z8pt+6Pq
-Rp1ZXtw8FPd5cZ7KmnZ7aLunNx2jqCyy4S3L5qPJgx2cPBZD1v0+K295mqZcc/G5+MzXud6bJk/7
-l81i9UoP2MF/7N45Xphi976Z0At2H/tqu3lZosfqtm7q3vviV5dxDvZiXEKsIJEO1NKXWganPsEy
-LkClYLgDtfKlVsGpY5ASdELUUqEFDtSxL3UcnFpDbEBq62uy4BN0OsqfGMcJQ+6/GtIclzvYpn1t
-08FtS0ByiO2J0JU6UBtfahOcOgUpQGtKXkwD4+LrxJc6CU49AAolG0eYBsolZ1Nf6jQ0tcBYTm19
-xPAwbr4e+FIPglPbVDXoawU6Rqf/n1pwT2p6IDC1BjkApW15H1ANOZcVkVClUYmDIb6iKoKLqkhB
-kCqRIWgUd6H2FVURXFSxEiqsJgkFTZzivQO1r6iK4KIqrahKG+oCtcfF176iKoKLqkxAYT1MKELQ
-6foy1LHe4FEklzqLaUENg0sa+4qqCC6qioOQYCTZhhXfqAtDlADK5IGDIb46K4LrrJKUxtqmMd1f
-HhIeGsqBcmiXha/0iuDSi1qAPZmxhZWkwYXaV3pFcOlVCSCvtE0+VlHlEv2+0iuCSy9+jmCEU5Mf
-29rvEOrSV3plcOmNbYQbY1c/lllR2i9DHDXRX1rQ4zA=""".decode('base64').decode('zlib'),
-
-"""eJytVV1r2zAUfY5/hfD7En3Lvowx07ghrE2L50DfipuYtjSNh+O2GyP/fVdaoDIJebGC8cNRZJ2j
-c8+9kwmZ1du6rbp6TR7+kNVbzbtmRehYRpMJKepfTduRh7fHHeka8nVdt69Vt1s9fX98/T1e19+i
-i+n9NLPvMr8ryd+I4O8qW8yW2Sy/v85uERpRAiRfuKV97w+E2uVyXl7lJF5uX7bNx5aUz92mjqPR
-bV5c3hTXefG5lLXd866LD1/aR1FZZBc/SLaczm8c+Mlj1D/DLh7OKdtq9UJZ/B88c8po71F2Z1zO
-7Qeeqk3Dv7w3Gz7+qN5jQim4h1AOQgEVbsN8Mc3v7BpLQSd9SCYg0iHseUD2B9KEpiAFaOM2/Cyz
-onTKGCjjs5cgKJiexgTwkdKDGMpGmWqIRhFOI+PAEjDokAbJwfBjjcpnL0Ciab5GpkFIUINMkwEF
-pZa0NoQKoArZHgtKhlBV4ahyDtSAZLZM0AfBztcXR4cksB6UuLv37eApKGlrdYBGHU6jcCk33IaJ
-MeAysB0mIFVrAXBGLE8Mrj6mmnoXbVuDAu2nQxibDk49SDr9CA3QmITTiG1MIR1Mh8G3bUNHGv1i
-kgZEgvXkQ4mVbeQQQWk4QQq90q6+XNzViR49pNUyGpAqzgeOl2njjillJ1qtX19KO0HMh3Cj6Duk
-cZZgiQ2xgwUc+Fq47qutHRij093XYy8xGsM6AAs48LUGO+Do+T6sjR2Z2jdGp3b0I/QPz+duJQ==""".decode('base64').decode('zlib'),
-
-"""eJytlt9r20AMx5/jv+LI+5L7fbYYY6ZxQ1ibFs+BvpU0MW1pm4zUXTdG/vdK14ycO9jLXTDB6GTf
-R7qvJI/HbNpu2t2ya9fs5jdbvbSy264YH+lsPGZ1+2O769jNy+0z67bs87rdPS2759Xd19unX6N1
-+yU7mVxPSvpvqquG/ckY/s7K+XRRTqvr8/ISTQPOgFVzv7TvOTBOy82sOavYcLF52GxfN6y57x7b
-YTa4rOrTi/q8qo9L5a67f+6Ghzfts6ypy5NvrFxMZhfeeOQY9PegxcM+zW65euBi+G78zy6DfYDs
-9zid0Qvulo9b9UmMXpc/h4xz8BfjCqQCp2OgZCqoAwvjBqQArb3396asGw8sQBhvms0n1RV5aXyi
-Z7KgczA8JhqVKpocNBFSWJq4Ak7BQWGkKoZTJ+IUEpQEYRmXoAsE/pB1TLGL4TSpOL0oTEH5NDlw
-F+bTEaeWfZPSpI4IdJsKvQC8rCXJokRVEXIWYBwKJDCR9lHFoRfWBQakowTjEkUjMa0YBPYODSrH
-658y5eFBSDyIgrwi0PNU6AUgtM19TeINDzgVByHAhrJS2HHQMewwWCr4rIjql0WiaJQvWKPoIDDx
-qhcNHhKqLmw6ygLH+EUEuuCp0C12aeA5NR3uwMYIW6QaiihmLEUn/Pyxf9XRE7YK8qk5pZ+HKdaS
-ZIX1HRFNqmmKIFipxvqxakDFdEKRaihqR+cufCcUmCkRJo+0TMP7aEJfzLKIymeqOYlsWGfaETq1
-vR7neycMe4ex+LXywcvR4IrqHSLVNEUQ/HjCRv0G5L+vfQ==""".decode('base64').decode('zlib')]
-
-        self.suffix = '.toc'
-
-
-class testflaccuesheet(testcuesheet):
-    @LIB_CUESHEET
-    def setUp(self):
-        from audiotools.flac import (Flac_CUESHEET,
-                                     Flac_CUESHEET_track,
-                                     Flac_CUESHEET_index)
-
-        self.suffix = '.flac'
-        self.test_sheets = [
-            Flac_CUESHEET(
-                catalog_number='4580226563955\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                lead_in_samples=88200,
-                is_cdda=1,
-                tracks=[Flac_CUESHEET_track(
-                    offset=0,
-                    number=1,
-                    ISRC='JPG750800183',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[Flac_CUESHEET_index(0, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=12280380,
-                            number=2,
-                            ISRC='JPG750800212',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=24807132,
-                            number=3,
-                            ISRC='JPG750800214',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 0),
-                                Flac_CUESHEET_index(130536, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=28954296,
-                            number=4,
-                            ISRC='JPG750800704',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 0),
-                                Flac_CUESHEET_index(135828, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=31019352,
-                            number=5,
-                            ISRC='JPG750800705',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=40957728,
-                            number=6,
-                            ISRC='JPG750800706',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=56111664,
-                            number=7,
-                            ISRC='JPG750800707',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=69543348,
-                            number=8,
-                            ISRC='JPG750800708',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 0),
-                                Flac_CUESHEET_index(93492, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=80537184,
-                            number=9,
-                            ISRC='JPG750800219',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=81398604,
-                            number=10,
-                            ISRC='JPG750800722',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 0),
-                                Flac_CUESHEET_index(78792, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=91970256,
-                            number=11,
-                            ISRC='JPG750800709',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=99292032,
-                            number=12,
-                            ISRC='JPG750800290',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=110377008,
-                            number=13,
-                            ISRC='JPG750800218',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=113040060,
-                            number=14,
-                            ISRC='JPG750800710',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 0),
-                                Flac_CUESHEET_index(75264, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=117804036,
-                            number=15,
-                            ISRC='JPG750800217',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=120531180,
-                            number=16,
-                            ISRC='JPG750800531',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=133673568,
-                            number=17,
-                            ISRC='JPG750800225',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=143108616,
-                            number=18,
-                            ISRC='JPG750800711',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 0),
-                                Flac_CUESHEET_index(98196, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=156345084,
-                            number=19,
-                            ISRC='JPG750800180',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 0),
-                                Flac_CUESHEET_index(81732, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=172052328,
-                            number=20,
-                            ISRC='JPG750800712',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 0),
-                                Flac_CUESHEET_index(197568, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=178101084,
-                            number=21,
-                            ISRC='JPG750800713',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 0),
-                                Flac_CUESHEET_index(135240, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=189107268,
-                            number=22,
-                            ISRC='JPG750800714',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[
-                                Flac_CUESHEET_index(0, 1)]),
-                        Flac_CUESHEET_track(
-                            offset=191795016,
-                            number=170,
-                            ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                            track_type=0,
-                            pre_emphasis=0,
-                            index_points=[])]),
-
-        Flac_CUESHEET(
-            catalog_number='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-            lead_in_samples=88200L,
-            is_cdda=1,
-            tracks=[
-                Flac_CUESHEET_track(
-                    offset=0L,
-                    number=1,
-                    ISRC='JPTK08880501',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=7230636L,
-                    number=2,
-                    ISRC='JPTK08880502',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=11587716L,
-                    number=3,
-                    ISRC='JPTK08880503',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=15273300L,
-                    number=4,
-                    ISRC='JPTK08880504',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1),
-                        Flac_CUESHEET_index(1784580L, 2),
-                        Flac_CUESHEET_index(2822400L, 3)]),
-                Flac_CUESHEET_track(
-                    offset=19431636L,
-                    number=5,
-                    ISRC='JPTK08880505',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=22126440L,
-                    number=6,
-                    ISRC='JPTK08880506',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=24060960L,
-                    number=7,
-                    ISRC='JPTK08880507',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=27694800L,
-                    number=8,
-                    ISRC='JPTK08880508',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=30643620L,
-                    number=9,
-                    ISRC='JPTK08880509',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=40989480L,
-                    number=10,
-                    ISRC='JPTK08880510',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1),
-                        Flac_CUESHEET_index(5160876L, 2)]),
-                Flac_CUESHEET_track(
-                    offset=48457080L,
-                    number=11,
-                    ISRC='JPTK08880511',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=54414696L,
-                    number=12,
-                    ISRC='JPTK08880512',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=64488900L,
-                    number=13,
-                    ISRC='JPTK08880513',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=73166016L,
-                    number=14,
-                    ISRC='JPTK08880514',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1),
-                        Flac_CUESHEET_index(1846320L, 2),
-                        Flac_CUESHEET_index(4608744L, 3)]),
-                Flac_CUESHEET_track(
-                    offset=79945656L,
-                    number=15,
-                    ISRC='JPTK08880515',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1),
-                        Flac_CUESHEET_index(2847096L, 2)]),
-                Flac_CUESHEET_track(
-                    offset=85495200L,
-                    number=16,
-                    ISRC='JPTK08880516',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1),
-                        Flac_CUESHEET_index(2106216L, 2)]),
-                Flac_CUESHEET_track(
-                    offset=92207220L,
-                    number=17,
-                    ISRC='JPTK08880517',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=98003136L,
-                    number=18,
-                    ISRC='JPTK08880518',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=101331216L,
-                    number=19,
-                    ISRC='JPTK08880519',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=112582008L,
-                    number=20,
-                    ISRC='JPTK08880520',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 0),
-                        Flac_CUESHEET_index(109368L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=119882616L,
-                    number=170,
-                    ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[])]),
-
-        Flac_CUESHEET(
-            catalog_number='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-            lead_in_samples=88200L,
-            is_cdda=1,
-            tracks=[
-                Flac_CUESHEET_track(
-                    offset=0L,
-                    number=1,
-                    ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 1),
-                        Flac_CUESHEET_index(877884L, 2),
-                        Flac_CUESHEET_index(2139732L, 3)]),
-                Flac_CUESHEET_track(
-                    offset=6837264L,
-                    number=2,
-                    ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 0),
-                        Flac_CUESHEET_index(77616L, 1),
-                        Flac_CUESHEET_index(5112660L, 2),
-                        Flac_CUESHEET_index(14709408L, 3),
-                        Flac_CUESHEET_index(20090196L, 4)]),
-                Flac_CUESHEET_track(
-                    offset=32586960L,
-                    number=3,
-                    ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 0),
-                        Flac_CUESHEET_index(76440L, 1),
-                        Flac_CUESHEET_index(4008984L, 2),
-                        Flac_CUESHEET_index(11283132L, 3)]),
-                Flac_CUESHEET_track(
-                    offset=50357496L,
-                    number=4,
-                    ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 0),
-                        Flac_CUESHEET_index(78204L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=58544808L,
-                    number=5,
-                    ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 0),
-                        Flac_CUESHEET_index(77616L, 1),
-                        Flac_CUESHEET_index(12201588L, 2),
-                        Flac_CUESHEET_index(17073756L, 3),
-                        Flac_CUESHEET_index(20609988L, 4)]),
-                Flac_CUESHEET_track(
-                    offset=80260236L,
-                    number=6,
-                    ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 0),
-                        Flac_CUESHEET_index(78204L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=86051448L,
-                    number=7,
-                    ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 0),
-                        Flac_CUESHEET_index(78792L, 1),
-                        Flac_CUESHEET_index(6817272L, 2),
-                        Flac_CUESHEET_index(14023212L, 3),
-                        Flac_CUESHEET_index(20638212L, 4)]),
-                Flac_CUESHEET_track(
-                    offset=116395776L,
-                    number=8,
-                    ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 0),
-                        Flac_CUESHEET_index(75264L, 1),
-                        Flac_CUESHEET_index(9673776L, 2),
-                        Flac_CUESHEET_index(10876236L, 3)]),
-                Flac_CUESHEET_track(
-                    offset=136134936L,
-                    number=9,
-                    ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 0),
-                        Flac_CUESHEET_index(76440L, 1)]),
-                Flac_CUESHEET_track(
-                    offset=144326952L,
-                    number=10,
-                    ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 0),
-                        Flac_CUESHEET_index(78792L, 1),
-                        Flac_CUESHEET_index(4099536L, 2),
-                        Flac_CUESHEET_index(10186512L, 3),
-                        Flac_CUESHEET_index(16205280L, 4)]),
-                Flac_CUESHEET_track(
-                    offset=166780908L,
-                    number=11,
-                    ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 0),
-                        Flac_CUESHEET_index(78204L, 1),
-                        Flac_CUESHEET_index(3479196L, 2)]),
-                Flac_CUESHEET_track(
-                    offset=175232820L,
-                    number=12,
-                    ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[
-                        Flac_CUESHEET_index(0L, 0),
-                        Flac_CUESHEET_index(77616L, 1),
-                        Flac_CUESHEET_index(2878848L, 2),
-                        Flac_CUESHEET_index(8700048L, 3)]),
-                Flac_CUESHEET_track(
-                    offset=185412276L,
-                    number=170,
-                    ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                    track_type=0,
-                    pre_emphasis=0,
-                    index_points=[])]),
-
-            Flac_CUESHEET(
-                catalog_number='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                lead_in_samples=88200L,
-                is_cdda=1,
-                tracks=[
-                    Flac_CUESHEET_track(
-                        offset=0L,
-                        number=1,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 1)]),
-                    Flac_CUESHEET_track(
-                        offset=8995812L,
-                        number=2,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 0),
-                            Flac_CUESHEET_index(52920L, 1),
-                            Flac_CUESHEET_index(6145188L, 2),
-                            Flac_CUESHEET_index(9026388L, 3)]),
-                    Flac_CUESHEET_track(
-                        offset=23177784L,
-                        number=3,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 1),
-                            Flac_CUESHEET_index(4780440L, 2)]),
-                    Flac_CUESHEET_track(
-                        offset=33172608L,
-                        number=4,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 0),
-                            Flac_CUESHEET_index(148176L, 1)]),
-                    Flac_CUESHEET_track(
-                        offset=40650792L,
-                        number=5,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 1),
-                            Flac_CUESHEET_index(4488204L, 2),
-                            Flac_CUESHEET_index(5845308L, 3)]),
-                    Flac_CUESHEET_track(
-                        offset=51150708L,
-                        number=6,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 1),
-                            Flac_CUESHEET_index(1664040L, 2),
-                            Flac_CUESHEET_index(6566784L, 3),
-                            Flac_CUESHEET_index(10482276L, 4)]),
-                    Flac_CUESHEET_track(
-                        offset=64668240L,
-                        number=7,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 0),
-                            Flac_CUESHEET_index(45276L, 1),
-                            Flac_CUESHEET_index(8516004L, 2)]),
-                    Flac_CUESHEET_track(
-                        offset=76950384L,
-                        number=8,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 1),
-                            Flac_CUESHEET_index(2954112L, 2),
-                            Flac_CUESHEET_index(5675376L, 3),
-                            Flac_CUESHEET_index(7862148L, 4)]),
-                    Flac_CUESHEET_track(
-                        offset=86864064L,
-                        number=9,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 1),
-                            Flac_CUESHEET_index(4389420L, 2),
-                            Flac_CUESHEET_index(8789424L, 3)]),
-                    Flac_CUESHEET_track(
-                        offset=97465704L,
-                        number=10,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 1)]),
-                    Flac_CUESHEET_track(
-                        offset=103103448L,
-                        number=11,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 0),
-                            Flac_CUESHEET_index(45864L, 1),
-                            Flac_CUESHEET_index(4902156L, 2),
-                            Flac_CUESHEET_index(9991884L, 3)]),
-                    Flac_CUESHEET_track(
-                        offset=117515328L,
-                        number=12,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 1)]),
-                    Flac_CUESHEET_track(
-                        offset=126576408L,
-                        number=13,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 1),
-                            Flac_CUESHEET_index(5444292L, 2),
-                            Flac_CUESHEET_index(7498764L, 3)]),
-                    Flac_CUESHEET_track(
-                        offset=140442036L,
-                        number=14,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 1),
-                            Flac_CUESHEET_index(4139520L, 2),
-                            Flac_CUESHEET_index(8413104L, 3),
-                            Flac_CUESHEET_index(12945996L, 4)]),
-                    Flac_CUESHEET_track(
-                        offset=155365476L,
-                        number=15,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[
-                            Flac_CUESHEET_index(0L, 1)]),
-                    Flac_CUESHEET_track(
-                        offset=163473996L,
-                        number=170,
-                        ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                        track_type=0,
-                        pre_emphasis=0,
-                        index_points=[])])]
-
-    def sheets(self):
-        for test_sheet in self.test_sheets:
-            tempflacfile = tempfile.NamedTemporaryFile(suffix=self.suffix)
-            try:
-                tempflac = audiotools.FlacAudio.from_pcm(
-                    tempflacfile.name,
-                    EXACT_SILENCE_PCM_Reader(191795016),
-                    "1",
-                    total_pcm_frames=191795016)
-                metadata = tempflac.get_metadata()
-                metadata.replace_blocks(
-                    audiotools.flac.Flac_CUESHEET.BLOCK_ID,
-                    [test_sheet])
-                tempflac.update_metadata(metadata)
-
-                sheet = audiotools.open(tempflacfile.name).get_cuesheet()
-            finally:
-                tempflacfile.close()
-            yield sheet
+    def test_round_trip(self):
+        for sheet in self.__sheets__():
+            converted = self.sheet_class.converted(sheet)
+            self.assertEqual(converted, sheet)
+            temp_sheet = tempfile.NamedTemporaryFile(suffix=self.suffix)
+            temp_sheet.write(converted.build())
+            temp_sheet.flush()
+            re_read = self.read_sheet(temp_sheet.name)
+            self.assertEqual(re_read, sheet)
 
 
 #takes several 1-channel PCMReaders and combines them into a single PCMReader

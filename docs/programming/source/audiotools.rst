@@ -1539,6 +1539,10 @@ when burning a set of tracks back to CD.
    :class:`SheetTrack` object.
    Raises :exc:`IndexError` if the track cannot be found.
 
+.. method:: Sheet.track_numbers()
+
+   Returns a list of all track numbers in the sheet.
+
 .. method:: Sheet.track(track_number)
 
    Given a track number (often starting from 1),
@@ -1556,15 +1560,13 @@ SheetTrack Objects
 
 These objects represent a track on a given cuesheet.
 
-.. class:: SheetTrack(number, track_indexes, offset, [length], [metadata], [filename], [is_audio=True], [pre_emphasis=False], [copy_permitted=False])
+.. class:: SheetTrack(number, track_indexes, [metadata], [filename], [is_audio=True], [pre_emphasis=False], [copy_permitted=False])
 
    =============== ============ ======================================
    argument        type         value
    --------------- ------------ --------------------------------------
    number          int          track number, starting from 1
    track_indexes   [SheetIndex] list of SheetIndex objects
-   offset          Fraction     offset of track in stream, in seconds
-   length          Fracion      length of track, in seconds
    metadata        MetaData     track's metadata, or None
    filename        str          track's filename on disc
    is_audio        boolean      whether track contains audio data
@@ -1583,23 +1585,23 @@ These objects represent a track on a given cuesheet.
 
 .. method:: SheetTrack.__getitem__(i)
 
-   Given an index (starting from 0), returns the track's
+   Given an index (starting from 0), returns a track's
    :class:`SheetIndex` object.
    Raises :exc:`IndexError` if the index cannot be found.
+
+.. method:: SheetTrack.indexes()
+
+   Returns a list of all index numbers in the track.
+
+.. method:: SheetTrack.index(sheet_index)
+
+   Given an index number (often starting from 1),
+   returns a track's :class:`SheetIndex` object.
+   Raises :exc:`KeyError` if the index is not present.
 
 .. method:: SheetTrack.number()
 
    Returns the track's number, typically starting from 1.
-
-.. method:: SheetTrack.offset()
-
-   Returns the track's offset from the start of the stream
-   as a :class:`Fraction` number of seconds.
-
-.. method:: SheetTrack.length()
-
-   Returns the length of the track as a :class:`Fraction` number
-   of seconds, or ``None`` if the length is unknown as must be derived.
 
 .. method:: SheetTrack.get_metadata()
 
@@ -1632,7 +1634,7 @@ SheetIndex Objects
    often starting from 1.
    A number of 0 indicates a pre-gap index.
    ``offset`` is the index's offset from the start of the
-   track as a :class:`Fraction` number of seconds.
+   stream as a :class:`Fraction` number of seconds.
 
 .. method:: SheetIndex.number()
 
@@ -1640,7 +1642,7 @@ SheetIndex Objects
 
 .. method:: SheetIndex.offset()
 
-   Returns the index point's offset from the start of the track
+   Returns the index point's offset from the start of the stream
    as a :class:`Fraction` number of seconds.
 
 DVDAudio Objects

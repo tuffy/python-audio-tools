@@ -48,11 +48,74 @@ class Cuesheet(Sheet):
                                     "cdtextfile"]])
 
     @classmethod
-    def converted(cls, sheet, filename="CDImage.wav"):
+    def converted(cls, sheet):
         """given a Sheet object, returns a Cuesheet object"""
 
-        return cls(files=[File.converted(sheet, filename)],
-                   catalog=sheet.catalog())
+        def group_tracks(tracks):
+            current_file = None
+            current_tracks = []
+            for track in tracks:
+                if (current_file is None):
+                    current_file = track.filename()
+                    current_tracks = [track]
+                elif (current_file != track.filename()):
+                    yield (current_file, current_tracks)
+                    current_file = track.filename()
+                    current_tracks = [track]
+                else:
+                    current_tracks.append(track)
+            else:
+                if (current_file is not None):
+                    yield (current_file, current_tracks)
+
+        metadata = sheet.get_metadata()
+
+        args = {"files":[File(filename=filename,
+                               file_type="WAVE",
+                               tracks=map(Track.converted, tracks))
+                          for (filename, tracks) in group_tracks(sheet)]}
+
+        if (metadata is not None):
+           args["catalog"] = encode_string(metadata.catalog)
+           args["title"] = encode_string(metadata.album_name)
+           args["performer"] = encode_string(metadata.performer_name)
+           args["songwriter"] = encode_string(metadata.artist_name)
+
+        return cls(**args)
+
+    def __len__(self):
+        return sum(map(len, self.__files__))
+
+    def __getitem__(self, index):
+        not_found = IndexError(index)
+        for file in self.__files__:
+            if (index < len(file)):
+                return file[index]
+            else:
+                index -= len(file)
+        else:
+            raise not_found
+
+    def get_metadata(self):
+        """returns MetaData of Sheet, or None
+        this metadata often contains information such as catalog number
+        or CD-TEXT values"""
+
+        from operator import or_
+
+        if (reduce(or_, [(attr is not None) for attr in
+                         [self.__catalog__,
+                          self.__title__,
+                          self.__performer__,
+                          self.__songwriter__]], False)):
+            from audiotools import MetaData
+
+            return MetaData(catalog=decode_string(self.__catalog__),
+                            album_name=decode_string(self.__title__),
+                            performer_name=decode_string(self.__performer__),
+                            artist_name=decode_string(self.__songwriter__))
+        else:
+            return None
 
     def build(self):
         """returns the Cuesheet as a string"""
@@ -77,50 +140,28 @@ class Cuesheet(Sheet):
         else:
             return "\r\n".join([f.build() for f in self.__files__]) + "\r\n"
 
-    def track(self, track_number, file=0):
-        """given a track_number (typically starting from 1),
-        returns a SheetTrack object or raises KeyError if not found"""
-
-        return self.__files__[file].track(track_number)
-
-    def tracks(self, file=0):
-        """returns a list of all SheetTrack objects in the cuesheet"""
-
-        return self.__files__[file].tracks()
-
-    def catalog(self):
-        """returns sheet's catalog number as a plain string, or None"""
-
-        if (self.__catalog__ is not None):
-            return self.__catalog__
-        else:
-            return None
-
-    def image_formatted(self):
-        """returns True if the cuesheet is formatted for a CD image
-        instead of for multiple individual tracks"""
-
-        return len(self.__files__) == 1
-
 
 class File:
     def __init__(self, filename, file_type, tracks):
         self.__filename__ = filename
         self.__file_type__ = file_type
+        for t in tracks:
+            t.__parent_file__ = self
         self.__tracks__ = tracks
+
+    def __len__(self):
+        return len(self.__tracks__)
+
+    def __getitem__(self, index):
+        return self.__tracks__[index]
 
     def __repr__(self):
         return "File(%s)" % \
             ", ".join(["%s=%s" % (attr, repr(getattr(self, "__" + attr + "__")))
                        for attr in ["filename", "file_type", "tracks"]])
 
-    @classmethod
-    def converted(cls, sheet, filename):
-        """given a Cuesheet object, returns a File object"""
-
-        return cls(filename=filename,
-                   file_type="WAVE",
-                   tracks=[Track.converted(t) for t in sheet.tracks()])
+    def filename(self):
+        return self.__filename__
 
     def build(self):
         """returns the File as a string"""
@@ -129,21 +170,6 @@ class File:
             (format_string(self.__filename__),
              self.__file_type__,
              "\r\n".join([t.build() for t in self.__tracks__]))
-
-    def track(self, track_number):
-        """given a track_number (typically starting from 1),
-        returns a SheetTrack object or raises KeyError if not found"""
-
-        for track in self.tracks():
-            if (track_number == track.number()):
-                return track
-        else:
-            raise KeyError(track_number)
-
-    def tracks(self):
-        """returns a list of all SheetTrack objects in the cuesheet"""
-
-        return list(self.__tracks__)
 
 
 class Track(SheetTrack):
@@ -157,6 +183,7 @@ class Track(SheetTrack):
                  title=None,
                  performer=None,
                  songwriter=None):
+        self.__parent_file__ = None  # to be assigned by File
         self.__number__ = number
         self.__track_type__ = track_type
         self.__indexes__ = indexes
@@ -186,11 +213,79 @@ class Track(SheetTrack):
     def converted(cls, sheettrack):
         """given a SheetTrack object, returns a Track object"""
 
-        return cls(number=sheettrack.number(),
-                   track_type="AUDIO" if sheettrack.audio() else "MODE1/2352",
-                   indexes=[Index.converted(i) for i in
-                            sheettrack.indexes()],
-                   isrc=sheettrack.ISRC())
+        metadata = sheettrack.get_metadata()
+
+        args = {"number":sheettrack.number(),
+                "track_type":("AUDIO" if sheettrack.is_audio() else
+                              "MODE1/2352"),
+                "indexes":[Index.converted(i) for i in sheettrack]}
+
+        if (metadata is not None):
+            args["isrc"] = encode_string(metadata.ISRC)
+            args["title"] = encode_string(metadata.track_name)
+            args["performer"] = encode_string(metadata.performer_name)
+            args["songwriter"] = encode_string(metadata.artist_name)
+
+        return cls(**args)
+
+    def __len__(self):
+        return len(self.__indexes__)
+
+    def __getitem__(self, index):
+        return self.__indexes__[index]
+
+    def number(self):
+        """return SheetTrack's number, starting from 1"""
+
+        return self.__number__
+
+    def get_metadata(self):
+        """returns SheetTrack's MetaData, or None"""
+
+        from operator import or_
+
+        if (reduce(or_, [(attr is not None) for attr in
+                         [self.__isrc__,
+                          self.__title__,
+                          self.__performer__,
+                          self.__songwriter__]], False)):
+            from audiotools import MetaData
+
+            return MetaData(ISRC=decode_string(self.__isrc__),
+                            track_name=decode_string(self.__title__),
+                            performer_name=decode_string(self.__performer__),
+                            artist_name=decode_string(self.__songwriter__))
+        else:
+            return None
+
+    def filename(self):
+        """returns SheetTrack's filename as a string"""
+
+        if (self.__parent_file__ is not None):
+            return self.__parent_file__.filename()
+        else:
+            return ""
+
+    def is_audio(self):
+        """returns whether SheetTrack contains audio data"""
+
+        return self.__track_type__ == "AUDIO"
+
+    def pre_emphasis(self):
+        """returns whether SheetTrack has pre-emphasis"""
+
+        if (self.__flags__ is not None):
+            return "PRE" in self.__flags__
+        else:
+            return False
+
+    def copy_permitted(self):
+        """returns whether copying is permitted"""
+
+        if (self.__flags__ is not None):
+            return "DCP" in self.__flags__
+        else:
+            return False
 
     def build(self):
         """returns the Track as a string"""
@@ -229,36 +324,6 @@ class Track(SheetTrack):
         return "  TRACK %2.2d %s\r\n%s" % (self.__number__,
                                            self.__track_type__,
                                            "\r\n".join(items))
-
-    def index(self, index_number):
-        """given index number (often starting from 1)
-        returns SheetIndex object or raises KeyError if not found"""
-
-        for index in self.__indexes__:
-            if (index_number == index.number()):
-                return index
-        else:
-            raise KeyError(index_number)
-
-    def indexes(self):
-        """returns a list of SheetIndex objects"""
-
-        return list(self.__indexes__)
-
-    def number(self):
-        """returns track's number as an integer"""
-
-        return self.__number__
-
-    def ISRC(self):
-        """returns track's ISRC value as plain string, or None"""
-
-        return self.__isrc__
-
-    def audio(self):
-        """returns True if track contains audio data"""
-
-        return self.__track_type__ == "AUDIO"
 
 
 class Index(SheetIndex):
@@ -306,6 +371,21 @@ def format_timestamp(t):
     return "%2.2d:%2.2d:%2.2d" % (t / 75 / 60,
                                   t / 75 % 60,
                                   t % 75)
+
+def decode_string(s):
+    if (s is not None):
+        #FIXME - make a best guess at text encoding?
+        return s.decode("ascii", "replace")
+    else:
+        return None
+
+
+def encode_string(u):
+    if (u is not None):
+        #FIXME - make a best guess at text encoding?
+        return u.encode("ascii", "replace")
+    else:
+        return None
 
 
 def read_cuesheet(filename):

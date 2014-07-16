@@ -7013,6 +7013,7 @@
     - [X] __len__() -> total_tracks
     - [X] __getitem__(track_index) -> SheetTrack
     - [X] __eq__(sheet) -> boolean
+    - [X] track_numbers() -> [int]
     - [X] track(track_number) -> SheetTrack
     - [X] get_metadata() -> MetaData
     MetaData contains catalog_number and CD-TEXT information
@@ -7022,6 +7023,7 @@
     - [X] __len__() -> total_indexes
     - [X] __getitem__(index_index) -> SheetIndex
     - [X] __eq__(sheet_track) -> boolean
+    - [X] indexes() -> [int]
     - [X] index(index_number) -> SheetIndex
     - [X] filename() -> string
     - [X] number() -> track_number
@@ -7030,25 +7032,25 @@
     - [X] is_audio() -> boolean
     - [X] pre_emphasis() -> boolean
     - [X] copy_peritted() -> boolean
-    - [X] offset() -> Fraction
-    offset of track in seconds from start of stream
-    - [X] length() -> Fraction
-    length of track in seconds
-    may be None if unknown and length needs to be derived
 *** DONE SheetIndex
     - [X] @classmethod converted(sheet_index) -> SheetIndex
     - [X] __eq__(sheet_index) -> boolean
     - [X] number() -> index_number
     pre-gap is index_number 0
     - [X] offset() -> Fraction
-    offset of index in seconds from start of track
-*** TODO Update audiotools.cue.Cuesheet
+    offset of index in seconds from start of stream
+*** DONE Update audiotools.cue.Cuesheet
 *** TODO Update audiotools.toc.TOCFile
 *** TODO Update audiotools.flac.Flac_CUESHEET
 *** TODO Ensure non-image cuesheets are handled properly
     Given a non-image cuesheet and list of track lengths,
     it may be possible to convert a non-image cuesheet
     to an image cuesheet.
+*** TODO Update utilities
+    - [ ] track2cd
+    - [ ] trackcat
+    - [ ] tracksplit
+    - [ ] tracktag
 *** TODO Update functions/methods which take cuesheets
     - [ ] sheet_metadata_lookup
     - [ ] accuraterip_sheet_lookup
