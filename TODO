@@ -7041,7 +7041,7 @@
     offset of index in seconds from start of stream
 *** DONE Update audiotools.cue.Cuesheet
 *** DONE Update audiotools.toc.TOCFile
-*** TODO Update audiotools.flac.Flac_CUESHEET
+*** DONE Update audiotools.flac.Flac_CUESHEET
 *** TODO Ensure non-image cuesheets are handled properly
     Given a non-image cuesheet and list of track lengths,
     it may be possible to convert a non-image cuesheet

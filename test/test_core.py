@@ -4520,6 +4520,52 @@ class testtocfile(testcuesheet):
         self.read_sheet = read_tocfile
 
 
+class test_flac_cuesheet(testcuesheet):
+    def setUp(self):
+        self.audio_class = audiotools.FlacAudio
+
+    def __sheets__(self):
+        #unlike the regular testcuesheet files
+        #these only contain CD images
+
+        for sheet in testcuesheet.__sheets__(self):
+            if (sheet.image_formatted()):
+                yield sheet
+
+    @LIB_CUESHEET
+    def test_round_trip(self):
+        sample_rate = 44100
+
+        for sheet in self.__sheets__():
+            #tack on 1 minute to cuesheet's last index for total size
+            total_length = int((sheet[-1][-1].offset() + 60) * sample_rate)
+
+            #create dummy file
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + self.audio_class.SUFFIX)
+            temp_track = self.audio_class.from_pcm(
+                temp_file.name,
+                EXACT_SILENCE_PCM_Reader(pcm_frames=total_length,
+                                         sample_rate=sample_rate,
+                                         channels=2,
+                                         bits_per_sample=16,
+                                         channel_mask=0x3),
+                total_pcm_frames=total_length)
+
+            #set cuesheet
+            temp_track.set_cuesheet(sheet)
+
+            #get cuesheet
+            track_sheet = audiotools.open(temp_file.name).get_cuesheet()
+            self.assert_(track_sheet is not None)
+
+            #ensure they match
+            self.assertEqual(track_sheet, sheet)
+
+            #clean out dummy file
+            temp_file.close()
+
+
 #takes several 1-channel PCMReaders and combines them into a single PCMReader
 class PCM_Reader_Multiplexer:
     def __init__(self, pcm_readers, channel_mask):

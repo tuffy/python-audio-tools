@@ -4345,6 +4345,27 @@ class Sheet:
         else:
             raise KeyError(track_number)
 
+    def image_formatted(self):
+        """returns True if all tracks are for the same file
+        and have ascending index points"""
+
+        initial_filename = None
+        previous_index = None
+        for track in self:
+            if (initial_filename is None):
+                initial_filename = track.filename()
+            elif (initial_filename != track.filename()):
+                return False
+            for index in track:
+                if (previous_index is None):
+                    previous_index = index.offset()
+                elif (previous_index >= index.offset()):
+                    return False
+                else:
+                    previous_index = index.offset()
+        else:
+            return True
+
     def get_metadata(self):
         """returns MetaData of Sheet, or None
         this metadata often contains information such as catalog number
@@ -4427,8 +4448,7 @@ class SheetTrack:
 
     def __eq__(self, sheet_track):
         try:
-            for method in ["filename",
-                           "number",
+            for method in ["number",
                            "get_metadata",
                            "is_audio",
                            "pre_emphasis",

@@ -19,7 +19,8 @@
 
 
 from . import (AudioFile, MetaData, InvalidFile, Image,
-               WaveContainer, AiffContainer)
+               WaveContainer, AiffContainer,
+               Sheet, SheetTrack, SheetIndex)
 from .vorbiscomment import VorbisComment
 from .id3 import skip_id3v2_comment
 
@@ -736,7 +737,7 @@ class Flac_VORBISCOMMENT(VorbisComment):
                              for comment in self.comment_strings], 0))
 
 
-class Flac_CUESHEET:
+class Flac_CUESHEET(Sheet):
     BLOCK_ID = 5
 
     def __init__(self, catalog_number, lead_in_samples, is_cdda, tracks):
@@ -745,33 +746,34 @@ class Flac_CUESHEET:
         is_cdda is 1 if audio if from CDDA, 0 otherwise
         tracks is a list of Flac_CHESHEET_track objects"""
 
-        self.catalog_number = catalog_number
-        self.lead_in_samples = lead_in_samples
-        self.is_cdda = is_cdda
-        self.tracks = tracks
+        self.__catalog_number__ = catalog_number
+        self.__lead_in_samples__ = lead_in_samples
+        self.__is_cdda__ = is_cdda
+        self.__tracks__ = tracks
 
     def copy(self):
         """returns a duplicate of this metadata block"""
 
-        return Flac_CUESHEET(self.catalog_number,
-                             self.lead_in_samples,
-                             self.is_cdda,
-                             [track.copy() for track in self.tracks])
+        return Flac_CUESHEET(self.__catalog_number__,
+                             self.__lead_in_samples__,
+                             self.__is_cdda__,
+                             [track.copy() for track in self.__tracks__])
 
     def __eq__(self, cuesheet):
-        for attr in ["catalog_number",
-                     "lead_in_samples",
-                     "is_cdda",
-                     "tracks"]:
-            if ((not hasattr(cuesheet, attr)) or (getattr(self, attr) !=
-                                                  getattr(cuesheet, attr))):
-                return False
+        if (isinstance(cuesheet, Flac_CUESHEET)):
+            return ((self.__catalog_number__ ==
+                     cuesheet.__catalog_number__) and
+                    (self.__lead_in_samples__ ==
+                     cuesheet.__lead_in_samples__) and
+                    (self.__is_cdda__ == cuesheet.__is_cdda__) and
+                    (self.__tracks__ == cuesheet.__tracks__))
         else:
-            return True
+            return Sheet.__eq__(self, cuesheet)
 
     def __repr__(self):
         return ("Flac_CUESHEET(%s)" %
-                ",".join(["%s=%s" % (key, repr(getattr(self, key)))
+                ",".join(["%s=%s" % (key,
+                                     repr(getattr(self, "__" + key + "__")))
                           for key in ["catalog_number",
                                       "lead_in_samples",
                                       "is_cdda",
@@ -786,10 +788,10 @@ class Flac_CUESHEET:
         return linesep.decode('ascii').join(
             [u"  CUESHEET:",
              u"     catalog number = %s" %
-             (self.catalog_number.decode('ascii', 'replace')),
-             u"    lead-in samples = %d" % (self.lead_in_samples),
-             u"            is CDDA = %d" % (self.is_cdda)] +
-            [track.raw_info(4) for track in self.tracks])
+             (self.__catalog_number__.decode('ascii', 'replace')),
+             u"    lead-in samples = %d" % (self.__lead_in_samples__),
+             u"            is CDDA = %d" % (self.__is_cdda__)] +
+            [track.raw_info(4) for track in self.__tracks__])
 
     @classmethod
     def parse(cls, reader):
@@ -809,11 +811,11 @@ class Flac_CUESHEET:
         """writes this metadata block to a BitstreamWriter"""
 
         writer.build("128b64U1u2071p8u",
-                     (self.catalog_number,
-                      self.lead_in_samples,
-                      self.is_cdda,
-                      len(self.tracks)))
-        for track in self.tracks:
+                     (self.__catalog_number__,
+                      self.__lead_in_samples__,
+                      self.__is_cdda__,
+                      len(self.__tracks__)))
+        for track in self.__tracks__:
             track.build(writer)
 
     def size(self):
@@ -826,63 +828,72 @@ class Flac_CUESHEET:
         self.build(a)
         return a.bytes()
 
+    def __len__(self):
+        #don't include lead-out track
+        return len(self.__tracks__) - 1
+
+    def __getitem__(self, index):
+        #don't include lead-out track
+        return self.__tracks__[0:-1][index]
+
+    def get_metadata(self):
+        """returns MetaData of Sheet, or None
+        this metadata often contains information such as catalog number
+        or CD-TEXT values"""
+
+        catalog = self.__catalog_number__.rstrip(chr(0))
+        if (len(catalog) > 0):
+            from audiotools import MetaData
+
+            return MetaData(catalog=catalog.decode("ascii", "replace"))
+        else:
+            return None
+
+    def set_track(self, audiofile):
+        """sets the AudioFile this cuesheet belongs to
+
+        this is necessary becuase FLAC's CUESHEET block
+        doesn't store the file's sample rate
+        which is needed to convert sample offsets to seconds"""
+
+        for track in self:
+            track.set_track(audiofile)
+
     @classmethod
     def converted(cls, sheet, total_pcm_frames, sample_rate, is_cdda=True):
         """given a Sheet object, total PCM frames, sample rate and
         optional boolean indicating whether cuesheet is CD audio
         returns a Flac_CUESHEET object from that data"""
 
-        flac_tracks = []
-
-        #add tracks from sheet
-        for track in sheet.tracks():
-            flac_track_indexes = []
-            flac_track_offset = 0
-            #add indexes from track
-            for (i, index) in enumerate(track.indexes()):
-                if (i == 0):
-                    #first index
-                    flac_track_offset = int(index.offset() * sample_rate)
-
-                flac_track_indexes.append(
-                    Flac_CUESHEET_index(int(index.offset() * sample_rate) -
-                                        flac_track_offset,
-                                        index.number()))
-
-            #pad ISRC value, if present and necessary
-            if (track.ISRC() is not None):
-                flac_track_isrc = \
-                    track.ISRC() + chr(0) * (12 - len(track.ISRC()))
+        def pad(u, chars):
+            if (u is not None):
+                s = u.encode("ascii", "replace")
+                return s[0:chars] + (chr(0) * (chars - len(s)))
             else:
-                flac_track_isrc = chr(0) * 12
+                return chr(0) * chars
 
-            flac_tracks.append(
-                Flac_CUESHEET_track(flac_track_offset,
-                                    track.number(),
-                                    flac_track_isrc,
-                                    (0 if track.audio() else 1),
-                                    0,
-                                    flac_track_indexes))
-
-        #add lead-out track
-        flac_tracks.append(
-            Flac_CUESHEET_track(total_pcm_frames, 170, chr(0) * 12, 0, 0, []))
-
-        if (sheet.catalog() is None):
-            catalog_number = chr(0) * 128
+        metadata = sheet.get_metadata()
+        if (metadata is not None):
+            catalog_number = pad(metadata.catalog, 128)
         else:
-            catalog_number = \
-                sheet.catalog() + (chr(0) * (128 - len(sheet.catalog())))
+            catalog_number = chr(0) * 128
 
-        #assume CDDA-standard 2 second lead-in
-        #and is CD audio if file's specs match CD audio
-        return cls(catalog_number,
-                   sample_rate * 2,
-                   (1 if is_cdda else 0),
-                   flac_tracks)
+        #assume standard 2 second disc lead-in
+        #and append empty lead-out track
+        return cls(catalog_number=catalog_number,
+                   lead_in_samples=sample_rate * 2,
+                   is_cdda=(1 if is_cdda else 0),
+                   tracks=[Flac_CUESHEET_track.converted(t, sample_rate)
+                           for t in sheet] +
+                          [Flac_CUESHEET_track(offset=total_pcm_frames,
+                                               number=170,
+                                               ISRC=chr(0) * 12,
+                                               track_type=0,
+                                               pre_emphasis=0,
+                                               index_points=[])])
 
 
-class Flac_CUESHEET_track:
+class Flac_CUESHEET_track(SheetTrack):
     def __init__(self, offset, number, ISRC, track_type, pre_emphasis,
                  index_points):
         """offset is the track's first index point's offset
@@ -893,27 +904,63 @@ class Flac_CUESHEET_track:
         pre_emphasis is 0 for no, 1 for yes
         index_points is a list of Flac_CUESHEET_index objects"""
 
-        self.offset = offset
-        self.number = number
-        self.ISRC = ISRC
-        self.track_type = track_type
-        self.pre_emphasis = pre_emphasis
-        self.index_points = index_points
+        self.__offset__ = offset
+        self.__number__ = number
+        self.__ISRC__ = ISRC
+        self.__track_type__ = track_type
+        self.__pre_emphasis__ = pre_emphasis
+        self.__index_points__ = index_points
+        #the file this track belongs to
+        self.__filename__ = ""
+
+    @classmethod
+    def converted(cls, sheet_track, sample_rate):
+        """given a SheetTrack object and stream's sample rate,
+        returns a Flac_CUESHEET_track object"""
+
+        def pad(u, chars):
+            if (u is not None):
+                s = u.encode("ascii", "replace")
+                return s[0:chars] + (chr(0) * (chars - len(s)))
+            else:
+                return chr(0) * chars
+
+        if (len(sheet_track) > 0):
+            offset = int(sheet_track[0].offset() * sample_rate)
+        else:
+            #track with no index points
+            offset = 0
+
+        metadata = sheet_track.get_metadata()
+
+        if (metadata is not None):
+            ISRC = pad(metadata.ISRC, 12)
+        else:
+            ISRC = chr(0) * 12
+
+        return cls(offset=offset,
+                   number=sheet_track.number(),
+                   ISRC=ISRC,
+                   track_type=(0 if sheet_track.is_audio() else 1),
+                   pre_emphasis=(1 if sheet_track.pre_emphasis() else 0),
+                   index_points=[Flac_CUESHEET_index.converted(
+                       index, offset, sample_rate) for index in sheet_track])
 
     def copy(self):
         """returns a duplicate of this metadata block"""
 
-        return Flac_CUESHEET_track(self.offset,
-                                   self.number,
-                                   self.ISRC,
-                                   self.track_type,
-                                   self.pre_emphasis,
+        return Flac_CUESHEET_track(self.__offset__,
+                                   self.__number__,
+                                   self.__ISRC__,
+                                   self.__track_type__,
+                                   self.__pre_emphasis__,
                                    [index.copy() for index in
-                                    self.index_points])
+                                    self.__index_points__])
 
     def __repr__(self):
         return ("Flac_CUESHEET_track(%s)" %
-                ",".join(["%s=%s" % (key, repr(getattr(self, key)))
+                ",".join(["%s=%s" % (key,
+                                     repr(getattr(self, "__" + key + "__")))
                           for key in ["offset",
                                       "number",
                                       "ISRC",
@@ -929,28 +976,27 @@ class Flac_CUESHEET_track:
         lines = [((u"track  : %(number)3.d  " +
                   u"offset : %(offset)9.d  " +
                   u"ISRC : %(ISRC)s") %
-                 {"number": self.number,
-                  "offset": self.offset,
-                  "type": self.track_type,
-                  "pre_emphasis": self.pre_emphasis,
-                  "ISRC": self.ISRC.strip(chr(0)).decode('ascii', 'replace')})
-                 ] + [i.raw_info(1) for i in self.index_points]
+                 {"number": self.__number__,
+                  "offset": self.__offset__,
+                  "type": self.__track_type__,
+                  "pre_emphasis": self.__pre_emphasis__,
+                  "ISRC": self.__ISRC__.strip(chr(0)).decode('ascii',
+                                                            'replace')})
+                 ] + [i.raw_info(1) for i in self.__index_points__]
 
         return linesep.decode('ascii').join(
             [u" " * indent + line for line in lines])
 
     def __eq__(self, track):
-        for attr in ["offset",
-                     "number",
-                     "ISRC",
-                     "track_type",
-                     "pre_emphasis",
-                     "index_points"]:
-            if ((not hasattr(track, attr)) or (getattr(self, attr) !=
-                                               getattr(track, attr))):
-                return False
+        if (isinstance(track, Flac_CUESHEET_track)):
+            return ((self.__offset__ == track.__offset__) and
+                    (self.__number__ == track.__number__) and
+                    (self.__ISRC__ == track.__ISRC__) and
+                    (self.__track_type__ == track.__track_type__) and
+                    (self.__pre_emphasis__ == track.__pre_emphasis__) and
+                    (self.__index_points__ == track.__index_points__))
         else:
-            return True
+            return SheetTrack.__eq__(self, track)
 
     @classmethod
     def parse(cls, reader):
@@ -963,67 +1009,154 @@ class Flac_CUESHEET_track:
          pre_emphasis,
          index_points) = reader.parse("64U8u12b1u1u110p8u")
         return cls(offset, number, ISRC, track_type, pre_emphasis,
-                   [Flac_CUESHEET_index.parse(reader)
+                   [Flac_CUESHEET_index.parse(reader, offset)
                     for i in xrange(index_points)])
 
     def build(self, writer):
         """writes this cuesheet track to a BitstreamWriter"""
 
         writer.build("64U8u12b1u1u110p8u",
-                     (self.offset,
-                      self.number,
-                      self.ISRC,
-                      self.track_type,
-                      self.pre_emphasis,
-                      len(self.index_points)))
-        for index_point in self.index_points:
+                     (self.__offset__,
+                      self.__number__,
+                      self.__ISRC__,
+                      self.__track_type__,
+                      self.__pre_emphasis__,
+                      len(self.__index_points__)))
+        for index_point in self.__index_points__:
             index_point.build(writer)
 
+    def __len__(self):
+        return len(self.__index_points__)
 
-class Flac_CUESHEET_index:
-    def __init__(self, offset, number):
-        """offset is the index's offset from the track offset,
+    def __getitem__(self, index):
+        return self.__index_points__[index]
+
+    def number(self):
+        """return SheetTrack's number, starting from 1"""
+
+        return self.__number__
+
+    def get_metadata(self):
+        """returns SheetTrack's MetaData, or None"""
+
+        isrc = self.__ISRC__.rstrip(chr(0))
+        if (len(isrc) > 0):
+            from audiotools import MetaData
+
+            return MetaData(ISRC=isrc.decode("ascii", "replace"))
+        else:
+            return None
+
+    def filename(self):
+        """returns SheetTrack's filename as a string"""
+
+        return self.__filename__
+
+    def is_audio(self):
+        """returns whether SheetTrack contains audio data"""
+
+        return True
+
+    def pre_emphasis(self):
+        """returns whether SheetTrack has pre-emphasis"""
+
+        return self.__pre_emphasis__ == 1
+
+    def copy_permitted(self):
+        """returns whether copying is permitted"""
+
+        return False
+
+    def set_track(self, audiofile):
+        """sets this track's source as the given AudioFile"""
+
+        from os.path import basename
+
+        self.__filename__ = basename(audiofile.filename)
+        for index in self:
+            index.set_track(audiofile)
+
+
+class Flac_CUESHEET_index(SheetIndex):
+    def __init__(self, track_offset, offset, number, sample_rate=44100):
+        """track_offset is the index's track's offset in PCM frames
+
+        offset is the index's offset from the track offset,
         in PCM frames
         number is the index's number typically starting from 1
         (a number of 0 indicates a track pre-gap)"""
 
-        self.offset = offset
-        self.number = number
+        self.__track_offset__ = track_offset
+        self.__offset__ = offset
+        self.__number__ = number
+        self.__sample_rate__ = sample_rate
+
+    @classmethod
+    def converted(cls, sheet_index, track_offset, sample_rate):
+        """given a SheetIndex object, track_offset (in PCM frames)
+        and sample rate, returns a Flac_CUESHEET_index object"""
+
+        return cls(track_offset=track_offset,
+                   offset=((int(sheet_index.offset() * sample_rate)) -
+                           track_offset),
+                   number=sheet_index.number(),
+                   sample_rate=sample_rate)
 
     def copy(self):
         """returns a duplicate of this metadata block"""
 
-        return Flac_CUESHEET_index(self.offset, self.number)
+        return Flac_CUESHEET_index(self.__track_offset__,
+                                   self.__offset__,
+                                   self.__number__,
+                                   self.__sample_rate__)
 
     def __repr__(self):
-        return "Flac_CUESHEET_index(%s, %s)" % (repr(self.offset),
-                                                repr(self.number))
+        return "Flac_CUESHEET_index(%s, %s, %s, %s)" % \
+            (repr(self.__track_offset__),
+             repr(self.__offset__),
+             repr(self.__number__),
+             repr(self.__sample_rate__))
 
     def __eq__(self, index):
-        try:
-            return ((self.offset == index.offset) and
-                    (self.number == index.number))
-        except AttributeError:
-            return False
+        if (isinstance(index, Flac_CUESHEET_index)):
+            return ((self.__offset__ == index.__offset__) and
+                    (self.__number__ == index.__number__))
+        else:
+            return SheetIndex.__eq__(self, index)
 
     @classmethod
-    def parse(cls, reader):
+    def parse(cls, reader, track_offset):
         """returns this cuesheet index from a BitstreamReader"""
 
         (offset, number) = reader.parse("64U8u24p")
 
-        return cls(offset, number)
+        return cls(track_offset=track_offset,
+                   offset=offset,
+                   number=number)
 
     def build(self, writer):
         """writes this cuesheet index to a BitstreamWriter"""
 
-        writer.build("64U8u24p", (self.offset, self.number))
+        writer.build("64U8u24p", (self.__offset__, self.__number__))
 
     def raw_info(self, indent):
         return ((u" " * indent) +
                 u"index : %3.2d  offset : %9.9s" %
-                (self.number, u"+%d" % (self.offset)))
+                (self.__number__, u"+%d" % (self.__offset__)))
 
+    def number(self):
+        return self.__number__
+
+    def offset(self):
+        from fractions import Fraction
+
+        return Fraction(self.__track_offset__ + self.__offset__,
+                        self.__sample_rate__)
+
+    def set_track(self, audiofile):
+        """sets this index's source to the given AudioFile"""
+
+        self.__sample_rate__ = audiofile.sample_rate()
 
 class Flac_PICTURE(Image):
     BLOCK_ID = 6
@@ -1631,43 +1764,14 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         Raises IOError if a problem occurs when reading the file"""
 
-        def convert_track(track):
-            """converts Flac_CUESHEET_track object to SheetTrack object"""
-
-            from audiotools import SheetTrack
-
-            return SheetTrack(
-                track.number,
-                [convert_index(track, i) for i in track.index_points],
-                track.track_type == 0,
-                (track.ISRC if
-                 ((track.number != 170) and
-                  (len(track.ISRC.strip(chr(0))) > 0)) else None))
-
-        def convert_index(track, index):
-            from fractions import Fraction
-            from audiotools import SheetIndex
-
-            return SheetIndex(
-                index.number,
-                Fraction(track.offset + index.offset, self.sample_rate()))
-
         metadata = self.get_metadata()
         if (metadata is not None):
-            #get CUESHEET block from metadata, if any
             try:
                 cuesheet = metadata.get_block(Flac_CUESHEET.BLOCK_ID)
+                cuesheet.set_track(self)
+                return cuesheet
             except IndexError:
                 return None
-
-            #convert CUESHEET block to Sheet object
-            from audiotools import Sheet
-
-            return Sheet([convert_track(t) for t in cuesheet.tracks if
-                          t.number != 170],
-                         (cuesheet.catalog_number.rstrip(chr(0)) if
-                          len(cuesheet.catalog_number.rstrip(chr(0))) else
-                          None))
         else:
             return None
 
