@@ -113,5 +113,4 @@ def t_newline(t):
     t.lexer.lineno += t.value.count("\n")
 
 def t_error(t):
-    print "illegal character %s" % (repr(t.value[0]))
-    t.lexer.skip(1)
+    raise ValueError("illegal character %s" % (repr(t.value[0])))

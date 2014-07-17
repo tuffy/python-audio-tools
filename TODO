@@ -7040,7 +7040,7 @@
     - [X] offset() -> Fraction
     offset of index in seconds from start of stream
 *** DONE Update audiotools.cue.Cuesheet
-*** TODO Update audiotools.toc.TOCFile
+*** DONE Update audiotools.toc.TOCFile
 *** TODO Update audiotools.flac.Flac_CUESHEET
 *** TODO Ensure non-image cuesheets are handled properly
     Given a non-image cuesheet and list of track lengths,

@@ -4508,7 +4508,16 @@ class testcuesheet(unittest.TestCase):
             temp_sheet.write(converted.build())
             temp_sheet.flush()
             re_read = self.read_sheet(temp_sheet.name)
+            temp_sheet.close()
             self.assertEqual(re_read, sheet)
+
+
+class testtocfile(testcuesheet):
+    def setUp(self):
+        from audiotools.toc import TOCFile,read_tocfile,write_tocfile
+        self.suffix=".toc"
+        self.sheet_class = TOCFile
+        self.read_sheet = read_tocfile
 
 
 #takes several 1-channel PCMReaders and combines them into a single PCMReader

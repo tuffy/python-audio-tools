@@ -40,18 +40,36 @@ class TOCFile(Sheet):
                                     "cd_text"]])
 
     @classmethod
-    def converted(cls, sheet, filename="CDImage.wav"):
+    def converted(cls, sheet):
         """given a Sheet object, returns a TOCFile object"""
 
-        tracks = sheet.tracks()
+        tracks = list(sheet)
+        metadata = sheet.get_metadata()
+
+        if (metadata is not None):
+            if (metadata.catalog is not None):
+                catalog = encode_string(metadata.catalog)
+            else:
+                catalog = None
+
+            cd_text = CDText.from_disc_metadata(metadata)
+        else:
+            catalog = None
+            cd_text = None
 
         return cls(type="CD_DA",
                    tracks=[TOCTrack.converted(sheettrack=track,
-                                              next_sheettrack=next_track,
-                                              filename=filename)
+                                              next_sheettrack=next_track)
                            for (track, next_track) in
                            zip(tracks, tracks[1:] + [None])],
-                   catalog=sheet.catalog())
+                   catalog=catalog,
+                   cd_text=cd_text)
+
+    def __len__(self):
+        return len(self.__tracks__)
+
+    def __getitem__(self, index):
+        return self.__tracks__[index]
 
     def build(self):
         """returns the TOCFile as a string"""
@@ -66,105 +84,40 @@ class TOCFile(Sheet):
 
         return "\n".join(output) + "\n"
 
-    def track(self, track_number):
-        """given a track number (typically starting from 1)
-        returns a SheetTrack object or raises KeyError if not found"""
+    def get_metadata(self):
+        """returns MetaData of Sheet, or None
+        this metadata often contains information such as catalog number
+        or CD-TEXT values"""
 
-        if (track_number < 1):
-            raise KeyError(track_number)
+        from audiotools import MetaData
+
+        if ((self.__catalog__ is not None) and
+            (self.__cd_text__ is not None)):
+            metadata = self.__cd_text__.to_disc_metadata()
+            metadata.catalog = decode_string(self.__catalog__)
+            return metadata
+        elif (self.__catalog__ is not None):
+            return MetaData(catalog=decode_string(self.__catalog__))
+        elif (self.__cd_text__ is not None):
+            return self.__cd_text__.to_disc_metadata()
         else:
-            try:
-                return self.__tracks__[track_number - 1]
-            except IndexError:
-                raise KeyError(track_number)
-
-    def tracks(self):
-        """returns a list of all SheetTrack objects in the tocfile"""
-
-        return list(self.__tracks__)
-
-    def catalog(self):
-        """returns sheet's catalog number as a plain string, or None"""
-
-        return self.__catalog__
-
-    def image_formatted(self):
-        """returns True if the tocfile is formatted for a CD image
-        instead of for multiple individual tracks"""
-
-        raise NotImplementedError()
+            return None
 
 
 class TOCTrack(SheetTrack):
     def __init__(self, mode, flags, sub_channel_mode=None):
+        from audiotools import SheetIndex
+
         self.__number__ = None  # to be filled-in later
         self.__mode__ = mode
         self.__sub_channel_mode__ = sub_channel_mode
         self.__flags__ = flags
 
-    def __repr__(self):
-        return "TOCTrack(%s)" % \
-            ", ".join(["%s=%s" % (attr, repr(getattr(self, "__" + attr + "__")))
-                       for attr in ["number",
-                                    "mode",
-                                    "sub_channel_mode",
-                                    "flags"]])
-
-    def build(self):
-        """returns the TOCTrack as a string"""
-
-        output = [("TRACK %s" % (self.__mode__) if
-                   (self.__sub_channel_mode__ is None) else
-                   "TRACK %s %s" % (self.__mode__,
-                                    self.__sub_channel_mode__))]
-        output.extend([flag.build() for flag in self.__flags__])
-        output.append("")
-        return "\n".join(output)
-
-    @classmethod
-    def converted(cls, sheettrack, next_sheettrack, filename):
-        """given a SheetTrack object, returns a TOCTrack object"""
-
-        flags = []
-        if (sheettrack.ISRC() is not None):
-            flags.append(TOCFlag_ISRC(isrc=sheettrack.ISRC()))
-
-        indexes = sheettrack.indexes()
-        if (len(indexes) > 0):
-            flags.append(
-                TOCFlag_FILE(type="AUDIOFILE",
-                             filename=filename,
-                             start=indexes[0].offset(),
-                             length=((next_sheettrack.index(1).offset() -
-                                      sheettrack.index(1).offset())
-                                     if (next_sheettrack is not None) else
-                                     None)))
-            if (indexes[0].number() == 0):
-                #track contains pre-gap
-                flags.append(TOCFlag_START(indexes[1].offset() -
-                                           indexes[0].offset()))
-                for index in indexes[2:]:
-                    flags.append(TOCFlag_INDEX(index.offset()))
-            else:
-                #track contains no pre-gap
-                for index in indexes[1:]:
-                    flags.append(TOCFlag_INDEX(index.offset()))
-
-        return cls(mode=("AUDIO" if sheettrack.audio() else "MODE1"),
-                   flags=flags)
-
-
-    def indexes(self):
-        """returns a list of SheetIndex objects"""
-
-        from audiotools import SheetIndex
-
         indexes = []
         pre_gap = None
         file_start = None
         file_length = None
-
-        for flag in self.__flags__:
+        for flag in flags:
             if (isinstance(flag, TOCFlag_FILE)):
                 file_start = flag.start()
                 file_length = flag.length()
@@ -176,38 +129,155 @@ class TOCTrack(SheetTrack):
             elif (isinstance(flag, TOCFlag_INDEX)):
                 indexes.append(flag.index())
 
-        #FIXME - sanity-check contents of indexes, pre_gap and file_start
-
         if (pre_gap is None):
-            #first index point is 1
-            return ([SheetIndex(number=1, offset=file_start)] +
-                    [SheetIndex(number=i, offset=index)
-                     for (i,index) in enumerate(indexes, 2)])
+           #first index point is 1
+           self.__indexes__ = ([SheetIndex(number=1, offset=file_start)] +
+                               [SheetIndex(number=i, offset=index)
+                                for (i,index) in enumerate(indexes, 2)])
         else:
-            #first index point is 0
-            return ([SheetIndex(number=0, offset=file_start),
-                     SheetIndex(number=1, offset=file_start + pre_gap)] +
-                    [SheetIndex(number=i, offset=index)
-                     for (i,index) in enumerate(indexes, 2)])
+           #first index point is 0
+           self.__indexes__ = ([SheetIndex(number=0,
+                                           offset=file_start),
+                                SheetIndex(number=1,
+                                           offset=file_start + pre_gap)] +
+                               [SheetIndex(number=i, offset=index)
+                                for (i,index) in enumerate(indexes, 2)])
+
+    @classmethod
+    def converted(cls, sheettrack, next_sheettrack):
+        """given a SheetTrack object, returns a TOCTrack object"""
+
+        metadata = sheettrack.get_metadata()
+
+        flags = []
+
+        if (metadata is not None):
+            if (metadata.ISRC is not None):
+                flags.append(TOCFlag_ISRC(encode_string(metadata.ISRC)))
+            cdtext = CDText.from_track_metadata(metadata)
+            if (cdtext is not None):
+                flags.append(cdtext)
+
+        if (len(sheettrack) > 0):
+            if ((next_sheettrack is not None) and
+                (sheettrack.filename() == next_sheettrack.filename())):
+                length = (next_sheettrack.index(1).offset() -
+                          sheettrack.index(1).offset())
+            else:
+                length = 0
+
+            flags.append(TOCFlag_FILE(type="AUDIOFILE",
+                                      filename=sheettrack.filename(),
+                                      start=sheettrack[0].offset(),
+                                      length=length))
+            if (sheettrack[0].number() == 0):
+                #first index point is 0 so track contains pre-gap
+                flags.append(TOCFlag_START(sheettrack[1].offset() -
+                                           sheettrack[0].offset()))
+                for index in sheettrack[2:]:
+                    flags.append(TOCFlag_INDEX(index.offset()))
+            else:
+                #track contains no pre-gap
+                for index in sheettrack[1:]:
+                    flags.append(TOCFlag_INDEX(index.offset()))
+
+        return cls(mode=("AUDIO" if sheettrack.is_audio() else "MODE1"),
+                   flags=flags)
+
+    def first_flag(self, flag_class):
+        """returns the first flag in the list with the given class
+        or None if not found"""
+
+        for flag in self.__flags__:
+            if (isinstance(flag, flag_class)):
+                return flag
+        else:
+            return None
+
+    def all_flags(self, flag_class):
+        """returns a list of all flags in the list with the given class"""
+
+        return [f for f in self.__flags__ if isinstance(f, flag_class)]
+
+    def __repr__(self):
+        return "TOCTrack(%s)" % \
+            ", ".join(["%s=%s" % (attr, repr(getattr(self, "__" + attr + "__")))
+                       for attr in ["number",
+                                    "mode",
+                                    "sub_channel_mode",
+                                    "flags"]])
+
+    def __len__(self):
+        return len(self.__indexes__)
+
+    def __getitem__(self, index):
+        return self.__indexes__[index]
 
     def number(self):
         """returns track's number as an integer"""
 
         return self.__number__
 
-    def ISRC(self):
-        """returns track's ISRC value as a plain string, or None"""
+    def get_metadata(self):
+        """returns SheetTrack's MetaData, or None"""
 
-        for flag in self.__flags__:
-            if (isinstance(flag, TOCFlag_ISRC)):
-                return flag.__isrc__
+        from audiotools import MetaData
+
+        isrc = self.first_flag(TOCFlag_ISRC)
+        cd_text = self.first_flag(CDText)
+        if ((isrc is not None) and (cd_text is not None)):
+            metadata = cd_text.to_track_metadata()
+            metadata.ISRC = decode_string(isrc.isrc())
+            return metadata
+        elif (cd_text is not None):
+            return cd_text.to_track_metadata()
+        elif (isrc is not None):
+            return MetaData(ISRC=decode_string(isrc.isrc()))
         else:
             return None
 
-    def audio(self):
+    def filename(self):
+        """returns SheetTrack's filename as a string"""
+
+        filename = self.first_flag(TOCFlag_FILE)
+        if (filename is not None):
+            return filename.filename()
+        else:
+            return ""
+
+    def is_audio(self):
         """returns True if track contains audio data"""
 
         return self.__mode__ == "AUDIO"
+
+    def pre_emphasis(self):
+        """returns whether SheetTrack has pre-emphasis"""
+
+        pre_emphasis = self.first_flag(TOCFlag_PRE_EMPHASIS)
+        if (pre_emphasis is not None):
+            return pre_emphasis.pre_emphasis()
+        else:
+            return False
+
+    def copy_permitted(self):
+        """returns whether copying is permitted"""
+
+        copy = self.first_flag(TOCFlag_COPY)
+        if (copy is not None):
+            return copy.copy()
+        else:
+            return False
+
+    def build(self):
+        """returns the TOCTrack as a string"""
+
+        output = [("TRACK %s" % (self.__mode__) if
+                   (self.__sub_channel_mode__ is None) else
+                   "TRACK %s %s" % (self.__mode__,
+                                    self.__sub_channel_mode__))]
+        output.extend([flag.build() for flag in self.__flags__])
+        output.append("")
+        return "\n".join(output)
 
 
 class TOCFlag:
@@ -233,6 +303,9 @@ class TOCFlag_COPY(TOCFlag):
         TOCFlag.__init__(self, ["copy"])
         self.__copy__ = copy
 
+    def copy(self):
+        return self.__copy__
+
     def build(self):
         return "COPY" if self.__copy__ else "NO COPY"
 
@@ -240,6 +313,9 @@ class TOCFlag_PRE_EMPHASIS(TOCFlag):
     def __init__(self, pre_emphasis):
         TOCFlag.__init__(self, ["pre_emphasis"])
         self.__pre_emphasis__ = pre_emphasis
+
+    def pre_emphasis(self):
+        return self.__pre_emphasis__
 
     def build(self):
         return "PRE_EMPHASIS" if self.__pre_emphasis__ else "NO PRE_EMPHASIS"
@@ -259,6 +335,9 @@ class TOCFlag_ISRC(TOCFlag):
         TOCFlag.__init__(self, ["isrc"])
         self.__isrc__ = isrc
 
+    def isrc(self):
+        return self.__isrc__
+
     def build(self):
         return "ISRC %s" % (format_string(self.__isrc__))
 
@@ -269,6 +348,9 @@ class TOCFlag_FILE(TOCFlag):
         self.__filename__ = filename
         self.__start__ = start
         self.__length__ = length
+
+    def filename(self):
+        return self.__filename__
 
     def start(self):
         return self.__start__
@@ -322,6 +404,15 @@ class CDText:
             (repr(self.__languages__),
              repr(self.__language_map__))
 
+    def get(self, key, default):
+        for language in self.__languages__:
+            try:
+                return language[key]
+            except KeyError:
+                pass
+        else:
+            return default
+
     def build(self):
         output = ["CD_TEXT {"]
         if (self.__language_map__ is not None):
@@ -330,6 +421,81 @@ class CDText:
         output.extend([language.build() for language in self.__languages__])
         output.append("}")
         return "\n".join(output)
+
+    def to_disc_metadata(self):
+        from audiotools import MetaData
+
+        return MetaData(
+            album_name=decode_string(self.get("TITLE", None)),
+            performer_name=decode_string(self.get("PERFORMER", None)),
+            artist_name=decode_string(self.get("SONGWRITER", None)),
+            composer_name=decode_string(self.get("COMPOSER", None)),
+            comment=decode_string(self.get("MESSAGE", None)))
+
+    @classmethod
+    def from_disc_metadata(cls, metadata):
+        text_pairs = []
+        if (metadata is not None):
+            if (metadata.album_name is not None):
+                text_pairs.append(("TITLE",
+                                   encode_string(metadata.album_name)))
+            if (metadata.performer_name is not None):
+                text_pairs.append(("PERFORMER",
+                                   encode_string(metadata.performer_name)))
+            if (metadata.artist_name is not None):
+                text_pairs.append(("SONGWRITER",
+                                   encode_string(metadata.artist_name)))
+            if (metadata.composer_name is not None):
+                text_pairs.append(("COMPOSER",
+                                   encode_string(metadata.composer_name)))
+            if (metadata.comment is not None):
+                text_pairs.append(("MESSAGE",
+                                   encode_string(metadata.comment)))
+
+        if (len(text_pairs) > 0):
+            return cls(languages=[CDTextLanguage(language_id=0,
+                                                 text_pairs=text_pairs)],
+                       language_map=CDTextLanguageMap([(0, "EN")]))
+        else:
+            return None
+
+    def to_track_metadata(self):
+        from audiotools import MetaData
+
+        return MetaData(
+            track_name=decode_string(self.get("TITLE", None)),
+            performer_name=decode_string(self.get("PERFORMER", None)),
+            artist_name=decode_string(self.get("SONGWRITER", None)),
+            composer_name=decode_string(self.get("COMPOSER", None)),
+            comment=decode_string(self.get("MESSAGE", None)),
+            ISRC=decode_string(self.get("ISRC", None)))
+
+    @classmethod
+    def from_track_metadata(cls, metadata):
+        text_pairs = []
+        if (metadata is not None):
+            if (metadata.track_name is not None):
+                text_pairs.append(("TITLE",
+                                   encode_string(metadata.track_name)))
+            if (metadata.performer_name is not None):
+                text_pairs.append(("PERFORMER",
+                                   encode_string(metadata.performer_name)))
+            if (metadata.artist_name is not None):
+                text_pairs.append(("SONGWRITER",
+                                   encode_string(metadata.artist_name)))
+            if (metadata.composer_name is not None):
+                text_pairs.append(("COMPOSER",
+                                   encode_string(metadata.composer_name)))
+            if (metadata.comment is not None):
+                text_pairs.append(("MESSAGE",
+                                   encode_string(metadata.comment)))
+            #ISRC is handled in its own flag
+
+        if (len(text_pairs) > 0):
+            return cls(languages=[CDTextLanguage(language_id=0,
+                                                 text_pairs=text_pairs)])
+        else:
+            return None
 
 class CDTextLanguage:
     def __init__(self, language_id, text_pairs):
@@ -340,6 +506,16 @@ class CDTextLanguage:
         return "CDTextLanguage(language_id=%s, text_pairs=%s)" % \
             (repr(self.__id__),
              repr(self.__text_pairs__))
+
+    def __len__(self):
+        return len(self.__text_pairs__)
+
+    def __getitem__(self, key):
+        for (k, v) in self.__text_pairs__:
+            if (k == key):
+                return v
+        else:
+            raise KeyError(key)
 
     def build(self):
         output = ["LANGUAGE %d {" % (self.__id__)]
@@ -377,6 +553,17 @@ def format_timestamp(t):
 def format_binary(s):
     return "{%s}" % (",".join([str(int(c)) for c in s]))
 
+def decode_string(s):
+    if (s is not None):
+        #FIXME - determine what character encodings are supported
+        return s.decode("ascii", "replace")
+    else:
+        return None
+
+def encode_string(u):
+    #FIXME - determine what character encodings are supported
+    return u.encode("ascii", "replace")
+
 def read_tocfile(filename):
     """returns a Sheet from a TOC filename on disk
 
@@ -400,7 +587,7 @@ def read_tocfile(filename):
                        write_tables=0)
     try:
         return parser.parse(lexer=lexer)
-    except ValueError:
+    except ValueError, err:
         raise SheetException(str(err))
 
 
