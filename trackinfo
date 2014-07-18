@@ -137,19 +137,12 @@ if (__name__ == '__main__'):
                     indexes = {}  # track_number -> {index_number -> offset}
                     isrcs = {}    # track_number -> ISRC unicode
                     index_numbers = set([])
-                    for track in cuesheet.tracks():
+                    for track in cuesheet:
                         track_indexes = {}
-                        for index in track.indexes():
+                        for index in track:
                             track_indexes[index.number()] = index.offset()
                             index_numbers.add(index.number())
                         indexes[track.number()] = track_indexes
-                        track_isrc = track.ISRC()
-                        if (track_isrc is not None):
-                            isrcs[track.number()] = \
-                                track_isrc.strip(chr(0)).decode('ascii',
-                                                                'replace')
-                        else:
-                            isrcs[track.number()] = u""
 
                     index_numbers = list(index_numbers)
                     index_numbers.sort()
@@ -163,8 +156,6 @@ if (__name__ == '__main__'):
                         row.add_column(u"  ")
                         row.add_column(
                             _.LAB_TRACKINFO_CUESHEET_INDEX % (i), "right")
-                    row.add_column(u"  ")
-                    row.add_column(_.LAB_TRACKINFO_CUESHEET_ISRC, "right")
 
                     for t in sorted(indexes.keys()):
                         row = table.row()
@@ -176,12 +167,13 @@ if (__name__ == '__main__'):
                             if (i in track_indexes):
                                 index = track_indexes[i]
                                 row.add_column(
-                                    audiotools.build_timestamp(
-                                        int(index * 75)).decode('ascii'))
+                                    u"%d:%2.2d.%2.2d" %
+                                        (int(index) / 60,
+                                         int(index) % 60,
+                                         int(index * 75) % 75),
+                                    "right")
                             else:
                                 row.add_column(u"")
-                        row.add_column(u"")
-                        row.add_column(isrcs[i])
 
                     for row in table.format(msg.output_isatty()):
                         msg.output(row)

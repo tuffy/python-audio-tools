@@ -68,8 +68,7 @@ class DiscID:
         return cls(first_track_number=1,
                    last_track_number=len(sheet),
                    lead_out_offset=(total_pcm_frames * 75 // sample_rate) + 150,
-                   offsets=[int(t.index(1).offset() * 75 + 150)
-                            for t in sheet.tracks()])
+                   offsets=[int(t.index(1).offset() * 75 + 150) for t in sheet])
 
     def __repr__(self):
         return "DiscID(%s)" % \

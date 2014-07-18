@@ -70,7 +70,7 @@ class DiscID:
         returns a DiscID for that CD"""
 
         return cls(offsets=[int(t.index(1).offset() * 75 + 150)
-                            for t in sheet.tracks()],
+                            for t in sheet],
                    total_length=((total_pcm_frames // sample_rate) -
                                  int(sheet.track(1).index(1).offset())),
                    track_count=len(sheet))

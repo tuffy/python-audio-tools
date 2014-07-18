@@ -25,6 +25,7 @@ import audiotools.cue
 import audiotools.ui
 import audiotools.text as _
 import termios
+from fractions import Fraction
 
 
 def split(progress, source_audiofile, destination_filename,
@@ -287,13 +288,35 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_CUE_INVALID_FORMAT)
         sys.exit(1)
 
-    pcm_lengths = list(cuesheet.pcm_lengths(audiofile.total_frames(),
-                                            audiofile.sample_rate()))
-    if (pcm_lengths[-1] <= 0):
-        msg.error(_.ERR_TRACKSPLIT_OVERLONG_CUESHEET)
-        sys.exit(1)
+    cuesheet_offsets = [cuesheet.track_offset(t) for t in
+                        cuesheet.track_numbers()]
 
-    output_track_count = len(pcm_lengths)
+    cuesheet_lengths = [cuesheet.track_length(t) for t in
+                        cuesheet.track_numbers()]
+
+    audiofile_size = Fraction(audiofile.total_frames(),
+                              audiofile.sample_rate())
+
+    if (cuesheet_lengths[-1] is None):
+        #last track length unknown, so ensure there's enough room
+        #based on the total size of the source
+        last_track_size = (audiofile_size -
+                           sum(cuesheet_lengths[0:-1]) -
+                           cuesheet.pre_gap())
+        if (last_track_size >= 0):
+            cuesheet_lengths.pop()
+            cuesheet_lengths.append(last_track_size)
+        else:
+            msg.error(_.ERR_TRACKSPLIT_OVERLONG_CUESHEET)
+            sys.exit(1)
+    else:
+        #last track length is known, so ensure the size
+        #of all lengths and the pre-gap is the same size as the source
+        if ((cuesheet.pre_gap() + sum(cuesheet_lengths)) != audiofile_size):
+            msg.error(_.ERR_TRACKSPLIT_OVERLONG_CUESHEET)
+            sys.exit(1)
+
+    output_track_count = len(cuesheet)
 
     #use cuesheet to query metadata services for metadata choices
     try:
@@ -313,7 +336,7 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     #populate any empty Album-level metadata fields
-    #with those from original file
+    #with those from original file, if any
     album_metadata = audiofile.get_metadata()
     if (album_metadata is not None):
         album_fields = dict([(attr, field) for (attr, field) in
@@ -339,6 +362,24 @@ if (__name__ == '__main__'):
                     if (attr in album_fields):
                         setattr(m, attr, album_fields[attr])
 
+    #populate any remaining metadata fields
+    #with those from cuesheet, if any
+    cuesheet_metadata = cuesheet.get_metadata()
+    for c in metadata_choices:
+        for (track_metadata, sheet_track) in zip(c, cuesheet):
+            sheet_track_metadata = sheet_track.get_metadata()
+            for (attr, field) in track_metadata.empty_fields():
+                if ((sheet_track_metadata is not None) and
+                    (getattr(sheet_track_metadata, attr) is not None)):
+                    setattr(track_metadata,
+                            attr,
+                            getattr(sheet_track_metadata, attr))
+                elif ((cuesheet_metadata is not None) and
+                      (getattr(cuesheet_metadata, attr) is not None)):
+                    setattr(track_metadata,
+                            attr,
+                            getattr(cuesheet_metadata, attr))
+
     #update MetaData with command-line album-number/total, if given
     if (options.album_number != 0):
         for c in metadata_choices:
@@ -349,16 +390,6 @@ if (__name__ == '__main__'):
         for c in metadata_choices:
             for m in c:
                 m.album_total = options.album_total
-
-    #pull ISRC metadata from the cuesheet, if any
-    cuesheet_ISRCs = dict([(t.number(), t.ISRC()) for t in cuesheet.tracks()
-                           if t.ISRC() is not None])
-    for track_metadatas in metadata_choices:
-        for metadata in track_metadatas:
-            if ((metadata.ISRC is None) and (metadata.track_number in
-                                             cuesheet_ISRCs.keys())):
-                metadata.ISRC = cuesheet_ISRCs[metadata.track_number].decode(
-                    'ascii', 'replace')
 
     #decide which metadata and output options to use when splitting tracks
     if (options.interactive):
@@ -417,16 +448,15 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
     #perform actual track splitting and tagging
-    jobs = zip(pcm_lengths, output_tracks)
+    jobs = zip(cuesheet_offsets, cuesheet_lengths, output_tracks)
 
     queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
-    pcm_frames_offset = 0
 
     if (audiofile.seekable()):
-        for (pcm_frames, (output_class,
-                          output_filename,
-                          output_quality,
-                          output_metadata)) in jobs:
+        for (offset, length, (output_class,
+                              output_filename,
+                              output_quality,
+                              output_metadata)) in jobs:
             try:
                 audiotools.make_dirs(str(output_filename))
             except OSError, err:
@@ -445,10 +475,8 @@ if (__name__ == '__main__'):
                 destination_class=output_class,
                 compression=output_quality,
                 metadata=output_metadata,
-                pcm_frames_offset=pcm_frames_offset,
-                total_pcm_frames=pcm_frames)
-
-            pcm_frames_offset += pcm_frames
+                pcm_frames_offset=int(offset * audiofile.sample_rate()),
+                total_pcm_frames=int(length * audiofile.sample_rate()))
 
         try:
             encoded_tracks = audiotools.open_files(
@@ -490,10 +518,10 @@ if (__name__ == '__main__'):
         temp_blob.flush()
 
         #split the blob using multiple jobs
-        for (pcm_frames, (output_class,
-                          output_filename,
-                          output_quality,
-                          output_metadata)) in jobs:
+        for (offset, length, (output_class,
+                              output_filename,
+                              output_quality,
+                              output_metadata)) in jobs:
             try:
                 audiotools.make_dirs(str(output_filename))
             except OSError, err:
@@ -517,10 +545,8 @@ if (__name__ == '__main__'):
                 destination_class=output_class,
                 compression=output_quality,
                 metadata=output_metadata,
-                pcm_frames_offset=pcm_frames_offset,
-                total_pcm_frames=pcm_frames)
-
-            pcm_frames_offset += pcm_frames
+                pcm_frames_offset=int(offset * audiofile.sample_rate()),
+                total_pcm_frames=int(length * audiofile.sample_rate()))
 
         try:
             encoded_tracks = audiotools.open_files(

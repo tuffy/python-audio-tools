@@ -50,10 +50,15 @@ def p_cuesheet_item(t):
                      | cdtextfile'''
     t[0] = t[1]
 
-def p_catalog(t):
-    '''catalog : CATALOG NUMBER
-               | CATALOG STRING'''
-    t[0] = ("catalog", str(t[2]))
+def p_catalog_string(t):
+    'catalog : CATALOG STRING'
+
+    t[0] = ("catalog", t[2])
+
+def p_catalog_number(t):
+    'catalog : CATALOG NUMBER'
+
+    t[0] = ("catalog", "%13.13d" % (t[2]))
 
 def p_title(t):
     'title : TITLE STRING'

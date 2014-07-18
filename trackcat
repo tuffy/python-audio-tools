@@ -197,6 +197,8 @@ if (__name__ == '__main__'):
 
     #if embedding a cuesheet, try to read it before doing any work
     if (options.cuesheet is not None):
+        from fractions import Fraction
+
         try:
             cuesheet = audiotools.read_sheet(options.cuesheet)
 
@@ -204,11 +206,19 @@ if (__name__ == '__main__'):
             if (not cuesheet.image_formatted()):
                 msg.error(_.ERR_CUE_INVALID_FORMAT)
                 sys.exit(1)
-            elif (list(cuesheet.pcm_lengths(
-                    sum([f.total_frames() for f in audiofiles]),
-                    audiofiles[0].sample_rate()))[-1] < 0):
-                msg.error(_.ERR_TRACKSPLIT_OVERLONG_CUESHEET)
+
+            if (len(cuesheet) != len(audiofiles)):
+                msg.error(_.ERR_CUE_INSUFFICIENT_TRACKS)
                 sys.exit(1)
+
+            for (input_track, cuesheet_track) in zip(audiofiles,
+                                                     cuesheet.track_numbers()):
+                track_length = cuesheet.track_length(cuesheet_track)
+                if ((track_length is not None) and
+                    (track_length != Fraction(input_track.total_frames(),
+                                              input_track.sample_rate()))):
+                    msg.error(_.ERR_CUE_LENGTH_MISMATCH % (cuesheet_track))
+                    sys.exit(1)
 
             opened_files.add(audiotools.Filename(options.cuesheet))
         except audiotools.SheetException, err:
@@ -324,14 +334,35 @@ if (__name__ == '__main__'):
         msg, unicode(output_filename))
 
     try:
+        if ((cuesheet is not None) and (cuesheet.pre_gap() > 0)):
+            #prepend null pre-gap samples to start of stream
+            #if indicated by cuesheet
+
+            from audiotools.decoders import SameSample
+
+            pre_gap_frames = int(cuesheet.pre_gap() *
+                                 audiofiles[0].sample_rate())
+            pcmreader = audiotools.PCMCat(
+                [SameSample(sample=0,
+                            total_pcm_frames=pre_gap_frames,
+                            sample_rate=audiofiles[0].sample_rate(),
+                            channels=audiofiles[0].channels(),
+                            channel_mask=int(audiofiles[0].channel_mask()),
+                            bits_per_sample=audiofiles[0].bits_per_sample())] +
+                [af.to_pcm() for af in audiofiles])
+            total_pcm_frames = (pre_gap_frames +
+                                sum([af.total_frames() for af in audiofiles]))
+        else:
+            pcmreader = audiotools.PCMCat([af.to_pcm() for af in audiofiles])
+            total_pcm_frames = sum([af.total_frames() for af in audiofiles])
+
         encoded = output_class.from_pcm(
             str(output_filename),
-            audiotools.PCMReaderProgress(
-                audiotools.PCMCat([af.to_pcm() for af in audiofiles]),
-                sum([af.total_frames() for af in audiofiles]),
-                progress.update),
+            audiotools.PCMReaderProgress(pcmreader,
+                                         total_pcm_frames,
+                                         progress.update),
             output_quality,
-            total_pcm_frames=sum([af.total_frames() for af in audiofiles]))
+            total_pcm_frames=total_pcm_frames)
 
         encoded.set_metadata(metadata)
 

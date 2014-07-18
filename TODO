@@ -7051,16 +7051,17 @@
     should have that gap removed when split
     and re-added when concatenating them back together
     based on the cuesheet contents.
-    - [ ] update tracksplit
-    - [ ] update trackcat
+    - [X] update tracksplit
+    - [X] update trackcat
     - [ ] add unit tests
 *** TODO Update utilities
-    - [ ] trackcat
-    - [ ] tracksplit
+    - [X] trackcat
+    - [X] tracksplit
     - [ ] track2cd
     - [ ] tracktag
+    - [X] trackinfo
 *** TODO Update functions/methods which take cuesheets
-    - [ ] sheet_metadata_lookup
+    - [X] sheet_metadata_lookup
     - [ ] accuraterip_sheet_lookup
 *** DONE Update documentation
 *** TODO Update unit tests
