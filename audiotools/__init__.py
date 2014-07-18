@@ -4330,7 +4330,7 @@ class Sheet:
         except (AttributeError, TypeError):
             return False
 
-    def track_numbers():
+    def track_numbers(self):
         """returns a list of all track numbers in the sheet"""
 
         return [track.number() for track in self]
@@ -4344,6 +4344,43 @@ class Sheet:
                 return track
         else:
             raise KeyError(track_number)
+
+    def pre_gap(self):
+        """returns the pre-gap of the entire disc
+        as a Fraction number of seconds"""
+
+        indexes = self.track(1)
+        if ((indexes[0].number() == 0) and (indexes[1].number() == 1)):
+            return (indexes[1].offset() - indexes[0].offset())
+        else:
+            from fractions import Fraction
+            return Fraction(0, 1)
+
+    def track_offset(self, track_number):
+        """given a track_number (typically starting from 1)
+        returns the offset to that track from the start of the stream
+        as a Fraction number of seconds
+
+        may raise KeyError if the track is not found"""
+
+        return self.track(track_number).index(1).offset()
+
+    def track_length(self, track_number):
+        """given a track_number (typically starting from 1)
+        returns the length of the track as a Fraction number of seconds
+        or None if the length is to the remainder of the stream
+        (typically for the last track in the album)
+
+        may raise KeyError if the track is not found"""
+
+        initial_track = self.track(track_number)
+        if ((track_number + 1) in self.track_numbers()):
+            next_track = self.track(track_number + 1)
+            return (next_track.index(1).offset() -
+                    initial_track.index(1).offset())
+        else:
+            #no next track, so total length is unknown
+            return None
 
     def image_formatted(self):
         """returns True if all tracks are for the same file

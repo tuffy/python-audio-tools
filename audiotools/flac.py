@@ -836,6 +836,30 @@ class Flac_CUESHEET(Sheet):
         #don't include lead-out track
         return self.__tracks__[0:-1][index]
 
+    def track_length(self, track_number):
+        """given a track_number (typically starting from 1)
+        returns the length of the track as a Fraction number of seconds
+        or None if the length is to the remainder of the stream
+        (typically for the last track in the album)
+
+        may raise KeyError if the track is not found"""
+
+        initial_track = self.track(track_number)
+        if ((track_number + 1) in self.track_numbers()):
+            next_track = self.track(track_number + 1)
+            return (next_track.index(1).offset() -
+                    initial_track.index(1).offset())
+        else:
+            #getting track length of final track
+
+            from fractions import Fraction
+
+            lead_out_track = self.__tracks__[-1]
+            final_index = initial_track.index(1)
+            return (Fraction(lead_out_track.__offset__,
+                             final_index.__sample_rate__) -
+                    final_index.offset())
+
     def get_metadata(self):
         """returns MetaData of Sheet, or None
         this metadata often contains information such as catalog number

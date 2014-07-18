@@ -1549,6 +1549,33 @@ when burning a set of tracks back to CD.
    returns a :class:`SheetTrack` object with that number.
    Raises :exc:`KeyError` if the track cannot be found.
 
+.. method:: Sheet.pre_gap()
+
+   Returns the disc's pre-gap
+   (the amount of empty samples before the first track)
+   as a :class:`Fraction` number of seconds.
+   This number is often zero.
+
+.. method:: Sheet.track_offset(track_number)
+
+   Given a track number (often starting from 1),
+   returns the offset to that track as a :class:`Fraction` number
+   of seconds.
+
+   May raise :exc:`KeyError` if the track cannot be found.
+
+.. method:: Sheet.track_length(track_number)
+
+   Given a track number (often starting from 1),
+   returns the length of that track as a :class:`Fraction` number
+   of seconds.
+
+   May return ``None`` if the track is to use the remainder
+   of the samples in the stream.
+   This is typical of the last track in an album.
+
+   May raise :exc:`KeyError` if the track cannot be found.
+
 .. method:: Sheet.get_metadata()
 
    Returns a :class:`MetaData` object containing metadata

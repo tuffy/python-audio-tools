@@ -78,7 +78,8 @@ def p_language_mapping(t):
     t[0] = (t[1], t[3])
 
 def p_language(t):
-    '''language : EN'''
+    '''language : EN
+                | NUMBER'''
 
     #FIXME - find list of supported languages
     t[0] = t[1]
@@ -124,7 +125,7 @@ def p_cd_text_item(t):
     t[0] = (t[1], t[2])
 
 def p_binary(t):
-    '''binary : START_BLOCK bytes START_BLOCK'''
+    '''binary : START_BLOCK bytes END_BLOCK'''
     t[0] = "".join(map(chr, t[2]))
 
 def p_bytes(t):
@@ -133,7 +134,7 @@ def p_bytes(t):
     if (len(t) == 2):
         t[0] = [t[1]]
     else:
-        t[0] = [t[1]] + t[2]
+        t[0] = [t[1]] + t[3]
 
 def p_tracks(t):
     '''tracks : track

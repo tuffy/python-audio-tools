@@ -27,10 +27,6 @@ import audiotools.text as _
 import termios
 
 
-def has_embedded_cuesheet(audiofile):
-    return audiofile.get_cuesheet() is not None
-
-
 def split(progress, source_audiofile, destination_filename,
           destination_class, compression, metadata,
           pcm_frames_offset, total_pcm_frames):
@@ -282,9 +278,8 @@ if (__name__ == '__main__'):
             msg.error(unicode(err))
             sys.exit(1)
     else:
-        if (has_embedded_cuesheet(audiofile)):
-            cuesheet = audiofile.get_cuesheet()
-        else:
+        cuesheet = audiofile.get_cuesheet()
+        if (cuesheet is None):
             msg.error(_.ERR_TRACKSPLIT_NO_CUESHEET)
             sys.exit(1)
 

@@ -50,7 +50,7 @@ tokens = ["REM",
           "STRING"] + RESERVED.values()
 
 def t_REM(t):
-    r"REM .+"
+    r"REM .*"
     pass
 
 def t_ISRC(t):
@@ -89,7 +89,7 @@ def t_ID(t):
     return t
 
 def t_STRING(t):
-    r'\".+?\"'
+    r'\".*?\"'
     t.value = t.value[1:-1]
     return t
 
