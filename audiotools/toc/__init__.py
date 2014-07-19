@@ -40,7 +40,7 @@ class TOCFile(Sheet):
                                     "cd_text"]])
 
     @classmethod
-    def converted(cls, sheet):
+    def converted(cls, sheet, filename=None):
         """given a Sheet object, returns a TOCFile object"""
 
         tracks = list(sheet)
@@ -59,7 +59,8 @@ class TOCFile(Sheet):
 
         return cls(type="CD_DA",
                    tracks=[TOCTrack.converted(sheettrack=track,
-                                              next_sheettrack=next_track)
+                                              next_sheettrack=next_track,
+                                              filename=filename)
                            for (track, next_track) in
                            zip(tracks, tracks[1:] + [None])],
                    catalog=catalog,
@@ -144,7 +145,7 @@ class TOCTrack(SheetTrack):
                                 for (i,index) in enumerate(indexes, 2)])
 
     @classmethod
-    def converted(cls, sheettrack, next_sheettrack):
+    def converted(cls, sheettrack, next_sheettrack, filename=None):
         """given a SheetTrack object, returns a TOCTrack object"""
 
         metadata = sheettrack.get_metadata()
@@ -161,15 +162,18 @@ class TOCTrack(SheetTrack):
         if (len(sheettrack) > 0):
             if ((next_sheettrack is not None) and
                 (sheettrack.filename() == next_sheettrack.filename())):
-                length = (next_sheettrack.index(1).offset() -
-                          sheettrack.index(1).offset())
+                length = (next_sheettrack[0].offset() -
+                          sheettrack[0].offset())
             else:
-                length = 0
+                length = None
 
-            flags.append(TOCFlag_FILE(type="AUDIOFILE",
-                                      filename=sheettrack.filename(),
-                                      start=sheettrack[0].offset(),
-                                      length=length))
+            flags.append(TOCFlag_FILE(
+                type="AUDIOFILE",
+                filename=(filename if
+                          filename is not None else
+                          sheettrack.filename()),
+                start=sheettrack[0].offset(),
+                length=length))
             if (sheettrack[0].number() == 0):
                 #first index point is 0 so track contains pre-gap
                 flags.append(TOCFlag_START(sheettrack[1].offset() -

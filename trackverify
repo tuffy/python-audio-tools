@@ -474,22 +474,36 @@ if (__name__ == '__main__'):
                     ar_results = audiotools.accuraterip_sheet_lookup(
                         sheet, total_frames, sample_rate)
 
-                    for (i, pcm_frames) in enumerate(sheet.pcm_lengths(
-                            total_frames, sample_rate), 1):
+                    for track_num in sheet.track_numbers():
+
                         filename = "%s - track %2.2d" % \
-                            (tracks[0].filename, i)
+                            (tracks[0].filename, track_num)
+
+                        offset = int(sheet.track_offset(track_num) *
+                                     sample_rate)
+
+                        if (sheet.track_length(track_num) is not None):
+                            length = int(sheet.track_length(track_num) *
+                                         sample_rate)
+                        elif (track_num > 1):
+                            length = (tracks[0].total_frames() -
+                                      int(sheet.track_offset(track_num - 1) *
+                                          sample_rate))
+                        else:
+                            length = (tracks[0].total_frames() -
+                                      int(sheet.pre_gap() * sample_rate))
+
                         queue.execute(
                             function=accuraterip_image_checksum,
                             progress_text=filename,
                             completion_output=accuraterip_display_result,
                             track=tracks[0],
-                            is_first=(i == 1),
-                            is_last=(i == len(sheet)),
-                            ar_matches=ar_results.get(i, []),
+                            is_first=(track_num == 1),
+                            is_last=(track_num == len(sheet)),
+                            ar_matches=ar_results.get(track_num, []),
                             displayed_filename=filename,
-                            pcm_frames_offset=int(
-                                sheet.track(i).index(1).offset() * sample_rate),
-                            total_pcm_frames=pcm_frames)
+                            pcm_frames_offset=offset,
+                            total_pcm_frames=length)
                 else:
                     #process each track as if it were part of a CD
                     tracks = audiotools.sorted_tracks(tracks)

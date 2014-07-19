@@ -26,6 +26,8 @@ import subprocess
 import audiotools
 import audiotools.toc
 import audiotools.text as _
+from fractions import Fraction
+from audiotools.decoders import SameSample
 
 MAX_CPUS = audiotools.MAX_JOBS
 
@@ -282,27 +284,51 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
         try:
-            toc = audiotools.read_sheet(options.cuesheet)
+            cuesheet = audiotools.read_sheet(options.cuesheet)
         except audiotools.SheetException, err:
             msg.error(unicode(err))
             sys.exit(1)
 
-        if (not toc.image_formatted()):
+        #ensure sheet is formatted for CD images
+        if (not cuesheet.image_formatted()):
             msg.error(_.ERR_CUE_INVALID_FORMAT)
             sys.exit(1)
 
-        temptoc = tempfile.NamedTemporaryFile(suffix='.toc')
+        #ensure sheet fits the tracks it's given
+        if (len(cuesheet) != len(audiofiles)):
+            msg.error(_.ERR_CUE_INSUFFICIENT_TRACKS)
+            sys.exit(1)
+
+        for (input_track, cuesheet_track) in zip(audiofiles,
+                                                 cuesheet.track_numbers()):
+            track_length = cuesheet.track_length(cuesheet_track)
+            if ((track_length is not None) and
+                (track_length != Fraction(input_track.total_frames(),
+                                          input_track.sample_rate()))):
+                msg.error(_.ERR_CUE_LENGTH_MISMATCH % (cuesheet_track))
+                sys.exit(1)
+
+        tempcue = tempfile.NamedTemporaryFile(suffix='.cue')
         tempwav = tempfile.NamedTemporaryFile(suffix='.wav')
 
-        audiotools.toc.write_tocfile(toc, tempwav.name, temptoc)
-        temptoc.flush()
+        audiotools.cue.write_cuesheet(cuesheet, tempwav.name, tempcue)
+        tempcue.flush()
 
-        input_frames = sum([af.total_frames() for af in audiofiles])
+        input_frames = (int(audiofiles[0].sample_rate() * cuesheet.pre_gap()) +
+                        sum([af.total_frames() for af in audiofiles]))
 
         if (((audiofiles[0].sample_rate() == 44100) and
              (audiofiles[0].channels() == 2) and
              (audiofiles[0].bits_per_sample() == 16))):
-            pcmreader = audiotools.PCMCat([af.to_pcm() for af in audiofiles])
+            pcmreader = audiotools.PCMCat(
+                [SameSample(
+                    sample=0,
+                    total_pcm_frames=int(44100 * cuesheet.pre_gap()),
+                    sample_rate=44100,
+                    channels=2,
+                    channel_mask=0x3,
+                    bits_per_sample=16)] +
+                [af.to_pcm() for af in audiofiles])
             output_frames = input_frames
         else:
             #this presumes a cuesheet and non-CD audio
@@ -310,6 +336,13 @@ if (__name__ == '__main__'):
             #envision a case in which this happens
             pcmreader = audiotools.PCMConverter(
                 pcmreader=audiotools.PCMCat(
+                    [SameSample(
+                        sample=0,
+                        total_pcm_frames=int(audiofiles[0].sample_rate() *
+                                             cuesheet.pre_gap()),
+                        channels=audiofiles[0].channels(),
+                        channel_mask=int(audiofiles[0].channel_mask()),
+                        bits_per_sample=audiofiles[0].bits_per_sample())] +
                     [af.to_pcm() for af in audiofiles]),
                 sample_rate=44100,
                 channels=2,
@@ -355,7 +388,7 @@ if (__name__ == '__main__'):
         cdrdao_args.append("--speed")
         cdrdao_args.append(str(options.speed))
 
-        cdrdao_args.append(temptoc.name)
+        cdrdao_args.append(tempcue.name)
 
         if (options.verbosity != 'quiet'):
             subprocess.call(cdrdao_args)
@@ -367,7 +400,7 @@ if (__name__ == '__main__'):
             sub.wait()
             devnull.close()
 
-        temptoc.close()
+        tempcue.close()
         tempwav.close()
     else:
         #writing tracks without a cuesheet,

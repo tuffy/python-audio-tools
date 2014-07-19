@@ -204,7 +204,7 @@ class DiscID:
 
         return cls(track_numbers=range(1, len(sheet) + 1),
                    track_offsets=[(int(t.index(1).offset() * 75))
-                                  for t in sheet.tracks()],
+                                  for t in sheet],
                    lead_out_offset=total_pcm_frames * 75 // sample_rate,
                    freedb_disc_id=FDiscID.from_sheet(sheet,
                                                      total_pcm_frames,
