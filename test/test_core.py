@@ -4566,6 +4566,21 @@ class test_flac_cuesheet(testcuesheet):
             temp_file.close()
 
 
+class test_oggflac_cuesheet(test_flac_cuesheet):
+    def setUp(self):
+        self.audio_class = audiotools.OggFlacAudio
+
+
+class test_tta_cuesheet(test_flac_cuesheet):
+    def setUp(self):
+        self.audio_class = audiotools.TrueAudio
+
+
+class test_wavpack_cuesheet(test_flac_cuesheet):
+    def setUp(self):
+        self.audio_class = audiotools.WavPackAudio
+
+
 #takes several 1-channel PCMReaders and combines them into a single PCMReader
 class PCM_Reader_Multiplexer:
     def __init__(self, pcm_readers, channel_mask):

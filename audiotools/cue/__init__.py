@@ -48,7 +48,7 @@ class Cuesheet(Sheet):
                                     "cdtextfile"]])
 
     @classmethod
-    def converted(cls, sheet):
+    def converted(cls, sheet, filename=None):
         """given a Sheet object, returns a Cuesheet object"""
 
         def group_tracks(tracks):
@@ -70,10 +70,12 @@ class Cuesheet(Sheet):
 
         metadata = sheet.get_metadata()
 
-        args = {"files":[File(filename=filename,
-                               file_type="WAVE",
-                               tracks=map(Track.converted, tracks))
-                          for (filename, tracks) in group_tracks(sheet)]}
+        args = {"files":[File(filename=(track_filename if
+                                        filename is None else
+                                        filename),
+                              file_type="WAVE",
+                              tracks=map(Track.converted, tracks))
+                          for (track_filename, tracks) in group_tracks(sheet)]}
 
         if (metadata is not None):
            args["catalog"] = encode_string(metadata.catalog)
@@ -393,6 +395,8 @@ def read_cuesheet(filename):
 
     raises SheetException if some error occurs reading or parsing the file
     """
+
+    from audiotools import SheetException
 
     try:
         return read_cuesheet_string(open(filename, "rb").read())

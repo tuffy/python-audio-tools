@@ -570,6 +570,17 @@ def read_tocfile(filename):
     raises TOCException if some error occurs reading or parsing the file
     """
 
+    try:
+        return read_tocfile_string(open(filename, "rb").read())
+    except IOError:
+        raise SheetException("unable to open file")
+
+
+def read_tocfile_string(tocfile):
+    """given a plain string of .toc data, returns a TOCFile object
+
+    raises SheetException if some error occurs parsing the file"""
+
     import audiotools.ply.lex as lex
     import audiotools.ply.yacc as yacc
     from audiotools.ply.yacc import NullLogger
@@ -577,10 +588,7 @@ def read_tocfile(filename):
     import audiotools.toc.yaccrules
 
     lexer = lex.lex(module=audiotools.toc.tokrules)
-    try:
-        lexer.input(open(filename, "rb").read())
-    except IOError:
-        raise TOCException("unable to open file")
+    lexer.input(tocfile)
     parser = yacc.yacc(module=audiotools.toc.yaccrules,
                        debug=0,
                        errorlog=NullLogger(),

@@ -31,7 +31,8 @@ import test_streams
 from hashlib import md5
 
 from test import (parser, BLANK_PCM_Reader, Combinations, Possibilities,
-                  EXACT_BLANK_PCM_Reader, RANDOM_PCM_Reader,
+                  EXACT_BLANK_PCM_Reader, EXACT_SILENCE_PCM_Reader,
+                  RANDOM_PCM_Reader, EXACT_RANDOM_PCM_Reader,
                   TEST_COVER1, TEST_COVER2, TEST_COVER3, TEST_COVER4,
                   HUGE_BMP)
 
@@ -2606,6 +2607,67 @@ class trackcat(UtilTest):
                 os.unlink(cuesheet_file)
 
 
+class trackcat_pre_gap(UtilTest):
+    @UTIL_TRACKCAT
+    def test_pre_gap(self):
+        pre_gap_size = 19404
+        track_lengths = [21741300, 13847400, 22402800, 14420700,
+                         10760400, 17904600, 13715100, 17022600,
+                         30781800, 28312200]
+        cuesheet_data = \
+"""eJxt0N1KwzAUwPH7Qt/h0AcYOUn6lbvQRgjaDeqc3lYn6IVOcJv69p7MgU12IFd/zq+nyegG6P1t
+53uwFQrXCptnI8VuNQxuuYbCfU9Pe3vYvu663ccPHHEhHlWRZ1f+xkFx+Jzet/uX57fF13Qs4N5u
+XJ4BrEfbXYNAsHe9X4UC4Je9ewAh6JjTiTKes1IzLxlPg41BFQ8qdhFNSX0enPmQ69hr1ks0JS3S
+iQ+5jH3J+9pIulGZesoy9hXrFZ7+P90fchX7mveNEe3l/Sljsr9hvaaHwksfcvL+Le9bo2vGU24j
+j4L1Ff4vmvmQ/z77C+FzkPA=""".decode("base64").decode("zlib")
+
+        #write individual tracks to disk along with track numbers
+        temp_tracks_f = [tempfile.NamedTemporaryFile(suffix=".aiff")
+                         for i in xrange(len(track_lengths))]
+        temp_tracks = [audiotools.AiffAudio.from_pcm(
+            temp_f.name,
+            EXACT_RANDOM_PCM_Reader(length),
+            total_pcm_frames=length)
+                      for (temp_f, length) in zip(temp_tracks_f, track_lengths)]
+
+        for (track_number, temp_track) in enumerate(temp_tracks, 1):
+            temp_track.set_metadata(
+                audiotools.MetaData(track_number=track_number))
+
+        #write cuesheet to disk
+        temp_cue_f = tempfile.NamedTemporaryFile(suffix=".cue")
+        temp_cue_f.write(cuesheet_data)
+        temp_cue_f.flush()
+
+        temp_output_f = tempfile.NamedTemporaryFile(suffix=".wav")
+
+        #concatenate files to image using cuesheet
+        self.assertEqual(self.__run_app__(["trackcat",
+            "--cue", temp_cue_f.name,
+            "-o", temp_output_f.name] +
+            [temp_track_f.name for temp_track_f in temp_tracks_f] +
+            ["--no-musicbrainz", "--no-freedb"]), 0)
+
+        output_track = audiotools.open(temp_output_f.name)
+
+        #ensure tracks in image match expected offset and data
+        for (i, track, expected_length) in zip(range(len(track_lengths)),
+                                               temp_tracks,
+                                               track_lengths):
+            offset = pre_gap_size + sum(track_lengths[0:i])
+            pcmreader = output_track.to_pcm()
+            self.assertEqual(pcmreader.seek(offset), offset)
+            self.assertEqual(audiotools.pcm_frame_cmp(
+                track.to_pcm(),
+                audiotools.PCMReaderHead(pcmreader, expected_length)),
+                             None)
+
+        #cleanup temporary files
+        for temp_track_f in temp_tracks_f:
+            temp_track_f.close()
+        temp_cue_f.close()
+
+
 class trackcmp(UtilTest):
     @UTIL_TRACKCMP
     def setUp(self):
@@ -4977,6 +5039,72 @@ class tracksplit(UtilTest):
         self.__check_error__(ERR_TRACKSPLIT_OVERLONG_CUESHEET)
 
         #FIXME? - check for broken cue sheet output?
+
+class tracksplit_pre_gap(UtilTest):
+    @UTIL_TRACKSPLIT
+    def setUp(self):
+        self.outdir = tempfile.mkdtemp()
+
+    @UTIL_TRACKSPLIT
+    def tearDown(self):
+        from shutil import rmtree
+        rmtree(self.outdir)
+
+    @UTIL_TRACKSPLIT
+    def test_pre_gap(self):
+        pre_gap_size = 19404
+        track_lengths = [21741300, 13847400, 22402800, 14420700,
+                         10760400, 17904600, 13715100, 17022600,
+                         30781800, 28312200]
+        cuesheet_data = \
+"""eJxt0N1KwzAUwPH7Qt/h0AcYOUn6lbvQRgjaDeqc3lYn6IVOcJv69p7MgU12IFd/zq+nyegG6P1t
+53uwFQrXCptnI8VuNQxuuYbCfU9Pe3vYvu663ccPHHEhHlWRZ1f+xkFx+Jzet/uX57fF13Qs4N5u
+XJ4BrEfbXYNAsHe9X4UC4Je9ewAh6JjTiTKes1IzLxlPg41BFQ8qdhFNSX0enPmQ69hr1ks0JS3S
+iQ+5jH3J+9pIulGZesoy9hXrFZ7+P90fchX7mveNEe3l/Sljsr9hvaaHwksfcvL+Le9bo2vGU24j
+j4L1Ff4vmvmQ/z77C+FzkPA=""".decode("base64").decode("zlib")
+
+        #write whole track to disk as image-type file
+        temp_track_f = tempfile.NamedTemporaryFile(suffix=".wav")
+        temp_track = audiotools.WaveAudio.from_pcm(
+            temp_track_f.name,
+            audiotools.PCMCat([
+                EXACT_SILENCE_PCM_Reader(pre_gap_size),
+                EXACT_RANDOM_PCM_Reader(sum(track_lengths))]),
+            total_pcm_frames=pre_gap_size + sum(track_lengths))
+
+        #write cuesheet to disk
+        temp_cue_f = tempfile.NamedTemporaryFile(suffix=".cue")
+        temp_cue_f.write(cuesheet_data)
+        temp_cue_f.flush()
+
+        #split image to directory using cuesheet
+        self.assertEqual(self.__run_app__(["tracksplit",
+            "-d", self.outdir, "--cue", temp_cue_f.name, temp_track_f.name,
+            "--no-musicbrainz", "--no-freedb", "-t", "wav",
+            "--format=%(track_number)2.2d.wav"]), 0)
+
+        #ensure tracks in directory match expected lengths and data
+        tracks = [audiotools.open(
+                      os.path.join(self.outdir,
+                                   "%(track_number)2.2d.wav" %
+                                   {"track_number":i}))
+                  for i in range(1, len(track_lengths) + 1)]
+
+        for (i, track, expected_length) in zip(range(len(tracks)),
+                                               tracks,
+                                               track_lengths):
+            self.assertEqual(track.total_frames(), expected_length)
+            offset = pre_gap_size + sum(track_lengths[0:i])
+            pcmreader = temp_track.to_pcm()
+            self.assertEqual(pcmreader.seek(offset), offset)
+            self.assertEqual(audiotools.pcm_frame_cmp(
+                track.to_pcm(),
+                audiotools.PCMReaderHead(pcmreader, expected_length)),
+                             None)
+
+        #cleanup temporary files
+        temp_track_f.close()
+        temp_cue_f.close()
 
 
 class tracktag(UtilTest):

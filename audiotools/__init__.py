@@ -4279,13 +4279,25 @@ def read_sheet(filename):
 
     may raise a SheetException if the file cannot be parsed correctly"""
 
-    from audiotools.cue import read_cuesheet
-    from audiotools.toc import read_tocfile
-
     try:
-        return read_cuesheet(filename)
-    except SheetException:
-        return read_tocfile(filename)
+        return read_sheet_string(file(filename, "rb").read())
+    except IOError:
+        raise SheetException("unable to open file")
+
+
+def read_sheet_string(sheet_string):
+    """given a string of cuesheet data, returns a Sheet-compatible object
+
+    may raise a SheetException if the file cannot be parsed correctly"""
+
+    if ("CD_DA" in sheet_string):
+        from audiotools.toc import read_tocfile_string
+
+        return read_tocfile_string(sheet_string)
+    else:
+        from audiotools.cue import read_cuesheet_string
+
+        return read_cuesheet_string(sheet_string)
 
 
 class Sheet:

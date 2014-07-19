@@ -7046,14 +7046,14 @@
     Given a non-image cuesheet and list of track lengths,
     it may be possible to convert a non-image cuesheet
     to an image cuesheet.
-*** TODO Handle 1st track pre-gap correctly
+*** DONE Handle 1st track pre-gap correctly
     Discs with a pre-gap before the 1st track
     should have that gap removed when split
     and re-added when concatenating them back together
     based on the cuesheet contents.
     - [X] update tracksplit
     - [X] update trackcat
-    - [ ] add unit tests
+    - [X] add unit tests
 *** TODO Update utilities
     - [X] trackcat
     - [X] tracksplit
