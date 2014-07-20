@@ -3452,8 +3452,10 @@ class FlacMetaData(MetaDataTest):
                             ISRC=" " * 12,
                             track_type=0,
                             pre_emphasis=0,
-                            index_points=[audiotools.flac.Flac_CUESHEET_index(0,
-                                                                         0)])])
+                            index_points=[audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=0,
+                                offset=0,
+                                number=0)])])
                 metadata = track.get_metadata()
                 self.assertRaises(IndexError,
                                   metadata.get_block,
@@ -3884,7 +3886,10 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
-                            audiotools.flac.Flac_CUESHEET_index(0L, 1)]),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=0L,
+                                offset=0L,
+                                number=1)]),
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=8336076L,
                         number=2,
@@ -3892,8 +3897,14 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
-                            audiotools.flac.Flac_CUESHEET_index(0L, 0),
-                            audiotools.flac.Flac_CUESHEET_index(113484L, 1)]),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=8336076L,
+                                offset=0L,
+                                number=0),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=8336076,
+                                offset=113484L,
+                                number=1)]),
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=17379516L,
                         number=3,
@@ -3901,8 +3912,14 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
-                            audiotools.flac.Flac_CUESHEET_index(0L, 0),
-                            audiotools.flac.Flac_CUESHEET_index(113484L, 1)]),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=17379516L,
+                                offset=0L,
+                                number=0),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=17379516L,
+                                offset=113484L,
+                                number=1)]),
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=28042308L,
                         number=4,
@@ -3910,8 +3927,14 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
-                            audiotools.flac.Flac_CUESHEET_index(0L, 0),
-                            audiotools.flac.Flac_CUESHEET_index(113484L, 1)]),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=28042308L,
+                                offset=0L,
+                                number=0),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=28042308L,
+                                offset=113484L,
+                                number=1)]),
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=41672736L,
                         number=5,
@@ -3919,8 +3942,14 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
-                            audiotools.flac.Flac_CUESHEET_index(0L, 0),
-                            audiotools.flac.Flac_CUESHEET_index(113484L, 1)]),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=41672736L,
+                                offset=0L,
+                                number=0),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=41672736L,
+                                offset=113484L,
+                                number=1)]),
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=54447624L,
                         number=6,
@@ -3928,8 +3957,14 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
-                            audiotools.flac.Flac_CUESHEET_index(0L, 0),
-                            audiotools.flac.Flac_CUESHEET_index(113484L, 1)]),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=54447624L,
+                                offset=0L,
+                                number=0),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=54447624L,
+                                offset=113484L,
+                                number=1)]),
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=65689596L,
                         number=7,
@@ -3937,8 +3972,14 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
-                            audiotools.flac.Flac_CUESHEET_index(0L, 0),
-                            audiotools.flac.Flac_CUESHEET_index(113484L, 1)]),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=65689596L,
+                                offset=0L,
+                                number=0),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=65689596L,
+                                offset=113484L,
+                                number=1)]),
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=76267716L,
                         number=8,
@@ -3946,8 +3987,14 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
-                            audiotools.flac.Flac_CUESHEET_index(0L, 0),
-                            audiotools.flac.Flac_CUESHEET_index(113484L, 1)]),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=76267716L,
+                                offset=0L,
+                                number=0),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=76267716L,
+                                offset=113484L,
+                                number=1)]),
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=89627076L,
                         number=9,
@@ -3955,8 +4002,14 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
-                            audiotools.flac.Flac_CUESHEET_index(0L, 0),
-                            audiotools.flac.Flac_CUESHEET_index(113484L, 1)]),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=89627076L,
+                                offset=0L,
+                                number=0),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=89627076L,
+                                offset=113484L,
+                                number=1)]),
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=99691872L,
                         number=10,
@@ -3964,8 +4017,14 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
-                            audiotools.flac.Flac_CUESHEET_index(0L, 0),
-                            audiotools.flac.Flac_CUESHEET_index(113484L, 1)]),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=99691872L,
+                                offset=0L,
+                                number=0),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=99691872L,
+                                offset=113484L,
+                                number=1)]),
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=114176076L,
                         number=11,
@@ -3973,8 +4032,14 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
-                            audiotools.flac.Flac_CUESHEET_index(0L, 0),
-                            audiotools.flac.Flac_CUESHEET_index(113484L, 1)]),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=114176076L,
+                                offset=0L,
+                                number=0),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=114176076L,
+                                offset=113484L,
+                                number=1)]),
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=125415696L,
                         number=12,
@@ -3982,8 +4047,14 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
-                            audiotools.flac.Flac_CUESHEET_index(0L, 0),
-                            audiotools.flac.Flac_CUESHEET_index(114072L, 1)]),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=125415696L,
+                                offset=0L,
+                                number=0),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=125415696L,
+                                offset=114072L,
+                                number=1)]),
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=138791520L,
                         number=13,
@@ -3991,8 +4062,14 @@ BwAAHgABboVHMgAAAABJRU5ErkJggg==""".decode('base64'))])
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
-                            audiotools.flac.Flac_CUESHEET_index(0L, 0),
-                            audiotools.flac.Flac_CUESHEET_index(114072L, 1)]),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=138791520L,
+                                offset=0L,
+                                number=0),
+                            audiotools.flac.Flac_CUESHEET_index(
+                                track_offset=138791520L,
+                                offset=114072L,
+                                number=1)]),
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=149606016L,
                         number=170,

@@ -7000,9 +7000,9 @@
    - [X] audiotools.freedb
    - [X] audiotools.musicbrainz
    - [X] audiotools.accuraterip
-** TODO Convert TOC and CUE handling to proper grammars
-*** TODO Convert audiotools.cue
-*** TODO Convert audiotools.toc
+** DONE Convert TOC and CUE handling to proper grammars
+*** DONE Convert audiotools.cue
+*** DONE Convert audiotools.toc
 ** TODO Update Sheet interface
    Although cuesheets are mostly a repository of index points,
    it would be useful to support a wider subset of options
@@ -7064,6 +7064,17 @@
     - [X] accuraterip_sheet_lookup
 *** DONE Update documentation
 *** TODO Update unit tests
+** TODO Add AccurateRipV2 support
+*** TODO Add ChecksumV2 object
+**** TODO Add .checksums() range support
+**** TODO Add documentation
+**** TODO Add unit tests
+*** TODO Update utilities
+    - [ ] cd2track
+    - [ ] trackverify
+** TODO Support building cue sheets from discs
+   Find some way of grabbing the index points from a disc
+   so cuesheets can be populated.
 ** TODO Upload to PyPI
 * TODO Finish version 3.0
 ** TODO Shift to Python 3

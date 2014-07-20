@@ -288,4 +288,6 @@ def p_length_timestamp(t):
     t[0] = Fraction(t[1], 75)
 
 def p_error(t):
-    raise ValueError("Syntax error at line %d" % (t.lexer.lineno))
+    from audiotools.text import ERR_CUE_SYNTAX_ERROR
+
+    raise ValueError(ERR_CUE_SYNTAX_ERROR % (t.lexer.lineno))

@@ -4282,7 +4282,8 @@ def read_sheet(filename):
     try:
         return read_sheet_string(file(filename, "rb").read())
     except IOError:
-        raise SheetException("unable to open file")
+        from audiotools.text import ERR_CUE_IOERROR
+        raise SheetException(ERR_CUE_IOERROR)
 
 
 def read_sheet_string(sheet_string):

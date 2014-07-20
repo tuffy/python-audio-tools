@@ -952,16 +952,6 @@ class Test_filename_to_type(unittest.TestCase):
             temp.close()
 
 
-class Test_timestamp(unittest.TestCase):
-    @LIB_CORE
-    def test_timestamp(self):
-        for timestamp in xrange(100000):
-            self.assertEqual(
-                audiotools.parse_timestamp(
-                    audiotools.build_timestamp(timestamp)),
-                timestamp)
-
-
 class Test_group_tracks(unittest.TestCase):
     @LIB_CORE
     def setUp(self):

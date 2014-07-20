@@ -2383,7 +2383,7 @@ class trackcat(UtilTest):
                                      ERR_CHANNEL_COUNT_MISMATCH,
                                      ERR_SAMPLE_RATE_MISMATCH,
                                      ERR_CUE_IOERROR,
-                                     ERR_CUE_MISSING_TAG,
+                                     ERR_CUE_SYNTAX_ERROR,
                                      ERR_DUPLICATE_FILE,
                                      ERR_OUTPUT_IS_INPUT,
                                      ERR_NO_OUTPUT_FILE,
@@ -2433,7 +2433,7 @@ class trackcat(UtilTest):
                               self.track1.filename,
                               self.track2.filename,
                               self.track3.filename]), 1)
-        self.__check_error__(ERR_CUE_MISSING_TAG % (1))
+        self.__check_error__(ERR_CUE_SYNTAX_ERROR % (1))
 
         self.assertEqual(
             self.__run_app__(["trackcat",
@@ -2539,15 +2539,13 @@ class trackcat(UtilTest):
                 (output_format is audiotools.FlacAudio)):
                 cuesheet = new_track.get_cuesheet()
                 self.assert_(cuesheet is not None)
-                self.assertEqual([t.ISRC() for t in cuesheet.tracks()],
-                                 ['JPPI00652340',
-                                  'JPPI00652349',
-                                  'JPPI00652341'])
-                self.assertEqual([[int(i.offset() * 75) for i in t.indexes()]
-                                  for t in cuesheet.tracks()],
+                self.assertEqual([t.get_metadata().ISRC for t in cuesheet],
+                                 [u'JPPI00652340',
+                                  u'JPPI00652349',
+                                  u'JPPI00652341'])
+                self.assertEqual([[int(i.offset() * 75) for i in t]
+                                  for t in cuesheet],
                                  [[0,], [225, 375], [675, 825]])
-                self.assertEqual(list(cuesheet.pcm_lengths(793800, 44100)),
-                                 [220500, 264600, 308700])
 
     @UTIL_TRACKCAT
     def test_unicode(self):

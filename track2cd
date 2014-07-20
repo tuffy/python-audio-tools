@@ -311,7 +311,7 @@ if (__name__ == '__main__'):
         tempcue = tempfile.NamedTemporaryFile(suffix='.cue')
         tempwav = tempfile.NamedTemporaryFile(suffix='.wav')
 
-        audiotools.cue.write_cuesheet(cuesheet, tempwav.name, tempcue)
+        audiotools.toc.write_tocfile(cuesheet, tempwav.name, tempcue)
         tempcue.flush()
 
         input_frames = (int(audiofiles[0].sample_rate() * cuesheet.pre_gap()) +
