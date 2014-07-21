@@ -7069,9 +7069,9 @@
 **** TODO Add .checksums() range support
 **** TODO Add documentation
 **** DONE Add unit tests
-*** TODO Update utilities
-    - [ ] cd2track
-    - [ ] trackverify
+*** DONE Update utilities
+    - [X] cd2track
+    - [X] trackverify
 ** TODO Support building cue sheets from discs
    Find some way of grabbing the index points from a disc
    so cuesheets can be populated.
