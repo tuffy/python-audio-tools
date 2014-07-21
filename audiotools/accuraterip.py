@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools._accuraterip import ChecksumV1,ChecksumV2
+from audiotools._accuraterip import ChecksumV1
 
 
 class __ChecksumV1__:
@@ -110,6 +110,81 @@ class __ChecksumV1__:
             raise ValueError("insufficient samples for checksums")
 
         return [c & 0xFFFFFFFF for c in self.__checksums__]
+
+
+class ChecksumV2:
+    """Python implementation of checksum calculator"""
+
+    def __init__(self, total_pcm_frames,
+                 sample_rate=44100,
+                 is_first=False,
+                 is_last=False,
+                 pcm_frame_range=1):
+        if (total_pcm_frames <= 0):
+            raise ValueError("total PCM frames must be > 0")
+        if (sample_rate <= 0):
+            raise ValueError("sample rate must be > 0")
+        if (pcm_frame_range <= 0):
+            raise ValueError("PCM frame range must be > 0")
+
+        self.__total_pcm_frames__ = total_pcm_frames
+        self.__pcm_frame_range__ = pcm_frame_range
+        self.__values__ = []
+
+        if (is_first):
+            self.__start_offset__ = ((sample_rate // 75) * 5) - 1
+        else:
+            self.__start_offset__ = 0
+
+        if (is_last):
+            self.__end_offset__ = (total_pcm_frames -
+                                   ((sample_rate // 75) * 5))
+        else:
+            self.__end_offset__ = total_pcm_frames
+
+    def update(self, framelist):
+        from itertools import izip
+        from audiotools.pcm import FrameList
+
+        def value(l, r):
+            return (unsigned(r) << 16) | unsigned(l)
+
+        def unsigned(v):
+            return (v if (v >= 0) else ((1 << 16) - (-v)))
+
+        if (not isinstance(framelist, FrameList)):
+            raise TypeError("framelist must be instance of Framelist")
+        elif (framelist.channels != 2):
+            raise ValueError("FrameList must have 2 channels")
+        elif (framelist.bits_per_sample != 16):
+            raise ValueError("FrameList must have 16 bits-per-sample")
+
+        if ((len(self.__values__) + framelist.frames) >
+            (self.__total_pcm_frames__ + self.__pcm_frame_range__ - 1)):
+            raise ValueError("too many samples for checksum")
+
+        self.__values__.extend([value(l, r) for
+                                (l, r) in izip(framelist.channel(0),
+                                               framelist.channel(1))])
+
+    def checksums(self):
+        if (len(self.__values__) <
+            (self.__total_pcm_frames__ + self.__pcm_frame_range__ - 1)):
+            raise ValueError("insufficient samples for checksum")
+
+        def val(x):
+            return (x >> 32) + (x & 0xFFFFFFFF)
+
+        checksums = [sum([(val(v * i) if
+                          ((i >= self.__start_offset__) and
+                           (i <= self.__end_offset__)) else 0)
+                          for (i, v) in
+                          enumerate(
+                              self.__values__[r:r + self.__total_pcm_frames__],
+                              1)])
+                     for r in range(self.__pcm_frame_range__)]
+
+        return [c & 0xFFFFFFFF for c in checksums]
 
 
 def match_offset(ar_matches, checksums, initial_offset):

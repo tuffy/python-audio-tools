@@ -7068,7 +7068,7 @@
 *** TODO Add ChecksumV2 object
 **** TODO Add .checksums() range support
 **** TODO Add documentation
-**** TODO Add unit tests
+**** DONE Add unit tests
 *** TODO Update utilities
     - [ ] cd2track
     - [ ] trackverify
