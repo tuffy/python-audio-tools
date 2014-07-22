@@ -5289,48 +5289,48 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
             disc_id="dBAR-020-001d4d13-01bab5f6-fc0a9e14.bin")
 
     @LIB_ACCURATERIP
-    def test_checksum_v1(self):
-        from audiotools.accuraterip import ChecksumV1
+    def test_checksum(self):
+        from audiotools.accuraterip import Checksum
         from test_streams import Simple_Sine,Generate02
 
         #sanity checking for initial options
         self.assertRaises(ValueError,
-                          ChecksumV1,
+                          Checksum,
                           total_pcm_frames=10,
                           sample_rate=0,
                           is_first=False,
                           is_last=False)
 
         self.assertRaises(ValueError,
-                          ChecksumV1,
+                          Checksum,
                           total_pcm_frames=10,
                           sample_rate=-1,
                           is_first=False,
                           is_last=False)
 
         self.assertRaises(ValueError,
-                          ChecksumV1,
+                          Checksum,
                           total_pcm_frames=0,
                           sample_rate=44100,
                           is_first=False,
                           is_last=False)
 
         self.assertRaises(ValueError,
-                          ChecksumV1,
+                          Checksum,
                           total_pcm_frames=-1,
                           sample_rate=44100,
                           is_first=False,
                           is_last=False)
 
         self.assertRaises(ValueError,
-                          ChecksumV1,
+                          Checksum,
                           total_pcm_frames=-1,
                           sample_rate=-1,
                           is_first=False,
                           is_last=False)
 
         self.assertRaises(ValueError,
-                          ChecksumV1,
+                          Checksum,
                           total_pcm_frames=10,
                           sample_rate=44100,
                           is_first=False,
@@ -5338,18 +5338,18 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
                           pcm_frame_range=0)
 
         self.assertRaises(ValueError,
-                          ChecksumV1,
+                          Checksum,
                           total_pcm_frames=10,
                           sample_rate=44100,
                           is_first=False,
                           is_last=False,
                           pcm_frame_range=-1)
 
-        checksum = ChecksumV1(total_pcm_frames=200000,
-                              sample_rate=44100,
-                              is_first=False,
-                              is_last=False,
-                              pcm_frame_range=1)
+        checksum = Checksum(total_pcm_frames=200000,
+                            sample_rate=44100,
+                            is_first=False,
+                            is_last=False,
+                            pcm_frame_range=1)
 
         for v in [None, 0, 1, "foo", "bar"]:
             self.assertRaises(TypeError,
@@ -5377,418 +5377,165 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
                         (3276800, 20000),
                         (7864320, 30000)]]:                       # 24bps 3ch
             sine = Simple_Sine(*params)
-            checksum = ChecksumV1(total_pcm_frames=200000,
-                                  sample_rate=44100,
-                                  is_first=False,
-                                  is_last=False,
-                                  pcm_frame_range=1)
+            checksum = Checksum(total_pcm_frames=200000,
+                                sample_rate=44100,
+                                is_first=False,
+                                is_last=False,
+                                pcm_frame_range=1)
             self.assertRaises(ValueError,
                               audiotools.transfer_data,
                               sine.read, checksum.update)
 
         #ensure very short streams work correctly
         #whether middle, first, last or only track
-        short_track = ChecksumV1(total_pcm_frames=1,
-                                 sample_rate=44100,
-                                 is_first=False,
-                                 is_last=False,
-                                 pcm_frame_range=1)
+        short_track = Checksum(total_pcm_frames=1,
+                               sample_rate=44100,
+                               is_first=False,
+                               is_last=False,
+                               pcm_frame_range=1)
         audiotools.transfer_data(
             Generate02(44100).read, short_track.update)
-        self.assertEqual(short_track.checksums(), [0x7FFF8000])
+        self.assertEqual(short_track.checksums_v1(), [0x7FFF8000])
+        self.assertEqual(short_track.checksums_v2(), [0x7FFF8000])
 
-        short_track = ChecksumV1(total_pcm_frames=1,
-                                 sample_rate=44100,
-                                 is_first=True,
-                                 is_last=False,
-                                 pcm_frame_range=1)
+        short_track = Checksum(total_pcm_frames=1,
+                               sample_rate=44100,
+                               is_first=True,
+                               is_last=False,
+                               pcm_frame_range=1)
         audiotools.transfer_data(
             Generate02(44100).read, short_track.update)
-        self.assertEqual(short_track.checksums(), [0])
+        self.assertEqual(short_track.checksums_v1(), [0])
+        self.assertEqual(short_track.checksums_v2(), [0])
 
-        short_track = ChecksumV1(total_pcm_frames=1,
-                                 sample_rate=44100,
-                                 is_first=False,
-                                 is_last=True,
-                                 pcm_frame_range=1)
+        short_track = Checksum(total_pcm_frames=1,
+                               sample_rate=44100,
+                               is_first=False,
+                               is_last=True,
+                               pcm_frame_range=1)
         audiotools.transfer_data(
             Generate02(44100).read, short_track.update)
-        self.assertEqual(short_track.checksums(), [0])
+        self.assertEqual(short_track.checksums_v1(), [0])
+        self.assertEqual(short_track.checksums_v2(), [0])
 
-        short_track = ChecksumV1(total_pcm_frames=1,
-                                 sample_rate=44100,
-                                 is_first=True,
-                                 is_last=True,
-                                 pcm_frame_range=1)
+        short_track = Checksum(total_pcm_frames=1,
+                               sample_rate=44100,
+                               is_first=True,
+                               is_last=True,
+                               pcm_frame_range=1)
         audiotools.transfer_data(
             Generate02(44100).read, short_track.update)
-        self.assertEqual(short_track.checksums(), [0])
+        self.assertEqual(short_track.checksums_v1(), [0])
+        self.assertEqual(short_track.checksums_v2(), [0])
 
         track = audiotools.open("tone.flac")
 
         #ensure various checksum range options work correctly
         #values taken from reference implementation
 
-        middle_track = ChecksumV1(total_pcm_frames=track.total_frames(),
-                                  sample_rate=track.sample_rate(),
-                                  is_first=False,
-                                  is_last=False)
+        middle_track = Checksum(total_pcm_frames=track.total_frames(),
+                                sample_rate=track.sample_rate(),
+                                is_first=False,
+                                is_last=False)
         audiotools.transfer_data(track.to_pcm().read, middle_track.update)
-        self.assertEqual(middle_track.checksums(), [0xF6E4AD26])
+        self.assertEqual(middle_track.checksums_v1(), [0xF6E4AD26])
+        self.assertEqual(middle_track.checksums_v2(), [0x4781FC37])
 
-        middle_track = ChecksumV1(total_pcm_frames=track.total_frames(),
-                                  sample_rate=track.sample_rate(),
-                                  is_first=False,
-                                  is_last=False,
-                                  pcm_frame_range=3)
+        middle_track = Checksum(total_pcm_frames=track.total_frames(),
+                                sample_rate=track.sample_rate(),
+                                is_first=False,
+                                is_last=False,
+                                pcm_frame_range=3)
         audiotools.transfer_data(
             audiotools.PCMReaderWindow(track.to_pcm(),
                                        -1,
                                        track.total_frames() + 2).read,
             middle_track.update)
-        self.assertEqual(middle_track.checksums(), [0xCA705E69,
-                                                    0xF6E4AD26,
-                                                    0x951FB12F])
+        self.assertEqual(middle_track.checksums_v1(), [0xCA705E69,
+                                                       0xF6E4AD26,
+                                                       0x951FB12F])
+        self.assertEqual(middle_track.checksums_v2(), [0x1B0BE28C,
+                                                       0x4781FC37,
+                                                       0xE5B9A28E])
 
-        first_track = ChecksumV1(total_pcm_frames=track.total_frames(),
-                                 sample_rate=track.sample_rate(),
-                                 is_first=True,
-                                 is_last=False)
+        first_track = Checksum(total_pcm_frames=track.total_frames(),
+                               sample_rate=track.sample_rate(),
+                               is_first=True,
+                               is_last=False)
         audiotools.transfer_data(track.to_pcm().read, first_track.update)
-        self.assertEqual(first_track.checksums(), [0xEE4DBEB4])
+        self.assertEqual(first_track.checksums_v1(), [0xEE4DBEB4])
+        self.assertEqual(first_track.checksums_v2(), [0x3ECA2C04])
 
-        first_track = ChecksumV1(total_pcm_frames=track.total_frames(),
-                                 sample_rate=track.sample_rate(),
-                                 is_first=True,
-                                 is_last=False,
-                                 pcm_frame_range=3)
+        first_track = Checksum(total_pcm_frames=track.total_frames(),
+                               sample_rate=track.sample_rate(),
+                               is_first=True,
+                               is_last=False,
+                               pcm_frame_range=3)
         audiotools.transfer_data(
             audiotools.PCMReaderWindow(track.to_pcm(),
                                        -1,
                                        track.total_frames() + 2).read,
             first_track.update)
-        self.assertEqual(first_track.checksums(), [0x7CC66A55,
-                                                   0xEE4DBEB4,
-                                                   0x9A58C7EC])
+        self.assertEqual(first_track.checksums_v1(), [0x7CC66A55,
+                                                      0xEE4DBEB4,
+                                                      0x9A58C7EC])
+        self.assertEqual(first_track.checksums_v2(), [0xCD410A97,
+                                                      0x3ECA2C04,
+                                                      0xEAD1D8AA])
 
-        last_track = ChecksumV1(total_pcm_frames=track.total_frames(),
-                                sample_rate=track.sample_rate(),
-                                is_first=False,
-                                is_last=True)
-        audiotools.transfer_data(track.to_pcm().read, last_track.update)
-        self.assertEqual(last_track.checksums(), [0xF819E862])
-
-        last_track = ChecksumV1(total_pcm_frames=track.total_frames(),
-                                sample_rate=track.sample_rate(),
-                                is_first=False,
-                                is_last=True,
-                                pcm_frame_range=3)
-        audiotools.transfer_data(
-            audiotools.PCMReaderWindow(track.to_pcm(),
-                                       -1,
-                                       track.total_frames() + 2).read,
-            last_track.update)
-        self.assertEqual(last_track.checksums(), [0x682F9316,
-                                                  0xF819E862,
-                                                  0x00DBAF4E])
-
-        only_track = ChecksumV1(total_pcm_frames=track.total_frames(),
-                                sample_rate=track.sample_rate(),
-                                is_first=True,
-                                is_last=True)
-        audiotools.transfer_data(track.to_pcm().read, only_track.update)
-        self.assertEqual(only_track.checksums(), [0xEF82F9F0])
-
-        only_track = ChecksumV1(total_pcm_frames=track.total_frames(),
-                                sample_rate=track.sample_rate(),
-                                is_first=True,
-                                is_last=True,
-                                pcm_frame_range=3)
-        audiotools.transfer_data(
-            audiotools.PCMReaderWindow(track.to_pcm(),
-                                       -1,
-                                       track.total_frames() + 2).read,
-            only_track.update)
-        self.assertEqual(only_track.checksums(), [0x1A859F02,
-                                                  0xEF82F9F0,
-                                                  0x0614C60B])
-
-        #ensure feeding checksum with not enough samples
-        #raises ValueError at checksums()-time
-        insufficient_samples = ChecksumV1(
-            total_pcm_frames=track.total_frames() + 1,
-            sample_rate=track.sample_rate(),
-            is_first=False,
-            is_last=False,
-            pcm_frame_range=1)
-        audiotools.transfer_data(track.to_pcm().read,
-                                 insufficient_samples.update)
-        self.assertRaises(ValueError, insufficient_samples.checksums)
-
-        #ensure insufficient samples also works with a range
-        insufficient_samples = ChecksumV1(
-            total_pcm_frames=track.total_frames(),
-            sample_rate=track.sample_rate(),
-            is_first=False,
-            is_last=False,
-            pcm_frame_range=2)
-        audiotools.transfer_data(track.to_pcm().read,
-                                 insufficient_samples.update)
-        self.assertRaises(ValueError, insufficient_samples.checksums)
-
-        #ensure feeding checksum with too many samples
-        #raises ValueError at update()-time
-        too_many_samples = ChecksumV1(
-            total_pcm_frames=track.total_frames() - 1,
-            sample_rate=track.sample_rate(),
-            is_first=False,
-            is_last=False,
-            pcm_frame_range=1)
-        self.assertRaises(ValueError,
-                          audiotools.transfer_data,
-                          track.to_pcm().read,
-                          too_many_samples.update)
-
-        #ensure too many samples also works with a range
-        too_many_samples = ChecksumV1(
-            total_pcm_frames=track.total_frames() - 2,
-            sample_rate=track.sample_rate(),
-            is_first=False,
-            is_last=False,
-            pcm_frame_range=2)
-        self.assertRaises(ValueError,
-                          audiotools.transfer_data,
-                          track.to_pcm().read,
-                          too_many_samples.update)
-
-    @LIB_ACCURATERIP
-    def test_checksum_v2(self):
-        from audiotools.accuraterip import ChecksumV2
-        from test_streams import Simple_Sine,Generate02
-
-        #sanity checking for initial options
-        self.assertRaises(ValueError,
-                          ChecksumV2,
-                          total_pcm_frames=10,
-                          sample_rate=0,
-                          is_first=False,
-                          is_last=False)
-
-        self.assertRaises(ValueError,
-                          ChecksumV2,
-                          total_pcm_frames=10,
-                          sample_rate=-1,
-                          is_first=False,
-                          is_last=False)
-
-        self.assertRaises(ValueError,
-                          ChecksumV2,
-                          total_pcm_frames=0,
-                          sample_rate=44100,
-                          is_first=False,
-                          is_last=False)
-
-        self.assertRaises(ValueError,
-                          ChecksumV2,
-                          total_pcm_frames=-1,
-                          sample_rate=44100,
-                          is_first=False,
-                          is_last=False)
-
-        self.assertRaises(ValueError,
-                          ChecksumV2,
-                          total_pcm_frames=-1,
-                          sample_rate=-1,
-                          is_first=False,
-                          is_last=False)
-
-        self.assertRaises(ValueError,
-                          ChecksumV2,
-                          total_pcm_frames=10,
-                          sample_rate=44100,
-                          is_first=False,
-                          is_last=False,
-                          pcm_frame_range=0)
-
-        self.assertRaises(ValueError,
-                          ChecksumV2,
-                          total_pcm_frames=10,
-                          sample_rate=44100,
-                          is_first=False,
-                          is_last=False,
-                          pcm_frame_range=-1)
-
-        checksum = ChecksumV2(total_pcm_frames=200000,
-                              sample_rate=44100,
+        last_track = Checksum(total_pcm_frames=track.total_frames(),
+                              sample_rate=track.sample_rate(),
                               is_first=False,
-                              is_last=False,
-                              pcm_frame_range=1)
-
-        for v in [None, 0, 1, "foo", "bar"]:
-            self.assertRaises(TypeError,
-                              checksum.update,
-                              v)
-
-        #sanity checking for stream parameters
-        for params in [[200000, 44100, 0x04, 8, (25, 10000)],  # 8bps 1ch
-                       [200000, 44100, 0x03, 8, (25, 10000),
-                                                (50, 20000)],  # 8bps 2ch
-                       [200000, 44100, 0x07, 8, (25, 10000),
-                                                (50, 20000),
-                                                (120, 30000)], # 8bps 3ch
-                       [200000, 44100, 0x04, 16, (6400, 10000)],  # 16bps 1ch
-                       [200000, 44100, 0x07, 16, (6400, 10000),
-                                                 (12800, 20000),
-                                                 (30720, 30000)], # 16bps 3ch
-                       [200000, 44100, 0x04, 24,
-                        (1638400, 10000)],                        # 24bps 1ch
-                       [200000, 44100, 0x03, 24,
-                        (1638400, 10000),
-                        (3276800, 20000)],                        # 24bps 2ch
-                       [200000, 44100, 0x07, 24,
-                        (1638400, 10000),
-                        (3276800, 20000),
-                        (7864320, 30000)]]:                       # 24bps 3ch
-            sine = Simple_Sine(*params)
-            checksum = ChecksumV2(total_pcm_frames=200000,
-                                  sample_rate=44100,
-                                  is_first=False,
-                                  is_last=False,
-                                  pcm_frame_range=1)
-            self.assertRaises(ValueError,
-                              audiotools.transfer_data,
-                              sine.read, checksum.update)
-
-        #ensure very short streams work correctly
-        #whether middle, first, last or only track
-        short_track = ChecksumV2(total_pcm_frames=1,
-                                 sample_rate=44100,
-                                 is_first=False,
-                                 is_last=False,
-                                 pcm_frame_range=1)
-        audiotools.transfer_data(
-            Generate02(44100).read, short_track.update)
-        self.assertEqual(short_track.checksums(), [0x7FFF8000])
-
-        short_track = ChecksumV2(total_pcm_frames=1,
-                                 sample_rate=44100,
-                                 is_first=True,
-                                 is_last=False,
-                                 pcm_frame_range=1)
-        audiotools.transfer_data(
-            Generate02(44100).read, short_track.update)
-        self.assertEqual(short_track.checksums(), [0])
-
-        short_track = ChecksumV2(total_pcm_frames=1,
-                                 sample_rate=44100,
-                                 is_first=False,
-                                 is_last=True,
-                                 pcm_frame_range=1)
-        audiotools.transfer_data(
-            Generate02(44100).read, short_track.update)
-        self.assertEqual(short_track.checksums(), [0])
-
-        short_track = ChecksumV2(total_pcm_frames=1,
-                                 sample_rate=44100,
-                                 is_first=True,
-                                 is_last=True,
-                                 pcm_frame_range=1)
-        audiotools.transfer_data(
-            Generate02(44100).read, short_track.update)
-        self.assertEqual(short_track.checksums(), [0])
-
-        track = audiotools.open("tone.flac")
-
-        #ensure various checksum range options work correctly
-        #values taken from reference implementation
-
-        middle_track = ChecksumV2(total_pcm_frames=track.total_frames(),
-                                  sample_rate=track.sample_rate(),
-                                  is_first=False,
-                                  is_last=False)
-        audiotools.transfer_data(track.to_pcm().read, middle_track.update)
-        self.assertEqual(middle_track.checksums(), [0x4781FC37])
-
-        middle_track = ChecksumV2(total_pcm_frames=track.total_frames(),
-                                  sample_rate=track.sample_rate(),
-                                  is_first=False,
-                                  is_last=False,
-                                  pcm_frame_range=3)
-        audiotools.transfer_data(
-            audiotools.PCMReaderWindow(track.to_pcm(),
-                                       -1,
-                                       track.total_frames() + 2).read,
-            middle_track.update)
-        self.assertEqual(middle_track.checksums(), [0x1B0BE28C,
-                                                    0x4781FC37,
-                                                    0xE5B9A28E])
-
-        first_track = ChecksumV2(total_pcm_frames=track.total_frames(),
-                                 sample_rate=track.sample_rate(),
-                                 is_first=True,
-                                 is_last=False)
-        audiotools.transfer_data(track.to_pcm().read, first_track.update)
-        self.assertEqual(first_track.checksums(), [0x0D18D57B])
-
-        first_track = ChecksumV2(total_pcm_frames=track.total_frames(),
-                                 sample_rate=track.sample_rate(),
-                                 is_first=True,
-                                 is_last=False,
-                                 pcm_frame_range=3)
-        audiotools.transfer_data(
-            audiotools.PCMReaderWindow(track.to_pcm(),
-                                       -1,
-                                       track.total_frames() + 2).read,
-            first_track.update)
-        self.assertEqual(first_track.checksums(), [0x28FF04A5,
-                                                   0x0D18D57B,
-                                                   0x3CACE21E])
-
-        last_track = ChecksumV2(total_pcm_frames=track.total_frames(),
-                                sample_rate=track.sample_rate(),
-                                is_first=False,
-                                is_last=True)
+                              is_last=True)
         audiotools.transfer_data(track.to_pcm().read, last_track.update)
-        self.assertEqual(last_track.checksums(), [0x222E32FA])
+        self.assertEqual(last_track.checksums_v1(), [0xF819E862])
+        self.assertEqual(last_track.checksums_v2(), [0x222E32FA])
 
-        last_track = ChecksumV2(total_pcm_frames=track.total_frames(),
-                                sample_rate=track.sample_rate(),
-                                is_first=False,
-                                is_last=True,
-                                pcm_frame_range=3)
+        last_track = Checksum(total_pcm_frames=track.total_frames(),
+                              sample_rate=track.sample_rate(),
+                              is_first=False,
+                              is_last=True,
+                              pcm_frame_range=3)
         audiotools.transfer_data(
             audiotools.PCMReaderWindow(track.to_pcm(),
                                        -1,
                                        track.total_frames() + 2).read,
             last_track.update)
-        self.assertEqual(last_track.checksums(), [0x92419BB8,
-                                                  0x222E32FA,
-                                                  0x2AF10061])
+        self.assertEqual(last_track.checksums_v1(), [0x682F9316,
+                                                     0xF819E862,
+                                                     0x00DBAF4E])
+        self.assertEqual(last_track.checksums_v2(), [0x92419BB8,
+                                                     0x222E32FA,
+                                                     0x2AF10061])
 
-        only_track = ChecksumV2(total_pcm_frames=track.total_frames(),
-                                sample_rate=track.sample_rate(),
-                                is_first=True,
-                                is_last=True)
+        only_track = Checksum(total_pcm_frames=track.total_frames(),
+                              sample_rate=track.sample_rate(),
+                              is_first=True,
+                              is_last=True)
         audiotools.transfer_data(track.to_pcm().read, only_track.update)
-        self.assertEqual(only_track.checksums(), [0xE7C50C3E])
+        self.assertEqual(only_track.checksums_v1(), [0xEF82F9F0])
+        self.assertEqual(only_track.checksums_v2(), [0x197662C7])
 
-        only_track = ChecksumV2(total_pcm_frames=track.total_frames(),
-                                sample_rate=track.sample_rate(),
-                                is_first=True,
-                                is_last=True,
-                                pcm_frame_range=3)
+        only_track = Checksum(total_pcm_frames=track.total_frames(),
+                              sample_rate=track.sample_rate(),
+                              is_first=True,
+                              is_last=True,
+                              pcm_frame_range=3)
         audiotools.transfer_data(
             audiotools.PCMReaderWindow(track.to_pcm(),
                                        -1,
                                        track.total_frames() + 2).read,
             only_track.update)
-        self.assertEqual(only_track.checksums(), [0xA034BDD1,
-                                                  0xE7C50C3E,
-                                                  0x81E43FF1])
+        self.assertEqual(only_track.checksums_v1(), [0x1A859F02,
+                                                     0xEF82F9F0,
+                                                     0x0614C60B])
+        self.assertEqual(only_track.checksums_v2(), [0x4476C3C3,
+                                                     0x197662C7,
+                                                     0x3009367D])
 
         #ensure feeding checksum with not enough samples
         #raises ValueError at checksums()-time
-        insufficient_samples = ChecksumV2(
+        insufficient_samples = Checksum(
             total_pcm_frames=track.total_frames() + 1,
             sample_rate=track.sample_rate(),
             is_first=False,
@@ -5796,10 +5543,11 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
             pcm_frame_range=1)
         audiotools.transfer_data(track.to_pcm().read,
                                  insufficient_samples.update)
-        self.assertRaises(ValueError, insufficient_samples.checksums)
+        self.assertRaises(ValueError, insufficient_samples.checksums_v1)
+        self.assertRaises(ValueError, insufficient_samples.checksums_v2)
 
         #ensure insufficient samples also works with a range
-        insufficient_samples = ChecksumV2(
+        insufficient_samples = Checksum(
             total_pcm_frames=track.total_frames(),
             sample_rate=track.sample_rate(),
             is_first=False,
@@ -5807,11 +5555,12 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
             pcm_frame_range=2)
         audiotools.transfer_data(track.to_pcm().read,
                                  insufficient_samples.update)
-        self.assertRaises(ValueError, insufficient_samples.checksums)
+        self.assertRaises(ValueError, insufficient_samples.checksums_v1)
+        self.assertRaises(ValueError, insufficient_samples.checksums_v2)
 
         #ensure feeding checksum with too many samples
         #raises ValueError at update()-time
-        too_many_samples = ChecksumV2(
+        too_many_samples = Checksum(
             total_pcm_frames=track.total_frames() - 1,
             sample_rate=track.sample_rate(),
             is_first=False,
@@ -5823,7 +5572,7 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
                           too_many_samples.update)
 
         #ensure too many samples also works with a range
-        too_many_samples = ChecksumV2(
+        too_many_samples = Checksum(
             total_pcm_frames=track.total_frames() - 2,
             sample_rate=track.sample_rate(),
             is_first=False,

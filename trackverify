@@ -145,7 +145,7 @@ def accuraterip_checksum(progress,
                             PCMReaderHead,
                             PCMReaderDeHead,
                             PCMReaderProgress)
-    from audiotools.accuraterip import ChecksumV1,ChecksumV2,match_offset
+    from audiotools.accuraterip import Checksum,match_offset
     from cStringIO import StringIO
 
     #unify previous track, current track and next track into a single stream
@@ -185,14 +185,7 @@ def accuraterip_checksum(progress,
                       track.bits_per_sample()))
 
     #feed stream to checksummer
-    checksummer_v1 = ChecksumV1(
-        total_pcm_frames=track.total_frames(),
-        sample_rate=track.sample_rate(),
-        is_first=(previous_track is None),
-        is_last=(next_track is None),
-        pcm_frame_range=PREVIOUS_TRACK_FRAMES + 1 + NEXT_TRACK_FRAMES)
-
-    checksummer_v2 = ChecksumV2(
+    checksummer = Checksum(
         total_pcm_frames=track.total_frames(),
         sample_rate=track.sample_rate(),
         is_first=(previous_track is None),
@@ -205,11 +198,7 @@ def accuraterip_checksum(progress,
                                       track.total_frames() +
                                       NEXT_TRACK_FRAMES,
                                       progress)
-        frame = pcmreader.read(4096)
-        while (len(frame) > 0):
-            checksummer_v2.update(frame)
-            checksummer_v1.update(frame)
-            frame = pcmreader.read(4096)
+        audiotools.transfer_data(pcmreader.read, checksummer.update)
     except (IOError, ValueError), err:
         return {"filename":track.filename,
                 "checksum":None,
@@ -223,13 +212,13 @@ def accuraterip_checksum(progress,
     (checksum_v2,
      confidence_v2,
      offset_v2) = match_offset(ar_matches=ar_matches,
-                               checksums=checksummer_v2.checksums(),
+                               checksums=checksummer.checksums_v2(),
                                initial_offset=-PREVIOUS_TRACK_FRAMES)
 
     (checksum_v1,
      confidence_v1,
      offset_v1) = match_offset(ar_matches=ar_matches,
-                               checksums=checksummer_v1.checksums(),
+                               checksums=checksummer.checksums_v1(),
                                initial_offset=-PREVIOUS_TRACK_FRAMES)
 
     if (len(ar_matches) == 0):
@@ -273,7 +262,7 @@ def accuraterip_image_checksum(progress,
     from audiotools import (transfer_data,
                             PCMReaderProgress,
                             PCMReaderWindow)
-    from audiotools.accuraterip import ChecksumV1,ChecksumV2,match_offset
+    from audiotools.accuraterip import Checksum,match_offset
 
     reader = track.to_pcm()
 
@@ -286,14 +275,7 @@ def accuraterip_image_checksum(progress,
         pcm_frames_offset -= reader.seek(pcm_frames_offset)
 
     #feed stream to checksummers
-    checksummer_v1 = ChecksumV1(
-        total_pcm_frames=total_pcm_frames,
-        sample_rate=track.sample_rate(),
-        is_first=is_first,
-        is_last=is_last,
-        pcm_frame_range=PREVIOUS_TRACK_FRAMES + 1 + NEXT_TRACK_FRAMES)
-
-    checksummer_v2 = ChecksumV2(
+    checksummer = Checksum(
         total_pcm_frames=total_pcm_frames,
         sample_rate=track.sample_rate(),
         is_first=is_first,
@@ -309,11 +291,7 @@ def accuraterip_image_checksum(progress,
             PREVIOUS_TRACK_FRAMES + total_pcm_frames + NEXT_TRACK_FRAMES,
             progress)
 
-        frame = pcmreader.read(4096)
-        while (len(frame) > 0):
-            checksummer_v2.update(frame)
-            checksummer_v1.update(frame)
-            frame = pcmreader.read(4096)
+        audiotools.transfer_data(pcmreader.read, checksummer.update)
     except (IOError, ValueError), err:
         return {"filename":displayed_filename,
                 "checksum":None,
@@ -327,13 +305,13 @@ def accuraterip_image_checksum(progress,
     (checksum_v2,
      confidence_v2,
      offset_v2) = match_offset(ar_matches=ar_matches,
-                               checksums=checksummer_v2.checksums(),
+                               checksums=checksummer.checksums_v2(),
                                initial_offset=-PREVIOUS_TRACK_FRAMES)
 
     (checksum_v1,
      confidence_v1,
      offset_v1) = match_offset(ar_matches=ar_matches,
-                               checksums=checksummer_v1.checksums(),
+                               checksums=checksummer.checksums_v1(),
                                initial_offset=-PREVIOUS_TRACK_FRAMES)
 
     if (len(ar_matches) == 0):
