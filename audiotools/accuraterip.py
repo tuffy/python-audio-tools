@@ -129,7 +129,8 @@ class ChecksumV2:
 
         self.__total_pcm_frames__ = total_pcm_frames
         self.__pcm_frame_range__ = pcm_frame_range
-        self.__values__ = []
+        self.__i__ = 1
+        self.__checksums__ = [0] * pcm_frame_range
 
         if (is_first):
             self.__start_offset__ = ((sample_rate // 75) * 5) - 1
@@ -152,6 +153,9 @@ class ChecksumV2:
         def unsigned(v):
             return (v if (v >= 0) else ((1 << 16) - (-v)))
 
+        def combined(x):
+            return (x >> 32) + (x & 0xFFFFFFFF)
+
         if (not isinstance(framelist, FrameList)):
             raise TypeError("framelist must be instance of Framelist")
         elif (framelist.channels != 2):
@@ -159,32 +163,28 @@ class ChecksumV2:
         elif (framelist.bits_per_sample != 16):
             raise ValueError("FrameList must have 16 bits-per-sample")
 
-        if ((len(self.__values__) + framelist.frames) >
-            (self.__total_pcm_frames__ + self.__pcm_frame_range__ - 1)):
+        if ((self.__i__ + framelist.frames) >
+            (self.__total_pcm_frames__ + self.__pcm_frame_range__)):
             raise ValueError("too many samples for checksum")
 
-        self.__values__.extend([value(l, r) for
-                                (l, r) in izip(framelist.channel(0),
-                                               framelist.channel(1))])
+        values = [value(l, r) for (l, r) in izip(framelist.channel(0),
+                                                 framelist.channel(1))]
+
+        for j in xrange(len(self.__checksums__)):
+            for (i, v) in enumerate(values, self.__i__):
+                if ((i >= j) and
+                    ((i - j) >= self.__start_offset__) and
+                    ((i - j) <= self.__end_offset__)):
+                    self.__checksums__[j] += combined(v * (i - j))
+
+        self.__i__ += framelist.frames
 
     def checksums(self):
-        if (len(self.__values__) <
-            (self.__total_pcm_frames__ + self.__pcm_frame_range__ - 1)):
+        if (self.__i__ < (self.__total_pcm_frames__ +
+                          self.__pcm_frame_range__)):
             raise ValueError("insufficient samples for checksum")
 
-        def val(x):
-            return (x >> 32) + (x & 0xFFFFFFFF)
-
-        checksums = [sum([(val(v * i) if
-                          ((i >= self.__start_offset__) and
-                           (i <= self.__end_offset__)) else 0)
-                          for (i, v) in
-                          enumerate(
-                              self.__values__[r:r + self.__total_pcm_frames__],
-                              1)])
-                     for r in range(self.__pcm_frame_range__)]
-
-        return [c & 0xFFFFFFFF for c in checksums]
+        return [c & 0xFFFFFFFF for c in self.__checksums__]
 
 
 def match_offset(ar_matches, checksums, initial_offset):
