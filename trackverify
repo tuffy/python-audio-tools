@@ -26,17 +26,6 @@ from operator import or_
 MAX_CPUS = audiotools.MAX_JOBS
 
 
-class Counter:
-    def __init__(self):
-        self.value = 0
-
-    def __int__(self):
-        return self.value
-
-    def increment(self):
-        self.value += 1
-
-
 class FailedAudioFile:
     def __init__(self, class_name, filename, err):
         self.NAME = class_name
@@ -487,7 +476,7 @@ if (__name__ == '__main__'):
                                          sample_rate)
                         elif (track_num > 1):
                             length = (tracks[0].total_frames() -
-                                      int(sheet.track_offset(track_num - 1) *
+                                      int(sheet.track_offset(track_num) *
                                           sample_rate))
                         else:
                             length = (tracks[0].total_frames() -

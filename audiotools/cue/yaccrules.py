@@ -100,7 +100,8 @@ def p_filetype(t):
                 | MOTOROLA
                 | AIFF
                 | WAVE
-                | MP3'''
+                | MP3
+                | FLAC'''
     t[0] = t[1]
 
 def p_tracks(t):
@@ -113,7 +114,6 @@ def p_tracks(t):
 
 def p_track(t):
     'track : TRACK NUMBER tracktype trackitems'
-    #t[0] = "track-%s %s" % (t[2], repr(t[4]))
 
     from audiotools.cue import Track
 
