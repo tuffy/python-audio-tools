@@ -129,14 +129,16 @@ Checksum_init(accuraterip_Checksum *self, PyObject *args, PyObject *kwds)
     /*initialize AccurateRip V1 values*/
     self->accuraterip_v1.index = 1;
     self->accuraterip_v1.checksums = calloc(pcm_frame_range, sizeof(uint32_t));
-
     self->accuraterip_v1.initial_values = init_queue(pcm_frame_range - 1);
     self->accuraterip_v1.final_values = init_queue(pcm_frame_range - 1);
+    self->accuraterip_v1.values_sum = 0;
+
 
     /*initialize AccurateRip V2 values*/
     self->accuraterip_v2.index = 1;
     self->accuraterip_v2.checksum = 0;
-    self->accuraterip_v2.offset = accurateripv2_offset;
+    self->accuraterip_v2.current_offset = accurateripv2_offset;
+    self->accuraterip_v2.initial_offset = accurateripv2_offset;
 
     /*keep a copy of the FrameList class so we can check for it*/
     if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
@@ -289,15 +291,14 @@ update_frame_v2(struct accuraterip_v2 *v2,
                 unsigned end_offset,
                 unsigned value)
 {
-    if (!v2->offset) {
+    if (!v2->current_offset) {
         if ((v2->index >= start_offset) && (v2->index <= end_offset)) {
             const uint64_t v_i = ((uint64_t)value * (uint64_t)(v2->index));
-            v2->checksum += (uint32_t)(v_i & 0xFFFFFFFF);
             v2->checksum += (uint32_t)(v_i >> 32);
         }
         v2->index++;
     } else {
-        v2->offset--;
+        v2->current_offset--;
     }
 }
 
@@ -338,15 +339,19 @@ Checksum_checksums_v1(accuraterip_Checksum* self, PyObject *args)
 static PyObject*
 Checksum_checksum_v2(accuraterip_Checksum* self, PyObject *args)
 {
+    const struct accuraterip_v1 *v1 = &(self->accuraterip_v1);
     const struct accuraterip_v2 *v2 = &(self->accuraterip_v2);
 
     if (self->processed_frames <
         (self->total_pcm_frames + self->pcm_frame_range - 1)) {
         PyErr_SetString(PyExc_ValueError, "insufficient samples for checksums");
         return NULL;
-    }
+    } else {
+        const uint32_t checksum_v2 =
+            v2->checksum + v1->checksums[v2->initial_offset];
 
-    return PyLong_FromUnsignedLong(v2->checksum);
+        return PyLong_FromUnsignedLong(checksum_v2);
+    }
 }
 
 static struct queue*

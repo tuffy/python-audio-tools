@@ -42,9 +42,11 @@ struct accuraterip_v1 {
 struct accuraterip_v2 {
     unsigned index;
 
-    uint32_t checksum;  /*the AccurateRip V2 checksum*/
+    uint32_t checksum;        /*the AccurateRip V2 checksum*/
 
-    unsigned offset;    /*offset of the checksum in window*/
+    unsigned current_offset;  /*offset of the checksum in window*/
+
+    unsigned initial_offset;  /*initially specified window offset*/
 };
 
 typedef struct {
