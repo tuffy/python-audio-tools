@@ -26,46 +26,58 @@ typedef struct {
     unsigned total_pcm_frames;
     unsigned pcm_frame_range;
     unsigned i;
-    uint32_t *checksums;
-    uint32_t *initial_values;
-    uint32_t *final_values;
-    uint32_t values_sum;
+    unsigned j;
     unsigned start_offset;
     unsigned end_offset;
+    uint64_t *checksums_v1;
+    uint64_t *checksums_v2;
+    uint32_t *initial_values;
+    unsigned initial_values_index;
+    uint32_t *final_values;
+    unsigned final_values_index;
+    uint64_t values_sum;
 
     PyObject* framelist_class;
-} accuraterip_ChecksumV1;
+} accuraterip_Checksum;
 
 static PyObject*
-ChecksumV1_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+Checksum_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
 int
-ChecksumV1_init(accuraterip_ChecksumV1 *self, PyObject *args, PyObject *kwds);
+Checksum_init(accuraterip_Checksum *self, PyObject *args, PyObject *kwds);
 
 void
-ChecksumV1_dealloc(accuraterip_ChecksumV1 *self);
+Checksum_dealloc(accuraterip_Checksum *self);
 
 static PyObject*
-ChecksumV1_update(accuraterip_ChecksumV1* self, PyObject *args);
+Checksum_update(accuraterip_Checksum* self, PyObject *args);
+
+static void
+checksum_update_frame(accuraterip_Checksum* self, int left, int right);
 
 static PyObject*
-ChecksumV1_checksums(accuraterip_ChecksumV1* self, PyObject *args);
+Checksum_checksums_v1(accuraterip_Checksum* self, PyObject *args);
 
-static PyMethodDef ChecksumV1_methods[] = {
-    {"update", (PyCFunction)ChecksumV1_update,
+static PyObject*
+Checksum_checksums_v2(accuraterip_Checksum* self, PyObject *args);
+
+static PyMethodDef Checksum_methods[] = {
+    {"update", (PyCFunction)Checksum_update,
      METH_VARARGS, "update(framelist)"},
-    {"checksums", (PyCFunction)ChecksumV1_checksums,
-     METH_NOARGS, "checksums() -> [crc, crc, ...]"},
+    {"checksums_v1", (PyCFunction)Checksum_checksums_v1,
+     METH_NOARGS, "checksums_v1() -> [crc, crc, ...]"},
+    {"checksums_v2", (PyCFunction)Checksum_checksums_v2,
+     METH_NOARGS, "checksums_v2() -> [crc, crc, ...]"},
     {NULL}
 };
 
-static PyTypeObject accuraterip_ChecksumV1Type = {
+static PyTypeObject accuraterip_ChecksumType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
-    "_accuraterip.ChecksumV1", /*tp_name*/
-    sizeof(accuraterip_ChecksumV1),   /*tp_basicsize*/
+    "_accuraterip.Checksum", /*tp_name*/
+    sizeof(accuraterip_Checksum),   /*tp_basicsize*/
     0,                         /*tp_itemsize*/
-    (destructor)ChecksumV1_dealloc, /*tp_dealloc*/
+    (destructor)Checksum_dealloc, /*tp_dealloc*/
     0,                         /*tp_print*/
     0,                         /*tp_getattr*/
     0,                         /*tp_setattr*/
@@ -81,14 +93,14 @@ static PyTypeObject accuraterip_ChecksumV1Type = {
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "ChecksumV1 objects",      /* tp_doc */
+    "Checksum objects",      /* tp_doc */
     0,                         /* tp_traverse */
     0,                         /* tp_clear */
     0,                         /* tp_richcompare */
     0,                         /* tp_weaklistoffset */
     0,                         /* tp_iter */
     0,                         /* tp_iternext */
-    ChecksumV1_methods,        /* tp_methods */
+    Checksum_methods,        /* tp_methods */
     0,                         /* tp_members */
     0,                         /* tp_getset */
     0,                         /* tp_base */
@@ -96,84 +108,7 @@ static PyTypeObject accuraterip_ChecksumV1Type = {
     0,                         /* tp_descr_get */
     0,                         /* tp_descr_set */
     0,                         /* tp_dictoffset */
-    (initproc)ChecksumV1_init, /* tp_init */
+    (initproc)Checksum_init, /* tp_init */
     0,                         /* tp_alloc */
-    ChecksumV1_new,            /* tp_new */
-};
-
-
-typedef struct {
-    PyObject_HEAD
-
-    uint32_t checksum;
-    uint32_t track_index;
-    uint32_t start_offset;
-    uint32_t end_offset;
-
-    PyObject *framelist_class;
-} accuraterip_ChecksumV2;
-
-static PyObject*
-ChecksumV2_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
-
-int
-ChecksumV2_init(accuraterip_ChecksumV2 *self, PyObject *args, PyObject *kwds);
-
-void
-ChecksumV2_dealloc(accuraterip_ChecksumV2 *self);
-
-static PyObject*
-ChecksumV2_update(accuraterip_ChecksumV2* self, PyObject *args);
-
-static PyObject*
-ChecksumV2_checksum(accuraterip_ChecksumV2* self, PyObject *args);
-
-static PyMethodDef ChecksumV2_methods[] = {
-    {"update", (PyCFunction)ChecksumV2_update,
-     METH_VARARGS, "update(framelist) updates with the given FrameList"},
-    {"checksum", (PyCFunction)ChecksumV2_checksum,
-     METH_NOARGS, "checksum() -> calculcated 32-bit checksum"},
-    {NULL}
-};
-
-static PyTypeObject accuraterip_ChecksumV2Type = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
-    "_accuraterip.ChecksumV2", /*tp_name*/
-    sizeof(accuraterip_ChecksumV2),   /*tp_basicsize*/
-    0,                         /*tp_itemsize*/
-    (destructor)ChecksumV2_dealloc, /*tp_dealloc*/
-    0,                         /*tp_print*/
-    0,                         /*tp_getattr*/
-    0,                         /*tp_setattr*/
-    0,                         /*tp_compare*/
-    0,                         /*tp_repr*/
-    0,                         /*tp_as_number*/
-    0,                         /*tp_as_sequence*/
-    0,                         /*tp_as_mapping*/
-    0,                         /*tp_hash */
-    0,                         /*tp_call*/
-    0,                         /*tp_str*/
-    0,                         /*tp_getattro*/
-    0,                         /*tp_setattro*/
-    0,                         /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "ChecksumV2 objects",      /* tp_doc */
-    0,                         /* tp_traverse */
-    0,                         /* tp_clear */
-    0,                         /* tp_richcompare */
-    0,                         /* tp_weaklistoffset */
-    0,                         /* tp_iter */
-    0,                         /* tp_iternext */
-    ChecksumV2_methods,        /* tp_methods */
-    0,                         /* tp_members */
-    0,                         /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    (initproc)ChecksumV2_init, /* tp_init */
-    0,                         /* tp_alloc */
-    ChecksumV2_new,            /* tp_new */
+    Checksum_new,            /* tp_new */
 };
