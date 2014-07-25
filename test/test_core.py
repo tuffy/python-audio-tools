@@ -5299,35 +5299,40 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
                           total_pcm_frames=10,
                           sample_rate=0,
                           is_first=False,
-                          is_last=False)
+                          is_last=False,
+                          accurateripv2_offset=0)
 
         self.assertRaises(ValueError,
                           Checksum,
                           total_pcm_frames=10,
                           sample_rate=-1,
                           is_first=False,
-                          is_last=False)
+                          is_last=False,
+                          accurateripv2_offset=0)
 
         self.assertRaises(ValueError,
                           Checksum,
                           total_pcm_frames=0,
                           sample_rate=44100,
                           is_first=False,
-                          is_last=False)
+                          is_last=False,
+                          accurateripv2_offset=0)
 
         self.assertRaises(ValueError,
                           Checksum,
                           total_pcm_frames=-1,
                           sample_rate=44100,
                           is_first=False,
-                          is_last=False)
+                          is_last=False,
+                          accurateripv2_offset=0)
 
         self.assertRaises(ValueError,
                           Checksum,
                           total_pcm_frames=-1,
                           sample_rate=-1,
                           is_first=False,
-                          is_last=False)
+                          is_last=False,
+                          accurateripv2_offset=0)
 
         self.assertRaises(ValueError,
                           Checksum,
@@ -5335,7 +5340,8 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
                           sample_rate=44100,
                           is_first=False,
                           is_last=False,
-                          pcm_frame_range=0)
+                          pcm_frame_range=0,
+                          accurateripv2_offset=0)
 
         self.assertRaises(ValueError,
                           Checksum,
@@ -5343,7 +5349,16 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
                           sample_rate=44100,
                           is_first=False,
                           is_last=False,
-                          pcm_frame_range=-1)
+                          pcm_frame_range=-1,
+                          accurateripv2_offset=0)
+
+        self.assertRaises(ValueError,
+                          Checksum,
+                          total_pcm_frames=10,
+                          sample_rate=44100,
+                          is_first=False,
+                          is_last=False,
+                          accurateripv2_offset=-1)
 
         checksum = Checksum(total_pcm_frames=200000,
                             sample_rate=44100,
@@ -5396,7 +5411,7 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
         audiotools.transfer_data(
             Generate02(44100).read, short_track.update)
         self.assertEqual(short_track.checksums_v1(), [0x7FFF8000])
-        self.assertEqual(short_track.checksums_v2(), [0x7FFF8000])
+        self.assertEqual(short_track.checksum_v2(), 0x7FFF8000)
 
         short_track = Checksum(total_pcm_frames=1,
                                sample_rate=44100,
@@ -5406,7 +5421,7 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
         audiotools.transfer_data(
             Generate02(44100).read, short_track.update)
         self.assertEqual(short_track.checksums_v1(), [0])
-        self.assertEqual(short_track.checksums_v2(), [0])
+        self.assertEqual(short_track.checksum_v2(), 0)
 
         short_track = Checksum(total_pcm_frames=1,
                                sample_rate=44100,
@@ -5416,7 +5431,7 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
         audiotools.transfer_data(
             Generate02(44100).read, short_track.update)
         self.assertEqual(short_track.checksums_v1(), [0])
-        self.assertEqual(short_track.checksums_v2(), [0])
+        self.assertEqual(short_track.checksum_v2(), 0)
 
         short_track = Checksum(total_pcm_frames=1,
                                sample_rate=44100,
@@ -5426,7 +5441,7 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
         audiotools.transfer_data(
             Generate02(44100).read, short_track.update)
         self.assertEqual(short_track.checksums_v1(), [0])
-        self.assertEqual(short_track.checksums_v2(), [0])
+        self.assertEqual(short_track.checksum_v2(), 0)
 
         track = audiotools.open("tone.flac")
 
@@ -5439,13 +5454,14 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
                                 is_last=False)
         audiotools.transfer_data(track.to_pcm().read, middle_track.update)
         self.assertEqual(middle_track.checksums_v1(), [0xF6E4AD26])
-        self.assertEqual(middle_track.checksums_v2(), [0x4781FC37])
+        self.assertEqual(middle_track.checksum_v2(), 0x4781FC37)
 
         middle_track = Checksum(total_pcm_frames=track.total_frames(),
                                 sample_rate=track.sample_rate(),
                                 is_first=False,
                                 is_last=False,
-                                pcm_frame_range=3)
+                                pcm_frame_range=3,
+                                accurateripv2_offset=1)
         audiotools.transfer_data(
             audiotools.PCMReaderWindow(track.to_pcm(),
                                        -1,
@@ -5454,9 +5470,10 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
         self.assertEqual(middle_track.checksums_v1(), [0xCA705E69,
                                                        0xF6E4AD26,
                                                        0x951FB12F])
-        self.assertEqual(middle_track.checksums_v2(), [0x1B0BE28C,
-                                                       0x4781FC37,
-                                                       0xE5B9A28E])
+        self.assertEqual(middle_track.checksum_v2(), 0x4781FC37)
+        # self.assertEqual(middle_track.checksums_v2(), [0x1B0BE28C,
+        #                                                0x4781FC37,
+        #                                                0xE5B9A28E])
 
         first_track = Checksum(total_pcm_frames=track.total_frames(),
                                sample_rate=track.sample_rate(),
@@ -5464,13 +5481,14 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
                                is_last=False)
         audiotools.transfer_data(track.to_pcm().read, first_track.update)
         self.assertEqual(first_track.checksums_v1(), [0xEE4DBEB4])
-        self.assertEqual(first_track.checksums_v2(), [0x3ECA2C04])
+        self.assertEqual(first_track.checksum_v2(), 0x3ECA2C04)
 
         first_track = Checksum(total_pcm_frames=track.total_frames(),
                                sample_rate=track.sample_rate(),
                                is_first=True,
                                is_last=False,
-                               pcm_frame_range=3)
+                               pcm_frame_range=3,
+                               accurateripv2_offset=1)
         audiotools.transfer_data(
             audiotools.PCMReaderWindow(track.to_pcm(),
                                        -1,
@@ -5479,9 +5497,10 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
         self.assertEqual(first_track.checksums_v1(), [0x7CC66A55,
                                                       0xEE4DBEB4,
                                                       0x9A58C7EC])
-        self.assertEqual(first_track.checksums_v2(), [0xCD410A97,
-                                                      0x3ECA2C04,
-                                                      0xEAD1D8AA])
+        self.assertEqual(first_track.checksum_v2(), 0x3ECA2C04)
+        # self.assertEqual(first_track.checksums_v2(), [0xCD410A97,
+        #                                               0x3ECA2C04,
+        #                                               0xEAD1D8AA])
 
         last_track = Checksum(total_pcm_frames=track.total_frames(),
                               sample_rate=track.sample_rate(),
@@ -5489,13 +5508,14 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
                               is_last=True)
         audiotools.transfer_data(track.to_pcm().read, last_track.update)
         self.assertEqual(last_track.checksums_v1(), [0xF819E862])
-        self.assertEqual(last_track.checksums_v2(), [0x222E32FA])
+        self.assertEqual(last_track.checksum_v2(), 0x222E32FA)
 
         last_track = Checksum(total_pcm_frames=track.total_frames(),
                               sample_rate=track.sample_rate(),
                               is_first=False,
                               is_last=True,
-                              pcm_frame_range=3)
+                              pcm_frame_range=3,
+                              accurateripv2_offset=1)
         audiotools.transfer_data(
             audiotools.PCMReaderWindow(track.to_pcm(),
                                        -1,
@@ -5504,9 +5524,10 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
         self.assertEqual(last_track.checksums_v1(), [0x682F9316,
                                                      0xF819E862,
                                                      0x00DBAF4E])
-        self.assertEqual(last_track.checksums_v2(), [0x92419BB8,
-                                                     0x222E32FA,
-                                                     0x2AF10061])
+        self.assertEqual(last_track.checksum_v2(), 0x222E32FA)
+        # self.assertEqual(last_track.checksums_v2(), [0x92419BB8,
+        #                                              0x222E32FA,
+        #                                              0x2AF10061])
 
         only_track = Checksum(total_pcm_frames=track.total_frames(),
                               sample_rate=track.sample_rate(),
@@ -5514,13 +5535,14 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
                               is_last=True)
         audiotools.transfer_data(track.to_pcm().read, only_track.update)
         self.assertEqual(only_track.checksums_v1(), [0xEF82F9F0])
-        self.assertEqual(only_track.checksums_v2(), [0x197662C7])
+        self.assertEqual(only_track.checksum_v2(), 0x197662C7)
 
         only_track = Checksum(total_pcm_frames=track.total_frames(),
                               sample_rate=track.sample_rate(),
                               is_first=True,
                               is_last=True,
-                              pcm_frame_range=3)
+                              pcm_frame_range=3,
+                              accurateripv2_offset=1)
         audiotools.transfer_data(
             audiotools.PCMReaderWindow(track.to_pcm(),
                                        -1,
@@ -5529,9 +5551,10 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
         self.assertEqual(only_track.checksums_v1(), [0x1A859F02,
                                                      0xEF82F9F0,
                                                      0x0614C60B])
-        self.assertEqual(only_track.checksums_v2(), [0x4476C3C3,
-                                                     0x197662C7,
-                                                     0x3009367D])
+        self.assertEqual(only_track.checksum_v2(), 0x197662C7)
+        # self.assertEqual(only_track.checksums_v2(), [0x4476C3C3,
+        #                                              0x197662C7,
+        #                                              0x3009367D])
 
         #ensure feeding checksum with not enough samples
         #raises ValueError at checksums()-time
@@ -5544,7 +5567,7 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
         audiotools.transfer_data(track.to_pcm().read,
                                  insufficient_samples.update)
         self.assertRaises(ValueError, insufficient_samples.checksums_v1)
-        self.assertRaises(ValueError, insufficient_samples.checksums_v2)
+        self.assertRaises(ValueError, insufficient_samples.checksum_v2)
 
         #ensure insufficient samples also works with a range
         insufficient_samples = Checksum(
@@ -5552,11 +5575,12 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
             sample_rate=track.sample_rate(),
             is_first=False,
             is_last=False,
-            pcm_frame_range=2)
+            pcm_frame_range=2,
+            accurateripv2_offset=1)
         audiotools.transfer_data(track.to_pcm().read,
                                  insufficient_samples.update)
         self.assertRaises(ValueError, insufficient_samples.checksums_v1)
-        self.assertRaises(ValueError, insufficient_samples.checksums_v2)
+        self.assertRaises(ValueError, insufficient_samples.checksum_v2)
 
         #ensure feeding checksum with too many samples
         #raises ValueError at update()-time

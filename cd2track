@@ -48,7 +48,8 @@ class AccurateRipReader:
             sample_rate=pcmreader.sample_rate,
             is_first=is_first,
             is_last=is_last,
-            pcm_frame_range=PREVIOUS_TRACK_FRAMES + 1 + NEXT_TRACK_FRAMES)
+            pcm_frame_range=PREVIOUS_TRACK_FRAMES + 1 + NEXT_TRACK_FRAMES,
+            accurateripv2_offset=PREVIOUS_TRACK_FRAMES)
 
         self.sample_rate = pcmreader.sample_rate
         self.channels = pcmreader.channels
@@ -67,7 +68,7 @@ class AccurateRipReader:
         return self.__checksummer__.checksums_v1()
 
     def checksums_v2(self):
-        return self.__checksummer__.checksums_v2()
+        return [self.__checksummer__.checksum_v2()]
 
 
 if (__name__ == '__main__'):
@@ -529,7 +530,7 @@ if (__name__ == '__main__'):
          offset_v2) = audiotools.accuraterip.match_offset(
             ar_result.get(track_number, []),
             accuraterip_log_v2[track_number],
-            -PREVIOUS_TRACK_FRAMES)
+            0)
 
         (checksum_v1,
          confidence_v1,

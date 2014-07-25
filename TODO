@@ -7003,6 +7003,12 @@
 ** DONE Convert TOC and CUE handling to proper grammars
 *** DONE Convert audiotools.cue
 *** DONE Convert audiotools.toc
+** DONE Add AccurateRipV2 support
+*** DONE Add ChecksumV2 object
+**** DONE Add unit tests
+*** DONE Update utilities
+    - [X] cd2track
+    - [X] trackverify
 ** TODO Update Sheet interface
    Although cuesheets are mostly a repository of index points,
    it would be useful to support a wider subset of options
@@ -7064,14 +7070,6 @@
     - [X] accuraterip_sheet_lookup
 *** DONE Update documentation
 *** TODO Update unit tests
-** TODO Add AccurateRipV2 support
-*** TODO Add ChecksumV2 object
-**** TODO Add .checksums() range support
-**** TODO Add documentation
-**** DONE Add unit tests
-*** DONE Update utilities
-    - [X] cd2track
-    - [X] trackverify
 ** TODO Support building cue sheets from discs
    Find some way of grabbing the index points from a disc
    so cuesheets can be populated.
