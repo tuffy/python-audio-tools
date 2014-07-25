@@ -371,9 +371,57 @@ class build_ext(_build_ext):
                 else:
                     row.add_column("")
 
+        try:
+            pkg_config = subprocess.Popen(
+                ["pkg-config", "--version"],
+                stdout=open(os.devnull, "wb"),
+                stderr=open(os.devnull, "wb"))
+            pkg_config_found = (pkg_config.wait() == 0)
+        except OSError:
+            pkg_config_found = False
+
         print "=" * table.total_width()
         print "Python Audio Tools %s Setup" % (VERSION)
         print "=" * table.total_width()
+
+        if (not pkg_config_found):
+            def add_row(table, text, alignment="left"):
+                row = table.row()
+                row.add_column("*")
+                row.add_column(text, alignment)
+                row.add_column("*")
+
+            table2 = output_table()
+            row = table2.row()
+            row.add_column("*")
+            row.add_column("*" * 60)
+            row.add_column("*")
+
+            add_row(table2, "pkg-config not found", "center")
+
+            add_row(table2,
+                    "some libraries may not be located automatically",
+                    "center")
+
+            add_row(table2, "")
+
+            add_row(table2, "  download pkg-config from:")
+            add_row(table2,
+                    "  http://www.freedesktop.org/wiki/Software/pkg-config/")
+
+            add_row(table2, "")
+
+            add_row(table2,
+                    "  or specify which libraries are available " +
+                    "in \"setup.cfg\"")
+
+            row = table2.row()
+            row.add_column("*")
+            row.add_column("*" * 60)
+            row.add_column("*")
+
+            for row in table2.format():
+                print row
 
         for row in table.format():
             print row
