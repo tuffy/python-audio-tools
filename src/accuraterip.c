@@ -20,6 +20,16 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+/**********************************************************************
+  Offset checksum calculation adapted from Jon Lund Steffensen's work:
+
+  http://jonls.dk/2009/10/calculating-accuraterip-checksums/
+
+  The math is the same, but I find it clearer to store the initial
+  and trailing values used to adjust the values sum in a seperate memory
+  space rather than stuff them in the checksums area temporarily.
+ **********************************************************************/
+
 static PyMethodDef accuraterip_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

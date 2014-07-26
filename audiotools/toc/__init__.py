@@ -547,7 +547,7 @@ class CDTextLanguageMap:
         return "\n".join(["  " + l for l in output])
 
 def format_string(s):
-    return "\"%s\"" % (s)
+    return "\"%s\"" % (s.replace('\\', '\\\\').replace('"', '\\"'))
 
 def format_timestamp(t):
     sectors = int(t * 75)

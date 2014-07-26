@@ -4489,9 +4489,97 @@ class testcuesheet(unittest.TestCase):
                                 filename="MYAUDIO2.WAV")],
                     metadata=audiotools.MetaData(catalog=u"3898347789120"))
 
+    def __metadata_sheets__(self):
+        from audiotools import Sheet,SheetTrack,SheetIndex
+
+        def timestamp_to_frac(m, s, f):
+            from fractions import Fraction
+            return Fraction((m * 60 * 75) + (s * 75) + f, 75)
+
+        #a sheet with a portable set of plain metadata
+        yield Sheet([SheetTrack(number=1,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(0, 0, 0))],
+                                metadata=audiotools.MetaData(
+                         track_name=u"Track 1",
+                         performer_name=u"Performer 1",
+                         artist_name=u"Artist 1"),
+                                filename="CDImage.wav"),
+                     SheetTrack(number=2,
+                                track_indexes=[
+                         SheetIndex(0, timestamp_to_frac(4, 36, 50)),
+                         SheetIndex(1, timestamp_to_frac(4, 41, 10))],
+                                metadata=audiotools.MetaData(
+                         track_name=u"Track 2",
+                         performer_name=u"Performer 2",
+                         artist_name=u"Artist 2"),
+                                filename="CDImage.wav")],
+                     metadata=audiotools.MetaData(
+                         album_name=u"Album Name",
+                         performer_name=u"Album Performer",
+                         artist_name=u"Album Artist"))
+
+        #a sheet with a lot of strings that need escaping
+        yield Sheet([SheetTrack(number=1,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(0, 0, 0))],
+                                metadata=audiotools.MetaData(
+                         track_name=u"Track \"1\"",
+                         performer_name=u"Performer \"1\"",
+                         artist_name=u"Artist \"1\""),
+                                filename="CD\"Image\".wav"),
+                     SheetTrack(number=2,
+                                track_indexes=[
+                         SheetIndex(0, timestamp_to_frac(4, 36, 50)),
+                         SheetIndex(1, timestamp_to_frac(4, 41, 10))],
+                                metadata=audiotools.MetaData(
+                         track_name=u"Track \"2\"",
+                         performer_name=u"Performer \"2\"",
+                         artist_name=u"Artist \"2\""),
+                                filename="CD\"Image\".wav")],
+                     metadata=audiotools.MetaData(
+                         album_name=u"Album \"Name\"",
+                         performer_name=u"Album \"Performer\"",
+                         artist_name=u"Album \"Artist\""))
+
+        #a sheet with lots of backslashes that need escaping
+        yield Sheet([SheetTrack(number=1,
+                                track_indexes=[
+                         SheetIndex(1, timestamp_to_frac(0, 0, 0))],
+                                metadata=audiotools.MetaData(
+                         track_name=u"Track \\ 1",
+                         performer_name=u"Performer \\ 1",
+                         artist_name=u"Artist \\ 1"),
+                                filename="CD\\Image.wav"),
+                     SheetTrack(number=2,
+                                track_indexes=[
+                         SheetIndex(0, timestamp_to_frac(4, 36, 50)),
+                         SheetIndex(1, timestamp_to_frac(4, 41, 10))],
+                                metadata=audiotools.MetaData(
+                         track_name=u"Track \\ 2",
+                         performer_name=u"Performer \\ 2",
+                         artist_name=u"Artist \\ 2"),
+                                filename="CD\\Image.wav")],
+                     metadata=audiotools.MetaData(
+                         album_name=u"Album \\ Name",
+                         performer_name=u"Album \\ Performer",
+                         artist_name=u"Album \\ Artist"))
+
     @LIB_CUESHEET
     def test_round_trip(self):
         for sheet in self.__sheets__():
+            converted = self.sheet_class.converted(sheet)
+            self.assertEqual(converted, sheet)
+            temp_sheet = tempfile.NamedTemporaryFile(suffix=self.suffix)
+            temp_sheet.write(converted.build())
+            temp_sheet.flush()
+            re_read = self.read_sheet(temp_sheet.name)
+            temp_sheet.close()
+            self.assertEqual(re_read, sheet)
+
+    @LIB_CUESHEET
+    def test_metadata(self):
+        for sheet in self.__metadata_sheets__():
             converted = self.sheet_class.converted(sheet)
             self.assertEqual(converted, sheet)
             temp_sheet = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -4554,6 +4642,11 @@ class test_flac_cuesheet(testcuesheet):
 
             #clean out dummy file
             temp_file.close()
+
+    @LIB_CUESHEET
+    def test_metadata(self):
+        #FLAC cuesheets don't support meaningful metadata
+        self.assert_(True)
 
 
 class test_oggflac_cuesheet(test_flac_cuesheet):

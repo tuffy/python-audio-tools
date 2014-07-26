@@ -366,7 +366,7 @@ class Index(SheetIndex):
 
 
 def format_string(s):
-    return "\"%s\"" % (s)
+    return "\"%s\"" % (s.replace('\\', '\\\\').replace('"', '\\"'))
 
 
 def format_timestamp(t):

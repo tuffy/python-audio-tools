@@ -91,8 +91,9 @@ def t_ID(t):
     return t
 
 def t_STRING(t):
-    r'\".*?\"'
-    t.value = t.value[1:-1]
+    r'\"(\\.|[^"])*\"'
+    from re import sub
+    t.value = sub(r'\\.', lambda s: s.group(0)[1:], t.value[1:-1])
     return t
 
 def t_TIMESTAMP(t):

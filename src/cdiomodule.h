@@ -239,17 +239,17 @@ cddareader_reset_log(struct cdio_log *log);
 
 static PyMethodDef CDDAReader_methods[] = {
     {"read", (PyCFunction)CDDAReader_read,
-     METH_VARARGS, "Returns FrameList of CD data"},
+     METH_VARARGS, "read(pcm_frames) -> Framelist"},
     {"seek", (PyCFunction)CDDAReader_seek,
-     METH_VARARGS, "Seeks to position in CD stream"},
+     METH_VARARGS, "seek(pcm_frames)"},
     {"close", (PyCFunction)CDDAReader_close,
-     METH_NOARGS, "Closes CD stream"},
+     METH_NOARGS, "closes CD stream"},
     {"set_speed", (PyCFunction)CDDAReader_set_speed,
-     METH_VARARGS, "Sets CD speed"},
+     METH_VARARGS, "set_speed(speed)"},
     {"log", (PyCFunction)CDDAReader_log,
-     METH_NOARGS, "Gets read log"},
+     METH_NOARGS, "log() -> {item:value, ...}"},
     {"reset_log", (PyCFunction)CDDAReader_reset_log,
-     METH_NOARGS, "Resets read log"},
+     METH_NOARGS, "resets read log"},
     {NULL}
 };
 
