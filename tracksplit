@@ -294,8 +294,7 @@ if (__name__ == '__main__'):
     cuesheet_lengths = [cuesheet.track_length(t) for t in
                         cuesheet.track_numbers()]
 
-    audiofile_size = Fraction(audiofile.total_frames(),
-                              audiofile.sample_rate())
+    audiofile_size = audiofile.seconds_length()
 
     if (cuesheet_lengths[-1] is None):
         #last track length unknown, so ensure there's enough room

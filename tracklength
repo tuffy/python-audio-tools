@@ -39,7 +39,7 @@ def audio_files(msg, args):
 
 class FormatSummary:
     def __init__(self):
-        self.total_length = Decimal(0)
+        self.total_length = 0
         self.file_count = 0
         self.total_size = 0
 

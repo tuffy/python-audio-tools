@@ -402,7 +402,7 @@ AudioFile Objects
 
 .. method:: AudioFile.seconds_length()
 
-   Returns the length of this audio file as a :class:`decimal.Decimal`
+   Returns the length of this audio file as a :class:`fractions.Fraction`
    number of seconds.
 
 .. method:: AudioFile.lossless()

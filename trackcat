@@ -197,8 +197,6 @@ if (__name__ == '__main__'):
 
     #if embedding a cuesheet, try to read it before doing any work
     if (options.cuesheet is not None):
-        from fractions import Fraction
-
         try:
             cuesheet = audiotools.read_sheet(options.cuesheet)
 
@@ -215,8 +213,7 @@ if (__name__ == '__main__'):
                                                      cuesheet.track_numbers()):
                 track_length = cuesheet.track_length(cuesheet_track)
                 if ((track_length is not None) and
-                    (track_length != Fraction(input_track.total_frames(),
-                                              input_track.sample_rate()))):
+                    (track_length != input_track.seconds_length())):
                     msg.error(_.ERR_CUE_LENGTH_MISMATCH % (cuesheet_track))
                     sys.exit(1)
 

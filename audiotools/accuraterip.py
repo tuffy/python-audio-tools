@@ -173,7 +173,7 @@ class DiscID:
 
     @classmethod
     def from_tracks(cls, tracks):
-        """given a sorted list of tracks,
+        """given a sorted list of AudioFile objects,
         returns DiscID for those tracks as if they were a CD"""
 
         from audiotools.freedb import DiscID as FDiscID

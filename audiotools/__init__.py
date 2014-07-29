@@ -3705,15 +3705,15 @@ class AudioFile:
             return 0
 
     def seconds_length(self):
-        """returns the length of the track as a Decimal number of seconds"""
+        """returns the length of the track as a Fraction number of seconds"""
 
-        import decimal
+        from fractions import Fraction
 
-        try:
-            return (decimal.Decimal(self.total_frames()) /
-                    decimal.Decimal(self.sample_rate()))
-        except decimal.DivisionByZero:
-            return decimal.Decimal(0)
+        if (self.sample_rate() > 0):
+            return Fraction(self.total_frames(), self.sample_rate())
+        else:
+            #this shouldn't happen, but just in case
+            return Fraction(0, 1)
 
     def sample_rate(self):
         """returns the rate of the track's audio as an integer number of Hz"""
