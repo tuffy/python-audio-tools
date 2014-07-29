@@ -747,16 +747,6 @@ class audiotools_bitstream(Extension):
                                     "src/huffman.c"])
 
 
-class audiotools_verify(Extension):
-    def __init__(self):
-        Extension.__init__(self,
-                           "audiotools.verify",
-                           sources=["src/verify.c",
-                                    "src/bitstream.c",
-                                    "src/buffer.c",
-                                    "src/func_io.c"])
-
-
 class audiotools_ogg(Extension):
     def __init__(self):
         Extension.__init__(self,
@@ -860,7 +850,6 @@ ext_modules = [audiotools_pcm(),
                audiotools_encoders(system_libraries),
                audiotools_bitstream(),
                audiotools_ogg(),
-               audiotools_verify(),
                audiotools_accuraterip(),
                audiotools_output(system_libraries)]
 

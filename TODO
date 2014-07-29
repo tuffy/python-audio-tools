@@ -7099,7 +7099,6 @@
     - [ ] audiotools.encoders
     - [ ] audiotools.bitstream
     - [ ] audiotools._ogg
-    - [ ] audiotools.verify
     - [ ] audiotools._accuraterip
     - [ ] audiotools.output
 *** TODO Update Python modules
