@@ -673,12 +673,6 @@ def write_seektable(writer, frame_sizes):
     writer.write(32, int(crc))
 
 
-def div_ceil(n, d):
-    """returns the ceiling of n divided by d as an int"""
-
-    return n // d + (1 if ((n % d) != 0) else 0)
-
-
 class CRC32:
     TABLE = [0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA,
              0x076DC419, 0x706AF48F, 0xE963A535, 0x9E6495A3,

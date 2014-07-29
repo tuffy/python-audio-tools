@@ -86,7 +86,7 @@ class RANDOM_PCM_Reader:
             frames_to_read = min(pcm_frames, self.total_frames)
             frame = audiotools.pcm.FrameList(
                 os.urandom(frames_to_read *
-                           (self.bits_per_sample / 8) *
+                           (self.bits_per_sample // 8) *
                            self.channels),
                 self.channels,
                 self.bits_per_sample,
@@ -199,7 +199,7 @@ class Variable_Reader:
         self.channel_mask = pcmreader.channel_mask
         self.bits_per_sample = pcmreader.bits_per_sample
         self.md5 = md5()
-        self.range = range(self.channels * (self.bits_per_sample / 8),
+        self.range = range(self.channels * (self.bits_per_sample // 8),
                            4096)
 
     def read(self, pcm_frames):
@@ -286,7 +286,7 @@ class FrameCounter:
     def __int__(self):
         return int(round(decimal.Decimal(self.value) /
                          (self.channels *
-                          (self.bits_per_sample / 8) *
+                          (self.bits_per_sample // 8) *
                           self.sample_rate)))
 
 

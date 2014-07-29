@@ -113,9 +113,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
                                 wave.substream(chunk_size))
                         elif (chunk_id == 'data'):
                             self.__total_frames__ = \
-                                (chunk_size /
+                                (chunk_size //
                                  (self.__channels__ *
-                                  (self.__bits_per_sample__ / 8)))
+                                  (self.__bits_per_sample__ // 8)))
                         else:
                             if (chunk_size % 2):
                                 wave.read_bytes(chunk_size + 1)
@@ -147,9 +147,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
                         elif (chunk_id == 'SSND'):
                             #subtract 8 bytes for "offset" and "block size"
                             self.__total_frames__ = \
-                                ((chunk_size - 8) /
+                                ((chunk_size - 8) //
                                  (self.__channels__ *
-                                  (self.__bits_per_sample__ / 8)))
+                                  (self.__bits_per_sample__ // 8)))
                         else:
                             if (chunk_size % 2):
                                 aiff.read_bytes(chunk_size + 1)
@@ -244,7 +244,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                                              pcmreader.bits_per_sample,
                                              total_pcm_frames),
                                  pcmreader,
-                                 chr(0) * (((pcmreader.bits_per_sample / 8) *
+                                 chr(0) * (((pcmreader.bits_per_sample // 8) *
                                             pcmreader.channels *
                                             total_pcm_frames) % 2),
                                  compression,

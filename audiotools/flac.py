@@ -298,7 +298,7 @@ class FlacMetaData(MetaData):
             elif (block_type == 3):  # SEEKTABLE
                 block_list.append(
                     Flac_SEEKTABLE.parse(
-                        reader.substream(block_length), block_length / 18))
+                        reader.substream(block_length), block_length // 18))
             elif (block_type == 4):  # VORBIS_COMMENT
                 block_list.append(
                     Flac_VORBISCOMMENT.parse(
@@ -621,7 +621,7 @@ class Flac_SEEKTABLE:
 
         from .bitstream import format_size
 
-        return (format_size("64U64U16u") / 8) * len(self.seekpoints)
+        return (format_size("64U64U16u") // 8) * len(self.seekpoints)
 
     def clean(self):
         """removes any empty seek points
@@ -1334,7 +1334,7 @@ class Flac_PICTURE(Image):
             "32u 32u%db 32u%db 32u 32u 32u 32u 32u%db" %
             (len(self.mime_type.encode('ascii')),
              len(self.description.encode('utf-8')),
-             len(self.data))) / 8
+             len(self.data))) // 8
 
     @classmethod
     def converted(cls, image):
@@ -2919,7 +2919,7 @@ class FLAC_Data_Chunk:
 
         return (self.__total_frames__ *
                 self.__pcmreader__.channels *
-                (self.__pcmreader__.bits_per_sample / 8))
+                (self.__pcmreader__.bits_per_sample // 8))
 
     def verify(self):
         "returns True"
@@ -2967,7 +2967,7 @@ class FLAC_SSND_Chunk(FLAC_Data_Chunk):
 
         return 8 + (self.__total_frames__ *
                     self.__pcmreader__.channels *
-                    (self.__pcmreader__.bits_per_sample / 8))
+                    (self.__pcmreader__.bits_per_sample // 8))
 
     def write(self, f):
         """writes the entire chunk to the given output file object
@@ -3074,7 +3074,7 @@ class OggFlacMetaData(FlacMetaData):
             if (block_type == 2):    # APPLICATION
                 block_list.append(Flac_APPLICATION.parse(packet, length))
             elif (block_type == 3):  # SEEKTABLE
-                block_list.append(Flac_SEEKTABLE.parse(packet, length / 18))
+                block_list.append(Flac_SEEKTABLE.parse(packet, length // 18))
             elif (block_type == 4):  # VORBIS_COMMENT
                 block_list.append(Flac_VORBISCOMMENT.parse(packet))
             elif (block_type == 5):  # CUESHEET
@@ -3119,7 +3119,7 @@ class OggFlacMetaData(FlacMetaData):
                    len(valid_blocks),
                    "fLaC",
                    0,
-                   format_size("16u 16u 24u 24u 20u 3u 5u 36U 16b") / 8,
+                   format_size("16u 16u 24u 24u 20u 3u 5u 36U 16b") // 8,
                    streaminfo.minimum_block_size,
                    streaminfo.maximum_block_size,
                    streaminfo.minimum_frame_size,

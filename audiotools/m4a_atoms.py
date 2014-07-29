@@ -299,7 +299,7 @@ class M4A_FTYP_Atom(M4A_Leaf_Atom):
         return cls(reader.read_bytes(4),
                    reader.read(32),
                    [reader.read_bytes(4)
-                    for i in xrange((data_size - 8) / 4)])
+                    for i in xrange((data_size - 8) // 4)])
 
     def build(self, writer):
         """writes the atom to the given BitstreamWriter

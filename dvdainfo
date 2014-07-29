@@ -66,8 +66,8 @@ if (__name__ == '__main__'):
         row.add_column(_.LAB_DVDA_TRACKS % (len(title.tracks)), "right")
         row.add_column(u" : ")
         row.add_column(_.LAB_DVDA_TITLE_INFO %
-                       {"minutes": title.pts_length / 90000 / 60,
-                        "seconds": title.pts_length / 90000 % 60,
+                       {"minutes": title.pts_length // 90000 // 60,
+                        "seconds": title.pts_length // 90000 % 60,
                         "channels": channels,
                         "rate": audiotools.khz(sample_rate),
                         "bits": bits_per_sample,
@@ -111,8 +111,8 @@ if (__name__ == '__main__'):
                     row.add_column(unicode(track_num + 1), "right")
                     row.add_column(u" ")
                     row.add_column(_.LAB_TRACK_LENGTH %
-                                   (track.pts_length / 90000 / 60,
-                                    track.pts_length / 90000 % 60),
+                                   (track.pts_length // 90000 // 60,
+                                    track.pts_length // 90000 % 60),
                                    "right")
                 else:
                     row.add_column(u"")

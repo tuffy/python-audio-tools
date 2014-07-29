@@ -589,9 +589,9 @@ class MP3Audio(AudioFile):
             from .text import ERR_MP3_INVALID_BIT_RATE
             raise ValueError(ERR_MP3_INVALID_BIT_RATE)
         if (layer == 3):  # layer I
-            return (((12 * bit_rate) / sample_rate) + pad) * 4
+            return (((12 * bit_rate) // sample_rate) + pad) * 4
         else:             # layer II/III
-            return ((144 * bit_rate) / sample_rate) + pad
+            return ((144 * bit_rate) // sample_rate) + pad
 
     def total_frames(self):
         """returns the total PCM frames of the track as an integer"""

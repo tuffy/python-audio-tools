@@ -339,7 +339,7 @@ if (__name__ == '__main__'):
                       (audiotools.Filename(options.comment_file),))
             sys.exit(1)
 
-        if (((comment_file.count(u"\uFFFD") * 100) /
+        if (((comment_file.count(u"\uFFFD") * 100) //
              len(comment_file)) >= 10):
             msg.error(_.ERR_TRACKTAG_COMMENT_NOT_UTF8 %
                       (audiotools.Filename(options.comment_file),))

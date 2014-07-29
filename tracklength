@@ -56,8 +56,8 @@ class FormatSummary:
         row.add_column(u" ")
         format_length = int(self.total_length)
         row.add_column(_.LAB_TRACKLENGTH %
-                       {"hours": format_length / (60 * 60),
-                        "minutes": (format_length / 60) % 60,
+                       {"hours": format_length // (60 * 60),
+                        "minutes": (format_length // 60) % 60,
                         "seconds": format_length % 60},
                        "right")
         row.add_column(u" ")

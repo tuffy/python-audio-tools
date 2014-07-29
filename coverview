@@ -101,8 +101,8 @@ try:
                 pixbuf=self.scaled_thumbnail,
                 src_x=0,
                 src_y=0,
-                dest_x=(self.widget_width - image_width) / 2,
-                dest_y=(self.widget_height - image_height) / 2,
+                dest_x=(self.widget_width - image_width) // 2,
+                dest_y=(self.widget_height - image_height) // 2,
                 width=image_width,
                 height=image_height)
 
@@ -548,8 +548,8 @@ Consult "man python" for further details.
                 self.canvas.delete(self.photo_image_id)
 
             self.photo_image_id = self.canvas.create_image(
-                (self.image_width - image_width) / 2,
-                (self.image_height - image_height) / 2,
+                (self.image_width - image_width) // 2,
+                (self.image_height - image_height) // 2,
                 image=self.photo_image,
                 anchor=NW)
 

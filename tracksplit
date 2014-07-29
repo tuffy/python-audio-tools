@@ -68,7 +68,7 @@ def split_raw(progress, source_filename,
     f = open(source_filename, "rb")
     try:
         #skip initial offset
-        f.seek(pcm_frames_offset * channels * (bits_per_sample / 8))
+        f.seek(pcm_frames_offset * channels * (bits_per_sample // 8))
 
         destination_audiofile = destination_class.from_pcm(
             str(destination_filename),

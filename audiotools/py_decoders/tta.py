@@ -233,7 +233,7 @@ class TTADecoder:
         total_tta_frames = div_ceil(self.total_pcm_frames * 245,
                                     self.sample_rate * 256)
 
-        self.pcm_frames_per_tta_frame = (self.sample_rate * 256) / 245
+        self.pcm_frames_per_tta_frame = (self.sample_rate * 256) // 245
 
         #read the seektable
         crc = CRC32()
@@ -308,10 +308,10 @@ class TTADecoder:
                 #apply sign bit
                 if ((unsigned % 2) == 1):
                     #positive
-                    ch_output.append((unsigned + 1) / 2)
+                    ch_output.append((unsigned + 1) // 2)
                 else:
                     #negative
-                    ch_output.append(-(unsigned / 2))
+                    ch_output.append(-(unsigned // 2))
 
         #check frame's trailing CRC32 now that reading is finished
         frame_reader.byte_align()

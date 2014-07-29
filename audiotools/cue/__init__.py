@@ -370,8 +370,8 @@ def format_string(s):
 
 
 def format_timestamp(t):
-    return "%2.2d:%2.2d:%2.2d" % (t / 75 / 60,
-                                  t / 75 % 60,
+    return "%2.2d:%2.2d:%2.2d" % (t // 75 // 60,
+                                  t // 75 % 60,
                                   t % 75)
 
 def decode_string(s):

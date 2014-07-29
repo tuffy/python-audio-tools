@@ -53,9 +53,9 @@ class EncoderContext:
 def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
     avg_bytes_per_second = (pcmreader.sample_rate *
                             pcmreader.channels *
-                            (pcmreader.bits_per_sample / 8))
+                            (pcmreader.bits_per_sample // 8))
     block_align = (pcmreader.channels *
-                   (pcmreader.bits_per_sample / 8))
+                   (pcmreader.bits_per_sample // 8))
 
     total_size = 4 * 3   # 'RIFF' + size + 'WAVE'
 
@@ -85,19 +85,19 @@ def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
                       '\x01\x00\x00\x00\x00\x00\x10\x00' +
                       '\x80\x00\x00\xaa\x00\x38\x9b\x71'  # sub format
                       )
-    total_size += format_size(fmt) / 8
+    total_size += format_size(fmt) // 8
 
     total_size += 4 * 2  # 'data' + size
     data_size = (total_frames *
                  pcmreader.channels *
-                 (pcmreader.bits_per_sample / 8))
+                 (pcmreader.bits_per_sample // 8))
     total_size += data_size
 
     total_size += wave_footer_len
 
     writer.build("4b 32u 4b 4b 32u" + fmt + "4b 32u",
                  (('RIFF', total_size - 8, 'WAVE',
-                   'fmt ', format_size(fmt) / 8) + fmt_fields +
+                   'fmt ', format_size(fmt) // 8) + fmt_fields +
                   ('data', data_size)))
 
 
@@ -653,7 +653,7 @@ def wasted_bps(sample):
         total = 0
         while ((sample % 2) == 0):
             total += 1
-            sample /= 2
+            sample //= 2
         return total
 
 
@@ -679,7 +679,7 @@ def joint_stereo(left, right):
     side = []
     for (l, r) in izip(left, right):
         mid.append(l - r)
-        side.append((l + r) / 2)
+        side.append((l + r) // 2)
     return [mid, side]
 
 
@@ -707,7 +707,7 @@ def write_block_header(writer,
     writer.write(32, total_pcm_frames)
     writer.write(32, block_index)
     writer.write(32, block_samples)
-    writer.write(2, (bits_per_sample / 8) - 1)
+    writer.write(2, (bits_per_sample // 8) - 1)
     writer.write(1, 2 - channel_count)
     writer.write(1, 0)                      # hybrid mode
     writer.write(1, joint_stereo)
@@ -758,10 +758,10 @@ def write_sub_block(writer, function, nondecoder_data, recorder):
 
     if (recorder.bytes() > (255 * 2)):
         writer.write(1, 1)
-        writer.write(24, (recorder.bytes() / 2) + actual_size_1_less)
+        writer.write(24, (recorder.bytes() // 2) + actual_size_1_less)
     else:
         writer.write(1, 0)
-        writer.write(8, (recorder.bytes() / 2) + actual_size_1_less)
+        writer.write(8, (recorder.bytes() // 2) + actual_size_1_less)
 
     recorder.copy(writer)
 
@@ -796,16 +796,16 @@ def store_weight(w):
     w = min(max(w, -1024), 1024)
 
     if (w > 0):
-        return (w - ((w + 2 ** 6) / 2 ** 7) + 4) / (2 ** 3)
+        return (w - ((w + 2 ** 6) // 2 ** 7) + 4) // (2 ** 3)
     elif (w == 0):
         return 0
     elif (w < 0):
-        return (w + 4) / (2 ** 3)
+        return (w + 4) // (2 ** 3)
 
 
 def restore_weight(v):
     if (v > 0):
-        return ((v * 2 ** 3) + ((v * 2 ** 3 + 2 ** 6) / 2 ** 7))
+        return ((v * 2 ** 3) + ((v * 2 ** 3 + 2 ** 6) // 2 ** 7))
     elif(v == 0):
         return 0
     else:
@@ -865,12 +865,12 @@ def wv_log2(value):
         if ((0 <= a) and (a < 256)):
             return (c * 2 ** 8) + WLOG[(a * 2 ** (9 - c)) % 256]
         else:
-            return (c * 2 ** 8) + WLOG[(a / 2 ** (c - 9)) % 256]
+            return (c * 2 ** 8) + WLOG[(a // 2 ** (c - 9)) % 256]
     else:
         if ((0 <= a) and (a < 256)):
             return -((c * 2 ** 8) + WLOG[(a * 2 ** (9 - c)) % 256])
         else:
-            return -((c * 2 ** 8) + WLOG[(a / 2 ** (c - 9)) % 256])
+            return -((c * 2 ** 8) + WLOG[(a // 2 ** (c - 9)) % 256])
 
 
 WLOG = [0x00, 0x01, 0x03, 0x04, 0x06, 0x07, 0x09, 0x0a,
@@ -1004,7 +1004,7 @@ def correlation_pass_1ch(uncorrelated_samples,
                         uncorrelated_samples)
         correlated = []
         for i in xrange(2, len(uncorrelated)):
-            temp = (3 * uncorrelated[i - 1] - uncorrelated[i - 2]) / 2
+            temp = (3 * uncorrelated[i - 1] - uncorrelated[i - 2]) // 2
             correlated.append(uncorrelated[i] - apply_weight(weight, temp))
             weight += update_weight(temp, correlated[i - 2], delta)
         return (correlated, weight, list(reversed(correlated[-2:])))
@@ -1176,35 +1176,35 @@ class Residual:
             unsigned = -residual - 1
             sign = 1
 
-        medians = [e / 2 ** 4 + 1 for e in entropy]
+        medians = [e // 2 ** 4 + 1 for e in entropy]
 
         #figure out m, offset, add and update channel's entropies
         if (unsigned < medians[0]):
             m = 0
             offset = unsigned
             add = medians[0] - 1
-            entropy[0] -= ((entropy[0] + 126) / 128) * 2
+            entropy[0] -= ((entropy[0] + 126) // 128) * 2
         elif ((unsigned - medians[0]) < medians[1]):
             m = 1
             offset = unsigned - medians[0]
             add = medians[1] - 1
-            entropy[0] += ((entropy[0] + 128) / 128) * 5
-            entropy[1] -= ((entropy[1] + 62) / 64) * 2
+            entropy[0] += ((entropy[0] + 128) // 128) * 5
+            entropy[1] -= ((entropy[1] + 62) // 64) * 2
         elif ((unsigned - (medians[0] + medians[1])) < medians[2]):
             m = 2
             offset = unsigned - (medians[0] + medians[1])
             add = medians[2] - 1
-            entropy[0] += ((entropy[0] + 128) / 128) * 5
-            entropy[1] += ((entropy[1] + 64) / 64) * 5
-            entropy[2] -= ((entropy[2] + 30) / 32) * 2
+            entropy[0] += ((entropy[0] + 128) // 128) * 5
+            entropy[1] += ((entropy[1] + 64) // 64) * 5
+            entropy[2] -= ((entropy[2] + 30) // 32) * 2
         else:
-            m = (((unsigned - (medians[0] + medians[1])) / medians[2]) + 2)
+            m = (((unsigned - (medians[0] + medians[1])) // medians[2]) + 2)
             offset = (unsigned -
                       (medians[0] + medians[1] + ((m - 2) * medians[2])))
             add = medians[2] - 1
-            entropy[0] += ((entropy[0] + 128) / 128) * 5
-            entropy[1] += ((entropy[1] + 64) / 64) * 5
-            entropy[2] += ((entropy[2] + 32) / 32) * 5
+            entropy[0] += ((entropy[0] + 128) // 128) * 5
+            entropy[1] += ((entropy[1] + 64) // 64) * 5
+            entropy[2] += ((entropy[2] + 32) // 32) * 5
 
         #zeroes will be populated later
         return cls(zeroes=None, m=m, offset=offset, add=add, sign=sign)
@@ -1265,7 +1265,7 @@ class Residual:
                 if (self.offset < e):
                     writer.write(p, self.offset)
                 else:
-                    writer.write(p, (self.offset + e) / 2)
+                    writer.write(p, (self.offset + e) // 2)
                     writer.write(1, (self.offset + e) % 2)
 
             writer.write(1, self.sign)
@@ -1285,7 +1285,7 @@ def write_bitstream(writer, channels, entropies):
     i = 0
 
     while (i < (len(channels) * len(channels[0]))):
-        r = channels[i % len(channels)][i / len(channels)]
+        r = channels[i % len(channels)][i // len(channels)]
 
         if (((entropies[0][0] < 2) and (entropies[1][0] < 2) and
              unary_undefined(u_i_2, r_i_1.m))):

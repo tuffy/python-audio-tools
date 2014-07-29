@@ -146,8 +146,8 @@ class FlacDecoder:
             #mid-side
             samples = []
             for (mid, side) in zip(*channel_data):
-                samples.append((((mid * 2) + (side % 2)) + side) / 2)
-                samples.append((((mid * 2) + (side % 2)) - side) / 2)
+                samples.append((((mid * 2) + (side % 2)) + side) // 2)
+                samples.append((((mid * 2) + (side % 2)) - side) // 2)
         else:
             #independent
             samples = [0] * block_size * channel_count
@@ -381,12 +381,12 @@ class FlacDecoder:
                 residuals.extend(
                     self.read_residual_partition(
                         coding_method,
-                        (block_size / 2 ** partition_order) - order))
+                        (block_size // 2 ** partition_order) - order))
             else:
                 residuals.extend(
                     self.read_residual_partition(
                         coding_method,
-                        block_size / 2 ** partition_order))
+                        block_size // 2 ** partition_order))
 
         return residuals
 

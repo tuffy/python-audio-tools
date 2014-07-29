@@ -431,7 +431,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
 
         each CD frame is 1/75th of a second"""
 
-        return (self.__length__ - 1024) / self.__sample_rate__ * 75
+        return ((self.__length__ - 1024) * 75) // self.__sample_rate__
 
     def total_frames(self):
         """returns the total PCM frames of the track as an integer"""
@@ -897,7 +897,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         each CD frame is 1/75th of a second"""
 
         try:
-            return (self.total_frames() * 75) / self.sample_rate()
+            return (self.total_frames() * 75) // self.sample_rate()
         except ZeroDivisionError:
             return 0
 

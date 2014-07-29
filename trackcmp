@@ -125,7 +125,7 @@ def image_compare_raw(progress, source_filename,
     f = open(source_filename, "rb")
     try:
         #skip initial offset
-        f.seek(pcm_frames_offset * channels * (bits_per_sample / 8))
+        f.seek(pcm_frames_offset * channels * (bits_per_sample // 8))
 
         return (
             audiotools.pcm_frame_cmp(

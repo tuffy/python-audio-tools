@@ -170,8 +170,8 @@ def encode_flac_frame(writer, pcmreader, options, frame_number, frame):
     if ((pcmreader.channels == 2) and (options.adaptive_mid_side or
                                        options.mid_side)):
         #calculate average/difference
-        average = [(c0 + c1) / 2 for c0, c1 in zip(frame.channel(0),
-                                                   frame.channel(1))]
+        average = [(c0 + c1) // 2 for c0, c1 in zip(frame.channel(0),
+                                                    frame.channel(1))]
         difference = [c0 - c1 for c0, c1 in zip(frame.channel(0),
                                                 frame.channel(1))]
 
@@ -497,9 +497,9 @@ def encode_residuals(writer, options, order, block_size, residuals):
             partitions = []
             for p in xrange(0, 2 ** porder):
                 if (p == 0):
-                    partition_size = block_size / (2 ** porder) - order
+                    partition_size = block_size // (2 ** porder) - order
                 else:
-                    partition_size = block_size / (2 ** porder)
+                    partition_size = block_size // (2 ** porder)
                 partitions.append(unencoded_residuals[0:partition_size])
                 unencoded_residuals = unencoded_residuals[partition_size:]
 
@@ -565,8 +565,8 @@ def encode_residual_partition(rice_parameter, residuals):
 def tukey_window(sample_count, alpha):
     from math import cos, pi
 
-    window1 = (alpha * (sample_count - 1)) / 2
-    window2 = (sample_count - 1) * (1 - (alpha / 2))
+    window1 = (alpha * (sample_count - 1)) // 2
+    window2 = (sample_count - 1) * (1 - (alpha // 2))
 
     for n in xrange(0, sample_count):
         if (n <= window1):

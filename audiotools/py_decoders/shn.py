@@ -25,7 +25,7 @@ import cStringIO
 
 
 def shnmean(values):
-    return ((len(values) / 2) + sum(values)) / len(values)
+    return ((len(values) // 2) + sum(values)) // len(values)
 
 
 class SHNDecoder:
@@ -144,9 +144,9 @@ class SHNDecoder:
     def signed(self, c):
         u = self.unsigned(c + 1)
         if ((u % 2) == 0):
-            return u / 2
+            return u // 2
         else:
-            return -(u / 2) - 1
+            return -(u // 2) - 1
 
     def long(self):
         return self.unsigned(self.unsigned(2))
@@ -299,7 +299,7 @@ class SHNDecoder:
                                 (samples[LPC_count + (i - j - 1)] - offset))
                 else:
                     LPC_sum += LPC_coeff[j] * unoffset[i - j - 1]
-            unoffset.append(LPC_sum / 2 ** 5 + residual)
+            unoffset.append(LPC_sum // 2 ** 5 + residual)
         return [u + offset for u in unoffset]
 
     def close(self):

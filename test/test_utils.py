@@ -519,7 +519,7 @@ class coverdump(UtilTest):
             img = Image.new("RGB", (100, 100), "#%2.2X%2.2X%2.2X" % (i, i, i))
             data = cStringIO.StringIO()
             img.save(data, "PNG")
-            img = audiotools.Image.new(data.getvalue(), u"", i / 2)
+            img = audiotools.Image.new(data.getvalue(), u"", i // 2)
             self.images1.append(img)
             metadata.add_image(img)
 
@@ -630,7 +630,7 @@ class coverdump(UtilTest):
                     output_image = audiotools.Image.new(
                         open(output_path, "rb").read(),
                         u"",
-                        i / 2)
+                        i // 2)
                     self.assertEqual(output_image, image)
 
                 self.clean_output_dir()

@@ -204,7 +204,7 @@ def encode_compressed_frame(writer, pcmreader, options, channels):
     else:
         from audiotools.pcm import from_list
         #extract uncompressed LSBs
-        uncompressed_LSBs = (pcmreader.bits_per_sample - 16) / 8
+        uncompressed_LSBs = (pcmreader.bits_per_sample - 16) // 8
         LSBs = []
         for i in xrange(len(channels[0])):
             for c in xrange(len(channels)):
@@ -385,8 +385,8 @@ def calculate_lpc_coefficients(pcmreader, options, sample_size, channel):
 def tukey_window(sample_count, alpha):
     from math import cos, pi
 
-    window1 = (alpha * (sample_count - 1)) / 2
-    window2 = (sample_count - 1) * (1 - (alpha / 2))
+    window1 = (alpha * (sample_count - 1)) // 2
+    window2 = (sample_count - 1) * (1 - (alpha // 2))
 
     for n in xrange(0, sample_count):
         if (n <= window1):
@@ -556,7 +556,7 @@ def encode_residuals(writer, options, sample_size, residuals):
 
 
 def encode_residual(writer, unsigned, k, sample_size):
-    MSB = unsigned / ((2 ** k) - 1)
+    MSB = unsigned // ((2 ** k) - 1)
     LSB = unsigned % ((2 ** k) - 1)
 
     if (MSB > 8):

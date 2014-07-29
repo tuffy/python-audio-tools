@@ -70,8 +70,8 @@ if (__name__ == '__main__'):
             try:
                 msg.output(
                     _.LAB_TRACKINFO_BITRATE %
-                    {'bitrate': ((os.path.getsize(file.filename) * 8) /
-                                 2 ** 10) / length,
+                    {'bitrate': ((os.path.getsize(file.filename) * 8) //
+                                 2 ** 10) // length,
                      'filename': audiotools.Filename(file.filename)})
             except ZeroDivisionError:
                 msg.output(
@@ -82,7 +82,7 @@ if (__name__ == '__main__'):
             try:
                 percentage = (float(os.path.getsize(file.filename) * 100) /
                               (file.total_frames() * file.channels() *
-                               (file.bits_per_sample() / 8)))
+                               (file.bits_per_sample() // 8)))
                 msg.output(
                     _.LAB_TRACKINFO_PERCENTAGE %
                     {'percentage': int(round(percentage)),
@@ -94,7 +94,7 @@ if (__name__ == '__main__'):
         else:
             msg.output(
                 _.LAB_TRACKINFO_ATTRIBS %
-                {"minutes": length / 60,
+                {"minutes": length // 60,
                  "seconds": length % 60,
                  "channels": file.channels(),
                  "rate": audiotools.khz(file.sample_rate()),
@@ -168,7 +168,7 @@ if (__name__ == '__main__'):
                                 index = track_indexes[i]
                                 row.add_column(
                                     u"%d:%2.2d.%2.2d" %
-                                        (int(index) / 60,
+                                        (int(index) // 60,
                                          int(index) % 60,
                                          int(index * 75) % 75),
                                     "right")

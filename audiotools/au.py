@@ -168,8 +168,8 @@ class AuAudio(AudioFile):
     def total_frames(self):
         """returns the total PCM frames of the track as an integer"""
 
-        return (self.__data_size__ /
-                (self.__bits_per_sample__ / 8) /
+        return (self.__data_size__ //
+                (self.__bits_per_sample__ // 8) //
                 self.__channels__)
 
     def seekable(self):

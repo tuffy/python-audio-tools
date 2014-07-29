@@ -61,7 +61,7 @@ class DVDAudio:
             titleset_aobs = dict([(key, value) for (key, value) in
                                   self.files.items()
                                   if (aob_re.match(key))])
-            for aob_length in [os.path.getsize(titleset_aobs[key]) /
+            for aob_length in [os.path.getsize(titleset_aobs[key]) //
                                DVDAudio.SECTOR_SIZE
                                for key in sorted(titleset_aobs.keys())]:
                 if (len(self.aob_sectors) == 0):
@@ -280,7 +280,7 @@ class DVDATitle:
         for aob_path in sorted([self.dvdaudio.files[key] for key in
                                 self.dvdaudio.files.keys()
                                 if (titleset.match(key))]):
-            aob_sectors = os.path.getsize(aob_path) / DVDAudio.SECTOR_SIZE
+            aob_sectors = os.path.getsize(aob_path) // DVDAudio.SECTOR_SIZE
             if (track_sector > aob_sectors):
                 track_sector -= aob_sectors
             else:
@@ -432,7 +432,7 @@ class DVDATitle:
 
         from audiotools.freedb import DiscID
 
-        PTS_PER_FRAME = DVDAudio.PTS_PER_SECOND / 75
+        PTS_PER_FRAME = DVDAudio.PTS_PER_SECOND // 75
 
         offsets = [150]
         for track in self.tracks[0:-1]:
@@ -447,15 +447,15 @@ class DVDATitle:
 
         from audiotools.musicbrainz import DiscID
 
-        PTS_PER_FRAME = DVDAudio.PTS_PER_SECOND / 75
+        PTS_PER_FRAME = DVDAudio.PTS_PER_SECOND // 75
 
         offsets = [150]
         for track in self.tracks[0:-1]:
-            offsets.append(offsets[-1] + (track.pts_length / PTS_PER_FRAME))
+            offsets.append(offsets[-1] + (track.pts_length // PTS_PER_FRAME))
 
         return DiscID(first_track_number=1,
                       last_track_number=len(self),
-                      lead_out_offset=self.pts_length / PTS_PER_FRAME,
+                      lead_out_offset=self.pts_length // PTS_PER_FRAME,
                       offsets=offsets)
 
 

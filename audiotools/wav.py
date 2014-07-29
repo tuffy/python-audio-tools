@@ -147,7 +147,7 @@ def pad_data(pcm_frames, channels, bits_per_sample):
     """returns True if the given stream combination
     requires an extra padding byte at the end of the 'data' chunk"""
 
-    return (pcm_frames * channels * (bits_per_sample / 8)) % 2
+    return (pcm_frames * channels * (bits_per_sample // 8)) % 2
 
 
 def validate_header(header):
@@ -368,8 +368,8 @@ def wave_header(sample_rate,
 
     header = BitstreamRecorder(True)
 
-    avg_bytes_per_second = sample_rate * channels * (bits_per_sample / 8)
-    block_align = channels * (bits_per_sample / 8)
+    avg_bytes_per_second = sample_rate * channels * (bits_per_sample // 8)
+    block_align = channels * (bits_per_sample // 8)
 
     #build a regular or extended fmt chunk
     #based on the reader's attributes
@@ -403,13 +403,13 @@ def wave_header(sample_rate,
                       '\x80\x00\x00\xaa\x00\x38\x9b\x71'  # sub format
                       )
 
-    data_size = (bits_per_sample / 8) * channels * total_pcm_frames
-    total_size = ((format_size("4b" + "4b 32u" + fmt + "4b 32u") / 8) +
+    data_size = (bits_per_sample // 8) * channels * total_pcm_frames
+    total_size = ((format_size("4b" + "4b 32u" + fmt + "4b 32u") // 8) +
                   data_size + (data_size % 2))
 
     if (total_size < (2 ** 32)):
         header.build("4b 32u 4b", ("RIFF", total_size, "WAVE"))
-        header.build("4b 32u", ("fmt ", format_size(fmt) / 8))
+        header.build("4b 32u", ("fmt ", format_size(fmt) // 8))
         header.build(fmt, fmt_fields)
         header.build("4b 32u", ("data", data_size))
 
@@ -469,7 +469,7 @@ class WaveReader:
                  self.bits_per_sample,
                  channel_mask) = parse_fmt(BitstreamReader(self.file, True))
                 self.channel_mask = int(channel_mask)
-                self.bytes_per_pcm_frame = ((self.bits_per_sample / 8) *
+                self.bytes_per_pcm_frame = ((self.bits_per_sample // 8) *
                                             self.channels)
                 fmt_chunk_read = True
             elif (chunk_id == "data"):
@@ -731,8 +731,8 @@ class WaveAudio(WaveContainer):
     def total_frames(self):
         """returns the total PCM frames of the track as an integer"""
 
-        return (self.__data_size__ /
-                (self.__bits_per_sample__ / 8) /
+        return (self.__data_size__ //
+                (self.__bits_per_sample__ // 8) //
                 self.__channels__)
 
     def sample_rate(self):

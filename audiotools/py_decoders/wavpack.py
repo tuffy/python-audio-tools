@@ -461,7 +461,7 @@ def read_decorrelation_weights(block_header, decorrelation_terms_count,
         value_i = sub_block_data.read_signed(8)
         if (value_i > 0):
             weight_values.append((value_i * 2 ** 3) +
-                                 ((value_i * 2 ** 3 + 2 ** 6) / 2 ** 7))
+                                 ((value_i * 2 ** 3 + 2 ** 6) // 2 ** 7))
         elif(value_i == 0):
             weight_values.append(0)
         else:
@@ -470,13 +470,13 @@ def read_decorrelation_weights(block_header, decorrelation_terms_count,
     weights = []
     if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
         #two channels
-        if ((weight_count / 2) > decorrelation_terms_count):
+        if ((weight_count // 2) > decorrelation_terms_count):
             raise ValueError("invalid number of decorrelation weights")
 
-        for i in xrange(weight_count / 2):
+        for i in xrange(weight_count // 2):
             weights.append((weight_values[i * 2],
                             weight_values[i * 2 + 1]))
-        for i in xrange(weight_count / 2, decorrelation_terms_count):
+        for i in xrange(weight_count // 2, decorrelation_terms_count):
             weights.append((0, 0))
 
         weights.reverse()
@@ -638,12 +638,12 @@ def read_residual(reader, last_u, entropies):
         u = reader.unary(0)
         if (u == 16):
             u += read_egc(reader)
-        m = u / 2
+        m = u // 2
     elif ((last_u % 2) == 1):
         u = reader.unary(0)
         if (u == 16):
             u += read_egc(reader)
-        m = (u / 2) + 1
+        m = (u // 2) + 1
     else:
         u = None
         m = 0
@@ -827,7 +827,7 @@ def decorrelation_pass_1ch(correlated_samples,
         decorrelated = decorrelation_samples[:]
         decorrelated.reverse()
         for i in xrange(len(correlated_samples)):
-            temp = (3 * decorrelated[i + 1] - decorrelated[i]) / 2
+            temp = (3 * decorrelated[i + 1] - decorrelated[i]) // 2
             decorrelated.append(apply_weight(weight, temp) +
                                 correlated_samples[i])
             weight += update_weight(temp, correlated_samples[i], delta)

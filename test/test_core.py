@@ -81,20 +81,20 @@ class PCMReader(unittest.TestCase):
                     self.assertEqual(reader.bits_per_sample, bps)
 
                     #ensure the FrameList is read correctly
-                    f = reader.read((bps / 8) * 10)
+                    f = reader.read((bps // 8) * 10)
                     self.assertEqual(len(f), 10)
                     self.assertEqual(list(f), range(-5, 5))
 
                     #ensure subsequent reads return empty FrameLists
                     for i in xrange(10):
-                        f = reader.read((bps / 8) * 10)
+                        f = reader.read((bps // 8) * 10)
                         self.assertEqual(len(f), 0)
 
                     #ensure closing the stream raises ValueErrors
                     #on subsequent reads
                     reader.close()
 
-                    self.assertRaises(ValueError, reader.read, (bps / 8) * 10)
+                    self.assertRaises(ValueError, reader.read, (bps // 8) * 10)
 
 
 class PCMCat(unittest.TestCase):
@@ -3693,31 +3693,31 @@ class Bitstream(unittest.TestCase):
                     cStringIO.StringIO(data),
                     little_endian)
 
-                unsigned1 = r.read(bits / 2)
+                unsigned1 = r.read(bits // 2)
                 r.set_endianness(not little_endian)
-                unsigned2 = r.read(bits / 2)
+                unsigned2 = r.read(bits // 2)
 
                 new_data = cStringIO.StringIO()
                 w = BitstreamWriter(
                     new_data, little_endian)
-                w.write(bits / 2, unsigned1)
+                w.write(bits // 2, unsigned1)
                 w.set_endianness(not little_endian)
-                w.write(bits / 2, unsigned2)
+                w.write(bits // 2, unsigned2)
                 w.flush()
 
                 self.assertEqual(data, new_data.getvalue())
 
                 w = BitstreamRecorder(little_endian)
-                w.write(bits / 2, unsigned1)
+                w.write(bits // 2, unsigned1)
                 w.set_endianness(not little_endian)
-                w.write(bits / 2, unsigned2)
+                w.write(bits // 2, unsigned2)
 
                 self.assertEqual(data, w.data())
 
                 w = BitstreamAccumulator(little_endian)
-                w.write(bits / 2, unsigned1)
+                w.write(bits // 2, unsigned1)
                 w.set_endianness(not little_endian)
-                w.write(bits / 2, unsigned2)
+                w.write(bits // 2, unsigned2)
 
                 self.assertEqual(bits, w.bits())
 
@@ -4292,7 +4292,7 @@ class TestReplayGain(unittest.TestCase):
                                               sample_rate,
                                               0x4,
                                               16,
-                                              (30000, sample_rate / 100))
+                                              (30000, sample_rate // 100))
             (gain, peak) = gain.title_gain(reader)
             self.assert_(gain < -4.0)
             self.assert_(peak > .90)

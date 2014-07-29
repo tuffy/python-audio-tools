@@ -49,7 +49,7 @@ def convert_to_wave(progress, audiofile, wave_filename):
                     channel_mask=audiotools.ChannelMask.from_channels(2),
                     bits_per_sample=16),
                 total_frames=(audiofile.total_frames() *
-                              44100 / audiofile.sample_rate()),
+                              44100 // audiofile.sample_rate()),
                 progress=progress)
             audiotools.WaveAudio.from_pcm(wave_filename, pcm)
             pcm.close()
@@ -226,7 +226,7 @@ if (__name__ == '__main__'):
                             channel_mask=0x3,
                             bits_per_sample=16),
                         total_frames=(audiofiles[0].total_frames() *
-                                      44100 /
+                                      44100 //
                                       audiofiles[0].sample_rate()),
                         progress=progress.update))
         except KeyboardInterrupt:
@@ -346,7 +346,7 @@ if (__name__ == '__main__'):
                 channels=2,
                 channel_mask=0x3,
                 bits_per_sample=16)
-            output_frames = (input_frames * 44100 /
+            output_frames = (input_frames * 44100 //
                              audiofiles[0].sample_rate())
 
         progress = audiotools.SingleProgressDisplay(

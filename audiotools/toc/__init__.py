@@ -551,8 +551,8 @@ def format_string(s):
 
 def format_timestamp(t):
     sectors = int(t * 75)
-    return "%2.2d:%2.2d:%2.2d" % (sectors / 75 / 60,
-                                  sectors / 75 % 60,
+    return "%2.2d:%2.2d:%2.2d" % (sectors // 75 // 60,
+                                  sectors // 75 % 60,
                                   sectors % 75)
 def format_binary(s):
     return "{%s}" % (",".join([str(int(c)) for c in s]))

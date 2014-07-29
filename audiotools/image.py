@@ -220,7 +220,7 @@ class __PNG__(ImageMetrics):
                 return cls(width=width,
                            height=height,
                            bits_per_pixel=8,
-                           color_count=plte_length / 3)
+                           color_count=plte_length // 3)
         elif (color_type == 4):  # grayscale + alpha
             return cls(width=width,
                        height=height,
@@ -404,7 +404,7 @@ class __TIFF__(ImageMetrics):
                 elif (tag_id == 0x0102):
                     bits_per_pixel = sum(tag_values)
                 elif (tag_id == 0x0140):
-                    color_count = len(tag_values) / 3
+                    color_count = len(tag_values) // 3
         except IOError:
             from .text import ERR_IMAGE_IOERROR_TIFF
             raise InvalidTIFF(ERR_IMAGE_IOERROR_TIFF)

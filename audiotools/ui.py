@@ -2024,8 +2024,8 @@ try:
 
             try:
                 return LAB_TRACK_LENGTH % \
-                    ((self.current / self.sample_rate) / 60,
-                     (self.current / self.sample_rate) % 60)
+                    ((self.current // self.sample_rate) // 60,
+                     (self.current // self.sample_rate) % 60)
             except ZeroDivisionError:
                 return LAB_TRACK_LENGTH % (0, 0)
 
@@ -2306,14 +2306,14 @@ try:
                      ("fixed",
                       6,
                       urwid.Text(u"%2.1d:%2.2d" %
-                                 (seconds_length / 60,
+                                 (seconds_length // 60,
                                   seconds_length % 60),
                                  align="right"))])
                  for (track_label, seconds_length, user_data) in tracks])
 
             status = ((LAB_PLAY_STATUS if (len(tracks) > 1) else
                        LAB_PLAY_STATUS_1) % {"count": len(tracks),
-                                             "min": int(track_len) / 60,
+                                             "min": int(track_len) // 60,
                                              "sec": int(track_len) % 60})
 
             body = urwid.Pile(
@@ -2409,7 +2409,7 @@ try:
                 self.albumnum.set_text(u"")
 
             try:
-                seconds_length = pcm_frames / sample_rate
+                seconds_length = pcm_frames // sample_rate
             except ZeroDivisionError:
                 seconds_length = 0
 
@@ -2797,10 +2797,10 @@ class PlayerTTY:
         return (self.OUTPUT_FORMAT %
                 {"track_number": self.track_number,
                  "track_total": self.track_total,
-                 "sent_minutes": (frames_sent / self.sample_rate) / 60,
-                 "sent_seconds": (frames_sent / self.sample_rate) % 60,
-                 "total_minutes": (frames_total / self.sample_rate) / 60,
-                 "total_seconds": (frames_total / self.sample_rate) % 60,
+                 "sent_minutes": (frames_sent // self.sample_rate) // 60,
+                 "sent_seconds": (frames_sent // self.sample_rate) % 60,
+                 "total_minutes": (frames_total // self.sample_rate) // 60,
+                 "total_seconds": (frames_total // self.sample_rate) % 60,
                  "channels": self.channels,
                  "sample_rate": audiotools.khz(self.sample_rate),
                  "bits_per_sample": self.bits_per_sample})

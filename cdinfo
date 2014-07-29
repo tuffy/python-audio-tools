@@ -63,8 +63,8 @@ if (__name__ == '__main__'):
     row = table.row()
     row.add_column(_.LAB_TOTAL_LENGTH, "right")
     row.add_column(u" : ")
-    row.add_column(_.LAB_TRACK_LENGTH_FRAMES % (total_length / 75 / 60,
-                                                total_length / 75 % 60,
+    row.add_column(_.LAB_TRACK_LENGTH_FRAMES % (total_length // 75 // 60,
+                                                total_length // 75 % 60,
                                                 total_length))
 
     row = table.row()

@@ -63,7 +63,7 @@ def pad_data(pcm_frames, channels, bits_per_sample):
     """returns True if the given stream combination
     requires an extra padding byte at the end of the 'data' chunk"""
 
-    return (pcm_frames * channels * (bits_per_sample / 8)) % 2
+    return (pcm_frames * channels * (bits_per_sample // 8)) % 2
 
 
 def validate_header(header):
@@ -400,7 +400,7 @@ class AiffReader:
                  self.sample_rate,
                  channel_mask) = parse_comm(BitstreamReader(self.file, False))
                 self.channel_mask = int(channel_mask)
-                self.bytes_per_pcm_frame = ((self.bits_per_sample / 8) *
+                self.bytes_per_pcm_frame = ((self.bits_per_sample // 8) *
                                             self.channels)
                 self.remaining_pcm_frames = self.total_pcm_frames
                 comm_chunk_read = True

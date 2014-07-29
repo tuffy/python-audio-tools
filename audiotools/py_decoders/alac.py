@@ -297,7 +297,7 @@ class ALACDecoder:
         while (i < sample_count):
             #get an unsigned residual based on "history"
             #and on "sample_size" as a lst resort
-            k = min(log2(history / (2 ** 9) + 3), self.maximum_k)
+            k = min(log2(history // (2 ** 9) + 3), self.maximum_k)
 
             unsigned = self.read_residual(k, sample_size) + sign_modifier
 
@@ -306,9 +306,9 @@ class ALACDecoder:
 
             #change unsigned residual to signed residual
             if (unsigned & 1):
-                residuals.append(-((unsigned + 1) / 2))
+                residuals.append(-((unsigned + 1) // 2))
             else:
-                residuals.append(unsigned / 2)
+                residuals.append(unsigned // 2)
 
             #update history based on unsigned residual
             if (unsigned <= 0xFFFF):
@@ -322,7 +322,7 @@ class ALACDecoder:
             if ((history < 128) and ((i + 1) < sample_count)):
                 zeroes_k = min(7 -
                                log2(history) +
-                               ((history + 16) / 64),
+                               ((history + 16) // 64),
                                self.maximum_k)
                 zero_residuals = self.read_residual(zeroes_k, 16)
                 if (zero_residuals > 0):
@@ -435,7 +435,7 @@ class ALACDecoder:
             left = []
             right = []
             for (ch1, ch2) in zip(*channel_data):
-                right.append(ch1 - ((ch2 * interlacing_leftweight) /
+                right.append(ch1 - ((ch2 * interlacing_leftweight) //
                                     (2 ** interlacing_shift)))
                 left.append(ch2 + right[-1])
             return [left, right]

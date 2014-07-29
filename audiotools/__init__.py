@@ -91,7 +91,7 @@ config.read([os.path.join("/etc", "audiotools.cfg"),
              os.path.expanduser('~/.audiotools.cfg')])
 
 BUFFER_SIZE = 0x100000
-FRAMELIST_SIZE = 0x100000 / 4
+FRAMELIST_SIZE = 0x100000 // 4
 
 
 class __system_binaries__:
@@ -476,8 +476,8 @@ def khz(hz):
 
     the string is typically 7-8 characters wide"""
 
-    num = hz / 1000
-    den = (hz % 1000) / 100
+    num = hz // 1000
+    den = (hz % 1000) // 100
     if (den == 0):
         return u"%dkHz" % (num)
     else:
@@ -1126,11 +1126,11 @@ class ProgressRow:
         try:
             time_spent = time() - self.start_time
 
-            split_point = (width * self.current) / self.total
-            estimated_total_time = (time_spent * self.total) / self.current
+            split_point = (width * self.current) // self.total
+            estimated_total_time = (time_spent * self.total) // self.current
             estimated_time_remaining = int(round(estimated_total_time -
                                                  time_spent))
-            time_remaining = u" %2.1d:%2.2d" % (estimated_time_remaining / 60,
+            time_remaining = u" %2.1d:%2.2d" % (estimated_time_remaining // 60,
                                                 estimated_time_remaining % 60)
         except ZeroDivisionError:
             split_point = 0
@@ -2078,7 +2078,7 @@ class PCMReader:
         self.process = process
         self.signed = signed
         self.big_endian = big_endian
-        self.bytes_per_frame = self.channels * (self.bits_per_sample / 8)
+        self.bytes_per_frame = self.channels * (self.bits_per_sample // 8)
 
     def read(self, pcm_frames):
         """try to read the given number of PCM frames from the stream
@@ -2607,7 +2607,7 @@ class CounterPCMReader:
     def bytes_written(self):
         return (self.frames_written *
                 self.channels *
-                (self.bits_per_sample / 8))
+                (self.bits_per_sample // 8))
 
     def read(self, pcm_frames):
         frame = self.__pcmreader__.read(pcm_frames)
@@ -3700,7 +3700,7 @@ class AudioFile:
         each CD frame is 1/75th of a second"""
 
         try:
-            return (self.total_frames() * 75) / self.sample_rate()
+            return (self.total_frames() * 75) // self.sample_rate()
         except ZeroDivisionError:
             return 0
 
@@ -4259,7 +4259,7 @@ class DummyAudioFile(AudioFile):
     def total_frames(self):
         """returns the total PCM frames of the track as an integer"""
 
-        return (self.cd_frames() * self.sample_rate()) / 75
+        return (self.cd_frames() * self.sample_rate()) // 75
 
 ###########################
 #Cuesheet/TOC file handling
@@ -4596,7 +4596,7 @@ def at_a_time(total, per):
     [3, 3, 3, 1]
     """
 
-    for i in xrange(total / per):
+    for i in xrange(total // per):
         yield per
     yield total % per
 
