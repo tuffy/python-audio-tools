@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from . import (MetaData, Image, InvalidImage)
+from audiotools import (MetaData, Image, InvalidImage)
 import codecs
 
 from id3v1 import ID3v1Comment
@@ -209,7 +209,7 @@ def __attrib_equals__(attributes, o1, o2):
 #for example, __number_pair__(2,3) returns u"2/3"
 #whereas      __number_pair__(4,0) returns u"4"
 def __number_pair__(current, total):
-    from . import config
+    from audiotools import config
 
     if (config.getboolean_default("ID3", "pad", False)):
         unslashed_format = u"%2.2d"
@@ -237,7 +237,7 @@ def read_id3v2_comment(filename):
     this returns an ID3v23Comment
     """
 
-    from .bitstream import BitstreamReader
+    from audiotools.bitstream import BitstreamReader
 
     reader = BitstreamReader(file(filename, "rb"), 0)
     reader.mark()
@@ -526,11 +526,11 @@ class ID3v22_T__Frame:
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
 
-        from .text import (CLEAN_REMOVE_EMPTY_TAG,
-                           CLEAN_REMOVE_TRAILING_WHITESPACE,
-                           CLEAN_REMOVE_LEADING_WHITESPACE,
-                           CLEAN_REMOVE_LEADING_ZEROES,
-                           CLEAN_ADD_LEADING_ZEROES)
+        from audiotools.text import (CLEAN_REMOVE_EMPTY_TAG,
+                                     CLEAN_REMOVE_TRAILING_WHITESPACE,
+                                     CLEAN_REMOVE_LEADING_WHITESPACE,
+                                     CLEAN_REMOVE_LEADING_ZEROES,
+                                     CLEAN_ADD_LEADING_ZEROES)
 
         fixes_performed = []
         field = self.id.decode('ascii')
@@ -556,7 +556,7 @@ class ID3v22_T__Frame:
         if (self.id in self.NUMERICAL_IDS):
             fix3 = __number_pair__(self.number(), self.total())
             if (fix3 != fix2):
-                from . import config
+                from audiotools import config
 
                 if (config.getboolean_default("ID3", "pad", False)):
                     fixes_performed.append(CLEAN_ADD_LEADING_ZEROES %
@@ -2154,9 +2154,9 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
         or None if the frame should be omitted
         fix text will be appended to fixes_performed, if necessary"""
 
-        from .text import (CLEAN_REMOVE_EMPTY_TAG,
-                           CLEAN_REMOVE_TRAILING_WHITESPACE,
-                           CLEAN_REMOVE_LEADING_WHITESPACE)
+        from audiotools.text import (CLEAN_REMOVE_EMPTY_TAG,
+                                     CLEAN_REMOVE_TRAILING_WHITESPACE,
+                                     CLEAN_REMOVE_LEADING_WHITESPACE)
 
         fixes_performed = []
         field = self.id.decode('ascii')

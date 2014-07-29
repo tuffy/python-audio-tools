@@ -17,8 +17,8 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from . import MetaData, Image
-from .image import image_metrics
+from audiotools import MetaData, Image
+from audiotools.image import image_metrics
 
 #M4A atoms are typically laid on in the file as follows:
 # ftyp
@@ -87,7 +87,7 @@ class M4A_Tree_Atom:
         try:
             iter(leaf_atoms)
         except TypeError:
-            from .text import ERR_M4A_INVALID_LEAF_ATOMS
+            from audiotools.text import ERR_M4A_INVALID_LEAF_ATOMS
             raise TypeError(ERR_M4A_INVALID_LEAF_ATOMS)
         self.leaf_atoms = leaf_atoms
 
@@ -1436,13 +1436,13 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 text = atom['data'].data.decode('utf-8')
                 fix1 = text.rstrip()
                 if (fix1 != text):
-                    from .text import CLEAN_REMOVE_TRAILING_WHITESPACE
+                    from audiotools.text import CLEAN_REMOVE_TRAILING_WHITESPACE
                     fixes_performed.append(
                         CLEAN_REMOVE_TRAILING_WHITESPACE %
                         {"field": atom.name.lstrip('\xa9').decode('ascii')})
                 fix2 = fix1.lstrip()
                 if (fix2 != fix1):
-                    from .text import CLEAN_REMOVE_LEADING_WHITESPACE
+                    from audiotools.text import CLEAN_REMOVE_LEADING_WHITESPACE
                     fixes_performed.append(
                         CLEAN_REMOVE_LEADING_WHITESPACE %
                         {"field": atom.name.lstrip('\xa9').decode('ascii')})
@@ -1452,7 +1452,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                         [M4A_ILST_Unicode_Data_Atom(0, 1,
                                                     fix2.encode('utf-8'))])
                 else:
-                    from .text import CLEAN_REMOVE_EMPTY_TAG
+                    from audiotools.text import CLEAN_REMOVE_EMPTY_TAG
                     fixes_performed.append(
                         CLEAN_REMOVE_EMPTY_TAG %
                         {"field": atom.name.lstrip('\xa9').decode('ascii')})

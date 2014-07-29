@@ -35,12 +35,12 @@ class InvalidMP3(InvalidFile):
 class MP3Audio(AudioFile):
     """an MP3 audio file"""
 
-    from .text import (COMP_LAME_0,
-                       COMP_LAME_6,
-                       COMP_LAME_MEDIUM,
-                       COMP_LAME_STANDARD,
-                       COMP_LAME_EXTREME,
-                       COMP_LAME_INSANE)
+    from audiotools.text import (COMP_LAME_0,
+                                 COMP_LAME_6,
+                                 COMP_LAME_MEDIUM,
+                                 COMP_LAME_STANDARD,
+                                 COMP_LAME_EXTREME,
+                                 COMP_LAME_INSANE)
 
     SUFFIX = "mp3"
     NAME = SUFFIX
@@ -113,7 +113,7 @@ class MP3Audio(AudioFile):
 
         AudioFile.__init__(self, filename)
 
-        from .bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamReader
         import cStringIO
 
         try:
@@ -125,7 +125,7 @@ class MP3Audio(AudioFile):
             try:
                 header_bytes = MP3Audio.__find_next_mp3_frame__(mp3file)
             except IOError:
-                from .text import ERR_MP3_FRAME_NOT_FOUND
+                from audiotools.text import ERR_MP3_FRAME_NOT_FOUND
                 raise InvalidMP3(ERR_MP3_FRAME_NOT_FOUND)
 
             (frame_sync,
@@ -139,7 +139,7 @@ class MP3Audio(AudioFile):
 
             self.__samplerate__ = self.SAMPLE_RATE[mpeg_id][sample_rate]
             if (self.__samplerate__ is None):
-                from .text import ERR_MP3_INVALID_SAMPLE_RATE
+                from audiotools.text import ERR_MP3_INVALID_SAMPLE_RATE
                 raise InvalidMP3(ERR_MP3_INVALID_SAMPLE_RATE)
             if (channels in (0, 1, 2)):
                 self.__channels__ = 2
@@ -269,9 +269,9 @@ class MP3Audio(AudioFile):
 
         raises IOError if unable to read the file"""
 
-        from .id3 import ID3CommentPair
-        from .id3 import read_id3v2_comment
-        from .id3v1 import ID3v1Comment
+        from audiotools.id3 import ID3CommentPair
+        from audiotools.id3 import read_id3v2_comment
+        from audiotools.id3v1 import ID3v1Comment
 
         f = file(self.filename, "rb")
         try:
@@ -316,7 +316,7 @@ class MP3Audio(AudioFile):
         elif (not (isinstance(metadata, ID3v2Comment) or
                    isinstance(metadata, ID3CommentPair) or
                    isinstance(metadata, ID3v1Comment))):
-            from .text import ERR_FOREIGN_METADATA
+            from audiotools.text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
         elif (not os.access(self.filename, os.W_OK)):
             raise IOError(self.filename)
@@ -354,12 +354,12 @@ class MP3Audio(AudioFile):
         this metadata includes track name, album name, and so on
         raises IOError if unable to write the file"""
 
-        from .id3 import ID3v2Comment
-        from .id3 import ID3v22Comment
-        from .id3 import ID3v23Comment
-        from .id3 import ID3v24Comment
-        from .id3 import ID3CommentPair
-        from .id3v1 import ID3v1Comment
+        from audiotools.id3 import ID3v2Comment
+        from audiotools.id3 import ID3v22Comment
+        from audiotools.id3 import ID3v23Comment
+        from audiotools.id3 import ID3v24Comment
+        from audiotools.id3 import ID3CommentPair
+        from audiotools.id3v1 import ID3v1Comment
 
         if (metadata is None):
             return
@@ -367,7 +367,7 @@ class MP3Audio(AudioFile):
         if (not (isinstance(metadata, ID3v2Comment) or
                  isinstance(metadata, ID3CommentPair) or
                  isinstance(metadata, ID3v1Comment))):
-            from . import config
+            from audiotools import config
 
             DEFAULT_ID3V2 = "id3v2.3"
             DEFAULT_ID3V1 = "id3v1.1"
@@ -487,13 +487,13 @@ class MP3Audio(AudioFile):
     #places mp3file at the position of the next MP3 frame's start
     @classmethod
     def __find_next_mp3_frame__(cls, mp3file):
-        from .id3 import skip_id3v2_comment
+        from audiotools.id3 import skip_id3v2_comment
 
         #if we're starting at an ID3v2 header, skip it to save a bunch of time
         bytes_skipped = skip_id3v2_comment(mp3file)
 
         #then find the next mp3 frame
-        from .bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamReader
 
         reader = BitstreamReader(mp3file, 0)
         reader.mark()
@@ -529,12 +529,12 @@ class MP3Audio(AudioFile):
     def __find_mp3_start__(cls, mp3file):
         """places mp3file at the position of the MP3 file's start"""
 
-        from .id3 import skip_id3v2_comment
+        from audiotools.id3 import skip_id3v2_comment
 
         #if we're starting at an ID3v2 header, skip it to save a bunch of time
         skip_id3v2_comment(mp3file)
 
-        from .bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamReader
 
         reader = BitstreamReader(mp3file, 0)
 
@@ -582,11 +582,11 @@ class MP3Audio(AudioFile):
 
         sample_rate = self.SAMPLE_RATE[mpeg_id][sample_rate]
         if (sample_rate is None):
-            from .text import ERR_MP3_INVALID_SAMPLE_RATE
+            from audiotools.text import ERR_MP3_INVALID_SAMPLE_RATE
             raise ValueError(ERR_MP3_INVALID_SAMPLE_RATE)
         bit_rate = self.BIT_RATE[mpeg_id][layer][bit_rate]
         if (bit_rate is None):
-            from .text import ERR_MP3_INVALID_BIT_RATE
+            from audiotools.text import ERR_MP3_INVALID_BIT_RATE
             raise ValueError(ERR_MP3_INVALID_BIT_RATE)
         if (layer == 3):  # layer I
             return (((12 * bit_rate) // sample_rate) + pad) * 4
@@ -616,9 +616,9 @@ class MP3Audio(AudioFile):
         """given a Messenger object, displays missing binaries or libraries
         needed to support this format and where to get them"""
 
-        from .text import (ERR_LIBRARY_NEEDED,
-                           ERR_LIBRARY_DOWNLOAD_URL,
-                           ERR_PROGRAM_PACKAGE_MANAGER)
+        from audiotools.text import (ERR_LIBRARY_NEEDED,
+                                     ERR_LIBRARY_DOWNLOAD_URL,
+                                     ERR_PROGRAM_PACKAGE_MANAGER)
 
         format_ = cls.NAME.decode('ascii')
 
@@ -652,8 +652,8 @@ class MP3Audio(AudioFile):
 class MP2Audio(MP3Audio):
     """an MP2 audio file"""
 
-    from .text import (COMP_TWOLAME_64,
-                       COMP_TWOLAME_384)
+    from audiotools.text import (COMP_TWOLAME_64,
+                                 COMP_TWOLAME_384)
 
     SUFFIX = "mp2"
     NAME = SUFFIX
@@ -733,9 +733,9 @@ class MP2Audio(MP3Audio):
         """given a Messenger object, displays missing binaries or libraries
         needed to support this format and where to get them"""
 
-        from .text import (ERR_LIBRARY_NEEDED,
-                           ERR_LIBRARY_DOWNLOAD_URL,
-                           ERR_PROGRAM_PACKAGE_MANAGER)
+        from audiotools.text import (ERR_LIBRARY_NEEDED,
+                                     ERR_LIBRARY_DOWNLOAD_URL,
+                                     ERR_PROGRAM_PACKAGE_MANAGER)
 
         format_ = cls.NAME.decode('ascii')
 

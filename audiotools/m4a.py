@@ -19,7 +19,7 @@
 
 
 from audiotools import (AudioFile, InvalidFile, BIN, Image)
-from .m4a_atoms import *
+from audiotools.m4a_atoms import *
 
 #######################
 #M4A File
@@ -37,7 +37,7 @@ def get_m4a_atom(reader, *atoms):
     after traversing the parent atoms
     """
 
-    from . import iter_last
+    from audiotools import iter_last
 
     for (last, next_atom) in iter_last(iter(atoms)):
         try:
@@ -62,7 +62,7 @@ def get_m4a_atom_offset(reader, *atoms):
     (including its 64-bit size/name header)
     after traversing the parent atoms"""
 
-    from . import iter_last
+    from audiotools import iter_last
 
     offset = 0
 
@@ -91,7 +91,7 @@ def has_m4a_atom(reader, *atoms):
     returns True if the final atom is present
     after traversing the parent atoms"""
 
-    from . import iter_last
+    from audiotools import iter_last
 
     for (last, next_atom) in iter_last(iter(atoms)):
         try:
@@ -119,7 +119,7 @@ class M4ATaggedAudio:
 
         raises IOError if unable to read the file"""
 
-        from .bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamReader
 
         reader = BitstreamReader(file(self.filename, 'rb'), 0)
         try:
@@ -165,15 +165,15 @@ class M4ATaggedAudio:
         raises IOError if unable to write the file
         """
 
-        from .bitstream import BitstreamWriter
-        from .bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamWriter
+        from audiotools.bitstream import BitstreamReader
         import os.path
 
         if (metadata is None):
             return
 
         if (not isinstance(metadata, M4A_META_Atom)):
-            from .text import ERR_FOREIGN_METADATA
+            from audiotools.text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
 
         if (old_metadata is None):
@@ -201,7 +201,7 @@ class M4ATaggedAudio:
             f.close()
             return
         else:
-            from . import TemporaryFile
+            from audiotools import TemporaryFile
 
             #if there's insufficient room,
             #attempt to resize the outermost "free" also
@@ -296,7 +296,7 @@ class M4ATaggedAudio:
         this removes or unsets tags as necessary in order to remove all data
         raises IOError if unable to write the file"""
 
-        from . import MetaData
+        from audiotools import MetaData
 
         self.set_metadata(MetaData())
 
@@ -316,7 +316,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
     def __init__(self, filename):
         """filename is a plain string"""
 
-        from .bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamReader
 
         self.filename = filename
 
@@ -326,17 +326,17 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
             mdia = get_m4a_atom(BitstreamReader(file(filename, 'rb'), 0),
                                 "moov", "trak", "mdia")[1]
         except IOError:
-            from .text import ERR_M4A_IOERROR
+            from audiotools.text import ERR_M4A_IOERROR
             raise InvalidM4A(ERR_M4A_IOERROR)
         except KeyError:
-            from .text import ERR_M4A_MISSING_MDIA
+            from audiotools.text import ERR_M4A_MISSING_MDIA
             raise InvalidM4A(ERR_M4A_MISSING_MDIA)
         mdia.mark()
         try:
             try:
                 stsd = get_m4a_atom(mdia, "minf", "stbl", "stsd")[1]
             except KeyError:
-                from .text import ERR_M4A_MISSING_STSD
+                from audiotools.text import ERR_M4A_MISSING_STSD
                 raise InvalidM4A(ERR_M4A_MISSING_STSD)
 
             #then, fetch the mp4a atom for bps, channels and sample rate
@@ -347,7 +347,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                  self.__bits_per_sample__) = stsd.parse(
                     "32p 4b 48p 16p 16p 16p 4P 16u 16u 16p 16p 32p")
             except IOError:
-                from .text import ERR_M4A_INVALID_MP4A
+                from audiotools.text import ERR_M4A_INVALID_MP4A
                 raise InvalidM4A(ERR_M4A_INVALID_MP4A)
 
             #finally, fetch the mdhd atom for total track length
@@ -355,7 +355,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
             try:
                 mdhd = get_m4a_atom(mdia, "mdhd")[1]
             except KeyError:
-                from .text import ERR_M4A_MISSING_MDHD
+                from audiotools.text import ERR_M4A_MISSING_MDHD
                 raise InvalidM4A(ERR_M4A_MISSING_MDHD)
             try:
                 (version, ) = mdhd.parse("8u 24p")
@@ -366,10 +366,10 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                     (self.__sample_rate__,
                      self.__length__,) = mdhd.parse("64p 64p 32u 64U 2P 16p")
                 else:
-                    from .text import ERR_M4A_UNSUPPORTED_MDHD
+                    from audiotools.text import ERR_M4A_UNSUPPORTED_MDHD
                     raise InvalidM4A(ERR_M4A_UNSUPPORTED_MDHD)
             except IOError:
-                from .text import ERR_M4A_INVALID_MDHD
+                from audiotools.text import ERR_M4A_INVALID_MDHD
                 raise InvalidM4A(ERR_M4A_INVALID_MDHD)
         finally:
             mdia.unmark()
@@ -377,7 +377,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
     def channel_mask(self):
         """returns a ChannelMask object of this track's channel layout"""
 
-        from . import ChannelMask
+        from audiotools import ChannelMask
 
         #M4A seems to use the same channel assignment
         #as old-style RIFF WAVE/FLAC
@@ -441,7 +441,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        from . import PCMReader
+        from audiotools import PCMReader
         import subprocess
         import os
 
@@ -470,16 +470,16 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         at the given filename with the specified compression level
         and returns a new M4AAudio object"""
 
-        from . import PCMConverter
-        from . import transfer_data
-        from . import transfer_framelist_data
-        from . import ignore_sigint
-        from . import EncodingError
-        from . import DecodingError
-        from . import ChannelMask
-        from . import __default_quality__
         import subprocess
         import os
+        from audiotools import PCMConverter
+        from audiotools import transfer_data
+        from audiotools import transfer_framelist_data
+        from audiotools import ignore_sigint
+        from audiotools import EncodingError
+        from audiotools import DecodingError
+        from audiotools import ChannelMask
+        from audiotools import __default_quality__
 
         if ((compression is None) or (compression not in
                                       cls.COMPRESSION_MODES)):
@@ -557,7 +557,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
 class M4AAudio_nero(M4AAudio_faac):
     """an M4A audio file using neroAacEnc/neroAacDec binaries for I/O"""
 
-    from .text import (COMP_NERO_LOW, COMP_NERO_HIGH)
+    from audiotools.text import (COMP_NERO_LOW, COMP_NERO_HIGH)
 
     DEFAULT_COMPRESSION = "0.5"
     COMPRESSION_MODES = ("0.4", "0.5",
@@ -585,9 +585,9 @@ class M4AAudio_nero(M4AAudio_faac):
         import tempfile
         import os
         import os.path
-        from . import PCMConverter
-        from . import WaveAudio
-        from . import __default_quality__
+        from audiotools import PCMConverter
+        from audiotools import WaveAudio
+        from audiotools import __default_quality__
 
         if ((compression is None) or (compression not in
                                       cls.COMPRESSION_MODES)):
@@ -625,9 +625,9 @@ class M4AAudio_nero(M4AAudio_faac):
 
     def to_pcm(self):
         import tempfile
-        from . import EncodingError
-        from . import PCMReaderError
-        from .wav import TempWaveReader
+        from audiotools import EncodingError
+        from audiotools import PCMReaderError
+        from audiotools.wav import TempWaveReader
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
@@ -647,7 +647,7 @@ class M4AAudio_nero(M4AAudio_faac):
 
         import subprocess
         import os
-        from . import EncodingError
+        from audiotools import EncodingError
 
         devnull = file(os.devnull, "w")
         try:
@@ -665,7 +665,7 @@ class M4AAudio_nero(M4AAudio_faac):
     def __from_wave__(cls, filename, wave_filename, compression):
         import subprocess
         import os
-        from . import EncodingError
+        from audiotools import EncodingError
 
         devnull = file(os.devnull, "w")
         try:
@@ -747,7 +747,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
     def __init__(self, filename):
         """filename is a plain string"""
 
-        from .bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamReader
 
         self.filename = filename
 
@@ -757,17 +757,17 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             mdia = get_m4a_atom(BitstreamReader(file(filename, 'rb'), 0),
                                 "moov", "trak", "mdia")[1]
         except IOError:
-            from .text import ERR_ALAC_IOERROR
+            from audiotools.text import ERR_ALAC_IOERROR
             raise InvalidALAC(ERR_ALAC_IOERROR)
         except KeyError:
-            from .text import ERR_M4A_MISSING_MDIA
+            from audiotools.text import ERR_M4A_MISSING_MDIA
             raise InvalidALAC(ERR_M4A_MISSING_MDIA)
         mdia.mark()
         try:
             try:
                 stsd = get_m4a_atom(mdia, "minf", "stbl", "stsd")[1]
             except KeyError:
-                from .text import ERR_M4A_MISSING_STSD
+                from audiotools.text import ERR_M4A_MISSING_STSD
                 raise InvalidALAC(ERR_M4A_MISSING_STSD)
 
             #then, fetch the alac atom for bps, channels and sample rate
@@ -790,11 +790,11 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                     #and use the attributes in the "low" ALAC atom instead
                     "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
             except IOError:
-                from .text import ERR_ALAC_INVALID_ALAC
+                from audiotools.text import ERR_ALAC_INVALID_ALAC
                 raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
 
             if ((alac1 != 'alac') or (alac2 != 'alac')):
-                from .text import ERR_ALAC_INVALID_ALAC
+                from audiotools.text import ERR_ALAC_INVALID_ALAC
                 mdia.unmark()
                 raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
 
@@ -803,7 +803,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             try:
                 mdhd = get_m4a_atom(mdia, "mdhd")[1]
             except KeyError:
-                from .text import ERR_M4A_MISSING_MDHD
+                from audiotools.text import ERR_M4A_MISSING_MDHD
                 raise InvalidALAC(ERR_M4A_MISSING_MDHD)
             try:
                 (version, ) = mdhd.parse("8u 24p")
@@ -812,10 +812,10 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 elif (version == 1):
                     (self.__length__,) = mdhd.parse("64p 64p 32p 64U 2P 16p")
                 else:
-                    from .text import ERR_M4A_UNSUPPORTED_MDHD
+                    from audiotools.text import ERR_M4A_UNSUPPORTED_MDHD
                     raise InvalidALAC(ERR_M4A_UNSUPPORTED_MDHD)
             except IOError:
-                from .text import ERR_M4A_INVALID_MDHD
+                from audiotools.text import ERR_M4A_INVALID_MDHD
                 raise InvalidALAC(ERR_M4A_INVALID_MDHD)
         finally:
             mdia.unmark()
@@ -843,7 +843,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
     def channel_mask(self):
         """returns a ChannelMask object of this track's channel layout"""
 
-        from . import ChannelMask
+        from audiotools import ChannelMask
 
         return {
             1: ChannelMask.from_fields(
@@ -909,7 +909,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
     def seekable(self):
         """returns True if the file is seekable"""
 
-        from .bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamReader
 
         reader = BitstreamReader(file(self.filename, "rb"), 0)
         reader.mark()
@@ -930,8 +930,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        from .decoders import ALACDecoder
-        from . import PCMReaderError
+        from audiotools.decoders import ALACDecoder
+        from audiotools import PCMReaderError
 
         try:
             return ALACDecoder(self.filename)
@@ -956,7 +956,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         and returns a new ALACAudio object"""
 
         if (pcmreader.bits_per_sample not in (16, 24)):
-            from . import UnsupportedBitsPerSample
+            from audiotools import UnsupportedBitsPerSample
 
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
@@ -971,19 +971,19 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
              0x013F,    # 7ch - C, L, R, bL, bR, back center, LFE
              0x00FF,    # 8ch - C, cL, cR, L, R, bL, bR, LFE
              0x0000)):  # undefined
-            from . import UnsupportedChannelMask
+            from audiotools import UnsupportedChannelMask
 
             raise UnsupportedChannelMask(filename,
                                          int(pcmreader.channel_mask))
 
-        from .encoders import encode_alac
-        from .bitstream import BitstreamWriter
-        from . import transfer_data
-        from . import EncodingError
-        from . import BufferedPCMReader
-        from . import at_a_time
         import time
         import tempfile
+        from audiotools.encoders import encode_alac
+        from audiotools.bitstream import BitstreamWriter
+        from audiotools import transfer_data
+        from audiotools import EncodingError
+        from audiotools import BufferedPCMReader
+        from audiotools import at_a_time
 
         ftyp = cls.__ftyp_atom__()
         free = cls.__free_atom__(0x1000)
@@ -1037,7 +1037,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 raise EncodingError(str(err))
 
             if (actual_pcm_frames != total_pcm_frames):
-                from .text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+                from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
                 raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
             assert(sum(frame_byte_sizes) > 0)
 
@@ -1368,7 +1368,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
     @classmethod
     def __meta_atom__(cls):
-        from . import VERSION
+        from audiotools import VERSION
 
         return M4A_META_Atom(
             version=0,

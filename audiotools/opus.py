@@ -18,8 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools import (AudioFile, InvalidFile)
-from .vorbis import (VorbisAudio, VorbisChannelMask)
-from .vorbiscomment import VorbisComment
+from audiotools.vorbis import (VorbisAudio, VorbisChannelMask)
+from audiotools.vorbiscomment import VorbisComment
 
 
 class InvalidOpus(InvalidFile):
@@ -49,7 +49,7 @@ class OpusAudio(VorbisAudio):
         self.__channel_mask__ = 0
 
         #get channel count and channel mask from first packet
-        from .bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamReader
         try:
             f = open(filename, "rb")
             try:
@@ -65,10 +65,10 @@ class OpusAudio(VorbisAudio):
                     "4b 8u 8u 64S 32u 32u 32u 8u")
 
                 if (magic_number != 'OggS'):
-                    from .text import ERR_OGG_INVALID_MAGIC_NUMBER
+                    from audiotools.text import ERR_OGG_INVALID_MAGIC_NUMBER
                     raise InvalidFLAC(ERR_OGG_INVALID_MAGIC_NUMBER)
                 if (version != 0):
-                    from .text import ERR_OGG_INVALID_VERSION
+                    from audiotools.text import ERR_OGG_INVALID_VERSION
                     raise InvalidFLAC(ERR_OGG_INVALID_VERSION)
 
                 segment_length = ogg_reader.read(8)
@@ -83,13 +83,13 @@ class OpusAudio(VorbisAudio):
                     "8b 8u 8u 16u 32u 16s 8u")
 
                 if (opushead != "OpusHead"):
-                    from .text import ERR_OPUS_INVALID_TYPE
+                    from audiotools.text import ERR_OPUS_INVALID_TYPE
                     raise InvalidOpus(ERR_OPUS_INVALID_TYPE)
                 if (version != 1):
-                    from .text import ERR_OPUS_INVALID_VERSION
+                    from audiotools.text import ERR_OPUS_INVALID_VERSION
                     raise InvalidOpus(ERR_OPUS_INVALID_VERSION)
                 if (self.__channels__ == 0):
-                    from .text import ERR_OPUS_INVALID_CHANNELS
+                    from audiotools.text import ERR_OPUS_INVALID_CHANNELS
                     raise InvalidOpus(ERR_OPUS_INVALID_CHANNELS)
 
                 #FIXME - assign channel mask from mapping family
@@ -106,7 +106,7 @@ class OpusAudio(VorbisAudio):
                     if (self.__channels__ !=
                         ((coupled_stream_count * 2) +
                          (stream_count - coupled_stream_count))):
-                        from .text import ERR_OPUS_INVALID_CHANNELS
+                        from audiotools.text import ERR_OPUS_INVALID_CHANNELS
                         raise InvalidOpus(ERR_OPUS_INVALID_CHANNELS)
                     channel_mapping = [ogg_reader.read(8)
                                        for i in xrange(self.__channels__)]
@@ -132,7 +132,7 @@ class OpusAudio(VorbisAudio):
         if (metadata is None):
             return
         elif (not isinstance(metadata, VorbisComment)):
-            from .text import ERR_FOREIGN_METADATA
+            from audiotools.text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
         elif (not os.access(self.filename, os.W_OK)):
             raise IOError(self.filename)
@@ -272,7 +272,7 @@ class OpusAudio(VorbisAudio):
         this removes or unsets tags as necessary in order to remove all data
         raises IOError if unable to write the file"""
 
-        from . import MetaData
+        from audiotools import MetaData
 
         #the comment packet is required,
         #so simply zero out its contents
@@ -390,7 +390,7 @@ class OpusAudio(VorbisAudio):
         if (metadata is None):
             return
         elif (not isinstance(metadata, VorbisComment)):
-            from .text import ERR_FOREIGN_METADATA
+            from audiotools.text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
         elif (not os.access(self.filename, os.W_OK)):
             raise IOError(self.filename)
@@ -563,9 +563,9 @@ class OpusAudio(VorbisAudio):
         """given a Messenger object, displays missing binaries or libraries
         needed to support this format and where to get them"""
 
-        from .text import (ERR_LIBRARY_NEEDED,
-                           ERR_LIBRARY_DOWNLOAD_URL,
-                           ERR_PROGRAM_PACKAGE_MANAGER)
+        from audiotools.text import (ERR_LIBRARY_NEEDED,
+                                     ERR_LIBRARY_DOWNLOAD_URL,
+                                     ERR_PROGRAM_PACKAGE_MANAGER)
 
         format_ = cls.NAME.decode('ascii')
 

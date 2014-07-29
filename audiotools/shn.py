@@ -37,8 +37,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
     def __init__(self, filename):
         """filename is a plain string"""
 
-        from .bitstream import BitstreamReader
-        from . import ChannelMask
+        from audiotools.bitstream import BitstreamReader
+        from audiotools import ChannelMask
         import cStringIO
 
         AudioFile.__init__(self, filename)
@@ -104,7 +104,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                         (chunk_id, chunk_size) = wave.parse("4b 32u")
                         total_size -= 8
                         if (chunk_id == 'fmt '):
-                            from .wav import parse_fmt
+                            from audiotools.wav import parse_fmt
 
                             (channels,
                              self.__sample_rate__,
@@ -136,7 +136,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                         (chunk_id, chunk_size) = aiff.parse("4b 32u")
                         total_size -= 8
                         if (chunk_id == 'COMM'):
-                            from .aiff import parse_comm
+                            from audiotools.aiff import parse_comm
 
                             (channels,
                              total_sample_frames,
@@ -193,8 +193,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        from .decoders import SHNDecoder
-        from . import PCMReaderError
+        from audiotools.decoders import SHNDecoder
+        from audiotools import PCMReaderError
 
         try:
             return SHNDecoder(open(self.filename, "rb"))
@@ -229,13 +229,13 @@ class ShortenAudio(WaveContainer, AiffContainer):
         #are stored variable-sized
         #so we have to build a temporary Wave file instead
 
-        from . import UnsupportedBitsPerSample
+        from audiotools import UnsupportedBitsPerSample
 
         if (pcmreader.bits_per_sample not in (8, 16)):
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
         if (total_pcm_frames is not None):
-            from .wav import wave_header
+            from audiotools.wav import wave_header
 
             return cls.from_wave(filename,
                                  wave_header(pcmreader.sample_rate,
@@ -251,7 +251,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                                  block_size,
                                  encoding_function)
         else:
-            from . import WaveAudio
+            from audiotools import WaveAudio
             import tempfile
 
             f = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -279,8 +279,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         conversion should be routed through .wav conversion
         to avoid losing those chunks"""
 
-        from . import decoders
-        from . import bitstream
+        from audiotools import decoders
+        from audiotools import bitstream
         import cStringIO
 
         try:
@@ -324,8 +324,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         may raise IOError if there's a problem reading
         header or footer data from the file"""
 
-        from . import decoders
-        from . import bitstream
+        from audiotools import decoders
+        from audiotools import bitstream
         import cStringIO
 
         (head, tail) = decoders.SHNDecoder(
@@ -356,14 +356,14 @@ class ShortenAudio(WaveContainer, AiffContainer):
         may raise EncodingError if some problem occurs when
         encoding the input file"""
 
-        from . import (CounterPCMReader,
-                       BufferedPCMReader,
-                       UnsupportedBitsPerSample,
-                       EncodingError)
-        from .wav import (validate_header, validate_footer)
+        from audiotools import (CounterPCMReader,
+                                BufferedPCMReader,
+                                UnsupportedBitsPerSample,
+                                EncodingError)
+        from audiotools.wav import (validate_header, validate_footer)
 
         if (encoding_function is None):
-            from .encoders import encode_shn
+            from audiotools.encoders import encode_shn
         else:
             encode_shn = encoding_function
 
@@ -399,7 +399,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
             #ensure output data size matches the "data" chunk's size
             if (data_size != data_bytes_written):
-                from .text import ERR_WAV_TRUNCATED_DATA_CHUNK
+                from audiotools.text import ERR_WAV_TRUNCATED_DATA_CHUNK
                 raise EncodingError(ERR_WAV_TRUNCATED_DATA_CHUNK)
 
             #ensure footer validates correctly
@@ -410,7 +410,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
             #ensure total size is correct
             if ((len(header) + data_size + len(footer)) != total_size):
-                from .text import ERR_WAV_INVALID_SIZE
+                from audiotools.text import ERR_WAV_INVALID_SIZE
                 raise EncodingError(ERR_WAV_INVALID_SIZE)
 
             return cls(filename)
@@ -429,8 +429,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         conversion should be routed through .aiff conversion
         to avoid losing those chunks"""
 
-        from . import decoders
-        from . import bitstream
+        from audiotools import decoders
+        from audiotools import bitstream
         import cStringIO
 
         try:
@@ -473,8 +473,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         may raise ValueError if the file has no header and footer
         for any reason"""
 
-        from . import decoders
-        from . import bitstream
+        from audiotools import decoders
+        from audiotools import bitstream
         import cStringIO
 
         (head, tail) = decoders.SHNDecoder(
@@ -505,14 +505,14 @@ class ShortenAudio(WaveContainer, AiffContainer):
         may raise EncodingError if some problem occurs when
         encoding the input file"""
 
-        from . import (CounterPCMReader,
-                       BufferedPCMReader,
-                       UnsupportedBitsPerSample,
-                       EncodingError)
-        from .aiff import (validate_header, validate_footer)
+        from audiotools import (CounterPCMReader,
+                                BufferedPCMReader,
+                                UnsupportedBitsPerSample,
+                                EncodingError)
+        from audiotools.aiff import (validate_header, validate_footer)
 
         if (encoding_function is None):
-            from .encoders import encode_shn
+            from audiotools.encoders import encode_shn
         else:
             encode_shn = encoding_function
 
@@ -548,7 +548,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
             #ensure output data size matches the "SSND" chunk's size
             if (ssnd_size != ssnd_bytes_written):
-                from .text import ERR_AIFF_TRUNCATED_SSND_CHUNK
+                from audiotools.text import ERR_AIFF_TRUNCATED_SSND_CHUNK
                 raise EncodingError(ERR_AIFF_TRUNCATED_SSND_CHUNK)
 
             #ensure footer validates correctly
@@ -559,7 +559,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
             #ensure total size is correct
             if ((len(header) + ssnd_size + len(footer)) != total_size):
-                from .text import ERR_AIFF_INVALID_SIZE
+                from audiotools.text import ERR_AIFF_INVALID_SIZE
                 raise EncodingError(ERR_AIFF_INVALID_SIZE)
 
             return cls(filename)
@@ -582,9 +582,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
         #A Shorten file cannot contain both RIFF and AIFF chunks
         #at the same time.
 
-        from . import WaveAudio
-        from . import AiffAudio
-        from . import to_pcm_progress
+        from audiotools import WaveAudio
+        from audiotools import AiffAudio
+        from audiotools import to_pcm_progress
 
         if ((self.has_foreign_wave_chunks() and
              hasattr(target_class, "from_wave") and

@@ -18,8 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from . import (AudioFile, InvalidFile)
-from .ape import ApeGainedAudio
+from audiotools import (AudioFile, InvalidFile)
+from audiotools.ape import ApeGainedAudio
 
 
 #######################
@@ -45,7 +45,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
     DESCRIPTION = u"True Audio"
 
     def __init__(self, filename):
-        from .id3 import skip_id3v2_comment
+        from audiotools.id3 import skip_id3v2_comment
 
         self.filename = filename
 
@@ -53,9 +53,9 @@ class TrueAudio(AudioFile, ApeGainedAudio):
             f = open(filename, "rb")
             skip_id3v2_comment(f)
 
-            from .bitstream import BitstreamReader
-            from .text import (ERR_TTA_INVALID_SIGNATURE,
-                               ERR_TTA_INVALID_FORMAT)
+            from audiotools.bitstream import BitstreamReader
+            from audiotools.text import (ERR_TTA_INVALID_SIGNATURE,
+                                         ERR_TTA_INVALID_FORMAT)
 
             reader = BitstreamReader(f, True)
 
@@ -93,7 +93,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
     def channel_mask(self):
         """returns a ChannelMask object of this track's channel layout"""
 
-        from . import ChannelMask
+        from audiotools import ChannelMask
 
         if (self.__channels__ == 1):
             return ChannelMask(0x4)
@@ -128,9 +128,9 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         if an error occurs initializing a decoder, this should
         return a PCMReaderError with an appropriate error message"""
 
-        from . import decoders
-        from . import PCMReaderError
-        from .id3 import skip_id3v2_comment
+        from audiotools import decoders
+        from audiotools import PCMReaderError
+        from audiotools.id3 import skip_id3v2_comment
 
         try:
             tta = open(self.filename, "rb")
@@ -168,13 +168,13 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         is formatted in a way this class is unable to support
         """
 
-        from . import (BufferedPCMReader,
-                       CounterPCMReader,
-                       transfer_data,
-                       EncodingError)
+        from audiotools import (BufferedPCMReader,
+                                CounterPCMReader,
+                                transfer_data,
+                                EncodingError)
         # from audiotools.py_encoders import encode_tta
-        from .encoders import encode_tta
-        from .bitstream import BitstreamWriter
+        from audiotools.encoders import encode_tta
+        from audiotools.bitstream import BitstreamWriter
         import tempfile
 
         #open output file right away
@@ -213,7 +213,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
             #ensure written number of PCM frames
             #matches total_pcm_frames
             if (counter.frames_written != total_pcm_frames):
-                from .text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+                from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
                 cls.__unlink__(filename)
                 raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
 
@@ -286,14 +286,14 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         #first, attempt to find APEv2 comment at end of file
         f.seek(-32, 2)
         if (f.read(10) == "APETAGEX\xd0\x07"):
-            from . import ApeTag
+            from audiotools import ApeTag
 
             return ApeTag.read(f)
         else:
             #then, look for ID3v2 comment at beginning of file
             f.seek(0, 0)
             if (f.read(3) == "ID3"):
-                from .id3 import read_id3v2_comment
+                from audiotools.id3 import read_id3v2_comment
                 try:
                     id3v2 = read_id3v2_comment(self.filename)
                 except ValueError:
@@ -305,7 +305,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
             try:
                 f.seek(-128, 2)
                 if (f.read(3) == "TAG"):
-                    from .id3v1 import ID3v1Comment
+                    from audiotools.id3v1 import ID3v1Comment
                     try:
                         id3v1 = ID3v1Comment.parse(f)
                     except ValueError:
@@ -317,7 +317,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
             #if both ID3v2 and ID3v1 are present, return a pair
             if ((id3v2 is not None) and (id3v1 is not None)):
-                from .id3 import ID3CommentPair
+                from audiotools.id3 import ID3CommentPair
                 return ID3CommentPair(id3v2, id3v1)
             elif (id3v2 is not None):
                 return id3v2
@@ -331,8 +331,8 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         raises IOError if unable to write the file"""
 
         import os
-        from .ape import ApeTag
-        from .bitstream import BitstreamWriter
+        from audiotools.ape import ApeTag
+        from audiotools.bitstream import BitstreamWriter
 
         if (metadata is None):
             return
@@ -398,10 +398,10 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         """
 
         import os
-        from .ape import ApeTag
-        from .id3 import ID3v2Comment
-        from .id3 import ID3CommentPair
-        from .id3v1 import ID3v1Comment
+        from audiotools.ape import ApeTag
+        from audiotools.id3 import ID3v2Comment
+        from audiotools.id3 import ID3CommentPair
+        from audiotools.id3v1 import ID3v1Comment
 
         if (metadata is None):
             return
@@ -413,7 +413,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
              (not isinstance(metadata, ID3v2Comment)) and
              (not isinstance(metadata, ID3CommentPair)) and
              (not isinstance(metadata, ID3v1Comment)))):
-            from .text import ERR_FOREIGN_METADATA
+            from audiotools.text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
 
         current_metadata = self.get_metadata()
@@ -421,7 +421,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         if (isinstance(metadata, ApeTag) and (current_metadata is None)):
             #if new metadata is APEv2 and no current metadata,
             #simply append APEv2 tag
-            from .bitstream import BitstreamWriter
+            from audiotools.bitstream import BitstreamWriter
             f = open(self.filename, "ab")
             metadata.build(BitstreamWriter(f, True))
         elif (isinstance(metadata, ApeTag) and
@@ -430,14 +430,16 @@ class TrueAudio(AudioFile, ApeGainedAudio):
             #if new metadata is APEv2, current metadata is APEv2
             #and new metadata is larger,
             #overwrite old tag with new tag
-            from .bitstream import BitstreamWriter
+            from audiotools.bitstream import BitstreamWriter
             f = open(self.filename, "r+b")
             f.seek(-current_metadata.total_size(), 2)
             metadata.build(BitstreamWriter(f, True))
         else:
-            from .bitstream import BitstreamWriter
-            from . import (transfer_data, LimitedFileReader, TemporaryFile)
-            from .id3 import skip_id3v2_comment
+            from audiotools.bitstream import BitstreamWriter
+            from audiotools import (transfer_data,
+                                    LimitedFileReader,
+                                    TemporaryFile)
+            from audiotools.id3 import skip_id3v2_comment
 
             #otherwise, rebuild TTA with APEv2/ID3 tags in place
             old_tta = open(self.filename, "rb")
@@ -471,8 +473,8 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         raises IOError if unable to write the file"""
 
         import os
-        from . import (transfer_data, LimitedFileReader, TemporaryFile)
-        from .id3 import skip_id3v2_comment
+        from audiotools import (transfer_data, LimitedFileReader, TemporaryFile)
+        from audiotools.id3 import skip_id3v2_comment
 
         if (not os.access(self.filename, os.W_OK)):
             raise IOError(self.filename)
@@ -493,7 +495,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         raises IOError if a problem occurs when reading the file"""
 
-        import cue
+        import audiotools.cue as cue
 
         metadata = self.get_metadata()
 
@@ -515,9 +517,9 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         import os.path
         import cStringIO
-        from . import (MetaData, Filename, FS_ENCODING)
-        from .ape import ApeTag
-        from .cue import write_cuesheet
+        from audiotools import (MetaData, Filename, FS_ENCODING)
+        from audiotools.ape import ApeTag
+        from audiotools.cue import write_cuesheet
 
         if (cuesheet is None):
             return
@@ -548,7 +550,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         returns None if we have no values"""
 
-        from .ape import ApeTag
+        from audiotools.ape import ApeTag
 
         #if current metadata is present and is in APEv2 format,
         #return contents of "replaygain_" tags
@@ -564,7 +566,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         may raise IOError if unable to read or write the file"""
 
-        from .ape import ApeTag
+        from audiotools.ape import ApeTag
 
         metadata = self.get_metadata()
         if ((metadata is None) or (isinstance(metadata, ApeTag))):
@@ -579,7 +581,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         may raise IOError if unable to modify the file"""
 
-        from .ape import ApeTag
+        from audiotools.ape import ApeTag
 
         metadata = self.get_metadata()
         if ((metadata is not None) and (isinstance(metadata, ApeTag))):

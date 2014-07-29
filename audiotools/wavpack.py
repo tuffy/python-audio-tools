@@ -18,8 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from . import WaveContainer, InvalidFile
-from .ape import ApeTaggedAudio, ApeGainedAudio
+from audiotools import WaveContainer, InvalidFile
+from audiotools.ape import ApeTaggedAudio, ApeGainedAudio
 
 
 class InvalidWavPack(InvalidFile):
@@ -54,8 +54,8 @@ def __riff_chunk_ids__(data_size, data):
 class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
     """a WavPack audio file"""
 
-    from .text import (COMP_WAVPACK_VERYFAST,
-                       COMP_WAVPACK_VERYHIGH)
+    from audiotools.text import (COMP_WAVPACK_VERYFAST,
+                                 COMP_WAVPACK_VERYHIGH)
 
     SUFFIX = "wv"
     NAME = SUFFIX
@@ -192,12 +192,12 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         may raise EncodingError if some problem occurs when
         encoding the input file"""
 
-        from .encoders import encode_wavpack
-        from . import BufferedPCMReader
-        from . import CounterPCMReader
-        from .wav import (validate_header, validate_footer)
-        from . import EncodingError
-        from . import __default_quality__
+        from audiotools.encoders import encode_wavpack
+        from audiotools import BufferedPCMReader
+        from audiotools import CounterPCMReader
+        from audiotools.wav import (validate_header, validate_footer)
+        from audiotools import EncodingError
+        from audiotools import __default_quality__
 
         if (((compression is None) or
              (compression not in cls.COMPRESSION_MODES))):
@@ -223,7 +223,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
             #ensure output data size matches the "data" chunk's size
             if (data_size != data_bytes_written):
-                from .text import ERR_WAV_TRUNCATED_DATA_CHUNK
+                from audiotools.text import ERR_WAV_TRUNCATED_DATA_CHUNK
                 raise EncodingError(ERR_WAV_TRUNCATED_DATA_CHUNK)
 
             #ensure footer validates correctly
@@ -234,7 +234,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
             #ensure total size is correct
             if ((len(header) + data_size + len(footer)) != total_size):
-                from .text import ERR_WAV_INVALID_SIZE
+                from audiotools.text import ERR_WAV_INVALID_SIZE
                 raise EncodingError(ERR_WAV_INVALID_SIZE)
 
             return cls(filename)
@@ -265,7 +265,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                 return
 
         if (reader is None):
-            from .bitstream import BitstreamReader
+            from audiotools.bitstream import BitstreamReader
 
             reader = BitstreamReader(file(self.filename), 1)
             try:
@@ -314,8 +314,8 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                 block_size -= sub_block_size * 2
 
     def __read_info__(self):
-        from .bitstream import BitstreamReader
-        from . import ChannelMask
+        from audiotools.bitstream import BitstreamReader
+        from audiotools import ChannelMask
 
         reader = BitstreamReader(file(self.filename, "rb"), 1)
         reader.mark()
@@ -330,7 +330,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                 "4b 64p 32u 64p 2u 1u 8p 1u 1u 5p 5p 4u 37p")
 
             if (block_id != 'wvpk'):
-                from .text import ERR_WAVPACK_INVALID_HEADER
+                from audiotools.text import ERR_WAVPACK_INVALID_HEADER
                 raise InvalidWavPack(ERR_WAVPACK_INVALID_HEADER)
 
             if (sample_rate != 0xF):
@@ -412,7 +412,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                         mask = fmt.read(32)
                         self.__channel_mask__ = ChannelMask(mask)
                     else:
-                        from .text import ERR_WAVPACK_UNSUPPORTED_FMT
+                        from audiotools.text import ERR_WAVPACK_UNSUPPORTED_FMT
                         raise InvalidWavPack(ERR_WAVPACK_UNSUPPORTED_FMT)
 
         finally:
@@ -458,11 +458,11 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         at the given filename with the specified compression level
         and returns a new WavPackAudio object"""
 
-        from .encoders import encode_wavpack
-        from . import BufferedPCMReader
-        from . import CounterPCMReader
-        from . import EncodingError
-        from . import __default_quality__
+        from audiotools.encoders import encode_wavpack
+        from audiotools import BufferedPCMReader
+        from audiotools import CounterPCMReader
+        from audiotools import EncodingError
+        from audiotools import __default_quality__
 
         if (((compression is None) or
              (compression not in cls.COMPRESSION_MODES))):
@@ -489,7 +489,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         if (((total_pcm_frames is not None) and
              (counter.frames_written != total_pcm_frames))):
             cls.__unlink__(filename)
-            from .text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+            from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
             raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
 
         return cls(filename)
@@ -497,8 +497,8 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        from . import decoders
-        from . import PCMReaderError
+        from audiotools import decoders
+        from audiotools import PCMReaderError
 
         try:
             return decoders.WavPackDecoder(open(self.filename, "rb"))
@@ -519,7 +519,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
             if ((block_id == 1) and nondecoder):
                 (riff, wave) = data.parse("4b 32p 4b")
                 if ((riff != 'RIFF') or (wave != 'WAVE')):
-                    from .text import ERR_WAVPACK_INVALID_FMT
+                    from audiotools.text import ERR_WAVPACK_INVALID_FMT
                     raise InvalidWavPack(ERR_WAVPACK_INVALID_FMT)
                 else:
                     while (True):
@@ -527,12 +527,12 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                         if (chunk_id == 'fmt '):
                             return data.substream(chunk_size)
                         elif (chunk_id == 'data'):
-                            from .text import ERR_WAVPACK_INVALID_FMT
+                            from audiotools.text import ERR_WAVPACK_INVALID_FMT
                             raise InvalidWavPack(ERR_WAVPACK_INVALID_FMT)
                         else:
                             data.skip_bytes(chunk_size)
         else:
-            from .text import ERR_WAVPACK_NO_FMT
+            from audiotools.text import ERR_WAVPACK_NO_FMT
             raise InvalidWavPack(ERR_WAVPACK_NO_FMT)
 
     def get_cuesheet(self):
@@ -540,7 +540,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
         raises IOError if a problem occurs when reading the file"""
 
-        import cue
+        from audiotools import cue as cue
 
         metadata = self.get_metadata()
 
@@ -562,9 +562,9 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
         import os.path
         import cStringIO
-        from . import (MetaData, Filename, FS_ENCODING)
-        from .ape import ApeTag
-        from .cue import write_cuesheet
+        from audiotools import (MetaData, Filename, FS_ENCODING)
+        from audiotools import cue as cue
+        from audiotools.cue import write_cuesheet
 
         if (cuesheet is None):
             return

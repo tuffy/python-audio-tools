@@ -31,8 +31,8 @@ class InvalidVorbis(InvalidFile):
 class VorbisAudio(AudioFile):
     """an Ogg Vorbis file"""
 
-    from .text import (COMP_VORBIS_0,
-                       COMP_VORBIS_10)
+    from audiotools.text import (COMP_VORBIS_0,
+                                 COMP_VORBIS_10)
 
     SUFFIX = "ogg"
     NAME = SUFFIX
@@ -54,7 +54,7 @@ class VorbisAudio(AudioFile):
             raise InvalidVorbis(str(msg))
 
     def __read_identification__(self):
-        from .bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamReader
 
         f = open(self.filename, "rb")
         try:
@@ -69,10 +69,10 @@ class VorbisAudio(AudioFile):
              segment_count) = ogg_reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
 
             if (magic_number != 'OggS'):
-                from .text import ERR_OGG_INVALID_MAGIC_NUMBER
+                from audiotools.text import ERR_OGG_INVALID_MAGIC_NUMBER
                 raise InvalidFLAC(ERR_OGG_INVALID_MAGIC_NUMBER)
             if (version != 0):
-                from .text import ERR_OGG_INVALID_VERSION
+                from audiotools.text import ERR_OGG_INVALID_VERSION
                 raise InvalidFLAC(ERR_OGG_INVALID_VERSION)
 
             segment_length = ogg_reader.read(8)
@@ -91,16 +91,16 @@ class VorbisAudio(AudioFile):
                 "8u 6b 32u 8u 32u 32u 32u 32u 4u 4u 1u")
 
             if (vorbis_type != 1):
-                from .text import ERR_VORBIS_INVALID_TYPE
+                from audiotools.text import ERR_VORBIS_INVALID_TYPE
                 raise InvalidVorbis(ERR_VORBIS_INVALID_TYPE)
             if (header != 'vorbis'):
-                from .text import ERR_VORBIS_INVALID_HEADER
+                from audiotools.text import ERR_VORBIS_INVALID_HEADER
                 raise InvalidVorbis(ERR_VORBIS_INVALID_HEADER)
             if (version != 0):
-                from .text import ERR_VORBIS_INVALID_VERSION
+                from audiotools.text import ERR_VORBIS_INVALID_VERSION
                 raise InvalidVorbis(ERR_VORBIS_INVALID_VERSION)
             if (framing != 1):
-                from .text import ERR_VORBIS_INVALID_FRAMING_BIT
+                from audiotools.text import ERR_VORBIS_INVALID_FRAMING_BIT
                 raise InvalidVorbis(ERR_VORBIS_INVALID_FRAMING_BIT)
         finally:
             f.close()
@@ -265,7 +265,7 @@ class VorbisAudio(AudioFile):
         if (metadata is None):
             return
         elif (not isinstance(metadata, VorbisComment)):
-            from .text import ERR_FOREIGN_METADATA
+            from audiotools.text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
         elif (not os.access(self.filename, os.W_OK)):
             raise IOError(self.filename)
@@ -333,7 +333,7 @@ class VorbisAudio(AudioFile):
         this metadata includes track name, album name, and so on
         raises IOError if unable to write the file"""
 
-        from .vorbiscomment import VorbisComment
+        from audiotools.vorbiscomment import VorbisComment
 
         if (metadata is not None):
             metadata = VorbisComment.converted(metadata)
@@ -390,7 +390,7 @@ class VorbisAudio(AudioFile):
         this removes or unsets tags as necessary in order to remove all data
         raises IOError if unable to write the file"""
 
-        from . import MetaData
+        from audiotools import MetaData
 
         #the vorbis comment packet is required,
         #so simply zero out its contents
@@ -407,7 +407,7 @@ class VorbisAudio(AudioFile):
 
         returns None if we have no values"""
 
-        from . import ReplayGain
+        from audiotools import ReplayGain
 
         vorbis_metadata = self.get_metadata()
 
@@ -490,9 +490,9 @@ class VorbisAudio(AudioFile):
         """given a Messenger object, displays missing binaries or libraries
         needed to support this format and where to get them"""
 
-        from .text import (ERR_LIBRARY_NEEDED,
-                           ERR_LIBRARY_DOWNLOAD_URL,
-                           ERR_PROGRAM_PACKAGE_MANAGER)
+        from audiotools.text import (ERR_LIBRARY_NEEDED,
+                                     ERR_LIBRARY_DOWNLOAD_URL,
+                                     ERR_PROGRAM_PACKAGE_MANAGER)
 
         format_ = cls.NAME.decode('ascii')
 

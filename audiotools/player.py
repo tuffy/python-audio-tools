@@ -773,7 +773,7 @@ class OSSAudioOutput(AudioOutput):
                 self.__ossaudio__.setfmt(ossaudiodev.AFMT_S16_LE)
                 self.__converter__ = lambda f: f.to_bytes(False, True)
             elif (self.bits_per_sample == 24):
-                from .pcm import from_list
+                from audiotools.pcm import from_list
 
                 self.__ossaudio__.setfmt(ossaudiodev.AFMT_S16_LE)
                 self.__converter__ = lambda f: from_list(
@@ -915,7 +915,7 @@ class PulseAudioOutput(AudioOutput):
         if (self.__pulseaudio__ is None):
             #output hasn't been initialized
 
-            from .output import PulseAudio
+            from audiotools.output import PulseAudio
 
             AudioOutput.set_format(self, sample_rate, channels,
                                    channel_mask, bits_per_sample)
@@ -992,7 +992,7 @@ class PulseAudioOutput(AudioOutput):
         """returns True if PulseAudio is available and running on the system"""
 
         try:
-            from .output import PulseAudio
+            from audiotools.output import PulseAudio
 
             return True
         except ImportError:
@@ -1039,7 +1039,7 @@ class ALSAAudioOutput(AudioOutput):
         if (self.__alsaaudio__ is None):
             #output hasn't been initialized
 
-            from .output import ALSAAudio
+            from audiotools.output import ALSAAudio
 
             AudioOutput.set_format(self, sample_rate, channels,
                                    channel_mask, bits_per_sample)
@@ -1110,7 +1110,7 @@ class ALSAAudioOutput(AudioOutput):
         """returns True if ALSA is available and running on the system"""
 
         try:
-            from .output import ALSAAudio
+            from audiotools.output import ALSAAudio
 
             return True
         except ImportError:
@@ -1157,7 +1157,7 @@ class CoreAudioOutput(AudioOutput):
         if (self.__coreaudio__ is None):
             #output hasn't been initialized
 
-            from .output import CoreAudio
+            from audiotools.output import CoreAudio
 
             AudioOutput.set_format(self, sample_rate, channels,
                                    channel_mask, bits_per_sample)
@@ -1236,7 +1236,7 @@ class CoreAudioOutput(AudioOutput):
         """returns True if the AudioOutput is available on the system"""
 
         try:
-            from .output import CoreAudio
+            from audiotools.output import CoreAudio
 
             return True
         except ImportError:

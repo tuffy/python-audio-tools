@@ -18,8 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from . import (AudioFile, InvalidFile, PCMReader)
-from .pcm import FrameList
+from audiotools import (AudioFile, InvalidFile, PCMReader)
+from audiotools.pcm import FrameList
 
 
 class InvalidAU(InvalidFile):
@@ -33,9 +33,9 @@ class InvalidAU(InvalidFile):
 
 class AuReader:
     def __init__(self, au_filename):
-        from .bitstream import BitstreamReader
-        from .text import (ERR_AU_INVALID_HEADER,
-                           ERR_AU_UNSUPPORTED_FORMAT)
+        from audiotools.bitstream import BitstreamReader
+        from audiotools.text import (ERR_AU_INVALID_HEADER,
+                                     ERR_AU_UNSUPPORTED_FORMAT)
 
         self.file = open(au_filename, "rb")
         (magic_number,
@@ -68,7 +68,7 @@ class AuReader:
 
         #raise exception if data block exhausted early
         if (len(pcm_data) < requested_bytes):
-            from .text import ERR_AU_TRUNCATED_DATA
+            from audiotools.text import ERR_AU_TRUNCATED_DATA
             raise IOError(ERR_AU_TRUNCATED_DATA)
         else:
             self.remaining_pcm_frames -= requested_pcm_frames
@@ -82,7 +82,7 @@ class AuReader:
 
     def seek(self, pcm_frame_offset):
         if (pcm_frame_offset < 0):
-            from .text import ERR_NEGATIVE_SEEK
+            from audiotools.text import ERR_NEGATIVE_SEEK
             raise ValueError(ERR_NEGATIVE_SEEK)
 
         #ensure one doesn't walk off the end of the file
@@ -112,9 +112,9 @@ class AuAudio(AudioFile):
     def __init__(self, filename):
         AudioFile.__init__(self, filename)
 
-        from .bitstream import BitstreamReader
-        from .text import (ERR_AU_INVALID_HEADER,
-                           ERR_AU_UNSUPPORTED_FORMAT)
+        from audiotools.bitstream import BitstreamReader
+        from audiotools.text import (ERR_AU_INVALID_HEADER,
+                                     ERR_AU_UNSUPPORTED_FORMAT)
 
         try:
             f = file(filename, 'rb')
@@ -151,7 +151,7 @@ class AuAudio(AudioFile):
         return self.__channels__
 
     def channel_mask(self):
-        from . import ChannelMask
+        from audiotools import ChannelMask
 
         """returns a ChannelMask object of this track's channel layout"""
 
@@ -208,15 +208,15 @@ class AuAudio(AudioFile):
         at the given filename with the specified compression level
         and returns a new AuAudio object"""
 
-        from .bitstream import BitstreamWriter
-        from . import FRAMELIST_SIZE
-        from . import EncodingError
-        from . import DecodingError
+        from audiotools.bitstream import BitstreamWriter
+        from audiotools import FRAMELIST_SIZE
+        from audiotools import EncodingError
+        from audiotools import DecodingError
 
         if (pcmreader.bits_per_sample not in (8, 16, 24)):
-            from . import Filename
-            from .text import ERR_UNSUPPORTED_BITS_PER_SAMPLE
-            from . import UnsupportedBitsPerSample
+            from audiotools import Filename
+            from audiotools import UnsupportedBitsPerSample
+            from audiotools.text import ERR_UNSUPPORTED_BITS_PER_SAMPLE
             raise UnsupportedBitsPerSample(
                 ERR_UNSUPPORTED_BITS_PER_SAMPLE %
                 {"target_filename": Filename(filename),

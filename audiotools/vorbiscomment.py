@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from . import MetaData
+from audiotools import MetaData
 import re
 
 
@@ -153,7 +153,7 @@ class VorbisComment(MetaData):
         """
 
         from os import linesep
-        from . import output_table
+        from audiotools import output_table
 
         #align text strings on the "=" sign, if any
 
@@ -414,7 +414,7 @@ class VorbisComment(MetaData):
     def converted(cls, metadata):
         """converts metadata from another class to VorbisComment"""
 
-        from . import VERSION
+        from audiotools import VERSION
 
         if (metadata is None):
             return None
@@ -480,21 +480,21 @@ class VorbisComment(MetaData):
                     attr = reverse_attr_map[key.upper()]
                     #handle all text fields by stripping whitespace
                     if (len(value.strip()) == 0):
-                        from .text import CLEAN_REMOVE_EMPTY_TAG
+                        from audiotools.text import CLEAN_REMOVE_EMPTY_TAG
                         fixes_performed.append(
                             CLEAN_REMOVE_EMPTY_TAG %
                             {"field": key})
                     else:
                         fix1 = value.rstrip()
                         if (fix1 != value):
-                            from .text import CLEAN_REMOVE_TRAILING_WHITESPACE
+                            from audiotools.text import CLEAN_REMOVE_TRAILING_WHITESPACE
                             fixes_performed.append(
                                 CLEAN_REMOVE_TRAILING_WHITESPACE %
                                 {"field": key})
 
                         fix2 = fix1.lstrip()
                         if (fix2 != fix1):
-                            from .text import CLEAN_REMOVE_LEADING_WHITESPACE
+                            from audiotools.text import CLEAN_REMOVE_LEADING_WHITESPACE
                             fixes_performed.append(
                                 CLEAN_REMOVE_LEADING_WHITESPACE %
                                 {"field": key})
@@ -511,7 +511,7 @@ class VorbisComment(MetaData):
                                     match.group(2).lstrip(u"0"))
 
                                 if (fix3 != fix2):
-                                    from .text import (
+                                    from audiotools.text import (
                                         CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES)
                                     fixes_performed.append(
                                         CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES
@@ -521,7 +521,7 @@ class VorbisComment(MetaData):
                                 fix3 = fix2.lstrip(u"0")
 
                                 if (fix3 != fix2):
-                                    from .text import (
+                                    from audiotools.text import (
                                         CLEAN_REMOVE_LEADING_ZEROES)
                                     fixes_performed.append(
                                         CLEAN_REMOVE_LEADING_ZEROES %
@@ -530,7 +530,7 @@ class VorbisComment(MetaData):
                               (attr == "album_total")):
                             fix3 = fix2.lstrip(u"0")
                             if (fix3 != fix2):
-                                from .text import CLEAN_REMOVE_LEADING_ZEROES
+                                from audiotools.text import CLEAN_REMOVE_LEADING_ZEROES
                                 fixes_performed.append(
                                     CLEAN_REMOVE_LEADING_ZEROES %
                                     {"field": key})

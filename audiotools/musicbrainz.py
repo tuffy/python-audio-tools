@@ -319,7 +319,7 @@ def parse_release(release, disc_id):
             track_number = i + 1
 
         #yield complete MetaData object
-        from . import MetaData
+        from audiotools import MetaData
 
         yield MetaData(track_name=track_name,
                        track_number=track_number,

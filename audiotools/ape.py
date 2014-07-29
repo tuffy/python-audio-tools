@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from . import (AudioFile, MetaData)
+from audiotools import (AudioFile, MetaData)
 
 
 #takes a pair of integers (or None) for the current and total values
@@ -577,7 +577,7 @@ class ApeTag(MetaData):
         """returns the ApeTag as a human-readable unicode string"""
 
         from os import linesep
-        from . import output_table
+        from audiotools import output_table
 
         #align tag values on the "=" sign
         table = output_table()
@@ -599,7 +599,7 @@ class ApeTag(MetaData):
         return True
 
     def __parse_image__(self, key, type):
-        from . import Image
+        from audiotools import Image
         import cStringIO
 
         data = cStringIO.StringIO(self[key].data)
@@ -661,7 +661,7 @@ class ApeTag(MetaData):
 
         may return None if the file object has no tag"""
 
-        from .bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamReader
 
         apefile.seek(-32, 2)
         reader = BitstreamReader(apefile, 1)
@@ -689,7 +689,7 @@ class ApeTag(MetaData):
     def build(self, writer):
         """outputs an APEv2 tag to writer"""
 
-        from .bitstream import BitstreamRecorder
+        from audiotools.bitstream import BitstreamRecorder
 
         tags = BitstreamRecorder(1)
 
@@ -723,11 +723,11 @@ class ApeTag(MetaData):
 
     def clean(self):
         import re
-        from .text import (CLEAN_REMOVE_DUPLICATE_TAG,
-                           CLEAN_REMOVE_TRAILING_WHITESPACE,
-                           CLEAN_REMOVE_LEADING_WHITESPACE,
-                           CLEAN_FIX_TAG_FORMATTING,
-                           CLEAN_REMOVE_EMPTY_TAG)
+        from audiotools.text import (CLEAN_REMOVE_DUPLICATE_TAG,
+                                     CLEAN_REMOVE_TRAILING_WHITESPACE,
+                                     CLEAN_REMOVE_LEADING_WHITESPACE,
+                                     CLEAN_FIX_TAG_FORMATTING,
+                                     CLEAN_REMOVE_EMPTY_TAG)
 
         fixes_performed = []
         used_tags = set([])
@@ -839,11 +839,11 @@ class ApeTaggedAudio:
         if (metadata is None):
             return
         elif (not isinstance(metadata, ApeTag)):
-            from .text import ERR_FOREIGN_METADATA
+            from audiotools.text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
 
-        from .bitstream import BitstreamReader, BitstreamWriter
-        from . import transfer_data
+        from audiotools.bitstream import BitstreamReader, BitstreamWriter
+        from audiotools import transfer_data
 
         f = file(self.filename, "r+b")
         f.seek(-32, 2)
@@ -872,7 +872,7 @@ class ApeTaggedAudio:
             else:
                 #metadata has shrunk
                 #so rewrite file with smaller metadata
-                from . import TemporaryFile
+                from audiotools import TemporaryFile
                 from os.path import getsize
 
                 #copy everything but the last "old_tag_size" bytes
@@ -904,7 +904,7 @@ class ApeTaggedAudio:
         if (metadata is None):
             return
 
-        from .bitstream import BitstreamWriter
+        from audiotools.bitstream import BitstreamWriter
 
         old_metadata = self.get_metadata()
         new_metadata = ApeTag.converted(metadata)
@@ -958,8 +958,8 @@ class ApeTaggedAudio:
 
         raises IOError if unable to write the file"""
 
-        from .bitstream import BitstreamReader, BitstreamWriter
-        from . import transfer_data
+        from audiotools.bitstream import BitstreamReader, BitstreamWriter
+        from audiotools import transfer_data
 
         f = file(self.filename, "r+b")
         f.seek(-32, 2)
@@ -975,7 +975,7 @@ class ApeTaggedAudio:
          has_header) = BitstreamReader(f, 1).parse(ApeTag.HEADER_FORMAT)
 
         if ((preamble == 'APETAGEX') and (version == 2000)):
-            from . import TemporaryFile
+            from audiotools import TemporaryFile
             from os.path import getsize
 
             #there's existing metadata to delete
@@ -1011,7 +1011,7 @@ class ApeGainedAudio:
 
         returns None if we have no values"""
 
-        from . import ReplayGain
+        from audiotools import ReplayGain
 
         metadata = self.get_metadata()
         if (metadata is None):
@@ -1185,7 +1185,7 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
             file_head = cls.FILE_HEAD.parse_stream(f)
 
             if (file_head.id != 'MAC '):
-                from .text import ERR_APE_INVALID_HEADER
+                from audiotools.text import ERR_APE_INVALID_HEADER
                 raise InvalidFile(ERR_APE_INVALID_HEADER)
 
             if (file_head.version >= 3980):  # the latest APE file type
@@ -1232,8 +1232,8 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
 
         raises EncodingError if some error occurs during decoding"""
 
-        from . import BIN
-        from . import transfer_data
+        from audiotools import BIN
+        from audiotools import transfer_data
         import subprocess
         import os
 
@@ -1276,7 +1276,7 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
         at the given filename with the specified compression level
         and returns a new ApeAudio object"""
 
-        from . import BIN
+        from audiotools import BIN
         import subprocess
         import os
 

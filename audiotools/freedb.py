@@ -109,7 +109,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
     from urllib import urlencode
     from itertools import izip
     from time import sleep
-    from . import VERSION
+    from audiotools import VERSION
 
     RESPONSE = re.compile(r'(\d{3}) (.+?)[\r\n]+')
     QUERY_RESULT = re.compile(r'(\S+) ([0-9a-fA-F]{8}) (.+)')
@@ -171,7 +171,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
     if (len(matches) > 0):
         #for each result, query FreeDB for XMCD file data
         for (category, disc_id, title) in matches:
-            from . import VERSION
+            from audiotools import VERSION
 
             sleep(1)  # add a slight delay to keep the server happy
             m = urlopen("http://%s:%d/~cddb/cddb.cgi" % (freedb_server,
@@ -239,7 +239,7 @@ def xmcd_metadata(freedb_file):
             track_artist = album_artist
             track_name = ttitle
 
-        from . import MetaData
+        from audiotools import MetaData
 
         yield MetaData(
             track_name=track_name.decode('utf-8', 'replace'),

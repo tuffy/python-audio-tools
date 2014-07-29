@@ -18,8 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import imghdr
-from .bitstream import BitstreamReader, format_size
-from . import InvalidImage
+from audiotools.bitstream import BitstreamReader, format_size
+from audiotools import InvalidImage
 
 
 def __jpeg__(h, f):
@@ -51,7 +51,7 @@ def image_metrics(file_data):
     elif (header == 'tiff'):
         return __TIFF__.parse(file_data)
     else:
-        from .text import ERR_IMAGE_UNKNOWN_TYPE
+        from audiotools.text import ERR_IMAGE_UNKNOWN_TYPE
         raise InvalidImage(ERR_IMAGE_UNKNOWN_TYPE)
 
 
@@ -112,7 +112,7 @@ class __JPEG__(ImageMetrics):
     def parse(cls, file_data):
         def segments(reader):
             if (reader.read(8) != 0xFF):
-                from .text import ERR_IMAGE_INVALID_JPEG_MARKER
+                from audiotools.text import ERR_IMAGE_INVALID_JPEG_MARKER
                 raise InvalidJPEG(ERR_IMAGE_INVALID_JPEG_MARKER)
             segment_type = reader.read(8)
 
@@ -123,7 +123,7 @@ class __JPEG__(ImageMetrics):
                     yield (segment_type, None)
 
                 if (reader.read(8) != 0xFF):
-                    from .text import ERR_IMAGE_INVALID_JPEG_MARKER
+                    from audiotools.text import ERR_IMAGE_INVALID_JPEG_MARKER
                     raise InvalidJPEG(ERR_IMAGE_INVALID_JPEG_MARKER)
                 segment_type = reader.read(8)
 
@@ -142,7 +142,7 @@ class __JPEG__(ImageMetrics):
                                     height=image_height,
                                     bits_per_pixel=data_precision * components)
         except IOError:
-            from .text import ERR_IMAGE_IOERROR_JPEG
+            from audiotools.text import ERR_IMAGE_IOERROR_JPEG
             raise InvalidJPEG(ERR_IMAGE_IOERROR_JPEG)
 
 #######################
@@ -165,7 +165,7 @@ class __PNG__(ImageMetrics):
     def parse(cls, file_data):
         def chunks(reader):
             if (reader.read_bytes(8) != '\x89\x50\x4E\x47\x0D\x0A\x1A\x0A'):
-                from .text import ERR_IMAGE_INVALID_PNG
+                from audiotools.text import ERR_IMAGE_INVALID_PNG
                 raise InvalidPNG(ERR_IMAGE_INVALID_PNG)
             (chunk_length, chunk_type) = reader.parse("32u 4b")
             while (chunk_type != 'IEND'):
@@ -188,7 +188,7 @@ class __PNG__(ImageMetrics):
                     plte_length = chunk_length
 
             if (ihdr is None):
-                from .text import ERR_IMAGE_INVALID_PNG
+                from audiotools.text import ERR_IMAGE_INVALID_PNG
                 raise InvalidPNG(ERR_IMAGE_INVALID_PNG)
 
             (width,
@@ -199,7 +199,7 @@ class __PNG__(ImageMetrics):
              filter_method,
              interlace_method) = ihdr.parse("32u 32u 8u 8u 8u 8u 8u")
         except IOError:
-            from .text import ERR_IMAGE_IOERROR_PNG
+            from audiotools.text import ERR_IMAGE_IOERROR_PNG
             raise InvalidPNG(ERR_IMAGE_IOERROR_PNG)
 
         if (color_type == 0):    # grayscale
@@ -214,7 +214,7 @@ class __PNG__(ImageMetrics):
                        color_count=0)
         elif (color_type == 3):  # palette
             if ((plte_length % 3) != 0):
-                from .text import ERR_IMAGE_INVALID_PLTE
+                from audiotools.text import ERR_IMAGE_INVALID_PLTE
                 raise InvalidPNG(ERR_IMAGE_INVALID_PLTE)
             else:
                 return cls(width=width,
@@ -268,11 +268,11 @@ class __BMP__(ImageMetrics):
                 "2b 32u 16p 16p 32u " +
                 "32u 32u 32u 16u 16u 32u 32u 32u 32u 32u 32u")
         except IOError:
-            from .text import ERR_IMAGE_IOERROR_BMP
+            from audiotools.text import ERR_IMAGE_IOERROR_BMP
             raise InvalidBMP(ERR_IMAGE_IOERROR_BMP)
 
         if (magic_number != 'BM'):
-            from .text import ERR_IMAGE_INVALID_BMP
+            from audiotools.text import ERR_IMAGE_INVALID_BMP
             raise InvalidBMP(ERR_IMAGE_INVALID_BMP)
         else:
             return cls(width=width,
@@ -307,11 +307,11 @@ class __GIF__(ImageMetrics):
              color_table_size) = BitstreamReader(file_data, 1).parse(
                 "3b 3b 16u 16u 3u 5p")
         except IOError:
-            from .text import ERR_IMAGE_IOERROR_GIF
+            from audiotools.text import ERR_IMAGE_IOERROR_GIF
             raise InvalidGIF(ERR_IMAGE_IOERROR_GIF)
 
         if (gif != 'GIF'):
-            from .text import ERR_IMAGE_INVALID_GIF
+            from audiotools.text import ERR_IMAGE_INVALID_GIF
             raise InvalidGIF(ERR_IMAGE_INVALID_GIF)
         else:
             return cls(width=width,
@@ -382,11 +382,11 @@ class __TIFF__(ImageMetrics):
             elif (byte_order == 'MM'):
                 order = 0
             else:
-                from .text import ERR_IMAGE_INVALID_TIFF
+                from audiotools.text import ERR_IMAGE_INVALID_TIFF
                 raise InvalidTIFF(ERR_IMAGE_INVALID_TIFF)
             reader = BitstreamReader(file, order)
             if (reader.read(16) != 42):
-                from .text import ERR_IMAGE_INVALID_TIFF
+                from audiotools.text import ERR_IMAGE_INVALID_TIFF
                 raise InvalidTIFF(ERR_IMAGE_INVALID_TIFF)
 
             initial_ifd = reader.read(32)
@@ -406,7 +406,7 @@ class __TIFF__(ImageMetrics):
                 elif (tag_id == 0x0140):
                     color_count = len(tag_values) // 3
         except IOError:
-            from .text import ERR_IMAGE_IOERROR_TIFF
+            from audiotools.text import ERR_IMAGE_IOERROR_TIFF
             raise InvalidTIFF(ERR_IMAGE_IOERROR_TIFF)
 
         return cls(width=width,

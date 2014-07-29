@@ -248,7 +248,7 @@ def perform_lookup(disc_id,
     may raise urllib2.HTTPError if an error occurs querying the server
     """
 
-    from .bitstream import BitstreamReader
+    from audiotools.bitstream import BitstreamReader
     from urllib2 import urlopen, URLError
 
     matches = dict([(n, []) for n in disc_id.track_numbers()])

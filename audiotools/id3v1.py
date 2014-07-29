@@ -179,7 +179,7 @@ class ID3v1Comment(MetaData):
 
         raises ValueError if the comment is invalid"""
 
-        from .bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamReader
 
         mp3_file.seek(-128, 2)
         reader = BitstreamReader(mp3_file, 0)
@@ -205,7 +205,7 @@ class ID3v1Comment(MetaData):
     def build(self, mp3_file):
         """given an MP3 file positioned at the file's end, generate a tag"""
 
-        from .bitstream import BitstreamWriter
+        from audiotools.bitstream import BitstreamWriter
 
         BitstreamWriter(mp3_file, 0).build(
             "3b 30b 30b 30b 4b 28b 8p 1b 1b",
@@ -259,8 +259,8 @@ class ID3v1Comment(MetaData):
     def clean(self):
         """returns a new ID3v1Comment object that's been cleaned of problems"""
 
-        from .text import (CLEAN_REMOVE_TRAILING_WHITESPACE,
-                           CLEAN_REMOVE_LEADING_WHITESPACE)
+        from audiotools.text import (CLEAN_REMOVE_TRAILING_WHITESPACE,
+                                     CLEAN_REMOVE_LEADING_WHITESPACE)
 
         fixes_performed = []
         fields = {}

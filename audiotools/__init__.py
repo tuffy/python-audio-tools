@@ -20,12 +20,12 @@
 """the core Python Audio Tools module"""
 
 import sys
-from . import pcm as pcm
 import re
 import os
 import os.path
 import ConfigParser
 import optparse
+import audiotools.pcm as pcm
 
 
 class RawConfigParser(ConfigParser.RawConfigParser):
@@ -148,27 +148,27 @@ DEFAULT_TYPE = config.get_default("System", "default_type", "wav")
 
 #field name -> (field string, text description) mapping
 def __format_fields__():
-    from .text import (METADATA_TRACK_NAME,
-                       METADATA_TRACK_NUMBER,
-                       METADATA_TRACK_TOTAL,
-                       METADATA_ALBUM_NAME,
-                       METADATA_ARTIST_NAME,
-                       METADATA_PERFORMER_NAME,
-                       METADATA_COMPOSER_NAME,
-                       METADATA_CONDUCTOR_NAME,
-                       METADATA_MEDIA,
-                       METADATA_ISRC,
-                       METADATA_CATALOG,
-                       METADATA_COPYRIGHT,
-                       METADATA_PUBLISHER,
-                       METADATA_YEAR,
-                       METADATA_DATE,
-                       METADATA_ALBUM_NUMBER,
-                       METADATA_ALBUM_TOTAL,
-                       METADATA_COMMENT,
-                       METADATA_SUFFIX,
-                       METADATA_ALBUM_TRACK_NUMBER,
-                       METADATA_BASENAME)
+    from audiotools.text import (METADATA_TRACK_NAME,
+                                 METADATA_TRACK_NUMBER,
+                                 METADATA_TRACK_TOTAL,
+                                 METADATA_ALBUM_NAME,
+                                 METADATA_ARTIST_NAME,
+                                 METADATA_PERFORMER_NAME,
+                                 METADATA_COMPOSER_NAME,
+                                 METADATA_CONDUCTOR_NAME,
+                                 METADATA_MEDIA,
+                                 METADATA_ISRC,
+                                 METADATA_CATALOG,
+                                 METADATA_COPYRIGHT,
+                                 METADATA_PUBLISHER,
+                                 METADATA_YEAR,
+                                 METADATA_DATE,
+                                 METADATA_ALBUM_NUMBER,
+                                 METADATA_ALBUM_TOTAL,
+                                 METADATA_COMMENT,
+                                 METADATA_SUFFIX,
+                                 METADATA_ALBUM_TRACK_NUMBER,
+                                 METADATA_BASENAME)
     return {u"track_name": (u"%(track_name)s",
                             METADATA_TRACK_NAME),
             u"track_number": (u"%(track_number)2.2d",
@@ -1191,7 +1191,7 @@ class ReplayGainProgressDisplay(ProgressDisplay):
         ProgressDisplay.__init__(self, messenger)
 
         from time import time
-        from .text import RG_ADDING_REPLAYGAIN
+        from audiotools.text import RG_ADDING_REPLAYGAIN
 
         self.time = time
         self.last_updated = 0
@@ -1215,7 +1215,7 @@ class ReplayGainProgressDisplay(ProgressDisplay):
     def initial_message_nontty(self):
         """displays a message that ReplayGain application has started"""
 
-        from .text import RG_ADDING_REPLAYGAIN_WAIT
+        from audiotools.text import RG_ADDING_REPLAYGAIN_WAIT
 
         self.messenger.info(RG_ADDING_REPLAYGAIN_WAIT)
 
@@ -1237,7 +1237,7 @@ class ReplayGainProgressDisplay(ProgressDisplay):
     def final_message_tty(self):
         """displays a message that ReplayGain application is complete"""
 
-        from .text import RG_REPLAYGAIN_ADDED
+        from audiotools.text import RG_REPLAYGAIN_ADDED
 
         self.clear_rows()
         self.messenger.info(RG_REPLAYGAIN_ADDED)
@@ -1285,7 +1285,7 @@ class UnsupportedChannelMask(EncodingError):
     """raised if the encoder does not support the file's channel mask"""
 
     def __init__(self, filename, mask):
-        from .text import ERR_UNSUPPORTED_CHANNEL_MASK
+        from audiotools.text import ERR_UNSUPPORTED_CHANNEL_MASK
 
         EncodingError.__init__(
             self,
@@ -1298,7 +1298,7 @@ class UnsupportedChannelCount(EncodingError):
     """raised if the encoder does not support the file's channel count"""
 
     def __init__(self, filename, count):
-        from .text import ERR_UNSUPPORTED_CHANNEL_COUNT
+        from audiotools.text import ERR_UNSUPPORTED_CHANNEL_COUNT
 
         EncodingError.__init__(
             self,
@@ -1311,7 +1311,7 @@ class UnsupportedBitsPerSample(EncodingError):
     """raised if the encoder does not support the file's bits-per-sample"""
 
     def __init__(self, filename, bits_per_sample):
-        from .text import ERR_UNSUPPORTED_BITS_PER_SAMPLE
+        from audiotools.text import ERR_UNSUPPORTED_BITS_PER_SAMPLE
 
         EncodingError.__init__(
             self,
@@ -1349,8 +1349,8 @@ def file_type(file):
 
         #possibly ALAC or M4A
 
-        from .bitstream import BitstreamReader
-        from .m4a import get_m4a_atom
+        from audiotools.bitstream import BitstreamReader
+        from audiotools.m4a import get_m4a_atom
 
         reader = BitstreamReader(file, 0)
 
@@ -1386,7 +1386,7 @@ def file_type(file):
     elif ((len(header) >= 4) and (header[0] == "\xFF")):
         #possibly MP3 or MP2
 
-        from .bitstream import parse
+        from audiotools.bitstream import parse
 
         #header is at least 32 bits, so no IOError is possible
         (frame_sync,
@@ -1498,7 +1498,7 @@ class DuplicateFile(Exception):
         self.filename = filename
 
     def __unicode__(self):
-        from .text import ERR_DUPLICATE_FILE
+        from audiotools.text import ERR_DUPLICATE_FILE
 
         return ERR_DUPLICATE_FILE % (self.filename,)
 
@@ -1512,7 +1512,7 @@ class DuplicateOutputFile(Exception):
         self.filename = filename
 
     def __unicode__(self):
-        from .text import ERR_DUPLICATE_OUTPUT_FILE
+        from audiotools.text import ERR_DUPLICATE_OUTPUT_FILE
 
         return ERR_DUPLICATE_OUTPUT_FILE % (self.filename,)
 
@@ -1526,7 +1526,7 @@ class OutputFileIsInput(Exception):
         self.filename = filename
 
     def __unicode__(self):
-        from .text import ERR_OUTPUT_IS_INPUT
+        from audiotools.text import ERR_OUTPUT_IS_INPUT
 
         return ERR_OUTPUT_IS_INPUT % (self.filename,)
 
@@ -1695,8 +1695,8 @@ def open_files(filename_list, sorted=True, messenger=None,
     as unsupported in order to avoid displaying duplicate messages
     """
 
-    from .text import (ERR_DUPLICATE_FILE,
-                       ERR_OPEN_IOERROR)
+    from audiotools.text import (ERR_DUPLICATE_FILE,
+                                 ERR_OPEN_IOERROR)
 
     if (opened_files is None):
         opened_files = set([])
@@ -1790,7 +1790,7 @@ class UnknownAudioType(Exception):
         self.suffix = suffix
 
     def error_msg(self, messenger):
-        from .text import ERR_UNSUPPORTED_AUDIO_TYPE
+        from audiotools.text import ERR_UNSUPPORTED_AUDIO_TYPE
 
         messenger.error(ERR_UNSUPPORTED_AUDIO_TYPE % (self.suffix,))
 
@@ -1803,8 +1803,8 @@ class AmbiguousAudioType(UnknownAudioType):
         self.type_list = type_list
 
     def error_msg(self, messenger):
-        from .text import (ERR_AMBIGUOUS_AUDIO_TYPE,
-                           LAB_T_OPTIONS)
+        from audiotools.text import (ERR_AMBIGUOUS_AUDIO_TYPE,
+                                     LAB_T_OPTIONS)
 
         messenger.error(ERR_AMBIGUOUS_AUDIO_TYPE % (self.suffix,))
         messenger.info(LAB_T_OPTIONS %
@@ -1897,24 +1897,24 @@ class ChannelMask:
 
     MASK_TO_SPEAKER = dict(map(reversed, map(list, SPEAKER_TO_MASK.items())))
 
-    from .text import (MASK_FRONT_LEFT,
-                       MASK_FRONT_RIGHT,
-                       MASK_FRONT_CENTER,
-                       MASK_LFE,
-                       MASK_BACK_LEFT,
-                       MASK_BACK_RIGHT,
-                       MASK_FRONT_RIGHT_OF_CENTER,
-                       MASK_FRONT_LEFT_OF_CENTER,
-                       MASK_BACK_CENTER,
-                       MASK_SIDE_LEFT,
-                       MASK_SIDE_RIGHT,
-                       MASK_TOP_CENTER,
-                       MASK_TOP_FRONT_LEFT,
-                       MASK_TOP_FRONT_CENTER,
-                       MASK_TOP_FRONT_RIGHT,
-                       MASK_TOP_BACK_LEFT,
-                       MASK_TOP_BACK_CENTER,
-                       MASK_TOP_BACK_RIGHT)
+    from audiotools.text import (MASK_FRONT_LEFT,
+                                 MASK_FRONT_RIGHT,
+                                 MASK_FRONT_CENTER,
+                                 MASK_LFE,
+                                 MASK_BACK_LEFT,
+                                 MASK_BACK_RIGHT,
+                                 MASK_FRONT_RIGHT_OF_CENTER,
+                                 MASK_FRONT_LEFT_OF_CENTER,
+                                 MASK_BACK_CENTER,
+                                 MASK_SIDE_LEFT,
+                                 MASK_SIDE_RIGHT,
+                                 MASK_TOP_CENTER,
+                                 MASK_TOP_FRONT_LEFT,
+                                 MASK_TOP_FRONT_CENTER,
+                                 MASK_TOP_FRONT_RIGHT,
+                                 MASK_TOP_BACK_LEFT,
+                                 MASK_TOP_BACK_CENTER,
+                                 MASK_TOP_BACK_RIGHT)
 
     MASK_TO_NAME = {0x1: MASK_FRONT_LEFT,
                     0x2: MASK_FRONT_RIGHT,
@@ -2198,7 +2198,7 @@ class ReorderedPCMReader:
              (len(ChannelMask(self.channel_mask)) != self.channels))):
             #channel_mask is defined but has a different number of channels
             #than the channel count attribute
-            from .text import ERR_CHANNEL_COUNT_MASK_MISMATCH
+            from audiotools.text import ERR_CHANNEL_COUNT_MASK_MISMATCH
             raise ValueError(ERR_CHANNEL_COUNT_MASK_MISMATCH)
         self.bits_per_sample = pcmreader.bits_per_sample
         self.channel_order = channel_order
@@ -2234,7 +2234,7 @@ class RemaskedPCMReader:
 
             mask = ChannelMask(channel_mask)
             if (len(mask) != channel_count):
-                from .text import ERR_CHANNEL_COUNT_MASK_MISMATCH
+                from audiotools.text import ERR_CHANNEL_COUNT_MASK_MISMATCH
                 raise ValueError(ERR_CHANNEL_COUNT_MASK_MISMATCH)
             reader_channels = ChannelMask(pcmreader.channel_mask).channels()
 
@@ -2252,7 +2252,7 @@ class RemaskedPCMReader:
                                      [None] * (channel_count -
                                                pcmreader.channels))
 
-        from .pcm import (from_list, from_channels)
+        from audiotools.pcm import (from_list, from_channels)
         self.blank_channel = from_list([],
                                        1,
                                        self.pcmreader.bits_per_sample,
@@ -2264,7 +2264,7 @@ class RemaskedPCMReader:
 
         if (len(self.blank_channel) != frame.frames):
             #ensure blank channel is large enough
-            from .pcm import from_list
+            from audiotools.pcm import from_list
             self.blank_channel = from_list([0] * frame.frames,
                                            1,
                                            self.pcmreader.bits_per_sample,
@@ -2475,17 +2475,17 @@ class PCMCat:
 
         self.pcmreaders = list(pcmreaders)
         if (len(self.pcmreaders) == 0):
-            from .text import ERR_NO_PCMREADERS
+            from audiotools.text import ERR_NO_PCMREADERS
             raise ValueError(ERR_NO_PCMREADERS)
 
         if (len(set([r.sample_rate for r in self.pcmreaders])) != 1):
-            from .text import ERR_SAMPLE_RATE_MISMATCH
+            from audiotools.text import ERR_SAMPLE_RATE_MISMATCH
             raise ValueError(ERR_SAMPLE_RATE_MISMATCH)
         if (len(set([r.channels for r in self.pcmreaders])) != 1):
-            from .text import ERR_CHANNEL_COUNT_MISMATCH
+            from audiotools.text import ERR_CHANNEL_COUNT_MISMATCH
             raise ValueError(ERR_CHANNEL_COUNT_MISMATCH)
         if (len(set([r.bits_per_sample for r in self.pcmreaders])) != 1):
-            from .text import ERR_BPS_MISMATCH
+            from audiotools.text import ERR_BPS_MISMATCH
             raise ValueError(ERR_BPS_MISMATCH)
 
         self.__index__ = 0
@@ -2724,19 +2724,19 @@ def PCMConverter(pcmreader,
     """
 
     if (sample_rate <= 0):
-        from .text import ERR_INVALID_SAMPLE_RATE
+        from audiotools.text import ERR_INVALID_SAMPLE_RATE
         raise ValueError(ERR_INVALID_SAMPLE_RATE)
     elif (channels <= 0):
-        from .text import ERR_INVALID_CHANNEL_COUNT
+        from audiotools.text import ERR_INVALID_CHANNEL_COUNT
         raise ValueError(ERR_INVALID_CHANNEL_COUNT)
     elif (bits_per_sample not in (8, 16, 24)):
-        from .text import ERR_INVALID_BITS_PER_SAMPLE
+        from audiotools.text import ERR_INVALID_BITS_PER_SAMPLE
         raise ValueError(ERR_INVALID_BITS_PER_SAMPLE)
 
     if ((channel_mask != 0) and (len(ChannelMask(channel_mask)) != channels)):
         #channel_mask is defined but has a different number of channels
         #than the channel count attribute
-        from .text import ERR_CHANNEL_COUNT_MASK_MISMATCH
+        from audiotools.text import ERR_CHANNEL_COUNT_MASK_MISMATCH
         raise ValueError(ERR_CHANNEL_COUNT_MASK_MISMATCH)
 
     if (pcmreader.channels > channels):
@@ -2832,7 +2832,7 @@ def calculate_replay_gain(tracks, progress=None):
     if (len(tracks) == 0):
         return
 
-    from . import replaygain as replaygain
+    import audiotools.replaygain as replaygain
     from bisect import bisect
 
     SUPPORTED_RATES = [8000,  11025,  12000,  16000,  18900,  22050, 24000,
@@ -3005,24 +3005,24 @@ class MetaData:
 
     #this is the name fields should use when presented to the user
     #also to ensure constency across utilities
-    from .text import (METADATA_TRACK_NAME,
-                       METADATA_TRACK_NUMBER,
-                       METADATA_TRACK_TOTAL,
-                       METADATA_ALBUM_NAME,
-                       METADATA_ARTIST_NAME,
-                       METADATA_PERFORMER_NAME,
-                       METADATA_COMPOSER_NAME,
-                       METADATA_CONDUCTOR_NAME,
-                       METADATA_MEDIA,
-                       METADATA_ISRC,
-                       METADATA_CATALOG,
-                       METADATA_COPYRIGHT,
-                       METADATA_PUBLISHER,
-                       METADATA_YEAR,
-                       METADATA_DATE,
-                       METADATA_ALBUM_NUMBER,
-                       METADATA_ALBUM_TOTAL,
-                       METADATA_COMMENT)
+    from audiotools.text import (METADATA_TRACK_NAME,
+                                 METADATA_TRACK_NUMBER,
+                                 METADATA_TRACK_TOTAL,
+                                 METADATA_ALBUM_NAME,
+                                 METADATA_ARTIST_NAME,
+                                 METADATA_PERFORMER_NAME,
+                                 METADATA_COMPOSER_NAME,
+                                 METADATA_CONDUCTOR_NAME,
+                                 METADATA_MEDIA,
+                                 METADATA_ISRC,
+                                 METADATA_CATALOG,
+                                 METADATA_COPYRIGHT,
+                                 METADATA_PUBLISHER,
+                                 METADATA_YEAR,
+                                 METADATA_DATE,
+                                 METADATA_ALBUM_NUMBER,
+                                 METADATA_ALBUM_TOTAL,
+                                 METADATA_COMMENT)
 
     FIELD_NAMES = {"track_name": METADATA_TRACK_NAME,
                    "track_number": METADATA_TRACK_NUMBER,
@@ -3215,7 +3215,7 @@ class MetaData:
                 row.add_column(getattr(self, attr))
 
         #append image data, if necessary
-        from .text import LAB_PICTURE
+        from audiotools.text import LAB_PICTURE
 
         for image in self.images():
             row = table.row()
@@ -3316,7 +3316,7 @@ class MetaData:
         if (self.supports_images()):
             self.__images__.append(image)
         else:
-            from .text import ERR_PICTURES_UNSUPPORTED
+            from audiotools.text import ERR_PICTURES_UNSUPPORTED
             raise ValueError(ERR_PICTURES_UNSUPPORTED)
 
     def delete_image(self, image):
@@ -3331,7 +3331,7 @@ class MetaData:
         if (self.supports_images()):
             self.__images__.pop(self.__images__.index(image))
         else:
-            from .text import ERR_PICTURES_UNSUPPORTED
+            from audiotools.text import ERR_PICTURES_UNSUPPORTED
             raise ValueError(ERR_PICTURES_UNSUPPORTED)
 
     def clean(self):
@@ -3472,7 +3472,7 @@ class Image:
         raises InvalidImage if some error occurs during parsing
         """
 
-        from .image import image_metrics
+        from audiotools.image import image_metrics
 
         img = image_metrics(image_data)
 
@@ -3566,8 +3566,8 @@ class UnsupportedTracknameField(Exception):
         self.field = field
 
     def error_msg(self, messenger):
-        from .text import (ERR_UNKNOWN_FIELD,
-                           LAB_SUPPORTED_FIELDS)
+        from audiotools.text import (ERR_UNKNOWN_FIELD,
+                                     LAB_SUPPORTED_FIELDS)
 
         messenger.error(ERR_UNKNOWN_FIELD % (self.field,))
         messenger.info(LAB_SUPPORTED_FIELDS)
@@ -3586,7 +3586,7 @@ class InvalidFilenameFormat(Exception):
     if its format string contains broken fields"""
 
     def __unicode__(self):
-        from .text import ERR_INVALID_FILENAME_FORMAT
+        from audiotools.text import ERR_INVALID_FILENAME_FORMAT
         return ERR_INVALID_FILENAME_FORMAT
 
 
@@ -3994,9 +3994,9 @@ class AudioFile:
             pass
         elif (len(binaries) == 1):
             #one binary has only a single URL to display
-            from .text import (ERR_PROGRAM_NEEDED,
-                               ERR_PROGRAM_DOWNLOAD_URL,
-                               ERR_PROGRAM_PACKAGE_MANAGER)
+            from audiotools.text import (ERR_PROGRAM_NEEDED,
+                                         ERR_PROGRAM_DOWNLOAD_URL,
+                                         ERR_PROGRAM_PACKAGE_MANAGER)
             messenger.info(
                 ERR_PROGRAM_NEEDED %
                 {"program": u"\"%s\"" % (binaries[0].decode('ascii')),
@@ -4008,10 +4008,10 @@ class AudioFile:
             messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)
         else:
             #multiple binaries may have one or more URLs to display
-            from .text import (ERR_PROGRAMS_NEEDED,
-                               ERR_PROGRAMS_DOWNLOAD_URL,
-                               ERR_PROGRAM_DOWNLOAD_URL,
-                               ERR_PROGRAM_PACKAGE_MANAGER)
+            from audiotools.text import (ERR_PROGRAMS_NEEDED,
+                                         ERR_PROGRAMS_DOWNLOAD_URL,
+                                         ERR_PROGRAM_DOWNLOAD_URL,
+                                         ERR_PROGRAM_PACKAGE_MANAGER)
             messenger.info(
                 ERR_PROGRAMS_NEEDED %
                 {"programs": u", ".join([u"\"%s\"" % (b.decode('ascii'))
@@ -4845,7 +4845,7 @@ def metadata_lookup(musicbrainz_disc_id,
 
     #MusicBrainz takes precedence over FreeDB
     if (use_musicbrainz):
-        from . import musicbrainz
+        import audiotools.musicbrainz as musicbrainz
         from urllib2 import HTTPError
         from xml.parsers.expat import ExpatError
         try:
@@ -4858,7 +4858,7 @@ def metadata_lookup(musicbrainz_disc_id,
             pass
 
     if (use_freedb):
-        from . import freedb
+        import audiotools.freedb as freedb
         from urllib2 import HTTPError
         try:
             matches.extend(
@@ -5043,8 +5043,8 @@ def accuraterip_sheet_lookup(sheet, total_pcm_frames, sample_rate,
 #######################
 
 
-from .dvda import DVDAudio
-from .dvda import InvalidDVDA
+from audiotools.dvda import DVDAudio
+from audiotools.dvda import InvalidDVDA
 
 
 #######################
@@ -5418,30 +5418,30 @@ class TemporaryFile:
             raise err
 
 
-from .au import AuAudio
-from .wav import WaveAudio
-from .aiff import AiffAudio
-from .flac import FlacAudio
-from .flac import OggFlacAudio
-from .wavpack import WavPackAudio
-from .shn import ShortenAudio
-from .mp3 import MP3Audio
-from .mp3 import MP2Audio
-from .vorbis import VorbisAudio
-from .m4a import M4AAudio
-from .m4a import ALACAudio
-from .opus import OpusAudio
-from .tta import TrueAudio
+from audiotools.au import AuAudio
+from audiotools.wav import WaveAudio
+from audiotools.aiff import AiffAudio
+from audiotools.flac import FlacAudio
+from audiotools.flac import OggFlacAudio
+from audiotools.wavpack import WavPackAudio
+from audiotools.shn import ShortenAudio
+from audiotools.mp3 import MP3Audio
+from audiotools.mp3 import MP2Audio
+from audiotools.vorbis import VorbisAudio
+from audiotools.m4a import M4AAudio
+from audiotools.m4a import ALACAudio
+from audiotools.opus import OpusAudio
+from audiotools.tta import TrueAudio
 
-from .ape import ApeTag
-from .flac import FlacMetaData
-from .id3 import ID3CommentPair
-from .id3v1 import ID3v1Comment
-from .id3 import ID3v22Comment
-from .id3 import ID3v23Comment
-from .id3 import ID3v24Comment
-from .m4a_atoms import M4A_META_Atom
-from .vorbiscomment import VorbisComment
+from audiotools.ape import ApeTag
+from audiotools.flac import FlacMetaData
+from audiotools.id3 import ID3CommentPair
+from audiotools.id3v1 import ID3v1Comment
+from audiotools.id3 import ID3v22Comment
+from audiotools.id3 import ID3v23Comment
+from audiotools.id3 import ID3v24Comment
+from audiotools.m4a_atoms import M4A_META_Atom
+from audiotools.vorbiscomment import VorbisComment
 
 AVAILABLE_TYPES = (FlacAudio,
                    OggFlacAudio,

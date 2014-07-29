@@ -2087,7 +2087,7 @@ try:
 
     class AdjustOutput(urwid.PopUpLauncher):
         def __init__(self, player, volume_control):
-            from .text import LAB_ADJUST_OUTPUT
+            from audiotools.text import LAB_ADJUST_OUTPUT
 
             self.__output_button__ = urwid.Button(LAB_ADJUST_OUTPUT)
             self.__super.__init__(self.__output_button__)
@@ -2120,9 +2120,9 @@ try:
     class AdjustOutputWidget(urwid.Pile):
         def __init__(self, player, volume_control, outputs,
                      closed_callback=None):
-            from .text import (LAB_DECREASE_VOLUME,
-                               LAB_INCREASE_VOLUME,
-                               LAB_KEY_DONE)
+            from audiotools.text import (LAB_DECREASE_VOLUME,
+                                         LAB_INCREASE_VOLUME,
+                                         LAB_KEY_DONE)
 
             self.player = player
             self.closed_callback = closed_callback
@@ -2164,7 +2164,7 @@ try:
         signals = ['close']
 
         def __init__(self, player, volume_control, outputs):
-            from .text import LAB_OUTPUT_OPTIONS
+            from audiotools.text import LAB_OUTPUT_OPTIONS
 
             close_button = urwid.Button(u"done")
             pile = AdjustOutputWidget(
@@ -2737,7 +2737,8 @@ class PlayerTTY:
         try:
             original_terminal_settings = termios.tcgetattr(0)
         except termios.error:
-            from .text import (ERR_TERMIOS_ERROR, ERR_TERMIOS_SUGGESTION)
+            from audiotools.text import (ERR_TERMIOS_ERROR,
+                                         ERR_TERMIOS_SUGGESTION)
             msg.error(ERR_TERMIOS_ERROR)
             msg.info(ERR_TERMIOS_SUGGESTION)
             return 1
