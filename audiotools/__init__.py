@@ -20,12 +20,6 @@
 """the core Python Audio Tools module"""
 
 import sys
-
-if (sys.version_info < (2, 7, 0, 'final', 0)):
-    print >> sys.stderr, "*** Python 2.7.0 or better required"
-    sys.exit(1)
-
-
 from . import pcm as pcm
 import re
 import os

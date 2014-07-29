@@ -850,7 +850,7 @@ def write_correlation_samples(writer, correlation_terms, correlation_samples,
             else:
                 raise ValueError("invalid correlation term")
     else:
-        print "invalid channel count"
+        raise ValueError("invalid channel count")
 
 
 def wv_log2(value):

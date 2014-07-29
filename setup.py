@@ -17,10 +17,11 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+from __future__ import print_function
 import sys
 
 if (sys.version_info < (2, 7, 0, "final", 0)):
-    print >> sys.stderr, "*** Python 2.7.0 or better required"
+    print("*** Python 2.7.0 or better required")
     sys.exit(1)
 
 import os
@@ -380,9 +381,9 @@ class build_ext(_build_ext):
         except OSError:
             pkg_config_found = False
 
-        print "=" * table.total_width()
-        print "Python Audio Tools %s Setup" % (VERSION)
-        print "=" * table.total_width()
+        print("=" * table.total_width())
+        print("Python Audio Tools %s Setup" % (VERSION))
+        print("=" * table.total_width())
 
         if (not pkg_config_found):
             def add_row(table, text, alignment="left"):
@@ -421,11 +422,11 @@ class build_ext(_build_ext):
             row.add_column("*")
 
             for row in table2.format():
-                print row
+                print(row)
 
         for row in table.format():
-            print row
-        print
+            print(row)
+        print()
 
 
 class audiotools_cdio(Extension):

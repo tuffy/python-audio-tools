@@ -812,15 +812,6 @@ class PCMConverter(unittest.TestCase):
               o_channel_mask,
               o_bits_per_sample)) in Combinations(SHORT_PCM_COMBINATIONS, 2):
 
-            # print "(%s,%s,%s,%s) -> (%s,%s,%s,%s)" % \
-            #     (i_sample_rate,
-            #      i_channels,
-            #      i_channel_mask,
-            #      i_bits_per_sample,
-            #      o_sample_rate,
-            #      o_channels,
-            #      o_channel_mask,
-            #      o_bits_per_sample)
             reader = BLANK_PCM_Reader(5,
                                       sample_rate=i_sample_rate,
                                       channels=i_channels,

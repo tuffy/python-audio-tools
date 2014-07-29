@@ -217,10 +217,6 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 cls.__unlink__(filename)
                 raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
 
-            if (len(frame_sizes) != total_tta_frames):
-                print "total_pcm_frames : %d" % (total_pcm_frames)
-                print "%d != %d" % (len(frame_sizes), total_tta_frames)
-
             assert(len(frame_sizes) == total_tta_frames)
 
             #go back and rewrite seektable with completed one

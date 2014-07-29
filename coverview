@@ -17,6 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+from __future__ import print_function
 import sys
 import os
 import os.path
@@ -329,7 +330,7 @@ try:
         import _imaging as test
     except ImportError as err:
         if (os.uname()[0].lower() == 'darwin'):
-            print >> sys.stderr, """*** Unable to load Python Imaging Library.
+            print("""*** Unable to load Python Imaging Library.
 You may need to run Python in 32-bit mode in order for it to load correctly.
 If running a Bourne-like shell, try:
 
@@ -340,7 +341,7 @@ or, if running a C-like shell, try:
 % setenv VERSIONER_PYTHON_PREFER_32_BIT yes
 
 Consult "man python" for further details.
-"""
+""")
         raise err
 
     class ImagePair_Tk:

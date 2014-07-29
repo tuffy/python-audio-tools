@@ -17,6 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+from __future__ import print_function
 import sys
 import audiotools
 import test_streams
@@ -24,7 +25,7 @@ import re
 import cPickle
 
 if (__name__ == "__main__"):
-    print repr(sys.argv)
+    print(repr(sys.argv))
 
     write_offset = audiotools.config.getint_default("System",
                                                     "cdrom_write_offset",

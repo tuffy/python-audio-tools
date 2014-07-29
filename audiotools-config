@@ -18,6 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
+from __future__ import print_function
 import sys
 import os.path
 
@@ -396,14 +397,14 @@ if (__name__ == '__main__'):
         import audiotools
         import audiotools.ui
     except ImportError:
-        print "* audiotools Python module not found!"
-        print "Perhaps you should re-install the Python Audio Tools"
+        print("* audiotools Python module not found!")
+        print("Perhaps you should re-install the Python Audio Tools")
         sys.exit(1)
     try:
         import audiotools.player
     except ImportError:
-        print "* audiotools.player Python module not found!"
-        print "Perhaps you should re-install the Python Audio Tools"
+        print("* audiotools.player Python module not found!")
+        print("Perhaps you should re-install the Python Audio Tools")
         sys.exit(1)
 
     import audiotools.text as _
