@@ -125,7 +125,7 @@ class AuAudio(AudioFile):
              encoding_format,
              self.__sample_rate__,
              self.__channels__) = BitstreamReader(f, 0).parse("4b 5* 32u")
-        except IOError, msg:
+        except IOError as msg:
             raise InvalidAU(str(msg))
 
         if (magic_number != '.snd'):
@@ -228,7 +228,7 @@ class AuAudio(AudioFile):
         try:
             f = file(filename, 'wb')
             au = BitstreamWriter(f, 0)
-        except IOError, err:
+        except IOError as err:
             raise EncodingError(str(err))
         try:
             #write a dummy header
@@ -243,10 +243,10 @@ class AuAudio(AudioFile):
                     f.write(bytes)
                     data_size += len(bytes)
                     framelist = pcmreader.read(FRAMELIST_SIZE)
-            except (IOError, ValueError), err:
+            except (IOError, ValueError) as err:
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
-            except Exception, err:
+            except Exception as err:
                 cls.__unlink__(filename)
                 raise err
 
@@ -264,7 +264,7 @@ class AuAudio(AudioFile):
 
         try:
             pcmreader.close()
-        except DecodingError, err:
+        except DecodingError as err:
             cls.__unlink__(filename)
             raise EncodingError(err.error_message)
 

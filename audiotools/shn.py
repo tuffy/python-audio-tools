@@ -44,7 +44,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         AudioFile.__init__(self, filename)
         try:
             f = open(filename, 'rb')
-        except IOError, msg:
+        except IOError as msg:
             raise InvalidShorten(str(msg))
 
         reader = BitstreamReader(f, 0)
@@ -198,7 +198,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
         try:
             return SHNDecoder(open(self.filename, "rb"))
-        except (IOError, ValueError), msg:
+        except (IOError, ValueError) as msg:
             #these may not be accurate if the Shorten file is broken
             #but if it is broken, there'll be no way to
             #cross-check the results anyway
@@ -373,7 +373,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         #ensure header is valid
         try:
             (total_size, data_size) = validate_header(header)
-        except ValueError, err:
+        except ValueError as err:
             raise EncodingError(str(err))
 
         counter = CounterPCMReader(pcmreader)
@@ -405,7 +405,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
             #ensure footer validates correctly
             try:
                 validate_footer(footer, data_bytes_written)
-            except ValueError, err:
+            except ValueError as err:
                 raise EncodingError(str(err))
 
             #ensure total size is correct
@@ -414,10 +414,10 @@ class ShortenAudio(WaveContainer, AiffContainer):
                 raise EncodingError(ERR_WAV_INVALID_SIZE)
 
             return cls(filename)
-        except IOError, err:
+        except IOError as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
-        except Exception, err:
+        except Exception as err:
             cls.__unlink__(filename)
             raise err
 
@@ -522,7 +522,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         #ensure header is valid
         try:
             (total_size, ssnd_size) = validate_header(header)
-        except ValueError, err:
+        except ValueError as err:
             raise EncodingError(str(err))
 
         counter = CounterPCMReader(pcmreader)
@@ -554,7 +554,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
             #ensure footer validates correctly
             try:
                 validate_footer(footer, ssnd_bytes_written)
-            except ValueError, err:
+            except ValueError as err:
                 raise EncodingError(str(err))
 
             #ensure total size is correct
@@ -563,10 +563,10 @@ class ShortenAudio(WaveContainer, AiffContainer):
                 raise EncodingError(ERR_AIFF_INVALID_SIZE)
 
             return cls(filename)
-        except IOError, err:
+        except IOError as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
-        except Exception, err:
+        except Exception as err:
             cls.__unlink__(filename)
             raise err
 

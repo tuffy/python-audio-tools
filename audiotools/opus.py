@@ -112,7 +112,7 @@ class OpusAudio(VorbisAudio):
                                        for i in xrange(self.__channels__)]
             finally:
                 f.close()
-        except IOError, msg:
+        except IOError as msg:
             raise InvalidOpus(str(msg))
 
     def update_metadata(self, metadata):
@@ -366,7 +366,7 @@ class OpusAudio(VorbisAudio):
                         original_sample_rate=pcmreader.sample_rate)
 
             return cls(filename)
-        except (ValueError, IOError), err:
+        except (ValueError, IOError) as err:
             cls.__unlink__(filename)
             raise EncodingError(err)
 
@@ -532,7 +532,7 @@ class OpusAudio(VorbisAudio):
 
         try:
             reader = PageReader(open(self.filename, "rb"))
-        except IOError, err:
+        except IOError as err:
             raise InvalidOpus(str(err))
 
         try:
@@ -540,7 +540,7 @@ class OpusAudio(VorbisAudio):
             while (not page.stream_end):
                 page = reader.read()
             reader.close()
-        except (IOError, ValueError), err:
+        except (IOError, ValueError) as err:
             raise InvalidOpus(str(err))
 
         return AudioFile.verify(self, progress)

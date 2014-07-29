@@ -108,7 +108,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
         try:
             self.__read_info__()
-        except IOError, msg:
+        except IOError as msg:
             raise InvalidWavPack(str(msg))
 
     def lossless(self):
@@ -206,7 +206,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         #ensure header is valid
         try:
             (total_size, data_size) = validate_header(header)
-        except ValueError, err:
+        except ValueError as err:
             raise EncodingError(str(err))
 
         counter = CounterPCMReader(pcmreader)
@@ -229,7 +229,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
             #ensure footer validates correctly
             try:
                 validate_footer(footer, data_bytes_written)
-            except ValueError, err:
+            except ValueError as err:
                 raise EncodingError(str(err))
 
             #ensure total size is correct
@@ -238,10 +238,10 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                 raise EncodingError(ERR_WAV_INVALID_SIZE)
 
             return cls(filename)
-        except (ValueError, IOError), msg:
+        except (ValueError, IOError) as msg:
             cls.__unlink__(filename)
             raise EncodingError(str(msg))
-        except Exception, err:
+        except Exception as err:
             cls.__unlink__(filename)
             raise err
 
@@ -478,10 +478,10 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                 total_pcm_frames=(total_pcm_frames if
                                   total_pcm_frames is not None else 0),
                 **cls.__options__[compression])
-        except (ValueError, IOError), msg:
+        except (ValueError, IOError) as msg:
             cls.__unlink__(filename)
             raise EncodingError(str(msg))
-        except Exception, err:
+        except Exception as err:
             cls.__unlink__(filename)
             raise err
 
@@ -502,7 +502,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
         try:
             return decoders.WavPackDecoder(open(self.filename, "rb"))
-        except (IOError, ValueError), msg:
+        except (IOError, ValueError) as msg:
             return PCMReaderError(error_message=str(msg),
                                   sample_rate=self.__samplerate__,
                                   channels=self.__channels__,

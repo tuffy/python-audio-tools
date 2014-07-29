@@ -1741,10 +1741,10 @@ def open_files(filename_list, sorted=True, messenger=None,
             else:
                 #not a support audio type
                 pass
-        except IOError, err:
+        except IOError as err:
             if (messenger is not None):
                 messenger.warning(ERR_OPEN_IOERROR % (filename,))
-        except InvalidFile, err:
+        except InvalidFile as err:
             if (messenger is not None):
                 messenger.error(unicode(err))
 
@@ -3875,7 +3875,7 @@ class AudioFile:
             #apply format dictionary and ensure filename isn't absolute
             return (format.decode('utf-8', 'replace') % format_dict).encode(
                 FS_ENCODING, 'replace').lstrip(os.sep)
-        except KeyError, error:
+        except KeyError as error:
             raise UnsupportedTracknameField(unicode(error.args[0]))
         except TypeError:
             raise InvalidFilenameFormat()
@@ -3934,7 +3934,7 @@ class AudioFile:
             try:
                 return pcm_frame_cmp(self.to_pcm(),
                                      audiofile.to_pcm()) is not None
-            except (ValueError, IOError), err:
+            except (ValueError, IOError):
                 return False
         else:
             return False
@@ -3959,12 +3959,12 @@ class AudioFile:
                 if (progress is not None):
                     progress(pcm_frame_count, total_frames)
                 framelist = decoder.read(FRAMELIST_SIZE)
-        except (IOError, ValueError), err:
+        except (IOError, ValueError) as err:
             raise InvalidFile(str(err))
 
         try:
             decoder.close()
-        except DecodingError, err:
+        except DecodingError as err:
             raise InvalidFile(err.error_message)
 
         if (self.lossless()):
@@ -4133,7 +4133,7 @@ class WaveContainer(AudioFile):
             #transfer header and footer when performing PCM conversion
             try:
                 (header, footer) = self.wave_header_footer()
-            except (ValueError, IOError), err:
+            except (ValueError, IOError) as err:
                 raise EncodingError(unicode(err))
 
             return target_class.from_wave(target_path,
@@ -4206,7 +4206,7 @@ class AiffContainer(AudioFile):
 
             try:
                 (header, footer) = self.aiff_header_footer()
-            except (ValueError, IOError), err:
+            except (ValueError, IOError) as err:
                 raise EncodingError(unicode(err))
 
             return target_class.from_aiff(target_path,
@@ -4513,7 +4513,7 @@ class SheetTrack:
                     return False
             else:
                 return True
-        except (AttributeError, TypeError), msg:
+        except (AttributeError, TypeError):
             return False
 
     def __ne__(self, sheet_track):
@@ -4872,7 +4872,7 @@ def metadata_lookup(musicbrainz_disc_id,
                     disc_id=freedb_disc_id,
                     freedb_server=freedb_server,
                     freedb_port=freedb_port))
-        except (HTTPError, ValueError), err:
+        except (HTTPError, ValueError):
             pass
 
     if (len(matches) == 0):
@@ -5312,7 +5312,7 @@ class __ProgressQueueJob__:
                 result_pipe.send((False, function(*args,
                                                   progress=progress,
                                                   **kwargs)))
-            except Exception, exception:
+            except Exception as exception:
                 result_pipe.send((True, exception))
 
             result_pipe.close()
@@ -5419,7 +5419,7 @@ class TemporaryFile:
             os.rename(self.__temp_path__, self.__original_filename__)
             os.chmod(self.__original_filename__, original_mode)
             self.__temp_path__ = None
-        except OSError, err:
+        except OSError as err:
             os.unlink(self.__temp_path__)
             raise err
 

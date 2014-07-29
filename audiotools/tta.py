@@ -77,7 +77,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 self.__sample_rate__ * 256)
             self.__frame_lengths__ = list(reader.parse(
                 "%d* 32u" % (self.__total_tta_frames__) + "32p"))
-        except IOError, msg:
+        except IOError as msg:
             raise InvalidTTA(str(msg))
 
     def bits_per_sample(self):
@@ -136,7 +136,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
             tta = open(self.filename, "rb")
             skip_id3v2_comment(tta)
             return decoders.TTADecoder(tta)
-        except (IOError, ValueError), msg:
+        except (IOError, ValueError) as msg:
             #This isn't likely unless the TTA file is modified
             #between when TrueAudio is instantiated
             #and to_pcm() is called.
@@ -182,7 +182,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         try:
             file = open(filename, "wb")
             writer = BitstreamWriter(file, True)
-        except IOError, err:
+        except IOError as err:
             raise EncodingError(str(err))
 
         counter = CounterPCMReader(pcmreader)
@@ -205,7 +205,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 frame_sizes = \
                     (encode_tta if encoding_function is None
                      else encoding_function)(file, BufferedPCMReader(counter))
-            except (IOError, ValueError), err:
+            except (IOError, ValueError) as err:
                 file.close()
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
@@ -235,7 +235,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                     (encode_tta if encoding_function is None
                      else encoding_function)(frames,
                                              BufferedPCMReader(counter))
-            except (IOError, ValueError), err:
+            except (IOError, ValueError) as err:
                 frames.close()
                 file.close()
                 cls.__unlink__(filename)

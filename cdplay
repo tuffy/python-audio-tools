@@ -247,7 +247,7 @@ if (__name__ == '__main__'):
 
     try:
         cddareader = CDDAReader(options.cdrom)
-    except IOError, err:
+    except IOError as err:
         msg.error(unicode(err) + _.ERR_INVALID_CDDA)
         sys.exit(-1)
 

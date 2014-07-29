@@ -1435,7 +1435,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         try:
             self.__read_streaminfo__()
-        except IOError, msg:
+        except IOError as msg:
             raise InvalidFLAC(str(msg))
 
     def channel_mask(self):
@@ -1810,7 +1810,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             if (self.__stream_offset__ > 0):
                 flac.seek(self.__stream_offset__)
             return decoders.FlacDecoder(flac)
-        except (IOError, ValueError), msg:
+        except (IOError, ValueError) as msg:
             #The only time this is likely to occur is
             #if the FLAC is modified between when FlacAudio
             #is initialized and when to_pcm() is called.
@@ -1965,10 +1965,10 @@ class FlacAudio(WaveContainer, AiffContainer):
             flac.update_metadata(metadata)
 
             return flac
-        except (IOError, ValueError), err:
+        except (IOError, ValueError) as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
-        except Exception, err:
+        except Exception as err:
             cls.__unlink__(filename)
             raise err
 
@@ -3182,7 +3182,7 @@ class OggFlacAudio(FlacAudio):
 
         try:
             self.__read_streaminfo__()
-        except IOError, msg:
+        except IOError as msg:
             raise InvalidFLAC(str(msg))
 
     def bits_per_sample(self):
@@ -3354,7 +3354,7 @@ class OggFlacAudio(FlacAudio):
         try:
             return decoders.OggFlacDecoder(self.filename,
                                            self.channel_mask())
-        except (IOError, ValueError), msg:
+        except (IOError, ValueError) as msg:
             #The only time this is likely to occur is
             #if the Ogg FLAC is modified between when OggFlacAudio
             #is initialized and when to_pcm() is called.
@@ -3452,12 +3452,12 @@ class OggFlacAudio(FlacAudio):
 
         try:
             transfer_framelist_data(pcmreader, sub.stdin.write)
-        except (ValueError, IOError), err:
+        except (ValueError, IOError) as err:
             sub.stdin.close()
             sub.wait()
             cls.__unlink__(filename)
             raise EncodingError(str(err))
-        except Exception, err:
+        except Exception as err:
             sub.stdin.close()
             sub.wait()
             cls.__unlink__(filename)
@@ -3465,7 +3465,7 @@ class OggFlacAudio(FlacAudio):
 
         try:
             pcmreader.close()
-        except DecodingError, err:
+        except DecodingError as err:
             raise EncodingError(err.error_message)
         sub.stdin.close()
         devnull.close()

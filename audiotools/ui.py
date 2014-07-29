@@ -1397,7 +1397,7 @@ try:
                         os.path.isdir(
                             os.path.join(path, d))):
                         dirs.append(d)
-            except OSError, e:
+            except OSError as e:
                 depth = self.get_depth() + 1
                 self._children[None] = ErrorNode(self, parent=self, key=None,
                                                  depth=depth)

@@ -327,7 +327,7 @@ try:
 
     try:
         import _imaging as test
-    except ImportError, err:
+    except ImportError as err:
         if (os.uname()[0].lower() == 'darwin'):
             print >> sys.stderr, """*** Unable to load Python Imaging Library.
 You may need to run Python in 32-bit mode in order for it to load correctly.

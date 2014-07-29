@@ -46,7 +46,7 @@ if (__name__ == '__main__'):
 
     try:
         cdda = CDDAReader(options.cdrom)
-    except (ValueError, IOError), err:
+    except (ValueError, IOError) as err:
         msg.error(unicode(err))
         sys.exit(1)
 

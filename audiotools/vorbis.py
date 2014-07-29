@@ -50,7 +50,7 @@ class VorbisAudio(AudioFile):
         self.__channels__ = 0
         try:
             self.__read_identification__()
-        except IOError, msg:
+        except IOError as msg:
             raise InvalidVorbis(str(msg))
 
     def __read_identification__(self):
@@ -194,7 +194,7 @@ class VorbisAudio(AudioFile):
 
         try:
             return VorbisDecoder(self.filename)
-        except ValueError, err:
+        except ValueError as err:
             from audiotools import PCMReaderError
             return PCMReaderError(str(err),
                                   self.sample_rate(),
@@ -240,7 +240,7 @@ class VorbisAudio(AudioFile):
                           BufferedPCMReader(pcmreader),
                           float(compression) / 10)
             return VorbisAudio(filename)
-        except (ValueError, IOError), err:
+        except (ValueError, IOError) as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
 

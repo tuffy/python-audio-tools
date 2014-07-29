@@ -91,7 +91,7 @@ if (__name__ == '__main__'):
         audiofiles = audiotools.open_files(options.filenames,
                                            messenger=msg,
                                            no_duplicates=True)
-    except audiotools.DuplicateFile, err:
+    except audiotools.DuplicateFile as err:
         msg.error(_.ERR_DUPLICATE_FILE % (err.filename,))
         sys.exit(1)
 
@@ -118,7 +118,7 @@ if (__name__ == '__main__'):
         if (options.other_image is not None):
             for path in options.other_image:
                 images.setdefault(4, []).append(get_image(path, 4))
-    except audiotools.InvalidImage, err:
+    except audiotools.InvalidImage as err:
         msg.error(unicode(err))
         sys.exit(1)
 
@@ -142,7 +142,7 @@ if (__name__ == '__main__'):
                 #call update_metadata() to update track's metadata
                 try:
                     track.update_metadata(metadata)
-                except IOError, err:
+                except IOError as err:
                     msg.error(_.ERR_ENCODING_ERROR %
                               (audiotools.Filename(track.filename),))
                     sys.exit(1)
@@ -161,7 +161,7 @@ if (__name__ == '__main__'):
             #call set_metadata() to update track's metadata
             try:
                 track.set_metadata(metadata)
-            except IOError, err:
+            except IOError as err:
                 msg.error(_.ERR_ENCODING_ERROR %
                           (audiotools.Filename(track.filename),))
                 sys.exit(1)

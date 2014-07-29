@@ -48,7 +48,7 @@ def open_file(filename):
             class_name = audio_class.NAME
             try:
                 return audio_class(filename)
-            except audiotools.InvalidFile, err:
+            except audiotools.InvalidFile as err:
                 return FailedAudioFile(class_name, filename, err)
         else:
             raise audiotools.UnsupportedFile(filename)
@@ -96,7 +96,7 @@ def verify(progress, track):
         return (unicode(audiotools.Filename(track.filename)),
                 track.NAME,
                 None)
-    except audiotools.InvalidFile, err:
+    except audiotools.InvalidFile as err:
         return (unicode(audiotools.Filename(track.filename)),
                 track.NAME,
                 unicode(err))
@@ -200,7 +200,7 @@ def accuraterip_checksum(progress,
                                       NEXT_TRACK_FRAMES,
                                       progress)
         audiotools.transfer_data(pcmreader.read, checksummer.update)
-    except (IOError, ValueError), err:
+    except (IOError, ValueError) as err:
         return {"filename":track.filename,
                 "checksum":None,
                 "version":None,
@@ -294,7 +294,7 @@ def accuraterip_image_checksum(progress,
             progress)
 
         audiotools.transfer_data(pcmreader.read, checksummer.update)
-    except (IOError, ValueError), err:
+    except (IOError, ValueError) as err:
         return {"filename":displayed_filename,
                 "checksum":None,
                 "version":None,
@@ -516,7 +516,7 @@ if (__name__ == '__main__'):
                     if (options.cuesheet is not None):
                         try:
                             sheet = audiotools.read_sheet(options.cuesheet)
-                        except audiotools.SheetException, err:
+                        except audiotools.SheetException as err:
                             msg.error(unicode(err))
                             sys.exit(1)
                     else:
@@ -562,7 +562,7 @@ if (__name__ == '__main__'):
                     if (options.cuesheet is not None):
                         try:
                             sheet = audiotools.read_sheet(options.cuesheet)
-                        except audiotools.SheetException, err:
+                        except audiotools.SheetException as err:
                             msg.error(unicode(err))
                             sys.exit(1)
 

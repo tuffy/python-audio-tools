@@ -617,7 +617,7 @@ class WaveAudio(WaveContainer):
                             break
                     except IOError:
                         continue
-                    except ValueError, err:
+                    except ValueError as err:
                         raise InvalidWave(str(err))
                 elif (chunk.id == "data"):
                     self.__data_size__ = chunk.size()
@@ -680,12 +680,12 @@ class WaveAudio(WaveContainer):
                                  pcmreader.bits_per_sample,
                                  total_pcm_frames if total_pcm_frames
                                  is not None else 0)
-        except ValueError, err:
+        except ValueError as err:
             raise EncodingError(str(err))
 
         try:
             f = file(filename, "wb")
-        except IOError, err:
+        except IOError as err:
             raise EncodingError(str(err))
 
         counter = CounterPCMReader(pcmreader)
@@ -695,10 +695,10 @@ class WaveAudio(WaveContainer):
                                     f.write,
                                     pcmreader.bits_per_sample > 8,
                                     False)
-        except (IOError, ValueError), err:
+        except (IOError, ValueError) as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
-        except Exception, err:
+        except Exception as err:
             cls.__unlink__(filename)
             raise err
 
@@ -963,7 +963,7 @@ class WaveAudio(WaveContainer):
         #ensure header validates correctly
         try:
             (total_size, data_size) = validate_header(header)
-        except ValueError, err:
+        except ValueError as err:
             raise EncodingError(str(err))
 
         try:
@@ -991,7 +991,7 @@ class WaveAudio(WaveContainer):
                 validate_footer(footer, data_bytes_written)
                 #before writing it to disk
                 f.write(footer)
-            except ValueError, err:
+            except ValueError as err:
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
 
@@ -1004,10 +1004,10 @@ class WaveAudio(WaveContainer):
                 raise EncodingError(ERR_WAV_INVALID_SIZE)
 
             return cls(filename)
-        except IOError, err:
+        except IOError as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
-        except DecodingError, err:
+        except DecodingError as err:
             cls.__unlink__(filename)
             raise EncodingError(err.error_message)
 
@@ -1024,15 +1024,15 @@ class WaveAudio(WaveContainer):
 
         try:
             (header, footer) = self.wave_header_footer()
-        except IOError, err:
+        except IOError as err:
             raise InvalidWave(unicode(err))
-        except ValueError, err:
+        except ValueError as err:
             raise InvalidWave(unicode(err))
 
         #ensure header is valid
         try:
             (total_size, data_size) = validate_header(header)
-        except ValueError, err:
+        except ValueError as err:
             raise InvalidWave(unicode(err))
 
         #ensure "data" chunk has all its data
@@ -1053,7 +1053,7 @@ class WaveAudio(WaveContainer):
         #ensure footer validates correctly
         try:
             validate_footer(footer, data_bytes_written)
-        except ValueError, err:
+        except ValueError as err:
             from .text import ERR_WAV_INVALID_SIZE
             raise InvalidWave(ERR_WAV_INVALID_SIZE)
 

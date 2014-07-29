@@ -777,7 +777,7 @@ class AiffAudio(AiffContainer):
         try:
             f = open(filename, 'wb')
             aiff = BitstreamWriter(f, 0)
-        except IOError, msg:
+        except IOError as msg:
             raise EncodingError(str(msg))
 
         try:
@@ -818,10 +818,10 @@ class AiffAudio(AiffContainer):
                     total_pcm_frames += framelist.frames
 
                     framelist = pcmreader.read(FRAMELIST_SIZE)
-            except (IOError, ValueError), err:
+            except (IOError, ValueError) as err:
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
-            except Exception, err:
+            except Exception as err:
                 cls.__unlink__(filename)
                 raise err
 
@@ -833,7 +833,7 @@ class AiffAudio(AiffContainer):
             #close the PCM reader and flush our output
             try:
                 pcmreader.close()
-            except DecodingError, err:
+            except DecodingError as err:
                 cls.__unlink__(filename)
                 raise EncodingError(err.error_message)
             f.flush()
@@ -954,7 +954,7 @@ class AiffAudio(AiffContainer):
         #ensure header validates correctly
         try:
             (total_size, ssnd_size) = validate_header(header)
-        except ValueError, err:
+        except ValueError as err:
             raise EncodingError(str(err))
 
         try:
@@ -981,7 +981,7 @@ class AiffAudio(AiffContainer):
                 validate_footer(footer, SSND_bytes_written)
                 #before writing it to disk
                 f.write(footer)
-            except ValueError, err:
+            except ValueError as err:
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
 
@@ -994,10 +994,10 @@ class AiffAudio(AiffContainer):
                 raise EncodingError(ERR_AIFF_INVALID_SIZE)
 
             return cls(filename)
-        except IOError, err:
+        except IOError as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
-        except DecodingError, err:
+        except DecodingError as err:
             cls.__unlink__(filename)
             raise EncodingError(err.error_message)
 
@@ -1014,15 +1014,15 @@ class AiffAudio(AiffContainer):
 
         try:
             (header, footer) = self.aiff_header_footer()
-        except IOError, err:
+        except IOError as err:
             raise InvalidAIFF(unicode(err))
-        except ValueError, err:
+        except ValueError as err:
             raise InvalidAIFF(unicode(err))
 
         #ensure header is valid
         try:
             (total_size, data_size) = validate_header(header)
-        except ValueError, err:
+        except ValueError as err:
             raise InvalidAIFF(unicode(err))
 
         #ensure "ssnd" chunk has all its data
@@ -1043,7 +1043,7 @@ class AiffAudio(AiffContainer):
         #ensure footer validates correctly
         try:
             validate_footer(footer, data_bytes_written)
-        except ValueError, err:
+        except ValueError as err:
             from .text import ERR_AIFF_INVALID_SIZE
             raise InvalidAIFF(ERR_AIFF_INVALID_SIZE)
 

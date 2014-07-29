@@ -451,7 +451,7 @@ if (__name__ == '__main__'):
                         cd_image.total_frames(),
                         cache_progress.update),
                     temp_blob.write)
-            except audiotools.DecodingError, err:
+            except audiotools.DecodingError as err:
                 cache_progress.clear_rows()
                 msg.error(unicode(err))
                 temp_blob.close()

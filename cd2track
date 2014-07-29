@@ -243,7 +243,7 @@ if (__name__ == '__main__'):
         cddareader = CDDAReader(options.cdrom, True)
         track_offsets = cddareader.track_offsets
         track_lengths = cddareader.track_lengths
-    except (IOError, ValueError), err:
+    except (IOError, ValueError) as err:
         msg.error(unicode(err) + _.ERR_INVALID_CDDA)
         sys.exit(-1)
 
@@ -357,12 +357,12 @@ if (__name__ == '__main__'):
                     quality=options.quality,
                     msg=msg,
                     use_default=options.use_default))
-        except audiotools.UnsupportedTracknameField, err:
+        except audiotools.UnsupportedTracknameField as err:
             err.error_msg(msg)
             sys.exit(1)
         except (audiotools.InvalidFilenameFormat,
                 audiotools.OutputFileIsInput,
-                audiotools.DuplicateOutputFile), err:
+                audiotools.DuplicateOutputFile) as err:
             msg.error(unicode(err))
             sys.exit(1)
 
@@ -395,7 +395,7 @@ if (__name__ == '__main__'):
         #make leading directories, if necessary
         try:
             audiotools.make_dirs(str(output_filename))
-        except OSError, err:
+        except OSError as err:
             msg.os_error(err)
             sys.exit(1)
 
@@ -433,7 +433,7 @@ if (__name__ == '__main__'):
             #of the accuraterip reader, we need to ensure
             #anything left over in accuraterip gets processed also
             audiotools.transfer_framelist_data(accuraterip, lambda s: None)
-        except audiotools.EncodingError, err:
+        except audiotools.EncodingError as err:
             progress.clear_rows()
             msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
             sys.exit(1)
@@ -469,7 +469,7 @@ if (__name__ == '__main__'):
         try:
             #all audio files must belong to the same album, by definition
             audiotools.add_replay_gain(encoded, rg_progress.update)
-        except ValueError, err:
+        except ValueError as err:
             rg_progress.clear_rows()
             msg.error(unicode(err))
             sys.exit(1)

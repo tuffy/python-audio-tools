@@ -305,7 +305,7 @@ def skip_id3v2_comment(file):
 
         #check for additional ID3v2 tags recursively
         return bytes_skipped + skip_id3v2_comment(file)
-    except IOError, err:
+    except IOError as err:
         file.seek(start)
         return 0
 
@@ -345,7 +345,7 @@ def total_id3v2_comments(file):
 
         #check for additional ID3v2 tags recursively
         return 1 + total_id3v2_comments(file)
-    except IOError, err:
+    except IOError as err:
         file.seek(start)
         return 0
 

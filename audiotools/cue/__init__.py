@@ -423,7 +423,7 @@ def read_cuesheet_string(cuesheet):
                        write_tables=0)
     try:
         return parser.parse(lexer=lexer)
-    except ValueError, err:
+    except ValueError as err:
         raise SheetException(str(err))
 
 

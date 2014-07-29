@@ -123,9 +123,9 @@ if (__name__ == '__main__'):
                 msg.info(_.LAB_ENCODE %
                          {"source": input_filename,
                           "destination": output_filename})
-            except IOError, e:
+            except IOError as e:
                 msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
                 sys.exit(1)
-            except OSError, e:
+            except OSError as e:
                 msg.os_error(e)
                 sys.exit(1)

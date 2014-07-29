@@ -1006,10 +1006,10 @@ if (__name__ == '__main__'):
 
                     self.__cancelled__ = False
                     raise urwid.ExitMainLoop()
-                except audiotools.UnsupportedTracknameField, err:
+                except audiotools.UnsupportedTracknameField as err:
                     self.status.set_text(("error",
                                           _.ERR_INVALID_FILENAME_FORMAT))
-                except audiotools.InvalidFilenameFormat, err:
+                except audiotools.InvalidFilenameFormat as err:
                     self.status.set_text(("error",
                                           _.ERR_INVALID_FILENAME_FORMAT))
 
@@ -1205,7 +1205,7 @@ if (__name__ == '__main__'):
                     configfile.close()
                     msg.info(_.LAB_AT_CONFIG_FILE_WRITTEN %
                              (audiotools.Filename(configpath),))
-                except IOError, err:
+                except IOError as err:
                     msg.error(_.ERR_OPEN_IOERROR %
                               (audiotools.Filename(configpath),))
                     sys.exit(1)
@@ -1221,10 +1221,10 @@ if (__name__ == '__main__'):
                     file_path="",
                     track_metadata=audiotools.MetaData(),
                     format=options.filename_format)
-            except audiotools.UnsupportedTracknameField, err:
+            except audiotools.UnsupportedTracknameField as err:
                 err.error_msg(msg)
                 sys.exit(1)
-            except audiotools.InvalidFilenameFormat, err:
+            except audiotools.InvalidFilenameFormat as err:
                 msg.error(unicode(err))
                 sys.exit(1)
 
@@ -1264,6 +1264,6 @@ if (__name__ == '__main__'):
             configfile.close()
             msg.info(_.LAB_AT_CONFIG_FILE_WRITTEN %
                      (audiotools.Filename(configpath),))
-        except IOError, err:
+        except IOError as err:
             msg.error(_.ERR_OPEN_IOERROR % (audiotools.Filename(configpath),))
             sys.exit(1)

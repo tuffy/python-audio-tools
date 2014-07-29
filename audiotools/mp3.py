@@ -118,7 +118,7 @@ class MP3Audio(AudioFile):
 
         try:
             mp3file = open(filename, "rb")
-        except IOError, msg:
+        except IOError as msg:
             raise InvalidMP3(str(msg))
 
         try:
@@ -193,7 +193,7 @@ class MP3Audio(AudioFile):
                          pad) = reader.parse("11u 2u 2u 1p 4u 2u 1u 9p")
                 except IOError:
                     pass
-                except ValueError, err:
+                except ValueError as err:
                     raise InvalidMP3(unicode(err))
         finally:
             mp3file.close()
@@ -245,7 +245,7 @@ class MP3Audio(AudioFile):
                        compression)
 
             return MP3Audio(filename)
-        except (ValueError, IOError), err:
+        except (ValueError, IOError) as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
 
@@ -501,7 +501,7 @@ class MP3Audio(AudioFile):
             (sync,
              mpeg_id,
              layer_description) = reader.parse("11u 2u 2u 1p")
-        except IOError, err:
+        except IOError as err:
             reader.unmark()
             raise err
 
@@ -517,7 +517,7 @@ class MP3Audio(AudioFile):
                 (sync,
                  mpeg_id,
                  layer_description) = reader.parse("11u 2u 2u 1p")
-            except IOError, err:
+            except IOError as err:
                 reader.unmark()
                 raise err
         else:
@@ -711,7 +711,7 @@ class MP2Audio(MP3Audio):
                        int(compression))
 
             return MP2Audio(filename)
-        except (ValueError, IOError), err:
+        except (ValueError, IOError) as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
 

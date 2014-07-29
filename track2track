@@ -426,7 +426,7 @@ if (__name__ == '__main__'):
         else:
             try:
                 AudioType = audiotools.filename_to_type(options.output)
-            except audiotools.UnknownAudioType, exp:
+            except audiotools.UnknownAudioType as exp:
                 exp.error_msg(msg)
                 sys.exit(1)
 
@@ -457,7 +457,7 @@ if (__name__ == '__main__'):
                                            messenger=msg,
                                            no_duplicates=True,
                                            opened_files=input_filenames)
-    except audiotools.DuplicateFile, err:
+    except audiotools.DuplicateFile as err:
         msg.error(_.ERR_DUPLICATE_FILE % (err.filename,))
         sys.exit(1)
 
@@ -701,12 +701,12 @@ if (__name__ == '__main__'):
                                                 output_quality,
                                                 output_metadata,
                                                 output_replay_gain))
-                except audiotools.UnsupportedTracknameField, err:
+                except audiotools.UnsupportedTracknameField as err:
                     err.error_msg(msg)
                     sys.exit(1)
                 except (audiotools.InvalidFilenameFormat,
                         audiotools.OutputFileIsInput,
-                        audiotools.DuplicateOutputFile), err:
+                        audiotools.DuplicateOutputFile) as err:
                     msg.error(unicode(err))
                     sys.exit(1)
 
@@ -760,7 +760,7 @@ if (__name__ == '__main__'):
         try:
             output_files = audiotools.open_files(
                 queue.run(options.max_processes))
-        except audiotools.EncodingError, err:
+        except audiotools.EncodingError as err:
             msg.error(unicode(err))
             sys.exit(1)
         except KeyboardInterrupt:
@@ -794,7 +794,7 @@ if (__name__ == '__main__'):
 
         try:
             queue.run(options.max_processes)
-        except ValueError, err:
+        except ValueError as err:
             msg.error(unicode(err))
             sys.exit(1)
         except KeyboardInterrupt:
@@ -862,7 +862,7 @@ if (__name__ == '__main__'):
 
             msg.output(_.LAB_ENCODE % {"source": input_filename,
                                        "destination": output_filename})
-        except audiotools.EncodingError, err:
+        except audiotools.EncodingError as err:
             progress.clear_rows()
             msg.error(unicode(err))
             sys.exit(1)

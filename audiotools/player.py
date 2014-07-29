@@ -292,7 +292,7 @@ class AudioPlayer:
         if (self.__state__ == PLAYER_PLAYING):
             try:
                 frame = self.__pcmreader__.read(self.__buffer_size__)
-            except (IOError, ValueError), err:
+            except (IOError, ValueError) as err:
                 #some sort of read error occurred
                 #so cease playing file and move on to next
                 self.stop()

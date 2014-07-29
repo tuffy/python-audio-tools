@@ -193,7 +193,7 @@ if (__name__ == '__main__'):
                         msg.error(_.ERR_ENCODING_ERROR %
                                   (audiotools.Filename(track.filename),))
                         sys.exit(1)
-                    except ValueError, err:
+                    except ValueError as err:
                         msg.error(unicode(err))
                         sys.exit(1)
             finally:
@@ -212,7 +212,7 @@ if (__name__ == '__main__'):
                     msg.error(_.ERR_ENCODING_ERROR %
                               (audiotools.Filename(track.filename),))
                     sys.exit(1)
-                except ValueError, err:
+                except ValueError as err:
                     msg.error(unicode(err))
                     sys.exit(1)
     elif (options.undo):

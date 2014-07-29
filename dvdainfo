@@ -44,10 +44,10 @@ if (__name__ == '__main__'):
 
     try:
         dvda = audiotools.DVDAudio(options.audio_ts)
-    except audiotools.InvalidDVDA, err:
+    except audiotools.InvalidDVDA as err:
         msg.error(unicode(err))
         sys.exit(1)
-    except OSError, err:
+    except OSError as err:
         msg.os_error(err)
         sys.exit(1)
 
