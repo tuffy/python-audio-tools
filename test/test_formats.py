@@ -3172,7 +3172,7 @@ class FlacFileTest(TestForeignAiffChunks,
 
             # add a COMMENT block too large to fit into a FLAC metadata chunk
             metadata = track.get_metadata()
-            metadata.comment = "QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2').decode('ascii')
+            metadata.comment = u"a" * 16777216
 
             track.update_metadata(metadata)
 
@@ -3187,8 +3187,7 @@ class FlacFileTest(TestForeignAiffChunks,
 
             # ensure that setting fresh oversized metadata
             # doesn't break the file
-            metadata = audiotools.MetaData(
-                comment="QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2').decode('ascii'))
+            metadata = audiotools.MetaData(comment=u"a" * 16777216)
 
             track.set_metadata(metadata)
 

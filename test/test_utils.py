@@ -2621,13 +2621,7 @@ class trackcat_pre_gap(UtilTest):
         track_lengths = [21741300, 13847400, 22402800, 14420700,
                          10760400, 17904600, 13715100, 17022600,
                          30781800, 28312200]
-        cuesheet_data = \
-"""eJxt0N1KwzAUwPH7Qt/h0AcYOUn6lbvQRgjaDeqc3lYn6IVOcJv69p7MgU12IFd/zq+nyegG6P1t
-53uwFQrXCptnI8VuNQxuuYbCfU9Pe3vYvu663ccPHHEhHlWRZ1f+xkFx+Jzet/uX57fF13Qs4N5u
-XJ4BrEfbXYNAsHe9X4UC4Je9ewAh6JjTiTKes1IzLxlPg41BFQ8qdhFNSX0enPmQ69hr1ks0JS3S
-iQ+5jH3J+9pIulGZesoy9hXrFZ7+P90fchX7mveNEe3l/Sljsr9hvaaHwksfcvL+Le9bo2vGU24j
-j4L1Ff4vmvmQ/z77C+FzkPA=""".decode("base64").decode("zlib")
-
+        cuesheet_data = open("trackcat_pre_gap.cue", "rb").read()
         # write individual tracks to disk along with track numbers
         temp_tracks_f = [tempfile.NamedTemporaryFile(suffix=".aiff")
                          for i in xrange(len(track_lengths))]
@@ -5098,12 +5092,7 @@ class tracksplit_pre_gap(UtilTest):
         track_lengths = [21741300, 13847400, 22402800, 14420700,
                          10760400, 17904600, 13715100, 17022600,
                          30781800, 28312200]
-        cuesheet_data = \
-"""eJxt0N1KwzAUwPH7Qt/h0AcYOUn6lbvQRgjaDeqc3lYn6IVOcJv69p7MgU12IFd/zq+nyegG6P1t
-53uwFQrXCptnI8VuNQxuuYbCfU9Pe3vYvu663ccPHHEhHlWRZ1f+xkFx+Jzet/uX57fF13Qs4N5u
-XJ4BrEfbXYNAsHe9X4UC4Je9ewAh6JjTiTKes1IzLxlPg41BFQ8qdhFNSX0enPmQ69hr1ks0JS3S
-iQ+5jH3J+9pIulGZesoy9hXrFZ7+P90fchX7mveNEe3l/Sljsr9hvaaHwksfcvL+Le9bo2vGU24j
-j4L1Ff4vmvmQ/z77C+FzkPA=""".decode("base64").decode("zlib")
+        cuesheet_data = open("trackcat_pre_gap.cue", "rb").read()
 
         # write whole track to disk as image-type file
         temp_track_f = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -5554,7 +5543,7 @@ class tracktag_errors(UtilTest):
 
                 flac.set_metadata(audiotools.MetaData(track_name=u"Foo"))
 
-                big_text.write("QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2'))
+                big_text.write("a" * 16777216)
                 big_text.flush()
 
                 orig_md5 = md5()

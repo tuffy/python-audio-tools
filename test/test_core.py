@@ -473,11 +473,7 @@ class CDDA(unittest.TestCase):
         bin_file.close()
 
         f = open(self.cue, "w")
-        f.write("""eJyV0E9rwjAcxvF7oe/hR++T/Gu39haaCGGrHVncdq3OQ3G0olW3d79EA5NChEJO38DzIdGyAqHe
-SiWAcUSFQFkcaRvLuqrkwkAif5r1wI9fbV/2u184oVme71ZpEkevUs9rXUkNybLbdv25A74f2sNg
-74wyL/K/m3b43tg8V65uevqw6rvjYXZuTgl88HcZRwBG8/IZEAa+FKp2xbbrjtk36y3CyTXeg929
-Wgj56YYQKi7nZp0E18m0dQSIunWCx6jNxGeP0iBKJ6OZQzEdo5lD8S3KgiibjD4VhBaUjFGbU589
-mgbRdCqK7Sc+FgyNUJdznz2aBdFsMsrsewqUjlGb2SX/Acrmwq4=""".decode('base64').decode('zlib'))
+        f.write(open("cdda_test.cue", "rb").read())
         f.close()
 
     @LIB_CDIO
@@ -619,15 +615,7 @@ class Filename(unittest.TestCase):
 class ImageJPEG(unittest.TestCase):
     @LIB_CORE
     def setUp(self):
-        self.image = """/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAIBAQEBAQIBAQECAgICAgQDAgICAgUEBAMEBgUGBgYF
-BgYGBwkIBgcJBwYGCAsICQoKCgoKBggLDAsKDAkKCgr/2wBDAQICAgICAgUDAwUKBwYHCgoKCgoK
-CgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgr/wAARCAAVAAwDAREA
-AhEBAxEB/8QAGAAAAgMAAAAAAAAAAAAAAAAAAAgGBwn/xAAfEAACAgMAAwEBAAAAAAAAAAACAwQG
-AQUHCBITABn/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwD
-AQACEQMRAD8A1/qnmzp6JO6PSvLudoqjZKDsZE6HB1TZEllhrLpABrNnCiYApEhrTcuAUZAuPM8M
-pXgsuQJhaPDbB1q18n0tn7pQIdUtOxjFJ2lZhbIZmNV7sIlRWPDOVtetWVg0lESvqLPmZh6mQLNd
-eO/02mVjy4qMeLpYXONsnb+Pe131ehvCws+2vm53hPE2SB1c1aMw1RvVJemSn5Brh1jIQNJyq32q
-90ODZrvzPZU/bOJy9hXdrLjyGxWKcas5FsZhrao/T6LPGcESmBkwWeSWISH8B+D/2Q==""".decode('base64')
+        self.image = open("imagejpeg_setup.jpg", "rb").read()
         self.md5sum = "f8c43ff52c53aff1625979de47a04cec"
         self.width = 12
         self.height = 21
@@ -659,12 +647,7 @@ eO/02mVjy4qMeLpYXONsnb+Pe131ehvCws+2vm53hPE2SB1c1aMw1RvVJemSn5Brh1jIQNJyq32q
 class ImagePNG(ImageJPEG):
     @LIB_CORE
     def setUp(self):
-        self.image = """iVBORw0KGgoAAAANSUhEUgAAAAwAAAAVCAIAAAD9zpjjAAAAAXNSR0IArs4c6QAAAAlwSFlzAAAL
-EwAACxMBAJqcGAAAAAd0SU1FB9kGBQA7LTgWUZgAAAAIdEVYdENvbW1lbnQA9syWvwAAANFJREFU
-KM+9UrERgzAMfCUddy4pvIZZQPTsQOkBGAAxBgMwBBUTqGMHZqBSCuc4cO6SFLmokuT3698ymRk+
-xQ1fxHegdV3btn092LZtHMdnse97WZYxRrtG13VN06QcZqaqIYQMBODIKdXDMADo+z7RE9HF9QFn
-ZmY2sxCCqp5ZLzeIiJkBLMtycZFJKYpimqasmTOZWS7o/JhVVakqABFJPvJxInLmF5FzB2YWY3TO
-ZTpExHuf8jsROefmec7Wwsx1XXvvAVCa+H7B9Of/9DPQAzSV43jVGYrtAAAAAElFTkSuQmCC""".decode('base64')
+        self.image = open("imagepng_setup.png", "rb").read()
         self.md5sum = "31c4c5224327d5869aa6059bcda84d2e"
         self.width = 12
         self.height = 21
@@ -712,10 +695,7 @@ class ImageCover3(ImageJPEG):
 class ImageGIF(ImageJPEG):
     @LIB_CORE
     def setUp(self):
-        self.image = """R0lGODdhDAAVAIQSAAAAAAoKCg0NDRUVFRkZGTIyMkBAQExMTF5eXmdnZ3Nzc4CAgJiYmKWlpc3N
-zdPT0+bm5vn5+f///////////////////////////////////////////////////////ywAAAAA
-DAAVAAAFPKAkjmRpnuiDmBAjRkNSKsfoFCVQLsuomwaDpOBAAYIoUaCR1P1MRAnP1BtNRwnBjiC6
-loqSZ3JMLpvNIQA7""".decode('base64')
+        self.image = open("imagegif_setup.gif", "rb").read()
         self.md5sum = "1d4d36801b53c41d01086cbf9d0cb471"
         self.width = 12
         self.height = 21
@@ -727,21 +707,7 @@ loqSZ3JMLpvNIQA7""".decode('base64')
 class ImageBMP(ImageJPEG):
     @LIB_CORE
     def setUp(self):
-        self.image = """Qk0qAwAAAAAAADYAAAAoAAAADAAAABUAAAABABgAAAAAAPQCAAATCwAAEwsAAAAAAAAAAAAA////
-////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////
-////////AAAA////////////////////////////////////////////gICAgICA////////////
-////////////////zc3N////////////Z2dnDQ0N////////////////////gICAGRkZ////////
-////////gICA////////////////gICAgICA////////////////////////MjIyzc3N////gICA
-gICA////////////////////////////////AAAA////AAAA////////////////////////////
-////////////CgoKpaWl////////////////////////////////////AAAAQEBAQEBA////////
-////////////////////////QEBAQEBA////MjIyzc3N////////////////////////gICAgICA
-////////////AAAA////////////////////zc3NMjIy////////////////////AAAA////////
-////+fn5FRUVZ2dn////////////////////c3NzTExM////////09PTXl5e////////////////
-////////5ubmmJiY////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////
-////////////////""".decode('base64')
+        self.image = open("imagebmp_setup.bmp", "rb").read()
         self.md5sum = "cb6ef2f7a458ab1d315c329f72ec9898"
         self.width = 12
         self.height = 21
@@ -753,25 +719,7 @@ gICA////////////////////////////////AAAA////AAAA////////////////////////////
 class ImageTIFF(ImageJPEG):
     @LIB_CORE
     def setUp(self):
-        self.image = """SUkqAPwCAAD/////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////
-///T09NeXl7////////////////////////m5uaYmJj////////5+fkVFRVnZ2f/////////////
-//////9zc3NMTEz////////////Nzc0yMjL///////////////////8AAAD/////////////////
-//+AgICAgID///////////8AAAD///////////////////////////9AQEBAQED///8yMjLNzc3/
-//////////////////////////////8AAABAQEBAQED/////////////////////////////////
-//////8KCgqlpaX///////////////////////////////////8AAAD///8AAAD/////////////
-//////////////////8yMjLNzc3///+AgICAgID///////////////////////+AgID/////////
-//////+AgICAgID///////////////9nZ2cNDQ3///////////////////+AgIAZGRn///////+A
-gICAgID////////////////////////////Nzc3///////8AAAD/////////////////////////
-////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////
-//////////////////////////////8QAP4ABAABAAAAAAAAAAABAwABAAAADAAAAAEBAwABAAAA
-FQAAAAIBAwADAAAAwgMAAAMBAwABAAAAAQAAAAYBAwABAAAAAgAAAA0BAgAzAAAAyAMAABEBBAAB
-AAAACAAAABIBAwABAAAAAQAAABUBAwABAAAAAwAAABYBAwABAAAAQAAAABcBBAABAAAA9AIAABoB
-BQABAAAA/AMAABsBBQABAAAABAQAABwBAwABAAAAAQAAACgBAwABAAAAAgAAAAAAAAAIAAgACAAv
-aG9tZS9icmlhbi9EZXZlbG9wbWVudC9hdWRpb3Rvb2xzL3Rlc3QvaW1hZ2UudGlmZgAAAAAASAAA
-AAEAAABIAAAAAQ==""".decode('base64')
+        self.image = open("imagetiff_setup.tiff", "rb").read()
         self.md5sum = "192ceb086d217421a5f151cc0afa3f05"
         self.width = 12
         self.height = 21
@@ -4646,7 +4594,7 @@ class testcuesheet(unittest.TestCase):
 class testtocfile(testcuesheet):
     def setUp(self):
         from audiotools.toc import TOCFile, read_tocfile, write_tocfile
-        self.suffix=".toc"
+        self.suffix = ".toc"
         self.sheet_class = TOCFile
         self.read_sheet = read_tocfile
 
@@ -4753,7 +4701,8 @@ class TestMultiChannel(unittest.TestCase):
                                      audiotools.OpusAudio]
 
     def __test_mask_blank__(self, audio_class, channel_mask):
-        temp_file = tempfile.NamedTemporaryFile(suffix="." + audio_class.SUFFIX)
+        temp_file = tempfile.NamedTemporaryFile(
+            suffix="." + audio_class.SUFFIX)
         try:
             temp_track = audio_class.from_pcm(
                 temp_file.name,
@@ -4776,7 +4725,8 @@ class TestMultiChannel(unittest.TestCase):
 
     def __test_undefined_mask_blank__(self, audio_class, channels,
                                       should_be_blank):
-        temp_file = tempfile.NamedTemporaryFile(suffix="." + audio_class.SUFFIX)
+        temp_file = tempfile.NamedTemporaryFile(
+            suffix="." + audio_class.SUFFIX)
         try:
             temp_track = audio_class.from_pcm(
                 temp_file.name,
@@ -5223,11 +5173,8 @@ class Test_FreeDB(unittest.TestCase):
             disc_id_obj=DiscID,
             track_lengths=[7939176, 4799256, 6297480, 5383140,
                            5246136, 5052684, 5013876],
-            cuesheet=
-"""eJxt0E0KwjAQhuF9TzH0ADLT/JnZRVshKBWKgi4DHkH0+k6zicZAVi/fQ0IO8TRB/0jPtHmnVw+7
-OIfl3gFclrA/AhKE6xjPEgDiPE63NSFyPmU2/M9QKhvHZqiwyngoWDWxZm2ZXIWlbtnqgnUTO0bP
-SBV2TMTaF2ya2OeZrbBUxebrZtvCIgll+YvXKp9BBbsmlq9R7HSFpcrLffcBb7NY9w==""".decode("base64").decode("zlib"),
-             disc_id="5A038407")
+            cuesheet=open("freedb_test_discid-1.cue", "rb").read(),
+            disc_id="5A038407")
 
         self.__test_disc_id_tracks__(
             disc_id_obj=DiscID,
@@ -5238,59 +5185,25 @@ SBV2TMTaF2ya2OeZrbBUxebrZtvCIgll+YvXKp9BBbsmlq9R7HSFpcrLffcBb7NY9w==""".decode("
                            8534820, 439824, 7626360, 1262436, 4874520,
                            398664, 11229036, 483924, 9003456, 883764,
                            5018580],
-            cuesheet=
-"""eJydl8Fu2zAMhu8B8g6C7ytESrIt3TzHGbw1TeG63a5J10PQISm6rO3efpI7YHIYDrACnxjEn6X8
-/Ch3zUos2pu6XYiPjVzYCpbzWeeL9Xq1aq56kTVvm/tj9ev77lAfnn6LF7iQW5XNZ3XVV5frT0LG
-n/nsuumW627VdCK73T/uD697UT0fdz+P/id92182/+r97vjjwZeXbahuH7aHpw/bwxtcvG5eMvG1
-umvmMyH6rqq/CAmiul2061Dxtfcb9c+b+0cJ2Xvxf+TwfXvT1eLz9V0rJYKSWv4tXy2ab+H+Urrh
-iqDIQnEy1JbKGDwDVdJhGUEVC1VpK80JFJ2/QEVQzUJ1GrQ4A4XC5SaCGhZq0qAlgeYOSn9F0JyF
-5mlQewoFGaAmDlLBQoskKMgzUG18liJoyULLNCgQqHJKOxUHybJQmwYlLQM6QOMggeSgIBP6VFpl
-zkBN4TBaKbBGgulGsiUikpbx/aLyUXqBNRJMN1LYXkW2F8GFxUZBAtZIkGYkINvroap0RQxljQRp
-RgKiQVThP4UYyhoJphvJWlmUFBr6ZbxS1kiQZiQgGkQbgpTHQWKNBIlGIhr0UJ07GfcpaySYbqSh
-T4kGFTitR6MNWCNBmpGQaDA4EEZDHFkj4XQjDVDSpx6q0WG0vcgaCRONRIKk7CCHGMoaCdOMhORg
-FpZZOoxaBlkjYZqRkBjJQ9X45ICskTDNSEjkECY4jNKLrJEw7YxEp4yHGuvyeHtZI2GakWiQdOFH
-zDi9rJFwupEGOdCVFmGloz5ljYRpZ6RTI0lh/LnXB9iePEso69HbBrKiwgRRARo6fDzUz58iypdi
-RaXSRKWIHY1x2o7GrGJFpRJFhWTX/eQpnIbTZ/FlOzTYH4ZCeUM=""".decode("base64").decode("zlib"),
+            cuesheet=open("freedb_test_discid-2.cue", "rb").read(),
             disc_id="BE0D9A1F")
 
         self.__test_disc_id__(
             disc_id_obj=DiscID,
             total_length=190928304,
-            cuesheet=
-"""eJyV0t1qgzAYgOFzwXsIXkDJj3/JWdAUZLMOZ7udurYw6aajte1290tqYY02g0CO3sD3JCGlyEGa
-PSdZCniIoKCQu04pY1LkuVhUwBPf9brnx03TJd3XDzihGXzDnus8iXJelLkogbdsd213bgHf982h
-l3tVVj2Kv141/cdW5nmm6vFQt5v+ffs5O9cnD7zwlXAdAKqSJw8AIsCXaVaoItswp9rX6x1E3hD/
-g9V+tkjFK4BQLnZZWkbXTMgNio0otkPl9Jghok8nxunE9kpyNPav029QlSMd9Y2ob4tixAIyRVUO
-dDQwooE1GjEM76AyYx0NjWhoixJ093lVDnU0MqKRNRozSBnxx6j8SKObxkY0tkV9+WPQFFV59Hup
-EaXWKGV+NH1elamGImhCEbRFQ3S5UjBCVR7O8gvDoy0r""".decode("base64").decode("zlib"),
+            cuesheet=open("freedb_test_discid-3.cue", "rb").read(),
             disc_id="A610E90A")
 
         self.__test_disc_id__(
             disc_id_obj=DiscID,
             total_length=127937040,
-            cuesheet=
-"""eJxtkm1LwzAQx9/vUxx7vy6Xx/be1bVCcbXSzQcQKbWpMJirqNP57U3HsB0GDpIcv/zvcv+UaQ7N
-e1t/thaef6Cxtubf9ReIgGHNZbXd7PaHSgQoZzirX62W1SHU1d8CzMyZnnOGbsuJIykON/mkdLqL
-pFwXxXLVHyaX2TKF6YXTs5C3224Hj6tu//YEdvPRAEL3Ahi4ylO4j+/SCcC6jBdXwBDi2yQrXAIg
-u07SB2DMBR1jnMW+Pp6yp8v8/2WHKZJ4hgkvFvWYGGHShyEnZYjxAVNeTJJSZ0W1Fwvp+IoBMz6M
-M5IRmREWejHp+ic96i3yYoZQkB7UkHkxNxBJfFBDjzcIQvS/QI4wrwvCkCOVGjCvC71T0Xgg6HXB
-NSZFP5Bf/ZugqA==""".decode("base64").decode("zlib"),
+            cuesheet=open("freedb_test_discid-4.cue", "rb").read(),
             disc_id="CE0AD30E")
 
         self.__test_disc_id__(
             disc_id_obj=DiscID,
             total_length=119882616,
-            cuesheet=
-"""eJydlcFu2zAMhu8B8g5CHqAQSUuyeTMcB/C6NIXrbrumXbEF3eIh89r17Se1ASoT0A4CfPpt+KNE
-6lPfbtW6u2m6tdo0uq5aKJaL3ofNbrttrwa1av/u76f6z9fD2Iy/XtQTXOg7Wi0X122/2fXbtler
-2+PjcXw+qvo0HX5P/t3QDR/b93w4TD8efLzpQvrz5fhw+Pb9bjxN4zSexovn/dNKfa4/tcuFUkNf
-N5dKg6pv190uJD57+91w2t8/ali9hf/jh/fdTd+oD9fDpS7LUhsN5/hq3X4J/9eaX58IikkoZkJR
-QpELYocRlJJQyoSShBaMyMZF0CIJLTKhhYQaLiyjmcWotM8sWz2LKcRGn78+l2iSJZrMEo0s0TFq
-LuJ9sUmozYRaCS0ZgU28UpeEukyok9CKQz9iaJmElpnQUkDBN7ScH7AqCa0yoZWEAlPBNlop6BQU
-dB4UtIQaxopJzjq4MOsUzRcktQaZWgOpNSjZPzbadUhqDTK1BlJr/hgRsY1XmtQaZGoNpNbwVWux
-MyCpNcjUGkitoWPyh8mJVvtB93vg5vtCyk8F0uzcQVJrkKk1kFojzYBsUZRIwGEgq6iWpO0g03Yg
-bUcYptFoWQuxNz5F1yAkJQiZEgQpQe8Ff8fM1JCUIGRKEKQEybG/8zFeaVKCkClBkBKkMrQ6vvAx
-KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
+            cuesheet=open("freedb_test_discid-5.cue", "rb").read(),
             disc_id="FC0A9E14")
 
 
@@ -5303,10 +5216,7 @@ class Test_MusicBrainz(Test_FreeDB):
             disc_id_obj=DiscID,
             track_lengths=[7939176, 4799256, 6297480, 5383140,
                            5246136, 5052684, 5013876],
-            cuesheet=
-"""eJxt0E0KwjAQhuF9TzH0ADLT/JnZRVshKBWKgi4DHkH0+k6zicZAVi/fQ0IO8TRB/0jPtHmnVw+7
-OIfl3gFclrA/AhKE6xjPEgDiPE63NSFyPmU2/M9QKhvHZqiwyngoWDWxZm2ZXIWlbtnqgnUTO0bP
-SBV2TMTaF2ya2OeZrbBUxebrZtvCIgll+YvXKp9BBbsmlq9R7HSFpcrLffcBb7NY9w==""".decode("base64").decode("zlib"),
+            cuesheet=open("freedb_test_discid-1.cue", "rb").read(),
             disc_id="SJco4q4a9rzKdBw7HcFvBQugKc8-")
 
         self.__test_disc_id_tracks__(
@@ -5318,60 +5228,27 @@ SBV2TMTaF2ya2OeZrbBUxebrZtvCIgll+YvXKp9BBbsmlq9R7HSFpcrLffcBb7NY9w==""".decode("
                            8534820, 439824, 7626360, 1262436, 4874520,
                            398664, 11229036, 483924, 9003456, 883764,
                            5018580],
-            cuesheet=
-"""eJydl8Fu2zAMhu8B8g6C7ytESrIt3TzHGbw1TeG63a5J10PQISm6rO3efpI7YHIYDrACnxjEn6X8
-/Ch3zUos2pu6XYiPjVzYCpbzWeeL9Xq1aq56kTVvm/tj9ev77lAfnn6LF7iQW5XNZ3XVV5frT0LG
-n/nsuumW627VdCK73T/uD697UT0fdz+P/id92182/+r97vjjwZeXbahuH7aHpw/bwxtcvG5eMvG1
-umvmMyH6rqq/CAmiul2061Dxtfcb9c+b+0cJ2Xvxf+TwfXvT1eLz9V0rJYKSWv4tXy2ab+H+Urrh
-iqDIQnEy1JbKGDwDVdJhGUEVC1VpK80JFJ2/QEVQzUJ1GrQ4A4XC5SaCGhZq0qAlgeYOSn9F0JyF
-5mlQewoFGaAmDlLBQoskKMgzUG18liJoyULLNCgQqHJKOxUHybJQmwYlLQM6QOMggeSgIBP6VFpl
-zkBN4TBaKbBGgulGsiUikpbx/aLyUXqBNRJMN1LYXkW2F8GFxUZBAtZIkGYkINvroap0RQxljQRp
-RgKiQVThP4UYyhoJphvJWlmUFBr6ZbxS1kiQZiQgGkQbgpTHQWKNBIlGIhr0UJ07GfcpaySYbqSh
-T4kGFTitR6MNWCNBmpGQaDA4EEZDHFkj4XQjDVDSpx6q0WG0vcgaCRONRIKk7CCHGMoaCdOMhORg
-FpZZOoxaBlkjYZqRkBjJQ9X45ICskTDNSEjkECY4jNKLrJEw7YxEp4yHGuvyeHtZI2GakWiQdOFH
-zDi9rJFwupEGOdCVFmGloz5ljYRpZ6RTI0lh/LnXB9iePEso69HbBrKiwgRRARo6fDzUz58iypdi
-RaXSRKWIHY1x2o7GrGJFpRJFhWTX/eQpnIbTZ/FlOzTYH4ZCeUM=""".decode("base64").decode("zlib"),
+            cuesheet=open("freedb_test_discid-2.cue", "rb").read(),
             disc_id="yrelpXuXXP2WKDpTUqrS62keIFE-")
 
         self.__test_disc_id__(
             disc_id_obj=DiscID,
             total_length=190928304,
-            cuesheet=
-"""eJyV0t1qgzAYgOFzwXsIXkDJj3/JWdAUZLMOZ7udurYw6aajte1290tqYY02g0CO3sD3JCGlyEGa
-PSdZCniIoKCQu04pY1LkuVhUwBPf9brnx03TJd3XDzihGXzDnus8iXJelLkogbdsd213bgHf982h
-l3tVVj2Kv141/cdW5nmm6vFQt5v+ffs5O9cnD7zwlXAdAKqSJw8AIsCXaVaoItswp9rX6x1E3hD/
-g9V+tkjFK4BQLnZZWkbXTMgNio0otkPl9Jghok8nxunE9kpyNPav029QlSMd9Y2ob4tixAIyRVUO
-dDQwooE1GjEM76AyYx0NjWhoixJ093lVDnU0MqKRNRozSBnxx6j8SKObxkY0tkV9+WPQFFV59Hup
-EaXWKGV+NH1elamGImhCEbRFQ3S5UjBCVR7O8gvDoy0r""".decode("base64").decode("zlib"),
+            cuesheet=open("freedb_test_discid-3.cue", "rb").read(),
             disc_id="naJ8mpfbMHx_qQnJbyRx4lE_h4E-")
 
         self.__test_disc_id__(
             disc_id_obj=DiscID,
             total_length=127937040,
-            cuesheet=
-"""eJxtkm1LwzAQx9/vUxx7vy6Xx/be1bVCcbXSzQcQKbWpMJirqNP57U3HsB0GDpIcv/zvcv+UaQ7N
-e1t/thaef6Cxtubf9ReIgGHNZbXd7PaHSgQoZzirX62W1SHU1d8CzMyZnnOGbsuJIykON/mkdLqL
-pFwXxXLVHyaX2TKF6YXTs5C3224Hj6tu//YEdvPRAEL3Ahi4ylO4j+/SCcC6jBdXwBDi2yQrXAIg
-u07SB2DMBR1jnMW+Pp6yp8v8/2WHKZJ4hgkvFvWYGGHShyEnZYjxAVNeTJJSZ0W1Fwvp+IoBMz6M
-M5IRmREWejHp+ic96i3yYoZQkB7UkHkxNxBJfFBDjzcIQvS/QI4wrwvCkCOVGjCvC71T0Xgg6HXB
-NSZFP5Bf/ZugqA==""".decode("base64").decode("zlib"),
+            cuesheet=open("freedb_test_discid-4.cue", "rb").read(),
             disc_id="1o5aDeltYCEwCecU1cMMi1cvees-")
 
         self.__test_disc_id__(
             disc_id_obj=DiscID,
             total_length=119882616,
-            cuesheet=
-"""eJydlcFu2zAMhu8B8g5CHqAQSUuyeTMcB/C6NIXrbrumXbEF3eIh89r17Se1ASoT0A4CfPpt+KNE
-6lPfbtW6u2m6tdo0uq5aKJaL3ofNbrttrwa1av/u76f6z9fD2Iy/XtQTXOg7Wi0X122/2fXbtler
-2+PjcXw+qvo0HX5P/t3QDR/b93w4TD8efLzpQvrz5fhw+Pb9bjxN4zSexovn/dNKfa4/tcuFUkNf
-N5dKg6pv190uJD57+91w2t8/ali9hf/jh/fdTd+oD9fDpS7LUhsN5/hq3X4J/9eaX58IikkoZkJR
-QpELYocRlJJQyoSShBaMyMZF0CIJLTKhhYQaLiyjmcWotM8sWz2LKcRGn78+l2iSJZrMEo0s0TFq
-LuJ9sUmozYRaCS0ZgU28UpeEukyok9CKQz9iaJmElpnQUkDBN7ScH7AqCa0yoZWEAlPBNlop6BQU
-dB4UtIQaxopJzjq4MOsUzRcktQaZWgOpNSjZPzbadUhqDTK1BlJr/hgRsY1XmtQaZGoNpNbwVWux
-MyCpNcjUGkitoWPyh8mJVvtB93vg5vtCyk8F0uzcQVJrkKk1kFojzYBsUZRIwGEgq6iWpO0g03Yg
-bUcYptFoWQuxNz5F1yAkJQiZEgQpQe8Ff8fM1JCUIGRKEKQEybG/8zFeaVKCkClBkBKkMrQ6vvAx
-KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
+            cuesheet=open("freedb_test_discid-5.cue", "rb").read(),
             disc_id="aS0RfXDrxs718yypC2AlgpNEIE0-")
+
 
 class Test_Accuraterip(Test_FreeDB):
     @LIB_ACCURATERIP
@@ -5382,10 +5259,7 @@ class Test_Accuraterip(Test_FreeDB):
             disc_id_obj=DiscID,
             track_lengths=[7939176, 4799256, 6297480, 5383140,
                            5246136, 5052684, 5013876],
-            cuesheet=
-"""eJxt0E0KwjAQhuF9TzH0ADLT/JnZRVshKBWKgi4DHkH0+k6zicZAVi/fQ0IO8TRB/0jPtHmnVw+7
-OIfl3gFclrA/AhKE6xjPEgDiPE63NSFyPmU2/M9QKhvHZqiwyngoWDWxZm2ZXIWlbtnqgnUTO0bP
-SBV2TMTaF2ya2OeZrbBUxebrZtvCIgll+YvXKp9BBbsmlq9R7HSFpcrLffcBb7NY9w==""".decode("base64").decode("zlib"),
+            cuesheet=open("freedb_test_discid-1.cue", "rb").read(),
             disc_id="dBAR-007-00045db7-0019b8d8-5a038407.bin")
 
         self.__test_disc_id_tracks__(
@@ -5397,59 +5271,25 @@ SBV2TMTaF2ya2OeZrbBUxebrZtvCIgll+YvXKp9BBbsmlq9R7HSFpcrLffcBb7NY9w==""".decode("
                            8534820, 439824, 7626360, 1262436, 4874520,
                            398664, 11229036, 483924, 9003456, 883764,
                            5018580],
-            cuesheet=
-"""eJydl8Fu2zAMhu8B8g6C7ytESrIt3TzHGbw1TeG63a5J10PQISm6rO3efpI7YHIYDrACnxjEn6X8
-/Ch3zUos2pu6XYiPjVzYCpbzWeeL9Xq1aq56kTVvm/tj9ev77lAfnn6LF7iQW5XNZ3XVV5frT0LG
-n/nsuumW627VdCK73T/uD697UT0fdz+P/id92182/+r97vjjwZeXbahuH7aHpw/bwxtcvG5eMvG1
-umvmMyH6rqq/CAmiul2061Dxtfcb9c+b+0cJ2Xvxf+TwfXvT1eLz9V0rJYKSWv4tXy2ab+H+Urrh
-iqDIQnEy1JbKGDwDVdJhGUEVC1VpK80JFJ2/QEVQzUJ1GrQ4A4XC5SaCGhZq0qAlgeYOSn9F0JyF
-5mlQewoFGaAmDlLBQoskKMgzUG18liJoyULLNCgQqHJKOxUHybJQmwYlLQM6QOMggeSgIBP6VFpl
-zkBN4TBaKbBGgulGsiUikpbx/aLyUXqBNRJMN1LYXkW2F8GFxUZBAtZIkGYkINvroap0RQxljQRp
-RgKiQVThP4UYyhoJphvJWlmUFBr6ZbxS1kiQZiQgGkQbgpTHQWKNBIlGIhr0UJ07GfcpaySYbqSh
-T4kGFTitR6MNWCNBmpGQaDA4EEZDHFkj4XQjDVDSpx6q0WG0vcgaCRONRIKk7CCHGMoaCdOMhORg
-FpZZOoxaBlkjYZqRkBjJQ9X45ICskTDNSEjkECY4jNKLrJEw7YxEp4yHGuvyeHtZI2GakWiQdOFH
-zDi9rJFwupEGOdCVFmGloz5ljYRpZ6RTI0lh/LnXB9iePEso69HbBrKiwgRRARo6fDzUz58iypdi
-RaXSRKWIHY1x2o7GrGJFpRJFhWTX/eQpnIbTZ/FlOzTYH4ZCeUM=""".decode("base64").decode("zlib"),
+            cuesheet=open("freedb_test_discid-2.cue", "rb").read(),
             disc_id="dBAR-031-003fee31-058c64b9-be0d9a1f.bin")
 
         self.__test_disc_id__(
             disc_id_obj=DiscID,
             total_length=190928304,
-            cuesheet=
-"""eJyV0t1qgzAYgOFzwXsIXkDJj3/JWdAUZLMOZ7udurYw6aajte1290tqYY02g0CO3sD3JCGlyEGa
-PSdZCniIoKCQu04pY1LkuVhUwBPf9brnx03TJd3XDzihGXzDnus8iXJelLkogbdsd213bgHf982h
-l3tVVj2Kv141/cdW5nmm6vFQt5v+ffs5O9cnD7zwlXAdAKqSJw8AIsCXaVaoItswp9rX6x1E3hD/
-g9V+tkjFK4BQLnZZWkbXTMgNio0otkPl9Jghok8nxunE9kpyNPav029QlSMd9Y2ob4tixAIyRVUO
-dDQwooE1GjEM76AyYx0NjWhoixJ093lVDnU0MqKRNRozSBnxx6j8SKObxkY0tkV9+WPQFFV59Hup
-EaXWKGV+NH1elamGImhCEbRFQ3S5UjBCVR7O8gvDoy0r""".decode("base64").decode("zlib"),
+            cuesheet=open("freedb_test_discid-3.cue", "rb").read(),
             disc_id="dBAR-010-00193b54-00c9f723-a610e90a.bin")
 
         self.__test_disc_id__(
             disc_id_obj=DiscID,
             total_length=127937040,
-            cuesheet=
-"""eJxtkm1LwzAQx9/vUxx7vy6Xx/be1bVCcbXSzQcQKbWpMJirqNP57U3HsB0GDpIcv/zvcv+UaQ7N
-e1t/thaef6Cxtubf9ReIgGHNZbXd7PaHSgQoZzirX62W1SHU1d8CzMyZnnOGbsuJIykON/mkdLqL
-pFwXxXLVHyaX2TKF6YXTs5C3224Hj6tu//YEdvPRAEL3Ahi4ylO4j+/SCcC6jBdXwBDi2yQrXAIg
-u07SB2DMBR1jnMW+Pp6yp8v8/2WHKZJ4hgkvFvWYGGHShyEnZYjxAVNeTJJSZ0W1Fwvp+IoBMz6M
-M5IRmREWejHp+ic96i3yYoZQkB7UkHkxNxBJfFBDjzcIQvS/QI4wrwvCkCOVGjCvC71T0Xgg6HXB
-NSZFP5Bf/ZugqA==""".decode("base64").decode("zlib"),
+            cuesheet=open("freedb_test_discid-4.cue", "rb").read(),
             disc_id="dBAR-014-001977f9-01097144-ce0ad30e.bin")
 
         self.__test_disc_id__(
             disc_id_obj=DiscID,
             total_length=119882616,
-            cuesheet=
-"""eJydlcFu2zAMhu8B8g5CHqAQSUuyeTMcB/C6NIXrbrumXbEF3eIh89r17Se1ASoT0A4CfPpt+KNE
-6lPfbtW6u2m6tdo0uq5aKJaL3ofNbrttrwa1av/u76f6z9fD2Iy/XtQTXOg7Wi0X122/2fXbtler
-2+PjcXw+qvo0HX5P/t3QDR/b93w4TD8efLzpQvrz5fhw+Pb9bjxN4zSexovn/dNKfa4/tcuFUkNf
-N5dKg6pv190uJD57+91w2t8/ali9hf/jh/fdTd+oD9fDpS7LUhsN5/hq3X4J/9eaX58IikkoZkJR
-QpELYocRlJJQyoSShBaMyMZF0CIJLTKhhYQaLiyjmcWotM8sWz2LKcRGn78+l2iSJZrMEo0s0TFq
-LuJ9sUmozYRaCS0ZgU28UpeEukyok9CKQz9iaJmElpnQUkDBN7ScH7AqCa0yoZWEAlPBNlop6BQU
-dB4UtIQaxopJzjq4MOsUzRcktQaZWgOpNSjZPzbadUhqDTK1BlJr/hgRsY1XmtQaZGoNpNbwVWux
-MyCpNcjUGkitoWPyh8mJVvtB93vg5vtCyk8F0uzcQVJrkKk1kFojzYBsUZRIwGEgq6iWpO0g03Yg
-bUcYptFoWQuxNz5F1yAkJQiZEgQpQe8Ff8fM1JCUIGRKEKQEybG/8zFeaVKCkClBkBKkMrQ6vvAx
-KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
+            cuesheet=open("freedb_test_discid-5.cue", "rb").read(),
             disc_id="dBAR-020-001d4d13-01bab5f6-fc0a9e14.bin")
 
     @LIB_ACCURATERIP
@@ -5536,25 +5376,25 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
                               v)
 
         # sanity checking for stream parameters
-        for params in [[200000, 44100, 0x04, 8, (25, 10000)],  # 8bps 1ch
+        for params in [[200000, 44100, 0x04, 8, (25, 10000)],      # 8bps 1ch
                        [200000, 44100, 0x03, 8, (25, 10000),
-                                                (50, 20000)],  # 8bps 2ch
+                                                (50, 20000)],      # 8bps 2ch
                        [200000, 44100, 0x07, 8, (25, 10000),
                                                 (50, 20000),
-                                                (120, 30000)], # 8bps 3ch
-                       [200000, 44100, 0x04, 16, (6400, 10000)],  # 16bps 1ch
+                                                (120, 30000)],     # 8bps 3ch
+                       [200000, 44100, 0x04, 16, (6400, 10000)],   # 16bps 1ch
                        [200000, 44100, 0x07, 16, (6400, 10000),
                                                  (12800, 20000),
-                                                 (30720, 30000)], # 16bps 3ch
+                                                 (30720, 30000)],  # 16bps 3ch
                        [200000, 44100, 0x04, 24,
-                        (1638400, 10000)],                        # 24bps 1ch
+                        (1638400, 10000)],                         # 24bps 1ch
                        [200000, 44100, 0x03, 24,
                         (1638400, 10000),
-                        (3276800, 20000)],                        # 24bps 2ch
+                        (3276800, 20000)],                         # 24bps 2ch
                        [200000, 44100, 0x07, 24,
                         (1638400, 10000),
                         (3276800, 20000),
-                        (7864320, 30000)]]:                       # 24bps 3ch
+                        (7864320, 30000)]]:                        # 24bps 3ch
             sine = Simple_Sine(*params)
             checksum = Checksum(total_pcm_frames=200000,
                                 sample_rate=44100,
@@ -5838,19 +5678,7 @@ KUHMlCDOe6pVgb6hbOUEhNjr0dfyD7jgakg=""".decode("base64").decode("zlib"),
         import time
 
         cuesheet = tempfile.NamedTemporaryFile(suffix=".cue")
-        cuesheet.write(
-"""eJydl8Fu2zAMhu8B8g6C7ytESrIt3TzHGbw1TeG63a5J10PQISm6rO3efpI7YHIYDrACnxjEn6X8
-/Ch3zUos2pu6XYiPjVzYCpbzWeeL9Xq1aq56kTVvm/tj9ev77lAfnn6LF7iQW5XNZ3XVV5frT0LG
-n/nsuumW627VdCK73T/uD697UT0fdz+P/id92182/+r97vjjwZeXbahuH7aHpw/bwxtcvG5eMvG1
-umvmMyH6rqq/CAmiul2061Dxtfcb9c+b+0cJ2Xvxf+TwfXvT1eLz9V0rJYKSWv4tXy2ab+H+Urrh
-iqDIQnEy1JbKGDwDVdJhGUEVC1VpK80JFJ2/QEVQzUJ1GrQ4A4XC5SaCGhZq0qAlgeYOSn9F0JyF
-5mlQewoFGaAmDlLBQoskKMgzUG18liJoyULLNCgQqHJKOxUHybJQmwYlLQM6QOMggeSgIBP6VFpl
-zkBN4TBaKbBGgulGsiUikpbx/aLyUXqBNRJMN1LYXkW2F8GFxUZBAtZIkGYkINvroap0RQxljQRp
-RgKiQVThP4UYyhoJphvJWlmUFBr6ZbxS1kiQZiQgGkQbgpTHQWKNBIlGIhr0UJ07GfcpaySYbqSh
-T4kGFTitR6MNWCNBmpGQaDA4EEZDHFkj4XQjDVDSpx6q0WG0vcgaCRONRIKk7CCHGMoaCdOMhORg
-FpZZOoxaBlkjYZqRkBjJQ9X45ICskTDNSEjkECY4jNKLrJEw7YxEp4yHGuvyeHtZI2GakWiQdOFH
-zDi9rJFwupEGOdCVFmGloz5ljYRpZ6RTI0lh/LnXB9iePEso69HbBrKiwgRRARo6fDzUz58iypdi
-RaXSRKWIHY1x2o7GrGJFpRJFhWTX/eQpnIbTZ/FlOzTYH4ZCeUM=""".decode("base64").decode("zlib"))
+        cuesheet.write(open("freedb_test_discid-2.cue", "rb").read())
         cuesheet.flush()
         sheet = audiotools.read_sheet(cuesheet.name)
         cuesheet.close()
@@ -5915,19 +5743,7 @@ class Test_Lookup(unittest.TestCase):
         try:
             # dump cuesheet to file
             f = open(os.path.join(dir, "CDImage.cue"), "wb")
-            f.write(
-"""eJydl8Fu2zAMhu8B8g6C7ytESrIt3TzHGbw1TeG63a5J10PQISm6rO3efpI7YHIYDrACnxjEn6X8
-/Ch3zUos2pu6XYiPjVzYCpbzWeeL9Xq1aq56kTVvm/tj9ev77lAfnn6LF7iQW5XNZ3XVV5frT0LG
-n/nsuumW627VdCK73T/uD697UT0fdz+P/id92182/+r97vjjwZeXbahuH7aHpw/bwxtcvG5eMvG1
-umvmMyH6rqq/CAmiul2061Dxtfcb9c+b+0cJ2Xvxf+TwfXvT1eLz9V0rJYKSWv4tXy2ab+H+Urrh
-iqDIQnEy1JbKGDwDVdJhGUEVC1VpK80JFJ2/QEVQzUJ1GrQ4A4XC5SaCGhZq0qAlgeYOSn9F0JyF
-5mlQewoFGaAmDlLBQoskKMgzUG18liJoyULLNCgQqHJKOxUHybJQmwYlLQM6QOMggeSgIBP6VFpl
-zkBN4TBaKbBGgulGsiUikpbx/aLyUXqBNRJMN1LYXkW2F8GFxUZBAtZIkGYkINvroap0RQxljQRp
-RgKiQVThP4UYyhoJphvJWlmUFBr6ZbxS1kiQZiQgGkQbgpTHQWKNBIlGIhr0UJ07GfcpaySYbqSh
-T4kGFTitR6MNWCNBmpGQaDA4EEZDHFkj4XQjDVDSpx6q0WG0vcgaCRONRIKk7CCHGMoaCdOMhORg
-FpZZOoxaBlkjYZqRkBjJQ9X45ICskTDNSEjkECY4jNKLrJEw7YxEp4yHGuvyeHtZI2GakWiQdOFH
-zDi9rJFwupEGOdCVFmGloz5ljYRpZ6RTI0lh/LnXB9iePEso69HbBrKiwgRRARo6fDzUz58iypdi
-RaXSRKWIHY1x2o7GrGJFpRJFhWTX/eQpnIbTZ/FlOzTYH4ZCeUM=""".decode("base64").decode("zlib"))
+            f.write(open("freedb_test_discid-2.cue", "rb").read())
             f.close()
 
             # dump CD image to file
@@ -6012,19 +5828,7 @@ RaXSRKWIHY1x2o7GrGJFpRJFhWTX/eQpnIbTZ/FlOzTYH4ZCeUM=""".decode("base64").decode(
         import time
 
         cuesheet = tempfile.NamedTemporaryFile(suffix=".cue")
-        cuesheet.write(
-"""eJydl8Fu2zAMhu8B8g6C7ytESrIt3TzHGbw1TeG63a5J10PQISm6rO3efpI7YHIYDrACnxjEn6X8
-/Ch3zUos2pu6XYiPjVzYCpbzWeeL9Xq1aq56kTVvm/tj9ev77lAfnn6LF7iQW5XNZ3XVV5frT0LG
-n/nsuumW627VdCK73T/uD697UT0fdz+P/id92182/+r97vjjwZeXbahuH7aHpw/bwxtcvG5eMvG1
-umvmMyH6rqq/CAmiul2061Dxtfcb9c+b+0cJ2Xvxf+TwfXvT1eLz9V0rJYKSWv4tXy2ab+H+Urrh
-iqDIQnEy1JbKGDwDVdJhGUEVC1VpK80JFJ2/QEVQzUJ1GrQ4A4XC5SaCGhZq0qAlgeYOSn9F0JyF
-5mlQewoFGaAmDlLBQoskKMgzUG18liJoyULLNCgQqHJKOxUHybJQmwYlLQM6QOMggeSgIBP6VFpl
-zkBN4TBaKbBGgulGsiUikpbx/aLyUXqBNRJMN1LYXkW2F8GFxUZBAtZIkGYkINvroap0RQxljQRp
-RgKiQVThP4UYyhoJphvJWlmUFBr6ZbxS1kiQZiQgGkQbgpTHQWKNBIlGIhr0UJ07GfcpaySYbqSh
-T4kGFTitR6MNWCNBmpGQaDA4EEZDHFkj4XQjDVDSpx6q0WG0vcgaCRONRIKk7CCHGMoaCdOMhORg
-FpZZOoxaBlkjYZqRkBjJQ9X45ICskTDNSEjkECY4jNKLrJEw7YxEp4yHGuvyeHtZI2GakWiQdOFH
-zDi9rJFwupEGOdCVFmGloz5ljYRpZ6RTI0lh/LnXB9iePEso69HbBrKiwgRRARo6fDzUz58iypdi
-RaXSRKWIHY1x2o7GrGJFpRJFhWTX/eQpnIbTZ/FlOzTYH4ZCeUM=""".decode("base64").decode("zlib"))
+        cuesheet.write(open("freedb_test_discid-2.cue", "rb").read())
         cuesheet.flush()
         sheet = audiotools.read_sheet(cuesheet.name)
         cuesheet.close()
@@ -6080,57 +5884,42 @@ class Test_Image(unittest.TestCase):
     def test_metrics(self):
         from audiotools.image import image_metrics
 
-        jpeg = image_metrics(
-"""eJyVzkFuwjAQBdA/NrGDhdqxiBwIRVAhqINAyg2yQEK0a+7DUXqXikMU2PQmJlm0UitI1PHu643n
-h8/wBX7bvm5BRNhVD+GCDVQnUlFHqUhprWLDxnS7Jnl47HGaDAZp4lw2nk+y0ezJuelqOlu85Mt8
-OFkXa1/Mfe7rT0hrbWLTN6bvM5f5f0/4gI0hICVZCEvSUjgiAeH36DqlvynCGT1JECwZoH1ZK76l
-4mqXInGogb0NJFFJTUD8gLsnVCmaAZXPh+/SkFXO7y2VuK0St12swOkKYzxJkg==""".decode("base64").decode("zlib"))
+        jpeg = image_metrics(open("image_test_metrics-1.jpg", "rb").read())
         self.assertEqual(jpeg.width, 3)
         self.assertEqual(jpeg.height, 2)
         self.assertEqual(jpeg.bits_per_pixel, 24)
         self.assertEqual(jpeg.color_count, 0)
         self.assertEqual(jpeg.mime_type, "image/jpeg")
 
-        png1 = image_metrics(
-"""iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA
-B3RJTUUH3gMLESsYDLmGVgAAABZJREFUCNdj/P//PwMDAwMDAxMDDAAANgYDAZcK0WQAAAAASUVO
-RK5CYII=""".decode("base64"))
+        png1 = image_metrics(open("image_test_metrics-2.png", "rb").read())
         self.assertEqual(png1.width, 3)
         self.assertEqual(png1.height, 2)
         self.assertEqual(png1.bits_per_pixel, 24)
         self.assertEqual(png1.color_count, 0)
         self.assertEqual(png1.mime_type, "image/png")
 
-        png2 = image_metrics(
-"""iVBORw0KGgoAAAANSUhEUgAAAAMAAAACAQMAAACnuvRZAAAAA1BMVEX///+nxBvIAAAACXBIWXMA
-AAsTAAALEwEAmpwYAAAAB3RJTUUH3gMLES8xKmfbPgAAAAxJREFUCNdjYGBgAAAABAABJzQnCgAA
-AABJRU5ErkJggg==""".decode("base64"))
+        png2 = image_metrics(open("image_test_metrics-3.png", "rb").read())
         self.assertEqual(png2.width, 3)
         self.assertEqual(png2.height, 2)
         self.assertEqual(png2.bits_per_pixel, 8)
         self.assertEqual(png2.color_count, 1)
         self.assertEqual(png2.mime_type, "image/png")
 
-        gif = image_metrics(
-"""R0lGODdhAwACAIAAAP///////ywAAAAAAwACAAACAoRfADs=""".decode("base64"))
+        gif = image_metrics(open("image_test_metrics-4.gif", "rb").read())
         self.assertEqual(gif.width, 3)
         self.assertEqual(gif.height, 2)
         self.assertEqual(gif.bits_per_pixel, 8)
         self.assertEqual(gif.color_count, 2)
         self.assertEqual(gif.mime_type, "image/gif")
 
-        bmp = image_metrics(
-"""eJxz8p3EAAFVQJwDxMxAzATEjAwSYHEQKcwNwTDg5B5UzEAiYELj/4cBNDYAvusVuA==""".decode("base64").decode("zlib"))
+        bmp = image_metrics(open("image_test_metrics-5.bmp", "rb").read())
         self.assertEqual(bmp.width, 3)
         self.assertEqual(bmp.height, 2)
         self.assertEqual(bmp.bits_per_pixel, 24)
         self.assertEqual(bmp.color_count, 0)
         self.assertEqual(bmp.mime_type, "image/x-ms-bmp")
 
-        tiff = image_metrics(
-"""eJzz9NRikGJgYPiPAQQY/jGwMDAyQAEjM5jNDGJC2UwgDGSDxD6A5KDiIMyGpIaXkYlBHUh/A2JB
-RoiZHEAshKReFMl8MSjbAYjFoeqFgFiKkRXMfgDE0lD2CyCWQTJHA8leEPCAisNoDjDUDy1OLSrW
-TyrKTMzTd8lPLs1NzSsp1s/MTUxPLdY3rjDSK8lMS2MAADSTJ+0=""".decode("base64").decode("zlib"))
+        tiff = image_metrics(open("image_test_metrics-6.tiff", "rb").read())
         self.assertEqual(tiff.width, 3)
         self.assertEqual(tiff.height, 2)
         self.assertEqual(tiff.bits_per_pixel, 24)
