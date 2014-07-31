@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 from audiotools import (AudioFile, InvalidFile, PCMReader)
@@ -24,11 +24,6 @@ from audiotools.pcm import FrameList
 
 class InvalidAU(InvalidFile):
     pass
-
-
-#######################
-#Sun AU
-#######################
 
 
 class AuReader:
@@ -59,21 +54,21 @@ class AuReader:
         self.remaining_pcm_frames = self.total_pcm_frames
 
     def read(self, pcm_frames):
-        #try to read requested PCM frames or remaining frames
+        # try to read requested PCM frames or remaining frames
         requested_pcm_frames = min(max(pcm_frames, 1),
                                    self.remaining_pcm_frames)
         requested_bytes = (self.bytes_per_pcm_frame *
                            requested_pcm_frames)
         pcm_data = self.file.read(requested_bytes)
 
-        #raise exception if data block exhausted early
+        # raise exception if data block exhausted early
         if (len(pcm_data) < requested_bytes):
             from audiotools.text import ERR_AU_TRUNCATED_DATA
             raise IOError(ERR_AU_TRUNCATED_DATA)
         else:
             self.remaining_pcm_frames -= requested_pcm_frames
 
-            #return parsed chunk
+            # return parsed chunk
             return FrameList(pcm_data,
                              self.channels,
                              self.bits_per_sample,
@@ -85,11 +80,11 @@ class AuReader:
             from audiotools.text import ERR_NEGATIVE_SEEK
             raise ValueError(ERR_NEGATIVE_SEEK)
 
-        #ensure one doesn't walk off the end of the file
+        # ensure one doesn't walk off the end of the file
         pcm_frame_offset = min(pcm_frame_offset,
                                self.total_pcm_frames)
 
-        #position file in data block
+        # position file in data block
         self.file.seek(self.data_offset +
                        (pcm_frame_offset *
                         self.bytes_per_pcm_frame), 0)
@@ -231,11 +226,11 @@ class AuAudio(AudioFile):
         except IOError as err:
             raise EncodingError(str(err))
         try:
-            #write a dummy header
+            # write a dummy header
             au.build("4b 5* 32u", (".snd", 24, data_size, encoding_format,
                                    pcmreader.sample_rate, pcmreader.channels))
 
-            #write our big-endian PCM data
+            # write our big-endian PCM data
             try:
                 framelist = pcmreader.read(FRAMELIST_SIZE)
                 while (len(framelist) > 0):
@@ -251,7 +246,7 @@ class AuAudio(AudioFile):
                 raise err
 
             if (data_size < 2 ** 32):
-                #rewind and write a complete header
+                # rewind and write a complete header
                 f.seek(0, 0)
                 au.build("4b 5* 32u",
                          (".snd", 24, data_size, encoding_format,

@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 import sys
@@ -73,12 +73,12 @@ if (__name__ == '__main__'):
 
     metadata = audiofile.get_metadata()
     if (metadata is not None):
-        #divide images by type (front cover, leaflet page, etc.)
+        # divide images by type (front cover, leaflet page, etc.)
         image_types = {}
         for image in metadata.images():
             image_types.setdefault(image.type, []).append(image)
 
-        #build a set of (Image, Filename) tuples to be extracted
+        # build a set of (Image, Filename) tuples to be extracted
         output_images = []
         for (type, images) in image_types.items():
             if (len(images) != 1):
@@ -100,9 +100,9 @@ if (__name__ == '__main__'):
                                  "filenum": i + 1,
                                  "suffix": image.suffix()}))))
 
-        #ensure our input file isn't the same
-        #as any of the proposed files to extract
-        #(this sounds crazy,
+        # ensure our input file isn't the same
+        # as any of the proposed files to extract
+        # (this sounds crazy,
         # but there's no technical reason one's audio file
         # can't be named "front_cover.jpg"
         # even if it's not a JPEG
@@ -113,7 +113,7 @@ if (__name__ == '__main__'):
             msg.error(_.ERR_OUTPUT_IS_INPUT % (input_filename,))
             sys.exit(1)
 
-        #finally, write actual image data to disk if possible
+        # finally, write actual image data to disk if possible
         for (image, output_filename) in output_images:
             try:
                 audiotools.make_dirs(str(output_filename))

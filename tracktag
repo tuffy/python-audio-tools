@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 import sys
@@ -189,8 +189,8 @@ REMOVE_OPTIONS = {"track_name": ("--remove-name",
 if (__name__ == '__main__'):
     import argparse
 
-    #add an enormous number of options to the parser
-    #neatly categorized for convenience
+    # add an enormous number of options to the parser
+    # neatly categorized for convenience
 
     parser = argparse.ArgumentParser(description=_.DESCRIPTION_TRACKTAG)
 
@@ -324,12 +324,12 @@ if (__name__ == '__main__'):
 
     msg = audiotools.Messenger("tracktag", options)
 
-    #ensure interactive mode is available, if selected
+    # ensure interactive mode is available, if selected
     if (options.interactive and (not audiotools.ui.AVAILABLE)):
         audiotools.ui.not_available_message(msg)
         sys.exit(1)
 
-    #open a --comment-file as UTF-8 formatted text file
+    # open a --comment-file as UTF-8 formatted text file
     if (options.comment_file is not None):
         try:
             comment_file = open(options.comment_file,
@@ -347,7 +347,7 @@ if (__name__ == '__main__'):
     else:
         comment_file = None
 
-    #open our set of input files for tagging
+    # open our set of input files for tagging
     try:
         tracks = audiotools.open_files(options.filenames,
                                        messenger=msg,
@@ -360,22 +360,22 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_1_FILE_REQUIRED)
         sys.exit(1)
 
-    #album_tracks[a][t]
-    #is an AudioFile object per album "a", per track "t"
-    #of the files to be updated
+    # album_tracks[a][t]
+    # is an AudioFile object per album "a", per track "t"
+    # of the files to be updated
     album_tracks = []
 
-    #album_current_metadatas[a][t]
-    #is a MetaData object per album "a", per track "t"
-    #of the current track metadata
+    # album_current_metadatas[a][t]
+    # is a MetaData object per album "a", per track "t"
+    # of the current track metadata
     album_current_metadatas = []
 
-    #album_metadata_choices[a][c][t]
-    #is a MetaData object per album "a", per choice "", per "track"
+    # album_metadata_choices[a][c][t]
+    # is a MetaData object per album "a", per choice "", per "track"
     album_metadata_choices = []
 
     if (options.metadata_lookup):
-        #split tracks by album and perform lookup for each
+        # split tracks by album and perform lookup for each
         for album in audiotools.group_tracks(tracks):
             album_tracks.append(album)
 
@@ -396,21 +396,21 @@ if (__name__ == '__main__'):
                 msg.error(_.ERR_CANCELLED)
                 sys.exit(1)
 
-            #avoid performing too many lookups too quickly
+            # avoid performing too many lookups too quickly
             from time import sleep
             sleep(1)
     else:
-        #treat tracks as single album and don't perform lookup
+        # treat tracks as single album and don't perform lookup
         album_tracks.append(tracks)
         album_current_metadatas.append([t.get_metadata() for t in tracks])
         album_metadata_choices.append(
             [[audiotools.MetaData() for t in tracks]])
 
     if (options.replace):
-        #ignore track metadata and treat choices as final metadata
+        # ignore track metadata and treat choices as final metadata
         pass
     else:
-        #merge choice metadata with track metadata across all albums
+        # merge choice metadata with track metadata across all albums
         for (current_metadatas,
              metadata_choices) in zip(album_current_metadatas,
                                       album_metadata_choices):
@@ -422,16 +422,16 @@ if (__name__ == '__main__'):
                             setattr(new_metadata, attr,
                                     getattr(old_metadata, attr))
 
-    #apply command-line arguments to all albums and choices
+    # apply command-line arguments to all albums and choices
     for album in album_metadata_choices:
         for choice in album:
             for metadata in choice:
-                #apply field removal options across all metadata choices
+                # apply field removal options across all metadata choices
                 for attr in audiotools.MetaData.FIELD_ORDER:
                     if (getattr(options, "remove_%s" % (attr))):
                         delattr(metadata, attr)
 
-                #apply field addition options across all metadata choices
+                # apply field addition options across all metadata choices
                 for attr in audiotools.MetaData.FIELD_ORDER:
                     if (getattr(options, "update_%s" % (attr)) is not None):
                         value = getattr(options, "update_%s" % (attr))
@@ -442,13 +442,13 @@ if (__name__ == '__main__'):
                                     audiotools.MetaData.INTEGER_FIELDS)
                                 else value)
 
-                #apply comment file across all metadata choices, if any
+                # apply comment file across all metadata choices, if any
                 if (comment_file is not None):
                     metadata.comment = comment_file
 
     if (options.interactive):
-        #run Tracktag widget and get single list of MetaData
-        #for each album's worth of tracks
+        # run Tracktag widget and get single list of MetaData
+        # for each album's worth of tracks
         widget = Tracktag(album_tracks, album_metadata_choices)
 
         loop = audiotools.ui.urwid.MainLoop(
@@ -473,8 +473,8 @@ if (__name__ == '__main__'):
         else:
             sys.exit(0)
     else:
-        #select choice for each album's worth of tracks
-        #and get a single list of MetaData for each
+        # select choice for each album's worth of tracks
+        # and get a single list of MetaData for each
         to_tag = map(tuple,
                      zip(album_tracks,
                          album_current_metadatas,
@@ -483,18 +483,18 @@ if (__name__ == '__main__'):
                                                         options.use_default)
                           for choices in album_metadata_choices]))
 
-    #once all final output metadata is set,
-    #perform actual tagging
+    # once all final output metadata is set,
+    # perform actual tagging
     for (album_tracks, old_metadatas, new_metadatas) in to_tag:
         if (not options.replace):
-            #apply final metadata to tracks using update_metadata
-            #if no full replacement
+            # apply final metadata to tracks using update_metadata
+            # if no full replacement
             for (old_metadata,
                  (track,
                   new_metadata)) in zip(old_metadatas,
                                         zip(album_tracks, new_metadatas)):
                 if (old_metadata is not None):
-                    #merge new fields with old fields
+                    # merge new fields with old fields
                     field_updated = False
                     for (attr, value) in new_metadata.fields():
                         if (getattr(old_metadata,
@@ -504,7 +504,7 @@ if (__name__ == '__main__'):
                             field_updated = True
 
                     if (field_updated):
-                        #update track if at least one field has changed
+                        # update track if at least one field has changed
                         try:
                             track.update_metadata(old_metadata)
                         except IOError as err:
@@ -520,8 +520,8 @@ if (__name__ == '__main__'):
                                   (audiotools.Filename(track.filename),))
                         sys.exit(1)
         else:
-            #apply final metadata to tracks
-            #using set_metadata() if replacement
+            # apply final metadata to tracks
+            # using set_metadata() if replacement
             for (track, metadata) in zip(album_tracks, new_metadatas):
                 try:
                     track.set_metadata(metadata)
@@ -530,7 +530,7 @@ if (__name__ == '__main__'):
                               (audiotools.Filename(track.filename),))
                     sys.exit(1)
 
-    #add ReplayGain to tracks, if indicated
+    # add ReplayGain to tracks, if indicated
     display = audiotools.ProgressDisplay(msg)
     queue = audiotools.ExecProgressQueue(display)
 
@@ -541,8 +541,8 @@ if (__name__ == '__main__'):
                 [(m.album_number if m is not None else None)
                  for m in [f.get_metadata() for f in album_tracks]]).pop()
 
-            #if both --add-replay-gain and --remove-replay-gain
-            #are specified, do nothing
+            # if both --add-replay-gain and --remove-replay-gain
+            # are specified, do nothing
 
             if (options.add_replay_gain and not options.remove_replay_gain):
                 if (album_number is None):
@@ -570,7 +570,7 @@ if (__name__ == '__main__'):
                     _.RG_REPLAYGAIN_REMOVED if album_number is None else
                     (_.REPLAYGAIN_REMOVED_FROM_ALBUM % (album_number)))
 
-    #execute ReplayGain addition once all tracks have been tagged
+    # execute ReplayGain addition once all tracks have been tagged
     try:
         queue.run(options.max_processes)
     except (ValueError, IOError) as err:

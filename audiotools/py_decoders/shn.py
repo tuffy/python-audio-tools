@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamReader
 from audiotools.pcm import from_list, from_channels
@@ -53,7 +53,7 @@ class SHNDecoder:
         self.left_shift = 0
         self.stream_finished = False
 
-        #try to read the first command for a wave/aiff header
+        # try to read the first command for a wave/aiff header
         self.reader.mark()
         self.read_metadata()
         self.reader.rewind()
@@ -62,7 +62,7 @@ class SHNDecoder:
     def read_metadata(self):
         command = self.unsigned(2)
         if (command == 9):
-            #got verbatim, so read data
+            # got verbatim, so read data
             verbatim_bytes = "".join([chr(self.unsigned(8) & 0xFF)
                                       for i in xrange(self.unsigned(5))])
 
@@ -70,7 +70,7 @@ class SHNDecoder:
                 wave = BitstreamReader(cStringIO.StringIO(verbatim_bytes), 1)
                 header = wave.read_bytes(12)
                 if (header.startswith("RIFF") and header.endswith("WAVE")):
-                    #got RIFF/WAVE header, so parse wave blocks as needed
+                    # got RIFF/WAVE header, so parse wave blocks as needed
                     total_size = len(verbatim_bytes) - 12
                     while (total_size > 0):
                         (chunk_id, chunk_size) = wave.parse("4b 32u")
@@ -91,7 +91,7 @@ class SHNDecoder:
                                 wave.read_bytes(chunk_size)
                                 total_size -= chunk_size
                     else:
-                        #no fmt chunk, so use default metadata
+                        # no fmt chunk, so use default metadata
                         pass
             except (IOError, ValueError):
                 pass
@@ -100,7 +100,7 @@ class SHNDecoder:
                 aiff = BitstreamReader(cStringIO.StringIO(verbatim_bytes), 0)
                 header = aiff.read_bytes(12)
                 if (header.startswith("FORM") and header.endswith("AIFF")):
-                    #got FORM/AIFF header, so parse aiff blocks as needed
+                    # got FORM/AIFF header, so parse aiff blocks as needed
                     total_size = len(verbatim_bytes) - 12
                     while (total_size > 0):
                         (chunk_id, chunk_size) = aiff.parse("4b 32u")
@@ -122,12 +122,12 @@ class SHNDecoder:
                                 aiff.read_bytes(chunk_size)
                                 total_size -= chunk_size
                     else:
-                        #no COMM chunk, so use default metadata
+                        # no COMM chunk, so use default metadata
                         pass
             except IOError:
                 pass
 
-        #got something else, so invent some PCM parameters
+        # got something else, so invent some PCM parameters
         self.sample_rate = 44100
         if (self.channels == 1):
             self.channel_mask = 0x4
@@ -187,7 +187,7 @@ class SHNDecoder:
             command = self.unsigned(2)
             if (((0 <= command) and (command <= 3) or
                  (7 <= command) and (command <= 8))):
-                #audio data commands
+                # audio data commands
                 if (command == 0):    # DIFF0
                     samples.append(self.read_diff0(self.block_length,
                                                    self.means[c]))
@@ -207,14 +207,14 @@ class SHNDecoder:
                 elif (command == 8):  # ZERO
                     samples.append([0] * self.block_length)
 
-                #update means for channel
+                # update means for channel
                 self.means[c].append(shnmean(samples[c]))
                 self.means[c] = self.means[c][1:]
 
-                #wrap samples for next command in channel
+                # wrap samples for next command in channel
                 self.wrapped_samples[c] = samples[c][-(max(3, self.max_LPC)):]
 
-                #apply left shift to samples
+                # apply left shift to samples
                 if (self.left_shift > 0):
                     unshifted.append([s << self.left_shift
                                       for s in samples[c]])
@@ -223,13 +223,13 @@ class SHNDecoder:
 
                 c += 1
                 if (c == self.channels):
-                    #return a FrameList from shifted data
+                    # return a FrameList from shifted data
                     return from_channels([from_list(channel, 1,
                                                     self.bits_per_sample,
                                                     self.signed_samples)
                                           for channel in unshifted])
             else:
-                #non audio commands
+                # non audio commands
                 if (command == 4):  # QUIT
                     self.stream_finished = True
                     return from_channels(
@@ -241,7 +241,7 @@ class SHNDecoder:
                 elif (command == 6):  # BITSHIFT
                     self.left_shift = self.unsigned(2)
                 elif (command == 9):  # VERBATIM
-                    #skip this command during reading
+                    # skip this command during reading
                     size = self.unsigned(5)
                     for i in xrange(size):
                         self.skip_unsigned(8)
@@ -294,7 +294,7 @@ class SHNDecoder:
             LPC_sum = 2 ** 5
             for j in xrange(LPC_count):
                 if ((i - j - 1) < 0):
-                    #apply offset to warm-up samples
+                    # apply offset to warm-up samples
                     LPC_sum += (LPC_coeff[j] *
                                 (samples[LPC_count + (i - j - 1)] - offset))
                 else:

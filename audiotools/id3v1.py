@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools import MetaData
 
@@ -23,9 +23,9 @@ from audiotools import MetaData
 class ID3v1Comment(MetaData):
     """a complete ID3v1.1 tag"""
 
-    #All ID3v1 tags are treated as ID3v1.1
-    #because plain ID3v1 tags don't support track number
-    #which means it'll be impossible to "promote" a tag later on.
+    # All ID3v1 tags are treated as ID3v1.1
+    # because plain ID3v1 tags don't support track number
+    # which means it'll be impossible to "promote" a tag later on.
 
     ID3v1_FIELDS = {"track_name": "__track_name__",
                     "artist_name": "__artist_name__",
@@ -126,7 +126,7 @@ class ID3v1Comment(MetaData):
             if (value is None):
                 delattr(self, attr)
             else:
-                #all are text fields
+                # all are text fields
                 encoded = value.encode('ascii', 'replace')
                 if (len(encoded) < self.FIELD_LENGTHS[attr]):
                     self.__dict__[self.ID3v1_FIELDS[attr]] = \
@@ -138,7 +138,7 @@ class ID3v1Comment(MetaData):
                 else:
                     self.__dict__[self.ID3v1_FIELDS[attr]] = encoded
         elif (attr in self.FIELDS):
-            #field not supported by ID3v1Comment, so ignore it
+            # field not supported by ID3v1Comment, so ignore it
             pass
         else:
             self.__dict__[attr] = value
@@ -150,7 +150,7 @@ class ID3v1Comment(MetaData):
             self.__dict__[self.ID3v1_FIELDS[attr]] = \
                 chr(0) * self.FIELD_LENGTHS[attr]
         elif (attr in self.FIELDS):
-            #field not supported by ID3v1Comment, so ignore it
+            # field not supported by ID3v1Comment, so ignore it
             pass
         else:
             del(self.__dict__[attr])
@@ -231,7 +231,7 @@ class ID3v1Comment(MetaData):
         if (metadata is None):
             return None
         elif (isinstance(metadata, ID3v1Comment)):
-            #duplicate all fields as-is
+            # duplicate all fields as-is
             return ID3v1Comment(track_name=metadata.__track_name__,
                                 artist_name=metadata.__artist_name__,
                                 album_name=metadata.__album_name__,
@@ -240,7 +240,7 @@ class ID3v1Comment(MetaData):
                                 track_number=metadata.__track_number__,
                                 genre=metadata.__genre__)
         else:
-            #convert fields using setattr
+            # convert fields using setattr
             id3v1 = ID3v1Comment()
             for attr in ["track_name",
                          "artist_name",
@@ -271,7 +271,7 @@ class ID3v1Comment(MetaData):
                        ("album_name", "__album_name__", u"album"),
                        ("year", "__year__", u"year"),
                        ("comment", "__comment__", u"comment")]:
-            #strip out trailing NULL bytes
+            # strip out trailing NULL bytes
             initial_value = getattr(self, attr).rstrip(chr(0))
 
             fix1 = initial_value.rstrip()
@@ -283,11 +283,11 @@ class ID3v1Comment(MetaData):
                 fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
                                        {"field": name})
 
-            #restore trailing NULL bytes
+            # restore trailing NULL bytes
             fields[init_attr] = (fix2 + chr(0) *
                                  (self.FIELD_LENGTHS[init_attr] - len(fix2)))
 
-        #copy non-text fields as-is
+        # copy non-text fields as-is
         fields["track_number"] = self.__track_number__
         fields["genre"] = self.__genre__
 

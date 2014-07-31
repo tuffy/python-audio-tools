@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 """a module for reusable GUI widgets"""
 
@@ -79,7 +79,7 @@ try:
                     self.focus_callback(self, part)
 
     def get_focus(widget):
-        #something to smooth out the differences between Urwid versions
+        # something to smooth out the differences between Urwid versions
 
         if (hasattr(widget, "get_focus") and callable(widget.get_focus)):
             return widget.get_focus()
@@ -120,31 +120,31 @@ try:
 
             self.__cancelled__ = True
 
-            #ensure label count equals path count
+            # ensure label count equals path count
             assert(len(track_labels) == len(input_filenames))
 
-            #ensure there's at least one set of choices
+            # ensure there's at least one set of choices
             assert(len(metadata_choices) > 0)
 
-            #ensure file path count is equal to metadata track count
+            # ensure file path count is equal to metadata track count
             assert(len(metadata_choices[0]) == len(input_filenames))
 
-            #ensure input filenames are Filename objects
+            # ensure input filenames are Filename objects
             for f in input_filenames:
                 assert(isinstance(f, audiotools.Filename))
 
             from audiotools.text import LAB_CANCEL_BUTTON
 
-            #setup status bars for output messages
+            # setup status bars for output messages
             self.metadata_status = urwid.Text(u"")
             self.options_status = urwid.Text(u"")
 
-            #setup a widget for populating metadata fields
+            # setup a widget for populating metadata fields
             self.metadata = MetaDataFiller(track_labels,
                                            metadata_choices,
                                            self.metadata_status)
 
-            #setup a widget for populating output parameters
+            # setup a widget for populating output parameters
             self.options = OutputOptions(
                 output_dir=output_directory,
                 format_string=format_string,
@@ -153,7 +153,7 @@ try:
                 input_filenames=input_filenames,
                 metadatas=[None for t in input_filenames])
 
-            #finish initialization
+            # finish initialization
             self.wizard = Wizard([self.metadata,
                                   self.options],
                                  urwid.Button(LAB_CANCEL_BUTTON,
@@ -213,10 +213,10 @@ try:
 
             output_metadata is a newly created MetaData object"""
 
-            #Note that output_tracks() creates new MetaData objects
-            #while process_output_options() reuses inputted MetaData objects.
-            #This is because we don't want to modify MetaData objects
-            #in the event they're being used elsewhere.
+            # Note that output_tracks() creates new MetaData objects
+            # while process_output_options() reuses inputted MetaData objects.
+            # This is because we don't want to modify MetaData objects
+            # in the event they're being used elsewhere.
 
             from itertools import izip
 
@@ -259,20 +259,20 @@ try:
             self.input_filenames = input_filenames
             self.__cancelled__ = True
 
-            #ensure there's at least one choice
+            # ensure there's at least one choice
             assert(len(metadata_choices) > 0)
 
-            #ensure input file is a Filename object
+            # ensure input file is a Filename object
             for f in input_filenames:
                 assert(isinstance(f, audiotools.Filename))
 
             from audiotools.text import (LAB_CANCEL_BUTTON,
                                          LAB_OUTPUT_OPTIONS)
 
-            #setup status bar for output messages
+            # setup status bar for output messages
             self.status = urwid.Text(u"")
 
-            #setup a widget for cancel/finish buttons
+            # setup a widget for cancel/finish buttons
             output_buttons = urwid.Filler(
                 urwid.Columns(
                     widget_list=[
@@ -283,13 +283,13 @@ try:
                     dividechars=3,
                     focus_column=1))
 
-            #setup a widget for populating output parameters
+            # setup a widget for populating output parameters
             self.options = SingleOutputOptions(
                 output_filename=output_file,
                 audio_class=output_class,
                 quality=quality)
 
-            #combine metadata and output options into single widget
+            # combine metadata and output options into single widget
             self.metadata = MetaDataFiller(
                 track_labels=[track_label],
                 metadata_choices=[[m] for m in metadata_choices],
@@ -301,7 +301,7 @@ try:
                                             title=LAB_OUTPUT_OPTIONS)),
                  ("fixed", 1, output_buttons)])
 
-            #finish initialization
+            # finish initialization
             urwid.Frame.__init__(self,
                                  body=body,
                                  footer=self.status)
@@ -313,7 +313,7 @@ try:
         def complete(self, button):
             output_filename = self.options.selected_options()[2]
 
-            #ensure output filename isn't same as input filename
+            # ensure output filename isn't same as input filename
             if (output_filename in self.input_filenames):
                 from audiotools.text import ERR_OUTPUT_IS_INPUT
                 self.status.set_text(
@@ -364,13 +364,13 @@ try:
             status is an urwid.Text object
             """
 
-            #there must be at least one choice
+            # there must be at least one choice
             assert(len(metadata_choices) > 0)
 
-            #all choices must have at least 1 track
+            # all choices must have at least 1 track
             assert(min(map(len, metadata_choices)) > 0)
 
-            #and all choices must have the same number of tracks
+            # and all choices must have the same number of tracks
             assert(len(set(map(len, metadata_choices))) == 1)
 
             from audiotools.text import (LAB_SELECT_BEST_MATCH,
@@ -382,7 +382,7 @@ try:
 
             self.status = status
 
-            #setup a MetaDataEditor for each possible match
+            # setup a MetaDataEditor for each possible match
             self.edit_matches = [
                 MetaDataEditor(
                     [(i, label, track) for (i, (track, label)) in
@@ -391,9 +391,9 @@ try:
                 for choice in metadata_choices]
             self.selected_match = self.edit_matches[0]
 
-            #place selector at top only if there's more than one match
+            # place selector at top only if there's more than one match
             if (len(metadata_choices) > 1):
-                #setup radio button for each possible match
+                # setup radio button for each possible match
                 matches = []
                 radios = [urwid.RadioButton(matches,
                                             (choice[0].album_name
@@ -406,7 +406,7 @@ try:
                 for radio in radios:
                     radio._label.set_wrap_mode(urwid.CLIP)
 
-                #put radio buttons in pretty container
+                # put radio buttons in pretty container
                 select_match = urwid.LineBox(urwid.ListBox(radios))
 
                 if (hasattr(select_match, "set_title")):
@@ -488,20 +488,21 @@ try:
             tracks and fields are swapped
             """
 
-            #a list of track IDs in the order they appear
+            # a list of track IDs in the order they appear
             self.track_ids = []
 
-            #a list of (track_id, label) tuples in the order they should appear
+            # a list of (track_id, label) tuples
+            # in the order they should appear
             track_labels = []
 
-            #the order metadata fields should appear
+            # the order metadata fields should appear
             field_labels = [(attr, audiotools.MetaData.FIELD_NAMES[attr])
                             for attr in audiotools.MetaData.FIELD_ORDER]
 
-            #a dict of track_id->TrackMetaData values
+            # a dict of track_id->TrackMetaData values
             self.metadata_edits = {}
 
-            #determine the base metadata all others should be linked against
+            # determine the base metadata all others should be linked against
             base_metadata = {}
             for (track_id, track_label, metadata) in tracks:
                 self.track_ids.append(track_id)
@@ -516,7 +517,7 @@ try:
                             if (len(values) == 1)])),
                 on_change=on_text_change)
 
-            #populate the track_labels and metadata_edits lookup tables
+            # populate the track_labels and metadata_edits lookup tables
             for (track_id, track_label, metadata) in tracks:
                 if (track_id not in self.metadata_edits):
                     track_labels.append((track_id, track_label))
@@ -526,7 +527,7 @@ try:
                         base_metadata=base_metadata,
                         on_change=on_text_change)
                 else:
-                    #no_duplicates via open_files should filter this case
+                    # no_duplicates via open_files should filter this case
                     raise ValueError("same track ID cannot appear twice")
 
             swivel_radios = []
@@ -537,7 +538,7 @@ try:
             field_radios_order = []
             field_radios = {}
 
-            #generate radio buttons for track labels
+            # generate radio buttons for track labels
             for (track_id, track_label) in track_labels:
                 radio = OrderedRadioButton(ordered_group=track_radios_order,
                                            group=swivel_radios,
@@ -574,7 +575,7 @@ try:
 
                 track_radios[track_id] = radio
 
-            #generate radio buttons for metadata labels
+            # generate radio buttons for metadata labels
             for (field_id, field_label) in field_labels:
                 radio = OrderedRadioButton(ordered_group=field_radios_order,
                                            group=swivel_radios,
@@ -619,17 +620,17 @@ try:
                 body=urwid.ListBox([]))
 
             if (len(self.metadata_edits) != 1):
-                #if more than one track, select track_name radio button
+                # if more than one track, select track_name radio button
                 field_radios["track_name"].set_state(True)
             else:
-                #if only one track, select that track's radio button
+                # if only one track, select that track's radio button
                 track_radios[track_labels[0][0]].set_state(True)
 
         def activate_swivel(self, radio_button, selected, swivel):
             if (selected):
                 self.selected_radio = radio_button
 
-                #add new entries according to swivel's values
+                # add new entries according to swivel's values
                 self.set_body(
                     urwid.ListBox(
                         [urwid.Columns([(swivel.left_alignment,
@@ -641,7 +642,7 @@ try:
                          for (left_widget,
                               right_widget) in swivel.rows()]))
 
-                #update header with swivel's values
+                # update header with swivel's values
                 self.set_header(
                     urwid.Columns(
                         [(swivel.left_alignment,
@@ -742,8 +743,8 @@ try:
 
         def swap_link(self, checkbox, linked):
             if (linked):
-                #if nothing else linked in this checkbox group,
-                #set linked text to whatever the last unlinked text as
+                # if nothing else linked in this checkbox group,
+                # set linked text to whatever the last unlinked text as
                 if (set([cb.get_state() for cb in self.checkbox_group
                          if (cb is not checkbox)]) == set([False])):
                     self.linked_widget.set_edit_text(
@@ -751,7 +752,7 @@ try:
                 self.widget_list[1] = self.linked_widget
                 self.set_focus(2)
             else:
-                #set unlinked text to whatever the last linked text was
+                # set unlinked text to whatever the last linked text was
                 self.unlinked_widget.set_edit_text(
                     self.linked_widget.get_edit_text())
                 self.widget_list[1] = self.unlinked_widget
@@ -884,22 +885,22 @@ try:
                                   if (d.startswith(remainder) and
                                       os.path.isdir(os.path.join(base, d)))]
                 if (len(candidate_dirs) == 0):
-                    #no possible matches to tab complete
+                    # no possible matches to tab complete
                     return path
                 elif (len(candidate_dirs) == 1):
-                    #one possible match to tab complete
+                    # one possible match to tab complete
                     return os.path.join(base, candidate_dirs[0]) + os.sep
                 else:
-                    #multiple possible matches to tab complete
-                    #so complete as much as possible
+                    # multiple possible matches to tab complete
+                    # so complete as much as possible
                     return os.path.join(base,
                                         os.path.commonprefix(candidate_dirs))
             except OSError:
-                #unable to read base dir to complete the rest
+                # unable to read base dir to complete the rest
                 return path
         else:
-            #base doesn't exist,
-            #so we don't know how to complete the rest
+            # base doesn't exist,
+            # so we don't know how to complete the rest
             return path
 
     def tab_complete_file(path):
@@ -914,26 +915,26 @@ try:
                 candidates = [f for f in os.listdir(base)
                               if f.startswith(remainder)]
                 if (len(candidates) == 0):
-                    #no possible matches to tab complete
+                    # no possible matches to tab complete
                     return path
                 elif (len(candidates) == 1):
-                    #one possible match to tab complete
+                    # one possible match to tab complete
                     path = os.path.join(base, candidates[0])
                     if (os.path.isdir(path)):
                         return path + os.sep
                     else:
                         return path
                 else:
-                    #multiple possible matches to tab complete
-                    #so complete as much as possible
+                    # multiple possible matches to tab complete
+                    # so complete as much as possible
                     return os.path.join(base,
                                         os.path.commonprefix(candidates))
             except OSError:
-                #unable to read base dir to complete the rest
+                # unable to read base dir to complete the rest
                 return path
         else:
-            #base doesn't exist,
-            #so we don't know how to complete the rest
+            # base doesn't exist,
+            # so we don't know how to complete the rest
             return path
 
     def pop_directory(path):
@@ -1130,7 +1131,7 @@ try:
                                      user_data)
 
         def set_directory(self, directory):
-            #FIXME - allow this to be assigned externally
+            # FIXME - allow this to be assigned externally
             raise NotImplementedError()
 
         def get_directory(self):
@@ -1160,7 +1161,7 @@ try:
             import os.path
 
             if (key == 'tab'):
-                #only tab complete stuff before cursor
+                # only tab complete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
                 new_prefix = tab_complete(
                     os.path.abspath(
@@ -1170,7 +1171,7 @@ try:
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
             elif (key == 'ctrl w'):
-                #only delete stuff before cursor
+                # only delete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
                 new_prefix = pop_directory(
                     os.path.abspath(
@@ -1215,8 +1216,8 @@ try:
             return pop_up
 
         def get_pop_up_parameters(self):
-            #FIXME - make these values dynamic
-            #based on edit_directory's location
+            # FIXME - make these values dynamic
+            # based on edit_directory's location
             return {'left': 0,
                     'top': 1,
                     'overlay_width': 70,
@@ -1441,7 +1442,7 @@ try:
             import os.path
 
             if (key == 'tab'):
-                #only tab complete stuff before cursor
+                # only tab complete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
                 new_prefix = tab_complete_file(
                     os.path.abspath(
@@ -1451,7 +1452,7 @@ try:
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
             elif (key == 'ctrl w'):
-                #only delete stuff before cursor
+                # only delete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
                 new_prefix = pop_directory(
                     os.path.abspath(
@@ -1687,15 +1688,15 @@ try:
             self.selected_class = audio_class
 
             if (len(audio_class.COMPRESSION_MODES) < 2):
-                #one audio quality for selected type
+                # one audio quality for selected type
                 try:
                     quality = audio_class.COMPRESSION_MODES[0]
                 except IndexError:
-                    #this shouldn't happen, but just in case
+                    # this shouldn't happen, but just in case
                     quality = ""
                 self.output_quality.set_items([(u"N/A", quality)], quality)
             else:
-                #two or more audio qualities for selected type
+                # two or more audio qualities for selected type
                 qualities = audio_class.COMPRESSION_MODES
                 if (default_quality is not None):
                     default = [q for q in qualities if
@@ -1725,21 +1726,21 @@ try:
             FS_ENCODING = audiotools.FS_ENCODING
             import os.path
 
-            #get the output directory
+            # get the output directory
             if (output_directory is None):
                 output_directory = self.output_directory.get_directory()
 
-            #get selected audio format
+            # get selected audio format
             audio_class = self.selected_class
 
-            #get current filename format
+            # get current filename format
             if (filename_format is None):
                 filename_format = \
                     self.output_format.get_edit_text().encode('utf-8')
             try:
-                #generate list of Filename objects
-                #from paths, metadatas and format
-                #with selected output directory prepended
+                # generate list of Filename objects
+                # from paths, metadatas and format
+                # with selected output directory prepended
                 self.output_filenames = [
                     audiotools.Filename(
                         os.path.join(output_directory,
@@ -1750,8 +1751,8 @@ try:
                          metadata) in zip(self.input_filenames,
                                           self.metadatas)]
 
-                #check for duplicates in output/input files
-                #(don't care if input files are duplicated)
+                # check for duplicates in output/input files
+                # (don't care if input files are duplicated)
                 input_filenames = frozenset([f for f in self.input_filenames
                                              if f.disk_file()])
                 output_filenames = set([])
@@ -1769,7 +1770,7 @@ try:
                     else:
                         output_filenames.add(path)
 
-                #and populate output files list
+                # and populate output files list
                 for (filename, track) in zip(self.output_filenames,
                                              self.output_tracks):
                     if (filename not in collisions):
@@ -1783,8 +1784,8 @@ try:
                 self.has_errors = False
             except (audiotools.UnsupportedTracknameField,
                     audiotools.InvalidFilenameFormat):
-                #if there's an error calling track_name,
-                #populate files list with an error message
+                # if there's an error calling track_name,
+                # populate files list with an error message
                 if ((self.output_tracks_frame.get_body() is not
                      self.invalid_output_format)):
                     self.output_tracks_frame.set_body(
@@ -1827,8 +1828,8 @@ try:
             | quality         | string    | quality level of output    |
             """
 
-            #FIXME - add support for directory selector
-            #FIXME - add support for field populator
+            # FIXME - add support for directory selector
+            # FIXME - add support for field populator
 
             from audiotools.text import (LAB_OPTIONS_OUTPUT,
                                          LAB_OPTIONS_AUDIO_CLASS,
@@ -1890,15 +1891,15 @@ try:
             self.selected_class = audio_class
 
             if (len(audio_class.COMPRESSION_MODES) < 2):
-                #one audio quality for selected type
+                # one audio quality for selected type
                 try:
                     quality = audio_class.COMPRESSION_MODES[0]
                 except IndexError:
-                    #this shouldn't happen, but just in case
+                    # this shouldn't happen, but just in case
                     quality = ""
                 self.output_quality.set_items([(u"N/A", quality)], quality)
             else:
-                #two or more audio qualities for selected type
+                # two or more audio qualities for selected type
                 qualities = audio_class.COMPRESSION_MODES
                 if (default_quality is not None):
                     default = [q for q in qualities if
@@ -2330,7 +2331,7 @@ try:
 
         def select_track(self, radio_button, new_state, user_data,
                          auto_play=True):
-            #to be implemented by subclasses
+            # to be implemented by subclasses
 
             raise NotImplementedError()
 
@@ -2435,9 +2436,9 @@ try:
             if (self.player.state() == PLAYER_STOPPED):
                 self.player.play()
             else:
-                #there's a race condition here where the player's state
-                #may go from playing to stopped, in which case
-                #this will do nothing and the state will stay stopped
+                # there's a race condition here where the player's state
+                # may go from playing to stopped, in which case
+                # this will do nothing and the state will stay stopped
                 self.player.toggle_play_pause()
             self.update_status()
 
@@ -2572,13 +2573,13 @@ def select_metadata(metadata_choices, msg, use_default=False):
     """queries the user for the best matching metadata to use
     returns a list of MetaData objects for the selected choice"""
 
-    #there must be at least one choice
+    # there must be at least one choice
     assert(len(metadata_choices) > 0)
 
-    #all choices must have at least 1 track
+    # all choices must have at least 1 track
     assert(min(map(len, metadata_choices)) > 0)
 
-    #and all choices must have the same number of tracks
+    # and all choices must have the same number of tracks
     assert(len(set(map(len, metadata_choices))) == 1)
 
     if ((len(metadata_choices) == 1) or use_default):
@@ -2642,18 +2643,18 @@ def process_output_options(metadata_choices,
     may raise OutputFileIsInput
     if an output file is the same as one of the given input_filenames"""
 
-    #there must be at least one choice
+    # there must be at least one choice
     assert(len(metadata_choices) > 0)
 
-    #ensure input filename count is equal to metadata track count
+    # ensure input filename count is equal to metadata track count
     assert(len(metadata_choices[0]) == len(input_filenames))
 
     import os.path
 
     selected_metadata = select_metadata(metadata_choices, msg, use_default)
 
-    #ensure no output paths overwrite input paths
-    #and that all output paths are distinct
+    # ensure no output paths overwrite input paths
+    # and that all output paths are distinct
     __input__ = frozenset([f for f in input_filenames if f.disk_file()])
     __output__ = set([])
     output_filenames = []
@@ -2696,14 +2697,14 @@ class PlayerTTY:
         self.playing_finished = False
 
     def previous_track(self):
-        #implement this in subclass
-        #to call set_metadata() and have the player open the previous track
+        # implement this in subclass
+        # to call set_metadata() and have the player open the previous track
         raise NotImplementedError()
 
     def next_track(self):
-        #implement this in subclass
-        #to call set_metadata() and have the player open the next track
-        #set playing_finished to True when all tracks have been exhausted
+        # implement this in subclass
+        # to call set_metadata() and have the player open the next track
+        # set playing_finished to True when all tracks have been exhausted
         raise NotImplementedError()
 
     def set_metadata(self, track_number,
@@ -2825,10 +2826,10 @@ def xargs_suggestion(args):
 
     import os.path
 
-    #All command-line arguments start with "-"
-    #but not everything that starts with "-" is a command-line argument.
-    #However, since this is just a suggestion,
-    #users can be expected to figure it out.
+    # All command-line arguments start with "-"
+    # but not everything that starts with "-" is a command-line argument.
+    # However, since this is just a suggestion,
+    # users can be expected to figure it out.
 
     return (u"xargs sh -c '%s %s \"%%@\" < /dev/tty'" %
             (os.path.basename(args[0]).decode('utf-8'),

@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 class DVDAudio:
@@ -40,21 +40,21 @@ class DVDAudio:
         self.audio_ts_path = audio_ts_path
         self.cdrom_device = cdrom_device
 
-        #an inventory of AUDIO_TS files converted to uppercase keys
+        # an inventory of AUDIO_TS files converted to uppercase keys
         self.files = dict([(name.upper(),
                             os.path.join(audio_ts_path, name))
                            for name in os.listdir(audio_ts_path)])
 
         titleset_numbers = list(self.__titlesets__())
 
-        #for each titleset, read an ATS_XX_0.IFO file
-        #each titleset contains one or more DVDATitle objects
-        #and each DVDATitle object contains one or more DVDATrack objects
+        # for each titleset, read an ATS_XX_0.IFO file
+        # each titleset contains one or more DVDATitle objects
+        # and each DVDATitle object contains one or more DVDATrack objects
         self.titlesets = [self.__titles__(titleset) for titleset in
                           titleset_numbers]
 
-        #for each titleset, calculate the lengths of the corresponding AOBs
-        #in terms of 2048 byte sectors
+        # for each titleset, calculate the lengths of the corresponding AOBs
+        # in terms of 2048 byte sectors
         self.aob_sectors = []
         for titleset in titleset_numbers:
             aob_re = re.compile("ATS_%2.2d_\\d\\.AOB" % (titleset))
@@ -108,8 +108,8 @@ class DVDAudio:
                 raise InvalidDVDA(ERR_DVDA_INVALID_AUDIO_TS)
 
             for titleset in xrange(1, audio_titlesets + 1):
-                #ensure there are IFO files and AOBs
-                #for each valid titleset
+                # ensure there are IFO files and AOBs
+                # for each valid titleset
                 if (("ATS_%2.2d_0.IFO" % (titleset) in
                      self.files.keys()) and
                     ("ATS_%2.2d_1.AOB" % (titleset) in
@@ -121,7 +121,7 @@ class DVDAudio:
     def __titles__(self, titleset):
         """returns a list of DVDATitle objects for the given titleset"""
 
-        #this requires bouncing all over the ATS_XX_0.IFO file
+        # this requires bouncing all over the ATS_XX_0.IFO file
 
         import os
         from audiotools.bitstream import BitstreamReader
@@ -132,14 +132,14 @@ class DVDAudio:
             from audiotools.text import ERR_DVDA_IOERROR_ATS
             raise InvalidDVDA(ERR_DVDA_IOERROR_ATS % (titleset))
         try:
-            #ensure the file's identifier is correct
-            #which is all we care about from the first sector
+            # ensure the file's identifier is correct
+            # which is all we care about from the first sector
             if (f.read(12) != 'DVDAUDIO-ATS'):
                 from audiotools.text import ERR_DVDA_INVALID_ATS
                 raise InvalidDVDA(ERR_DVDA_INVALID_ATS % (titleset))
 
-            #seek to the second sector and read the title count
-            #and list of title table offset values
+            # seek to the second sector and read the title count
+            # and list of title table offset values
             f.seek(DVDAudio.SECTOR_SIZE, os.SEEK_SET)
             ats_reader = BitstreamReader(f, 0)
             (title_count, last_byte_address) = ats_reader.parse("16u 16p 32u")
@@ -149,8 +149,8 @@ class DVDAudio:
             titles = []
 
             for (title_number, title_offset) in enumerate(title_offsets):
-                #for each title, seek to its title table
-                #and read the title's values and its track timestamps
+                # for each title, seek to its title table
+                # and read the title's values and its track timestamps
                 f.seek(DVDAudio.SECTOR_SIZE + title_offset, os.SEEK_SET)
                 ats_reader = BitstreamReader(f, 0)
                 (tracks,
@@ -161,8 +161,8 @@ class DVDAudio:
                 timestamps = [ats_reader.parse("32p 8u 8p 32u 32u 48p")
                               for track in xrange(tracks)]
 
-                #seek to the title's sector pointers table
-                #and read the first and last sector values for title's tracks
+                # seek to the title's sector pointers table
+                # and read the first and last sector values for title's tracks
                 f.seek(DVDAudio.SECTOR_SIZE +
                        title_offset +
                        sector_pointers_table,
@@ -178,17 +178,17 @@ class DVDAudio:
                 else:
                     sector_pointers = [None] + sector_pointers
 
-                #build a preliminary DVDATitle object
-                #which we'll populate with track data
+                # build a preliminary DVDATitle object
+                # which we'll populate with track data
                 dvda_title = DVDATitle(dvdaudio=self,
                                        titleset=titleset,
                                        title=title_number + 1,
                                        pts_length=track_length,
                                        tracks=[])
 
-                #for each track, determine its first and last sector
-                #based on the sector pointers between the track's
-                #initial index and the next track's initial index
+                # for each track, determine its first and last sector
+                # based on the sector pointers between the track's
+                # initial index and the next track's initial index
                 for (track_number,
                      (timestamp,
                       next_timestamp)) in enumerate(zip(timestamps,
@@ -207,8 +207,8 @@ class DVDAudio:
                             last_sector=sector_pointers[
                                 next_timestamp_index - 1][2]))
 
-                #for the last track, its sector pointers
-                #simply consume what remains on the list
+                # for the last track, its sector pointers
+                # simply consume what remains on the list
                 (index_number, first_pts, pts_length) = timestamps[-1]
                 dvda_title.tracks.append(
                     DVDATrack(
@@ -221,7 +221,7 @@ class DVDAudio:
                         first_sector=sector_pointers[index_number][1],
                         last_sector=sector_pointers[-1][2]))
 
-                #fill in the title's info such as sample_rate, channels, etc.
+                # fill in the title's info such as sample_rate, channels, etc.
                 dvda_title.__parse_info__()
 
                 titles.append(dvda_title)
@@ -267,14 +267,14 @@ class DVDATitle:
         if (len(self.tracks) == 0):
             return
 
-        #Why is this post-init processing necessary?
-        #DVDATrack references DVDATitle
-        #so a DVDATitle must exist when DVDATrack is initialized.
-        #But because reading this info requires knowing the sector
-        #of the first track, we wind up with a circular dependency.
-        #Doing a "post-process" pass fixes that problem.
+        # Why is this post-init processing necessary?
+        # DVDATrack references DVDATitle
+        # so a DVDATitle must exist when DVDATrack is initialized.
+        # But because reading this info requires knowing the sector
+        # of the first track, we wind up with a circular dependency.
+        # Doing a "post-process" pass fixes that problem.
 
-        #find the AOB file of the title's first track
+        # find the AOB file of the title's first track
         track_sector = self[0].first_sector
         titleset = re.compile("ATS_%2.2d_\\d\\.AOB" % (self.titleset))
         for aob_path in sorted([self.dvdaudio.files[key] for key in
@@ -289,14 +289,14 @@ class DVDATitle:
             from audiotools.text import ERR_DVDA_NO_TRACK_SECTOR
             raise ValueError(ERR_DVDA_NO_TRACK_SECTOR)
 
-        #open that AOB file and seek to that track's first sector
+        # open that AOB file and seek to that track's first sector
         aob_file = open(aob_path, 'rb')
         try:
             aob_file.seek(track_sector * DVDAudio.SECTOR_SIZE)
             aob_reader = BitstreamReader(aob_file, 0)
 
-            #read and validate the pack header
-            #(there's one pack header per sector, at the sector's start)
+            # read and validate the pack header
+            # (there's one pack header per sector, at the sector's start)
             (sync_bytes,
              marker1,
              current_pts_high,
@@ -323,7 +323,7 @@ class DVDATitle:
                           (current_pts_mid << 15) |
                           current_pts_low)
 
-            #skip packets until one with a stream ID of 0xBD is found
+            # skip packets until one with a stream ID of 0xBD is found
             (start_code,
              stream_id,
              packet_length) = aob_reader.parse("24u 8u 16u")
@@ -339,12 +339,12 @@ class DVDATitle:
                     from audiotools.text import ERR_DVDA_INVALID_AOB_START
                     raise InvalidDVDA(ERR_DVDA_INVALID_AOB_START)
 
-            #parse the PCM/MLP header in the packet data
+            # parse the PCM/MLP header in the packet data
             (pad1_size,) = aob_reader.parse("16p 8u")
             aob_reader.skip_bytes(pad1_size)
             (stream_id, crc) = aob_reader.parse("8u 8u 8p")
             if (stream_id == 0xA0):  # PCM
-                #read a PCM reader
+                # read a PCM reader
                 (pad2_size,
                  first_audio_frame,
                  padding2,
@@ -357,7 +357,7 @@ class DVDATitle:
                     "8u 16u 8u 4u 4u 4u 4u 8u 8u")
             else:                    # MLP
                 aob_reader.skip_bytes(aob_reader.read(8))  # skip pad2
-                #read a total frame size + MLP major sync header
+                # read a total frame size + MLP major sync header
                 (total_frame_size,
                  sync_words,
                  stream_type,
@@ -370,7 +370,7 @@ class DVDATitle:
                  unknown2) = aob_reader.parse(
                     "4p 12u 16p 24u 8u 4u 4u 4u 4u 11u 5u 48u")
 
-            #return the values indicated by the header
+            # return the values indicated by the header
             self.sample_rate = DVDATrack.SAMPLE_RATE[group1_sample_rate]
             self.channels = DVDATrack.CHANNELS[channel_assignment]
             self.channel_mask = DVDATrack.CHANNEL_MASK[channel_assignment]
@@ -530,20 +530,20 @@ class DVDATrack:
 class Rangeset:
     """an optimized combination of range() and set()"""
 
-    #The purpose of this class is for finding the subset of
-    #two Rangesets, such as with:
+    # The purpose of this class is for finding the subset of
+    # two Rangesets, such as with:
     #
     # >>> Rangeset(1, 10) & Rangeset(5, 15)
     # Rangeset(5, 10)
     #
-    #which returns another Rangeset object.
-    #This is preferable to performing:
+    # which returns another Rangeset object.
+    # This is preferable to performing:
     #
     # >>> set(range(1, 10)) & set(range(5, 15))
     # set([8, 9, 5, 6, 7])
     #
-    #which allocates lots of unnecessary values
-    #when all we're interested in is the min and max.
+    # which allocates lots of unnecessary values
+    # when all we're interested in is the min and max.
 
     def __init__(self, start, end):
         self.start = start

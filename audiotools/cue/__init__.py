@@ -1,25 +1,25 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 """the cuesheet module"""
 
-from audiotools import Sheet,SheetTrack,SheetIndex,SheetException
+from audiotools import Sheet, SheetTrack, SheetIndex, SheetException
 
 
 class Cuesheet(Sheet):
@@ -29,7 +29,7 @@ class Cuesheet(Sheet):
                  performer=None,
                  songwriter=None,
                  cdtextfile=None):
-        #FIXME - sanity check files
+        # FIXME - sanity check files
         self.__files__ = files
         self.__catalog__ = catalog
         self.__title__ = title
@@ -39,7 +39,8 @@ class Cuesheet(Sheet):
 
     def __repr__(self):
         return "Cuesheet(%s)" % \
-            ", ".join(["%s=%s" % (attr, repr(getattr(self, "__" + attr + "__")))
+            ", ".join(["%s=%s" % (attr,
+                                  repr(getattr(self, "__" + attr + "__")))
                        for attr in ["files",
                                     "catalog",
                                     "title",
@@ -70,18 +71,18 @@ class Cuesheet(Sheet):
 
         metadata = sheet.get_metadata()
 
-        args = {"files":[File(filename=(track_filename if
-                                        filename is None else
-                                        filename),
-                              file_type="WAVE",
-                              tracks=map(Track.converted, tracks))
+        args = {"files": [File(filename=(track_filename if
+                                         filename is None else
+                                         filename),
+                               file_type="WAVE",
+                               tracks=map(Track.converted, tracks))
                           for (track_filename, tracks) in group_tracks(sheet)]}
 
         if (metadata is not None):
-           args["catalog"] = encode_string(metadata.catalog)
-           args["title"] = encode_string(metadata.album_name)
-           args["performer"] = encode_string(metadata.performer_name)
-           args["songwriter"] = encode_string(metadata.artist_name)
+            args["catalog"] = encode_string(metadata.catalog)
+            args["title"] = encode_string(metadata.album_name)
+            args["performer"] = encode_string(metadata.performer_name)
+            args["songwriter"] = encode_string(metadata.artist_name)
 
         return cls(**args)
 
@@ -124,15 +125,20 @@ class Cuesheet(Sheet):
 
         items = []
         if (self.__catalog__ is not None):
-            items.append("CATALOG %s" % (format_string(self.__catalog__)))
+            items.append(
+                "CATALOG %s" % (format_string(self.__catalog__)))
         if (self.__title__ is not None):
-            items.append("TITLE %s" % (format_string(self.__title__)))
+            items.append(
+                "TITLE %s" % (format_string(self.__title__)))
         if (self.__performer__ is not None):
-            items.append("PERFORMER %s" % (format_string(self.__performer__)))
+            items.append(
+                "PERFORMER %s" % (format_string(self.__performer__)))
         if (self.__songwriter__ is not None):
-            items.append("SONGWRITER %s" % (format_string(self.__songwriter__)))
+            items.append(
+                "SONGWRITER %s" % (format_string(self.__songwriter__)))
         if (self.__cdtextfile__ is not None):
-            items.append("CDTEXTFILE %s" % (format_string(self.__cdtextfile__)))
+            items.append(
+                "CDTEXTFILE %s" % (format_string(self.__cdtextfile__)))
 
         if (len(items) > 0):
             return ("\r\n".join(items) +
@@ -159,7 +165,8 @@ class File:
 
     def __repr__(self):
         return "File(%s)" % \
-            ", ".join(["%s=%s" % (attr, repr(getattr(self, "__" + attr + "__")))
+            ", ".join(["%s=%s" % (attr,
+                                  repr(getattr(self, "__" + attr + "__")))
                        for attr in ["filename", "file_type", "tracks"]])
 
     def filename(self):
@@ -199,7 +206,8 @@ class Track(SheetTrack):
 
     def __repr__(self):
         return "Track(%s)" % \
-            ", ".join(["%s=%s" % (attr, repr(getattr(self, "__" + attr + "__")))
+            ", ".join(["%s=%s" % (attr,
+                                  repr(getattr(self, "__" + attr + "__")))
                        for attr in ["number",
                                     "track_type",
                                     "indexes",
@@ -217,10 +225,10 @@ class Track(SheetTrack):
 
         metadata = sheettrack.get_metadata()
 
-        args = {"number":sheettrack.number(),
-                "track_type":("AUDIO" if sheettrack.is_audio() else
-                              "MODE1/2352"),
-                "indexes":[Index.converted(i) for i in sheettrack]}
+        args = {"number": sheettrack.number(),
+                "track_type": ("AUDIO" if sheettrack.is_audio() else
+                               "MODE1/2352"),
+                "indexes": [Index.converted(i) for i in sheettrack]}
 
         if (metadata is not None):
             args["isrc"] = encode_string(metadata.ISRC)
@@ -374,9 +382,10 @@ def format_timestamp(t):
                                   t // 75 % 60,
                                   t % 75)
 
+
 def decode_string(s):
     if (s is not None):
-        #FIXME - make a best guess at text encoding?
+        # FIXME - make a best guess at text encoding?
         return s.decode("ascii", "replace")
     else:
         return None
@@ -384,7 +393,7 @@ def decode_string(s):
 
 def encode_string(u):
     if (u is not None):
-        #FIXME - make a best guess at text encoding?
+        # FIXME - make a best guess at text encoding?
         return u.encode("ascii", "replace")
     else:
         return None

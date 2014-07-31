@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamWriter
 from audiotools.bitstream import BitstreamRecorder
@@ -23,7 +23,7 @@ from audiotools.bitstream import format_size
 from audiotools import BufferedPCMReader
 from hashlib import md5
 
-#sub block IDs
+# sub block IDs
 WV_WAVE_HEADER = 0x1
 WV_WAVE_FOOTER = 0x2
 WV_TERMS = 0x2
@@ -61,7 +61,7 @@ def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
 
     total_size += 4 * 2  # 'fmt ' + size
     if ((pcmreader.channels <= 2) and (pcmreader.bits_per_sample <= 16)):
-        #classic fmt chunk
+        # classic fmt chunk
         fmt = "16u 16u 32u 32u 16u 16u"
         fmt_fields = (1,   # compression code
                       pcmreader.channels,
@@ -71,7 +71,7 @@ def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
                       pcmreader.bits_per_sample)
 
     else:
-        #extended fmt chunk
+        # extended fmt chunk
         fmt = "16u 16u 32u 32u 16u 16u" + "16u 16u 32u 16b"
         fmt_fields = (0xFFFE,   # compression code
                       pcmreader.channels,
@@ -111,7 +111,7 @@ class CorrelationParameters:
         samples[c][s] is sample "s" for channel "c"
         """
 
-        #FIXME - sanity check these
+        # FIXME - sanity check these
 
         self.term = term
         self.delta = delta
@@ -292,25 +292,25 @@ def block_parameters(channel_count, channel_mask, correlation_passes):
     elif (channel_count == 2):
         return [EncodingParameters(2, correlation_passes)]
     elif ((channel_count == 3) and (channel_mask == 0x7)):
-        #front left, front right, front center
+        # front left, front right, front center
         return [EncodingParameters(2, correlation_passes),
                 EncodingParameters(1, correlation_passes)]
     elif ((channel_count == 4) and (channel_mask == 0x33)):
-        #front left, front right, back left, back right
+        # front left, front right, back left, back right
         return [EncodingParameters(2, correlation_passes),
                 EncodingParameters(2, correlation_passes)]
     elif ((channel_count == 4) and (channel_mask == 0x107)):
-        #front left, front right, front center, back center
+        # front left, front right, front center, back center
         return [EncodingParameters(2, correlation_passes),
                 EncodingParameters(1, correlation_passes),
                 EncodingParameters(1, correlation_passes)]
     elif ((channel_count == 5) and (channel_mask == 0x37)):
-        #front left, front right, front center, back left, back right
+        # front left, front right, front center, back left, back right
         return [EncodingParameters(2, correlation_passes),
                 EncodingParameters(1, correlation_passes),
                 EncodingParameters(2, correlation_passes)]
     elif ((channel_count == 6) and (channel_mask == 0x3F)):
-        #front left, front right, front center, LFE, back left, back right
+        # front left, front right, front center, LFE, back left, back right
         return [EncodingParameters(2, correlation_passes),
                 EncodingParameters(1, correlation_passes),
                 EncodingParameters(1, correlation_passes),
@@ -342,7 +342,7 @@ def encode_wavpack(filename,
 
     block_index = 0
 
-    #walk through PCM reader's FrameLists
+    # walk through PCM reader's FrameLists
     frame = pcmreader.read(block_size)
     while (len(frame) > 0):
         context.total_frames += frame.frames
@@ -376,7 +376,7 @@ def encode_wavpack(filename,
         block_index += frame.frames
         frame = pcmreader.read(block_size)
 
-    #write MD5 sum and optional Wave footer in final block
+    # write MD5 sum and optional Wave footer in final block
     sub_blocks = BitstreamRecorder(1)
     sub_block = BitstreamRecorder(1)
 
@@ -384,7 +384,7 @@ def encode_wavpack(filename,
     sub_block.write_bytes(context.md5sum.digest())
     write_sub_block(sub_blocks, WV_MD5, 1, sub_block)
 
-    #write Wave footer in final block, if present
+    # write Wave footer in final block, if present
     if (context.wave_footer is not None):
         sub_block.reset()
         sub_block.write_bytes(context.wave_footer)
@@ -411,7 +411,7 @@ def encode_wavpack(filename,
         0xFFFFFFFF)
     sub_blocks.copy(writer)
 
-    #update Wave header's "data" chunk size, if generated
+    # update Wave header's "data" chunk size, if generated
     if (context.wave_header is None):
         output_file.seek(32 + 2)
         if (context.wave_footer is None):
@@ -421,7 +421,7 @@ def encode_wavpack(filename,
             write_wave_header(writer, context.pcmreader,
                               context.total_frames, len(context.wave_footer))
 
-    #go back and populate block headers with total samples
+    # go back and populate block headers with total samples
     for block_offset in context.block_offsets:
         output_file.seek(block_offset + 12, 0)
         writer.write(32, block_index)
@@ -451,61 +451,61 @@ def write_block(writer,
     assert((len(channels) == 1) or (len(channels) == 2))
 
     if ((len(channels) == 1) or (channels[0] == channels[1])):
-        #1 channel block or equivalent
+        # 1 channel block or equivalent
         if (len(channels) == 1):
             false_stereo = 0
         else:
             false_stereo = 1
 
-        #calculate maximum magnitude of channel_0
+        # calculate maximum magnitude of channel_0
         magnitude = max(map(bits, channels[0]))
 
-        #determine wasted bits
+        # determine wasted bits
         wasted = min(map(wasted_bps, channels[0]))
         if (wasted == INFINITY):
-            #all samples are 0
+            # all samples are 0
             wasted = 0
 
-        #if wasted bits, remove them from channel_0
+        # if wasted bits, remove them from channel_0
         if ((wasted > 0) and (wasted != INFINITY)):
             shifted = [[s >> wasted for s in channels[0]]]
         else:
             shifted = [channels[0]]
 
-        #calculate CRC of shifted_0
+        # calculate CRC of shifted_0
         crc = calculate_crc(shifted)
     else:
-        #2 channel block
+        # 2 channel block
         false_stereo = 0
 
-        #calculate maximum magnitude of channel_0/channel_1
+        # calculate maximum magnitude of channel_0/channel_1
         magnitude = max(max(map(bits, channels[0])),
                         max(map(bits, channels[1])))
 
-        #determine wasted bits
+        # determine wasted bits
         wasted = min(min(map(wasted_bps, channels[0])),
                      min(map(wasted_bps, channels[1])))
         if (wasted == INFINITY):
-            #all samples are 0
+            # all samples are 0
             wasted = 0
 
-        #if wasted bits, remove them from channel_0/channel_1
+        # if wasted bits, remove them from channel_0/channel_1
         if (wasted > 0):
             shifted = [[s >> wasted for s in channels[0]],
                        [s >> wasted for s in channels[1]]]
         else:
             shifted = channels
 
-        #calculate CRC of shifted_0/shifted_1
+        # calculate CRC of shifted_0/shifted_1
         crc = calculate_crc(shifted)
 
-        #joint stereo conversion of shifted_0/shifted_1 to mid/side channels
+        # joint stereo conversion of shifted_0/shifted_1 to mid/side channels
         mid_side = joint_stereo(shifted[0], shifted[1])
 
     sub_blocks = BitstreamRecorder(1)
     sub_block = BitstreamRecorder(1)
 
-    #if first block in file, write Wave header
+    # if first block in file, write Wave header
     if (not context.first_block_written):
         sub_block.reset()
         if (context.wave_header is None):
@@ -519,7 +519,7 @@ def write_block(writer,
         write_sub_block(sub_blocks, WV_WAVE_HEADER, 1, sub_block)
         context.first_block_written = True
 
-    #if correlation passes, write three sub blocks of pass data
+    # if correlation passes, write three sub blocks of pass data
     if (parameters.correlation_passes > 0):
         sub_block.reset()
         write_correlation_terms(
@@ -547,20 +547,20 @@ def write_block(writer,
             2 if ((len(channels) == 2) and (not false_stereo)) else 1)
         write_sub_block(sub_blocks, WV_SAMPLES, 0, sub_block)
 
-    #if wasted bits, write extended integers sub block
+    # if wasted bits, write extended integers sub block
     if (wasted > 0):
         sub_block.reset()
         write_extended_integers(sub_block, 0, wasted, 0, 0)
         write_sub_block(sub_blocks, WV_INT32_INFO, 0, sub_block)
 
-    #if channel count > 2, write channel info sub block
+    # if channel count > 2, write channel info sub block
     if (context.pcmreader.channels > 2):
         sub_block.reset()
         sub_block.write(8, context.pcmreader.channels)
         sub_block.write(32, context.pcmreader.channel_mask)
         write_sub_block(sub_blocks, WV_CHANNEL_INFO, 0, sub_block)
 
-    #if nonstandard sample rate, write sample rate sub block
+    # if nonstandard sample rate, write sample rate sub block
     if (context.pcmreader.sample_rate not in
         (6000, 8000, 9600, 11025, 12000, 16000, 22050, 24000,
          32000, 44100, 48000, 64000, 88200, 96000, 192000)):
@@ -569,9 +569,9 @@ def write_block(writer,
         write_sub_block(sub_blocks, WV_SAMPLE_RATE, 1, sub_block)
 
     if ((len(channels) == 1) or (false_stereo)):
-        #1 channel block
+        # 1 channel block
 
-        #correlate shifted_0 with terms/deltas/weights/samples
+        # correlate shifted_0 with terms/deltas/weights/samples
         if (parameters.correlation_passes > 0):
             assert(len(shifted) == 1)
             correlated = correlate_channels(
@@ -581,9 +581,9 @@ def write_block(writer,
         else:
             correlated = shifted
     else:
-        #2 channel block
+        # 2 channel block
 
-        #correlate shifted_0/shifted_1 with terms/deltas/weights/samples
+        # correlate shifted_0/shifted_1 with terms/deltas/weights/samples
         if (parameters.correlation_passes > 0):
             assert(len(mid_side) == 2)
             correlated = correlate_channels(
@@ -593,19 +593,19 @@ def write_block(writer,
         else:
             correlated = mid_side
 
-    #write entropy variables sub block
+    # write entropy variables sub block
     sub_block.reset()
     write_entropy_variables(sub_block, correlated,
                             parameters.entropy_variables)
     write_sub_block(sub_blocks, WV_ENTROPY, 0, sub_block)
 
-    #write bitstream sub block
+    # write bitstream sub block
     sub_block.reset()
     write_bitstream(sub_block, correlated,
                     parameters.entropy_variables)
     write_sub_block(sub_blocks, WV_BITSTREAM, 0, sub_block)
 
-    #write block header with size of all sub blocks
+    # write block header with size of all sub blocks
     write_block_header(
         writer,
         sub_blocks.bytes(),
@@ -626,10 +626,10 @@ def write_block(writer,
         false_stereo,
         crc)
 
-    #write sub block data to stream
+    # write sub block data to stream
     sub_blocks.copy(writer)
 
-    #round-trip entropy variables
+    # round-trip entropy variables
     parameters.entropy_variables = [
         [wv_exp2(wv_log2(p)) for p in parameters.entropy_variables[0]],
         [wv_exp2(wv_log2(p)) for p in parameters.entropy_variables[1]]]
@@ -1117,7 +1117,7 @@ def correlation_pass_2ch(uncorrelated_samples,
                 weights[0] = max(min(weights[0], 1024), -1024)
                 weights[1] = max(min(weights[1], 1024), -1024)
 
-        #FIXME - use proper end-of-stream correlation samples
+        # FIXME - use proper end-of-stream correlation samples
         return (correlated, weights, correlation_samples)
     else:
         raise ValueError("unsupported term")
@@ -1168,7 +1168,7 @@ class Residual:
         """given a residual integer and list of three entropies
         returns a Residual object and updates the entropies"""
 
-        #figure out unsigned from signed
+        # figure out unsigned from signed
         if (residual >= 0):
             unsigned = residual
             sign = 0
@@ -1178,7 +1178,7 @@ class Residual:
 
         medians = [e // 2 ** 4 + 1 for e in entropy]
 
-        #figure out m, offset, add and update channel's entropies
+        # figure out m, offset, add and update channel's entropies
         if (unsigned < medians[0]):
             m = 0
             offset = unsigned
@@ -1206,7 +1206,7 @@ class Residual:
             entropy[1] += ((entropy[1] + 64) // 64) * 5
             entropy[2] += ((entropy[2] + 32) // 32) * 5
 
-        #zeroes will be populated later
+        # zeroes will be populated later
         return cls(zeroes=None, m=m, offset=offset, add=add, sign=sign)
 
     def flush(self, writer, u_i_2, m_i):
@@ -1219,39 +1219,39 @@ class Residual:
             write_egc(writer, self.zeroes)
 
         if (self.m is not None):
-            #calculate unary_{i - 1} based on m_{i}
+            # calculate unary_{i - 1} based on m_{i}
             if ((self.m > 0) and (m_i > 0)):
-                #positive m to positive m
+                # positive m to positive m
                 if ((u_i_2 is None) or (u_i_2 % 2 == 0)):
                     u_i_1 = (self.m * 2) + 1
                 else:
-                    #passing 1 from previous u
+                    # passing 1 from previous u
                     u_i_1 = (self.m * 2) - 1
             elif ((self.m == 0) and (m_i > 0)):
-                #zero m to positive m
+                # zero m to positive m
                 if ((u_i_2 is None) or (u_i_2 % 2 == 1)):
                     u_i_1 = 1
                 else:
-                    #passing 0 from previous u
+                    # passing 0 from previous u
                     u_i_1 = None
             elif ((self.m > 0) and (m_i == 0)):
-                #positive m to zero m
+                # positive m to zero m
                 if ((u_i_2 is None) or (u_i_2 % 2 == 0)):
                     u_i_1 = self.m * 2
                 else:
-                    #passing 1 from previous u
+                    # passing 1 from previous u
                     u_i_1 = (self.m - 1) * 2
             elif ((self.m == 0) and (m_i == 0)):
-                #zero m to zero m
+                # zero m to zero m
                 if ((u_i_2 is None) or (u_i_2 % 2 == 1)):
                     u_i_1 = 0
                 else:
-                    #passing 0 from previous u
+                    # passing 0 from previous u
                     u_i_1 = None
             else:
                 raise ValueError("invalid m")
 
-            #write residual_{i - 1} to disk based on unary_{i - 1}
+            # write residual_{i - 1} to disk based on unary_{i - 1}
             if (u_i_1 is not None):
                 if (u_i_1 < 16):
                     writer.unary(0, u_i_1)
@@ -1276,10 +1276,10 @@ class Residual:
 
 
 def write_bitstream(writer, channels, entropies):
-    #residual_{-1}
+    # residual_{-1}
     r_i_1 = Residual(zeroes=None, m=None, offset=None, add=None, sign=None)
 
-    #u_{-2}
+    # u_{-2}
     u_i_2 = None
 
     i = 0
@@ -1290,17 +1290,17 @@ def write_bitstream(writer, channels, entropies):
         if (((entropies[0][0] < 2) and (entropies[1][0] < 2) and
              unary_undefined(u_i_2, r_i_1.m))):
             if ((r_i_1.zeroes is not None) and (r_i_1.m is None)):
-                #in a block of zeroes
+                # in a block of zeroes
                 if (r == 0):
-                    #continue block of zeroes
+                    # continue block of zeroes
                     r_i_1.zeroes += 1
                 else:
-                    #end block of zeroes
+                    # end block of zeroes
                     r_i = Residual.encode(r, entropies[i % len(channels)])
                     r_i.zeroes = r_i_1.zeroes
                     r_i_1 = r_i
             else:
-                #start a new block of zeroes
+                # start a new block of zeroes
                 if (r == 0):
                     r_i = Residual(zeroes=1,
                                    m=None, offset=None, add=None, sign=None)
@@ -1309,13 +1309,13 @@ def write_bitstream(writer, channels, entropies):
                     entropies[1][0] = entropies[1][1] = entropies[1][2] = 0
                     r_i_1 = r_i
                 else:
-                    #false alarm block of zeroes
+                    # false alarm block of zeroes
                     r_i = Residual.encode(r, entropies[i % len(channels)])
                     r_i.zeroes = 0
                     u_i_2 = r_i_1.flush(writer, u_i_2, r_i.m)
                     r_i_1 = r_i
         else:
-            #encode regular residual
+            # encode regular residual
             r_i = Residual.encode(r, entropies[i % len(channels)])
             r_i.zeroes = None
             u_i_2 = r_i_1.flush(writer, u_i_2, r_i.m)
@@ -1323,7 +1323,7 @@ def write_bitstream(writer, channels, entropies):
 
         i += 1
 
-    #flush final residual
+    # flush final residual
     u_i_2 = r_i_1.flush(writer, u_i_2, 0)
 
 

@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import audiotools
 import cStringIO
@@ -24,9 +24,9 @@ import os
 from hashlib import md5
 from audiotools.decoders import Sine_Mono, Sine_Stereo, Sine_Simple
 
-#these are test stream generators using stream formulas
-#taken from the FLAC reference encoder
-#but converted to PCMReaders for more general use
+# these are test stream generators using stream formulas
+# taken from the FLAC reference encoder
+# but converted to PCMReaders for more general use
 
 
 class FrameListReader:
@@ -129,7 +129,7 @@ class Generate03(ShortStream):
 class Generate04(ShortStream):
     def __init__(self, sample_rate):
         ShortStream.__init__(self, [-25, 500, 0, 400, 25, 300, 50, 200,
-                                     100, 100],
+                                    100, 100],
                              sample_rate, 2, 16)
 
 
@@ -261,7 +261,7 @@ class Sine24_Mono(Sine8_Mono):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2):
         Sine_Mono.__init__(self, 24, pcm_frames, sample_rate,
-                            f1, a1, f2, a2)
+                           f1, a1, f2, a2)
         self.pcm_frames = pcm_frames
         self.f1 = f1
         self.a1 = a1
@@ -447,7 +447,7 @@ PATTERN07 = [1, -1, -1, 1, -1]
 
 
 def fsd8(pattern, reps):
-    #FIXME - not quite accurate
+    # FIXME - not quite accurate
     values = {1: 127, -1: -128}
     return FrameListReader([values[p] for p in pattern] * reps,
                            44100, 1, 8)

@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 from audiotools._accuraterip import Checksum
@@ -68,8 +68,9 @@ class __Checksum__:
         elif (framelist.bits_per_sample != 16):
             raise ValueError("FrameList must have 16 bits-per-sample")
 
-        if ((len(self.__values__) + framelist.frames) >
-            (self.__total_pcm_frames__ + self.__pcm_frame_range__ - 1)):
+        if ((len(self.__values__) +
+             framelist.frames) > (self.__total_pcm_frames__ +
+                                  self.__pcm_frame_range__ - 1)):
             raise ValueError("too many samples for checksum")
 
         self.__values__.extend(
@@ -77,21 +78,22 @@ class __Checksum__:
                                             framelist.channel(1))])
 
     def checksums_v1(self):
-        if (len(self.__values__) <
-            (self.__total_pcm_frames__ + self.__pcm_frame_range__ - 1)):
+        if (len(self.__values__) < (self.__total_pcm_frames__ +
+                                    self.__pcm_frame_range__ - 1)):
             raise ValueError("insufficient samples for checksum")
 
         return [sum([(v * i) if
                      ((i >= self.__start_offset__) and
                       (i <= self.__end_offset__)) else 0
                      for (i, v) in
-                     enumerate(self.__values__[r:r + self.__total_pcm_frames__],
+                     enumerate(self.__values__[r:
+                                               r + self.__total_pcm_frames__],
                                1)]) & 0xFFFFFFFF
                 for r in xrange(self.__pcm_frame_range__)]
 
     def checksums_v2(self):
-        if (len(self.__values__) <
-            (self.__total_pcm_frames__ + self.__pcm_frame_range__ - 1)):
+        if (len(self.__values__) < (self.__total_pcm_frames__ +
+                                    self.__pcm_frame_range__ - 1)):
             raise ValueError("insufficient samples for checksum")
 
         def combine(x):
@@ -101,7 +103,8 @@ class __Checksum__:
                      ((i >= self.__start_offset__) and
                       (i <= self.__end_offset__)) else 0
                      for (i, v) in
-                     enumerate(self.__values__[r:r + self.__total_pcm_frames__],
+                     enumerate(self.__values__[r:
+                                               r + self.__total_pcm_frames__],
                                1)]) & 0xFFFFFFFF
                 for r in xrange(self.__pcm_frame_range__)]
 
@@ -120,7 +123,7 @@ if no matches are found, confidence is None and offset is 0
     matches = dict([(crc, confidence) for (confidence, crc, crc2) in
                     ar_matches])  # all crcs have difference confidence
 
-    best_match = None  #a (crc, confidence, offset) tuple, or None
+    best_match = None  # a (crc, confidence, offset) tuple, or None
 
     for (offset, crc) in enumerate(checksums, initial_offset):
         if (crc in matches):
@@ -131,7 +134,7 @@ if no matches are found, confidence is None and offset is 0
     if (best_match is not None):
         return best_match
     else:
-        #return checksum at offset 0, or as close as possible
+        # return checksum at offset 0, or as close as possible
         if (initial_offset <= 0):
             return (checksums[-initial_offset], None, 0)
         else:
@@ -263,7 +266,7 @@ def perform_lookup(disc_id,
     try:
         response = BitstreamReader(urlopen(url), True)
     except URLError:
-        #no CD found matching given parameters
+        # no CD found matching given parameters
         return matches
 
     try:
@@ -280,5 +283,5 @@ def perform_lookup(disc_id,
                         matches[track_number].append(
                             tuple(response.parse("8u 32u 32u")))
     except IOError:
-        #keep trying to parse values until the data runs out
+        # keep trying to parse values until the data runs out
         return matches

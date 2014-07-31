@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools import (AudioFile, InvalidFile, ChannelMask)
 
@@ -23,10 +23,6 @@ from audiotools import (AudioFile, InvalidFile, ChannelMask)
 class InvalidVorbis(InvalidFile):
     pass
 
-
-#######################
-#Vorbis File
-#######################
 
 class VorbisAudio(AudioFile):
     """an Ogg Vorbis file"""
@@ -275,7 +271,7 @@ class VorbisAudio(AudioFile):
 
         sequence_number = 0
 
-        #transfer current file's identification packet in its own page
+        # transfer current file's identification packet in its own page
         identification_packet = original_ogg.read_packet()
         for (i, page) in enumerate(packet_to_pages(
                 identification_packet,
@@ -285,10 +281,10 @@ class VorbisAudio(AudioFile):
             new_ogg.write(page)
             sequence_number += 1
 
-        #discard the current file's comment packet
+        # discard the current file's comment packet
         comment_packet = original_ogg.read_packet()
 
-        #generate new comment packet
+        # generate new comment packet
         comment_writer = BitstreamRecorder(True)
         comment_writer.build("8u 6b", (3, "vorbis"))
         vendor_string = metadata.vendor_string.encode('utf-8')
@@ -302,7 +298,7 @@ class VorbisAudio(AudioFile):
 
         comment_writer.build("1u a", (1,))  # framing bit
 
-        #transfer codebooks packet from original file to new file
+        # transfer codebooks packet from original file to new file
         codebooks_packet = original_ogg.read_packet()
 
         for page in packets_to_pages(
@@ -312,7 +308,7 @@ class VorbisAudio(AudioFile):
             new_ogg.write(page)
             sequence_number += 1
 
-        #transfer remaining pages after re-sequencing
+        # transfer remaining pages after re-sequencing
         page = original_ogg.read_page()
         page.sequence_number = sequence_number
         sequence_number += 1
@@ -342,7 +338,7 @@ class VorbisAudio(AudioFile):
 
             metadata.vendor_string = old_metadata.vendor_string
 
-            #remove REPLAYGAIN_* tags from new metadata (if any)
+            # remove REPLAYGAIN_* tags from new metadata (if any)
             for key in [u"REPLAYGAIN_TRACK_GAIN",
                         u"REPLAYGAIN_TRACK_PEAK",
                         u"REPLAYGAIN_ALBUM_GAIN",
@@ -392,8 +388,8 @@ class VorbisAudio(AudioFile):
 
         from audiotools import MetaData
 
-        #the vorbis comment packet is required,
-        #so simply zero out its contents
+        # the vorbis comment packet is required,
+        # so simply zero out its contents
         self.set_metadata(MetaData())
 
     @classmethod
@@ -442,13 +438,13 @@ class VorbisAudio(AudioFile):
                 [], u"Python Audio Tools %s" % (VERSION))
 
         vorbis_comment["REPLAYGAIN_TRACK_GAIN"] = [
-                "%1.2f dB" % (replaygain.track_gain)]
+            "%1.2f dB" % (replaygain.track_gain)]
         vorbis_comment["REPLAYGAIN_TRACK_PEAK"] = [
-                "%1.8f" % (replaygain.track_peak)]
+            "%1.8f" % (replaygain.track_peak)]
         vorbis_comment["REPLAYGAIN_ALBUM_GAIN"] = [
-                "%1.2f dB" % (replaygain.album_gain)]
+            "%1.2f dB" % (replaygain.album_gain)]
         vorbis_comment["REPLAYGAIN_ALBUM_PEAK"] = [
-                "%1.8f" % (replaygain.album_peak)]
+            "%1.8f" % (replaygain.album_peak)]
         vorbis_comment["REPLAYGAIN_REFERENCE_LOUDNESS"] = [u"89.0 dB"]
 
         self.update_metadata(vorbis_comment)
@@ -496,7 +492,7 @@ class VorbisAudio(AudioFile):
 
         format_ = cls.NAME.decode('ascii')
 
-        #display where to get vorbisfile
+        # display where to get vorbisfile
         messenger.info(
             ERR_LIBRARY_NEEDED %
             {"library": u"\"libvorbisfile\"",

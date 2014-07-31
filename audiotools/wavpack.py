@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 from audiotools import WaveContainer, InvalidFile
@@ -44,11 +44,6 @@ def __riff_chunk_ids__(data_size, data):
         if (chunk_id != 'data'):
             data.skip_bytes(chunk_size)
             data_size -= chunk_size
-
-
-#######################
-#WavPack
-#######################
 
 
 class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
@@ -203,7 +198,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
              (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
-        #ensure header is valid
+        # ensure header is valid
         try:
             (total_size, data_size) = validate_header(header)
         except ValueError as err:
@@ -221,18 +216,18 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
             data_bytes_written = counter.bytes_written()
 
-            #ensure output data size matches the "data" chunk's size
+            # ensure output data size matches the "data" chunk's size
             if (data_size != data_bytes_written):
                 from audiotools.text import ERR_WAV_TRUNCATED_DATA_CHUNK
                 raise EncodingError(ERR_WAV_TRUNCATED_DATA_CHUNK)
 
-            #ensure footer validates correctly
+            # ensure footer validates correctly
             try:
                 validate_footer(footer, data_bytes_written)
             except ValueError as err:
                 raise EncodingError(str(err))
 
-            #ensure total size is correct
+            # ensure total size is correct
             if ((len(header) + data_size + len(footer)) != total_size):
                 from audiotools.text import ERR_WAV_INVALID_SIZE
                 raise EncodingError(ERR_WAV_INVALID_SIZE)
@@ -336,7 +331,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
             if (sample_rate != 0xF):
                 self.__samplerate__ = WavPackAudio.SAMPLING_RATE[sample_rate]
             else:
-                #if unknown, pull from SAMPLE_RATE sub-block
+                # if unknown, pull from SAMPLE_RATE sub-block
                 for (block_id,
                      nondecoder,
                      data_size,
@@ -345,8 +340,8 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                         self.__samplerate__ = data.read(data_size * 8)
                         break
                 else:
-                    #no SAMPLE RATE sub-block found
-                    #so pull info from FMT chunk
+                    # no SAMPLE RATE sub-block found
+                    # so pull info from FMT chunk
                     reader.rewind()
                     (self.__samplerate__,) = self.fmt_chunk(reader).parse(
                         "32p 32u")
@@ -362,7 +357,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                     self.__channels__ = 2
                     self.__channel_mask__ = ChannelMask(0x3)
             else:
-                #if not mono or stereo, pull from CHANNEL INFO sub-block
+                # if not mono or stereo, pull from CHANNEL INFO sub-block
                 reader.rewind()
                 for (block_id,
                      nondecoder,
@@ -374,16 +369,16 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                             data.read((data_size - 1) * 8))
                         break
                 else:
-                    #no CHANNEL INFO sub-block found
-                    #so pull info from FMT chunk
+                    # no CHANNEL INFO sub-block found
+                    # so pull info from FMT chunk
                     reader.rewind()
                     fmt = self.fmt_chunk(reader)
                     compression_code = fmt.read(16)
                     self.__channels__ = fmt.read(16)
                     if (compression_code == 1):
-                        #this is theoretically possible
-                        #with very old .wav files,
-                        #but shouldn't happen in practice
+                        # this is theoretically possible
+                        # with very old .wav files,
+                        # but shouldn't happen in practice
                         self.__channel_mask__ = \
                             {1: ChannelMask.from_fields(front_center=True),
                              2: ChannelMask.from_fields(front_left=True,
@@ -485,7 +480,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
             cls.__unlink__(filename)
             raise err
 
-        #ensure actual total PCM frames matches argument, if any
+        # ensure actual total PCM frames matches argument, if any
         if (((total_pcm_frames is not None) and
              (counter.frames_written != total_pcm_frames))):
             cls.__unlink__(filename)
@@ -549,8 +544,8 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                 return cue.read_cuesheet_string(
                     unicode(metadata['Cuesheet']).encode('utf-8', 'replace'))
             except cue.CueException:
-                #unlike FLAC, just because a cuesheet is embedded
-                #does not mean it is compliant
+                # unlike FLAC, just because a cuesheet is embedded
+                # does not mean it is compliant
                 return None
         else:
             return None

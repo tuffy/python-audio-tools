@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools import (MetaData, Image, InvalidImage)
 import codecs
@@ -204,10 +204,10 @@ def __attrib_equals__(attributes, o1, o2):
         return True
 
 
-#takes a pair of integers (or None) for the current and total values
-#returns a unicode string of their combined pair
-#for example, __number_pair__(2,3) returns u"2/3"
-#whereas      __number_pair__(4,0) returns u"4"
+# takes a pair of integers (or None) for the current and total values
+# returns a unicode string of their combined pair
+# for example, __number_pair__(2,3) returns u"2/3"
+# whereas      __number_pair__(4,0) returns u"4"
 def __number_pair__(current, total):
     from audiotools import config
 
@@ -269,29 +269,29 @@ def skip_id3v2_comment(file):
 
     start = file.tell()
     try:
-        #check initial header
+        # check initial header
         if (file.read(3) == "ID3"):
             bytes_skipped = 3
         else:
             file.seek(start)
             return 0
 
-        #ensure major version is valid
+        # ensure major version is valid
         if (ord(file.read(1)) in (2, 3, 4)):
             bytes_skipped += 1
         else:
             file.seek(start)
             return 0
 
-        #skip minor version
+        # skip minor version
         file.read(1)
         bytes_skipped += 1
 
-        #skip flags
+        # skip flags
         file.read(1)
         bytes_skipped += 1
 
-        #get the whole size of the tag
+        # get the whole size of the tag
         try:
             tag_size = decode_syncsafe32(parse("32u", False, file.read(4))[0])
         except ValueError:
@@ -299,11 +299,11 @@ def skip_id3v2_comment(file):
             return 0
         bytes_skipped += 4
 
-        #skip to the end of its length
+        # skip to the end of its length
         file.read(tag_size)
         bytes_skipped += tag_size
 
-        #check for additional ID3v2 tags recursively
+        # check for additional ID3v2 tags recursively
         return bytes_skipped + skip_id3v2_comment(file)
     except IOError as err:
         file.seek(start)
@@ -317,33 +317,33 @@ def total_id3v2_comments(file):
 
     start = file.tell()
     try:
-        #check initial header
+        # check initial header
         if (file.read(3) != "ID3"):
             file.seek(start)
             return 0
 
-        #ensure major version is valid
+        # ensure major version is valid
         if (ord(file.read(1)) not in (2, 3, 4)):
             file.seek(start)
             return 0
 
-        #skip minor version
+        # skip minor version
         file.read(1)
 
-        #skip flags
+        # skip flags
         file.read(1)
 
-        #get the whole size of the tag
+        # get the whole size of the tag
         try:
             tag_size = decode_syncsafe32(parse("32u", False, file.read(4))[0])
         except ValueError:
             file.seek(start)
             return 0
 
-        #skip to the end of its length
+        # skip to the end of its length
         file.read(tag_size)
 
-        #check for additional ID3v2 tags recursively
+        # check for additional ID3v2 tags recursively
         return 1 + total_id3v2_comments(file)
     except IOError as err:
         file.seek(start)
@@ -464,9 +464,9 @@ class ID3v22_T__Frame:
                 if (int_value == 0):
                     total_string = re.search(r'/\D*?(\d+)', unicode_value)
                     if (total_string is not None):
-                        #don't return placeholder 0 value
-                        #when a track_total value is present
-                        #but track_number value is 0
+                        # don't return placeholder 0 value
+                        # when a track_total value is present
+                        # but track_number value is 0
                         return None
                     else:
                         return int_value
@@ -536,23 +536,23 @@ class ID3v22_T__Frame:
         field = self.id.decode('ascii')
         value = unicode(self)
 
-        #check for an empty tag
+        # check for an empty tag
         if (len(value.strip()) == 0):
             return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
 
-        #check trailing whitespace
+        # check trailing whitespace
         fix1 = value.rstrip()
         if (fix1 != value):
             fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
                                    {"field": field})
 
-        #check leading whitespace
+        # check leading whitespace
         fix2 = fix1.lstrip()
         if (fix2 != fix1):
             fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
                                    {"field": field})
 
-        #check leading zeroes for a numerical tag
+        # check leading zeroes for a numerical tag
         if (self.id in self.NUMERICAL_IDS):
             fix3 = __number_pair__(self.number(), self.total())
             if (fix3 != fix2):
@@ -643,17 +643,17 @@ class ID3v22_TXX_Frame:
         field = self.id.decode('ascii')
         value = unicode(self)
 
-        #check for an empty tag
+        # check for an empty tag
         if (len(value.strip()) == 0):
             return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
 
-        #check trailing whitespace
+        # check trailing whitespace
         fix1 = value.rstrip()
         if (fix1 != value):
             fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
                                    {"field": field})
 
-        #check leading whitespace
+        # check leading whitespace
         fix2 = fix1.lstrip()
         if (fix2 != fix1):
             fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
@@ -868,23 +868,23 @@ class ID3v22_COM_Frame:
 
         value = self.data.decode(text_encoding[self.encoding], 'replace')
 
-        #check for an empty tag
+        # check for an empty tag
         if (len(value.strip()) == 0):
             return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
 
-        #check trailing whitespace
+        # check trailing whitespace
         fix1 = value.rstrip()
         if (fix1 != value):
             fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
                                    {"field": field})
 
-        #check leading whitespace
+        # check leading whitespace
         fix2 = fix1.lstrip()
         if (fix2 != fix1):
             fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
                                    {"field": field})
 
-        #stripping whitespace shouldn't alter text/description encoding
+        # stripping whitespace shouldn't alter text/description encoding
 
         return (self.__class__(self.encoding,
                                self.language,
@@ -904,12 +904,12 @@ class ID3v22_PIC_Frame(Image):
 
         self.id = 'PIC'
 
-        #add PIC-specific fields
+        # add PIC-specific fields
         self.pic_format = image_format
         self.pic_type = picture_type
         self.pic_description = description
 
-        #figure out image metrics from raw data
+        # figure out image metrics from raw data
         try:
             metrics = Image.new(data, u'', 0)
         except InvalidImage:
@@ -917,7 +917,7 @@ class ID3v22_PIC_Frame(Image):
                             width=0, height=0, color_depth=0, color_count=0,
                             description=u'', type=0)
 
-        #then initialize Image parent fields from metrics
+        # then initialize Image parent fields from metrics
         self.mime_type = metrics.mime_type
         self.width = metrics.width
         self.height = metrics.height
@@ -1063,11 +1063,11 @@ class ID3v22_PIC_Frame(Image):
         or None if the frame should be removed entirely
         any fixes are appended to fixes_applied as unicode string"""
 
-        #all the fields are derived from the image data
-        #so there's no need to test for a mismatch
+        # all the fields are derived from the image data
+        # so there's no need to test for a mismatch
 
-        #not sure if it's worth testing for bugs in the description
-        #or format fields
+        # not sure if it's worth testing for bugs in the description
+        # or format fields
 
         return (ID3v22_PIC_Frame(self.pic_format,
                                  self.pic_type,
@@ -1198,8 +1198,8 @@ class ID3v22Comment(MetaData):
             writer.build("3b 24u", (frame.id, frame.size()))
             frame.build(writer)
 
-        #add buffer of NULL bytes if the total size of the tags
-        #is less than the total size of the whole ID3v2.2 tag
+        # add buffer of NULL bytes if the total size of the tags
+        # is less than the total size of the whole ID3v2.2 tag
         if (((self.total_size is not None) and
              ((self.total_size - tags_size) > 0))):
             writer.write_bytes(chr(0) * (self.total_size - tags_size))
@@ -1227,16 +1227,16 @@ class ID3v22Comment(MetaData):
         for old_frame in self:
             if (old_frame.id == frame_id):
                 try:
-                    #replace current frame with newly set frame
+                    # replace current frame with newly set frame
                     updated_frames.append(new_frames.pop(0))
                 except IndexError:
-                    #no more newly set frames, so remove current frame
+                    # no more newly set frames, so remove current frame
                     continue
             else:
-                #passthrough unmatched frames
+                # passthrough unmatched frames
                 updated_frames.append(old_frame)
         else:
-            #append any leftover frames
+            # append any leftover frames
             for new_frame in new_frames:
                 updated_frames.append(new_frame)
 
@@ -1370,10 +1370,10 @@ class ID3v22Comment(MetaData):
                     if ((attr == 'track_number') or (attr == 'album_number')):
                         import re
 
-                        #if *_number field contains a slashed total
+                        # if *_number field contains a slashed total
                         if (re.search(r'\d+.*?/.*?\d+',
                                       unicode(frame)) is not None):
-                            #replace unslashed portion with 0
+                            # replace unslashed portion with 0
                             updated_frames.append(
                                 self.TEXT_FRAME.converted(
                                     frame.id,
@@ -1382,19 +1382,19 @@ class ID3v22Comment(MetaData):
                                            unicode(frame),
                                            1)))
                         else:
-                            #otherwise, remove *_number field
+                            # otherwise, remove *_number field
                             continue
                     elif ((attr == 'track_total') or
                           (attr == 'album_total')):
                         import re
 
-                        #if *_number is nonzero
+                        # if *_number is nonzero
                         _number = re.search(r'\d+',
                                             unicode(frame).split(u"/")[0])
                         if (((_number is not None) and
                              (int(_number.group(0)) != 0))):
-                            #if field contains a slashed total
-                            #remove slashed total from field
+                            # if field contains a slashed total
+                            # remove slashed total from field
                             updated_frames.append(
                                 self.TEXT_FRAME.converted(
                                     frame.id,
@@ -1403,18 +1403,18 @@ class ID3v22Comment(MetaData):
                                            unicode(frame),
                                            1)))
                         else:
-                            #if field contains a slashed total
-                            #remove field entirely
+                            # if field contains a slashed total
+                            # remove field entirely
                             if (re.search(r'/.*?\d+',
                                           unicode(frame)) is not None):
                                 continue
                             else:
-                                #no number or total,
-                                #so pass frame through unchanged
+                                # no number or total,
+                                # so pass frame through unchanged
                                 updated_frames.append(frame)
                     else:
-                        #handle the textual fields
-                        #which are simply deleted outright
+                        # handle the textual fields
+                        # which are simply deleted outright
                         continue
                 else:
                     updated_frames.append(frame)
@@ -1422,8 +1422,8 @@ class ID3v22Comment(MetaData):
             self.__dict__["frames"] = updated_frames
 
         elif (attr in MetaData.FIELDS):
-            #ignore deleted attributes which are in MetaData
-            #but we don't support
+            # ignore deleted attributes which are in MetaData
+            # but we don't support
             pass
         else:
             try:
@@ -1564,12 +1564,12 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
 
         self.id = 'APIC'
 
-        #add APIC-specific fields
+        # add APIC-specific fields
         self.pic_type = picture_type
         self.pic_description = description
         self.pic_mime_type = mime_type
 
-        #figure out image metrics from raw data
+        # figure out image metrics from raw data
         try:
             metrics = Image.new(data, u'', 0)
         except InvalidImage:
@@ -1577,7 +1577,7 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
                             width=0, height=0, color_depth=0, color_count=0,
                             description=u'', type=0)
 
-        #then initialize Image parent fields from metrics
+        # then initialize Image parent fields from metrics
         self.width = metrics.width
         self.height = metrics.height
         self.color_depth = metrics.color_depth
@@ -1858,8 +1858,8 @@ class ID3v23Comment(ID3v22Comment):
             writer.build("4b 32u 16u", (frame.id, frame.size(), 0))
             frame.build(writer)
 
-        #add buffer of NULL bytes if the total size of the tags
-        #is less than the total size of the whole ID3v2.3 tag
+        # add buffer of NULL bytes if the total size of the tags
+        # is less than the total size of the whole ID3v2.3 tag
         if (((self.total_size is not None) and
              ((self.total_size - tags_size) > 0))):
             writer.write_bytes(chr(0) * (self.total_size - tags_size))
@@ -2167,23 +2167,23 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
 
         value = self.data.decode(text_encoding[self.encoding], 'replace')
 
-        #check for an empty tag
+        # check for an empty tag
         if (len(value.strip()) == 0):
             return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
 
-        #check trailing whitespace
+        # check trailing whitespace
         fix1 = value.rstrip()
         if (fix1 != value):
             fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
                                    {"field": field})
 
-        #check leading whitespace
+        # check leading whitespace
         fix2 = fix1.lstrip()
         if (fix2 != fix1):
             fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
                                    {"field": field})
 
-        #stripping whitespace shouldn't alter text/description encoding
+        # stripping whitespace shouldn't alter text/description encoding
 
         return (self.__class__(self.encoding,
                                self.language,
@@ -2283,8 +2283,8 @@ class ID3v24Comment(ID3v23Comment):
             writer.write(16, 0)
             frame.build(writer)
 
-        #add buffer of NULL bytes if the total size of the tags
-        #is less than the total size of the whole ID3v2.2 tag
+        # add buffer of NULL bytes if the total size of the tags
+        # is less than the total size of the whole ID3v2.2 tag
         if (((self.total_size is not None) and
              ((self.total_size - tags_size) > 0))):
             writer.write_bytes(chr(0) * (self.total_size - tags_size))
@@ -2373,22 +2373,22 @@ class ID3CommentPair(MetaData):
         as a unicode string"""
 
         if ((self.id3v2 is not None) and (self.id3v1 is not None)):
-            #both comments present
+            # both comments present
             from os import linesep
 
             return (self.id3v2.raw_info() +
                     linesep.decode('ascii') * 2 +
                     self.id3v1.raw_info())
         elif (self.id3v2 is not None):
-            #only ID3v2
+            # only ID3v2
             return self.id3v2.raw_info()
         elif (self.id3v1 is not None):
-            #only ID3v1
+            # only ID3v1
             return self.id3v1.raw_info()
         else:
             return u''
 
-    #ImageMetaData passthroughs
+    # ImageMetaData passthroughs
     def images(self):
         """returns a list of embedded Image objects"""
 

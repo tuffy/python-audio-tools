@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 from __future__ import print_function
@@ -286,29 +286,29 @@ def apply_options(options, config):
     and audiotools.RawConfigParser object
     applies the options to the config"""
 
-    #apply --verbose option
+    # apply --verbose option
     if (options.verbosity is not None):
         config.set_default("Defaults", "verbosity", options.verbosity)
 
-    #apply transcoding options
+    # apply transcoding options
     if (options.filename_format is not None):
         config.set_default("Filenames", "format", options.filename_format)
 
     if (options.quality is None):
-        #not setting no --quality value
+        # not setting no --quality value
         if (options.type is None):
-            #do nothing
+            # do nothing
             pass
         else:
-            #set new default output type
+            # set new default output type
             config.set_default("System", "default_type", options.type)
     else:
-        #setting new --quality value
+        # setting new --quality value
         if (options.type is None):
-            #set new quality value for current default type
+            # set new quality value for current default type
             AudioType = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
         else:
-            #set new quality value for given type
+            # set new quality value for given type
             AudioType = audiotools.TYPE_MAP[options.type]
         config.set_default("Quality", AudioType.NAME, options.quality)
 
@@ -316,7 +316,7 @@ def apply_options(options, config):
         config.set_default("System", "maximum_jobs",
                            str(options.system_maximum_jobs))
 
-    #apply CD lookup options
+    # apply CD lookup options
     if (options.use_musicbrainz is not None):
         config.set_default("MusicBrainz", "service",
                            True if (options.use_musicbrainz == "yes")
@@ -339,7 +339,7 @@ def apply_options(options, config):
     if (options.freedb_port is not None):
         config.set_default("FreeDB", "port", options.freedb_port)
 
-    #apply ID3 options
+    # apply ID3 options
     if (options.id3v2_version is not None):
         config.set_default("ID3", "id3v2", options.id3v2_version)
 
@@ -351,13 +351,13 @@ def apply_options(options, config):
                            True if (options.id3_digit_padding == "yes")
                            else False)
 
-    #apply ReplayGain options
+    # apply ReplayGain options
     if (options.add_replaygain is not None):
         config.set_default("ReplayGain", "add_by_default",
                            True if (options.add_replaygain == "yes")
                            else False)
 
-    #apply system options
+    # apply system options
     if (options.system_cdrom is not None):
         config.set_default("System", "cdrom", options.system_cdrom)
 
@@ -375,7 +375,7 @@ def apply_options(options, config):
     if (options.system_io_encoding is not None):
         config.set_default("System", "io_encoding", options.system_io_encoding)
 
-    #apply binaries options
+    # apply binaries options
     bins = set([])
     for audioclass in audiotools.AVAILABLE_TYPES:
         for binary in audioclass.BINARIES:
@@ -390,9 +390,9 @@ def apply_options(options, config):
 if (__name__ == '__main__'):
     import argparse
 
-    #There's no good way to make these dynamic
-    #since the configurable text comes from the audiotools.text module
-    #which we can't load because the module isn't installed correctly.
+    # There's no good way to make these dynamic
+    # since the configurable text comes from the audiotools.text module
+    # which we can't load because the module isn't installed correctly.
     try:
         import audiotools
         import audiotools.ui
@@ -410,14 +410,14 @@ if (__name__ == '__main__'):
     import audiotools.text as _
 
     if (audiotools.ui.AVAILABLE):
-        #setup widgets for interactive mode
+        # setup widgets for interactive mode
 
         urwid = audiotools.ui.urwid
         import termios
 
         class TranscodingOptions(urwid.ListBox):
             def __init__(self, config):
-                #get defaults from current config file
+                # get defaults from current config file
                 DEFAULT_TYPE = config.get_default("System",
                                                   "default_type",
                                                   "wav")
@@ -604,7 +604,7 @@ if (__name__ == '__main__'):
                             conductor_name=u"Conductor Name",
                             media=u"media",
                             ISRC=u"CCXXXYYNNNNN",
-                            catalog="catalog #",
+                            catalog="catalog # ",
                             copyright="Copyright",
                             publisher="Publisher Name",
                             year=strftime("%Y").decode('ascii'),
@@ -649,7 +649,7 @@ if (__name__ == '__main__'):
 
         class CDLookup(urwid.ListBox):
             def __init__(self, config):
-                #get defaults from current config file
+                # get defaults from current config file
 
                 use_musicbrainz = urwid.CheckBox(
                     label=("label", _.LAB_AT_CONFIG_USE_MUSICBRAINZ),
@@ -995,7 +995,7 @@ if (__name__ == '__main__'):
                     raise urwid.ExitMainLoop()
 
             def apply(self, button):
-                #ensure --format is valid before returning
+                # ensure --format is valid before returning
                 try:
                     audiotools.AudioFile.track_name(
                         file_path="",
@@ -1168,20 +1168,20 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("audiotools-config", None)
 
     if (len(sys.argv) < 2):
-        #no arguments at all so display current default
+        # no arguments at all so display current default
 
         display_defaults(audiotools.config, msg)
     elif (options.interactive):
-        #update options interactively
+        # update options interactively
 
         if (not audiotools.ui.AVAILABLE):
             audiotools.ui.not_available_message(msg)
             sys.exit(1)
         else:
-            #apply options to config file
+            # apply options to config file
             apply_options(options, audiotools.config)
 
-            #run interactive widget here
+            # run interactive widget here
             widget = AudiotoolsConfig(audiotools.config)
             loop = audiotools.ui.urwid.MainLoop(
                 widget,
@@ -1197,7 +1197,7 @@ if (__name__ == '__main__'):
                 msg.info(audiotools.ui.xargs_suggestion(sys.argv))
                 sys.exit(1)
 
-            #and apply options if widget isn't cancelled
+            # and apply options if widget isn't cancelled
             if (not widget.cancelled()):
                 configpath = os.path.expanduser('~/.audiotools.cfg')
                 try:
@@ -1213,9 +1213,9 @@ if (__name__ == '__main__'):
             else:
                 sys.exit(0)
     else:
-        #update options non-interactively
+        # update options non-interactively
 
-        #verify --format is valid, if present
+        # verify --format is valid, if present
         if (options.filename_format is not None):
             try:
                 audiotools.AudioFile.track_name(
@@ -1229,7 +1229,7 @@ if (__name__ == '__main__'):
                 msg.error(unicode(err))
                 sys.exit(1)
 
-        #verify --type is valid, if present
+        # verify --type is valid, if present
         if (options.type == 'help'):
             audiotools.ui.show_available_formats(msg)
             sys.exit(0)
@@ -1238,7 +1238,7 @@ if (__name__ == '__main__'):
         else:
             AudioType = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
 
-        #verify --quality is valid for type, if present
+        # verify --quality is valid for type, if present
         if (options.quality == 'help'):
             audiotools.ui.show_available_qualities(msg, AudioType)
             sys.exit(0)
@@ -1249,13 +1249,13 @@ if (__name__ == '__main__'):
                        "type": AudioType.NAME})
             sys.exit(1)
 
-        #verify --joint is positive, if present
+        # verify --joint is positive, if present
         if (((options.system_maximum_jobs is not None) and
              (options.system_maximum_jobs < 1))):
             msg.error(_.ERR_INVALID_JOINT)
             sys.exit(1)
 
-        #apply options non-interactively
+        # apply options non-interactively
         apply_options(options, audiotools.config)
 
         configpath = os.path.expanduser('~/.audiotools.cfg')

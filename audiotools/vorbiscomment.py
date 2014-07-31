@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 from audiotools import MetaData
@@ -101,20 +101,20 @@ class VorbisComment(MetaData):
                 (c_key, c_value) = comment.split(u"=", 1)
                 if (c_key.upper() in matching_keys):
                     try:
-                        #replace current value with newly set value
+                        # replace current value with newly set value
                         new_comment_strings.append(
                             u"%s=%s" % (c_key, new_values.pop(0)))
                     except IndexError:
-                        #no more newly set values, so remove current value
+                        # no more newly set values, so remove current value
                         continue
                 else:
-                    #passthrough unmatching values
+                    # passthrough unmatching values
                     new_comment_strings.append(comment)
             else:
-                #passthrough values with no "=" sign
+                # passthrough values with no "=" sign
                 new_comment_strings.append(comment)
 
-        #append any leftover values
+        # append any leftover values
         for new_value in new_values:
             new_comment_strings.append(u"%s=%s" % (key.upper(), new_value))
 
@@ -128,10 +128,10 @@ class VorbisComment(MetaData):
             if (u"=" in comment):
                 (c_key, c_value) = comment.split(u"=", 1)
                 if (c_key.upper() not in matching_keys):
-                    #passthrough unmatching values
+                    # passthrough unmatching values
                     new_comment_strings.append(comment)
             else:
-                #passthrough values with no "=" sign
+                # passthrough values with no "=" sign
                 new_comment_strings.append(comment)
 
         self.__dict__["comment_strings"] = new_comment_strings
@@ -155,7 +155,7 @@ class VorbisComment(MetaData):
         from os import linesep
         from audiotools import output_table
 
-        #align text strings on the "=" sign, if any
+        # align text strings on the "=" sign, if any
 
         table = output_table()
 
@@ -177,27 +177,27 @@ class VorbisComment(MetaData):
                 linesep.decode('ascii').join(table.format()))
 
     def __getattr__(self, attr):
-        #returns the first matching key for the given attribute
-        #in our list of comment strings
+        # returns the first matching key for the given attribute
+        # in our list of comment strings
 
         if ((attr == "track_number") or (attr == "album_number")):
             try:
-                #get the TRACKNUMBER/DISCNUMBER values
-                #return the first value that contains an integer
+                # get the TRACKNUMBER/DISCNUMBER values
+                # return the first value that contains an integer
                 for value in self[self.ATTRIBUTE_MAP[attr]]:
                     integer = re.search(r'\d+', value)
                     if (integer is not None):
                         return int(integer.group(0))
                 else:
-                    #otherwise, return None
+                    # otherwise, return None
                     return None
             except KeyError:
-                #if no TRACKNUMBER/DISCNUMBER, return None
+                # if no TRACKNUMBER/DISCNUMBER, return None
                 return None
         elif ((attr == "track_total") or (attr == "album_total")):
             try:
-                #get the TRACKTOTAL/DISCTOTAL values
-                #return the first value that contains an integer
+                # get the TRACKTOTAL/DISCTOTAL values
+                # return the first value that contains an integer
                 for value in self[self.ATTRIBUTE_MAP[attr]]:
                     integer = re.search(r'\d+', value)
                     if (integer is not None):
@@ -205,9 +205,9 @@ class VorbisComment(MetaData):
             except KeyError:
                 pass
 
-            #if no TRACKTOTAL/DISCTOTAL,
-            #or none of them contain an integer,
-            #look for slashed TRACKNUMBER/DISCNUMBER values
+            # if no TRACKTOTAL/DISCTOTAL,
+            # or none of them contain an integer,
+            # look for slashed TRACKNUMBER/DISCNUMBER values
             try:
                 for value in self[{"track_total": u"TRACKNUMBER",
                                    "album_total": u"DISCNUMBER"}[attr]]:
@@ -215,71 +215,71 @@ class VorbisComment(MetaData):
                     if (integer is not None):
                         return int(integer.group(1))
             except KeyError:
-                #no slashed TRACKNUMBER/DISCNUMBER values either
-                #so return None
+                # no slashed TRACKNUMBER/DISCNUMBER values either
+                # so return None
                 return None
         elif (attr in self.ATTRIBUTE_MAP):
-            #attribute is supported by VorbisComment
+            # attribute is supported by VorbisComment
             try:
-                #if present, return the first value
+                # if present, return the first value
                 return self[self.ATTRIBUTE_MAP[attr]][0]
             except KeyError:
-                #if not present, return None
+                # if not present, return None
                 return None
         elif (attr in self.FIELDS):
-            #attribute is supported by MetaData
-            #but not supported by VorbisComment
+            # attribute is supported by MetaData
+            # but not supported by VorbisComment
             return None
         else:
-            #attribute is not MetaData-specific
+            # attribute is not MetaData-specific
             try:
                 return self.__dict__[attr]
             except KeyError:
                 raise AttributeError(attr)
 
     def __setattr__(self, attr, value):
-        #updates the first matching field for the given attribute
-        #in our list of comment strings
+        # updates the first matching field for the given attribute
+        # in our list of comment strings
 
         if ((value is None) and (attr in self.FIELDS)):
-            #setting any value to None is equivilent to deleting it
-            #in this high-level implementation
+            # setting any value to None is equivilent to deleting it
+            # in this high-level implementation
             delattr(self, attr)
         elif ((attr == "track_number") or (attr == "album_number")):
             key = self.ATTRIBUTE_MAP[attr]
             try:
                 new_values = self[key]
                 for i in xrange(len(new_values)):
-                    #look for the first TRACKNUMBER/DISCNUMBER field
-                    #which contains an integer
+                    # look for the first TRACKNUMBER/DISCNUMBER field
+                    # which contains an integer
                     if (re.search(r'\d+', new_values[i]) is not None):
-                        #and replace the integer part of the field
+                        # and replace the integer part of the field
                         new_values[i] = re.sub(r'\d+',
                                                unicode(int(value)),
                                                new_values[i],
                                                1)
 
-                        #then set the field to the new set of values
-                        #(which may contain subsequent fields to leave as-is)
+                        # then set the field to the new set of values
+                        # (which may contain subsequent fields to leave as-is)
                         self[key] = new_values
                         break
                 else:
-                    #no integer field with matching key
-                    #so append new integer field
+                    # no integer field with matching key
+                    # so append new integer field
                     self[key] = self[key] + [unicode(int(value))]
             except KeyError:
-                #no TRACKNUMBER/DISCNUMBER field
-                #so add a new one
+                # no TRACKNUMBER/DISCNUMBER field
+                # so add a new one
                 self[key] = [unicode(int(value))]
         elif ((attr == "track_total") or (attr == "album_total")):
             key = self.ATTRIBUTE_MAP[attr]
             try:
                 new_values = self[key]
                 for i in xrange(len(new_values)):
-                    #look for the first TRACKTOTAL/DISCTOTAL field
-                    #which contains an integer
+                    # look for the first TRACKTOTAL/DISCTOTAL field
+                    # which contains an integer
                     if (re.search(r'\d+', new_values[i]) is not None):
-                        #and replace the integer part of the field
+                        # and replace the integer part of the field
                         new_values[i] = re.sub(r'\d+',
                                                unicode(int(value)),
                                                new_values[i],
@@ -289,19 +289,19 @@ class VorbisComment(MetaData):
             except KeyError:
                 new_values = []
 
-            #no TRACKTOTAL/DISCTOTAL field
-            #or none of them contain an integer,
-            #so look for slashed TRACKNUMBER/DISCNUMBER values
+            # no TRACKTOTAL/DISCTOTAL field
+            # or none of them contain an integer,
+            # so look for slashed TRACKNUMBER/DISCNUMBER values
             try:
                 slashed_key = {"track_total": u"TRACKNUMBER",
                                "album_total": u"DISCNUMBER"}[attr]
                 new_slashed_values = self[slashed_key]
                 for i in xrange(len(new_slashed_values)):
-                    #look for the first TRACKNUMBER/DISCNUMBER field
-                    #which contains a slashed value
+                    # look for the first TRACKNUMBER/DISCNUMBER field
+                    # which contains a slashed value
                     if (re.search(r'/\D*\d+',
                                   new_slashed_values[i]) is not None):
-                        #and replace the slashed part of the field
+                        # and replace the slashed part of the field
                         new_slashed_values[i] = re.sub(
                             r'(/\D*)(\d+)',
                             u'\\g<1>' + unicode(int(value)),
@@ -310,42 +310,42 @@ class VorbisComment(MetaData):
                         self[slashed_key] = new_slashed_values
                         return
             except KeyError:
-                #no TRACKNUMBER/DISCNUMBER field found
+                # no TRACKNUMBER/DISCNUMBER field found
                 pass
 
-            #no TRACKTOTAL/DISCTOTAL fields
-            #or no integer values in those fields,
-            #and no slashed TRACKNUMBER/DISCNUMBER values
-            #or no integer values in those fields,
-            #so append a TRACKTOTAL/DISCTOTAL field
+            # no TRACKTOTAL/DISCTOTAL fields
+            # or no integer values in those fields,
+            # and no slashed TRACKNUMBER/DISCNUMBER values
+            # or no integer values in those fields,
+            # so append a TRACKTOTAL/DISCTOTAL field
             self[key] = new_values + [unicode(int(value))]
         elif (attr in self.ATTRIBUTE_MAP.keys()):
             key = self.ATTRIBUTE_MAP[attr]
             try:
                 current_values = self[key]
-                #try to leave subsequent fields with the same key as-is
+                # try to leave subsequent fields with the same key as-is
                 self[key] = [unicode(value)] + current_values[1:]
             except KeyError:
-                #no current field with the same key, so add a new one
+                # no current field with the same key, so add a new one
                 self[key] = [unicode(value)]
         elif (attr in self.FIELDS):
-            #attribute is supported by MetaData
-            #but not supported by VorbisComment
-            #so ignore it
+            # attribute is supported by MetaData
+            # but not supported by VorbisComment
+            # so ignore it
             pass
         else:
-            #attribute is not MetaData-specific, so set as-is
+            # attribute is not MetaData-specific, so set as-is
             self.__dict__[attr] = value
 
     def __delattr__(self, attr):
-        #deletes all matching keys for the given attribute
-        #in our list of comment strings
+        # deletes all matching keys for the given attribute
+        # in our list of comment strings
 
         if ((attr == "track_number") or (attr == "album_number")):
             key = self.ATTRIBUTE_MAP[attr]
             try:
-                #convert the slashed side of TRACKNUMBER/DISCNUMBER fields
-                #to TRACKTOTAL/DISCKTOTAL fields
+                # convert the slashed side of TRACKNUMBER/DISCNUMBER fields
+                # to TRACKTOTAL/DISCKTOTAL fields
                 slashed_field = re.compile(r'/\s*(.*)')
 
                 orphaned_totals = [match.group(1) for match in
@@ -353,20 +353,20 @@ class VorbisComment(MetaData):
                                     for value in self[key]]
                                    if match is not None]
 
-                #remove any TRACKNUMBER/DISCNUMBER fields
+                # remove any TRACKNUMBER/DISCNUMBER fields
                 self[key] = []
 
                 if (len(orphaned_totals) > 0):
                     total_key = {"track_number": u"TRACKTOTAL",
                                  "album_number": u"DISCTOTAL"}[attr]
                     try:
-                        #append new TRACKTOTAL/DISCTOTAL fields
+                        # append new TRACKTOTAL/DISCTOTAL fields
                         self[total_key] = self[total_key] + orphaned_totals
                     except KeyError:
-                        #no TRACKTOTAL/DISCTOTAL field, so add new ones
+                        # no TRACKTOTAL/DISCTOTAL field, so add new ones
                         self[total_key] = orphaned_totals
             except KeyError:
-                #no TRACKNUMBER/DISCNUMBER fields to remove
+                # no TRACKNUMBER/DISCNUMBER fields to remove
                 pass
         elif ((attr == "track_total") or (attr == "album_total")):
             slashed_key = {"track_total": u"TRACKNUMBER",
@@ -380,23 +380,23 @@ class VorbisComment(MetaData):
                 else:
                     return s
 
-            #remove TRACKTOTAL/DISCTOTAL fields
+            # remove TRACKTOTAL/DISCTOTAL fields
             self[self.ATTRIBUTE_MAP[attr]] = []
 
-            #preserve the non-slashed side of TRACKNUMBER/DISCNUMBER fields
+            # preserve the non-slashed side of TRACKNUMBER/DISCNUMBER fields
             try:
                 self[slashed_key] = map(slash_filter, self[slashed_key])
             except KeyError:
-                #no TRACKNUMBER/DISCNUMBER fields
+                # no TRACKNUMBER/DISCNUMBER fields
                 pass
         elif (attr in self.ATTRIBUTE_MAP):
-            #unlike __setattr_, which tries to preserve multiple instances
-            #of fields, __delattr__ wipes them all
-            #so that orphaned fields don't show up after deletion
+            # unlike __setattr_, which tries to preserve multiple instances
+            # of fields, __delattr__ wipes them all
+            # so that orphaned fields don't show up after deletion
             self[self.ATTRIBUTE_MAP[attr]] = []
         elif (attr in self.FIELDS):
-            #attribute is part of MetaData
-            #but not supported by VorbisComment
+            # attribute is part of MetaData
+            # but not supported by VorbisComment
             pass
         else:
             try:
@@ -446,12 +446,12 @@ class VorbisComment(MetaData):
     def supports_images(cls):
         """returns False"""
 
-        #There's actually a (proposed?) standard to add embedded covers
-        #to Vorbis Comments by base64 encoding them.
-        #This strikes me as messy and convoluted.
-        #In addition, I'd have to perform a special case of
-        #image extraction and re-insertion whenever converting
-        #to FlacMetaData.  The whole thought gives me a headache.
+        # There's actually a (proposed?) standard to add embedded covers
+        # to Vorbis Comments by base64 encoding them.
+        # This strikes me as messy and convoluted.
+        # In addition, I'd have to perform a special case of
+        # image extraction and re-insertion whenever converting
+        # to FlacMetaData.  The whole thought gives me a headache.
 
         return False
 
@@ -462,6 +462,11 @@ class VorbisComment(MetaData):
 
     def clean(self):
         """returns a new MetaData object that's been cleaned of problems"""
+        from audiotools.text import (CLEAN_REMOVE_TRAILING_WHITESPACE,
+                                     CLEAN_REMOVE_LEADING_WHITESPACE,
+                                     CLEAN_REMOVE_EMPTY_TAG,
+                                     CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES,
+                                     CLEAN_REMOVE_LEADING_ZEROES)
 
         fixes_performed = []
         reverse_attr_map = {}
@@ -478,51 +483,44 @@ class VorbisComment(MetaData):
                 (key, value) = comment_string.split(u"=", 1)
                 if (key.upper() in reverse_attr_map):
                     attr = reverse_attr_map[key.upper()]
-                    #handle all text fields by stripping whitespace
+                    # handle all text fields by stripping whitespace
                     if (len(value.strip()) == 0):
-                        from audiotools.text import CLEAN_REMOVE_EMPTY_TAG
                         fixes_performed.append(
                             CLEAN_REMOVE_EMPTY_TAG %
                             {"field": key})
                     else:
                         fix1 = value.rstrip()
                         if (fix1 != value):
-                            from audiotools.text import CLEAN_REMOVE_TRAILING_WHITESPACE
                             fixes_performed.append(
                                 CLEAN_REMOVE_TRAILING_WHITESPACE %
                                 {"field": key})
 
                         fix2 = fix1.lstrip()
                         if (fix2 != fix1):
-                            from audiotools.text import CLEAN_REMOVE_LEADING_WHITESPACE
                             fixes_performed.append(
                                 CLEAN_REMOVE_LEADING_WHITESPACE %
                                 {"field": key})
 
-                        #integer fields also strip leading zeroes
+                        # integer fields also strip leading zeroes
                         if (((attr == "track_number") or
                              (attr == "album_number"))):
                             match = re.match(r'(.*?)\s*/\s*(.*)', fix2)
                             if (match is not None):
-                                #fix whitespace/zeroes
-                                #on either side of slash
+                                # fix whitespace/zeroes
+                                # on either side of slash
                                 fix3 = u"%s/%s" % (
                                     match.group(1).lstrip(u"0"),
                                     match.group(2).lstrip(u"0"))
 
                                 if (fix3 != fix2):
-                                    from audiotools.text import (
-                                        CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES)
                                     fixes_performed.append(
                                         CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES
                                         % {"field": key})
                             else:
-                                #fix zeroes only
+                                # fix zeroes only
                                 fix3 = fix2.lstrip(u"0")
 
                                 if (fix3 != fix2):
-                                    from audiotools.text import (
-                                        CLEAN_REMOVE_LEADING_ZEROES)
                                     fixes_performed.append(
                                         CLEAN_REMOVE_LEADING_ZEROES %
                                         {"field": key})
@@ -530,7 +528,6 @@ class VorbisComment(MetaData):
                               (attr == "album_total")):
                             fix3 = fix2.lstrip(u"0")
                             if (fix3 != fix2):
-                                from audiotools.text import CLEAN_REMOVE_LEADING_ZEROES
                                 fixes_performed.append(
                                     CLEAN_REMOVE_LEADING_ZEROES %
                                     {"field": key})

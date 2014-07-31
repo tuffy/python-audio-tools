@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools import (AudioFile, ChannelMask, InvalidFile,
                         WaveContainer, AiffContainer)
@@ -62,7 +62,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         def read_long(r):
             return read_unsigned(r, read_unsigned(r, 2))
 
-        #populate channels and bits_per_sample from Shorten header
+        # populate channels and bits_per_sample from Shorten header
         (file_type,
          self.__channels__,
          block_length,
@@ -75,10 +75,10 @@ class ShortenAudio(WaveContainer, AiffContainer):
         elif ((3 <= file_type) and (file_type <= 6)):
             self.__bits_per_sample__ = 16
         else:
-            #FIXME
+            # FIXME
             raise InvalidShorten("unsupported Shorten file type")
 
-        #setup some default dummy metadata
+        # setup some default dummy metadata
         self.__sample_rate__ = 44100
         if (self.__channels__ == 1):
             self.__channel_mask__ = ChannelMask(0x4)
@@ -88,7 +88,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
             self.__channel_mask__ = ChannelMask(0)
         self.__total_frames__ = 0
 
-        #populate sample_rate and total_frames from first VERBATIM command
+        # populate sample_rate and total_frames from first VERBATIM command
         command = read_unsigned(reader, 2)
         if (command == 9):
             verbatim_bytes = "".join([chr(read_unsigned(reader, 8) & 0xFF)
@@ -98,7 +98,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                 wave = BitstreamReader(cStringIO.StringIO(verbatim_bytes), 1)
                 header = wave.read_bytes(12)
                 if (header.startswith("RIFF") and header.endswith("WAVE")):
-                    #got RIFF/WAVE header, so parse wave blocks as needed
+                    # got RIFF/WAVE header, so parse wave blocks as needed
                     total_size = len(verbatim_bytes) - 12
                     while (total_size >= 8):
                         (chunk_id, chunk_size) = wave.parse("4b 32u")
@@ -130,7 +130,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                 aiff = BitstreamReader(cStringIO.StringIO(verbatim_bytes), 0)
                 header = aiff.read_bytes(12)
                 if (header.startswith("FORM") and header.endswith("AIFF")):
-                    #got FORM/AIFF header, so parse aiff blocks as needed
+                    # got FORM/AIFF header, so parse aiff blocks as needed
                     total_size = len(verbatim_bytes) - 12
                     while (total_size >= 8):
                         (chunk_id, chunk_size) = aiff.parse("4b 32u")
@@ -145,7 +145,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                              self.__channel_mask__) = parse_comm(
                                 aiff.substream(chunk_size))
                         elif (chunk_id == 'SSND'):
-                            #subtract 8 bytes for "offset" and "block size"
+                            # subtract 8 bytes for "offset" and "block size"
                             self.__total_frames__ = \
                                 ((chunk_size - 8) //
                                  (self.__channels__ *
@@ -199,9 +199,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
         try:
             return SHNDecoder(open(self.filename, "rb"))
         except (IOError, ValueError) as msg:
-            #these may not be accurate if the Shorten file is broken
-            #but if it is broken, there'll be no way to
-            #cross-check the results anyway
+            # these may not be accurate if the Shorten file is broken
+            # but if it is broken, there'll be no way to
+            # cross-check the results anyway
             return PCMReaderError(error_message=str(msg),
                                   sample_rate=44100,
                                   channels=2,
@@ -223,11 +223,11 @@ class ShortenAudio(WaveContainer, AiffContainer):
         at the given filename with the specified compression level
         and returns a new ShortenAudio object"""
 
-        #can't build artificial header because we don't know
-        #how long the PCMReader will be and there's no way
-        #to go back and write one later because all the byte values
-        #are stored variable-sized
-        #so we have to build a temporary Wave file instead
+        # can't build artificial header because we don't know
+        # how long the PCMReader will be and there's no way
+        # to go back and write one later because all the byte values
+        # are stored variable-sized
+        # so we have to build a temporary Wave file instead
 
         from audiotools import UnsupportedBitsPerSample
 
@@ -291,11 +291,11 @@ class ShortenAudio(WaveContainer, AiffContainer):
             if ((RIFF != 'RIFF') or (WAVE != 'WAVE')):
                 return False
 
-            #if the tail has room for chunks, there must be some foreign ones
+            # if the tail has room for chunks, there must be some foreign ones
             if (len(tail) >= 8):
                 return True
 
-            #otherwise, check the header for foreign chunks
+            # otherwise, check the header for foreign chunks
             total_size = len(head) - bitstream.format_byte_size("4b 32u 4b")
             while (total_size >= 8):
                 (chunk_id, chunk_size) = header.parse("4b 32u")
@@ -310,7 +310,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                         header.skip_bytes(chunk_size)
                         total_size -= chunk_size
             else:
-                #no foreign chunks found
+                # no foreign chunks found
                 return False
         except IOError:
             return False
@@ -370,7 +370,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         if (pcmreader.bits_per_sample not in (8, 16)):
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
-        #ensure header is valid
+        # ensure header is valid
         try:
             (total_size, data_size) = validate_header(header)
         except ValueError as err:
@@ -397,18 +397,18 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
             data_bytes_written = counter.bytes_written()
 
-            #ensure output data size matches the "data" chunk's size
+            # ensure output data size matches the "data" chunk's size
             if (data_size != data_bytes_written):
                 from audiotools.text import ERR_WAV_TRUNCATED_DATA_CHUNK
                 raise EncodingError(ERR_WAV_TRUNCATED_DATA_CHUNK)
 
-            #ensure footer validates correctly
+            # ensure footer validates correctly
             try:
                 validate_footer(footer, data_bytes_written)
             except ValueError as err:
                 raise EncodingError(str(err))
 
-            #ensure total size is correct
+            # ensure total size is correct
             if ((len(header) + data_size + len(footer)) != total_size):
                 from audiotools.text import ERR_WAV_INVALID_SIZE
                 raise EncodingError(ERR_WAV_INVALID_SIZE)
@@ -441,11 +441,11 @@ class ShortenAudio(WaveContainer, AiffContainer):
             if ((FORM != 'FORM') or (AIFF != 'AIFF')):
                 return False
 
-            #if the tail has room for chunks, there must be some foreign ones
+            # if the tail has room for chunks, there must be some foreign ones
             if (len(tail) >= 8):
                 return True
 
-            #otherwise, check the header for foreign chunks
+            # otherwise, check the header for foreign chunks
             total_size = len(head) - bitstream.format_byte_size("4b 32u 4b")
             while (total_size >= 8):
                 (chunk_id, chunk_size) = header.parse("4b 32u")
@@ -460,7 +460,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                         header.skip_bytes(chunk_size)
                         total_size -= chunk_size
             else:
-                #no foreign chunks found
+                # no foreign chunks found
                 return False
         except IOError:
             return False
@@ -519,7 +519,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         if (pcmreader.bits_per_sample not in (8, 16)):
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
-        #ensure header is valid
+        # ensure header is valid
         try:
             (total_size, ssnd_size) = validate_header(header)
         except ValueError as err:
@@ -546,18 +546,18 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
             ssnd_bytes_written = counter.bytes_written()
 
-            #ensure output data size matches the "SSND" chunk's size
+            # ensure output data size matches the "SSND" chunk's size
             if (ssnd_size != ssnd_bytes_written):
                 from audiotools.text import ERR_AIFF_TRUNCATED_SSND_CHUNK
                 raise EncodingError(ERR_AIFF_TRUNCATED_SSND_CHUNK)
 
-            #ensure footer validates correctly
+            # ensure footer validates correctly
             try:
                 validate_footer(footer, ssnd_bytes_written)
             except ValueError as err:
                 raise EncodingError(str(err))
 
-            #ensure total size is correct
+            # ensure total size is correct
             if ((len(header) + ssnd_size + len(footer)) != total_size):
                 from audiotools.text import ERR_AIFF_INVALID_SIZE
                 raise EncodingError(ERR_AIFF_INVALID_SIZE)
@@ -579,8 +579,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         the resulting object
         may raise EncodingError if some problem occurs during encoding"""
 
-        #A Shorten file cannot contain both RIFF and AIFF chunks
-        #at the same time.
+        # A Shorten file cannot contain both RIFF and AIFF chunks
+        # at the same time.
 
         from audiotools import WaveAudio
         from audiotools import AiffAudio

@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2008-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2008-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import sys
 from itertools import izip
@@ -96,8 +96,8 @@ class UndoDB:
                         izip(s, bz2.decompress(patch))])
 
     def __add__(self, file_data1, file_data2):
-        #file_data1's target is file_data2 and
-        #file_data2's target is file_data1
+        # file_data1's target is file_data2 and
+        # file_data2's target is file_data1
 
         self.cursor.execute(
             "INSERT INTO patch (patch_id, patch_data) VALUES (?, ?)",
@@ -206,14 +206,14 @@ class OldUndoDB:
 
         both are filename strings"""
 
-        #perform xdelta between old and new track to temporary file
+        # perform xdelta between old and new track to temporary file
         delta_f = tempfile.NamedTemporaryFile(suffix=".delta")
 
         try:
             if (subprocess.call([BIN["xdelta"],
                                  "delta",
                                  new_file, old_file, delta_f.name]) != 2):
-                #store the xdelta in our internal db
+                # store the xdelta in our internal db
                 f = open(delta_f.name, 'rb')
                 data = cStringIO.StringIO()
                 transfer_data(f.read, data.write)
@@ -231,12 +231,12 @@ class OldUndoDB:
 
         undo_checksum = OldUndoDB.checksum(new_file)
         if (undo_checksum in self.db.keys()):
-            #copy the xdelta to a temporary file
+            # copy the xdelta to a temporary file
             xdelta_f = tempfile.NamedTemporaryFile(suffix=".delta")
             xdelta_f.write(self.db[undo_checksum])
             xdelta_f.flush()
 
-            #patch the existing track to a temporary track
+            # patch the existing track to a temporary track
             old_track = tempfile.NamedTemporaryFile()
             try:
                 if (subprocess.call([BIN["xdelta"],
@@ -244,7 +244,7 @@ class OldUndoDB:
                                      xdelta_f.name,
                                      new_file,
                                      old_track.name]) == 0):
-                    #copy the temporary track over the existing file
+                    # copy the temporary track over the existing file
                     f1 = open(old_track.name, 'rb')
                     f2 = open(new_file, 'wb')
                     transfer_data(f1.read, f2.write)

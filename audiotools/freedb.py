@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 def digit_sum(i):
@@ -115,9 +115,9 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
     QUERY_RESULT = re.compile(r'(\S+) ([0-9a-fA-F]{8}) (.+)')
     FREEDB_LINE = re.compile(r'(\S+?)=(.+?)[\r\n]+')
 
-    #perform initial FreeDB query
-    #and get a list of category/disc id/title results
-    #if any matches are found
+    # perform initial FreeDB query
+    # and get a list of category/disc id/title results
+    # if any matches are found
     m = urlopen("http://%s:%d/~cddb/cddb.cgi" % (freedb_server, freedb_port),
                 urlencode({"hello": "user %s %s %s" %
                            (getfqdn(),
@@ -135,11 +135,11 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
     if (response is None):
         raise ValueError("invalid response from server")
     else:
-        #a list of (category, disc id, disc title) tuples
+        # a list of (category, disc id, disc title) tuples
         matches = []
         code = int(response.group(1))
         if (code == 200):
-            #single exact match
+            # single exact match
             match = QUERY_RESULT.match(response.group(2))
             if (match is not None):
                 matches.append((match.group(1),
@@ -148,7 +148,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
             else:
                 raise ValueError("invalid query result")
         elif ((code == 211) or (code == 210)):
-            #multiple exact or inexact matches
+            # multiple exact or inexact matches
             line = m.readline()
             while (not line.startswith(".")):
                 match = QUERY_RESULT.match(line)
@@ -160,16 +160,16 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
                     raise ValueError("invalid query result")
                 line = m.readline()
         elif (code == 202):
-            #no match found
+            # no match found
             pass
         else:
-            #some error has occurred
+            # some error has occurred
             raise ValueError(response.group(2))
 
     m.close()
 
     if (len(matches) > 0):
-        #for each result, query FreeDB for XMCD file data
+        # for each result, query FreeDB for XMCD file data
         for (category, disc_id, title) in matches:
             from audiotools import VERSION
 
@@ -189,7 +189,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
             if (response is None):
                 raise ValueError("invalid response from server")
             else:
-                #FIXME - check response code here
+                # FIXME - check response code here
                 freedb = {}
                 line = m.readline()
                 while (not line.startswith(".")):

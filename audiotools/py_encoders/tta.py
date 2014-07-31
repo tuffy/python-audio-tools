@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamWriter
 from audiotools import BufferedPCMReader
@@ -36,7 +36,7 @@ def encode_tta(file, pcmreader):
     block_size = (pcmreader.sample_rate * 256) / 245
     frame_sizes = []
 
-    #encode FrameLists from PCMReader to temporary space
+    # encode FrameLists from PCMReader to temporary space
     framelist = pcmreader.read(block_size)
     while (len(framelist) > 0):
         frame_sizes.append(encode_tta_frame(writer,
@@ -55,7 +55,7 @@ def encode_tta_frame(writer, bits_per_sample, framelist):
     writer.add_callback(counter.update)
     writer.add_callback(frame_crc.update)
 
-    #correlate channels
+    # correlate channels
     if (framelist.channels == 1):
         correlated = [list(framelist.channel(0))]
     else:
@@ -64,22 +64,22 @@ def encode_tta_frame(writer, bits_per_sample, framelist):
 
     residuals = []
     for correlated_ch in correlated:
-        #run fixed order prediction
+        # run fixed order prediction
         predicted = fixed_predictor(bits_per_sample, correlated_ch)
 
-        #run hybrid filter
+        # run hybrid filter
         residuals.append(tta_filter(bits_per_sample, predicted))
 
-    #setup Rice parameters for each channel
+    # setup Rice parameters for each channel
     k0 = [10] * framelist.channels
     k1 = [10] * framelist.channels
     sum0 = [2 ** 14] * framelist.channels
     sum1 = [2 ** 14] * framelist.channels
 
-    #encode residuals
+    # encode residuals
     for (i, pcm_frame) in enumerate(zip(*residuals)):
         for (c, residual) in enumerate(pcm_frame):
-            #convert signed residual to unsigned
+            # convert signed residual to unsigned
             if (residual > 0):
                 unsigned = (residual * 2) - 1
             else:
@@ -102,21 +102,21 @@ def encode_tta_frame(writer, bits_per_sample, framelist):
                 elif (sum1[c] > (2 ** (k1[c] + 5))):
                     k1[c] += 1
 
-            #adjust sum0 and k0
+            # adjust sum0 and k0
             sum0[c] += unsigned - (sum0[c] >> 4)
             if (sum0[c] < (2 ** (k0[c] + 4))):
                 k0[c] = max(k0[c] - 1, 0)
             elif (sum0[c] > (2 ** (k0[c] + 5))):
                 k0[c] += 1
 
-    #byte-align frame
+    # byte-align frame
     writer.byte_align()
 
-    #write frame CRC32
+    # write frame CRC32
     writer.pop_callback()
     writer.write(32, int(frame_crc))
 
-    #return complete size of frame in bytes
+    # return complete size of frame in bytes
     writer.pop_callback()
     return int(counter)
 
@@ -133,7 +133,7 @@ def correlate_channels(framelist):
         correlated_ch = []
         if (c == (channels - 1)):
             for i in xrange(pcm_frames):
-                #round toward zero
+                # round toward zero
                 if (correlated[c - 1][i] >= 0):
                     correlated_ch.append(
                         framelist[c][i] - (correlated[c - 1][i] // 2))
@@ -192,7 +192,7 @@ def tta_filter(bps, predicted):
 
             sum_ = round_ + sum([l * m for (l, m) in zip(dl, qm)])
 
-            #truncate sum to a 32-bit signed integer
+            # truncate sum to a 32-bit signed integer
             while (sum_ >= (2 ** 31)):
                 sum_ -= (2 ** 32)
             while (sum_ < -(2 ** 31)):

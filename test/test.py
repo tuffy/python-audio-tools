@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import unittest
 import audiotools
@@ -38,8 +38,8 @@ def do_nothing(self):
     pass
 
 
-#add a bunch of decorator metafunctions like LIB_CORE
-#which can be wrapped around individual tests as needed
+# add a bunch of decorator metafunctions like LIB_CORE
+# which can be wrapped around individual tests as needed
 for section in parser.sections():
     for option in parser.options(section):
         if (parser.getboolean(section, option)):
@@ -210,9 +210,9 @@ class Variable_Reader:
 
 
 class Join_Reader:
-    #given a list of 1 channel PCM readers,
-    #combines them into a single reader
-    #a bit like PCMCat but across channels instead of PCM frames
+    # given a list of 1 channel PCM readers,
+    # combines them into a single reader
+    # a bit like PCMCat but across channels instead of PCM frames
     def __init__(self, pcm_readers, channel_mask):
         if (len(set([r.sample_rate for r in pcm_readers])) != 1):
             raise ValueError("all readers must have the same sample rate")
@@ -290,8 +290,8 @@ class FrameCounter:
                           self.sample_rate)))
 
 
-#probstat does this better, but I don't want to require that
-#for something used only rarely
+# probstat does this better, but I don't want to require that
+# for something used only rarely
 def Combinations(items, n):
     if (n == 0):
         yield []
@@ -313,24 +313,29 @@ def Possibilities(*lists):
 
 from_channels = audiotools.ChannelMask.from_channels
 
-#these are combinations that tend to occur in nature
-SHORT_PCM_COMBINATIONS = ((11025,  1, from_channels(1), 8),
-                          (22050,  1, from_channels(1), 8),
-                          (22050,  1, from_channels(1), 16),
-                          (32000,  2, from_channels(2), 16),
-                          (44100,  1, from_channels(1), 16),
-                          (44100,  2, from_channels(2), 16),
-                          (48000,  1, from_channels(1), 16),
-                          (48000,  2, from_channels(2), 16),
-                          (48000,  6, audiotools.ChannelMask.from_fields(
-            front_left=True, front_right=True,
-            front_center=True, low_frequency=True,
-            back_left=True, back_right=True), 16),
-                          (192000, 2, from_channels(2), 24),
-                          (96000,  6, audiotools.ChannelMask.from_fields(
-            front_left=True, front_right=True,
-            front_center=True, low_frequency=True,
-            back_left=True, back_right=True), 24))
+# these are combinations that tend to occur in nature
+SHORT_PCM_COMBINATIONS = \
+    ((11025,  1, from_channels(1), 8),
+     (22050,  1, from_channels(1), 8),
+     (22050,  1, from_channels(1), 16),
+     (32000,  2, from_channels(2), 16),
+     (44100,  1, from_channels(1), 16),
+     (44100,  2, from_channels(2), 16),
+     (48000,  1, from_channels(1), 16),
+     (48000,  2, from_channels(2), 16),
+     (48000,  6, audiotools.ChannelMask.from_fields(front_left=True,
+                                                    front_right=True,
+                                                    front_center=True,
+                                                    low_frequency=True,
+                                                    back_left=True,
+                                                    back_right=True), 16),
+     (192000, 2, from_channels(2), 24),
+     (96000,  6, audiotools.ChannelMask.from_fields(front_left=True,
+                                                    front_right=True,
+                                                    front_center=True,
+                                                    low_frequency=True,
+                                                    back_left=True,
+                                                    back_right=True), 24))
 
 
 TEST_COVER1 = \
@@ -411,7 +416,7 @@ p3o92gAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9sCEA4rOb0fGtgAAAAIdEVYdENvbW1l
 bnQA9syWvwAAADVJREFUeNrtwTEBAAAAwqD1T+1hDaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 AAAAAAAAbn0AAAGDIqjNAAAAAElFTkSuQmCC""".decode('base64')
 
-#this is a very large, plain BMP encoded as bz2
+# this is a very large, plain BMP encoded as bz2
 HUGE_BMP = \
 """QlpoOTFBWSZTWSpJrRQACVR+SuEoCEAAQAEBEAIIAABAAAEgAAAIoABwU0yMTExApURDRoeppjv2
 2uMceMt8M40qoj5nGLjFQkcuWdsL3rW+ugRSA6SFFV4lUR1/F3JFOFCQKkmtFA==""".decode('base64')

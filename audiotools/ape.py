@@ -1,30 +1,30 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 from audiotools import (AudioFile, MetaData)
 
 
-#takes a pair of integers (or None) for the current and total values
-#returns a unicode string of their combined pair
-#for example, __number_pair__(2,3) returns u"2/3"
-#whereas      __number_pair__(4,0) returns u"4"
+# takes a pair of integers (or None) for the current and total values
+# returns a unicode string of their combined pair
+# for example, __number_pair__(2,3) returns u"2/3"
+# whereas      __number_pair__(4,0) returns u"4"
 def __number_pair__(current, total):
     def empty(i):
         return i is None
@@ -39,7 +39,7 @@ def __number_pair__(current, total):
     elif (empty(current) and (not empty(total))):
         return slashed_format % (0, total)
     else:
-        #neither current or total are empty
+        # neither current or total are empty
         return slashed_format % (current, total)
 
 
@@ -56,11 +56,6 @@ def limited_transfer_data(from_function, to_function,
         to_function(s)
         max_bytes -= len(s)
         s = from_function(BUFFER_SIZE)
-
-
-#######################
-#MONKEY'S AUDIO
-#######################
 
 
 class ApeTagItem:
@@ -203,8 +198,8 @@ class ApeTag(MetaData):
                      'album_total': 'Media',
                      'album_name': 'Album',
                      'artist_name': 'Artist',
-                     #"Performer" is not a defined APEv2 key
-                     #it would be nice to have, yet would not be standard
+                     # "Performer" is not a defined APEv2 key
+                     # it would be nice to have, yet would not be standard
                      'performer_name': 'Performer',
                      'composer_name': 'Composer',
                      'conductor_name': 'Conductor',
@@ -319,17 +314,17 @@ class ApeTag(MetaData):
                     if ((track_number == 0) and
                         (re.search(r'/.*?(\d+)',
                                    track_text) is not None)):
-                        #if track_total is nonzero and track_number is 0
-                        #track_number is a placeholder
-                        #so treat track_number as None
+                        # if track_total is nonzero and track_number is 0
+                        # track_number is a placeholder
+                        # so treat track_number as None
                         return None
                     else:
                         return track_number
                 else:
-                    #"Track" isn't an integer
+                    # "Track" isn't an integer
                     return None
             except KeyError:
-                #no "Track" in list of items
+                # no "Track" in list of items
                 return None
         elif (attr == 'track_total'):
             try:
@@ -337,10 +332,10 @@ class ApeTag(MetaData):
                 if (track is not None):
                     return int(track.group(1))
                 else:
-                    #no slashed integer field in "Track"
+                    # no slashed integer field in "Track"
                     return None
             except KeyError:
-                #no "Track" in list of items
+                # no "Track" in list of items
                 return None
         elif (attr == 'album_number'):
             try:
@@ -351,17 +346,17 @@ class ApeTag(MetaData):
                     if ((album_number == 0) and
                         (re.search(r'/.*?(\d+)',
                                    media_text) is not None)):
-                        #if album_total is nonzero and album_number is 0
-                        #album_number is a placeholder
-                        #so treat album_number as None
+                        # if album_total is nonzero and album_number is 0
+                        # album_number is a placeholder
+                        # so treat album_number as None
                         return None
                     else:
                         return album_number
                 else:
-                    #"Media" isn't an integer
+                    # "Media" isn't an integer
                     return None
             except KeyError:
-                #no "Media" in list of items
+                # no "Media" in list of items
                 return None
         elif (attr == 'album_total'):
             try:
@@ -369,10 +364,10 @@ class ApeTag(MetaData):
                 if (media is not None):
                     return int(media.group(1))
                 else:
-                    #no slashed integer field in "Media"
+                    # no slashed integer field in "Media"
                     return None
             except KeyError:
-                #no "Media" in list of items
+                # no "Media" in list of items
                 return None
         elif (attr in self.ATTRIBUTE_MAP):
             try:
@@ -387,8 +382,8 @@ class ApeTag(MetaData):
             except AttrError:
                 raise AttributeError(attr)
 
-    #if an attribute is updated (e.g. self.track_name)
-    #make sure to update the corresponding dict pair
+    # if an attribute is updated (e.g. self.track_name)
+    # make sure to update the corresponding dict pair
     def __setattr__(self, attr, value):
         if (attr in self.ATTRIBUTE_MAP):
             if (value is not None):
@@ -457,16 +452,16 @@ class ApeTag(MetaData):
 
         if (attr == 'track_number'):
             try:
-                #if "Track" field contains a slashed total
+                # if "Track" field contains a slashed total
                 if (re.search(r'\d+.*?/.*?\d+',
                               self['Track'].data) is not None):
-                    #replace unslashed portion with 0
+                    # replace unslashed portion with 0
                     self['Track'].data = re.sub(r'\d+',
                                                 str(int(0)),
                                                 self['Track'].data,
                                                 1)
                 else:
-                    #otherwise, remove "Track" field
+                    # otherwise, remove "Track" field
                     del(self['Track'])
             except KeyError:
                 pass
@@ -474,34 +469,34 @@ class ApeTag(MetaData):
             try:
                 track_number = re.search(r'\d+',
                                          self["Track"].data.split("/")[0])
-                #if track number is nonzero
+                # if track number is nonzero
                 if (((track_number is not None) and
                      (int(track_number.group(0)) != 0))):
-                    #if "Track" field contains a slashed total
-                    #remove slashed total from "Track" field
+                    # if "Track" field contains a slashed total
+                    # remove slashed total from "Track" field
                     self['Track'].data = re.sub(r'\s*/.*',
                                                 "",
                                                 self['Track'].data)
                 else:
-                    #if "Track" field contains a slashed total
+                    # if "Track" field contains a slashed total
                     if (re.search(r'/\D*?\d+',
                                   self['Track'].data) is not None):
-                        #remove "Track" field entirely
+                        # remove "Track" field entirely
                         del(self['Track'])
             except KeyError:
                 pass
         elif (attr == 'album_number'):
             try:
-                #if "Media" field contains a slashed total
+                # if "Media" field contains a slashed total
                 if (re.search(r'\d+.*?/.*?\d+',
                               self['Media'].data) is not None):
-                    #replace unslashed portion with 0
+                    # replace unslashed portion with 0
                     self['Media'].data = re.sub(r'\d+',
                                                 str(int(0)),
                                                 self['Media'].data,
                                                 1)
                 else:
-                    #otherwise, remove "Media" field
+                    # otherwise, remove "Media" field
                     del(self['Media'])
             except KeyError:
                 pass
@@ -509,19 +504,19 @@ class ApeTag(MetaData):
             try:
                 album_number = re.search(r'\d+',
                                          self["Media"].data.split("/")[0])
-                #if album number is nonzero
+                # if album number is nonzero
                 if (((album_number is not None) and
                      (int(album_number.group(0)) != 0))):
-                    #if "Media" field contains a slashed total
-                    #remove slashed total from "Media" field
+                    # if "Media" field contains a slashed total
+                    # remove slashed total from "Media" field
                     self['Media'].data = re.sub(r'\s*/.*',
                                                 "",
                                                 self['Media'].data)
                 else:
-                    #if "Media" field contains a slashed total
+                    # if "Media" field contains a slashed total
                     if (re.search(r'/\D*?\d+',
                                   self['Media'].data) is not None):
-                        #remove "Media" field entirely
+                        # remove "Media" field entirely
                         del(self['Media'])
             except KeyError:
                 pass
@@ -579,7 +574,7 @@ class ApeTag(MetaData):
         from os import linesep
         from audiotools import output_table
 
-        #align tag values on the "=" sign
+        # align tag values on the "=" sign
         table = output_table()
 
         for tag in self.tags:
@@ -644,8 +639,8 @@ class ApeTag(MetaData):
 
         from audiotools import FRONT_COVER, BACK_COVER
 
-        #APEv2 supports only one value per key
-        #so a single front and back cover are all that is possible
+        # APEv2 supports only one value per key
+        # so a single front and back cover are all that is possible
         img = []
         if ('Cover Art (front)' in self.keys()):
             img.append(self.__parse_image__('Cover Art (front)',
@@ -741,14 +736,14 @@ class ApeTag(MetaData):
                 used_tags.add(tag.key.upper())
                 text = unicode(tag)
 
-                #check trailing whitespace
+                # check trailing whitespace
                 fix1 = text.rstrip()
                 if (fix1 != text):
                     fixes_performed.append(
                         CLEAN_REMOVE_TRAILING_WHITESPACE %
                         {"field": tag.key.decode('ascii')})
 
-                #check leading whitespace
+                # check leading whitespace
                 fix2 = fix1.lstrip()
                 if (fix2 != fix1):
                     fixes_performed.append(
@@ -757,13 +752,13 @@ class ApeTag(MetaData):
 
                 if (tag.key in self.INTEGER_ITEMS):
                     if (u"/" in fix2):
-                        #item is a slashed field of some sort
+                        # item is a slashed field of some sort
                         (current, total) = fix2.split(u"/", 1)
                         current_int = re.search(r'\d+', current)
                         total_int = re.search(r'\d+', total)
                         if ((current_int is None) and (total_int is None)):
-                            #neither side contains an integer value
-                            #so ignore it altogether
+                            # neither side contains an integer value
+                            # so ignore it altogether
                             fix3 = fix2
                         elif ((current_int is not None) and
                               (total_int is None)):
@@ -772,18 +767,18 @@ class ApeTag(MetaData):
                               (total_int is not None)):
                             fix3 = u"%d/%d" % (0, int(total_int.group(0)))
                         else:
-                            #both sides contain an int
+                            # both sides contain an int
                             fix3 = u"%d/%d" % (int(current_int.group(0)),
                                                int(total_int.group(0)))
                     else:
-                        #item contains no slash
+                        # item contains no slash
                         current_int = re.search(r'\d+', fix2)
                         if (current_int is not None):
-                            #item contains an integer
+                            # item contains an integer
                             fix3 = unicode(int(current_int.group(0)))
                         else:
-                            #item contains no integer value so ignore it
-                            #(although 'Track' should only contain
+                            # item contains no integer value so ignore it
+                            # (although 'Track' should only contain
                             # integers, 'Media' may contain strings
                             # so it may be best to simply ignore that case)
                             fix3 = fix2
@@ -865,18 +860,18 @@ class ApeTaggedAudio:
                 old_tag_size = tag_size
 
             if (metadata.total_size() >= old_tag_size):
-                #metadata has grown
-                #so append it to existing file
+                # metadata has grown
+                # so append it to existing file
                 f.seek(-old_tag_size, 2)
                 metadata.build(BitstreamWriter(f, 1))
             else:
-                #metadata has shrunk
-                #so rewrite file with smaller metadata
+                # metadata has shrunk
+                # so rewrite file with smaller metadata
                 from audiotools import TemporaryFile
                 from os.path import getsize
 
-                #copy everything but the last "old_tag_size" bytes
-                #from existing file to rewritten file
+                # copy everything but the last "old_tag_size" bytes
+                # from existing file to rewritten file
                 new_apev2 = TemporaryFile(self.filename)
                 old_apev2 = open(self.filename, "rb")
 
@@ -885,13 +880,13 @@ class ApeTaggedAudio:
                     new_apev2.write,
                     getsize(self.filename) - old_tag_size)
 
-                #append new tag to rewritten file
+                # append new tag to rewritten file
                 metadata.build(BitstreamWriter(new_apev2, 1))
 
                 old_apev2.close()
                 new_apev2.close()
         else:
-            #no existing metadata, so simply append a fresh tag
+            # no existing metadata, so simply append a fresh tag
             f = file(self.filename, "ab")
             metadata.build(BitstreamWriter(f, 1))
             f.close()
@@ -910,23 +905,23 @@ class ApeTaggedAudio:
         new_metadata = ApeTag.converted(metadata)
 
         if (old_metadata is not None):
-            #transfer ReplayGain tags from old metadata to new metadata
+            # transfer ReplayGain tags from old metadata to new metadata
             for tag in ["replaygain_track_gain",
                         "replaygain_track_peak",
                         "replaygain_album_gain",
                         "replaygain_album_peak"]:
                 try:
-                    #if old_metadata has tag, shift it over
+                    # if old_metadata has tag, shift it over
                     new_metadata[tag] = old_metadata[tag]
                 except KeyError:
                     try:
-                        #otherwise, if new_metadata has tag, delete it
+                        # otherwise, if new_metadata has tag, delete it
                         del(new_metadata[tag])
                     except KeyError:
-                        #if neither has tag, ignore it
+                        # if neither has tag, ignore it
                         continue
 
-            #transfer Cuesheet from old metadata to new metadata
+            # transfer Cuesheet from old metadata to new metadata
             if ("Cuesheet" in old_metadata):
                 new_metadata["Cuesheet"] = old_metadata["Cuesheet"]
             elif ("Cuesheet" in new_metadata):
@@ -934,7 +929,7 @@ class ApeTaggedAudio:
 
             self.update_metadata(new_metadata)
         else:
-            #delete ReplayGain tags from new metadata
+            # delete ReplayGain tags from new metadata
             for tag in ["replaygain_track_gain",
                         "replaygain_track_peak",
                         "replaygain_album_gain",
@@ -944,11 +939,11 @@ class ApeTaggedAudio:
                 except KeyError:
                     continue
 
-            #delete Cuesheet from new metadata
+            # delete Cuesheet from new metadata
             if ("Cuesheet" in new_metadata):
                 del(new_metadata["Cuesheet"])
 
-            #no existing metadata, so simply append a fresh tag
+            # no existing metadata, so simply append a fresh tag
             f = file(self.filename, "ab")
             new_metadata.build(BitstreamWriter(f, 1))
             f.close()
@@ -978,15 +973,15 @@ class ApeTaggedAudio:
             from audiotools import TemporaryFile
             from os.path import getsize
 
-            #there's existing metadata to delete
-            #so rewrite file without trailing metadata tag
+            # there's existing metadata to delete
+            # so rewrite file without trailing metadata tag
             if (has_header):
                 old_tag_size = 32 + tag_size
             else:
                 old_tag_size = tag_size
 
-            #copy everything but the last "old_tag_size" bytes
-            #from existing file to rewritten file
+            # copy everything but the last "old_tag_size" bytes
+            # from existing file to rewritten file
             new_apev2 = TemporaryFile(self.filename)
             old_apev2 = open(self.filename, "rb")
 
@@ -1152,10 +1147,10 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
     def has_foreign_riff_chunks(self):
         """returns True"""
 
-        #FIXME - this isn't strictly true
-        #I'll need a way to detect foreign chunks in APE's stream
-        #without decoding it first,
-        #but since I'm not supporting APE anyway, I'll take the lazy way out
+        # FIXME - this isn't strictly true
+        # I'll need a way to detect foreign chunks in APE's stream
+        # without decoding it first,
+        # but since I'm not supporting APE anyway, I'll take the lazy way out
         return True
 
     def bits_per_sample(self):

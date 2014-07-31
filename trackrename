@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 import sys
@@ -43,7 +43,7 @@ if (audiotools.ui.AVAILABLE):
 
             self.input_filenames = input_filenames
 
-            #setup a previous/finish button set
+            # setup a previous/finish button set
             metadata_buttons = urwid.Filler(
                 urwid.Columns(
                     widget_list=[('weight', 1,
@@ -55,7 +55,7 @@ if (audiotools.ui.AVAILABLE):
                     dividechars=3,
                     focus_column=1))
 
-            #setup a widget with an output preview
+            # setup a widget with an output preview
             self.track_previews = [urwid.Text(u"") for m in metadatas]
             self.output_tracks_list = urwid.ListBox(
                 self.track_previews)
@@ -65,7 +65,7 @@ if (audiotools.ui.AVAILABLE):
                 urwid.Text(_.ERR_INVALID_FILENAME_FORMAT,
                            align="center"))
 
-            #setup a widget with the rename template
+            # setup a widget with the rename template
             output_format = urwid.Edit(
                 edit_text=format_string.decode('utf-8'),
                 wrap='clip')
@@ -86,7 +86,7 @@ if (audiotools.ui.AVAILABLE):
                  ('weight', 1, output_format),
                  ('fixed', 10, browse_fields)])
 
-            #perform initial data population
+            # perform initial data population
             self.format_changed(output_format,
                                 format_string,
                                 (audio_class,
@@ -123,8 +123,8 @@ if (audiotools.ui.AVAILABLE):
              metadatas) = user_data
 
             try:
-                #generate list of Filename objects
-                #from paths, metadatas and format
+                # generate list of Filename objects
+                # from paths, metadatas and format
                 self.output_filenames = [
                     audiotools.Filename(
                         output_class.track_name(
@@ -134,7 +134,7 @@ if (audiotools.ui.AVAILABLE):
                     for (filename,
                          metadata) in zip(input_filenames, metadatas)]
 
-                #and populate output files list
+                # and populate output files list
                 for (path, preview) in zip(self.output_filenames,
                                            self.track_previews):
                     preview.set_text(unicode(path))
@@ -146,7 +146,7 @@ if (audiotools.ui.AVAILABLE):
                 self.has_errors = False
             except (audiotools.UnsupportedTracknameField,
                     audiotools.InvalidFilenameFormat):
-                #invalid filename string
+                # invalid filename string
                 if ((self.output_tracks_frame.get_body() is not
                      self.invalid_output_format)):
                     self.output_tracks_frame.set_body(
@@ -199,7 +199,7 @@ if (__name__ == '__main__'):
     options = parser.parse_args()
     msg = audiotools.Messenger("trackrename", options)
 
-    #ensure interactive mode is available, if selected
+    # ensure interactive mode is available, if selected
     if (options.interactive and (not audiotools.ui.AVAILABLE)):
         audiotools.ui.not_available_message(msg)
         sys.exit(1)
@@ -216,8 +216,8 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_FILES_REQUIRED)
         sys.exit(1)
 
-    #get a set of files to be renamed
-    #and generate an error if a duplicate occurs
+    # get a set of files to be renamed
+    # and generate an error if a duplicate occurs
     renamed_filenames = set([audiotools.Filename(t.filename) for t in
                              audiofiles])
 
@@ -273,7 +273,7 @@ if (__name__ == '__main__'):
             msg.error(unicode(err))
             sys.exit(1)
 
-    #create subdirectories for renamed files if necessary
+    # create subdirectories for renamed files if necessary
     for (original_filename, new_filename) in to_rename:
         try:
             audiotools.make_dirs(str(new_filename))
@@ -281,7 +281,7 @@ if (__name__ == '__main__'):
             msg.os_error(err)
             sys.exit(1)
 
-    #perform the actual renaming itself
+    # perform the actual renaming itself
     for (i, (original_filename, new_filename)) in enumerate(to_rename):
         try:
             shutil.move(str(original_filename), str(new_filename))

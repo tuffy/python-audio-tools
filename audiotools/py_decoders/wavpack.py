@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamReader
 from audiotools.pcm import from_channels, from_list
@@ -34,8 +34,8 @@ class WavPackDecoder:
     def __init__(self, filename):
         self.reader = BitstreamReader(open(filename, "rb"), 1)
 
-        #read initial block to populate
-        #sample_rate, bits_per_sample, channels, and channel_mask
+        # read initial block to populate
+        # sample_rate, bits_per_sample, channels, and channel_mask
         self.reader.mark()
         block_header = Block_Header.read(self.reader)
         sub_blocks_size = block_header.block_size - 24
@@ -71,7 +71,7 @@ class WavPackDecoder:
                 self.channels = 1
                 self.channel_mask = 0x4
         else:
-            #look for channel mask sub block
+            # look for channel mask sub block
             sub_blocks_data.mark()
             for sub_block in sub_blocks(sub_blocks_data, sub_blocks_size):
                 if (((sub_block.metadata_function == 13) and
@@ -81,7 +81,7 @@ class WavPackDecoder:
                         (sub_block.data_size() - 1) * 8)
                     break
             else:
-                #FIXME - handle case of no channel mask sub block
+                # FIXME - handle case of no channel mask sub block
                 raise NotImplementedError()
             sub_blocks_data.rewind()
             sub_blocks_data.unmark()
@@ -111,7 +111,7 @@ class WavPackDecoder:
                                      self.md5sum.digest())):
                                     raise ValueError("invalid stream MD5 sum")
                     except (IOError, ValueError):
-                        #no error if a block isn't found
+                        # no error if a block isn't found
                         pass
                 finally:
                     self.reader.rewind()
@@ -139,14 +139,14 @@ class WavPackDecoder:
              block_header.block_samples) >= block_header.total_samples):
             self.pcm_finished = True
 
-        #combine channels of audio data into single block
+        # combine channels of audio data into single block
         block = from_channels([from_list(ch, 1, self.bits_per_sample, True)
                                for ch in channels])
 
-        #update MD5 sum
+        # update MD5 sum
         self.md5sum.update(block.to_bytes(False, self.bits_per_sample > 8))
 
-        #return single block of audio data
+        # return single block of audio data
         return block
 
     def close(self):
@@ -469,7 +469,7 @@ def read_decorrelation_weights(block_header, decorrelation_terms_count,
 
     weights = []
     if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
-        #two channels
+        # two channels
         if ((weight_count // 2) > decorrelation_terms_count):
             raise ValueError("invalid number of decorrelation weights")
 
@@ -481,7 +481,7 @@ def read_decorrelation_weights(block_header, decorrelation_terms_count,
 
         weights.reverse()
     else:
-        #one channel
+        # one channel
         if (weight_count > decorrelation_terms_count):
             raise ValueError("invalid number of decorrelation weights")
 
@@ -505,7 +505,7 @@ def read_decorrelation_samples(block_header, decorrelation_terms,
 
     samples = []
     if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
-        #two channels
+        # two channels
         for term in reversed(decorrelation_terms):
             if ((17 <= term) and (term <= 18)):
                 if (sub_block_bytes >= 8):
@@ -544,7 +544,7 @@ def read_decorrelation_samples(block_header, decorrelation_terms,
         samples.reverse()
         return samples
     else:
-        #one channel
+        # one channel
         for term in reversed(decorrelation_terms):
             if ((17 <= term) and (term <= 18)):
                 if (sub_block_bytes >= 4):
@@ -598,7 +598,7 @@ def read_bitstream(block_header, entropies, sub_block_data):
     i = 0
     while (i < (block_header.block_samples * channel_count)):
         if ((u is None) and (entropies[0][0] < 2) and (entropies[1][0] < 2)):
-            #handle long run of 0 residuals
+            # handle long run of 0 residuals
             zeroes = read_egc(sub_block_data)
             if (zeroes > 0):
                 for j in xrange(zeroes):

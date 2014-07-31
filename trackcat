@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 import sys
@@ -50,7 +50,7 @@ def merge_metadatas(metadatas):
                                                track_fields.items()
                                                if (len(values) == 1)]))
 
-        #port over non-duplicate images
+        # port over non-duplicate images
         images = []
         for m in track_metadatas:
             for i in m.images():
@@ -162,19 +162,19 @@ if (__name__ == '__main__'):
 
     msg = audiotools.Messenger("trackcat", options)
 
-    #ensure interactive mode is available, if selected
+    # ensure interactive mode is available, if selected
     if (options.interactive and (not audiotools.ui.AVAILABLE)):
         audiotools.ui.not_available_message(msg)
         sys.exit(1)
 
-    #grab the list of AudioFile objects we are converting from
+    # grab the list of AudioFile objects we are converting from
     opened_files = set([])
     audiofiles = audiotools.open_files(options.filenames,
                                        messenger=msg,
                                        warn_duplicates=True,
                                        opened_files=opened_files)
 
-    #perform some option sanity checking
+    # perform some option sanity checking
     if (len(audiofiles) < 1):
         msg.error(_.ERR_FILES_REQUIRED)
         sys.exit(1)
@@ -195,12 +195,12 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_BPS_MISMATCH)
         sys.exit(1)
 
-    #if embedding a cuesheet, try to read it before doing any work
+    # if embedding a cuesheet, try to read it before doing any work
     if (options.cuesheet is not None):
         try:
             cuesheet = audiotools.read_sheet(options.cuesheet)
 
-            #ensure cuesheet will embed properly
+            # ensure cuesheet will embed properly
             if (not cuesheet.image_formatted()):
                 msg.error(_.ERR_CUE_INVALID_FORMAT)
                 sys.exit(1)
@@ -233,7 +233,7 @@ if (__name__ == '__main__'):
             msg.error(_.ERR_OUTPUT_IS_INPUT % (output_filename,))
             sys.exit(1)
 
-    #get the AudioFile class we are converted to
+    # get the AudioFile class we are converted to
     if (options.type == 'help'):
         import audiotools.ui
         audiotools.ui.show_available_formats(msg)
@@ -250,7 +250,7 @@ if (__name__ == '__main__'):
         else:
             AudioType = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
 
-    #ensure the selected compression is compatible with that class
+    # ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         import audiotools.ui
         audiotools.ui.show_available_qualities(msg, AudioType)
@@ -263,14 +263,14 @@ if (__name__ == '__main__'):
                    "type": AudioType.NAME})
         sys.exit(1)
 
-    #constuct a MetaData object from our audiofiles
-    #which may be None if there is no metadata
+    # constuct a MetaData object from our audiofiles
+    # which may be None if there is no metadata
     metadata = merge_metadatas([t.get_metadata() for t in audiofiles])
 
     if (not options.metadata_lookup):
         metadata_choices = [metadata]
     else:
-        #perform CD lookup for existing files
+        # perform CD lookup for existing files
         metadata_choices = [
             merge_metadatas(choice) for choice in
             audiotools.track_metadata_lookup(
@@ -282,12 +282,12 @@ if (__name__ == '__main__'):
                 use_musicbrainz=options.use_musicbrainz,
                 use_freedb=options.use_freedb)]
 
-        #and prepend metadata from existing files as an option, if any
+        # and prepend metadata from existing files as an option, if any
         if (metadata is not None):
             metadata_choices.insert(0, metadata)
 
     if (options.interactive):
-        #pick options using interactive widget
+        # pick options using interactive widget
         output_widget = audiotools.ui.SingleOutputFiller(
             track_label=_.LAB_TRACKCAT_INPUT % (len(audiofiles)),
             metadata_choices=metadata_choices,
@@ -318,7 +318,7 @@ if (__name__ == '__main__'):
         else:
             sys.exit(0)
     else:
-        #pick options without using GUI
+        # pick options without using GUI
         output_class = AudioType
         output_quality = options.quality
         metadata = audiotools.ui.select_metadata(
@@ -332,8 +332,8 @@ if (__name__ == '__main__'):
 
     try:
         if ((cuesheet is not None) and (cuesheet.pre_gap() > 0)):
-            #prepend null pre-gap samples to start of stream
-            #if indicated by cuesheet
+            # prepend null pre-gap samples to start of stream
+            # if indicated by cuesheet
 
             from audiotools.decoders import SameSample
 

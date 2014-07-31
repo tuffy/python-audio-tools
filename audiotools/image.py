@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import imghdr
 from audiotools.bitstream import BitstreamReader, format_size
@@ -56,7 +56,7 @@ def image_metrics(file_data):
 
 
 #######################
-#JPEG
+# JPEG
 #######################
 
 
@@ -146,7 +146,7 @@ class __JPEG__(ImageMetrics):
             raise InvalidJPEG(ERR_IMAGE_IOERROR_JPEG)
 
 #######################
-#PNG
+# PNG
 #######################
 
 
@@ -233,7 +233,7 @@ class __PNG__(ImageMetrics):
                        color_count=0)
 
 #######################
-#BMP
+# BMP
 #######################
 
 
@@ -282,7 +282,7 @@ class __BMP__(ImageMetrics):
 
 
 #######################
-#GIF
+# GIF
 #######################
 
 
@@ -320,7 +320,7 @@ class __GIF__(ImageMetrics):
 
 
 #######################
-#TIFF
+# TIFF
 #######################
 
 
@@ -343,7 +343,7 @@ class __TIFF__(ImageMetrics):
         def tags(file, order):
             while (True):
                 reader = BitstreamReader(file, order)
-                #read all the tags in an IFD
+                # read all the tags in an IFD
                 tag_count = reader.read(16)
                 sub_reader = reader.substream(tag_count * 12)
                 next_ifd = reader.read(32)

@@ -1,29 +1,24 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 from audiotools import (AudioFile, InvalidFile)
-
-
-#######################
-#MP3
-#######################
 
 
 class InvalidMP3(InvalidFile):
@@ -46,8 +41,8 @@ class MP3Audio(AudioFile):
     NAME = SUFFIX
     DESCRIPTION = u"MPEG-1 Audio Layer III"
     DEFAULT_COMPRESSION = "2"
-    #0 is better quality/lower compression
-    #9 is worse quality/higher compression
+    # 0 is better quality/lower compression
+    # 9 is worse quality/higher compression
     COMPRESSION_MODES = ("0", "1", "2", "3", "4", "5", "6",
                          "medium", "standard", "extreme", "insane")
     COMPRESSION_DESCRIPTIONS = {"0": COMP_LAME_0,
@@ -63,46 +58,46 @@ class MP3Audio(AudioFile):
                    (44100, 48000, 32000, None))  # MPEG-1
 
     BIT_RATE = (
-        #MPEG-2.5
+        # MPEG-2.5
         (
-            #reserved
+            # reserved
             (None,) * 16,
-            #layer III
+            # layer III
             (None, 8000, 16000, 24000, 32000, 40000, 48000, 56000,
              64000, 80000, 96000, 112000, 128000, 144000, 160000, None),
-            #layer II
+            # layer II
             (None, 8000, 16000, 24000, 32000, 40000, 48000, 56000,
              64000, 80000, 96000, 112000, 128000, 144000, 160000, None),
-            #layer I
+            # layer I
             (None, 32000, 48000, 56000, 64000, 80000, 96000, 112000,
              128000, 144000, 160000, 176000, 192000, 224000, 256000, None),
         ),
-        #reserved
+        # reserved
         ((None,) * 16, ) * 4,
-        #MPEG-2
+        # MPEG-2
         (
-            #reserved
+            # reserved
             (None,) * 16,
-            #layer III
+            # layer III
             (None, 8000, 16000, 24000, 32000, 40000, 48000, 56000,
              64000, 80000, 96000, 112000, 128000, 144000, 160000, None),
-            #layer II
+            # layer II
             (None, 8000, 16000, 24000, 32000, 40000, 48000, 56000,
              64000, 80000, 96000, 112000, 128000, 144000, 160000, None),
-            #layer I
+            # layer I
             (None, 32000, 48000, 56000, 64000, 80000, 96000, 112000,
              128000, 144000, 160000, 176000, 192000, 224000, 256000, None)),
-        #MPEG-1
+        # MPEG-1
         (
-            #reserved
+            # reserved
             (None,) * 16,
-            #layer III
+            # layer III
             (None, 32000, 40000, 48000, 56000, 64000, 80000, 96000,
              112000, 128000, 160000, 192000, 224000, 256000, 320000, None),
-            #layer II
+            # layer II
             (None, 32000, 48000, 56000, 64000, 80000, 96000, 112000,
              128000, 160000, 192000, 224000, 256000, 320000, 384000, None),
-            #layer I
+            # layer I
             (None, 32000, 64000, 96000, 128000, 160000, 192000, 224000,
              256000, 288000, 320000, 352000, 384000, 416000, 448000, None)))
 
@@ -155,7 +150,7 @@ class MP3Audio(AudioFile):
             if (("Xing" in first_frame) and
                 (len(first_frame[first_frame.index("Xing"):
                                  first_frame.index("Xing") + 160]) == 160)):
-                #pull length from Xing header, if present
+                # pull length from Xing header, if present
                 self.__pcm_frames__ = (
                     BitstreamReader(
                         first_frame[first_frame.index("Xing"):
@@ -163,7 +158,7 @@ class MP3Audio(AudioFile):
                         0).parse("32p 32p 32u 32p 832p")[0] *
                     self.PCM_FRAMES_PER_MPEG_FRAME[layer])
             else:
-                #otherwise, bounce through file frames
+                # otherwise, bounce through file frames
                 reader = BitstreamReader(mp3file, 0)
                 self.__pcm_frames__ = 0
 
@@ -323,7 +318,7 @@ class MP3Audio(AudioFile):
 
         new_mp3 = TemporaryFile(self.filename)
 
-        #get the original MP3 data
+        # get the original MP3 data
         old_mp3 = open(self.filename, "rb")
         MP3Audio.__find_last_mp3_frame__(old_mp3)
         data_end = old_mp3.tell()
@@ -332,7 +327,7 @@ class MP3Audio(AudioFile):
         data_start = old_mp3.tell()
         old_mp3 = LimitedFileReader(old_mp3, data_end - data_start)
 
-        #write id3v2 + data + id3v1 to file
+        # write id3v2 + data + id3v1 to file
         if (isinstance(metadata, ID3CommentPair)):
             metadata.id3v2.build(BitstreamWriter(new_mp3, 0))
             transfer_data(old_mp3.read, new_mp3.write)
@@ -344,7 +339,7 @@ class MP3Audio(AudioFile):
             transfer_data(old_mp3.read, new_mp3.write)
             metadata.build(new_mp3)
 
-        #commit change to disk
+        # commit change to disk
         old_mp3.close()
         new_mp3.close()
 
@@ -409,15 +404,15 @@ class MP3Audio(AudioFile):
                                 LimitedFileReader,
                                 transfer_data)
 
-        #this works a lot like update_metadata
-        #but without any new metadata to set
+        # this works a lot like update_metadata
+        # but without any new metadata to set
 
         if (not os.access(self.filename, os.W_OK)):
             raise IOError(self.filename)
 
         new_mp3 = TemporaryFile(self.filename)
 
-        #get the original MP3 data
+        # get the original MP3 data
         old_mp3 = open(self.filename, "rb")
         MP3Audio.__find_last_mp3_frame__(old_mp3)
         data_end = old_mp3.tell()
@@ -426,10 +421,10 @@ class MP3Audio(AudioFile):
         data_start = old_mp3.tell()
         old_mp3 = LimitedFileReader(old_mp3, data_end - data_start)
 
-        #write data to file
+        # write data to file
         transfer_data(old_mp3.read, new_mp3.write)
 
-        #commit change to disk
+        # commit change to disk
         old_mp3.close()
         new_mp3.close()
 
@@ -456,7 +451,7 @@ class MP3Audio(AudioFile):
             file_fixes = []
 
         if (output_filename is None):
-            #dry run only
+            # dry run only
             metadata = self.get_metadata()
             if (metadata is not None):
                 (metadata, fixes) = metadata.clean()
@@ -464,7 +459,7 @@ class MP3Audio(AudioFile):
             else:
                 return []
         else:
-            #perform complete fix
+            # perform complete fix
             input_f = file(self.filename, "rb")
             output_f = file(output_filename, "wb")
             try:
@@ -478,21 +473,21 @@ class MP3Audio(AudioFile):
             if (metadata is not None):
                 (metadata, fixes) = metadata.clean()
                 if (len(file_fixes + fixes) > 0):
-                    #only update metadata if fixes are actually performed
+                    # only update metadata if fixes are actually performed
                     new_track.update_metadata(metadata)
                 return file_fixes + fixes
             else:
                 return []
 
-    #places mp3file at the position of the next MP3 frame's start
+    # places mp3file at the position of the next MP3 frame's start
     @classmethod
     def __find_next_mp3_frame__(cls, mp3file):
         from audiotools.id3 import skip_id3v2_comment
 
-        #if we're starting at an ID3v2 header, skip it to save a bunch of time
+        # if we're starting at an ID3v2 header, skip it to save a bunch of time
         bytes_skipped = skip_id3v2_comment(mp3file)
 
-        #then find the next mp3 frame
+        # then find the next mp3 frame
         from audiotools.bitstream import BitstreamReader
 
         reader = BitstreamReader(mp3file, 0)
@@ -531,14 +526,14 @@ class MP3Audio(AudioFile):
 
         from audiotools.id3 import skip_id3v2_comment
 
-        #if we're starting at an ID3v2 header, skip it to save a bunch of time
+        # if we're starting at an ID3v2 header, skip it to save a bunch of time
         skip_id3v2_comment(mp3file)
 
         from audiotools.bitstream import BitstreamReader
 
         reader = BitstreamReader(mp3file, 0)
 
-        #skip over any bytes that aren't a valid MPEG header
+        # skip over any bytes that aren't a valid MPEG header
         reader.mark()
         (frame_sync, mpeg_id, layer) = reader.parse("11u 2u 2u 1p")
         while (not ((frame_sync == 0x7FF) and
@@ -622,7 +617,7 @@ class MP3Audio(AudioFile):
 
         format_ = cls.NAME.decode('ascii')
 
-        #display where to get libmp3lame
+        # display where to get libmp3lame
         messenger.info(
             ERR_LIBRARY_NEEDED %
             {"library": u"\"libmp3lame\"",
@@ -632,7 +627,7 @@ class MP3Audio(AudioFile):
             {"library": u"mp3lame",
              "url": "http://lame.sourceforge.net/"})
 
-        #then display where to get libmpg123
+        # then display where to get libmpg123
         messenger.info(
             ERR_LIBRARY_NEEDED %
             {"library": u"\"libmpg123\"",
@@ -643,10 +638,6 @@ class MP3Audio(AudioFile):
              "url": u"http://www.mpg123.org/"})
 
         messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)
-
-#######################
-#MP2 AUDIO
-#######################
 
 
 class MP2Audio(MP3Audio):
@@ -739,7 +730,7 @@ class MP2Audio(MP3Audio):
 
         format_ = cls.NAME.decode('ascii')
 
-        #display where to get libtwo,ame
+        # display where to get libtwo,ame
         messenger.info(
             ERR_LIBRARY_NEEDED %
             {"library": u"\"libtwolame\"",
@@ -749,7 +740,7 @@ class MP2Audio(MP3Audio):
             {"library": u"twolame",
              "url": "http://twolame.sourceforge.net/"})
 
-        #then display where to get libmpg123
+        # then display where to get libmpg123
         messenger.info(
             ERR_LIBRARY_NEEDED %
             {"library": u"\"libmpg123\"",

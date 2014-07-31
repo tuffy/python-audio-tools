@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 import sys
@@ -164,11 +164,11 @@ if (__name__ == '__main__'):
                           default=None,
                           help=_.OPT_ALBUM_TOTAL)
 
-    #if adding ReplayGain is a lossless process
-    #(i.e. added as tags rather than modifying track data)
-    #add_replay_gain should default to True
-    #if not, add_replay_gain should default to False
-    #which is which depends on the track type
+    # if adding ReplayGain is a lossless process
+    # (i.e. added as tags rather than modifying track data)
+    # add_replay_gain should default to True
+    # if not, add_replay_gain should default to False
+    # which is which depends on the track type
     metadata.add_argument("--replay-gain",
                           action="store_true",
                           default=None,
@@ -190,19 +190,19 @@ if (__name__ == '__main__'):
     options = parser.parse_args()
     msg = audiotools.Messenger("dvda2track", options)
 
-    #ensure interactive mode is available, if selected
+    # ensure interactive mode is available, if selected
     if (options.interactive and (not audiotools.ui.AVAILABLE)):
         audiotools.ui.not_available_message(msg)
         sys.exit(1)
 
-    #get the AudioFile class we are converted to
+    # get the AudioFile class we are converted to
     if (options.type == 'help'):
         audiotools.ui.show_available_formats(msg)
         sys.exit(0)
     else:
         AudioType = audiotools.TYPE_MAP[options.type]
 
-    #ensure the selected compression is compatible with that class
+    # ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         audiotools.ui.show_available_qualities(msg, AudioType)
         sys.exit(0)
@@ -221,7 +221,7 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_NO_AUDIO_TS)
         sys.exit(1)
 
-    #get main DVDAudio object
+    # get main DVDAudio object
     try:
         dvda = audiotools.DVDAudio(options.audio_ts, options.cdrom)
     except audiotools.InvalidDVDA as err:
@@ -231,13 +231,13 @@ if (__name__ == '__main__'):
         msg.os_error(err)
         sys.exit(1)
 
-    #get selected DVDATitle from DVDAudio object
+    # get selected DVDATitle from DVDAudio object
     if (options.title < 1):
         msg.error(_.ERR_INVALID_TITLE_NUMBER)
         sys.exit(1)
     title = dvda[0][options.title - 1]
 
-    #use DVDATtitle object to query metadata services for metadata choices
+    # use DVDATtitle object to query metadata services for metadata choices
     try:
         metadata_choices = audiotools.metadata_lookup(
             musicbrainz_disc_id=title.musicbrainz_disc_id(),
@@ -253,14 +253,14 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_CANCELLED)
         sys.exit(1)
 
-    #update MetaData with command-line
-    #track_start, track_total, album_number, album_total - if given
+    # update MetaData with command-line
+    # track_start, track_total, album_number, album_total - if given
     for c in metadata_choices:
         for m in c:
             if (((options.track_start is not None) and
                  (m.track_number is not None))):
-                #track_number and track_start both start at 1
-                #so minus 1 to take care of the offset
+                # track_number and track_start both start at 1
+                # so minus 1 to take care of the offset
                 m.track_number += (options.track_start - 1)
             if (options.track_total is not None):
                 m.track_total = options.track_total
@@ -269,7 +269,7 @@ if (__name__ == '__main__'):
             if (options.album_total is not None):
                 m.album_total = options.album_total
 
-    #determine which tracks to extract from the DVDATitle
+    # determine which tracks to extract from the DVDATitle
     if (len(options.tracks) == 0):
         to_rip = dict([(track.track, track) for track in title])
     else:
@@ -282,9 +282,9 @@ if (__name__ == '__main__'):
             except ValueError:
                 continue
 
-    #decide which metadata and output options use when extracting tracks
+    # decide which metadata and output options use when extracting tracks
     if (options.interactive):
-        #pick choice using interactive widget
+        # pick choice using interactive widget
         output_widget = audiotools.ui.OutputFiller(
             track_labels=[_.LAB_TRACK_X_OF_Y % (i, len(title))
                           for i in sorted(to_rip.keys())],
@@ -319,7 +319,7 @@ if (__name__ == '__main__'):
         else:
             sys.exit(0)
     else:
-        #pick choice without using GUI
+        # pick choice without using GUI
         try:
             output_tracks = list(
                 audiotools.ui.process_output_options(
@@ -344,7 +344,7 @@ if (__name__ == '__main__'):
             msg.error(unicode(err))
             sys.exit(1)
 
-    #perform actual track extraction
+    # perform actual track extraction
     encoded = []
     pcmreader = title.to_pcm()
     for (i, pts_ticks) in enumerate([t.pts_length for t in title]):
@@ -401,17 +401,17 @@ if (__name__ == '__main__'):
                     len(to_rip) - len(output_tracks),
                     len(to_rip)))
         else:
-            #bypass skipped tracks by decoding them to null
+            # bypass skipped tracks by decoding them to null
             audiotools.transfer_framelist_data(pcmreader, lambda f: f)
 
-    #add ReplayGain to ripped tracks, if necessary
+    # add ReplayGain to ripped tracks, if necessary
     if (output_class.supports_replay_gain() and
         (options.add_replay_gain if options.add_replay_gain is not None else
          audiotools.ADD_REPLAYGAIN)):
         rg_progress = audiotools.ReplayGainProgressDisplay(msg)
         rg_progress.initial_message()
         try:
-            #all audio files must belong to the same album, by definition
+            # all audio files must belong to the same album, by definition
             audiotools.add_replay_gain(encoded, rg_progress.update)
         except ValueError as err:
             rg_progress.clear_rows()

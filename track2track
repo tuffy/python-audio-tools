@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 import sys
@@ -88,7 +88,7 @@ def convert(progress,
         if (existing_cuesheet is not None):
             destination_audiofile.set_cuesheet(existing_cuesheet)
     except KeyboardInterrupt:
-        #delete partially-encoded file
+        # delete partially-encoded file
         try:
             os.unlink(destination_filename)
         except OSError:
@@ -142,46 +142,46 @@ if (audiotools.ui.AVAILABLE):
 
             self.__cancelled__ = True
 
-            #ensure there's at least one album
+            # ensure there's at least one album
             assert(len(track_labels) > 0)
 
-            #ensure album count is consistent
+            # ensure album count is consistent
             assert(len(track_labels) ==
                    len(metadata_choices) ==
                    len(input_filenames))
 
-            #ensure track count is consistent
+            # ensure track count is consistent
             for (labels, filenames) in zip(track_labels, input_filenames):
                 assert(len(labels) == len(filenames))
 
-            #ensure there's at least one track
+            # ensure there's at least one track
             assert(len(track_labels[0]) > 0)
 
-            #ensure there's at least one set of choices per album
-            #and all have the same number of tracks
+            # ensure there's at least one set of choices per album
+            # and all have the same number of tracks
             for (a, choice_labels) in zip(metadata_choices,
                                           track_labels):
                 assert(len(a) > 0)
                 for c in a:
                     assert(len(c) == len(choice_labels))
 
-            #ensure all input filenames are Filename objects
+            # ensure all input filenames are Filename objects
             for a in input_filenames:
                 for f in a:
                     assert(isinstance(f, audiotools.Filename))
 
-            #setup status bars for output messages
+            # setup status bars for output messages
             self.metadatas_status = [urwid.Text(u"") for m in track_labels]
             self.options_status = urwid.Text(u"")
 
-            #setup widgets for populated metadata fields
+            # setup widgets for populated metadata fields
             self.metadatas = [
                 audiotools.ui.MetaDataFiller(labels, choices, status)
                 for (labels, choices, status) in zip(track_labels,
                                                      metadata_choices,
                                                      self.metadatas_status)]
 
-            #setup a widget for populating output parameters
+            # setup a widget for populating output parameters
             self.options = audiotools.ui.OutputOptions(
                 output_dir=output_directory,
                 format_string=format_string,
@@ -190,7 +190,7 @@ if (audiotools.ui.AVAILABLE):
                 input_filenames=reduce(concat, input_filenames),
                 metadatas=[None for f in reduce(concat, input_filenames)])
 
-            #finish initialization
+            # finish initialization
             from audiotools.text import LAB_CANCEL_BUTTON
 
             self.wizard = audiotools.ui.Wizard(
@@ -208,10 +208,10 @@ if (audiotools.ui.AVAILABLE):
         def page_changed(self, new_page):
             self.__current_page__ = new_page
             if (hasattr(new_page, "status")):
-                #one of the metadata pages is selected
+                # one of the metadata pages is selected
                 self.set_footer(new_page.status)
             else:
-                #the final options page is selected
+                # the final options page is selected
                 self.options.set_metadatas(
                     reduce(concat, [list(m.populated_metadata())
                                     for m in self.metadatas]))
@@ -395,13 +395,13 @@ if (__name__ == '__main__'):
 
     msg = audiotools.Messenger("track2track", options)
 
-    #ensure interactive mode is available, if selected
+    # ensure interactive mode is available, if selected
     if (options.interactive and (not audiotools.ui.AVAILABLE)):
         audiotools.ui.not_available_message(msg)
         sys.exit(1)
 
-    #if one specifies incompatible output options,
-    #complain about it right away
+    # if one specifies incompatible output options,
+    # complain about it right away
     if (options.output is not None):
         if (options.dir != "."):
             msg.error(_.ERR_TRACK2TRACK_O_AND_D)
@@ -411,7 +411,7 @@ if (__name__ == '__main__'):
         if (options.format is not None):
             msg.warning(_.ERR_TRACK2TRACK_O_AND_FORMAT)
 
-    #get the AudioFile class we are converted to
+    # get the AudioFile class we are converted to
     if (options.type == 'help'):
         audiotools.ui.show_available_formats(msg)
         sys.exit(0)
@@ -430,7 +430,7 @@ if (__name__ == '__main__'):
                 exp.error_msg(msg)
                 sys.exit(1)
 
-    #whether to add ReplayGain to newly converted files
+    # whether to add ReplayGain to newly converted files
     if (AudioType.supports_replay_gain()):
         add_replay_gain = ((options.add_replay_gain if
                             (options.add_replay_gain is not None) else
@@ -438,7 +438,7 @@ if (__name__ == '__main__'):
     else:
         add_replay_gain = False
 
-    #ensure the selected compression is compatible with that class
+    # ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         audiotools.ui.show_available_qualities(msg, AudioType)
         sys.exit(0)
@@ -450,7 +450,7 @@ if (__name__ == '__main__'):
                    "type": AudioType.NAME})
         sys.exit(1)
 
-    #grab the list of AudioFile objects we are converting from
+    # grab the list of AudioFile objects we are converting from
     input_filenames = set([])
     try:
         audiofiles = audiotools.open_files(options.filenames,
@@ -487,34 +487,34 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     if (options.output is None):
-        #the default encoding method, without an output file
+        # the default encoding method, without an output file
 
         queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
 
-        #split tracks by album
+        # split tracks by album
         albums_iter = audiotools.group_tracks(audiofiles)
 
         filename_format = (audiotools.FILENAME_FORMAT if
                            options.format is None else
                            options.format)
 
-        #input_tracks[a][t] is an AudioFile object
-        #per album "a", per track "t"
+        # input_tracks[a][t] is an AudioFile object
+        # per album "a", per track "t"
         input_tracks = []
 
-        #input_metadatas[a][t] is a MetaData object (or None)
-        #per album "a", per track "t"
+        # input_metadatas[a][t] is a MetaData object (or None)
+        # per album "a", per track "t"
         input_metadatas = []
 
-        #track_labels[a][t] is a unicode string per album "a", per track "t"
+        # track_labels[a][t] is a unicode string per album "a", per track "t"
         track_labels = []
 
-        #metadata_choices[a][c][t] is a MetaData object
-        #per album "a", per choice "c", per track "t"
+        # metadata_choices[a][c][t] is a MetaData object
+        # per album "a", per choice "c", per track "t"
         metadata_choices = []
 
-        #input_filenames[a][t] is a Filename object
-        #per album "a", per track "t"
+        # input_filenames[a][t] is a Filename object
+        # per album "a", per track "t"
         input_filenames = []
 
         for album_tracks in albums_iter:
@@ -528,11 +528,11 @@ if (__name__ == '__main__'):
             input_filenames.append(filenames)
 
             if (not options.metadata_lookup):
-                #pull metadata from existing files, if any
+                # pull metadata from existing files, if any
                 metadata_choices.append([[f.get_metadata() for f in
                                           album_tracks]])
             else:
-                #perform CD lookup for existing files
+                # perform CD lookup for existing files
                 try:
                     metadata_choices.append(audiotools.track_metadata_lookup(
                         audiofiles=album_tracks,
@@ -547,18 +547,18 @@ if (__name__ == '__main__'):
                     msg.error(_.ERR_CANCELLED)
                     sys.exit(1)
 
-                #and prepend metadata from existing files as an option, if any
+                # and prepend metadata from existing files as an option, if any
                 if (track_metadatas != [None] * len(track_metadatas)):
                     metadata_choices[-1].insert(
                         0,
                         [(m if m is not None else audiotools.MetaData())
                          for m in track_metadatas])
 
-                #avoid performing too many lookups in a row too quickly
+                # avoid performing too many lookups in a row too quickly
                 from time import sleep
                 sleep(1)
 
-        #a list of (audiofile,
+        # a list of (audiofile,
         #           output_class,
         #           output_filename,
         #           output_quality,
@@ -566,13 +566,13 @@ if (__name__ == '__main__'):
         #           output_replay_gain) tuples to be executed
         conversion_jobs = []
 
-        #a list of [audiofile, audiofile, ...] lists
-        #each containing an album of tracks to add ReplayGain to
-        #once conversion is finished
+        # a list of [audiofile, audiofile, ...] lists
+        # each containing an album of tracks to add ReplayGain to
+        # once conversion is finished
         replaygain_jobs = []
 
         if (options.interactive):
-            #pick options using interactive widget
+            # pick options using interactive widget
 
             output_widget = MultiOutputFiller(
                 track_labels=track_labels,
@@ -609,8 +609,8 @@ if (__name__ == '__main__'):
                                        input_metadatas,
                                        output_widget.output_albums()):
 
-                #use existing ReplayGain values if we're to add it
-                #and *all* input tracks have it
+                # use existing ReplayGain values if we're to add it
+                # and *all* input tracks have it
                 if (add_replay_gain):
                     album_track_gains = [t.get_replay_gain() for t in
                                          album_tracks]
@@ -631,15 +631,15 @@ if (__name__ == '__main__'):
                                                  album_metadatas,
                                                  album_output,
                                                  album_track_gains):
-                    #merge current track metadata (if any)
-                    #with metadata returned from widget
+                    # merge current track metadata (if any)
+                    # with metadata returned from widget
                     if (current_metadata is not None):
                         for attr in audiotools.MetaData.FIELDS:
                             original_value = getattr(current_metadata, attr)
                             updated_value = getattr(output_metadata, attr)
                             if (original_value != updated_value):
                                 setattr(current_metadata, attr, updated_value)
-                        #and queue up conversion job to be executed
+                        # and queue up conversion job to be executed
                         conversion_jobs.append((input_track,
                                                 output_class,
                                                 output_filename,
@@ -647,8 +647,8 @@ if (__name__ == '__main__'):
                                                 current_metadata,
                                                 output_replay_gain))
                     else:
-                        #or simply queue up conversion job to be executed
-                        #using only new metadata
+                        # or simply queue up conversion job to be executed
+                        # using only new metadata
                         conversion_jobs.append((input_track,
                                                 output_class,
                                                 output_filename,
@@ -657,7 +657,7 @@ if (__name__ == '__main__'):
                                                 output_replay_gain))
 
         else:
-            #pick options without using GUI
+            # pick options without using GUI
             for (album_tracks,
                  album_metadata_choices,
                  album_filenames) in zip(input_tracks,
@@ -674,8 +674,8 @@ if (__name__ == '__main__'):
                         msg=msg,
                         use_default=options.use_default))
 
-                    #use existing ReplayGain values if we're to add it
-                    #and *all* input tracks have it
+                    # use existing ReplayGain values if we're to add it
+                    # and *all* input tracks have it
                     if (add_replay_gain):
                         album_track_gains = [t.get_replay_gain() for t in
                                              album_tracks]
@@ -686,7 +686,7 @@ if (__name__ == '__main__'):
                     else:
                         album_track_gains = [None for t in album_tracks]
 
-                    #queue jobs to be executed
+                    # queue jobs to be executed
                     for (album_track,
                          (output_class,
                           output_filename,
@@ -710,8 +710,8 @@ if (__name__ == '__main__'):
                     msg.error(unicode(err))
                     sys.exit(1)
 
-        #re-check that the same output file doesn't occur more than once
-        #(although process_output_options also performs that check,
+        # re-check that the same output file doesn't occur more than once
+        # (although process_output_options also performs that check,
         # it's possible processing multiple albums at once
         # may result in the same output file occurring across the whole
         # job, but not in any individual album)
@@ -724,15 +724,15 @@ if (__name__ == '__main__'):
                 msg.error(_.ERR_DUPLICATE_OUTPUT_FILE % (output_filename,))
                 sys.exit(1)
 
-        #queue conversion jobs to ProgressQueue
+        # queue conversion jobs to ProgressQueue
         for (audiofile,
              output_class,
              output_filename,
              output_quality,
              output_metadata,
              output_replay_gain) in conversion_jobs:
-            #try to create subdirectories in advance
-            #so to bail out early if there's an error creating one
+            # try to create subdirectories in advance
+            # so to bail out early if there's an error creating one
             try:
                 audiotools.make_dirs(str(output_filename))
             except OSError:
@@ -742,10 +742,9 @@ if (__name__ == '__main__'):
             queue.execute(
                 function=convert,
                 progress_text=unicode(output_filename),
-                completion_output=
-                (_.LAB_ENCODE %
-                 {"source": audiotools.Filename(audiofile.filename),
-                  "destination": output_filename}),
+                completion_output=(_.LAB_ENCODE % {
+                    "source": audiotools.Filename(audiofile.filename),
+                    "destination": output_filename}),
                 source_audiofile=audiofile,
                 destination_filename=str(output_filename),
                 destination_class=output_class,
@@ -756,7 +755,7 @@ if (__name__ == '__main__'):
                 channels=options.channels,
                 bits_per_sample=options.bits_per_sample)
 
-        #perform actual track conversion
+        # perform actual track conversion
         try:
             output_files = audiotools.open_files(
                 queue.run(options.max_processes))
@@ -767,12 +766,12 @@ if (__name__ == '__main__'):
             msg.error(_.ERR_CANCELLED)
             sys.exit(1)
 
-        #add ReplayGain to converted files, if necessary
+        # add ReplayGain to converted files, if necessary
 
-        #separate encoded files by album_name and album_number
+        # separate encoded files by album_name and album_number
         for album in [map(audiotools.open, fs) for fs in replaygain_jobs]:
-            #add ReplayGain to groups of files
-            #belonging to the same album
+            # add ReplayGain to groups of files
+            # belonging to the same album
 
             album_number = set([(m.album_number if m is not None else None)
                                 for m in
@@ -801,7 +800,7 @@ if (__name__ == '__main__'):
             msg.error(_.ERR_CANCELLED)
             sys.exit(1)
     else:
-        #encoding only a single file
+        # encoding only a single file
         audiofile = audiofiles[0]
         input_filename = audiotools.Filename(audiofile.filename)
 

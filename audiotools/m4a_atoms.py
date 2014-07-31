@@ -1,26 +1,26 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools import MetaData, Image
 from audiotools.image import image_metrics
 
-#M4A atoms are typically laid on in the file as follows:
+# M4A atoms are typically laid on in the file as follows:
 # ftyp
 # mdat
 # moov/
@@ -45,9 +45,9 @@ from audiotools.image import image_metrics
 # +udta/
 # +-meta
 #
-#Where atoms ending in / are container atoms and the rest are leaf atoms.
-#'mdat' is where the file's audio stream is stored
-#the rest are various bits of metadata
+# Where atoms ending in / are container atoms and the rest are leaf atoms.
+# 'mdat' is where the file's audio stream is stored
+# the rest are various bits of metadata
 
 
 def parse_sub_atoms(data_size, reader, parsers):
@@ -73,8 +73,8 @@ def parse_sub_atoms(data_size, reader, parsers):
 
     return leaf_atoms
 
-#build(), parse() and size() work on atom data
-#but not the atom's size and name values
+# build(), parse() and size() work on atom data
+# but not the atom's size and name values
 
 
 class M4A_Tree_Atom:
@@ -240,7 +240,7 @@ class M4A_Leaf_Atom:
             return True
 
     def __unicode__(self):
-        #FIXME - should make this more informative, if possible
+        # FIXME - should make this more informative, if possible
         return self.data.encode('hex')[0:40].decode('ascii')
 
     def raw_info(self):
@@ -1248,19 +1248,19 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             if (not self.has_ilst_atom()):
                 self.add_ilst_atom()
 
-            #an ilst atom is present, so check its sub-atoms
+            # an ilst atom is present, so check its sub-atoms
             for ilst_atom in self.ilst_atom():
                 if (ilst_atom.name == ilst_leaf):
-                    #atom already present, so adjust its data sub-atom
+                    # atom already present, so adjust its data sub-atom
                     replace_data_atom(attr, ilst_atom, value)
                     break
             else:
-                #atom not present, so append new parent and data sub-atom
+                # atom not present, so append new parent and data sub-atom
                 self.ilst_atom().add_child(
                     M4A_ILST_Leaf_Atom(ilst_leaf,
                                        [new_data_atom(attr, value)]))
         else:
-            #attribute is not an atom, so pass it through
+            # attribute is not an atom, so pass it through
             self.__dict__[attr] = value
             return
 
@@ -1275,32 +1275,32 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                     ilst_atom)
             elif (attr == "track_number"):
                 if (self.track_total is None):
-                    #if track_number and track_total are both 0
-                    #remove trkn atom
+                    # if track_number and track_total are both 0
+                    # remove trkn atom
                     ilst_atom.leaf_atoms = filter(
                         lambda atom: atom.name != "trkn", ilst_atom)
                 else:
                     self.track_number = 0
             elif (attr == "track_total"):
                 if (self.track_number is None):
-                    #if track_number and track_total are both 0
-                    #remove trkn atom
+                    # if track_number and track_total are both 0
+                    # remove trkn atom
                     ilst_atom.leaf_atoms = filter(
                         lambda atom: atom.name != "trkn", ilst_atom)
                 else:
                     self.track_total = 0
             elif (attr == "album_number"):
                 if (self.album_total is None):
-                    #if album_number and album_total are both 0
-                    #remove disk atom
+                    # if album_number and album_total are both 0
+                    # remove disk atom
                     ilst_atom.leaf_atoms = filter(
                         lambda atom: atom.name != "disk", ilst_atom)
                 else:
                     self.album_number = 0
             elif (attr == "album_total"):
                 if (self.album_number is None):
-                    #if album_number and album_total are both 0
-                    #remove disk atom
+                    # if album_number and album_total are both 0
+                    # remove disk atom
                     ilst_atom.leaf_atoms = filter(
                         lambda atom: atom.name != "disk", ilst_atom)
                 else:
@@ -1331,7 +1331,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
 
         ilst_atom = self.ilst_atom()
 
-        #filter out old cover image before adding new one
+        # filter out old cover image before adding new one
         ilst_atom.leaf_atoms = (
             filter(not_cover, ilst_atom) +
             [M4A_ILST_Leaf_Atom('covr', [M4A_ILST_COVR_Data_Atom.converted(
@@ -1426,17 +1426,19 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         fixes_performed = []
 
         def cleaned_atom(atom):
-            #numerical fields are stored in bytes,
-            #so no leading zeroes are possible
+            # numerical fields are stored in bytes,
+            # so no leading zeroes are possible
 
-            #image fields don't store metadata,
-            #so no field problems are possible there either
+            # image fields don't store metadata,
+            # so no field problems are possible there either
+
+            from audiotools.text import (CLEAN_REMOVE_TRAILING_WHITESPACE,
+                                         CLEAN_REMOVE_EMPTY_TAG)
 
             if (atom.name in self.UNICODE_ATTRIB_TO_ILST.values()):
                 text = atom['data'].data.decode('utf-8')
                 fix1 = text.rstrip()
                 if (fix1 != text):
-                    from audiotools.text import CLEAN_REMOVE_TRAILING_WHITESPACE
                     fixes_performed.append(
                         CLEAN_REMOVE_TRAILING_WHITESPACE %
                         {"field": atom.name.lstrip('\xa9').decode('ascii')})
@@ -1452,7 +1454,6 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                         [M4A_ILST_Unicode_Data_Atom(0, 1,
                                                     fix2.encode('utf-8'))])
                 else:
-                    from audiotools.text import CLEAN_REMOVE_EMPTY_TAG
                     fixes_performed.append(
                         CLEAN_REMOVE_EMPTY_TAG %
                         {"field": atom.name.lstrip('\xa9').decode('ascii')})
@@ -1469,7 +1470,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                                       map(cleaned_atom, self.ilst_atom())))]),
                 fixes_performed)
         else:
-            #if no ilst atom, return a copy of the meta atom as-is
+            # if no ilst atom, return a copy of the meta atom as-is
             return (M4A_META_Atom(
                 self.version,
                 self.flags,
@@ -1630,7 +1631,7 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
         returns an atom of this class"""
 
         assert(name == "data")
-        #FIXME - handle mis-sized TRKN data atoms
+        # FIXME - handle mis-sized TRKN data atoms
         return cls(*reader.parse("64p 16p 16u 16u 16p"))
 
     def build(self, writer):
@@ -1707,7 +1708,7 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
         returns an atom of this class"""
 
         assert(name == "data")
-        #FIXME - handle mis-sized DISK data atoms
+        # FIXME - handle mis-sized DISK data atoms
         return cls(*reader.parse("64p 16p 16u 16u"))
 
     def build(self, writer):

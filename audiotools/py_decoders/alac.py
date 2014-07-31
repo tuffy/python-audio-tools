@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools import iter_last
 from audiotools.bitstream import BitstreamReader
@@ -41,10 +41,10 @@ def sign_only(value):
 
 
 def truncate_bits(value, bits):
-    #truncate value to the given number of bits
+    # truncate value to the given number of bits
     truncated = value & ((1 << bits) - 1)
 
-    #apply newly created sign bit
+    # apply newly created sign bit
     if (truncated & (1 << (bits - 1))):
         return truncated - (1 << bits)
     else:
@@ -57,8 +57,8 @@ class ALACDecoder:
 
         self.reader.mark()
         try:
-            #locate the "alac" atom
-            #which is full of required decoding parameters
+            # locate the "alac" atom
+            # which is full of required decoding parameters
             try:
                 stsd = self.find_sub_atom("moov", "trak", "mdia",
                                           "minf", "stbl", "stsd")
@@ -75,9 +75,9 @@ class ALACDecoder:
              self.maximum_k,
              self.channels,
              self.sample_rate) = stsd.parse(
-                #ignore much of the stuff in the "high" ALAC atom
+                # ignore much of the stuff in the "high" ALAC atom
                 "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
-                #and use the attributes in the "low" ALAC atom instead
+                # and use the attributes in the "low" ALAC atom instead
                 "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
 
             self.channel_mask = {1: 0x0004,
@@ -92,8 +92,8 @@ class ALACDecoder:
             if ((alac1 != 'alac') or (alac2 != 'alac')):
                 raise ValueError("Invalid alac atom")
 
-            #also locate the "mdhd" atom
-            #which contains the stream's length in PCM frames
+            # also locate the "mdhd" atom
+            # which contains the stream's length in PCM frames
             self.reader.rewind()
             mdhd = self.find_sub_atom("moov", "trak", "mdia", "mdhd")
             (version, ) = mdhd.parse("8u 24p")
@@ -106,7 +106,7 @@ class ALACDecoder:
             else:
                 raise ValueError("invalid mdhd version")
 
-            #finally, set our stream to the "mdat" atom
+            # finally, set our stream to the "mdat" atom
             self.reader.rewind()
             (atom_size, atom_name) = self.reader.parse("32u 4b")
             while (atom_name != "mdat"):
@@ -133,11 +133,11 @@ class ALACDecoder:
                 raise KeyError(next_atom)
 
     def read(self, pcm_frames):
-        #if the stream is exhausted, return an empty pcm.FrameList object
+        # if the stream is exhausted, return an empty pcm.FrameList object
         if (self.total_pcm_frames == 0):
             return from_list([], self.channels, self.bits_per_sample, True)
 
-        #otherwise, read one ALAC frameset's worth of frame data
+        # otherwise, read one ALAC frameset's worth of frame data
         frameset_data = []
         frame_channels = self.reader.read(3) + 1
         while (frame_channels != 0x8):
@@ -145,7 +145,7 @@ class ALACDecoder:
             frame_channels = self.reader.read(3) + 1
         self.reader.byte_align()
 
-        #reorder the frameset to Wave order, depending on channel count
+        # reorder the frameset to Wave order, depending on channel count
         if ((self.channels == 1) or (self.channels == 2)):
             pass
         elif (self.channels == 3):
@@ -196,16 +196,16 @@ class ALACDecoder:
                                              True)
                                    for channel in frameset_data])
 
-        #deduct PCM frames from remainder
+        # deduct PCM frames from remainder
         self.total_pcm_frames -= framelist.frames
 
-        #return samples as a pcm.FrameList object
+        # return samples as a pcm.FrameList object
         return framelist
 
     def read_frame(self, channel_count):
         """returns a list of PCM sample lists, one per channel"""
 
-        #read the ALAC frame header
+        # read the ALAC frame header
         self.reader.skip(16)
         has_sample_count = self.reader.read(1)
         uncompressed_lsb_size = self.reader.read(2)
@@ -216,22 +216,22 @@ class ALACDecoder:
             sample_count = self.samples_per_frame
 
         if (uncompressed == 1):
-            #if the frame is uncompressed,
-            #read the raw, interlaced samples
+            # if the frame is uncompressed,
+            # read the raw, interlaced samples
             samples = [self.reader.read_signed(self.bits_per_sample)
                        for i in xrange(sample_count * channel_count)]
             return [samples[i::channel_count] for i in xrange(channel_count)]
         else:
-            #if the frame is compressed,
-            #read the interlacing parameters
+            # if the frame is compressed,
+            # read the interlacing parameters
             interlacing_shift = self.reader.read(8)
             interlacing_leftweight = self.reader.read(8)
 
-            #subframe headers
+            # subframe headers
             subframe_headers = [self.read_subframe_header()
                                 for i in xrange(channel_count)]
 
-            #optional uncompressed LSB values
+            # optional uncompressed LSB values
             if (uncompressed_lsb_size > 0):
                 uncompressed_lsbs = [
                     self.reader.read(uncompressed_lsb_size * 8)
@@ -243,13 +243,13 @@ class ALACDecoder:
                            (uncompressed_lsb_size * 8) +
                            channel_count - 1)
 
-            #and residual blocks
+            # and residual blocks
             residual_blocks = [self.read_residuals(sample_size,
                                                    sample_count)
                                for i in xrange(channel_count)]
 
-            #calculate subframe samples based on
-            #subframe header's QLP coefficients and QLP shift-needed
+            # calculate subframe samples based on
+            # subframe header's QLP coefficients and QLP shift-needed
             decoded_subframes = [self.decode_subframe(header[0],
                                                       header[1],
                                                       sample_size,
@@ -258,14 +258,14 @@ class ALACDecoder:
                                  zip(subframe_headers,
                                      residual_blocks)]
 
-            #decorrelate channels according interlacing shift and leftweight
+            # decorrelate channels according interlacing shift and leftweight
             decorrelated_channels = self.decorrelate_channels(
                 decoded_subframes,
                 interlacing_shift,
                 interlacing_leftweight)
 
-            #if uncompressed LSB values are present,
-            #prepend them to each sample of each channel
+            # if uncompressed LSB values are present,
+            # prepend them to each sample of each channel
             if (uncompressed_lsb_size > 0):
                 channels = []
                 for (i, channel) in enumerate(decorrelated_channels):
@@ -295,30 +295,30 @@ class ALACDecoder:
         i = 0
 
         while (i < sample_count):
-            #get an unsigned residual based on "history"
-            #and on "sample_size" as a lst resort
+            # get an unsigned residual based on "history"
+            # and on "sample_size" as a lst resort
             k = min(log2(history // (2 ** 9) + 3), self.maximum_k)
 
             unsigned = self.read_residual(k, sample_size) + sign_modifier
 
-            #clear out old sign modifier, if any
+            # clear out old sign modifier, if any
             sign_modifier = 0
 
-            #change unsigned residual to signed residual
+            # change unsigned residual to signed residual
             if (unsigned & 1):
                 residuals.append(-((unsigned + 1) // 2))
             else:
                 residuals.append(unsigned // 2)
 
-            #update history based on unsigned residual
+            # update history based on unsigned residual
             if (unsigned <= 0xFFFF):
                 history += ((unsigned * self.history_multiplier) -
                             ((history * self.history_multiplier) >> 9))
             else:
                 history = 0xFFFF
 
-            #if history gets too small, we may have a block of 0 samples
-            #which can be compressed more efficiently
+            # if history gets too small, we may have a block of 0 samples
+            # which can be compressed more efficiently
             if ((history < 128) and ((i + 1) < sample_count)):
                 zeroes_k = min(7 -
                                log2(history) +
@@ -357,17 +357,17 @@ class ALACDecoder:
 
     def decode_subframe(self, qlp_shift_needed, qlp_coefficients,
                         sample_size, residuals):
-        #first sample is always copied verbatim
+        # first sample is always copied verbatim
         samples = [residuals.pop(0)]
 
         if (len(qlp_coefficients) < 31):
-            #the next "coefficient count" samples
-            #are applied as differences to the previous
+            # the next "coefficient count" samples
+            # are applied as differences to the previous
             for i in xrange(len(qlp_coefficients)):
                 samples.append(truncate_bits(samples[-1] + residuals.pop(0),
                                              sample_size))
 
-            #remaining samples are processed much like LPC
+            # remaining samples are processed much like LPC
             for residual in residuals:
                 base_sample = samples[-len(qlp_coefficients) - 1]
                 lpc_sum = sum([(s - base_sample) * c for (s, c) in
@@ -380,7 +380,7 @@ class ALACDecoder:
 
                 buf = samples[-len(qlp_coefficients) - 2:-1]
 
-                #error value then adjusts the coefficients table
+                # error value then adjusts the coefficients table
                 if (residual > 0):
                     predictor_num = len(qlp_coefficients) - 1
 
@@ -400,7 +400,7 @@ class ALACDecoder:
                         predictor_num -= 1
 
                 elif (residual < 0):
-                    #the same as above, but we break if residual goes positive
+                    # the same as above, but we break if residual goes positive
                     predictor_num = len(qlp_coefficients) - 1
 
                     while ((predictor_num >= 0) and residual < 0):
@@ -418,7 +418,7 @@ class ALACDecoder:
 
                         predictor_num -= 1
         else:
-            #residuals are encoded as simple difference values
+            # residuals are encoded as simple difference values
             for residual in residuals:
                 samples.append(truncate_bits(samples[-1] + residual,
                                              sample_size))

@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 (RG_NO_REPLAYGAIN, RG_TRACK_GAIN, RG_ALBUM_GAIN) = range(3)
@@ -206,7 +206,7 @@ class AudioPlayer:
         """changes current state of player to PLAYER_STOPPED"""
 
         if (self.__state__ == PLAYER_STOPPED):
-            #already stopped, so nothing to do
+            # already stopped, so nothing to do
             return
         else:
             if (self.__state__ == PLAYER_PAUSED):
@@ -220,7 +220,7 @@ class AudioPlayer:
     def pause(self):
         """if playing, changes current state of player to PLAYER_PAUSED"""
 
-        #do nothing if player is stopped or already paused
+        # do nothing if player is stopped or already paused
         if (self.__state__ == PLAYER_PLAYING):
             self.__audio_output__.pause()
             self.__state__ = PLAYER_PAUSED
@@ -232,21 +232,21 @@ class AudioPlayer:
         from audiotools import BufferedPCMReader
 
         if (self.__state__ == PLAYER_PLAYING):
-            #already playing, so nothing to do
+            # already playing, so nothing to do
             return
         elif (self.__state__ == PLAYER_PAUSED):
-            #go from unpaused to playing
+            # go from unpaused to playing
             self.__audio_output__.resume()
             self.__state__ = PLAYER_PLAYING
         elif ((self.__state__ == PLAYER_STOPPED) and
               (self.__audiofile__ is not None)):
-            #go from stopped to playing
-            #if an audiofile has been opened
+            # go from stopped to playing
+            # if an audiofile has been opened
 
-            #get PCMReader from selected audiofile
+            # get PCMReader from selected audiofile
             pcmreader = self.__audiofile__.to_pcm()
 
-            #apply ReplayGain if requested
+            # apply ReplayGain if requested
             if (self.__replay_gain__ in (RG_TRACK_GAIN, RG_ALBUM_GAIN)):
                 gain = self.__audiofile__.get_replay_gain()
                 if (gain is not None):
@@ -261,27 +261,27 @@ class AudioPlayer:
                                                      gain.album_gain,
                                                      gain.album_peak)
 
-            #buffer PCMReader so that one can process small chunks of data
+            # buffer PCMReader so that one can process small chunks of data
             self.__pcmreader__ = BufferedPCMReader(pcmreader)
 
-            #calculate quarter second buffer size
-            #(or at least 256 samples)
+            # calculate quarter second buffer size
+            # (or at least 256 samples)
             self.__buffer_size__ = max(int(round(0.25 *
                                                  pcmreader.sample_rate)),
                                        256)
 
-            #set output to be compatible with PCMReader
+            # set output to be compatible with PCMReader
             self.__audio_output__.set_format(
                 sample_rate=self.__pcmreader__.sample_rate,
                 channels=self.__pcmreader__.channels,
                 channel_mask=self.__pcmreader__.channel_mask,
                 bits_per_sample=self.__pcmreader__.bits_per_sample)
 
-            #reset progress
+            # reset progress
             self.__current_frames__ = 0
             self.__total_frames__ = self.__audiofile__.total_frames()
 
-            #update state so audio begins playing
+            # update state so audio begins playing
             self.__state__ = PLAYER_PLAYING
 
     def output_audio(self):
@@ -293,8 +293,8 @@ class AudioPlayer:
             try:
                 frame = self.__pcmreader__.read(self.__buffer_size__)
             except (IOError, ValueError) as err:
-                #some sort of read error occurred
-                #so cease playing file and move on to next
+                # some sort of read error occurred
+                # so cease playing file and move on to next
                 self.stop()
                 if (callable(self.__next_track_callback__)):
                     self.__next_track_callback__()
@@ -304,7 +304,7 @@ class AudioPlayer:
                 self.__current_frames__ += frame.frames
                 self.__audio_output__.play(frame)
             else:
-                #audio has been exhausted
+                # audio has been exhausted
                 self.stop()
                 if (callable(self.__next_track_callback__)):
                     self.__next_track_callback__()
@@ -319,9 +319,9 @@ class AudioPlayer:
             try:
                 (command,
                  args) = commands.get(self.__state__ != PLAYER_PLAYING)
-                #got a command to process
+                # got a command to process
                 if (command == "open"):
-                    #stop whatever's playing and prepare new track for playing
+                    # stop whatever's playing and prepare new track for playing
                     self.stop()
                     self.set_audiofile(args[0])
                 elif (command == "play"):
@@ -329,12 +329,12 @@ class AudioPlayer:
                 elif (command == "set_replay_gain"):
                     self.__replay_gain__ = args[0]
                 elif (command == "set_output"):
-                    #resume (if necessary) and close existing output
+                    # resume (if necessary) and close existing output
                     if (self.__state__ == PLAYER_PAUSED):
                         self.__audio_output__.resume()
                     self.__audio_output__.close()
 
-                    #set new output and set format (if necessary)
+                    # set new output and set format (if necessary)
                     self.__audio_output__ = args[0]
                     if (self.__pcmreader__ is not None):
                         self.__audio_output__.set_format(
@@ -343,13 +343,13 @@ class AudioPlayer:
                             channel_mask=self.__pcmreader__.channel_mask,
                             bits_per_sample=self.__pcmreader__.bits_per_sample)
 
-                    #if paused, reset audio output to paused
+                    # if paused, reset audio output to paused
                     if (self.__state__ == PLAYER_PAUSED):
                         self.__audio_output__.pause()
                 elif (command == "pause"):
                     self.pause()
                 elif (command == "toggle_play_pause"):
-                    #switch from paused to playing or playing to paused
+                    # switch from paused to playing or playing to paused
                     if (self.__state__ == PLAYER_PAUSED):
                         self.play()
                     elif (self.__state__ == PLAYER_PLAYING):
@@ -362,8 +362,8 @@ class AudioPlayer:
                     self.__audio_output__.close()
                     return
             except Empty:
-                #no commands to process
-                #so output audio if playing
+                # no commands to process
+                # so output audio if playing
                 self.output_audio()
 
 
@@ -436,7 +436,7 @@ class CDAudioPlayer(AudioPlayer):
     def set_audiofile(self, track_number):
         """set tracks number to play"""
 
-        #ensure track number is in the proper range
+        # ensure track number is in the proper range
         if (track_number in self.__offsets__.keys()):
             self.__track_number__ = track_number
 
@@ -444,44 +444,44 @@ class CDAudioPlayer(AudioPlayer):
         """if track has been selected,
         changes current state of player to PLAYER_PLAYING"""
 
-        from audiotools import BufferedPCMReader,PCMReaderHead
+        from audiotools import BufferedPCMReader, PCMReaderHead
 
         if (self.__state__ == PLAYER_PLAYING):
-            #already playing, so nothing to do
+            # already playing, so nothing to do
             return
         elif (self.__state__ == PLAYER_PAUSED):
-            #go from unpaused to playing
+            # go from unpaused to playing
             self.__audio_output__.resume()
             self.__state__ = PLAYER_PLAYING
         elif ((self.__state__ == PLAYER_STOPPED) and
               (self.__track_number__ is not None)):
-            #go from stopped to playing
-            #if a track number has been selected
+            # go from stopped to playing
+            # if a track number has been selected
 
-            #seek to specified track number
+            # seek to specified track number
             self.__cddareader__.seek(self.__offsets__[self.__track_number__])
             track = PCMReaderHead(self.__cddareader__,
                                   self.__lengths__[self.__track_number__])
 
-            #decode PCMReader in thread
-            #and place in buffer so one can process small chunks of data
+            # decode PCMReader in thread
+            # and place in buffer so one can process small chunks of data
             self.__pcmreader__ = BufferedPCMReader(ThreadedPCMReader(track))
 
-            #calculate quarter second buffer size
+            # calculate quarter second buffer size
             self.__buffer_size__ = int(round(0.25 * 44100))
 
-            #set output to be compatible with PCMReader
+            # set output to be compatible with PCMReader
             self.__audio_output__.set_format(
                 sample_rate=44100,
                 channels=2,
                 channel_mask=0x3,
                 bits_per_sample=16)
 
-            #reset progress
+            # reset progress
             self.__current_frames__ = 0
             self.__total_frames__ = self.__lengths__[self.__track_number__]
 
-            #update state so audio begins playing
+            # update state so audio begins playing
             self.__state__ = PLAYER_PLAYING
 
 
@@ -505,8 +505,8 @@ class ThreadedPCMReader:
                 return
 
             while (not stop_event.is_set()):
-                #want to be sure to put 0 length frame in queue
-                #if reading is intended to continue
+                # want to be sure to put 0 length frame in queue
+                # if reading is intended to continue
                 queue.put(frame)
                 if (len(frame) > 0):
                     try:
@@ -570,7 +570,7 @@ class AudioOutput:
     def __setstate__(self, name):
         """sets internal state for use by Pickle module"""
 
-        #audio outputs are initialized closed for obvious reasons
+        # audio outputs are initialized closed for obvious reasons
         self.sample_rate = None
         self.channels = None
         self.channel_mask = None
@@ -756,14 +756,14 @@ class OSSAudioOutput(AudioOutput):
         this method does nothing"""
 
         if (self.__ossaudio__ is None):
-            #output hasn't been initialized
+            # output hasn't been initialized
 
             import ossaudiodev
 
             AudioOutput.set_format(self, sample_rate, channels,
                                    channel_mask, bits_per_sample)
 
-            #initialize audio output device and setup framelist converter
+            # initialize audio output device and setup framelist converter
             self.__ossaudio__ = ossaudiodev.open('w')
             self.__ossmixer__ = ossaudiodev.openmixer()
             if (self.bits_per_sample == 8):
@@ -788,7 +788,7 @@ class OSSAudioOutput(AudioOutput):
                                   channels=channels,
                                   channel_mask=channel_mask,
                                   bits_per_sample=bits_per_sample)):
-            #output has been initialized to a different format
+            # output has been initialized to a different format
 
             self.close()
             self.set_format(sample_rate=sample_rate,
@@ -898,7 +898,7 @@ class PulseAudioOutput(AudioOutput):
     def description(self):
         """returns user-facing name of output device as unicode"""
 
-        #FIXME - pull this from device description
+        # FIXME - pull this from device description
         return u"Pulse Audio"
 
     def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
@@ -913,7 +913,7 @@ class PulseAudioOutput(AudioOutput):
         this method does nothing"""
 
         if (self.__pulseaudio__ is None):
-            #output hasn't been initialized
+            # output hasn't been initialized
 
             from audiotools.output import PulseAudio
 
@@ -932,7 +932,7 @@ class PulseAudioOutput(AudioOutput):
                                   channels=channels,
                                   channel_mask=channel_mask,
                                   bits_per_sample=bits_per_sample)):
-            #output has been initialized to a different format
+            # output has been initialized to a different format
 
             self.close()
             self.set_format(sample_rate=sample_rate,
@@ -1022,7 +1022,7 @@ class ALSAAudioOutput(AudioOutput):
     def description(self):
         """returns user-facing name of output device as unicode"""
 
-        #FIXME - pull this from device description
+        # FIXME - pull this from device description
         return u"Advanced Linux Sound Architecture"
 
     def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
@@ -1037,7 +1037,7 @@ class ALSAAudioOutput(AudioOutput):
         this method does nothing"""
 
         if (self.__alsaaudio__ is None):
-            #output hasn't been initialized
+            # output hasn't been initialized
 
             from audiotools.output import ALSAAudio
 
@@ -1052,7 +1052,7 @@ class ALSAAudioOutput(AudioOutput):
                                   channels=channels,
                                   channel_mask=channel_mask,
                                   bits_per_sample=bits_per_sample)):
-            #output has been initialized to different format
+            # output has been initialized to different format
 
             self.close()
             self.set_format(sample_rate=sample_rate,
@@ -1140,7 +1140,7 @@ class CoreAudioOutput(AudioOutput):
     def description(self):
         """returns user-facing name of output device as unicode"""
 
-        #FIXME - pull this from device description
+        # FIXME - pull this from device description
         return u"Core Audio"
 
     def set_format(self, sample_rate, channels, channel_mask, bits_per_sample):
@@ -1155,7 +1155,7 @@ class CoreAudioOutput(AudioOutput):
         this method does nothing"""
 
         if (self.__coreaudio__ is None):
-            #output hasn't been initialized
+            # output hasn't been initialized
 
             from audiotools.output import CoreAudio
 
@@ -1170,7 +1170,7 @@ class CoreAudioOutput(AudioOutput):
                                   channels=channels,
                                   channel_mask=channel_mask,
                                   bits_per_sample=bits_per_sample)):
-            #output has been initialized in a different format
+            # output has been initialized in a different format
 
             self.close()
             self.set_format(sample_rate=sample_rate,
@@ -1203,7 +1203,7 @@ class CoreAudioOutput(AudioOutput):
         try:
             return self.__coreaudio__.get_volume()
         except ValueError:
-            #get_volume_scalar() call was unsuccessful
+            # get_volume_scalar() call was unsuccessful
             return 1.0
 
     def set_volume(self, volume):
@@ -1216,7 +1216,7 @@ class CoreAudioOutput(AudioOutput):
             try:
                 self.__coreaudio__.set_volume(volume)
             except ValueError:
-                #set_volume_scalar() call was unsuccessful
+                # set_volume_scalar() call was unsuccessful
                 pass
         else:
             raise ValueError("volume must be between 0.0 and 1.0")

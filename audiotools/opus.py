@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools import (AudioFile, InvalidFile)
 from audiotools.vorbis import (VorbisAudio, VorbisChannelMask)
@@ -27,7 +27,7 @@ class InvalidOpus(InvalidFile):
 
 
 #######################
-#Vorbis File
+# Vorbis File
 #######################
 
 class OpusAudio(VorbisAudio):
@@ -48,7 +48,7 @@ class OpusAudio(VorbisAudio):
         self.__channels__ = 0
         self.__channel_mask__ = 0
 
-        #get channel count and channel mask from first packet
+        # get channel count and channel mask from first packet
         from audiotools.bitstream import BitstreamReader
         try:
             f = open(filename, "rb")
@@ -92,7 +92,7 @@ class OpusAudio(VorbisAudio):
                     from audiotools.text import ERR_OPUS_INVALID_CHANNELS
                     raise InvalidOpus(ERR_OPUS_INVALID_CHANNELS)
 
-                #FIXME - assign channel mask from mapping family
+                # FIXME - assign channel mask from mapping family
                 if (mapping_family == 0):
                     if (self.__channels__ == 1):
                         self.__channel_mask__ = VorbisChannelMask(0x4)
@@ -140,16 +140,16 @@ class OpusAudio(VorbisAudio):
         original_ogg = PacketReader(PageReader(file(self.filename, "rb")))
         new_ogg = PageWriter(TemporaryFile(self.filename))
 
-        #transfer current file's identification page/packet
-        #(the ID packet is always fixed size, and fits in one page)
+        # transfer current file's identification page/packet
+        # (the ID packet is always fixed size, and fits in one page)
         identification_page = original_ogg.read_page()
         new_ogg.write(identification_page)
         sequence_number = 1
 
-        #discard the current file's comment packet
+        # discard the current file's comment packet
         original_ogg.read_packet()
 
-        #write the new comment packet in its own page(s)
+        # write the new comment packet in its own page(s)
         comment_writer = BitstreamRecorder(True)
         comment_writer.write_bytes("OpusTags")
         vendor_string = metadata.vendor_string.encode('utf-8')
@@ -168,7 +168,7 @@ class OpusAudio(VorbisAudio):
             new_ogg.write(page)
             sequence_number += 1
 
-        #transfer remaining pages after re-sequencing
+        # transfer remaining pages after re-sequencing
         page = original_ogg.read_page()
         page.sequence_number = sequence_number
         sequence_number += 1
@@ -222,10 +222,10 @@ class OpusAudio(VorbisAudio):
 
             old_metadata = self.get_metadata()
 
-            #port vendor string from old metadata to new metadata
+            # port vendor string from old metadata to new metadata
             metadata.vendor_string = old_metadata.vendor_string
 
-            #remove REPLAYGAIN_* tags from new metadata (if any)
+            # remove REPLAYGAIN_* tags from new metadata (if any)
             for key in [u"REPLAYGAIN_TRACK_GAIN",
                         u"REPLAYGAIN_TRACK_PEAK",
                         u"REPLAYGAIN_ALBUM_GAIN",
@@ -236,7 +236,7 @@ class OpusAudio(VorbisAudio):
                 except KeyError:
                     metadata[key] = []
 
-            #port "ENCODER" tag from old metadata to new metadata
+            # port "ENCODER" tag from old metadata to new metadata
             if (u"ENCODER" in old_metadata):
                 metadata[u"ENCODER"] = old_metadata[u"ENCODER"]
 
@@ -274,8 +274,8 @@ class OpusAudio(VorbisAudio):
 
         from audiotools import MetaData
 
-        #the comment packet is required,
-        #so simply zero out its contents
+        # the comment packet is required,
+        # so simply zero out its contents
         self.set_metadata(MetaData())
 
     def total_frames(self):
@@ -400,7 +400,7 @@ class OpusAudio(VorbisAudio):
 
         sequence_number = 0
 
-        #transfer current file's identification packet in its own page
+        # transfer current file's identification packet in its own page
         identification_packet = original_ogg.read_packet()
         for (i, page) in enumerate(packet_to_pages(
                 identification_packet,
@@ -410,10 +410,10 @@ class OpusAudio(VorbisAudio):
             new_ogg.write(page)
             sequence_number += 1
 
-        #discard the current file's comment packet
+        # discard the current file's comment packet
         comment_packet = original_ogg.read_packet()
 
-        #generate new comment packet
+        # generate new comment packet
         comment_writer = BitstreamRecorder(True)
         comment_writer.write_bytes("OpusTags")
         vendor_string = metadata.vendor_string.encode('utf-8')
@@ -432,7 +432,7 @@ class OpusAudio(VorbisAudio):
             new_ogg.write(page)
             sequence_number += 1
 
-        #transfer remaining pages after re-sequencing
+        # transfer remaining pages after re-sequencing
         page = original_ogg.read_page()
         page.sequence_number = sequence_number
         sequence_number += 1
@@ -460,7 +460,7 @@ class OpusAudio(VorbisAudio):
 
             metadata.vendor_string = old_metadata.vendor_string
 
-            #port REPLAYGAIN and ENCODER from old metadata to new metadata
+            # port REPLAYGAIN and ENCODER from old metadata to new metadata
             for key in [u"REPLAYGAIN_TRACK_GAIN",
                         u"REPLAYGAIN_TRACK_PEAK",
                         u"REPLAYGAIN_ALBUM_GAIN",
@@ -507,8 +507,8 @@ class OpusAudio(VorbisAudio):
 
         from audiotools import MetaData
 
-        #the vorbis comment packet is required,
-        #so simply zero out its contents
+        # the vorbis comment packet is required,
+        # so simply zero out its contents
         self.set_metadata(MetaData())
 
     def verify(self, progress=None):
@@ -518,14 +518,14 @@ class OpusAudio(VorbisAudio):
         raises an InvalidFile with an error message if there is
         some problem with the file"""
 
-        #Checking for a truncated Ogg stream typically involves
-        #verifying that the "end of stream" flag is set on the last
-        #Ogg page in the stream in the event that one or more whole
-        #pages is lost.  But since the OpusFile decoder doesn't perform
-        #this check and doesn't provide any access to its internal
-        #Ogg decoder (unlike Vorbis), we'll perform that check externally.
+        # Checking for a truncated Ogg stream typically involves
+        # verifying that the "end of stream" flag is set on the last
+        # Ogg page in the stream in the event that one or more whole
+        # pages is lost.  But since the OpusFile decoder doesn't perform
+        # this check and doesn't provide any access to its internal
+        # Ogg decoder (unlike Vorbis), we'll perform that check externally.
         #
-        #And since it's a fast check, we won't bother to update progress.
+        # And since it's a fast check, we won't bother to update progress.
 
         from audiotools.ogg import PageReader
         import os.path
@@ -569,7 +569,7 @@ class OpusAudio(VorbisAudio):
 
         format_ = cls.NAME.decode('ascii')
 
-        #display where to get vorbisfile
+        # display where to get vorbisfile
         messenger.info(
             ERR_LIBRARY_NEEDED %
             {"library": u"\"libopus\" and \"opusfile\"",

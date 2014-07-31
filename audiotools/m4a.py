@@ -1,29 +1,25 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 from audiotools import (AudioFile, InvalidFile, BIN, Image)
 from audiotools.m4a_atoms import *
-
-#######################
-#M4A File
-#######################
 
 
 class InvalidM4A(InvalidFile):
@@ -177,12 +173,12 @@ class M4ATaggedAudio:
             raise ValueError(ERR_FOREIGN_METADATA)
 
         if (old_metadata is None):
-            #get_metadata() result may still be None, and that's okay
+            # get_metadata() result may still be None, and that's okay
             old_metadata = self.get_metadata()
 
-        #M4A streams often have *two* "free" atoms we can attempt to resize
+        # M4A streams often have *two* "free" atoms we can attempt to resize
 
-        #first, attempt to resize the one inside the "meta" atom
+        # first, attempt to resize the one inside the "meta" atom
         if ((old_metadata is not None) and
             metadata.has_child("free") and
             ((metadata.size() - metadata["free"].size()) <=
@@ -203,15 +199,15 @@ class M4ATaggedAudio:
         else:
             from audiotools import TemporaryFile
 
-            #if there's insufficient room,
-            #attempt to resize the outermost "free" also
+            # if there's insufficient room,
+            # attempt to resize the outermost "free" also
 
-            #this is only possible if the file is laid out correctly,
-            #with "free" coming after "moov" but before "mdat"
-            #FIXME
+            # this is only possible if the file is laid out correctly,
+            # with "free" coming after "moov" but before "mdat"
+            # FIXME
 
-            #if neither fix is possible, the whole file must be rewritten
-            #which also requires adjusting the "stco" atom offsets
+            # if neither fix is possible, the whole file must be rewritten
+            # which also requires adjusting the "stco" atom offsets
             m4a_tree = M4A_Tree_Atom.parse(
                 None,
                 os.path.getsize(self.filename),
@@ -224,11 +220,11 @@ class M4ATaggedAudio:
                  "stco": M4A_STCO_Atom,
                  "udta": M4A_Tree_Atom})
 
-            #find initial mdat offset
+            # find initial mdat offset
             initial_mdat_offset = m4a_tree.child_offset("mdat")
 
-            #adjust moov -> udta -> meta atom
-            #(generating sub-atoms as necessary)
+            # adjust moov -> udta -> meta atom
+            # (generating sub-atoms as necessary)
             if (not m4a_tree.has_child("moov")):
                 return
             else:
@@ -241,21 +237,21 @@ class M4ATaggedAudio:
             else:
                 udta.replace_child(metadata)
 
-            #find new mdat offset
+            # find new mdat offset
             new_mdat_offset = m4a_tree.child_offset("mdat")
 
-            #adjust moov -> trak -> mdia -> minf -> stbl -> stco offsets
-            #based on the difference between the new mdat position and the old
+            # adjust moov -> trak -> mdia -> minf -> stbl -> stco offsets
+            # based on the difference between the new mdat position and the old
             try:
                 delta_offset = new_mdat_offset - initial_mdat_offset
                 stco = m4a_tree["moov"]["trak"]["mdia"]["minf"]["stbl"]["stco"]
                 stco.offsets = [offset + delta_offset for offset in
                                 stco.offsets]
             except KeyError:
-                #if there is no stco atom, don't worry about it
+                # if there is no stco atom, don't worry about it
                 pass
 
-            #then write entire tree back to disk
+            # then write entire tree back to disk
             writer = BitstreamWriter(TemporaryFile(self.filename), 0)
             m4a_tree.build(writer)
             writer.close()
@@ -272,10 +268,10 @@ class M4ATaggedAudio:
         old_metadata = self.get_metadata()
         metadata = M4A_META_Atom.converted(metadata)
 
-        #replace file-specific atoms in new metadata
-        #with ones from old metadata (if any)
-        #which can happen if we're shifting metadata
-        #from one M4A file to another
+        # replace file-specific atoms in new metadata
+        # with ones from old metadata (if any)
+        # which can happen if we're shifting metadata
+        # from one M4A file to another
         file_specific_atoms = frozenset(['\xa9too', '----', 'pgap', 'tmpo'])
 
         if (metadata.has_ilst_atom()):
@@ -320,8 +316,8 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
 
         self.filename = filename
 
-        #first, fetch the mdia atom
-        #which is the parent of both the mp4a and mdhd atoms
+        # first, fetch the mdia atom
+        # which is the parent of both the mp4a and mdhd atoms
         try:
             mdia = get_m4a_atom(BitstreamReader(file(filename, 'rb'), 0),
                                 "moov", "trak", "mdia")[1]
@@ -339,7 +335,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                 from audiotools.text import ERR_M4A_MISSING_STSD
                 raise InvalidM4A(ERR_M4A_MISSING_STSD)
 
-            #then, fetch the mp4a atom for bps, channels and sample rate
+            # then, fetch the mp4a atom for bps, channels and sample rate
             try:
                 (stsd_version, descriptions) = stsd.parse("8u 24p 32u")
                 (mp4a,
@@ -350,7 +346,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                 from audiotools.text import ERR_M4A_INVALID_MP4A
                 raise InvalidM4A(ERR_M4A_INVALID_MP4A)
 
-            #finally, fetch the mdhd atom for total track length
+            # finally, fetch the mdhd atom for total track length
             mdia.rewind()
             try:
                 mdhd = get_m4a_atom(mdia, "mdhd")[1]
@@ -379,8 +375,8 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
 
         from audiotools import ChannelMask
 
-        #M4A seems to use the same channel assignment
-        #as old-style RIFF WAVE/FLAC
+        # M4A seems to use the same channel assignment
+        # as old-style RIFF WAVE/FLAC
         if (self.channels() == 1):
             return ChannelMask.from_fields(
                 front_center=True)
@@ -492,7 +488,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                                      channel_mask=ChannelMask.from_channels(2),
                                      bits_per_sample=pcmreader.bits_per_sample)
 
-        #faac requires files to end with .m4a for some reason
+        # faac requires files to end with .m4a for some reason
         if (not filename.endswith(".m4a")):
             import tempfile
             actual_filename = filename
@@ -516,8 +512,8 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                                stderr=devnull,
                                stdout=devnull,
                                preexec_fn=ignore_sigint)
-        #Note: faac handles SIGINT on its own,
-        #so trying to ignore it doesn't work like on most other encoders.
+        # Note: faac handles SIGINT on its own,
+        # so trying to ignore it doesn't work like on most other encoders.
 
         try:
             transfer_framelist_data(pcmreader, sub.stdin.write)
@@ -619,8 +615,8 @@ class M4AAudio_nero(M4AAudio_faac):
     def seekable(self):
         """returns True if the file is seekable"""
 
-        #because decoding dumps everything to a temp file
-        #it's actually seekable
+        # because decoding dumps everything to a temp file
+        # it's actually seekable
         return True
 
     def to_pcm(self):
@@ -751,8 +747,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
         self.filename = filename
 
-        #first, fetch the mdia atom
-        #which is the parent of both the alac and mdhd atoms
+        # first, fetch the mdia atom
+        # which is the parent of both the alac and mdhd atoms
         try:
             mdia = get_m4a_atom(BitstreamReader(file(filename, 'rb'), 0),
                                 "moov", "trak", "mdia")[1]
@@ -770,11 +766,11 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 from audiotools.text import ERR_M4A_MISSING_STSD
                 raise InvalidALAC(ERR_M4A_MISSING_STSD)
 
-            #then, fetch the alac atom for bps, channels and sample rate
+            # then, fetch the alac atom for bps, channels and sample rate
             try:
-                #though some of these fields are parsed redundantly
-                #in .to_pcm(), we still need to parse them here
-                #to fetch values for .bits_per_sample(), etc.
+                # though some of these fields are parsed redundantly
+                # in .to_pcm(), we still need to parse them here
+                # to fetch values for .bits_per_sample(), etc.
                 (stsd_version, descriptions) = stsd.parse("8u 24p 32u")
                 (alac1,
                  alac2,
@@ -785,9 +781,9 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                  self.__maximum_k__,
                  self.__channels__,
                  self.__sample_rate__) = stsd.parse(
-                    #ignore much of the stuff in the "high" ALAC atom
+                    # ignore much of the stuff in the "high" ALAC atom
                     "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
-                    #and use the attributes in the "low" ALAC atom instead
+                    # and use the attributes in the "low" ALAC atom instead
                     "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
             except IOError:
                 from audiotools.text import ERR_ALAC_INVALID_ALAC
@@ -798,7 +794,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 mdia.unmark()
                 raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
 
-            #finally, fetch the mdhd atom for total track length
+            # finally, fetch the mdhd atom for total track length
             mdia.rewind()
             try:
                 mdhd = get_m4a_atom(mdia, "mdhd")[1]
@@ -915,13 +911,28 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         reader.mark()
         try:
             has_stts = has_m4a_atom(reader,
-                "moov", "trak", "mdia", "minf", "stbl", "stts")
+                                    "moov",
+                                    "trak",
+                                    "mdia",
+                                    "minf",
+                                    "stbl",
+                                    "stts")
             reader.rewind()
             has_stsc = has_m4a_atom(reader,
-                "moov", "trak", "mdia", "minf", "stbl", "stsc")
+                                    "moov",
+                                    "trak",
+                                    "mdia",
+                                    "minf",
+                                    "stbl",
+                                    "stsc")
             reader.rewind()
             has_stco = has_m4a_atom(reader,
-                "moov", "trak", "mdia", "minf", "stbl", "stco")
+                                    "moov",
+                                    "trak",
+                                    "mdia",
+                                    "minf",
+                                    "stbl",
+                                    "stco")
             return has_stts and has_stsc and has_stco
         finally:
             reader.unmark()
@@ -993,8 +1004,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             total_alac_frames = ((total_pcm_frames // block_size) +
                                  (1 if (total_pcm_frames % block_size) else 0))
 
-            #build a set of placeholder atoms
-            #to stick at the start of the file
+            # build a set of placeholder atoms
+            # to stick at the start of the file
             moov = cls.__moov_atom__(pcmreader,
                                      create_date,
                                      0,  # placeholder
@@ -1020,7 +1031,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 self.__unlink__(filename)
                 raise EncodingError(str(err))
 
-            #encode the mdat atom based on encoding parameters
+            # encode the mdat atom based on encoding parameters
             try:
                 (frame_byte_sizes, actual_pcm_frames) = \
                     (encode_alac if encoding_function is None else
@@ -1046,8 +1057,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                              8 + moov.size() +
                              8 + free.size())
 
-            #go back and re-populate placeholder atoms
-            #with actual values
+            # go back and re-populate placeholder atoms
+            # with actual values
             moov = cls.__moov_atom__(pcmreader,
                                      create_date,
                                      pre_mdat_size,
@@ -1067,9 +1078,9 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         else:
             mdat_file = tempfile.TemporaryFile()
 
-            #perform encode_alac() on pcmreader to our output file
-            #which returns a tuple of output values
-            #which are various fields for the "alac" atom
+            # perform encode_alac() on pcmreader to our output file
+            # which returns a tuple of output values
+            # which are various fields for the "alac" atom
             try:
                 (frame_byte_sizes, total_pcm_frames) = \
                     (encode_alac if encoding_function is None else
@@ -1085,7 +1096,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
             mdat_size = 8 + sum(frame_byte_sizes)
 
-            #use the fields from encode_alac() to populate our ALAC atoms
+            # use the fields from encode_alac() to populate our ALAC atoms
             moov = cls.__moov_atom__(pcmreader,
                                      create_date,
                                      0,  # placeholder
@@ -1094,12 +1105,12 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                                      total_pcm_frames,
                                      frame_byte_sizes)
 
-            #add the size of ftyp + moov + free to our absolute file offsets
+            # add the size of ftyp + moov + free to our absolute file offsets
             pre_mdat_size = (8 + ftyp.size() +
                              8 + moov.size() +
                              8 + free.size())
 
-            #then regenerate the moov atom with actual data
+            # then regenerate the moov atom with actual data
             moov = cls.__moov_atom__(pcmreader,
                                      create_date,
                                      pre_mdat_size,
@@ -1108,7 +1119,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                                      total_pcm_frames,
                                      frame_byte_sizes)
 
-            #build our complete output file
+            # build our complete output file
             try:
                 f = file(filename, 'wb')
                 m4a_writer = BitstreamWriter(f, 0)
@@ -1312,15 +1323,15 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
     @classmethod
     def __stts_atom__(cls, total_pcm_frames, block_size):
-        #note that the first entry may have 0 items
-        #and the second may have a duration of 0 PCM frames
+        # note that the first entry may have 0 items
+        # and the second may have a duration of 0 PCM frames
         times = [(total_pcm_frames // block_size, block_size),
                  (1, total_pcm_frames % block_size)]
 
         return M4A_STTS_Atom(
             version=0,
             flags=0,
-            #filter invalid times entries
+            # filter invalid times entries
             times=[t for t in times if ((t[0] > 0) and t[1] > 0)])
 
     @classmethod

@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import unittest
 import audiotools
@@ -46,8 +46,8 @@ def do_nothing(self):
     pass
 
 
-#add a bunch of decorator metafunctions like LIB_CORE
-#which can be wrapped around individual tests as needed
+# add a bunch of decorator metafunctions like LIB_CORE
+# which can be wrapped around individual tests as needed
 for section in parser.sections():
     for option in parser.options(section):
         if (parser.getboolean(section, option)):
@@ -63,9 +63,9 @@ class UtilTest(unittest.TestCase):
         unittest.TestCase.__init__(self, *args, **kwargs)
         self.line_checks = []
 
-    #takes a list of argument strings
-    #returns a returnval integer
-    #self.stdout and self.stderr are set to file-like cStringIO objects
+    # takes a list of argument strings
+    # returns a returnval integer
+    # self.stdout and self.stderr are set to file-like cStringIO objects
     def __run_app__(self, arguments):
         sub = subprocess.Popen(arguments,
                                stdout=subprocess.PIPE,
@@ -90,10 +90,10 @@ class UtilTest(unittest.TestCase):
             expected_line = unicodedata.normalize(
                 'NFC',
                 expected_output) + unicode(os.linesep)
-            self.assertEqual(stream_line, expected_line,
-                             "%s != %s" % (
-                    repr(stream_line),
-                    repr(expected_line)))
+            self.assertEqual(
+                stream_line,
+                expected_line,
+                "%s != %s" % (repr(stream_line), repr(expected_line)))
         self.line_checks = []
 
     def __clear_checks__(self):
@@ -201,7 +201,6 @@ class cd2track(UtilTest):
                                            "--version"]), 0)
         self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
 
-
     def populate_options(self, options):
         populated = ["--no-musicbrainz", "--no-freedb"]
         for option in options:
@@ -293,20 +292,21 @@ class cd2track(UtilTest):
                             base_metadata,
                             output_format))
 
-                #check that the output is being generated correctly
+                # check that the output is being generated correctly
                 for (i, path) in enumerate(output_filenames):
                     self.__check_info__(
                         audiotools.output_progress(
                             LAB_CD2TRACK_PROGRESS %
                             {"track_number": i + 1,
-                             "filename": audiotools.Filename(
-                                os.path.join(output_dir, path))},
+                             "filename":
+                             audiotools.Filename(
+                                 os.path.join(output_dir, path))},
                             i + 1, len(output_filenames)))
 
-                #rip log is generated afterward as a table
-                #FIXME - check table of rip log?
+                # rip log is generated afterward as a table
+                # FIXME - check table of rip log?
 
-                #make sure no track data has been lost
+                # make sure no track data has been lost
                 output_tracks = [
                     audiotools.open(os.path.join(output_dir, filename))
                     for filename in output_filenames]
@@ -317,7 +317,7 @@ class cd2track(UtilTest):
                         audiotools.PCMCat([t.to_pcm() for t in output_tracks]),
                         self.stream) is None)
 
-                #make sure metadata fits our expectations
+                # make sure metadata fits our expectations
                 for i in xrange(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
                     if (metadata is not None):
@@ -359,9 +359,9 @@ class cd2track(UtilTest):
                      "--dir", output_directory]), 0)
 
             tracks = [audiotools.open(
-                    os.path.join(output_directory,
-                                 format_string % {"track_number":i,
-                                                  "suffix":"flac"}))
+                      os.path.join(output_directory,
+                                   format_string % {"track_number": i,
+                                                    "suffix": "flac"}))
                       for i in range(1, 4)]
 
             self.assertEqual(sum([t.total_frames() for t in tracks]),
@@ -369,7 +369,6 @@ class cd2track(UtilTest):
 
             if (os.path.isdir(output_directory)):
                 rmtree(output_directory)
-
 
     def populate_bad_options(self, options):
         populated = ["--no-musicbrainz", "--no-freedb"]
@@ -453,8 +452,8 @@ class cd2track(UtilTest):
                     self.__check_error__(
                         ERR_UNKNOWN_FIELD % ("foo"))
                     self.__check_info__(LAB_SUPPORTED_FIELDS)
-                    for field in sorted(audiotools.MetaData.FIELDS + \
-                                            ("album_track_number", "suffix")):
+                    for field in sorted(audiotools.MetaData.FIELDS +
+                                        ("album_track_number", "suffix")):
                         if (field == 'track_number'):
                             self.__check_info__(u"%(track_number)2.2d")
                         else:
@@ -499,11 +498,11 @@ class coverdump(UtilTest):
         self.input_file1 = tempfile.NamedTemporaryFile(
             suffix="." + self.type.SUFFIX)
         self.track1 = self.type.from_pcm(self.input_file1.name,
-                                        BLANK_PCM_Reader(1))
+                                         BLANK_PCM_Reader(1))
         self.input_file2 = tempfile.NamedTemporaryFile(
             suffix="." + self.type.SUFFIX)
         self.track2 = self.type.from_pcm(self.input_file2.name,
-                                        BLANK_PCM_Reader(1))
+                                         BLANK_PCM_Reader(1))
 
         self.prefix = "PREFIX_"
 
@@ -681,11 +680,11 @@ class coverdump(UtilTest):
         for (output_directory,
              file_path,
              prefix) in Possibilities(
-            ["testdir",    #check --dir
+            ["testdir",    # check --dir
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046'.encode('utf-8')],
-            ["test.flac",  #check filename arguments
+            ["test.flac",  # check filename arguments
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
-            [None,         #check --prefix
+            [None,         # check --prefix
              "prefix_",
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046_'.encode('utf-8')]):
             if (os.path.isdir(output_directory)):
@@ -726,24 +725,25 @@ class coverdump(UtilTest):
                                      ERR_ENCODING_ERROR,
                                      ERR_OUTPUT_IS_INPUT)
 
-        #check no input files
-        self.assertEqual(self.__run_app__(
-                ["coverdump", "-V", "normal"]), 2)
+        # check no input files
+        self.assertEqual(
+            self.__run_app__(["coverdump", "-V", "normal"]), 2)
 
-        #check multiple input files
-        self.assertEqual(self.__run_app__(
-                ["coverdump", "-V", "normal",
-                 self.track1.filename, self.track2.filename]), 1)
+        # check multiple input files
+        self.assertEqual(
+            self.__run_app__(["coverdump", "-V", "normal",
+                              self.track1.filename, self.track2.filename]), 1)
 
         self.__check_error__(ERR_1_FILE_REQUIRED)
 
-        #check unwritable output dir
+        # check unwritable output dir
         old_mode = os.stat(self.output_dir).st_mode
         try:
             os.chmod(self.output_dir, 0)
-            self.assertEqual(self.__run_app__(
-                    ["coverdump", "-V", "normal", "-d", self.output_dir,
-                     self.track1.filename]), 1)
+            self.assertEqual(
+                self.__run_app__(["coverdump", "-V", "normal",
+                                  "-d", self.output_dir,
+                                  self.track1.filename]), 1)
             self.__check_error__(
                 ERR_ENCODING_ERROR %
                 (audiotools.Filename(os.path.join(self.output_dir,
@@ -751,13 +751,13 @@ class coverdump(UtilTest):
         finally:
             os.chmod(self.output_dir, old_mode)
 
-        #check unwritable cwd
+        # check unwritable cwd
         old_mode = os.stat(self.cwd_dir).st_mode
         try:
             os.chmod(self.cwd_dir, 0)
-            self.assertEqual(self.__run_app__(
-                    ["coverdump", "-V", "normal",
-                     self.track1.filename]), 1)
+            self.assertEqual(
+                self.__run_app__(["coverdump", "-V", "normal",
+                                  self.track1.filename]), 1)
             self.__check_error__(
                 ERR_ENCODING_ERROR %
                 (audiotools.Filename("front_cover01.png"),))
@@ -765,7 +765,7 @@ class coverdump(UtilTest):
         finally:
             os.chmod(self.cwd_dir, old_mode)
 
-        #check input file same as output file
+        # check input file same as output file
         track = audiotools.FlacAudio.from_pcm(
             os.path.join(self.output_dir, "front_cover.jpg"),
             BLANK_PCM_Reader(1))
@@ -773,9 +773,9 @@ class coverdump(UtilTest):
         metadata.add_image(audiotools.Image.new(TEST_COVER1, u"", 0))
         track.update_metadata(metadata)
 
-        self.assertEqual(self.__run_app__(
-                ["coverdump", "-V", "normal",
-                 "-d", self.output_dir, track.filename]), 1)
+        self.assertEqual(
+            self.__run_app__(["coverdump", "-V", "normal",
+                              "-d", self.output_dir, track.filename]), 1)
         self.__check_error__(
             ERR_OUTPUT_IS_INPUT %
             (audiotools.Filename(track.filename),))
@@ -861,7 +861,6 @@ class covertag(UtilTest):
                                            "--version"]), 0)
         self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
 
-
     def populate_options(self, options):
         populated = []
         front_covers = [self.front_cover1.name, self.front_cover2.name]
@@ -891,7 +890,7 @@ class covertag(UtilTest):
     def test_options(self):
         from audiotools.text import (ERR_DUPLICATE_FILE,)
 
-        #start out with a bit of sanity checking
+        # start out with a bit of sanity checking
         f = open(self.track_file.name, 'wb')
         f.write(self.track_data)
         f.close()
@@ -906,10 +905,12 @@ class covertag(UtilTest):
                             '--back-cover', '--leaflet', '--media',
                             '--other-image']
 
-        #ensure tagging the same file twice triggers an error
-        self.assertEqual(self.__run_app__(
-                ["covertag", "--front-cover", self.front_cover1.name,
-                 self.track_file.name, self.track_file.name]), 1)
+        # ensure tagging the same file twice triggers an error
+        self.assertEqual(
+            self.__run_app__(["covertag", "--front-cover",
+                              self.front_cover1.name,
+                              self.track_file.name,
+                              self.track_file.name]), 1)
         self.__check_error__(ERR_DUPLICATE_FILE %
                              (audiotools.Filename(self.track_file.name),))
 
@@ -985,14 +986,14 @@ class covertag(UtilTest):
         for (file_path,
              option,
              image_path) in Possibilities(
-            ["test.flac",  #check filename arguments
+            ["test.flac",  # check filename arguments
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
             ["--front-cover",
              "--back-cover",
              "--leaflet",
              "--media",
              "--other-image"],
-            ["image.jpg",  #check image path arguments
+            ["image.jpg",  # check image path arguments
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046.jpg'.encode('utf-8')]):
             if (os.path.isfile(file_path)):
                 os.unlink(file_path)
@@ -1033,11 +1034,12 @@ class covertag_errors(UtilTest):
                 temp_track_file.name,
                 BLANK_PCM_Reader(5))
 
-            self.assertEqual(self.__run_app__(
-                    ["covertag", "--front-cover=/dev/null/foo.jpg",
-                     temp_track.filename]), 1)
-            self.__check_error__(
-                ERR_OPEN_IOERROR % (audiotools.Filename(u"/dev/null/foo.jpg"),))
+            self.assertEqual(
+                self.__run_app__(["covertag",
+                                  "--front-cover=/dev/null/foo.jpg",
+                                  temp_track.filename]), 1)
+            self.__check_error__(ERR_OPEN_IOERROR %
+                                 (audiotools.Filename(u"/dev/null/foo.jpg"),))
         finally:
             os.chmod(temp_track_file.name, temp_track_stat)
             temp_track_file.close()
@@ -1064,8 +1066,8 @@ class covertag_errors(UtilTest):
                 audiotools.transfer_framelist_data(pcm, orig_md5.update)
                 pcm.close()
 
-                #ensure that setting a big image via covertag
-                #doesn't break the file
+                # ensure that setting a big image via covertag
+                # doesn't break the file
                 subprocess.call(["covertag", "-V", "quiet",
                                  "--front-cover=%s" % (big_bmp.name),
                                  flac.filename])
@@ -1109,32 +1111,31 @@ class dvda2track(UtilTest):
                                            "--version"]), 0)
         self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
 
-
     @UTIL_DVDA2TRACK
     def test_errors(self):
         from audiotools.text import (ERR_NO_AUDIO_TS,
                                      ERR_DVDA_IOERROR_AUDIO_TS,
                                      ERR_DVDA_INVALID_AUDIO_TS)
 
-        #test with no -A option
+        # test with no -A option
         self.assertEqual(self.__run_app__(["dvda2track"]), 1)
         self.__check_error__(ERR_DVDA_IOERROR_AUDIO_TS)
 
-        #test with an invalid AUDIO_TS dir
+        # test with an invalid AUDIO_TS dir
         self.assertEqual(self.__run_app__(["dvda2track",
                                            "-A", self.invalid_dir1]), 1)
         self.__check_error__(ERR_DVDA_IOERROR_AUDIO_TS)
 
-        #test with an invalid AUDIO_TS/AUDIO_TS.IFO file
+        # test with an invalid AUDIO_TS/AUDIO_TS.IFO file
         self.assertEqual(self.__run_app__(["dvda2track",
                                            "-A", self.invalid_dir2]), 1)
         self.__check_error__(ERR_DVDA_INVALID_AUDIO_TS)
 
-        #FIXME
-        #It's difficult to test an invalid --title or invalid --xmcd
-        #without a valid AUDIO_TS.IFO file,
-        #and a set of present IFO files and AOB files.
-        #I'll need a way to generate synthetic ones.
+        # FIXME
+        # It's difficult to test an invalid --title or invalid --xmcd
+        # without a valid AUDIO_TS.IFO file,
+        # and a set of present IFO files and AOB files.
+        # I'll need a way to generate synthetic ones.
 
 
 class dvdainfo(UtilTest):
@@ -1164,16 +1165,16 @@ class dvdainfo(UtilTest):
                                      ERR_DVDA_IOERROR_AUDIO_TS,
                                      ERR_DVDA_INVALID_AUDIO_TS)
 
-        #test with no -A option
+        # test with no -A option
         self.assertEqual(self.__run_app__(["dvdainfo"]), 1)
         self.__check_error__(ERR_DVDA_IOERROR_AUDIO_TS)
 
-        #test with an invalid AUDIO_TS dir
+        # test with an invalid AUDIO_TS dir
         self.assertEqual(self.__run_app__(["dvdainfo",
                                            "-A", self.invalid_dir1]), 1)
         self.__check_error__(ERR_DVDA_IOERROR_AUDIO_TS)
 
-        #test with an invalid AUDIO_TS/AUDIO_TS.IFO file
+        # test with an invalid AUDIO_TS/AUDIO_TS.IFO file
         self.assertEqual(self.__run_app__(["dvdainfo",
                                            "-A", self.invalid_dir2]), 1)
         self.__check_error__(ERR_DVDA_INVALID_AUDIO_TS)
@@ -1182,7 +1183,7 @@ class dvdainfo(UtilTest):
 class track2cd(UtilTest):
     @UTIL_TRACK2CD
     def setUp(self):
-        #if the user has an ~/.audiotools.cfg file, save it and its mode
+        # if the user has an ~/.audiotools.cfg file, save it and its mode
         self.audiotools_cfg_path = os.path.expanduser("~/.audiotools.cfg")
         if (os.path.isfile(self.audiotools_cfg_path)):
             self.audiotools_cfg = open(self.audiotools_cfg_path, "rb").read()
@@ -1192,7 +1193,7 @@ class track2cd(UtilTest):
             self.audiotools_cfg = None
             self.audiotools_cfg_mode = None
 
-        #setup a couple of test tracks from a single big sine wave
+        # setup a couple of test tracks from a single big sine wave
         sine = audiotools.BufferedPCMReader(
             test_streams.Sine16_Stereo(12397980 + 10862124, 44100,
                                        441.0, 0.50,
@@ -1217,7 +1218,7 @@ class track2cd(UtilTest):
         track2.set_metadata(audiotools.MetaData(track_number=2,
                                                 track_total=2))
 
-        #setup a test cuesheet
+        # setup a test cuesheet
         self.cuesheet = tempfile.NamedTemporaryFile(suffix=".cue")
         self.cuesheet.write('FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 04:36:50\n    INDEX 01 04:41:10\n')
         self.cuesheet.flush()
@@ -1226,12 +1227,12 @@ class track2cd(UtilTest):
     def tearDown(self):
         if ((self.audiotools_cfg is not None) and
             (self.audiotools_cfg_mode is not None)):
-            #if saved .audiotools.cfg file
-            #rewrite it to disk and restore its mode
+            # if saved .audiotools.cfg file
+            # rewrite it to disk and restore its mode
             open(self.audiotools_cfg_path, "wb").write(self.audiotools_cfg)
             os.chmod(self.audiotools_cfg_path, self.audiotools_cfg_mode)
         else:
-            #otherwise, remove any temporary file
+            # otherwise, remove any temporary file
             if (os.path.isfile(self.audiotools_cfg_path)):
                 os.unlink(self.audiotools_cfg_path)
 
@@ -1249,12 +1250,12 @@ class track2cd(UtilTest):
     def test_tracks_nocue(self):
         import cPickle
 
-        #replace "cdrecord" with test program in config file
+        # replace "cdrecord" with test program in config file
         config = audiotools.RawConfigParser()
         config.set_default("Binaries", "cdrecord",
                            os.path.abspath("test_cdrecord.py"))
 
-        #check writing files track at a time with no write offset
+        # check writing files track at a time with no write offset
         config.write(open(self.audiotools_cfg_path, "w"))
 
         results_file = tempfile.NamedTemporaryFile(suffix=".bin")
@@ -1265,7 +1266,7 @@ class track2cd(UtilTest):
                                            self.track1.name,
                                            self.track2.name]), 0)
 
-        #both tracks should match
+        # both tracks should match
         f = open(results_file.name, "rb")
         self.assertEqual(cPickle.load(f), None)
         self.assertEqual(cPickle.load(f), None)
@@ -1273,7 +1274,7 @@ class track2cd(UtilTest):
 
         results_file.close()
 
-        #check writing files track at a time with positive write offset
+        # check writing files track at a time with positive write offset
         config.set_default("System", "cdrom_write_offset", str(25))
         config.write(open(self.audiotools_cfg_path, "w"))
 
@@ -1285,7 +1286,7 @@ class track2cd(UtilTest):
                                            self.track1.name,
                                            self.track2.name]), 0)
 
-        #both tracks should match
+        # both tracks should match
         f = open(results_file.name, "rb")
         self.assertEqual(cPickle.load(f), None)
         self.assertEqual(cPickle.load(f), None)
@@ -1293,7 +1294,7 @@ class track2cd(UtilTest):
 
         results_file.close()
 
-        #check writing files track at a time with negative write offset
+        # check writing files track at a time with negative write offset
         config.set_default("System", "cdrom_write_offset", str(-25))
         config.write(open(self.audiotools_cfg_path, "w"))
 
@@ -1305,7 +1306,7 @@ class track2cd(UtilTest):
                                            self.track1.name,
                                            self.track2.name]), 0)
 
-        #both tracks should match
+        # both tracks should match
         f = open(results_file.name, "rb")
         self.assertEqual(cPickle.load(f), None)
         self.assertEqual(cPickle.load(f), None)
@@ -1317,12 +1318,12 @@ class track2cd(UtilTest):
     def test_tracks_cue(self):
         import cPickle
 
-        #replace "cdrdao" with test program in config file
+        # replace "cdrdao" with test program in config file
         config = audiotools.RawConfigParser()
         config.set_default("Binaries", "cdrdao",
                            os.path.abspath("test_cdrdao.py"))
 
-        #check writing files via cdrdao with no write offset
+        # check writing files via cdrdao with no write offset
         config.write(open(self.audiotools_cfg_path, "w"))
 
         results_file = tempfile.NamedTemporaryFile(suffix=".bin")
@@ -1335,14 +1336,14 @@ class track2cd(UtilTest):
                                            self.track1.name,
                                            self.track2.name]), 0)
 
-        #both tracks should match
+        # both tracks should match
         f = open(results_file.name, "rb")
         self.assertEqual(cPickle.load(f), None)
         f.close()
 
         results_file.close()
 
-        #check writing files via cdrdao with positive write offset
+        # check writing files via cdrdao with positive write offset
         config.set_default("System", "cdrom_write_offset", str(25))
         config.write(open(self.audiotools_cfg_path, "w"))
 
@@ -1356,14 +1357,14 @@ class track2cd(UtilTest):
                                            self.track1.name,
                                            self.track2.name]), 0)
 
-        #both tracks should match
+        # both tracks should match
         f = open(results_file.name, "rb")
         self.assertEqual(cPickle.load(f), None)
         f.close()
 
         results_file.close()
 
-        #check writing files via cdrdao with negative write offset
+        # check writing files via cdrdao with negative write offset
         config.set_default("System", "cdrom_write_offset", str(-25))
         config.write(open(self.audiotools_cfg_path, "w"))
 
@@ -1377,7 +1378,7 @@ class track2cd(UtilTest):
                                            self.track1.name,
                                            self.track2.name]), 0)
 
-        #both tracks should match
+        # both tracks should match
         f = open(results_file.name, "rb")
         self.assertEqual(cPickle.load(f), None)
         f.close()
@@ -1392,20 +1393,21 @@ class track2cd(UtilTest):
         try:
             combined_track = audiotools.FlacAudio.from_pcm(
                 combined_temp.name,
-                audiotools.PCMCat([audiotools.open(self.track1.name).to_pcm(),
-                                   audiotools.open(self.track2.name).to_pcm()]),
+                audiotools.PCMCat(
+                    [audiotools.open(self.track1.name).to_pcm(),
+                     audiotools.open(self.track2.name).to_pcm()]),
                 "0")
             combined_track.set_cuesheet(
                 audiotools.read_sheet(self.cuesheet.name))
 
             self.assert_(combined_track.get_cuesheet() is not None)
 
-            #replace "cdrdao" with test program in config file
+            # replace "cdrdao" with test program in config file
             config = audiotools.RawConfigParser()
             config.set_default("Binaries", "cdrdao",
                                os.path.abspath("test_cdrdao.py"))
 
-            #check writing files via cdrdao with no write offset
+            # check writing files via cdrdao with no write offset
             config.write(open(self.audiotools_cfg_path, "w"))
 
             results_file = tempfile.NamedTemporaryFile(suffix=".bin")
@@ -1415,14 +1417,14 @@ class track2cd(UtilTest):
                                                results_file.name,
                                                combined_track.filename]), 0)
 
-            #both tracks should match
+            # both tracks should match
             f = open(results_file.name, "rb")
             self.assertEqual(cPickle.load(f), None)
             f.close()
 
             results_file.close()
 
-            #check writing files via cdrdao with positive write offset
+            # check writing files via cdrdao with positive write offset
             config.set_default("System", "cdrom_write_offset", str(25))
             config.write(open(self.audiotools_cfg_path, "w"))
 
@@ -1433,14 +1435,14 @@ class track2cd(UtilTest):
                                                results_file.name,
                                                combined_track.filename]), 0)
 
-            #both tracks should match
+            # both tracks should match
             f = open(results_file.name, "rb")
             self.assertEqual(cPickle.load(f), None)
             f.close()
 
             results_file.close()
 
-            #check writing files via cdrdao with negative write offset
+            # check writing files via cdrdao with negative write offset
             config.set_default("System", "cdrom_write_offset", str(-25))
             config.write(open(self.audiotools_cfg_path, "w"))
 
@@ -1451,7 +1453,7 @@ class track2cd(UtilTest):
                                                results_file.name,
                                                combined_track.filename]), 0)
 
-            #both tracks should match
+            # both tracks should match
             f = open(results_file.name, "rb")
             self.assertEqual(cPickle.load(f), None)
             f.close()
@@ -1464,15 +1466,15 @@ class track2cd(UtilTest):
 class track2track(UtilTest):
     @UTIL_TRACK2TRACK
     def setUp(self):
-        #input format should be something other than the user's default
-        #and should support embedded metadata
+        # input format should be something other than the user's default
+        # and should support embedded metadata
         for self.input_format in [audiotools.ALACAudio,
                                   audiotools.AiffAudio]:
             if (self.input_format is not audiotools.DEFAULT_TYPE):
                 break
 
-        #output format shouldn't be the user's default, the input format
-        #and should support embedded images and ReplayGain tags
+        # output format shouldn't be the user's default, the input format
+        # and should support embedded images and ReplayGain tags
         for self.output_format in [audiotools.FlacAudio,
                                    audiotools.WavPackAudio]:
             if (self.input_format is not audiotools.DEFAULT_TYPE):
@@ -1515,11 +1517,11 @@ class track2track(UtilTest):
             os.path.join(self.input_dir,
                          "broken.%s" % (self.input_format.SUFFIX)))
 
-        #Why a static set of input/output arguments for each set of options?
-        #Since track2track uses the standard interface for everything,
-        #we're only testing that the options work.
-        #The interface itself is tested at a lower level
-        #in the test_core.py or test_formats.py modules.
+        # Why a static set of input/output arguments for each set of options?
+        # Since track2track uses the standard interface for everything,
+        # we're only testing that the options work.
+        # The interface itself is tested at a lower level
+        # in the test_core.py or test_formats.py modules.
 
     @UTIL_TRACK2TRACK
     def tearDown(self):
@@ -1655,7 +1657,7 @@ class track2track(UtilTest):
                     ["-V", "normal", "-j", "1", self.track1.filename]
 
                 if (("-d" in options) and ("-o" in options)):
-                    #-d and -o trigger an error
+                    # -d and -o trigger an error
 
                     self.assertEqual(
                         self.__run_app__(["track2track"] + options), 1)
@@ -1712,9 +1714,9 @@ class track2track(UtilTest):
                     self.__check_output__(
                         LAB_ENCODE %
                         {"source":
-                             audiotools.Filename(self.track1.filename),
+                         audiotools.Filename(self.track1.filename),
                          "destination":
-                             audiotools.Filename(output_path)})
+                         audiotools.Filename(output_path)})
 
                 track2 = audiotools.open(output_path)
                 self.assertEqual(track2.NAME, output_class.NAME)
@@ -1762,11 +1764,11 @@ class track2track(UtilTest):
         for (output_directory,
              format_string,
              file_path) in Possibilities(
-            ["testdir",        #check --dir
+            ["testdir",        # check --dir
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046'.encode('utf-8')],
-            ["new_file.flac",  #check --format]
+            ["new_file.flac",  # check --format]
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046-2.flac'.encode('utf-8')],
-            ["file.flac",      #check filename arguments
+            ["file.flac",      # check filename arguments
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')]):
             if (os.path.isdir(output_directory)):
                 rmtree(output_directory)
@@ -1798,9 +1800,9 @@ class track2track(UtilTest):
 
         for (file_path,
              output_path) in Possibilities(
-            ["file.flac",        #check filename arguments
+            ["file.flac",         # check filename arguments
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
-            ["output_file.flac", #check --output argument
+            ["output_file.flac",  # check --output argument
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046-2.flac'.encode('utf-8')]):
             if (os.path.isfile(output_path)):
                 os.unlink(output_path)
@@ -1874,8 +1876,7 @@ class track2track(UtilTest):
                     self.__run_app__(["track2track"] + options),
                     1)
 
-                if (("-o" in options) and
-                    ("-d" in options)):
+                if (("-o" in options) and ("-d" in options)):
                     self.__check_error__(ERR_TRACK2TRACK_O_AND_D)
                     self.__check_info__(ERR_TRACK2TRACK_O_AND_D_SUGGESTION)
                     continue
@@ -1917,8 +1918,8 @@ class track2track(UtilTest):
                     self.__check_error__(
                         ERR_UNKNOWN_FIELD % ("foo"))
                     self.__check_info__(LAB_SUPPORTED_FIELDS)
-                    for field in sorted(audiotools.MetaData.FIELDS + \
-                                            ("album_track_number", "suffix")):
+                    for field in sorted(audiotools.MetaData.FIELDS +
+                                        ("album_track_number", "suffix")):
                         if (field == 'track_number'):
                             self.__check_info__(u"%(track_number)2.2d")
                         else:
@@ -1938,25 +1939,25 @@ class track2track(UtilTest):
                         (output_path))
                     continue
 
-                #the error triggered by a broken file is variable
-                #so no need to check its exact value
+                # the error triggered by a broken file is variable
+                # so no need to check its exact value
                 self.assert_(len(self.stderr.getvalue()) > 0)
 
-        #check no input files
+        # check no input files
         self.assertEqual(self.__run_app__(["track2track"]), 2)
 
         self.track2 = self.input_format.from_pcm(
             os.path.join(self.input_dir, "02.%s" % (self.input_format.SUFFIX)),
             BLANK_PCM_Reader(2))
 
-        #check multiple input files and -o
+        # check multiple input files and -o
         self.assertEqual(self.__run_app__(["track2track",
                                            "-o", self.output_file.name,
                                            self.track1.filename,
                                            self.track2.filename]), 1)
         self.__check_error__(ERR_TRACK2TRACK_O_AND_MULTIPLE)
 
-        #check duplicate input file
+        # check duplicate input file
         self.assertEqual(self.__run_app__(["track2track",
                                            self.track1.filename,
                                            self.track1.filename,
@@ -1965,7 +1966,7 @@ class track2track(UtilTest):
             ERR_DUPLICATE_FILE %
             (audiotools.Filename(self.track1.filename),))
 
-        #check identical input and output file
+        # check identical input and output file
         self.assertEqual(
             self.__run_app__(["track2track",
                               self.track1.filename,
@@ -1976,7 +1977,7 @@ class track2track(UtilTest):
             ERR_OUTPUT_IS_INPUT %
             (audiotools.Filename(self.track1.filename),))
 
-        #check identical input and output file with -o
+        # check identical input and output file with -o
         self.assertEqual(self.__run_app__(["track2track",
                                            "-t", self.input_format.NAME,
                                            "-o", self.track1.filename,
@@ -1985,16 +1986,16 @@ class track2track(UtilTest):
             ERR_OUTPUT_IS_INPUT %
             (audiotools.Filename(self.track1.filename),))
 
-        #check duplicate output files
+        # check duplicate output files
         self.__run_app__(["track2track",
-                                           "--format", "foo",
-                                           self.track1.filename,
-                                           self.track2.filename])
+                          "--format", "foo",
+                          self.track1.filename,
+                          self.track2.filename])
         self.__check_error__(
             ERR_DUPLICATE_OUTPUT_FILE % (
                 audiotools.Filename(os.path.join(".", "foo")),))
 
-        #check conversion from supported to unsupported channel count
+        # check conversion from supported to unsupported channel count
         unsupported_count_file = tempfile.NamedTemporaryFile(
             suffix=".flac")
         try:
@@ -2009,8 +2010,9 @@ class track2track(UtilTest):
                                                supported_track.filename]), 1)
             self.__check_error__(
                 ERR_UNSUPPORTED_CHANNEL_COUNT %
-                {"target_filename": audiotools.Filename(
-                        os.path.join(self.output_dir, "00 - .flac")),
+                {"target_filename":
+                 audiotools.Filename(
+                     os.path.join(self.output_dir, "00 - .flac")),
                  "channels": 10})
 
             self.assertEqual(self.__run_app__(["track2track",
@@ -2019,13 +2021,13 @@ class track2track(UtilTest):
                                                supported_track.filename]), 1)
             self.__check_error__(
                 ERR_UNSUPPORTED_CHANNEL_COUNT %
-                {"target_filename": audiotools.Filename(
-                        unsupported_count_file.name),
+                {"target_filename":
+                 audiotools.Filename(unsupported_count_file.name),
                  "channels": 10})
         finally:
             unsupported_count_file.close()
 
-        #check conversion from supported to unsupported channel mask
+        # check conversion from supported to unsupported channel mask
         unsupported_mask_file = tempfile.NamedTemporaryFile(
             suffix=".flac")
         try:
@@ -2040,8 +2042,9 @@ class track2track(UtilTest):
                                                supported_track.filename]), 1)
             self.__check_error__(
                 ERR_UNSUPPORTED_CHANNEL_MASK %
-                {"target_filename": audiotools.Filename(
-                        os.path.join(self.output_dir, "00 - .flac")),
+                {"target_filename":
+                 audiotools.Filename(
+                     os.path.join(self.output_dir, "00 - .flac")),
                  "assignment": audiotools.ChannelMask(0x3F000)})
 
             self.assertEqual(self.__run_app__(["track2track",
@@ -2050,13 +2053,13 @@ class track2track(UtilTest):
                                                supported_track.filename]), 1)
             self.__check_error__(
                 ERR_UNSUPPORTED_CHANNEL_MASK %
-                {"target_filename": audiotools.Filename(
-                        unsupported_mask_file.name),
+                {"target_filename":
+                 audiotools.Filename(unsupported_mask_file.name),
                  "assignment": audiotools.ChannelMask(0x3F000)})
         finally:
             unsupported_mask_file.close()
 
-        #check conversion from supported to unsupported bits-per-sample
+        # check conversion from supported to unsupported bits-per-sample
         unsupported_bps_file = tempfile.NamedTemporaryFile(
             suffix=".shn")
         try:
@@ -2071,8 +2074,9 @@ class track2track(UtilTest):
                                                supported_track.filename]), 1)
             self.__check_error__(
                 ERR_UNSUPPORTED_BITS_PER_SAMPLE %
-                {"target_filename": audiotools.Filename(
-                        os.path.join(self.output_dir, "00 - .shn")),
+                {"target_filename":
+                 audiotools.Filename(os.path.join(self.output_dir,
+                                                  "00 - .shn")),
                  "bps": 24})
 
             self.assertEqual(self.__run_app__(["track2track",
@@ -2081,8 +2085,8 @@ class track2track(UtilTest):
                                                supported_track.filename]), 1)
             self.__check_error__(
                 ERR_UNSUPPORTED_BITS_PER_SAMPLE %
-                {"target_filename": audiotools.Filename(
-                        unsupported_bps_file.name),
+                {"target_filename":
+                 audiotools.Filename(unsupported_bps_file.name),
                  "bps": 24})
         finally:
             unsupported_bps_file.close()
@@ -2095,87 +2099,95 @@ class track2track(UtilTest):
                                      RG_REPLAYGAIN_ADDED_TO_ALBUM,
                                      RG_REPLAYGAIN_APPLIED_TO_ALBUM)
 
-        temp_files = [os.path.join(
-                self.input_dir,
-                "%2.2d.%s" % (i + 1, self.input_format.SUFFIX))
+        temp_files = [os.path.join(self.input_dir,
+                                   "%2.2d.%s" % (i + 1,
+                                                 self.input_format.SUFFIX))
                       for i in xrange(7)]
         temp_tracks = []
 
-        temp_tracks.append(self.input_format.from_pcm(
+        temp_tracks.append(
+            self.input_format.from_pcm(
                 temp_files[0],
                 test_streams.Sine16_Stereo(44100, 44100,
                                            441.0, 0.50, 4410.0, 0.49, 1.0)))
 
-        temp_tracks.append(self.input_format.from_pcm(
+        temp_tracks.append(
+            self.input_format.from_pcm(
                 temp_files[1],
                 test_streams.Sine16_Stereo(66150, 44100,
                                            8820.0, 0.70, 4410.0, 0.29, 1.0)))
-        temp_tracks.append(self.input_format.from_pcm(
+        temp_tracks.append(
+            self.input_format.from_pcm(
                 temp_files[2],
                 test_streams.Sine16_Stereo(52920, 44100,
                                            441.0, 0.50, 441.0, 0.49, 0.5)))
-        temp_tracks.append(self.input_format.from_pcm(
+        temp_tracks.append(
+            self.input_format.from_pcm(
                 temp_files[3],
                 test_streams.Sine16_Stereo(61740, 44100,
                                            441.0, 0.61, 661.5, 0.37, 2.0)))
-        temp_tracks.append(self.input_format.from_pcm(
+        temp_tracks.append(
+            self.input_format.from_pcm(
                 temp_files[4],
                 test_streams.Sine16_Stereo(26460, 44100,
                                            441.0, 0.50, 882.0, 0.49, 0.7)))
-        temp_tracks.append(self.input_format.from_pcm(
+        temp_tracks.append(
+            self.input_format.from_pcm(
                 temp_files[5],
                 test_streams.Sine16_Stereo(61740, 44100,
                                            441.0, 0.50, 4410.0, 0.49, 1.3)))
-        temp_tracks.append(self.input_format.from_pcm(
+        temp_tracks.append(
+            self.input_format.from_pcm(
                 temp_files[6],
                 test_streams.Sine16_Stereo(79380, 44100,
                                            8820.0, 0.70, 4410.0, 0.29, 0.1)))
 
         temp_tracks[0].set_metadata(audiotools.MetaData(
-                track_name=u"Track 3",
-                album_name=u"Test Album",
-                track_number=1,
-                album_number=1))
+            track_name=u"Track 3",
+            album_name=u"Test Album",
+            track_number=1,
+            album_number=1))
         temp_tracks[1].set_metadata(audiotools.MetaData(
-                track_name=u"Track 4",
-                album_name=u"Test Album",
-                track_number=2,
-                album_number=1))
+            track_name=u"Track 4",
+            album_name=u"Test Album",
+            track_number=2,
+            album_number=1))
         temp_tracks[2].set_metadata(audiotools.MetaData(
-                track_name=u"Track 5",
-                album_name=u"Test Album",
-                track_number=1,
-                album_number=2))
+            track_name=u"Track 5",
+            album_name=u"Test Album",
+            track_number=1,
+            album_number=2))
         temp_tracks[3].set_metadata(audiotools.MetaData(
-                track_name=u"Track 6",
-                album_name=u"Test Album",
-                track_number=2,
-                album_number=2))
+            track_name=u"Track 6",
+            album_name=u"Test Album",
+            track_number=2,
+            album_number=2))
         temp_tracks[4].set_metadata(audiotools.MetaData(
-                track_name=u"Track 7",
-                album_name=u"Test Album",
-                track_number=3,
-                album_number=2))
+            track_name=u"Track 7",
+            album_name=u"Test Album",
+            track_number=3,
+            album_number=2))
         temp_tracks[5].set_metadata(audiotools.MetaData(
-                track_name=u"Track 1",
-                album_name=u"Test Album 2",
-                track_number=1))
+            track_name=u"Track 1",
+            album_name=u"Test Album 2",
+            track_number=1))
         temp_tracks[6].set_metadata(audiotools.MetaData(
-                track_name=u"Track 2",
-                album_name=u"Test Album 2",
-                track_number=2))
+            track_name=u"Track 2",
+            album_name=u"Test Album 2",
+            track_number=2))
 
         self.assertEqual(
-            self.__run_app__(["track2track",
-                              "-d", self.output_dir,
-                              "--format=%(track_name)s.%(suffix)s",
-                              "-t", self.output_format.NAME,
-                              "-V", "normal",
-                              "-j", str(1),
-                              "--replay-gain"] + \
-                              [f.filename for f in temp_tracks]), 0)
+            self.__run_app__(
+                ["track2track",
+                 "-d", self.output_dir,
+                 "--format=%(track_name)s.%(suffix)s",
+                 "-t", self.output_format.NAME,
+                 "-V", "normal",
+                 "-j", str(1),
+                 "--replay-gain"] +
+                [f.filename for f in temp_tracks]), 0)
 
-        #check the conversion output text
+        # check the conversion output text
         for (i, track) in enumerate([temp_tracks[5],
                                      temp_tracks[6],
                                      temp_tracks[0],
@@ -2184,19 +2196,21 @@ class track2track(UtilTest):
                                      temp_tracks[3],
                                      temp_tracks[4]], 1):
             output_filename = audiotools.Filename(
-                os.path.join(self.output_dir,
+                os.path.join(
+                    self.output_dir,
                     self.output_format.track_name(
                         track.filename,
                         track.get_metadata(),
                         "%(track_name)s.%(suffix)s")))
             self.__check_output__(
                 audiotools.output_progress(
-                    LAB_ENCODE % {"source": audiotools.Filename(track.filename),
+                    LAB_ENCODE % {"source":
+                                  audiotools.Filename(track.filename),
                                   "destination": output_filename},
                     i,
                     len(temp_tracks)))
 
-        #check the ReplayGain completed text
+        # check the ReplayGain completed text
         self.__check_output__(
             audiotools.output_progress(RG_REPLAYGAIN_ADDED, 1, 3))
         self.__check_output__(
@@ -2220,7 +2234,7 @@ class track2track(UtilTest):
         replay_gains = [track.get_replay_gain() for track in
                         converted_tracks]
 
-        #tracks 0 and 1 should be on the same album
+        # tracks 0 and 1 should be on the same album
         self.assertEqual(replay_gains[0],
                          replay_gains[0])
         self.assertEqual(replay_gains[0].album_gain,
@@ -2231,7 +2245,7 @@ class track2track(UtilTest):
         self.assertNotEqual(replay_gains[0].album_gain,
                             replay_gains[4].album_gain)
 
-        #tracks 2 and 3 should be on the same album
+        # tracks 2 and 3 should be on the same album
         self.assertEqual(replay_gains[2].album_gain,
                          replay_gains[3].album_gain)
 
@@ -2240,7 +2254,7 @@ class track2track(UtilTest):
         self.assertNotEqual(replay_gains[3].album_gain,
                             replay_gains[5].album_gain)
 
-        #tracks 4, 5 and 6 should be on the same album
+        # tracks 4, 5 and 6 should be on the same album
         self.assertEqual(replay_gains[4].album_gain,
                          replay_gains[5].album_gain)
         self.assertEqual(replay_gains[5].album_gain,
@@ -2391,7 +2405,7 @@ class trackcat(UtilTest):
                                      ERR_UNSUPPORTED_COMPRESSION_MODE,
                                      ERR_ENCODING_ERROR)
 
-        #first, check the error conditions
+        # first, check the error conditions
         self.assertEqual(
             self.__run_app__(["trackcat", "-o", "fail.flac"]), 2)
 
@@ -2454,8 +2468,8 @@ class trackcat(UtilTest):
             ERR_OUTPUT_IS_INPUT %
             (audiotools.Filename(self.track1.filename),))
 
-        #then, check the option combinations
-        #along with a few different output files and types
+        # then, check the option combinations
+        # along with a few different output files and types
         all_options = ["-t", "-q", "--cue", "-o"]
         for (type,
              quality,
@@ -2466,15 +2480,12 @@ class trackcat(UtilTest):
                 f = open(outfile, "wb")
                 f.close()
 
-            options = self.populate_options(options,
-                                            type,
-                                            quality,
-                                            outfile) + \
-                                            [self.track1.filename,
-                                             self.track2.filename,
-                                             self.track3.filename]
+            options = self.populate_options(
+                options, type, quality, outfile) + [self.track1.filename,
+                                                    self.track2.filename,
+                                                    self.track3.filename]
 
-            #check a few common errors
+            # check a few common errors
             if ("-o" not in options):
                 self.assertEqual(self.__run_app__(["trackcat"] + options),
                                  1)
@@ -2512,20 +2523,21 @@ class trackcat(UtilTest):
                     ERR_ENCODING_ERROR % (audiotools.Filename(outfile),))
                 continue
 
-            #check that no PCM data is lost
+            # check that no PCM data is lost
             self.assertEqual(
                 self.__run_app__(["trackcat"] + options), 0)
             new_track = audiotools.open(outfile)
             self.assertEqual(new_track.NAME, output_format.NAME)
             self.assertEqual(new_track.total_frames(), 793800)
-            self.assert_(audiotools.pcm_frame_cmp(
+            self.assert_(
+                audiotools.pcm_frame_cmp(
                     new_track.to_pcm(),
                     audiotools.PCMCat([track.to_pcm() for track in
                                        [self.track1,
                                         self.track2,
                                         self.track3]])) is None)
 
-            #check that metadata is merged properly
+            # check that metadata is merged properly
             metadata = new_track.get_metadata()
             if (metadata is not None):
                 self.assertEqual(metadata.track_name, None)
@@ -2534,7 +2546,7 @@ class trackcat(UtilTest):
                 self.assertEqual(metadata.track_number, None)
                 self.assertEqual(metadata.track_total, 3)
 
-            #check that the cuesheet is embedded properly
+            # check that the cuesheet is embedded properly
             if (("--cue" in options) and
                 (output_format is audiotools.FlacAudio)):
                 cuesheet = new_track.get_cuesheet()
@@ -2545,21 +2557,21 @@ class trackcat(UtilTest):
                                   u'JPPI00652341'])
                 self.assertEqual([[int(i.offset() * 75) for i in t]
                                   for t in cuesheet],
-                                 [[0,], [225, 375], [675, 825]])
+                                 [[0, ], [225, 375], [675, 825]])
 
     @UTIL_TRACKCAT
     def test_unicode(self):
         for (input_filenames,
              output_path,
              cuesheet_file) in Possibilities(
-            #check filename arguments
+            # check filename arguments
             [["track%d.flac" % (i) for i in range(3)],
              [(u'abc\xe0\xe7\xe8\u3041\u3044\u3046-%d.flac' %
                (i)).encode('utf-8') for i in range(3)]],
-            #check output filename argument
+            # check output filename argument
             ["output.flac",
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046-out.flac'.encode('utf-8')],
-            #check --cue argument
+            # check --cue argument
             [None,
              "cuesheet.cue",
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046.cue'.encode('utf-8')]):
@@ -2569,13 +2581,11 @@ class trackcat(UtilTest):
                     os.unlink(input_filename)
             if (os.path.isfile(output_path)):
                 os.unlink(output_path)
-            if ((cuesheet_file is not None) and
-                os.path.isfile(cuesheet_file)):
+            if ((cuesheet_file is not None) and os.path.isfile(cuesheet_file)):
                 os.unlink(cuesheet_file)
 
             tracks = [audiotools.FlacAudio.from_pcm(
-                    input_filename,
-                    EXACT_BLANK_PCM_Reader(pcm_frames))
+                      input_filename, EXACT_BLANK_PCM_Reader(pcm_frames))
                       for (input_filename, pcm_frames) in
                       zip(input_filenames, [220500, 264600, 308700])]
 
@@ -2600,8 +2610,7 @@ class trackcat(UtilTest):
                     os.unlink(input_filename)
             if (os.path.isfile(output_path)):
                 os.unlink(output_path)
-            if ((cuesheet_file is not None) and
-                os.path.isfile(cuesheet_file)):
+            if ((cuesheet_file is not None) and os.path.isfile(cuesheet_file)):
                 os.unlink(cuesheet_file)
 
 
@@ -2619,36 +2628,39 @@ XJ4BrEfbXYNAsHe9X4UC4Je9ewAh6JjTiTKes1IzLxlPg41BFQ8qdhFNSX0enPmQ69hr1ks0JS3S
 iQ+5jH3J+9pIulGZesoy9hXrFZ7+P90fchX7mveNEe3l/Sljsr9hvaaHwksfcvL+Le9bo2vGU24j
 j4L1Ff4vmvmQ/z77C+FzkPA=""".decode("base64").decode("zlib")
 
-        #write individual tracks to disk along with track numbers
+        # write individual tracks to disk along with track numbers
         temp_tracks_f = [tempfile.NamedTemporaryFile(suffix=".aiff")
                          for i in xrange(len(track_lengths))]
         temp_tracks = [audiotools.AiffAudio.from_pcm(
-            temp_f.name,
-            EXACT_RANDOM_PCM_Reader(length),
-            total_pcm_frames=length)
-                      for (temp_f, length) in zip(temp_tracks_f, track_lengths)]
+                       temp_f.name,
+                       EXACT_RANDOM_PCM_Reader(length),
+                       total_pcm_frames=length)
+                       for (temp_f, length) in zip(temp_tracks_f,
+                                                   track_lengths)]
 
         for (track_number, temp_track) in enumerate(temp_tracks, 1):
             temp_track.set_metadata(
                 audiotools.MetaData(track_number=track_number))
 
-        #write cuesheet to disk
+        # write cuesheet to disk
         temp_cue_f = tempfile.NamedTemporaryFile(suffix=".cue")
         temp_cue_f.write(cuesheet_data)
         temp_cue_f.flush()
 
         temp_output_f = tempfile.NamedTemporaryFile(suffix=".wav")
 
-        #concatenate files to image using cuesheet
-        self.assertEqual(self.__run_app__(["trackcat",
-            "--cue", temp_cue_f.name,
-            "-o", temp_output_f.name] +
-            [temp_track_f.name for temp_track_f in temp_tracks_f] +
-            ["--no-musicbrainz", "--no-freedb"]), 0)
+        # concatenate files to image using cuesheet
+        self.assertEqual(
+            self.__run_app__(["trackcat",
+                              "--cue", temp_cue_f.name,
+                              "-o", temp_output_f.name] +
+                             [temp_track_f.name for temp_track_f in
+                              temp_tracks_f] +
+                             ["--no-musicbrainz", "--no-freedb"]), 0)
 
         output_track = audiotools.open(temp_output_f.name)
 
-        #ensure tracks in image match expected offset and data
+        # ensure tracks in image match expected offset and data
         for (i, track, expected_length) in zip(range(len(track_lengths)),
                                                temp_tracks,
                                                track_lengths):
@@ -2657,10 +2669,9 @@ j4L1Ff4vmvmQ/z77C+FzkPA=""".decode("base64").decode("zlib")
             self.assertEqual(pcmreader.seek(offset), offset)
             self.assertEqual(audiotools.pcm_frame_cmp(
                 track.to_pcm(),
-                audiotools.PCMReaderHead(pcmreader, expected_length)),
-                             None)
+                audiotools.PCMReaderHead(pcmreader, expected_length)), None)
 
-        #cleanup temporary files
+        # cleanup temporary files
         for temp_track_f in temp_tracks_f:
             temp_track_f.close()
         temp_cue_f.close()
@@ -2758,78 +2769,78 @@ class trackcmp(UtilTest):
                                      LAB_TRACKCMP_MISSING,
                                      LAB_TRACKCMP_ERROR)
 
-        #check matching file against maching file
+        # check matching file against maching file
         self.assertEqual(
             self.__run_app__(["trackcmp", "-V", "normal",
                               self.match_file1.name, self.match_file2.name]),
             0)
 
-        #check matching file against itself
+        # check matching file against itself
         self.assertEqual(
             self.__run_app__(["trackcmp", "-V", "normal",
                               self.match_file1.name, self.match_file1.name]),
             0)
 
-        #check matching file against mismatching file
+        # check matching file against mismatching file
         self.assertEqual(
             self.__run_app__(["trackcmp", "-V", "normal",
                               self.match_file1.name, self.mismatch_file.name]),
             1)
         self.__check_output__(
             (LAB_TRACKCMP_CMP %
-             {"file1":audiotools.Filename(self.match_file1.name),
-              "file2":audiotools.Filename(self.mismatch_file.name)}) +
+             {"file1": audiotools.Filename(self.match_file1.name),
+              "file2": audiotools.Filename(self.mismatch_file.name)}) +
             u" : " +
             (LAB_TRACKCMP_MISMATCH %
              {"frame_number": 1}))
 
-        #(ANSI output won't be generated because stdout isn't a TTY)
+        # (ANSI output won't be generated because stdout isn't a TTY)
 
-        #check matching file against missing file
+        # check matching file against missing file
         self.assertEqual(
             self.__run_app__(["trackcmp", "-V", "normal",
                               self.match_file1.name, "/dev/null/foo"]),
             1)
         self.__check_error__(
             (LAB_TRACKCMP_CMP %
-             {"file1":audiotools.Filename(self.match_file1.name),
-              "file2":audiotools.Filename("/dev/null/foo")}) +
+             {"file1": audiotools.Filename(self.match_file1.name),
+              "file2": audiotools.Filename("/dev/null/foo")}) +
             u" : " + LAB_TRACKCMP_TYPE_MISMATCH)
 
-        #check matching file against broken file
+        # check matching file against broken file
         self.assertEqual(
             self.__run_app__(["trackcmp", "-V", "normal",
                               self.match_file1.name, self.broken_file.name]),
             1)
         self.__check_output__(
             (LAB_TRACKCMP_CMP %
-             {"file1":audiotools.Filename(self.match_file1.name),
-              "file2":audiotools.Filename(self.broken_file.name)}) +
-             u" : " + LAB_TRACKCMP_ERROR)
+             {"file1": audiotools.Filename(self.match_file1.name),
+              "file2": audiotools.Filename(self.broken_file.name)}) +
+            u" : " + LAB_TRACKCMP_ERROR)
 
-        #check file against directory
+        # check file against directory
         self.assertEqual(
             self.__run_app__(["trackcmp", "-V", "normal",
                               self.match_file1.name, self.match_dir1]),
             1)
         self.__check_error__(
             (LAB_TRACKCMP_CMP %
-             {"file1":audiotools.Filename(self.match_file1.name),
-              "file2":audiotools.Filename(self.match_dir1)}) +
+             {"file1": audiotools.Filename(self.match_file1.name),
+              "file2": audiotools.Filename(self.match_dir1)}) +
             u" : " + LAB_TRACKCMP_TYPE_MISMATCH)
 
-        #check directory against file
+        # check directory against file
         self.assertEqual(
             self.__run_app__(["trackcmp", "-V", "normal",
                               self.match_dir1, self.match_file1.name]),
             1)
         self.__check_error__(
             (LAB_TRACKCMP_CMP %
-             {"file1":audiotools.Filename(self.match_dir1),
-              "file2":audiotools.Filename(self.match_file1.name)}) +
+             {"file1": audiotools.Filename(self.match_dir1),
+              "file2": audiotools.Filename(self.match_file1.name)}) +
             u" : " + LAB_TRACKCMP_TYPE_MISMATCH)
 
-        #check matching directory against matching directory
+        # check matching directory against matching directory
         self.assertEqual(
             self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                               self.match_dir1, self.match_dir2]),
@@ -2838,19 +2849,20 @@ class trackcmp(UtilTest):
             self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
-                     {"file1":audiotools.Filename(
-                                os.path.join(self.match_dir1,
-                                             "%2.2d.%s" %
-                                             (i, self.type.SUFFIX))),
-                      "file2":audiotools.Filename(
-                                os.path.join(self.match_dir2,
-                                             "%2.2d.%s" %
-                                             (i, self.type.SUFFIX)))}) +
+                     {"file1":
+                      audiotools.Filename(
+                          os.path.join(self.match_dir1,
+                                       "%2.2d.%s" % (i, self.type.SUFFIX))),
+                      "file2":
+                      audiotools.Filename(
+                          os.path.join(self.match_dir2,
+                                       "%2.2d.%s" % (i, self.type.SUFFIX)))}
+                     ) +
                     u" : " +
                     LAB_TRACKCMP_OK,
                     i, 3))
 
-        #check matching directory against itself
+        # check matching directory against itself
         self.assertEqual(
             self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                               self.match_dir1, self.match_dir1]),
@@ -2859,19 +2871,20 @@ class trackcmp(UtilTest):
             self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
-                     {"file1":audiotools.Filename(
-                                os.path.join(self.match_dir1,
-                                             "%2.2d.%s" %
-                                             (i, self.type.SUFFIX))),
-                      "file2":audiotools.Filename(
-                                os.path.join(self.match_dir1,
-                                             "%2.2d.%s" %
-                                             (i, self.type.SUFFIX)))}) +
+                     {"file1":
+                      audiotools.Filename(
+                          os.path.join(self.match_dir1,
+                                       "%2.2d.%s" % (i, self.type.SUFFIX))),
+                      "file2":
+                      audiotools.Filename(
+                          os.path.join(self.match_dir1,
+                                       "%2.2d.%s" % (i, self.type.SUFFIX)))}
+                     ) +
                     u" : " +
                     LAB_TRACKCMP_OK,
                     i, 3))
 
-        #check matching directory against mismatching directory
+        # check matching directory against mismatching directory
         self.assertEqual(
             self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                               self.match_dir1, self.mismatch_dir1]),
@@ -2880,80 +2893,86 @@ class trackcmp(UtilTest):
             self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
-                     {"file1":audiotools.Filename(
-                            os.path.join(self.match_dir1,
-                                         "%2.2d.%s" %
-                                         (i, self.type.SUFFIX))),
-                      "file2":audiotools.Filename(
-                            os.path.join(self.mismatch_dir1,
-                                         "%2.2d.%s" %
-                                         (i, self.type.SUFFIX)))}) +
+                     {"file1":
+                      audiotools.Filename(
+                          os.path.join(self.match_dir1,
+                                       "%2.2d.%s" % (i, self.type.SUFFIX))),
+                      "file2":
+                      audiotools.Filename(
+                          os.path.join(self.mismatch_dir1,
+                                       "%2.2d.%s" % (i, self.type.SUFFIX)))}
+                     ) +
                     u" : " +
                     (LAB_TRACKCMP_MISMATCH %
                      {"frame_number": 1}),
                     i, 3))
 
-        #check matching directory against directory missing file
+        # check matching directory against directory missing file
         self.assertEqual(
             self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                               self.match_dir1, self.mismatch_dir2]),
             1)
         self.__check_info__(
             LAB_TRACKCMP_MISSING % {
-                "filename":audiotools.Filename(os.path.basename(
-                        "03.%s" % (self.type.SUFFIX))),
-                "directory":audiotools.Filename(self.mismatch_dir2)})
+                "filename":
+                audiotools.Filename(
+                    os.path.basename("03.%s" % (self.type.SUFFIX))),
+                "directory":
+                audiotools.Filename(self.mismatch_dir2)})
 
         for i in xrange(1, 3):
             self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
-                     {"file1":audiotools.Filename(
-                            os.path.join(self.match_dir1,
-                                         "%2.2d.%s" %
-                                         (i, self.type.SUFFIX))),
-                      "file2":audiotools.Filename(
-                            os.path.join(self.mismatch_dir2,
-                                         "%2.2d.%s" %
-                                         (i, self.type.SUFFIX)))}) +
+                     {"file1":
+                      audiotools.Filename(
+                          os.path.join(self.match_dir1,
+                                       "%2.2d.%s" % (i, self.type.SUFFIX))),
+                      "file2":
+                      audiotools.Filename(
+                          os.path.join(self.mismatch_dir2,
+                                       "%2.2d.%s" % (i, self.type.SUFFIX)))}
+                     ) +
                     u" : " +
                     LAB_TRACKCMP_OK,
                     i, 2))
 
-        #check matching directory against directory with extra file
+        # check matching directory against directory with extra file
         self.assertEqual(
             self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                               self.match_dir1, self.mismatch_dir3]),
             1)
         self.__check_info__(
             LAB_TRACKCMP_MISSING % {
-                "filename":audiotools.Filename(
-                    "04.%s" % (self.type.SUFFIX)),
-                "directory":audiotools.Filename(self.match_dir1)})
+                "filename":
+                audiotools.Filename("04.%s" % (self.type.SUFFIX)),
+                "directory":
+                audiotools.Filename(self.match_dir1)})
 
         for i in xrange(1, 4):
             self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
-                     {"file1":audiotools.Filename(
-                            os.path.join(self.match_dir1,
-                                         "%2.2d.%s" %
-                                         (i, self.type.SUFFIX))),
-                      "file2":audiotools.Filename(
-                                os.path.join(self.mismatch_dir3,
-                                         "%2.2d.%s" %
-                                             (i, self.type.SUFFIX)))}) +
+                     {"file1":
+                      audiotools.Filename(
+                          os.path.join(self.match_dir1,
+                                       "%2.2d.%s" % (i, self.type.SUFFIX))),
+                      "file2":
+                      audiotools.Filename(
+                          os.path.join(self.mismatch_dir3,
+                                       "%2.2d.%s" % (i, self.type.SUFFIX)))}
+                     ) +
                     u" : " +
                     LAB_TRACKCMP_OK,
                     i, 3))
 
-        #check several files against CD image of those files
+        # check several files against CD image of those files
         audio_format = audiotools.FlacAudio
         lengths = [44100, 88200, 176400]
         image_file = tempfile.NamedTemporaryFile(
             suffix="." + audio_format.SUFFIX)
         track_files = [tempfile.NamedTemporaryFile(
-                suffix="." + audio_format.SUFFIX) for l in lengths]
+                       suffix="." + audio_format.SUFFIX) for l in lengths]
         try:
             image = audio_format.from_pcm(
                 image_file.name,
@@ -2984,8 +3003,8 @@ class trackcmp(UtilTest):
                     self.__check_output__(
                         audiotools.output_progress(
                             LAB_TRACKCMP_CMP %
-                            {"file1":audiotools.Filename(image.filename),
-                             "file2":audiotools.Filename(track.filename)} +
+                            {"file1": audiotools.Filename(image.filename),
+                             "file2": audiotools.Filename(track.filename)} +
                             u" : " +
                             LAB_TRACKCMP_OK,
                             i + 1, len(tracks)))
@@ -3089,7 +3108,7 @@ class trackinfo(UtilTest):
                         self.__run_app__(
                             ["trackinfo"] + options + [track.filename]), 0)
 
-                    #check the initial output line
+                    # check the initial output line
                     line = self.stdout.readline()
                     if ("-b" in options):
                         self.assert_(
@@ -3104,7 +3123,7 @@ class trackinfo(UtilTest):
                             re.match(r'\d+:\d+ 2ch 44.1kHz 16-bit: %s\n' %
                                      (track.filename), line) is not None)
 
-                    #check metadata/low-level metadata if -n not present
+                    # check metadata/low-level metadata if -n not present
                     if ("-n" not in options):
                         if ("-L" not in options):
                             for line in StringIO.StringIO(
@@ -3117,20 +3136,20 @@ class trackinfo(UtilTest):
                         if ("-C" in options):
                             self.__check_output__(u"")
                     else:
-                        #no metadata display at all
+                        # no metadata display at all
                         pass
 
-                    #check channel assignment if -C present
+                    # check channel assignment if -C present
                     if ("-C" in options):
                         self.__check_output__(LAB_TRACKINFO_CHANNELS)
                         self.__check_output__(
                             LAB_TRACKINFO_CHANNEL %
-                            {"channel_number":1,
-                             "channel_name":MASK_FRONT_LEFT})
+                            {"channel_number": 1,
+                             "channel_name": MASK_FRONT_LEFT})
                         self.__check_output__(
                             LAB_TRACKINFO_CHANNEL %
-                            {"channel_number":2,
-                             "channel_name":MASK_FRONT_RIGHT})
+                            {"channel_number": 2,
+                             "channel_name": MASK_FRONT_RIGHT})
 
     @UTIL_TRACKINFO
     def test_unicode(self):
@@ -3196,9 +3215,9 @@ class tracklength(UtilTest):
         self.__check_output__(u"%6s %5s %7s %4s" %
                               (u"flac",
                                1,
-                               LAB_TRACKLENGTH % {"hours":0,
-                                                  "minutes":0,
-                                                  "seconds":1},
+                               LAB_TRACKLENGTH % {"hours": 0,
+                                                  "minutes": 0,
+                                                  "seconds": 1},
                                380))
 
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
@@ -3216,9 +3235,9 @@ class tracklength(UtilTest):
         self.__check_output__(u"%6s %5s %7s %4s" %
                               (u"flac",
                                2,
-                               LAB_TRACKLENGTH % {"hours":0,
-                                                  "minutes":0,
-                                                  "seconds":2},
+                               LAB_TRACKLENGTH % {"hours": 0,
+                                                  "minutes": 0,
+                                                  "seconds": 2},
                                760))
 
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
@@ -3236,9 +3255,9 @@ class tracklength(UtilTest):
         self.__check_output__(u"%6s %5s %7s %4s" %
                               (u"flac",
                                2,
-                               LAB_TRACKLENGTH % {"hours":0,
-                                                  "minutes":1,
-                                                  "seconds":1},
+                               LAB_TRACKLENGTH % {"hours": 0,
+                                                  "minutes": 1,
+                                                  "seconds": 1},
                                u"9.8K"))
 
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
@@ -3256,9 +3275,9 @@ class tracklength(UtilTest):
         self.__check_output__(u"%6s %5s %7s %5s" %
                               (u"flac",
                                3,
-                               LAB_TRACKLENGTH % {"hours":0,
-                                                  "minutes":2,
-                                                  "seconds":1},
+                               LAB_TRACKLENGTH % {"hours": 0,
+                                                  "minutes": 2,
+                                                  "seconds": 1},
                                u"19.1K"))
 
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
@@ -3276,9 +3295,9 @@ class tracklength(UtilTest):
         self.__check_output__(u"%6s %5s %7s %5s" %
                               (u"flac",
                                3,
-                               LAB_TRACKLENGTH % {"hours":1,
-                                                  "minutes":1,
-                                                  "seconds":1},
+                               LAB_TRACKLENGTH % {"hours": 1,
+                                                  "minutes": 1,
+                                                  "seconds": 1},
                                u"22.5K"))
 
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
@@ -3297,9 +3316,9 @@ class tracklength(UtilTest):
         self.__check_output__(u"%6s %5s %7s %5s" %
                               (u"flac",
                                4,
-                               LAB_TRACKLENGTH % {"hours":2,
-                                                  "minutes":1,
-                                                  "seconds":1},
+                               LAB_TRACKLENGTH % {"hours": 2,
+                                                  "minutes": 1,
+                                                  "seconds": 1},
                                u"35.3K"))
 
         tempdir = tempfile.mkdtemp()
@@ -3321,9 +3340,9 @@ class tracklength(UtilTest):
             self.__check_output__(u"%6s %5s %7s %5s" %
                                   (u"flac",
                                    3,
-                                   LAB_TRACKLENGTH % {"hours":1,
-                                                      "minutes":1,
-                                                      "seconds":1},
+                                   LAB_TRACKLENGTH % {"hours": 1,
+                                                      "minutes": 1,
+                                                      "seconds": 1},
                                    u"22.5K"))
         finally:
             for f in os.listdir(tempdir):
@@ -3436,7 +3455,7 @@ class tracklint(UtilTest):
 
     @UTIL_TRACKLINT
     def test_flac1(self):
-        #copy the test track to a temporary location
+        # copy the test track to a temporary location
         tempflac = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
             f = open("flac-id3.flac", "rb")
@@ -3449,8 +3468,9 @@ class tracklint(UtilTest):
             tempflac.seek(-0x80, 2)
             self.assertEqual(tempflac.read(3), "TAG")
 
-            #ensure that FLACs tagged with ID3v2/ID3v1 comments are scrubbed
-            self.assertEqual(self.__run_app__(
+            # ensure that FLACs tagged with ID3v2/ID3v1 comments are scrubbed
+            self.assertEqual(
+                self.__run_app__(
                     ["tracklint", "-V", "quiet", "--fix", tempflac.name]), 0)
             flac = audiotools.open(tempflac.name)
             md5sum = md5()
@@ -3464,7 +3484,7 @@ class tracklint(UtilTest):
 
     @UTIL_TRACKLINT
     def test_flac2(self):
-        #copy the test track to a temporary location
+        # copy the test track to a temporary location
         tempflac = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
             f = open("flac-disordered.flac", "rb")
@@ -3476,8 +3496,9 @@ class tracklint(UtilTest):
             self.assertEqual(tempflac.read(4), 'fLaC')
             self.assertNotEqual(ord(tempflac.read(1)) & 0x07, 0)
 
-            #ensure that FLACs with improper metadata ordering are reordered
-            self.assertEqual(self.__run_app__(
+            # ensure that FLACs with improper metadata ordering are reordered
+            self.assertEqual(
+                self.__run_app__(
                     ["tracklint", "-V", "quiet", "--fix", tempflac.name]), 0)
             flac = audiotools.open(tempflac.name)
             md5sum = md5()
@@ -3491,14 +3512,14 @@ class tracklint(UtilTest):
 
     @UTIL_TRACKLINT
     def test_flac3(self):
-        #create a small temporary flac
+        # create a small temporary flac
         tempflacfile = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
             tempflac = audiotools.FlacAudio.from_pcm(
                 tempflacfile.name,
                 BLANK_PCM_Reader(3))
 
-            #build an image from metadata
+            # build an image from metadata
             image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
             good_mime_type = image.mime_type
             good_width = image.width
@@ -3508,19 +3529,19 @@ class tracklint(UtilTest):
             good_description = image.description
             good_type = image.type
 
-            #update image with bogus fields
+            # update image with bogus fields
             image.width = 0
             image.height = 0
             image.color_depth = 0
             image.color_count = 0
             image.mime_type = u'img/jpg'
 
-            #tag flac with bogus fields image
+            # tag flac with bogus fields image
             metadata = tempflac.get_metadata()
             metadata.add_image(image)
             tempflac.set_metadata(metadata)
 
-            #ensure bogus fields stick
+            # ensure bogus fields stick
             image = tempflac.get_metadata().images()[0]
             self.assertEqual(image.width, 0)
             self.assertEqual(image.height, 0)
@@ -3528,13 +3549,13 @@ class tracklint(UtilTest):
             self.assertEqual(image.color_count, 0)
             self.assertEqual(image.mime_type, u'img/jpg')
 
-            #fix flac with tracklint
+            # fix flac with tracklint
             self.assertEqual(
                 self.__run_app__(
                     ["tracklint", "-V", "quiet", tempflac.filename, "--fix"]),
                 0)
 
-            #ensure bogus fields are fixed
+            # ensure bogus fields are fixed
             tempflac = audiotools.open(tempflacfile.name)
             image = tempflac.get_metadata().images()[0]
             self.assertEqual(image.width, good_width)
@@ -3549,29 +3570,29 @@ class tracklint(UtilTest):
 
     @UTIL_TRACKLINT
     def test_flac4(self):
-        #create a small temporary FLAC
+        # create a small temporary FLAC
         tempflacfile = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
-            #update it with the data from "flac-nonmd5.flac"
+            # update it with the data from "flac-nonmd5.flac"
             f = open("flac-nonmd5.flac", "rb")
             audiotools.transfer_data(f.read, tempflacfile.write)
             f.close()
             tempflacfile.flush()
 
-            #ensure MD5SUM is empty
+            # ensure MD5SUM is empty
             tempflac = audiotools.open(tempflacfile.name)
             self.assertEqual(tempflac.__md5__, chr(0) * 16)
 
-            #ensure file verifies okay
+            # ensure file verifies okay
             self.assertEqual(tempflac.verify(), True)
 
-            #fix FLAC with tracklint
+            # fix FLAC with tracklint
             self.assertEqual(
                 self.__run_app__(
                     ["tracklint", "-V", "quiet", tempflac.filename, "--fix"]),
                 0)
 
-            #ensure file's new MD5SUM matches its actual MD5SUM
+            # ensure file's new MD5SUM matches its actual MD5SUM
             tempflac2 = audiotools.open(tempflacfile.name)
             self.assertEqual(tempflac2.__md5__,
                              "\xd2\xb1\x20\x19\x90\x19\xb6\x39" +
@@ -3586,10 +3607,12 @@ class tracklint(UtilTest):
             bad_apev2 = audiotools.ApeTag(
                 [audiotools.ape.ApeTagItem(0, False, "Title", "Track Name  "),
                  audiotools.ape.ApeTagItem(0, False, "Track", "02"),
-                 audiotools.ape.ApeTagItem(0, False, "Artist", "  Some Artist"),
+                 audiotools.ape.ApeTagItem(0, False, "Artist",
+                                           "  Some Artist"),
                  audiotools.ape.ApeTagItem(0, False, "Catalog", ""),
                  audiotools.ape.ApeTagItem(0, False, "Year", "  "),
-                 audiotools.ape.ApeTagItem(0, False, "Comment", "  Some Comment  ")])
+                 audiotools.ape.ApeTagItem(0, False, "Comment",
+                                           "  Some Comment  ")])
 
             fixed = audiotools.MetaData(
                 track_name=u"Track Name",
@@ -3651,8 +3674,8 @@ class tracklint(UtilTest):
         self.assertNotEqual(fixed, bad_id3v2)
 
         tempdir = tempfile.mkdtemp()
-        tempmp = os.path.join(tempdir, "track.%s" % \
-                                  (audiotools.MP3Audio.SUFFIX))
+        tempmp = os.path.join(tempdir, "track.%s" %
+                              (audiotools.MP3Audio.SUFFIX))
         undo = os.path.join(tempdir, "undo.db")
         try:
             track = audiotools.MP3Audio.from_pcm(
@@ -3705,7 +3728,7 @@ class tracklint(UtilTest):
             metadata.add_image(bad_image)
             temp_track.set_metadata(metadata)
 
-            #first, ensure that the bad_image's fields stick
+            # first, ensure that the bad_image's fields stick
             bad_image2 = temp_track.get_metadata().images()[0]
             for attr in ["data", "mime_type", "width", "height",
                          "color_depth", "color_count", "description",
@@ -3713,13 +3736,14 @@ class tracklint(UtilTest):
                 self.assertEqual(getattr(bad_image2, attr),
                                  getattr(bad_image, attr))
 
-            #fix the track with tracklint
-            self.assertEqual(self.__run_app__(
+            # fix the track with tracklint
+            self.assertEqual(
+                self.__run_app__(
                     ["tracklint", "-V", "quiet", "--fix", temp_file.name]),
-                             0)
+                0)
             temp_track = audiotools.open(temp_file.name)
 
-            #then, ensure that the good fields are now in place
+            # then, ensure that the good fields are now in place
             good_image = temp_track.get_metadata().images()[0]
             for attr in ["data", "mime_type", "width", "height",
                          "color_depth", "color_count", "description",
@@ -3734,47 +3758,47 @@ class tracklint(UtilTest):
         self.__id3_text__(
             audiotools.ID3v22Comment(
                 [audiotools.id3.ID3v22_T__Frame.converted(
-                        "TT2", u"Track Name  "),
+                    "TT2", u"Track Name  "),
                  audiotools.id3.ID3v22_T__Frame.converted(
-                        "TRK", u"02"),
+                    "TRK", u"02"),
                  audiotools.id3.ID3v22_T__Frame.converted(
-                        "TPA", u"003"),
+                    "TPA", u"003"),
                  audiotools.id3.ID3v22_T__Frame.converted(
-                        "TP1", u"  Some Artist\u0000"),
+                    "TP1", u"  Some Artist\u0000"),
                  audiotools.id3.ID3v22_T__Frame.converted(
-                        "TRC", u""),
+                    "TRC", u""),
                  audiotools.id3.ID3v22_T__Frame.converted(
-                        "TYE", u""),
+                    "TYE", u""),
                  audiotools.id3.ID3v22_COM_Frame.converted(
-                        "COM", u"  Some Comment  ")]))
+                    "COM", u"  Some Comment  ")]))
 
-        #ID3v2.2 doesn't store most image fields internally
-        #so there's little point in testing them for inaccuracies
+        # ID3v2.2 doesn't store most image fields internally
+        # so there's little point in testing them for inaccuracies
 
     @UTIL_TRACKLINT
     def test_id3v23(self):
         self.__id3_text__(
             audiotools.ID3v23Comment(
                 [audiotools.id3.ID3v23_T___Frame.converted(
-                        "TIT2", u"Track Name  "),
+                    "TIT2", u"Track Name  "),
                  audiotools.id3.ID3v23_T___Frame.converted(
-                        "TRCK", u"02"),
+                    "TRCK", u"02"),
                  audiotools.id3.ID3v23_T___Frame.converted(
-                        "TPOS", u"003"),
+                    "TPOS", u"003"),
                  audiotools.id3.ID3v23_T___Frame.converted(
-                        "TPE1", u"  Some Artist\u0000"),
+                    "TPE1", u"  Some Artist\u0000"),
                  audiotools.id3.ID3v23_T___Frame.converted(
-                        "TYER", u""),
+                    "TYER", u""),
                  audiotools.id3.ID3v23_T___Frame.converted(
-                        "TCOP", u""),
+                    "TCOP", u""),
                  audiotools.id3.ID3v23_COMM_Frame.converted(
-                        "COMM", u"  Some Comment  ")]))
+                    "COMM", u"  Some Comment  ")]))
 
         good_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
         bad_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
 
-        #ID3v2.3 only stores MIME type internally
-        #the rest are derived
+        # ID3v2.3 only stores MIME type internally
+        # the rest are derived
         bad_image.width = 500
         bad_image.height = 500
         bad_image.color_depth = 24
@@ -3790,25 +3814,25 @@ class tracklint(UtilTest):
         self.__id3_text__(
             audiotools.ID3v24Comment(
                 [audiotools.id3.ID3v24_T___Frame.converted(
-                        "TIT2", u"Track Name  "),
+                    "TIT2", u"Track Name  "),
                  audiotools.id3.ID3v24_T___Frame.converted(
-                        "TRCK", u"02"),
+                    "TRCK", u"02"),
                  audiotools.id3.ID3v24_T___Frame.converted(
-                        "TPOS", u"003"),
+                    "TPOS", u"003"),
                  audiotools.id3.ID3v24_T___Frame.converted(
-                        "TPE1", u"  Some Artist\u0000"),
+                    "TPE1", u"  Some Artist\u0000"),
                  audiotools.id3.ID3v24_T___Frame.converted(
-                        "TYER", u""),
+                    "TYER", u""),
                  audiotools.id3.ID3v24_T___Frame.converted(
-                        "TCOP", u""),
+                    "TCOP", u""),
                  audiotools.id3.ID3v24_COMM_Frame.converted(
-                        "COMM", u"  Some Comment  ")]))
+                    "COMM", u"  Some Comment  ")]))
 
         good_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
         bad_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
 
-        #ID3v2.4 only stores MIME type internally
-        #the rest are derived
+        # ID3v2.4 only stores MIME type internally
+        # the rest are derived
         bad_image.width = 500
         bad_image.height = 500
         bad_image.color_depth = 24
@@ -3833,23 +3857,26 @@ class tracklint(UtilTest):
         try:
             track = audiotools.MP3Audio.from_pcm(track_file.name,
                                                  BLANK_PCM_Reader(5))
-            track.set_metadata(audiotools.MetaData(
+            track.set_metadata(
+                audiotools.MetaData(
                     track_name=u"Track Name ",
                     track_number=1))
             if (track.get_metadata() is not None):
-                #writable undo DB, unwritable file
+                # writable undo DB, unwritable file
                 os.chmod(track.filename,
                          track_file_stat & 0x7555)
 
-                self.assertEqual(self.__run_app__(
+                self.assertEqual(
+                    self.__run_app__(
                         ["tracklint", "--fix", "--db", undo_db,
                          track.filename]), 1)
 
                 self.__check_error__(ERR_ENCODING_ERROR %
                                      (audiotools.Filename(track.filename),))
 
-                #no undo DB, unwritable file
-                self.assertEqual(self.__run_app__(
+                # no undo DB, unwritable file
+                self.assertEqual(
+                    self.__run_app__(
                         ["tracklint", "--fix", track.filename]), 1)
 
                 self.__check_error__(ERR_ENCODING_ERROR %
@@ -3878,38 +3905,38 @@ class tracklint(UtilTest):
             [M4A_HDLR_Atom(0, 0, '\x00\x00\x00\x00',
                            'mdir', 'appl', 0, 0, '', 0),
              M4A_Tree_Atom(
-                    'ilst',
-                    [M4A_ILST_Leaf_Atom(
-                            '\xa9nam',
-                            [M4A_ILST_Unicode_Data_Atom(
-                                    0, 1,
-                                    'Track Name  ')]),
-                     M4A_ILST_Leaf_Atom(
-                            '\xa9ART',
-                            [M4A_ILST_Unicode_Data_Atom(
-                                    0, 1,
-                                    '  Some Artist')]),
-                     M4A_ILST_Leaf_Atom(
-                            'cprt',
-                            [M4A_ILST_Unicode_Data_Atom(
-                                    0, 1,
-                                    '')]),
-                     M4A_ILST_Leaf_Atom(
-                            '\xa9day',
-                            [M4A_ILST_Unicode_Data_Atom(
-                                    0, 1,
-                                    '  ')]),
-                     M4A_ILST_Leaf_Atom(
-                            '\xa9cmt',
-                            [M4A_ILST_Unicode_Data_Atom(
-                                    0, 1,
-                                    '  Some Comment  ')]),
-                     M4A_ILST_Leaf_Atom(
-                            'trkn',
-                            [M4A_ILST_TRKN_Data_Atom(2, 0)]),
-                     M4A_ILST_Leaf_Atom(
-                            'disk',
-                            [M4A_ILST_DISK_Data_Atom(3, 0)])]),
+                 'ilst',
+                 [M4A_ILST_Leaf_Atom(
+                     '\xa9nam',
+                     [M4A_ILST_Unicode_Data_Atom(
+                         0, 1,
+                         'Track Name  ')]),
+                  M4A_ILST_Leaf_Atom(
+                     '\xa9ART',
+                     [M4A_ILST_Unicode_Data_Atom(
+                         0, 1,
+                         '  Some Artist')]),
+                  M4A_ILST_Leaf_Atom(
+                     'cprt',
+                     [M4A_ILST_Unicode_Data_Atom(
+                         0, 1,
+                         '')]),
+                  M4A_ILST_Leaf_Atom(
+                     '\xa9day',
+                     [M4A_ILST_Unicode_Data_Atom(
+                         0, 1,
+                         '  ')]),
+                  M4A_ILST_Leaf_Atom(
+                     '\xa9cmt',
+                     [M4A_ILST_Unicode_Data_Atom(
+                         0, 1,
+                         '  Some Comment  ')]),
+                  M4A_ILST_Leaf_Atom(
+                     'trkn',
+                     [M4A_ILST_TRKN_Data_Atom(2, 0)]),
+                  M4A_ILST_Leaf_Atom(
+                     'disk',
+                     [M4A_ILST_DISK_Data_Atom(3, 0)])]),
              M4A_FREE_Atom(1024)])
 
         fixed = audiotools.MetaData(
@@ -3987,8 +4014,9 @@ class tracklint(UtilTest):
                     orig_stat = os.stat(track.filename)
                     time.sleep(1)
 
-                    #should make no metadata changes
-                    self.assertEqual(self.__run_app__(
+                    # should make no metadata changes
+                    self.assertEqual(
+                        self.__run_app__(
                             ["tracklint", "--fix", track.filename]), 0)
 
                     self.assertEqual(track.get_metadata(),
@@ -4030,8 +4058,9 @@ class tracklint(UtilTest):
                     orig_stat = os.stat(track.filename)
                     time.sleep(1)
 
-                    #should make no metadata changes
-                    self.assertEqual(self.__run_app__(
+                    # should make no metadata changes
+                    self.assertEqual(
+                        self.__run_app__(
                             ["tracklint", "--db", undo_db.name,
                              "--fix", track.filename]), 0)
 
@@ -4122,23 +4151,26 @@ class tracklint(UtilTest):
                 track = audio_class.from_pcm(track_file.name,
                                              BLANK_PCM_Reader(5))
                 track.set_metadata(audiotools.MetaData(
-                        track_name=u"Track Name ",
-                        track_number=1,
-                        track_total=2))
+                    track_name=u"Track Name ",
+                    track_number=1,
+                    track_total=2))
 
-                #general-purpose errors
-                self.assertEqual(self.__run_app__(
+                # general-purpose errors
+                self.assertEqual(
+                    self.__run_app__(
                         ["tracklint", "--undo", track.filename]), 1)
                 self.__check_error__(ERR_NO_UNDO_DB)
 
-                self.assertEqual(self.__run_app__(
+                self.assertEqual(
+                    self.__run_app__(
                         ["tracklint", "--fix", "--db", "/dev/null/foo.db",
                          track.filename]), 1)
                 self.__check_error__(
                     ERR_OPEN_IOERROR %
                     (audiotools.Filename("/dev/null/foo.db"),))
 
-                self.assertEqual(self.__run_app__(
+                self.assertEqual(
+                    self.__run_app__(
                         ["tracklint", "--undo", "--db", "/dev/null/foo.db",
                          track.filename]), 1)
                 self.__check_error__(
@@ -4146,15 +4178,17 @@ class tracklint(UtilTest):
                     (audiotools.Filename("/dev/null/foo.db"),))
 
                 if (track.get_metadata() is not None):
-                    #unwritable undo DB, writable file
-                    self.assertEqual(self.__run_app__(
+                    # unwritable undo DB, writable file
+                    self.assertEqual(
+                        self.__run_app__(
                             ["tracklint", "--fix", "--db", "/dev/null/undo.db",
                              track.filename]), 1)
                     self.__check_error__(
                         ERR_OPEN_IOERROR %
                         (audiotools.Filename("/dev/null/undo.db"),))
 
-                    self.assertEqual(self.__run_app__(
+                    self.assertEqual(
+                        self.__run_app__(
                             ["tracklint", "--undo", "--db",
                              "/dev/null/undo.db",
                              track.filename]), 1)
@@ -4162,17 +4196,19 @@ class tracklint(UtilTest):
                         ERR_OPEN_IOERROR %
                         (audiotools.Filename("/dev/null/undo.db"),))
 
-                    #unwritable undo DB, unwritable file
+                    # unwritable undo DB, unwritable file
                     os.chmod(track.filename, track_file_stat & 0x7555)
 
-                    self.assertEqual(self.__run_app__(
+                    self.assertEqual(
+                        self.__run_app__(
                             ["tracklint", "--fix", "--db", "/dev/null/undo.db",
                              track.filename]), 1)
                     self.__check_error__(
                         ERR_OPEN_IOERROR %
                         (audiotools.Filename("/dev/null/undo.db"),))
 
-                    self.assertEqual(self.__run_app__(
+                    self.assertEqual(
+                        self.__run_app__(
                             ["tracklint", "--undo", "--db",
                              "/dev/null/undo.db",
                              track.filename]), 1)
@@ -4180,13 +4216,15 @@ class tracklint(UtilTest):
                         ERR_OPEN_IOERROR %
                         (audiotools.Filename("/dev/null/undo.db"),))
 
-                    #restore from DB to unwritable file
+                    # restore from DB to unwritable file
                     os.chmod(track.filename, track_file_stat)
-                    self.assertEqual(self.__run_app__(
+                    self.assertEqual(
+                        self.__run_app__(
                             ["tracklint", "--fix", "--db", undo_db,
                              track.filename]), 0)
                     os.chmod(track.filename, track_file_stat & 0x7555)
-                    self.assertEqual(self.__run_app__(
+                    self.assertEqual(
+                        self.__run_app__(
                             ["tracklint", "--undo", "--db", undo_db,
                              track.filename]), 1)
                     self.__check_error__(
@@ -4216,15 +4254,17 @@ class tracklint(UtilTest):
             try:
                 track = audio_class.from_pcm(track_file.name,
                                              BLANK_PCM_Reader(5))
-                track.set_metadata(audiotools.MetaData(
+                track.set_metadata(
+                    audiotools.MetaData(
                         track_name=u"Track Name ",
                         track_number=1))
                 if (track.get_metadata() is not None):
-                    #writable undo DB, unwritable file
+                    # writable undo DB, unwritable file
                     os.chmod(track.filename,
                              track_file_stat & 0x7555)
 
-                    self.assertEqual(self.__run_app__(
+                    self.assertEqual(
+                        self.__run_app__(
                             ["tracklint", "--fix", "--db", undo_db,
                              track.filename]), 1)
 
@@ -4331,8 +4371,8 @@ class trackrename(UtilTest):
                     if (metadata is not None):
                         base_metadata = metadata
                     else:
-                        #track number via filename applies
-                        #only if the file has no other metadata
+                        # track number via filename applies
+                        # only if the file has no other metadata
                         if (name.startswith("02") and
                             (original_metadata is None)):
                             base_metadata = audiotools.MetaData(
@@ -4350,11 +4390,11 @@ class trackrename(UtilTest):
                     self.__check_info__(
                         LAB_ENCODE %
                         {"source":
-                             audiotools.Filename(track.filename),
+                         audiotools.Filename(track.filename),
                          "destination":
-                             audiotools.Filename(destination_filename)})
+                         audiotools.Filename(destination_filename)})
 
-                    #check that the file is identical
+                    # check that the file is identical
                     self.assertEqual(track_data,
                                      open(destination_filename, 'rb').read())
 
@@ -4393,16 +4433,14 @@ class trackrename(UtilTest):
 
         self.__check_error__(
             ERR_DUPLICATE_OUTPUT_FILE %
-            (audiotools.Filename(
-                    os.path.join(
-                        os.path.dirname(track1.filename), "foo")),))
+            (audiotools.Filename(os.path.join(os.path.dirname(track1.filename),
+                                              "foo")),))
 
     @UTIL_TRACKRENAME
     def test_errors(self):
         from audiotools.text import (ERR_FILES_REQUIRED,
                                      ERR_UNKNOWN_FIELD,
-                                     LAB_SUPPORTED_FIELDS,
-                                     )
+                                     LAB_SUPPORTED_FIELDS)
 
         tempdir = tempfile.mkdtemp()
         tempdir_stat = os.stat(tempdir)[0]
@@ -4415,13 +4453,14 @@ class trackrename(UtilTest):
         try:
             self.assertEqual(self.__run_app__(["trackrename"]), 2)
 
-            self.assertEqual(self.__run_app__(
+            self.assertEqual(
+                self.__run_app__(
                     ["trackrename", "--format=%(foo)s", track.filename]), 1)
 
             self.__check_error__(ERR_UNKNOWN_FIELD % ("foo"))
             self.__check_info__(LAB_SUPPORTED_FIELDS)
-            for field in sorted(audiotools.MetaData.FIELDS + \
-                                    ("album_track_number", "suffix")):
+            for field in sorted(audiotools.MetaData.FIELDS +
+                                ("album_track_number", "suffix")):
                 if (field == 'track_number'):
                     self.__check_info__(u"%(track_number)2.2d")
                 else:
@@ -4431,18 +4470,20 @@ class trackrename(UtilTest):
             if (track.get_metadata() is not None):
                 os.chmod(tempdir, tempdir_stat & 0x7555)
 
-                self.assertEqual(self.__run_app__(
+                self.assertEqual(
+                    self.__run_app__(
                         ["trackrename",
                          '--format=%(album_name)s/%(track_number)2.2d - %(track_name)s.%(suffix)s',
                          track.filename]), 1)
 
                 self.__check_error__(
-                    u"[Errno 13] Permission denied: \'%s\'" % \
-                        (audiotools.Filename(
-                            os.path.join(
-                                os.path.dirname(track.filename), "Album")),))
+                    u"[Errno 13] Permission denied: \'%s\'" %
+                    (audiotools.Filename(
+                        os.path.join(
+                            os.path.dirname(track.filename), "Album")),))
 
-                self.assertEqual(self.__run_app__(
+                self.assertEqual(
+                    self.__run_app__(
                         ["trackrename",
                          '--format=%(track_number)2.2d - %(track_name)s.%(suffix)s',
                          track.filename]), 1)
@@ -4663,19 +4704,19 @@ class tracksplit(UtilTest):
                             track_metadata=base_metadata,
                             format=output_format))
 
-                #check that the output is being generated correctly
+                # check that the output is being generated correctly
                 for (i, path) in enumerate(output_filenames):
                     self.__check_output__(
                         audiotools.output_progress(
                             u"%(source)s -> %(destination)s" %
                             {"source":
-                                 audiotools.Filename(track.filename),
+                             audiotools.Filename(track.filename),
                              "destination":
-                                 audiotools.Filename(
-                                    os.path.join(output_dir, path))},
+                             audiotools.Filename(
+                                 os.path.join(output_dir, path))},
                             i + 1, len(output_filenames)))
 
-                #make sure no track data has been lost
+                # make sure no track data has been lost
                 output_tracks = [
                     audiotools.open(os.path.join(output_dir, filename))
                     for filename in output_filenames]
@@ -4685,7 +4726,7 @@ class tracksplit(UtilTest):
                         audiotools.PCMCat([t.to_pcm() for t in output_tracks]),
                         self.stream) is None)
 
-                #make sure metadata fits our expectations
+                # make sure metadata fits our expectations
                 for i in xrange(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
                     if (metadata is not None):
@@ -4779,19 +4820,19 @@ class tracksplit(UtilTest):
                             base_metadata,
                             output_format))
 
-                #check that the output is being generated correctly
+                # check that the output is being generated correctly
                 for (i, path) in enumerate(output_filenames):
                     self.__check_output__(
                         audiotools.output_progress(
                             LAB_ENCODE %
                             {"source":
-                                 audiotools.Filename(track.filename),
+                             audiotools.Filename(track.filename),
                              "destination":
-                                 audiotools.Filename(
-                                    os.path.join(output_dir, path))},
+                             audiotools.Filename(
+                                 os.path.join(output_dir, path))},
                             i + 1, len(output_filenames)))
 
-                #make sure no track data has been lost
+                # make sure no track data has been lost
                 output_tracks = [
                     audiotools.open(os.path.join(output_dir, filename))
                     for filename in output_filenames]
@@ -4801,7 +4842,7 @@ class tracksplit(UtilTest):
                         audiotools.PCMCat([t.to_pcm() for t in output_tracks]),
                         self.stream) is None)
 
-                #make sure metadata fits our expectations
+                # make sure metadata fits our expectations
                 for i in xrange(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
                     if (metadata is not None):
@@ -4816,7 +4857,7 @@ class tracksplit(UtilTest):
                         self.assertEqual(metadata.performer_name,
                                          u"Performer 1")
 
-                #check ISRC data
+                # check ISRC data
                 if ("--cue" in options):
                     for (i, ISRC) in enumerate([u"JPPI00652340",
                                                 u"JPPI00652349",
@@ -4840,13 +4881,13 @@ class tracksplit(UtilTest):
              cuesheet_file,
              output_directory,
              output_format) in Possibilities(
-            ["track.flac",    #check filename arguments
+            ["track.flac",    # check filename arguments
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
-            ["cuesheet.cue",  #check --cue argument
+            ["cuesheet.cue",  # check --cue argument
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046.cue'.encode('utf-8')],
-            ["testdir",       #check --dir argument
+            ["testdir",       # check --dir argument
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046-dir'.encode('utf-8')],
-            ["%(track_number)d.%(suffix)s",  #check --format argument
+            ["%(track_number)d.%(suffix)s",  # check --format argument
              u'%(track_number)d - abc\xe0\xe7\xe8\u3041\u3044\u3046.%(suffix)s'.encode('utf-8')]):
             if (os.path.isfile(input_filename)):
                 os.unlink(input_filename)
@@ -4872,8 +4913,8 @@ class tracksplit(UtilTest):
                      "--format", output_format,
                      input_filename]), 0)
 
-            output_filenames = [output_format % {"track_number":i,
-                                                 "suffix":"flac"}
+            output_filenames = [output_format % {"track_number": i,
+                                                 "suffix": "flac"}
                                 for i in range(1, 4)]
             for f in output_filenames:
                 self.assertEqual(
@@ -4925,11 +4966,9 @@ class tracksplit(UtilTest):
                                      LAB_SUPPORTED_FIELDS,
                                      ERR_1_FILE_REQUIRED,
                                      ERR_TRACKSPLIT_NO_CUESHEET,
-                                     ERR_TRACKSPLIT_OVERLONG_CUESHEET,
+                                     ERR_TRACKSPLIT_OVERLONG_CUESHEET)
 
-)
-
-        #ensure that unsplitting file to itself generates an error
+        # ensure that unsplitting file to itself generates an error
         track = self.type.from_pcm(self.unsplit_file.name,
                                    BLANK_PCM_Reader(18))
         self.assertEqual(
@@ -4942,7 +4981,7 @@ class tracksplit(UtilTest):
         self.__check_error__(ERR_OUTPUT_IS_INPUT %
                              (audiotools.Filename(self.unsplit_file.name),))
 
-        #ensure that unsplitting file to identical names generates an error
+        # ensure that unsplitting file to identical names generates an error
         self.assertEqual(
             self.__run_app__(
                 ["tracksplit", self.unsplit_file.name,
@@ -4996,8 +5035,8 @@ class tracksplit(UtilTest):
                     self.__check_error__(
                         ERR_UNKNOWN_FIELD % ("foo"))
                     self.__check_info__(LAB_SUPPORTED_FIELDS)
-                    for field in sorted(audiotools.MetaData.FIELDS + \
-                                            ("album_track_number", "suffix")):
+                    for field in sorted(audiotools.MetaData.FIELDS +
+                                        ("album_track_number", "suffix")):
                         if (field == 'track_number'):
                             self.__check_info__(u"%(track_number)2.2d")
                         else:
@@ -5017,26 +5056,31 @@ class tracksplit(UtilTest):
                         (output_path))
                     continue
 
-        self.assertEqual(self.__run_app__(
+        self.assertEqual(
+            self.__run_app__(
                 ["tracksplit", "-t", "flac", "-d", self.output_dir]), 2)
 
-        self.assertEqual(self.__run_app__(
+        self.assertEqual(
+            self.__run_app__(
                 ["tracksplit", "-t", "flac", "-d", self.output_dir,
                  self.unsplit_file.name, self.unsplit_file2.name]), 2)
 
-        self.assertEqual(self.__run_app__(
+        self.assertEqual(
+            self.__run_app__(
                 ["tracksplit", "-t", "flac", "-d", self.output_dir,
                  self.unsplit_file.name]), 1)
 
         self.__check_error__(ERR_TRACKSPLIT_NO_CUESHEET)
 
-        self.assertEqual(self.__run_app__(
+        self.assertEqual(
+            self.__run_app__(
                 ["tracksplit", "-t", "flac", "-d", self.output_dir,
                  "--cue", self.cuesheet.name, track2.filename]), 1)
 
         self.__check_error__(ERR_TRACKSPLIT_OVERLONG_CUESHEET)
 
-        #FIXME? - check for broken cue sheet output?
+        # FIXME? - check for broken cue sheet output?
+
 
 class tracksplit_pre_gap(UtilTest):
     @UTIL_TRACKSPLIT
@@ -5061,7 +5105,7 @@ XJ4BrEfbXYNAsHe9X4UC4Je9ewAh6JjTiTKes1IzLxlPg41BFQ8qdhFNSX0enPmQ69hr1ks0JS3S
 iQ+5jH3J+9pIulGZesoy9hXrFZ7+P90fchX7mveNEe3l/Sljsr9hvaaHwksfcvL+Le9bo2vGU24j
 j4L1Ff4vmvmQ/z77C+FzkPA=""".decode("base64").decode("zlib")
 
-        #write whole track to disk as image-type file
+        # write whole track to disk as image-type file
         temp_track_f = tempfile.NamedTemporaryFile(suffix=".wav")
         temp_track = audiotools.WaveAudio.from_pcm(
             temp_track_f.name,
@@ -5070,22 +5114,26 @@ j4L1Ff4vmvmQ/z77C+FzkPA=""".decode("base64").decode("zlib")
                 EXACT_RANDOM_PCM_Reader(sum(track_lengths))]),
             total_pcm_frames=pre_gap_size + sum(track_lengths))
 
-        #write cuesheet to disk
+        # write cuesheet to disk
         temp_cue_f = tempfile.NamedTemporaryFile(suffix=".cue")
         temp_cue_f.write(cuesheet_data)
         temp_cue_f.flush()
 
-        #split image to directory using cuesheet
-        self.assertEqual(self.__run_app__(["tracksplit",
-            "-d", self.outdir, "--cue", temp_cue_f.name, temp_track_f.name,
-            "--no-musicbrainz", "--no-freedb", "-t", "wav",
-            "--format=%(track_number)2.2d.wav"]), 0)
+        # split image to directory using cuesheet
+        self.assertEqual(
+            self.__run_app__(["tracksplit",
+                              "-d", self.outdir,
+                              "--cue", temp_cue_f.name,
+                              temp_track_f.name,
+                              "--no-musicbrainz", "--no-freedb",
+                              "-t", "wav",
+                              "--format=%(track_number)2.2d.wav"]), 0)
 
-        #ensure tracks in directory match expected lengths and data
+        # ensure tracks in directory match expected lengths and data
         tracks = [audiotools.open(
-                      os.path.join(self.outdir,
-                                   "%(track_number)2.2d.wav" %
-                                   {"track_number":i}))
+                  os.path.join(self.outdir,
+                               "%(track_number)2.2d.wav" %
+                               {"track_number": i}))
                   for i in range(1, len(track_lengths) + 1)]
 
         for (i, track, expected_length) in zip(range(len(tracks)),
@@ -5100,7 +5148,7 @@ j4L1Ff4vmvmQ/z77C+FzkPA=""".decode("base64").decode("zlib")
                 audiotools.PCMReaderHead(pcmreader, expected_length)),
                              None)
 
-        #cleanup temporary files
+        # cleanup temporary files
         temp_track_f.close()
         temp_cue_f.close()
 
@@ -5187,7 +5235,7 @@ class tracktag(UtilTest):
     def test_options(self):
         from audiotools.text import (ERR_DUPLICATE_FILE,)
 
-        #start out with a bit of sanity checking
+        # start out with a bit of sanity checking
         f = open(self.track_file.name, 'wb')
         f.write(self.track_data)
         f.close()
@@ -5198,20 +5246,20 @@ class tracktag(UtilTest):
         self.assertEqual(metadata.images(),
                          [self.image])
 
-        #Why not test all of tracktag's options?
-        #The trouble is that it has 30 metadata-specific options
-        #and the set of all possible combinations from 1 to 30 options
-        #literally numbers in the millions.
-        #Since most of those options are straight text,
-        #we'll restrict the tests to the more interesting ones
-        #which is still over 8000 different option combinations.
+        # Why not test all of tracktag's options?
+        # The trouble is that it has 30 metadata-specific options
+        # and the set of all possible combinations from 1 to 30 options
+        # literally numbers in the millions.
+        # Since most of those options are straight text,
+        # we'll restrict the tests to the more interesting ones
+        # which is still over 8000 different option combinations.
         most_options = ['-r', '--name', '--number', '--track-total',
                         '--album-number', '--comment', '--comment-file']
 
-        #ensure tagging the same file twice triggers an error
-        self.assertEqual(self.__run_app__(
-                ["tracktag", "--name=Test",
-                 self.track_file.name, self.track_file.name]), 1)
+        # ensure tagging the same file twice triggers an error
+        self.assertEqual(
+            self.__run_app__(["tracktag", "--name=Test",
+                              self.track_file.name, self.track_file.name]), 1)
         self.__check_error__(ERR_DUPLICATE_FILE %
                              (audiotools.Filename(self.track_file.name),))
 
@@ -5310,7 +5358,7 @@ class tracktag(UtilTest):
                 track_file = tempfile.NamedTemporaryFile(
                     suffix="." + audio_class.SUFFIX)
 
-                #try a track with no metadata
+                # try a track with no metadata
                 track = audio_class.from_pcm(
                     track_file.name,
                     BLANK_PCM_Reader(5))
@@ -5323,7 +5371,7 @@ class tracktag(UtilTest):
                 track2 = audiotools.open(track_file.name)
                 self.assert_(track2.get_replay_gain() is not None)
 
-                #try a track with track number metadata
+                # try a track with track number metadata
                 track = audio_class.from_pcm(
                     track_file.name,
                     BLANK_PCM_Reader(5))
@@ -5342,7 +5390,7 @@ class tracktag(UtilTest):
                 track2 = audiotools.open(track_file.name)
                 self.assert_(track2.get_replay_gain() is not None)
 
-                #try a track with album number metadata
+                # try a track with album number metadata
                 track = audio_class.from_pcm(
                     track_file.name,
                     BLANK_PCM_Reader(5))
@@ -5368,9 +5416,9 @@ class tracktag(UtilTest):
         for (input_filename,
              (argument, attribute),
              unicode_value) in Possibilities(
-            ["track.flac",  #check filename arguments
+            ["track.flac",  # check filename arguments
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
-            [("--name", "track_name"),  #check text arguments
+            [("--name", "track_name"),  # check text arguments
              ("--artist", "artist_name"),
              ("--album", "album_name"),
              ("--performer", "performer_name"),
@@ -5411,9 +5459,9 @@ class tracktag(UtilTest):
 
         for (input_filename,
              comment_filename) in Possibilities(
-            ["track.flac",     #check input filename arguments
+            ["track.flac",     # check input filename arguments
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac'.encode('utf-8')],
-            ["comment.txt",    #check comment filename arguments
+            ["comment.txt",    # check comment filename arguments
              u'abc\xe0\xe7\xe8\u3041\u3044\u3046.txt'.encode('utf-8')]):
             if (os.path.isfile(input_filename)):
                 os.unlink(input_filename)
@@ -5461,9 +5509,10 @@ class tracktag_errors(UtilTest):
 
             temp_track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
 
-            self.assertEqual(self.__run_app__(
-                    ["tracktag", "--comment-file=/dev/null/foo.txt",
-                     temp_track.filename]), 1)
+            self.assertEqual(
+                self.__run_app__(["tracktag",
+                                  "--comment-file=/dev/null/foo.txt",
+                                  temp_track.filename]), 1)
             self.__check_error__(ERR_TRACKTAG_COMMENT_IOERROR %
                                  (audiotools.Filename("/dev/null/foo.txt"),))
 
@@ -5471,16 +5520,17 @@ class tracktag_errors(UtilTest):
                 os.urandom(1024) + ((u"\uFFFD".encode('utf-8')) * 103))
             temp_comment.flush()
 
-            self.assertEqual(self.__run_app__(
-                    ["tracktag", "--comment-file=%s" % (temp_comment.name),
-                     temp_track.filename]), 1)
+            self.assertEqual(
+                self.__run_app__(["tracktag",
+                                  "--comment-file=%s" % (temp_comment.name),
+                                  temp_track.filename]), 1)
             self.__check_error__(ERR_TRACKTAG_COMMENT_NOT_UTF8 %
                                  (audiotools.Filename(temp_comment.name),))
 
             os.chmod(temp_track_file.name, temp_track_stat & 07555)
-            self.assertEqual(self.__run_app__(
-                    ["tracktag", "--name=Bar",
-                     temp_track.filename]), 1)
+            self.assertEqual(
+                self.__run_app__(["tracktag", "--name=Bar",
+                                 temp_track.filename]), 1)
             self.__check_error__(ERR_ENCODING_ERROR %
                                  (audiotools.Filename(temp_track.filename),))
         finally:
@@ -5493,7 +5543,7 @@ class tracktag_errors(UtilTest):
         for audio_class in [audiotools.FlacAudio,
                             audiotools.OggFlacAudio]:
             tempflac = tempfile.NamedTemporaryFile(
-            suffix="." + audio_class.SUFFIX)
+                suffix="." + audio_class.SUFFIX)
             tempwv = tempfile.NamedTemporaryFile(
                 suffix="." + audiotools.WavPackAudio.SUFFIX)
             big_text = tempfile.NamedTemporaryFile(suffix=".txt")
@@ -5512,8 +5562,8 @@ class tracktag_errors(UtilTest):
                 audiotools.transfer_framelist_data(pcm, orig_md5.update)
                 pcm.close()
 
-                #ensure that setting big text via tracktag
-                #doesn't break the file
+                # ensure that setting big text via tracktag
+                # doesn't break the file
                 subprocess.call(["tracktag", "-V", "quiet",
                                  "--comment-file=%s" % (big_text.name),
                                  flac.filename])
@@ -5532,10 +5582,10 @@ class tracktag_errors(UtilTest):
 
                 self.assertEqual(flac, wv)
 
-                self.assertEqual(subprocess.call(
-                        ["tracktag", "-V", "quiet",
-                         "--comment-file=%s" % (big_text.name),
-                         wv.filename]), 0)
+                self.assertEqual(
+                    subprocess.call(["tracktag", "-V", "quiet",
+                                     "--comment-file=%s" % (big_text.name),
+                                     wv.filename]), 0)
 
                 self.assert_(len(wv.get_metadata().comment) > 0)
 
@@ -5564,8 +5614,7 @@ class tracktag_misc(UtilTest):
                 if (field in fields):
                     values.add(
                         (field,
-                         audiotools.MetaData.INTEGER_FIELDS.index(
-                                field) + 1))
+                         audiotools.MetaData.INTEGER_FIELDS.index(field) + 1))
                 else:
                     values.add((field, None))
 
@@ -5577,8 +5626,7 @@ class tracktag_misc(UtilTest):
                 if (field not in fields):
                     values.add(
                         (field,
-                         audiotools.MetaData.INTEGER_FIELDS.index(
-                                field) + 1))
+                         audiotools.MetaData.INTEGER_FIELDS.index(field) + 1))
                 else:
                     values.add((field, None))
 
@@ -5670,7 +5718,7 @@ class tracktag_misc(UtilTest):
                                  'album_number',
                                  'album_total']
                 try:
-                    #make sure the number fields get set properly, if possible
+                    # make sure the number fields get set properly, if possible
                     for count in xrange(1, len(number_fields) + 1):
                         for fields in Combinations(number_fields, count):
                             self.assertEqual(
@@ -5693,7 +5741,7 @@ class tracktag_misc(UtilTest):
                                         fields, metadata.__class__),
                                     repr(fields)))
 
-                    #make sure the number fields get removed properly, also
+                    # make sure the number fields get removed properly, also
                     number_metadata = audiotools.MetaData(track_number=1,
                                                           track_total=2,
                                                           album_number=3,
@@ -5704,8 +5752,9 @@ class tracktag_misc(UtilTest):
                                 number_metadata)
                             self.assertEqual(
                                 self.__run_app__(
-                                   ["tracktag", track.filename] +
-                                   self.populate_delete_number_fields(fields)),
+                                    ["tracktag", track.filename] +
+                                    self.populate_delete_number_fields(
+                                        fields)),
                                 0)
                             metadata = audiotools.open(
                                 track.filename).get_metadata()
@@ -5716,9 +5765,9 @@ class tracktag_misc(UtilTest):
                                 "%s not subset of %s for options %s, fields %s, type %s" %
                                 (metadata_fields_values(metadata),
                                  deleted_number_fields_values(
-                                        fields, metadata.__class__),
+                                     fields, metadata.__class__),
                                  self.populate_delete_number_fields(
-                                        fields),
+                                     fields),
                                  fields,
                                  audio_type.NAME))
 

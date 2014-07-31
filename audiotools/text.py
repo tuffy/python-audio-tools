@@ -1,31 +1,31 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 """a text strings module"""
 
 DIV = u"\u2500"
 
-#Utility usage
+# Utility usage
 USAGE_TRACKCMP_CDIMAGE = u"<CD image> <track 1> <track 2> ..."
 USAGE_TRACKCMP_FILES = u"<track 1> <track 2>"
 
-#Utility Descriptions
+# Utility Descriptions
 DESCRIPTION_AT_CONFIG = \
     "set default parameters"
 
@@ -89,7 +89,7 @@ DESCRIPTION_TRACK2TRACK = \
 DESCRIPTION_TRACKVERIFY = \
     "verify correctness of files"
 
-#Utility Options
+# Utility Options
 OPT_VERBOSE = u"the verbosity level to execute at"
 OPT_VERBOSE_AT_CONFIG = u"the new default verbosity level"
 OPT_INPUT_FILENAME = u"input filename"
@@ -184,7 +184,7 @@ OPT_CAT_ID3 = u"ID3 arguments"
 OPT_CAT_REPLAYGAIN = u"ReplayGain Options"
 OPT_CAT_BINARIES = u"binaries arguments"
 
-#MetaData Fields
+# MetaData Fields
 METADATA_TRACK_NAME = u"track name"
 METADATA_TRACK_NUMBER = u"track number"
 METADATA_TRACK_TOTAL = u"track total"
@@ -204,12 +204,12 @@ METADATA_ALBUM_NUMBER = u"album number"
 METADATA_ALBUM_TOTAL = u"album total"
 METADATA_COMMENT = u"comment"
 
-#Derived MetaData Fields
+# Derived MetaData Fields
 METADATA_SUFFIX = u"file name suffix"
 METADATA_ALBUM_TRACK_NUMBER = u"combined album and track number"
 METADATA_BASENAME = u"file name without suffix"
 
-#ReplayGain
+# ReplayGain
 RG_ADDING_REPLAYGAIN = u"Adding ReplayGain"
 RG_APPLYING_REPLAYGAIN = u"Applying ReplayGain"
 RG_ADDING_REPLAYGAIN_TO_ALBUM = u"Adding ReplayGain to album %d"
@@ -224,7 +224,7 @@ RG_REPLAYGAIN_REMOVED_FROM_ALBUM = u"ReplayGain removed from album %d"
 RG_REPLAYGAIN_APPLIED = u"ReplayGain applied"
 RG_REPLAYGAIN_APPLIED_TO_ALBUM = u"ReplayGain applied to album %d"
 
-#Labels
+# Labels
 LAB_ENCODE = u"%(source)s -> %(destination)s"
 LAB_PICTURE = u"picture"
 LAB_T_OPTIONS = u"Please use the -t option to specify %s"
@@ -469,7 +469,7 @@ LAB_OPTIONS_AUDIO_QUALITY = u"Quality"
 LAB_OPTIONS_OUTPUT_FILES = u"Output Files"
 LAB_OPTIONS_OUTPUT_FILES_1 = u"Output File"
 
-#Compression settings
+# Compression settings
 COMP_FLAC_0 = u"least compresson, fastest compression speed"
 COMP_FLAC_8 = u"most compression, slowest compression speed"
 COMP_NERO_LOW = u"lowest quality, corresponds to neroAacEnc -q 0.4"
@@ -487,7 +487,7 @@ COMP_VORBIS_10 = u"very high quality, corresponds to oggenc -q 10"
 COMP_WAVPACK_VERYFAST = u"fastest encode/decode, worst compression"
 COMP_WAVPACK_VERYHIGH = u"slowest encode/decode, best compression"
 
-#Errors
+# Errors
 ERR_1_FILE_REQUIRED = u"you must specify exactly 1 supported audio file"
 ERR_FILES_REQUIRED = u"you must specify at least 1 supported audio file"
 ERR_UNSUPPORTED_CHANNEL_MASK = \
@@ -688,7 +688,7 @@ ERR_OUTPUT_OUTPUTS_ARE_INPUT = \
 ERR_OUTPUT_INVALID_FORMAT = u"output tracks must have valid format string"
 ERR_CANCELLED = u"cancelled"
 
-#Cleaning messages
+# Cleaning messages
 CLEAN_REMOVE_DUPLICATE_TAG = u"removed duplicate tag %(field)s"
 CLEAN_REMOVE_TRAILING_WHITESPACE = \
     u"removed trailing whitespace from %(field)s"
@@ -721,7 +721,7 @@ CLEAN_WAV_MULTIPLE_FMT_CHUNKS = u"removed duplicate fmt chunk"
 CLEAN_WAV_REORDERED_DATA_CHUNK = u"moved data chunk after fmt chunk"
 CLEAN_WAV_MULTIPLE_DATA_CHUNKS = u"removed multiple data chunk"
 
-#Channel names
+# Channel names
 MASK_FRONT_LEFT = u"front left"
 MASK_FRONT_RIGHT = u"front right"
 MASK_FRONT_CENTER = u"front center"

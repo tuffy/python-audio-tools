@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamWriter
 from audiotools.bitstream import BitstreamRecorder
@@ -130,12 +130,12 @@ def encode_flac(filename,
     output_file = open(filename, "wb")
     writer = BitstreamWriter(output_file, 0)
 
-    #write placeholder metadata blocks
+    # write placeholder metadata blocks
     writer.write_bytes("fLaC")
     writer.build("1u 7u 24u", [1, 0, 34])
     streaminfo.write(writer)
 
-    #walk through PCM reader's FrameLists
+    # walk through PCM reader's FrameLists
     frame_number = 0
     frame = pcmreader.read(block_size)
 
@@ -155,7 +155,7 @@ def encode_flac(filename,
         frame_number += 1
         frame = pcmreader.read(block_size)
 
-    #return to beginning of file and rewrite STREAMINFO block
+    # return to beginning of file and rewrite STREAMINFO block
     output_file.seek(8, 0)
     streaminfo.write(writer)
     writer.close()
@@ -169,13 +169,13 @@ def encode_flac_frame(writer, pcmreader, options, frame_number, frame):
 
     if ((pcmreader.channels == 2) and (options.adaptive_mid_side or
                                        options.mid_side)):
-        #calculate average/difference
+        # calculate average/difference
         average = [(c0 + c1) // 2 for c0, c1 in zip(frame.channel(0),
                                                     frame.channel(1))]
         difference = [c0 - c1 for c0, c1 in zip(frame.channel(0),
                                                 frame.channel(1))]
 
-        #try different subframes based on encoding options
+        # try different subframes based on encoding options
         left_subframe = BitstreamRecorder(0)
         encode_subframe(left_subframe, options,
                         pcmreader.bits_per_sample, list(frame.channel(0)))
@@ -192,7 +192,7 @@ def encode_flac_frame(writer, pcmreader, options, frame_number, frame):
         encode_subframe(difference_subframe, options,
                         pcmreader.bits_per_sample + 1, difference)
 
-        #write best header/subframes to disk
+        # write best header/subframes to disk
         if (options.mid_side):
             if ((left_subframe.bits() + right_subframe.bits()) <
                 min(left_subframe.bits() + difference_subframe.bits(),
@@ -368,7 +368,7 @@ def encode_subframe(writer, options, bits_per_sample, samples):
     if (all_identical(samples)):
         encode_constant_subframe(writer, bits_per_sample, samples[0])
     else:
-        #account for wasted BPS, if any
+        # account for wasted BPS, if any
         wasted_bps = 2 ** 32
         for sample in samples:
             if (sample != 0):
@@ -377,7 +377,7 @@ def encode_subframe(writer, options, bits_per_sample, samples):
                     break
 
         if (wasted_bps == 2 ** 32):
-            #all samples are 0
+            # all samples are 0
             wasted_bps = 0
         elif (wasted_bps > 0):
             samples = [s >> wasted_bps for s in samples]
@@ -425,15 +425,15 @@ def encode_subframe(writer, options, bits_per_sample, samples):
 
 
 def encode_constant_subframe(writer, bits_per_sample, sample):
-    #write frame header
+    # write frame header
     writer.build("1p 6u 1u", [0, 0])
 
-    #write frame data
+    # write frame data
     writer.write_signed(bits_per_sample, sample)
 
 
 def encode_verbatim_subframe(writer, wasted_bps, bits_per_sample, samples):
-    #write frame header
+    # write frame header
     writer.build("1p 6u", [1])
     if (wasted_bps > 0):
         writer.write(1, 1)
@@ -441,7 +441,7 @@ def encode_verbatim_subframe(writer, wasted_bps, bits_per_sample, samples):
     else:
         writer.write(1, 0)
 
-    #write frame data
+    # write frame data
     writer.build(("%ds" % (bits_per_sample - wasted_bps)) * len(samples),
                  samples)
 
@@ -451,7 +451,7 @@ def encode_fixed_subframe(writer, options, wasted_bps, bits_per_sample,
     def next_order(residuals):
         return [(x - y) for (x, y) in zip(residuals[1:], residuals)]
 
-    #decide which subframe order to use
+    # decide which subframe order to use
     residuals = [samples]
     total_error = [sum(map(abs, residuals[-1][4:]))]
 
@@ -468,9 +468,9 @@ def encode_fixed_subframe(writer, options, wasted_bps, bits_per_sample,
     else:
         order = 0
 
-    #then write the subframe to disk
+    # then write the subframe to disk
 
-    #write subframe header
+    # write subframe header
     writer.build("1p 3u 3u", [1, order])
     if (wasted_bps > 0):
         writer.write(1, 1)
@@ -478,16 +478,16 @@ def encode_fixed_subframe(writer, options, wasted_bps, bits_per_sample,
     else:
         writer.write(1, 0)
 
-    #write warm-up samples
+    # write warm-up samples
     for sample in samples[0:order]:
         writer.write_signed(bits_per_sample - wasted_bps, sample)
 
-    #write residual block
+    # write residual block
     encode_residuals(writer, options, order, len(samples), residuals[order])
 
 
 def encode_residuals(writer, options, order, block_size, residuals):
-    #first, determine the best set of residual partitions to use
+    # first, determine the best set of residual partitions to use
     best_porder = 0
     best_size = 2 ** 31
 
@@ -519,7 +519,7 @@ def encode_residuals(writer, options, order, block_size, residuals):
                 best_parameters = rice_parameters
                 best_encoded_partitions = encoded_partitions
 
-    #then output those residual partitions into a single block
+    # then output those residual partitions into a single block
     if (max(best_parameters) > 14):
         coding_method = 1
     else:
@@ -588,11 +588,11 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
     where qlp_coeffs is a list of ints (whose length equals order)
     and qlp_shift_needed is a non-negative integer"""
 
-    #window signal
+    # window signal
     windowed = [(sample * tukey) for (sample, tukey) in
                 zip(samples, tukey_window(len(samples), 0.5))]
 
-    #compute autocorrelation values
+    # compute autocorrelation values
     if (len(samples) > (options.max_lpc_order + 1)):
         autocorrelation_values = [
             sum([x * y for x, y in zip(windowed, windowed[lag:])])
@@ -605,9 +605,9 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
              error) = compute_lp_coefficients(autocorrelation_values)
 
             if (not options.exhaustive_model_search):
-                #if not performing exhaustive model search,
-                #estimate which set of LP coefficients is best
-                #and return those
+                # if not performing exhaustive model search,
+                # estimate which set of LP coefficients is best
+                # and return those
 
                 order = estimate_best_lpc_order(options,
                                                 len(samples),
@@ -621,9 +621,9 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
 
                 return (order, qlp_coeffs, qlp_shift_needed)
             else:
-                #if performing exhaustive model search,
-                #build LPC subframe from each set of LP coefficients
-                #and return the one that is smallest
+                # if performing exhaustive model search,
+                # build LPC subframe from each set of LP coefficients
+                # and return the one that is smallest
 
                 best_subframe_size = 2 ** 32
                 best_order = None
@@ -743,7 +743,7 @@ def encode_lpc_subframe(writer, options, wasted_bps, bits_per_sample,
     assert(order == len(qlp_coefficients))
     assert(qlp_shift_needed >= 0)
 
-    #write subframe header
+    # write subframe header
     writer.build("1p 1u 5u", [1, order - 1])
     if (wasted_bps > 0):
         writer.write(1, 1)
@@ -751,18 +751,18 @@ def encode_lpc_subframe(writer, options, wasted_bps, bits_per_sample,
     else:
         writer.write(1, 0)
 
-    #write warm-up samples
+    # write warm-up samples
     for sample in samples[0:order]:
         writer.write_signed(bits_per_sample - wasted_bps, sample)
 
-    #write precision and shift-needed
+    # write precision and shift-needed
     writer.build("4u 5s", (qlp_precision - 1, qlp_shift_needed))
 
-    #write QLP coefficients
+    # write QLP coefficients
     for qlp_coeff in qlp_coefficients:
         writer.write_signed(qlp_precision, qlp_coeff)
 
-    #calculate residuals
+    # calculate residuals
     residuals = []
     coefficients = list(reversed(qlp_coefficients))
 
@@ -772,7 +772,7 @@ def encode_lpc_subframe(writer, options, wasted_bps, bits_per_sample,
                                             samples[i:i + order])]) >>
                                    qlp_shift_needed))
 
-    #write residual block
+    # write residual block
     encode_residuals(writer, options, order, len(samples), residuals)
 
 

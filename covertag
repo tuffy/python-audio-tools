@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 import sys
@@ -28,8 +28,8 @@ import audiotools.text as _
 IMAGE_TYPE_ORDER = [0, 2, 1, 3, 4]
 
 
-#tries to return a populated Image object of the appropriate type
-#raises InvalidImage if something goes wrong during opening or parsing
+# tries to return a populated Image object of the appropriate type
+# raises InvalidImage if something goes wrong during opening or parsing
 def get_image(filename, type):
     try:
         return audiotools.Image.new(open(filename, 'rb').read(), u'', type)
@@ -53,9 +53,9 @@ if (__name__ == '__main__'):
                         dest="replace",
                         help=_.OPT_TRACKTAG_REPLACE)
 
-    #FIXME - add -I/--interactive mode
-    #which should use a proper GUI, if available,
-    #so one can see added images directly
+    # FIXME - add -I/--interactive mode
+    # which should use a proper GUI, if available,
+    # so one can see added images directly
 
     parser.add_argument("-V", "--verbose",
                         dest="verbosity",
@@ -86,7 +86,7 @@ if (__name__ == '__main__'):
 
     msg = audiotools.Messenger("covertag", options)
 
-    #open our set of input files for tagging
+    # open our set of input files for tagging
     try:
         audiofiles = audiotools.open_files(options.filenames,
                                            messenger=msg,
@@ -95,8 +95,8 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_DUPLICATE_FILE % (err.filename,))
         sys.exit(1)
 
-    #open images for addition
-    #to avoid reading the same images multiple times
+    # open images for addition
+    # to avoid reading the same images multiple times
     images = {}
     try:
         if (options.front_cover is not None):
@@ -123,23 +123,23 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     for track in audiofiles:
-        #get metadata from each audio file
+        # get metadata from each audio file
         metadata = track.get_metadata()
 
-        #if metadata is present
+        # if metadata is present
         if (metadata is not None):
             if (metadata.supports_images()):
-                #if --replace indicated, remove old images
+                # if --replace indicated, remove old images
                 if (options.replace):
                     for i in metadata.images():
                         metadata.delete_image(i)
 
-                #add images to metadata object in order
+                # add images to metadata object in order
                 for t in IMAGE_TYPE_ORDER:
                     for i in images.get(t, []):
                         metadata.add_image(i)
 
-                #call update_metadata() to update track's metadata
+                # call update_metadata() to update track's metadata
                 try:
                     track.update_metadata(metadata)
                 except IOError as err:
@@ -147,18 +147,18 @@ if (__name__ == '__main__'):
                               (audiotools.Filename(track.filename),))
                     sys.exit(1)
             else:
-                #metadata doesn't support images, so do nothing
+                # metadata doesn't support images, so do nothing
                 pass
         else:
-            #if no metadata is present, construct new MetaData object
+            # if no metadata is present, construct new MetaData object
             metadata = audiotools.MetaData()
 
-            #add images to metadata object in order
+            # add images to metadata object in order
             for t in IMAGE_TYPE_ORDER:
                 for i in images.get(t, []):
                     metadata.add_image(i)
 
-            #call set_metadata() to update track's metadata
+            # call set_metadata() to update track's metadata
             try:
                 track.set_metadata(metadata)
             except IOError as err:

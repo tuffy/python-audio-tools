@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 import sys
@@ -185,11 +185,11 @@ if (__name__ == '__main__'):
                           default=0,
                           help=_.OPT_ALBUM_TOTAL)
 
-    #if adding ReplayGain is a lossless process
-    #(i.e. added as tags rather than modifying track data)
-    #add_replay_gain should default to True
-    #if not, add_replay_gain should default to False
-    #which is which depends on the track type
+    # if adding ReplayGain is a lossless process
+    # (i.e. added as tags rather than modifying track data)
+    # add_replay_gain should default to True
+    # if not, add_replay_gain should default to False
+    # which is which depends on the track type
     metadata.add_argument("--replay-gain",
                           action="store_true",
                           default=None,
@@ -212,19 +212,19 @@ if (__name__ == '__main__'):
 
     msg = audiotools.Messenger("cd2track", options)
 
-    #ensure interactive mode is available, if selected
+    # ensure interactive mode is available, if selected
     if (options.interactive and (not audiotools.ui.AVAILABLE)):
         audiotools.ui.not_available_message(msg)
         sys.exit(1)
 
-    #get the default AudioFile class we are converted to
+    # get the default AudioFile class we are converted to
     if (options.type == 'help'):
         audiotools.ui.show_available_formats(msg)
         sys.exit(0)
     else:
         AudioType = audiotools.TYPE_MAP[options.type]
 
-    #ensure the selected compression is compatible with that class
+    # ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         audiotools.ui.show_available_qualities(msg, AudioType)
         sys.exit(0)
@@ -247,7 +247,7 @@ if (__name__ == '__main__'):
         msg.error(unicode(err) + _.ERR_INVALID_CDDA)
         sys.exit(-1)
 
-    #only apply read_offset if cddareader is a physical drive
+    # only apply read_offset if cddareader is a physical drive
     if (not cddareader.is_cd_image):
         try:
             read_offset = audiotools.config.getint_default(
@@ -257,11 +257,11 @@ if (__name__ == '__main__'):
     else:
         read_offset = 0
 
-    #set speed, if any
+    # set speed, if any
     if (options.speed is not None):
         cddareader.set_speed(options.speed)
 
-    #use CDDA object to query metadata services for metadata choices
+    # use CDDA object to query metadata services for metadata choices
     try:
         metadata_choices = audiotools.cddareader_metadata_lookup(
             cddareader=cddareader,
@@ -276,7 +276,7 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_CANCELLED)
         sys.exit(1)
 
-    #update MetaData with command-line album-number/total, if given
+    # update MetaData with command-line album-number/total, if given
     if (options.album_number != 0):
         for c in metadata_choices:
             for m in c:
@@ -287,7 +287,7 @@ if (__name__ == '__main__'):
             for m in c:
                 m.album_total = options.album_total
 
-    #use CDDAReader object to perform AccurateRip lookup
+    # use CDDAReader object to perform AccurateRip lookup
     try:
         ar_result = audiotools.accuraterip.perform_lookup(
             audiotools.accuraterip.DiscID.from_cddareader(cddareader))
@@ -296,7 +296,7 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_CANCELLED)
         sys.exit(1)
 
-    #determine tracks to be ripped
+    # determine tracks to be ripped
     if (len(options.tracks) == 0):
         tracks_to_rip = list(sorted(track_offsets.keys()))
     else:
@@ -304,12 +304,12 @@ if (__name__ == '__main__'):
                          t in track_offsets.keys()]
 
     if (len(tracks_to_rip) == 0):
-        #no tracks selected to rip, so do nothing
+        # no tracks selected to rip, so do nothing
         sys.exit(0)
 
-    #decide which metadata and output options use when extracting tracks
+    # decide which metadata and output options use when extracting tracks
     if (options.interactive):
-        #pick options using interactive widget
+        # pick options using interactive widget
         output_widget = audiotools.ui.OutputFiller(
             track_labels=[_.LAB_TRACK_X_OF_Y % (i, max(track_offsets.keys()))
                           for i in tracks_to_rip],
@@ -342,7 +342,7 @@ if (__name__ == '__main__'):
         else:
             sys.exit(0)
     else:
-        #pick options without using GUI
+        # pick options without using GUI
         try:
             output_tracks = list(
                 audiotools.ui.process_output_options(
@@ -366,7 +366,7 @@ if (__name__ == '__main__'):
             msg.error(unicode(err))
             sys.exit(1)
 
-    #perform actual ripping of tracks from CDDA
+    # perform actual ripping of tracks from CDDA
     encoded = []
     rip_log = {}
     accuraterip_log_v1 = {}
@@ -386,13 +386,13 @@ if (__name__ == '__main__'):
                         PREVIOUS_TRACK_FRAMES)
         track_length = track_lengths[track_number]
 
-        #seek to indicated starting offset
+        # seek to indicated starting offset
         if (track_offset > 0):
             seeked_offset = cddareader.seek(track_offset)
         else:
             seeked_offset = cddareader.seek(0)
 
-        #make leading directories, if necessary
+        # make leading directories, if necessary
         try:
             audiotools.make_dirs(str(output_filename))
         except OSError as err:
@@ -406,7 +406,7 @@ if (__name__ == '__main__'):
             cddareader,
             track_offset - seeked_offset,
             PREVIOUS_TRACK_FRAMES + track_length + NEXT_TRACK_FRAMES)
-        #ensure closing track doesn't close whole CD
+        # ensure closing track doesn't close whole CD
         track_data.close = lambda self: None
 
         accuraterip = AccurateRipReader(
@@ -429,9 +429,9 @@ if (__name__ == '__main__'):
                 total_pcm_frames=track_length)
             encoded.append(track)
 
-            #since the inner PCMReaderWindow only outputs part
-            #of the accuraterip reader, we need to ensure
-            #anything left over in accuraterip gets processed also
+            # since the inner PCMReaderWindow only outputs part
+            # of the accuraterip reader, we need to ensure
+            # anything left over in accuraterip gets processed also
             audiotools.transfer_framelist_data(accuraterip, lambda s: None)
         except audiotools.EncodingError as err:
             progress.clear_rows()
@@ -460,14 +460,14 @@ if (__name__ == '__main__'):
                  "filename": output_filename},
                 index, len(tracks_to_rip)))
 
-    #add ReplayGain to ripped tracks, if necessary
+    # add ReplayGain to ripped tracks, if necessary
     if (output_class.supports_replay_gain() and
         (options.add_replay_gain if options.add_replay_gain is not None else
          audiotools.ADD_REPLAYGAIN)):
         rg_progress = audiotools.ReplayGainProgressDisplay(msg)
         rg_progress.initial_message()
         try:
-            #all audio files must belong to the same album, by definition
+            # all audio files must belong to the same album, by definition
             audiotools.add_replay_gain(encoded, rg_progress.update)
         except ValueError as err:
             rg_progress.clear_rows()
@@ -479,7 +479,7 @@ if (__name__ == '__main__'):
             sys.exit(1)
         rg_progress.final_message()
 
-    #display ripping log
+    # display ripping log
     msg.output(_.LAB_CD2TRACK_LOG)
 
     table = audiotools.output_table()
@@ -560,7 +560,7 @@ if (__name__ == '__main__'):
             offset = offset_v2
             confidence = _.LAB_TRACKVERIFY_ACCURATERIP_MISMATCH
 
-        #AccurateRip columns
+        # AccurateRip columns
         row.add_column(u"")
         row.add_column(u"%8.8X" % (checksum), "right")
         row.add_column(u"")

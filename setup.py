@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from __future__ import print_function
 import sys
@@ -88,7 +88,7 @@ class SystemLibraries:
 
         present = self.guaranteed_present(library)
         if (present is None):
-            #probe for library using pkg-config, if available
+            # probe for library using pkg-config, if available
             try:
                 pkg_config = subprocess.Popen(
                     ["pkg-config", "--exists", library],
@@ -96,7 +96,7 @@ class SystemLibraries:
                     stderr=open(os.devnull, "wb"))
                 return (pkg_config.wait() == 0)
             except OSError:
-                #pkg-config not found, so assume library isn't found
+                # pkg-config not found, so assume library isn't found
                 return False
         else:
             return present
@@ -116,13 +116,13 @@ class SystemLibraries:
             pkg_config_stdout = pkg_config.stdout.read().strip()
 
             if (pkg_config.wait() == 0):
-                #libraries found
+                # libraries found
                 return pkg_config_stdout.split()
             else:
-                #library not found
+                # library not found
                 return []
         except OSError:
-            #pkg-config not found
+            # pkg-config not found
             return []
 
     def extra_link_args(self, library):
@@ -140,13 +140,13 @@ class SystemLibraries:
             pkg_config_stdout = pkg_config.stdout.read().strip()
 
             if (pkg_config.wait() == 0):
-                #libraries found
+                # libraries found
                 return pkg_config_stdout.split()
             else:
-                #library not found
+                # library not found
                 return []
         except OSError:
-            #pkg-config not found
+            # pkg-config not found
             return []
 
     def executable_present(self, executable, *args):
@@ -199,7 +199,7 @@ class output_table:
         """yields one formatted string per row"""
 
         if (len(self.__rows__) == 0):
-            #no rows, so do nothing
+            # no rows, so do nothing
             return
 
         if (len(set([len(r) for r in self.__rows__ if
@@ -266,7 +266,7 @@ class output_table_row:
             else:
                 return text
 
-        #attribute to method mapping
+        # attribute to method mapping
         align_meth = {"left": align_left,
                       "right": align_right,
                       "center": align_center}
@@ -319,7 +319,7 @@ class build_ext(_build_ext):
     def build_extensions(self):
         _build_ext.build_extensions(self)
 
-        #lib_name -> ([used for, ...], is present)
+        # lib_name -> ([used for, ...], is present)
         libraries = {}
 
         for extension in self.extensions:
@@ -647,11 +647,11 @@ class audiotools_encoders(Extension):
         extra_link_args = []
         extra_compile_args = []
 
-        #Since mp3lame doesn't show up in pkg-config,
-        #assume it's present if the user guarantees it is
-        #or if the lame executable is present.
-        #This may fail if the user has installed the binary
-        #with a lame-dev package of some kind.
+        # Since mp3lame doesn't show up in pkg-config,
+        # assume it's present if the user guarantees it is
+        # or if the lame executable is present.
+        # This may fail if the user has installed the binary
+        # with a lame-dev package of some kind.
         mp3lame_present = system_libraries.guaranteed_present("mp3lame")
         if (mp3lame_present is None):
             mp3lame_present = system_libraries.executable_present(
@@ -777,7 +777,7 @@ class audiotools_output(Extension):
         extra_compile_args = []
         extra_link_args = []
 
-        #assume MacOS X always has CoreAudio
+        # assume MacOS X always has CoreAudio
         if (sys.platform == "darwin"):
             sources.append("src/output/core_audio.c")
             defines.append(("CORE_AUDIO", "1"))
@@ -788,7 +788,7 @@ class audiotools_output(Extension):
                                               "Core Audio output",
                                               True))
         elif (sys.platform.startswith("linux")):
-            #only check for ALSA on Linux
+            # only check for ALSA on Linux
             if (system_libraries.present("alsa")):
                 if (system_libraries.guaranteed_present("alsa")):
                     libraries.add("asound")
@@ -817,7 +817,7 @@ class audiotools_output(Extension):
                 extra_link_args.extend(
                     system_libraries.extra_link_args("libpulse"))
             sources.append("src/output/pulseaudio.c")
-            #only include pcmconv once
+            # only include pcmconv once
             if ("src/pcmconv.c" not in sources):
                 sources.append("src/pcmconv.c")
             defines.append(("PULSEAUDIO", "1"))

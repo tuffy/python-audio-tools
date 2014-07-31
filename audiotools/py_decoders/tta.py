@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamReader
 from audiotools.pcm import FrameList, from_frames, from_list, from_channels
@@ -53,7 +53,7 @@ def tta_filter(bps, residuals):
 
             sum_ = round_ + sum([l * m for (l, m) in zip(dl, qm)])
 
-            #truncate sum to a 32-bit signed integer
+            # truncate sum to a 32-bit signed integer
             while (sum_ >= (2 ** 31)):
                 sum_ -= (2 ** 32)
             while (sum_ < -(2 ** 31)):
@@ -212,7 +212,7 @@ class TTADecoder:
         crc = CRC32()
         self.reader.add_callback(crc.update)
 
-        #read the header
+        # read the header
         (signature,
          format_,
          self.channels,
@@ -235,7 +235,7 @@ class TTADecoder:
 
         self.pcm_frames_per_tta_frame = (self.sample_rate * 256) // 245
 
-        #read the seektable
+        # read the seektable
         crc = CRC32()
         self.reader.add_callback(crc.update)
         self.frame_sizes = [self.reader.read(32) for i in
@@ -267,53 +267,53 @@ class TTADecoder:
         self.total_pcm_frames -= pcm_frames
         self.current_tta_frame += 1
 
-        #setup Rice parameters for each channel
+        # setup Rice parameters for each channel
         k0 = [10] * self.channels
         k1 = [10] * self.channels
         sum0 = [2 ** 14] * self.channels
         sum1 = [2 ** 14] * self.channels
 
-        #list of unfiltered output for each channel
+        # list of unfiltered output for each channel
         unfiltered = [[] for i in xrange(self.channels)]
 
         for f in xrange(pcm_frames):
             correlated = []
 
             for (c, ch_output) in enumerate(unfiltered):
-                #read most-significant bits
+                # read most-significant bits
                 MSB = frame_reader.unary(0)
                 if (MSB == 0):
-                    #read least-significant bits
+                    # read least-significant bits
                     unsigned = frame_reader.read(k0[c])
                 else:
-                    #read least-significant bits
+                    # read least-significant bits
                     LSB = frame_reader.read(k1[c])
                     unshifted = ((MSB - 1) << k1[c]) + LSB
                     unsigned = unshifted + (1 << k0[c])
 
-                    #adjust sum1 and k1
+                    # adjust sum1 and k1
                     sum1[c] += (unshifted - (sum1[c] >> 4))
                     if (sum1[c] < (2 ** (k1[c] + 4))):
                         k1[c] = max(k1[c] - 1, 0)
                     elif (sum1[c] > (2 ** (k1[c] + 5))):
                         k1[c] += 1
 
-                #adjust sum0 and k0
+                # adjust sum0 and k0
                 sum0[c] += (unsigned - (sum0[c] >> 4))
                 if (sum0[c] < (2 ** (k0[c] + 4))):
                     k0[c] = max(k0[c] - 1, 0)
                 elif (sum0[c] > (2 ** (k0[c] + 5))):
                     k0[c] += 1
 
-                #apply sign bit
+                # apply sign bit
                 if ((unsigned % 2) == 1):
-                    #positive
+                    # positive
                     ch_output.append((unsigned + 1) // 2)
                 else:
-                    #negative
+                    # negative
                     ch_output.append(-(unsigned // 2))
 
-        #check frame's trailing CRC32 now that reading is finished
+        # check frame's trailing CRC32 now that reading is finished
         frame_reader.byte_align()
         frame_reader.pop_callback()
         frame_crc = frame_reader.read(32)
@@ -321,29 +321,29 @@ class TTADecoder:
             raise ValueError("CRC32 mismatch in frame (0x%8.8X != 0x%8.8X)" %
                              (frame_crc, int(crc)))
 
-        #run hybrid filter on each channel
+        # run hybrid filter on each channel
         filtered = []
         for unfiltered_ch in unfiltered:
             filtered.append(
                 tta_filter(self.bits_per_sample, unfiltered_ch))
 
-        #run fixed order prediction on each channel
+        # run fixed order prediction on each channel
         predicted = []
         for filtered_ch in filtered:
             predicted.append(
                 fixed_predictor(self.bits_per_sample, filtered_ch))
 
         if (self.channels == 1):
-            #send channel as-is
+            # send channel as-is
             return from_list(predicted[0],
                              1,
                              self.bits_per_sample,
                              True)
         else:
-            #decorrelate channels
+            # decorrelate channels
             decorrelated = decorrelate(predicted)
 
-            #return all channels as single FrameList
+            # return all channels as single FrameList
             return from_channels([from_list(decorrelated_ch,
                                             1,
                                             self.bits_per_sample,
@@ -351,5 +351,5 @@ class TTADecoder:
                                   for decorrelated_ch in decorrelated])
 
     def close(self):
-        #FIXME
+        # FIXME
         pass

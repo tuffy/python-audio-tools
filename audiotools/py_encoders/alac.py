@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamWriter
 from audiotools.bitstream import BitstreamRecorder
@@ -74,12 +74,12 @@ def encode_mdat(file, pcmreader,
     total_pcm_frames = 0
     frame_byte_sizes = []
 
-    #write placeholder mdat header
+    # write placeholder mdat header
     mdat_start = file.tell()
     mdat.write(32, 0)
     mdat.write_bytes("mdat")
 
-    #read FrameList objects until stream is empty
+    # read FrameList objects until stream is empty
     frame = pcmreader.read(block_size)
     while (len(frame) > 0):
         total_pcm_frames += frame.frames
@@ -89,7 +89,7 @@ def encode_mdat(file, pcmreader,
         frame_byte_sizes.append(file.tell() - frame_start)
         frame = pcmreader.read(block_size)
 
-    #finally, return to start of mdat and write actual length
+    # finally, return to start of mdat and write actual length
     file.seek(mdat_start)
     mdat.write(32, sum(frame_byte_sizes) + 8)
 
@@ -97,8 +97,8 @@ def encode_mdat(file, pcmreader,
 
 
 def encode_frameset(writer, pcmreader, options, frame):
-    #assume frameset is stored in Wave order
-    #which we'll convert to ALAC order
+    # assume frameset is stored in Wave order
+    # which we'll convert to ALAC order
 
     if (pcmreader.channels == 1):
         encode_frame(writer, pcmreader, options, [frame.channel(0)])
@@ -187,7 +187,7 @@ def encode_uncompressed_frame(writer, pcmreader, options, channels):
     if (len(channels[0]) != options.block_size):  # block size
         writer.write(32, len(channels[0]))
 
-    #write out uncompressed samples
+    # write out uncompressed samples
     for pcm_frame in zip(*channels):
         for sample in pcm_frame:
             writer.write_signed(pcmreader.bits_per_sample, sample)
@@ -203,7 +203,7 @@ def encode_compressed_frame(writer, pcmreader, options, channels):
         LSBs = []
     else:
         from audiotools.pcm import from_list
-        #extract uncompressed LSBs
+        # extract uncompressed LSBs
         uncompressed_LSBs = (pcmreader.bits_per_sample - 16) // 8
         LSBs = []
         for i in xrange(len(channels[0])):
@@ -448,10 +448,10 @@ def sign_only(x):
 
 
 def truncate_bits(value, bits):
-    #truncate value to the given number of bits
+    # truncate value to the given number of bits
     truncated = value & ((1 << bits) - 1)
 
-    #apply newly created sign bit
+    # apply newly created sign bit
     if (truncated & (1 << (bits - 1))):
         return truncated - (1 << bits)
     else:
@@ -461,7 +461,7 @@ def truncate_bits(value, bits):
 def compute_residuals(sample_size, qlp_coefficients, channel):
     channel = list(channel)
 
-    #first sample always copied verbatim
+    # first sample always copied verbatim
     residuals = [channel[0]]
 
     if (len(qlp_coefficients) < 31):
@@ -511,7 +511,7 @@ def compute_residuals(sample_size, qlp_coefficients, channel):
 
 def encode_residuals(writer, options, sample_size, residuals):
     def LOG2(v):
-        #a slow version
+        # a slow version
         from math import log
 
         return int(log(v) / log(2))

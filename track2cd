@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 import os
@@ -68,9 +68,9 @@ def CD_reader_size(audiofile):
          audiofile.lossless())):
         return (audiofile.to_pcm(), audiofile.total_frames())
     else:
-        #if input audio isn't CD quality or lossless,
-        #pull audio data into RAM so PCM frame size
-        #can be calculated exactly
+        # if input audio isn't CD quality or lossless,
+        # pull audio data into RAM so PCM frame size
+        # can be calculated exactly
         pcm_frames = []
         audiotools.transfer_data(
             audiotools.PCMConverter(audiofile.to_pcm(),
@@ -173,8 +173,8 @@ if (__name__ == '__main__'):
 
     if (((len(audiofiles) == 1) and
          (audiofiles[0].get_cuesheet() is not None))):
-        #writing a single file with an embedded cuesheet
-        #so extract its contents to wave/cue and call cdrdao
+        # writing a single file with an embedded cuesheet
+        # so extract its contents to wave/cue and call cdrdao
 
         if (not audiotools.BIN.can_execute(audiotools.BIN['cdrdao'])):
             msg.error(_.ERR_NO_CDRDAO)
@@ -196,7 +196,7 @@ if (__name__ == '__main__'):
             if (((audiofiles[0].sample_rate() == 44100) and
                  (audiofiles[0].channels() == 2) and
                  (audiofiles[0].bits_per_sample() == 16))):
-                #already CD quality, so no additional conversion necessary
+                # already CD quality, so no additional conversion necessary
                 temptrack = audiotools.WaveAudio.from_pcm(
                     tempwav.name,
                     audiotools.PCMReaderProgress(
@@ -210,7 +210,7 @@ if (__name__ == '__main__'):
                         progress=progress.update))
 
             else:
-                #not CD quality, so convert and adjust total frames as needed
+                # not CD quality, so convert and adjust total frames as needed
                 temptrack = audiotools.WaveAudio.from_pcm(
                     tempwav.name,
                     audiotools.PCMReaderProgress(
@@ -262,8 +262,8 @@ if (__name__ == '__main__'):
         tempwav.close()
 
     elif (options.cuesheet is not None):
-        #writing tracks with a cuesheet,
-        #so combine them into a single wave/cue and call cdrdao
+        # writing tracks with a cuesheet,
+        # so combine them into a single wave/cue and call cdrdao
 
         if (not audiotools.BIN.can_execute(audiotools.BIN['cdrdao'])):
             msg.error(_.ERR_NO_CDRDAO)
@@ -288,12 +288,12 @@ if (__name__ == '__main__'):
             msg.error(unicode(err))
             sys.exit(1)
 
-        #ensure sheet is formatted for CD images
+        # ensure sheet is formatted for CD images
         if (not cuesheet.image_formatted()):
             msg.error(_.ERR_CUE_INVALID_FORMAT)
             sys.exit(1)
 
-        #ensure sheet fits the tracks it's given
+        # ensure sheet fits the tracks it's given
         if (len(cuesheet) != len(audiofiles)):
             msg.error(_.ERR_CUE_INSUFFICIENT_TRACKS)
             sys.exit(1)
@@ -329,9 +329,9 @@ if (__name__ == '__main__'):
                 [af.to_pcm() for af in audiofiles])
             output_frames = input_frames
         else:
-            #this presumes a cuesheet and non-CD audio
-            #though theoretically possible, it's difficult to
-            #envision a case in which this happens
+            # this presumes a cuesheet and non-CD audio
+            # though theoretically possible, it's difficult to
+            # envision a case in which this happens
             pcmreader = audiotools.PCMConverter(
                 pcmreader=audiotools.PCMCat(
                     [SameSample(
@@ -401,8 +401,8 @@ if (__name__ == '__main__'):
         tempcue.close()
         tempwav.close()
     else:
-        #writing tracks without a cuesheet,
-        #so extract them to waves and call cdrecord
+        # writing tracks without a cuesheet,
+        # so extract them to waves and call cdrecord
 
         if (not audiotools.BIN.can_execute(audiotools.BIN['cdrecord'])):
             msg.error(_.ERR_NO_CDRECORD)
@@ -454,7 +454,7 @@ if (__name__ == '__main__'):
                     os.unlink(f)
                 sys.exit(1)
         else:
-            #a list of (PCMReader, total_pcm_frames) pairs
+            # a list of (PCMReader, total_pcm_frames) pairs
             try:
                 lossless_tracks = [CD_reader_size(t) for t in audiofiles]
 

@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 import os.path
@@ -62,27 +62,27 @@ class FormatSummary:
                        "right")
         row.add_column(u" ")
         if (self.total_size > (2 ** 40)):
-            #terabytes
+            # terabytes
             total_size = u"%sT" % \
                 ((self.total_size /
                   Decimal(2 ** 40)).quantize(Decimal("1.0")))
         elif (self.total_size > (2 ** 30)):
-            #gigabytes
+            # gigabytes
             total_size = u"%sG" % \
                 ((self.total_size /
                   Decimal(2 ** 30)).quantize(Decimal("1.0")))
         elif (self.total_size > (2 ** 20)):
-            #megabytes
+            # megabytes
             total_size = u"%sM" % \
                 ((self.total_size /
                   Decimal(2 ** 20)).quantize(Decimal("1.0")))
         elif (self.total_size > (2 ** 10)):
-            #kilobytes
+            # kilobytes
             total_size = u"%sK" % \
                 ((self.total_size /
                   Decimal(2 ** 10)).quantize(Decimal("1.0")))
         else:
-            #bytes
+            # bytes
             total_size = unicode(self.total_size)
 
         row.add_column(total_size, "right")

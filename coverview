@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2008-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2008-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from __future__ import print_function
 import sys
@@ -26,8 +26,8 @@ import audiotools
 import audiotools.text as _
 
 
-#returns the dimensions of image_surface scaled to match the
-#display surface size, but without changing its aspect ratio
+# returns the dimensions of image_surface scaled to match the
+# display surface size, but without changing its aspect ratio
 def image_size(display_surface, image_surface):
     display_ratio = float(display_surface[0]) / float(display_surface[1])
 
@@ -463,9 +463,7 @@ Consult "man python" for further details.
             self.menubar = Menu(master)
             file_menu = Menu(self.menubar, tearoff=0)
             file_menu.add_command(label="Open", command=self.open)
-                                  # accelerator='Ctrl+O')
             file_menu.add_command(label="Quit", command=self.quit)
-                                  # accelerator='Ctrl+Q')
             self.menubar.add_cascade(label="File", menu=file_menu)
 
             help_menu = Menu(self.menubar, tearoff=0)

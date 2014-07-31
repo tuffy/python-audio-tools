@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools import (InvalidFile, PCMReader, AiffContainer)
 from audiotools.pcm import FrameList
@@ -86,7 +86,7 @@ def validate_header(header):
     header_size = len(header)
     aiff_file = BitstreamReader(cStringIO.StringIO(header), 0)
     try:
-        #ensure header starts with FORM<size>AIFF chunk
+        # ensure header starts with FORM<size>AIFF chunk
         (form, remaining_size, aiff) = aiff_file.parse("4b 32u 4b")
         if (form != "FORM"):
             from audiotools.text import ERR_AIFF_NOT_AIFF
@@ -101,7 +101,7 @@ def validate_header(header):
         comm_found = False
 
         while (header_size > 0):
-            #ensure each chunk header is valid
+            # ensure each chunk header is valid
             (chunk_id, chunk_size) = aiff_file.parse("4b 32u")
             if (not frozenset(chunk_id).issubset(AiffAudio.PRINTABLE_ASCII)):
                 from audiotools.text import ERR_AIFF_INVALID_CHUNK
@@ -111,7 +111,7 @@ def validate_header(header):
 
             if (chunk_id == "COMM"):
                 if (not comm_found):
-                    #skip COMM chunk when found
+                    # skip COMM chunk when found
                     comm_found = True
                     if (chunk_size % 2):
                         aiff_file.skip_bytes(chunk_size + 1)
@@ -120,16 +120,16 @@ def validate_header(header):
                         aiff_file.skip_bytes(chunk_size)
                         header_size -= chunk_size
                 else:
-                    #ensure only one COMM chunk is found
+                    # ensure only one COMM chunk is found
                     from audiotools.text import ERR_AIFF_MULTIPLE_COMM_CHUNKS
                     raise ValueError(ERR_AIFF_MULTIPLE_COMM_CHUNKS)
             elif (chunk_id == "SSND"):
                 if (not comm_found):
-                    #ensure at least one COMM chunk is found
+                    # ensure at least one COMM chunk is found
                     from audiotools.text import ERR_AIFF_PREMATURE_SSND_CHUNK
                     raise ValueError(ERR_AIFF_PREMATURE_SSND_CHUNK)
                 elif (header_size > 8):
-                    #ensure exactly 8 bytes remain after SSND chunk header
+                    # ensure exactly 8 bytes remain after SSND chunk header
                     from audiotools.text import ERR_AIFF_HEADER_EXTRA_SSND
                     raise ValueError(ERR_AIFF_HEADER_EXTRA_SSND)
                 elif (header_size < 8):
@@ -138,7 +138,7 @@ def validate_header(header):
                 else:
                     return (total_size, chunk_size - 8)
             else:
-                #skip the full contents of non-audio chunks
+                # skip the full contents of non-audio chunks
                 if (chunk_size % 2):
                     aiff_file.skip_bytes(chunk_size + 1)
                     header_size -= (chunk_size + 1)
@@ -146,7 +146,7 @@ def validate_header(header):
                     aiff_file.skip_bytes(chunk_size)
                     header_size -= chunk_size
         else:
-            #header parsed with no SSND chunks found
+            # header parsed with no SSND chunks found
             from audiotools.text import ERR_AIFF_NO_SSND_CHUNK
             raise ValueError(ERR_AIFF_NO_SSND_CHUNK)
     except IOError:
@@ -166,8 +166,8 @@ def validate_footer(footer, ssnd_bytes_written):
     total_size = len(footer)
     aiff_file = BitstreamReader(cStringIO.StringIO(footer), 0)
     try:
-        #ensure footer is padded properly if necessary
-        #based on size of data bytes written
+        # ensure footer is padded properly if necessary
+        # based on size of data bytes written
         if (ssnd_bytes_written % 2):
             aiff_file.skip_bytes(1)
             total_size -= 1
@@ -181,15 +181,15 @@ def validate_footer(footer, ssnd_bytes_written):
                 total_size -= 8
 
             if (chunk_id == "COMM"):
-                #ensure no COMM chunks are found
+                # ensure no COMM chunks are found
                 from audiotools.text import ERR_AIFF_MULTIPLE_COMM_CHUNKS
                 raise ValueError(ERR_AIFF_MULTIPLE_COMM_CHUNKS)
             elif (chunk_id == "SSND"):
-                #ensure no SSND chunks are found
+                # ensure no SSND chunks are found
                 from audiotools.text import ERR_AIFF_MULTIPLE_SSND_CHUNKS
                 raise ValueError(ERR_AIFF_MULTIPLE_SSND_CHUNKS)
             else:
-                #skip the full contents of non-audio chunks
+                # skip the full contents of non-audio chunks
                 if (chunk_size % 2):
                     aiff_file.skip_bytes(chunk_size + 1)
                     total_size -= (chunk_size + 1)
@@ -203,11 +203,6 @@ def validate_footer(footer, ssnd_bytes_written):
         raise ValueError(ERR_AIFF_FOOTER_IOERROR)
 
 
-#######################
-#AIFF
-#######################
-
-
 class AIFF_Chunk:
     """a raw chunk of AIFF data"""
 
@@ -216,7 +211,7 @@ class AIFF_Chunk:
         chunk_size is the length of chunk_data
         chunk_data should be a binary string of chunk data"""
 
-        #FIXME - check chunk_id's validity
+        # FIXME - check chunk_id's validity
 
         self.id = chunk_id
         self.__size__ = chunk_size
@@ -357,7 +352,7 @@ class AiffReader:
 
         self.file = open(aiff_filename, "rb")
 
-        #ensure FORM<size>AIFF header is ok
+        # ensure FORM<size>AIFF header is ok
         try:
             (form,
              total_size,
@@ -376,7 +371,7 @@ class AiffReader:
             total_size -= 4
             comm_chunk_read = False
 
-        #walk through chunks until "SSND" chunk encountered
+        # walk through chunks until "SSND" chunk encountered
         while (total_size > 0):
             try:
                 (chunk_id,
@@ -392,8 +387,8 @@ class AiffReader:
                 total_size -= 8
 
             if (chunk_id == "COMM"):
-                #when "COMM" chunk encountered,
-                #use it to populate PCMReader attributes
+                # when "COMM" chunk encountered,
+                # use it to populate PCMReader attributes
                 (self.channels,
                  self.total_pcm_frames,
                  self.bits_per_sample,
@@ -405,9 +400,9 @@ class AiffReader:
                 self.remaining_pcm_frames = self.total_pcm_frames
                 comm_chunk_read = True
             elif (chunk_id == "SSND"):
-                #when "SSND" chunk encountered,
-                #strip off the "offset" and "block_size" attributes
-                #and ready PCMReader for reading
+                # when "SSND" chunk encountered,
+                # strip off the "offset" and "block_size" attributes
+                # and ready PCMReader for reading
                 if (not comm_chunk_read):
                     from audiotools.text import ERR_AIFF_PREMATURE_SSND_CHUNK
                     raise ValueError(ERR_AIFF_PREMATURE_SSND_CHUNK)
@@ -416,7 +411,7 @@ class AiffReader:
                     self.ssnd_chunk_offset = self.file.tell()
                     return
             else:
-                #all other chunks are ignored
+                # all other chunks are ignored
                 self.file.read(chunk_size)
 
             if (chunk_size % 2):
@@ -427,28 +422,28 @@ class AiffReader:
             else:
                 total_size -= chunk_size
         else:
-            #raise an error if no "SSND" chunk is encountered
+            # raise an error if no "SSND" chunk is encountered
             from audiotools.text import ERR_AIFF_NO_SSND_CHUNK
             raise ValueError(ERR_AIFF_NO_SSND_CHUNK)
 
     def read(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of PCM frames"""
 
-        #try to read requested PCM frames or remaining frames
+        # try to read requested PCM frames or remaining frames
         requested_pcm_frames = min(max(pcm_frames, 1),
                                    self.remaining_pcm_frames)
         requested_bytes = (self.bytes_per_pcm_frame *
                            requested_pcm_frames)
         pcm_data = self.file.read(requested_bytes)
 
-        #raise exception if "SSND" chunk exhausted early
+        # raise exception if "SSND" chunk exhausted early
         if (len(pcm_data) < requested_bytes):
             from audiotools.text import ERR_AIFF_TRUNCATED_SSND_CHUNK
             raise IOError(ERR_AIFF_TRUNCATED_SSND_CHUNK)
         else:
             self.remaining_pcm_frames -= requested_pcm_frames
 
-            #return parsed chunk
+            # return parsed chunk
             return FrameList(pcm_data,
                              self.channels,
                              self.bits_per_sample,
@@ -463,11 +458,11 @@ class AiffReader:
             from audiotools.text import ERR_NEGATIVE_SEEK
             raise ValueError(ERR_NEGATIVE_SEEK)
 
-        #ensure one doesn't walk off the end of the file
+        # ensure one doesn't walk off the end of the file
         pcm_frame_offset = min(pcm_frame_offset,
                                self.total_pcm_frames)
 
-        #position file in "SSND" chunk
+        # position file in "SSND" chunk
         self.file.seek(self.ssnd_chunk_offset +
                        (pcm_frame_offset *
                         self.bytes_per_pcm_frame), 0)
@@ -587,7 +582,7 @@ class AiffAudio(AiffContainer):
             total_size -= 4
 
         while (total_size > 0):
-            #read the chunk header and ensure its validity
+            # read the chunk header and ensure its validity
             try:
                 data = aiff_file.read(8)
                 (chunk_id,
@@ -600,16 +595,16 @@ class AiffAudio(AiffContainer):
             else:
                 total_size -= 8
 
-            #yield AIFF_Chunk or AIFF_File_Chunk depending on chunk size
+            # yield AIFF_Chunk or AIFF_File_Chunk depending on chunk size
             if (chunk_size >= 0x100000):
-                #if chunk is too large, yield a File_Chunk
+                # if chunk is too large, yield a File_Chunk
                 yield AIFF_File_Chunk(chunk_id,
                                       chunk_size,
                                       file(self.filename, "rb"),
                                       aiff_file.tell())
                 aiff_file.seek(chunk_size, 1)
             else:
-                #otherwise, yield a raw data Chunk
+                # otherwise, yield a raw data Chunk
                 yield AIFF_Chunk(chunk_id, chunk_size,
                                  aiff_file.read(chunk_size))
 
@@ -630,16 +625,16 @@ class AiffAudio(AiffContainer):
 
         start = aiff_file.tell()
 
-        #write an unfinished header with a placeholder size
+        # write an unfinished header with a placeholder size
         aiff_file.write(struct.pack(">4sI4s", "FORM", 4, "AIFF"))
 
-        #write the individual chunks
+        # write the individual chunks
         total_size = 4
 
         for chunk in chunk_iter:
             total_size += chunk.write(aiff_file)
 
-        #once the chunks are done, go back and re-write the header
+        # once the chunks are done, go back and re-write the header
         aiff_file.seek(start)
         aiff_file.write(struct.pack(">4sI4s", "FORM", total_size, "AIFF"))
 
@@ -678,12 +673,12 @@ class AiffAudio(AiffContainer):
         elif (not os.access(self.filename, os.W_OK)):
             raise IOError(self.filename)
 
-        #turn our ID3v2.2 tag into a raw binary chunk
+        # turn our ID3v2.2 tag into a raw binary chunk
         id3_chunk = BitstreamRecorder(0)
         metadata.build(id3_chunk)
 
-        #generate a temporary AIFF file in which our new ID3v2.2 chunk
-        #replaces the existing ID3v2.2 chunk
+        # generate a temporary AIFF file in which our new ID3v2.2 chunk
+        # replaces the existing ID3v2.2 chunk
         new_aiff = TemporaryFile(self.filename)
 
         self.__class__.aiff_from_chunks(
@@ -706,10 +701,10 @@ class AiffAudio(AiffContainer):
         if (metadata is None):
             return
         elif (self.get_metadata() is not None):
-            #current file has metadata, so replace it with new metadata
+            # current file has metadata, so replace it with new metadata
             self.update_metadata(ID3v22Comment.converted(metadata))
         else:
-            #current file has no metadata, so append new ID3 block
+            # current file has no metadata, so append new ID3 block
             import os
             from audiotools.bitstream import BitstreamRecorder
             from audiotools import transfer_data, TemporaryFile
@@ -717,12 +712,12 @@ class AiffAudio(AiffContainer):
             if (not os.access(self.filename, os.W_OK)):
                 raise IOError(self.filename)
 
-            #turn our ID3v2.2 tag into a raw binary chunk
+            # turn our ID3v2.2 tag into a raw binary chunk
             id3_chunk = BitstreamRecorder(0)
             ID3v22Comment.converted(metadata).build(id3_chunk)
 
-            #generate a temporary AIFF file in which our new ID3v2.2 chunk
-            #is appended to the file's set of chunks
+            # generate a temporary AIFF file in which our new ID3v2.2 chunk
+            # is appended to the file's set of chunks
             new_aiff = TemporaryFile(self.filename)
             self.__class__.aiff_from_chunks(
                 new_aiff,
@@ -784,8 +779,8 @@ class AiffAudio(AiffContainer):
             data_size = 0
             total_pcm_frames = 0
 
-            #write out the basic headers first
-            #we'll be back later to clean up the sizes
+            # write out the basic headers first
+            # we'll be back later to clean up the sizes
             aiff.build("4b 32u 4b", ("FORM", total_size, "AIFF"))
             total_size += 4
 
@@ -805,7 +800,7 @@ class AiffAudio(AiffContainer):
             data_size += 8
             total_size += 8
 
-            #dump pcmreader's FrameLists into the file as big-endian
+            # dump pcmreader's FrameLists into the file as big-endian
             try:
                 framelist = pcmreader.read(FRAMELIST_SIZE)
                 while (len(framelist) > 0):
@@ -824,12 +819,12 @@ class AiffAudio(AiffContainer):
                 cls.__unlink__(filename)
                 raise err
 
-            #handle odd-sized data chunks
+            # handle odd-sized data chunks
             if (data_size % 2):
                 aiff.write(8, 0)
                 total_size += 1
 
-            #close the PCM reader and flush our output
+            # close the PCM reader and flush our output
             try:
                 pcmreader.close()
             except DecodingError as err:
@@ -838,7 +833,7 @@ class AiffAudio(AiffContainer):
             f.flush()
 
             if (total_size < (2 ** 32)):
-                #go back to the beginning and rewrite the header
+                # go back to the beginning and rewrite the header
                 f.seek(0, 0)
                 aiff.build("4b 32u 4b", ("FORM", total_size, "AIFF"))
                 aiff.build("4b 32u", ("COMM", 0x12))
@@ -883,7 +878,7 @@ class AiffAudio(AiffContainer):
 
         aiff_file = BitstreamReader(open(self.filename, 'rb'), 0)
         try:
-            #transfer the 12-byte "RIFFsizeWAVE" header to head
+            # transfer the 12-byte "RIFFsizeWAVE" header to head
             (form, size, aiff) = aiff_file.parse("4b 32u 4b")
             if (form != 'FORM'):
                 raise InvalidAIFF(ERR_AIFF_NOT_AIFF)
@@ -894,7 +889,7 @@ class AiffAudio(AiffContainer):
                 total_size = size - 4
 
             while (total_size > 0):
-                #transfer each chunk header
+                # transfer each chunk header
                 (chunk_id, chunk_size) = aiff_file.parse("4b 32u")
                 if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
                     raise InvalidAIFF(ERR_AIFF_INVALID_CHUNK_ID)
@@ -902,7 +897,7 @@ class AiffAudio(AiffContainer):
                     current_block.build("4b 32u", (chunk_id, chunk_size))
                     total_size -= 8
 
-                #and transfer the full content of non-audio chunks
+                # and transfer the full content of non-audio chunks
                 if (chunk_id != "SSND"):
                     if (chunk_size % 2):
                         current_block.write_bytes(
@@ -913,7 +908,7 @@ class AiffAudio(AiffContainer):
                             aiff_file.read_bytes(chunk_size))
                         total_size -= chunk_size
                 else:
-                    #transfer alignment as part of SSND's chunk header
+                    # transfer alignment as part of SSND's chunk header
                     align = aiff_file.parse("32u 32u")
                     current_block.build("32u 32u", align)
                     aiff_file.skip_bytes(chunk_size - 8)
@@ -950,18 +945,18 @@ class AiffAudio(AiffContainer):
         from audiotools import (DecodingError, EncodingError, FRAMELIST_SIZE)
         from struct import unpack
 
-        #ensure header validates correctly
+        # ensure header validates correctly
         try:
             (total_size, ssnd_size) = validate_header(header)
         except ValueError as err:
             raise EncodingError(str(err))
 
         try:
-            #write header to output file
+            # write header to output file
             f = open(filename, "wb")
             f.write(header)
 
-            #write PCM data to output file
+            # write PCM data to output file
             SSND_bytes_written = 0
             s = pcmreader.read(FRAMELIST_SIZE).to_bytes(True, True)
             while (len(s) > 0):
@@ -969,16 +964,16 @@ class AiffAudio(AiffContainer):
                 f.write(s)
                 s = pcmreader.read(FRAMELIST_SIZE).to_bytes(True, True)
 
-            #ensure output data size matches the "SSND" chunk's size
+            # ensure output data size matches the "SSND" chunk's size
             if (ssnd_size != SSND_bytes_written):
                 cls.__unlink__(filename)
                 from audiotools.text import ERR_AIFF_TRUNCATED_SSND_CHUNK
                 raise EncodingError(ERR_AIFF_TRUNCATED_SSND_CHUNK)
 
-            #ensure footer validates correctly
+            # ensure footer validates correctly
             try:
                 validate_footer(footer, SSND_bytes_written)
-                #before writing it to disk
+                # before writing it to disk
                 f.write(footer)
             except ValueError as err:
                 cls.__unlink__(filename)
@@ -986,7 +981,7 @@ class AiffAudio(AiffContainer):
 
             f.close()
 
-            #ensure total size is correct
+            # ensure total size is correct
             if ((len(header) + ssnd_size + len(footer)) != total_size):
                 cls.__unlink__(filename)
                 from audiotools.text import ERR_AIFF_INVALID_SIZE
@@ -1018,13 +1013,13 @@ class AiffAudio(AiffContainer):
         except ValueError as err:
             raise InvalidAIFF(unicode(err))
 
-        #ensure header is valid
+        # ensure header is valid
         try:
             (total_size, data_size) = validate_header(header)
         except ValueError as err:
             raise InvalidAIFF(unicode(err))
 
-        #ensure "ssnd" chunk has all its data
+        # ensure "ssnd" chunk has all its data
         counter = CounterPCMReader(to_pcm_progress(self, progress))
         try:
             transfer_framelist_data(counter, lambda f: f)
@@ -1034,19 +1029,19 @@ class AiffAudio(AiffContainer):
 
         data_bytes_written = counter.bytes_written()
 
-        #ensure output data size matches the "ssnd" chunk's size
+        # ensure output data size matches the "ssnd" chunk's size
         if (data_size != data_bytes_written):
             from audiotools.text import ERR_AIFF_TRUNCATED_SSND_CHUNK
             raise InvalidAIFF(ERR_AIFF_TRUNCATED_SSND_CHUNK)
 
-        #ensure footer validates correctly
+        # ensure footer validates correctly
         try:
             validate_footer(footer, data_bytes_written)
         except ValueError as err:
             from audiotools.text import ERR_AIFF_INVALID_SIZE
             raise InvalidAIFF(ERR_AIFF_INVALID_SIZE)
 
-        #ensure total size is correct
+        # ensure total size is correct
         if ((len(header) + data_size + len(footer)) != total_size):
             from audiotools.text import ERR_AIFF_INVALID_SIZE
             raise InvalidAIFF(ERR_AIFF_INVALID_SIZE)

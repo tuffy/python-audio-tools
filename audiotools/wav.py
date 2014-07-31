@@ -1,30 +1,26 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 from audiotools import (AudioFile, InvalidFile, PCMReader, WaveContainer)
 from audiotools.pcm import FrameList
 import struct
-
-#######################
-#RIFF WAVE
-#######################
 
 
 class RIFF_Chunk:
@@ -34,7 +30,7 @@ class RIFF_Chunk:
         """chunk_id should be a binary string of ASCII
         chunk_data should be a binary string of chunk data"""
 
-        #FIXME - check chunk_id's validity
+        # FIXME - check chunk_id's validity
 
         self.id = chunk_id
         self.__size__ = chunk_size
@@ -170,7 +166,7 @@ def validate_header(header):
     header_size = len(header)
     wave_file = BitstreamReader(cStringIO.StringIO(header), 1)
     try:
-        #ensure header starts with RIFF<size>WAVE chunk
+        # ensure header starts with RIFF<size>WAVE chunk
         (riff, remaining_size, wave) = wave_file.parse("4b 32u 4b")
         if (riff != "RIFF"):
             from audiotools.text import ERR_WAV_NOT_WAVE
@@ -185,7 +181,7 @@ def validate_header(header):
         fmt_found = False
 
         while (header_size > 0):
-            #ensure each chunk header is valid
+            # ensure each chunk header is valid
             (chunk_id, chunk_size) = wave_file.parse("4b 32u")
             if (not frozenset(chunk_id).issubset(WaveAudio.PRINTABLE_ASCII)):
                 from audiotools.text import ERR_WAV_INVALID_CHUNK
@@ -195,7 +191,7 @@ def validate_header(header):
 
             if (chunk_id == "fmt "):
                 if (not fmt_found):
-                    #skip fmt chunk data when found
+                    # skip fmt chunk data when found
                     fmt_found = True
                     if (chunk_size % 2):
                         wave_file.skip_bytes(chunk_size + 1)
@@ -204,23 +200,23 @@ def validate_header(header):
                         wave_file.skip_bytes(chunk_size)
                         header_size -= chunk_size
                 else:
-                    #ensure only one fmt chunk is found
+                    # ensure only one fmt chunk is found
                     from audiotools.text import ERR_WAV_MULTIPLE_FMT
                     raise ValueError(ERR_WAV_MULTIPLE_FMT)
             elif (chunk_id == "data"):
                 if (not fmt_found):
-                    #ensure at least one fmt chunk is found
+                    # ensure at least one fmt chunk is found
                     from audiotools.text import ERR_WAV_PREMATURE_DATA
                     raise ValueError(ERR_WAV_PREMATURE_DATA)
                 elif (header_size > 0):
-                    #ensure no data remains after data chunk header
+                    # ensure no data remains after data chunk header
                     from audiotools.text import ERR_WAV_HEADER_EXTRA_DATA
                     raise ValueError(ERR_WAV_HEADER_EXTRA_DATA %
                                      (header_size))
                 else:
                     return (total_size, chunk_size)
             else:
-                #skip the full contents of non-audio chunks
+                # skip the full contents of non-audio chunks
                 if (chunk_size % 2):
                     wave_file.skip_bytes(chunk_size + 1)
                     header_size -= (chunk_size + 1)
@@ -228,7 +224,7 @@ def validate_header(header):
                     wave_file.skip_bytes(chunk_size)
                     header_size -= chunk_size
         else:
-            #header parsed with no data chunks found
+            # header parsed with no data chunks found
             from audiotools.text import ERR_WAV_NO_DATA_CHUNK
             raise ValueError(ERR_WAV_NO_DATA_CHUNK)
     except IOError:
@@ -248,8 +244,8 @@ def validate_footer(footer, data_bytes_written):
     total_size = len(footer)
     wave_file = BitstreamReader(cStringIO.StringIO(footer), 1)
     try:
-        #ensure footer is padded properly if necessary
-        #based on size of data bytes written
+        # ensure footer is padded properly if necessary
+        # based on size of data bytes written
         if (data_bytes_written % 2):
             wave_file.skip_bytes(1)
             total_size -= 1
@@ -263,15 +259,15 @@ def validate_footer(footer, data_bytes_written):
                 total_size -= 8
 
             if (chunk_id == "fmt "):
-                #ensure no fmt chunks are found
+                # ensure no fmt chunks are found
                 from audiotools.text import ERR_WAV_MULTIPLE_FMT
                 raise ValueError(ERR_WAV_MULTIPLE_FMT)
             elif (chunk_id == "data"):
-                #ensure no data chunks are found
+                # ensure no data chunks are found
                 from audiotools.text import ERR_WAV_MULTIPLE_DATA
                 raise ValueError(ERR_WAV_MULTIPLE_DATA)
             else:
-                #skip the full contents of non-audio chunks
+                # skip the full contents of non-audio chunks
                 if (chunk_size % 2):
                     wave_file.skip_bytes(chunk_size + 1)
                     total_size -= (chunk_size + 1)
@@ -302,11 +298,11 @@ def parse_fmt(fmt):
      bits_per_sample) = fmt.parse("16u 16u 32u 32u 16u 16u")
 
     if (compression == 1):
-        #if we have a multi-channel WAVE file
-        #that's not WAVEFORMATEXTENSIBLE,
-        #assume the channels follow
-        #SMPTE/ITU-R recommendations
-        #and hope for the best
+        # if we have a multi-channel WAVE file
+        # that's not WAVEFORMATEXTENSIBLE,
+        # assume the channels follow
+        # SMPTE/ITU-R recommendations
+        # and hope for the best
         if (channels == 1):
             channel_mask = ChannelMask.from_fields(
                 front_center=True)
@@ -343,14 +339,14 @@ def parse_fmt(fmt):
         if (sub_format !=
             ('\x01\x00\x00\x00\x00\x00\x10\x00' +
              '\x80\x00\x00\xaa\x00\x38\x9b\x71')):
-            #FIXME
+            # FIXME
             raise ValueError("invalid WAVE sub-format")
         else:
             channel_mask = ChannelMask(channel_mask)
 
             return (channels, sample_rate, bits_per_sample, channel_mask)
     else:
-        #FIXME
+        # FIXME
         raise ValueError("unsupported WAVE compression")
 
 
@@ -371,8 +367,8 @@ def wave_header(sample_rate,
     avg_bytes_per_second = sample_rate * channels * (bits_per_sample // 8)
     block_align = channels * (bits_per_sample // 8)
 
-    #build a regular or extended fmt chunk
-    #based on the reader's attributes
+    # build a regular or extended fmt chunk
+    # based on the reader's attributes
     if (((channels <= 2) and (bits_per_sample <= 16))):
         fmt = "16u 16u 32u 32u 16u 16u"
         fmt_fields = (1,   # compression code
@@ -428,7 +424,7 @@ class WaveReader:
 
         self.file = open(wave_filename, "rb")
 
-        #ensure RIFF<size>WAVE header is ok
+        # ensure RIFF<size>WAVE header is ok
         try:
             (riff,
              total_size,
@@ -447,7 +443,7 @@ class WaveReader:
             total_size -= 4
             fmt_chunk_read = False
 
-        #walk through chunks until "data" chunk encountered
+        # walk through chunks until "data" chunk encountered
         while (total_size > 0):
             try:
                 (chunk_id,
@@ -462,8 +458,8 @@ class WaveReader:
                 total_size -= 8
 
             if (chunk_id == "fmt "):
-                #when "fmt " chunk encountered,
-                #use it to populate PCMReader attributes
+                # when "fmt " chunk encountered,
+                # use it to populate PCMReader attributes
                 (self.channels,
                  self.sample_rate,
                  self.bits_per_sample,
@@ -473,9 +469,9 @@ class WaveReader:
                                             self.channels)
                 fmt_chunk_read = True
             elif (chunk_id == "data"):
-                #when "data" chunk encountered,
-                #use its size to determine total PCM frames
-                #and ready PCMReader for reading
+                # when "data" chunk encountered,
+                # use its size to determine total PCM frames
+                # and ready PCMReader for reading
                 if (not fmt_chunk_read):
                     from audiotools.text import ERR_WAV_PREMATURE_DATA
                     raise ValueError(ERR_WAV_PREMATURE_DATA)
@@ -486,7 +482,7 @@ class WaveReader:
                     self.data_chunk_offset = self.file.tell()
                     return
             else:
-                #all other chunks are ignored
+                # all other chunks are ignored
                 self.file.read(chunk_size)
 
             if (chunk_size % 2):
@@ -497,14 +493,14 @@ class WaveReader:
             else:
                 total_size -= chunk_size
         else:
-            #raise an error if no "data" chunk is encountered
+            # raise an error if no "data" chunk is encountered
             from audiotools.text import ERR_WAV_NO_DATA_CHUNK
             raise ValueError(ERR_WAV_NO_DATA_CHUNK)
 
     def read(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of PCM frames"""
 
-        #try to read requested PCM frames or remaining frames
+        # try to read requested PCM frames or remaining frames
         requested_pcm_frames = min(max(pcm_frames, 1),
                                    self.remaining_pcm_frames)
 
@@ -512,14 +508,14 @@ class WaveReader:
                            requested_pcm_frames)
         pcm_data = self.file.read(requested_bytes)
 
-        #raise exception if "data" chunk exhausted early
+        # raise exception if "data" chunk exhausted early
         if (len(pcm_data) < requested_bytes):
             from audiotools.text import ERR_WAV_TRUNCATED_DATA_CHUNK
             raise IOError(ERR_WAV_TRUNCATED_DATA_CHUNK)
         else:
             self.remaining_pcm_frames -= requested_pcm_frames
 
-            #return parsed chunk
+            # return parsed chunk
             return FrameList(pcm_data,
                              self.channels,
                              self.bits_per_sample,
@@ -534,11 +530,11 @@ class WaveReader:
             from audiotools.text import ERR_NEGATIVE_SEEK
             raise ValueError(ERR_NEGATIVE_SEEK)
 
-        #ensure one doesn't walk off the end of the file
+        # ensure one doesn't walk off the end of the file
         pcm_frame_offset = min(pcm_frame_offset,
                                self.total_pcm_frames)
 
-        #position file in "data" chunk
+        # position file in "data" chunk
         self.file.seek(self.data_chunk_offset +
                        (pcm_frame_offset *
                         self.bytes_per_pcm_frame), 0)
@@ -625,7 +621,7 @@ class WaveAudio(WaveContainer):
                     if (fmt_read and data_read):
                         break
         except IOError:
-            #FIXME
+            # FIXME
             raise InvalidWave("I/O error reading wave")
 
     def lossless(self):
@@ -648,14 +644,14 @@ class WaveAudio(WaveContainer):
 
         return self.__channel_mask__
 
-    #Returns the PCMReader object for this WAV's data
+    # Returns the PCMReader object for this WAV's data
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
         return WaveReader(self.filename)
 
-    #Takes a filename and PCMReader containing WAV data
-    #builds a WAV from that data and returns a new WaveAudio object
+    # Takes a filename and PCMReader containing WAV data
+    # builds a WAV from that data and returns a new WaveAudio object
     @classmethod
     def from_pcm(cls, filename, pcmreader,
                  compression=None, total_pcm_frames=None):
@@ -702,21 +698,21 @@ class WaveAudio(WaveContainer):
             cls.__unlink__(filename)
             raise err
 
-        #handle odd-sized "data" chunks
+        # handle odd-sized "data" chunks
         if (counter.frames_written % 2):
             f.write(chr(0))
 
-        #close the PCM reader and flush our output
+        # close the PCM reader and flush our output
         if (total_pcm_frames is not None):
-            #ensure written number of PCM frames
-            #matches total_pcm_frames argument
+            # ensure written number of PCM frames
+            # matches total_pcm_frames argument
             if (counter.frames_written != total_pcm_frames):
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
                 cls.__unlink__(filename)
                 raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
         else:
-            #go back and rewrite populated header
-            #with counted number of PCM frames
+            # go back and rewrite populated header
+            # with counted number of PCM frames
             f.seek(0, 0)
             f.write(wave_header(pcmreader.sample_rate,
                                 pcmreader.channels,
@@ -795,7 +791,7 @@ class WaveAudio(WaveContainer):
             total_size -= 4
 
         while (total_size > 0):
-            #read the chunk header and ensure its validity
+            # read the chunk header and ensure its validity
             try:
                 (chunk_id,
                  chunk_size) = struct.unpack("<4sI", wave_file.read(8))
@@ -808,16 +804,16 @@ class WaveAudio(WaveContainer):
             else:
                 total_size -= 8
 
-            #yield RIFF_Chunk or RIFF_File_Chunk depending on chunk size
+            # yield RIFF_Chunk or RIFF_File_Chunk depending on chunk size
             if (chunk_size >= 0x100000):
-                #if chunk is too large, yield a File_Chunk
+                # if chunk is too large, yield a File_Chunk
                 yield RIFF_File_Chunk(chunk_id,
                                       chunk_size,
                                       file(self.filename, "rb"),
                                       wave_file.tell())
                 wave_file.seek(chunk_size, 1)
             else:
-                #otherwise, yield a raw data Chunk
+                # otherwise, yield a raw data Chunk
                 yield RIFF_Chunk(chunk_id, chunk_size,
                                  wave_file.read(chunk_size))
 
@@ -841,14 +837,14 @@ class WaveAudio(WaveContainer):
         try:
             total_size = 4
 
-            #write an unfinished header with a placeholder size
+            # write an unfinished header with a placeholder size
             wave_file.write(struct.pack("<4sI4s", "RIFF", total_size, "WAVE"))
 
-            #write the individual chunks
+            # write the individual chunks
             for chunk in chunk_iter:
                 total_size += chunk.write(wave_file)
 
-            #once the chunks are done, go back and re-write the header
+            # once the chunks are done, go back and re-write the header
             wave_file.seek(0, 0)
             wave_file.write(struct.pack("<4sI4s", "RIFF", total_size, "WAVE"))
         finally:
@@ -882,7 +878,7 @@ class WaveAudio(WaveContainer):
 
         wave_file = BitstreamReader(open(self.filename, 'rb'), 1)
         try:
-            #transfer the 12-byte "RIFFsizeWAVE" header to head
+            # transfer the 12-byte "RIFFsizeWAVE" header to head
             (riff, size, wave) = wave_file.parse("4b 32u 4b")
             if (riff != 'RIFF'):
                 from audiotools.text import ERR_WAV_NOT_WAVE
@@ -895,7 +891,7 @@ class WaveAudio(WaveContainer):
                 total_size = size - 4
 
             while (total_size > 0):
-                #transfer each chunk header
+                # transfer each chunk header
                 (chunk_id, chunk_size) = wave_file.parse("4b 32u")
                 if (not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII)):
                     from audiotools.text import ERR_WAV_INVALID_CHUNK
@@ -904,7 +900,7 @@ class WaveAudio(WaveContainer):
                     current_block.build("4b 32u", (chunk_id, chunk_size))
                     total_size -= 8
 
-                #and transfer the full content of non-audio chunks
+                # and transfer the full content of non-audio chunks
                 if (chunk_id != "data"):
                     if (chunk_id == "fmt "):
                         if (not fmt_found):
@@ -960,18 +956,18 @@ class WaveAudio(WaveContainer):
         from audiotools import (DecodingError, EncodingError, FRAMELIST_SIZE)
         from struct import unpack
 
-        #ensure header validates correctly
+        # ensure header validates correctly
         try:
             (total_size, data_size) = validate_header(header)
         except ValueError as err:
             raise EncodingError(str(err))
 
         try:
-            #write header to output file
+            # write header to output file
             f = open(filename, "wb")
             f.write(header)
 
-            #write PCM data to output file
+            # write PCM data to output file
             data_bytes_written = 0
             signed = (pcmreader.bits_per_sample > 8)
             s = pcmreader.read(FRAMELIST_SIZE).to_bytes(False, signed)
@@ -980,16 +976,16 @@ class WaveAudio(WaveContainer):
                 f.write(s)
                 s = pcmreader.read(FRAMELIST_SIZE).to_bytes(False, signed)
 
-            #ensure output data size matches the "data" chunk's size
+            # ensure output data size matches the "data" chunk's size
             if (data_size != data_bytes_written):
                 cls.__unlink__(filename)
                 from audiotools.text import ERR_WAV_TRUNCATED_DATA_CHUNK
                 raise EncodingError(ERR_WAV_TRUNCATED_DATA_CHUNK)
 
-            #ensure footer validates correctly
+            # ensure footer validates correctly
             try:
                 validate_footer(footer, data_bytes_written)
-                #before writing it to disk
+                # before writing it to disk
                 f.write(footer)
             except ValueError as err:
                 cls.__unlink__(filename)
@@ -997,7 +993,7 @@ class WaveAudio(WaveContainer):
 
             f.close()
 
-            #ensure total size is correct
+            # ensure total size is correct
             if ((len(header) + data_size + len(footer)) != total_size):
                 cls.__unlink__(filename)
                 from audiotools.text import ERR_WAV_INVALID_SIZE
@@ -1029,13 +1025,13 @@ class WaveAudio(WaveContainer):
         except ValueError as err:
             raise InvalidWave(unicode(err))
 
-        #ensure header is valid
+        # ensure header is valid
         try:
             (total_size, data_size) = validate_header(header)
         except ValueError as err:
             raise InvalidWave(unicode(err))
 
-        #ensure "data" chunk has all its data
+        # ensure "data" chunk has all its data
         counter = CounterPCMReader(to_pcm_progress(self, progress))
         try:
             transfer_framelist_data(counter, lambda f: f)
@@ -1045,19 +1041,19 @@ class WaveAudio(WaveContainer):
 
         data_bytes_written = counter.bytes_written()
 
-        #ensure output data size matches the "data" chunk's size
+        # ensure output data size matches the "data" chunk's size
         if (data_size != data_bytes_written):
             from audiotools.text import ERR_WAV_TRUNCATED_DATA_CHUNK
             raise InvalidWave(ERR_WAV_TRUNCATED_DATA_CHUNK)
 
-        #ensure footer validates correctly
+        # ensure footer validates correctly
         try:
             validate_footer(footer, data_bytes_written)
         except ValueError as err:
             from audiotools.text import ERR_WAV_INVALID_SIZE
             raise InvalidWave(ERR_WAV_INVALID_SIZE)
 
-        #ensure total size is correct
+        # ensure total size is correct
         if ((len(header) + data_size + len(footer)) != total_size):
             from audiotools.text import ERR_WAV_INVALID_SIZE
             raise InvalidWave(ERR_WAV_INVALID_SIZE)

@@ -1,21 +1,21 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 import sys
@@ -99,8 +99,8 @@ def image_compare(progress, image_audiofile, track_audiofile,
                   pcm_frames_offset, total_pcm_frames):
     image_pcmreader = image_audiofile.to_pcm()
 
-    #if image_pcmreader has seek(),
-    #use it to reduce the amount of frames to skip
+    # if image_pcmreader has seek(),
+    # use it to reduce the amount of frames to skip
     if (hasattr(image_pcmreader, "seek") and callable(image_pcmreader.seek)):
         pcm_frames_offset -= image_pcmreader.seek(pcm_frames_offset)
 
@@ -118,13 +118,14 @@ def image_compare(progress, image_audiofile, track_audiofile,
     except (IOError, ValueError, KeyboardInterrupt, audiotools.DecodingError):
         return (-2, unicode(image_filename), unicode(track_filename))
 
+
 def image_compare_raw(progress, source_filename,
                       sample_rate, channels, channel_mask, bits_per_sample,
                       track_audiofile, image_filename, track_filename,
                       pcm_frames_offset, total_pcm_frames):
     f = open(source_filename, "rb")
     try:
-        #skip initial offset
+        # skip initial offset
         f.seek(pcm_frames_offset * channels * (bits_per_sample // 8))
 
         return (
@@ -143,6 +144,7 @@ def image_compare_raw(progress, source_filename,
             unicode(track_filename))
     finally:
         f.close()
+
 
 def image_compare_results(result, is_tty=False):
     (mismatch, image_name, track_name) = result
@@ -212,7 +214,7 @@ if (__name__ == '__main__'):
 
     if (len(args) == 2):
         if (os.path.isfile(args[0]) and os.path.isfile(args[1])):
-            #comparing two files
+            # comparing two files
 
             audiofiles = audiotools.open_files(args,
                                                messenger=msg,
@@ -229,7 +231,7 @@ if (__name__ == '__main__'):
                                           msg.output_isatty()))
                     sys.exit(1)
         elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):
-            #comparing two directories
+            # comparing two directories
 
             to_compare = []
             results = []
@@ -252,7 +254,7 @@ if (__name__ == '__main__'):
                      sorted=False,
                      messenger=msg)])
 
-            #first, attempt to match files by their stream characteristics
+            # first, attempt to match files by their stream characteristics
             streams1 = {}
             streams2 = {}
 
@@ -264,24 +266,24 @@ if (__name__ == '__main__'):
                                         f.sample_rate(),
                                         f.total_frames()), []).append(f)
 
-            #anything with matching specs
-            #and only a single possible match per directory
-            #is queued for comparison
+            # anything with matching specs
+            # and only a single possible match per directory
+            # is queued for comparison
             for specs in set(streams1.keys()) & set(streams2.keys()):
                 if (((len(streams1[specs]) == 1) and
                      (len(streams2[specs]) == 1))):
                     file1 = streams1[specs][0]
                     file2 = streams2[specs][0]
 
-                    #remove matched files from lists
+                    # remove matched files from lists
                     del(files1[file1.filename])
                     del(files2[file2.filename])
 
-                    #queue up comparison job
+                    # queue up comparison job
                     to_compare.append((file1, file2))
 
-            #then, attempt to match leftover files by metadata
-            #such as album_number and track_number
+            # then, attempt to match leftover files by metadata
+            # such as album_number and track_number
             metadatas1 = {}
             metadatas2 = {}
 
@@ -302,14 +304,14 @@ if (__name__ == '__main__'):
                     file1 = metadatas1[metadata][0]
                     file2 = metadatas2[metadata][0]
 
-                    #remove matched files from lists
+                    # remove matched files from lists
                     del(files1[file1.filename])
                     del(files2[file2.filename])
 
-                    #queue up comparison job
+                    # queue up comparison job
                     to_compare.append((file1, file2))
 
-            #anything left over is marked as a missing file
+            # anything left over is marked as a missing file
             for (files, directory) in [(files1, args[1]), (files2, args[0])]:
                 for filename in files.keys():
                     msg.info(
@@ -374,7 +376,7 @@ if (__name__ == '__main__'):
             if (failures > 0):
                 sys.exit(1)
         else:
-            #comparison mismatch
+            # comparison mismatch
             msg.error((_.LAB_TRACKCMP_CMP %
                        {"file1": audiotools.Filename(args[0]),
                         "file2": audiotools.Filename(args[1])}) +
@@ -384,7 +386,7 @@ if (__name__ == '__main__'):
                           fg_color="red").format(msg.error_isatty()))
             sys.exit(1)
     elif (len(args) > 2):
-        #possibly comparing disk image against tracks
+        # possibly comparing disk image against tracks
         audiofiles = audiotools.open_files(args, messenger=msg, sorted=False)
 
         audiofiles.sort(lambda t1, t2: cmp(t1.total_frames(),
@@ -400,7 +402,7 @@ if (__name__ == '__main__'):
 
         image_name = audiotools.Filename(cd_image.filename)
 
-        #all tracks should have the same album number and track total
+        # all tracks should have the same album number and track total
         tracks = audiotools.sorted_tracks(tracks)
 
         cd_data = audiotools.BufferedPCMReader(cd_image.to_pcm())
@@ -438,9 +440,9 @@ if (__name__ == '__main__'):
         else:
             import tempfile
 
-            #if file isn't seekable
+            # if file isn't seekable
 
-            #decode it to a single PCM blob of binary data
+            # decode it to a single PCM blob of binary data
             temp_blob = tempfile.NamedTemporaryFile()
             cache_progress = audiotools.SingleProgressDisplay(
                 msg, _.LAB_CACHING_FILE)
@@ -465,7 +467,7 @@ if (__name__ == '__main__'):
             cache_progress.clear_rows()
             temp_blob.flush()
 
-            #compare the blob using multiple jobs
+            # compare the blob using multiple jobs
             for (i, track) in enumerate(tracks):
                 track_name = audiotools.Filename(track.filename)
                 queue.execute(
@@ -498,7 +500,7 @@ if (__name__ == '__main__'):
                 temp_blob.close()
                 sys.exit(1)
 
-            #then delete the blob when finished
+            # then delete the blob when finished
             temp_blob.close()
     else:
         msg.usage(_.USAGE_TRACKCMP_FILES)
