@@ -230,8 +230,7 @@ def xmcd_metadata(freedb_file):
     else:
         track_total = 0
 
-    for (tracknum, ttitle) in sorted(ttitles,
-                                     lambda x, y: cmp(x[0], y[0])):
+    for (tracknum, ttitle) in sorted(ttitles, key=lambda t: t[0]):
         if (" / " in ttitle):
             (track_artist,
              track_name) = ttitle.split(" / ", 1)

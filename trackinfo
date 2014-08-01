@@ -144,8 +144,7 @@ if (__name__ == '__main__'):
                             index_numbers.add(index.number())
                         indexes[track.number()] = track_indexes
 
-                    index_numbers = list(index_numbers)
-                    index_numbers.sort()
+                    index_numbers = sorted(list(index_numbers))
 
                     table = audiotools.output_table()
 

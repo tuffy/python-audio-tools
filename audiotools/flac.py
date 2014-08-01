@@ -2680,28 +2680,6 @@ class FlacAudio(WaveContainer, AiffContainer):
 
             self.update_metadata(metadata)
 
-    def __eq__(self, audiofile):
-        if (isinstance(audiofile, FlacAudio)):
-            return self.__md5__ == audiofile.__md5__
-        elif (isinstance(audiofile, AudioFile)):
-            from audiotools import FRAMELIST_SIZE
-
-            try:
-                from hashlib import md5
-            except ImportError:
-                from md5 import new as md5
-
-            p = audiofile.to_pcm()
-            m = md5()
-            s = p.read(FRAMELIST_SIZE)
-            while (len(s) > 0):
-                m.update(s.to_bytes(False, True))
-                s = p.read(FRAMELIST_SIZE)
-            p.close()
-            return m.digest() == self.__md5__
-        else:
-            return False
-
     def clean(self, output_filename=None):
         """cleans the file of known data and metadata problems
 

@@ -19,6 +19,7 @@
 
 from audiotools import (MetaData, Image, InvalidImage)
 import codecs
+from functools import total_ordering
 
 from id3v1 import ID3v1Comment
 
@@ -123,6 +124,7 @@ def encode_syncsafe32(i):
     return value
 
 
+@total_ordering
 class C_string:
     TERMINATOR = {'ascii': chr(0),
                   'latin_1': chr(0),
@@ -154,8 +156,17 @@ class C_string:
     def __len__(self):
         return len(self.unicode_string)
 
-    def __cmp__(self, c_string):
-        return cmp(self.unicode_string, c_string.unicode_string)
+    def __eq__(self, s):
+        if (isinstance(s, C_string)):
+            return (self.unicode_string == s.unicode_string)
+        else:
+            return (self.unicode_string == unicode(s))
+
+    def __lt__(self, s):
+        if (isinstance(s, C_string)):
+            return (self.unicode_string < s.unicode_string)
+        else:
+            return (self.unicode_string < unicode(s))
 
     @classmethod
     def parse(cls, encoding, reader):

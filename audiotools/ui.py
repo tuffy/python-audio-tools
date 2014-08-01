@@ -1637,7 +1637,7 @@ try:
                                              t.DESCRIPTION), t) for t in
                               audiotools.AVAILABLE_TYPES
                               if t.available(audiotools.BIN)],
-                             lambda x, y: cmp(x[0], y[0])),
+                             key=lambda pair: pair[0]),
                 selected_value=audio_class,
                 on_change=self.select_type,
                 label=LAB_OPTIONS_AUDIO_CLASS)
@@ -1847,7 +1847,7 @@ try:
                                              t.DESCRIPTION), t) for t in
                               audiotools.AVAILABLE_TYPES
                               if t.available(audiotools.BIN)],
-                             lambda x, y: cmp(x[0], y[0])),
+                             key=lambda pair: pair[0]),
                 selected_value=audio_class,
                 on_change=self.select_type,
                 label=LAB_OPTIONS_AUDIO_CLASS)

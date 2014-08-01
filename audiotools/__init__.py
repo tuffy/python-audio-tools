@@ -26,6 +26,7 @@ import os.path
 import ConfigParser
 import optparse
 import audiotools.pcm as pcm
+from functools import total_ordering
 
 
 class RawConfigParser(ConfigParser.RawConfigParser):
@@ -36,16 +37,6 @@ class RawConfigParser(ConfigParser.RawConfigParser):
 
         try:
             return self.get(section, option)
-        except ConfigParser.NoSectionError:
-            return default
-        except ConfigParser.NoOptionError:
-            return default
-
-    def getboolean_default(self, section, option, default):
-        """returns a default if option is not found in section"""
-
-        try:
-            return self.getboolean(section, option)
         except ConfigParser.NoSectionError:
             return default
         except ConfigParser.NoOptionError:
@@ -255,20 +246,6 @@ else:
         MAX_JOBS = multiprocessing.cpucount()
     except (ImportError, AttributeError):
         MAX_JOBS = 1
-
-
-def get_umask():
-    """returns the current file creation umask as an integer
-
-    this is XORed with creation bits integers when used with
-    os.open to create new files.  For example:
-
-    >>> fd = os.open(filename, os.WRONLY | os.O_CREAT, 0666 ^ get_umask())
-    """
-
-    mask = os.umask(0)
-    os.umask(mask)
-    return mask
 
 
 class OptionParser(optparse.OptionParser):
@@ -1599,69 +1576,7 @@ def sorted_tracks(audiofiles):
     by track_number and album_number, if found
     """
 
-    def cmp_by_track_number(track1, track_number1,
-                            track2, track_number2):
-        if ((track_number1 is not None) and (track_number2 is not None)):
-            # both track numbers are present
-            return cmp(track_number1, track_number2)
-        elif ((track_number1 is None) and (track_number2 is None)):
-            # neither track number is present,
-            # so compare by base filename
-            import os.path
-
-            return cmp(os.path.basename(track1.filename),
-                       os.path.basename(track2.filename))
-        else:
-            # one track number is missing,
-            # so track without number comes first
-            return (-1 if (track_number1 is None) else 1)
-
-    def by_audiofile(pair1, pair2):
-        (track1, metadata1) = pair1
-        (track2, metadata2) = pair2
-        if ((metadata1 is not None) and (metadata2 is not None)):
-            # both Metadata objects are present
-            if (((metadata1.album_number is not None) and
-                 (metadata2.album_number is not None))):
-                # both album numbers are present
-                result = cmp(metadata1.album_number, metadata2.album_number)
-                if (result == 0):
-                    # both album numbers are the same,
-                    # so compare by track numbers (if any)
-                    return cmp_by_track_number(track1, metadata1.track_number,
-                                               track2, metadata2.track_number)
-                else:
-                    return result
-            elif ((metadata1.album_number is None) and
-                  (metadata2.album_number is None)):
-                # neither album number is present,
-                # so compare by track numbers (if any)
-                return cmp_by_track_number(track1, metadata1.track_number,
-                                           track2, metadata2.track_number)
-            else:
-                # one album number is missing,
-                # so track without album number comes first
-                return (-1 if (metadata1.album_number is None) else 1)
-        elif ((metadata1 is None) and (metadata2 is None)):
-            # both Metadata objects are missing,
-            # so compare by base filename
-            import os.path
-
-            return cmp(os.path.basename(track1.filename),
-                       os.path.basename(track2.filename))
-        else:
-            # one Metadata object is missing,
-            # so track without Metadata comes first
-            return (-1 if (metadata1 is None) else 1)
-
-    # perform work on a private copy
-    tracks = zip(audiofiles[:], [f.get_metadata() for f in audiofiles])
-
-    # sort tracks by (AudioFile, Metadata) pairs
-    tracks.sort(by_audiofile)
-
-    # remove Metadata and return only AudioFile objects
-    return [t[0] for t in tracks]
+    return sorted(audiofiles, key=lambda f: f.__sort_key__())
 
 
 def open_files(filename_list, sorted=True, messenger=None,
@@ -1987,7 +1902,7 @@ class ChannelMask:
 
         c = []
         for (mask, speaker) in sorted(self.MASK_TO_SPEAKER.items(),
-                                      lambda x, y: cmp(x[0], y[0])):
+                                      key=lambda pair: pair[0]):
             if (getattr(self, speaker)):
                 c.append(speaker)
 
@@ -3590,6 +3505,66 @@ class AudioFile:
 
         self.filename = filename
 
+    # AudioFiles support a sorting rich compare
+    # which prioritizes album_number, track_number and then filename
+    # missing fields sort before non-missing fields
+    # use pcm_frame_cmp to compare the contents of two files
+
+    def __sort_key__(self):
+        metadata = self.get_metadata()
+        return ((metadata.album_number if
+                 ((metadata is not None) and
+                  (metadata.album_number is not None)) else -sys.maxint - 1),
+                (metadata.track_number if
+                 ((metadata is not None) and
+                  (metadata.track_number is not None)) else -sys.maxint - 1),
+                self.filename)
+
+    def __eq__(self, audiofile):
+        if (isinstance(audiofile, AudioFile)):
+            return (self.__sort_key__() == audiofile.__sort_key__())
+        else:
+            raise TypeError("cannot compare %s and %s" %
+                            (repr(self), repr(audiofile)))
+
+    def __ne__(self, audiofile):
+        return not self.__eq__(audiofile)
+
+    def __lt__(self, audiofile):
+        if (isinstance(audiofile, AudioFile)):
+            return (self.__sort_key__() < audiofile.__sort_key__())
+        else:
+            raise TypeError("cannot compare %s and %s" %
+                            (repr(self), repr(audiofile)))
+
+    def __le__(self, audiofile):
+        if (isinstance(audiofile, AudioFile)):
+            return (self.__sort_key__() <= audiofile.__sort_key__())
+        else:
+            raise TypeError("cannot compare %s and %s" %
+                            (repr(self), repr(audiofile)))
+
+    def __gt__(self, audiofile):
+        if (isinstance(audiofile, AudioFile)):
+            return (self.__sort_key__() > audiofile.__sort_key__())
+        else:
+            raise TypeError("cannot compare %s and %s" %
+                            (repr(self), repr(audiofile)))
+
+    def __ge__(self, audiofile):
+        if (isinstance(audiofile, AudioFile)):
+            return (self.__sort_key__() >= audiofile.__sort_key__())
+        else:
+            raise TypeError("cannot compare %s and %s" %
+                            (repr(self), repr(audiofile)))
+
+    def __gt__(self, audiofile):
+        if (isinstance(audiofile, AudioFile)):
+            return (self.__sort_key__() > audiofile.__sort_key__())
+        else:
+            raise TypeError("cannot compare %s and %s" %
+                            (repr(self), repr(audiofile)))
+
     def bits_per_sample(self):
         """returns an integer number of bits-per-sample this track contains"""
 
@@ -3899,19 +3874,6 @@ class AudioFile:
         Raises IOError if a problem occurs when reading the file"""
 
         return None
-
-    def __eq__(self, audiofile):
-        if (hasattr(audiofile, "to_pcm") and callable(audiofile.to_pcm)):
-            try:
-                return pcm_frame_cmp(self.to_pcm(),
-                                     audiofile.to_pcm()) is not None
-            except (ValueError, IOError):
-                return False
-        else:
-            return False
-
-    def __ne__(self, audiofile):
-        return not self.__eq__(audiofile)
 
     def verify(self, progress=None):
         """verifies the current file for correctness
@@ -4775,7 +4737,7 @@ def most_numerous(item_list, empty_list=None, all_differ=None):
 
     (item,
      max_count) = sorted([(item, len(counts[item])) for item in counts.keys()],
-                         lambda x, y: cmp(x[1], y[1]))[-1]
+                         key=lambda pair: pair[1])[-1]
     if ((max_count < len(item_list)) and (max_count == 1)):
         return all_differ
     else:

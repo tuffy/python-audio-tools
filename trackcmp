@@ -327,9 +327,8 @@ if (__name__ == '__main__'):
             queue = audiotools.ExecProgressQueue(
                 audiotools.ProgressDisplay(msg))
 
-            to_compare.sort(lambda f1, f2: cmp(f1[0].filename, f2[0].filename))
-
-            for (track1, track2) in to_compare:
+            for (track1, track2) in sorted(to_compare,
+                                           key=lambda f: f[0].filename):
                 queue.execute(
                     function=cmp_files,
                     progress_text=_.LAB_TRACKCMP_CMP %
@@ -387,10 +386,9 @@ if (__name__ == '__main__'):
             sys.exit(1)
     elif (len(args) > 2):
         # possibly comparing disk image against tracks
-        audiofiles = audiotools.open_files(args, messenger=msg, sorted=False)
-
-        audiofiles.sort(lambda t1, t2: cmp(t1.total_frames(),
-                                           t2.total_frames()))
+        audiofiles = sorted(
+            audiotools.open_files(args, messenger=msg, sorted=False),
+            key=lambda t: t.total_frames())
 
         if ((sum([t.total_frames() for t in audiofiles[0:-1]]) !=
              audiofiles[-1].total_frames())):
