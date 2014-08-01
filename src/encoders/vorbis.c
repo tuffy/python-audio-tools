@@ -75,7 +75,6 @@ encoders_encode_vorbis(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     result = encode_ogg_vorbis(filename, pcmreader, quality);
 
-    pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
 
     switch (result) {

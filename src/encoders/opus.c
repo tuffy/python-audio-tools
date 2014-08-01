@@ -103,7 +103,6 @@ encoders_encode_opus(PyObject *dummy, PyObject *args, PyObject *keywds)
     result = encode_opus_file(filename, pcmreader,
                               quality, original_sample_rate);
 
-    pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
 
     switch (result) {

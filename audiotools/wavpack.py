@@ -560,6 +560,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         from audiotools import (MetaData, Filename, FS_ENCODING)
         from audiotools import cue as cue
         from audiotools.cue import write_cuesheet
+        from audiotools.ape import ApeTag
 
         if (cuesheet is None):
             return

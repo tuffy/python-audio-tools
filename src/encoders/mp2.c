@@ -162,7 +162,6 @@ error:
         twolame_close(&twolame_opts);
     fclose(output_file);
     samples->del(samples);
-    pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
     return NULL;
 }

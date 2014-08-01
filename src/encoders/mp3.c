@@ -226,7 +226,6 @@ error:
         lame_close(gfp);
     fclose(output_file);
     samples->del(samples);
-    pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
     return NULL;
 }
