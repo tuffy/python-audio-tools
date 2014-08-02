@@ -107,7 +107,7 @@ class DVDAudio:
                 from audiotools.text import ERR_DVDA_INVALID_AUDIO_TS
                 raise InvalidDVDA(ERR_DVDA_INVALID_AUDIO_TS)
 
-            for titleset in xrange(1, audio_titlesets + 1):
+            for titleset in range(1, audio_titlesets + 1):
                 # ensure there are IFO files and AOBs
                 # for each valid titleset
                 if (("ATS_%2.2d_0.IFO" % (titleset) in
@@ -144,7 +144,7 @@ class DVDAudio:
             ats_reader = BitstreamReader(f, 0)
             (title_count, last_byte_address) = ats_reader.parse("16u 16p 32u")
             title_offsets = [ats_reader.parse("8u 24p 32u")[1] for title in
-                             xrange(title_count)]
+                             range(title_count)]
 
             titles = []
 
@@ -159,7 +159,7 @@ class DVDAudio:
                  sector_pointers_table) = ats_reader.parse(
                     "16p 8u 8u 32u 4P 16u 2P")
                 timestamps = [ats_reader.parse("32p 8u 8p 32u 32u 48p")
-                              for track in xrange(tracks)]
+                              for track in range(tracks)]
 
                 # seek to the title's sector pointers table
                 # and read the first and last sector values for title's tracks
@@ -169,7 +169,7 @@ class DVDAudio:
                        os.SEEK_SET)
                 ats_reader = BitstreamReader(f, 0)
                 sector_pointers = [ats_reader.parse("32u 32u 32u")
-                                   for i in xrange(indexes)]
+                                   for i in range(indexes)]
                 if ((len(sector_pointers) > 1) and
                     (set([p[0] for p in sector_pointers[1:]]) !=
                      set([0x01000000]))):

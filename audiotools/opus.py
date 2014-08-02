@@ -109,7 +109,7 @@ class OpusAudio(VorbisAudio):
                         from audiotools.text import ERR_OPUS_INVALID_CHANNELS
                         raise InvalidOpus(ERR_OPUS_INVALID_CHANNELS)
                     channel_mapping = [ogg_reader.read(8)
-                                       for i in xrange(self.__channels__)]
+                                       for i in range(self.__channels__)]
             finally:
                 f.close()
         except IOError as msg:
@@ -261,7 +261,7 @@ class OpusAudio(VorbisAudio):
                 comment.read_bytes(comment.read(32)).decode('utf-8')
             comment_strings = [
                 comment.read_bytes(comment.read(32)).decode('utf-8')
-                for i in xrange(comment.read(32))]
+                for i in range(comment.read(32))]
             return VorbisComment(comment_strings, vendor_string)
         else:
             return None
@@ -493,7 +493,7 @@ class OpusAudio(VorbisAudio):
                 comment.read_bytes(comment.read(32)).decode('utf-8')
             comment_strings = [
                 comment.read_bytes(comment.read(32)).decode('utf-8')
-                for i in xrange(comment.read(32))]
+                for i in range(comment.read(32))]
 
             return VorbisComment(comment_strings, vendor_string)
         else:

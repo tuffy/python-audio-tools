@@ -490,7 +490,7 @@ class AiffAudio(AiffContainer):
     NAME = SUFFIX
     DESCRIPTION = u"Audio Interchange File Format"
 
-    PRINTABLE_ASCII = frozenset([chr(i) for i in xrange(0x20, 0x7E + 1)])
+    PRINTABLE_ASCII = frozenset([chr(i) for i in range(0x20, 0x7E + 1)])
 
     def __init__(self, filename):
         """filename is a plain string"""

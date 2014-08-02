@@ -89,7 +89,7 @@ class __Checksum__:
                      enumerate(self.__values__[r:
                                                r + self.__total_pcm_frames__],
                                1)]) & 0xFFFFFFFF
-                for r in xrange(self.__pcm_frame_range__)]
+                for r in range(self.__pcm_frame_range__)]
 
     def checksums_v2(self):
         if (len(self.__values__) < (self.__total_pcm_frames__ +
@@ -106,7 +106,7 @@ class __Checksum__:
                      enumerate(self.__values__[r:
                                                r + self.__total_pcm_frames__],
                                1)]) & 0xFFFFFFFF
-                for r in xrange(self.__pcm_frame_range__)]
+                for r in range(self.__pcm_frame_range__)]
 
 
 def match_offset(ar_matches, checksums, initial_offset):
@@ -278,7 +278,7 @@ def perform_lookup(disc_id,
             if (((id1 == disc_id.id1()) and
                  (id2 == disc_id.id2()) and
                  (freedb_disc_id == disc_id.freedb_disc_id()))):
-                for track_number in xrange(1, track_count + 1):
+                for track_number in range(1, track_count + 1):
                     if (track_number in matches):
                         matches[track_number].append(
                             tuple(response.parse("8u 32u 32u")))

@@ -299,7 +299,7 @@ class M4A_FTYP_Atom(M4A_Leaf_Atom):
         return cls(reader.read_bytes(4),
                    reader.read(32),
                    [reader.read_bytes(4)
-                    for i in xrange((data_size - 8) // 4)])
+                    for i in range((data_size - 8) // 4)])
 
     def build(self, writer):
         """writes the atom to the given BitstreamWriter
@@ -660,7 +660,7 @@ class M4A_DREF_Atom(M4A_Leaf_Atom):
 
         (version, flags, reference_count) = reader.parse("8u 24u 32u")
         references = []
-        for i in xrange(reference_count):
+        for i in range(reference_count):
             (leaf_size, leaf_name) = reader.parse("32u 4b")
             references.append(
                 M4A_Leaf_Atom.parse(
@@ -708,7 +708,7 @@ class M4A_STSD_Atom(M4A_Leaf_Atom):
 
         (version, flags, description_count) = reader.parse("8u 24u 32u")
         descriptions = []
-        for i in xrange(description_count):
+        for i in range(description_count):
             (leaf_size, leaf_name) = reader.parse("32u 4b")
             descriptions.append(
                 parsers.get(leaf_name, M4A_Leaf_Atom).parse(
@@ -762,7 +762,7 @@ class M4A_STTS_Atom(M4A_Leaf_Atom):
         return cls(version=version,
                    flags=flags,
                    times=[tuple(reader.parse("32u 32u"))
-                          for i in xrange(reader.read(32))])
+                          for i in range(reader.read(32))])
 
     def build(self, writer):
         """writes the atom to the given BitstreamWriter
@@ -800,7 +800,7 @@ class M4A_STSC_Atom(M4A_Leaf_Atom):
         return cls(version=version,
                    flags=flags,
                    blocks=[tuple(reader.parse("32u 32u 32u"))
-                           for i in xrange(reader.read(32))])
+                           for i in range(reader.read(32))])
 
     def build(self, writer):
         """writes the atom to the given BitstreamWriter
@@ -842,7 +842,7 @@ class M4A_STSZ_Atom(M4A_Leaf_Atom):
                    flags=flags,
                    byte_size=byte_size,
                    block_sizes=[reader.read(32) for i in
-                                xrange(reader.read(32))])
+                                range(reader.read(32))])
 
     def build(self, writer):
         """writes the atom to the given BitstreamWriter
@@ -882,7 +882,7 @@ class M4A_STCO_Atom(M4A_Leaf_Atom):
         assert(name == "stco")
         (version, flags, offset_count) = reader.parse("8u 24u 32u")
         return cls(version, flags,
-                   [reader.read(32) for i in xrange(offset_count)])
+                   [reader.read(32) for i in range(offset_count)])
 
     def build(self, writer):
         """writes the atom to the given BitstreamWriter

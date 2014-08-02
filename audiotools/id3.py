@@ -19,7 +19,6 @@
 
 from audiotools import (MetaData, Image, InvalidImage)
 import codecs
-from functools import total_ordering
 
 from id3v1 import ID3v1Comment
 
@@ -93,7 +92,7 @@ def decode_syncsafe32(i):
 
     value = 0
 
-    for x in xrange(4):
+    for x in range(4):
         if ((i & 0x80) == 0):
             value |= ((i & 0x7F) << (x * 7))
             i >>= 8
@@ -117,14 +116,13 @@ def encode_syncsafe32(i):
 
     value = 0
 
-    for x in xrange(4):
+    for x in range(4):
         value |= ((i & 0x7F) << (x * 8))
         i >>= 7
 
     return value
 
 
-@total_ordering
 class C_string:
     TERMINATOR = {'ascii': chr(0),
                   'latin_1': chr(0),
@@ -157,16 +155,22 @@ class C_string:
         return len(self.unicode_string)
 
     def __eq__(self, s):
-        if (isinstance(s, C_string)):
-            return (self.unicode_string == s.unicode_string)
-        else:
-            return (self.unicode_string == unicode(s))
+        return (self.unicode_string == unicode(s))
+
+    def __ne__(self, s):
+        return (self.unicode_string != unicode(s))
 
     def __lt__(self, s):
-        if (isinstance(s, C_string)):
-            return (self.unicode_string < s.unicode_string)
-        else:
-            return (self.unicode_string < unicode(s))
+        return (self.unicode_string < unicode(s))
+
+    def __le__(self, s):
+        return (self.unicode_string <= unicode(s))
+
+    def __gt__(self, s):
+        return (self.unicode_string > unicode(s))
+
+    def __ge__(self, s):
+        return (self.unicode_string >= unicode(s))
 
     @classmethod
     def parse(cls, encoding, reader):
@@ -824,6 +828,9 @@ class ID3v22_COM_Frame:
                                   "language",
                                   "short_description",
                                   "data"], self, frame)
+
+    def __ne__(self, frame):
+        return not self.__eq__(frame)
 
     def __unicode__(self):
         return self.data.decode({0: 'latin-1', 1: 'ucs2'}[self.encoding],

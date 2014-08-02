@@ -372,7 +372,7 @@ class VorbisAudio(AudioFile):
                 comment.read_bytes(comment.read(32)).decode('utf-8')
             comment_strings = [
                 comment.read_bytes(comment.read(32)).decode('utf-8')
-                for i in xrange(comment.read(32))]
+                for i in range(comment.read(32))]
             if (comment.read(1) == 1):   # framing bit
                 return VorbisComment(comment_strings, vendor_string)
             else:

@@ -877,7 +877,7 @@ class output_table:
 
         column_widths = [
             max([row.column_width(col) for row in self.__rows__])
-            for col in xrange(len(self.__rows__[0]))]
+            for col in range(len(self.__rows__[0]))]
 
         for row in self.__rows__:
             yield row.format(column_widths, is_tty)
@@ -2359,7 +2359,7 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
 
     while ((len(framelist1) > 0) and (len(framelist2) > 0)):
         if (framelist1 != framelist2):
-            for i in xrange(min(framelist1.frames, framelist2.frames)):
+            for i in range(min(framelist1.frames, framelist2.frames)):
                 if (framelist1.frame(i) != framelist2.frame(i)):
                     return frame_number + i
             else:
@@ -4524,7 +4524,7 @@ def at_a_time(total, per):
     [3, 3, 3, 1]
     """
 
-    for i in xrange(total // per):
+    for i in range(total // per):
         yield per
     yield total % per
 
@@ -4802,7 +4802,7 @@ def metadata_lookup(musicbrainz_disc_id,
         # no matches, so build a set of dummy metadata
         track_count = len(musicbrainz_disc_id.offsets)
         return [[MetaData(track_number=i, track_total=track_count)
-                 for i in xrange(1, track_count + 1)]]
+                 for i in range(1, track_count + 1)]]
     else:
         return matches
 
@@ -5077,7 +5077,7 @@ class ExecProgressQueue:
             return results
 
         # populate job pool up to "max_processes" number of jobs
-        for i in xrange(min(max_processes, len(self.__queued_jobs__))):
+        for i in range(min(max_processes, len(self.__queued_jobs__))):
             job = execute_next_job()
             job_pool[job.job_fd()] = job
 

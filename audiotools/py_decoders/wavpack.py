@@ -427,7 +427,7 @@ def read_decorrelation_terms(sub_block_size,
 
     decorrelation_terms = []
     decorrelation_deltas = []
-    for i in xrange(passes):
+    for i in range(passes):
         decorrelation_terms.append(sub_block_data.read(5) - 5)
         if (not (((1 <= decorrelation_terms[-1]) and
                   (decorrelation_terms[-1] <= 18)) or
@@ -457,7 +457,7 @@ def read_decorrelation_weights(block_header, decorrelation_terms_count,
         weight_count = sub_block_size * 2 - 1
 
     weight_values = []
-    for i in xrange(weight_count):
+    for i in range(weight_count):
         value_i = sub_block_data.read_signed(8)
         if (value_i > 0):
             weight_values.append((value_i * 2 ** 3) +
@@ -473,10 +473,10 @@ def read_decorrelation_weights(block_header, decorrelation_terms_count,
         if ((weight_count // 2) > decorrelation_terms_count):
             raise ValueError("invalid number of decorrelation weights")
 
-        for i in xrange(weight_count // 2):
+        for i in range(weight_count // 2):
             weights.append((weight_values[i * 2],
                             weight_values[i * 2 + 1]))
-        for i in xrange(weight_count // 2, decorrelation_terms_count):
+        for i in range(weight_count // 2, decorrelation_terms_count):
             weights.append((0, 0))
 
         weights.reverse()
@@ -485,9 +485,9 @@ def read_decorrelation_weights(block_header, decorrelation_terms_count,
         if (weight_count > decorrelation_terms_count):
             raise ValueError("invalid number of decorrelation weights")
 
-        for i in xrange(weight_count):
+        for i in range(weight_count):
             weights.append((weight_values[i], ))
-        for i in xrange(weight_count, decorrelation_terms_count):
+        for i in range(weight_count, decorrelation_terms_count):
             weights.append((0, 0))
         weights.reverse()
 
@@ -520,12 +520,12 @@ def read_decorrelation_samples(block_header, decorrelation_terms,
             elif ((1 <= term) and (term <= 8)):
                 term_samples = ([], [])
                 if (sub_block_bytes >= (term * 4)):
-                    for s in xrange(term):
+                    for s in range(term):
                         term_samples[0].append(read_exp2(sub_block_data))
                         term_samples[1].append(read_exp2(sub_block_data))
                     sub_block_bytes -= (term * 4)
                 else:
-                    for s in xrange(term):
+                    for s in range(term):
                         term_samples[0].append(0)
                         term_samples[1].append(0)
                     sub_block_bytes = 0
@@ -557,11 +557,11 @@ def read_decorrelation_samples(block_header, decorrelation_terms,
             elif ((1 <= term) and (term <= 8)):
                 term_samples = ([],)
                 if (sub_block_bytes >= (term * 2)):
-                    for s in xrange(term):
+                    for s in range(term):
                         term_samples[0].append(read_exp2(sub_block_data))
                     sub_block_bytes -= (term * 2)
                 else:
-                    for s in xrange(term):
+                    for s in range(term):
                         term_samples[0].append(0)
                     sub_block_bytes = 0
                 samples.append(term_samples)
@@ -574,11 +574,11 @@ def read_decorrelation_samples(block_header, decorrelation_terms,
 
 def read_entropy_variables(block_header, sub_block_data):
     entropies = ([], [])
-    for i in xrange(3):
+    for i in range(3):
         entropies[0].append(read_exp2(sub_block_data))
 
     if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
-        for i in xrange(3):
+        for i in range(3):
             entropies[1].append(read_exp2(sub_block_data))
     else:
         entropies[1].extend([0, 0, 0])
@@ -601,7 +601,7 @@ def read_bitstream(block_header, entropies, sub_block_data):
             # handle long run of 0 residuals
             zeroes = read_egc(sub_block_data)
             if (zeroes > 0):
-                for j in xrange(zeroes):
+                for j in range(zeroes):
                     residuals[i % channel_count].append(0)
                     i += 1
                 entropies[0][0] = entropies[0][1] = entropies[0][2] = 0
@@ -826,7 +826,7 @@ def decorrelation_pass_1ch(correlated_samples,
         assert(len(decorrelation_samples) == 2)
         decorrelated = decorrelation_samples[:]
         decorrelated.reverse()
-        for i in xrange(len(correlated_samples)):
+        for i in range(len(correlated_samples)):
             temp = (3 * decorrelated[i + 1] - decorrelated[i]) // 2
             decorrelated.append(apply_weight(weight, temp) +
                                 correlated_samples[i])
@@ -836,7 +836,7 @@ def decorrelation_pass_1ch(correlated_samples,
         assert(len(decorrelation_samples) == 2)
         decorrelated = decorrelation_samples[:]
         decorrelated.reverse()
-        for i in xrange(len(correlated_samples)):
+        for i in range(len(correlated_samples)):
             temp = 2 * decorrelated[i + 1] - decorrelated[i]
             decorrelated.append(apply_weight(weight, temp) +
                                 correlated_samples[i])
@@ -845,7 +845,7 @@ def decorrelation_pass_1ch(correlated_samples,
     elif ((1 <= term) and (term <= 8)):
         assert(len(decorrelation_samples) == term)
         decorrelated = decorrelation_samples[:]
-        for i in xrange(len(correlated_samples)):
+        for i in range(len(correlated_samples)):
             decorrelated.append(apply_weight(weight, decorrelated[i]) +
                                 correlated_samples[i])
             weight += update_weight(decorrelated[i],
@@ -875,7 +875,7 @@ def decorrelation_pass_2ch(correlated,
                         [decorrelation_samples[0][0]])
         weights = list(weights)
         if (term == -1):
-            for i in xrange(len(correlated[0])):
+            for i in range(len(correlated[0])):
                 decorrelated[0].append(apply_weight(weights[0],
                                                     decorrelated[1][i]) +
                                        correlated[0][i])
@@ -892,7 +892,7 @@ def decorrelation_pass_2ch(correlated,
                 weights[0] = max(min(weights[0], 1024), -1024)
                 weights[1] = max(min(weights[1], 1024), -1024)
         elif (term == -2):
-            for i in xrange(len(correlated[0])):
+            for i in range(len(correlated[0])):
                 decorrelated[1].append(apply_weight(weights[1],
                                                     decorrelated[0][i]) +
                                        correlated[1][i])
@@ -910,7 +910,7 @@ def decorrelation_pass_2ch(correlated,
                 weights[1] = max(min(weights[1], 1024), -1024)
                 weights[0] = max(min(weights[0], 1024), -1024)
         elif (term == -3):
-            for i in xrange(len(correlated[0])):
+            for i in range(len(correlated[0])):
                 decorrelated[0].append(apply_weight(weights[0],
                                                     decorrelated[1][i]) +
                                        correlated[0][i])

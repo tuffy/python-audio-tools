@@ -240,7 +240,7 @@ class cd2track(UtilTest):
 
         all_options = ["-t", "-q", "-d", "--format",
                        "--album-number", "--album-total"]
-        for count in xrange(1, len(all_options) + 1):
+        for count in range(1, len(all_options) + 1):
             for options in Combinations(all_options, count):
                 self.clean_output_dirs()
                 options = self.populate_options(options)
@@ -284,7 +284,7 @@ class cd2track(UtilTest):
                     base_metadata.album_total = 9
 
                 output_filenames = []
-                for i in xrange(3):
+                for i in range(3):
                     base_metadata.track_number = i + 1
                     output_filenames.append(
                         output_type.track_name(
@@ -318,7 +318,7 @@ class cd2track(UtilTest):
                         self.stream) is None)
 
                 # make sure metadata fits our expectations
-                for i in xrange(len(output_tracks)):
+                for i in range(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
                     if (metadata is not None):
                         self.assertEqual(metadata.track_name, None)
@@ -414,7 +414,7 @@ class cd2track(UtilTest):
 
         all_options = ["-t", "-q", "-d", "--format",
                        "--album-number", "--album-total"]
-        for count in xrange(1, len(all_options) + 1):
+        for count in range(1, len(all_options) + 1):
             for options in Combinations(all_options, count):
 
                 options = self.populate_bad_options(options)
@@ -513,7 +513,7 @@ class coverdump(UtilTest):
 
         metadata = audiotools.MetaData(track_name=u"Track")
         self.images1 = []
-        for i in xrange(10):
+        for i in range(10):
             import Image
             img = Image.new("RGB", (100, 100), "#%2.2X%2.2X%2.2X" % (i, i, i))
             data = cStringIO.StringIO()
@@ -526,7 +526,7 @@ class coverdump(UtilTest):
 
         metadata = audiotools.MetaData(track_name=u"Track")
         self.images2 = []
-        for i in xrange(5):
+        for i in range(5):
             import Image
             img = Image.new("RGB", (100, 100), "#%2.2X%2.2X%2.2X" %
                             (100 + i, 100 + i, 100 + i))
@@ -586,7 +586,7 @@ class coverdump(UtilTest):
                                      )
 
         all_options = ["-d", "-p"]
-        for count in xrange(len(all_options) + 1):
+        for count in range(len(all_options) + 1):
             for options in Combinations(all_options, count):
                 options = self.populate_options(options)
                 self.clean_output_dir()
@@ -914,7 +914,7 @@ class covertag(UtilTest):
         self.__check_error__(ERR_DUPLICATE_FILE %
                              (audiotools.Filename(self.track_file.name),))
 
-        for count in xrange(1, len(covertag_options) + 1):
+        for count in range(1, len(covertag_options) + 1):
             for options in Combinations(covertag_options, count):
                 f = open(self.track_file.name, 'wb')
                 f.write(self.track_data)
@@ -1648,7 +1648,7 @@ class track2track(UtilTest):
                        "--replay-gain", "--no-replay-gain",
                        "--sample-rate", "--channels", "--bits-per-sample"]
 
-        for count in xrange(1, len(all_options) + 1):
+        for count in range(1, len(all_options) + 1):
             for options in Combinations(all_options, count):
                 self.clean_output_dirs()
                 self.__clear_checks__()
@@ -1853,7 +1853,7 @@ class track2track(UtilTest):
         all_options = ["-t", "-q", "-d", "--format", "-o", "-j",
                        "--replay-gain", "--no-replay-gain",
                        "--sample-rate", "--channels", "--bits-per-sample"]
-        for count in xrange(0, len(all_options) + 1):
+        for count in range(0, len(all_options) + 1):
             for options in Combinations(all_options, count):
                 self.clean_output_dirs()
                 self.__clear_checks__()
@@ -2102,7 +2102,7 @@ class track2track(UtilTest):
         temp_files = [os.path.join(self.input_dir,
                                    "%2.2d.%s" % (i + 1,
                                                  self.input_format.SUFFIX))
-                      for i in xrange(7)]
+                      for i in range(7)]
         temp_tracks = []
 
         temp_tracks.append(
@@ -2386,7 +2386,7 @@ class trackcat(UtilTest):
                             self.nonsuffix_outfile.name,
                             "/dev/null/foo.wav",
                             "/dev/null/foo"]:
-                for count in xrange(1, len(all_options) + 1):
+                for count in range(1, len(all_options) + 1):
                     for options in Combinations(all_options, count):
                         yield (type, quality, outfile, count, options)
 
@@ -2624,7 +2624,7 @@ class trackcat_pre_gap(UtilTest):
         cuesheet_data = open("trackcat_pre_gap.cue", "rb").read()
         # write individual tracks to disk along with track numbers
         temp_tracks_f = [tempfile.NamedTemporaryFile(suffix=".aiff")
-                         for i in xrange(len(track_lengths))]
+                         for i in range(len(track_lengths))]
         temp_tracks = [audiotools.AiffAudio.from_pcm(
                        temp_f.name,
                        EXACT_RANDOM_PCM_Reader(length),
@@ -2700,7 +2700,7 @@ class trackcmp(UtilTest):
         self.broken_file.write(open(self.match_file1.name, "rb").read()[0:-1])
         self.broken_file.flush()
 
-        for i in xrange(1, 4):
+        for i in range(1, 4):
             track = self.type.from_pcm(
                 os.path.join(self.match_dir1,
                              "%2.2d.%s" % (i, self.type.SUFFIX)),
@@ -2719,14 +2719,14 @@ class trackcmp(UtilTest):
                 RANDOM_PCM_Reader(i * 2))
             track.set_metadata(audiotools.MetaData(track_number=i))
 
-        for i in xrange(1, 3):
+        for i in range(1, 3):
             track = self.type.from_pcm(
                 os.path.join(self.mismatch_dir2,
                              "%2.2d.%s" % (i, self.type.SUFFIX)),
                 BLANK_PCM_Reader(i * 2))
             track.set_metadata(audiotools.MetaData(track_number=i))
 
-        for i in xrange(1, 5):
+        for i in range(1, 5):
             track = self.type.from_pcm(
                 os.path.join(self.mismatch_dir3,
                              "%2.2d.%s" % (i, self.type.SUFFIX)),
@@ -2839,7 +2839,7 @@ class trackcmp(UtilTest):
             self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                               self.match_dir1, self.match_dir2]),
             0)
-        for i in xrange(1, 4):
+        for i in range(1, 4):
             self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
@@ -2861,7 +2861,7 @@ class trackcmp(UtilTest):
             self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                               self.match_dir1, self.match_dir1]),
             0)
-        for i in xrange(1, 4):
+        for i in range(1, 4):
             self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
@@ -2883,7 +2883,7 @@ class trackcmp(UtilTest):
             self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                               self.match_dir1, self.mismatch_dir1]),
             1)
-        for i in xrange(1, 4):
+        for i in range(1, 4):
             self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
@@ -2914,7 +2914,7 @@ class trackcmp(UtilTest):
                 "directory":
                 audiotools.Filename(self.mismatch_dir2)})
 
-        for i in xrange(1, 3):
+        for i in range(1, 3):
             self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
@@ -2943,7 +2943,7 @@ class trackcmp(UtilTest):
                 "directory":
                 audiotools.Filename(self.match_dir1)})
 
-        for i in xrange(1, 4):
+        for i in range(1, 4):
             self.__check_output__(
                 audiotools.output_progress(
                     (LAB_TRACKCMP_CMP %
@@ -3096,7 +3096,7 @@ class trackinfo(UtilTest):
         all_options = ["-n", "-L", "-b", "-%", "-C"]
 
         for track in self.metadata_tracks:
-            for count in xrange(1, len(all_options) + 1):
+            for count in range(1, len(all_options) + 1):
                 for options in Combinations(all_options, count):
                     self.assertEqual(
                         self.__run_app__(
@@ -4337,7 +4337,7 @@ class trackrename(UtilTest):
         from audiotools.text import (LAB_ENCODE)
 
         all_options = ["--format"]
-        for count in xrange(0, len(all_options) + 1):
+        for count in range(0, len(all_options) + 1):
             for (name, metadata) in zip(self.track_names, self.track_metadata):
                 for options in Combinations(all_options, count):
                     options = self.populate_options(options)
@@ -4632,7 +4632,7 @@ class tracksplit(UtilTest):
         track = self.type.from_pcm(self.unsplit_file.name, self.stream)
         track.set_metadata(self.unsplit_metadata)
 
-        for count in xrange(1, len(all_options) + 1):
+        for count in range(1, len(all_options) + 1):
             for options in Combinations(all_options, count):
                 self.clean_output_dirs()
                 options = self.populate_options(options)
@@ -4690,7 +4690,7 @@ class tracksplit(UtilTest):
 
                 output_filenames = []
 
-                for i in xrange(3):
+                for i in range(3):
                     base_metadata.track_number = i + 1
                     output_filenames.append(
                         output_type.track_name(
@@ -4721,7 +4721,7 @@ class tracksplit(UtilTest):
                         self.stream) is None)
 
                 # make sure metadata fits our expectations
-                for i in xrange(len(output_tracks)):
+                for i in range(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
                     if (metadata is not None):
                         self.assertEqual(metadata.track_name, None)
@@ -4757,7 +4757,7 @@ class tracksplit(UtilTest):
         track.set_cuesheet(audiotools.read_sheet(self.cuesheet2.name))
         self.assert_(track.get_cuesheet() is not None)
 
-        for count in xrange(1, len(all_options) + 1):
+        for count in range(1, len(all_options) + 1):
             for options in Combinations(all_options, count):
                 self.clean_output_dirs()
                 options = self.populate_options(options)
@@ -4806,7 +4806,7 @@ class tracksplit(UtilTest):
                     performer_name=u"Performer 1")
 
                 output_filenames = []
-                for i in xrange(3):
+                for i in range(3):
                     base_metadata.track_number = i + 1
                     output_filenames.append(
                         output_type.track_name(
@@ -4837,7 +4837,7 @@ class tracksplit(UtilTest):
                         self.stream) is None)
 
                 # make sure metadata fits our expectations
-                for i in xrange(len(output_tracks)):
+                for i in range(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
                     if (metadata is not None):
                         self.assertEqual(metadata.track_name, None)
@@ -4997,7 +4997,7 @@ class tracksplit(UtilTest):
 
         all_options = ["-t", "-q", "-d", "--format"]
 
-        for count in xrange(1, len(all_options) + 1):
+        for count in range(1, len(all_options) + 1):
             for options in Combinations(all_options, count):
                 options = self.populate_bad_options(options)
 
@@ -5252,7 +5252,7 @@ class tracktag(UtilTest):
         self.__check_error__(ERR_DUPLICATE_FILE %
                              (audiotools.Filename(self.track_file.name),))
 
-        for count in xrange(1, len(most_options) + 1):
+        for count in range(1, len(most_options) + 1):
             for options in Combinations(most_options, count):
                 f = open(self.track_file.name, 'wb')
                 f.write(self.track_data)
@@ -5569,7 +5569,9 @@ class tracktag_errors(UtilTest):
 
                 wv = audiotools.open(tempwv.name)
 
-                self.assertEqual(flac, wv)
+                self.assertEqual(
+                    audiotools.pcm_frame_cmp(flac.to_pcm(),
+                                             wv.to_pcm()), None)
 
                 self.assertEqual(
                     subprocess.call(["tracktag", "-V", "quiet",
@@ -5583,7 +5585,9 @@ class tracktag_errors(UtilTest):
                                  flac.filename, wv.filename])
 
                 flac = audiotools.open(tempflac.name)
-                self.assertEqual(flac, wv)
+                self.assertEqual(
+                    audiotools.pcm_frame_cmp(flac.to_pcm(),
+                                             wv.to_pcm()), None)
             finally:
                 tempflac.close()
                 tempwv.close()
@@ -5708,7 +5712,7 @@ class tracktag_misc(UtilTest):
                                  'album_total']
                 try:
                     # make sure the number fields get set properly, if possible
-                    for count in xrange(1, len(number_fields) + 1):
+                    for count in range(1, len(number_fields) + 1):
                         for fields in Combinations(number_fields, count):
                             self.assertEqual(
                                 self.__run_app__(
@@ -5735,7 +5739,7 @@ class tracktag_misc(UtilTest):
                                                           track_total=2,
                                                           album_number=3,
                                                           album_total=4)
-                    for count in xrange(1, len(number_fields) + 1):
+                    for count in range(1, len(number_fields) + 1):
                         for fields in Combinations(number_fields, count):
                             audiotools.open(track.filename).set_metadata(
                                 number_metadata)

@@ -249,7 +249,7 @@ class VorbisComment(MetaData):
             key = self.ATTRIBUTE_MAP[attr]
             try:
                 new_values = self[key]
-                for i in xrange(len(new_values)):
+                for i in range(len(new_values)):
                     # look for the first TRACKNUMBER/DISCNUMBER field
                     # which contains an integer
                     if (re.search(r'\d+', new_values[i]) is not None):
@@ -275,7 +275,7 @@ class VorbisComment(MetaData):
             key = self.ATTRIBUTE_MAP[attr]
             try:
                 new_values = self[key]
-                for i in xrange(len(new_values)):
+                for i in range(len(new_values)):
                     # look for the first TRACKTOTAL/DISCTOTAL field
                     # which contains an integer
                     if (re.search(r'\d+', new_values[i]) is not None):
@@ -296,7 +296,7 @@ class VorbisComment(MetaData):
                 slashed_key = {"track_total": u"TRACKNUMBER",
                                "album_total": u"DISCNUMBER"}[attr]
                 new_slashed_values = self[slashed_key]
-                for i in xrange(len(new_slashed_values)):
+                for i in range(len(new_slashed_values)):
                     # look for the first TRACKNUMBER/DISCNUMBER field
                     # which contains a slashed value
                     if (re.search(r'/\D*\d+',

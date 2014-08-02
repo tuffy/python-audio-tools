@@ -396,10 +396,10 @@ if (__name__ == '__main__'):
         # pick choice using interactive widget
         output_widget = audiotools.ui.OutputFiller(
             track_labels=[_.LAB_TRACK_X_OF_Y % (i + 1, output_track_count)
-                          for i in xrange(output_track_count)],
+                          for i in range(output_track_count)],
             metadata_choices=metadata_choices,
             input_filenames=[input_filename for i in
-                             xrange(output_track_count)],
+                             range(output_track_count)],
             output_directory=options.dir,
             format_string=options.format,
             output_class=AudioType,
@@ -431,7 +431,7 @@ if (__name__ == '__main__'):
                 audiotools.ui.process_output_options(
                     metadata_choices=metadata_choices,
                     input_filenames=[input_filename for i in
-                                     xrange(output_track_count)],
+                                     range(output_track_count)],
                     output_directory=options.dir,
                     format_string=options.format,
                     output_class=AudioType,

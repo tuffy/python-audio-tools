@@ -42,7 +42,7 @@ def tta_filter(bps, residuals):
     dx = [0] * 8
     dl = [0] * 8
 
-    for i in xrange(0, len(residuals)):
+    for i in range(0, len(residuals)):
         if (i == 0):
             filtered.append(residuals[i] + (round_ >> shift))
         else:
@@ -92,7 +92,7 @@ def fixed_predictor(bps, filtered):
         shift = 5
 
     predicted = [filtered[0]]
-    for i in xrange(1, len(filtered)):
+    for i in range(1, len(filtered)):
         predicted.append(
             filtered[i] +
             (((predicted[i - 1] << shift) - predicted[i - 1]) >> shift))
@@ -110,7 +110,7 @@ def decorrelate(predicted):
     for c in reversed(range(channels)):
         decorrelated_ch = []
         if (c == (channels - 1)):
-            for i in xrange(pcm_frames):
+            for i in range(pcm_frames):
                 if (predicted[c - 1][i] >= 0):
                     decorrelated_ch.append(
                         predicted[c][i] +
@@ -120,7 +120,7 @@ def decorrelate(predicted):
                         predicted[c][i] +
                         div_ceil(predicted[c - 1][i], 2))
         else:
-            for i in xrange(pcm_frames):
+            for i in range(pcm_frames):
                 decorrelated_ch.append(
                     decorrelated[-1][i] - predicted[c][i])
         decorrelated.append(decorrelated_ch)
@@ -239,7 +239,7 @@ class TTADecoder:
         crc = CRC32()
         self.reader.add_callback(crc.update)
         self.frame_sizes = [self.reader.read(32) for i in
-                            xrange(total_tta_frames)]
+                            range(total_tta_frames)]
         self.reader.pop_callback()
         seektable_crc = self.reader.read(32)
         if (int(crc) != seektable_crc):
@@ -274,9 +274,9 @@ class TTADecoder:
         sum1 = [2 ** 14] * self.channels
 
         # list of unfiltered output for each channel
-        unfiltered = [[] for i in xrange(self.channels)]
+        unfiltered = [[] for i in range(self.channels)]
 
-        for f in xrange(pcm_frames):
+        for f in range(pcm_frames):
             correlated = []
 
             for (c, ch_output) in enumerate(unfiltered):

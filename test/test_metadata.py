@@ -114,7 +114,7 @@ class MetaDataTest(unittest.TestCase):
                     if (field not in audiotools.MetaData.INTEGER_FIELDS):
                         unicode_string = u"".join(
                             [random.choice(chars)
-                             for i in xrange(random.choice(range(1, 21)))])
+                             for i in range(random.choice(range(1, 21)))])
                         setattr(metadata, field, unicode_string)
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
@@ -148,7 +148,7 @@ class MetaDataTest(unittest.TestCase):
                     if (field not in audiotools.MetaData.INTEGER_FIELDS):
                         unicode_string = u"".join(
                             [random.choice(chars)
-                             for i in xrange(random.choice(range(1, 21)))])
+                             for i in range(random.choice(range(1, 21)))])
                         setattr(metadata, field, unicode_string)
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
@@ -1668,7 +1668,7 @@ class ID3v1MetaData(MetaDataTest):
                     if (field not in audiotools.MetaData.INTEGER_FIELDS):
                         unicode_string = u"".join(
                             [random.choice(chars)
-                             for i in xrange(random.choice(range(1, 5)))])
+                             for i in range(random.choice(range(1, 5)))])
                         setattr(metadata, field, unicode_string)
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
@@ -1701,7 +1701,7 @@ class ID3v1MetaData(MetaDataTest):
                     if (field not in audiotools.MetaData.INTEGER_FIELDS):
                         unicode_string = u"".join(
                             [random.choice(chars)
-                             for i in xrange(random.choice(range(1, 5)))])
+                             for i in range(random.choice(range(1, 5)))])
                         setattr(metadata, field, unicode_string)
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
@@ -2684,7 +2684,7 @@ class ID3v22MetaData(MetaDataTest):
         from audiotools.id3 import decode_syncsafe32, encode_syncsafe32
 
         # ensure values round-trip correctly across several bytes
-        for value in xrange(16384):
+        for value in range(16384):
             self.assertEqual(decode_syncsafe32(encode_syncsafe32(value)),
                              value)
 

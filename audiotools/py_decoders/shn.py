@@ -47,9 +47,9 @@ class SHNDecoder:
         else:
             raise ValueError("unsupported Shorten file type")
 
-        self.wrapped_samples = [[0] * 3 for c in xrange(self.channels)]
+        self.wrapped_samples = [[0] * 3 for c in range(self.channels)]
         self.means = [[0] * self.number_of_means
-                      for c in xrange(self.channels)]
+                      for c in range(self.channels)]
         self.left_shift = 0
         self.stream_finished = False
 
@@ -64,7 +64,7 @@ class SHNDecoder:
         if (command == 9):
             # got verbatim, so read data
             verbatim_bytes = "".join([chr(self.unsigned(8) & 0xFF)
-                                      for i in xrange(self.unsigned(5))])
+                                      for i in range(self.unsigned(5))])
 
             try:
                 wave = BitstreamReader(cStringIO.StringIO(verbatim_bytes), 1)
@@ -178,7 +178,7 @@ class SHNDecoder:
             return from_channels([from_list([], 1,
                                             self.bits_per_sample,
                                             self.signed_samples)
-                                  for channel in xrange(self.channels)])
+                                  for channel in range(self.channels)])
 
         c = 0
         samples = []
@@ -235,7 +235,7 @@ class SHNDecoder:
                     return from_channels(
                         [from_list([], 1, self.bits_per_sample,
                                    self.signed_samples)
-                         for channel in xrange(self.channels)])
+                         for channel in range(self.channels)])
                 elif (command == 5):  # BLOCKSIZE
                     self.block_length = self.long()
                 elif (command == 6):  # BITSHIFT
@@ -243,7 +243,7 @@ class SHNDecoder:
                 elif (command == 9):  # VERBATIM
                     # skip this command during reading
                     size = self.unsigned(5)
-                    for i in xrange(size):
+                    for i in range(size):
                         self.skip_unsigned(8)
                 else:
                     raise ValueError("unsupported Shorten command")
@@ -252,7 +252,7 @@ class SHNDecoder:
         offset = shnmean(means)
         energy = self.unsigned(3)
         samples = []
-        for i in xrange(block_length):
+        for i in range(block_length):
             residual = self.signed(energy)
             samples.append(residual + offset)
         return samples
@@ -260,7 +260,7 @@ class SHNDecoder:
     def read_diff1(self, block_length, previous_samples):
         samples = previous_samples[-1:]
         energy = self.unsigned(3)
-        for i in xrange(1, block_length + 1):
+        for i in range(1, block_length + 1):
             residual = self.signed(energy)
             samples.append(samples[i - 1] + residual)
         return samples[1:]
@@ -268,7 +268,7 @@ class SHNDecoder:
     def read_diff2(self, block_length, previous_samples):
         samples = previous_samples[-2:]
         energy = self.unsigned(3)
-        for i in xrange(2, block_length + 2):
+        for i in range(2, block_length + 2):
             residual = self.signed(energy)
             samples.append((2 * samples[i - 1]) - samples[i - 2] + residual)
         return samples[2:]
@@ -276,7 +276,7 @@ class SHNDecoder:
     def read_diff3(self, block_length, previous_samples):
         samples = previous_samples[-3:]
         energy = self.unsigned(3)
-        for i in xrange(3, block_length + 3):
+        for i in range(3, block_length + 3):
             residual = self.signed(energy)
             samples.append((3 * (samples[i - 1] - samples[i - 2])) +
                            samples[i - 3] + residual)
@@ -286,13 +286,13 @@ class SHNDecoder:
         offset = shnmean(means)
         energy = self.unsigned(3)
         LPC_count = self.unsigned(2)
-        LPC_coeff = [self.signed(5) for i in xrange(LPC_count)]
+        LPC_coeff = [self.signed(5) for i in range(LPC_count)]
         unoffset = []
         samples = previous_samples[-LPC_count:]
-        for i in xrange(block_length):
+        for i in range(block_length):
             residual = self.signed(energy)
             LPC_sum = 2 ** 5
-            for j in xrange(LPC_count):
+            for j in range(LPC_count):
                 if ((i - j - 1) < 0):
                     # apply offset to warm-up samples
                     LPC_sum += (LPC_coeff[j] *

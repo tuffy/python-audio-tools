@@ -317,7 +317,7 @@ def block_parameters(channel_count, channel_mask, correlation_passes):
                 EncodingParameters(2, correlation_passes)]
     else:
         return [EncodingParameters(1, correlation_passes)
-                for c in xrange(channel_count)]
+                for c in range(channel_count)]
 
 
 def encode_wavpack(filename,
@@ -831,7 +831,7 @@ def write_correlation_samples(writer, correlation_terms, correlation_samples,
                 writer.write_signed(16, wv_log2(samples[1][0]))
                 writer.write_signed(16, wv_log2(samples[1][1]))
             elif ((1 <= term) and (term <= 8)):
-                for s in xrange(term):
+                for s in range(term):
                     writer.write_signed(16, wv_log2(samples[0][s]))
                     writer.write_signed(16, wv_log2(samples[1][s]))
             elif ((-3 <= term) and (term <= -1)):
@@ -845,7 +845,7 @@ def write_correlation_samples(writer, correlation_terms, correlation_samples,
                 writer.write_signed(16, wv_log2(samples[0][0]))
                 writer.write_signed(16, wv_log2(samples[0][1]))
             elif ((1 <= term) and (term <= 8)):
-                for s in xrange(term):
+                for s in range(term):
                     writer.write_signed(16, wv_log2(samples[0][s]))
             else:
                 raise ValueError("invalid correlation term")
@@ -1003,7 +1003,7 @@ def correlation_pass_1ch(uncorrelated_samples,
                          correlation_samples[0]] +
                         uncorrelated_samples)
         correlated = []
-        for i in xrange(2, len(uncorrelated)):
+        for i in range(2, len(uncorrelated)):
             temp = (3 * uncorrelated[i - 1] - uncorrelated[i - 2]) // 2
             correlated.append(uncorrelated[i] - apply_weight(weight, temp))
             weight += update_weight(temp, correlated[i - 2], delta)
@@ -1014,7 +1014,7 @@ def correlation_pass_1ch(uncorrelated_samples,
                          correlation_samples[0]] +
                         uncorrelated_samples)
         correlated = []
-        for i in xrange(2, len(uncorrelated)):
+        for i in range(2, len(uncorrelated)):
             temp = 2 * uncorrelated[i - 1] - uncorrelated[i - 2]
             correlated.append(uncorrelated[i] - apply_weight(weight, temp))
             weight += update_weight(temp, correlated[i - 2], delta)
@@ -1023,7 +1023,7 @@ def correlation_pass_1ch(uncorrelated_samples,
         assert(len(correlation_samples) == term)
         uncorrelated = correlation_samples[:] + uncorrelated_samples
         correlated = []
-        for i in xrange(term, len(uncorrelated)):
+        for i in range(term, len(uncorrelated)):
             correlated.append(uncorrelated[i] -
                               apply_weight(weight, uncorrelated[i - term]))
             weight += update_weight(uncorrelated[i - term],
@@ -1069,7 +1069,7 @@ def correlation_pass_2ch(uncorrelated_samples,
         correlated = [[], []]
         weights = list(weights)
         if (term == -1):
-            for i in xrange(1, len(uncorrelated[0])):
+            for i in range(1, len(uncorrelated[0])):
                 correlated[0].append(uncorrelated[0][i] -
                                      apply_weight(weights[0],
                                                   uncorrelated[1][i - 1]))
@@ -1085,7 +1085,7 @@ def correlation_pass_2ch(uncorrelated_samples,
                 weights[0] = max(min(weights[0], 1024), -1024)
                 weights[1] = max(min(weights[1], 1024), -1024)
         elif (term == -2):
-            for i in xrange(1, len(uncorrelated[0])):
+            for i in range(1, len(uncorrelated[0])):
                 correlated[0].append(uncorrelated[0][i] -
                                      apply_weight(weights[0],
                                                   uncorrelated[1][i]))
@@ -1101,7 +1101,7 @@ def correlation_pass_2ch(uncorrelated_samples,
                 weights[0] = max(min(weights[0], 1024), -1024)
                 weights[1] = max(min(weights[1], 1024), -1024)
         elif (term == -3):
-            for i in xrange(1, len(uncorrelated[0])):
+            for i in range(1, len(uncorrelated[0])):
                 correlated[0].append(uncorrelated[0][i] -
                                      apply_weight(weights[0],
                                                   uncorrelated[1][i - 1]))

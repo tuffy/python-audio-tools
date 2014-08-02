@@ -194,7 +194,7 @@ if (__name__ == '__main__'):
                                {"channel_number": i + 1,
                                 "channel_name": channel_names[channel]})
             else:
-                for i in xrange(file.channels()):
+                for i in range(file.channels()):
                     msg.output(_.LAB_TRACKINFO_CHANNEL %
                                {"channel_number": i + 1,
                                 "channel_name": _.LAB_TRACKINFO_UNDEFINED})

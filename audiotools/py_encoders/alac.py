@@ -206,8 +206,8 @@ def encode_compressed_frame(writer, pcmreader, options, channels):
         # extract uncompressed LSBs
         uncompressed_LSBs = (pcmreader.bits_per_sample - 16) // 8
         LSBs = []
-        for i in xrange(len(channels[0])):
-            for c in xrange(len(channels)):
+        for i in range(len(channels[0])):
+            for c in range(len(channels)):
                 LSBs.append(channels[c][i] %
                             (2 ** (pcmreader.bits_per_sample - 16)))
 
@@ -224,10 +224,10 @@ def encode_compressed_frame(writer, pcmreader, options, channels):
                                     channels)
     else:
         interlaced_frames = [BitstreamRecorder(0) for i in
-                             xrange(options.min_interlacing_leftweight,
+                             range(options.min_interlacing_leftweight,
                                     options.max_interlacing_leftweight + 1)]
         for (leftweight,
-             frame) in zip(xrange(options.min_interlacing_leftweight,
+             frame) in zip(range(options.min_interlacing_leftweight,
                                   options.max_interlacing_leftweight + 1),
                            interlaced_frames):
             encode_interlaced_frame(frame,
@@ -239,7 +239,7 @@ def encode_compressed_frame(writer, pcmreader, options, channels):
                                     leftweight,
                                     channels)
 
-        for i in xrange(len(interlaced_frames) - 1):
+        for i in range(len(interlaced_frames) - 1):
             if ((interlaced_frames[i].bits() <
                  min([f.bits() for f in interlaced_frames[i + 1:]]))):
                 interlaced_frames[i].copy(writer)
@@ -329,7 +329,7 @@ def correlate_channels(channel0, channel1,
     if (interlacing_leftweight > 0):
         correlated0 = []
         correlated1 = []
-        for i in xrange(len(channel0)):
+        for i in range(len(channel0)):
             correlated0.append(channel1[i] +
                                (((channel0[i] - channel1[i]) *
                                  interlacing_leftweight) >> interlacing_shift))
@@ -346,7 +346,7 @@ def calculate_lpc_coefficients(pcmreader, options, sample_size, channel):
 
     autocorrelated = [sum([s1 * s2 for s1, s2 in zip(windowed,
                                                      windowed[lag:])])
-                      for lag in xrange(0, 9)]
+                      for lag in range(0, 9)]
 
     assert(len(autocorrelated) == 9)
 
@@ -388,7 +388,7 @@ def tukey_window(sample_count, alpha):
     window1 = (alpha * (sample_count - 1)) // 2
     window2 = (sample_count - 1) * (1 - (alpha // 2))
 
-    for n in xrange(0, sample_count):
+    for n in range(0, sample_count):
         if (n <= window1):
             yield (0.5 *
                    (1 +
@@ -409,7 +409,7 @@ def compute_lp_coefficients(autocorrelation):
     lp_coefficients = [[k0]]
     error = [autocorrelation[0] * (1 - k0 ** 2)]
 
-    for i in xrange(1, maximum_lpc_order):
+    for i in range(1, maximum_lpc_order):
         ki = (autocorrelation[i + 1] -
               sum([x * y for (x, y) in
                    zip(lp_coefficients[i - 1],
@@ -465,11 +465,11 @@ def compute_residuals(sample_size, qlp_coefficients, channel):
     residuals = [channel[0]]
 
     if (len(qlp_coefficients) < 31):
-        for i in xrange(1, len(qlp_coefficients) + 1):
+        for i in range(1, len(qlp_coefficients) + 1):
             residuals.append(truncate_bits(channel[i] - channel[i - 1],
                                            sample_size))
 
-        for i in xrange(len(qlp_coefficients) + 1, len(channel)):
+        for i in range(len(qlp_coefficients) + 1, len(channel)):
             base_sample = channel[i - len(qlp_coefficients) - 1]
 
             lpc_sum = sum([(c * (s - base_sample)) for (c, s) in
@@ -487,7 +487,7 @@ def compute_residuals(sample_size, qlp_coefficients, channel):
             residuals.append(residual)
 
             if (residual > 0):
-                for j in xrange(len(qlp_coefficients)):
+                for j in range(len(qlp_coefficients)):
                     diff = base_sample - channel[i - len(qlp_coefficients) + j]
                     sign = sign_only(diff)
                     qlp_coefficients[len(qlp_coefficients) - j - 1] -= sign
@@ -495,7 +495,7 @@ def compute_residuals(sample_size, qlp_coefficients, channel):
                     if (residual <= 0):
                         break
             elif (residual < 0):
-                for j in xrange(len(qlp_coefficients)):
+                for j in range(len(qlp_coefficients)):
                     diff = base_sample - channel[i - len(qlp_coefficients) + j]
                     sign = sign_only(diff)
                     qlp_coefficients[len(qlp_coefficients) - j - 1] += sign

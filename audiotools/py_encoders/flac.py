@@ -228,7 +228,7 @@ def encode_flac_frame(writer, pcmreader, options, frame_number, frame):
         write_frame_header(writer, pcmreader, frame_number, frame,
                            pcmreader.channels - 1)
 
-        for i in xrange(frame.channels):
+        for i in range(frame.channels):
             encode_subframe(writer,
                             options,
                             pcmreader.bits_per_sample,
@@ -456,11 +456,11 @@ def encode_fixed_subframe(writer, options, wasted_bps, bits_per_sample,
     total_error = [sum(map(abs, residuals[-1][4:]))]
 
     if (len(samples) > 4):
-        for order in xrange(1, 5):
+        for order in range(1, 5):
             residuals.append(next_order(residuals[-1]))
             total_error.append(sum(map(abs, residuals[-1][4 - order:])))
 
-        for order in xrange(4):
+        for order in range(4):
             if (total_error[order] < min(total_error[order + 1:])):
                 break
         else:
@@ -491,11 +491,11 @@ def encode_residuals(writer, options, order, block_size, residuals):
     best_porder = 0
     best_size = 2 ** 31
 
-    for porder in xrange(0, options.max_residual_partition_order + 1):
+    for porder in range(0, options.max_residual_partition_order + 1):
         if ((block_size % (2 ** porder)) == 0):
             unencoded_residuals = residuals[:]
             partitions = []
-            for p in xrange(0, 2 ** porder):
+            for p in range(0, 2 ** porder):
                 if (p == 0):
                     partition_size = block_size // (2 ** porder) - order
                 else:
@@ -568,7 +568,7 @@ def tukey_window(sample_count, alpha):
     window1 = (alpha * (sample_count - 1)) // 2
     window2 = (sample_count - 1) * (1 - (alpha // 2))
 
-    for n in xrange(0, sample_count):
+    for n in range(0, sample_count):
         if (n <= window1):
             yield (0.5 *
                    (1 +
@@ -596,7 +596,7 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
     if (len(samples) > (options.max_lpc_order + 1)):
         autocorrelation_values = [
             sum([x * y for x, y in zip(windowed, windowed[lag:])])
-            for lag in xrange(0, options.max_lpc_order + 1)]
+            for lag in range(0, options.max_lpc_order + 1)]
 
         if ((len(autocorrelation_values) > 1) and
             (set(autocorrelation_values) !=
@@ -629,7 +629,7 @@ def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
                 best_order = None
                 best_coeffs = None
                 best_shift_needed = None
-                for order in xrange(1, options.max_lpc_order + 1):
+                for order in range(1, options.max_lpc_order + 1):
                     (qlp_coeffs,
                      qlp_shift_needed) = quantize_coefficients(
                         options.qlp_precision, lp_coefficients, order)
@@ -659,7 +659,7 @@ def compute_lp_coefficients(autocorrelation):
     lp_coefficients = [[k0]]
     error = [autocorrelation[0] * (1 - k0 ** 2)]
 
-    for i in xrange(1, maximum_lpc_order):
+    for i in range(1, maximum_lpc_order):
         ki = (autocorrelation[i + 1] -
               sum([x * y for (x, y) in
                    zip(lp_coefficients[i - 1],
@@ -681,7 +681,7 @@ def estimate_best_lpc_order(options, block_size, bits_per_sample, error):
     error_scale = log(2) ** 2
     best_order = 0
     best_subframe_bits = 1e32
-    for i in xrange(options.max_lpc_order):
+    for i in range(options.max_lpc_order):
         order = i + 1
         if (error[i] > 0.0):
             header_bits = order * (bits_per_sample + options.qlp_precision)

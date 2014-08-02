@@ -373,7 +373,7 @@ class WastedBPS16:
 
     def read(self, pcm_frames):
         wave = []
-        for i in xrange(min(pcm_frames, self.pcm_frames)):
+        for i in range(min(pcm_frames, self.pcm_frames)):
             wave.append((self.i % 2000) << 2)
             wave.append((self.i % 1000) << 3)
             self.i += 1
@@ -424,7 +424,7 @@ class Raw(audiotools.PCMReader):
         delta2 = 2.0 * math.pi / (self.sample_rate / f2)
         theta1 = theta2 = 0.0
         channel = []
-        for i in xrange(pcm_frames):
+        for i in range(pcm_frames):
             channel.append(int(((a1 * math.sin(theta1) + a2 *
                                  math.sin(theta2)) * full_scale) + 0.5) +
                            ((ord(os.urandom(1)) >> 4) - 8))

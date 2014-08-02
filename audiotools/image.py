@@ -348,7 +348,7 @@ class __TIFF__(ImageMetrics):
                 sub_reader = reader.substream(tag_count * 12)
                 next_ifd = reader.read(32)
 
-                for i in xrange(tag_count):
+                for i in range(tag_count):
                     (tag_code,
                      tag_datatype,
                      tag_value_count) = sub_reader.parse("16u 16u 32u")

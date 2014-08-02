@@ -56,7 +56,7 @@ def encode_shn(filename,
     writer = BitstreamWriter(output_file, 0)
 
     left_shift = 0
-    wrapped_channels = [[] for c in xrange(pcmreader.channels)]
+    wrapped_channels = [[] for c in range(pcmreader.channels)]
 
     # write magic number and version
     writer.build("4b 8u", ["ajkg", 2])
@@ -113,7 +113,7 @@ def encode_shn(filename,
             write_long(writer, block_size)
 
         # split chunk into individual channels
-        for c in xrange(pcmreader.channels):
+        for c in range(pcmreader.channels):
             # convert PCM data to unsigned, if necessary
             if (signed_samples):
                 channel = list(frame.channel(c))

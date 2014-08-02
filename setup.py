@@ -193,7 +193,7 @@ class output_table:
     def total_width(self):
         return sum([
             max([row.column_width(col) for row in self.__rows__])
-            for col in xrange(len(self.__rows__[0]))])
+            for col in range(len(self.__rows__[0]))])
 
     def format(self):
         """yields one formatted string per row"""
@@ -208,7 +208,7 @@ class output_table:
 
         column_widths = [
             max([row.column_width(col) for row in self.__rows__])
-            for col in xrange(len(self.__rows__[0]))]
+            for col in range(len(self.__rows__[0]))]
 
         for row in self.__rows__:
             yield row.format(column_widths)

@@ -296,7 +296,7 @@ def Combinations(items, n):
     if (n == 0):
         yield []
     else:
-        for i in xrange(len(items)):
+        for i in range(len(items)):
             for combos in Combinations(items[i + 1:], n - 1):
                 yield [items[i]] + combos
 

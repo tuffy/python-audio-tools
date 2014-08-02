@@ -86,7 +86,7 @@ class PCMReader(unittest.TestCase):
                     self.assertEqual(list(f), range(-5, 5))
 
                     # ensure subsequent reads return empty FrameLists
-                    for i in xrange(10):
+                    for i in range(10):
                         f = reader.read((bps // 8) * 10)
                         self.assertEqual(len(f), 0)
 
@@ -179,12 +179,12 @@ class PCMCat(unittest.TestCase):
         self.assertEqual(samples, range(-15, 15))
 
         # ensure subsequent reads return empty FrameLists
-        for i in xrange(10):
+        for i in range(10):
             self.assertEqual(len(reader.read(2)), 0)
 
         # main readers should not yet be closed
         for r in main_readers:
-            for i in xrange(10):
+            for i in range(10):
                 self.assertEqual(len(r.read(2)), 0)
 
         # ensure closing the stream raises ValueErrors
@@ -264,7 +264,7 @@ class BufferedPCMReader(unittest.TestCase):
 
         self.assertEqual(len(f), 0)
 
-        for i in xrange(10):
+        for i in range(10):
             f = reader.read(4096)
             self.assertEqual(len(f), 0)
 
@@ -311,7 +311,7 @@ class LimitedPCMReader(unittest.TestCase):
             total_samples.extend(reader_samples)
 
             # ensure subsequent reads return empty FrameLists
-            for i in xrange(10):
+            for i in range(10):
                 self.assertEqual(len(reader.read(2)), 0)
 
             # ensure closing the substream raises ValueErrors
@@ -324,7 +324,7 @@ class LimitedPCMReader(unittest.TestCase):
         self.assertEqual(total_samples, range(-50, 50))
 
         # ensure subsequent reads of main reader return empty FrameLists
-        for i in xrange(10):
+        for i in range(10):
             self.assertEqual(len(main_reader.read(2)), 0)
 
         # ensure closing the substream raises ValueErrors
@@ -395,7 +395,7 @@ class PCMReaderWindow(unittest.TestCase):
                 self.assertEqual(samples, target_samples)
 
                 # ensure subsequent reads return empty FrameLists
-                for i in xrange(10):
+                for i in range(10):
                     self.assertEqual(len(reader.read(2)), 0)
 
                 # ensure closing the PCMReaderWindow
@@ -448,7 +448,7 @@ class Sines(unittest.TestCase):
                 f = stream.read(4096)
 
             # ensure subsequent reads return empty FrameLists
-            for i in xrange(10):
+            for i in range(10):
                 self.assertEqual(len(stream.read(4096)), 0)
 
             # ensure subsequent reads on a closed stream
@@ -517,7 +517,7 @@ class CDDA(unittest.TestCase):
                          checksum.hexdigest())
 
         # ensure subsequent reads keep generating empty framelists
-        for i in xrange(10):
+        for i in range(10):
             self.assertEqual(cdda.read(44100).frames, 0)
 
         # verify individual track sections
@@ -550,7 +550,7 @@ class ChannelMask(unittest.TestCase):
         self.assertEqual(mask, mask2)
 
         mask_fields = audiotools.ChannelMask.SPEAKER_TO_MASK.keys()
-        for count in xrange(1, len(mask_fields) + 1):
+        for count in range(1, len(mask_fields) + 1):
             for fields in Combinations(mask_fields, count):
                 # build a mask from fields
                 mask = audiotools.ChannelMask.from_fields(
@@ -823,7 +823,7 @@ class PCMConverter(unittest.TestCase):
                     f = reader.read(4096)
 
                 # ensure subsequent reads return empty FrameLists
-                for i in xrange(10):
+                for i in range(10):
                     self.assertEqual(len(reader.read(4096)), 0)
 
                 # ensure closing stream raises ValueErrors
@@ -898,7 +898,7 @@ class Test_group_tracks(unittest.TestCase):
         self.track_files = [
             tempfile.NamedTemporaryFile(
                 suffix="." + self.output_format.SUFFIX)
-            for i in xrange(5)]
+            for i in range(5)]
         self.tracks = [
             self.output_format.from_pcm(
                 track.name,
@@ -1243,20 +1243,20 @@ class Test_pcm_split(unittest.TestCase):
 class TestFrameList(unittest.TestCase):
     @classmethod
     def Bits8(cls):
-        for i in xrange(0, 0xFF + 1):
+        for i in range(0, 0xFF + 1):
             yield chr(i)
 
     @classmethod
     def Bits16(cls):
-        for i in xrange(0, 0xFF + 1):
-            for j in xrange(0, 0xFF + 1):
+        for i in range(0, 0xFF + 1):
+            for j in range(0, 0xFF + 1):
                 yield chr(i) + chr(j)
 
     @classmethod
     def Bits24(cls):
-        for i in xrange(0, 0xFF + 1):
-            for j in xrange(0, 0xFF + 1):
-                for k in xrange(0, 0xFF + 1):
+        for i in range(0, 0xFF + 1):
+            for j in range(0, 0xFF + 1):
+                for k in range(0, 0xFF + 1):
                     yield chr(i) + chr(j) + chr(k)
 
     @LIB_CORE
@@ -1325,10 +1325,10 @@ class TestFrameList(unittest.TestCase):
                 for signed in [True, False]:
                     if (signed):
                         l = [random.choice(range(-40, 40)) for i in
-                             xrange(16 * channels)]
+                             range(16 * channels)]
                     else:
                         l = [random.choice(range(0, 80)) for i in
-                             xrange(16 * channels)]
+                             range(16 * channels)]
                     f2 = audiotools.pcm.from_list(l, channels, bps, signed)
                     if (signed):
                         self.assertEqual(list(f2), l)
@@ -1454,7 +1454,7 @@ class TestFrameList(unittest.TestCase):
         self.assertEqual(list(f2),
                          [])
 
-        for i in xrange(f.frames):
+        for i in range(f.frames):
             (f1, f2) = f.split(i)
             self.assertEqual(len(f1), i * f.channels)
             self.assertEqual(len(f2), (len(f) - (i * f.channels)))
@@ -1624,10 +1624,10 @@ class TestFrameList(unittest.TestCase):
         # since testing the whole range takes a very, very long time
         RANGE = 8
 
-        unsigned_ints_high = [r << 8 for r in xrange(0, 0xFFFF + 1)]
-        signed_ints_high = [r << 8 for r in xrange(-0x8000, 0x7FFF + 1)]
+        unsigned_ints_high = [r << 8 for r in range(0, 0xFFFF + 1)]
+        signed_ints_high = [r << 8 for r in range(-0x8000, 0x7FFF + 1)]
 
-        for low_bits in xrange(0, 0xFF + 1, RANGE):
+        for low_bits in range(0, 0xFF + 1, RANGE):
             unsigned_values = [high_bits | low_bits for high_bits in
                                unsigned_ints_high]
 
@@ -1645,7 +1645,7 @@ class TestFrameList(unittest.TestCase):
                 list(audiotools.pcm.FrameList(
                     rec.data(), 1, 24, False, False)))
 
-        for low_bits in xrange(0, 0xFF + 1, RANGE):
+        for low_bits in range(0, 0xFF + 1, RANGE):
             if (high_bits < 0):
                 signed_values = [high_bits - low_bits for high_bits in
                                  signed_ints_high]
@@ -1848,7 +1848,7 @@ class TestFloatFrameList(unittest.TestCase):
         self.assertEqual(list(f2),
                          [])
 
-        for i in xrange(f.frames):
+        for i in range(f.frames):
             (f1, f2) = f.split(i)
             self.assertEqual(len(f1), i * f.channels)
             self.assertEqual(len(f2), (len(f) - (i * f.channels)))
@@ -2262,21 +2262,21 @@ class Bitstream(unittest.TestCase):
 
         # a single callback
         counter.reset()
-        for i in xrange(8):
+        for i in range(8):
             reader.read(4)
         self.assertEqual(int(counter), 4)
         reader.rewind()
 
         # calling callbacks directly
         counter.reset()
-        for i in xrange(20):
+        for i in range(20):
             reader.call_callbacks(0)
         self.assertEqual(int(counter), 20)
 
         # two callbacks
         counter.reset()
         reader.add_callback(counter.callback)
-        for i in xrange(8):
+        for i in range(8):
             reader.read(4)
         self.assertEqual(int(counter), 8)
         reader.pop_callback()
@@ -2308,45 +2308,45 @@ class Bitstream(unittest.TestCase):
 
         # read_signed
         counter.reset()
-        for i in xrange(8):
+        for i in range(8):
             reader.read_signed(4)
         self.assertEqual(int(counter), 4)
         reader.rewind()
 
         # skip
         counter.reset()
-        for i in xrange(8):
+        for i in range(8):
             reader.skip(4)
         self.assertEqual(int(counter), 4)
         reader.rewind()
 
         # read_unary
         counter.reset()
-        for i in xrange(unary_0_reads):
+        for i in range(unary_0_reads):
             reader.unary(0)
         self.assertEqual(int(counter), 4)
         counter.reset()
         reader.rewind()
-        for i in xrange(unary_1_reads):
+        for i in range(unary_1_reads):
             reader.unary(1)
         self.assertEqual(int(counter), 4)
         reader.rewind()
 
         # read_limited_unary
         counter.reset()
-        for i in xrange(unary_0_reads):
+        for i in range(unary_0_reads):
             reader.limited_unary(0, 6)
         self.assertEqual(int(counter), 4)
         counter.reset()
         reader.rewind()
-        for i in xrange(unary_1_reads):
+        for i in range(unary_1_reads):
             reader.limited_unary(1, 6)
         self.assertEqual(int(counter), 4)
         reader.rewind()
 
         # read_huffman_code
         counter.reset()
-        for i in xrange(huffman_code_count):
+        for i in range(huffman_code_count):
             reader.read_huffman_code(table)
         self.assertEqual(int(counter), 4)
         reader.rewind()
@@ -4294,7 +4294,7 @@ class TestReplayGain(unittest.TestCase):
             f = reader.read(4096)
 
         # ensure subsequent reads return empty FrameLists
-        for i in xrange(10):
+        for i in range(10):
             self.assertEqual(len(reader.read(4096)), 0)
 
         # ensure closing the ReplayGainReader raises ValueError
@@ -4708,7 +4708,7 @@ class TestMultiChannel(unittest.TestCase):
                 temp_file.name,
                 PCM_Reader_Multiplexer(
                     [BLANK_PCM_Reader(2, channels=1)
-                     for i in xrange(len(channel_mask))],
+                     for i in range(len(channel_mask))],
                     channel_mask))
             self.assertEqual(temp_track.channel_mask(), channel_mask,
                              "%s != %s for format %s" %
@@ -4732,7 +4732,7 @@ class TestMultiChannel(unittest.TestCase):
                 temp_file.name,
                 PCM_Reader_Multiplexer(
                     [BLANK_PCM_Reader(2, channels=1)
-                     for i in xrange(channels)],
+                     for i in range(channels)],
                     audiotools.ChannelMask(0)))
             self.assertEqual(temp_track.channels(), channels)
             if (should_be_blank):
@@ -4765,7 +4765,7 @@ class TestMultiChannel(unittest.TestCase):
                 audio_class.from_pcm,
                 temp_file.name,
                 PCM_Reader_Multiplexer([BLANK_PCM_Reader(2, channels=1)
-                                        for i in xrange(channels)],
+                                        for i in range(channels)],
                                        channel_mask))
         finally:
             temp_file.close()
@@ -4780,7 +4780,7 @@ class TestMultiChannel(unittest.TestCase):
                 audio_class.from_pcm,
                 temp_file.name,
                 PCM_Reader_Multiplexer([BLANK_PCM_Reader(2, channels=1)
-                                        for i in xrange(channels)],
+                                        for i in range(channels)],
                                        channel_mask))
         finally:
             temp_file.close()
@@ -4799,7 +4799,7 @@ class TestMultiChannel(unittest.TestCase):
                 source_file.name,
                 PCM_Reader_Multiplexer(
                     [BLANK_PCM_Reader(2, channels=1)
-                     for i in xrange(len(channel_mask))],
+                     for i in range(len(channel_mask))],
                     channel_mask))
             self.assertEqual(source_track.channel_mask(), channel_mask)
 
@@ -4977,30 +4977,30 @@ class TestMultiChannel(unittest.TestCase):
 
     @LIB_CORE
     def test_unsupported_channel_mask_from_pcm(self):
-        for channels in xrange(1, 6 + 1):
+        for channels in range(1, 6 + 1):
             self.__test_undefined_mask_blank__(audiotools.WaveAudio,
                                                channels,
                                                False)
-        for channels in xrange(1, 3):
+        for channels in range(1, 3):
             self.__test_undefined_mask_blank__(audiotools.WavPackAudio,
                                                channels,
                                                False)
-        for channels in xrange(3, 21):
+        for channels in range(3, 21):
             self.__test_undefined_mask_blank__(audiotools.WavPackAudio,
                                                channels,
                                                True)
 
-        for channels in xrange(1, 9):
+        for channels in range(1, 9):
             self.__test_undefined_mask_blank__(audiotools.ALACAudio,
                                                channels,
                                                False)
-        for channels in xrange(9, 21):
+        for channels in range(9, 21):
             self.__test_undefined_mask_blank__(audiotools.ALACAudio,
                                                channels,
                                                True)
 
         for audio_class in [audiotools.FlacAudio, audiotools.OggFlacAudio]:
-            for channels in xrange(1, 9):
+            for channels in range(1, 9):
                 self.__test_undefined_mask_blank__(audio_class,
                                                    channels,
                                                    False)
@@ -5016,7 +5016,7 @@ class TestMultiChannel(unittest.TestCase):
 
             self.__test_undefined_mask_blank__(stereo_audio_class,
                                                2, False)
-            for channels in xrange(3, 20):
+            for channels in range(3, 20):
                 temp_file = tempfile.NamedTemporaryFile(
                     suffix="." + stereo_audio_class.SUFFIX)
                 try:
@@ -5024,7 +5024,7 @@ class TestMultiChannel(unittest.TestCase):
                         temp_file.name,
                         PCM_Reader_Multiplexer(
                             [BLANK_PCM_Reader(2, channels=1)
-                             for i in xrange(channels)],
+                             for i in range(channels)],
                             audiotools.ChannelMask(0)))
                     self.assertEqual(temp_track.channels(), 2)
                     self.assertEqual(
@@ -5039,12 +5039,12 @@ class TestMultiChannel(unittest.TestCase):
                 finally:
                     temp_file.close()
 
-        for channels in xrange(1, 9):
+        for channels in range(1, 9):
             self.__test_undefined_mask_blank__(audiotools.VorbisAudio,
                                                channels,
                                                False)
 
-        for channels in xrange(9, 20):
+        for channels in range(9, 20):
             self.__test_undefined_mask_blank__(audiotools.VorbisAudio,
                                                channels,
                                                True)
@@ -5063,13 +5063,13 @@ class TestMultiChannel(unittest.TestCase):
             self.__test_undefined_mask_blank__(audiotools.AuAudio,
                                                channels,
                                                False)
-        for channels in xrange(3, 11):
+        for channels in range(3, 11):
             self.__test_undefined_mask_blank__(audiotools.AuAudio,
                                                channels,
                                                True)
 
         if (audiotools.m4a.M4AAudio_nero.available(audiotools.BIN)):
-            for channels in xrange(1, 7):
+            for channels in range(1, 7):
                 self.__test_undefined_mask_blank__(
                     audiotools.m4a.M4AAudio_nero, channels, False)
 
@@ -5858,7 +5858,7 @@ class Test_Ogg(unittest.TestCase):
         import audiotools.ogg
         import cStringIO
 
-        for packet_len in xrange(0, 1000):
+        for packet_len in range(0, 1000):
             packet = os.urandom(packet_len)
             ogg_stream = cStringIO.StringIO()
             self.assertEqual(packet_len, len(packet))

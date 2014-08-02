@@ -282,7 +282,7 @@ class ApeTag(MetaData):
             return default
 
     def __setitem__(self, key, value):
-        for i in xrange(len(self.tags)):
+        for i in range(len(self.tags)):
             if (self.tags[i].key == key):
                 self.tags[i] = value
                 return
@@ -676,8 +676,7 @@ class ApeTag(MetaData):
 
         apefile.seek(-tag_size, 2)
 
-        return cls([ApeTagItem.parse(reader)
-                    for i in xrange(item_count)],
+        return cls([ApeTagItem.parse(reader) for i in range(item_count)],
                    contains_header=has_header,
                    contains_footer=True)
 

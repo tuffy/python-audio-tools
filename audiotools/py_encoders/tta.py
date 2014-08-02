@@ -60,7 +60,7 @@ def encode_tta_frame(writer, bits_per_sample, framelist):
         correlated = [list(framelist.channel(0))]
     else:
         correlated = correlate_channels([list(framelist.channel(i))
-                                         for i in xrange(framelist.channels)])
+                                         for i in range(framelist.channels)])
 
     residuals = []
     for correlated_ch in correlated:
@@ -129,10 +129,10 @@ def correlate_channels(framelist):
 
     correlated = []
 
-    for c in xrange(channels):
+    for c in range(channels):
         correlated_ch = []
         if (c == (channels - 1)):
-            for i in xrange(pcm_frames):
+            for i in range(pcm_frames):
                 # round toward zero
                 if (correlated[c - 1][i] >= 0):
                     correlated_ch.append(
@@ -141,7 +141,7 @@ def correlate_channels(framelist):
                     correlated_ch.append(
                         framelist[c][i] - div_ceil(correlated[c - 1][i], 2))
         else:
-            for i in xrange(pcm_frames):
+            for i in range(pcm_frames):
                 correlated_ch.append(framelist[c + 1][i] - framelist[c][i])
         correlated.append(correlated_ch)
 
@@ -157,7 +157,7 @@ def fixed_predictor(bits_per_sample, correlated):
         shift = 5
 
     predicted = [correlated[0]]
-    for i in xrange(1, len(correlated)):
+    for i in range(1, len(correlated)):
         predicted.append(
             correlated[i] -
             (((correlated[i - 1] << shift) - correlated[i - 1]) >> shift))
@@ -181,7 +181,7 @@ def tta_filter(bps, predicted):
     dx = [0] * 8
     dl = [0] * 8
 
-    for i in xrange(0, len(predicted)):
+    for i in range(0, len(predicted)):
         if (i == 0):
             residuals.append(predicted[i] + (round_ >> shift))
         else:

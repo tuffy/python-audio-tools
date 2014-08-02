@@ -602,7 +602,7 @@ class Flac_SEEKTABLE:
         """returns this metadata block from a BitstreamReader"""
 
         return cls([tuple(reader.parse("64U64U16u"))
-                    for i in xrange(total_seekpoints)])
+                    for i in range(total_seekpoints)])
 
     def build(self, writer):
         """writes this metadata block to a BitstreamWriter"""
@@ -704,7 +704,7 @@ class Flac_VORBISCOMMENT(VorbisComment):
                                                                   'replace')
         return cls([reader.read_bytes(reader.read(32)).decode('utf-8',
                                                               'replace')
-                    for i in xrange(reader.read(32))], vendor_string)
+                    for i in range(reader.read(32))], vendor_string)
 
     def build(self, writer):
         """writes this metadata block to a BitstreamWriter"""
@@ -800,7 +800,7 @@ class Flac_CUESHEET(Sheet):
                    lead_in_samples,
                    is_cdda,
                    [Flac_CUESHEET_track.parse(reader)
-                    for i in xrange(track_count)])
+                    for i in range(track_count)])
 
     def build(self, writer):
         """writes this metadata block to a BitstreamWriter"""
@@ -1029,7 +1029,7 @@ class Flac_CUESHEET_track(SheetTrack):
          index_points) = reader.parse("64U8u12b1u1u110p8u")
         return cls(offset, number, ISRC, track_type, pre_emphasis,
                    [Flac_CUESHEET_index.parse(reader, offset)
-                    for i in xrange(index_points)])
+                    for i in range(index_points)])
 
     def build(self, writer):
         """writes this cuesheet track to a BitstreamWriter"""
@@ -1994,9 +1994,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             total_samples += pcm_frames
 
         seekpoints = []
-        for pcm_frame in xrange(0,
-                                self.total_frames(),
-                                seekpoint_interval):
+        for pcm_frame in range(0, self.total_frames(), seekpoint_interval):
             flac_frame = bisect_right(sample_offsets, pcm_frame) - 1
             seekpoints.append((sample_offsets[flac_frame],
                                all_frames[sample_offsets[flac_frame]][0],
@@ -3038,7 +3036,7 @@ class OggFlacMetaData(FlacMetaData):
                                       total_samples=total_samples,
                                       md5sum=md5sum)]
 
-        for i in xrange(header_packets):
+        for i in range(header_packets):
             packet = BitstreamReader(StringIO(packetreader.read_packet()),
                                      False)
             (block_type, length) = packet.parse("1p 7u 24u")

@@ -68,7 +68,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
          block_length,
          max_LPC,
          number_of_means,
-         bytes_to_skip) = [read_long(reader) for i in xrange(6)]
+         bytes_to_skip) = [read_long(reader) for i in range(6)]
 
         if ((1 <= file_type) and (file_type <= 2)):
             self.__bits_per_sample__ = 8
@@ -92,8 +92,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         command = read_unsigned(reader, 2)
         if (command == 9):
             verbatim_bytes = "".join([chr(read_unsigned(reader, 8) & 0xFF)
-                                      for i in xrange(read_unsigned(reader,
-                                                                    5))])
+                                      for i in range(read_unsigned(reader,
+                                                                   5))])
             try:
                 wave = BitstreamReader(cStringIO.StringIO(verbatim_bytes), 1)
                 header = wave.read_bytes(12)

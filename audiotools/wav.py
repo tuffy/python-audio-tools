@@ -580,7 +580,7 @@ class WaveAudio(WaveContainer):
     NAME = SUFFIX
     DESCRIPTION = u"Waveform Audio File Format"
 
-    PRINTABLE_ASCII = frozenset([chr(i) for i in xrange(0x20, 0x7E + 1)])
+    PRINTABLE_ASCII = frozenset([chr(i) for i in range(0x20, 0x7E + 1)])
 
     def __init__(self, filename):
         """filename is a plain string"""

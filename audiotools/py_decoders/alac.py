@@ -219,8 +219,8 @@ class ALACDecoder:
             # if the frame is uncompressed,
             # read the raw, interlaced samples
             samples = [self.reader.read_signed(self.bits_per_sample)
-                       for i in xrange(sample_count * channel_count)]
-            return [samples[i::channel_count] for i in xrange(channel_count)]
+                       for i in range(sample_count * channel_count)]
+            return [samples[i::channel_count] for i in range(channel_count)]
         else:
             # if the frame is compressed,
             # read the interlacing parameters
@@ -229,13 +229,13 @@ class ALACDecoder:
 
             # subframe headers
             subframe_headers = [self.read_subframe_header()
-                                for i in xrange(channel_count)]
+                                for i in range(channel_count)]
 
             # optional uncompressed LSB values
             if (uncompressed_lsb_size > 0):
                 uncompressed_lsbs = [
                     self.reader.read(uncompressed_lsb_size * 8)
-                    for i in xrange(sample_count * channel_count)]
+                    for i in range(sample_count * channel_count)]
             else:
                 uncompressed_lsbs = []
 
@@ -246,7 +246,7 @@ class ALACDecoder:
             # and residual blocks
             residual_blocks = [self.read_residuals(sample_size,
                                                    sample_count)
-                               for i in xrange(channel_count)]
+                               for i in range(channel_count)]
 
             # calculate subframe samples based on
             # subframe header's QLP coefficients and QLP shift-needed
@@ -284,7 +284,7 @@ class ALACDecoder:
         qlp_shift_needed = self.reader.read(4)
         rice_modifier = self.reader.read(3)
         qlp_coefficients = [self.reader.read_signed(16)
-                            for i in xrange(self.reader.read(5))]
+                            for i in range(self.reader.read(5))]
 
         return (qlp_shift_needed, qlp_coefficients)
 
@@ -363,7 +363,7 @@ class ALACDecoder:
         if (len(qlp_coefficients) < 31):
             # the next "coefficient count" samples
             # are applied as differences to the previous
-            for i in xrange(len(qlp_coefficients)):
+            for i in range(len(qlp_coefficients)):
                 samples.append(truncate_bits(samples[-1] + residuals.pop(0),
                                              sample_size))
 

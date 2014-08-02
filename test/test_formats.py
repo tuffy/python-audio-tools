@@ -87,13 +87,13 @@ class ERROR_PCM_Reader(audiotools.PCMReader):
         if (self.minimum_successes > 0):
             self.minimum_successes -= 1
             return audiotools.pcm.from_frames(
-                [self.frame for i in xrange(pcm_frames)])
+                [self.frame for i in range(pcm_frames)])
         else:
             if (random.random() <= self.failure_chance):
                 raise self.error
             else:
                 return audiotools.pcm.from_frames(
-                    [self.frame for i in xrange(pcm_frames)])
+                    [self.frame for i in range(pcm_frames)])
 
     def close(self):
         pass
@@ -180,7 +180,7 @@ class AudioFileTest(unittest.TestCase):
         # returns None
         # (though it's *possible* os.urandom might generate a valid file
         # by virtue of being random that's extremely unlikely in practice)
-        for i in xrange(256):
+        for i in range(256):
             self.assertEqual(os.path.getsize(invalid.name), i)
             self.assertEqual(
                 audiotools.file_type(open(invalid.name, "rb")),
@@ -327,7 +327,7 @@ class AudioFileTest(unittest.TestCase):
                                           BLANK_PCM_Reader(10))
 
         # open it a large number of times
-        for i in xrange(5000):
+        for i in range(5000):
             pcmreader = track.to_pcm()
             del(pcmreader)
 
@@ -675,7 +675,7 @@ class AudioFileTest(unittest.TestCase):
 
             # then ensure subsequent reads return blank FrameList objects
             # without triggering an error
-            for i in xrange(10):
+            for i in range(10):
                 f = pcmreader.read(4000)
                 self.assertEqual(len(f), 0)
 
@@ -775,7 +775,7 @@ class AudioFileTest(unittest.TestCase):
 
                 # try a bunch of random seeks
                 # and ensure the offset is always <= the seeked value
-                for i in xrange(10):
+                for i in range(10):
                     position = randrange(0, total_pcm_frames)
                     actual_position = pcmreader.seek(position)
                     self.assert_(actual_position <= position)
@@ -803,7 +803,7 @@ class AudioFileTest(unittest.TestCase):
                 self.assertRaises(ValueError,
                                   pcmreader.seek,
                                   0)
-                for i in xrange(10):
+                for i in range(10):
                     self.assertRaises(ValueError,
                                       pcmreader.seek,
                                       randrange(0, total_pcm_frames))
@@ -814,7 +814,7 @@ class AudioFileTest(unittest.TestCase):
                 if (hasattr(pcmreader, "seek") and callable(pcmreader.seek)):
                     # try a bunch of random seeks
                     # and ensure the offset is always 0
-                    for i in xrange(10):
+                    for i in range(10):
                         position = randrange(0, total_pcm_frames)
                         self.assertEqual(pcmreader.seek(position), 0)
 
@@ -829,7 +829,7 @@ class AudioFileTest(unittest.TestCase):
                     self.assertRaises(ValueError,
                                       pcmreader.seek,
                                       0)
-                    for i in xrange(10):
+                    for i in range(10):
                         self.assertRaises(ValueError,
                                           pcmreader.seek,
                                           randrange(0, total_pcm_frames))
@@ -1938,7 +1938,7 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
         from audiotools.bitstream import BitstreamReader, BitstreamRecorder
         import audiotools.aiff
 
-        for i in xrange(0, 192000 + 1):
+        for i in range(0, 192000 + 1):
             w = BitstreamRecorder(0)
             audiotools.aiff.build_ieee_extended(w, float(i))
             s = cStringIO.StringIO(w.data())
@@ -1964,7 +1964,7 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
             try:
                 # first, check that a truncated comm chunk raises an exception
                 # at init-time
-                for i in xrange(0, 0x25):
+                for i in range(0, 0x25):
                     temp.seek(0, 0)
                     temp.write(aiff_data[0:i])
                     temp.flush()
@@ -1976,7 +1976,7 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
 
                 # then, check that a truncated ssnd chunk raises an exception
                 # at read-time
-                for i in xrange(0x37, len(aiff_data)):
+                for i in range(0x37, len(aiff_data)):
                     temp.seek(0, 0)
                     temp.write(aiff_data[0:i])
                     temp.flush()
@@ -2231,7 +2231,7 @@ class ALACFileTest(LosslessFileTest):
         # test truncating the mdat atom triggers IOError
         temp = tempfile.NamedTemporaryFile(suffix='.m4a')
         try:
-            for i in xrange(0x16CD, len(alac_data)):
+            for i in range(0x16CD, len(alac_data)):
                 temp.seek(0, 0)
                 temp.write(alac_data[0:i])
                 temp.flush()
@@ -3334,15 +3334,15 @@ class FlacFileTest(TestForeignAiffChunks,
             flac_file = audiotools.open(temp.name)
             self.assertEqual(flac_file.verify(), True)
 
-            for i in xrange(0, len(flac_data)):
+            for i in range(0, len(flac_data)):
                 f = open(temp.name, "wb")
                 f.write(flac_data[0:i])
                 f.close()
                 self.assertRaises(audiotools.InvalidFile,
                                   flac_file.verify)
 
-            for i in xrange(0x2A, len(flac_data)):
-                for j in xrange(8):
+            for i in range(0x2A, len(flac_data)):
+                for j in range(8):
                     new_data = list(flac_data)
                     new_data[i] = chr(ord(new_data[i]) ^ (1 << j))
                     f = open(temp.name, "wb")
@@ -3356,7 +3356,7 @@ class FlacFileTest(TestForeignAiffChunks,
         # check a FLAC file with a short header
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
-            for i in xrange(0, 0x2A):
+            for i in range(0, 0x2A):
                 temp.seek(0, 0)
                 temp.write(flac_data[0:i])
                 temp.flush()
@@ -3374,7 +3374,7 @@ class FlacFileTest(TestForeignAiffChunks,
         # check a FLAC file that's been truncated
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
-            for i in xrange(0x2A, len(flac_data)):
+            for i in range(0x2A, len(flac_data)):
                 temp.seek(0, 0)
                 temp.write(flac_data[0:i])
                 temp.flush()
@@ -3393,8 +3393,8 @@ class FlacFileTest(TestForeignAiffChunks,
         # test a FLAC file with a single swapped bit
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
-            for i in xrange(0x2A, len(flac_data)):
-                for j in xrange(8):
+            for i in range(0x2A, len(flac_data)):
+                for j in range(8):
                     bytes = map(ord, flac_data[:])
                     bytes[i] ^= (1 << j)
                     temp.seek(0, 0)
@@ -4425,7 +4425,7 @@ class MP3FileTest(LossyFileTest):
 
         #     # first, try truncating the file underfoot
         #     bad_mpx_file = audiotools.open(temp.name)
-        #     for i in xrange(len(mpeg_data)):
+        #     for i in range(len(mpeg_data)):
         #         try:
         #             if ((mpeg_data[i] == chr(0xFF)) and
         #                 (ord(mpeg_data[i + 1]) & 0xE0)):
@@ -4633,7 +4633,7 @@ class OggVerify:
             self.assertEqual(track.verify(), True)
 
             # first, try truncating the file
-            for i in xrange(len(good_file_data)):
+            for i in range(len(good_file_data)):
                 f = open(bad_file.name, "wb")
                 f.write(good_file_data[0:i])
                 f.flush()
@@ -4642,8 +4642,8 @@ class OggVerify:
                                   track.verify)
 
             # then, try flipping a bit
-            for i in xrange(len(good_file_data)):
-                for j in xrange(8):
+            for i in range(len(good_file_data)):
+                for j in range(8):
                     bad_file_data = list(good_file_data)
                     bad_file_data[i] = chr(ord(bad_file_data[i]) ^ (1 << j))
                     f = open(bad_file.name, "wb")
@@ -4785,7 +4785,7 @@ class ShortenFileTest(TestForeignWaveChunks,
             shn_file = audiotools.open(temp.name)
             self.assertEqual(shn_file.verify(), True)
 
-            for i in xrange(0, len(shn_data.rstrip(chr(0)))):
+            for i in range(0, len(shn_data.rstrip(chr(0)))):
                 f = open(temp.name, "wb")
                 f.write(shn_data[0:i])
                 f.close()
@@ -4807,7 +4807,7 @@ class ShortenFileTest(TestForeignWaveChunks,
 
             temp = tempfile.NamedTemporaryFile(suffix=".shn")
             try:
-                for i in xrange(0, first):
+                for i in range(0, first):
                     temp.seek(0, 0)
                     temp.write(shn_data[0:i])
                     temp.flush()
@@ -4816,7 +4816,7 @@ class ShortenFileTest(TestForeignWaveChunks,
                                       audiotools.decoders.SHNDecoder,
                                       open(temp.name, "rb"))
 
-                for i in xrange(first, len(shn_data[0:last].rstrip(chr(0)))):
+                for i in range(first, len(shn_data[0:last].rstrip(chr(0)))):
                     temp.seek(0, 0)
                     temp.write(shn_data[0:i])
                     temp.flush()
@@ -5396,7 +5396,7 @@ class WaveFileTest(TestForeignWaveChunks,
                 wave = audiotools.open(temp.name)
 
                 # try changing the file out from under it
-                for i in xrange(0, len(wav_data)):
+                for i in range(0, len(wav_data)):
                     f = open(temp.name, 'wb')
                     f.write(wav_data[0:i])
                     f.close()
@@ -5438,7 +5438,7 @@ class WaveFileTest(TestForeignWaveChunks,
             try:
                 # first, check that a truncated fmt chunk raises an exception
                 # at init-time
-                for i in xrange(0, fmt_size + 8):
+                for i in range(0, fmt_size + 8):
                     temp.seek(0, 0)
                     temp.write(wav_data[0:i])
                     temp.flush()
@@ -5662,7 +5662,7 @@ class WavPackFileTest(TestForeignWaveChunks,
             temp.write(wavpackdata)
             temp.flush()
             test_wavpack = audiotools.open(temp.name)
-            for i in xrange(0, 0x20B):
+            for i in range(0, 0x20B):
                 f = open(temp.name, "wb")
                 f.write(wavpackdata[0:i])
                 f.close()
@@ -5691,7 +5691,7 @@ class WavPackFileTest(TestForeignWaveChunks,
         temp = tempfile.NamedTemporaryFile(suffix=".wv")
 
         try:
-            for i in xrange(0, len(wavpack_data)):
+            for i in range(0, len(wavpack_data)):
                 temp.seek(0, 0)
                 temp.write(wavpack_data[0:i])
                 temp.flush()
@@ -6441,15 +6441,15 @@ class TTAFileTest(LosslessFileTest):
             tta_file = audiotools.open(temp.name)
             self.assertEqual(tta_file.verify(), True)
 
-            for i in xrange(0, len(tta_data)):
+            for i in range(0, len(tta_data)):
                 f = open(temp.name, "wb")
                 f.write(tta_data[0:i])
                 f.close()
                 self.assertRaises(audiotools.InvalidFile,
                                   tta_file.verify)
 
-            for i in xrange(0x2A, len(tta_data)):
-                for j in xrange(8):
+            for i in range(0x2A, len(tta_data)):
+                for j in range(8):
                     new_data = list(tta_data)
                     new_data[i] = chr(ord(new_data[i]) ^ (1 << j))
                     f = open(temp.name, "wb")
@@ -6463,7 +6463,7 @@ class TTAFileTest(LosslessFileTest):
         # check a TTA file with a short header
         temp = tempfile.NamedTemporaryFile(suffix=".tta")
         try:
-            for i in xrange(0, 18):
+            for i in range(0, 18):
                 temp.seek(0, 0)
                 temp.write(tta_data[0:i])
                 temp.flush()
@@ -6481,7 +6481,7 @@ class TTAFileTest(LosslessFileTest):
         # check a TTA file that's been truncated
         temp = tempfile.NamedTemporaryFile(suffix=".tta")
         try:
-            for i in xrange(30, len(tta_data)):
+            for i in range(30, len(tta_data)):
                 temp.seek(0, 0)
                 temp.write(tta_data[0:i])
                 temp.flush()
@@ -6500,8 +6500,8 @@ class TTAFileTest(LosslessFileTest):
         # check a TTA file with a single swapped bit
         temp = tempfile.NamedTemporaryFile(suffix=".tta")
         try:
-            for i in xrange(0x30, len(tta_data)):
-                for j in xrange(8):
+            for i in range(0x30, len(tta_data)):
+                for j in range(8):
                     bytes = map(ord, tta_data[:])
                     bytes[i] ^= (1 << j)
                     temp.seek(0, 0)

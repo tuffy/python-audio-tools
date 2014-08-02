@@ -107,7 +107,7 @@ class FlacDecoder:
         # such as  [[1, 2, 3, ...], [4, 5, 6, ...]]  for a 2 channel stream
         channel_data = []
 
-        for channel_number in xrange(channel_count):
+        for channel_number in range(channel_count):
             if ((channel_assignment == 0x8) and (channel_number == 1)):
                 # for left-difference assignment
                 # the difference channel has 1 additional bit
@@ -291,12 +291,12 @@ class FlacDecoder:
 
     def read_verbatim_subframe(self, block_size, bits_per_sample):
         return [self.reader.read_signed(bits_per_sample)
-                for x in xrange(block_size)]
+                for x in range(block_size)]
 
     def read_fixed_subframe(self, block_size, bits_per_sample, order):
         # "order" number of warm-up samples
         samples = [self.reader.read_signed(bits_per_sample)
-                   for i in xrange(order)]
+                   for i in range(order)]
 
         # "block_size" - "order" number of residual values
         residuals = self.read_residual(block_size, order)
@@ -338,7 +338,7 @@ class FlacDecoder:
     def read_lpc_subframe(self, block_size, bits_per_sample, order):
         # "order" number of warm-up samples
         samples = [self.reader.read_signed(bits_per_sample)
-                   for i in xrange(order)]
+                   for i in range(order)]
 
         # the size of each QLP coefficient, in bits
         qlp_precision = self.reader.read(4)
@@ -351,7 +351,7 @@ class FlacDecoder:
 
         # "order" number of signed QLP coefficients
         qlp_coeffs = [self.reader.read_signed(qlp_precision + 1)
-                      for i in xrange(order)]
+                      for i in range(order)]
         # QLP coefficients are applied in reverse order
         qlp_coeffs.reverse()
 
@@ -374,7 +374,7 @@ class FlacDecoder:
 
         # each parititon contains  block_size / 2 ** partition_order
         # number of residuals
-        for partition_number in xrange(2 ** partition_order):
+        for partition_number in range(2 ** partition_order):
             if (partition_number == 0):
                 # except for the first partition
                 # which contains "order" less than the rest
@@ -398,7 +398,7 @@ class FlacDecoder:
             if (rice_parameter == 0xF):
                 escape_code = self.reader.read(5)
                 return [self.reader.read_signed(escape_code)
-                        for i in xrange(residual_count)]
+                        for i in range(residual_count)]
         elif (coding_method == 1):
             # 24 bps streams may use a 5-bit Rice parameter
             # for better compression
@@ -406,14 +406,14 @@ class FlacDecoder:
             if (rice_parameter == 0x1F):
                 escape_code = self.reader.read(5)
                 return [self.reader.read_signed(escape_code)
-                        for i in xrange(residual_count)]
+                        for i in range(residual_count)]
         else:
             raise ValueError("invalid Rice coding parameter")
 
         # a list of signed residual values
         partition_residuals = []
 
-        for i in xrange(residual_count):
+        for i in range(residual_count):
             msb = self.reader.unary(1)              # most-significant bits
             lsb = self.reader.read(rice_parameter)  # least-significant bits
             value = (msb << rice_parameter) | lsb   # combined into a value
