@@ -103,11 +103,11 @@ def validate_header(header):
         while (header_size > 0):
             # ensure each chunk header is valid
             (chunk_id, chunk_size) = aiff_file.parse("4b 32u")
-            if (not frozenset(chunk_id).issubset(AiffAudio.PRINTABLE_ASCII)):
+            if (frozenset(chunk_id).issubset(AiffAudio.PRINTABLE_ASCII)):
+                header_size -= 8
+            else:
                 from audiotools.text import ERR_AIFF_INVALID_CHUNK
                 raise ValueError(ERR_AIFF_INVALID_CHUNK)
-            else:
-                header_size -= 8
 
             if (chunk_id == "COMM"):
                 if (not comm_found):
@@ -174,11 +174,11 @@ def validate_footer(footer, ssnd_bytes_written):
 
         while (total_size > 0):
             (chunk_id, chunk_size) = aiff_file.parse("4b 32u")
-            if (not frozenset(chunk_id).issubset(AiffAudio.PRINTABLE_ASCII)):
+            if (frozenset(chunk_id).issubset(AiffAudio.PRINTABLE_ASCII)):
+                total_size -= 8
+            else:
                 from audiotools.text import ERR_AIFF_INVALID_CHUNK
                 raise ValueError(ERR_AIFF_INVALID_CHUNK)
-            else:
-                total_size -= 8
 
             if (chunk_id == "COMM"):
                 # ensure no COMM chunks are found

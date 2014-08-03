@@ -210,14 +210,6 @@ classes and functions upon which all of the other modules depend.
    their PCM output.
    Returns ``True`` if that output matches exactly, ``False`` if not.
 
-.. function:: stripped_pcm_cmp(pcmreader1, pcmreader2)
-
-   This function takes two :class:`PCMReader` objects and compares
-   their PCM output after stripping any 0 samples from the beginning
-   and end of each.
-   Returns ``True`` if the remaining output matches exactly,
-   ``False`` if not.
-
 .. function:: pcm_frame_cmp(pcmreader1, pcmreader2)
 
    This function takes two :class:`PCMReader` objects and compares
@@ -241,13 +233,6 @@ classes and functions upon which all of the other modules depend.
    Returns an iterator of
    ``(audiofile, track_gain, track_peak, album_gain, album_peak)``
    tuples or raises :exc:`ValueError` if a problem occurs during calculation.
-
-.. function:: read_metadata_file(path)
-
-   Given a path to a FreeDB XMCD file or MusicBrainz XML file,
-   returns an :class:`AlbumMetaDataFile`-compatible object
-   or raises a :exc:`MetaDataFileException` if the file cannot be
-   read or parsed correctly.
 
 .. function:: read_sheet(filename)
 
@@ -952,22 +937,6 @@ MetaData Objects
    with as little filtering as possible.
    This is meant to be useful for debugging purposes.
 
-AlbumMetaData Objects
----------------------
-
-.. class:: AlbumMetaData(metadata_iter)
-
-   This is a dictionary-like object of
-   track_number -> :class:`MetaData` values.
-   It is designed to represent metadata returned by CD lookup
-   services such as FreeDB or MusicBrainz.
-
-.. method:: AlbumMetaData.metadata()
-
-   Returns a single :class:`MetaData` object containing all the
-   fields that are consistent across this object's collection of MetaData.
-
-
 Image Objects
 -------------
 
@@ -1176,19 +1145,6 @@ PCMConverter Objects
 .. method:: PCMConverter.close
 
    This method functions the same as the :meth:`PCMReader.close` method.
-
-RemaskedPCMReader Objects
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. class:: RemaskedPCMReader(pcmreader, channel_count, channel_mask)
-
-   This class wraps around an existing :class:`PCMReader` object
-   and constructs a new :class:`PCMReader` with the given
-   channel count and mask.
-
-   Channels common to ``pcmreader`` and the given channel mask
-   are output by calls to :meth:`RemaskedPCMReader.read`
-   while missing channels are populated with silence.
 
 BufferedPCMReader Objects
 ^^^^^^^^^^^^^^^^^^^^^^^^^

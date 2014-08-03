@@ -1742,26 +1742,6 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         self.set_metadata(MetaData())
 
-    @classmethod
-    def __block_ids__(cls, flacfile):
-        """yields a block_id int per metadata block
-
-        raises ValueError if a block_id is invalid
-        """
-
-        valid_block_ids = frozenset(range(0, 6 + 1))
-        from audiotools.bitstream import BitstreamReader
-        reader = BitstreamReader(flacfile, 0)
-        stop = 0
-        while (stop == 0):
-            (stop, block_id, length) = reader.parse("1u 7u 24u")
-            if (block_id in valid_block_ids):
-                yield block_id
-            else:
-                from audiotools.text import ERR_FLAC_INVALID_BLOCK
-                raise ValueError(ERR_FLAC_INVALID_BLOCK)
-            reader.skip_bytes(length)
-
     def set_cuesheet(self, cuesheet):
         """imports cuesheet data from a Sheet object
 
@@ -1964,9 +1944,9 @@ class FlacAudio(WaveContainer, AiffContainer):
         except (IOError, ValueError) as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
-        except Exception as err:
+        except Exception:
             cls.__unlink__(filename)
-            raise err
+            raise
 
     def seekable(self):
         """returns True if the file is seekable"""
@@ -3428,11 +3408,11 @@ class OggFlacAudio(FlacAudio):
             sub.wait()
             cls.__unlink__(filename)
             raise EncodingError(str(err))
-        except Exception as err:
+        except Exception:
             sub.stdin.close()
             sub.wait()
             cls.__unlink__(filename)
-            raise err
+            raise
 
         try:
             pcmreader.close()

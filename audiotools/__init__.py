@@ -1076,7 +1076,7 @@ class ProgressRow:
     def update(self, current, total):
         """updates our row with the current progress values"""
 
-        self.current = current
+        self.current = min(current, total)
         self.total = total
 
     def finish(self):
@@ -2127,68 +2127,6 @@ class ReorderedPCMReader:
         self.pcmreader.close()
 
 
-class RemaskedPCMReader:
-    """a PCMReader wrapper which changes the channel count and mask"""
-
-    def __init__(self, pcmreader, channel_count, channel_mask):
-        self.pcmreader = pcmreader
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = channel_count
-        self.channel_mask = channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
-
-        if ((pcmreader.channel_mask != 0) and (channel_mask != 0)):
-            # both channel masks are defined
-            # so forward matching channels from pcmreader
-            # and replace non-matching channels with empty samples
-
-            mask = ChannelMask(channel_mask)
-            if (len(mask) != channel_count):
-                from audiotools.text import ERR_CHANNEL_COUNT_MASK_MISMATCH
-                raise ValueError(ERR_CHANNEL_COUNT_MASK_MISMATCH)
-            reader_channels = ChannelMask(pcmreader.channel_mask).channels()
-
-            self.__channels__ = [(reader_channels.index(c)
-                                  if c in reader_channels
-                                  else None) for c in mask.channels()]
-        else:
-            # at least one channel mask is undefined
-            # so forward up to "channel_count" channels from pcmreader
-            # and replace any remainders with empty samples
-            if (channel_count <= pcmreader.channels):
-                self.__channels__ = range(channel_count)
-            else:
-                self.__channels__ = (range(channel_count) +
-                                     [None] * (channel_count -
-                                               pcmreader.channels))
-
-        from audiotools.pcm import (from_list, from_channels)
-        self.blank_channel = from_list([],
-                                       1,
-                                       self.pcmreader.bits_per_sample,
-                                       True)
-        self.from_channels = from_channels
-
-    def read(self, pcm_frames):
-        frame = self.pcmreader.read(pcm_frames)
-
-        if (len(self.blank_channel) != frame.frames):
-            # ensure blank channel is large enough
-            from audiotools.pcm import from_list
-            self.blank_channel = from_list([0] * frame.frames,
-                                           1,
-                                           self.pcmreader.bits_per_sample,
-                                           True)
-
-        return self.from_channels([(frame.channel(c)
-                                    if c is not None else
-                                    self.blank_channel)
-                                   for c in self.__channels__])
-
-    def close(self):
-        self.pcmreader.close()
-
-
 def transfer_data(from_function, to_function):
     """sends BUFFER_SIZE strings from from_function to to_function
 
@@ -2255,21 +2193,21 @@ def threaded_transfer_framelist_data(pcmreader, to_function,
         s = data_queue.get()
 
 
-class __capped_stream_reader__:
-    # allows a maximum number of bytes "length" to
-    # be read from file-like object "stream"
-    # (used for reading IFF chunks, among others)
-    def __init__(self, stream, length):
-        self.stream = stream
-        self.remaining = length
-
-    def read(self, bytes):
-        data = self.stream.read(min(bytes, self.remaining))
-        self.remaining -= len(data)
-        return data
-
-    def close(self):
-        self.stream.close()
+#class __capped_stream_reader__:
+#    # allows a maximum number of bytes "length" to
+#    # be read from file-like object "stream"
+#    # (used for reading IFF chunks, among others)
+#    def __init__(self, stream, length):
+#        self.stream = stream
+#        self.remaining = length
+#
+#    def read(self, bytes):
+#        data = self.stream.read(min(bytes, self.remaining))
+#        self.remaining -= len(data)
+#        return data
+#
+#    def close(self):
+#        self.stream.close()
 
 
 def pcm_cmp(pcmreader1, pcmreader2):
@@ -2299,38 +2237,6 @@ def pcm_cmp(pcmreader1, pcmreader2):
             s2 = reader2.read(FRAMELIST_SIZE)
 
     return True
-
-
-def stripped_pcm_cmp(pcmreader1, pcmreader2):
-    """returns True if the stripped PCM data of pcmreader1 equals pcmreader2
-
-    this operates by reading each PCM streams entirely to memory,
-    performing strip() on their output and comparing checksums
-    (which permits us to store just one big blob of memory at a time)
-    """
-
-    if (((pcmreader1.sample_rate != pcmreader2.sample_rate) or
-         (pcmreader1.channels != pcmreader2.channels) or
-         (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample))):
-        return False
-
-    import cStringIO
-    try:
-        from hashlib import sha1 as sha
-    except ImportError:
-        from sha import new as sha
-
-    data = cStringIO.StringIO()
-    transfer_framelist_data(pcmreader1, data.write)
-    sum1 = sha(data.getvalue().strip(chr(0x00)))
-
-    data = cStringIO.StringIO()
-    transfer_framelist_data(pcmreader2, data.write)
-    sum2 = sha(data.getvalue().strip(chr(0x00)))
-
-    del(data)
-
-    return sum1.digest() == sum2.digest()
 
 
 def pcm_frame_cmp(pcmreader1, pcmreader2):
@@ -2577,46 +2483,6 @@ class LimitedPCMReader:
         self.read = self.read_closed
 
 
-def pcm_split(reader, pcm_lengths):
-    """yields a PCMReader object from reader for each pcm_length (in frames)
-
-    each sub-reader is pcm_length PCM frames long with the same
-    channels, bits_per_sample, sample_rate and channel_mask
-    as the full stream.  reader is closed upon completion
-    """
-
-    import cStringIO
-    import tempfile
-
-    def chunk_sizes(total_size, chunk_size):
-        while (total_size > chunk_size):
-            total_size -= chunk_size
-            yield chunk_size
-        yield total_size
-
-    full_data = BufferedPCMReader(reader)
-
-    for pcm_length in pcm_lengths:
-        if (pcm_length > (FRAMELIST_SIZE * 10)):
-            # if the sub-file length is somewhat large, use a temporary file
-            sub_file = tempfile.TemporaryFile()
-            for size in chunk_sizes(pcm_length, FRAMELIST_SIZE):
-                sub_file.write(full_data.read(size).to_bytes(False, True))
-            sub_file.seek(0, 0)
-        else:
-            # if the sub-file length is very small, use StringIO
-            sub_file = cStringIO.StringIO(
-                full_data.read(pcm_length).to_bytes(False, True))
-
-        yield PCMReader(sub_file,
-                        reader.sample_rate,
-                        reader.channels,
-                        reader.channel_mask,
-                        reader.bits_per_sample)
-
-    full_data.close()
-
-
 def PCMConverter(pcmreader,
                  sample_rate,
                  channels,
@@ -2709,28 +2575,6 @@ def resampled_frame_count(initial_frame_count,
                            Decimal(initial_sample_rate))
         return int(new_frame_count.quantize(Decimal("1."),
                                             rounding=ROUND_DOWN))
-
-
-def applicable_replay_gain(tracks):
-    """returns True if ReplayGain can be applied to a list of AudioFiles
-
-    this checks their sample rate and channel count to determine
-    applicability"""
-
-    sample_rates = set([track.sample_rate() for track in tracks])
-    if ((len(sample_rates) > 1) or
-        (list(sample_rates)[0] not in (48000,  44100,  32000,  24000, 22050,
-                                       16000,  12000,  11025,  8000,
-                                       18900,  37800,  56000,  64000,
-                                       88200,  96000,  112000, 128000,
-                                       144000, 176400, 192000))):
-        return False
-
-    channels = set([track.channels() for track in tracks])
-    if ((len(channels) > 1) or (list(channels)[0] not in (1, 2))):
-        return False
-
-    return True
 
 
 def calculate_replay_gain(tracks, progress=None):
@@ -3254,35 +3098,6 @@ class MetaData:
 
         return (MetaData(**dict([(field, getattr(self, field))
                                  for field in MetaData.FIELDS])), [])
-
-
-class AlbumMetaData(dict):
-    """a container for several MetaData objects
-
-    they can be retrieved by track number"""
-
-    def __init__(self, metadata_iter):
-        """metadata_iter is an iterator of MetaData objects"""
-
-        dict.__init__(self,
-                      dict([(m.track_number, m) for m in metadata_iter]))
-
-    def metadata(self):
-        """returns a single MetaData object of all consistent fields
-
-        for example, if album_name is the same in all MetaData objects,
-        the returned object will have that album_name value
-        if track_name differs, the returned object will not
-        have a track_name field
-        """
-
-        return MetaData(**dict([(field, list(items)[0])
-                                for (field, items) in
-                                [(field,
-                                  set([getattr(track, field) for track
-                                       in self.values()]))
-                                 for field in MetaData.FIELDS]
-                                if (len(items) == 1)]))
 
 
 (FRONT_COVER, BACK_COVER, LEAFLET_PAGE, MEDIA, OTHER) = range(5)
@@ -4157,44 +3972,6 @@ class AiffContainer(AudioFile):
                                   else None))
 
 
-class DummyAudioFile(AudioFile):
-    """a placeholder AudioFile object with external data"""
-
-    def __init__(self, length, metadata):
-        """fields are as follows:
-
-        length       - the dummy track's length, in CD frames
-        metadata     - a MetaData object
-        """
-
-        self.__length__ = length
-        self.__metadata__ = metadata
-
-        AudioFile.__init__(self, "")
-
-    def get_metadata(self):
-        """returns a MetaData object, or None"""
-
-        return self.__metadata__
-
-    def cd_frames(self):
-        """returns the total length of the track in CD frames
-
-        each CD frame is 1/75th of a second"""
-
-        return self.__length__
-
-    def sample_rate(self):
-        """returns 44100"""
-
-        return 44100
-
-    def total_frames(self):
-        """returns the total PCM frames of the track as an integer"""
-
-        return (self.cd_frames() * self.sample_rate()) // 75
-
-
 class SheetException(ValueError):
     """a parent exception for CueException and TOCException"""
 
@@ -4514,19 +4291,6 @@ class SheetIndex:
 
     def offset(self):
         return self.__offset__
-
-
-def at_a_time(total, per):
-    """yields "per" integers from "total" until exhausted
-
-    for example:
-    >>> list(at_a_time(10, 3))
-    [3, 3, 3, 1]
-    """
-
-    for i in range(total // per):
-        yield per
-    yield total % per
 
 
 def iter_first(iterator):
@@ -4925,16 +4689,6 @@ def accuraterip_lookup(sorted_tracks,
 
     may raise urllib2.HTTPError if an error occurs querying the server
     """
-
-    def track_number(track, default):
-        metadata = track.get_metadata()
-        if (metadata is not None):
-            if (metadata.track_number is not None):
-                return metadata.track_number
-            else:
-                return default
-        else:
-            return default
 
     if (len(sorted_tracks) == 0):
         return {}

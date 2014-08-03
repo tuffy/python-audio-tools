@@ -685,42 +685,6 @@ else:
     M4AAudio = M4AAudio_faac
 
 
-class M4ACovr(Image):
-    """a subclass of Image to store M4A 'covr' atoms"""
-
-    def __init__(self, image_data):
-        self.image_data = image_data
-
-        img = Image.new(image_data, u'', 0)
-
-        Image.__init__(self,
-                       data=image_data,
-                       mime_type=img.mime_type,
-                       width=img.width,
-                       height=img.height,
-                       color_depth=img.color_depth,
-                       color_count=img.color_count,
-                       description=img.description,
-                       type=img.type)
-
-    @classmethod
-    def converted(cls, image):
-        """given an Image object, returns an M4ACovr object"""
-
-        return M4ACovr(image.data)
-
-
-class __counter__:
-    def __init__(self):
-        self.val = 0
-
-    def incr(self):
-        self.val += 1
-
-    def __int__(self):
-        return self.val
-
-
 class InvalidALAC(InvalidFile):
     pass
 
@@ -994,7 +958,6 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         from audiotools import transfer_data
         from audiotools import EncodingError
         from audiotools import BufferedPCMReader
-        from audiotools import at_a_time
 
         ftyp = cls.__ftyp_atom__()
         free = cls.__free_atom__(0x1000)

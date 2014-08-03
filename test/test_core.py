@@ -33,7 +33,7 @@ from test import (parser, Variable_Reader, BLANK_PCM_Reader,
                   RANDOM_PCM_Reader, EXACT_SILENCE_PCM_Reader,
                   EXACT_BLANK_PCM_Reader, SHORT_PCM_COMBINATIONS,
                   MD5_Reader, FrameCounter,
-                  MiniFrameReader, Combinations, Possibilities,
+                  Combinations, Possibilities,
                   TEST_COVER1, TEST_COVER2, TEST_COVER3, HUGE_BMP)
 
 
@@ -1646,12 +1646,10 @@ class TestFrameList(unittest.TestCase):
                     rec.data(), 1, 24, False, False)))
 
         for low_bits in range(0, 0xFF + 1, RANGE):
-            if (high_bits < 0):
-                signed_values = [high_bits - low_bits for high_bits in
-                                 signed_ints_high]
-            else:
-                signed_values = [high_bits + low_bits for high_bits in
-                                 signed_ints_high]
+            signed_values [((high_bits - low_bits) if
+                            (high_bits < 0) else
+                            (high_bits + low_bits)) for high_bits in
+                           signed_ints_high]
 
             rec = BitstreamRecorder(0)
             rec.build("24s" * len(signed_values), signed_values)

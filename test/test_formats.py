@@ -749,11 +749,6 @@ class AudioFileTest(unittest.TestCase):
                 # get a PCMReader of our format
                 pcmreader = temp_track.to_pcm()
 
-                # ensure format is seekable
-                if (not (hasattr(pcmreader, "seek") and
-                         (callable(pcmreader.seek)))):
-                    return
-
                 # hash its data when read to end
                 raw_data = md5()
                 audiotools.transfer_framelist_data(pcmreader, raw_data.update)
@@ -1560,7 +1555,7 @@ class TestForeignWaveChunks:
                 # convert our file to every other WaveContainer format
                 # (including our own)
                 for new_class in audiotools.AVAILABLE_TYPES:
-                    if (isinstance(new_class, audiotools.WaveContainer)):
+                    if (issubclass(new_class, audiotools.WaveContainer)):
                         temp2 = tempfile.NamedTemporaryFile(
                             suffix="." + wav_class.SUFFIX)
                         log = Log()
@@ -1779,7 +1774,7 @@ class TestForeignAiffChunks:
                 # convert our file to every other AiffContainer format
                 # (including our own)
                 for new_class in audiotools.AVAILABLE_TYPES:
-                    if (isinstance(new_class, audiotools.AiffContainer)):
+                    if (issubclass(new_class, audiotools.AiffContainer)):
                         temp2 = tempfile.NamedTemporaryFile(
                             suffix="." + wav_class.SUFFIX)
                         log = Log()
@@ -2143,9 +2138,6 @@ class ALACFileTest(LosslessFileTest):
 
     @FORMAT_ALAC
     def test_channel_mask(self):
-        if (self.audio_class is audiotools.AudioFile):
-            return
-
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
         try:
             for mask in [["front_center"],
@@ -2935,9 +2927,6 @@ class AUFileTest(LosslessFileTest):
 
     @FORMAT_AU
     def test_channel_mask(self):
-        if (self.audio_class is audiotools.AudioFile):
-            return
-
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
         try:
             for mask in [["front_center"],
@@ -5287,9 +5276,6 @@ class VorbisFileTest(OggVerify, LossyFileTest):
 
     @FORMAT_VORBIS
     def test_channels(self):
-        if (self.audio_class is audiotools.AudioFile):
-            return
-
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
         try:
             for channels in [1, 2, 3, 4, 5, 6]:

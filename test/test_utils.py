@@ -37,11 +37,6 @@ from test import (parser, BLANK_PCM_Reader, Combinations, Possibilities,
                   HUGE_BMP)
 
 
-class InvalidTemporaryFile:
-    def __init__(self, bad_path):
-        self.name = bad_path
-
-
 def do_nothing(self):
     pass
 
@@ -99,9 +94,6 @@ class UtilTest(unittest.TestCase):
     def __clear_checks__(self):
         self.line_checks = []
 
-    def filename(self, s):
-        return s.decode(audiotools.FS_ENCODING, 'replace')
-
     def __queue_output__(self, s):
         self.__add_check__("stdout", s)
 
@@ -128,10 +120,6 @@ class UtilTest(unittest.TestCase):
 
     def __check_warning__(self, s):
         self.__queue_warning__(s)
-        self.__run_checks__()
-
-    def __check_usage__(self, executable, s):
-        self.__add_check__("stderr", u"*** Usage: " + s)
         self.__run_checks__()
 
 
@@ -1612,9 +1600,6 @@ class track2track(UtilTest):
             elif (option == '-o'):
                 populated.append(option)
                 populated.append(self.unwritable_file)
-            elif (option == '-x'):
-                populated.append(option)
-                populated.append(os.devnull)
             elif (option == '-j'):
                 populated.append(option)
                 populated.append(str(0))

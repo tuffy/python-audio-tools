@@ -241,9 +241,9 @@ class AuAudio(AudioFile):
             except (IOError, ValueError) as err:
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
-            except Exception as err:
+            except Exception:
                 cls.__unlink__(filename)
-                raise err
+                raise
 
             if (data_size < 2 ** 32):
                 # rewind and write a complete header

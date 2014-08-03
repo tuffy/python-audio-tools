@@ -259,18 +259,6 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 (len(self.__frame_lengths__) * 4) + 4 +  # seektable size
                 sum(self.__frame_lengths__))             # frames size
 
-    @classmethod
-    def can_add_replay_gain(cls, audiofiles):
-        """given a list of audiofiles,
-        returns True if this class can add ReplayGain to those files
-        returns False if not"""
-
-        for audiofile in audiofiles:
-            if (not isinstance(audiofile, TrueAudio)):
-                return False
-        else:
-            return True
-
     def get_metadata(self):
         """returns a MetaData object, or None
 

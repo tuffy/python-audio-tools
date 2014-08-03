@@ -7082,10 +7082,449 @@
     - [X] trackplay
     - [X] tracksplit
 ** TODO Improve test coverage
-   Ensure unit tests cover as much of the code as possible
-   in order to avoid any surprises during the Python 3 transition.
-** TODO Add Red Hat/Fedora .spec file for building .rpm files
-** TODO Upload to PyPI
+   - [ ] set_metadata(None) to all formats
+*** TODO Check repr on everything
+    Verifying the contents isn't important;
+    just make sure calling repr() doesn't throw an exception.
+*** TODO audiotools/__init__
+    - [ ] output_text
+    - [ ] output_list
+    - [ ] output_table
+    - [ ] threaded_transfer_framelist_data
+    - [ ] pcm_cmp
+    - [ ] pcm_frame_cmp
+    - [ ] resampled_frame_count
+    - [ ] read_sheet (IOError)
+    - [ ] iter_first
+    - [ ] iter_last
+    - [ ] most_numerous (len(item_list) == 0)
+    - [ ] most_numerous (all_differ)
+    - [ ] cddareader_metadata_lookup
+    - [ ] track_metadata_lookup
+    - [ ] sheet_metadata_lookup
+    - [ ] accuraterip_lookup (len(sorted_tracks) == 0)
+**** TODO MetaData
+     - [ ] __delattr__
+     - [ ] empty_fields
+     - [ ] __unicode__
+     - [ ] delete_image
+     - [ ] clean
+**** TODO AudioFile
+     - [ ] rich compare operators
+**** TODO Sheet
+     - [ ] converted
+     - [ ] __eq__
+     - [ ] track_numbers
+     - [ ] track (KeyError)
+     - [ ] pre_gap
+     - [ ] track_offset
+     - [ ] track_length
+**** TODO SheetTrack
+     - [ ] converted
+     - [ ] indexes
+     - [ ] index (KeyError)
+     - [ ] __eq__
+**** TODO SheetIndex
+     - [ ] converted
+     - [ ] __eq__
+**** TODO PCMReaderHead
+     - [ ] check for negative pcm_frames
+**** TODO PCMReaderDeHead
+     - [ ] truncation longer than entire stream
+     - [ ] read_closed
+**** TODO ExecProgressQueue
+*** TODO audiotools/accuraterip
+    - [ ] match_offset
+*** TODO audiotools/aiff
+**** TODO AiffAudio
+     - [ ] verify
+     - [ ] clean (with metadata)
+*** TODO audiotools/ape
+**** TODO ApeTag
+     - [ ] get
+     - [ ] index
+**** TODO ApeTaggedAudio
+     - [ ] set_metadata(None)
+     - [ ] set_metadata with cuesheet
+     - [ ] delete_metadata with ReplayGain
+     - [ ] delete_metadata with cuesheet
+*** TODO audiotools/cue
+    - [ ] read_cuesheet_string (with ValueError)
+**** TODO Track
+     - [ ] filename
+     - [ ] pre_emphasis
+     - [ ] copy_permitted
+**** TODO audiotools/cue/tokrules
+     - [ ] with illegal character
+**** TODO audiotools/cue/yaccrules
+     - [ ] with flags
+     - [ ] with syntax error
+*** TODO audiotools/flac
+**** TODO FlacMetaData
+     - [ ] converted(None)
+     - [ ] clean (multiple STREAMINFO)
+     - [ ] clean (multiple VORBIS_COMMENT)
+     - [ ] clean (multiple SEEKTABLE)
+     - [ ] clean (multiple CUESHEET)
+     - [ ] clean (remove undefined)
+     - [ ] raw_info()
+     check with all metadata blocks
+**** TODO Flac_VORBISCOMMENT
+     - [ ] converted(Flac_VORBISCOMMENT)
+     should return newly created object
+**** TODO Flac_Cuesheet
+     - [ ] track_length
+     - [ ] get_metadata with catalog
+     - [ ] converted with padding
+**** TODO Flac_Cuesheet_track
+     - [ ] filename
+**** TODO Flac_PICTURE
+     - [ ] setattr(type, ???)
+     - [ ] type_string
+**** TODO FlacAudio
+     - [ ] set_metadata(None)
+     - [ ] set_metadata with channel mask in old comment
+     - [ ] get_cuesheet() -> None
+     - [ ] from_pcm with UnsupportedChannelMask
+     - [ ] has_foreign_wave_chunks() -> False
+     - [ ] wave_header_footer() without chunks
+     - [ ] has_foreign_aiff_chunks() -> False
+     - [ ] aiff_header_footer() without chunks
+     - [ ] convert() to WaveContainer
+     - [ ] convert() to AiffContainer
+     - [ ] delete_replay_gain() without VORBIS_COMMENT
+     - [ ] clean on < 128 byte file
+**** TODO FLAC_Data_Chunk
+     is this still in use?
+**** TODO FLAC_SSND_Chunk
+     is this still in use?
+**** TODO OggFlacMetaData
+     - [ ] converted(None)
+**** TODO OggFlacAudio
+     - [ ] from_pcm with UnsupportedChannelMask
+*** TODO audiotools/freedb
+    - [ ] xmcd_metadata without album artist
+    - [ ] xmcd_metadata without track artist
+*** TODO audiotools/id3
+    - [ ] read_id3v2_comment (invalid header)
+    - [ ] read_id3v2_comment (unsupported version)
+    - [ ] skip_id3v2_comment (unsupported version)
+    - [ ] skip_id3v2_comment (IOError)
+    - [ ] total_id3v2_comments (unsupported version)
+    - [ ] total_id3v2_comments (IOError)
+**** TODO ID3v22Comment
+     - [ ] raw_info
+     - [ ] parse
+     - [ ] build
+     - [ ] size
+     - [ ] clean
+**** TODO ID3v22_T__Frame
+     - [ ] number() -> 0, no total
+     - [ ] number() -> not numerical type
+     - [ ] total() -> not numerical type
+**** TODO ID3v22_TXX_Frame
+**** TODO ID3v22_W__Frame
+**** TODO ID3v22_WXX_Frame
+**** TODO ID3v22_COM_Frame
+     - [ ] clean
+**** TODO ID3v22_PIC_Frame
+     - [ ] invalid image from data
+     - [ ] type_string
+     - [ ] getattr -> AttributeError
+     - [ ] setattr(type, ???)
+     - [ ] setattr(desription, ???)
+     - [ ] clean
+**** TODO ID3v22Comment
+     - [ ] copy
+     - [ ] parse (invalid header)
+     - [ ] parse (invalid major version)
+     - [ ] parse (invalid minor version)
+     - [ ] parse (TXX, WXX, W??)
+     - [ ] delitem
+     - [ ] items
+     - [ ] getattr -> AttributeError
+     - [ ] delattr(track/alum_number) unslashed
+     - [ ] delattr unsupported field
+     - [ ] converted(None)
+**** TODO ID3v23_TXXX_Frame
+**** TODO ID3v23_WXXX_Frame
+**** TODO ID3v23_APIC_Frame
+     - [ ] __init__ invalid image
+     - [ ] getattr -> AttributeError
+     - [ ] setattr(pic_type)
+     - [ ] setattr(description)
+     - [ ] setattr(mime_type)
+     - [ ] clean
+**** TODO ID3v23Comment
+     - [ ] parse invalid ID3 header
+     - [ ] invalid major version
+     - [ ] invalid minor version
+     - [ ] parse (WXXX, W???)
+**** TODO ID3v24_TXXX_Frame
+     - [ ] __unicode__
+     - [ ] parse
+**** TODO ID3v24_APIC_Frame
+     - [ ] setattr(type)
+     - [ ] setattr(description)
+     - [ ] setattr(mime_type)
+     - [ ] clean
+**** TODO ID3v24_WXXX_Frame
+     - [ ] parse
+**** TODO ID3v24_COMM_Frame
+     - [ ] clean
+**** TODO ID3v24Comment
+     - [ ] parse (invalid ID3 header)
+     - [ ] parse (invalid major version)
+     - [ ] parse (invalid minor version)
+     - [ ] parse (TXXX, WXXX, W???)
+**** TODO ID3CommentPair
+     - [ ] init id3v1 is not None
+     - [ ] converted(None)
+     - [ ] convert(ID3v2Comment)
+     - [ ] raw_info
+     - [ ] images (id3v2 is None)
+     - [ ] clean
+*** TODO audiotools/id3v1
+**** TODO ID3v1Comment
+     - [ ] getattr -> AttributeError
+     - [ ] setattr(non field)
+     - [ ] delattr(non field)
+     - [ ] converted(None)
+     - [ ] images
+***** TODO parse
+      - [ ] track_name length != 30
+      - [ ] artist_name length != 30
+      - [ ] album_name length != 30
+      - [ ] year length != 4
+      - [ ] comment length != 28
+      - [ ] track_number length != 1
+      - [ ] genre length != 1
+*** TODO audiotools/image
+    rename classes without __s
+    - [ ] image_metrics -> InvalidImage
+**** TODO __JPEG__
+     - [ ] parse -> IOError
+**** TODO __PNG__
+     - [ ] parse -> InvalidPNG
+     - [ ] parse -> IOError
+     - [ ] parse -> grayscale
+     - [ ] parse -> invalid PLTE
+     - [ ] parse -> grayscale + alpha
+**** TODO __BMP__
+     - [ ] parse -> IOError
+     - [ ] parse -> InvalidBMP
+**** TODO __GIF__
+     - [ ] parse -> IOError
+     - [ ] parse -> InvalidGIF
+**** TODO __TIFF__
+     - [ ] parse big-endian TIFF
+     - [ ] parse invalid magic number
+*** TODO audiotools/m4a
+    - [ ] get_m4a_atom -> KeyError
+    - [ ] get_m4a_atom_offset -> KeyError
+    - [ ] get_m4a_atom_offset -> IOError/KeyError
+    - [ ] has_m4a_atom (if (length - 8) <= 0)
+    - [ ] has_m4a_atom -> IOError
+**** TODO M4ATaggedAduio
+     - [ ] get_metadata -> KeyError if no meta
+     - [ ] update_metadata (generate moov)
+     - [ ] update_metadata (generate udta)
+     - [ ] update_metadata (generate meta)
+     - [ ] set_metadata(None)
+*** TODO audiotools/m4a_atoms
+**** TODO M4A_Tree_Atom
+     - [ ] has_child -> False
+     - [ ] remove_child
+     - [ ] child_offset -> KeyError
+**** TODO M4A_META_Atom
+     - [ ] getattr -> AttributeError
+     - [ ] setattr -> replace_data_atom
+     - [ ] delattr -> AttributeError
+     - [ ] converted(None)
+*** TODO audiotools/mp3
+**** TODO MP3Audio
+     - [ ] set_metadata(None)
+     - [ ] update_metadata (id3v2 not None, id3v1 is None)
+     - [ ] update_metadata (id3v2 None, id3v1 not None)
+     - [ ] update_metadata (id3v2 None, id3v1 None)
+     - [ ] clean (output_filename None, metadata None)
+     - [ ] clean (output_filename not None, metadata None)
+**** TODO MP2Audio
+     - [ ] from_pcm (nonstandard sample rate)
+*** TODO audiotools/opus
+**** TODO OpusAudio
+     - [ ] init (invalid Ogg magic number)
+     - [ ] init (invalid Ogg version)
+     - [ ] init (invalid Opus type)
+     - [ ] init (invalid Opus version)
+     - [ ] init (invalid Opus channels)
+     - [ ] get_replay_gain
+     - [ ] set_replay_gain
+     - [ ] delete_replay_gain
+*** TODO audiotools/shn
+**** TODO ShortenAudio
+     - [ ] __init__ -> IOError
+     - [ ] has_foreign_wave_chunks -> True
+     - [ ] has_foreign_wave_chunks -> odd-sized wave chunks
+     - [ ] has_foreign_wave_chunks -> no foreign chunks found
+     - [ ] has_foreign_aiff_chunks -> True
+     - [ ] has_foreign_aiff_chunks -> odd-sized aiff chunks
+     - [ ] has_foreign_aiff_chunks -> no foreign chunks found
+     - [ ] from_pcm using external function
+     - [ ] from_pcm (len(footer) == 0)
+     - [ ] convert to wave container
+     - [ ] convert to aiff container
+*** TODO audiotools/toc
+    - [ ] read_tocfile -> IOError
+    - [ ] read_tocfile_string -> SheetException
+    - [ ] write_tocfile
+**** TODO TOCFile
+     - [ ] get_metadata (catalog not None, cd_text not None)
+**** TODO TOCTrack
+     - [ ] get_metadata (isrc not None, cd_text not None)
+     - [ ] filename
+     - [ ] pre_emphasis
+     - [ ] copy_permitted (not False)
+*** TODO audiotools/toc/tokrules
+    - [ ] illegal character
+*** TODO audiotools/toc/yaccrules
+    - [ ] syntax error
+*** TODO audiotools/tta
+**** TODO TrueAudio
+     - [ ] init -> invalid signature
+     - [ ] init -> invalid format
+     - [ ] from_pcm -> IOError to EncodingError
+     - [ ] from_pcm -> frame count mismatch
+     - [ ] set_metadata(None)
+     - [ ] cuesheet in old metadata
+     - [ ] cuesheet in new metadata
+     - [ ] get_cuesheet -> CueException
+     - [ ] set_cuesheet(None)
+     - [ ] clean when metadata is None
+*** TODO audiotools/vorbis
+**** TODO VorbisAudio
+     - [ ] init -> invalid Ogg magic number
+     - [ ] init -> invalid Ogg version
+     - [ ] init -> invalid Vorbis type
+     - [ ] init -> invalid Vorbis header
+     - [ ] init -> invalid Vorbis version
+     - [ ] init -> invalid Vorbis framing bit
+**** TODO VorbisChannelMask
+     - [ ] channels
+*** TODO audiotools/vorbiscomment
+**** TODO VorbisComment
+     - [ ] values
+     - [ ] __contains__
+     - [ ] getattr(non-MetaData attrib)
+     - [ ] delattr(non-MetaData attrib)
+     - [ ] converted(None)
+     - [ ] converted(FlacMetaData without VORBISCOMMENT)
+     - [ ] clean(track_total/album_total with leading 0s)
+*** TODO audiotools/wav
+    - [ ] wave_header -> total size too large
+**** TODO RIFF_Chunk
+     - [ ] handle odd sized chunks
+**** TODO WaveReader
+     - [ ] init -> file too small
+     - [ ] init -> invalid RIFF
+     - [ ] init -> invalid WAVE
+     - [ ] init -> chunk header too small
+     - [ ] init -> invalid chunk ID
+     - [ ] init -> data chunk before fmt chunk
+     - [ ] init -> not audio chunks
+     - [ ] init -> no data chunk
+     - [ ] read -> data chunk too small
+**** TODO WaveAudio
+     - [ ] from_pcm -> total_pcm_frames too large
+     - [ ] from_pcm -> total_pcm_frames mismatch
+     - [ ] track_name(format=None)
+     - [ ] verify -> not enough data chunk
+     - [ ] clean -> non audio chunk
+*** TODO audiotools/wavpack
+**** TODO WavPackAudio
+     - [ ] blocks -> blocks_iter -> non wvpk block header
+     - [ ] __read_info__ -> non wvpk block ID
+     - [ ] __read_info__ -> nonstandard sample rate
+     - [ ] __read_info__ -> no channel info sub block
+     - [ ] from_pcm -> total_pcm_frames mismatch
+     - [ ] fmt_chunk
+     - [ ] get_cuesheet -> CueException
+     - [ ] set_cuesheet(None)
+*** TODO audiotools/py_decoders/flac
+**** TODO FlacDecoder
+     - [ ] init -> invalid FLAC file
+     - [ ] read -> MD5 checksum mismatch
+     - [ ] read -> invalid channel assignment
+     - [ ] read -> CRC16 mismatch
+     - [ ] read_frame_header -> invalid sync code
+     - [ ] read_frame_header -> invalid sample rate
+     - [ ] read_frame_header -> invalid bits-per-sample
+     - [ ] read_frame_header -> CRC8 mismatch
+     - [ ] read_subframe_header -> invalid subframe type
+     - [ ] read_fixed_subframe -> invalid order
+     - [ ] read_residual_partition(coding 0) -> escape code
+     - [ ] read_residual_partition(coding 1) -> escape code
+     - [ ] close
+*** TODO audiotools/py_decoders/shn
+**** TODO SHNDecoder
+     - [ ] init -> unsupported file type
+     - [ ] init -> non-audio RIFF chunks
+     - [ ] init -> AIFF chunks
+     - [ ] read_header -> invalid magic number
+     - [ ] read_header -> unsupported version
+     - [ ] read -> QLPC options
+*** TODO audiotools/py_decoders/tta
+**** TODO TTADecoder
+     - [ ] init -> CRC mismatch in header
+     - [ ] init -> CRC mismatch in seektable
+     - [ ] init -> CRC mismatch in frame
+     - [ ] close
+*** TODO audiotools/py_decoders/wavpack
+**** TODO WavPackDecoder
+     - [ ] init -> nonstandard sample rate
+     - [ ] read -> MD5 mismatch at end of stream
+     - [ ] read -> IOError/ValueError
+     - [ ] close
+**** TODO Block_Header
+     - [ ] invalid block ID
+**** TODO Sub_Block
+     - [ ] total_size large
+**** TODO read_block
+     - [ ] weights before terms
+     - [ ] samples before terms
+     - [ ] invalid samples byte count
+     - [ ] bitstream before entropy vars
+     - [ ] decorrelation weights not found
+     - [ ] decorrelation samples not found
+     - [ ] bitstream not found
+     - [ ] CRC mismatch
+**** TODO read_decorrelation_terms
+     - [ ] invalid passes count
+     - [ ] invalid term
+**** TODO read_decorrelation_weights
+     - [ ] invalid weight count
+**** TODO read_decorrelation_samples
+     - [ ] sub_block_size < 8, two channels
+     - [ ] sub_block_size < 8, one channel
+     - [ ] invalid term
+*** TODO audiotools/py_encoders/alac
+    - [ ] encode_frame -> residual overflow
+    - [ ] tukey_window -> n > window2
+    - [ ] encode_residuals -> residual overflow
+*** TODO audiotools/py_encoders/flac
+    - [ ] write_utf8 (value > 127)
+    - [ ] tukey_window (n > window2)
+    - [ ] compute_lpc_coefficients (estimate_best_order)
+    - [ ] estimate_best_order
+*** TODO audiotools/py_encoders/shn
+**** TODO encode_shn
+     - [ ] all zeroes
+     - [ ] write footer
+*** TODO audiotools/py_encoders/wavpack
+**** TODO encode_wavpack
+     - [ ] write wave footer
+**** TODO write_block
+     - [ ] all samples are 0
 * TODO Finish version 3.0
 ** TODO Make compatible with Python 2.7 and 3.X
    Like Urwid and PLY, the same code should work on both versions.

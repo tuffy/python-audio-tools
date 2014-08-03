@@ -71,7 +71,7 @@ class ID3v1Comment(MetaData):
         if (len(album_name) != 30):
             raise ValueError("album_name must be exactly 30 bytes")
         if (len(year) != 4):
-            raise ValueError("year must be exactly 30 bytes")
+            raise ValueError("year must be exactly 4 bytes")
         if (len(comment) != 28):
             raise ValueError("comment must be exactly 28 bytes")
         if (len(track_number) != 1):

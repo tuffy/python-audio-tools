@@ -476,9 +476,9 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         except (ValueError, IOError) as msg:
             cls.__unlink__(filename)
             raise EncodingError(str(msg))
-        except Exception as err:
+        except Exception:
             cls.__unlink__(filename)
-            raise err
+            raise
 
         # ensure actual total PCM frames matches argument, if any
         if (((total_pcm_frames is not None) and

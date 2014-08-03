@@ -241,31 +241,6 @@ class Join_Reader:
             r.close()
 
 
-class MiniFrameReader:
-    def __init__(self, channel_data, sample_rate, channel_mask,
-                 bits_per_sample):
-        self.sample_rate = sample_rate
-        self.channels = len(channel_data)
-        self.channel_mask = channel_mask
-        self.bits_per_sample = bits_per_sample
-        self.pcm_frames = zip(*channel_data)
-
-    def read(self, pcm_frames):
-        try:
-            return audiotools.pcm.from_list(self.pcm_frames.pop(0),
-                                            self.channels,
-                                            self.bits_per_sample,
-                                            True)
-        except IndexError:
-            return audiotools.pcm.FrameList("",
-                                            self.channels,
-                                            self.bits_per_sample,
-                                            True, True)
-
-    def close(self):
-        self.pcm_frames = []
-
-
 class FrameCounter:
     def __init__(self, channels, bits_per_sample, sample_rate, value=0):
         self.channels = channels

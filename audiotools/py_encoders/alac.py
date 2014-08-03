@@ -40,17 +40,6 @@ class Encoding_Options:
 QLP_SHIFT_NEEDED = 9
 
 
-class ByteCounter:
-    def __init__(self):
-        self.count = 0
-
-    def update(self, b):
-        self.count += 1
-
-    def __int__(self):
-        return self.count
-
-
 def encode_mdat(file, pcmreader,
                 block_size=4096,
                 initial_history=10,
