@@ -652,8 +652,6 @@ class WaveAudio(WaveContainer):
 
         return WaveReader(self.filename)
 
-    # Takes a filename and PCMReader containing WAV data
-    # builds a WAV from that data and returns a new WaveAudio object
     @classmethod
     def from_pcm(cls, filename, pcmreader,
                  compression=None, total_pcm_frames=None):
@@ -704,14 +702,15 @@ class WaveAudio(WaveContainer):
         if (counter.frames_written % 2):
             f.write(chr(0))
 
-        # close the PCM reader and flush our output
         if (total_pcm_frames is not None):
-            # ensure written number of PCM frames
-            # matches total_pcm_frames argument
-            if (counter.frames_written != total_pcm_frames):
+            if (total_pcm_frames != counter.frames_written):
+                # ensure written number of PCM frames
+                # matches total_pcm_frames argument
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
                 cls.__unlink__(filename)
                 raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
+            else:
+                f.close()
         else:
             # go back and rewrite populated header
             # with counted number of PCM frames
@@ -721,8 +720,7 @@ class WaveAudio(WaveContainer):
                                 pcmreader.channel_mask,
                                 pcmreader.bits_per_sample,
                                 counter.frames_written))
-
-        f.close()
+            f.close()
 
         return WaveAudio(filename)
 

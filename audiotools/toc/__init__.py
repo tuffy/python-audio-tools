@@ -159,6 +159,12 @@ class TOCTrack(SheetTrack):
             if (cdtext is not None):
                 flags.append(cdtext)
 
+        if (sheettrack.copy_permitted()):
+            flags.append(TOCFlag_COPY(True))
+
+        if (sheettrack.pre_emphasis()):
+            flags.append(TOCFlag_PRE_EMPHASIS(True))
+
         if (len(sheettrack) > 0):
             if ((next_sheettrack is not None) and
                 (sheettrack.filename() == next_sheettrack.filename())):

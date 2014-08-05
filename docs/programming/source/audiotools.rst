@@ -399,6 +399,8 @@ AudioFile Objects
 
    Takes a :class:`MetaData`-compatible object and sets this audio file's
    metadata to that value, if possible.
+   Setting metadata to ``None``is the same as calling
+   :meth:`AudioFile.delete_metadata`.
    Raises :exc:`IOError` if a problem occurs when writing the file.
 
 .. method:: AudioFile.update_metadata(metadata)

@@ -7082,7 +7082,7 @@
     - [X] trackplay
     - [X] tracksplit
 ** TODO Improve test coverage
-   - [ ] set_metadata(None) to all formats
+   - [X] set_metadata(None) to all formats
 *** TODO Check repr on everything
     Verifying the contents isn't important;
     just make sure calling repr() doesn't throw an exception.
@@ -7111,30 +7111,30 @@
      - [ ] clean
 **** TODO AudioFile
      - [ ] rich compare operators
-**** TODO Sheet
-     - [ ] converted
-     - [ ] __eq__
-     - [ ] track_numbers
-     - [ ] track (KeyError)
-     - [ ] pre_gap
-     - [ ] track_offset
-     - [ ] track_length
-**** TODO SheetTrack
-     - [ ] converted
-     - [ ] indexes
-     - [ ] index (KeyError)
-     - [ ] __eq__
-**** TODO SheetIndex
-     - [ ] converted
-     - [ ] __eq__
+**** DONE Sheet
+     - [X] converted
+     - [X] __eq__
+     - [X] track_numbers
+     - [X] track (KeyError)
+     - [X] pre_gap
+     - [X] track_offset
+     - [X] track_length
+**** DONE SheetTrack
+     - [X] converted
+     - [X] indexes
+     - [X] index (KeyError)
+     - [X] __eq__
+**** DONE SheetIndex
+     - [X] converted
+     - [X] __eq__
 **** TODO PCMReaderHead
      - [ ] check for negative pcm_frames
 **** TODO PCMReaderDeHead
      - [ ] truncation longer than entire stream
      - [ ] read_closed
-**** TODO ExecProgressQueue
-*** TODO audiotools/accuraterip
-    - [ ] match_offset
+**** DONE ExecProgressQueue
+*** DONE audiotools/accuraterip
+    - [X] match_offset
 *** TODO audiotools/aiff
 **** TODO AiffAudio
      - [ ] verify
@@ -7144,20 +7144,20 @@
      - [ ] get
      - [ ] index
 **** TODO ApeTaggedAudio
-     - [ ] set_metadata(None)
+     - [X] set_metadata(None)
      - [ ] set_metadata with cuesheet
      - [ ] delete_metadata with ReplayGain
      - [ ] delete_metadata with cuesheet
 *** TODO audiotools/cue
     - [ ] read_cuesheet_string (with ValueError)
-**** TODO Track
-     - [ ] filename
-     - [ ] pre_emphasis
-     - [ ] copy_permitted
+**** DONE Track
+     - [X] filename
+     - [X] pre_emphasis
+     - [X] copy_permitted
 **** TODO audiotools/cue/tokrules
      - [ ] with illegal character
 **** TODO audiotools/cue/yaccrules
-     - [ ] with flags
+     - [X] with flags
      - [ ] with syntax error
 *** TODO audiotools/flac
 **** TODO FlacMetaData
@@ -7182,7 +7182,7 @@
      - [ ] setattr(type, ???)
      - [ ] type_string
 **** TODO FlacAudio
-     - [ ] set_metadata(None)
+     - [X] set_metadata(None)
      - [ ] set_metadata with channel mask in old comment
      - [ ] get_cuesheet() -> None
      - [ ] from_pcm with UnsupportedChannelMask
@@ -7300,7 +7300,7 @@
       - [ ] track_number length != 1
       - [ ] genre length != 1
 *** TODO audiotools/image
-    rename classes without __s
+    - [ ] rename classes without __s
     - [ ] image_metrics -> InvalidImage
 **** TODO __JPEG__
      - [ ] parse -> IOError
@@ -7330,7 +7330,7 @@
      - [ ] update_metadata (generate moov)
      - [ ] update_metadata (generate udta)
      - [ ] update_metadata (generate meta)
-     - [ ] set_metadata(None)
+     - [X] set_metadata(None)
 *** TODO audiotools/m4a_atoms
 **** TODO M4A_Tree_Atom
      - [ ] has_child -> False
@@ -7343,7 +7343,7 @@
      - [ ] converted(None)
 *** TODO audiotools/mp3
 **** TODO MP3Audio
-     - [ ] set_metadata(None)
+     - [X] set_metadata(None)
      - [ ] update_metadata (id3v2 not None, id3v1 is None)
      - [ ] update_metadata (id3v2 None, id3v1 not None)
      - [ ] update_metadata (id3v2 None, id3v1 None)
@@ -7382,9 +7382,9 @@
      - [ ] get_metadata (catalog not None, cd_text not None)
 **** TODO TOCTrack
      - [ ] get_metadata (isrc not None, cd_text not None)
-     - [ ] filename
-     - [ ] pre_emphasis
-     - [ ] copy_permitted (not False)
+     - [X] filename
+     - [X] pre_emphasis
+     - [X] copy_permitted (not False)
 *** TODO audiotools/toc/tokrules
     - [ ] illegal character
 *** TODO audiotools/toc/yaccrules
@@ -7395,7 +7395,7 @@
      - [ ] init -> invalid format
      - [ ] from_pcm -> IOError to EncodingError
      - [ ] from_pcm -> frame count mismatch
-     - [ ] set_metadata(None)
+     - [X] set_metadata(None)
      - [ ] cuesheet in old metadata
      - [ ] cuesheet in new metadata
      - [ ] get_cuesheet -> CueException
@@ -7436,7 +7436,7 @@
      - [ ] read -> data chunk too small
 **** TODO WaveAudio
      - [ ] from_pcm -> total_pcm_frames too large
-     - [ ] from_pcm -> total_pcm_frames mismatch
+     - [X] from_pcm -> total_pcm_frames mismatch
      - [ ] track_name(format=None)
      - [ ] verify -> not enough data chunk
      - [ ] clean -> non audio chunk
@@ -7446,7 +7446,7 @@
      - [ ] __read_info__ -> non wvpk block ID
      - [ ] __read_info__ -> nonstandard sample rate
      - [ ] __read_info__ -> no channel info sub block
-     - [ ] from_pcm -> total_pcm_frames mismatch
+     - [X] from_pcm -> total_pcm_frames mismatch
      - [ ] fmt_chunk
      - [ ] get_cuesheet -> CueException
      - [ ] set_cuesheet(None)

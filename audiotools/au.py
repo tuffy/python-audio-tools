@@ -97,6 +97,34 @@ class AuReader:
         self.file.close()
 
 
+def au_header(sample_rate,
+              channels,
+              bits_per_sample,
+              total_pcm_frames):
+    """given a set of integer stream attributes,
+    returns header string of entire Au header
+
+    may raise ValueError if the total size of the file is too large"""
+
+    from audiotools.bitstream import build
+
+    if ((channels *
+         (bits_per_sample // 8) *
+         total_pcm_frames) >= 2 ** 32):
+         raise ValueError("PCM data too large for Sun AU file")
+    else:
+        return build("4b 5*32u",
+                     False,
+                     (".snd",
+                      24,
+                      (channels *
+                       (bits_per_sample // 8) *
+                       total_pcm_frames),
+                      {8: 2, 16: 3, 24: 4}[bits_per_sample],
+                      sample_rate,
+                      channels))
+
+
 class AuAudio(AudioFile):
     """a Sun AU audio file"""
 
@@ -203,10 +231,10 @@ class AuAudio(AudioFile):
         at the given filename with the specified compression level
         and returns a new AuAudio object"""
 
-        from audiotools.bitstream import BitstreamWriter
-        from audiotools import FRAMELIST_SIZE
         from audiotools import EncodingError
         from audiotools import DecodingError
+        from audiotools import CounterPCMReader
+        from audiotools import transfer_framelist_data
 
         if (pcmreader.bits_per_sample not in (8, 16, 24)):
             from audiotools import Filename
@@ -217,51 +245,46 @@ class AuAudio(AudioFile):
                 {"target_filename": Filename(filename),
                  "bps": pcmreader.bits_per_sample})
 
-        data_size = 0
-        encoding_format = {8: 2, 16: 3, 24: 4}[pcmreader.bits_per_sample]
+        try:
+            header = au_header(pcmreader.sample_rate,
+                               pcmreader.channels,
+                               pcmreader.bits_per_sample,
+                               total_pcm_frames if total_pcm_frames
+                               is not None else 0)
+        except ValueError as err:
+            raise EncodingError(str(err))
 
         try:
-            f = file(filename, 'wb')
-            au = BitstreamWriter(f, 0)
+            f = file(filename, "wb")
         except IOError as err:
             raise EncodingError(str(err))
+
+        counter = CounterPCMReader(pcmreader)
+        f.write(header)
         try:
-            # write a dummy header
-            au.build("4b 5* 32u", (".snd", 24, data_size, encoding_format,
-                                   pcmreader.sample_rate, pcmreader.channels))
-
-            # write our big-endian PCM data
-            try:
-                framelist = pcmreader.read(FRAMELIST_SIZE)
-                while (len(framelist) > 0):
-                    bytes = framelist.to_bytes(True, True)
-                    f.write(bytes)
-                    data_size += len(bytes)
-                    framelist = pcmreader.read(FRAMELIST_SIZE)
-            except (IOError, ValueError) as err:
-                cls.__unlink__(filename)
-                raise EncodingError(str(err))
-            except Exception:
-                cls.__unlink__(filename)
-                raise
-
-            if (data_size < 2 ** 32):
-                # rewind and write a complete header
-                f.seek(0, 0)
-                au.build("4b 5* 32u",
-                         (".snd", 24, data_size, encoding_format,
-                          pcmreader.sample_rate, pcmreader.channels))
-            else:
-                cls.__unlink__(filename)
-                raise EncodingError("PCM data too large for Sun AU file")
-        finally:
-            f.close()
-
-        try:
-            pcmreader.close()
-        except DecodingError as err:
+            transfer_framelist_data(counter, f.write, True, True)
+        except (IOError, ValueError) as err:
             cls.__unlink__(filename)
-            raise EncodingError(err.error_message)
+            raise EncodingError(str(err))
+
+        if (total_pcm_frames is not None):
+            if (total_pcm_frames != counter.frames_written):
+                # ensure written number of PCM frames
+                # matches total_pcm_frames argument
+                from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+                cls.__unlink__(filename)
+                raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
+            else:
+                f.close()
+        else:
+            # go back and rewrite populated header
+            # with counted number of PCM frames
+            f.seek(0, 0)
+            f.write(au_header(pcmreader.sample_rate,
+                              pcmreader.channels,
+                              pcmreader.bits_per_sample,
+                              counter.frames_written))
+            f.close()
 
         return AuAudio(filename)
 

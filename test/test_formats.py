@@ -727,6 +727,56 @@ class AudioFileTest(unittest.TestCase):
         self.assert_(not os.path.isfile(dummy_filename))
 
     @FORMAT_AUDIOFILE
+    def test_total_pcm_frames(self):
+        # all formats take a total_pcm_frames argument to from_pcm()
+        # none are expected to do anything useful with it
+        # but all should raise an exception if the actual amount
+        # of input frames doesn't match
+
+        if (self.audio_class is audiotools.AudioFile):
+            return
+
+        temp_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX,
+            delete=False)
+        try:
+            # encode a file without the total_pcm_frames argument
+            track = self.audio_class.from_pcm(
+                temp_file.name,
+                EXACT_SILENCE_PCM_Reader(123456))
+            track.verify()
+
+            if (track.lossless()):
+                self.assertEqual(track.total_frames(), 123456)
+
+            # encode a file with the total_pcm_frames argument
+            track = self.audio_class.from_pcm(
+                temp_file.name,
+                EXACT_SILENCE_PCM_Reader(234567),
+                total_pcm_frames=234567)
+            track.verify()
+
+            if (track.lossless()):
+                self.assertEqual(track.total_frames(), 234567)
+
+            # check too many total_pcm_frames
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_pcm,
+                              temp_file.name,
+                              EXACT_SILENCE_PCM_Reader(345678),
+                              total_pcm_frames=345679)
+
+            # check not enough total_pcm_frames
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_pcm,
+                              temp_file.name,
+                              EXACT_SILENCE_PCM_Reader(345678),
+                              total_pcm_frames=345677)
+        finally:
+            if (os.path.isfile(temp_file.name)):
+                temp_file.close()
+
+    @FORMAT_AUDIOFILE
     def test_seekable(self):
         from hashlib import md5
         from random import randrange
@@ -1942,6 +1992,26 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
                 BitstreamReader(s, 0)))
 
     @FORMAT_AIFF
+    def test_overlong_file(self):
+        # trying to generate too large of a file
+        # should throw an exception right away if total_pcm_frames known
+        # instead of building it first
+
+        self.assertEqual(os.path.isfile("invalid.aiff"), False)
+
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          "invalid.aiff",
+                          EXACT_SILENCE_PCM_Reader(
+                              pcm_frames=715827883,
+                              sample_rate=44100,
+                              channels=2,
+                              bits_per_sample=24),
+                          total_pcm_frames=715827883)
+
+        self.assertEqual(os.path.isfile("invalid.aiff"), False)
+
+    @FORMAT_AIFF
     def test_verify(self):
         import audiotools.aiff
 
@@ -2924,6 +2994,26 @@ class AUFileTest(LosslessFileTest):
     def setUp(self):
         self.audio_class = audiotools.AuAudio
         self.suffix = "." + self.audio_class.SUFFIX
+
+    @FORMAT_AU
+    def test_overlong_file(self):
+        # trying to generate too large of a file
+        # should throw an exception right away if total_pcm_frames known
+        # instead of building it first
+
+        self.assertEqual(os.path.isfile("invalid.au"), False)
+
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          "invalid.au",
+                          EXACT_SILENCE_PCM_Reader(
+                              pcm_frames=715827883,
+                              sample_rate=44100,
+                              channels=2,
+                              bits_per_sample=24),
+                          total_pcm_frames=715827883)
+
+        self.assertEqual(os.path.isfile("invalid.au"), False)
 
     @FORMAT_AU
     def test_channel_mask(self):
@@ -5366,6 +5456,26 @@ class WaveFileTest(TestForeignWaveChunks,
     def setUp(self):
         self.audio_class = audiotools.WaveAudio
         self.suffix = "." + self.audio_class.SUFFIX
+
+    @FORMAT_WAVE
+    def test_overlong_file(self):
+        # trying to generate too large of a file
+        # should throw an exception right away if total_pcm_frames known
+        # instead of building it first
+
+        self.assertEqual(os.path.isfile("invalid.wav"), False)
+
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          "invalid.wav",
+                          EXACT_SILENCE_PCM_Reader(
+                              pcm_frames=715827883,
+                              sample_rate=44100,
+                              channels=2,
+                              bits_per_sample=24),
+                          total_pcm_frames=715827883)
+
+        self.assertEqual(os.path.isfile("invalid.wav"), False)
 
     @FORMAT_WAVE
     def test_verify(self):

@@ -117,23 +117,30 @@ def match_offset(ar_matches, checksums, initial_offset):
     initial_offset is the starting offset of the checksums
 
     returns (checksum, confidence, offset) of the best match found
-if no matches are found, confidence is None and offset is 0
-"""
+    if no matches are found, confidence is None and offset is 0
+    """
 
-    matches = dict([(crc, confidence) for (confidence, crc, crc2) in
-                    ar_matches])  # all crcs have difference confidence
+    if (len(checksums) == 0):
+        raise ValueError("at least 1 checksum is required")
 
-    best_match = None  # a (crc, confidence, offset) tuple, or None
+    # crc should be unique in the list
+    # but confidence may not be
+    matches = {crc: confidence for (confidence, crc, crc2) in
+               ar_matches}
 
-    for (offset, crc) in enumerate(checksums, initial_offset):
-        if (crc in matches):
-            confidence = matches[crc]
-            if ((best_match is None) or (confidence > best_match[1])):
-                best_match = (crc, confidence, offset)
+    offsets = {crc: offset for (offset, crc) in
+               enumerate(checksums, initial_offset)}
 
-    if (best_match is not None):
-        return best_match
+    match_offsets = sorted(
+        [(crc, matches[crc], offsets[crc]) for crc in
+         set(matches.keys()) & set(offsets.keys())],
+        key=lambda triple: triple[1])
+
+    if (len(match_offsets) > 0):
+        # choose the match with the highest confidence
+        return match_offsets[-1]
     else:
+        # no match found
         # return checksum at offset 0, or as close as possible
         if (initial_offset <= 0):
             return (checksums[-initial_offset], None, 0)

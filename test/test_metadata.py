@@ -360,6 +360,38 @@ class MetaDataTest(unittest.TestCase):
             finally:
                 temp_file.close()
 
+    @METADATA_METADATA
+    def test_delete_metadata(self):
+        for audio_class in self.supported_formats:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            try:
+                track = audio_class.from_pcm(temp_file.name,
+                                             BLANK_PCM_Reader(1))
+
+                self.assert_((track.get_metadata() is None) or
+                             (track.get_metadata().track_name is None))
+
+                track.set_metadata(
+                    audiotools.MetaData(track_name=u"Track Name"))
+                self.assertEqual(track.get_metadata().track_name,
+                                 u"Track Name")
+
+                track.delete_metadata()
+                self.assert_((track.get_metadata() is None) or
+                             (track.get_metadata().track_name is None))
+
+                track.set_metadata(
+                    audiotools.MetaData(track_name=u"Track Name"))
+                self.assertEqual(track.get_metadata().track_name,
+                                 u"Track Name")
+
+                track.set_metadata(None)
+                self.assert_((track.get_metadata() is None) or
+                             (track.get_metadata().track_name is None))
+            finally:
+                temp_file.close()
+
 
 class WavPackApeTagMetaData(MetaDataTest):
     def setUp(self):

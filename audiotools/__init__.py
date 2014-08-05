@@ -436,6 +436,13 @@ class Messenger:
         return struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234'))
 
 
+class SilentMessenger(Messenger):
+    def __init__(self):
+        self.executable = ""
+        self.__stdout__ = DummyOutput()
+        self.__stderr__ = DummyOutput()
+
+
 def khz(hz):
     """given an integer sample rate value in Hz,
     returns a unicode kHz value with suffix
@@ -4161,7 +4168,7 @@ class SheetTrack:
         """Given a SheetTrack-compatible object, returns a SheetTrack"""
 
         return cls(number=sheet_track.number(),
-                   track_indexes=map(SheetIndex.convert, sheet_track),
+                   track_indexes=map(SheetIndex.converted, sheet_track),
                    metadata=sheet_track.get_metadata(),
                    filename=sheet_track.filename(),
                    is_audio=sheet_track.is_audio(),
@@ -4204,7 +4211,6 @@ class SheetTrack:
     def __eq__(self, sheet_track):
         try:
             for method in ["number",
-                           "get_metadata",
                            "is_audio",
                            "pre_emphasis",
                            "copy_permitted"]:

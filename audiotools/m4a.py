@@ -263,7 +263,7 @@ class M4ATaggedAudio:
         raises IOError if unable to write the file"""
 
         if (metadata is None):
-            return
+            return self.delete_metadata()
 
         old_metadata = self.get_metadata()
         metadata = M4A_META_Atom.converted(metadata)
@@ -516,17 +516,27 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         # so trying to ignore it doesn't work like on most other encoders.
 
         try:
+            if (total_pcm_frames is not None):
+                from audiotools import CounterPCMReader
+                pcmreader = CounterPCMReader(pcmreader)
+
             transfer_framelist_data(pcmreader, sub.stdin.write)
+
+            if ((total_pcm_frames is not None) and
+                (total_pcm_frames != pcmreader.frames_written)):
+                from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+                raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
+
         except (ValueError, IOError) as err:
             sub.stdin.close()
             sub.wait()
             cls.__unlink__(filename)
             raise EncodingError(str(err))
-        except Exception as err:
+        except Exception:
             sub.stdin.close()
             sub.wait()
             cls.__unlink__(filename)
-            raise err
+            raise
 
         try:
             pcmreader.close()
@@ -598,11 +608,13 @@ class M4AAudio_nero(M4AAudio_faac):
                                  sample_rate=96000,
                                  channels=pcmreader.channels,
                                  channel_mask=pcmreader.channel_mask,
-                                 bits_per_sample=pcmreader.bits_per_sample))
+                                 bits_per_sample=pcmreader.bits_per_sample),
+                    total_pcm_frames=total_pcm_frames)
             else:
                 tempwave = WaveAudio.from_pcm(
                     tempwavefile.name,
-                    pcmreader)
+                    pcmreader,
+                    total_pcm_frames=total_pcm_frames)
 
             cls.__from_wave__(filename, tempwave.filename, compression)
             return cls(filename)

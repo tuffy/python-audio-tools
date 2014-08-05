@@ -236,6 +236,13 @@ class Track(SheetTrack):
             args["performer"] = encode_string(metadata.performer_name)
             args["songwriter"] = encode_string(metadata.artist_name)
 
+        if (sheettrack.pre_emphasis() and sheettrack.copy_permitted()):
+            args["flags"] = ["PRE", "DCP"]
+        elif (sheettrack.pre_emphasis()):
+            args["flags"] = ["PRE"]
+        elif (sheettrack.copy_permitted()):
+            args["flags"] = ["DCP"]
+
         return cls(**args)
 
     def __len__(self):

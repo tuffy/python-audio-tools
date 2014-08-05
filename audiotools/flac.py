@@ -1623,7 +1623,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         new_metadata = self.METADATA_CLASS.converted(metadata)
 
         if (new_metadata is None):
-            return
+            return self.delete_metadata()
 
         old_metadata = self.get_metadata()
         if (old_metadata is None):
@@ -1815,6 +1815,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         from audiotools import EncodingError
         from audiotools import UnsupportedChannelCount
         from audiotools import BufferedPCMReader
+        from audiotools import CounterPCMReader
         from audiotools import __default_quality__
 
         if ((compression is None) or (compression not in
@@ -1910,12 +1911,21 @@ class FlacAudio(WaveContainer, AiffContainer):
             padding_size = 4096
 
         try:
+            if (total_pcm_frames is not None):
+                pcmreader = CounterPCMReader(pcmreader)
+
             offsets = (encode_flac if encoding_function is None
                        else encoding_function)(
                 filename,
                 pcmreader=BufferedPCMReader(pcmreader),
                 padding_size=padding_size,
                 **encoding_options)
+
+            if ((total_pcm_frames is not None) and
+                (total_pcm_frames != pcmreader.frames_written)):
+                from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+                raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
+
             flac = FlacAudio(filename)
             metadata = flac.get_metadata()
             assert(metadata is not None)

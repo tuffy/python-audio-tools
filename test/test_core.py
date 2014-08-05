@@ -4539,6 +4539,67 @@ class testcuesheet(unittest.TestCase):
                          artist_name=u"Album \\ Artist"))
 
     @LIB_CUESHEET
+    def test_attributes(self):
+        from audiotools import Sheet, SheetTrack, SheetIndex
+
+        def timestamp_to_frac(m, s, f):
+            from fractions import Fraction
+            return Fraction((m * 60 * 75) + (s * 75) + f, 75)
+
+        raw_sheet = Sheet([SheetTrack(
+                           number=1,
+                           track_indexes=[
+                               SheetIndex(0, timestamp_to_frac(0, 0, 0)),
+                               SheetIndex(1, timestamp_to_frac(0, 1, 0))],
+                           metadata=audiotools.MetaData(
+                               track_name=u"Track 1"),
+                           filename="CDImage.wav"),
+                           SheetTrack(
+                           number=2,
+                           track_indexes=[
+                               SheetIndex(1, timestamp_to_frac(0, 5, 0))],
+                           metadata=audiotools.MetaData(
+                               track_name=u"Track 2"),
+                           filename="CDImage.wav"),
+                           SheetTrack(
+                           number=3,
+                           track_indexes=[
+                               SheetIndex(0, timestamp_to_frac(0, 9, 0)),
+                               SheetIndex(1, timestamp_to_frac(0, 11, 0)),
+                               SheetIndex(2, timestamp_to_frac(0, 12, 0))],
+                           metadata=audiotools.MetaData(
+                               track_name=u"Track 3"),
+                           filename="CDImage.wav")])
+
+        sheet = self.sheet_class.converted(raw_sheet)
+
+        self.assertEqual(sheet, raw_sheet)
+        for other_sheet in self.__sheets__():
+            self.assertNotEqual(sheet, other_sheet)
+
+        self.assertEqual(sheet.track_numbers(), [1, 2, 3])
+        self.assertRaises(KeyError, sheet.track, 0)
+        self.assertRaises(KeyError, sheet.track, 4)
+        self.assertEqual(sheet.pre_gap(), 1)
+        self.assertEqual(sheet.track_offset(1), 1)
+        self.assertEqual(sheet.track_length(1), 4)
+        self.assertEqual(sheet.track_offset(2), 5)
+        self.assertEqual(sheet.track_length(2), 6)
+        self.assertEqual(sheet.track_offset(3), 11)
+        self.assertEqual(sheet.track_length(3), None)
+
+        self.assertEqual(sheet.track(1).indexes(), [0, 1])
+        self.assertRaises(KeyError, sheet.track(1).index, 2)
+        self.assertEqual(sheet.track(2).indexes(), [1])
+        self.assertRaises(KeyError, sheet.track(2).index, 0)
+        self.assertRaises(KeyError, sheet.track(2).index, 2)
+        self.assertEqual(sheet.track(3).indexes(), [0, 1, 2])
+        self.assertRaises(KeyError, sheet.track(3).index, 3)
+
+        round_trip_sheet = Sheet.converted(sheet)
+        self.assertEqual(round_trip_sheet, sheet)
+
+    @LIB_CUESHEET
     def test_round_trip(self):
         for sheet in self.__sheets__():
             converted = self.sheet_class.converted(sheet)
@@ -4562,6 +4623,77 @@ class testcuesheet(unittest.TestCase):
             temp_sheet.close()
             self.assertEqual(re_read, sheet)
 
+    @LIB_CUESHEET
+    def test_flags(self):
+        from audiotools import Sheet, SheetTrack, SheetIndex
+        from fractions import Fraction
+
+        raw_sheet = Sheet([SheetTrack(
+                           number=1,
+                           track_indexes=[SheetIndex(1, Fraction(0, 1))],
+                           filename="track1.wav",
+                           pre_emphasis=False,
+                           copy_permitted=False),
+                           SheetTrack(
+                           number=2,
+                           track_indexes=[SheetIndex(1, Fraction(0, 1))],
+                           filename="track2.wav",
+                           pre_emphasis=True,
+                           copy_permitted=False),
+                           SheetTrack(
+                           number=3,
+                           track_indexes=[SheetIndex(1, Fraction(0, 1))],
+                           filename="track3.wav",
+                           pre_emphasis=False,
+                           copy_permitted=True),
+                           SheetTrack(
+                           number=4,
+                           track_indexes=[SheetIndex(1, Fraction(0, 1))],
+                           filename="track4.wav",
+                           pre_emphasis=True,
+                           copy_permitted=True)])
+
+        self.assertEqual(raw_sheet.track(1).filename(), "track1.wav")
+        self.assertEqual(raw_sheet.track(1).pre_emphasis(), False)
+        self.assertEqual(raw_sheet.track(1).copy_permitted(), False)
+        self.assertEqual(raw_sheet.track(2).filename(), "track2.wav")
+        self.assertEqual(raw_sheet.track(2).pre_emphasis(), True)
+        self.assertEqual(raw_sheet.track(2).copy_permitted(), False)
+        self.assertEqual(raw_sheet.track(3).filename(), "track3.wav")
+        self.assertEqual(raw_sheet.track(3).pre_emphasis(), False)
+        self.assertEqual(raw_sheet.track(3).copy_permitted(), True)
+        self.assertEqual(raw_sheet.track(4).filename(), "track4.wav")
+        self.assertEqual(raw_sheet.track(4).pre_emphasis(), True)
+        self.assertEqual(raw_sheet.track(4).copy_permitted(), True)
+
+        sheet = self.sheet_class.converted(raw_sheet)
+
+        self.assertEqual(sheet.track(1).filename(), "track1.wav")
+        self.assertEqual(sheet.track(1).pre_emphasis(), False)
+        self.assertEqual(sheet.track(1).copy_permitted(), False)
+        self.assertEqual(sheet.track(2).filename(), "track2.wav")
+        self.assertEqual(sheet.track(2).pre_emphasis(), True)
+        self.assertEqual(sheet.track(2).copy_permitted(), False)
+        self.assertEqual(sheet.track(3).filename(), "track3.wav")
+        self.assertEqual(sheet.track(3).pre_emphasis(), False)
+        self.assertEqual(sheet.track(3).copy_permitted(), True)
+        self.assertEqual(sheet.track(4).filename(), "track4.wav")
+        self.assertEqual(sheet.track(4).pre_emphasis(), True)
+        self.assertEqual(sheet.track(4).copy_permitted(), True)
+
+        self.assertEqual(sheet, raw_sheet)
+
+        for other_sheet in self.__sheets__():
+           self.assertNotEqual(sheet, other_sheet)
+
+        # round-trip sheet to disk to ensure it still works
+        temp_sheet = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        temp_sheet.write(sheet.build())
+        temp_sheet.flush()
+        re_read = self.read_sheet(temp_sheet.name)
+        temp_sheet.close()
+        self.assertEqual(re_read, sheet)
+
 
 class testtocfile(testcuesheet):
     def setUp(self):
@@ -4582,6 +4714,68 @@ class test_flac_cuesheet(testcuesheet):
         for sheet in testcuesheet.__sheets__(self):
             if (sheet.image_formatted()):
                 yield sheet
+
+    @LIB_CUESHEET
+    def test_attributes(self):
+        from audiotools import Sheet, SheetTrack, SheetIndex
+        from audiotools.flac import Flac_CUESHEET
+
+        def timestamp_to_frac(m, s, f):
+            from fractions import Fraction
+            return Fraction((m * 60 * 75) + (s * 75) + f, 75)
+
+        raw_sheet = Sheet([SheetTrack(
+                           number=1,
+                           track_indexes=[
+                               SheetIndex(0, timestamp_to_frac(0, 0, 0)),
+                               SheetIndex(1, timestamp_to_frac(0, 1, 0))],
+                           metadata=audiotools.MetaData(
+                               track_name=u"Track 1"),
+                           filename="CDImage.wav"),
+                           SheetTrack(
+                           number=2,
+                           track_indexes=[
+                               SheetIndex(1, timestamp_to_frac(0, 5, 0))],
+                           metadata=audiotools.MetaData(
+                               track_name=u"Track 2"),
+                           filename="CDImage.wav"),
+                           SheetTrack(
+                           number=3,
+                           track_indexes=[
+                               SheetIndex(0, timestamp_to_frac(0, 9, 0)),
+                               SheetIndex(1, timestamp_to_frac(0, 11, 0)),
+                               SheetIndex(2, timestamp_to_frac(0, 12, 0))],
+                           metadata=audiotools.MetaData(
+                               track_name=u"Track 3"),
+                           filename="CDImage.wav")])
+
+        sheet = Flac_CUESHEET.converted(raw_sheet, 882000, 44100)
+
+        self.assertEqual(sheet, raw_sheet)
+        for other_sheet in self.__sheets__():
+            self.assertNotEqual(sheet, other_sheet)
+
+        self.assertEqual(sheet.track_numbers(), [1, 2, 3])
+        self.assertRaises(KeyError, sheet.track, 0)
+        self.assertRaises(KeyError, sheet.track, 4)
+        self.assertEqual(sheet.pre_gap(), 1)
+        self.assertEqual(sheet.track_offset(1), 1)
+        self.assertEqual(sheet.track_length(1), 4)
+        self.assertEqual(sheet.track_offset(2), 5)
+        self.assertEqual(sheet.track_length(2), 6)
+        self.assertEqual(sheet.track_offset(3), 11)
+        self.assertEqual(sheet.track_length(3), 9)
+
+        self.assertEqual(sheet.track(1).indexes(), [0, 1])
+        self.assertRaises(KeyError, sheet.track(1).index, 2)
+        self.assertEqual(sheet.track(2).indexes(), [1])
+        self.assertRaises(KeyError, sheet.track(2).index, 0)
+        self.assertRaises(KeyError, sheet.track(2).index, 2)
+        self.assertEqual(sheet.track(3).indexes(), [0, 1, 2])
+        self.assertRaises(KeyError, sheet.track(3).index, 3)
+
+        round_trip_sheet = Sheet.converted(sheet)
+        self.assertEqual(round_trip_sheet, sheet)
 
     @LIB_CUESHEET
     def test_round_trip(self):
@@ -4619,6 +4813,14 @@ class test_flac_cuesheet(testcuesheet):
     @LIB_CUESHEET
     def test_metadata(self):
         # FLAC cuesheets don't support meaningful metadata
+        # outside of catalog and ISRC
+        self.assert_(True)
+
+    @LIB_CUESHEET
+    def test_flags(self):
+        # FLAC cuesheets only support pre-emphasis flag
+        #FIXME
+
         self.assert_(True)
 
 
@@ -4626,15 +4828,27 @@ class test_oggflac_cuesheet(test_flac_cuesheet):
     def setUp(self):
         self.audio_class = audiotools.OggFlacAudio
 
+    @LIB_CUESHEET
+    def test_attributes(self):
+        pass
+
 
 class test_tta_cuesheet(test_flac_cuesheet):
     def setUp(self):
         self.audio_class = audiotools.TrueAudio
 
+    @LIB_CUESHEET
+    def test_attributes(self):
+        pass
+
 
 class test_wavpack_cuesheet(test_flac_cuesheet):
     def setUp(self):
         self.audio_class = audiotools.WavPackAudio
+
+    @LIB_CUESHEET
+    def test_attributes(self):
+        pass
 
 
 # takes several 1-channel PCMReaders and combines them into a single PCMReader
@@ -5651,6 +5865,97 @@ class Test_Accuraterip(Test_FreeDB):
 
         self.assertEqual(set(matches.keys()), set(range(1, 32)))
 
+    @LIB_ACCURATERIP
+    def test_match_offset(self):
+        from audiotools.accuraterip import match_offset
+
+        # no checksums, raise Exception
+        self.assertRaises(ValueError,
+                          match_offset,
+                          [(1, 1, 0)],
+                          [],
+                          0)
+
+        # no AR matches, one checksum, no checksum found
+        (checksum,
+         confidence,
+         offset) = match_offset([], [1], 0)
+        self.assertEqual(checksum, 1)
+        self.assertEqual(confidence, None)
+        self.assertEqual(offset, 0)
+
+        # one AR match, one checksum, no checksum found in matches
+        (checksum,
+         confidence,
+         offset) = match_offset([(1, 1, 0)], [10], 0)
+        self.assertEqual(checksum, 10)
+        self.assertEqual(confidence, None)
+        self.assertEqual(offset, 0)
+
+        # one AR match, one checksum, one checksum found in matches
+        (checksum,
+         confidence,
+         offset) = match_offset([(1, 1, 0)], [1], 0)
+        self.assertEqual(checksum, 1)
+        self.assertEqual(confidence, 1)
+        self.assertEqual(offset, 0)
+
+        # one AR match, multiple checksums, no checksum found in matches
+        (checksum,
+         confidence,
+         offset) = match_offset([(1, 1, 0)], [2, 3, 4], -1)
+        self.assertEqual(checksum, 3)
+        self.assertEqual(confidence, None)
+        self.assertEqual(offset, 0)
+
+        # one AR match, multiple checksums, one checksum found in matches
+        (checksum,
+         confidence,
+         offset) = match_offset([(1, 1, 0)], [99, 0, 1], -1)
+        self.assertEqual(checksum, 1)
+        self.assertEqual(confidence, 1)
+        self.assertEqual(offset, 1)
+
+        # multiple AR matches, one checksum, no checksum found in matches
+        (checksum,
+         confidence,
+         offset) = match_offset([(1, 1, 0), (2, 2, 0)], [3], 0)
+        self.assertEqual(checksum, 3)
+        self.assertEqual(confidence, None)
+        self.assertEqual(offset, 0)
+
+        # multiple AR matches, one checksum, one checksum found in matches
+        (checksum,
+         confidence,
+         offset) = match_offset([(1, 1, 0), (2, 2, 0)], [2], 0)
+        self.assertEqual(checksum, 2)
+        self.assertEqual(confidence, 2)
+        self.assertEqual(offset, 0)
+
+        # multiple AR matches, multiple checksums, no checksums found
+        (checksum,
+         confidence,
+         offset) = match_offset([(1, 1, 0), (2, 2, 0)], [3, 4, 5], -1)
+        self.assertEqual(checksum, 4)
+        self.assertEqual(confidence, None)
+        self.assertEqual(offset, 0)
+
+        # multiple AR matches, multiple checksums, one match found
+        (checksum,
+         confidence,
+         offset) = match_offset([(1, 1, 0), (2, 2, 0)], [98, 99, 2], -1)
+        self.assertEqual(checksum, 2)
+        self.assertEqual(confidence, 2)
+        self.assertEqual(offset, 1)
+
+        # multiple AR matches, multiple checksums, multiple matches found
+        (checksum,
+         confidence,
+         offset) = match_offset([(1, 1, 0), (2, 2, 0)], [0, 1, 2], -1)
+        self.assertEqual(checksum, 2)
+        self.assertEqual(confidence, 2)
+        self.assertEqual(offset, 1)
+
 
 class Test_Lookup(unittest.TestCase):
     @LIB_FREEDB
@@ -5888,3 +6193,38 @@ class Test_Image(unittest.TestCase):
         self.assertEqual(tiff.bits_per_pixel, 24)
         self.assertEqual(tiff.color_count, 0)
         self.assertEqual(tiff.mime_type, "image/tiff")
+
+
+class Test_ExecProgressQueue(unittest.TestCase):
+    @LIB_CORE
+    def test_queue(self):
+        def range_sum(start, end, progress):
+            sum_ = 0
+            for i in range(start, end):
+                progress(start, end)
+                sum_ += i
+            return sum_
+
+        def range_sum_output(total):
+            return unicode(total)
+
+        queue = audiotools.ExecProgressQueue(
+            audiotools.ProgressDisplay(
+                audiotools.SilentMessenger()))
+
+        queue.execute(function=range_sum,
+                      progress_text=u"Sum 1",
+                      completion_output=u"Sum 1 Finished",
+                      start=0,
+                      end=10)
+
+        queue.execute(function=range_sum,
+                      progress_text=u"Sum 2",
+                      completion_output=range_sum_output,
+                      start=1,
+                      end=11)
+
+        results = queue.run(2)
+
+        self.assertEqual(results[0], sum(range(0, 10)))
+        self.assertEqual(results[1], sum(range(1, 11)))

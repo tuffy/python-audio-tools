@@ -477,6 +477,38 @@ class AiffReader:
         self.file.close()
 
 
+def aiff_header(sample_rate,
+                channels,
+                bits_per_sample,
+                total_pcm_frames):
+    """given a set of integer stream attributes,
+    returns header string of everything before an AIFF's PCM data
+
+    may raise ValueError if the total size of the file is too large"""
+
+    from audiotools.bitstream import (BitstreamRecorder, format_size)
+
+    header = BitstreamRecorder(False)
+
+    data_size = (bits_per_sample // 8) * channels * total_pcm_frames
+    total_size = ((format_size("4b" + "4b 32u" +
+                               "16u 32u 16u 1u 15u 64U" +
+                               "4b 32u 32u 32u") // 8) +
+                  data_size + (data_size % 2))
+
+    if (total_size < (2 ** 32)):
+        header.build("4b 32u 4b", ("FORM", total_size, "AIFF"))
+        header.build("4b 32u", ("COMM", 0x12))
+        header.build("16u 32u 16u", (channels,
+                                     total_pcm_frames,
+                                     bits_per_sample))
+        build_ieee_extended(header, sample_rate)
+        header.build("4b 32u 32u 32u", ("SSND", data_size + 8, 0, 0))
+
+        return header.data()
+    else:
+        raise ValueError("total size too large for aiff file")
+
 class InvalidAIFF(InvalidFile):
     """raised if some problem occurs parsing AIFF chunks"""
 
@@ -699,7 +731,7 @@ class AiffAudio(AiffContainer):
         from audiotools.id3 import ID3v22Comment
 
         if (metadata is None):
-            return
+            return self.delete_metadata()
         elif (self.get_metadata() is not None):
             # current file has metadata, so replace it with new metadata
             self.update_metadata(ID3v22Comment.converted(metadata))
@@ -763,92 +795,54 @@ class AiffAudio(AiffContainer):
         at the given filename with the specified compression level
         and returns a new AiffAudio object"""
 
-        from audiotools.bitstream import BitstreamWriter
         from audiotools import EncodingError
         from audiotools import DecodingError
-        from audiotools import FRAMELIST_SIZE
+        from audiotools import CounterPCMReader
+        from audiotools import transfer_framelist_data
 
         try:
-            f = open(filename, 'wb')
-            aiff = BitstreamWriter(f, 0)
+            header = aiff_header(pcmreader.sample_rate,
+                                 pcmreader.channels,
+                                 pcmreader.bits_per_sample,
+                                 total_pcm_frames if total_pcm_frames
+                                 is not None else 0)
+        except ValueError as err:
+            raise EncodingError(str(err))
+
+        try:
+            f = open(filename, "wb")
         except IOError as msg:
             raise EncodingError(str(msg))
 
+        counter = CounterPCMReader(pcmreader)
+        f.write(header)
         try:
-            total_size = 0
-            data_size = 0
-            total_pcm_frames = 0
+            transfer_framelist_data(counter, f.write, True, True)
+        except (IOError, ValueError) as err:
+            cls.__unlink__(filename)
+            raise EncodingError(str(err))
 
-            # write out the basic headers first
-            # we'll be back later to clean up the sizes
-            aiff.build("4b 32u 4b", ("FORM", total_size, "AIFF"))
-            total_size += 4
+        # handle odd-sized SSND chunks
+        if (counter.frames_written % 2):
+            f.write(chr(0))
 
-            aiff.build("4b 32u", ("COMM", 0x12))
-            total_size += 8
-
-            aiff.build("16u 32u 16u", (pcmreader.channels,
-                                       total_pcm_frames,
-                                       pcmreader.bits_per_sample))
-            build_ieee_extended(aiff, pcmreader.sample_rate)
-            total_size += 0x12
-
-            aiff.build("4b 32u", ("SSND", data_size))
-            total_size += 8
-
-            aiff.build("32u 32u", (0, 0))
-            data_size += 8
-            total_size += 8
-
-            # dump pcmreader's FrameLists into the file as big-endian
-            try:
-                framelist = pcmreader.read(FRAMELIST_SIZE)
-                while (len(framelist) > 0):
-                    bytes = framelist.to_bytes(True, True)
-                    f.write(bytes)
-
-                    total_size += len(bytes)
-                    data_size += len(bytes)
-                    total_pcm_frames += framelist.frames
-
-                    framelist = pcmreader.read(FRAMELIST_SIZE)
-            except (IOError, ValueError) as err:
+        if (total_pcm_frames is not None):
+            if (total_pcm_frames != counter.frames_written):
+                # ensure written number of PCM frames
+                # matches total_pcm_frames argument
+                from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
                 cls.__unlink__(filename)
-                raise EncodingError(str(err))
-            except Exception as err:
-                cls.__unlink__(filename)
-                raise err
-
-            # handle odd-sized data chunks
-            if (data_size % 2):
-                aiff.write(8, 0)
-                total_size += 1
-
-            # close the PCM reader and flush our output
-            try:
-                pcmreader.close()
-            except DecodingError as err:
-                cls.__unlink__(filename)
-                raise EncodingError(err.error_message)
-            f.flush()
-
-            if (total_size < (2 ** 32)):
-                # go back to the beginning and rewrite the header
-                f.seek(0, 0)
-                aiff.build("4b 32u 4b", ("FORM", total_size, "AIFF"))
-                aiff.build("4b 32u", ("COMM", 0x12))
-                aiff.build("16u 32u 16u", (pcmreader.channels,
-                                           total_pcm_frames,
-                                           pcmreader.bits_per_sample))
-                build_ieee_extended(aiff, pcmreader.sample_rate)
-                aiff.build("4b 32u", ("SSND", data_size))
+                raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
             else:
-                import os
-
-                os.unlink(filename)
-                raise EncodingError("PCM data too large for aiff file")
-
-        finally:
+                f.close()
+        else:
+            # go back and rewrite populated header
+            # with counted number of PCM frames
+            f.seek(0, 0)
+            f.write(aiff_header(pcmreader.sample_rate,
+                                pcmreader.channels,
+                                pcmreader.bits_per_sample,
+                                counter.frames_written))
             f.close()
 
         return AiffAudio(filename)

@@ -896,7 +896,7 @@ class ApeTaggedAudio:
         raises IOError if unable to write the file"""
 
         if (metadata is None):
-            return
+            return self.delete_metadata()
 
         from audiotools.bitstream import BitstreamWriter
 

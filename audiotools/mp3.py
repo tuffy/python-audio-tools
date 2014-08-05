@@ -229,6 +229,10 @@ class MP3Audio(AudioFile):
             compression = __default_quality__(cls.NAME)
 
         try:
+            if (total_pcm_frames is not None):
+                from audiotools import CounterPCMReader
+                pcmreader = CounterPCMReader(pcmreader)
+
             encode_mp3(filename,
                        BufferedPCMReader(
                            PCMConverter(pcmreader,
@@ -238,6 +242,12 @@ class MP3Audio(AudioFile):
                                             min(pcmreader.channels, 2)),
                                         bits_per_sample=16)),
                        compression)
+
+            if ((total_pcm_frames is not None) and
+                (total_pcm_frames != pcmreader.frames_written)):
+                from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+                cls.__unlink__(filename)
+                raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
 
             return MP3Audio(filename)
         except (ValueError, IOError) as err:
@@ -357,7 +367,7 @@ class MP3Audio(AudioFile):
         from audiotools.id3v1 import ID3v1Comment
 
         if (metadata is None):
-            return
+            return self.delete_metadata()
 
         if (not (isinstance(metadata, ID3v2Comment) or
                  isinstance(metadata, ID3CommentPair) or
@@ -691,6 +701,10 @@ class MP2Audio(MP3Audio):
                                                 pcmreader.sample_rate)]
 
         try:
+            if (total_pcm_frames is not None):
+                from audiotools import CounterPCMReader
+                pcmreader = CounterPCMReader(pcmreader)
+
             encode_mp2(filename,
                        BufferedPCMReader(
                            PCMConverter(pcmreader,
@@ -700,6 +714,12 @@ class MP2Audio(MP3Audio):
                                             min(pcmreader.channels, 2)),
                                         bits_per_sample=16)),
                        int(compression))
+
+            if ((total_pcm_frames is not None) and
+                (total_pcm_frames != pcmreader.frames_written)):
+                from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+                cls.__unlink__(filename)
+                raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
 
             return MP2Audio(filename)
         except (ValueError, IOError) as err:

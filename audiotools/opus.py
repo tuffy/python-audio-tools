@@ -221,6 +221,10 @@ class OpusAudio(VorbisAudio):
                 raise UnsupportedChannelMask(filename, channel_mask)
 
         try:
+            if (total_pcm_frames is not None):
+                from audiotools import CounterPCMReader
+                pcmreader = CounterPCMReader(pcmreader)
+
             encode_opus(filename,
                         BufferedPCMReader(
                             PCMConverter(pcmreader,
@@ -230,6 +234,12 @@ class OpusAudio(VorbisAudio):
                                          bits_per_sample=16)),
                         quality=int(compression),
                         original_sample_rate=pcmreader.sample_rate)
+
+            if ((total_pcm_frames is not None) and
+                (total_pcm_frames != pcmreader.frames_written)):
+                from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+                cls.__unlink__(filename)
+                raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
 
             return cls(filename)
         except (ValueError, IOError) as err:
@@ -319,26 +329,28 @@ class OpusAudio(VorbisAudio):
         this metadata includes track name, album name, and so on
         raises IOError if unable to write the file"""
 
-        if (metadata is not None):
-            metadata = VorbisComment.converted(metadata)
+        if (metadata is None):
+            return self.delete_metadata()
 
-            old_metadata = self.get_metadata()
+        metadata = VorbisComment.converted(metadata)
 
-            metadata.vendor_string = old_metadata.vendor_string
+        old_metadata = self.get_metadata()
 
-            # port REPLAYGAIN and ENCODER from old metadata to new metadata
-            for key in [u"REPLAYGAIN_TRACK_GAIN",
-                        u"REPLAYGAIN_TRACK_PEAK",
-                        u"REPLAYGAIN_ALBUM_GAIN",
-                        u"REPLAYGAIN_ALBUM_PEAK",
-                        u"REPLAYGAIN_REFERENCE_LOUDNESS",
-                        u"ENCODER"]:
-                try:
-                    metadata[key] = old_metadata[key]
-                except KeyError:
-                    metadata[key] = []
+        metadata.vendor_string = old_metadata.vendor_string
 
-            self.update_metadata(metadata)
+        # port REPLAYGAIN and ENCODER from old metadata to new metadata
+        for key in [u"REPLAYGAIN_TRACK_GAIN",
+                    u"REPLAYGAIN_TRACK_PEAK",
+                    u"REPLAYGAIN_ALBUM_GAIN",
+                    u"REPLAYGAIN_ALBUM_PEAK",
+                    u"REPLAYGAIN_REFERENCE_LOUDNESS",
+                    u"ENCODER"]:
+            try:
+                metadata[key] = old_metadata[key]
+            except KeyError:
+                metadata[key] = []
+
+        self.update_metadata(metadata)
 
     def get_metadata(self):
         """returns a MetaData object, or None
