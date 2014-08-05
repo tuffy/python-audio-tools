@@ -560,11 +560,13 @@ class TempWaveReader(WaveReader):
         WaveReader.__init__(self, tempfile.name)
         self.tempfile = tempfile
 
+    def __del__(self):
+        self.tempfile.close()
+
     def close(self):
         """closes the input stream and temporary file"""
 
         WaveReader.close(self)
-        self.tempfile.close()
 
 
 class InvalidWave(InvalidFile):

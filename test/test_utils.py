@@ -2959,10 +2959,16 @@ class trackcmp(UtilTest):
                                            441.0, 0.50,
                                            4410.0, 0.49,
                                            1.0))
-            tracks = [audio_format.from_pcm(track_file.name, reader)
-                      for (track_file, reader) in
-                      zip(track_files,
-                          audiotools.pcm_split(image.to_pcm(), lengths))]
+
+            tracks = []
+            for i in range(len(lengths)):
+                tracks.append(
+                    audio_format.from_pcm(
+                        track_files[i].name,
+                        audiotools.PCMReaderWindow(
+                            image.to_pcm(),
+                            sum(lengths[0:i]),
+                            lengths[i])))
 
             for (i, track) in enumerate(tracks):
                 track.set_metadata(audiotools.MetaData(track_number=i + 1))

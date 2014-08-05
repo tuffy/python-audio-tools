@@ -1093,7 +1093,7 @@ class ProgressRow:
             time_spent = time() - self.start_time
 
             split_point = (width * self.current) // self.total
-            estimated_total_time = (time_spent * self.total) // self.current
+            estimated_total_time = (time_spent * self.total) / self.current
             estimated_time_remaining = int(round(estimated_total_time -
                                                  time_spent))
             time_remaining = u" %2.1d:%2.2d" % (estimated_time_remaining // 60,

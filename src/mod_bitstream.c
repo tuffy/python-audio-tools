@@ -1545,7 +1545,7 @@ FUNC_NAME(unsigned bits, PyObject *value) {                          \
                                                                      \
     if (!PyNumber_Check(value)) {                                    \
         PyErr_SetString(PyExc_TypeError, "value is not a number");   \
-        return 1;                                                    \
+        return 0;                                                    \
     }                                                                \
                                                                      \
     min_value = MIN_FUNC(bits);                                      \
@@ -3080,6 +3080,8 @@ bitstream_build(BitstreamWriter* stream,
 
         if ((inst == BS_INST_UNSIGNED) ||
             (inst == BS_INST_UNSIGNED64)) {
+            PyObject *min_value = bwpy_min_unsigned(size);
+            PyObject *max_value = bwpy_max_unsigned(size);
             for (; times; times--) {
                 PyObject *py_value = PyIter_Next(iterator);
                 if (py_value != NULL) {
@@ -3087,50 +3089,101 @@ bitstream_build(BitstreamWriter* stream,
 
                     int result;
 
-                    if (!bw_validate_unsigned_range(size, py_value)) {
+                    if (!PyNumber_Check(py_value)) {
+                        PyErr_SetString(PyExc_TypeError,
+                                        "value is not a number");
                         Py_DECREF(py_value);
+                        Py_DECREF(min_value);
+                        Py_DECREF(max_value);
+                        return 1;
+                    }
+
+                    if (!bwpy_in_range(min_value, py_value, max_value)) {
+                        PyErr_Format(PyExc_ValueError,
+                                     "value does not fit in %u unsigned %s",
+                                     size,
+                                     size != 1 ? "bits" : "bit");
+                        Py_DECREF(py_value);
+                        Py_DECREF(min_value);
+                        Py_DECREF(max_value);
                         return 1;
                     }
 
                     result = write_unsigned(stream, size, py_value);
                     Py_DECREF(py_value);
                     if (result) {
+                        Py_DECREF(min_value);
+                        Py_DECREF(max_value);
                         return 1;
                     }
                 } else {
                     if (!PyErr_Occurred()) {
+                        /*iterator exhausted before values are consumed*/
                         PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
                     }
+                    Py_DECREF(min_value);
+                    Py_DECREF(max_value);
                     return 1;
                 }
             }
+            Py_DECREF(min_value);
+            Py_DECREF(max_value);
         } else if ((inst == BS_INST_SIGNED) ||
                    (inst == BS_INST_SIGNED64)) {
+            PyObject *min_value = bwpy_min_signed(size);
+            PyObject *max_value = bwpy_max_signed(size);
+
             if (size == 0) {
-                PyErr_SetString(PyExc_ValueError, "count must be > 0");
+                PyErr_SetString(PyExc_ValueError, "size must be > 0");
+                Py_DECREF(min_value);
+                Py_DECREF(max_value);
                 return 1;
             }
             for (; times; times--) {
                 PyObject *py_value = PyIter_Next(iterator);
                 if (py_value != NULL) {
+                    /*ensure value is numeric and in the right range*/
+
                     int result;
 
-                    if (!bw_validate_signed_range(size, py_value)) {
+                    if (!PyNumber_Check(py_value)) {
+                        PyErr_SetString(PyExc_TypeError,
+                                        "value is not a number");
                         Py_DECREF(py_value);
+                        Py_DECREF(min_value);
+                        Py_DECREF(max_value);
                         return 1;
                     }
+
+                    if (!bwpy_in_range(min_value, py_value, max_value)) {
+                        PyErr_Format(PyExc_ValueError,
+                                     "value does not fit in %u signed bits",
+                                     size);
+                        Py_DECREF(py_value);
+                        Py_DECREF(min_value);
+                        Py_DECREF(max_value);
+                        return 1;
+                    }
+
                     result = write_signed(stream, size, py_value);
                     Py_DECREF(py_value);
                     if (result) {
+                        Py_DECREF(min_value);
+                        Py_DECREF(max_value);
                         return 1;
                     }
                 } else {
                     if (!PyErr_Occurred()) {
+                        /*iterator exhausted before values are consumed*/
                         PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
                     }
+                    Py_DECREF(min_value);
+                    Py_DECREF(max_value);
                     return 1;
                 }
             }
+            Py_DECREF(min_value);
+            Py_DECREF(max_value);
         } else if (inst == BS_INST_SKIP) {
             if (!setjmp(*bw_try(stream))) {
                 for (; times; times--) {

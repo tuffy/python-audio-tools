@@ -1130,7 +1130,6 @@ class WavPackApeTagMetaData(MetaDataTest):
                 metadata.track_total = 2
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assert_(unicode(metadata['Track']) != u'1/2')
                 self.assertEqual(unicode(metadata['Track']), u'1/2')
                 del(metadata.track_total)
                 track.set_metadata(metadata)

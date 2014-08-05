@@ -1557,12 +1557,12 @@ class TestForeignWaveChunks:
                 for new_class in audiotools.AVAILABLE_TYPES:
                     if (issubclass(new_class, audiotools.WaveContainer)):
                         temp2 = tempfile.NamedTemporaryFile(
-                            suffix="." + wav_class.SUFFIX)
+                            suffix="." + new_class.SUFFIX)
                         log = Log()
                         try:
-                            track2 = track.convert(temp2,
+                            track2 = track.convert(temp2.name,
                                                    new_class,
-                                                   log.update)
+                                                   progress=log.update)
 
                             # ensure the progress function
                             # gets called during conversion
@@ -1776,12 +1776,12 @@ class TestForeignAiffChunks:
                 for new_class in audiotools.AVAILABLE_TYPES:
                     if (issubclass(new_class, audiotools.AiffContainer)):
                         temp2 = tempfile.NamedTemporaryFile(
-                            suffix="." + wav_class.SUFFIX)
+                            suffix="." + new_class.SUFFIX)
                         log = Log()
                         try:
-                            track2 = track.convert(temp2,
+                            track2 = track.convert(temp2.name,
                                                    new_class,
-                                                   log.update)
+                                                   progress=log.update)
 
                             # ensure the progress function
                             # gets called during conversion

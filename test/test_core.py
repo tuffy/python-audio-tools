@@ -1224,22 +1224,6 @@ class Test_pcm_frame_cmp(unittest.TestCase):
                                     RANDOM_PCM_Reader(1)]))), 44100)
 
 
-class Test_pcm_split(unittest.TestCase):
-    @LIB_CORE
-    def test_pcm_split(self):
-        from itertools import izip
-
-        pcm_frames = [44100 * l for l in (5, 10, 15, 4, 16, 10)]
-
-        for (sub_pcm,
-             sub_frames) in izip(audiotools.pcm_split(BLANK_PCM_Reader(60),
-                                                      pcm_frames),
-                                 pcm_frames):
-            counter = FrameCounter(2, 16, 44100)
-            audiotools.transfer_framelist_data(sub_pcm, counter.update)
-            self.assertEqual(sub_frames, int(counter) * 44100)
-
-
 class TestFrameList(unittest.TestCase):
     @classmethod
     def Bits8(cls):
@@ -1619,51 +1603,41 @@ class TestFrameList(unittest.TestCase):
         import audiotools.pcm
         from audiotools.bitstream import BitstreamRecorder
 
-        # setting this higher than 1 means we only test a sample
-        # of the full 24-bit value range
-        # since testing the whole range takes a very, very long time
-        RANGE = 8
+        unsigned_values = range(0, 2 ** 24, 1024)
+        unsigned_values.append(2 ** 24 - 1)
 
-        unsigned_ints_high = [r << 8 for r in range(0, 0xFFFF + 1)]
-        signed_ints_high = [r << 8 for r in range(-0x8000, 0x7FFF + 1)]
+        #unsigned, big-endian
+        rec = BitstreamRecorder(0)
+        rec.build("%d*24u" % (len(unsigned_values)), unsigned_values)
+        framelist = audiotools.pcm.FrameList(rec.data(), 1, 24, True, False)
+        self.assertEqual(len(unsigned_values), framelist.frames)
+        self.assertEqual(
+            [i - (1 << 23) for i in unsigned_values],
+            list(framelist))
 
-        for low_bits in range(0, 0xFF + 1, RANGE):
-            unsigned_values = [high_bits | low_bits for high_bits in
-                               unsigned_ints_high]
+        #unsigned, little-endian
+        rec = BitstreamRecorder(1)
+        rec.build("%d*24u" % (len(unsigned_values)), unsigned_values)
+        framelist = audiotools.pcm.FrameList(rec.data(), 1, 24, False, False)
+        self.assertEqual(len(unsigned_values), framelist.frames)
+        self.assertEqual(
+            [i - (1 << 23) for i in unsigned_values],
+            list(framelist))
 
-            rec = BitstreamRecorder(0)
-            rec.build("24u" * len(unsigned_values), unsigned_values)
-            self.assertEqual(
-                [i - (1 << 23) for i in unsigned_values],
-                list(audiotools.pcm.FrameList(
-                    rec.data(), 1, 24, True, False)))
+        signed_values = range(-(2 ** 23), 2 ** 23, 1024)
+        signed_values.append(2 ** 23 - 1)
 
-            rec = BitstreamRecorder(1)
-            rec.build("24u" * len(unsigned_values), unsigned_values)
-            self.assertEqual(
-                [i - (1 << 23) for i in unsigned_values],
-                list(audiotools.pcm.FrameList(
-                    rec.data(), 1, 24, False, False)))
+        rec = BitstreamRecorder(0)
+        rec.build("%d*24s" % (len(signed_values)), signed_values)
+        framelist = audiotools.pcm.FrameList(rec.data(), 1, 24, True, True)
+        self.assertEqual(len(signed_values), framelist.frames)
+        self.assertEqual(signed_values, list(framelist))
 
-        for low_bits in range(0, 0xFF + 1, RANGE):
-            signed_values [((high_bits - low_bits) if
-                            (high_bits < 0) else
-                            (high_bits + low_bits)) for high_bits in
-                           signed_ints_high]
-
-            rec = BitstreamRecorder(0)
-            rec.build("24s" * len(signed_values), signed_values)
-            self.assertEqual(
-                signed_values,
-                list(audiotools.pcm.FrameList(
-                    rec.data(), 1, 24, True, True)))
-
-            rec = BitstreamRecorder(1)
-            rec.build("24s" * len(signed_values), signed_values)
-            self.assertEqual(
-                signed_values,
-                list(audiotools.pcm.FrameList(
-                    rec.data(), 1, 24, False, True)))
+        rec = BitstreamRecorder(1)
+        rec.build("%d*24s" % (len(signed_values)), signed_values)
+        framelist = audiotools.pcm.FrameList(rec.data(), 1, 24, False, True)
+        self.assertEqual(len(signed_values), framelist.frames)
+        self.assertEqual(signed_values, list(framelist))
 
     @LIB_CORE
     def test_24bit_roundtrip_str(self):
@@ -4691,9 +4665,6 @@ class TestMultiChannel(unittest.TestCase):
         self.flac_channel_masks = [audiotools.FlacAudio,
                                    audiotools.OggFlacAudio]
 
-        if (audiotools.m4a.M4AAudio_nero.available(audiotools.BIN)):
-            self.flac_channel_masks.append(audiotools.m4a.M4AAudio_nero)
-
         # these support a reordered subset of ChannelMasks up to 8 channels
         self.vorbis_channel_masks = [audiotools.VorbisAudio,
                                      audiotools.OpusAudio]
@@ -5009,8 +4980,7 @@ class TestMultiChannel(unittest.TestCase):
                                               10, audiotools.ChannelMask(0))
 
         for stereo_audio_class in [audiotools.MP3Audio,
-                                   audiotools.MP2Audio,
-                                   audiotools.m4a.M4AAudio_faac]:
+                                   audiotools.MP2Audio]:
 
             self.__test_undefined_mask_blank__(stereo_audio_class,
                                                2, False)
@@ -5065,11 +5035,6 @@ class TestMultiChannel(unittest.TestCase):
             self.__test_undefined_mask_blank__(audiotools.AuAudio,
                                                channels,
                                                True)
-
-        if (audiotools.m4a.M4AAudio_nero.available(audiotools.BIN)):
-            for channels in range(1, 7):
-                self.__test_undefined_mask_blank__(
-                    audiotools.m4a.M4AAudio_nero, channels, False)
 
 
 class Test_FreeDB(unittest.TestCase):

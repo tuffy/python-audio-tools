@@ -612,50 +612,23 @@ class M4AAudio_nero(M4AAudio_faac):
             else:
                 tempwavefile.close_called = True
 
-    def seekable(self):
-        """returns True if the file is seekable"""
-
-        # because decoding dumps everything to a temp file
-        # it's actually seekable
-        return True
-
     def to_pcm(self):
-        import tempfile
-        from audiotools import EncodingError
-        from audiotools import PCMReaderError
-        from audiotools.wav import TempWaveReader
-
-        f = tempfile.NamedTemporaryFile(suffix=".wav")
-        try:
-            self.__to_wave__(f.name)
-            return TempWaveReader(f)
-        except EncodingError as err:
-            return PCMReaderError(error_message=err.error_message,
-                                  sample_rate=self.sample_rate(),
-                                  channels=self.channels(),
-                                  channel_mask=int(self.channel_mask()),
-                                  bits_per_sample=self.bits_per_sample())
-
-    def __to_wave__(self, wave_file, progress=None):
-        """writes the contents of this file to the given .wav filename string
-
-        raises EncodingError if some error occurs during decoding"""
-
+        from audiotools import PCMReader
         import subprocess
         import os
-        from audiotools import EncodingError
 
-        devnull = file(os.devnull, "w")
-        try:
-            sub = subprocess.Popen([BIN["neroAacDec"],
-                                    "-if", self.filename,
-                                    "-of", wave_file],
-                                   stdout=devnull,
-                                   stderr=devnull)
-            if (sub.wait() != 0):
-                raise EncodingError(u"unable to write file with neroAacDec")
-        finally:
-            devnull.close()
+        sub = subprocess.Popen([BIN["neroAacDec"],
+                                "-if", self.filename,
+                                "-of", "-"],
+                               stdout=subprocess.PIPE,
+                               stderr=open(os.devnull, "wb"))
+
+        return PCMReader(file=sub.stdout,
+                         sample_rate=self.sample_rate(),
+                         channels=self.channels(),
+                         channel_mask=int(self.channel_mask()),
+                         bits_per_sample=self.bits_per_sample(),
+                         process=sub)
 
     @classmethod
     def __from_wave__(cls, filename, wave_filename, compression):
