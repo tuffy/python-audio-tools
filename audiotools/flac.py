@@ -1742,6 +1742,10 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         self.set_metadata(MetaData())
 
+    @classmethod
+    def supports_cuesheet(cls):
+        return True
+
     def set_cuesheet(self, cuesheet):
         """imports cuesheet data from a Sheet object
 
@@ -1759,6 +1763,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                         (self.channels() == 2) and
                         (self.bits_per_sample() == 16)))
                 self.update_metadata(metadata)
+        else:
+            self.delete_cuesheet()
 
     def get_cuesheet(self):
         """returns the embedded Sheet object, or None
@@ -1775,6 +1781,16 @@ class FlacAudio(WaveContainer, AiffContainer):
                 return None
         else:
             return None
+
+    def delete_cuesheet(self):
+        """deletes embedded Sheet object, if any
+
+        Raises IOError if a problem occurs when updating the file"""
+
+        metadata = self.get_metadata()
+        if (metadata is not None):
+            metadata.replace_blocks(Flac_CUESHEET.BLOCK_ID, [])
+            self.update_metadata(metadata)
 
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""

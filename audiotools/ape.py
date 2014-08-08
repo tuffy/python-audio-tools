@@ -952,45 +952,52 @@ class ApeTaggedAudio:
 
         raises IOError if unable to write the file"""
 
-        from audiotools.bitstream import BitstreamReader, BitstreamWriter
-        from audiotools import transfer_data
+        if ((self.get_replay_gain() is not None) or
+            (self.get_cuesheet() is not None)):
+            # non-textual metadata is present and needs preserving
+            self.set_metadata(MetaData())
+        else:
+            # no non-textual metadata, so wipe out the entire block
 
-        f = file(self.filename, "r+b")
-        f.seek(-32, 2)
+            from audiotools.bitstream import BitstreamReader, BitstreamWriter
+            from audiotools import transfer_data
 
-        (preamble,
-         version,
-         tag_size,
-         item_count,
-         read_only,
-         item_encoding,
-         is_header,
-         no_footer,
-         has_header) = BitstreamReader(f, 1).parse(ApeTag.HEADER_FORMAT)
+            f = file(self.filename, "r+b")
+            f.seek(-32, 2)
 
-        if ((preamble == 'APETAGEX') and (version == 2000)):
-            from audiotools import TemporaryFile
-            from os.path import getsize
+            (preamble,
+             version,
+             tag_size,
+             item_count,
+             read_only,
+             item_encoding,
+             is_header,
+             no_footer,
+             has_header) = BitstreamReader(f, 1).parse(ApeTag.HEADER_FORMAT)
 
-            # there's existing metadata to delete
-            # so rewrite file without trailing metadata tag
-            if (has_header):
-                old_tag_size = 32 + tag_size
-            else:
-                old_tag_size = tag_size
+            if ((preamble == 'APETAGEX') and (version == 2000)):
+                from audiotools import TemporaryFile
+                from os.path import getsize
 
-            # copy everything but the last "old_tag_size" bytes
-            # from existing file to rewritten file
-            new_apev2 = TemporaryFile(self.filename)
-            old_apev2 = open(self.filename, "rb")
+                # there's existing metadata to delete
+                # so rewrite file without trailing metadata tag
+                if (has_header):
+                    old_tag_size = 32 + tag_size
+                else:
+                    old_tag_size = tag_size
 
-            limited_transfer_data(
-                old_apev2.read,
-                new_apev2.write,
-                getsize(self.filename) - old_tag_size)
+                # copy everything but the last "old_tag_size" bytes
+                # from existing file to rewritten file
+                new_apev2 = TemporaryFile(self.filename)
+                old_apev2 = open(self.filename, "rb")
 
-            old_apev2.close()
-            new_apev2.close()
+                limited_transfer_data(
+                    old_apev2.read,
+                    new_apev2.write,
+                    getsize(self.filename) - old_tag_size)
+
+                old_apev2.close()
+                new_apev2.close()
 
 
 class ApeGainedAudio:

@@ -475,6 +475,10 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         old_tta.close()
         new_tta.close()
 
+    @classmethod
+    def supports_cuesheet(cls):
+        return True
+
     def get_cuesheet(self):
         """returns the embedded Cuesheet-compatible object, or None
 
@@ -507,11 +511,13 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         from audiotools.cue import write_cuesheet
 
         if (cuesheet is None):
-            return
+            return self.delete_cuesheet()
 
         metadata = self.get_metadata()
         if (metadata is None):
             metadata = ApeTag([])
+        else:
+            metadata = ApeTag.converted(metadata)
 
         cuesheet_data = cStringIO.StringIO()
         write_cuesheet(cuesheet,
@@ -523,6 +529,20 @@ class TrueAudio(AudioFile, ApeGainedAudio):
             cuesheet_data.getvalue().decode(FS_ENCODING, 'replace'))
 
         self.update_metadata(metadata)
+
+    def delete_cuesheet(self):
+        """deletes embedded Sheet object, if any
+
+        Raises IOError if a problem occurs when updating the file"""
+
+        from audiotools import ApeTag
+
+        metadata = self.get_metadata()
+        if ((metadata is not None) and
+            (isinstance(metadata, ApeTag) and
+            ("Cuesheet" in metadata))):
+            del(metadata["Cuesheet"])
+            self.update_metadata(metadata)
 
     @classmethod
     def supports_replay_gain(cls):

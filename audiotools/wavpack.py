@@ -530,6 +530,10 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
             from audiotools.text import ERR_WAVPACK_NO_FMT
             raise InvalidWavPack(ERR_WAVPACK_NO_FMT)
 
+    @classmethod
+    def supports_cuesheet(cls):
+        return True
+
     def get_cuesheet(self):
         """returns the embedded Cuesheet-compatible object, or None
 
@@ -563,7 +567,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         from audiotools.ape import ApeTag
 
         if (cuesheet is None):
-            return
+            return self.delete_cuesheet()
 
         metadata = self.get_metadata()
         if (metadata is None):
@@ -579,3 +583,13 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
             cuesheet_data.getvalue().decode(FS_ENCODING, 'replace'))
 
         self.update_metadata(metadata)
+
+    def delete_cuesheet(self):
+        """deletes embedded Sheet object, if any
+
+        Raises IOError if a problem occurs when updating the file"""
+
+        metadata = self.get_metadata()
+        if ((metadata is not None) and ('Cuesheet' in metadata)):
+            del(metadata['Cuesheet'])
+            self.update_metadata(metadata)

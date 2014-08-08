@@ -596,6 +596,11 @@ AudioFile Objects
 
    Raises :exc:`IOError` if unable to modify the file.
 
+.. classmethod:: AudioFile.supports_cuesheet()
+
+   Returns ``True`` if the audio format supports embedded
+   :class:`Sheet` objects.
+
 .. method:: AudioFile.set_cuesheet(cuesheet)
 
    Given a :class:`Sheet` object, embeds a cuesheet in the track.
@@ -608,6 +613,11 @@ AudioFile Objects
    Returns a :class:`Sheet` object of a track's embedded cuesheet,
    or ``None`` if the track contains no cuesheet.
    May raise :exc:`IOError` if an error occurs reading the file.
+
+.. method:: AudioFile.delete_cuesheet()
+
+   Deletes embedded :class:`Sheet` object, if any.
+   May raise :exc:`IOError` if an error occurs updating the file.
 
 .. method:: AudioFile.clean([output_filename])
 

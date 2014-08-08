@@ -7167,7 +7167,7 @@
      - [ ] clean (multiple SEEKTABLE)
      - [ ] clean (multiple CUESHEET)
      - [ ] clean (remove undefined)
-     - [ ] raw_info()
+     - [X] raw_info()
      check with all metadata blocks
 **** TODO Flac_VORBISCOMMENT
      - [ ] converted(Flac_VORBISCOMMENT)
@@ -7213,7 +7213,7 @@
     - [ ] total_id3v2_comments (unsupported version)
     - [ ] total_id3v2_comments (IOError)
 **** TODO ID3v22Comment
-     - [ ] raw_info
+     - [X] raw_info
      - [ ] parse
      - [ ] build
      - [ ] size
@@ -7281,7 +7281,7 @@
      - [ ] init id3v1 is not None
      - [ ] converted(None)
      - [ ] convert(ID3v2Comment)
-     - [ ] raw_info
+     - [X] raw_info
      - [ ] images (id3v2 is None)
      - [ ] clean
 *** TODO audiotools/id3v1
@@ -7385,10 +7385,10 @@
      - [X] filename
      - [X] pre_emphasis
      - [X] copy_permitted (not False)
-*** TODO audiotools/toc/tokrules
-    - [ ] illegal character
-*** TODO audiotools/toc/yaccrules
-    - [ ] syntax error
+**** TODO audiotools/toc/tokrules
+     - [ ] illegal character
+**** TODO audiotools/toc/yaccrules
+     - [ ] syntax error
 *** TODO audiotools/tta
 **** TODO TrueAudio
      - [ ] init -> invalid signature
@@ -7421,7 +7421,7 @@
      - [ ] converted(FlacMetaData without VORBISCOMMENT)
      - [ ] clean(track_total/album_total with leading 0s)
 *** TODO audiotools/wav
-    - [ ] wave_header -> total size too large
+    - [X] wave_header -> total size too large
 **** TODO RIFF_Chunk
      - [ ] handle odd sized chunks
 **** TODO WaveReader
@@ -7431,11 +7431,11 @@
      - [ ] init -> chunk header too small
      - [ ] init -> invalid chunk ID
      - [ ] init -> data chunk before fmt chunk
-     - [ ] init -> not audio chunks
+     - [ ] init -> no audio chunks
      - [ ] init -> no data chunk
      - [ ] read -> data chunk too small
 **** TODO WaveAudio
-     - [ ] from_pcm -> total_pcm_frames too large
+     - [X] from_pcm -> total_pcm_frames too large
      - [X] from_pcm -> total_pcm_frames mismatch
      - [ ] track_name(format=None)
      - [ ] verify -> not enough data chunk

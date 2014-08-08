@@ -21,7 +21,8 @@ import unittest
 import audiotools
 import tempfile
 
-from test import (parser, BLANK_PCM_Reader, Combinations,
+from test import (parser, BLANK_PCM_Reader, EXACT_SILENCE_PCM_Reader,
+                  Combinations,
                   TEST_COVER1, TEST_COVER2, TEST_COVER3, TEST_COVER4,
                   HUGE_BMP)
 
@@ -389,6 +390,113 @@ class MetaDataTest(unittest.TestCase):
                 track.set_metadata(None)
                 self.assert_((track.get_metadata() is None) or
                              (track.get_metadata().track_name is None))
+            finally:
+                temp_file.close()
+
+    @METADATA_METADATA
+    def test_raw_info(self):
+        if (self.metadata_class is audiotools.MetaData):
+            return
+
+        # ensure raw_info() returns a Unicode object
+        # and has at least some output
+
+        metadata = self.empty_metadata()
+        for field in self.supported_fields:
+            if (field not in audiotools.MetaData.INTEGER_FIELDS):
+                setattr(metadata, field, u"A" * 5)
+            else:
+                setattr(metadata, field, 1)
+        raw_info = metadata.raw_info()
+        self.assertEqual(isinstance(raw_info, unicode), True)
+        self.assert_(len(raw_info) > 0)
+
+    @METADATA_METADATA
+    def test_cuesheet(self):
+        for audio_class in self.supported_formats:
+            if (not audio_class.supports_cuesheet()):
+                continue
+
+            from audiotools import Sheet, SheetTrack, SheetIndex
+            from fractions import Fraction
+
+            sheet = Sheet(sheet_tracks=[
+                          SheetTrack(
+                              number=1,
+                              track_indexes=[
+                                  SheetIndex(number=1,
+                                             offset=Fraction(0, 1))],
+                              filename="CDImage.wav"),
+                          SheetTrack(
+                              number=2,
+                              track_indexes=[
+                                  SheetIndex(number=0,
+                                             offset=Fraction(4507, 25)),
+                                  SheetIndex(number=1,
+                                             offset=Fraction(4557, 25))],
+                              filename="CDImage.wav"),
+                          SheetTrack(
+                              number=3,
+                              track_indexes=[
+                                  SheetIndex(number=0,
+                                             offset=Fraction(27013, 75)),
+                                  SheetIndex(number=1,
+                                             offset=Fraction(27161, 75))],
+                              filename="CDImage.wav"),
+                          SheetTrack(
+                              number=4,
+                              track_indexes=[
+                                  SheetIndex(number=0,
+                                             offset=Fraction(37757, 75)),
+                                  SheetIndex(number=1,
+                                             offset=Fraction(37907, 75))],
+                              filename="CDImage.wav"),
+                          SheetTrack(
+                              number=5,
+                              track_indexes=[
+                                  SheetIndex(number=0,
+                                             offset=Fraction(11213, 15)),
+                                  SheetIndex(number=1,
+                                             offset=Fraction(11243, 15))],
+                              filename="CDImage.wav"),
+                          SheetTrack(
+                              number=6,
+                              track_indexes=[
+                                  SheetIndex(number=0,
+                                             offset=Fraction(13081, 15)),
+                                  SheetIndex(number=1,
+                                             offset=Fraction(13111, 15))],
+                              filename="CDImage.wav")])
+
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            try:
+                # build empty audio file
+                temp_track = audio_class.from_pcm(
+                    temp_file.name,
+                    EXACT_SILENCE_PCM_Reader(43646652),
+                    total_pcm_frames=43646652)
+
+                # ensure it has no cuesheet
+                self.assertEqual(temp_track.get_cuesheet(), None)
+
+                # set cuesheet
+                temp_track.set_cuesheet(sheet)
+
+                # ensure its cuesheet matches the original
+                track_sheet = temp_track.get_cuesheet()
+                self.assertNotEqual(track_sheet, None)
+                self.assertEqual(track_sheet, sheet)
+
+                # deleting cuesheet should delete cuesheet
+                temp_track.delete_cuesheet()
+                self.assertEqual(temp_track.get_cuesheet(), None)
+
+                # setting cuesheet to None should delete cuesheet
+                temp_track.set_cuesheet(sheet)
+                self.assertNotEqual(temp_track.get_cuesheet(), sheet)
+                temp_track.set_cuesheet(None)
+                self.assertEqual(temp_track.get_cuesheet(), None)
             finally:
                 temp_file.close()
 
@@ -4946,7 +5054,7 @@ class FlacMetaData(MetaDataTest):
                          [u"DISCNUMBER= foo 2 bar"])
 
     @METADATA_FLAC
-    def test_cuesheet(self):
+    def test_flac_cuesheet(self):
         self.assert_(audiotools.BIN.can_execute(audiotools.BIN["metaflac"]),
                      "reference binary metaflac(1) required for this test")
 

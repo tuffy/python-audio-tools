@@ -3683,6 +3683,12 @@ class AudioFile:
         # implement this in subclass if necessary
         pass
 
+    @classmethod
+    def supports_cuesheet(self):
+        """returns True if the audio format supports embedded Sheet objects"""
+
+        return False
+
     def set_cuesheet(self, cuesheet):
         """imports cuesheet data from a Sheet object
 
@@ -3696,6 +3702,13 @@ class AudioFile:
         Raises IOError if a problem occurs when reading the file"""
 
         return None
+
+    def delete_cuesheet(self):
+        """deletes embedded Sheet object, if any
+
+        Raises IOError if a problem occurs when updating the file"""
+
+        raise NotImplementedError()
 
     def verify(self, progress=None):
         """verifies the current file for correctness
