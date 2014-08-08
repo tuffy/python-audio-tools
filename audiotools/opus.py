@@ -352,6 +352,12 @@ class OpusAudio(VorbisAudio):
 
         self.update_metadata(metadata)
 
+    @classmethod
+    def supports_metadata(cls):
+        """returns True if this audio type supports MetaData"""
+
+        return True
+
     def get_metadata(self):
         """returns a MetaData object, or None
 

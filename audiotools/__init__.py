@@ -3412,6 +3412,12 @@ class AudioFile:
 
         raise NotImplementedError()
 
+    @classmethod
+    def supports_metadata(cls):
+        """returns True if this audio type supports MetaData"""
+
+        return False
+
     def update_metadata(self, metadata):
         """takes this track's current MetaData object
         as returned by get_metadata() and sets this track's metadata
@@ -3708,7 +3714,7 @@ class AudioFile:
 
         Raises IOError if a problem occurs when updating the file"""
 
-        raise NotImplementedError()
+        pass
 
     def verify(self, progress=None):
         """verifies the current file for correctness

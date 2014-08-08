@@ -364,6 +364,12 @@ class VorbisAudio(AudioFile):
 
         self.update_metadata(metadata)
 
+    @classmethod
+    def supports_metadata(cls):
+        """returns True if this audio type supports MetaData"""
+
+        return True
+
     def get_metadata(self):
         """returns a MetaData object, or None
 
@@ -441,6 +447,9 @@ class VorbisAudio(AudioFile):
         """given a ReplayGain object, sets the track's gain to those values
 
         may raise IOError if unable to modify the file"""
+
+        if (replaygain is None):
+            return self.delete_replay_gain()
 
         vorbis_comment = self.get_metadata()
         if (vorbis_comment is None):

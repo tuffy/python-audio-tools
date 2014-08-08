@@ -811,6 +811,12 @@ class ApeTaggedAudio:
     this class presumes there will be a filename attribute which
     can be opened and checked for tags, or written if necessary"""
 
+    @classmethod
+    def supports_metadata(cls):
+        """returns True if this audio type supports MetaData"""
+
+        return True
+
     def get_metadata(self):
         """returns an ApeTag object, or None
 
@@ -1036,6 +1042,9 @@ class ApeGainedAudio:
         """given a ReplayGain object, sets the track's gain to those values
 
         may raise IOError if unable to read or write the file"""
+
+        if (replaygain is None):
+            return self.delete_replay_gain()
 
         metadata = self.get_metadata()
         if (metadata is None):

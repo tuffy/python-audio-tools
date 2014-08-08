@@ -670,6 +670,12 @@ class AiffAudio(AiffContainer):
         aiff_file.seek(start)
         aiff_file.write(struct.pack(">4sI4s", "FORM", total_size, "AIFF"))
 
+    @classmethod
+    def supports_metadata(cls):
+        """returns True if this audio type supports MetaData"""
+
+        return True
+
     def get_metadata(self):
         """returns a MetaData object, or None
 

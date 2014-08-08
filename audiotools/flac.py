@@ -1498,6 +1498,12 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         return True
 
+    @classmethod
+    def supports_metadata(cls):
+        """returns True if this audio type supports MetaData"""
+
+        return True
+
     def get_metadata(self):
         """returns a MetaData object, or None
 
@@ -1620,10 +1626,10 @@ class FlacAudio(WaveContainer, AiffContainer):
         this metadata includes track name, album name, and so on
         raises IOError if unable to read or write the file"""
 
-        new_metadata = self.METADATA_CLASS.converted(metadata)
-
-        if (new_metadata is None):
+        if (metadata is None):
             return self.delete_metadata()
+
+        new_metadata = self.METADATA_CLASS.converted(metadata)
 
         old_metadata = self.get_metadata()
         if (old_metadata is None):
@@ -2639,6 +2645,9 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         may raise IOError if unable to modify the file"""
 
+        if (replaygain is None):
+            return self.delete_replay_gain()
+
         metadata = self.get_metadata()
 
         if (metadata.has_block(Flac_VORBISCOMMENT.BLOCK_ID)):
@@ -3181,6 +3190,12 @@ class OggFlacAudio(FlacAudio):
         """returns the rate of the track's audio as an integer number of Hz"""
 
         return self.__samplerate__
+
+    @classmethod
+    def supports_metadata(cls):
+        """returns True if this audio type supports MetaData"""
+
+        return True
 
     def get_metadata(self):
         """returns a MetaData object, or None

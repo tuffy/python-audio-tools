@@ -259,6 +259,12 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 (len(self.__frame_lengths__) * 4) + 4 +  # seektable size
                 sum(self.__frame_lengths__))             # frames size
 
+    @classmethod
+    def supports_metadata(cls):
+        """returns True if this audio type supports MetaData"""
+
+        return True
+
     def get_metadata(self):
         """returns a MetaData object, or None
 
@@ -570,6 +576,9 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         """given a ReplayGain object, sets the track's gain to those values
 
         may raise IOError if unable to read or write the file"""
+
+        if (replaygain is None):
+            return self.delete_replay_gain()
 
         from audiotools.ape import ApeTag
 

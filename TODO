@@ -7143,11 +7143,11 @@
 **** TODO ApeTag
      - [ ] get
      - [ ] index
-**** TODO ApeTaggedAudio
+**** DONE ApeTaggedAudio
      - [X] set_metadata(None)
-     - [ ] set_metadata with cuesheet
-     - [ ] delete_metadata with ReplayGain
-     - [ ] delete_metadata with cuesheet
+     - [X] set_metadata with cuesheet
+     - [X] delete_metadata with ReplayGain
+     - [X] delete_metadata with cuesheet
 *** TODO audiotools/cue
     - [ ] read_cuesheet_string (with ValueError)
 **** DONE Track
@@ -7184,7 +7184,7 @@
 **** TODO FlacAudio
      - [X] set_metadata(None)
      - [ ] set_metadata with channel mask in old comment
-     - [ ] get_cuesheet() -> None
+     - [X] get_cuesheet() -> None
      - [ ] from_pcm with UnsupportedChannelMask
      - [ ] has_foreign_wave_chunks() -> False
      - [ ] wave_header_footer() without chunks
@@ -7358,9 +7358,9 @@
      - [ ] init (invalid Opus type)
      - [ ] init (invalid Opus version)
      - [ ] init (invalid Opus channels)
-     - [ ] get_replay_gain
-     - [ ] set_replay_gain
-     - [ ] delete_replay_gain
+     - [X] get_replay_gain
+     - [X] set_replay_gain
+     - [X] delete_replay_gain
 *** TODO audiotools/shn
 **** TODO ShortenAudio
      - [ ] __init__ -> IOError
@@ -7396,10 +7396,10 @@
      - [ ] from_pcm -> IOError to EncodingError
      - [ ] from_pcm -> frame count mismatch
      - [X] set_metadata(None)
-     - [ ] cuesheet in old metadata
-     - [ ] cuesheet in new metadata
+     - [X] cuesheet in old metadata
+     - [X] cuesheet in new metadata
      - [ ] get_cuesheet -> CueException
-     - [ ] set_cuesheet(None)
+     - [X] set_cuesheet(None)
      - [ ] clean when metadata is None
 *** TODO audiotools/vorbis
 **** TODO VorbisAudio
@@ -7449,7 +7449,7 @@
      - [X] from_pcm -> total_pcm_frames mismatch
      - [ ] fmt_chunk
      - [ ] get_cuesheet -> CueException
-     - [ ] set_cuesheet(None)
+     - [X] set_cuesheet(None)
 *** TODO audiotools/py_decoders/flac
 **** TODO FlacDecoder
      - [ ] init -> invalid FLAC file

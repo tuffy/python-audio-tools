@@ -500,6 +500,231 @@ class MetaDataTest(unittest.TestCase):
             finally:
                 temp_file.close()
 
+    @METADATA_METADATA
+    def test_metadata_independence(self):
+        from audiotools import Sheet, SheetTrack, SheetIndex
+        from fractions import Fraction
+
+        metadata = audiotools.MetaData(track_name=u"Track Name",
+                                       track_number=1)
+
+        replay_gain = audiotools.ReplayGain(track_gain=2.0,
+                                            track_peak=0.25,
+                                            album_gain=1.0,
+                                            album_peak=0.5)
+
+        sheet = Sheet(sheet_tracks=[
+                      SheetTrack(
+                          number=1,
+                          track_indexes=[
+                              SheetIndex(number=1,
+                                         offset=Fraction(0, 1))],
+                          filename="CDImage.wav"),
+                      SheetTrack(
+                          number=2,
+                          track_indexes=[
+                              SheetIndex(number=0,
+                                         offset=Fraction(4507, 25)),
+                              SheetIndex(number=1,
+                                         offset=Fraction(4557, 25))],
+                          filename="CDImage.wav"),
+                      SheetTrack(
+                          number=3,
+                          track_indexes=[
+                              SheetIndex(number=0,
+                                         offset=Fraction(27013, 75)),
+                              SheetIndex(number=1,
+                                         offset=Fraction(27161, 75))],
+                          filename="CDImage.wav"),
+                      SheetTrack(
+                          number=4,
+                          track_indexes=[
+                              SheetIndex(number=0,
+                                         offset=Fraction(37757, 75)),
+                              SheetIndex(number=1,
+                                         offset=Fraction(37907, 75))],
+                          filename="CDImage.wav"),
+                      SheetTrack(
+                          number=5,
+                          track_indexes=[
+                              SheetIndex(number=0,
+                                         offset=Fraction(11213, 15)),
+                              SheetIndex(number=1,
+                                         offset=Fraction(11243, 15))],
+                          filename="CDImage.wav"),
+                      SheetTrack(
+                          number=6,
+                          track_indexes=[
+                              SheetIndex(number=0,
+                                         offset=Fraction(13081, 15)),
+                              SheetIndex(number=1,
+                                         offset=Fraction(13111, 15))],
+                          filename="CDImage.wav")])
+
+        for audio_class in self.supported_formats:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            try:
+                if (audio_class.supports_cuesheet()):
+                    track = audio_class.from_pcm(
+                        temp_file.name,
+                        EXACT_SILENCE_PCM_Reader(43646652),
+                        total_pcm_frames=43646652)
+                else:
+                    track = audio_class.from_pcm(
+                        temp_file.name,
+                        EXACT_SILENCE_PCM_Reader(44100 * 5),
+                        total_pcm_frames=44100 * 5)
+
+                self.assert_(
+                    (track.get_metadata() is None) or
+                    ((track.get_metadata().track_name is None) and
+                     (track.get_metadata().track_number is None)))
+
+                # if class supports metadata
+                if (audio_class.supports_metadata()):
+                    # setting metadata should work
+                    track.set_metadata(metadata)
+                    self.assertEqual(track.get_metadata(), metadata)
+
+                    # and deleting metadata should work
+                    track.delete_metadata()
+
+                    # note that some classes can't delete metadata
+                    # entirely since it contains non-textual data
+                    self.assert_(
+                        (track.get_metadata() is None) or
+                        ((track.get_metadata().track_name is None) and
+                         (track.get_metadata().track_number is None)))
+
+                    track.set_metadata(metadata)
+                    self.assertEqual(track.get_metadata(), metadata)
+                    track.set_metadata(None)
+                    self.assert_(
+                        (track.get_metadata() is None) or
+                        ((track.get_metadata().track_name is None) and
+                         (track.get_metadata().track_number is None)))
+                else:
+                    # otherwise they should do nothing
+                    track.set_metadata(metadata)
+                    self.assert_(
+                        (track.get_metadata() is None) or
+                        ((track.get_metadata().track_name is None) and
+                         (track.get_metadata().track_number is None)))
+
+                    track.delete_metadata()
+                    self.assert_(
+                        (track.get_metadata() is None) or
+                        ((track.get_metadata().track_name is None) and
+                         (track.get_metadata().track_number is None)))
+
+                    track.set_metadata(None)
+                    self.assert_(
+                        (track.get_metadata() is None) or
+                        ((track.get_metadata().track_name is None) and
+                         (track.get_metadata().track_number is None)))
+
+                self.assertEqual(track.get_replay_gain(), None)
+
+                # if class supports ReplayGain
+                if (audio_class.supports_replay_gain()):
+                    # setting ReplayGain should work
+                    track.set_replay_gain(replay_gain)
+                    self.assertEqual(track.get_replay_gain(), replay_gain)
+
+                    # and deleting ReplayGain should work
+                    track.delete_replay_gain()
+                    self.assertEqual(track.get_replay_gain(), None)
+
+                    track.set_replay_gain(replay_gain)
+                    self.assertEqual(track.get_replay_gain(), replay_gain)
+                    track.set_replay_gain(None)
+                    self.assertEqual(track.get_replay_gain(), None)
+                else:
+                    # otherwise they should do nothing
+                    track.set_replay_gain(replay_gain)
+                    self.assertEqual(track.get_replay_gain(), None)
+
+                    track.delete_replay_gain()
+                    self.assertEqual(track.get_replay_gain(), None)
+
+                    track.set_replay_gain(None)
+                    self.assertEqual(track.get_replay_gain(), None)
+
+                self.assertEqual(track.get_cuesheet(), None)
+
+                # if class supports cuesheets
+                if (audio_class.supports_cuesheet()):
+                    # setting cuesheet should work
+                    track.set_cuesheet(sheet)
+                    self.assertEqual(track.get_cuesheet(), sheet)
+
+                    # and deleting cuesheet should work
+                    track.delete_cuesheet()
+                    self.assertEqual(track.get_cuesheet(), None)
+
+                    track.set_cuesheet(sheet)
+                    self.assertEqual(track.get_cuesheet(), sheet)
+                    track.set_cuesheet(None)
+                    self.assertEqual(track.get_cuesheet(), None)
+                else:
+                    # otherwise they should do nothing
+                    track.set_cuesheet(sheet)
+                    self.assertEqual(track.get_cuesheet(), None)
+
+                    track.delete_cuesheet()
+                    self.assertEqual(track.get_cuesheet(), None)
+
+                    track.set_cuesheet(None)
+                    self.assertEqual(track.get_cuesheet(), None)
+
+                # deleting metadata doesn't affect
+                # ReplayGain or embedded cuesheet (if supported)
+                track.set_metadata(metadata)
+                track.set_replay_gain(replay_gain)
+                track.set_cuesheet(sheet)
+                track.delete_metadata()
+                if (track.supports_replay_gain()):
+                    self.assertEqual(track.get_replay_gain(), replay_gain)
+                else:
+                    self.assertEqual(track.get_replay_gain(), None)
+                if (track.supports_cuesheet()):
+                    self.assertEqual(track.get_cuesheet(), sheet)
+                else:
+                    self.assertEqual(track.get_cuesheet(), None)
+
+                # deleting ReplayGain doesn't affect
+                # metadata or embedded cuesheet (if supported)
+                track.set_metadata(metadata)
+                track.set_replay_gain(replay_gain)
+                track.set_cuesheet(sheet)
+                track.delete_replay_gain()
+                if (track.supports_metadata()):
+                    self.assertEqual(track.get_metadata(), metadata)
+                else:
+                    self.assertEqual(track.get_metadata(), None)
+                if (track.supports_cuesheet()):
+                    self.assertEqual(track.get_cuesheet(), sheet)
+                else:
+                    self.assertEqual(track.get_cuesheet(), None)
+
+                # deleting cuesheet doesn't affect
+                # metadata or ReplayGain (if supported)
+                track.set_metadata(metadata)
+                track.set_replay_gain(replay_gain)
+                track.set_cuesheet(sheet)
+                track.delete_cuesheet()
+                if (track.supports_metadata()):
+                    self.assertEqual(track.get_metadata(), metadata)
+                else:
+                    self.assertEqual(track.get_metadata(), None)
+                if (track.supports_replay_gain()):
+                    self.assertEqual(track.get_replay_gain(), replay_gain)
+                else:
+                    self.assertEqual(track.get_replay_gain(), None)
+            finally:
+                temp_file.close()
+
 
 class WavPackApeTagMetaData(MetaDataTest):
     def setUp(self):

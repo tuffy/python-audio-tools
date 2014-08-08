@@ -269,6 +269,12 @@ class MP3Audio(AudioFile):
 
         return self.__samplerate__
 
+    @classmethod
+    def supports_metadata(cls):
+        """returns True if this audio type supports MetaData"""
+
+        return True
+
     def get_metadata(self):
         """returns a MetaData object, or None
 

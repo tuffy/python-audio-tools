@@ -395,6 +395,12 @@ AudioFile Objects
    Returns ``True`` if the data in the audio file has been stored losslessly.
    Returns ``False`` if not.
 
+.. classmethod:: AudioFile.supports_metadata()
+
+   Returns ``True`` is this audio type supports metadata.
+   If not, :meth:`AudioFile.get_metadata` will always return
+   ``None`` and the metadata updating routines will do nothing.
+
 .. method:: AudioFile.set_metadata(metadata)
 
    Takes a :class:`MetaData`-compatible object and sets this audio file's
