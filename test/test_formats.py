@@ -2470,6 +2470,15 @@ class ALACFileTest(LosslessFileTest):
 
     def __stream_variations__(self):
         for stream in [
+            test_streams.Silence16_Mono(200000, 44100),
+            test_streams.Silence16_Mono(200000, 96000),
+            test_streams.Silence16_Stereo(200000, 44100),
+            test_streams.Silence16_Stereo(200000, 96000),
+            test_streams.Silence24_Mono(200000, 44100),
+            test_streams.Silence24_Mono(200000, 96000),
+            test_streams.Silence24_Stereo(200000, 44100),
+            test_streams.Silence24_Stereo(200000, 96000),
+
             test_streams.Sine16_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
             test_streams.Sine16_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
             test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
@@ -2812,6 +2821,13 @@ class ALACFileTest(LosslessFileTest):
                 test_python_reader(fsd(pattern, 100),
                                    len(pattern) * 100,
                                    block_size=1152)
+
+        # test silence
+        for g in [test_streams.Silence16_Mono(5000, 48000),
+                  test_streams.Silence16_Stereo(5000, 48000),
+                  test_streams.Silence24_Mono(5000, 48000),
+                  test_streams.Silence24_Stereo(5000, 48000)]:
+            test_python_reader(g, 5000, block_size=1152)
 
         # test sines
         for g in [test_streams.Sine16_Mono(5000, 48000,
@@ -3550,6 +3566,19 @@ class FlacFileTest(TestForeignAiffChunks,
 
     def __stream_variations__(self):
         for stream in [
+            test_streams.Silence8_Mono(200000, 44100),
+            test_streams.Silence8_Mono(200000, 96000),
+            test_streams.Silence8_Stereo(200000, 44100),
+            test_streams.Silence8_Stereo(200000, 96000),
+            test_streams.Silence16_Mono(200000, 44100),
+            test_streams.Silence16_Mono(200000, 96000),
+            test_streams.Silence16_Stereo(200000, 44100),
+            test_streams.Silence16_Stereo(200000, 96000),
+            test_streams.Silence24_Mono(200000, 44100),
+            test_streams.Silence24_Mono(200000, 96000),
+            test_streams.Silence24_Stereo(200000, 44100),
+            test_streams.Silence24_Stereo(200000, 96000),
+
             test_streams.Sine8_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
             test_streams.Sine8_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
             test_streams.Sine8_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
@@ -4249,6 +4278,22 @@ class FlacFileTest(TestForeignAiffChunks,
                     adaptive_mid_side=True,
                     exhaustive_model_search=True)
 
+        # test silence
+        for g in [test_streams.Silence8_Mono(5000, 48000),
+                  test_streams.Silence8_Stereo(5000, 48000),
+                  test_streams.Silence16_Mono(5000, 48000),
+                  test_streams.Silence16_Stereo(5000, 48000),
+                  test_streams.Silence24_Mono(5000, 48000),
+                  test_streams.Silence24_Stereo(5000, 48000)]:
+            test_python_reader(g,
+                               block_size=1152,
+                               max_lpc_order=16,
+                               min_residual_partition_order=0,
+                               max_residual_partition_order=3,
+                               mid_side=True,
+                               adaptive_mid_side=True,
+                               exhaustive_model_search=True)
+
         # test sines
         for g in [test_streams.Sine8_Mono(5000, 48000,
                                           441.0, 0.50, 441.0, 0.49),
@@ -4935,6 +4980,19 @@ class ShortenFileTest(TestForeignWaveChunks,
 
     def __stream_variations__(self):
         for stream in [
+            test_streams.Silence8_Mono(200000, 44100),
+            test_streams.Silence8_Mono(200000, 96000),
+            test_streams.Silence8_Stereo(200000, 44100),
+            test_streams.Silence8_Stereo(200000, 96000),
+            test_streams.Silence16_Mono(200000, 44100),
+            test_streams.Silence16_Mono(200000, 96000),
+            test_streams.Silence16_Stereo(200000, 44100),
+            test_streams.Silence16_Stereo(200000, 96000),
+            test_streams.Silence24_Mono(200000, 44100),
+            test_streams.Silence24_Mono(200000, 96000),
+            test_streams.Silence24_Stereo(200000, 44100),
+            test_streams.Silence24_Stereo(200000, 96000),
+
             test_streams.Sine8_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
             test_streams.Sine8_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
             test_streams.Sine8_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
@@ -5271,6 +5329,13 @@ class ShortenFileTest(TestForeignWaveChunks,
                 test_python_reader(stream,
                                    len(pattern) * 100,
                                    block_size=256)
+
+        # test silence
+        for g in [test_streams.Silence8_Mono(5000, 48000),
+                  test_streams.Silence8_Stereo(5000, 48000),
+                  test_streams.Silence16_Mono(5000, 48000),
+                  test_streams.Silence16_Stereo(5000, 48000)]:
+            test_python_reader(g, 5000, block_size=256)
 
         # test sines
         for g in [test_streams.Sine8_Mono(5000, 48000,
@@ -5831,6 +5896,19 @@ class WavPackFileTest(TestForeignWaveChunks,
 
     def __stream_variations__(self):
         for stream in [
+            test_streams.Silence8_Mono(200000, 44100),
+            test_streams.Silence8_Mono(200000, 96000),
+            test_streams.Silence8_Stereo(200000, 44100),
+            test_streams.Silence8_Stereo(200000, 96000),
+            test_streams.Silence16_Mono(200000, 44100),
+            test_streams.Silence16_Mono(200000, 96000),
+            test_streams.Silence16_Stereo(200000, 44100),
+            test_streams.Silence16_Stereo(200000, 96000),
+            test_streams.Silence24_Mono(200000, 44100),
+            test_streams.Silence24_Mono(200000, 96000),
+            test_streams.Silence24_Stereo(200000, 44100),
+            test_streams.Silence24_Stereo(200000, 96000),
+
             test_streams.Sine8_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
             test_streams.Sine8_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
             test_streams.Sine8_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
@@ -6622,6 +6700,19 @@ class TTAFileTest(LosslessFileTest):
 
     def __stream_variations__(self):
         for stream in [
+            test_streams.Silence8_Mono(200000, 44100),
+            test_streams.Silence8_Mono(200000, 96000),
+            test_streams.Silence8_Stereo(200000, 44100),
+            test_streams.Silence8_Stereo(200000, 96000),
+            test_streams.Silence16_Mono(200000, 44100),
+            test_streams.Silence16_Mono(200000, 96000),
+            test_streams.Silence16_Stereo(200000, 44100),
+            test_streams.Silence16_Stereo(200000, 96000),
+            test_streams.Silence24_Mono(200000, 44100),
+            test_streams.Silence24_Mono(200000, 96000),
+            test_streams.Silence24_Stereo(200000, 44100),
+            test_streams.Silence24_Stereo(200000, 96000),
+
             test_streams.Sine8_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
             test_streams.Sine8_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
             test_streams.Sine8_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
@@ -7068,6 +7159,15 @@ class TTAFileTest(LosslessFileTest):
                             test_streams.PATTERN06,
                             test_streams.PATTERN07]:
                 test_python_reader(fsd(pattern, 100), len(pattern) * 100)
+
+        # test silence
+        for g in [test_streams.Silence8_Mono(5000, 48000),
+                  test_streams.Silence8_Stereo(5000, 48000),
+                  test_streams.Silence16_Mono(5000, 48000),
+                  test_streams.Silence16_Stereo(5000, 48000),
+                  test_streams.Silence24_Mono(5000, 48000),
+                  test_streams.Silence24_Stereo(5000, 48000)]:
+            test_python_reader(g, 5000)
 
         # test sines
         for g in [test_streams.Sine8_Mono(5000, 48000,

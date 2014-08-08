@@ -22,7 +22,10 @@ import cStringIO
 import math
 import os
 from hashlib import md5
-from audiotools.decoders import Sine_Mono, Sine_Stereo, Sine_Simple
+from audiotools.decoders import (Sine_Mono,
+                                 Sine_Stereo,
+                                 Sine_Simple,
+                                 SameSample)
 
 # these are test stream generators using stream formulas
 # taken from the FLAC reference encoder
@@ -131,6 +134,128 @@ class Generate04(ShortStream):
         ShortStream.__init__(self, [-25, 500, 0, 400, 25, 300, 50, 200,
                                     100, 100],
                              sample_rate, 2, 16)
+
+
+class Silence8_Mono(SameSample):
+    def __init__(self, pcm_frames, sample_rate):
+        SameSample.__init__(self,
+                            sample=0,
+                            total_pcm_frames=pcm_frames,
+                            sample_rate=sample_rate,
+                            channels=1,
+                            channel_mask=0x4,
+                            bits_per_sample=8)
+        self.pcm_frames = pcm_frames
+        self.md5 = md5()
+
+    def read(self, pcm_frames):
+        framelist = SameSample.read(self, pcm_frames)
+        self.md5.update(framelist.to_bytes(False, True))
+        return framelist
+
+    def digest(self):
+        return self.md5.digest()
+
+    def hexdigest(self):
+        return self.md5.hexdigest()
+
+    def reset(self):
+        SameSample.reset(self)
+        self.md5 = md5()
+
+    def __repr__(self):
+        return "Silence8_Mono(%s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate))
+
+
+class Silence16_Mono(Silence8_Mono):
+    def __init__(self, pcm_frames, sample_rate):
+        SameSample.__init__(self,
+                            sample=0,
+                            total_pcm_frames=pcm_frames,
+                            sample_rate=sample_rate,
+                            channels=1,
+                            channel_mask=0x4,
+                            bits_per_sample=16)
+        self.pcm_frames = pcm_frames
+        self.md5 = md5()
+
+    def __repr__(self):
+        return "Silence16_Mono(%s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate))
+
+
+class Silence24_Mono(Silence8_Mono):
+    def __init__(self, pcm_frames, sample_rate):
+        SameSample.__init__(self,
+                            sample=0,
+                            total_pcm_frames=pcm_frames,
+                            sample_rate=sample_rate,
+                            channels=1,
+                            channel_mask=0x4,
+                            bits_per_sample=24)
+        self.pcm_frames = pcm_frames
+        self.md5 = md5()
+    def __repr__(self):
+        return "Silence24_Mono(%s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate))
+
+
+class Silence8_Stereo(Silence8_Mono):
+    def __init__(self, pcm_frames, sample_rate):
+        SameSample.__init__(self,
+                            sample=0,
+                            total_pcm_frames=pcm_frames,
+                            sample_rate=sample_rate,
+                            channels=2,
+                            channel_mask=0x3,
+                            bits_per_sample=8)
+        self.pcm_frames = pcm_frames
+        self.md5 = md5()
+
+    def __repr__(self):
+        return "Silence8_Stereo(%s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate))
+
+
+class Silence16_Stereo(Silence8_Mono):
+    def __init__(self, pcm_frames, sample_rate):
+        SameSample.__init__(self,
+                            sample=0,
+                            total_pcm_frames=pcm_frames,
+                            sample_rate=sample_rate,
+                            channels=2,
+                            channel_mask=0x3,
+                            bits_per_sample=16)
+        self.pcm_frames = pcm_frames
+        self.md5 = md5()
+
+    def __repr__(self):
+        return "Silence16_Stereo(%s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate))
+
+
+class Silence24_Stereo(Silence8_Mono):
+    def __init__(self, pcm_frames, sample_rate):
+        SameSample.__init__(self,
+                            sample=0,
+                            total_pcm_frames=pcm_frames,
+                            sample_rate=sample_rate,
+                            channels=2,
+                            channel_mask=0x3,
+                            bits_per_sample=24)
+        self.pcm_frames = pcm_frames
+        self.md5 = md5()
+
+    def __repr__(self):
+        return "Silence24_Stereo(%s, %s)" % \
+            (repr(self.pcm_frames),
+             repr(self.sample_rate))
 
 
 class Sine8_Mono(Sine_Mono):

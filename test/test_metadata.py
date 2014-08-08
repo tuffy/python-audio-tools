@@ -725,6 +725,40 @@ class MetaDataTest(unittest.TestCase):
             finally:
                 temp_file.close()
 
+    @METADATA_METADATA
+    def test_converted_duplication(self):
+        # ensure the converting a metadata object to its own class
+        # doesn't share the same fields as the original object
+        # so that updating one doesn't update the other
+        metadata1 = self.metadata_class.converted(
+            audiotools.MetaData(track_name=u"Track Name 1",
+                                track_number=1))
+
+        if (self.metadata_class.supports_images()):
+            metadata1.add_image(audiotools.Image.new(TEST_COVER1,
+                                                     u"",
+                                                     audiotools.FRONT_COVER))
+
+        metadata2 = self.metadata_class.converted(metadata1)
+        self.assertNotEqual(metadata2, None)
+        self.assert_(isinstance(metadata2, self.metadata_class))
+
+        self.assertEqual(metadata1.track_name, metadata2.track_name)
+        self.assertEqual(metadata1.track_number, metadata2.track_number)
+        self.assertEqual(metadata1.images(), metadata2.images())
+
+        metadata2.track_name = u"Track Name 2"
+        metadata2.track_number = 2
+        self.assertNotEqual(metadata1.track_name, metadata2.track_name)
+        self.assertNotEqual(metadata1.track_number, metadata2.track_number)
+        if (self.metadata_class.supports_images()):
+            metadata2.delete_image(metadata2.images()[0])
+            self.assertNotEqual(metadata1.images(), metadata2.images())
+
+    @METADATA_METADATA
+    def test_converted_none(self):
+        self.assertEqual(self.metadata_class.converted(None), None)
+
 
 class WavPackApeTagMetaData(MetaDataTest):
     def setUp(self):

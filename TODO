@@ -7161,7 +7161,7 @@
      - [ ] with syntax error
 *** TODO audiotools/flac
 **** TODO FlacMetaData
-     - [ ] converted(None)
+     - [X] converted(None)
      - [ ] clean (multiple STREAMINFO)
      - [ ] clean (multiple VORBIS_COMMENT)
      - [ ] clean (multiple SEEKTABLE)
@@ -7170,7 +7170,7 @@
      - [X] raw_info()
      check with all metadata blocks
 **** TODO Flac_VORBISCOMMENT
-     - [ ] converted(Flac_VORBISCOMMENT)
+     - [X] converted(Flac_VORBISCOMMENT)
      should return newly created object
 **** TODO Flac_Cuesheet
      - [ ] track_length
@@ -7194,12 +7194,12 @@
      - [ ] convert() to AiffContainer
      - [ ] delete_replay_gain() without VORBIS_COMMENT
      - [ ] clean on < 128 byte file
-**** TODO FLAC_Data_Chunk
+**** DONE FLAC_Data_Chunk
      is this still in use?
-**** TODO FLAC_SSND_Chunk
+**** DONE FLAC_SSND_Chunk
      is this still in use?
 **** TODO OggFlacMetaData
-     - [ ] converted(None)
+     - [X] converted(None)
 **** TODO OggFlacAudio
      - [ ] from_pcm with UnsupportedChannelMask
 *** TODO audiotools/freedb
@@ -7245,7 +7245,7 @@
      - [ ] getattr -> AttributeError
      - [ ] delattr(track/alum_number) unslashed
      - [ ] delattr unsupported field
-     - [ ] converted(None)
+     - [X] converted(None)
 **** TODO ID3v23_TXXX_Frame
 **** TODO ID3v23_WXXX_Frame
 **** TODO ID3v23_APIC_Frame
@@ -7279,7 +7279,7 @@
      - [ ] parse (TXXX, WXXX, W???)
 **** TODO ID3CommentPair
      - [ ] init id3v1 is not None
-     - [ ] converted(None)
+     - [X] converted(None)
      - [ ] convert(ID3v2Comment)
      - [X] raw_info
      - [ ] images (id3v2 is None)
@@ -7289,7 +7289,7 @@
      - [ ] getattr -> AttributeError
      - [ ] setattr(non field)
      - [ ] delattr(non field)
-     - [ ] converted(None)
+     - [X] converted(None)
      - [ ] images
 ***** TODO parse
       - [ ] track_name length != 30
@@ -7340,7 +7340,7 @@
      - [ ] getattr -> AttributeError
      - [ ] setattr -> replace_data_atom
      - [ ] delattr -> AttributeError
-     - [ ] converted(None)
+     - [X] converted(None)
 *** TODO audiotools/mp3
 **** TODO MP3Audio
      - [X] set_metadata(None)
@@ -7417,7 +7417,7 @@
      - [ ] __contains__
      - [ ] getattr(non-MetaData attrib)
      - [ ] delattr(non-MetaData attrib)
-     - [ ] converted(None)
+     - [X] converted(None)
      - [ ] converted(FlacMetaData without VORBISCOMMENT)
      - [ ] clean(track_total/album_total with leading 0s)
 *** TODO audiotools/wav
@@ -7518,7 +7518,7 @@
     - [ ] estimate_best_order
 *** TODO audiotools/py_encoders/shn
 **** TODO encode_shn
-     - [ ] all zeroes
+     - [X] all zeroes
      - [ ] write footer
 *** TODO audiotools/py_encoders/wavpack
 **** TODO encode_wavpack
