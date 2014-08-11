@@ -537,9 +537,9 @@ if (__name__ == '__main__'):
     if (len(tracks) > 0):
         for album_tracks in audiotools.group_tracks(tracks):
 
-            album_number = set(
-                [(m.album_number if m is not None else None)
-                 for m in [f.get_metadata() for f in album_tracks]]).pop()
+            album_number = {(m.album_number if m is not None else None)
+                            for m in
+                            [f.get_metadata() for f in album_tracks]}.pop()
 
             # if both --add-replay-gain and --remove-replay-gain
             # are specified, do nothing

@@ -40,15 +40,10 @@ def merge_metadatas(metadatas):
     elif (len(track_metadatas) == 1):
         return track_metadatas[0]
     else:
-        track_fields = dict([(field,
-                              set([getattr(m, field)
-                                   for m in track_metadatas]))
-                             for field in audiotools.MetaData.FIELDS])
-
-        metadata = audiotools.MetaData(**dict([(field, values.pop())
-                                               for (field, values) in
-                                               track_fields.items()
-                                               if (len(values) == 1)]))
+        metadata = audiotools.MetaData(
+            **{field: getattr(track_metadatas[0], field)
+               for field in audiotools.MetaData.FIELDS
+               if (len({getattr(m, field) for m in track_metadatas}) == 1)})
 
         # port over non-duplicate images
         images = []
@@ -168,7 +163,7 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     # grab the list of AudioFile objects we are converting from
-    opened_files = set([])
+    opened_files = set()
     audiofiles = audiotools.open_files(options.filenames,
                                        messenger=msg,
                                        warn_duplicates=True,
@@ -179,19 +174,19 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_FILES_REQUIRED)
         sys.exit(1)
 
-    if (len(set([f.sample_rate() for f in audiofiles])) != 1):
+    if (len({f.sample_rate() for f in audiofiles}) != 1):
         msg.error(_.ERR_SAMPLE_RATE_MISMATCH)
         sys.exit(1)
 
-    if (len(set([f.channels() for f in audiofiles])) != 1):
+    if (len({f.channels() for f in audiofiles}) != 1):
         msg.error(_.ERR_CHANNEL_COUNT_MISMATCH)
         sys.exit(1)
 
-    if (len(set([int(f.channel_mask()) for f in audiofiles])) != 1):
+    if (len({int(f.channel_mask()) for f in audiofiles}) != 1):
         msg.error(_.ERR_CHANNEL_MASK_MISMATCH)
         sys.exit(1)
 
-    if (len(set([f.bits_per_sample() for f in audiofiles])) != 1):
+    if (len({f.bits_per_sample() for f in audiotools}) != 1):
         msg.error(_.ERR_BPS_MISMATCH)
         sys.exit(1)
 

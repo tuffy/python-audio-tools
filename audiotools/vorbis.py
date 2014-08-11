@@ -427,10 +427,10 @@ class VorbisAudio(AudioFile):
         vorbis_metadata = self.get_metadata()
 
         if ((vorbis_metadata is not None) and
-            (set(['REPLAYGAIN_TRACK_PEAK',
-                  'REPLAYGAIN_TRACK_GAIN',
-                  'REPLAYGAIN_ALBUM_PEAK',
-                  'REPLAYGAIN_ALBUM_GAIN']).issubset(vorbis_metadata.keys()))):
+            ({'REPLAYGAIN_TRACK_PEAK',
+              'REPLAYGAIN_TRACK_GAIN',
+              'REPLAYGAIN_ALBUM_PEAK',
+              'REPLAYGAIN_ALBUM_GAIN'}.issubset(vorbis_metadata.keys()))):
             # we have ReplayGain data
             try:
                 return ReplayGain(

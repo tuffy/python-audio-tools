@@ -509,6 +509,7 @@ def aiff_header(sample_rate,
     else:
         raise ValueError("total size too large for aiff file")
 
+
 class InvalidAIFF(InvalidFile):
     """raised if some problem occurs parsing AIFF chunks"""
 
@@ -856,7 +857,7 @@ class AiffAudio(AiffContainer):
     def has_foreign_aiff_chunks(self):
         """returns True if the audio file contains non-audio AIFF chunks"""
 
-        return (set(['COMM', 'SSND']) != set([c.id for c in self.chunks()]))
+        return ({'COMM', 'SSND'} != {c.id for c in self.chunks()})
 
     def aiff_header_footer(self):
         """returns (header, footer) tuple of strings

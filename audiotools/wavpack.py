@@ -143,7 +143,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         for (sub_header, nondecoder, data_size, data) in self.sub_blocks():
             if ((sub_header == 1) and nondecoder):
                 if (set(__riff_chunk_ids__(data_size,
-                                           data)) != set(['fmt ', 'data'])):
+                                           data)) != {'fmt ', 'data'}):
                     return True
             elif ((sub_header == 2) and nondecoder):
                 return True

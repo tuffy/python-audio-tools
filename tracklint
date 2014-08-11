@@ -165,8 +165,8 @@ if (__name__ == '__main__'):
 
     msg = audiotools.Messenger("tracklint", options)
 
-    processed_filenames = set([])
-    unsupported_types = set([])
+    processed_filenames = set()
+    unsupported_types = set()
 
     if (options.undo and (options.db is None)):
         msg.error(_.ERR_NO_UNDO_DB)

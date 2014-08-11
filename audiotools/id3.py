@@ -1268,7 +1268,7 @@ class ID3v22Comment(MetaData):
             raise KeyError(frame_id)
 
     def keys(self):
-        return list(set([frame.id for frame in self]))
+        return list({frame.id for frame in self})
 
     def values(self):
         return [self[key] for key in self.keys()]

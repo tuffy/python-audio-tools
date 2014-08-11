@@ -508,13 +508,13 @@ try:
                 self.track_ids.append(track_id)
                 for (attr, value) in (metadata if metadata is not None
                                       else audiotools.MetaData()).fields():
-                    base_metadata.setdefault(attr, set([])).add(value)
+                    base_metadata.setdefault(attr, set()).add(value)
 
             base_metadata = BaseMetaData(
                 metadata=audiotools.MetaData(
-                    **dict([(field, list(values)[0])
-                            for (field, values) in base_metadata.items()
-                            if (len(values) == 1)])),
+                    **{field: list(values)[0]
+                       for (field, values) in base_metadata.items()
+                       if (len(values) == 1)}),
                 on_change=on_text_change)
 
             # populate the track_labels and metadata_edits lookup tables
@@ -745,8 +745,8 @@ try:
             if (linked):
                 # if nothing else linked in this checkbox group,
                 # set linked text to whatever the last unlinked text as
-                if (set([cb.get_state() for cb in self.checkbox_group
-                         if (cb is not checkbox)]) == set([False])):
+                if ({cb.get_state() for cb in self.checkbox_group
+                     if (cb is not checkbox)} == {False}):
                     self.linked_widget.set_edit_text(
                         self.unlinked_widget.get_edit_text())
                 self.widget_list[1] = self.linked_widget
@@ -832,13 +832,12 @@ try:
             current value based on its widgets' values"""
 
             return audiotools.MetaData(
-                **dict([(attr, value) for (attr, value) in
-                        [(attr, getattr(self, attr).value())
-                         for attr in audiotools.MetaData.FIELDS]
-                        if ((len(value) > 0) if
-                            (attr not in
-                             audiotools.MetaData.INTEGER_FIELDS) else
-                            (value > 0))]))
+                **{attr: value for (attr, value) in
+                   [(attr, getattr(self, attr).value())
+                    for attr in audiotools.MetaData.FIELDS]
+                    if ((len(value) > 0) if
+                        (attr not in audiotools.MetaData.INTEGER_FIELDS) else
+                        (value > 0))})
 
     class Swivel:
         """this is a container for the objects of a swiveling operation"""
@@ -1753,10 +1752,10 @@ try:
 
                 # check for duplicates in output/input files
                 # (don't care if input files are duplicated)
-                input_filenames = frozenset([f for f in self.input_filenames
-                                             if f.disk_file()])
-                output_filenames = set([])
-                collisions = set([])
+                input_filenames = {f for f in self.input_filenames
+                                   if f.disk_file()}
+                output_filenames = set()
+                collisions = set()
 
                 self.has_collisions = False
                 self.has_duplicates = False
@@ -2655,8 +2654,8 @@ def process_output_options(metadata_choices,
 
     # ensure no output paths overwrite input paths
     # and that all output paths are distinct
-    __input__ = frozenset([f for f in input_filenames if f.disk_file()])
-    __output__ = set([])
+    __input__ = {f for f in input_filenames if f.disk_file()}
+    __output__ = set()
     output_filenames = []
     for (input_filename, metadata) in zip(input_filenames, selected_metadata):
         output_filename = audiotools.Filename(

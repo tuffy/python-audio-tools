@@ -236,23 +236,21 @@ if (__name__ == '__main__'):
             to_compare = []
             results = []
 
-            files1 = dict(
-                [(f.filename, f) for f in
-                 audiotools.open_files(
-                     [path for path in [os.path.join(args[0], f) for f in
-                                        os.listdir(args[0])] if
-                      os.path.isfile(path)],
-                     sorted=False,
-                     messenger=msg)])
+            files1 = {f.filename: f for f in
+                      audiotools.open_files(
+                          [path for path in
+                           [os.path.join(args[0], f) for f in
+                            os.listdir(args[0])] if os.path.isfile(path)],
+                          sorted=False,
+                          messenger=msg)}
 
-            files2 = dict(
-                [(f.filename, f) for f in
-                 audiotools.open_files(
-                     [path for path in [os.path.join(args[1], f) for f in
-                                        os.listdir(args[1])] if
-                      os.path.isfile(path)],
-                     sorted=False,
-                     messenger=msg)])
+            files2 = {f.filename: f for f in
+                      audiotools.open_files(
+                          [path for path in
+                           [os.path.join(args[1], f) for f in
+                            os.listdir(args[1])] if os.path.isfile(path)],
+                          sorted=False,
+                          messenger=msg)}
 
             # first, attempt to match files by their stream characteristics
             streams1 = {}
@@ -429,8 +427,8 @@ if (__name__ == '__main__'):
                 pcm_offset += track.total_frames()
 
             try:
-                if (set([r[0] for r in
-                         queue.run(options.max_processes)]) != set([None])):
+                if ({r[0] for r in queue.run(options.max_processes)} !=
+                    {None}):
                     sys.exit(1)
             except KeyboardInterrupt:
                 msg.error(_.ERR_CANCELLED)
@@ -489,8 +487,8 @@ if (__name__ == '__main__'):
                 pcm_offset += track.total_frames()
 
             try:
-                if (set([r[0] for r in
-                         queue.run(options.max_processes)]) != set([None])):
+                if ({r[0] for r in queue.run(options.max_processes)} !=
+                    {None}):
                     temp_blob.close()
                     sys.exit(1)
             except KeyboardInterrupt:

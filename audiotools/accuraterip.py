@@ -261,7 +261,7 @@ def perform_lookup(disc_id,
     from audiotools.bitstream import BitstreamReader
     from urllib2 import urlopen, URLError
 
-    matches = dict([(n, []) for n in disc_id.track_numbers()])
+    matches = {n: [] for n in disc_id.track_numbers()}
 
     url = "http://%s:%s/accuraterip/%s/%s/%s/%s" % (accuraterip_server,
                                                     accuraterip_port,

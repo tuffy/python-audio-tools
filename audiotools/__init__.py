@@ -878,8 +878,8 @@ class output_table:
             # no rows, so do nothing
             return
 
-        if (len(set([len(r) for r in self.__rows__ if
-                     not isinstance(r, output_table_blank)])) != 1):
+        if (len({len(r) for r in self.__rows__ if
+                 not isinstance(r, output_table_blank)}) != 1):
             raise ValueError("all rows must have same number of columns")
 
         column_widths = [
@@ -1616,9 +1616,9 @@ def open_files(filename_list, sorted=True, messenger=None,
                                  ERR_OPEN_IOERROR)
 
     if (opened_files is None):
-        opened_files = set([])
+        opened_files = set()
     if (unsupported_formats is None):
-        unsupported_formats = set([])
+        unsupported_formats = set()
 
     to_return = []
 
@@ -2200,23 +2200,6 @@ def threaded_transfer_framelist_data(pcmreader, to_function,
         s = data_queue.get()
 
 
-#class __capped_stream_reader__:
-#    # allows a maximum number of bytes "length" to
-#    # be read from file-like object "stream"
-#    # (used for reading IFF chunks, among others)
-#    def __init__(self, stream, length):
-#        self.stream = stream
-#        self.remaining = length
-#
-#    def read(self, bytes):
-#        data = self.stream.read(min(bytes, self.remaining))
-#        self.remaining -= len(data)
-#        return data
-#
-#    def close(self):
-#        self.stream.close()
-
-
 def pcm_cmp(pcmreader1, pcmreader2):
     """returns True if the PCM data in pcmreader1 equals pcmreader2
 
@@ -2301,13 +2284,13 @@ class PCMCat:
             from audiotools.text import ERR_NO_PCMREADERS
             raise ValueError(ERR_NO_PCMREADERS)
 
-        if (len(set([r.sample_rate for r in self.pcmreaders])) != 1):
+        if (len({r.sample_rate for r in self.pcmreaders}) != 1):
             from audiotools.text import ERR_SAMPLE_RATE_MISMATCH
             raise ValueError(ERR_SAMPLE_RATE_MISMATCH)
-        if (len(set([r.channels for r in self.pcmreaders])) != 1):
+        if (len({r.channels for r in self.pcmreaders}) != 1):
             from audiotools.text import ERR_CHANNEL_COUNT_MISMATCH
             raise ValueError(ERR_CHANNEL_COUNT_MISMATCH)
-        if (len(set([r.bits_per_sample for r in self.pcmreaders])) != 1):
+        if (len({r.bits_per_sample for r in self.pcmreaders}) != 1):
             from audiotools.text import ERR_BPS_MISMATCH
             raise ValueError(ERR_BPS_MISMATCH)
 
@@ -3015,8 +2998,8 @@ class MetaData:
         """
 
         if (metadata is not None):
-            fields = dict([(field, getattr(metadata, field))
-                           for field in cls.FIELDS])
+            fields = {field: getattr(metadata, field)
+                      for field in cls.FIELDS}
             fields["images"] = metadata.images()
             return MetaData(**fields)
         else:
@@ -3103,8 +3086,8 @@ class MetaData:
         * Fix incorrectly labeled image metadata fields
         """
 
-        return (MetaData(**dict([(field, getattr(self, field))
-                                 for field in MetaData.FIELDS])), [])
+        return (MetaData(**{field: getattr(self, field)
+                            for field in MetaData.FIELDS}), [])
 
 
 (FRONT_COVER, BACK_COVER, LEAFLET_PAGE, MEDIA, OTHER) = range(5)
@@ -3797,7 +3780,7 @@ class AudioFile:
                 {"programs": u", ".join([u"\"%s\"" % (b.decode('ascii'))
                                          for b in binaries]),
                  "format": format_})
-            if (len(set([urls[b] for b in binaries])) == 1):
+            if (len({urls[b] for b in binaries}) == 1):
                 # if they all come from one URL (like Vorbis tools)
                 # display only that URL
                 messenger.info(
@@ -5158,16 +5141,16 @@ AVAILABLE_TYPES = (FlacAudio,
                    OpusAudio,
                    TrueAudio)
 
-TYPE_MAP = dict([(track_type.NAME, track_type)
-                 for track_type in AVAILABLE_TYPES
-                 if track_type.available(BIN)])
+TYPE_MAP = {track_type.NAME: track_type
+            for track_type in AVAILABLE_TYPES
+            if track_type.available(BIN)}
 
-DEFAULT_QUALITY = dict([(track_type.NAME,
-                         config.get_default("Quality",
-                                            track_type.NAME,
-                                            track_type.DEFAULT_COMPRESSION))
-                        for track_type in AVAILABLE_TYPES
-                        if (len(track_type.COMPRESSION_MODES) > 1)])
+DEFAULT_QUALITY = {track_type.NAME:
+                   config.get_default("Quality",
+                                      track_type.NAME,
+                                      track_type.DEFAULT_COMPRESSION)
+                   for track_type in AVAILABLE_TYPES
+                   if (len(track_type.COMPRESSION_MODES) > 1)}
 
 if (DEFAULT_TYPE not in TYPE_MAP.keys()):
     DEFAULT_TYPE = "wav"

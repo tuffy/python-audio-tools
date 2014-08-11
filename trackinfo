@@ -136,7 +136,7 @@ if (__name__ == '__main__'):
                     msg.output(_.LAB_TRACKINFO_CUESHEET)
                     indexes = {}  # track_number -> {index_number -> offset}
                     isrcs = {}    # track_number -> ISRC unicode
-                    index_numbers = set([])
+                    index_numbers = set()
                     for track in cuesheet:
                         track_indexes = {}
                         for index in track:
@@ -183,10 +183,9 @@ if (__name__ == '__main__'):
         if (options.channel_assignment):
             msg.output(_.LAB_TRACKINFO_CHANNELS)
 
-            channel_names = dict(
-                [(attr, audiotools.ChannelMask.MASK_TO_NAME[mask])
-                 for (attr, mask) in
-                 audiotools.ChannelMask.SPEAKER_TO_MASK.items()])
+            channel_names = {attr: audiotools.ChannelMask.MASK_TO_NAME[mask]
+                             for (attr, mask) in
+                             audiotools.ChannelMask.SPEAKER_TO_MASK.items()}
 
             if (file.channel_mask().defined()):
                 for (i, channel) in enumerate(file.channel_mask().channels()):

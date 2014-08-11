@@ -270,15 +270,15 @@ if (__name__ == '__main__'):
             msg.info(_.ERR_GET_CDRDAO)
             sys.exit(1)
 
-        if (len(set([f.sample_rate() for f in audiofiles])) != 1):
+        if (len({f.sample_rate() for f in audiofiles}) != 1):
             msg.error(_.ERR_SAMPLE_RATE_MISMATCH)
             sys.exit(1)
 
-        if (len(set([f.channels() for f in audiofiles])) != 1):
+        if (len({f.channels() for f in audiofiles}) != 1):
             msg.error(_.ERR_CHANNEL_COUNT_MISMATCH)
             sys.exit(1)
 
-        if (len(set([f.bits_per_sample() for f in audiofiles])) != 1):
+        if (len({f.bits_per_sample() for f in audiotools}) != 1):
             msg.error(_.ERR_BPS_MISMATCH)
             sys.exit(1)
 

@@ -451,7 +451,7 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     # grab the list of AudioFile objects we are converting from
-    input_filenames = set([])
+    input_filenames = set()
     try:
         audiofiles = audiotools.open_files(options.filenames,
                                            messenger=msg,
@@ -715,7 +715,7 @@ if (__name__ == '__main__'):
         # it's possible processing multiple albums at once
         # may result in the same output file occurring across the whole
         # job, but not in any individual album)
-        output_filenames = set([])
+        output_filenames = set()
         for job in conversion_jobs:
             output_filename = job[2]
             if (output_filename not in output_filenames):
@@ -773,9 +773,9 @@ if (__name__ == '__main__'):
             # add ReplayGain to groups of files
             # belonging to the same album
 
-            album_number = set([(m.album_number if m is not None else None)
-                                for m in
-                                [f.get_metadata() for f in album]]).pop()
+            album_number = {(m.album_number if m is not None else None)
+                            for m in
+                            [f.get_metadata() for f in album]}.pop()
 
             if (album_number is None):
                 progress_text = _.RG_ADDING_REPLAYGAIN

@@ -266,16 +266,15 @@ if (__name__ == '__main__'):
     if (options.interactive):
         # a track_number -> MetaData dictionary
         # where track_number typically starts from 1
-        metadata = dict(
-            [(m.track_number, m) for m in
-             audiotools.cddareader_metadata_lookup(
-                 cddareader=cddareader,
-                 musicbrainz_server=options.musicbrainz_server,
-                 musicbrainz_port=options.musicbrainz_port,
-                 freedb_server=options.freedb_server,
-                 freedb_port=options.freedb_port,
-                 use_musicbrainz=options.use_musicbrainz,
-                 use_freedb=options.use_freedb)[0]])
+        metadata = {m.track_number: m for m in
+                    audiotools.cddareader_metadata_lookup(
+                        cddareader=cddareader,
+                        musicbrainz_server=options.musicbrainz_server,
+                        musicbrainz_port=options.musicbrainz_port,
+                        freedb_server=options.freedb_server,
+                        freedb_port=options.freedb_port,
+                        use_musicbrainz=options.use_musicbrainz,
+                        use_freedb=options.use_freedb)[0]}
 
         cdplay = CDplayGUI(
             cddareader=cddareader,

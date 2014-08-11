@@ -41,9 +41,8 @@ class DVDAudio:
         self.cdrom_device = cdrom_device
 
         # an inventory of AUDIO_TS files converted to uppercase keys
-        self.files = dict([(name.upper(),
-                            os.path.join(audio_ts_path, name))
-                           for name in os.listdir(audio_ts_path)])
+        self.files = {name.upper(): os.path.join(audio_ts_path, name)
+                      for name in os.listdir(audio_ts_path)}
 
         titleset_numbers = list(self.__titlesets__())
 
@@ -58,9 +57,8 @@ class DVDAudio:
         self.aob_sectors = []
         for titleset in titleset_numbers:
             aob_re = re.compile("ATS_%2.2d_\\d\\.AOB" % (titleset))
-            titleset_aobs = dict([(key, value) for (key, value) in
-                                  self.files.items()
-                                  if (aob_re.match(key))])
+            titleset_aobs = {key: value for (key, value) in
+                             self.files.items() if aob_re.match(key)}
             for aob_length in [os.path.getsize(titleset_aobs[key]) //
                                DVDAudio.SECTOR_SIZE
                                for key in sorted(titleset_aobs.keys())]:
@@ -171,8 +169,7 @@ class DVDAudio:
                 sector_pointers = [ats_reader.parse("32u 32u 32u")
                                    for i in range(indexes)]
                 if ((len(sector_pointers) > 1) and
-                    (set([p[0] for p in sector_pointers[1:]]) !=
-                     set([0x01000000]))):
+                    ({p[0] for p in sector_pointers[1:]} != {0x01000000})):
                     from audiotools.text import ERR_DVDA_INVALID_SECTOR_POINTER
                     raise InvalidDVDA(ERR_DVDA_INVALID_SECTOR_POINTER)
                 else:

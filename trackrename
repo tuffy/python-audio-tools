@@ -218,8 +218,7 @@ if (__name__ == '__main__'):
 
     # get a set of files to be renamed
     # and generate an error if a duplicate occurs
-    renamed_filenames = set([audiotools.Filename(t.filename) for t in
-                             audiofiles])
+    renamed_filenames = {audiotools.Filename(t.filename) for t in audiofiles}
 
     if (options.interactive):
         widget = Trackrename(

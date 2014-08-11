@@ -265,7 +265,7 @@ if (__name__ == '__main__'):
     else:
         audiofile = audiofiles[0]
         input_filename = audiotools.Filename(audiofile.filename)
-        input_filenames = set([input_filename])
+        input_filenames = {input_filename}
 
     base_directory = options.dir
     encoded_filenames = []
@@ -339,22 +339,22 @@ if (__name__ == '__main__'):
     # with those from original file, if any
     album_metadata = audiofile.get_metadata()
     if (album_metadata is not None):
-        album_fields = dict([(attr, field) for (attr, field) in
-                             album_metadata.filled_fields()
-                             if (attr in set(["album_name",
-                                              "artist_name",
-                                              "performer_name",
-                                              "composer_name",
-                                              "conductor_name",
-                                              "media",
-                                              "catalog",
-                                              "copyright",
-                                              "publisher",
-                                              "year",
-                                              "date",
-                                              "album_number",
-                                              "album_total",
-                                              "comment"]))])
+        album_fields = {attr: field for (attr, field) in
+                        album_metadata.filled_fields()
+                        if (attr in {"album_name",
+                                     "artist_name",
+                                     "performer_name",
+                                     "composer_name",
+                                     "conductor_name",
+                                     "media",
+                                     "catalog",
+                                     "copyright",
+                                     "publisher",
+                                     "year",
+                                     "date",
+                                     "album_number",
+                                     "album_total",
+                                     "comment"})}
 
         for c in metadata_choices:
             for m in c:

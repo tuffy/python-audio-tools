@@ -271,7 +271,7 @@ if (__name__ == '__main__'):
 
     # determine which tracks to extract from the DVDATitle
     if (len(options.tracks) == 0):
-        to_rip = dict([(track.track, track) for track in title])
+        to_rip = {track.track: track for track in title}
     else:
         to_rip = {}
         for arg in options.tracks:

@@ -422,7 +422,7 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("trackverify", options)
 
     if (not options.accuraterip):
-        queued_files = set([])  # a set of Filename objects already encountered
+        queued_files = set()  # a set of Filename objects already encountered
         queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
         for track in get_tracks(options.filenames,
                                 queued_files,
@@ -442,7 +442,7 @@ if (__name__ == '__main__'):
             msg.error(_.ERR_CANCELLED)
             sys.exit(1)
 
-        formats = sorted(list(set([r[1] for r in results])))
+        formats = sorted(list({r[1] for r in results}))
         success_total = len([r for r in results if r[2] is None])
         failure_total = len(results) - success_total
 
@@ -493,7 +493,7 @@ if (__name__ == '__main__'):
         if (failure_total > 0):
             sys.exit(1)
     else:
-        queued_files = set([])  # a set of Filename objects already encountered
+        queued_files = set()  # a set of Filename objects already encountered
         queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
 
         for tracks in audiotools.group_tracks(
@@ -502,9 +502,9 @@ if (__name__ == '__main__'):
                            options.accept_list)):
             # perform AccurateRip lookup on album's worth of tracks
             # if tracks are CD formatted
-            if (((set([t.channels() for t in tracks]) == set([2])) and
-                 (set([t.sample_rate() for t in tracks]) == set([44100])) and
-                 (set([t.bits_per_sample() for t in tracks]) == set([16])))):
+            if ((({t.channels() for t in tracks} == {2}) and
+                 ({t.sample_rate() for t in tracks} == {44100}) and
+                 ({t.bits_per_sample() for t in tracks} == {16}))):
                 if ((len(tracks) == 1) and
                     ((options.cuesheet is not None) or
                      (tracks[0].get_cuesheet() is not None))):

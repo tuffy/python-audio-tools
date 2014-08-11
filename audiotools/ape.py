@@ -724,7 +724,7 @@ class ApeTag(MetaData):
                                      CLEAN_REMOVE_EMPTY_TAG)
 
         fixes_performed = []
-        used_tags = set([])
+        used_tags = set()
         tag_items = []
         for tag in self.tags:
             if (tag.key.upper() in used_tags):
@@ -1024,8 +1024,8 @@ class ApeGainedAudio:
         if (metadata is None):
             return None
 
-        if (set(['replaygain_track_gain', 'replaygain_track_peak',
-                 'replaygain_album_gain', 'replaygain_album_peak']).issubset(
+        if ({'replaygain_track_gain', 'replaygain_track_peak',
+             'replaygain_album_gain', 'replaygain_album_peak'}.issubset(
                 metadata.keys())):  # we have ReplayGain data
             try:
                 return ReplayGain(

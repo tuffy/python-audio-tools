@@ -639,7 +639,7 @@ class WaveAudio(WaveContainer):
         conversion should be routed through .wav conversion
         to avoid losing those chunks"""
 
-        return set(['fmt ', 'data']) != set([c.id for c in self.chunks()])
+        return {'fmt ', 'data'} != {c.id for c in self.chunks()}
 
     def channel_mask(self):
         """returns a ChannelMask object of this track's channel layout"""

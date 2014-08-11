@@ -60,9 +60,9 @@ class VorbisComment(MetaData):
         self.__dict__["vendor_string"] = vendor_string
 
     def keys(self):
-        return list(set([comment.split(u"=", 1)[0]
-                         for comment in self.comment_strings
-                         if (u"=" in comment)]))
+        return list({comment.split(u"=", 1)[0]
+                     for comment in self.comment_strings
+                     if (u"=" in comment)})
 
     def values(self):
         return [self[key] for key in self.keys()]

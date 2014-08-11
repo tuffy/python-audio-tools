@@ -2625,8 +2625,8 @@ class FlacAudio(WaveContainer, AiffContainer):
         except (IndexError, IOError):
             return None
 
-        if (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN',
-                 'REPLAYGAIN_ALBUM_PEAK', 'REPLAYGAIN_ALBUM_GAIN']).issubset(
+        if ({'REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN',
+             'REPLAYGAIN_ALBUM_PEAK', 'REPLAYGAIN_ALBUM_GAIN'}.issubset(
                 [key.upper() for key in vorbis_metadata.keys()])):
             # we have ReplayGain data
             try:
