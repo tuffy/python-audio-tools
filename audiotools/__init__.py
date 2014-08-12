@@ -499,7 +499,7 @@ class output_text(tuple):
         return cls.__construct__(
             unicode_string=string,
             char_widths=tuple([CHAR_WIDTHS.get(
-                                   unicodedata.east_asian_width(char), 1)
+                               unicodedata.east_asian_width(char), 1)
                                for char in string]),
             fg_color=fg_color,
             bg_color=bg_color,
@@ -755,22 +755,20 @@ class output_text(tuple):
                 tail_widths.append(width)
                 display_characters = -1
 
-        return (output_text.__construct__(
-                    unicode_string=u"".join(head_chars),
-                    char_widths=head_widths,
-                    fg_color=self[2],
-                    bg_color=self[3],
-                    style=self[4],
-                    open_codes=self[5],
-                    close_codes=self[6]),
-                output_text.__construct__(
-                    unicode_string=u"".join(tail_chars),
-                    char_widths=tail_widths,
-                    fg_color=self[2],
-                    bg_color=self[3],
-                    style=self[4],
-                    open_codes=self[5],
-                    close_codes=self[6]))
+        return (output_text.__construct__(unicode_string=u"".join(head_chars),
+                                          char_widths=head_widths,
+                                          fg_color=self[2],
+                                          bg_color=self[3],
+                                          style=self[4],
+                                          open_codes=self[5],
+                                          close_codes=self[6]),
+                output_text.__construct__(unicode_string=u"".join(tail_chars),
+                                          char_widths=tail_widths,
+                                          fg_color=self[2],
+                                          bg_color=self[3],
+                                          style=self[4],
+                                          open_codes=self[5],
+                                          close_codes=self[6]))
 
     def join(self, output_texts):
         """returns output_list joined by our formatted text"""
@@ -983,20 +981,18 @@ class output_list(output_text):
             else:
                 tail_texts.append(text)
 
-        return (output_list.__construct__(
-                    output_texts=head_texts,
-                    fg_color=self[1],
-                    bg_color=self[2],
-                    style=self[3],
-                    open_codes=self[4],
-                    close_codes=self[5]),
-                output_list.__construct__(
-                    output_texts=tail_texts,
-                    fg_color=self[1],
-                    bg_color=self[2],
-                    style=self[3],
-                    open_codes=self[4],
-                    close_codes=self[5]))
+        return (output_list.__construct__(output_texts=head_texts,
+                                          fg_color=self[1],
+                                          bg_color=self[2],
+                                          style=self[3],
+                                          open_codes=self[4],
+                                          close_codes=self[5]),
+                output_list.__construct__(output_texts=tail_texts,
+                                          fg_color=self[1],
+                                          bg_color=self[2],
+                                          style=self[3],
+                                          open_codes=self[4],
+                                          close_codes=self[5]))
 
 
 class output_table:
@@ -1608,6 +1604,10 @@ def file_type(file):
         return None
 
 
+# save a reference to Python's regular open function
+__open__ = open
+
+
 def open(filename):
     """returns an AudioFile located at the given filename path
 
@@ -1691,6 +1691,11 @@ class Filename(tuple):
         """returns True if the file exists on disk"""
 
         return (self[1] is not None) and (self[2] is not None)
+
+    def dirname(self):
+        """returns the directory name (no filename) of this file"""
+
+        return Filename(os.path.dirname(self[0]))
 
     def basename(self):
         """returns the basename (no directory) of this file"""

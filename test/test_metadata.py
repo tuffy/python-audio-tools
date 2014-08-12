@@ -4106,7 +4106,11 @@ class FlacMetaData(MetaDataTest):
                                      CLEAN_REMOVE_EMPTY_TAG,
                                      CLEAN_FIX_IMAGE_FIELDS,
                                      CLEAN_FLAC_REMOVE_SEEKPOINTS,
-                                     CLEAN_FLAC_REORDER_SEEKPOINTS)
+                                     CLEAN_FLAC_REORDER_SEEKPOINTS,
+                                     CLEAN_FLAC_MULITPLE_STREAMINFO,
+                                     CLEAN_FLAC_MULTIPLE_VORBISCOMMENT,
+                                     CLEAN_FLAC_MULTIPLE_SEEKTABLE,
+                                     CLEAN_FLAC_MULTIPLE_CUESHEET)
         # check no blocks
         metadata = audiotools.FlacMetaData([])
         (cleaned, results) = metadata.clean()
@@ -4511,6 +4515,95 @@ class FlacMetaData(MetaDataTest):
         self.assertNotEqual(
             metadata.get_blocks(audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID),
             cleaned.get_blocks(audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID))
+
+        # ensure second STREAMINFO block is removed, if present
+        streaminfo1 = audiotools.flac.Flac_STREAMINFO(
+            1, 10, 1, 20, 44100, 2, 16, 5000, chr(0) * 16)
+        streaminfo2 = audiotools.flac.Flac_STREAMINFO(
+            1, 20, 1, 30, 88200, 4, 24, 5000, chr(0) * 16)
+        self.assertNotEqual(streaminfo1, streaminfo2)
+        metadata = audiotools.flac.FlacMetaData([streaminfo1, streaminfo2])
+        self.assertEqual(metadata.get_blocks(
+            audiotools.flac.Flac_STREAMINFO.BLOCK_ID),
+                         [streaminfo1, streaminfo2])
+
+        (cleaned, results) = metadata.clean()
+        self.assertEqual(results,
+                         [CLEAN_FLAC_MULITPLE_STREAMINFO])
+        self.assertEqual(cleaned.get_blocks(
+            audiotools.flac.Flac_STREAMINFO.BLOCK_ID),
+                         [streaminfo1])
+
+        # ensure second VORBISCOMMENT block is removed, if present
+        comment1 = audiotools.flac.Flac_VORBISCOMMENT(
+            [u"TITLE=Foo"],
+            u"vendor string")
+
+        comment2 = audiotools.flac.Flac_VORBISCOMMENT(
+            [u"TITLE=Bar"],
+            u"vendor string")
+        self.assertNotEqual(comment1, comment2)
+        metadata = audiotools.flac.FlacMetaData([streaminfo1,
+                                                 comment1,
+                                                 comment2])
+        self.assertEqual(metadata.get_blocks(
+            audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID),
+            [comment1, comment2])
+
+        (cleaned, results) = metadata.clean()
+        self.assertEqual(results,
+                         [CLEAN_FLAC_MULTIPLE_VORBISCOMMENT])
+        self.assertEqual(cleaned.get_blocks(
+            audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID),
+            [comment1])
+
+        # ensure second SEEKTABLE block is removed, if present
+        seektable1 = audiotools.flac.Flac_SEEKTABLE([(0, 0, 4096),
+                                                     (4096, 10, 4096)])
+        seektable2 = audiotools.flac.Flac_SEEKTABLE([(0, 0, 4096),
+                                                     (4096, 10, 4096),
+                                                     (8192, 20, 4096)])
+        self.assertNotEqual(seektable1, seektable2)
+        metadata = audiotools.flac.FlacMetaData([streaminfo1,
+                                                 seektable1,
+                                                 seektable2])
+
+        self.assertEqual(metadata.get_blocks(
+            audiotools.flac.Flac_SEEKTABLE.BLOCK_ID),
+            [seektable1, seektable2])
+
+        (cleaned, results) = metadata.clean()
+        self.assertEqual(results,
+                         [CLEAN_FLAC_MULTIPLE_SEEKTABLE])
+        self.assertEqual(cleaned.get_blocks(
+            audiotools.flac.Flac_SEEKTABLE.BLOCK_ID),
+            [seektable1])
+
+        # ensure second CUESHEET block is removed, if present
+        cuesheet1 = audiotools.flac.Flac_CUESHEET.converted(
+            audiotools.read_sheet("metadata_flac_cuesheet-1.cue"),
+            160107696,
+            44100)
+        cuesheet2 = audiotools.flac.Flac_CUESHEET.converted(
+            audiotools.read_sheet("metadata_flac_cuesheet-2.cue"),
+            119882616,
+            44100)
+
+        self.assertNotEqual(cuesheet1, cuesheet2)
+        metadata = audiotools.flac.FlacMetaData([streaminfo1,
+                                                 cuesheet1,
+                                                 cuesheet2])
+
+        self.assertEqual(metadata.get_blocks(
+            audiotools.flac.Flac_CUESHEET.BLOCK_ID),
+            [cuesheet1, cuesheet2])
+
+        (cleaned, results) = metadata.clean()
+        self.assertEqual(results,
+                         [CLEAN_FLAC_MULTIPLE_CUESHEET])
+        self.assertEqual(cleaned.get_blocks(
+            audiotools.flac.Flac_CUESHEET.BLOCK_ID),
+            [cuesheet1])
 
     @METADATA_FLAC
     def test_replay_gain(self):

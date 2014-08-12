@@ -7160,13 +7160,12 @@
      - [X] with flags
      - [ ] with syntax error
 *** TODO audiotools/flac
-**** TODO FlacMetaData
+**** DONE FlacMetaData
      - [X] converted(None)
-     - [ ] clean (multiple STREAMINFO)
-     - [ ] clean (multiple VORBIS_COMMENT)
-     - [ ] clean (multiple SEEKTABLE)
-     - [ ] clean (multiple CUESHEET)
-     - [ ] clean (remove undefined)
+     - [X] clean (multiple STREAMINFO)
+     - [X] clean (multiple VORBIS_COMMENT)
+     - [X] clean (multiple SEEKTABLE)
+     - [X] clean (multiple CUESHEET)
      - [X] raw_info()
      check with all metadata blocks
 **** DONE Flac_VORBISCOMMENT
