@@ -140,7 +140,7 @@ class AuAudio(AudioFile):
                                      ERR_AU_UNSUPPORTED_FORMAT)
 
         try:
-            f = file(filename, 'rb')
+            f = open(filename, 'rb')
 
             (magic_number,
              self.__data_offset__,
@@ -213,7 +213,7 @@ class AuAudio(AudioFile):
 
         import struct
 
-        f = file(self.filename, 'rb')
+        f = open(self.filename, 'rb')
         (magic_number, data_offset) = struct.unpack(">4sI", f.read(8))
         header = f.read(data_offset - struct.calcsize(">4sI"))
         return (struct.pack(">4sI%ds" % (len(header)),
@@ -255,7 +255,7 @@ class AuAudio(AudioFile):
             raise EncodingError(str(err))
 
         try:
-            f = file(filename, "wb")
+            f = open(filename, "wb")
         except IOError as err:
             raise EncodingError(str(err))
 

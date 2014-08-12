@@ -254,7 +254,7 @@ def read_id3v2_comment(filename):
 
     from audiotools.bitstream import BitstreamReader
 
-    reader = BitstreamReader(file(filename, "rb"), 0)
+    reader = BitstreamReader(open(filename, "rb"), 0)
     reader.mark()
     try:
         (tag, version_major, version_minor) = reader.parse("3b 8u 8u")

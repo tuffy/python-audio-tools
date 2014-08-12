@@ -599,7 +599,7 @@ class AiffAudio(AiffContainer):
                                      ERR_AIFF_INVALID_CHUNK_ID,
                                      ERR_AIFF_INVALID_CHUNK)
 
-        aiff_file = file(self.filename, 'rb')
+        aiff_file = __open__(self.filename, 'rb')
         try:
             (form,
              total_size,
@@ -633,7 +633,7 @@ class AiffAudio(AiffContainer):
                 # if chunk is too large, yield a File_Chunk
                 yield AIFF_File_Chunk(chunk_id,
                                       chunk_size,
-                                      file(self.filename, "rb"),
+                                      open(self.filename, "rb"),
                                       aiff_file.tell())
                 aiff_file.seek(chunk_size, 1)
             else:

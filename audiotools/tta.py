@@ -374,7 +374,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 del(new_metadata["Cuesheet"])
 
             # no current metadata, so append a fresh APEv2 tag
-            f = file(self.filename, "ab")
+            f = open(self.filename, "ab")
             new_metadata.build(BitstreamWriter(f, 1))
             f.close()
 
@@ -618,7 +618,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         from audiotools import open, transfer_data
         from audiotools.text import CLEAN_REMOVE_DUPLICATE_ID3V2
 
-        if (total_id3v2_comments(file(self.filename, "rb")) > 1):
+        if (total_id3v2_comments(open(self.filename, "rb")) > 1):
             file_fixes = [CLEAN_REMOVE_DUPLICATE_ID3V2]
         else:
             file_fixes = []
@@ -633,8 +633,8 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 return []
         else:
             # perform full fix
-            input_f = file(self.filename, "rb")
-            output_f = file(output_filename, "wb")
+            input_f = open(self.filename, "rb")
+            output_f = open(output_filename, "wb")
             try:
                 transfer_data(input_f.read, output_f.write)
             finally:

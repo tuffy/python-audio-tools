@@ -822,7 +822,7 @@ class ApeTaggedAudio:
 
         raises IOError if unable to read the file"""
 
-        f = file(self.filename, 'rb')
+        f = open(self.filename, 'rb')
         try:
             return ApeTag.read(f)
         finally:
@@ -845,7 +845,7 @@ class ApeTaggedAudio:
         from audiotools.bitstream import BitstreamReader, BitstreamWriter
         from audiotools import transfer_data
 
-        f = file(self.filename, "r+b")
+        f = open(self.filename, "r+b")
         f.seek(-32, 2)
 
         (preamble,
@@ -892,7 +892,7 @@ class ApeTaggedAudio:
                 new_apev2.close()
         else:
             # no existing metadata, so simply append a fresh tag
-            f = file(self.filename, "ab")
+            f = open(self.filename, "ab")
             metadata.build(BitstreamWriter(f, 1))
             f.close()
 
@@ -949,7 +949,7 @@ class ApeTaggedAudio:
                 del(new_metadata["Cuesheet"])
 
             # no existing metadata, so simply append a fresh tag
-            f = file(self.filename, "ab")
+            f = open(self.filename, "ab")
             new_metadata.build(BitstreamWriter(f, 1))
             f.close()
 
@@ -968,7 +968,7 @@ class ApeTaggedAudio:
             from audiotools.bitstream import BitstreamReader, BitstreamWriter
             from audiotools import transfer_data
 
-            f = file(self.filename, "r+b")
+            f = open(self.filename, "r+b")
             f.seek(-32, 2)
 
             (preamble,
@@ -1190,7 +1190,7 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
 
     @classmethod
     def __ape_info__(cls, filename):
-        f = file(filename, 'rb')
+        f = open(filename, 'rb')
         try:
             file_head = cls.FILE_HEAD.parse_stream(f)
 
@@ -1248,7 +1248,7 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
         import os
 
         if (self.filename.endswith(".ape")):
-            devnull = file(os.devnull, "wb")
+            devnull = open(os.devnull, "wb")
             sub = subprocess.Popen([BIN['mac'],
                                     self.filename,
                                     wave_filename,
@@ -1258,10 +1258,10 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
             sub.wait()
             devnull.close()
         else:
-            devnull = file(os.devnull, 'ab')
+            devnull = open(os.devnull, 'ab')
             import tempfile
             ape = tempfile.NamedTemporaryFile(suffix='.ape')
-            f = file(self.filename, 'rb')
+            f = open(self.filename, 'rb')
             transfer_data(f.read, ape.write)
             f.close()
             ape.flush()
@@ -1293,7 +1293,7 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
         if (str(compression) not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
-        devnull = file(os.devnull, "wb")
+        devnull = open(os.devnull, "wb")
         sub = subprocess.Popen([BIN['mac'],
                                 wave_filename,
                                 filename,

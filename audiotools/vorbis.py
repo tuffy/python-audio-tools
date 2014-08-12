@@ -165,7 +165,7 @@ class VorbisAudio(AudioFile):
         from audiotools._ogg import PageReader
 
         try:
-            reader = PageReader(file(self.filename, "rb"))
+            reader = PageReader(open(self.filename, "rb"))
             page = reader.read()
             pcm_samples = page.granule_position
 
@@ -277,7 +277,7 @@ class VorbisAudio(AudioFile):
         elif (not os.access(self.filename, os.W_OK)):
             raise IOError(self.filename)
 
-        original_ogg = PacketReader(PageReader(file(self.filename, "rb")))
+        original_ogg = PacketReader(PageReader(open(self.filename, "rb")))
         new_ogg = PageWriter(TemporaryFile(self.filename))
 
         sequence_number = 0

@@ -123,7 +123,7 @@ class M4ATaggedAudio:
 
         from audiotools.bitstream import BitstreamReader
 
-        reader = BitstreamReader(file(self.filename, 'rb'), 0)
+        reader = BitstreamReader(open(self.filename, 'rb'), 0)
         try:
             try:
                 (meta_size,
@@ -195,7 +195,7 @@ class M4ATaggedAudio:
                               (metadata.size() -
                                metadata["free"].size())))
 
-            f = file(self.filename, 'r+b')
+            f = open(self.filename, 'r+b')
             (meta_size, meta_offset) = get_m4a_atom_offset(
                 BitstreamReader(f, 0), "moov", "udta", "meta")
             f.seek(meta_offset + 8, 0)
@@ -217,7 +217,7 @@ class M4ATaggedAudio:
             m4a_tree = M4A_Tree_Atom.parse(
                 None,
                 os.path.getsize(self.filename),
-                BitstreamReader(file(self.filename, "rb"), 0),
+                BitstreamReader(open(self.filename, "rb"), 0),
                 {"moov": M4A_Tree_Atom,
                  "trak": M4A_Tree_Atom,
                  "mdia": M4A_Tree_Atom,
@@ -325,7 +325,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         # first, fetch the mdia atom
         # which is the parent of both the mp4a and mdhd atoms
         try:
-            mdia = get_m4a_atom(BitstreamReader(file(filename, 'rb'), 0),
+            mdia = get_m4a_atom(BitstreamReader(open(filename, 'rb'), 0),
                                 "moov", "trak", "mdia")[1]
         except IOError:
             from audiotools.text import ERR_M4A_IOERROR
@@ -447,7 +447,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         import subprocess
         import os
 
-        devnull = file(os.devnull, "ab")
+        devnull = open(os.devnull, "ab")
 
         sub = subprocess.Popen([BIN['faad'], "-f", str(2), "-w",
                                 self.filename],
@@ -503,7 +503,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         else:
             actual_filename = tempfile = None
 
-        devnull = file(os.devnull, "ab")
+        devnull = open(os.devnull, "ab")
 
         sub = subprocess.Popen([BIN['faac'],
                                 "-q", compression,
@@ -553,7 +553,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         if (sub.wait() == 0):
             if (tempfile is not None):
                 filename = actual_filename
-                f = file(filename, 'wb')
+                f = open(filename, 'wb')
                 tempfile.seek(0, 0)
                 transfer_data(tempfile.read, f.write)
                 f.close()
@@ -654,7 +654,7 @@ class M4AAudio_nero(M4AAudio_faac):
         import os
         from audiotools import EncodingError
 
-        devnull = file(os.devnull, "w")
+        devnull = open(os.devnull, "w")
         try:
             sub = subprocess.Popen([BIN["neroAacEnc"],
                                     "-q", compression,
@@ -705,7 +705,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         # first, fetch the mdia atom
         # which is the parent of both the alac and mdhd atoms
         try:
-            mdia = get_m4a_atom(BitstreamReader(file(filename, 'rb'), 0),
+            mdia = get_m4a_atom(BitstreamReader(open(filename, 'rb'), 0),
                                 "moov", "trak", "mdia")[1]
         except IOError:
             from audiotools.text import ERR_ALAC_IOERROR
@@ -862,7 +862,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
         from audiotools.bitstream import BitstreamReader
 
-        reader = BitstreamReader(file(self.filename, "rb"), 0)
+        reader = BitstreamReader(open(self.filename, "rb"), 0)
         reader.mark()
         try:
             has_stts = has_m4a_atom(reader,
@@ -969,7 +969,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                                      [0] * total_alac_frames)
 
             try:
-                f = file(filename, 'wb')
+                f = open(filename, 'wb')
             except IOError as err:
                 raise EncodingError(str(err))
             try:
@@ -1075,7 +1075,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
             # build our complete output file
             try:
-                f = file(filename, 'wb')
+                f = open(filename, 'wb')
                 m4a_writer = BitstreamWriter(f, 0)
                 m4a_writer.build("32u 4b", (ftyp.size() + 8, ftyp.name))
                 ftyp.build(m4a_writer)

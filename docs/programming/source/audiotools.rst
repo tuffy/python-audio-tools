@@ -290,6 +290,29 @@ Filename Objects
    Filename objects which don't exist on disk hash and compare
    equally if their filename string matches.
 
+.. function:: Filename.open(mode)
+
+   Returns a file object of this filename opened with the given mode.
+
+.. function:: Filename.disk_file()
+
+   Returns ``True`` if the file currently exists on disk.
+
+.. function:: Filename.dirname()
+
+   Returns the directory name of this filename as a new
+   :class:`Filename` object.
+
+.. function:: Filename.basename()
+
+   Returns the base name (no directory) of this filename as a new
+   :class:`Filename` object.
+
+.. function:: Filename.expanduser()
+
+   Returns a new :class:`Filename` object with the user directory
+   expanded, if any.
+
 AudioFile Objects
 -----------------
 

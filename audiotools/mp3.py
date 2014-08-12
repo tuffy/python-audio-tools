@@ -284,7 +284,7 @@ class MP3Audio(AudioFile):
         from audiotools.id3 import read_id3v2_comment
         from audiotools.id3v1 import ID3v1Comment
 
-        f = file(self.filename, "rb")
+        f = open(self.filename, "rb")
         try:
             if (f.read(3) == "ID3"):
                 id3v2 = read_id3v2_comment(self.filename)
@@ -461,7 +461,7 @@ class MP3Audio(AudioFile):
         from audiotools import open, transfer_data
         from audiotools.text import CLEAN_REMOVE_DUPLICATE_ID3V2
 
-        if (total_id3v2_comments(file(self.filename, "rb")) > 1):
+        if (total_id3v2_comments(open(self.filename, "rb")) > 1):
             file_fixes = [CLEAN_REMOVE_DUPLICATE_ID3V2]
         else:
             file_fixes = []
@@ -476,8 +476,8 @@ class MP3Audio(AudioFile):
                 return []
         else:
             # perform complete fix
-            input_f = file(self.filename, "rb")
-            output_f = file(output_filename, "wb")
+            input_f = open(self.filename, "rb")
+            output_f = open(output_filename, "wb")
             try:
                 transfer_data(input_f.read, output_f.write)
             finally:

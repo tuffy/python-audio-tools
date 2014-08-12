@@ -680,7 +680,7 @@ class WaveAudio(WaveContainer):
             raise EncodingError(str(err))
 
         try:
-            f = file(filename, "wb")
+            f = open(filename, "wb")
         except IOError as err:
             raise EncodingError(str(err))
 
@@ -772,7 +772,7 @@ class WaveAudio(WaveContainer):
     def chunks(self):
         """yields a set of RIFF_Chunk or RIFF_File_Chunk objects"""
 
-        wave_file = file(self.filename, "rb")
+        wave_file = open(self.filename, "rb")
         try:
             (riff,
              total_size,
@@ -809,7 +809,7 @@ class WaveAudio(WaveContainer):
                 # if chunk is too large, yield a File_Chunk
                 yield RIFF_File_Chunk(chunk_id,
                                       chunk_size,
-                                      file(self.filename, "rb"),
+                                      open(self.filename, "rb"),
                                       wave_file.tell())
                 wave_file.seek(chunk_size, 1)
             else:
@@ -833,7 +833,7 @@ class WaveAudio(WaveContainer):
         chunk_iter should yield RIFF_Chunk-compatible objects
         """
 
-        wave_file = file(filename, 'wb')
+        wave_file = open(filename, 'wb')
         try:
             total_size = 4
 

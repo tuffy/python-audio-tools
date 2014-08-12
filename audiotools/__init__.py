@@ -1619,7 +1619,7 @@ def open(filename):
     raises IOError if some problem occurs attempting to open the file
     """
 
-    f = file(filename, "rb")
+    f = __open__(filename, "rb")
     try:
         audio_class = file_type(f)
         if ((audio_class is not None) and audio_class.available(BIN)):
@@ -1676,16 +1676,25 @@ class Filename(tuple):
     def __new__(cls, filename):
         """filename is a string of the file on disk"""
 
-        filename = str(filename)
-        try:
-            stat = os.stat(filename)
-            return tuple.__new__(cls, [os.path.normpath(filename),
-                                       stat.st_dev,
-                                       stat.st_ino])
-        except OSError:
-            return tuple.__new__(cls, [os.path.normpath(filename),
-                                       None,
-                                       None])
+        if (isinstance(filename, cls)):
+            return filename
+        else:
+            filename = str(filename)
+            try:
+                stat = os.stat(filename)
+                return tuple.__new__(cls, [os.path.normpath(filename),
+                                           stat.st_dev,
+                                           stat.st_ino])
+            except OSError:
+                return tuple.__new__(cls, [os.path.normpath(filename),
+                                           None,
+                                           None])
+
+    def open(self, mode):
+        """returns a file object of this filename opened
+        with the given mode"""
+
+        return __open__(self[0], mode)
 
     def disk_file(self):
         """returns True if the file exists on disk"""
@@ -1799,7 +1808,7 @@ def open_files(filename_list, sorted=True, messenger=None,
             opened_files.add(filename)
 
         try:
-            f = file(str(filename), "rb")
+            f = __open__(str(filename), "rb")
             try:
                 audio_class = file_type(f)
             finally:
@@ -3984,8 +3993,8 @@ class AudioFile:
                 return []
         else:
             # perform full fix
-            input_f = file(self.filename, "rb")
-            output_f = file(output_filename, "wb")
+            input_f = __open__(self.filename, "rb")
+            output_f = __open__(output_filename, "wb")
             try:
                 transfer_data(input_f.read, output_f.write)
             finally:
@@ -4160,7 +4169,7 @@ def read_sheet(filename):
     may raise a SheetException if the file cannot be parsed correctly"""
 
     try:
-        return read_sheet_string(file(filename, "rb").read())
+        return read_sheet_string(__open__(filename, "rb").read())
     except IOError:
         from audiotools.text import ERR_CUE_IOERROR
         raise SheetException(ERR_CUE_IOERROR)

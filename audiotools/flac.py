@@ -1513,7 +1513,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         # even if the blocks aren't present
         # so there's no need to test for None
 
-        f = file(self.filename, 'rb')
+        f = open(self.filename, 'rb')
         try:
             f.seek(self.__stream_offset__, 0)
             if (f.read(4) != 'fLaC'):
@@ -1579,7 +1579,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                     break
 
             # then overwrite the beginning of the file
-            stream = file(self.filename, 'r+b')
+            stream = open(self.filename, 'r+b')
             stream.seek(self.__stream_offset__, 0)
             stream.write('fLaC')
             metadata.build(BitstreamWriter(stream, 0))
@@ -1592,7 +1592,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             from audiotools import TemporaryFile, transfer_data
 
             # dump any prefix data from old file to new one
-            old_file = file(self.filename, "rb")
+            old_file = open(self.filename, "rb")
             new_file = TemporaryFile(self.filename)
 
             new_file.write(old_file.read(self.__stream_offset__))
@@ -1719,7 +1719,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         from audiotools.bitstream import BitstreamReader
 
         counter = 0
-        f = file(self.filename, 'rb')
+        f = open(self.filename, 'rb')
         try:
             f.seek(self.__stream_offset__, 0)
             reader = BitstreamReader(f, 0)
@@ -2560,7 +2560,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
     def __read_streaminfo__(self):
         valid_header_types = frozenset(range(0, 6 + 1))
-        f = file(self.filename, "rb")
+        f = open(self.filename, "rb")
         try:
             try:
                 f.seek(-128, 2)
@@ -3149,7 +3149,7 @@ class OggFlacAudio(FlacAudio):
         # then go back and fill-in the initial padding page's length
         # field before re-checksumming it.
 
-        original_ogg = PageReader(file(self.filename, "rb"))
+        original_ogg = PageReader(open(self.filename, "rb"))
         new_ogg = PageWriter(TemporaryFile(self.filename))
 
         # skip the metadata packets in the original file
@@ -3333,7 +3333,7 @@ class OggFlacAudio(FlacAudio):
         else:
             channel_mask = int(pcmreader.channel_mask)
 
-        devnull = file(os.devnull, 'ab')
+        devnull = open(os.devnull, 'ab')
 
         sub = subprocess.Popen([BIN['flac']] + lax +
                                ["-s", "-f", "-%s" % (compression),
