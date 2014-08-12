@@ -107,9 +107,6 @@ def has_m4a_atom(reader, *atoms):
 
 
 class M4ATaggedAudio:
-    def __init__(self, filename):
-        self.filename = filename
-
     @classmethod
     def supports_metadata(cls):
         """returns True if this audio type supports MetaData"""
@@ -320,7 +317,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
 
         from audiotools.bitstream import BitstreamReader
 
-        self.filename = filename
+        AudioFile.__init__(self, filename)
 
         # first, fetch the mdia atom
         # which is the parent of both the mp4a and mdhd atoms
@@ -700,7 +697,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
         from audiotools.bitstream import BitstreamReader
 
-        self.filename = filename
+        AudioFile.__init__(self, filename)
 
         # first, fetch the mdia atom
         # which is the parent of both the alac and mdhd atoms

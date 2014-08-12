@@ -41,7 +41,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         from audiotools import ChannelMask
         import cStringIO
 
-        AudioFile.__init__(self, filename)
+        WaveContainer.__init__(self, filename)
         try:
             f = open(filename, 'rb')
         except IOError as msg:

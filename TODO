@@ -7351,12 +7351,12 @@
 **** TODO MP2Audio
      - [ ] from_pcm (nonstandard sample rate)
 *** TODO audiotools/opus
-**** TODO OpusAudio
-     - [ ] init (invalid Ogg magic number)
-     - [ ] init (invalid Ogg version)
-     - [ ] init (invalid Opus type)
-     - [ ] init (invalid Opus version)
-     - [ ] init (invalid Opus channels)
+**** DONE OpusAudio
+     - [X] init (invalid Ogg magic number)
+     - [X] init (invalid Ogg version)
+     - [X] init (invalid Opus type)
+     - [X] init (invalid Opus version)
+     - [X] init (invalid Opus channels)
      - [X] get_replay_gain
      - [X] set_replay_gain
      - [X] delete_replay_gain
@@ -7402,12 +7402,12 @@
      - [ ] clean when metadata is None
 *** TODO audiotools/vorbis
 **** TODO VorbisAudio
-     - [ ] init -> invalid Ogg magic number
-     - [ ] init -> invalid Ogg version
-     - [ ] init -> invalid Vorbis type
-     - [ ] init -> invalid Vorbis header
-     - [ ] init -> invalid Vorbis version
-     - [ ] init -> invalid Vorbis framing bit
+     - [X] init -> invalid Ogg magic number
+     - [X] init -> invalid Ogg version
+     - [X] init -> invalid Vorbis type
+     - [X] init -> invalid Vorbis header
+     - [X] init -> invalid Vorbis version
+     - [X] init -> invalid Vorbis framing bit
 **** TODO VorbisChannelMask
      - [ ] channels
 *** TODO audiotools/vorbiscomment

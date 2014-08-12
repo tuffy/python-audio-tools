@@ -42,7 +42,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
     def __init__(self, filename):
         from audiotools.id3 import skip_id3v2_comment
 
-        self.filename = filename
+        AudioFile.__init__(self, filename)
 
         try:
             f = open(filename, "rb")

@@ -4762,8 +4762,12 @@ class OggVerify:
                 f.write(good_file_data[0:i])
                 f.flush()
                 self.assertEqual(os.path.getsize(bad_file.name), i)
-                self.assertRaises(audiotools.InvalidFile,
-                                  track.verify)
+                try:
+                    new_track = self.audio_class(bad_file.name)
+                    self.assertRaises(audiotools.InvalidFile,
+                                      new_track.verify)
+                except audiotools.InvalidFile:
+                    self.assert_(True)
 
             # then, try flipping a bit
             for i in range(len(good_file_data)):
@@ -4775,8 +4779,12 @@ class OggVerify:
                     f.close()
                     self.assertEqual(os.path.getsize(bad_file.name),
                                      len(good_file_data))
-                    self.assertRaises(audiotools.InvalidFile,
-                                      track.verify)
+                    try:
+                        new_track = self.audio_class(bad_file.name)
+                        self.assertRaises(audiotools.InvalidFile,
+                                          new_track.verify)
+                    except audiotools.InvalidFile:
+                        self.assert_(True)
         finally:
             good_file.close()
             bad_file.close()

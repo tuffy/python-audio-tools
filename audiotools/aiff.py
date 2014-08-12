@@ -530,7 +530,7 @@ class AiffAudio(AiffContainer):
 
         from audiotools import ChannelMask
 
-        self.filename = filename
+        AiffContainer.__init__(self, filename)
 
         self.__channels__ = 0
         self.__bits_per_sample__ = 0

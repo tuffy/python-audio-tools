@@ -66,10 +66,10 @@ class VorbisAudio(AudioFile):
 
             if (magic_number != 'OggS'):
                 from audiotools.text import ERR_OGG_INVALID_MAGIC_NUMBER
-                raise InvalidFLAC(ERR_OGG_INVALID_MAGIC_NUMBER)
+                raise InvalidVorbis(ERR_OGG_INVALID_MAGIC_NUMBER)
             if (version != 0):
                 from audiotools.text import ERR_OGG_INVALID_VERSION
-                raise InvalidFLAC(ERR_OGG_INVALID_VERSION)
+                raise InvalidVorbis(ERR_OGG_INVALID_VERSION)
 
             segment_length = ogg_reader.read(8)
 

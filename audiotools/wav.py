@@ -589,7 +589,7 @@ class WaveAudio(WaveContainer):
 
         from audiotools import ChannelMask
 
-        AudioFile.__init__(self, filename)
+        WaveContainer.__init__(self, filename)
 
         self.__channels__ = 0
         self.__sample_rate__ = 0

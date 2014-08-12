@@ -95,7 +95,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
     def __init__(self, filename):
         """filename is a plain string"""
 
-        self.filename = filename
+        WaveContainer.__init__(self, filename)
         self.__samplerate__ = 0
         self.__channels__ = 0
         self.__bitspersample__ = 0
