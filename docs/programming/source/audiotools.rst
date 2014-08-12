@@ -2060,9 +2060,29 @@ which would cause the string to wrap.
    ``style`` may be one of
    ``"bold"``, ``"underline"``, ``"blink"`` or ``"inverse"``.
 
+.. method:: output_text.__unicode__
+
+   Returns the raw Unicode string.
+
+.. method:: output_text.__len__
+
+   Returns the width of the text in displayed characters.
+
+.. method:: output_text.fg_color()
+
+   Returns the foreground color as a string, or ``None``.
+
+.. method:: output_text.bg_color()
+
+   Returns the background color as a string, or ``None``.
+
+.. method:: output_text.style()
+
+   Returns the style as a string, or ``None``.
+
 .. method:: output_text.set_format([fg_color][, bg_color][, style])
 
-   Applies the given format strings, replacing any existing format.
+   Returns a new :class:`output_text` object with the given styles.
 
 .. method:: output_text.format([is_tty])
 
@@ -2149,9 +2169,21 @@ for formatting multiple :class:`output_text` objects as a unit.
    Or if the :class:`output_text` objects do have formatting,
    the :class:`output_list` container should not have formatting.
 
+.. method:: output_list.fg_color()
+
+   Returns the foreground color as a string, or ``None``.
+
+.. method:: output_list.bg_color()
+
+   Returns the background color as a string, or ``None``.
+
+.. method:: output_list.style()
+
+   Returns the style as a string, or ``None``.
+
 .. method:: output_list.set_format([fg_color][, bg_color][, style])
 
-   Applies the given format strings, replacing any existing format.
+   Returns a new :class:`output_list` object with the given formatting.
 
 .. method:: output_list.format([is_tty])
 

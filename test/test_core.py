@@ -6228,3 +6228,349 @@ class Test_ExecProgressQueue(unittest.TestCase):
 
         self.assertEqual(results[0], sum(range(0, 10)))
         self.assertEqual(results[1], sum(range(1, 11)))
+
+
+class Test_Output_Text(unittest.TestCase):
+    @LIB_CORE
+    def test_output_text(self):
+        from audiotools import output_text
+
+        # ensure invalid colors and styles raise an exception
+        self.assertRaises(ValueError,
+                          output_text,
+                          unicode_string=u"Foo",
+                          fg_color="unknown")
+
+        self.assertRaises(ValueError,
+                          output_text,
+                          unicode_string=u"Foo",
+                          bg_color="unknown")
+
+        self.assertRaises(ValueError,
+                          output_text,
+                          unicode_string=u"Foo",
+                          style="unknown")
+
+        # ensure setting format returns new output_text with that format
+        t1 = output_text(unicode_string=u"Foo")
+        self.assertEqual(unicode(t1), u"Foo")
+        self.assertEqual(t1.format(False), u"Foo")
+        self.assert_(u"Foo" in t1.format(True))
+        self.assertEqual(t1.fg_color(), None)
+        self.assertEqual(t1.fg_color(), None)
+        self.assertEqual(t1.style(), None)
+
+        t2 = t1.set_format(fg_color="black",
+                           bg_color="blue",
+                           style="underline")
+        self.assertEqual(unicode(t2), u"Foo")
+        self.assertEqual(t2.format(False), u"Foo")
+        self.assert_(u"Foo" in t2.format(True))
+        self.assertEqual(t2.fg_color(), "black")
+        self.assertEqual(t2.bg_color(), "blue")
+        self.assertEqual(t2.style(), "underline")
+
+        t3 = t2.set_format(fg_color=None,
+                           bg_color=None,
+                           style=None)
+        self.assertEqual(unicode(t3), u"Foo")
+        self.assertEqual(t3.format(False), u"Foo")
+        self.assert_(u"Foo" in t3.format(True))
+        self.assertEqual(t3.fg_color(), None)
+        self.assertEqual(t3.fg_color(), None)
+        self.assertEqual(t3.style(), None)
+
+        # ensure negative head, tail and split values raise ValueError
+        self.assertRaises(ValueError,
+                          t1.head,
+                          -1)
+
+        self.assertRaises(ValueError,
+                          t1.tail,
+                          -1)
+
+        self.assertRaises(ValueError,
+                          t1.split,
+                          -1)
+
+        for string in [u"a",
+                       u"Foo",
+                       u"a" * 100,
+                       unichr(4359) * 50,
+                       u"a" + (unichr(4359) * 50),
+                       u"a" + (unichr(4359) * 50) + u"b"]:
+            for (fg_color,
+                 bg_color,
+                 style) in Possibilities([None, "black"],
+                                         [None, "blue"],
+                                         [None, "underline"]):
+
+                t = output_text(unicode_string=string,
+                                fg_color=fg_color,
+                                bg_color=bg_color,
+                                style=style)
+
+                # ensure calling head returns a new output_text
+                # with no more than "display_characters" and
+                # with the same formatting as the original
+                for i in range(len(t) + 5):
+                    t2 = t.head(i)
+                    self.assert_(len(t2) <= i)
+                    self.assertEqual(t2.fg_color(), fg_color)
+                    self.assertEqual(t2.bg_color(), bg_color)
+                    self.assertEqual(t2.style(), style)
+
+                # ensure calling tail returns a new output_text
+                # with no more than "display_characters" and
+                # with the same formatting as the original
+                for i in range(len(t) + 5):
+                    t2 = t.tail(i)
+                    self.assert_(len(t2) <= i)
+                    self.assertEqual(t2.fg_color(), fg_color)
+                    self.assertEqual(t2.bg_color(), bg_color)
+                    self.assertEqual(t2.style(), style)
+
+                # ensure calling split returns a tuple of new output_text
+                # with no more than "display_characters" in the head
+                # and with the same formatting as the original
+                for i in range(len(t) + 5):
+                    (t2, t3) = t.split(i)
+                    self.assert_(len(t2) <= i)
+                    self.assertEqual(len(t2) + len(t3), len(t))
+                    self.assertEqual(t2.fg_color(), fg_color)
+                    self.assertEqual(t2.bg_color(), bg_color)
+                    self.assertEqual(t2.style(), style)
+                    self.assertEqual(t3.fg_color(), fg_color)
+                    self.assertEqual(t3.bg_color(), bg_color)
+                    self.assertEqual(t3.style(), style)
+
+    @LIB_CORE
+    def test_output_list(self):
+        from audiotools import output_text, output_list
+
+        # ensure invalid colors and styles raise an exception
+        self.assertRaises(ValueError,
+                          output_list,
+                          output_texts=[u"Foo", u"Bar"],
+                          fg_color="unknown")
+
+        self.assertRaises(ValueError,
+                          output_list,
+                          output_texts=[u"Foo", u"Bar"],
+                          bg_color="unknown")
+
+        self.assertRaises(ValueError,
+                          output_list,
+                          output_texts=[u"Foo", u"Bar"],
+                          style="unknown")
+
+        # ensure setting format returns new output_list with that format
+        t1 = output_list(output_texts=[u"Foo", output_text(u"Bar")])
+        self.assertEqual(unicode(t1), u"FooBar")
+        self.assertEqual(t1.format(False), u"FooBar")
+        self.assert_(u"FooBar" in t1.format(True))
+        self.assertEqual(t1.fg_color(), None)
+        self.assertEqual(t1.fg_color(), None)
+        self.assertEqual(t1.style(), None)
+
+        t2 = t1.set_format(fg_color="black",
+                           bg_color="blue",
+                           style="underline")
+        self.assertEqual(unicode(t2), u"FooBar")
+        self.assertEqual(t2.format(False), u"FooBar")
+        self.assert_(u"FooBar" in t2.format(True))
+        self.assertEqual(t2.fg_color(), "black")
+        self.assertEqual(t2.bg_color(), "blue")
+        self.assertEqual(t2.style(), "underline")
+
+        t3 = t2.set_format(fg_color=None,
+                           bg_color=None,
+                           style=None)
+        self.assertEqual(unicode(t3), u"FooBar")
+        self.assertEqual(t3.format(False), u"FooBar")
+        self.assert_(u"FooBar" in t3.format(True))
+        self.assertEqual(t3.fg_color(), None)
+        self.assertEqual(t3.fg_color(), None)
+        self.assertEqual(t3.style(), None)
+
+        # ensure negative head, tail and split values raise ValueError
+        self.assertRaises(ValueError,
+                          t1.head,
+                          -1)
+
+        self.assertRaises(ValueError,
+                          t1.tail,
+                          -1)
+
+        self.assertRaises(ValueError,
+                          t1.split,
+                          -1)
+
+        for strings in [[u"a"],
+                        [output_text(u"a",
+                                     fg_color="white",
+                                     bg_color="blue",
+                                     style="underline")],
+                        [u"Foo"],
+                        [u"a" * 100],
+                        [output_text(u"Foo")],
+                        [u"Foo", output_text(u"Bar")],
+                        [output_text(unichr(4359) * 10)],
+                        [u"a", output_text(unichr(4359) * 20,
+                                           fg_color="white",
+                                           bg_color="blue",
+                                           style="underline"), u"b"]]:
+            for (fg_color,
+                 bg_color,
+                 style) in Possibilities([None, "black"],
+                                         [None, "blue"],
+                                         [None, "underline"]):
+
+                t = output_list(output_texts=strings,
+                                fg_color=fg_color,
+                                bg_color=bg_color,
+                                style=style)
+
+                # ensure calling head returns a new output_list
+                # with no more than "display_characters" and
+                # with the same formatting as the original
+                for i in range(len(t) + 5):
+                    t2 = t.head(i)
+                    self.assert_(len(t2) <= i)
+                    self.assertEqual(t2.fg_color(), fg_color)
+                    self.assertEqual(t2.bg_color(), bg_color)
+                    self.assertEqual(t2.style(), style)
+
+                # ensure calling tail returns a new output_list
+                # with no more than "display_characters" and
+                # with the same formatting as the original
+                for i in range(len(t) + 5):
+                    t2 = t.tail(i)
+                    self.assert_(len(t2) <= i)
+                    self.assertEqual(t2.fg_color(), fg_color)
+                    self.assertEqual(t2.bg_color(), bg_color)
+                    self.assertEqual(t2.style(), style)
+
+                # ensure calling split returns a tuple of new output_list
+                # with no more than "display_characters" in the head
+                # and with the same formatting as the original
+                for i in range(len(t) + 5):
+                    (t2, t3) = t.split(i)
+                    self.assert_(len(t2) <= i)
+                    self.assertEqual(len(t2) + len(t3), len(t))
+                    self.assertEqual(t2.fg_color(), fg_color)
+                    self.assertEqual(t2.bg_color(), bg_color)
+                    self.assertEqual(t2.style(), style)
+                    self.assertEqual(t3.fg_color(), fg_color)
+                    self.assertEqual(t3.bg_color(), bg_color)
+                    self.assertEqual(t3.style(), style)
+
+    @LIB_CORE
+    def test_output_table(self):
+        from audiotools import output_table, output_text, output_list
+
+        # check a table with mismatched columns
+        err = output_table()
+        row1 = err.row()
+        row1.add_column(u"Foo")
+        self.assertEqual(len(list(err.format(False))), 1)
+        self.assertEqual(len(list(err.format(True))), 1)
+        row2 = err.row()
+        row2.add_column(u"Foo")
+        row2.add_column(u"Bar")
+        self.assertRaises(ValueError,
+                          list,
+                          err.format(False))
+        self.assertRaises(ValueError,
+                          list,
+                          err.format(True))
+
+        # check a table with nothing but dividers
+        dividers = output_table()
+        dividers.divider_row([u"-", u"-"])
+        dividers.divider_row([u"*", u"*"])
+        dividers.divider_row([u"x", u"x"])
+        self.assertEqual(len(list(dividers.format(False))), 3)
+        self.assertEqual(len(list(dividers.format(True))), 3)
+        dividers.divider_row([u"_"])
+        self.assertRaises(ValueError,
+                          list,
+                          dividers.format(False))
+        self.assertRaises(ValueError,
+                          list,
+                          dividers.format(True))
+
+        # check a table with nothing but blank rows
+        blanks = output_table()
+        blanks.blank_row()
+        blanks.blank_row()
+        blanks.blank_row()
+        blanks.blank_row()
+        self.assertEqual(len(list(blanks.format(False))), 4)
+        self.assertEqual(len(list(blanks.format(True))), 4)
+
+        # check a typical table with black rows and dividers
+        table = output_table()
+
+        row1 = table.blank_row()
+        row2 = table.divider_row([u"-",u"-", u"-"])
+        row3 = table.row()
+        row3.add_column(u"a", "left")
+        row3.add_column(u"b", "center")
+        row3.add_column(u"c", "right")
+        self.assertRaises(ValueError,
+                          row3.add_column,
+                          u"d", "unknown")
+
+        row4 = table.row()
+        row4.add_column(output_text(u"Foo",
+                                    fg_color="black",
+                                    bg_color="white"))
+        row4.add_column(output_list([u"Bar", unichr(4359) * 5],
+                                    fg_color="blue",
+                                    bg_color="red"), "center")
+        row4.add_column(output_text(u"Blah"), "right")
+
+        row5 = table.divider_row([u"-",u"-", u"-"])
+        row6 = table.blank_row()
+
+        self.assertEqual(len(list(table.format(False))), 6)
+        self.assertEqual(len(list(table.format(True))), 6)
+
+
+class Test_Most_Numerous(unittest.TestCase):
+    @LIB_CORE
+    def test_most_numerous(self):
+        from audiotools import most_numerous
+
+        self.assertEqual(most_numerous([1, 1, 2, 3]), 1)
+        self.assertEqual(most_numerous([1, 2, 2, 3]), 2)
+        self.assertEqual(most_numerous([1, 2, 3, 3]), 3)
+        self.assertEqual(most_numerous([], empty_list=-1), -1)
+        self.assertEqual(most_numerous([1, 2, 3],
+                                       empty_list=-1,
+                                       all_differ=-2), -2)
+
+
+class Test_Test_Iter(unittest.TestCase):
+    @LIB_CORE
+    def test_iter(self):
+        from audiotools import iter_first, iter_last
+
+        self.assertEqual(list(iter_first([])),
+                         [])
+        self.assertEqual(list(iter_first([1])),
+                         [(True, 1)])
+        self.assertEqual(list(iter_first([1, 2])),
+                         [(True, 1), (False, 2)])
+        self.assertEqual(list(iter_first([1, 2, 3])),
+                         [(True, 1), (False, 2), (False, 3)])
+
+        self.assertEqual(list(iter_last([])),
+                         [])
+        self.assertEqual(list(iter_last([1])),
+                         [(True, 1)])
+        self.assertEqual(list(iter_last([1, 2])),
+                         [(False, 1), (True, 2)])
+        self.assertEqual(list(iter_last([1, 2, 3])),
+                         [(False, 1), (False, 2), (True, 3)])

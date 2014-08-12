@@ -457,13 +457,24 @@ def khz(hz):
         return u"%d.%dkHz" % (num, den)
 
 
-class output_text:
+class output_text(tuple):
     """a class for formatting unicode strings for display"""
 
-    def __init__(self, unicode_string,
-                 fg_color=None,
-                 bg_color=None,
-                 style=None):
+    COLORS = {"black",
+              "red",
+              "green",
+              "yellow",
+              "blue",
+              "magenta",
+              "cyan",
+              "white"}
+
+    STYLES = {"bold",
+              "underline",
+              "blink",
+              "inverse"}
+
+    def __new__(cls, unicode_string, fg_color=None, bg_color=None, style=None):
         """unicode_string is the text to be displayed
 
         fg_color and bg_color may be one of:
@@ -483,53 +494,60 @@ class output_text:
                        "N": 1,
                        "H": 1}
 
-        self.__string__ = unicodedata.normalize('NFC', unicode(unicode_string))
+        string = unicodedata.normalize("NFC", unicode(unicode_string))
 
-        self.__char_widths__ = tuple(
-            [CHAR_WIDTHS.get(unicodedata.east_asian_width(char), 1)
-             for char in self.__string__])
+        return cls.__construct__(
+            unicode_string=string,
+            char_widths=tuple([CHAR_WIDTHS.get(
+                                   unicodedata.east_asian_width(char), 1)
+                               for char in string]),
+            fg_color=fg_color,
+            bg_color=bg_color,
+            style=style,
+            open_codes=cls.__open_codes__(fg_color, bg_color, style),
+            close_codes=cls.__close_codes__(fg_color, bg_color, style))
 
-        self.set_format(fg_color, bg_color, style)
+    @classmethod
+    def __construct__(cls,
+                      unicode_string,
+                      char_widths,
+                      fg_color,
+                      bg_color,
+                      style,
+                      open_codes,
+                      close_codes):
+        # 0 - original Unicode string
+        # 1 - tuple of widths for each character in string
+        # 2 - foreground color string
+        # 3 - background color string
+        # 4 - style string
+        # 5 - open escape codes for TTY output
+        # 6 - close escape codes for TTY output
 
-    def __unicode__(self):
-        return self.__string__
+        return tuple.__new__(cls,
+                             [unicode(unicode_string),
+                              tuple(char_widths),
+                              fg_color,
+                              bg_color,
+                              style,
+                              open_codes,
+                              close_codes])
 
-    def set_format(self, fg_color=None, bg_color=None, style=None):
-        self.__fg_color__ = fg_color
-        self.__bg_color__ = bg_color
-        self.__style__ = style
+    def __repr__(self):
+        return "output_text(%s, %s, %s, %s)" % \
+            (repr(self[0]),
+             repr(self[2]),
+             repr(self[3]),
+             repr(self[4]))
 
-    def has_formatting(self):
-        """returns True if the text has formatting set"""
+    @classmethod
+    def __open_codes__(cls, fg_color, bg_color, style):
+        open_codes = []
 
-        return ((self.__fg_color__ in ["black",
-                                       "red",
-                                       "green",
-                                       "yellow",
-                                       "blue",
-                                       "magenta",
-                                       "cyan",
-                                       "white"]) or
-                (self.__bg_color__ in ["black",
-                                       "red",
-                                       "green",
-                                       "yellow",
-                                       "blue",
-                                       "magenta",
-                                       "cyan",
-                                       "white"]) or
-                (self.__style__ in ["bold",
-                                    "underline",
-                                    "blink",
-                                    "inverse"]))
-
-    def __open_codes__(self, is_tty=False):
-        """returns an ANSI escape sequence of codes as a unicode string"""
-
-        if (is_tty):
-            open_codes = []
-
-            try:
+        if (fg_color is not None):
+            if (fg_color not in cls.COLORS):
+                raise ValueError("invalid fg_color %s" % (repr(fg_color)))
+            else:
                 open_codes.append({"black": 30,
                                    "red": 31,
                                    "green": 32,
@@ -537,11 +555,12 @@ class output_text:
                                    "blue": 34,
                                    "magenta": 35,
                                    "cyan": 36,
-                                   "white": 37}[self.__fg_color__])
-            except KeyError:
-                pass
+                                   "white": 37}[fg_color])
 
-            try:
+        if (bg_color is not None):
+            if (bg_color not in cls.COLORS):
+                raise ValueError("invalid bg_color %s" % (repr(bg_color)))
+            else:
                 open_codes.append({"black": 40,
                                    "red": 41,
                                    "green": 42,
@@ -549,84 +568,103 @@ class output_text:
                                    "blue": 44,
                                    "magenta": 45,
                                    "cyan": 46,
-                                   "white": 47}[self.__bg_color__])
-            except KeyError:
-                pass
+                                   "white": 47}[bg_color])
 
-            try:
+        if (style is not None):
+            if (style not in cls.STYLES):
+                raise ValueError("invalid style %s" % (repr(style)))
+            else:
                 open_codes.append({"bold": 1,
                                    "underline": 4,
                                    "blink": 5,
-                                   "inverse": 7}[self.__style__])
-            except KeyError:
-                pass
+                                   "inverse": 7}[style])
 
-            if (len(open_codes) > 0):
-                return u"\u001B[%sm" % (";".join(map(unicode, open_codes)))
-            else:
-                return u""
+        if (len(open_codes) > 0):
+            return u"\u001B[%sm" % (u";".join(map(unicode, open_codes)))
         else:
             return u""
 
-    def __close_codes__(self, is_tty=False):
-        """returns an ANSI escape sequence of codes as a unicode string"""
+    @classmethod
+    def __close_codes__(cls, fg_color, bg_color, style):
+        close_codes = []
 
-        if (is_tty):
-            close_codes = []
-
-            if (self.__fg_color__ in ["black",
-                                      "red",
-                                      "green",
-                                      "yellow",
-                                      "blue",
-                                      "magenta",
-                                      "cyan",
-                                      "white"]):
+        if (fg_color is not None):
+            if (fg_color not in cls.COLORS):
+                raise ValueError("invalid fg_color %s" % (repr(fg_color)))
+            else:
                 close_codes.append(39)
 
-            if (self.__bg_color__ in ["black",
-                                      "red",
-                                      "green",
-                                      "yellow",
-                                      "blue",
-                                      "magenta",
-                                      "cyan",
-                                      "white"]):
+        if (bg_color is not None):
+            if (bg_color not in cls.COLORS):
+                raise ValueError("invalid bg_color %s" % (repr(bg_color)))
+            else:
                 close_codes.append(49)
 
-            try:
+        if (style is not None):
+            if (style not in cls.STYLES):
+                raise ValueError("invalid style %s" % (repr(style)))
+            else:
                 close_codes.append({"bold": 22,
                                     "underline": 24,
                                     "blink": 25,
-                                    "inverse": 27}[self.__style__])
-            except KeyError:
-                pass
+                                    "inverse": 27}[style])
 
-            if (len(close_codes) > 0):
-                return u"\u001B[%sm" % (";".join(map(unicode, close_codes)))
-            else:
-                return u""
+        if (len(close_codes) > 0):
+            return u"\u001B[%sm" % (u";".join(map(unicode, close_codes)))
         else:
             return u""
+
+    def __unicode__(self):
+        return self[0]
+
+    def __len__(self):
+        return sum(self[1])
+
+    def fg_color(self):
+        """returns the foreground color as a string, or None"""
+
+        return self[2]
+
+    def bg_color(self):
+        """returns the background color as a string, or None"""
+
+        return self[3]
+
+    def style(self):
+        """returns the style as a string, or None"""
+
+        return self[4]
+
+    def set_format(self, fg_color=None, bg_color=None, style=None):
+        """returns a new output_text with the given format"""
+
+        return output_text.__construct__(
+            unicode_string=self[0],
+            char_widths=self[1],
+            fg_color=fg_color,
+            bg_color=bg_color,
+            style=style,
+            open_codes=output_text.__open_codes__(fg_color,
+                                                  bg_color,
+                                                  style),
+            close_codes=output_text.__close_codes__(fg_color,
+                                                    bg_color,
+                                                    style))
+
+    def has_formatting(self):
+        """returns True if the text has formatting set"""
+
+        return ((self[2] is not None) or
+                (self[3] is not None) or
+                (self[4] is not None))
 
     def format(self, is_tty=False):
         """returns unicode text formatted depending on is_tty"""
 
-        if (is_tty):
-            return u"%s%s%s" % (self.__open_codes__(True),
-                                self.__string__,
-                                self.__close_codes__(True))
+        if (is_tty and self.has_formatting()):
+            return u"%s%s%s" % (self[5], self[0], self[6])
         else:
-            return self.__string__
-
-    def __len__(self):
-        return sum(self.__char_widths__)
-
-    def __repr__(self):
-        return "output_text(%s, %s, %s, %s)" % (repr(self.__string__),
-                                                repr(self.__fg_color__),
-                                                repr(self.__bg_color__),
-                                                repr(self.__style__))
+            return self[0]
 
     def head(self, display_characters):
         """returns a text object truncated to the given length
@@ -636,19 +674,28 @@ class output_text:
         due to double-width characters,
         the size of the string may be smaller than requested"""
 
-        output_chars = []
+        if (display_characters < 0):
+            raise ValueError("display characters must be >= 0")
 
-        for (char, width) in zip(self.__string__, self.__char_widths__):
+        output_chars = []
+        output_widths = []
+
+        for (char, width) in zip(self[0], self[1]):
             if (width <= display_characters):
                 output_chars.append(char)
+                output_widths.append(width)
                 display_characters -= width
             else:
                 break
 
-        return output_text(u"".join(output_chars),
-                           self.__fg_color__,
-                           self.__bg_color__,
-                           self.__style__)
+        return output_text.__construct__(
+            unicode_string=u"".join(output_chars),
+            char_widths=output_widths,
+            fg_color=self[2],
+            bg_color=self[3],
+            style=self[4],
+            open_codes=self[5],
+            close_codes=self[6])
 
     def tail(self, display_characters):
         """returns a text object truncated to the given length
@@ -658,21 +705,29 @@ class output_text:
         due to double-width characters,
         the size of the string may be smaller than requested"""
 
-        output_chars = []
+        if (display_characters < 0):
+            raise ValueError("display characters must be >= 0")
 
-        for (char, width) in zip(reversed(self.__string__),
-                                 reversed(self.__char_widths__)):
+        output_chars = []
+        output_widths = []
+
+        for (char, width) in zip(reversed(self[0]),
+                                 reversed(self[1])):
             if (width <= display_characters):
                 output_chars.append(char)
+                output_widths.append(width)
                 display_characters -= width
             else:
                 break
 
-        output_chars.reverse()
-        return output_text(u"".join(output_chars),
-                           self.__fg_color__,
-                           self.__bg_color__,
-                           self.__style__)
+        return output_text.__construct__(
+            unicode_string=u"".join(reversed(output_chars)),
+            char_widths=reversed(output_widths),
+            fg_color=self[2],
+            bg_color=self[3],
+            style=self[4],
+            open_codes=self[5],
+            close_codes=self[6])
 
     def split(self, display_characters):
         """returns a tuple of text objects
@@ -683,24 +738,39 @@ class output_text:
         due to double-width characters,
         the first string may be smaller than requested"""
 
+        if (display_characters < 0):
+            raise ValueError("display characters must be >= 0")
+
         head_chars = []
+        head_widths = []
         tail_chars = []
-        for (char, width) in zip(self.__string__, self.__char_widths__):
+        tail_widths = []
+        for (char, width) in zip(self[0], self[1]):
             if (width <= display_characters):
                 head_chars.append(char)
+                head_widths.append(width)
                 display_characters -= width
             else:
                 tail_chars.append(char)
+                tail_widths.append(width)
                 display_characters = -1
 
-        return (output_text(u"".join(head_chars),
-                            self.__fg_color__,
-                            self.__bg_color__,
-                            self.__style__),
-                output_text(u"".join(tail_chars),
-                            self.__fg_color__,
-                            self.__bg_color__,
-                            self.__style__))
+        return (output_text.__construct__(
+                    unicode_string=u"".join(head_chars),
+                    char_widths=head_widths,
+                    fg_color=self[2],
+                    bg_color=self[3],
+                    style=self[4],
+                    open_codes=self[5],
+                    close_codes=self[6]),
+                output_text.__construct__(
+                    unicode_string=u"".join(tail_chars),
+                    char_widths=tail_widths,
+                    fg_color=self[2],
+                    bg_color=self[3],
+                    style=self[4],
+                    open_codes=self[5],
+                    close_codes=self[6]))
 
     def join(self, output_texts):
         """returns output_list joined by our formatted text"""
@@ -728,20 +798,89 @@ class output_list(output_text):
     So it's best to either style the internal elements
     or style the list, but not both."""
 
-    def __init__(self, output_texts,
-                 fg_color=None,
-                 bg_color=None,
-                 style=None):
+    def __new__(cls, output_texts, fg_color=None, bg_color=None, style=None):
         """output_texts is an iterable of output_text objects or unicode"""
 
-        self.__output_texts__ = [t if isinstance(t, output_text)
-                                 else output_text(t)
-                                 for t in output_texts]
+        return cls.__construct__(
+            output_texts=[t if isinstance(t, output_text) else
+                          output_text(t) for t in output_texts],
+            fg_color=fg_color,
+            bg_color=bg_color,
+            style=style,
+            open_codes=cls.__open_codes__(fg_color, bg_color, style),
+            close_codes=cls.__close_codes__(fg_color, bg_color, style))
 
-        self.set_format(fg_color, bg_color, style)
+    @classmethod
+    def __construct__(cls,
+                      output_texts,
+                      fg_color,
+                      bg_color,
+                      style,
+                      open_codes,
+                      close_codes):
+        # 0 - list of output_text objects
+        # 1 - foreground color string
+        # 2 - background color string
+        # 3 - style string
+        # 4 - open escape codes for TTY output
+        # 5 - close escape code for TTY output
+        return tuple.__new__(cls,
+                             [tuple(output_texts),
+                              fg_color,
+                              bg_color,
+                              style,
+                              open_codes,
+                              close_codes])
+
+    def __repr__(self):
+        return "output_list(%s, %s, %s, %s)" % \
+            (repr(self[0]),
+             repr(self[1]),
+             repr(self[2]),
+             repr(self[3]))
 
     def __unicode__(self):
-        return u"".join(map(unicode, self.__output_texts__))
+        return u"".join(map(unicode, self[0]))
+
+    def __len__(self):
+        return sum(map(len, self[0]))
+
+    def fg_color(self):
+        """returns the foreground color as a string"""
+
+        return self[1]
+
+    def bg_color(self):
+        """returns the background color as a string"""
+
+        return self[2]
+
+    def style(self):
+        """returns the style as a string"""
+
+        return self[3]
+
+    def set_format(self, fg_color=None, bg_color=None, style=None):
+        """returns a new output_list with the given format"""
+
+        return output_list.__construct__(
+            output_texts=self[0],
+            fg_color=fg_color,
+            bg_color=bg_color,
+            style=style,
+            open_codes=output_list.__open_codes__(fg_color,
+                                                  bg_color,
+                                                  style),
+            close_codes=output_list.__close_codes__(fg_color,
+                                                    bg_color,
+                                                    style))
+
+    def has_formatting(self):
+        """returns True if the output_list itself has formatting set"""
+
+        return ((self[1] is not None) or
+                (self[2] is not None) or
+                (self[3] is not None))
 
     def format(self, is_tty=False):
         """returns unicode text formatted depending on is_tty"""
@@ -752,17 +891,11 @@ class output_list(output_text):
 
         if (is_tty and self.has_formatting()):
             return u"%s%s%s" % (
-                self.__open_codes__(is_tty),
-                u"".join([t.format(False) for t in self.__output_texts__]),
-                self.__close_codes__(is_tty))
+                self[4],
+                u"".join([t.format(False) for t in self[0]]),
+                self[5])
         else:
-            return u"".join([t.format(is_tty) for t in self.__output_texts__])
-
-    def __len__(self):
-        return sum(map(len, self.__output_texts__))
-
-    def __repr__(self):
-        return "output_texts(%s)" % (repr(self.__output_texts__))
+            return u"".join([t.format(is_tty) for t in self[0]])
 
     def head(self, display_characters):
         """returns a text object truncated to the given length
@@ -772,9 +905,12 @@ class output_list(output_text):
         due to double-width characters,
         the size of the string may be smaller than requested"""
 
+        if (display_characters < 0):
+            raise ValueError("display characters must be >= 0")
+
         output_texts = []
 
-        for text in self.__output_texts__:
+        for text in self[0]:
             if (len(text) <= display_characters):
                 output_texts.append(text)
                 display_characters -= len(text)
@@ -782,10 +918,13 @@ class output_list(output_text):
                 output_texts.append(text.head(display_characters))
                 break
 
-        return output_list(output_texts,
-                           fg_color=self.__fg_color__,
-                           bg_color=self.__bg_color__,
-                           style=self.__style__)
+        return output_list.__construct__(
+            output_texts=output_texts,
+            fg_color=self[1],
+            bg_color=self[2],
+            style=self[3],
+            open_codes=self[4],
+            close_codes=self[5])
 
     def tail(self, display_characters):
         """returns a text object truncated to the given length
@@ -795,9 +934,12 @@ class output_list(output_text):
         due to double-width characters,
         the size of the string may be smaller than requested"""
 
+        if (display_characters < 0):
+            raise ValueError("display characters must be >= 0")
+
         output_texts = []
 
-        for text in reversed(self.__output_texts__):
+        for text in reversed(self[0]):
             if (len(text) <= display_characters):
                 output_texts.append(text)
                 display_characters -= len(text)
@@ -805,11 +947,13 @@ class output_list(output_text):
                 output_texts.append(text.tail(display_characters))
                 break
 
-        output_texts.reverse()
-        return output_list(output_texts,
-                           fg_color=self.__fg_color__,
-                           bg_color=self.__bg_color__,
-                           style=self.__style__)
+        return output_list.__construct__(
+            output_texts=reversed(output_texts),
+            fg_color=self[1],
+            bg_color=self[2],
+            style=self[3],
+            open_codes=self[4],
+            close_codes=self[5])
 
     def split(self, display_characters):
         """returns a tuple of text objects
@@ -821,10 +965,13 @@ class output_list(output_text):
         the first string may be smaller than requested
         """
 
+        if (display_characters < 0):
+            raise ValueError("display characters must be >= 0")
+
         head_texts = []
         tail_texts = []
 
-        for text in self.__output_texts__:
+        for text in self[0]:
             if (len(text) <= display_characters):
                 head_texts.append(text)
                 display_characters -= len(text)
@@ -836,14 +983,20 @@ class output_list(output_text):
             else:
                 tail_texts.append(text)
 
-        return (output_list(head_texts,
-                            fg_color=self.__fg_color__,
-                            bg_color=self.__bg_color__,
-                            style=self.__style__),
-                output_list(tail_texts,
-                            fg_color=self.__fg_color__,
-                            bg_color=self.__bg_color__,
-                            style=self.__style__))
+        return (output_list.__construct__(
+                    output_texts=head_texts,
+                    fg_color=self[1],
+                    bg_color=self[2],
+                    style=self[3],
+                    open_codes=self[4],
+                    close_codes=self[5]),
+                output_list.__construct__(
+                    output_texts=tail_texts,
+                    fg_color=self[1],
+                    bg_color=self[2],
+                    style=self[3],
+                    open_codes=self[4],
+                    close_codes=self[5]))
 
 
 class output_table:
@@ -878,16 +1031,25 @@ class output_table:
             # no rows, so do nothing
             return
 
-        if (len({len(r) for r in self.__rows__ if
-                 not isinstance(r, output_table_blank)}) != 1):
+        row_columns = {len(r) for r in self.__rows__ if
+                       not isinstance(r, output_table_blank)}
+
+        if (len(row_columns) == 0):
+            # all rows are blank
+            for row in self.__rows__:
+                # blank rows ignore column widths
+                yield row.format(None, is_tty)
+        elif (len(row_columns) == 1):
+            column_widths = [
+                max([row.column_width(col) for row in self.__rows__])
+                for col in
+                range(len([r for r in self.__rows__ if
+                           not isinstance(r, output_table_blank)][0]))]
+
+            for row in self.__rows__:
+                yield row.format(column_widths, is_tty)
+        else:
             raise ValueError("all rows must have same number of columns")
-
-        column_widths = [
-            max([row.column_width(col) for row in self.__rows__])
-            for col in range(len(self.__rows__[0]))]
-
-        for row in self.__rows__:
-            yield row.format(column_widths, is_tty)
 
 
 class output_table_row:
@@ -1131,9 +1293,9 @@ class ProgressRow:
         # turn whole line into progress bar
         (head, tail) = combined_line.split(split_point)
 
-        head.set_format(fg_color="white", bg_color="blue")
-
-        return (head.format(True) + tail.format(True))
+        return (head.set_format(fg_color="white",
+                                bg_color="blue").format(True) +
+                tail.format(True))
 
 
 class SingleProgressDisplay(ProgressDisplay):
@@ -4309,19 +4471,8 @@ def iter_first(iterator):
     if the iterator has no items, yields (True, None)
     """
 
-    try:
-        first_item = iterator.next()
-    except StopIteration:
-        yield (True, None)
-        return
-
-    yield (True, first_item)
-
-    while (True):
-        try:
-            yield (False, iterator.next())
-        except StopIteration:
-            return
+    for (i, v) in enumerate(iterator):
+        yield ((i == 0), v)
 
 
 def iter_last(iterator):
@@ -4332,10 +4483,11 @@ def iter_last(iterator):
     if the iterator has no items, yields (True, None)
     """
 
+    iterator = iter(iterator)
+
     try:
         cached_item = iterator.next()
     except StopIteration:
-        yield (True, None)
         return
 
     while (True):

@@ -7087,18 +7087,18 @@
     Verifying the contents isn't important;
     just make sure calling repr() doesn't throw an exception.
 *** TODO audiotools/__init__
-    - [ ] output_text
-    - [ ] output_list
-    - [ ] output_table
+    - [X] output_text
+    - [X] output_list
+    - [X] output_table
     - [ ] threaded_transfer_framelist_data
     - [ ] pcm_cmp
     - [ ] pcm_frame_cmp
     - [ ] resampled_frame_count
     - [ ] read_sheet (IOError)
-    - [ ] iter_first
-    - [ ] iter_last
-    - [ ] most_numerous (len(item_list) == 0)
-    - [ ] most_numerous (all_differ)
+    - [X] iter_first
+    - [X] iter_last
+    - [X] most_numerous (len(item_list) == 0)
+    - [X] most_numerous (all_differ)
     - [ ] cddareader_metadata_lookup
     - [ ] track_metadata_lookup
     - [ ] sheet_metadata_lookup
@@ -7169,7 +7169,7 @@
      - [ ] clean (remove undefined)
      - [X] raw_info()
      check with all metadata blocks
-**** TODO Flac_VORBISCOMMENT
+**** DONE Flac_VORBISCOMMENT
      - [X] converted(Flac_VORBISCOMMENT)
      should return newly created object
 **** TODO Flac_Cuesheet
@@ -7198,7 +7198,7 @@
      is this still in use?
 **** DONE FLAC_SSND_Chunk
      is this still in use?
-**** TODO OggFlacMetaData
+**** DONE OggFlacMetaData
      - [X] converted(None)
 **** TODO OggFlacAudio
      - [ ] from_pcm with UnsupportedChannelMask
