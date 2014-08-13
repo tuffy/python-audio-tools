@@ -31,7 +31,7 @@ from audiotools import BIN, transfer_data
 import cStringIO
 
 
-class UndoDB:
+class UndoDB(object):
     """a class for performing undo operations on files
 
     this stores an undo/redo patch for transforming a file
@@ -172,7 +172,7 @@ source_file, patch WHERE ((source_checksum = ?) AND
             return False
 
 
-class OldUndoDB:
+class OldUndoDB(object):
     """a class for performing legacy undo operations on files
 
     this implementation is based on xdelta and requires it to be

@@ -293,7 +293,7 @@ def wasted_bps(samples):
         return wasted
 
 
-class __Counter__:
+class __Counter__(object):
     def __init__(self):
         self.value = 0
 

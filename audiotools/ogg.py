@@ -20,7 +20,7 @@
 from audiotools._ogg import PageReader, PageWriter, Page
 
 
-class PacketReader:
+class PacketReader(object):
     def __init__(self, pagereader):
         """pagereader is a PageReader object"""
 

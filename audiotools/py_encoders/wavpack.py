@@ -37,7 +37,7 @@ WV_CHANNEL_INFO = 0xD
 WV_MD5 = 0x6
 
 
-class EncoderContext:
+class EncoderContext(object):
     def __init__(self, pcmreader, block_parameters,
                  wave_header=None, wave_footer=None):
         self.pcmreader = pcmreader
@@ -101,7 +101,7 @@ def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
                   ('data', data_size)))
 
 
-class CorrelationParameters:
+class CorrelationParameters(object):
     """the parameters for a single correlation pass"""
 
     def __init__(self, term, delta, weights, samples):
@@ -139,7 +139,7 @@ class CorrelationParameters:
                         for c in samples]
 
 
-class EncodingParameters:
+class EncodingParameters(object):
     """the encoding parameters for a single 1-2 channel block
     multi-channel audio may have more than one set of these
     """
@@ -1147,7 +1147,7 @@ def write_entropy_variables(writer, channels, entropies):
             writer.write(16, wv_log2(e))
 
 
-class Residual:
+class Residual(object):
     def __init__(self, zeroes, m, offset, add, sign):
         self.zeroes = zeroes
         self.m = m

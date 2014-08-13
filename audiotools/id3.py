@@ -123,7 +123,7 @@ def encode_syncsafe32(i):
     return value
 
 
-class C_string:
+class C_string(object):
     TERMINATOR = {'ascii': chr(0),
                   'latin_1': chr(0),
                   'latin-1': chr(0),
@@ -369,7 +369,7 @@ def total_id3v2_comments(file):
 ############################################################
 
 
-class ID3v22_Frame:
+class ID3v22_Frame(object):
     def __init__(self, frame_id, data):
         self.id = frame_id
         self.data = data
@@ -426,7 +426,7 @@ class ID3v22_Frame:
         return (self.__class__(self.id, self.data), [])
 
 
-class ID3v22_T__Frame:
+class ID3v22_T__Frame(object):
     NUMERICAL_IDS = ('TRK', 'TPA')
 
     def __init__(self, frame_id, encoding, data):
@@ -585,7 +585,7 @@ class ID3v22_T__Frame:
         return (self.__class__.converted(self.id, fix3), fixes_performed)
 
 
-class ID3v22_TXX_Frame:
+class ID3v22_TXX_Frame(object):
     def __init__(self, encoding, description, data):
         self.id = 'TXX'
 
@@ -678,7 +678,7 @@ class ID3v22_TXX_Frame:
                 fixes_performed)
 
 
-class ID3v22_W__Frame:
+class ID3v22_W__Frame(object):
     def __init__(self, frame_id, data):
         self.id = frame_id
         self.data = data
@@ -723,7 +723,7 @@ class ID3v22_W__Frame:
         return (self.__class__(self.id, self.data), [])
 
 
-class ID3v22_WXX_Frame:
+class ID3v22_WXX_Frame(object):
     def __init__(self, encoding, description, data):
         self.id = 'WXX'
 
@@ -788,7 +788,7 @@ class ID3v22_WXX_Frame:
                                self.data), [])
 
 
-class ID3v22_COM_Frame:
+class ID3v22_COM_Frame(object):
     def __init__(self, encoding, language, short_description, data):
         """fields are as follows:
         | encoding          | 1 byte int of the comment's text encoding |
@@ -1013,18 +1013,19 @@ class ID3v22_PIC_Frame(Image):
                                 MEDIA,
                                 OTHER)
         if (attr == 'type'):
-            self.__dict__["pic_type"] = {FRONT_COVER: 3,
-                                         BACK_COVER: 4,
-                                         LEAFLET_PAGE: 5,
-                                         MEDIA: 6
-                                         }.get(value, 0)  # other
+            Image.__setattr__(self,
+                              "pic_type", {FRONT_COVER: 3,
+                                           BACK_COVER: 4,
+                                           LEAFLET_PAGE: 5,
+                                           MEDIA: 6}.get(value, 0))
         elif (attr == 'description'):
-            if (is_latin_1(value)):
-                self.__dict__["pic_description"] = C_string('latin-1', value)
-            else:
-                self.__dict__["pic_description"] = C_string('ucs2', value)
+            Image.__setattr__(
+                self,
+                "pic_description",
+                C_string("latin-1" if is_latin_1(value) else "ucs2",
+                         value))
         else:
-            self.__dict__[attr] = value
+            Image.__setattr__(self, attr, value)
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
@@ -1124,8 +1125,8 @@ class ID3v22Comment(MetaData):
     IMAGE_FRAME_ID = 'PIC'
 
     def __init__(self, frames, total_size=None):
-        self.__dict__["frames"] = frames[:]
-        self.__dict__["total_size"] = total_size
+        MetaData.__setattr__(self, "frames", frames[:])
+        MetaData.__setattr__(self, "total_size", total_size)
 
     def copy(self):
         return self.__class__([frame.copy() for frame in self])
@@ -1258,12 +1259,12 @@ class ID3v22Comment(MetaData):
             for new_frame in new_frames:
                 updated_frames.append(new_frame)
 
-        self.__dict__["frames"] = updated_frames
+        MetaData.__setattr__(self, "frames", updated_frames)
 
     def __delitem__(self, frame_id):
         updated_frames = [frame for frame in self if frame.id != frame_id]
         if (len(updated_frames) < len(self)):
-            self.__dict__["frames"] = updated_frames
+            MetaData.__setattr__(self, "frames", updated_frames)
         else:
             raise KeyError(frame_id)
 
@@ -1291,7 +1292,7 @@ class ID3v22Comment(MetaData):
         elif (attr in self.FIELDS):
             return None
         else:
-            raise AttributeError(attr)
+            return MetaData.__getattribute__(self, attr)
 
     def __setattr__(self, attr, value):
         if (attr in self.ATTRIBUTE_MAP):
@@ -1377,7 +1378,7 @@ class ID3v22Comment(MetaData):
         elif (attr in MetaData.FIELDS):
             pass
         else:
-            self.__dict__[attr] = value
+            MetaData.__setattr__(self, attr, value)
 
     def __delattr__(self, attr):
         if (attr in self.ATTRIBUTE_MAP):
@@ -1437,17 +1438,14 @@ class ID3v22Comment(MetaData):
                 else:
                     updated_frames.append(frame)
 
-            self.__dict__["frames"] = updated_frames
+            MetaData.__setattr__(self, "frames", updated_frames)
 
         elif (attr in MetaData.FIELDS):
             # ignore deleted attributes which are in MetaData
             # but we don't support
             pass
         else:
-            try:
-                del(self.__dict__[attr])
-            except KeyError:
-                raise AttributeError(attr)
+            MetaData.__delattr__(self, attr)
 
     def images(self):
         return [frame for frame in self if (frame.id == self.IMAGE_FRAME_ID)]
@@ -1457,9 +1455,11 @@ class ID3v22Comment(MetaData):
             self.IMAGE_FRAME.converted(self.IMAGE_FRAME_ID, image))
 
     def delete_image(self, image):
-        self.__dict__["frames"] = [frame for frame in self if
-                                   ((frame.id != self.IMAGE_FRAME_ID) or
-                                    (frame != image))]
+        MetaData.__setattr__(
+            self,
+            "frames",
+            [frame for frame in self if
+             ((frame.id != self.IMAGE_FRAME_ID) or (frame != image))])
 
     @classmethod
     def converted(cls, metadata):
@@ -1652,20 +1652,22 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
                                 OTHER)
 
         if (attr == 'type'):
-            self.__dict__["pic_type"] = {FRONT_COVER: 3,
-                                         BACK_COVER: 4,
-                                         LEAFLET_PAGE: 5,
-                                         MEDIA: 6
-                                         }.get(value, 0)  # other
+            Image.__setattr__(self,
+                              "pic_type",
+                              {FRONT_COVER: 3,
+                               BACK_COVER: 4,
+                               LEAFLET_PAGE: 5,
+                               MEDIA: 6}.get(value, 0))
         elif (attr == 'description'):
-            if (is_latin_1(value)):
-                self.__dict__["pic_description"] = C_string('latin-1', value)
-            else:
-                self.__dict__["pic_description"] = C_string('ucs2', value)
+            Image.__setattr__(
+                self,
+                "pic_description",
+                C_string("latin-1" if is_latin_1(value) else "ucs2",
+                         value))
         elif (attr == 'mime_type'):
-            self.__dict__["pic_mime_type"] = C_string('ascii', value)
+            Image.__setattr__(self, "pic_mime_type", C_string('ascii', value))
         else:
-            self.__dict__[attr] = value
+            Image.__setattr__(self, attr, value)
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
@@ -1993,20 +1995,22 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
                                 OTHER)
 
         if (attr == 'type'):
-            self.__dict__["pic_type"] = {FRONT_COVER: 3,
-                                         BACK_COVER: 4,
-                                         LEAFLET_PAGE: 5,
-                                         MEDIA: 6
-                                         }.get(value, 0)  # other
+            Image.__setattr__(
+                self,
+                "pic_type",
+                {FRONT_COVER: 3,
+                 BACK_COVER: 4,
+                 LEAFLET_PAGE: 5,
+                 MEDIA: 6}.get(value, 0))
         elif (attr == 'description'):
-            if (is_latin_1(value)):
-                self.__dict__["pic_description"] = C_string('latin-1', value)
-            else:
-                self.__dict__["pic_description"] = C_string('utf-8', value)
+            Image.__setattr__(
+                self,
+                "pic_description",
+                C_string("latin-1" if is_latin_1(value) else "utf-8", value))
         elif (attr == 'mime_type'):
-            self.__dict__["pic_mime_type"] = C_string('ascii', value)
+            Image.__setattr__(self, "pic_mime_type", C_string('ascii', value))
         else:
-            self.__dict__[attr] = value
+            Image.__setattr__(self, attr, value)
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
@@ -2327,8 +2331,8 @@ class ID3CommentPair(MetaData):
 
         values in ID3v2 take precendence over ID3v1, if present"""
 
-        self.__dict__['id3v2'] = id3v2_comment
-        self.__dict__['id3v1'] = id3v1_comment
+        MetaData.__setattr__(self, "id3v2", id3v2_comment)
+        MetaData.__setattr__(self, "id3v1", id3v1_comment)
 
         if (self.id3v2 is not None):
             base_comment = self.id3v2
@@ -2340,31 +2344,42 @@ class ID3CommentPair(MetaData):
     def __repr__(self):
         return "ID3CommentPair(%s, %s)" % (repr(self.id3v2), repr(self.id3v1))
 
-    def __getattr__(self, key):
-        if (key in self.FIELDS):
-            if (((self.id3v2 is not None) and
-                 (getattr(self.id3v2, key) is not None))):
-                return getattr(self.id3v2, key)
+    def __getattr__(self, attr):
+        assert((self.id3v2 is not None) or (self.id3v1 is not None))
+        if (attr in self.FIELDS):
+            if (self.id3v2 is not None):
+                # ID3v2 takes precedence over ID3v1
+                field = getattr(self.id3v2, attr)
+                if (field is not None):
+                    return field
+                elif (self.id3v1 is not None):
+                    return getattr(self.id3v1, attr)
+                else:
+                    return None
             elif (self.id3v1 is not None):
-                return getattr(self.id3v1, key)
-            else:
-                raise ValueError("ID3v2 and ID3v1 cannot both be blank")
+                return getattr(self.id3v1, attr)
         else:
-            raise AttributeError(key)
+            return MetaData.__getattribute__(self, attr)
 
-    def __setattr__(self, key, value):
-        self.__dict__[key] = value
+    def __setattr__(self, attr, value):
+        assert((self.id3v2 is not None) or (self.id3v1 is not None))
+        if (attr in self.FIELDS):
+            if (self.id3v2 is not None):
+                setattr(self.id3v2, attr, value)
+            if (self.id3v1 is not None):
+                setattr(self.id3v1, attr, value)
+        else:
+            MetaData.__setattr__(self, attr, value)
 
-        if (self.id3v2 is not None):
-            setattr(self.id3v2, key, value)
-        if (self.id3v1 is not None):
-            setattr(self.id3v1, key, value)
-
-    def __delattr__(self, key):
-        if (self.id3v2 is not None):
-            delattr(self.id3v2, key)
-        if (self.id3v1 is not None):
-            delattr(self.id3v1, key)
+    def __delattr__(self, attr):
+        assert((self.id3v2 is not None) or (self.id3v1 is not None))
+        if (attr in self.FIELDS):
+            if (self.id3v2 is not None):
+                delattr(self.id3v2, attr)
+            if (self.id3v1 is not None):
+                delattr(self.id3v1, attr)
+        else:
+            MetaData.__delattr__(self, attr)
 
     @classmethod
     def converted(cls, metadata,

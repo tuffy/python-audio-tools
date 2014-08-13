@@ -37,7 +37,7 @@ def audio_files(msg, args):
             yield audio_file
 
 
-class FormatSummary:
+class FormatSummary(object):
     def __init__(self):
         self.total_length = 0
         self.file_count = 0

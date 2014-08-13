@@ -106,7 +106,7 @@ def has_m4a_atom(reader, *atoms):
             return False
 
 
-class M4ATaggedAudio:
+class M4ATaggedAudio(object):
     @classmethod
     def supports_metadata(cls):
         """returns True if this audio type supports MetaData"""

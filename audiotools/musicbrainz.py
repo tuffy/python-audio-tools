@@ -18,7 +18,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-class DiscID:
+class DiscID(object):
     def __init__(self, first_track_number, last_track_number,
                  lead_out_offset, offsets):
         """first_track_number and last_track_number are ints

@@ -56,8 +56,8 @@ class VorbisComment(MetaData):
 
         vendor_string is a unicode string"""
 
-        self.__dict__["comment_strings"] = comment_strings
-        self.__dict__["vendor_string"] = vendor_string
+        MetaData.__setattr__(self, "comment_strings", comment_strings)
+        MetaData.__setattr__(self, "vendor_string", vendor_string)
 
     def keys(self):
         return list({comment.split(u"=", 1)[0]
@@ -118,7 +118,7 @@ class VorbisComment(MetaData):
         for new_value in new_values:
             new_comment_strings.append(u"%s=%s" % (key.upper(), new_value))
 
-        self.__dict__["comment_strings"] = new_comment_strings
+        MetaData.__setattr__(self, "comment_strings", new_comment_strings)
 
     def __delitem__(self, key):
         new_comment_strings = []
@@ -134,7 +134,7 @@ class VorbisComment(MetaData):
                 # passthrough values with no "=" sign
                 new_comment_strings.append(comment)
 
-        self.__dict__["comment_strings"] = new_comment_strings
+        MetaData.__setattr__(self, "comment_strings", new_comment_strings)
 
     def __repr__(self):
         return "VorbisComment(%s, %s)" % \
@@ -232,10 +232,7 @@ class VorbisComment(MetaData):
             return None
         else:
             # attribute is not MetaData-specific
-            try:
-                return self.__dict__[attr]
-            except KeyError:
-                raise AttributeError(attr)
+            return MetaData.__getattribute__(self, attr)
 
     def __setattr__(self, attr, value):
         # updates the first matching field for the given attribute
@@ -335,7 +332,7 @@ class VorbisComment(MetaData):
             pass
         else:
             # attribute is not MetaData-specific, so set as-is
-            self.__dict__[attr] = value
+            MetaData.__setattr__(self, attr, value)
 
     def __delattr__(self, attr):
         # deletes all matching keys for the given attribute
@@ -399,10 +396,7 @@ class VorbisComment(MetaData):
             # but not supported by VorbisComment
             pass
         else:
-            try:
-                del(self.__dict__[attr])
-            except KeyError:
-                raise AttributeError(attr)
+            MetaData.__delattr__(self, attr)
 
     def __eq__(self, metadata):
         if (isinstance(metadata, self.__class__)):

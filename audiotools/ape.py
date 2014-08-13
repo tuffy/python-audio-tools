@@ -58,7 +58,7 @@ def limited_transfer_data(from_function, to_function,
         s = from_function(BUFFER_SIZE)
 
 
-class ApeTagItem:
+class ApeTagItem(object):
     """a single item in the ApeTag, typically a unicode value"""
 
     FORMAT = "32u 1u 2u 29p"
@@ -219,9 +219,9 @@ class ApeTag(MetaData):
         for tag in tags:
             if (not isinstance(tag, ApeTagItem)):
                 raise ValueError("%s is not ApeTag" % (repr(tag)))
-        self.__dict__["tags"] = list(tags)
-        self.__dict__["contains_header"] = contains_header
-        self.__dict__["contains_footer"] = contains_footer
+        MetaData.__setattr__(self, "tags", list(tags))
+        MetaData.__setattr__(self, "contains_header", contains_header)
+        MetaData.__setattr__(self, "contains_footer", contains_footer)
 
     def __repr__(self):
         return "ApeTag(%s, %s, %s)" % (repr(self.tags),
@@ -377,10 +377,7 @@ class ApeTag(MetaData):
         elif (attr in MetaData.FIELDS):
             return None
         else:
-            try:
-                return self.__dict__[attr]
-            except AttrError:
-                raise AttributeError(attr)
+            return MetaData.__getattribute__(self, attr)
 
     # if an attribute is updated (e.g. self.track_name)
     # make sure to update the corresponding dict pair
@@ -445,7 +442,7 @@ class ApeTag(MetaData):
             else:
                 delattr(self, attr)
         else:
-            self.__dict__[attr] = value
+            MetaData.__setattr__(self, attr, value)
 
     def __delattr__(self, attr):
         import re
@@ -528,10 +525,7 @@ class ApeTag(MetaData):
         elif (attr in MetaData.FIELDS):
             pass
         else:
-            try:
-                del(self.__dict__[attr])
-            except AttrError:
-                raise AttributeError(attr)
+            MetaData.__delattr__(self, attr)
 
     @classmethod
     def converted(cls, metadata):
@@ -805,7 +799,7 @@ class ApeTag(MetaData):
                 fixes_performed)
 
 
-class ApeTaggedAudio:
+class ApeTaggedAudio(object):
     """a class for handling audio formats with APEv2 tags
 
     this class presumes there will be a filename attribute which
@@ -1006,7 +1000,7 @@ class ApeTaggedAudio:
                 new_apev2.close()
 
 
-class ApeGainedAudio:
+class ApeGainedAudio(object):
     @classmethod
     def supports_replay_gain(cls):
         """returns True if this class supports ReplayGain"""

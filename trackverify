@@ -26,7 +26,7 @@ from operator import or_
 MAX_CPUS = audiotools.MAX_JOBS
 
 
-class FailedAudioFile:
+class FailedAudioFile(object):
     def __init__(self, class_name, filename, err):
         self.NAME = class_name
         self.filename = filename

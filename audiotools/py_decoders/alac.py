@@ -51,7 +51,7 @@ def truncate_bits(value, bits):
         return truncated
 
 
-class ALACDecoder:
+class ALACDecoder(object):
     def __init__(self, filename):
         self.reader = BitstreamReader(open(filename, "rb"), 0)
 

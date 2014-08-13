@@ -291,7 +291,7 @@ class TOCTrack(SheetTrack):
         return "\n".join(output)
 
 
-class TOCFlag:
+class TOCFlag(object):
     def __init__(self, attrs):
         self.__attrs__ = attrs
 
@@ -412,7 +412,7 @@ class TOCFlag_INDEX(TOCFlag):
         return "INDEX %s" % (format_timestamp(self.__index__))
 
 
-class CDText:
+class CDText(object):
     def __init__(self, languages, language_map=None):
         self.__languages__ = languages
         self.__language_map__ = language_map
@@ -516,7 +516,7 @@ class CDText:
             return None
 
 
-class CDTextLanguage:
+class CDTextLanguage(object):
     def __init__(self, language_id, text_pairs):
         self.__id__ = language_id
         self.__text_pairs__ = text_pairs
@@ -549,7 +549,7 @@ class CDTextLanguage:
         return "\n".join(["  " + l for l in output])
 
 
-class CDTextLanguageMap:
+class CDTextLanguageMap(object):
     def __init__(self, mapping):
         self.__mapping__ = mapping
 

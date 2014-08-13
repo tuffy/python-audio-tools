@@ -203,7 +203,7 @@ def validate_footer(footer, ssnd_bytes_written):
         raise ValueError(ERR_AIFF_FOOTER_IOERROR)
 
 
-class AIFF_Chunk:
+class AIFF_Chunk(object):
     """a raw chunk of AIFF data"""
 
     def __init__(self, chunk_id, chunk_size, chunk_data):
@@ -342,7 +342,7 @@ def parse_comm(comm):
             sample_rate, channel_mask)
 
 
-class AiffReader:
+class AiffReader(object):
     """a PCMReader object for reading AIFF file contents"""
 
     def __init__(self, aiff_filename):
@@ -599,7 +599,7 @@ class AiffAudio(AiffContainer):
                                      ERR_AIFF_INVALID_CHUNK_ID,
                                      ERR_AIFF_INVALID_CHUNK)
 
-        aiff_file = __open__(self.filename, 'rb')
+        aiff_file = open(self.filename, 'rb')
         try:
             (form,
              total_size,

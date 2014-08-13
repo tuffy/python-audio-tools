@@ -23,7 +23,7 @@ from audiotools.pcm import FrameList
 import struct
 
 
-class RIFF_Chunk:
+class RIFF_Chunk(object):
     """a raw chunk of RIFF WAVE data"""
 
     def __init__(self, chunk_id, chunk_size, chunk_data):
@@ -414,7 +414,7 @@ def wave_header(sample_rate,
         raise ValueError("total size too large for wave file")
 
 
-class WaveReader:
+class WaveReader(object):
     """a PCMReader object for reading wave file contents"""
 
     def __init__(self, wave_filename):

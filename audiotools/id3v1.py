@@ -79,34 +79,36 @@ class ID3v1Comment(MetaData):
         if (len(genre) != 1):
             raise ValueError("genre must be exactly 1 byte")
 
-        self.__dict__['__track_name__'] = track_name
-        self.__dict__['__artist_name__'] = artist_name
-        self.__dict__['__album_name__'] = album_name
-        self.__dict__['__year__'] = year
-        self.__dict__['__comment__'] = comment
-        self.__dict__['__track_number__'] = track_number
-        self.__dict__['__genre__'] = genre
+        MetaData.__setattr__(self, "__track_name__", track_name)
+        MetaData.__setattr__(self, "__artist_name__", artist_name)
+        MetaData.__setattr__(self, "__album_name__", album_name)
+        MetaData.__setattr__(self, "__year__", year)
+        MetaData.__setattr__(self, "__comment__", comment)
+        MetaData.__setattr__(self, "__track_number__", track_number)
+        MetaData.__setattr__(self, "__genre__", genre)
 
     def __repr__(self):
         return "ID3v1Comment(%s, %s, %s, %s, %s, %s, %s)" % \
-            (repr(self.__dict__['__track_name__']),
-             repr(self.__dict__['__artist_name__']),
-             repr(self.__dict__['__album_name__']),
-             repr(self.__dict__['__year__']),
-             repr(self.__dict__['__comment__']),
-             repr(self.__dict__['__track_number__']),
-             repr(self.__dict__['__genre__']))
+            (repr(self.__track_name__),
+             repr(self.__artist_name__),
+             repr(self.__album_name__),
+             repr(self.__year__),
+             repr(self.__comment__),
+             repr(self.__track_number__),
+             repr(self.__genre__))
 
     def __getattr__(self, attr):
         if (attr == "track_number"):
-            number = ord(self.__dict__['__track_number__'])
+            number = ord(self.__track_number__)
             if (number > 0):
                 return number
             else:
                 return None
         elif (attr in self.ID3v1_FIELDS):
-            value = self.__dict__[self.ID3v1_FIELDS[attr]].rstrip(
-                chr(0)).decode('ascii', 'replace')
+            value = getattr(
+                self,
+                self.ID3v1_FIELDS[attr]).rstrip(chr(0)).decode('ascii',
+                                                               'replace')
             if (len(value) > 0):
                 return value
             else:
@@ -114,14 +116,16 @@ class ID3v1Comment(MetaData):
         elif (attr in self.FIELDS):
             return None
         else:
-            raise AttributeError(attr)
+            return MetaData.__getattribute__(self, attr)
 
     def __setattr__(self, attr, value):
         if (attr == "track_number"):
             if (value is None):
-                self.__dict__['__track_number__'] = chr(0)
+                MetaData.__setattr__(self, "__track_number__", chr(0))
             else:
-                self.__dict__['__track_number__'] = chr(min(int(value), 0xFF))
+                MetaData.__setattr__(self,
+                                     "__track_number__",
+                                     chr(min(int(value), 0xFF)))
         elif (attr in self.FIELD_LENGTHS):
             if (value is None):
                 delattr(self, attr)
@@ -129,31 +133,39 @@ class ID3v1Comment(MetaData):
                 # all are text fields
                 encoded = value.encode('ascii', 'replace')
                 if (len(encoded) < self.FIELD_LENGTHS[attr]):
-                    self.__dict__[self.ID3v1_FIELDS[attr]] = \
+                    MetaData.__setattr__(
+                        self,
+                        self.ID3v1_FIELDS[attr],
                         encoded + chr(0) * (self.FIELD_LENGTHS[attr] -
-                                            len(encoded))
+                                            len(encoded)))
                 elif (len(encoded) > self.FIELD_LENGTHS[attr]):
-                    self.__dict__[self.ID3v1_FIELDS[attr]] = \
-                        encoded[0:self.FIELD_LENGTHS[attr]]
+                    MetaData.__setattr__(
+                        self,
+                        self.ID3v1_FIELDS[attr],
+                        encoded[0:self.FIELD_LENGTHS[attr]])
                 else:
-                    self.__dict__[self.ID3v1_FIELDS[attr]] = encoded
+                    MetaData.__setattr__(
+                        self,
+                        self.ID3v1_FIELDS[attr],
+                        encoded)
         elif (attr in self.FIELDS):
             # field not supported by ID3v1Comment, so ignore it
             pass
         else:
-            self.__dict__[attr] = value
+            MetaData.__setattr__(self, attr, value)
 
     def __delattr__(self, attr):
         if (attr == "track_number"):
-            self.__dict__['__track_number__'] = chr(0)
+            MetaData.__setattr__(self, "__track_number__", chr(0))
         elif (attr in self.FIELD_LENGTHS):
-            self.__dict__[self.ID3v1_FIELDS[attr]] = \
-                chr(0) * self.FIELD_LENGTHS[attr]
+            MetaData.__setattr__(self,
+                                 self.ID3v1_FIELDS[attr],
+                                 chr(0) * self.FIELD_LENGTHS[attr])
         elif (attr in self.FIELDS):
             # field not supported by ID3v1Comment, so ignore it
             pass
         else:
-            del(self.__dict__[attr])
+            MetaData.__delattr__(self, attr)
 
     def raw_info(self):
         """returns a human-readable version of this metadata
@@ -210,13 +222,13 @@ class ID3v1Comment(MetaData):
         BitstreamWriter(mp3_file, 0).build(
             "3b 30b 30b 30b 4b 28b 8p 1b 1b",
             ("TAG",
-             self.__dict__['__track_name__'],
-             self.__dict__['__artist_name__'],
-             self.__dict__['__album_name__'],
-             self.__dict__['__year__'],
-             self.__dict__['__comment__'],
-             self.__dict__['__track_number__'],
-             self.__dict__['__genre__']))
+             self.__track_name__,
+             self.__artist_name__,
+             self.__album_name__,
+             self.__year__,
+             self.__comment__,
+             self.__track_number__,
+             self.__genre__))
 
     @classmethod
     def supports_images(cls):

@@ -57,7 +57,7 @@ LIBRARY_URLS = {"libcdio_paranoia": "http://www.gnu.org/software/libcdio/",
                 "libpulse": "http://www.freedesktop.org"}
 
 
-class SystemLibraries:
+class SystemLibraries(object):
     def __init__(self, configfile):
         self.configfile = configfile
 
@@ -165,7 +165,7 @@ class SystemLibraries:
 system_libraries = SystemLibraries(configfile)
 
 
-class output_table:
+class output_table(object):
     def __init__(self):
         """a class for formatting rows for display"""
 
@@ -214,7 +214,7 @@ class output_table:
             yield row.format(column_widths)
 
 
-class output_table_row:
+class output_table_row(object):
     def __init__(self):
         """a class for formatting columns for display"""
 
@@ -278,7 +278,7 @@ class output_table_row:
                         zip(self.__columns__, column_widths)]).rstrip()
 
 
-class output_table_divider:
+class output_table_divider(object):
     """a class for formatting a row of divider characters"""
 
     def __init__(self, dividers):
@@ -300,7 +300,7 @@ class output_table_divider:
                         zip(self.__dividers__, column_widths)]).rstrip()
 
 
-class output_table_blank:
+class output_table_blank(object):
     """a class for an empty table row"""
 
     def __init__(self):

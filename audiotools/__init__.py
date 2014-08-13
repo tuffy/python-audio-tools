@@ -79,7 +79,7 @@ BUFFER_SIZE = 0x100000
 FRAMELIST_SIZE = 0x100000 // 4
 
 
-class __system_binaries__:
+class __system_binaries__(object):
     def __init__(self, config):
         self.config = config
 
@@ -261,7 +261,7 @@ class OptionParser(optparse.OptionParser):
 OptionGroup = optparse.OptionGroup
 
 
-class DummyOutput:
+class DummyOutput(object):
     """a writable FILE-like object which generates no output"""
 
     def __init__(self):
@@ -280,7 +280,7 @@ class DummyOutput:
         return
 
 
-class Messenger:
+class Messenger(object):
     """this class is for displaying formatted output in a consistent way"""
 
     def __init__(self, executable, options):
@@ -995,7 +995,7 @@ class output_list(output_text):
                                           close_codes=self[5]))
 
 
-class output_table:
+class output_table(object):
     def __init__(self):
         """a class for formatting rows for display"""
 
@@ -1048,7 +1048,7 @@ class output_table:
             raise ValueError("all rows must have same number of columns")
 
 
-class output_table_row:
+class output_table_row(object):
     def __init__(self):
         """a class for formatting columns for display"""
 
@@ -1114,7 +1114,7 @@ class output_table_row:
                          zip(self.__columns__, column_widths)]).rstrip()
 
 
-class output_table_divider:
+class output_table_divider(object):
     """a class for formatting a row of divider characters"""
 
     def __init__(self, dividers):
@@ -1136,7 +1136,7 @@ class output_table_divider:
                          zip(self.__dividers__, column_widths)]).rstrip()
 
 
-class output_table_blank:
+class output_table_blank(object):
     """a class for an empty table row"""
 
     def __init__(self):
@@ -1151,7 +1151,7 @@ class output_table_blank:
         return u""
 
 
-class ProgressDisplay:
+class ProgressDisplay(object):
     """a class for displaying incremental progress updates to the screen"""
 
     def __init__(self, messenger):
@@ -1216,7 +1216,7 @@ class ProgressDisplay:
         self.messenger.output(line)
 
 
-class ProgressRow:
+class ProgressRow(object):
     """a class for displaying a single row of progress output
 
     it should be returned from ProgressDisplay.add_row()
@@ -1933,7 +1933,7 @@ def filename_to_type(path):
         raise UnknownAudioType(ext)
 
 
-class ChannelMask:
+class ChannelMask(object):
     """an integer-like class that abstracts a PCMReader's channel assignments
 
     all channels in a FrameList will be in RIFF WAVE order
@@ -2134,7 +2134,7 @@ class ChannelMask:
             raise ValueError("ambiguous channel assignment")
 
 
-class PCMReader:
+class PCMReader(object):
     """a class that wraps around a file object and generates pcm.FrameLists"""
 
     def __init__(self, file,
@@ -2204,7 +2204,7 @@ class PCMReader:
         self.file.close()
 
 
-class PCMReaderError:
+class PCMReaderError(object):
     """a dummy PCMReader which automatically raises ValueError
 
     this is to be returned by an AudioFile's to_pcm() method
@@ -2238,7 +2238,7 @@ def to_pcm_progress(audiofile, progress):
                                  progress)
 
 
-class PCMReaderProgress:
+class PCMReaderProgress(object):
     def __init__(self, pcmreader, total_frames, progress, current_frames=0):
         """pcmreader is a PCMReader compatible object
         total_frames is the total PCM frames of the stream
@@ -2265,7 +2265,7 @@ class PCMReaderProgress:
         self.__close__()
 
 
-class ReorderedPCMReader:
+class ReorderedPCMReader(object):
     """a PCMReader wrapper which reorders its output channels"""
 
     def __init__(self, pcmreader, channel_order, channel_mask=None):
@@ -2447,7 +2447,7 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
             return None
 
 
-class PCMCat:
+class PCMCat(object):
     """a PCMReader for concatenating several PCMReaders"""
 
     def __init__(self, pcmreaders):
@@ -2521,7 +2521,7 @@ class PCMCat:
             reader.close()
 
 
-class BufferedPCMReader:
+class BufferedPCMReader(object):
     """a PCMReader which reads exact counts of PCM frames"""
 
     def __init__(self, pcmreader):
@@ -2568,7 +2568,7 @@ class BufferedPCMReader:
         raise ValueError()
 
 
-class CounterPCMReader:
+class CounterPCMReader(object):
     """a PCMReader which counts bytes and frames written"""
 
     def __init__(self, pcmreader):
@@ -2594,7 +2594,7 @@ class CounterPCMReader:
         self.__pcmreader__.close()
 
 
-class LimitedFileReader:
+class LimitedFileReader(object):
     def __init__(self, file, total_bytes):
         self.__file__ = file
         self.__total_bytes__ = total_bytes
@@ -2616,7 +2616,7 @@ class LimitedFileReader:
         self.__file__.close()
 
 
-class LimitedPCMReader:
+class LimitedPCMReader(object):
     def __init__(self, buffered_pcmreader, total_pcm_frames):
         """buffered_pcmreader should be a BufferedPCMReader
 
@@ -2854,7 +2854,7 @@ def make_dirs(destination_path):
         os.makedirs(dirname)
 
 
-class MetaData:
+class MetaData(object):
     """the base class for storing textual AudioFile metadata
 
     Fields may be None, indicating they're not present
@@ -3006,29 +3006,29 @@ class MetaData:
         # we're avoiding self.foo = foo because
         # __setattr__ might need to be redefined
         # which could lead to unwelcome side-effects
-        self.__dict__['track_name'] = track_name
-        self.__dict__['track_number'] = track_number
-        self.__dict__['track_total'] = track_total
-        self.__dict__['album_name'] = album_name
-        self.__dict__['artist_name'] = artist_name
-        self.__dict__['performer_name'] = performer_name
-        self.__dict__['composer_name'] = composer_name
-        self.__dict__['conductor_name'] = conductor_name
-        self.__dict__['media'] = media
-        self.__dict__['ISRC'] = ISRC
-        self.__dict__['catalog'] = catalog
-        self.__dict__['copyright'] = copyright
-        self.__dict__['publisher'] = publisher
-        self.__dict__['year'] = year
-        self.__dict__['date'] = date
-        self.__dict__['album_number'] = album_number
-        self.__dict__['album_total'] = album_total
-        self.__dict__['comment'] = comment
+        MetaData.__setattr__(self, "track_name", track_name)
+        MetaData.__setattr__(self, "track_number", track_number)
+        MetaData.__setattr__(self, "track_total", track_total)
+        MetaData.__setattr__(self, "album_name", album_name)
+        MetaData.__setattr__(self, "artist_name", artist_name)
+        MetaData.__setattr__(self, "performer_name", performer_name)
+        MetaData.__setattr__(self, "composer_name", composer_name)
+        MetaData.__setattr__(self, "conductor_name", conductor_name)
+        MetaData.__setattr__(self, "media", media)
+        MetaData.__setattr__(self, "ISRC", ISRC)
+        MetaData.__setattr__(self, "catalog", catalog)
+        MetaData.__setattr__(self, "copyright", copyright)
+        MetaData.__setattr__(self, "publisher", publisher)
+        MetaData.__setattr__(self, "year", year)
+        MetaData.__setattr__(self, "date", date)
+        MetaData.__setattr__(self, "album_number", album_number)
+        MetaData.__setattr__(self, "album_total", album_total)
+        MetaData.__setattr__(self, "comment", comment)
 
         if (images is not None):
-            self.__dict__['__images__'] = list(images)
+            MetaData.__setattr__(self, "__images__", list(images))
         else:
-            self.__dict__['__images__'] = list()
+            MetaData.__setattr__(self, "__images__", list())
 
     def __repr__(self):
         fields = ["%s=%s" % (field, repr(getattr(self, field)))
@@ -3038,10 +3038,10 @@ class MetaData:
 
     def __delattr__(self, field):
         if (field in self.FIELDS):
-            self.__dict__[field] = None
+            MetaData.__setattr__(self, field, None)
         else:
             try:
-                del(self.__dict__[field])
+                object.__delattr__(self, field)
             except KeyError:
                 raise AttributeError(field)
 
@@ -3269,7 +3269,7 @@ class MetaData:
 (FRONT_COVER, BACK_COVER, LEAFLET_PAGE, MEDIA, OTHER) = range(5)
 
 
-class Image:
+class Image(object):
     """an image data container"""
 
     def __init__(self, data, mime_type, width, height,
@@ -3394,7 +3394,7 @@ class InvalidImage(Exception):
         return self.err
 
 
-class ReplayGain:
+class ReplayGain(object):
     """a container for ReplayGain data"""
 
     def __init__(self, track_gain, track_peak, album_gain, album_peak):
@@ -3463,7 +3463,7 @@ class InvalidFilenameFormat(Exception):
         return ERR_INVALID_FILENAME_FORMAT
 
 
-class AudioFile:
+class AudioFile(object):
     """an abstract class representing audio files on disk
 
     this class should be extended to handle different audio
@@ -4190,7 +4190,7 @@ def read_sheet_string(sheet_string):
         return read_cuesheet_string(sheet_string)
 
 
-class Sheet:
+class Sheet(object):
     """an object representing a CDDA layout
     such as provided by a .cue or .toc file"""
 
@@ -4313,7 +4313,7 @@ class Sheet:
         return self.__metadata__
 
 
-class SheetTrack:
+class SheetTrack(object):
     def __init__(self, number,
                  track_indexes,
                  metadata=None,
@@ -4439,7 +4439,7 @@ class SheetTrack:
         return self.__copy_permitted__
 
 
-class SheetIndex:
+class SheetIndex(object):
     def __init__(self, number, offset):
         """number is the index number, 0 for pre-gap index
 
@@ -4522,7 +4522,7 @@ def PCMReaderWindow(pcmreader, initial_offset, pcm_frames):
                              pcm_frames)
 
 
-class PCMReaderHead:
+class PCMReaderHead(object):
     """a wrapper around PCMReader for truncating a stream's ending"""
 
     def __init__(self, pcmreader, pcm_frames):
@@ -4592,7 +4592,7 @@ class PCMReaderHead:
         self.read = self.read_closed
 
 
-class PCMReaderDeHead:
+class PCMReaderDeHead(object):
     """a wrapper around PCMReader for truncating a stream's beginning"""
 
     def __init__(self, pcmreader, pcm_frames):
@@ -4911,7 +4911,7 @@ def output_progress(u, current, total):
         return u
 
 
-class ExecProgressQueue:
+class ExecProgressQueue(object):
     """a class for running multiple jobs in parallel with progress updates"""
 
     def __init__(self, progress_display):
@@ -5093,7 +5093,7 @@ class ExecProgressQueue:
             return results
 
 
-class __ProgressQueueJob__:
+class __ProgressQueueJob__(object):
     """this class is a the parent process end of a running child job"""
 
     def __init__(self, job_index, process, progress, result_pipe,
@@ -5198,7 +5198,7 @@ class __ProgressQueueJob__:
         return (exception, result)
 
 
-class __progress__:
+class __progress__(object):
     def __init__(self, memory):
         self.memory = memory
 
@@ -5207,7 +5207,7 @@ class __progress__:
         self.memory[1] = total
 
 
-class TemporaryFile:
+class TemporaryFile(object):
     """a class for staging file rewrites"""
 
     def __init__(self, original_filename):

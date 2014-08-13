@@ -77,7 +77,7 @@ def parse_sub_atoms(data_size, reader, parsers):
 # but not the atom's size and name values
 
 
-class M4A_Tree_Atom:
+class M4A_Tree_Atom(object):
     def __init__(self, name, leaf_atoms):
         """name should be a 4 byte string
 
@@ -212,7 +212,7 @@ class M4A_Tree_Atom:
         return sum([8 + sub_atom.size() for sub_atom in self])
 
 
-class M4A_Leaf_Atom:
+class M4A_Leaf_Atom(object):
     def __init__(self, name, data):
         """name should be a 4 byte string
 
@@ -1066,8 +1066,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
 
     def __init__(self, version, flags, leaf_atoms):
         M4A_Tree_Atom.__init__(self, "meta", leaf_atoms)
-        self.__dict__["version"] = version
-        self.__dict__["flags"] = flags
+        MetaData.__setattr__(self, "version", version)
+        MetaData.__setattr__(self, "flags", flags)
 
     def __repr__(self):
         return "M4A_META_Atom(%s, %s, %s)" % \
@@ -1233,8 +1233,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             parent_atom.leaf_atoms = new_leaf_atoms
 
         if (value is None):
-            delattr(self, attr)
-            return
+            return delattr(self, attr)
 
         ilst_leaf = self.UNICODE_ATTRIB_TO_ILST.get(
             attr,
@@ -1261,8 +1260,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                                        [new_data_atom(attr, value)]))
         else:
             # attribute is not an atom, so pass it through
-            self.__dict__[attr] = value
-            return
+            MetaData.__setattr__(self, attr, value)
 
     def __delattr__(self, attr):
         if (self.has_ilst_atom()):
@@ -1306,10 +1304,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 else:
                     self.album_total = 0
             else:
-                try:
-                    del(self.__dict__[attr])
-                except KeyError:
-                    raise AttributeError(attr)
+                MetaData.__delattr__(self, attr)
 
     def images(self):
         """returns a list of embedded Image objects"""

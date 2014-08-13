@@ -21,7 +21,7 @@
 from audiotools._accuraterip import Checksum
 
 
-class __Checksum__:
+class __Checksum__(object):
     """Python implementation of checksum calculator"""
 
     def __init__(self, total_pcm_frames,
@@ -148,7 +148,7 @@ def match_offset(ar_matches, checksums, initial_offset):
             return (checksums[0], None, initial_offset)
 
 
-class DiscID:
+class DiscID(object):
     def __init__(self, track_numbers, track_offsets,
                  lead_out_offset, freedb_disc_id):
         """track_numbers is a list of track numbers, starting from 1

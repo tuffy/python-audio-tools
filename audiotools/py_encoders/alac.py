@@ -23,7 +23,7 @@ from audiotools.bitstream import BitstreamAccumulator
 from audiotools import BufferedPCMReader
 
 
-class Encoding_Options:
+class Encoding_Options(object):
     def __init__(self, block_size,
                  initial_history, history_multiplier, maximum_K,
                  interlacing_shift,

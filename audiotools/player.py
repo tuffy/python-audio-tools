@@ -24,7 +24,7 @@ DEFAULT_FORMAT = (44100, 2, 0x3, 16)
 (PLAYER_STOPPED, PLAYER_PAUSED, PLAYER_PLAYING) = range(3)
 
 
-class Player:
+class Player(object):
     """a class for operating an audio player
 
     the player itself runs in a seperate thread,
@@ -166,7 +166,7 @@ class Player:
         return self.__audio_output__.get_volume()
 
 
-class AudioPlayer:
+class AudioPlayer(object):
     def __init__(self, audio_output,
                  next_track_callback=lambda: None,
                  replay_gain=RG_NO_REPLAYGAIN):
@@ -485,7 +485,7 @@ class CDAudioPlayer(AudioPlayer):
             self.__state__ = PLAYER_PLAYING
 
 
-class ThreadedPCMReader:
+class ThreadedPCMReader(object):
     """a PCMReader which decodes all output in the background
 
     It will queue *all* output from its contained PCMReader
@@ -553,7 +553,7 @@ class ThreadedPCMReader:
         self.__pcmreader_close__()
 
 
-class AudioOutput:
+class AudioOutput(object):
     """an abstract parent class for playing audio"""
 
     def __init__(self):

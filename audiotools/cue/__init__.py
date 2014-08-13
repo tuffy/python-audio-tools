@@ -149,7 +149,7 @@ class Cuesheet(Sheet):
             return "\r\n".join([f.build() for f in self.__files__]) + "\r\n"
 
 
-class File:
+class File(object):
     def __init__(self, filename, file_type, tracks):
         self.__filename__ = filename
         self.__file_type__ = file_type

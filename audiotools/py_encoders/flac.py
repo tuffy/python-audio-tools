@@ -24,7 +24,7 @@ from audiotools import BufferedPCMReader
 from hashlib import md5
 
 
-class STREAMINFO:
+class STREAMINFO(object):
     def __init__(self, minimum_block_size, maximum_block_size,
                  minimum_frame_size, maximum_frame_size,
                  sample_rate, channels, bits_per_sample,
@@ -62,7 +62,7 @@ class STREAMINFO:
                                       flac_frame.bytes())
 
 
-class Encoding_Options:
+class Encoding_Options(object):
     def __init__(self, block_size=4096, max_lpc_order=8,
                  adaptive_mid_side=False, mid_side=True,
                  exhaustive_model_search=False,
@@ -776,7 +776,7 @@ def encode_lpc_subframe(writer, options, wasted_bps, bits_per_sample,
     encode_residuals(writer, options, order, len(samples), residuals)
 
 
-class CRC8:
+class CRC8(object):
     TABLE = [0x00, 0x07, 0x0E, 0x09, 0x1C, 0x1B, 0x12, 0x15,
              0x38, 0x3F, 0x36, 0x31, 0x24, 0x23, 0x2A, 0x2D,
              0x70, 0x77, 0x7E, 0x79, 0x6C, 0x6B, 0x62, 0x65,

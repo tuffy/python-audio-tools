@@ -39,7 +39,7 @@ class FlacMetaData(MetaData):
     """a class for managing a native FLAC's metadata"""
 
     def __init__(self, blocks):
-        self.__dict__["block_list"] = list(blocks)
+        MetaData.__setattr__(self, "block_list", list(blocks))
 
     def has_block(self, block_id):
         """returns True if the given block ID is present"""
@@ -113,8 +113,8 @@ class FlacMetaData(MetaData):
         while (len(blocks) > 0):
             self.add_block(blocks.pop(0))
 
-    def __setattr__(self, key, value):
-        if (key in self.FIELDS):
+    def __setattr__(self, attr, value):
+        if (attr in self.FIELDS):
             try:
                 vorbis_comment = self.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
             except IndexError:
@@ -126,36 +126,30 @@ class FlacMetaData(MetaData):
 
                 self.add_block(vorbis_comment)
 
-            setattr(vorbis_comment, key, value)
+            setattr(vorbis_comment, attr, value)
         else:
-            self.__dict__[key] = value
+            MetaData.__setattr__(self, attr, value)
 
-    def __getattr__(self, key):
-        if (key in self.FIELDS):
+    def __getattr__(self, attr):
+        if (attr in self.FIELDS):
             try:
                 return getattr(self.get_block(Flac_VORBISCOMMENT.BLOCK_ID),
-                               key)
+                               attr)
             except IndexError:
                 # no VORBIS comment block, so all values are None
                 return None
         else:
-            try:
-                return self.__dict__[key]
-            except KeyError:
-                raise AttributeError(key)
+            return MetaData.__getattribute__(self, attr)
 
-    def __delattr__(self, key):
-        if (key in self.FIELDS):
+    def __delattr__(self, attr):
+        if (attr in self.FIELDS):
             try:
-                delattr(self.get_block(Flac_VORBISCOMMENT.BLOCK_ID), key)
+                delattr(self.get_block(Flac_VORBISCOMMENT.BLOCK_ID), attr)
             except IndexError:
                 # no VORBIS comment block, so nothing to delete
                 pass
         else:
-            try:
-                del(self.__dict__[key])
-            except KeyError:
-                raise AttributeError(key)
+            MetaData.__delattr__(self, attr)
 
     @classmethod
     def converted(cls, metadata):
@@ -353,7 +347,7 @@ class FlacMetaData(MetaData):
         return reduce(add, [4 + b.size() for b in self.block_list], 0)
 
 
-class Flac_STREAMINFO:
+class Flac_STREAMINFO(object):
     BLOCK_ID = 0
 
     def __init__(self, minimum_block_size, maximum_block_size,
@@ -464,7 +458,7 @@ class Flac_STREAMINFO:
         return 34
 
 
-class Flac_PADDING:
+class Flac_PADDING(object):
     BLOCK_ID = 1
 
     def __init__(self, length):
@@ -507,7 +501,7 @@ class Flac_PADDING:
         return self.length
 
 
-class Flac_APPLICATION:
+class Flac_APPLICATION(object):
     BLOCK_ID = 2
 
     def __init__(self, application_id, data):
@@ -563,7 +557,7 @@ class Flac_APPLICATION:
         return len(self.application_id) + len(self.data)
 
 
-class Flac_SEEKTABLE:
+class Flac_SEEKTABLE(object):
     BLOCK_ID = 3
 
     def __init__(self, seekpoints):
@@ -1183,14 +1177,14 @@ class Flac_PICTURE(Image):
 
     def __init__(self, picture_type, mime_type, description,
                  width, height, color_depth, color_count, data):
-        self.__dict__["data"] = data
-        self.__dict__["mime_type"] = mime_type
-        self.__dict__["width"] = width
-        self.__dict__["height"] = height
-        self.__dict__["color_depth"] = color_depth
-        self.__dict__["color_count"] = color_count
-        self.__dict__["description"] = description
-        self.__dict__["picture_type"] = picture_type
+        Image.__setattr__(self, "data", data)
+        Image.__setattr__(self, "mime_type", mime_type)
+        Image.__setattr__(self, "width", width)
+        Image.__setattr__(self, "height", height)
+        Image.__setattr__(self, "color_depth", color_depth)
+        Image.__setattr__(self, "color_count", color_count)
+        Image.__setattr__(self, "description", description)
+        Image.__setattr__(self, "picture_type", picture_type)
 
     def copy(self):
         """returns a duplicate of this metadata block"""
@@ -1204,8 +1198,8 @@ class Flac_PICTURE(Image):
                             self.color_count,
                             self.data)
 
-    def __getattr__(self, key):
-        if (key == "type"):
+    def __getattr__(self, attr):
+        if (attr == "type"):
             # convert FLAC picture_type to Image type
             #
             # | Item         | FLAC Picture ID | Image type |
@@ -1228,13 +1222,10 @@ class Flac_PICTURE(Image):
                     5: LEAFLET_PAGE,
                     6: MEDIA}.get(self.picture_type, OTHER)
         else:
-            try:
-                return self.__dict__[key]
-            except KeyError:
-                raise AttributeError(key)
+            return Image.__getattribute__(self, attr)
 
-    def __setattr__(self, key, value):
-        if (key == "type"):
+    def __setattr__(self, attr, value):
+        if (attr == "type"):
             # convert Image type to FLAC picture_type
             #
             # | Item         | Image type | FLAC Picture ID |
@@ -1257,18 +1248,18 @@ class Flac_PICTURE(Image):
                                  LEAFLET_PAGE: 5,
                                  MEDIA: 6}.get(value, 0)
         else:
-            self.__dict__[key] = value
+            Image.__setattr__(self, attr, value)
 
     def __repr__(self):
         return ("Flac_PICTURE(%s)" %
-                ",".join(["%s=%s" % (key, repr(getattr(self, key)))
-                          for key in ["picture_type",
-                                      "mime_type",
-                                      "description",
-                                      "width",
-                                      "height",
-                                      "color_depth",
-                                      "color_count"]]))
+                ",".join(["%s=%s" % (attr, repr(getattr(self, attr)))
+                          for attr in ["picture_type",
+                                       "mime_type",
+                                       "description",
+                                       "width",
+                                       "height",
+                                       "color_depth",
+                                       "color_count"]]))
 
     def raw_info(self):
         """returns a human-readable version of this metadata block

@@ -24,7 +24,7 @@ def digit_sum(i):
     return sum(map(int, str(i)))
 
 
-class DiscID:
+class DiscID(object):
     def __init__(self, offsets, total_length, track_count):
         """offsets is a list of track offsets, in CD frames
         total_length is the total length of the disc, in seconds

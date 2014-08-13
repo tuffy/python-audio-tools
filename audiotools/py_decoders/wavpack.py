@@ -30,7 +30,7 @@ def sub_blocks(reader, sub_blocks_size):
         sub_blocks_size -= sub_block.total_size()
 
 
-class WavPackDecoder:
+class WavPackDecoder(object):
     def __init__(self, filename):
         self.reader = BitstreamReader(open(filename, "rb"), 1)
 
@@ -153,7 +153,7 @@ class WavPackDecoder:
         self.reader.close()
 
 
-class Block_Header:
+class Block_Header(object):
     def __init__(self,
                  block_id, block_size, version, track_number, index_number,
                  total_samples, block_index, block_samples, bits_per_sample,
@@ -213,7 +213,7 @@ class Block_Header:
                                  "32u"))
 
 
-class Sub_Block:
+class Sub_Block(object):
     def __init__(self, metadata_function, nondecoder_data,
                  actual_size_1_less, large_block, sub_block_size,
                  data):

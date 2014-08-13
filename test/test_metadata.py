@@ -172,6 +172,23 @@ class MetaDataTest(unittest.TestCase):
                         "%s != %s for field %s" % (
                             repr(getattr(metadata, field)), None, field))
 
+                # check an unsupported field
+                metadata = self.empty_metadata()
+                self.assertRaises(AttributeError,
+                                  getattr,
+                                  metadata,
+                                  "foo")
+
+                metadata.foo = u"foo"
+                self.assertEqual(metadata.foo, u"foo")
+                metadata.foo = u"bar"
+                self.assertEqual(metadata.foo, u"bar")
+
+                del(metadata.foo)
+                self.assertRaises(AttributeError,
+                                  getattr,
+                                  metadata,
+                                  "foo")
             finally:
                 temp_file.close()
 
@@ -3705,8 +3722,8 @@ class FlacMetaData(MetaDataTest):
                                  "album_number",
                                  "album_total",
                                  "comment"]
-        self.supported_formats = [audiotools.FlacAudio,
-                                  audiotools.OggFlacAudio]
+        self.supported_formats = [audiotools.FlacAudio]
+                                  #audiotools.OggFlacAudio]
 
     def empty_metadata(self):
         return self.metadata_class.converted(audiotools.MetaData())

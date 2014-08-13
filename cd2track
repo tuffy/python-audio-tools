@@ -31,7 +31,7 @@ PREVIOUS_TRACK_FRAMES = (5880 // 2)
 NEXT_TRACK_FRAMES = (5880 // 2)
 
 
-class AccurateRipReader:
+class AccurateRipReader(object):
     def __init__(self, pcmreader, total_pcm_frames, is_first, is_last):
         """pcmreader is a PCMReader object to wrap around
 

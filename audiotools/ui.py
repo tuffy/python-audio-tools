@@ -772,7 +772,7 @@ try:
             else:
                 return None
 
-    class BaseMetaData:
+    class BaseMetaData(object):
         def __init__(self, metadata, on_change=None):
             """metadata is a MetaData object
             on_change is a callback for when the text field is modified"""
@@ -794,7 +794,7 @@ try:
                 setattr(self, field, widget)
                 self.checkbox_groups[field] = []
 
-    class TrackMetaData:
+    class TrackMetaData(object):
         NEVER_LINK = frozenset(["track_name", "track_number", "ISRC"])
 
         def __init__(self, metadata, base_metadata, on_change=None):
@@ -839,7 +839,7 @@ try:
                         (attr not in audiotools.MetaData.INTEGER_FIELDS) else
                         (value > 0))})
 
-    class Swivel:
+    class Swivel(object):
         """this is a container for the objects of a swiveling operation"""
 
         def __init__(self, swivel_type,
@@ -2679,7 +2679,7 @@ def process_output_options(metadata_choices,
                metadata)
 
 
-class PlayerTTY:
+class PlayerTTY(object):
     OUTPUT_FORMAT = (u"%(track_number)d/%(track_total)d " +
                      u"[%(sent_minutes)d:%(sent_seconds)2.2d / " +
                      u"%(total_minutes)d:%(total_seconds)2.2d] " +

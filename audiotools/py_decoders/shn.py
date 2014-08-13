@@ -28,7 +28,7 @@ def shnmean(values):
     return ((len(values) // 2) + sum(values)) // len(values)
 
 
-class SHNDecoder:
+class SHNDecoder(object):
     def __init__(self, filename):
         self.reader = BitstreamReader(open(filename, "rb"), 0)
 

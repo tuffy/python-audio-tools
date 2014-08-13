@@ -26,7 +26,7 @@ class InvalidAU(InvalidFile):
     pass
 
 
-class AuReader:
+class AuReader(object):
     def __init__(self, au_filename):
         from audiotools.bitstream import BitstreamReader
         from audiotools.text import (ERR_AU_INVALID_HEADER,

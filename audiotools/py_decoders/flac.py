@@ -22,7 +22,7 @@ from audiotools.pcm import from_list
 from hashlib import md5
 
 
-class FlacDecoder:
+class FlacDecoder(object):
     CHANNEL_COUNT = [1, 2, 3, 4, 5, 6, 7, 8, 2, 2, 2,
                      None, None, None, None, None]
 
@@ -436,7 +436,7 @@ class FlacDecoder:
         self.reader.close()
 
 
-class CRC8:
+class CRC8(object):
     TABLE = [0x00, 0x07, 0x0E, 0x09, 0x1C, 0x1B, 0x12, 0x15,
              0x38, 0x3F, 0x36, 0x31, 0x24, 0x23, 0x2A, 0x2D,
              0x70, 0x77, 0x7E, 0x79, 0x6C, 0x6B, 0x62, 0x65,

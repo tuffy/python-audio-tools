@@ -80,7 +80,7 @@ def CD_reader_size(audiofile):
                 sum([f.frames for f in pcm_frames]))
 
 
-class PCMBuffer:
+class PCMBuffer(object):
     def __init__(self, pcm_frames,
                  sample_rate, channels, channel_mask, bits_per_sample):
         self.pcm_frames = pcm_frames[:]

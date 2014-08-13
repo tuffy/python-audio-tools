@@ -18,7 +18,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-class DVDAudio:
+class DVDAudio(object):
     """an object representing an entire DVD-Audio disc
 
     a DVDAudio object contains one or more DVDATitle objects
@@ -232,7 +232,7 @@ class InvalidDVDA(Exception):
     pass
 
 
-class DVDATitle:
+class DVDATitle(object):
     """an object representing a DVD-Audio title
 
     contains one or more DVDATrack objects
@@ -456,7 +456,7 @@ class DVDATitle:
                       offsets=offsets)
 
 
-class DVDATrack:
+class DVDATrack(object):
     """an object representing an individual DVD-Audio track"""
 
     SAMPLE_RATE = [48000, 96000, 192000, 0, 0, 0, 0, 0,
@@ -524,7 +524,7 @@ class DVDATrack:
                        intersection.end - start_sector)
 
 
-class Rangeset:
+class Rangeset(object):
     """an optimized combination of range() and set()"""
 
     # The purpose of this class is for finding the subset of
