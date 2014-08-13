@@ -186,7 +186,7 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_CHANNEL_MASK_MISMATCH)
         sys.exit(1)
 
-    if (len({f.bits_per_sample() for f in audiotools}) != 1):
+    if (len({f.bits_per_sample() for f in audiofiles}) != 1):
         msg.error(_.ERR_BPS_MISMATCH)
         sys.exit(1)
 

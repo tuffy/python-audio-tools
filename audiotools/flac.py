@@ -3275,6 +3275,7 @@ class OggFlacAudio(FlacAudio):
         from audiotools import DecodingError
         from audiotools import UnsupportedChannelCount
         from audiotools import __default_quality__
+        from audiotools import CounterPCMReader
         import subprocess
         import os
 
@@ -3324,6 +3325,9 @@ class OggFlacAudio(FlacAudio):
         else:
             channel_mask = int(pcmreader.channel_mask)
 
+        if (total_pcm_frames is not None):
+            pcmreader = CounterPCMReader(pcmreader)
+
         devnull = open(os.devnull, 'ab')
 
         sub = subprocess.Popen([BIN['flac']] + lax +
@@ -3360,6 +3364,11 @@ class OggFlacAudio(FlacAudio):
             raise EncodingError(err.error_message)
         sub.stdin.close()
         devnull.close()
+
+        if ((total_pcm_frames is not None) and
+            (total_pcm_frames != pcmreader.frames_written)):
+            from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+            raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
 
         if (sub.wait() == 0):
             oggflac = OggFlacAudio(filename)

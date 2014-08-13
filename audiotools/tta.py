@@ -615,7 +615,8 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         """
 
         from audiotools.id3 import total_id3v2_comments
-        from audiotools import open, transfer_data
+        from audiotools import open as open_audiofile
+        from audiotools import transfer_data
         from audiotools.text import CLEAN_REMOVE_DUPLICATE_ID3V2
 
         if (total_id3v2_comments(open(self.filename, "rb")) > 1):
@@ -641,7 +642,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 input_f.close()
                 output_f.close()
 
-            new_track = open(output_filename)
+            new_track = open_audiofile(output_filename)
             metadata = self.get_metadata()
             if (metadata is not None):
                 (metadata, fixes) = metadata.clean()

@@ -7630,3 +7630,7 @@
 ** TODO Support building cue sheets from discs
    Find some way of grabbing the index points from a disc
    so cuesheets can be populated.
+** TODO Convert AAC support to use libfdk-aac
+   This will eliminate use of faac/faad/neroAac* tools
+   and leave only Ogg FLAC as the only format still using
+   an external program.
