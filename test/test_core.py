@@ -4176,6 +4176,59 @@ class Bitstream(unittest.TestCase):
         test_writer(writer)
         del(writer)
 
+    def __test_writer_marks__(self, writer):
+        writer.write(1, 1)
+        self.assertRaises(IOError, writer.mark)
+        writer.write(2, 3)
+        self.assertRaises(IOError, writer.mark)
+        writer.write(3, 7)
+        self.assertRaises(IOError, writer.mark)
+        writer.write(2, 3)
+        writer.mark()
+        writer.write(4, 15)
+        self.assertRaises(IOError, writer.rewind)
+        writer.write(4, 15)
+        writer.write(8, 0xFF)
+        writer.rewind()
+        writer.write(8, 0)
+        writer.unmark()
+
+    @LIB_BITSTREAM
+    def test_writer_marks(self):
+        from audiotools.bitstream import BitstreamWriter
+        from cStringIO import StringIO
+
+        f = open("test.bin", "wb")
+        try:
+            writer = BitstreamWriter(f, False)
+            self.__test_writer_marks__(writer)
+            del(writer)
+            f.close()
+            self.assertEqual(open("test.bin", "rb").read(), "\xFF\x00\xFF")
+        finally:
+            os.unlink("test.bin")
+
+        f = open("test.bin", "wb")
+        try:
+            writer = BitstreamWriter(f, True)
+            self.__test_writer_marks__(writer)
+            del(writer)
+            f.close()
+            self.assertEqual(open("test.bin", "rb").read(), "\xFF\x00\xFF")
+        finally:
+            os.unlink("test.bin")
+
+        s = StringIO()
+        writer = BitstreamWriter(s, False)
+        self.__test_writer_marks__(writer)
+        del(writer)
+        self.assertEqual(s.getvalue(), "\xFF\x00\xFF")
+
+        s = StringIO()
+        writer = BitstreamWriter(s, True)
+        self.__test_writer_marks__(writer)
+        del(writer)
+        self.assertEqual(s.getvalue(), "\xFF\x00\xFF")
 
 class TestReplayGain(unittest.TestCase):
     @LIB_REPLAYGAIN

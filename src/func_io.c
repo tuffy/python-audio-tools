@@ -110,6 +110,9 @@ struct bw_external_output*
 ext_open_w(void* user_data,
            unsigned buffer_size,
            ext_write_f write,
+           ext_seek_f seek,
+           ext_tell_f tell,
+           ext_free_pos_f free_pos,
            ext_flush_f flush,
            ext_close_f close,
            ext_free_f free)
@@ -118,6 +121,9 @@ ext_open_w(void* user_data,
         malloc(sizeof(struct bw_external_output));
     output->user_data = user_data;
     output->write = write;
+    output->seek = seek;
+    output->tell = tell;
+    output->free_pos = free_pos;
     output->flush = flush;
     output->close = close;
     output->free = free;
@@ -158,6 +164,28 @@ ext_fwrite(struct bw_external_output* stream,
     while (buf_window_size(buffer) >= stream->buffer_size) {
         stream->write(stream->user_data, buffer, stream->buffer_size);
     }
+}
+
+void
+ext_seek_w(struct bw_external_output *stream, void *pos)
+{
+    /*flush internal buffer before moving to new position*/
+    ext_flush_w(stream);
+    stream->seek(stream->user_data, pos);
+}
+
+void*
+ext_tell_w(struct bw_external_output *stream)
+{
+    /*flush internal buffer before retrieving new position*/
+    ext_flush_w(stream);
+    return stream->tell(stream->user_data);
+}
+
+void
+ext_free_pos_w(struct bw_external_output *stream, void *pos)
+{
+    stream->free_pos(pos);
 }
 
 void

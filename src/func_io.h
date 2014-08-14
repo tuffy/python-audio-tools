@@ -30,8 +30,6 @@
 typedef int (*ext_read_f)(void* user_data,
                           struct bs_buffer* buffer,
                           unsigned buffer_size);
-typedef void (*ext_close_f)(void* user_data);
-typedef void (*ext_free_f)(void* user_data);
 
 /*casts for inserting functions with non-void pointers into ext_open_w*/
 
@@ -41,7 +39,20 @@ typedef int (*ext_write_f)(void* user_data,
                            unsigned buffer_size);
 typedef void (*ext_flush_f)(void* user_data);
 
+typedef void (*ext_seek_f)(void* user_data, void* pos);
+
+typedef void* (*ext_tell_f)(void* user_data);
+
+typedef void (*ext_free_pos_f)(void *pos);
+
+/*casts used by both ext_open_r and ext_open_w*/
+
+typedef void (*ext_close_f)(void* user_data);
+
+typedef void (*ext_free_f)(void* user_data);
+
 struct br_external_input {
+
     void* user_data;
     ext_read_f read;
     ext_close_f close;
@@ -54,6 +65,9 @@ struct br_external_input {
 struct bw_external_output {
     void* user_data;
     ext_write_f write;
+    ext_seek_f seek;
+    ext_tell_f tell;
+    ext_free_pos_f free_pos;
     ext_flush_f flush;
     ext_close_f close;
     ext_free_f free;
@@ -107,6 +121,9 @@ struct bw_external_output*
 ext_open_w(void* user_data,
            unsigned buffer_size,
            ext_write_f write,
+           ext_seek_f seek,
+           ext_tell_f tell,
+           ext_free_pos_f free_pos,
            ext_flush_f flush,
            ext_close_f close,
            ext_free_f free);
@@ -120,6 +137,24 @@ void
 ext_fwrite(struct bw_external_output* stream,
            const uint8_t *data,
            unsigned data_size);
+
+/*analagous to fseek
+
+  moves current stream position to pos
+  which has been returned by ext_tell_w*/
+void
+ext_seek_w(struct bw_external_output *stream, void *pos);
+
+/*analagous to ftell
+
+  returns current position as pos
+  which may be fed to ext_seek_w*/
+void*
+ext_tell_w(struct bw_external_output *stream);
+
+/*frees a pos returned by ext_tell_w*/
+void
+ext_free_pos_w(struct bw_external_output *stream, void *pos);
 
 /*analagous to fflush,
   this sends all buffered bytes to write function

@@ -383,9 +383,9 @@ PageReader_init(ogg_PageReader *self, PyObject *args, PyObject *kwds)
     self->reader = br_open_external(reader_obj,
                                     BS_LITTLE_ENDIAN,
                                     4096,
-                                    (ext_read_f)py_read,
-                                    (ext_close_f)py_close,
-                                    (ext_free_f)py_free);
+                                    (ext_read_f)br_read_python,
+                                    (ext_close_f)bs_close_python,
+                                    (ext_free_f)bs_free_python_decref);
 
     return 0;
 }
@@ -457,10 +457,13 @@ PageWriter_init(ogg_PageWriter *self, PyObject *args, PyObject *kwds)
     self->writer = bw_open_external(writer_obj,
                                     BS_LITTLE_ENDIAN,
                                     4096,
-                                    (ext_write_f)py_write,
-                                    (ext_flush_f)py_flush,
-                                    (ext_close_f)py_close,
-                                    (ext_free_f)py_free);
+                                    (ext_write_f)bw_write_python,
+                                    (ext_seek_f)bw_seek_python,
+                                    (ext_tell_f)bw_tell_python,
+                                    (ext_free_pos_f)bw_free_pos_python,
+                                    (ext_flush_f)bw_flush_python,
+                                    (ext_close_f)bs_close_python,
+                                    (ext_free_f)bs_free_python_decref);
 
     return 0;
 }
@@ -549,86 +552,4 @@ init_ogg(void)
     Py_INCREF(&ogg_PageWriterType);
     PyModule_AddObject(m, "PageWriter",
                        (PyObject *)&ogg_PageWriterType);
-}
-
-
-static int
-py_read(PyObject *reader_obj, struct bs_buffer* buffer, unsigned buffer_size)
-{
-    PyObject *string_obj;
-
-    /*call read() method on reader*/
-    if ((string_obj = PyObject_CallMethod(reader_obj,
-                                          "read", "I", buffer_size)) != NULL) {
-        char *string;
-        Py_ssize_t string_size;
-
-        /*convert returned object to string of bytes*/
-        if (PyString_AsStringAndSize(string_obj,
-                                     &string,
-                                     &string_size) != -1) {
-            /*append bytes to buffer and return success*/
-            buf_write(buffer, (uint8_t*)string, (unsigned)string_size);
-            return 0;
-        } else {
-            /*string conversion failed*/
-            PyErr_Print();
-            return 1;
-        }
-    } else {
-        /*read() method call failed*/
-        PyErr_Print();
-        return 1;
-    }
-}
-
-int
-py_write(PyObject *writer_obj, struct bs_buffer* buffer, unsigned buffer_size)
-{
-    while (buf_window_size(buffer) >= buffer_size) {
-        PyObject* write_result =
-            PyObject_CallMethod(writer_obj, "write", "s#",
-                                buf_window_start(buffer),
-                                buffer_size);
-        if (write_result != NULL) {
-            Py_DECREF(write_result);
-            buffer->window_start += buffer_size;
-        } else {
-            PyErr_Print();
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-void
-py_flush(PyObject *writer_obj)
-{
-    /*call .flush() method on writer*/
-    PyObject *result = PyObject_CallMethod(writer_obj, "flush", NULL);
-
-    if (result != NULL) {
-        Py_DECREF(result);
-    } else {
-        PyErr_Print();
-    }
-}
-
-static void
-py_close(PyObject *reader_obj)
-{
-    PyObject *result = PyObject_CallMethod(reader_obj, "close", NULL);
-
-    if (result != NULL) {
-        Py_DECREF(result);
-    } else {
-        PyErr_Print();
-    }
-}
-
-static void
-py_free(PyObject *reader_obj)
-{
-    Py_DECREF(reader_obj);
 }

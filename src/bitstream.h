@@ -179,6 +179,10 @@ typedef struct BitstreamReader_s {
     (*read_huffman_code)(struct BitstreamReader_s* bs,
                          struct br_huffman_table table[][0x200]);
 
+    /*returns 1 if the stream is byte-aligned, 0 if not*/
+    int
+    (*byte_aligned)(const struct BitstreamReader_s* bs);
+
     /*aligns the stream to a byte boundary*/
     void
     (*byte_align)(struct BitstreamReader_s* bs);
@@ -506,6 +510,11 @@ br_read_huffman_code_c(BitstreamReader *bs,
                        struct br_huffman_table table[][0x200]);
 
 
+/*bs->byte_aligned(bs)  method*/
+int
+br_byte_aligned(const BitstreamReader* bs);
+
+
 /*bs->byte_align(bs)  method*/
 void
 br_byte_align(BitstreamReader* bs);
@@ -722,6 +731,15 @@ struct bw_huffman_table {
     struct bw_huffman_table* right;
 };
 
+/*a mark on the BitstreamWriter's stream which can be rewound to*/
+struct bw_mark {
+    union {
+        fpos_t file;
+        void* external;
+    } position;
+    struct bw_mark *next;
+};
+
 typedef struct BitstreamWriter_s {
     bw_type type;
 
@@ -737,6 +755,7 @@ typedef struct BitstreamWriter_s {
 
     struct bs_callback* callbacks;
     struct bs_exception* exceptions;
+    struct bw_mark* marks;
 
     struct bs_callback* callbacks_used;
     struct bs_exception* exceptions_used;
@@ -793,6 +812,10 @@ typedef struct BitstreamWriter_s {
     (*write_huffman_code)(struct BitstreamWriter_s* bs,
                           struct bw_huffman_table* table,
                           int value);
+
+    /*returns 1 if the stream is byte-aligned, 0 if not*/
+    int
+    (*byte_aligned)(const struct BitstreamWriter_s* bs);
 
     /*if the stream is not already byte-aligned,
       pad it with 0 bits until it is*/
@@ -885,6 +908,35 @@ typedef struct BitstreamWriter_s {
     void
     (*close)(struct BitstreamWriter_s* bs);
 
+    /*pushes a new mark onto the stream, which can be rewound to later
+
+      all pushed marks should be unmarked once no longer needed
+
+      this method works only on file and function-based output streams
+
+      attempting to set a mark while the output stream is not
+      byte-aligned will trigger an abort!*/
+    void
+    (*mark)(struct BitstreamWriter_s* bs);
+
+    /*rewinds the stream to the next previous mark on the mark stack
+
+      rewinding does not affect the mark itself
+
+      this method works only on file and function-based output streams
+
+      attempting to rewind to a mark while the output stream
+      is not byte-aligned will trigger an abort!*/
+    void
+    (*rewind)(struct BitstreamWriter_s* bs);
+
+    /*pops the previous mark from the stream's current position
+
+      this method works only on file and function-based output streams
+
+      unmarking does not affect the stream's current position*/
+    void
+    (*unmark)(struct BitstreamWriter_s* bs);
 } BitstreamWriter;
 
 
@@ -895,8 +947,8 @@ typedef struct BitstreamWriter_s {
 
  bw_function_x or bw_function_x_yy
 
- where "x" is "f" for raw file, "p" for Python, "r" for recorder
- or "a" for accumulator
+ where "x" is "f" for raw file, "e" for external function,
+ "r" for recorder or "a" for accumulator
  and "yy" is "be" for big endian or "le" for little endian.
 
  For example:
@@ -905,8 +957,8 @@ typedef struct BitstreamWriter_s {
  |--------------------+-------------+---------------|
  | bw_write_bits_f_be | raw file    | big endian    |
  | bw_write_bits_f_le | raw file    | little endian |
- | bw_write_bits_p_be | Python      | big endian    |
- | bw_write_bits_p_le | Python      | little endian |
+ | bw_write_bits_e_be | function    | big endian    |
+ | bw_write_bits_e_le | function    | little endian |
  | bw_write_bits_r_be | recorder    | big endian    |
  | bw_write_bits_r_le | recorder    | little endian |
  | bw_write_bits_a    | accumulator | N/A           |
@@ -943,6 +995,9 @@ bw_open_external(void* user_data,
                  bs_endianness endianness,
                  unsigned buffer_size,
                  ext_write_f write,
+                 ext_seek_f seek,
+                 ext_tell_f tell,
+                 ext_free_pos_f free_pos,
                  ext_flush_f flush,
                  ext_close_f close,
                  ext_free_f free);
@@ -975,10 +1030,10 @@ bw_write_bits_c(BitstreamWriter* bs, unsigned int count, unsigned int value);
 
 /*bs->write_signed(bs, count, value)  methods*/
 void
-bw_write_signed_bits_f_p_r_be(BitstreamWriter* bs, unsigned int count,
+bw_write_signed_bits_f_e_r_be(BitstreamWriter* bs, unsigned int count,
                               int value);
 void
-bw_write_signed_bits_f_p_r_le(BitstreamWriter* bs, unsigned int count,
+bw_write_signed_bits_f_e_r_le(BitstreamWriter* bs, unsigned int count,
                               int value);
 void
 bw_write_signed_bits_a(BitstreamWriter* bs, unsigned int count, int value);
@@ -1007,10 +1062,10 @@ bw_write_bits64_c(BitstreamWriter* bs, unsigned int count, uint64_t value);
 
 /*bs->write_signed_64(bs, count, value)  methods*/
 void
-bw_write_signed_bits64_f_p_r_be(BitstreamWriter* bs, unsigned int count,
+bw_write_signed_bits64_f_e_r_be(BitstreamWriter* bs, unsigned int count,
                                 int64_t value);
 void
-bw_write_signed_bits64_f_p_r_le(BitstreamWriter* bs, unsigned int count,
+bw_write_signed_bits64_f_e_r_le(BitstreamWriter* bs, unsigned int count,
                                 int64_t value);
 void
 bw_write_signed_bits64_a(BitstreamWriter* bs, unsigned int count,
@@ -1035,7 +1090,7 @@ bw_write_bytes_c(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
 
 /*bs->write_unary(bs, stop_bit, value)  methods*/
 void
-bw_write_unary_f_p_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
+bw_write_unary_f_e_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
 void
 bw_write_unary_a(BitstreamWriter* bs, int stop_bit, unsigned int value);
 void
@@ -1054,9 +1109,18 @@ bw_write_huffman_c(BitstreamWriter* bs,
                    int value);
 
 
+/*bs->byte_aligned(bs)  method*/
+int
+bw_byte_aligned_f_e_r(const BitstreamWriter* bs);
+int
+bw_byte_aligned_a(const BitstreamWriter* bs);
+int
+bw_byte_aligned_c(const BitstreamWriter* bs);
+
+
 /*bs->byte_align(bs)  methods*/
 void
-bw_byte_align_f_p_r(BitstreamWriter* bs);
+bw_byte_align_f_e_r(BitstreamWriter* bs);
 void
 bw_byte_align_a(BitstreamWriter* bs);
 void
@@ -1136,6 +1200,33 @@ bw_free_e(BitstreamWriter* bs);
 /*bs->close(bs)  method*/
 void
 bw_close(BitstreamWriter* bs);
+
+
+/*bs->mark(bs)  method*/
+void
+bw_mark_f(BitstreamWriter *bs);
+void
+bw_mark_e(BitstreamWriter *bs);
+void
+bw_mark_r_a(BitstreamWriter *bs);
+
+
+/*bs->rewind(bs)  method*/
+void
+bw_rewind_f(BitstreamWriter *bs);
+void
+bw_rewind_e(BitstreamWriter *bs);
+void
+bw_rewind_r_a(BitstreamWriter *bs);
+
+
+/*bs->unmark(bs)  method*/
+void
+bw_unmark_f(BitstreamWriter *bs);
+void
+bw_unmark_e(BitstreamWriter *bs);
+void
+bw_unmark_r_a(BitstreamWriter *bs);
 
 
 /*unattached, BitstreamWriter functions*/
@@ -1308,11 +1399,19 @@ int bw_write_python(PyObject* writer,
 
 void bw_flush_python(PyObject* writer);
 
+void bw_seek_python(PyObject* writer, PyObject* pos);
+
+PyObject* bw_tell_python(PyObject* writer);
+
+void bw_free_pos_python(PyObject* pos);
+
 void bs_close_python(PyObject* obj);
 
 void bs_free_python_decref(PyObject* obj);
 
 void bs_free_python_nodecref(PyObject* obj);
+
+int python_obj_seekable(PyObject* obj);
 
 #endif
 

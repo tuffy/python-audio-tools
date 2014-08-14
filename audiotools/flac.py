@@ -1508,6 +1508,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         try:
             f.seek(self.__stream_offset__, 0)
             if (f.read(4) != 'fLaC'):
+                # should be able to get here
                 return None
             else:
                 from audiotools.bitstream import BitstreamReader
