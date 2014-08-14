@@ -335,21 +335,3 @@ PyTypeObject ogg_PageWriterType = {
     0,                         /* tp_alloc */
     PageWriter_new,            /* tp_new */
 };
-
-
-
-static int
-py_read(PyObject *reader_obj, struct bs_buffer* buffer, unsigned buffer_size);
-
-int
-py_write(PyObject *writer_obj, struct bs_buffer* buffer, unsigned buffer_size);
-
-void
-py_flush(PyObject *writer_obj);
-
-static void
-py_close(PyObject *reader_obj);
-
-static void
-py_free(PyObject *reader_obj);
-

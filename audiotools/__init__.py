@@ -2796,13 +2796,12 @@ def calculate_replay_gain(tracks, progress=None):
 
         # finally, perform the gain calculation on the PCMReader
         # and accumulate the title gain
-        if (progress is not None):
-            (track_gain, track_peak) = rg.title_gain(
-                PCMReaderProgress(pcm, total_frames, progress,
-                                  current_frames=current_frames))
-            current_frames += track_frames
-        else:
-            (track_gain, track_peak) = rg.title_gain(pcm)
+        (track_gain, track_peak) = rg.title_gain(
+            PCMReaderProgress(pcm,
+                              total_frames,
+                              progress,
+                              current_frames=current_frames))
+        current_frames += track_frames
         gains.append((track, track_gain, track_peak))
 
     # once everything is calculated, get the album gain

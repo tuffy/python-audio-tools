@@ -494,6 +494,15 @@ BitstreamWriter_call_callbacks(bitstream_BitstreamWriter *self,
                                PyObject *args);
 
 static PyObject*
+BitstreamWriter_mark(bitstream_BitstreamWriter *self, PyObject *args);
+
+static PyObject*
+BitstreamWriter_rewind(bitstream_BitstreamWriter *self, PyObject *args);
+
+static PyObject*
+BitstreamWriter_unmark(bitstream_BitstreamWriter *self, PyObject *args);
+
+static PyObject*
 BitstreamWriter_build(bitstream_BitstreamWriter *self, PyObject *args);
 
 static PyObject*
@@ -558,6 +567,17 @@ PyMethodDef BitstreamWriter_methods[] = {
      METH_VARARGS,
      "call_callbacks(byte)\n"
      "calls the attached callbacks as if the byte had been written"},
+    {"mark", (PyCFunction)BitstreamWriter_mark, METH_NOARGS,
+     "mark()\n"
+     "pushes the current position onto a stack\n"
+     "which may be returned to with calls to rewind()\n"
+     "all marked positions should be unmarked when no longer needed"},
+    {"rewind", (PyCFunction)BitstreamWriter_rewind, METH_NOARGS,
+     "rewind()\n"
+     "returns to the most recently marked position in the stream"},
+    {"unmark", (PyCFunction)BitstreamWriter_unmark, METH_NOARGS,
+     "unmark()\n"
+     "removes the most recently marked position from the stream"},
     {NULL}
 };
 

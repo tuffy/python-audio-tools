@@ -121,6 +121,7 @@ br_open(FILE *f, bs_endianness endianness)
     }
 
     bs->skip_bytes = br_skip_bytes;
+    bs->byte_aligned = br_byte_aligned;
     bs->byte_align = br_byte_align;
     bs->read_huffman_code = br_read_huffman_code_f;
     bs->read_bytes = br_read_bytes_f;
@@ -178,6 +179,7 @@ br_substream_new(bs_endianness endianness)
     }
 
     bs->skip_bytes = br_skip_bytes;
+    bs->byte_aligned = br_byte_aligned;
     bs->byte_align = br_byte_align;
     bs->read_huffman_code = br_read_huffman_code_s;
     bs->read_bytes = br_read_bytes_s;
@@ -235,6 +237,7 @@ br_open_buffer(struct bs_buffer* buffer, bs_endianness endianness)
     }
 
     bs->skip_bytes = br_skip_bytes;
+    bs->byte_aligned = br_byte_aligned;
     bs->byte_align = br_byte_align;
     bs->read_huffman_code = br_read_huffman_code_s;
     bs->read_bytes = br_read_bytes_s;
@@ -302,6 +305,7 @@ br_open_external(void* user_data,
 
     bs->skip_bytes = br_skip_bytes;
     bs->read_huffman_code = br_read_huffman_code_e;
+    bs->byte_aligned = br_byte_aligned;
     bs->byte_align = br_byte_align;
     bs->read_bytes = br_read_bytes_e;
     bs->parse = br_parse;
@@ -985,6 +989,12 @@ br_read_huffman_code_c(BitstreamReader *bs,
     return 0;
 }
 
+int
+br_byte_aligned(const BitstreamReader* bs)
+{
+    return (bs->state == 0);
+}
+
 void
 br_byte_align(BitstreamReader* bs)
 {
@@ -1656,7 +1666,7 @@ br_abort(BitstreamReader *bs)
     if (bs->exceptions != NULL) {
         longjmp(bs->exceptions->env, 1);
     } else {
-        fprintf(stderr, "EOF encountered, aborting\n");
+        fprintf(stderr, "*** Error: EOF encountered, aborting\n");
         abort();
     }
 }
@@ -1725,6 +1735,7 @@ bw_open(FILE *f, bs_endianness endianness)
 
     bs->callbacks = NULL;
     bs->exceptions = NULL;
+    bs->marks = NULL;
     bs->callbacks_used = NULL;
     bs->exceptions_used = NULL;
 
@@ -1732,30 +1743,34 @@ bw_open(FILE *f, bs_endianness endianness)
     case BS_BIG_ENDIAN:
         bs->write = bw_write_bits_f_be;
         bs->write_64 = bw_write_bits64_f_be;
-        bs->write_signed = bw_write_signed_bits_f_p_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
+        bs->write_signed = bw_write_signed_bits_f_e_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
         bs->set_endianness = bw_set_endianness_f_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_f_le;
         bs->write_64 = bw_write_bits64_f_le;
-        bs->write_signed = bw_write_signed_bits_f_p_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
+        bs->write_signed = bw_write_signed_bits_f_e_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
         bs->set_endianness = bw_set_endianness_f_le;
         break;
     }
 
     bs->write_bytes = bw_write_bytes_f;
-    bs->write_unary = bw_write_unary_f_p_r;
+    bs->write_unary = bw_write_unary_f_e_r;
     bs->write_huffman_code = bw_write_huffman;
     bs->build = bw_build;
-    bs->byte_align = bw_byte_align_f_p_r;
+    bs->byte_aligned = bw_byte_aligned_f_e_r;
+    bs->byte_align = bw_byte_align_f_e_r;
     bs->bits_written = bw_bits_written_f_p_c;
     bs->bytes_written = bw_bytes_written;
     bs->flush = bw_flush_f;
     bs->close_internal_stream = bw_close_internal_stream_f;
     bs->free = bw_free_f_a;
     bs->close = bw_close;
+    bs->mark = bw_mark_f;
+    bs->rewind = bw_rewind_f;
+    bs->unmark = bw_unmark_f;
 
     return bs;
 }
@@ -1765,6 +1780,9 @@ bw_open_external(void* user_data,
                  bs_endianness endianness,
                  unsigned buffer_size,
                  ext_write_f write,
+                 ext_seek_f seek,
+                 ext_tell_f tell,
+                 ext_free_pos_f free_pos,
                  ext_flush_f flush,
                  ext_close_f close,
                  ext_free_f free)
@@ -1775,6 +1793,9 @@ bw_open_external(void* user_data,
     bs->output.external = ext_open_w(user_data,
                                      buffer_size,
                                      write,
+                                     seek,
+                                     tell,
+                                     free_pos,
                                      flush,
                                      close,
                                      free);
@@ -1783,6 +1804,7 @@ bw_open_external(void* user_data,
 
     bs->callbacks = NULL;
     bs->exceptions = NULL;
+    bs->marks = NULL;
     bs->callbacks_used = NULL;
     bs->exceptions_used = NULL;
 
@@ -1790,30 +1812,34 @@ bw_open_external(void* user_data,
     case BS_BIG_ENDIAN:
         bs->write = bw_write_bits_e_be;
         bs->write_64 = bw_write_bits64_e_be;
-        bs->write_signed = bw_write_signed_bits_f_p_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
+        bs->write_signed = bw_write_signed_bits_f_e_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
         bs->set_endianness = bw_set_endianness_e_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_e_le;
         bs->write_64 = bw_write_bits64_e_le;
-        bs->write_signed = bw_write_signed_bits_f_p_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
+        bs->write_signed = bw_write_signed_bits_f_e_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
         bs->set_endianness = bw_set_endianness_e_le;
         break;
     }
 
     bs->write_bytes = bw_write_bytes_e;
-    bs->write_unary = bw_write_unary_f_p_r;
+    bs->write_unary = bw_write_unary_f_e_r;
     bs->write_huffman_code = bw_write_huffman;
     bs->build = bw_build;
-    bs->byte_align = bw_byte_align_f_p_r;
+    bs->byte_aligned = bw_byte_aligned_f_e_r;
+    bs->byte_align = bw_byte_align_f_e_r;
     bs->bits_written = bw_bits_written_f_p_c;
     bs->bytes_written = bw_bytes_written;
     bs->flush = bw_flush_e;
     bs->close_internal_stream = bw_close_internal_stream_e;
     bs->free = bw_free_e;
     bs->close = bw_close;
+    bs->mark = bw_mark_e;
+    bs->rewind = bw_rewind_e;
+    bs->unmark = bw_unmark_e;
 
     return bs;
 }
@@ -1831,6 +1857,7 @@ bw_open_recorder(bs_endianness endianness)
 
     bs->callbacks = NULL;
     bs->exceptions = NULL;
+    bs->marks = NULL;
     bs->callbacks_used = NULL;
     bs->exceptions_used = NULL;
 
@@ -1838,30 +1865,34 @@ bw_open_recorder(bs_endianness endianness)
     case BS_BIG_ENDIAN:
         bs->write = bw_write_bits_r_be;
         bs->write_64 = bw_write_bits64_r_be;
-        bs->write_signed = bw_write_signed_bits_f_p_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
+        bs->write_signed = bw_write_signed_bits_f_e_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
         bs->set_endianness = bw_set_endianness_r_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_r_le;
         bs->write_64 = bw_write_bits64_r_le;
-        bs->write_signed = bw_write_signed_bits_f_p_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
+        bs->write_signed = bw_write_signed_bits_f_e_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
         bs->set_endianness = bw_set_endianness_r_le;
         break;
     }
 
     bs->write_bytes = bw_write_bytes_r;
-    bs->write_unary = bw_write_unary_f_p_r;
+    bs->write_unary = bw_write_unary_f_e_r;
     bs->write_huffman_code = bw_write_huffman;
     bs->build = bw_build;
-    bs->byte_align = bw_byte_align_f_p_r;
+    bs->byte_aligned = bw_byte_aligned_f_e_r;
+    bs->byte_align = bw_byte_align_f_e_r;
     bs->bits_written = bw_bits_written_r;
     bs->bytes_written = bw_bytes_written;
     bs->flush = bw_flush_r_a_c;
     bs->close_internal_stream = bw_close_internal_stream_r_a;
     bs->free = bw_free_r;
     bs->close = bw_close;
+    bs->mark = bw_mark_r_a;
+    bs->rewind = bw_rewind_r_a;
+    bs->unmark = bw_unmark_r_a;
 
     return bs;
 }
@@ -1878,6 +1909,7 @@ bw_open_accumulator(bs_endianness endianness)
 
     bs->callbacks = NULL;
     bs->exceptions = NULL;
+    bs->marks = NULL;
     bs->callbacks_used = NULL;
     bs->exceptions_used = NULL;
 
@@ -1889,6 +1921,7 @@ bw_open_accumulator(bs_endianness endianness)
     bs->write_unary = bw_write_unary_a;
     bs->write_huffman_code = bw_write_huffman;
     bs->build = bw_build;
+    bs->byte_aligned = bw_byte_aligned_a;
     bs->byte_align = bw_byte_align_a;
     bs->set_endianness = bw_set_endianness_a;
     bs->bits_written = bw_bits_written_a;
@@ -1897,6 +1930,9 @@ bw_open_accumulator(bs_endianness endianness)
     bs->close_internal_stream = bw_close_internal_stream_r_a;
     bs->free = bw_free_f_a;
     bs->close = bw_close;
+    bs->mark = bw_mark_r_a;
+    bs->rewind = bw_rewind_r_a;
+    bs->unmark = bw_unmark_r_a;
 
     return bs;
 }
@@ -2018,7 +2054,7 @@ bw_write_bits_c(BitstreamWriter* bs, unsigned int count, unsigned int value)
 
 
 void
-bw_write_signed_bits_f_p_r_be(BitstreamWriter* bs, unsigned int count,
+bw_write_signed_bits_f_e_r_be(BitstreamWriter* bs, unsigned int count,
                               int value)
 {
     assert(value <= ((1 << (count - 1)) - 1));
@@ -2034,7 +2070,7 @@ bw_write_signed_bits_f_p_r_be(BitstreamWriter* bs, unsigned int count,
 }
 
 void
-bw_write_signed_bits_f_p_r_le(BitstreamWriter* bs, unsigned int count,
+bw_write_signed_bits_f_e_r_le(BitstreamWriter* bs, unsigned int count,
                               int value)
 {
     assert(value <= ((1 << (count - 1)) - 1));
@@ -2091,7 +2127,7 @@ bw_write_bits64_c(BitstreamWriter* bs, unsigned int count, uint64_t value)
 }
 
 void
-bw_write_signed_bits64_f_p_r_be(BitstreamWriter* bs, unsigned int count,
+bw_write_signed_bits64_f_e_r_be(BitstreamWriter* bs, unsigned int count,
                                 int64_t value)
 {
     assert(value <= ((1ll << (count - 1)) - 1));
@@ -2107,7 +2143,7 @@ bw_write_signed_bits64_f_p_r_be(BitstreamWriter* bs, unsigned int count,
 }
 
 void
-bw_write_signed_bits64_f_p_r_le(BitstreamWriter* bs, unsigned int count,
+bw_write_signed_bits64_f_e_r_le(BitstreamWriter* bs, unsigned int count,
                                 int64_t value)
 {
     assert(value <= ((1ll << (count - 1)) - 1));
@@ -2231,7 +2267,7 @@ bw_write_bytes_c(BitstreamWriter* bs, const uint8_t* bytes,
 #define UNARY_BUFFER_SIZE 30
 
 void
-bw_write_unary_f_p_r(BitstreamWriter* bs, int stop_bit, unsigned int value)
+bw_write_unary_f_e_r(BitstreamWriter* bs, int stop_bit, unsigned int value)
 {
     unsigned int bits_to_write;
 
@@ -2295,9 +2331,27 @@ bw_write_huffman_c(BitstreamWriter* bs,
 }
 
 
+int
+bw_byte_aligned_f_e_r(const BitstreamWriter *bs)
+{
+    return (bs->buffer_size == 0);
+}
+
+int
+bw_byte_aligned_a(const BitstreamWriter *bs)
+{
+    return ((bs->output.accumulator % 8) == 0);
+}
+
+int
+bw_byte_aligned_c(const BitstreamWriter *bs)
+{
+    return 1;
+}
 
 void
-bw_byte_align_f_p_r(BitstreamWriter* bs) {
+bw_byte_align_f_e_r(BitstreamWriter* bs)
+{
     /*write enough 0 bits to completely fill the buffer
       which results in a byte being written*/
     if (bs->buffer_size > 0)
@@ -2325,8 +2379,8 @@ bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness)
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->write = bw_write_bits_f_le;
         bs->write_64 = bw_write_bits64_f_le;
-        bs->write_signed = bw_write_signed_bits_f_p_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
+        bs->write_signed = bw_write_signed_bits_f_e_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
         bs->set_endianness = bw_set_endianness_f_le;
     }
 }
@@ -2339,8 +2393,8 @@ bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness)
     if (endianness == BS_BIG_ENDIAN) {
         bs->write = bw_write_bits_f_be;
         bs->write_64 = bw_write_bits64_f_be;
-        bs->write_signed = bw_write_signed_bits_f_p_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
+        bs->write_signed = bw_write_signed_bits_f_e_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
         bs->set_endianness = bw_set_endianness_f_be;
     }
 }
@@ -2353,8 +2407,8 @@ bw_set_endianness_r_be(BitstreamWriter* bs, bs_endianness endianness)
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->write = bw_write_bits_r_le;
         bs->write_64 = bw_write_bits64_r_le;
-        bs->write_signed = bw_write_signed_bits_f_p_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
+        bs->write_signed = bw_write_signed_bits_f_e_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
         bs->set_endianness = bw_set_endianness_r_le;
     }
 }
@@ -2367,8 +2421,8 @@ bw_set_endianness_r_le(BitstreamWriter* bs, bs_endianness endianness)
     if (endianness == BS_BIG_ENDIAN) {
         bs->write = bw_write_bits_r_be;
         bs->write_64 = bw_write_bits64_r_be;
-        bs->write_signed = bw_write_signed_bits_f_p_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
+        bs->write_signed = bw_write_signed_bits_f_e_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
         bs->set_endianness = bw_set_endianness_r_be;
     }
 }
@@ -2381,8 +2435,8 @@ bw_set_endianness_e_be(BitstreamWriter* bs, bs_endianness endianness)
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->write = bw_write_bits_e_le;
         bs->write_64 = bw_write_bits64_e_le;
-        bs->write_signed = bw_write_signed_bits_f_p_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_le;
+        bs->write_signed = bw_write_signed_bits_f_e_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
         bs->set_endianness = bw_set_endianness_e_le;
     }
 }
@@ -2395,8 +2449,8 @@ bw_set_endianness_e_le(BitstreamWriter* bs, bs_endianness endianness)
     if (endianness == BS_BIG_ENDIAN) {
         bs->write = bw_write_bits_e_be;
         bs->write_64 = bw_write_bits64_e_be;
-        bs->write_signed = bw_write_signed_bits_f_p_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_p_r_be;
+        bs->write_signed = bw_write_signed_bits_f_e_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
         bs->set_endianness = bw_set_endianness_e_be;
     }
 }
@@ -2538,6 +2592,7 @@ bw_close_methods(BitstreamWriter* bs)
     bs->write_unary = bw_write_unary_c;
     bs->write_huffman_code = bw_write_huffman_c;
     bs->flush = bw_flush_r_a_c;
+    bs->byte_aligned = bw_byte_aligned_c;
     bs->byte_align = bw_byte_align_c;
     bs->set_endianness = bw_set_endianness_c;
     bs->close_internal_stream = bw_close_internal_stream_c;
@@ -2585,6 +2640,8 @@ bw_free_f_a(BitstreamWriter* bs)
     struct bs_callback *c_next;
     struct bs_exception *e_node;
     struct bs_exception *e_next;
+    struct bw_mark *m_node;
+    struct bw_mark *m_next;
 
     /*deallocate callbacks*/
     for (c_node = bs->callbacks; c_node != NULL; c_node = c_next) {
@@ -2613,6 +2670,15 @@ bw_free_f_a(BitstreamWriter* bs)
         free(e_node);
     }
 
+    /*deallocate marks*/
+    if (bs->marks != NULL) {
+        fprintf(stderr, "*** Warning: leftover marks on stack\n");
+    }
+    for (m_node = bs->marks; m_node != NULL; m_node = m_next) {
+        m_next = m_node->next;
+        free(m_node);
+    }
+
     /*deallocate the struct itself*/
     free(bs);
 }
@@ -2630,9 +2696,17 @@ bw_free_r(BitstreamWriter* bs)
 void
 bw_free_e(BitstreamWriter* bs)
 {
+    struct bw_mark* m_node;
+
     /*flush pending data if necessary*/
     if (!bw_closed(bs)) {
         ext_flush_w(bs->output.external);
+    }
+
+    /*free any leftover mark objects on stack
+      (actual dealloc covered by bw_free_f_a)*/
+    for (m_node = bs->marks; m_node != NULL; m_node = m_node->next) {
+        ext_free_pos_w(bs->output.external, m_node->position.external);
     }
 
     ext_free_w(bs->output.external);
@@ -2647,6 +2721,110 @@ bw_close(BitstreamWriter* bs)
 {
     bs->close_internal_stream(bs);
     bs->free(bs);
+}
+
+
+void
+bw_mark_f(BitstreamWriter *bs)
+{
+    if (bs->buffer_size == 0) {
+        struct bw_mark* mark = malloc(sizeof(struct bw_mark));
+        fgetpos(bs->output.file, &(mark->position.file));
+        mark->next = bs->marks;
+        bs->marks = mark;
+    } else {
+        fprintf(stderr,
+                "*** Error: Attempt to mark non-byte-aligned stream\n");
+        abort();
+    }
+}
+void
+bw_mark_e(BitstreamWriter *bs)
+{
+    if (bs->buffer_size == 0) {
+        struct bw_mark* mark = malloc(sizeof(struct bw_mark));
+        mark->position.external = ext_tell_w(bs->output.external);
+        mark->next = bs->marks;
+        bs->marks = mark;
+    } else {
+        fprintf(stderr,
+                "*** Error: Attempt to mark non-byte-aligned stream\n");
+        abort();
+    }
+}
+void
+bw_mark_r_a(BitstreamWriter *bs)
+{
+    /*FIXME - spit out warning?*/
+    /*no-op*/
+}
+
+void
+bw_rewind_f(BitstreamWriter *bs)
+{
+    if (bs->buffer_size == 0) {
+        struct bw_mark* mark = bs->marks;
+        if (mark != NULL) {
+            fsetpos(bs->output.file, &(mark->position.file));
+        } else {
+            fprintf(stderr, "*** Warning: no marks on stack to rewind\n");
+        }
+    } else {
+        fprintf(stderr,
+                "*** Error: Attempt to rewind non-byte-aligned stream\n");
+    }
+}
+void
+bw_rewind_e(BitstreamWriter *bs)
+{
+    if (bs->buffer_size == 0) {
+        struct bw_mark* mark = bs->marks;
+        if (mark != NULL) {
+            ext_seek_w(bs->output.external, mark->position.external);
+        } else {
+            fprintf(stderr, "*** Warning: no marks on stack to rewind\n");
+        }
+    } else {
+        fprintf(stderr,
+                "*** Error: Attempt to rewind non-byte-aligned stream\n");
+    }
+}
+void
+bw_rewind_r_a(BitstreamWriter *bs)
+{
+    /*FIXME - spit out warning?*/
+    /*no-op*/
+}
+
+
+void
+bw_unmark_f(BitstreamWriter *bs)
+{
+    struct bw_mark *mark = bs->marks;
+    if (mark != NULL) {
+        bs->marks = mark->next;
+        free(mark);
+    } else {
+        fprintf(stderr, "*** Warning: no marks on stack to remove\n");
+    }
+}
+void
+bw_unmark_e(BitstreamWriter *bs)
+{
+    struct bw_mark *mark = bs->marks;
+    if (mark != NULL) {
+        bs->marks = mark->next;
+        ext_free_pos_w(bs->output.external, mark->position.external);
+        free(mark);
+    } else {
+        fprintf(stderr, "*** Warning: no marks on stack to remove\n");
+    }
+}
+void
+bw_unmark_r_a(BitstreamWriter *bs)
+{
+    /*FIXME - spit out warning?*/
+    /*no-op*/
 }
 
 
@@ -3060,7 +3238,7 @@ int br_read_python(PyObject *reader,
     } else {
         /*read() method call failed
           so clear error and return an EOF
-          (which will likely generate an IOError exception if its own)*/
+          (which will likely generate an IOError exception of its own)*/
         PyErr_Clear();
         return 1;
     }
@@ -3101,6 +3279,42 @@ void bw_flush_python(PyObject* writer)
     }
 }
 
+void bw_seek_python(PyObject* writer, PyObject* pos)
+{
+    if (pos != NULL) {
+        PyObject *seek = PyObject_GetAttrString(writer, "seek");
+        if (seek != NULL) {
+            PyObject *result = PyObject_CallFunctionObjArgs(seek, pos, NULL);
+            if (result != NULL) {
+                Py_DECREF(result);
+            } else {
+                /*some error occurred calling seek()*/
+                PyErr_Print();
+            }
+        } else {
+            /*unable to find seek method in object*/
+            PyErr_Print();
+        }
+    }
+    /*do nothing if position is empty*/
+}
+
+PyObject* bw_tell_python(PyObject* writer)
+{
+    PyObject *pos = PyObject_CallMethod(writer, "tell", NULL);
+    if (pos != NULL) {
+        return pos;
+    } else {
+        PyErr_Print();
+        return NULL;
+    }
+}
+
+void bw_free_pos_python(PyObject* pos)
+{
+    Py_XDECREF(pos);
+}
+
 void bs_close_python(PyObject* obj)
 {
     /*call close method on reader/writer*/
@@ -3123,6 +3337,37 @@ void bs_free_python_nodecref(PyObject* obj)
 {
     /*no DECREF, so does nothing*/
     return;
+}
+
+int python_obj_seekable(PyObject* obj)
+{
+    PyObject *seek;
+    PyObject *tell;
+
+    /*ensure object has a seek() method*/
+    seek = PyObject_GetAttrString(obj, "seek");
+    if (seek != NULL) {
+        const int callable = PyCallable_Check(seek);
+        Py_DECREF(seek);
+        if (callable == 0) {
+            /*seek isn't callable*/
+            return 0;
+        }
+    } else {
+        /*no .seek() attr*/
+        return 0;
+    }
+
+    /*ensure object has a tell() method*/
+    tell = PyObject_GetAttrString(obj, "tell");
+    if (tell != NULL) {
+        const int callable = PyCallable_Check(tell);
+        Py_DECREF(tell);
+        return (callable == 1);
+    } else {
+        /*no .seek() attr*/
+        return 0;
+    }
 }
 
 #endif
@@ -3228,6 +3473,9 @@ void
 test_writer_close_errors(BitstreamWriter* writer);
 
 void
+test_writer_marks(BitstreamWriter* writer);
+
+void
 writer_perform_write(BitstreamWriter* writer, bs_endianness endianness);
 void
 writer_perform_write_signed(BitstreamWriter* writer, bs_endianness endianness);
@@ -3295,6 +3543,11 @@ int ext_fwrite_test(FILE* user_data,
 
 void ext_fflush_test(FILE* user_data);
 
+void ext_fseek_test(FILE *user_data, fpos_t *pos);
+
+fpos_t* ext_ftell_test(FILE *user_data);
+
+void ext_free_pos_test(fpos_t *pos);
 
 typedef struct {
     unsigned bits;
@@ -4586,6 +4839,9 @@ test_writer(bs_endianness endianness) {
                                   endianness,
                                   2,
                                   (ext_write_f)ext_fwrite_test,
+                                  (ext_seek_f)ext_fseek_test,
+                                  (ext_tell_f)ext_ftell_test,
+                                  (ext_free_pos_f)ext_free_pos_test,
                                   (ext_flush_f)ext_fflush_test,
                                   (ext_close_f)ext_fclose_test,
                                   (ext_free_f)ext_ffree_test);
@@ -4601,6 +4857,9 @@ test_writer(bs_endianness endianness) {
                               endianness,
                               2,
                               (ext_write_f)ext_fwrite_test,
+                              (ext_seek_f)ext_fseek_test,
+                              (ext_tell_f)ext_ftell_test,
+                              (ext_free_pos_f)ext_free_pos_test,
                               (ext_flush_f)ext_fflush_test,
                               (ext_close_f)ext_fclose_test,
                               (ext_free_f)ext_ffree_test);
@@ -4806,6 +5065,9 @@ test_writer(bs_endianness endianness) {
                                   endianness,
                                   2,
                                   (ext_write_f)ext_fwrite_test,
+                                  (ext_seek_f)ext_fseek_test,
+                                  (ext_tell_f)ext_ftell_test,
+                                  (ext_free_pos_f)ext_free_pos_test,
                                   (ext_flush_f)ext_fflush_test,
                                   (ext_close_f)ext_fclose_test,
                                   (ext_free_f)ext_ffree_test);
@@ -4858,6 +5120,37 @@ test_writer(bs_endianness endianness) {
         writer->close(writer);
         sub_writer->close(sub_writer);
     }
+
+    /*check that file-based marks work*/
+    output_file = fopen(temp_filename, "w+b");
+    writer = bw_open(output_file, endianness);
+    test_writer_marks(writer);
+    writer->free(writer);
+    fseek(output_file, 0, 0);
+    assert(fgetc(output_file) == 0xFF);
+    assert(fgetc(output_file) == 0x00);
+    assert(fgetc(output_file) == 0xFF);
+    fclose(output_file);
+
+    /*check that function-based marks work*/
+    output_file = fopen(temp_filename, "w+b");
+    writer = bw_open_external(output_file,
+                              endianness,
+                              4096,
+                              (ext_write_f)ext_fwrite_test,
+                              (ext_seek_f)ext_fseek_test,
+                              (ext_tell_f)ext_ftell_test,
+                              (ext_free_pos_f)ext_free_pos_test,
+                              (ext_flush_f)ext_fflush_test,
+                              (ext_close_f)ext_fclose_test,
+                              (ext_free_f)ext_ffree_test);
+    test_writer_marks(writer);
+    writer->free(writer);
+    fseek(output_file, 0, 0);
+    assert(fgetc(output_file) == 0xFF);
+    assert(fgetc(output_file) == 0x00);
+    assert(fgetc(output_file) == 0xFF);
+    fclose(output_file);
 }
 
 void
@@ -4931,92 +5224,134 @@ test_writer_close_errors(BitstreamWriter* writer)
 
 void
 writer_perform_write(BitstreamWriter* writer, bs_endianness endianness) {
+    assert(writer->byte_aligned(writer) == 1);
     switch (endianness) {
     case BS_BIG_ENDIAN:
         writer->write(writer, 2, 2);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write(writer, 3, 6);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write(writer, 5, 7);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write(writer, 3, 5);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write(writer, 19, 342977);
         break;
     case BS_LITTLE_ENDIAN:
         writer->write(writer, 2, 1);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write(writer, 3, 4);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write(writer, 5, 13);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write(writer, 3, 3);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write(writer, 19, 395743);
         break;
     }
+    assert(writer->byte_aligned(writer) == 1);
 }
 
 void
 writer_perform_write_signed(BitstreamWriter* writer, bs_endianness endianness) {
+    assert(writer->byte_aligned(writer) == 1);
     switch (endianness) {
     case BS_BIG_ENDIAN:
         writer->write_signed(writer, 2, -2);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed(writer, 3, -2);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed(writer, 5, 7);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed(writer, 3, -3);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed(writer, 19, -181311);
         break;
     case BS_LITTLE_ENDIAN:
         writer->write_signed(writer, 2, 1);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed(writer, 3, -4);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed(writer, 5, 13);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed(writer, 3, 3);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed(writer, 19, -128545);
         break;
     }
+    assert(writer->byte_aligned(writer) == 1);
 }
 
 void
 writer_perform_write_64(BitstreamWriter* writer, bs_endianness endianness) {
+    assert(writer->byte_aligned(writer) == 1);
     switch (endianness) {
     case BS_BIG_ENDIAN:
         writer->write_64(writer, 2, 2);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_64(writer, 3, 6);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_64(writer, 5, 7);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_64(writer, 3, 5);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_64(writer, 19, 342977);
         break;
     case BS_LITTLE_ENDIAN:
         writer->write_64(writer, 2, 1);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_64(writer, 3, 4);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_64(writer, 5, 13);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_64(writer, 3, 3);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_64(writer, 19, 395743);
         break;
     }
+    assert(writer->byte_aligned(writer) == 1);
 }
 
 void
 writer_perform_write_signed_64(BitstreamWriter* writer,
                                bs_endianness endianness)
 {
+    assert(writer->byte_aligned(writer) == 1);
     switch (endianness) {
     case BS_BIG_ENDIAN:
         writer->write_signed_64(writer, 2, -2);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed_64(writer, 3, -2);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed_64(writer, 5, 7);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed_64(writer, 3, -3);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed_64(writer, 19, -181311);
         break;
     case BS_LITTLE_ENDIAN:
         writer->write_signed_64(writer, 2, 1);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed_64(writer, 3, -4);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed_64(writer, 5, 13);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed_64(writer, 3, 3);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_signed_64(writer, 19, -128545);
         break;
     }
+    assert(writer->byte_aligned(writer) == 1);
 }
 
 void
 writer_perform_write_unary_0(BitstreamWriter* writer,
                              bs_endianness endianness) {
+    assert(writer->byte_aligned(writer) == 1);
     switch (endianness) {
     case BS_BIG_ENDIAN:
         writer->write_unary(writer, 0, 1);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_unary(writer, 0, 2);
         writer->write_unary(writer, 0, 0);
         writer->write_unary(writer, 0, 0);
@@ -5034,6 +5369,7 @@ writer_perform_write_unary_0(BitstreamWriter* writer,
         break;
     case BS_LITTLE_ENDIAN:
         writer->write_unary(writer, 0, 1);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_unary(writer, 0, 0);
         writer->write_unary(writer, 0, 0);
         writer->write_unary(writer, 0, 2);
@@ -5050,14 +5386,17 @@ writer_perform_write_unary_0(BitstreamWriter* writer,
         writer->write(writer, 2, 3);
         break;
     }
+    assert(writer->byte_aligned(writer) == 1);
 }
 
 void
 writer_perform_write_unary_1(BitstreamWriter* writer,
                              bs_endianness endianness) {
+    assert(writer->byte_aligned(writer) == 1);
     switch (endianness) {
     case BS_BIG_ENDIAN:
         writer->write_unary(writer, 1, 0);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_unary(writer, 1, 1);
         writer->write_unary(writer, 1, 0);
         writer->write_unary(writer, 1, 3);
@@ -5078,6 +5417,7 @@ writer_perform_write_unary_1(BitstreamWriter* writer,
         break;
     case BS_LITTLE_ENDIAN:
         writer->write_unary(writer, 1, 0);
+        assert(writer->byte_aligned(writer) == 0);
         writer->write_unary(writer, 1, 3);
         writer->write_unary(writer, 1, 0);
         writer->write_unary(writer, 1, 1);
@@ -5097,12 +5437,14 @@ writer_perform_write_unary_1(BitstreamWriter* writer,
         writer->write_unary(writer, 1, 0);
         break;
     }
+    assert(writer->byte_aligned(writer) == 1);
 }
 
 void
 writer_perform_build_u(BitstreamWriter* writer,
                        bs_endianness endianness)
 {
+    assert(writer->byte_aligned(writer) == 1);
     switch (endianness) {
     case BS_BIG_ENDIAN:
         writer->build(writer, "2u 3u 5u 3u 19u", 2, 6, 7, 5, 342977);
@@ -5111,6 +5453,7 @@ writer_perform_build_u(BitstreamWriter* writer,
         writer->build(writer, "2u 3u 5u 3u 19u", 1, 4, 13, 3, 395743);
         break;
     }
+    assert(writer->byte_aligned(writer) == 1);
 }
 
 void
@@ -5136,13 +5479,16 @@ writer_perform_build_U(BitstreamWriter* writer,
         break;
     }
 
+    assert(writer->byte_aligned(writer) == 1);
     writer->build(writer, "2U 3U 5U 3U 19U", v1, v2, v3, v4, v5);
+    assert(writer->byte_aligned(writer) == 1);
 }
 
 void
 writer_perform_build_s(BitstreamWriter* writer,
                        bs_endianness endianness)
 {
+    assert(writer->byte_aligned(writer) == 1);
     switch (endianness) {
     case BS_BIG_ENDIAN:
         writer->build(writer, "2s 3s 5s 3s 19s", -2, -2, 7, -3, -181311);
@@ -5151,6 +5497,7 @@ writer_perform_build_s(BitstreamWriter* writer,
         writer->build(writer, "2s 3s 5s 3s 19s", 1, -4, 13, 3, -128545);
         break;
     }
+    assert(writer->byte_aligned(writer) == 1);
 }
 
 void
@@ -5176,20 +5523,25 @@ writer_perform_build_S(BitstreamWriter* writer,
         break;
     }
 
+    assert(writer->byte_aligned(writer) == 1);
     writer->build(writer, "2S 3S 5S 3S 19S", v1, v2, v3, v4, v5);
+    assert(writer->byte_aligned(writer) == 1);
 }
 
 void
 writer_perform_build_b(BitstreamWriter* writer,
                        bs_endianness endianness)
 {
+    assert(writer->byte_aligned(writer) == 1);
     writer->build(writer, "2b 2b", (uint8_t*)"\xB1\xED", (uint8_t*)"\x3B\xC1");
+    assert(writer->byte_aligned(writer) == 1);
 }
 
 void
 writer_perform_build_mult(BitstreamWriter* writer,
                           bs_endianness endianness)
 {
+    assert(writer->byte_aligned(writer) == 1);
     switch (endianness) {
     case BS_BIG_ENDIAN:
         writer->build(writer, "8* 4u", 11, 1, 14, 13, 3, 11, 12, 1);
@@ -5198,6 +5550,7 @@ writer_perform_build_mult(BitstreamWriter* writer,
         writer->build(writer, "8* 4u", 1, 11, 13, 14, 11, 3, 1, 12);
         break;
     }
+    assert(writer->byte_aligned(writer) == 1);
 }
 
 
@@ -5344,13 +5697,17 @@ void check_alignment_e(const align_check* check,
                        bs_endianness endianness)
 {
     FILE* f = fopen(temp_filename, "wb");
-    BitstreamWriter* bw = bw_open_external(f,
-                                           endianness,
-                                           4096,
-                                           (ext_write_f)ext_fwrite_test,
-                                           (ext_flush_f)ext_fflush_test,
-                                           (ext_close_f)ext_fclose_test,
-                                           (ext_free_f)ext_ffree_test);
+    BitstreamWriter* bw = bw_open_external(
+        f,
+        endianness,
+        4096,
+        (ext_write_f)ext_fwrite_test,
+        (ext_seek_f)ext_fseek_test,
+        (ext_tell_f)ext_ftell_test,
+        (ext_free_pos_f)ext_free_pos_test,
+        (ext_flush_f)ext_fflush_test,
+        (ext_close_f)ext_fclose_test,
+        (ext_free_f)ext_ffree_test);
     BitstreamReader* br;
     struct stat s;
 
@@ -5943,6 +6300,23 @@ void ext_fflush_test(FILE* user_data)
     fflush(user_data);
 }
 
+void ext_fseek_test(FILE *user_data, fpos_t *pos)
+{
+    fsetpos(user_data, pos);
+}
+
+fpos_t* ext_ftell_test(FILE *user_data)
+{
+    fpos_t* pos = malloc(sizeof(fpos_t));
+    fgetpos(user_data, pos);
+    return pos;
+}
+
+void ext_free_pos_test(fpos_t *pos)
+{
+    free(pos);
+}
+
 void func_add_one(uint8_t byte, int* value)
 {
     *value += 1;
@@ -6062,4 +6436,18 @@ void test_buffer(struct bs_buffer *buf)
     buf_close(buf2);
 }
 
+void
+test_writer_marks(BitstreamWriter* writer)
+{
+    writer->write(writer, 1, 1);
+    writer->write(writer, 2, 3);
+    writer->write(writer, 3, 7);
+    writer->write(writer, 2, 3);
+    writer->mark(writer);
+    writer->write(writer, 8, 0xFF);
+    writer->write(writer, 8, 0xFF);
+    writer->rewind(writer);
+    writer->write(writer, 8, 0);
+    writer->unmark(writer);
+}
 #endif

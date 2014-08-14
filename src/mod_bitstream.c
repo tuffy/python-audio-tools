@@ -1387,6 +1387,9 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
             little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
             (unsigned)buffer_size,
             (ext_write_f)bw_write_python,
+            (ext_seek_f)bw_seek_python,
+            (ext_tell_f)bw_tell_python,
+            (ext_free_pos_f)bw_free_pos_python,
             (ext_flush_f)bw_flush_python,
             (ext_close_f)bs_close_python,
             (ext_free_f)bs_free_python_nodecref);
@@ -2088,6 +2091,61 @@ BitstreamWriter_call_callbacks(bitstream_BitstreamWriter *self,
         return NULL;
 
     bw_call_callbacks(self->bitstream, byte);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamWriter_mark(bitstream_BitstreamWriter *self, PyObject *args)
+{
+    BitstreamWriter *writer = self->bitstream;
+
+    if ((writer->type == BW_EXTERNAL) &&
+        (!python_obj_seekable(writer->output.external->user_data))) {
+        PyErr_SetString(PyExc_IOError, "writer is not seekable");
+        return NULL;
+    }
+
+    if (!(writer->byte_aligned(writer))) {
+        PyErr_SetString(PyExc_IOError, "writer is not byte-aligned");
+        return NULL;
+    }
+
+    writer->mark(writer);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamWriter_rewind(bitstream_BitstreamWriter *self, PyObject *args)
+{
+    BitstreamWriter *writer = self->bitstream;
+
+    if ((writer->type == BW_EXTERNAL) &&
+        (!python_obj_seekable(writer->output.external->user_data))) {
+        PyErr_SetString(PyExc_IOError, "writer is not seekable");
+        return NULL;
+    }
+
+    if (!(writer->byte_aligned(writer))) {
+        PyErr_SetString(PyExc_IOError, "writer is not byte-aligned");
+        return NULL;
+    }
+
+    writer->rewind(writer);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamWriter_unmark(bitstream_BitstreamWriter *self, PyObject *args)
+{
+    BitstreamWriter *writer = self->bitstream;
+
+    writer->unmark(writer);
 
     Py_INCREF(Py_None);
     return Py_None;
