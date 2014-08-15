@@ -26,6 +26,7 @@ int
 ALACDecoder_init(decoders_ALACDecoder *self,
                  PyObject *args, PyObject *kwds)
 {
+    enum {FILE_START};
     char *filename;
     static char *kwlist[] = {"filename", NULL};
     status status;
@@ -61,24 +62,24 @@ ALACDecoder_init(decoders_ALACDecoder *self,
     }
     self->filename = strdup(filename);
 
-    self->bitstream->mark(self->bitstream);
+    self->bitstream->mark(self->bitstream, FILE_START);
 
     if ((status = parse_decoding_parameters(self)) != OK) {
         PyErr_SetString(alac_exception(status), alac_strerror(status));
-        self->bitstream->unmark(self->bitstream);
+        self->bitstream->unmark(self->bitstream, FILE_START);
         return -1;
     } else {
-        self->bitstream->rewind(self->bitstream);
+        self->bitstream->rewind(self->bitstream, FILE_START);
     }
 
     /*seek to the 'mdat' atom, which contains the ALAC stream*/
     if (seek_mdat(self->bitstream) == IO_ERROR) {
-        self->bitstream->unmark(self->bitstream);
+        self->bitstream->unmark(self->bitstream, FILE_START);
         PyErr_SetString(PyExc_IOError,
                         "Unable to locate 'mdat' atom in stream");
         return -1;
     } else {
-        self->bitstream->unmark(self->bitstream);
+        self->bitstream->unmark(self->bitstream, FILE_START);
         /*if seektable is empty, populate it with a single
           entry containing the offset to the start of mdat*/
         if (self->seektable->len == 0) {
@@ -338,6 +339,7 @@ alac_exception(status status)
 int
 ALACDecoder_init(decoders_ALACDecoder *self, char *filename)
 {
+    enum {FILE_START};
     unsigned i;
     status status;
 
@@ -362,23 +364,23 @@ ALACDecoder_init(decoders_ALACDecoder *self, char *filename)
     }
     self->filename = strdup(filename);
 
-    self->bitstream->mark(self->bitstream);
+    self->bitstream->mark(self->bitstream, FILE_START);
 
     if ((status = parse_decoding_parameters(self)) != OK) {
         fprintf(stderr, "*** Error: %s\n", alac_strerror(status));
-        self->bitstream->unmark(self->bitstream);
+        self->bitstream->unmark(self->bitstream, FILE_START);
         return -1;
     } else {
-        self->bitstream->rewind(self->bitstream);
+        self->bitstream->rewind(self->bitstream, FILE_START);
     }
 
     /*seek to the 'mdat' atom, which contains the ALAC stream*/
     if (seek_mdat(self->bitstream) == IO_ERROR) {
-        self->bitstream->unmark(self->bitstream);
+        self->bitstream->unmark(self->bitstream, FILE_START);
         fprintf(stderr, "Unable to locate 'mdat' atom in stream\n");
         return -1;
     } else {
-        self->bitstream->unmark(self->bitstream);
+        self->bitstream->unmark(self->bitstream, FILE_START);
     }
 
     return 0;
@@ -438,6 +440,7 @@ alac_strerror(status status)
 static status
 parse_decoding_parameters(decoders_ALACDecoder *self)
 {
+    enum {MDIA_START};
     BitstreamReader* mdia_atom = br_substream_new(BS_BIG_ENDIAN);
     BitstreamReader* atom = br_substream_new(BS_BIG_ENDIAN);
     a_obj* block_sizes = a_obj_new((ARRAY_COPY_FUNC)alac_stts_copy,
@@ -462,7 +465,7 @@ parse_decoding_parameters(decoders_ALACDecoder *self)
     } else {
         /*mark the mdia atom so we can parse
           several different trees from it*/
-        mdia_atom->mark(mdia_atom);
+        mdia_atom->mark(mdia_atom, MDIA_START);
     }
 
     /*find and parse the alac atom,
@@ -484,7 +487,7 @@ parse_decoding_parameters(decoders_ALACDecoder *self)
     }
 
     /*find and parse the mdhd atom, which contains our total frame count*/
-    mdia_atom->rewind(mdia_atom);
+    mdia_atom->rewind(mdia_atom, MDIA_START);
     br_substream_reset(atom);
     if (find_sub_atom(mdia_atom, atom, &atom_size,
                       "mdhd", NULL)) {
@@ -503,21 +506,21 @@ parse_decoding_parameters(decoders_ALACDecoder *self)
       that rewinds to the start of the mdat atom*/
 
     /*find and parse the stts atom, which contains our block sizes*/
-    mdia_atom->rewind(mdia_atom);
+    mdia_atom->rewind(mdia_atom, MDIA_START);
     br_substream_reset(atom);
     stts_found = (!find_sub_atom(mdia_atom, atom, &atom_size,
                                  "minf", "stbl", "stts", NULL) &&
                   (read_stts_atom(atom, block_sizes) == OK));
 
     /*find and parse the stsc atom, which contains our chunk sizes*/
-    mdia_atom->rewind(mdia_atom);
+    mdia_atom->rewind(mdia_atom, MDIA_START);
     br_substream_reset(atom);
     stsc_found = (!find_sub_atom(mdia_atom, atom, &atom_size,
                                  "minf", "stbl", "stsc", NULL) &&
                   (read_stsc_atom(atom, chunk_sizes) == OK));
 
     /*parse the stco atom, which contains our chunk offsets*/
-    mdia_atom->rewind(mdia_atom);
+    mdia_atom->rewind(mdia_atom, MDIA_START);
     br_substream_reset(atom);
     stco_found = (!find_sub_atom(mdia_atom, atom, &atom_size,
                                  "minf", "stbl", "stco", NULL) &&
@@ -552,8 +555,8 @@ parse_decoding_parameters(decoders_ALACDecoder *self)
 
 error:
     /*perform cleanup of temporary buffers and arrays*/
-    if (mdia_atom->marks != NULL)
-        mdia_atom->unmark(mdia_atom);
+    if (mdia_atom->has_mark(mdia_atom, MDIA_START))
+        mdia_atom->unmark(mdia_atom, MDIA_START);
     mdia_atom->close(mdia_atom);
     atom->close(atom);
     block_sizes->del(block_sizes);

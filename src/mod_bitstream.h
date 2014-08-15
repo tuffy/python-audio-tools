@@ -128,6 +128,9 @@ static PyObject*
 BitstreamReader_byte_align(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
+BitstreamReader_byte_aligned(bitstream_BitstreamReader *self, PyObject *args);
+
+static PyObject*
 BitstreamReader_skip(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
@@ -164,6 +167,9 @@ BitstreamReader_close(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
 BitstreamReader_mark(bitstream_BitstreamReader *self, PyObject *args);
+
+static PyObject*
+BitstreamReader_has_mark(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
 BitstreamReader_rewind(bitstream_BitstreamReader *self, PyObject *args);
@@ -205,6 +211,8 @@ PyMethodDef BitstreamReader_methods[] = {
     {"byte_align", (PyCFunction)BitstreamReader_byte_align, METH_NOARGS,
      "byte_align()\n"
      "moves to the next whole byte boundary, if necessary"},
+    {"byte_aligned", (PyCFunction)BitstreamReader_byte_aligned, METH_NOARGS,
+     "byte_aligned() -> True if the stream is currently byte-aligned"},
     {"unread", (PyCFunction)BitstreamReader_unread, METH_VARARGS,
      "unread(bit)\n"
      "pushes a single bit back into the stream"},
@@ -245,16 +253,18 @@ PyMethodDef BitstreamReader_methods[] = {
     {"close", (PyCFunction)BitstreamReader_close, METH_NOARGS,
      "close()\n"
      "closes the stream and any underlying file object"},
-    {"mark", (PyCFunction)BitstreamReader_mark, METH_NOARGS,
-     "mark()\n"
+    {"mark", (PyCFunction)BitstreamReader_mark, METH_VARARGS,
+     "mark([mark_id])\n"
      "pushes the current position onto a stack\n"
      "which may be returned to with calls to rewind()\n"
      "all marked positions should be unmarked when no longer needed"},
-    {"rewind", (PyCFunction)BitstreamReader_rewind, METH_NOARGS,
-     "rewind()\n"
+    {"has_mark", (PyCFunction)BitstreamReader_has_mark, METH_VARARGS,
+     "has_mark([mark_id]) -> True if the given mark_id is present"},
+    {"rewind", (PyCFunction)BitstreamReader_rewind, METH_VARARGS,
+     "rewind([mark_id])\n"
      "returns to the most recently marked position in the stream"},
-    {"unmark", (PyCFunction)BitstreamReader_unmark, METH_NOARGS,
-     "unmark()\n"
+    {"unmark", (PyCFunction)BitstreamReader_unmark, METH_VARARGS,
+     "unmark([mark_id])\n"
      "removes the most recently marked position from the stream"},
     {"add_callback", (PyCFunction)BitstreamReader_add_callback, METH_VARARGS,
      "add_callback(function)\n"
@@ -474,6 +484,9 @@ static PyObject*
 BitstreamWriter_byte_align(bitstream_BitstreamWriter *self, PyObject *args);
 
 static PyObject*
+BitstreamWriter_byte_aligned(bitstream_BitstreamWriter *self, PyObject *args);
+
+static PyObject*
 BitstreamWriter_set_endianness(bitstream_BitstreamWriter *self,
                                PyObject *args);
 
@@ -495,6 +508,9 @@ BitstreamWriter_call_callbacks(bitstream_BitstreamWriter *self,
 
 static PyObject*
 BitstreamWriter_mark(bitstream_BitstreamWriter *self, PyObject *args);
+
+static PyObject*
+BitstreamWriter_has_mark(bitstream_BitstreamWriter *self, PyObject *args);
 
 static PyObject*
 BitstreamWriter_rewind(bitstream_BitstreamWriter *self, PyObject *args);
@@ -532,6 +548,8 @@ PyMethodDef BitstreamWriter_methods[] = {
     {"byte_align", (PyCFunction)BitstreamWriter_byte_align, METH_NOARGS,
      "byte_align()\n"
      "pads the stream with 0 bits until the next whole byte"},
+    {"byte_aligned", (PyCFunction)BitstreamWriter_byte_aligned, METH_NOARGS,
+     "byte_aligned() -> True if the stream is currently byte-aligned"},
     {"flush", (PyCFunction)BitstreamWriter_flush, METH_NOARGS,
      "flush()\n"
      "flushes pending data to any underlying file object"},
@@ -567,16 +585,18 @@ PyMethodDef BitstreamWriter_methods[] = {
      METH_VARARGS,
      "call_callbacks(byte)\n"
      "calls the attached callbacks as if the byte had been written"},
-    {"mark", (PyCFunction)BitstreamWriter_mark, METH_NOARGS,
-     "mark()\n"
+    {"mark", (PyCFunction)BitstreamWriter_mark, METH_VARARGS,
+     "mark([mark_id])\n"
      "pushes the current position onto a stack\n"
      "which may be returned to with calls to rewind()\n"
      "all marked positions should be unmarked when no longer needed"},
-    {"rewind", (PyCFunction)BitstreamWriter_rewind, METH_NOARGS,
-     "rewind()\n"
+    {"has_mark", (PyCFunction)BitstreamWriter_has_mark, METH_VARARGS,
+     "has_mark([mark_id]) -> True if the given mark_id is present"},
+    {"rewind", (PyCFunction)BitstreamWriter_rewind, METH_VARARGS,
+     "rewind([mark_id])\n"
      "returns to the most recently marked position in the stream"},
-    {"unmark", (PyCFunction)BitstreamWriter_unmark, METH_NOARGS,
-     "unmark()\n"
+    {"unmark", (PyCFunction)BitstreamWriter_unmark, METH_VARARGS,
+     "unmark([mark_id])\n"
      "removes the most recently marked position from the stream"},
     {NULL}
 };
@@ -658,6 +678,10 @@ BitstreamRecorder_write_huffman_code(bitstream_BitstreamRecorder *self,
 static PyObject*
 BitstreamRecorder_byte_align(bitstream_BitstreamRecorder *self,
                              PyObject *args);
+
+static PyObject*
+BitstreamRecorder_byte_aligned(bitstream_BitstreamRecorder *self,
+                               PyObject *args);
 
 static PyObject*
 BitstreamRecorder_set_endianness(bitstream_BitstreamRecorder *self,
@@ -746,6 +770,8 @@ PyMethodDef BitstreamRecorder_methods[] = {
     {"byte_align", (PyCFunction)BitstreamRecorder_byte_align, METH_NOARGS,
      "byte_align()\n"
      "pads the stream with 0 bits until the next whole byte"},
+    {"byte_aligned", (PyCFunction)BitstreamRecorder_byte_aligned, METH_NOARGS,
+     "byte_aligned() -> True if the stream is currently byte-aligned"},
     {"flush", (PyCFunction)BitstreamRecorder_flush, METH_NOARGS,
      "flush()\n"
      "flushes pending data to any underlying file object"},
@@ -907,6 +933,10 @@ BitstreamAccumulator_byte_align(bitstream_BitstreamAccumulator *self,
                                 PyObject *args);
 
 static PyObject*
+BitstreamAccumulator_byte_aligned(bitstream_BitstreamAccumulator *self,
+                                  PyObject *args);
+
+static PyObject*
 BitstreamAccumulator_set_endianness(bitstream_BitstreamAccumulator *self,
                                     PyObject *args);
 
@@ -960,6 +990,9 @@ PyMethodDef BitstreamAccumulator_methods[] = {
     {"byte_align", (PyCFunction)BitstreamAccumulator_byte_align, METH_NOARGS,
      "byte_align()\n"
      "pads the stream with 0 bits until the next whole byte"},
+    {"byte_aligned", (PyCFunction)BitstreamAccumulator_byte_aligned,
+     METH_NOARGS,
+     "byte_aligned() -> True if the stream is currently byte-aligned"},
     {"flush", (PyCFunction)BitstreamAccumulator_flush, METH_NOARGS,
      "flush()\n"
      "flushes pending data to any underlying file object"},

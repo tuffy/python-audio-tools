@@ -79,28 +79,12 @@ out of a larger binary file stream.
 
    Given a number of bits to read from the stream,
    returns an unsigned integer.
-   Bits must be: ``0 <= bits <= 32`` .
-   May raise :exc:`IOError` if an error occurs reading the stream.
-
-.. method:: BitstreamReader.read64(bits)
-
-   Given a number of bits to read from the stream,
-   returns an unsigned long.
-   Bits must be: ``0 <= bits <= 64`` .
    May raise :exc:`IOError` if an error occurs reading the stream.
 
 .. method:: BitstreamReader.read_signed(bits)
 
    Given a number of bits to read from the stream as a two's complement value,
    returns a signed integer.
-   Bits must be: ``1 <= bits <= 32`` .
-   May raise :exc:`IOError` if an error occurs reading the stream.
-
-.. method:: BitstreamReader.read_signed64(bits)
-
-   Given a number of bits to read from the stream as a two's complement value,
-   returns a signed long.
-   Bits must be: ``1 <= bits <= 64`` .
    May raise :exc:`IOError` if an error occurs reading the stream.
 
 .. method:: BitstreamReader.skip(bits)
@@ -139,6 +123,10 @@ out of a larger binary file stream.
 
    Discards bits as necessary to position the stream on a byte boundary.
 
+.. method:: BitstreamReader.byte_aligned()
+
+   Returns ``True`` if the stream is positioned on a byte boundary.
+
 .. method:: BitstreamReader.parse(format_string)
 
    Given a format string representing a set of individual reads,
@@ -149,8 +137,6 @@ out of a larger binary file stream.
    ====== ================
    "#u"   read(#)
    "#s"   read_signed(#)
-   "#U"   read64(#)
-   "#S"   read_signed64(#)
    "#p"   skip(#)
    "#P"   skip_bytes(#)
    "#b"   read_bytes(#)
@@ -159,7 +145,7 @@ out of a larger binary file stream.
 
    For instance:
 
-   >>> r.parse("3u 4s 36U") == [r.read(3), r.read_signed(4), r.read64(36)]
+   >>> r.parse("3u 4s 36U") == [r.read(3), r.read_signed(4), r.read(36)]
 
    The ``*`` format multiplies the next format by the given amount.
    For example, to read 4, signed 8 bit values:
@@ -192,9 +178,10 @@ out of a larger binary file stream.
    The stream is automatically byte-aligned prior
    to changing its byte order.
 
-.. method:: BitstreamReader.mark()
+.. method:: BitstreamReader.mark([mark_id])
 
-   Pushes the stream's current position onto a mark stack.
+   Pushes the stream's current position onto a mark stack
+   with the given optional mark ID.
    That position may be returned to with calls to :meth:`rewind`.
 
 .. warning::
@@ -210,14 +197,20 @@ out of a larger binary file stream.
    If marks are left on the stream, :class:`BitstreamReader` will
    generate a warning at deallocation-time.
 
-.. method:: BitstreamReader.rewind()
+.. method:: BitstreamReader.has_mark([mark_id])
 
-   Returns the stream to the most recently marked position on the mark stack.
+   Returns ``True`` if the given ID has been marked in the stream.
+
+.. method:: BitstreamReader.rewind([mark_id])
+
+   Returns the stream to the most recently marked position on the
+   mark stack with the given mark ID.
    This has no effect on the mark stack itself.
 
-.. method:: BitstreamReader.unmark()
+.. method:: BitstreamReader.unmark([mark_id])
 
-   Removes the most recently marked position from the mark stack.
+   Removes the most recently marked position from the mark stack
+   with the given mark ID.
    This has no effect on the stream's current position.
 
 .. method:: BitstreamReader.add_callback(callback)
@@ -289,32 +282,12 @@ into a larger binary file stream.
 
    Writes the given unsigned integer value to the stream
    using the given number of bits.
-   Bits must be: ``0 <= bits <= 32`` .
-   Value must be: ``0 <= value < (2 ** bits)`` .
-   May raise :exc:`IOError` if an error occurs writing the stream.
-
-.. method:: BitstreamWriter.write64(bits, value)
-
-   Writes the given unsigned integer value to the stream
-   using the given number of bits.
-   Bits must be: ``0 <= bits <= 64`` .
-   Value must be: ``0 <= value < (2 ** bits)`` .
    May raise :exc:`IOError` if an error occurs writing the stream.
 
 .. method:: BitstreamWriter.write_signed(bits, value)
 
    Writes the given signed integer value to the stream
    using the given number of bits.
-   Bits must be: ``0 <= bits <= 32`` .
-   Value must be: ``-(2 ** (bits - 1)) <= value < 2 ** (bits - 1)`` .
-   May raise :exc:`IOError` if an error occurs writing the stream.
-
-.. method:: BitstreamWriter.write_signed64(bits, value)
-
-   Writes the given signed integer value to the stream
-   using the given number of bits.
-   Bits must be: ``0 <= bits <= 64`` .
-   Value must be: ``-(2 ** (bits - 1)) <= value < 2 ** (bits - 1)`` .
    May raise :exc:`IOError` if an error occurs writing the stream.
 
 .. method:: BitstreamWriter.unary(stop_bit, value)
@@ -338,6 +311,10 @@ into a larger binary file stream.
    on a byte boundary.
    May raise :exc:`IOError` if an error occurs writing the stream.
 
+.. method:: BitstreamWriter.byte_aligned()
+
+   Returns ``True`` if the stream is positioned on a byte boundary.
+
 .. method:: BitstreamWriter.build(format_string, value_list)
 
    Given a format string representing a set of individual writes,
@@ -349,8 +326,6 @@ into a larger binary file stream.
    ====== ============= =====================
    "#u"   unsigned int  write(#, u)
    "#s"   signed int    write(#, s)
-   "#U"   unsigned long write64(#, ul)
-   "#S"   signed long   write_signed64(#, sl)
    "#p"   N/A           write(#, 0)
    "#P"   N/A           write(# * 8, 0)
    "#b"   string        write_bytes(#, s)
@@ -365,7 +340,7 @@ into a larger binary file stream.
 
    >>> w.write(3,1)
    >>> w.write_signed(4, -2)
-   >>> w.write64(36, 3L)
+   >>> w.write(36, 3L)
 
    The ``*`` format multiplies the next format by the given amount.
 
@@ -414,6 +389,43 @@ into a larger binary file stream.
 .. method:: BitstreamWriter.pop_callback()
 
    Removes and returns the most recently added function from the callback stack.
+
+.. method:: BitstreamWriter.mark([mark_id])
+
+   Pushes the stream's current position onto a mark stack
+   with the given optional mark ID.
+   That position may be returned to with calls to :meth:`rewind`.
+
+.. warning::
+
+   Unlike with :class:`BitstreamReader` where marks can be placed
+   anywhere, a :class:`BitstreamWriter` requires the stream
+   to be byte-aligned before marks can be placed.
+   Otherwise it will raise :exc:`IOError`.
+
+.. method:: BitstreamWriter.has_mark([mark_id])
+
+   Returns ``True`` if the given mark ID is currently in the stream.
+
+.. method:: BitstreamWriter.rewind([mark_id])
+
+   Returns the streams's position to the latest mark
+   with the given ID.
+   This has no effect on the mark stack itself.
+
+.. warning::
+
+   Unlike with :class:`BitstreamReader` in which a placed mark
+   can be returned to anytime, a :class:`BitstreamWriter` requires
+   the stream to be byte-aligned before a rewind can be performed.
+   Otherwise it will raise :exc:`IOError`.
+
+.. method:: BitstreamWriter.unmark([mark_id])
+
+   Removes the most recently marked position from the mark stack
+   with the given mark ID.
+   This has no effect on the stream's current position
+   and the stream is not required to be byte-aligned.
 
 .. method:: BitstreamWriter.close()
 
@@ -477,6 +489,10 @@ bits or bytes, for possible output into a :class:`BitstreamWriter`.
 
    Records ``0`` bits as necessary until the stream is aligned
    on a byte boundary.
+
+.. method:: BitstreamRecorder.byte_aligned()
+
+   Returns ``True`` if the stream is positioned on a byte boundary.
 
 .. method:: BitstreamRecorder.build(format_string, value_list)
 
@@ -652,6 +668,10 @@ The actual writes themselves are not recorded.
 
    Counts ``0`` bits as necessary until the stream is aligned
    on a byte boundary.
+
+.. method:: BitstreamAccumulator.byte_aligned()
+
+   Returns ``True`` if the stream is positioned on a byte boundary.
 
 .. method:: BitstreamAccumulator.build(format_string, value_list)
 

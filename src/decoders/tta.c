@@ -22,6 +22,8 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+enum {FRAMES_START};
+
 /*returns x/y rounded up
   each argument is evaluated twice*/
 #ifndef DIV_CEIL
@@ -128,7 +130,7 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
     /*place a mark after the seektable for possible rewinding
       if the stream is file-based*/
     if (PyFile_Check(self->file))
-        self->bitstream->mark(self->bitstream);
+        self->bitstream->mark(self->bitstream, FRAMES_START);
 
     /*mark stream as not closed and ready for reading*/
     self->closed = 0;
@@ -146,8 +148,8 @@ TTADecoder_dealloc(decoders_TTADecoder *self) {
     free_cache(&(self->cache));
 
     if (self->bitstream != NULL) {
-        while (self->bitstream->marks != NULL) {
-            self->bitstream->unmark(self->bitstream);
+        while (self->bitstream->has_mark(self->bitstream, FRAMES_START)) {
+            self->bitstream->unmark(self->bitstream, FRAMES_START);
         }
         self->bitstream->free(self->bitstream);
     }
@@ -288,7 +290,7 @@ TTADecoder_seek(decoders_TTADecoder *self, PyObject *args)
     }
 
     /*rewind to start of TTA blocks*/
-    self->bitstream->rewind(self->bitstream);
+    self->bitstream->rewind(self->bitstream, FRAMES_START);
 
     /*skip frames until we reach the requested one
       or run out of frames entirely

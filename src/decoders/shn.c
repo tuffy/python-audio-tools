@@ -22,6 +22,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+
 #ifndef STANDALONE
 PyObject*
 SHNDecoder_new(PyTypeObject *type,
@@ -707,9 +708,10 @@ process_iff_header(BitstreamReader* bs,
                    unsigned* sample_rate,
                    unsigned* channel_mask)
 {
+    enum {COMMAND_START, VERBATIM_START};
     unsigned command;
 
-    bs->mark(bs);
+    bs->mark(bs, COMMAND_START);
     if (!setjmp(*br_try(bs))) {
         command = read_unsigned(bs, COMMAND_SIZE);
 
@@ -718,38 +720,38 @@ process_iff_header(BitstreamReader* bs,
             unsigned verbatim_size;
 
             verbatim = read_verbatim(bs, &verbatim_size);
-            verbatim->mark(verbatim);
+            verbatim->mark(verbatim, VERBATIM_START);
 
             if (!read_wave_header(verbatim, verbatim_size,
                                   sample_rate, channel_mask)) {
-                verbatim->unmark(verbatim);
+                verbatim->unmark(verbatim, VERBATIM_START);
                 verbatim->close(verbatim);
-                bs->rewind(bs);
-                bs->unmark(bs);
+                bs->rewind(bs, COMMAND_START);
+                bs->unmark(bs, COMMAND_START);
                 br_etry(bs);
                 return;
             } else {
-                verbatim->rewind(verbatim);
+                verbatim->rewind(verbatim, VERBATIM_START);
             }
 
             if (!read_aiff_header(verbatim, verbatim_size,
                                   sample_rate, channel_mask)) {
-                verbatim->unmark(verbatim);
+                verbatim->unmark(verbatim, VERBATIM_START);
                 verbatim->close(verbatim);
-                bs->rewind(bs);
-                bs->unmark(bs);
+                bs->rewind(bs, COMMAND_START);
+                bs->unmark(bs, COMMAND_START);
                 br_etry(bs);
                 return;
             } else {
-                verbatim->rewind(verbatim);
+                verbatim->rewind(verbatim, VERBATIM_START);
             }
 
             /*neither wave header or aiff header found,
               so use dummy values again*/
-            verbatim->unmark(verbatim);
+            verbatim->unmark(verbatim, VERBATIM_START);
             verbatim->close(verbatim);
-            bs->rewind(bs);
-            bs->unmark(bs);
+            bs->rewind(bs, COMMAND_START);
+            bs->unmark(bs, COMMAND_START);
             *sample_rate = 44100;
             *channel_mask = 0;
             br_etry(bs);
@@ -757,8 +759,8 @@ process_iff_header(BitstreamReader* bs,
         } else {
             /*VERBATIM isn't the first command
               so rewind and set some dummy values*/
-            bs->rewind(bs);
-            bs->unmark(bs);
+            bs->rewind(bs, COMMAND_START);
+            bs->unmark(bs, COMMAND_START);
             *sample_rate = 44100;
             *channel_mask = 0;
             br_etry(bs);
@@ -768,7 +770,7 @@ process_iff_header(BitstreamReader* bs,
         /*wrap IFF chunk reader in try block
           to unmark the stream prior to bubbling up
           the read exception to read_shn_header()*/
-        bs->unmark(bs);
+        bs->unmark(bs, COMMAND_START);
         br_etry(bs);
         br_abort(bs);
     }

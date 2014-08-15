@@ -369,6 +369,13 @@ BitstreamReader_byte_align(bitstream_BitstreamReader *self, PyObject *args)
 }
 
 static PyObject*
+BitstreamReader_byte_aligned(bitstream_BitstreamReader *self, PyObject *args)
+{
+    return PyBool_FromLong(self->bitstream->byte_aligned(self->bitstream));
+}
+
+
+static PyObject*
 BitstreamReader_unread(bitstream_BitstreamReader *self, PyObject *args)
 {
     int unread_bit;
@@ -827,25 +834,55 @@ BitstreamReader_close(bitstream_BitstreamReader *self, PyObject *args)
 static PyObject*
 BitstreamReader_mark(bitstream_BitstreamReader *self, PyObject *args)
 {
-    self->bitstream->mark(self->bitstream);
-    Py_INCREF(Py_None);
-    return Py_None;
+    int mark_id = 0;
+
+    if (!PyArg_ParseTuple(args, "|i", &mark_id)) {
+        return NULL;
+    } else {
+        self->bitstream->mark(self->bitstream, mark_id);
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+}
+
+static PyObject*
+BitstreamReader_has_mark(bitstream_BitstreamReader *self, PyObject *args)
+{
+    int mark_id = 0;
+
+    if (!PyArg_ParseTuple(args, "|i", &mark_id)) {
+        return NULL;
+    } else {
+        return PyBool_FromLong(
+            self->bitstream->has_mark(self->bitstream, mark_id));
+    }
 }
 
 static PyObject*
 BitstreamReader_rewind(bitstream_BitstreamReader *self, PyObject *args)
 {
-    self->bitstream->rewind(self->bitstream);
-    Py_INCREF(Py_None);
-    return Py_None;
+    int mark_id = 0;
+
+    if (!PyArg_ParseTuple(args, "|i", &mark_id)) {
+        return NULL;
+    } else {
+        self->bitstream->rewind(self->bitstream, mark_id);
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
 }
 
 static PyObject*
 BitstreamReader_unmark(bitstream_BitstreamReader *self, PyObject *args)
 {
-    self->bitstream->unmark(self->bitstream);
-    Py_INCREF(Py_None);
-    return Py_None;
+    int mark_id = 0;
+    if (!PyArg_ParseTuple(args, "|i", &mark_id)) {
+        return NULL;
+    } else {
+        self->bitstream->unmark(self->bitstream, mark_id);
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
 }
 
 static PyObject*
@@ -1958,6 +1995,12 @@ BitstreamWriter_byte_align(bitstream_BitstreamWriter *self, PyObject *args)
 }
 
 static PyObject*
+BitstreamWriter_byte_aligned(bitstream_BitstreamWriter *self, PyObject *args)
+{
+    return PyBool_FromLong(self->bitstream->byte_aligned(self->bitstream));
+}
+
+static PyObject*
 BitstreamWriter_set_endianness(bitstream_BitstreamWriter *self,
                                PyObject *args)
 {
@@ -2115,7 +2158,11 @@ BitstreamWriter_call_callbacks(bitstream_BitstreamWriter *self,
 static PyObject*
 BitstreamWriter_mark(bitstream_BitstreamWriter *self, PyObject *args)
 {
+    int mark_id = 0;
     BitstreamWriter *writer = self->bitstream;
+
+    if (!PyArg_ParseTuple(args, "|i", &mark_id))
+        return NULL;
 
     if ((writer->type == BW_EXTERNAL) &&
         (!python_obj_seekable(writer->output.external->user_data))) {
@@ -2129,7 +2176,7 @@ BitstreamWriter_mark(bitstream_BitstreamWriter *self, PyObject *args)
     }
 
     if (!setjmp(*bw_try(writer))) {
-        writer->mark(writer);
+        writer->mark(writer, mark_id);
         bw_etry(writer);
         Py_INCREF(Py_None);
         return Py_None;
@@ -2141,9 +2188,26 @@ BitstreamWriter_mark(bitstream_BitstreamWriter *self, PyObject *args)
 }
 
 static PyObject*
+BitstreamWriter_has_mark(bitstream_BitstreamWriter *self, PyObject *args)
+{
+    int mark_id = 0;
+
+    if (!PyArg_ParseTuple(args, "|i", &mark_id)) {
+        return NULL;
+    } else {
+        return PyBool_FromLong(
+            self->bitstream->has_mark(self->bitstream, mark_id));
+    }
+}
+
+static PyObject*
 BitstreamWriter_rewind(bitstream_BitstreamWriter *self, PyObject *args)
 {
+    int mark_id = 0;
     BitstreamWriter *writer = self->bitstream;
+
+    if (!PyArg_ParseTuple(args, "|i", &mark_id))
+        return NULL;
 
     if ((writer->type == BW_EXTERNAL) &&
         (!python_obj_seekable(writer->output.external->user_data))) {
@@ -2157,7 +2221,7 @@ BitstreamWriter_rewind(bitstream_BitstreamWriter *self, PyObject *args)
     }
 
     if (!setjmp(*bw_try(writer))) {
-        writer->rewind(writer);
+        writer->rewind(writer, mark_id);
         bw_etry(writer);
         Py_INCREF(Py_None);
         return Py_None;
@@ -2171,12 +2235,18 @@ BitstreamWriter_rewind(bitstream_BitstreamWriter *self, PyObject *args)
 static PyObject*
 BitstreamWriter_unmark(bitstream_BitstreamWriter *self, PyObject *args)
 {
+    int mark_id = 0;
     BitstreamWriter *writer = self->bitstream;
 
-    writer->unmark(writer);
+    if (!PyArg_ParseTuple(args, "|i", &mark_id)) {
+        return NULL;
+    } else {
+        writer->unmark(writer, mark_id);
 
-    Py_INCREF(Py_None);
-    return Py_None;
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+
 }
 
 static PyObject*
@@ -2306,6 +2376,13 @@ BitstreamRecorder_byte_align(bitstream_BitstreamRecorder *self,
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
     }
+}
+
+static PyObject*
+BitstreamRecorder_byte_aligned(bitstream_BitstreamRecorder *self,
+                               PyObject *args)
+{
+    return PyBool_FromLong(self->bitstream->byte_aligned(self->bitstream));
 }
 
 static PyObject*
@@ -2834,6 +2911,13 @@ BitstreamAccumulator_byte_align(bitstream_BitstreamAccumulator *self,
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
     }
+}
+
+static PyObject*
+BitstreamAccumulator_byte_aligned(bitstream_BitstreamAccumulator *self,
+                                  PyObject *args)
+{
+    return PyBool_FromLong(self->bitstream->byte_aligned(self->bitstream));
 }
 
 static PyObject*

@@ -19,6 +19,8 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+enum {FRAME_DATA};
+
 MLPDecoder*
 open_mlp_decoder(struct bs_buffer* frame_data)
 {
@@ -109,10 +111,10 @@ mlp_packet_empty(MLPDecoder* decoder)
     if (remaining_bytes >= 4) {
         unsigned total_frame_size;
 
-        reader->mark(reader);
+        reader->mark(reader, FRAME_DATA);
         reader->parse(reader, "4p 12u 16p", &total_frame_size);
-        reader->rewind(reader);
-        reader->unmark(reader);
+        reader->rewind(reader, FRAME_DATA);
+        reader->unmark(reader, FRAME_DATA);
 
         return (remaining_bytes < (total_frame_size * 2));
     } else {
@@ -132,14 +134,14 @@ read_mlp_frames(MLPDecoder* decoder,
         unsigned total_frame_size;
         unsigned frame_bytes;
 
-        reader->mark(reader);
+        reader->mark(reader, FRAME_DATA);
         reader->parse(reader, "4p 12u 16p", &total_frame_size);
         frame_bytes = (total_frame_size * 2) - 4;
         if (buf_window_size(packet) >= frame_bytes) {
             BitstreamReader* frame_reader = decoder->frame_reader;
             mlp_status status;
 
-            reader->unmark(reader);
+            reader->unmark(reader, FRAME_DATA);
             br_substream_reset(frame_reader);
             reader->substream_append(reader, frame_reader, frame_bytes);
 
@@ -148,8 +150,8 @@ read_mlp_frames(MLPDecoder* decoder,
                 return status;
         } else {
             /*not enough of a frame left to read*/
-            reader->rewind(reader);
-            reader->unmark(reader);
+            reader->rewind(reader, FRAME_DATA);
+            reader->unmark(reader, FRAME_DATA);
             return OK;
         }
     }
@@ -416,7 +418,7 @@ mlp_status
 read_mlp_major_sync(BitstreamReader* bs,
                     struct major_sync* major_sync)
 {
-    bs->mark(bs);
+    bs->mark(bs, FRAME_DATA);
     if (!setjmp(*br_try(bs))) {
         const unsigned sync_words = bs->read(bs, 24);
         const unsigned stream_type = bs->read(bs, 8);
@@ -438,18 +440,18 @@ read_mlp_major_sync(BitstreamReader* bs,
                 (major_sync->substream_count != 2))
                 return INVALID_MAJOR_SYNC;
 
-            bs->unmark(bs);
+            bs->unmark(bs, FRAME_DATA);
             br_etry(bs);
             return OK;
         } else {
-            bs->rewind(bs);
-            bs->unmark(bs);
+            bs->rewind(bs, FRAME_DATA);
+            bs->unmark(bs, FRAME_DATA);
             br_etry(bs);
             return NO_MAJOR_SYNC;
         }
     } else {
-        bs->rewind(bs);
-        bs->unmark(bs);
+        bs->rewind(bs, FRAME_DATA);
+        bs->unmark(bs, FRAME_DATA);
         br_etry(bs);
         return NO_MAJOR_SYNC;
     }

@@ -23,6 +23,8 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+enum {BEGINNING_OF_FRAMES};
+
 #ifndef STANDALONE
 int
 FlacDecoder_init(decoders_FlacDecoder *self,
@@ -77,7 +79,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     if (PyFile_Check(self->file)) {
         /*place mark at beginning of stream but after metadata
           in case seeking is needed*/
-        self->bitstream->mark(self->bitstream);
+        self->bitstream->mark(self->bitstream, BEGINNING_OF_FRAMES);
     }
 
     self->remaining_samples = self->streaminfo.total_samples;
@@ -121,8 +123,8 @@ FlacDecoder_dealloc(decoders_FlacDecoder *self)
 
     if (self->bitstream != NULL) {
         /*clear out seek mark, if present*/
-        while (self->bitstream->marks != NULL) {
-            self->bitstream->unmark(self->bitstream);
+        if (self->bitstream->has_mark(self->bitstream, BEGINNING_OF_FRAMES)) {
+            self->bitstream->unmark(self->bitstream, BEGINNING_OF_FRAMES);
         }
 
         self->bitstream->free(self->bitstream);
@@ -329,7 +331,7 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
     }
 
     /*position bitstream to indicated value in file*/
-    self->bitstream->rewind(self->bitstream);
+    self->bitstream->rewind(self->bitstream, BEGINNING_OF_FRAMES);
     while (byte_offset) {
         /*perform this in chunks in case seeked distance
           is longer than a "long" taken by fseek*/

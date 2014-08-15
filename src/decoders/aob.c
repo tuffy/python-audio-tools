@@ -27,6 +27,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+
 #define SECTOR_SIZE 2048
 #define PTS_PER_SECOND 90000
 #define PCM_CODEC_ID 0xA0
@@ -247,8 +248,9 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, unsigned PTS_ticks)
     } else if (next_packet.codec_ID == MLP_CODEC_ID) {
         /*if the packet is MLP,
           check if the first frame starts with a major sync*/
+        enum {PACKET_DATA};
         BitstreamReader* r = br_open_buffer(packet_data, BS_BIG_ENDIAN);
-        r->mark(r);
+        r->mark(r, PACKET_DATA);
         if (!setjmp(*br_try(r))) {
             unsigned sync_words;
             unsigned stream_type;
@@ -280,8 +282,8 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, unsigned PTS_ticks)
                 self->frame_codec = MLP;
                 self->mlp_decoder->major_sync_read = 0;
 
-                r->rewind(r);
-                r->unmark(r);
+                r->rewind(r, PACKET_DATA);
+                r->unmark(r, PACKET_DATA);
                 br_etry(r);
                 r->close(r);
 
@@ -291,8 +293,8 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, unsigned PTS_ticks)
                 /*if not, append packet data to any unconsumed data
                   and leave Title's stream attributes as they were*/
 
-                r->rewind(r);
-                r->unmark(r);
+                r->rewind(r, PACKET_DATA);
+                r->unmark(r, PACKET_DATA);
                 br_etry(r);
                 r->close(r);
 
@@ -303,8 +305,8 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, unsigned PTS_ticks)
               append packet data to any unconsumed data
               and leave Title's stream attributes as they were*/
 
-            r->rewind(r);
-            r->unmark(r);
+            r->rewind(r, PACKET_DATA);
+            r->unmark(r, PACKET_DATA);
             br_etry(r);
             r->close(r);
 

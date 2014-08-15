@@ -21,6 +21,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+
 #ifndef STANDALONE
 int
 WavPackDecoder_init(decoders_WavPackDecoder *self,
@@ -33,6 +34,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
 #endif
     struct block_header header;
     status error;
+    enum {BEGINNING_OF_STREAM, AFTER_BLOCK_HEADER};
 
     self->bitstream = NULL;
 
@@ -96,40 +98,40 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
 
     /*read initial block to populate
       sample_rate, bits_per_sample, channels, and channel_mask*/
-    self->bitstream->mark(self->bitstream); /*beginning of stream*/
+    self->bitstream->mark(self->bitstream, BEGINNING_OF_STREAM);
     if ((error = read_block_header(self->bitstream, &header)) != OK) {
 #ifndef STANDALONE
         PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
 #endif
-        self->bitstream->unmark(self->bitstream); /*beginning of stream*/
+        self->bitstream->unmark(self->bitstream, BEGINNING_OF_STREAM);
         return -1;
     }
 
     if ((self->sample_rate = unencode_sample_rate(header.sample_rate)) == 0) {
         /*in the event of an odd sample rate,
           look for a sample rate sub block within the first block*/
-        self->bitstream->mark(self->bitstream); /*after block header*/
+        self->bitstream->mark(self->bitstream, AFTER_BLOCK_HEADER);
         switch (error =
                 read_sample_rate_sub_block(&header,
                                            self->bitstream,
                                            &(self->sample_rate))) {
         case OK:
-            self->bitstream->rewind(self->bitstream);
-            self->bitstream->unmark(self->bitstream); /*after block header*/
+            self->bitstream->rewind(self->bitstream, AFTER_BLOCK_HEADER);
+            self->bitstream->unmark(self->bitstream, AFTER_BLOCK_HEADER);
             break;
         case SUB_BLOCK_NOT_FOUND:
 #ifndef STANDALONE
             PyErr_SetString(PyExc_ValueError, "sample rate undefined");
 #endif
-            self->bitstream->unmark(self->bitstream); /*after block header*/
-            self->bitstream->unmark(self->bitstream); /*beginning of stream*/
+            self->bitstream->unmark(self->bitstream, AFTER_BLOCK_HEADER);
+            self->bitstream->unmark(self->bitstream, BEGINNING_OF_STREAM);
             return -1;
         default:
 #ifndef STANDALONE
             PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
 #endif
-            self->bitstream->unmark(self->bitstream); /*after block header*/
-            self->bitstream->unmark(self->bitstream); /*beginning of stream*/
+            self->bitstream->unmark(self->bitstream, AFTER_BLOCK_HEADER);
+            self->bitstream->unmark(self->bitstream, BEGINNING_OF_STREAM);
             return -1;
         }
     }
@@ -147,29 +149,29 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
         /*in the event of a stream with more than 2 channels,
           look for a channel count/channel mask sub block
           within the first block*/
-        self->bitstream->mark(self->bitstream);  /*after block header*/
+        self->bitstream->mark(self->bitstream, AFTER_BLOCK_HEADER);
         switch (error =
                 read_channel_count_sub_block(&header,
                                              self->bitstream,
                                              &(self->channels),
                                              &(self->channel_mask))) {
         case OK:
-            self->bitstream->rewind(self->bitstream);
-            self->bitstream->unmark(self->bitstream); /*after block header*/
+            self->bitstream->rewind(self->bitstream, AFTER_BLOCK_HEADER);
+            self->bitstream->unmark(self->bitstream, AFTER_BLOCK_HEADER);
             break;
         case SUB_BLOCK_NOT_FOUND:
 #ifndef STANDALONE
             PyErr_SetString(PyExc_ValueError, "channel count/mask undefined");
 #endif
-            self->bitstream->unmark(self->bitstream); /*after block header*/
-            self->bitstream->unmark(self->bitstream); /*beginning of stream*/
+            self->bitstream->unmark(self->bitstream, AFTER_BLOCK_HEADER);
+            self->bitstream->unmark(self->bitstream, BEGINNING_OF_STREAM);
             return -1;
         default:
 #ifndef STANDALONE
             PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
 #endif
-            self->bitstream->unmark(self->bitstream); /*after block header*/
-            self->bitstream->unmark(self->bitstream); /*beginning of stream*/
+            self->bitstream->unmark(self->bitstream, AFTER_BLOCK_HEADER);
+            self->bitstream->unmark(self->bitstream, BEGINNING_OF_STREAM);
             return -1;
         }
     }
@@ -177,8 +179,8 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->total_pcm_frames = header.total_samples;
     self->remaining_pcm_samples = header.total_samples;
 
-    self->bitstream->rewind(self->bitstream);
-    self->bitstream->unmark(self->bitstream); /*beginning of stream*/
+    self->bitstream->rewind(self->bitstream, BEGINNING_OF_STREAM);
+    self->bitstream->unmark(self->bitstream, BEGINNING_OF_STREAM);
 
     /*mark stream as not closed and ready for reading*/
     self->closed = 0;

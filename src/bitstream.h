@@ -83,6 +83,13 @@ struct br_mark {
     struct br_mark *next;
 };
 
+/*all the marks on the mark stack with the same ID*/
+struct br_mark_stack {
+    int mark_id;
+    struct br_mark *marks;
+    struct br_mark_stack *next;
+};
+
 /*a Huffman table entry indicating either a next node (if continue == 1)
   or final value and new context (if continue == 0)*/
 struct br_huffman_table {
@@ -109,11 +116,10 @@ typedef struct BitstreamReader_s {
     state_t state;
     struct bs_callback* callbacks;
     struct bs_exception* exceptions;
-    struct br_mark* marks;
+    struct br_mark_stack* mark_stacks;
 
     struct bs_callback* callbacks_used;
     struct bs_exception* exceptions_used;
-    struct br_mark* marks_used;
 
     /*returns "count" number of unsigned bits from the current stream
       in the current endian format up to "count" bits wide*/
@@ -271,23 +277,27 @@ typedef struct BitstreamReader_s {
     void
     (*close)(struct BitstreamReader_s* bs);
 
-    /*pushes a new mark onto to the stream, which can be rewound to later
+    /*pushes the stream's current position onto the given mark stack
 
       all pushed marks should be unmarked once no longer needed*/
     void
-    (*mark)(struct BitstreamReader_s* bs);
+    (*mark)(struct BitstreamReader_s* bs, int mark_id);
 
-    /*rewinds the stream to the next previous mark on the mark stack
+    /*returns 1 if the stream has a mark with the given ID*/
+    int
+    (*has_mark)(const struct BitstreamReader_s* bs, int mark_id);
+
+    /*rewinds the stream to the next previous mark on the given mark stack
 
       rewinding does not affect the mark itself*/
     void
-    (*rewind)(struct BitstreamReader_s* bs);
+    (*rewind)(struct BitstreamReader_s* bs, int mark_id);
 
-    /*pops the previous mark from the mark stack
+    /*pops the top value from the given mark stack
 
       unmarking does not affect the stream's current position*/
     void
-    (*unmark)(struct BitstreamReader_s* bs);
+    (*unmark)(struct BitstreamReader_s* bs, int mark_id);
 
     /*this appends the given length of bytes from the current stream
       to the given substream
@@ -592,35 +602,40 @@ void
 br_close(BitstreamReader* bs);
 
 
-/*bs->mark(bs)  methods*/
-void
-br_mark_f(BitstreamReader* bs);
-void
-br_mark_s(BitstreamReader* bs);
-void
-br_mark_e(BitstreamReader* bs);
-void
-br_mark_c(BitstreamReader* bs);
+/*bs->has_mark(bs, id)  method*/
+int
+br_has_mark(const BitstreamReader* bs, int mark_id);
 
-/*bs->rewind(bs)  methods*/
-void
-br_rewind_f(BitstreamReader* bs);
-void
-br_rewind_s(BitstreamReader* bs);
-void
-br_rewind_e(BitstreamReader* bs);
-void
-br_rewind_c(BitstreamReader* bs);
 
-/*bs->unmark(bs)  methods*/
+/*bs->mark(bs, id)  methods*/
 void
-br_unmark_f(BitstreamReader* bs);
+br_mark_f(BitstreamReader* bs, int mark_id);
 void
-br_unmark_s(BitstreamReader* bs);
+br_mark_s(BitstreamReader* bs, int mark_id);
 void
-br_unmark_e(BitstreamReader* bs);
+br_mark_e(BitstreamReader* bs, int mark_id);
 void
-br_unmark_c(BitstreamReader* bs);
+br_mark_c(BitstreamReader* bs, int mark_id);
+
+/*bs->rewind(bs, id)  methods*/
+void
+br_rewind_f(BitstreamReader* bs, int mark_id);
+void
+br_rewind_s(BitstreamReader* bs, int mark_id);
+void
+br_rewind_e(BitstreamReader* bs, int mark_id);
+void
+br_rewind_c(BitstreamReader* bs, int mark_id);
+
+/*bs->unmark(bs, id)  methods*/
+void
+br_unmark_f(BitstreamReader* bs, int mark_id);
+void
+br_unmark_s(BitstreamReader* bs, int mark_id);
+void
+br_unmark_e(BitstreamReader* bs, int mark_id);
+void
+br_unmark_c(BitstreamReader* bs, int mark_id);
 
 
 /*bs->substream_append(bs, substream, bytes)  method*/
@@ -740,6 +755,13 @@ struct bw_mark {
     struct bw_mark *next;
 };
 
+/*all the marks on the mark stack with the same ID*/
+struct bw_mark_stack {
+    int mark_id;
+    struct bw_mark *marks;
+    struct bw_mark_stack *next;
+};
+
 typedef struct BitstreamWriter_s {
     bw_type type;
 
@@ -755,7 +777,7 @@ typedef struct BitstreamWriter_s {
 
     struct bs_callback* callbacks;
     struct bs_exception* exceptions;
-    struct bw_mark* marks;
+    struct bw_mark_stack* mark_stacks;
 
     struct bs_callback* callbacks_used;
     struct bs_exception* exceptions_used;
@@ -908,7 +930,7 @@ typedef struct BitstreamWriter_s {
     void
     (*close)(struct BitstreamWriter_s* bs);
 
-    /*pushes a new mark onto the stream, which can be rewound to later
+    /*pushes the stream's current position onto the given mark stack
 
       all pushed marks should be unmarked once no longer needed
 
@@ -917,9 +939,13 @@ typedef struct BitstreamWriter_s {
       attempting to set a mark while the output stream is not
       byte-aligned will trigger an abort!*/
     void
-    (*mark)(struct BitstreamWriter_s* bs);
+    (*mark)(struct BitstreamWriter_s* bs, int mark_id);
 
-    /*rewinds the stream to the next previous mark on the mark stack
+    /*returns 1 if the stream has a mark with the given ID*/
+    int
+    (*has_mark)(const struct BitstreamWriter_s* bs, int mark_id);
+
+    /*rewinds the stream to the next previous mark on the given mark stack
 
       rewinding does not affect the mark itself
 
@@ -928,15 +954,15 @@ typedef struct BitstreamWriter_s {
       attempting to rewind to a mark while the output stream
       is not byte-aligned will trigger an abort!*/
     void
-    (*rewind)(struct BitstreamWriter_s* bs);
+    (*rewind)(struct BitstreamWriter_s* bs, int mark_id);
 
-    /*pops the previous mark from the stream's current position
+    /*pops the top value from the given mark stack
 
       this method works only on file and function-based output streams
 
       unmarking does not affect the stream's current position*/
     void
-    (*unmark)(struct BitstreamWriter_s* bs);
+    (*unmark)(struct BitstreamWriter_s* bs, int mark_id);
 } BitstreamWriter;
 
 
@@ -1202,31 +1228,36 @@ void
 bw_close(BitstreamWriter* bs);
 
 
-/*bs->mark(bs)  method*/
-void
-bw_mark_f(BitstreamWriter *bs);
-void
-bw_mark_e(BitstreamWriter *bs);
-void
-bw_mark_r_a(BitstreamWriter *bs);
+/*bs->has_mark(bs, id)  method*/
+int
+bw_has_mark(const BitstreamWriter *bs, int mark_id);
 
 
-/*bs->rewind(bs)  method*/
+/*bs->mark(bs, id)  method*/
 void
-bw_rewind_f(BitstreamWriter *bs);
+bw_mark_f(BitstreamWriter *bs, int mark_id);
 void
-bw_rewind_e(BitstreamWriter *bs);
+bw_mark_e(BitstreamWriter *bs, int mark_id);
 void
-bw_rewind_r_a(BitstreamWriter *bs);
+bw_mark_r_a(BitstreamWriter *bs, int mark_id);
 
 
-/*bs->unmark(bs)  method*/
+/*bs->rewind(bs, id)  method*/
 void
-bw_unmark_f(BitstreamWriter *bs);
+bw_rewind_f(BitstreamWriter *bs, int mark_id);
 void
-bw_unmark_e(BitstreamWriter *bs);
+bw_rewind_e(BitstreamWriter *bs, int mark_id);
 void
-bw_unmark_r_a(BitstreamWriter *bs);
+bw_rewind_r_a(BitstreamWriter *bs, int mark_id);
+
+
+/*bs->unmark(bs, id)  method*/
+void
+bw_unmark_f(BitstreamWriter *bs, int mark_id);
+void
+bw_unmark_e(BitstreamWriter *bs, int mark_id);
+void
+bw_unmark_r_a(BitstreamWriter *bs, int mark_id);
 
 
 /*unattached, BitstreamWriter functions*/
@@ -1383,6 +1414,59 @@ bs_format_size(const char* format);
 /*returns the size of the given format string in bytes*/
 unsigned
 bs_format_byte_size(const char* format);
+
+
+
+/*******************************************************************
+ *                           mark handlers                         *
+ *******************************************************************/
+
+/*adds the given mark to the stack and returns the next stack*/
+struct br_mark_stack*
+br_add_mark(struct br_mark_stack* stack, int mark_id, struct br_mark* mark);
+
+/*returns the top mark with the given mark_id, or NULL*/
+struct br_mark*
+br_get_mark(const struct br_mark_stack* stack, int mark_id);
+
+/*pops the next mark with the given mark_id
+  or NULL if the mark_id isn't found
+  and returns an updated stack*/
+struct br_mark_stack*
+br_pop_mark(struct br_mark_stack* stack,
+            int mark_id,
+            struct br_mark** mark);
+
+/*pops the next mark from the current stack
+  and returns an updated stack*/
+struct br_mark_stack*
+br_pop_mark_stack(struct br_mark_stack* stack,
+                  struct br_mark** mark);
+
+
+/*adds the given mark to the stack and returns the next stack*/
+struct bw_mark_stack*
+bw_add_mark(struct bw_mark_stack* stack, int mark_id, struct bw_mark* mark);
+
+/*returns the top mark with the given mark_id, or NULL*/
+struct bw_mark*
+bw_get_mark(const struct bw_mark_stack* stack, int mark_id);
+
+/*pops the next mark with the given mark_id
+  or NULL if the mark_id isn't found
+  and returns an updated stack*/
+struct bw_mark_stack*
+bw_pop_mark(struct bw_mark_stack* stack,
+            int mark_id,
+            struct bw_mark** mark);
+
+/*pops the next mark from the current stack
+  and returns an updated stack*/
+struct bw_mark_stack*
+bw_pop_mark_stack(struct bw_mark_stack* stack,
+                  struct bw_mark** mark);
+
+
 
 #ifndef STANDALONE
 /*******************************************************************
