@@ -2236,7 +2236,9 @@ bw_write_bytes_e(BitstreamWriter* bs, const uint8_t* bytes,
         struct bs_callback* callback;
 
         /*stream is byte aligned, so performed optimized write*/
-        ext_fwrite(bs->output.external, bytes, count);
+        if (ext_fwrite(bs->output.external, bytes, count)) {
+            bw_abort(bs);
+        }
 
         /*perform callbacks on the written bytes*/
         for (callback = bs->callbacks;
@@ -2576,7 +2578,9 @@ bw_flush_r_a_c(BitstreamWriter* bs)
 void
 bw_flush_e(BitstreamWriter* bs)
 {
-    ext_flush_w(bs->output.external);
+    if (ext_flush_w(bs->output.external)) {
+        bw_abort(bs);
+    }
 }
 
 
@@ -2618,8 +2622,9 @@ bw_close_internal_stream_r_a(BitstreamWriter* bs)
 void
 bw_close_internal_stream_e(BitstreamWriter* bs)
 {
-    /*call .close() method (which automatically performs flush)*/
-    ext_close_w(bs->output.external);
+    /*call .close() method (which automatically performs flush)
+      not much we can do if an error occurs at this point*/
+    (void)ext_close_w(bs->output.external);
 
     /*swap read methods with closed methods*/
     bw_close_methods(bs);
@@ -2700,7 +2705,9 @@ bw_free_e(BitstreamWriter* bs)
 
     /*flush pending data if necessary*/
     if (!bw_closed(bs)) {
-        ext_flush_w(bs->output.external);
+        /*if an error occurs during flushing at this point
+          there's not much we can do*/
+        (void)ext_flush_w(bs->output.external);
     }
 
     /*free any leftover mark objects on stack
@@ -2743,9 +2750,14 @@ bw_mark_e(BitstreamWriter *bs)
 {
     if (bs->buffer_size == 0) {
         struct bw_mark* mark = malloc(sizeof(struct bw_mark));
-        mark->position.external = ext_tell_w(bs->output.external);
-        mark->next = bs->marks;
-        bs->marks = mark;
+        void *position = ext_tell_w(bs->output.external);
+        if (position != NULL) {
+            mark->position.external = position;
+            mark->next = bs->marks;
+            bs->marks = mark;
+        } else {
+            bw_abort(bs);
+        }
     } else {
         fprintf(stderr,
                 "*** Error: Attempt to mark non-byte-aligned stream\n");
@@ -2780,7 +2792,9 @@ bw_rewind_e(BitstreamWriter *bs)
     if (bs->buffer_size == 0) {
         struct bw_mark* mark = bs->marks;
         if (mark != NULL) {
-            ext_seek_w(bs->output.external, mark->position.external);
+            if (ext_seek_w(bs->output.external, mark->position.external)) {
+                bw_abort(bs);
+            }
         } else {
             fprintf(stderr, "*** Warning: no marks on stack to rewind\n");
         }
@@ -2891,7 +2905,7 @@ bw_abort(BitstreamWriter *bs)
     if (bs->exceptions != NULL) {
         longjmp(bs->exceptions->env, 1);
     } else {
-        fprintf(stderr, "EOF encountered, aborting\n");
+        fprintf(stderr, "*** Error: EOF encountered, aborting\n");
         abort();
     }
 }
@@ -3268,18 +3282,20 @@ int bw_write_python(PyObject* writer,
     return 0;
 }
 
-void bw_flush_python(PyObject* writer)
+int bw_flush_python(PyObject* writer)
 {
     PyObject* flush_result = PyObject_CallMethod(writer, "flush", NULL);
     if (flush_result != NULL) {
         Py_DECREF(flush_result);
+        return 0;
     } else {
-        /*flush method call failed, so clear error*/
+        /*flush method call failed, so clear error and return failure*/
         PyErr_Clear();
+        return EOF;
     }
 }
 
-void bw_seek_python(PyObject* writer, PyObject* pos)
+int bw_seek_python(PyObject* writer, PyObject* pos)
 {
     if (pos != NULL) {
         PyObject *seek = PyObject_GetAttrString(writer, "seek");
@@ -3287,16 +3303,20 @@ void bw_seek_python(PyObject* writer, PyObject* pos)
             PyObject *result = PyObject_CallFunctionObjArgs(seek, pos, NULL);
             if (result != NULL) {
                 Py_DECREF(result);
+                return 0;
             } else {
                 /*some error occurred calling seek()*/
                 PyErr_Print();
+                return EOF;
             }
         } else {
             /*unable to find seek method in object*/
             PyErr_Print();
+            return EOF;
         }
     }
     /*do nothing if position is empty*/
+    return 0;
 }
 
 PyObject* bw_tell_python(PyObject* writer)
@@ -3315,16 +3335,18 @@ void bw_free_pos_python(PyObject* pos)
     Py_XDECREF(pos);
 }
 
-void bs_close_python(PyObject* obj)
+int bs_close_python(PyObject* obj)
 {
     /*call close method on reader/writer*/
     PyObject* close_result = PyObject_CallMethod(obj, "close", NULL);
     if (close_result != NULL) {
         /*ignore result*/
         Py_DECREF(close_result);
+        return 0;
     } else {
-        /*close method call failed, so clear error*/
+        /*close method call failed, so clear error and return failure*/
         PyErr_Clear();
+        return EOF;
     }
 }
 
@@ -3533,7 +3555,7 @@ int ext_fread_test(FILE* user_data,
                    struct bs_buffer* buffer,
                    unsigned buffer_size);
 
-void ext_fclose_test(FILE* user_data);
+int ext_fclose_test(FILE* user_data);
 
 void ext_ffree_test(FILE* user_data);
 
@@ -3541,9 +3563,9 @@ int ext_fwrite_test(FILE* user_data,
                     struct bs_buffer* buffer,
                     unsigned buffer_size);
 
-void ext_fflush_test(FILE* user_data);
+int ext_fflush_test(FILE* user_data);
 
-void ext_fseek_test(FILE *user_data, fpos_t *pos);
+int ext_fseek_test(FILE *user_data, fpos_t *pos);
 
 fpos_t* ext_ftell_test(FILE *user_data);
 
@@ -6270,9 +6292,9 @@ int ext_fread_test(FILE* user_data,
     }
 }
 
-void ext_fclose_test(FILE* user_data)
+int ext_fclose_test(FILE* user_data)
 {
-    fclose(user_data);
+    return fclose(user_data);
 }
 
 void ext_ffree_test(FILE* user_data)
@@ -6295,21 +6317,29 @@ int ext_fwrite_test(FILE* user_data,
     return 0;
 }
 
-void ext_fflush_test(FILE* user_data)
+int ext_fflush_test(FILE* user_data)
 {
-    fflush(user_data);
+    return fflush(user_data);
 }
 
-void ext_fseek_test(FILE *user_data, fpos_t *pos)
+int ext_fseek_test(FILE *user_data, fpos_t *pos)
 {
-    fsetpos(user_data, pos);
+    if (!fsetpos(user_data, pos)) {
+        return 0;
+    } else {
+        return EOF;
+    }
 }
 
 fpos_t* ext_ftell_test(FILE *user_data)
 {
     fpos_t* pos = malloc(sizeof(fpos_t));
-    fgetpos(user_data, pos);
-    return pos;
+    if (!fgetpos(user_data, pos)) {
+        return pos;
+    } else {
+        free(pos);
+        return NULL;
+    }
 }
 
 void ext_free_pos_test(fpos_t *pos)

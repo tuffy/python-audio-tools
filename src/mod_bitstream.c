@@ -1922,14 +1922,23 @@ BitstreamWriter_write_huffman_code(bitstream_BitstreamWriter *self,
 
     huffman_tree = (bitstream_HuffmanTree*)huffman_tree_obj;
 
-    if (self->bitstream->write_huffman_code(self->bitstream,
-                                            huffman_tree->bw_table,
-                                            value)) {
-        PyErr_SetString(PyExc_ValueError, "invalid HuffmanTree value");
-        return NULL;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        const int r = self->bitstream->write_huffman_code(
+            self->bitstream, huffman_tree->bw_table, value);
+
+        bw_etry(self->bitstream);
+
+        if (r) {
+            PyErr_SetString(PyExc_ValueError, "invalid HuffmanTree value");
+            return NULL;
+        } else {
+            Py_INCREF(Py_None);
+            return Py_None;
+        }
     } else {
-        Py_INCREF(Py_None);
-        return Py_None;
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
     }
 }
 
@@ -2034,9 +2043,16 @@ BitstreamWriter_build(bitstream_BitstreamWriter *self, PyObject *args)
 static PyObject*
 BitstreamWriter_flush(bitstream_BitstreamWriter *self, PyObject *args)
 {
-    self->bitstream->flush(self->bitstream);
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(self->bitstream))) {
+        self->bitstream->flush(self->bitstream);
+        bw_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -2112,10 +2128,16 @@ BitstreamWriter_mark(bitstream_BitstreamWriter *self, PyObject *args)
         return NULL;
     }
 
-    writer->mark(writer);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(writer))) {
+        writer->mark(writer);
+        bw_etry(writer);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(writer);
+        PyErr_SetString(PyExc_IOError, "I/O error getting stream's position");
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -2134,10 +2156,16 @@ BitstreamWriter_rewind(bitstream_BitstreamWriter *self, PyObject *args)
         return NULL;
     }
 
-    writer->rewind(writer);
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    if (!setjmp(*bw_try(writer))) {
+        writer->rewind(writer);
+        bw_etry(writer);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(writer);
+        PyErr_SetString(PyExc_IOError, "I/O error seeking in stream");
+        return NULL;
+    }
 }
 
 static PyObject*

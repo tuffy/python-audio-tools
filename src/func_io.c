@@ -144,13 +144,15 @@ ext_putc(int i, struct bw_external_output* stream)
 
     /*then flush internal buffer while it is too large*/
     while (buf_window_size(buffer) >= stream->buffer_size) {
-        stream->write(stream->user_data, buffer, stream->buffer_size);
+        if (stream->write(stream->user_data, buffer, stream->buffer_size)) {
+            return EOF;
+        }
     }
 
-    return 0;
+    return i;
 }
 
-void
+int
 ext_fwrite(struct bw_external_output* stream,
            const uint8_t *data,
            unsigned data_size)
@@ -162,47 +164,70 @@ ext_fwrite(struct bw_external_output* stream,
 
     /*then flush internal buffer while it is too large*/
     while (buf_window_size(buffer) >= stream->buffer_size) {
-        stream->write(stream->user_data, buffer, stream->buffer_size);
+        if (stream->write(stream->user_data, buffer, stream->buffer_size)) {
+            return EOF;
+        }
     }
+
+    return 0;
 }
 
-void
+int
 ext_seek_w(struct bw_external_output *stream, void *pos)
 {
     /*flush internal buffer before moving to new position*/
-    ext_flush_w(stream);
-    stream->seek(stream->user_data, pos);
+    if (!ext_flush_w(stream)) {
+        return stream->seek(stream->user_data, pos);
+    } else {
+        /*error occurred flushing stream*/
+        return EOF;
+    }
 }
 
 void*
 ext_tell_w(struct bw_external_output *stream)
 {
     /*flush internal buffer before retrieving new position*/
-    ext_flush_w(stream);
-    return stream->tell(stream->user_data);
+    if (!ext_flush_w(stream)) {
+        return stream->tell(stream->user_data);
+    } else {
+        /*some error occurred when flushing stream*/
+        return NULL;
+    }
 }
 
 void
 ext_free_pos_w(struct bw_external_output *stream, void *pos)
 {
-    stream->free_pos(pos);
+    if (pos != NULL) {
+        stream->free_pos(pos);
+    }
 }
 
-void
+int
 ext_flush_w(struct bw_external_output* stream)
 {
     struct bs_buffer* buffer = stream->buffer;
     while (buf_window_size(buffer) > 0) {
-        stream->write(stream->user_data, buffer, buf_window_size(buffer));
+        if (stream->write(stream->user_data,
+                          buffer,
+                          buf_window_size(buffer))) {
+            /*some error occurred when writing stream*/
+            return EOF;
+        }
     }
-    stream->flush(stream->user_data);
+    return stream->flush(stream->user_data);
 }
 
-void
+int
 ext_close_w(struct bw_external_output* stream)
 {
-    ext_flush_w(stream);
-    stream->close(stream->user_data);
+    if (!ext_flush_w(stream)) {
+        return stream->close(stream->user_data);
+    } else {
+        /*some error occurred when flushing stream*/
+        return EOF;
+    }
 }
 
 void

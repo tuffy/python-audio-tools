@@ -37,17 +37,22 @@ typedef int (*ext_read_f)(void* user_data,
 typedef int (*ext_write_f)(void* user_data,
                            struct bs_buffer* buffer,
                            unsigned buffer_size);
-typedef void (*ext_flush_f)(void* user_data);
 
-typedef void (*ext_seek_f)(void* user_data, void* pos);
+/*returns 0 on a successful flush, EOF if a write error occurs*/
+typedef int (*ext_flush_f)(void* user_data);
 
+/*returns 0 on a successful seek, EOF if a seek error occurs*/
+typedef int (*ext_seek_f)(void* user_data, void* pos);
+
+/*returns non-NULL on a successful tell, NULL if a tell error occurs*/
 typedef void* (*ext_tell_f)(void* user_data);
 
 typedef void (*ext_free_pos_f)(void *pos);
 
 /*casts used by both ext_open_r and ext_open_w*/
 
-typedef void (*ext_close_f)(void* user_data);
+/*returns 0 on a successful close, EOF if a close error occurs*/
+typedef int (*ext_close_f)(void* user_data);
 
 typedef void (*ext_free_f)(void* user_data);
 
@@ -128,12 +133,16 @@ ext_open_w(void* user_data,
            ext_close_f close,
            ext_free_f free);
 
-/*analagous to fputc*/
+/*analagous to fputc
+
+  returns character written on success, EOF if a write error occurs*/
 int
 ext_putc(int i, struct bw_external_output* stream);
 
-/*analagous to fwrite*/
-void
+/*analagous to fwrite
+
+  returns 0 on success, EOF if a write error occurs*/
+int
 ext_fwrite(struct bw_external_output* stream,
            const uint8_t *data,
            unsigned data_size);
@@ -141,14 +150,18 @@ ext_fwrite(struct bw_external_output* stream,
 /*analagous to fseek
 
   moves current stream position to pos
-  which has been returned by ext_tell_w*/
-void
+  which has been returned by ext_tell_w
+
+  returns 0 on success, EOF on failure*/
+int
 ext_seek_w(struct bw_external_output *stream, void *pos);
 
 /*analagous to ftell
 
   returns current position as pos
-  which may be fed to ext_seek_w*/
+  which may be fed to ext_seek_w
+
+  returns NULL if an error occurs*/
 void*
 ext_tell_w(struct bw_external_output *stream);
 
@@ -158,15 +171,19 @@ ext_free_pos_w(struct bw_external_output *stream, void *pos);
 
 /*analagous to fflush,
   this sends all buffered bytes to write function
-  and calls passed-in flush() function*/
-void
+  and calls passed-in flush() function
+
+  returns 0 on success, EOF on error*/
+int
 ext_flush_w(struct bw_external_output* stream);
 
 /*analagous to fclose
 
   this flushes output and calls passed-in close() function
-  but doesn't deallocate "stream" itself*/
-void
+  but doesn't deallocate "stream" itself
+
+  returns 0 on success, EOF on error*/
+int
 ext_close_w(struct bw_external_output* stream);
 
 /*this calls the passed-in free() function

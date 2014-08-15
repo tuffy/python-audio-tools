@@ -1397,15 +1397,15 @@ int bw_write_python(PyObject* writer,
                     struct bs_buffer* buffer,
                     unsigned buffer_size);
 
-void bw_flush_python(PyObject* writer);
+int bw_flush_python(PyObject* writer);
 
-void bw_seek_python(PyObject* writer, PyObject* pos);
+int bw_seek_python(PyObject* writer, PyObject* pos);
 
 PyObject* bw_tell_python(PyObject* writer);
 
 void bw_free_pos_python(PyObject* pos);
 
-void bs_close_python(PyObject* obj);
+int bs_close_python(PyObject* obj);
 
 void bs_free_python_decref(PyObject* obj);
 
