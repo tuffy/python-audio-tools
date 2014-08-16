@@ -2253,7 +2253,10 @@ class PCMReaderProgress(object):
         self.bits_per_sample = pcmreader.bits_per_sample
         self.current_frames = current_frames
         self.total_frames = total_frames
-        self.progress = progress
+        if (callable(progress)):
+            self.progress = progress
+        else:
+            self.progress = lambda current_frames, total_frames: None
 
     def read(self, pcm_frames):
         frame = self.__read__(pcm_frames)
