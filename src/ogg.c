@@ -170,10 +170,10 @@ write_ogg_page(BitstreamWriter *ogg_stream,
     }
 
     /*output header, calculated checksum and the rest to actual stream*/
-    bw_rec_split(ogg_stream, temp, temp, 22);
+    temp->split(temp, 22, ogg_stream, temp);
     ogg_stream->write(ogg_stream, 32, checksum);
-    bw_rec_split(NULL, temp, temp, 4);
-    bw_rec_copy(ogg_stream, temp);
+    temp->split(temp, 4, NULL, temp);
+    temp->copy(temp, ogg_stream);
 
     /*remove temporary stream*/
     temp->close(temp);

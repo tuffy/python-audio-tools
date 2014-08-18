@@ -410,6 +410,7 @@ int main(int argc, char* argv[]) {
     aa_int* framelist;
     struct tta_cache cache;
     unsigned written_pcm_frames = 0;
+    enum {SEEKTABLE};
 
     char c;
     const static struct option long_opts[] = {
@@ -519,6 +520,7 @@ int main(int argc, char* argv[]) {
 
     /*write placeholder seektable*/
     tta_frame_sizes->mset(tta_frame_sizes, total_tta_frames, 0);
+    writer->mark(writer, SEEKTABLE);
     write_seektable(writer, tta_frame_sizes);
     tta_frame_sizes->reset(tta_frame_sizes);
 
@@ -547,8 +549,9 @@ int main(int argc, char* argv[]) {
     assert(tta_frame_sizes->len == total_tta_frames);
 
     /*go back and write proper seektable*/
-    fseek(file, 22, SEEK_SET);
+    writer->rewind(writer, SEEKTABLE);
     write_seektable(writer, tta_frame_sizes);
+    writer->unmark(writer, SEEKTABLE);
 
     /*deallocate temporary buffers*/
     pcmreader->del(pcmreader);

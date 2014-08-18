@@ -48,7 +48,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     struct alac_context encoder;
     aa_int* channels = aa_int_new();
     unsigned frame_byte_size = 0;
-    fpos_t header_position;
+    enum {MDAT_HEADER};
 
     PyObject *log_output;
 
@@ -105,7 +105,7 @@ ALACEncoder_encode_alac(char *filename,
     struct alac_context encoder;
     aa_int* channels = aa_int_new();
     unsigned frame_byte_size = 0;
-    fpos_t header_position;
+    enum {MDAT_HEADER};
 
     init_encoder(&encoder);
 
@@ -123,7 +123,7 @@ ALACEncoder_encode_alac(char *filename,
     /*convert file object to bitstream writer*/
     output = bw_open(output_file, BS_BIG_ENDIAN);
 #endif
-    fgetpos(output_file, &header_position);
+    output->mark(output, MDAT_HEADER);
 
     bw_add_callback(output,
                     (bs_callback_f)byte_counter,
@@ -160,9 +160,10 @@ ALACEncoder_encode_alac(char *filename,
 
     /*return to header and rewrite it with the actual value*/
     bw_pop_callback(output, NULL);
-    fsetpos(output_file, &header_position);
+    output->rewind(output, MDAT_HEADER);
     output->write(output, 32,
                   encoder.frame_sizes->sum(encoder.frame_sizes) + 8);
+    output->unmark(output, MDAT_HEADER);
 
     /*close and free allocated files/buffers,
       which varies depending on whether we're running standlone or not*/
@@ -181,6 +182,7 @@ ALACEncoder_encode_alac(char *filename,
  error:
 
     pcmreader->del(pcmreader);
+    output->unmark(output, MDAT_HEADER);
     output->free(output);
     free_encoder(&encoder);
     channels->del(channels);
@@ -197,6 +199,7 @@ ALACEncoder_encode_alac(char *filename,
     return 0;
  error:
     pcmreader->del(pcmreader);
+    output->unmark(output, MDAT_HEADER);
     output->close(output);
     free_encoder(&encoder);
     channels->del(channels);
@@ -383,12 +386,12 @@ write_frame(BitstreamWriter *bs,
 
     if ((channels->_[0]->len >= 10)) {
         compressed_frame = encoder->compressed_frame;
-        bw_reset_recorder(compressed_frame);
+        compressed_frame->reset(compressed_frame);
         if (!setjmp(encoder->residual_overflow)) {
             write_compressed_frame(compressed_frame,
                                    encoder,
                                    channels);
-            bw_rec_copy(bs, compressed_frame);
+            compressed_frame->copy(compressed_frame, bs);
         } else {
             /*a residual overflow exception occurred,
               so write an uncompressed frame instead*/
@@ -460,7 +463,7 @@ write_compressed_frame(BitstreamWriter *bs,
             for (leftweight = encoder->options.minimum_interlacing_leftweight;
                  leftweight <= encoder->options.maximum_interlacing_leftweight;
                  leftweight++) {
-                bw_reset_recorder(interlaced_frame);
+                interlaced_frame->reset(interlaced_frame);
                 write_interlaced_frame(interlaced_frame,
                                        encoder,
                                        0,
@@ -472,12 +475,13 @@ write_compressed_frame(BitstreamWriter *bs,
                     best_interlaced_frame_bits) {
                     best_interlaced_frame_bits =
                         interlaced_frame->bits_written(interlaced_frame);
-                    bw_swap_records(interlaced_frame, best_interlaced_frame);
+                    best_interlaced_frame->swap(best_interlaced_frame,
+                                                interlaced_frame);
                 }
             }
 
             /*write the smallest leftweight to disk*/
-            bw_rec_copy(bs, best_interlaced_frame);
+            best_interlaced_frame->copy(best_interlaced_frame, bs);
         }
     } else {
         /*extract uncompressed least-significant bits*/
@@ -515,7 +519,7 @@ write_compressed_frame(BitstreamWriter *bs,
             for (leftweight = encoder->options.minimum_interlacing_leftweight;
                  leftweight <= encoder->options.maximum_interlacing_leftweight;
                  leftweight++) {
-                bw_reset_recorder(interlaced_frame);
+                interlaced_frame->reset(interlaced_frame);
                 write_interlaced_frame(interlaced_frame,
                                        encoder,
                                        uncompressed_LSBs,
@@ -527,12 +531,13 @@ write_compressed_frame(BitstreamWriter *bs,
                     best_interlaced_frame_bits) {
                     best_interlaced_frame_bits =
                         interlaced_frame->bits_written(interlaced_frame);
-                    bw_swap_records(interlaced_frame, best_interlaced_frame);
+                    best_interlaced_frame->swap(best_interlaced_frame,
+                                                interlaced_frame);
                 }
             }
 
             /*write the smallest leftweight to disk*/
-            bw_rec_copy(bs, best_interlaced_frame);
+            best_interlaced_frame->copy(best_interlaced_frame, bs);
         }
     }
 }
@@ -549,7 +554,7 @@ write_non_interlaced_frame(BitstreamWriter *bs,
     BitstreamWriter* residual = encoder->residual0;
 
     assert(channels->len == 1);
-    bw_reset_recorder(residual);
+    residual->reset(residual);
 
     bs->write(bs, 16, 0);  /*unused*/
 
@@ -582,7 +587,7 @@ write_non_interlaced_frame(BitstreamWriter *bs,
         }
     }
 
-    bw_rec_copy(bs, residual);
+    residual->copy(residual, bs);
 }
 
 static void
@@ -602,8 +607,8 @@ write_interlaced_frame(BitstreamWriter *bs,
     aa_int* correlated_channels = encoder->correlated_channels;
 
     assert(channels->len == 2);
-    bw_reset_recorder(residual0);
-    bw_reset_recorder(residual1);
+    residual0->reset(residual0);
+    residual1->reset(residual1);
 
     bs->write(bs, 16, 0);  /*unused*/
 
@@ -649,8 +654,8 @@ write_interlaced_frame(BitstreamWriter *bs,
         }
     }
 
-    bw_rec_copy(bs, residual0);
-    bw_rec_copy(bs, residual1);
+    residual0->copy(residual0, bs);
+    residual1->copy(residual1, bs);
 }
 
 static void
@@ -741,12 +746,12 @@ compute_coefficients(struct alac_context* encoder,
                             qlp_coefficients8, residual_values8);
 
         /*encode residual block for QLP coefficients at order 4*/
-        bw_reset_recorder(residual_block4);
+        residual_block4->reset(residual_block4);
         encode_residuals(encoder, sample_size,
                          residual_values4, residual_block4);
 
         /*encode residual block for QLP coefficients at order 8*/
-        bw_reset_recorder(residual_block8);
+        residual_block8->reset(residual_block8);
         encode_residuals(encoder, sample_size,
                          residual_values8, residual_block8);
 
@@ -756,12 +761,12 @@ compute_coefficients(struct alac_context* encoder,
             /*use QLP coefficients with order 4*/
             qlp_coefficients4->copy(qlp_coefficients4,
                                     qlp_coefficients);
-            bw_rec_copy(residual, residual_block4);
+            residual_block4->copy(residual_block4, residual);
         } else {
             /*use QLP coefficients with order 8*/
             qlp_coefficients8->copy(qlp_coefficients8,
                                     qlp_coefficients);
-            bw_rec_copy(residual, residual_block8);
+            residual_block8->copy(residual_block8, residual);
         }
     } else {
         /*all samples are 0, so use a special case*/
@@ -1234,7 +1239,7 @@ ALACEncoder_encode(encoders_ALACEncoder *self, PyObject *args)
     }
 
     /*clear output buffer*/
-    bw_reset_recorder(self->output_buffer);
+    self->output_buffer->reset(self->output_buffer);
 
     /*write frameset to output buffer*/
     write_frameset(self->output_buffer, &(self->encoder), channels);

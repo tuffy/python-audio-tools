@@ -75,6 +75,7 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     unsigned block_size = 0;
     unsigned padding_size = DEFAULT_PADDING_SIZE;
+    enum {STREAMINFO};
 
     encoder.options.mid_side = 0;
     encoder.options.adaptive_mid_side = 0;
@@ -139,6 +140,7 @@ encoders_encode_flac(char *filename,
     audiotools__MD5Context md5sum;
     aa_int* samples;
     unsigned padding_size = DEFAULT_PADDING_SIZE;
+    enum {STREAMINFO};
 
     /*set user-defined encoding options*/
     encoder.options.block_size = block_size;
@@ -214,6 +216,7 @@ encoders_encode_flac(char *filename,
     output_stream->write(output_stream, 24, 34);
 
     /*write placeholder STREAMINFO*/
+    output_stream->mark(output_stream, STREAMINFO);
     flacenc_write_streaminfo(output_stream, &(encoder.streaminfo));
 
     /*write VORBIS_COMMENT*/
@@ -254,7 +257,7 @@ encoders_encode_flac(char *filename,
 
         Py_BEGIN_ALLOW_THREADS
 #endif
-        bw_reset_recorder(encoder.frame);
+        encoder.frame->reset(encoder.frame);
         flacenc_write_frame(encoder.frame, &encoder, samples);
         encoder.streaminfo.total_samples += samples->_[0]->len;
         encoder.streaminfo.minimum_frame_size =
@@ -264,7 +267,7 @@ encoders_encode_flac(char *filename,
             MAX(encoder.streaminfo.maximum_frame_size,
                 encoder.frame->bits_written(encoder.frame) / 8);
         current_offset += encoder.frame->bytes_written(encoder.frame);
-        bw_rec_copy(output_stream, encoder.frame);
+        encoder.frame->copy(encoder.frame, output_stream);
 #ifndef STANDALONE
         Py_END_ALLOW_THREADS
 #endif
@@ -275,8 +278,9 @@ encoders_encode_flac(char *filename,
 
     /*go back and re-write STREAMINFO with complete values*/
     audiotools__MD5Final(encoder.streaminfo.md5sum, &md5sum);
-    fseek(output_stream->output.file, 4 + 4, SEEK_SET);
+    output_stream->rewind(output_stream, STREAMINFO);
     flacenc_write_streaminfo(output_stream, &encoder.streaminfo);
+    output_stream->unmark(output_stream, STREAMINFO);
 
     samples->del(samples); /*deallocate the temporary samples block*/
     pcmreader->close(pcmreader);
@@ -292,6 +296,7 @@ encoders_encode_flac(char *filename,
     samples->del(samples);
     pcmreader->del(pcmreader);
     flacenc_free_encoder(&encoder);
+    output_stream->unmark(output_stream, STREAMINFO);
     output_stream->close(output_stream); /*close the output file*/
     return NULL;
 }
@@ -301,6 +306,7 @@ encoders_encode_flac(char *filename,
     samples->del(samples);
     pcmreader->del(pcmreader);
     flacenc_free_encoder(&encoder);
+    output_stream->unmark(output_stream, STREAMINFO);
     output_stream->close(output_stream); /*close the output file*/
     return 0;
 }
@@ -540,10 +546,10 @@ flacenc_write_frame(BitstreamWriter* bs,
         unsigned average_subframe_bits;
         unsigned difference_subframe_bits;
 
-        bw_reset_recorder(left_subframe);
-        bw_reset_recorder(right_subframe);
-        bw_reset_recorder(average_subframe);
-        bw_reset_recorder(difference_subframe);
+        left_subframe->reset(left_subframe);
+        right_subframe->reset(right_subframe);
+        average_subframe->reset(average_subframe);
+        difference_subframe->reset(difference_subframe);
 
         flacenc_average_difference(samples,
                                    encoder->average_samples,
@@ -590,8 +596,8 @@ flacenc_write_frame(BitstreamWriter* bs,
                                            block_size,
                                            0x1,
                                            encoder->total_flac_frames++);
-                bw_rec_copy(bs, left_subframe);
-                bw_rec_copy(bs, right_subframe);
+                left_subframe->copy(left_subframe, bs);
+                right_subframe->copy(right_subframe, bs);
 
             } else if (left_subframe_bits <
                        MIN(right_subframe_bits, average_subframe_bits)) {
@@ -602,8 +608,8 @@ flacenc_write_frame(BitstreamWriter* bs,
                                            block_size,
                                            0x8,
                                            encoder->total_flac_frames++);
-                bw_rec_copy(bs, left_subframe);
-                bw_rec_copy(bs, difference_subframe);
+                left_subframe->copy(left_subframe, bs);
+                difference_subframe->copy(difference_subframe, bs);
 
             } else if (right_subframe_bits < average_subframe_bits) {
                 /*write difference-right subframes*/
@@ -613,8 +619,8 @@ flacenc_write_frame(BitstreamWriter* bs,
                                            block_size,
                                            0x9,
                                            encoder->total_flac_frames++);
-                bw_rec_copy(bs, difference_subframe);
-                bw_rec_copy(bs, right_subframe);
+                difference_subframe->copy(difference_subframe, bs);
+                right_subframe->copy(right_subframe, bs);
 
             } else {
                 /*write average-difference subframes*/
@@ -624,8 +630,8 @@ flacenc_write_frame(BitstreamWriter* bs,
                                            block_size,
                                            0xA,
                                            encoder->total_flac_frames++);
-                bw_rec_copy(bs, average_subframe);
-                bw_rec_copy(bs, difference_subframe);
+                average_subframe->copy(average_subframe, bs);
+                difference_subframe->copy(difference_subframe, bs);
             }
         } else if ((left_subframe_bits + right_subframe_bits) <
                    (average_subframe_bits + difference_subframe_bits)) {
@@ -636,8 +642,8 @@ flacenc_write_frame(BitstreamWriter* bs,
                                        block_size,
                                        0x1,
                                        encoder->total_flac_frames++);
-            bw_rec_copy(bs, left_subframe);
-            bw_rec_copy(bs, right_subframe);
+            left_subframe->copy(left_subframe, bs);
+            right_subframe->copy(right_subframe, bs);
 
         } else {
             /*write average-difference subframes*/
@@ -647,8 +653,8 @@ flacenc_write_frame(BitstreamWriter* bs,
                                        block_size,
                                        0xA,
                                        encoder->total_flac_frames++);
-            bw_rec_copy(bs, average_subframe);
-            bw_rec_copy(bs, difference_subframe);
+            average_subframe->copy(average_subframe, bs);
+            difference_subframe->copy(difference_subframe, bs);
         }
     } else {
         /*write channels indepedently*/
@@ -706,7 +712,7 @@ flacenc_write_subframe(BitstreamWriter* bs,
 
         /*build FIXED subframe, if allowed*/
         if (try_FIXED) {
-            bw_reset_recorder(encoder->fixed_subframe);
+            encoder->fixed_subframe->reset(encoder->fixed_subframe);
             flacenc_write_fixed_subframe(encoder->fixed_subframe,
                                          encoder,
                                          bits_per_sample,
@@ -716,7 +722,7 @@ flacenc_write_subframe(BitstreamWriter* bs,
 
         /*build LPC subframe, if allowed*/
         if (try_LPC) {
-            bw_reset_recorder(encoder->lpc_subframe);
+            encoder->lpc_subframe->reset(encoder->lpc_subframe);
             flacenc_write_lpc_subframe(encoder->lpc_subframe,
                                        encoder,
                                        bits_per_sample,
@@ -738,9 +744,9 @@ flacenc_write_subframe(BitstreamWriter* bs,
                 encoder->lpc_subframe->bits_written(encoder->lpc_subframe);
 
             if (fixed_bits < MIN(lpc_bits, verbatim_bits)) {
-                bw_rec_copy(bs, encoder->fixed_subframe);
+                encoder->fixed_subframe->copy(encoder->fixed_subframe, bs);
             } else if (lpc_bits < verbatim_bits) {
-                bw_rec_copy(bs, encoder->lpc_subframe);
+                encoder->lpc_subframe->copy(encoder->lpc_subframe, bs);
             } else {
                 flacenc_write_verbatim_subframe(bs,
                                                 bits_per_sample,
@@ -757,19 +763,19 @@ flacenc_write_subframe(BitstreamWriter* bs,
         } else if (try_FIXED && !try_LPC && !try_VERBATIM) {
             /*if FIXED = y , LPC = n , VERBATIM = n
               return FIXED subframe*/
-            bw_rec_copy(bs, encoder->fixed_subframe);
+            encoder->fixed_subframe->copy(encoder->fixed_subframe, bs);
         } else if (!try_FIXED && try_LPC && !try_VERBATIM) {
             /*if FIXED = n , LPC = y , VERBATIM = n
               return LPC subframe*/
-            bw_rec_copy(bs, encoder->lpc_subframe);
+            encoder->lpc_subframe->copy(encoder->lpc_subframe, bs);
         } else if (try_FIXED && try_LPC && !try_VERBATIM) {
             /*if FIXED = y , LPC = y , VERBATIM = n
               return min(FIXED, LPC) subframes*/
             if (encoder->fixed_subframe->bits_written(encoder->fixed_subframe) <
                 encoder->lpc_subframe->bits_written(encoder->lpc_subframe)) {
-                bw_rec_copy(bs, encoder->fixed_subframe);
+                encoder->fixed_subframe->copy(encoder->fixed_subframe, bs);
             } else {
-                bw_rec_copy(bs, encoder->lpc_subframe);
+                encoder->lpc_subframe->copy(encoder->lpc_subframe, bs);
             }
         } else if (!try_FIXED && !try_LPC && try_VERBATIM) {
             /*if FIXED = n , LPC = n , VERBATIM = y
@@ -783,7 +789,7 @@ flacenc_write_subframe(BitstreamWriter* bs,
               return min(FIXED, VERBATIM) subframes*/
             if (encoder->fixed_subframe->bits_written(encoder->fixed_subframe) <
                 verbatim_bits) {
-                bw_rec_copy(bs, encoder->fixed_subframe);
+                encoder->fixed_subframe->copy(encoder->fixed_subframe, bs);
             } else {
                 flacenc_write_verbatim_subframe(bs,
                                                 bits_per_sample,
@@ -795,7 +801,7 @@ flacenc_write_subframe(BitstreamWriter* bs,
               return min(LPC, VERBATIM) subframes*/
             if (encoder->lpc_subframe->bits_written(encoder->lpc_subframe) <
                 verbatim_bits) {
-                bw_rec_copy(bs, encoder->lpc_subframe);
+                encoder->lpc_subframe->copy(encoder->lpc_subframe, bs);
             } else {
                 flacenc_write_verbatim_subframe(bs,
                                                 bits_per_sample,
@@ -1080,7 +1086,7 @@ flacenc_best_lpc_coefficients(struct flac_context* encoder,
 
             /*otherwise, build LPC subframe from each set of LP coefficients*/
             for (order = 1; order <= encoder->options.max_lpc_order; order++) {
-                bw_reset_accumulator(candidate_subframe);
+                candidate_subframe->reset(candidate_subframe);
 
                 flacenc_quantize_coefficients(
                     lp_coefficients,

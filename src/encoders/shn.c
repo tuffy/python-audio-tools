@@ -562,7 +562,7 @@ int main(int argc, char* argv[]) {
             }
             break;
         case 'H':
-            bw_reset_recorder(header);
+            header->reset(header);
             if ((f = fopen(optarg, "rb")) != NULL) {
                 uint8_t bytes[4096];
                 size_t byte_count;
@@ -581,7 +581,7 @@ int main(int argc, char* argv[]) {
             }
             break;
         case 'F':
-            bw_reset_recorder(footer);
+            footer->reset(footer);
             if ((f = fopen(optarg, "rb")) != NULL) {
                 uint8_t bytes[4096];
                 size_t byte_count;

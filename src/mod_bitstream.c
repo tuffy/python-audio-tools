@@ -2511,7 +2511,7 @@ BitstreamRecorder_swap(bitstream_BitstreamRecorder *self,
                           &bitstream_BitstreamRecorderType, &to_swap))
         return NULL;
 
-    bw_swap_records(self->bitstream, to_swap->bitstream);
+    to_swap->bitstream->swap(to_swap->bitstream, self->bitstream);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -2521,7 +2521,7 @@ static PyObject*
 BitstreamRecorder_reset(bitstream_BitstreamRecorder *self,
                         PyObject *args)
 {
-    bw_reset_recorder(self->bitstream);
+    self->bitstream->reset(self->bitstream);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -2560,7 +2560,7 @@ BitstreamRecorder_copy(bitstream_BitstreamRecorder *self,
 
     if ((target = internal_writer(bitstreamwriter_obj)) != NULL) {
         if (!setjmp(*bw_try(self->bitstream))) {
-            bw_rec_copy(target, self->bitstream);
+            self->bitstream->copy(self->bitstream, target);
             bw_etry(self->bitstream);
             Py_INCREF(Py_None);
             return Py_None;
@@ -2618,8 +2618,10 @@ BitstreamRecorder_split(bitstream_BitstreamRecorder *self,
 
 
     if (!setjmp(*bw_try(self->bitstream))) {
-        total_bytes = bw_rec_split(target, remainder,
-                                   self->bitstream, total_bytes);
+        total_bytes = self->bitstream->split(self->bitstream,
+                                             total_bytes,
+                                             target,
+                                             remainder);
         bw_etry(self->bitstream);
         return Py_BuildValue("I", total_bytes);
     } else {
@@ -3031,7 +3033,7 @@ static PyObject*
 BitstreamAccumulator_reset(bitstream_BitstreamAccumulator *self,
                            PyObject *args)
 {
-    bw_reset_accumulator(self->bitstream);
+    self->bitstream->reset(self->bitstream);
 
     Py_INCREF(Py_None);
     return Py_None;

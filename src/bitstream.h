@@ -892,7 +892,7 @@ typedef struct BitstreamWriter_s {
       file-based streams must use a callback to keep track of
       that information*/
     unsigned int
-    (*bits_written)(struct BitstreamWriter_s* bs);
+    (*bits_written)(const struct BitstreamWriter_s* bs);
 
     /*returns the total bytes written to the stream thus far
 
@@ -900,7 +900,33 @@ typedef struct BitstreamWriter_s {
       file-based streams must use a callback to keep track of
       that information*/
     unsigned int
-    (*bytes_written)(struct BitstreamWriter_s* bs);
+    (*bytes_written)(const struct BitstreamWriter_s* bs);
+
+    /*resets recorder or accumulator for new values*/
+    void
+    (*reset)(struct BitstreamWriter_s* bs);
+
+    /*copies all the recorded data in a recorder to the target writer*/
+    void
+    (*copy)(const struct BitstreamWriter_s* bs,
+            struct BitstreamWriter_s* target);
+
+    /*copies "bytes" from source to "target"
+      and remainder to "remaining"
+
+      both "target" and "remainder" may be NULL,
+      in which case that data is discarded
+
+      returns the total bytes actually transferred to "target"*/
+    unsigned
+    (*split)(const struct BitstreamWriter_s* bs,
+             unsigned bytes,
+             struct BitstreamWriter_s* target,
+             struct BitstreamWriter_s* remainder);
+
+    void
+    (*swap)(struct BitstreamWriter_s* bs,
+            struct BitstreamWriter_s* target);
 
     /*flushes the current output stream's pending data*/
     void
@@ -909,8 +935,8 @@ typedef struct BitstreamWriter_s {
     /*flushes and closes the BitstreamWriter's internal stream
 
      * for FILE objects, performs fclose
-     * for recorders, does nothing
-     * for Python writers, flushes output and calls object's .close() method
+     * for recorders and accumulators, does nothing
+     * for external functions, calls the defined close() function
 
      once the internal stream is closed,
      the writer's I/O methods are updated to generate errors if called again*/
@@ -918,7 +944,7 @@ typedef struct BitstreamWriter_s {
     (*close_internal_stream)(struct BitstreamWriter_s* bs);
 
     /*for recorders, deallocates buffer
-      for Python writers, flushes output if necessary and decrefs Python object
+      for external functions, flushes data if not already closed
 
       deallocates any callbacks
 
@@ -1178,15 +1204,24 @@ bw_build(struct BitstreamWriter_s* stream, const char* format, ...);
 
 /*bs->bytes_written(bs)  method*/
 unsigned int
-bw_bytes_written(BitstreamWriter* bs);
+bw_bytes_written(const BitstreamWriter* bs);
 
 /*bs->bits_written(bs)  methods*/
 unsigned int
-bw_bits_written_f_p_c(BitstreamWriter* bs);
+bw_bits_written_f_e_c(const BitstreamWriter* bs);
 unsigned int
-bw_bits_written_r(BitstreamWriter* bs);
+bw_bits_written_r(const BitstreamWriter* bs);
 unsigned int
-bw_bits_written_a(BitstreamWriter* bs);
+bw_bits_written_a(const BitstreamWriter* bs);
+
+
+/*bs->reset(bs)  methods*/
+void
+bw_reset_f_e_c(BitstreamWriter* bs);
+void
+bw_reset_r(BitstreamWriter* bs);
+void
+bw_reset_a(BitstreamWriter* bs);
 
 
 /*bs->flush(bs)  methods*/
@@ -1197,6 +1232,34 @@ bw_flush_r_a_c(BitstreamWriter* bs);
 void
 bw_flush_e(BitstreamWriter* bs);
 
+
+/*bs->copy(bs)  methods*/
+void
+bw_copy_f_e_a_c(const BitstreamWriter* bs, BitstreamWriter* target);
+void
+bw_copy_r(const BitstreamWriter* bs, BitstreamWriter* target);
+
+
+/*bs->split(bs, bytes, target, remainder)  methods*/
+unsigned
+bw_split_f_e_a_c(const BitstreamWriter* bs,
+                 unsigned bytes,
+                 BitstreamWriter* target,
+                 BitstreamWriter* remainder);
+unsigned
+bw_split_r(const BitstreamWriter* bs,
+           unsigned bytes,
+           BitstreamWriter* target,
+           BitstreamWriter* remainder);
+
+
+/*bs->swap(bs, target)  methods*/
+void
+bw_swap_f_e_a_c(BitstreamWriter* bs,
+                BitstreamWriter* target);
+void
+bw_swap_r(BitstreamWriter* bs,
+          BitstreamWriter* target);
 
 
 void
@@ -1338,64 +1401,12 @@ bw_closed(BitstreamWriter* bs) {
     return (bs->write == bw_write_bits_c);
 }
 
-static inline int
-bw_eof(BitstreamWriter* bs) {
-    assert(bs->type == BW_FILE);
-    return feof(bs->output.file);
-}
-
-static inline long
-bw_ftell(BitstreamWriter* bs) {
-    assert(bs->type == BW_FILE);
-    return ftell(bs->output.file);
-}
-
-/*writes "total" number of bytes from "buffer" to "target"*/
-void
-bw_dump_bytes(BitstreamWriter* target,
-              const uint8_t* buffer, unsigned int total);
-
 /*extracts up to the first "bytes" number of bytes from "source"
   to "buffer", removes them from the recorder
   and returns the amount of bytes actually read*/
 unsigned
 bw_read(BitstreamWriter* source, uint8_t* buffer, unsigned bytes);
 
-/*given a BitstreamWriter recorder "source",
-  writes all of its recorded output to "target"*/
-void
-bw_rec_copy(BitstreamWriter* target, BitstreamWriter* source);
-
-/*given a BitstreamWriter recorder "source",
-  writes up to "total_bytes" of recorded output to "target"
-  while any remaining records are sent to "remaining"
-
-  if "remaining" is the same writer as "source",
-  sent records will be removed leaving only the remainder
-
-  if "target" or "remaining" are NULL, those outputs are ignored
-
-  returns the total bytes dumped to "target"*/
-unsigned int
-bw_rec_split(BitstreamWriter* target,
-             BitstreamWriter* remaining,
-             BitstreamWriter* source,
-             unsigned int total_bytes);
-
-/*clear the recorded output and reset for new output*/
-void
-bw_reset_recorder(BitstreamWriter* bs);
-
-static inline void
-bw_reset_accumulator(BitstreamWriter* bs)
-{
-    assert(bs->type == BW_ACCUMULATOR);
-
-    bs->output.accumulator = 0;
-}
-
-void
-bw_swap_records(BitstreamWriter* a, BitstreamWriter* b);
 
 /*******************************************************************
  *                          format handlers                        *

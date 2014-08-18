@@ -43,7 +43,6 @@ typedef enum {WV_DUMMY             = 0x0,
               WV_CHANNEL_INFO      = 0xD,
               WV_MD5               = 0x6} wv_metadata_function;
 
-struct block_offset;
 struct encoding_parameters;
 
 struct wavpack_encoder_context {
@@ -58,10 +57,6 @@ struct wavpack_encoder_context {
 
     /*running MD5 sum of PCM data*/
     audiotools__MD5Context md5sum;
-
-    /*list of offsets to all blocks in the file
-      which we can seek to and repopulate once encoding is finished*/
-    a_obj* offsets;
 
     /*RIFF WAVE header and footer data
       which may be populated from an external file*/
@@ -85,7 +80,6 @@ struct wavpack_encoder_context {
         aa_int* correlated;
         aa_int* correlation_temp;
         BitstreamWriter* sub_block;
-        BitstreamWriter* sub_blocks;
     } cache;
 };
 
@@ -173,9 +167,6 @@ static void
 free_block_parameters(struct encoding_parameters* params);
 
 static void
-add_block_offset(FILE* file, a_obj* offsets);
-
-static void
 write_block_header(BitstreamWriter* bs,
                    unsigned sub_blocks_size,
                    unsigned total_pcm_frames,
@@ -221,6 +212,10 @@ write_sub_block(BitstreamWriter* block,
                 unsigned metadata_function,
                 unsigned nondecoder_data,
                 BitstreamWriter* sub_block);
+
+/*returns the total size of the sub-block, includings its header*/
+static unsigned
+sub_block_total_size(BitstreamWriter* sub_block);
 
 /*terms[p] and deltas[p] are the correlation term and deltas values
   for pass "p"*/
