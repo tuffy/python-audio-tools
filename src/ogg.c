@@ -46,21 +46,21 @@ read_ogg_page_header(BitstreamReader *ogg_stream,
 
     /*the checksum field is *not* checksummed itself, naturally
       those 4 bytes are treated as 0*/
-    br_pop_callback(ogg_stream, &callback);
+    ogg_stream->pop_callback(ogg_stream, &callback);
     if (!setjmp(*br_try(ogg_stream))) {
         header->checksum = ogg_stream->read(ogg_stream, 32);
         br_etry(ogg_stream);
-        br_push_callback(ogg_stream, &callback);
+        ogg_stream->push_callback(ogg_stream, &callback);
     } else {
         /*restore callback before propagating read error*/
         br_etry(ogg_stream);
-        br_push_callback(ogg_stream, &callback);
+        ogg_stream->push_callback(ogg_stream, &callback);
         br_abort(ogg_stream);
     }
-    br_call_callbacks(ogg_stream, 0);
-    br_call_callbacks(ogg_stream, 0);
-    br_call_callbacks(ogg_stream, 0);
-    br_call_callbacks(ogg_stream, 0);
+    ogg_stream->call_callbacks(ogg_stream, 0);
+    ogg_stream->call_callbacks(ogg_stream, 0);
+    ogg_stream->call_callbacks(ogg_stream, 0);
+    ogg_stream->call_callbacks(ogg_stream, 0);
 
     header->segment_count = ogg_stream->read(ogg_stream, 8);
     for (i = 0; i < header->segment_count; i++) {
@@ -81,13 +81,13 @@ read_ogg_page(BitstreamReader *ogg_stream,
         ogg_status result;
 
         /*attach checksum calculator to stream*/
-        br_add_callback(ogg_stream, (bs_callback_f)ogg_crc, &checksum);
+        ogg_stream->add_callback(ogg_stream, (bs_callback_f)ogg_crc, &checksum);
 
         /*read header*/
         if ((result = read_ogg_page_header(ogg_stream,
                                            &(page->header))) != OGG_OK) {
             /*abort if error in header*/
-            br_pop_callback(ogg_stream, NULL);
+            ogg_stream->pop_callback(ogg_stream, NULL);
             br_etry(ogg_stream);
             return result;
         }
@@ -100,7 +100,7 @@ read_ogg_page(BitstreamReader *ogg_stream,
         }
 
         /*remove checksum calculator from stream*/
-        br_pop_callback(ogg_stream, NULL);
+        ogg_stream->pop_callback(ogg_stream, NULL);
 
         /*no more I/O needed for page*/
         br_etry(ogg_stream);
@@ -112,7 +112,7 @@ read_ogg_page(BitstreamReader *ogg_stream,
             return OGG_CHECKSUM_MISMATCH;
         }
     } else {
-        br_pop_callback(ogg_stream, NULL);
+        ogg_stream->pop_callback(ogg_stream, NULL);
         br_etry(ogg_stream);
         return OGG_PREMATURE_EOF;
     }
@@ -137,13 +137,13 @@ write_ogg_page_header(BitstreamWriter *ogg_stream,
 
     /*the checksum field is *not* checksummed itself, naturally
       those 4 bytes are treated as 0*/
-    bw_pop_callback(ogg_stream, &callback);
+    ogg_stream->pop_callback(ogg_stream, &callback);
     ogg_stream->write(ogg_stream, 32, header->checksum);
-    bw_push_callback(ogg_stream, &callback);
-    bw_call_callbacks(ogg_stream, 0);
-    bw_call_callbacks(ogg_stream, 0);
-    bw_call_callbacks(ogg_stream, 0);
-    bw_call_callbacks(ogg_stream, 0);
+    ogg_stream->push_callback(ogg_stream, &callback);
+    ogg_stream->call_callbacks(ogg_stream, 0);
+    ogg_stream->call_callbacks(ogg_stream, 0);
+    ogg_stream->call_callbacks(ogg_stream, 0);
+    ogg_stream->call_callbacks(ogg_stream, 0);
 
     ogg_stream->write(ogg_stream, 8, header->segment_count);
     for (i = 0; i < header->segment_count; i++)
@@ -159,7 +159,7 @@ write_ogg_page(BitstreamWriter *ogg_stream,
     uint8_t i;
 
     /*attach checksum calculator to temporary stream*/
-    bw_add_callback(temp, (bs_callback_f)ogg_crc, &checksum);
+    temp->add_callback(temp, (bs_callback_f)ogg_crc, &checksum);
 
     /*dump header and data to temporary stream*/
     write_ogg_page_header(temp, &(page->header));

@@ -258,10 +258,10 @@ read_mlp_frame(MLPDecoder* decoder,
             uint8_t parity;
             uint8_t CRC8;
 
-            br_add_callback(bs, mlp_checkdata_callback, &checkdata);
+            bs->add_callback(bs, mlp_checkdata_callback, &checkdata);
             bs->substream_append(bs, decoder->substream_reader,
                                  substream0->info.substream_end - 2);
-            br_pop_callback(bs, NULL);
+            bs->pop_callback(bs, NULL);
 
             parity = (uint8_t)bs->read(bs, 8);
             if ((parity ^ checkdata.parity) != 0xA9) {
@@ -334,12 +334,12 @@ read_mlp_frame(MLPDecoder* decoder,
                 unsigned CRC8;
                 unsigned parity;
 
-                br_add_callback(bs, mlp_checkdata_callback, &checkdata);
+                bs->add_callback(bs, mlp_checkdata_callback, &checkdata);
                 bs->substream_append(bs, decoder->substream_reader,
                                      substream1->info.substream_end -
                                      substream0->info.substream_end -
                                      2);
-                br_pop_callback(bs, NULL);
+                bs->pop_callback(bs, NULL);
 
                 parity = (uint8_t)bs->read(bs, 8);
                 if ((parity ^ checkdata.parity) != 0xA9) {

@@ -211,7 +211,9 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
         uint32_t frame_crc = 0xFFFFFFFF;
 
         /*read "frame_size" - 4 bytes of data from stream*/
-        br_add_callback(self->bitstream, (bs_callback_f)tta_crc32, &frame_crc);
+        self->bitstream->add_callback(self->bitstream,
+                                      (bs_callback_f)tta_crc32,
+                                      &frame_crc);
         br_substream_reset(self->frame);
 
         if (!setjmp(*br_try(self->bitstream))) {
@@ -220,11 +222,11 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
                                               frame_size - 4);
 
             br_etry(self->bitstream);
-            br_pop_callback(self->bitstream, NULL);
+            self->bitstream->pop_callback(self->bitstream, NULL);
         } else {
             /*read error attempting to populate frame with bytes*/
             br_etry(self->bitstream);
-            br_pop_callback(self->bitstream, NULL);
+            self->bitstream->pop_callback(self->bitstream, NULL);
             PyErr_SetString(PyExc_IOError, "I/O error reading frame");
             return NULL;
         }
@@ -369,9 +371,9 @@ read_header(BitstreamReader* bitstream,
         uint32_t header_crc = 0xFFFFFFFF;
 
         /*read the file header*/
-        br_add_callback(bitstream,
-                        (bs_callback_f)tta_crc32,
-                        &header_crc);
+        bitstream->add_callback(bitstream,
+                                (bs_callback_f)tta_crc32,
+                                &header_crc);
         bitstream->parse(bitstream,
                          "4b 16u 16u 16u 32u 32u",
                          signature,
@@ -390,7 +392,7 @@ read_header(BitstreamReader* bitstream,
         }
 
         /*check header's CRC for correctness*/
-        br_pop_callback(bitstream, NULL);
+        bitstream->pop_callback(bitstream, NULL);
         if ((header_crc ^ 0xFFFFFFFF) !=
             bitstream->read(bitstream, 32)) {
             br_etry(bitstream);
@@ -415,15 +417,15 @@ read_seektable(BitstreamReader* bitstream,
         unsigned i;
 
         /*read the seektable*/
-        br_add_callback(bitstream,
-                        (bs_callback_f)tta_crc32,
-                        &seektable_crc);
+        bitstream->add_callback(bitstream,
+                                (bs_callback_f)tta_crc32,
+                                &seektable_crc);
         for (i = 0; i < total_tta_frames; i++) {
             seektable[i] = bitstream->read(bitstream, 32);
         }
 
         /*check seektable's CRC for correctness*/
-        br_pop_callback(bitstream, NULL);
+        bitstream->pop_callback(bitstream, NULL);
         if ((seektable_crc ^ 0xFFFFFFFF) != bitstream->read(bitstream, 32)) {
             br_etry(bitstream);
             return CRCMISMATCH;

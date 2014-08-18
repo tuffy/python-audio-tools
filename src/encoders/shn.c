@@ -93,7 +93,7 @@ encoders_encode_shn(PyObject *dummy,
     /*write magic number and version*/
     writer->build(writer, "4b 8u", "ajkg", 2);
 
-    bw_add_callback(writer, (bs_callback_f)byte_counter, &bytes_written);
+    writer->add_callback(writer, (bs_callback_f)byte_counter, &bytes_written);
 
     /*write Shorten header*/
     write_header(writer,
@@ -656,7 +656,7 @@ int main(int argc, char* argv[]) {
     /*write magic number and version*/
     writer->build(writer, "4b 8u", "ajkg", 2);
 
-    bw_add_callback(writer, (bs_callback_f)byte_counter, &bytes_written);
+    writer->add_callback(writer, (bs_callback_f)byte_counter, &bytes_written);
 
     /*write Shorten header*/
     write_header(writer,

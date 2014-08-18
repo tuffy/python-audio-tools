@@ -213,9 +213,6 @@ write_sub_block(BitstreamWriter* block,
                 unsigned nondecoder_data,
                 BitstreamWriter* sub_block);
 
-/*returns the total size of the sub-block, includings its header*/
-static unsigned
-sub_block_total_size(BitstreamWriter* sub_block);
 
 /*terms[p] and deltas[p] are the correlation term and deltas values
   for pass "p"*/

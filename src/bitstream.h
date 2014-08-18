@@ -118,7 +118,6 @@ typedef struct BitstreamReader_s {
     struct bs_exception* exceptions;
     struct br_mark_stack* mark_stacks;
 
-    struct bs_callback* callbacks_used;
     struct bs_exception* exceptions_used;
 
     /*returns "count" number of unsigned bits from the current stream
@@ -276,6 +275,33 @@ typedef struct BitstreamReader_s {
     /*calls close_internal_stream(), followed by free()*/
     void
     (*close)(struct BitstreamReader_s* bs);
+
+    /*pushes a callback function into the stream
+      which is called on every byte read*/
+    void
+    (*add_callback)(struct BitstreamReader_s* bs,
+                    bs_callback_f callback,
+                    void* data);
+
+    /*pushes the given callback onto the callback stack
+      data from "callback" is copied onto a new internal struct
+      it does not need to be allocated from the heap*/
+    void
+    (*push_callback)(struct BitstreamReader_s* bs,
+                     struct bs_callback* callback);
+
+    /*pops the most recently added callback from the stack
+      if "callback" is not NULL, data from the popped callback
+      is copied to that struct*/
+    void
+    (*pop_callback)(struct BitstreamReader_s* bs,
+                    struct bs_callback* callback);
+
+    /*explicitly call all set callbacks as if "byte" had been read
+      from the input stream*/
+    void
+    (*call_callbacks)(struct BitstreamReader_s* bs,
+                      uint8_t byte);
 
     /*pushes the stream's current position onto the given mark stack
 
@@ -645,40 +671,25 @@ br_substream_append(struct BitstreamReader_s *stream,
                     unsigned bytes);
 
 
-/*unattached, BitstreamReader functions*/
-
-
-/*adds the given callback to BitstreamReader's callback stack*/
+/*bs->add_callback(bs, callback, data)  method*/
 void
 br_add_callback(BitstreamReader *bs, bs_callback_f callback, void *data);
 
-/*explicitly passes "byte" to the set callbacks,
-  as if the byte were read from the input stream*/
+
+/*bs->push_callback(bs, callback)  method*/
+void
+br_push_callback(BitstreamReader *bs, struct bs_callback *callback);
+
+
+/*bs->pop_callback(bs, callback)  method*/
+void
+br_pop_callback(BitstreamReader *bs, struct bs_callback *callback);
+
+
+/*bs->call_callbacks(bs, byte)  method*/
 void
 br_call_callbacks(BitstreamReader *bs, uint8_t byte);
 
-/*removes the most recently added callback, if any
-  if "callback" is not NULL, the popped callback's data is copied to it
-  for possible restoration via "br_push_callback"
-
-  this is often paired with bs_push_callback in order
-  to temporarily disable a callback, for example:
-
-  br_pop_callback(reader, &saved_callback);  //save callback for later
-  unchecksummed_value = bs->read(bs, 16);    //read a value
-  br_push_callback(reader, &saved_callback); //restore saved callback
-*/
-#define br_pop_callback(bs, callback) __br_pop_callback((bs), (callback), __FILE__, __LINE__)
-
-void
-__br_pop_callback(BitstreamReader *bs, struct bs_callback *callback,
-                  const char *file, int lineno);
-
-/*pushes the given callback back onto the callback stack
-  note that the data from "callback" is copied onto a new internal struct;
-  it does not need to be allocated from the heap*/
-void
-br_push_callback(BitstreamReader *bs, struct bs_callback *callback);
 
 
 /*Called by the read functions if one attempts to read past
@@ -779,7 +790,6 @@ typedef struct BitstreamWriter_s {
     struct bs_exception* exceptions;
     struct bw_mark_stack* mark_stacks;
 
-    struct bs_callback* callbacks_used;
     struct bs_exception* exceptions_used;
 
     /*writes the given value as "count" number of unsigned bits
@@ -955,6 +965,33 @@ typedef struct BitstreamWriter_s {
     /*calls close_internal_stream(), followed by free()*/
     void
     (*close)(struct BitstreamWriter_s* bs);
+
+    /*pushes a callback function into the stream
+      which is called on every byte read*/
+    void
+    (*add_callback)(struct BitstreamWriter_s* bs,
+                    bs_callback_f callback,
+                    void* data);
+
+    /*pushes the given callback onto the callback stack
+      data from "callback" is copied onto a new internal struct
+      it does not need to be allocated from the heap*/
+    void
+    (*push_callback)(struct BitstreamWriter_s* bs,
+                     struct bs_callback* callback);
+
+    /*pops the most recently added callback from the stack
+      if "callback" is not NULL, data from the popped callback
+      is copied to that struct*/
+    void
+    (*pop_callback)(struct BitstreamWriter_s* bs,
+                    struct bs_callback* callback);
+
+    /*explicitly call all set callbacks as if "byte" had been read
+      from the input stream*/
+    void
+    (*call_callbacks)(struct BitstreamWriter_s* bs,
+                      uint8_t byte);
 
     /*pushes the stream's current position onto the given mark stack
 
@@ -1326,40 +1363,19 @@ bw_unmark_r_a(BitstreamWriter *bs, int mark_id);
 /*unattached, BitstreamWriter functions*/
 
 
-/*adds a callback function, which is called on every byte written
-
-  the function's arguments are the written byte and a generic
-  pointer to some other data structure
- */
+/*bs->add_callback(bs, callback, data)  method*/
 void
-bw_add_callback(BitstreamWriter* bs, bs_callback_f callback, void *data);
+bw_add_callback(BitstreamWriter *bs, bs_callback_f callback, void *data);
 
-/*removes the most recently added callback, if any
-  if "callback" is not NULL, the popped callback's data is copied to it
-  for possible restoration via "bw_push_callback"
-
-  this is often paired with bs_push_callback in order
-  to temporarily disable a callback, for example:
-
-  bw_pop_callback(writer, &saved_callback);  //save callback for later
-  bs->write(bs, 16, 0xAB);                   //write a value
-  bw_push_callback(writer, &saved_callback); //restore saved callback
-*/
-
-#define bw_pop_callback(bs, callback) __bw_pop_callback((bs), (callback), __FILE__, __LINE__)
-
+/*bs->push_callback(bs, callback)  method*/
 void
-__bw_pop_callback(BitstreamWriter* bs, struct bs_callback* callback,
-                  const char *file, int lineno);
+bw_push_callback(BitstreamWriter *bs, struct bs_callback *callback);
 
-/*pushes the given callback back onto the callback stack
-  note that the data from "callback" is copied onto a new internal struct;
-  it does not need to be allocated from the heap*/
+/*bs->pop_callback(bs, callback)  method*/
 void
-bw_push_callback(BitstreamWriter* bs, struct bs_callback* callback);
+bw_pop_callback(BitstreamWriter *bs, struct bs_callback *callback);
 
-/*explicitly passes "byte" to the set callbacks,
-  as if the byte were written to the output stream*/
+/*bs->call_callbacks(bs, byte)  method*/
 void
 bw_call_callbacks(BitstreamWriter *bs, uint8_t byte);
 

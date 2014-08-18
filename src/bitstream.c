@@ -89,7 +89,6 @@ br_open(FILE *f, bs_endianness endianness)
     bs->callbacks = NULL;
     bs->exceptions = NULL;
     bs->mark_stacks = NULL;
-    bs->callbacks_used = NULL;
     bs->exceptions_used = NULL;
 
     switch (endianness) {
@@ -129,6 +128,10 @@ br_open(FILE *f, bs_endianness endianness)
     bs->close_internal_stream = br_close_internal_stream_f;
     bs->free = br_free_f;
     bs->close = br_close;
+    bs->add_callback = br_add_callback;
+    bs->push_callback = br_push_callback;
+    bs->pop_callback = br_pop_callback;
+    bs->call_callbacks = br_call_callbacks;
     bs->mark = br_mark_f;
     bs->has_mark = br_has_mark;
     bs->rewind = br_rewind_f;
@@ -147,7 +150,6 @@ br_substream_new(bs_endianness endianness)
     bs->callbacks = NULL;
     bs->exceptions = NULL;
     bs->mark_stacks = NULL;
-    bs->callbacks_used = NULL;
     bs->exceptions_used = NULL;
 
     switch (endianness) {
@@ -187,6 +189,10 @@ br_substream_new(bs_endianness endianness)
     bs->close_internal_stream = br_close_internal_stream_s;
     bs->free = br_free_s;
     bs->close = br_close;
+    bs->add_callback = br_add_callback;
+    bs->push_callback = br_push_callback;
+    bs->pop_callback = br_pop_callback;
+    bs->call_callbacks = br_call_callbacks;
     bs->mark = br_mark_s;
     bs->has_mark = br_has_mark;
     bs->rewind = br_rewind_s;
@@ -205,7 +211,6 @@ br_open_buffer(struct bs_buffer* buffer, bs_endianness endianness)
     bs->callbacks = NULL;
     bs->exceptions = NULL;
     bs->mark_stacks = NULL;
-    bs->callbacks_used = NULL;
     bs->exceptions_used = NULL;
 
     switch (endianness) {
@@ -245,6 +250,10 @@ br_open_buffer(struct bs_buffer* buffer, bs_endianness endianness)
     bs->close_internal_stream = br_close_internal_stream_s;
     bs->free = br_free_f;
     bs->close = br_close;
+    bs->add_callback = br_add_callback;
+    bs->push_callback = br_push_callback;
+    bs->pop_callback = br_pop_callback;
+    bs->call_callbacks = br_call_callbacks;
     bs->mark = br_mark_s;
     bs->has_mark = br_has_mark;
     bs->rewind = br_rewind_s;
@@ -272,7 +281,6 @@ br_open_external(void* user_data,
     bs->callbacks = NULL;
     bs->exceptions = NULL;
     bs->mark_stacks = NULL;
-    bs->callbacks_used = NULL;
     bs->exceptions_used = NULL;
 
     switch (endianness) {
@@ -311,6 +319,10 @@ br_open_external(void* user_data,
     bs->close_internal_stream = br_close_internal_stream_e;
     bs->free = br_free_e;
     bs->close = br_close;
+    bs->add_callback = br_add_callback;
+    bs->push_callback = br_push_callback;
+    bs->pop_callback = br_pop_callback;
+    bs->call_callbacks = br_call_callbacks;
     bs->mark = br_mark_e;
     bs->has_mark = br_has_mark;
     bs->rewind = br_rewind_e;
@@ -1348,12 +1360,6 @@ br_free_f(BitstreamReader* bs)
         free(c_node);
     }
 
-    /*deallocate used callbacks*/
-    for (c_node = bs->callbacks_used; c_node != NULL; c_node = c_next) {
-        c_next = c_node->next;
-        free(c_node);
-    }
-
     /*deallocate exceptions*/
     if (bs->exceptions != NULL) {
         fprintf(stderr, "*** Warning: leftover etry entries on stack\n");
@@ -1594,73 +1600,6 @@ br_substream_append(struct BitstreamReader_s *stream,
 
 
 void
-br_add_callback(BitstreamReader *bs, bs_callback_f callback, void *data)
-{
-    struct bs_callback *callback_node;
-
-    if (bs->callbacks_used == NULL)
-        callback_node = malloc(sizeof(struct bs_callback));
-    else {
-        callback_node = bs->callbacks_used;
-        bs->callbacks_used = bs->callbacks_used->next;
-    }
-    callback_node->callback = callback;
-    callback_node->data = data;
-    callback_node->next = bs->callbacks;
-    bs->callbacks = callback_node;
-}
-
-void
-br_call_callbacks(BitstreamReader *bs, uint8_t byte)
-{
-    struct bs_callback *callback;
-    for (callback = bs->callbacks;
-         callback != NULL;
-         callback = callback->next)
-        callback->callback(byte, callback->data);
-}
-
-void
-__br_pop_callback(BitstreamReader *bs, struct bs_callback *callback,
-                  const char *file, int lineno)
-{
-    struct bs_callback *c_node = bs->callbacks;
-    if (c_node != NULL) {
-        if (callback != NULL) {
-            callback->callback = c_node->callback;
-            callback->data = c_node->data;
-            callback->next = NULL;
-        }
-        bs->callbacks = c_node->next;
-        c_node->next = bs->callbacks_used;
-        bs->callbacks_used = c_node;
-    } else {
-        fprintf(stderr, "*** Warning: %s %d: no callbacks to pop\n",
-                file, lineno);
-    }
-}
-
-void
-br_push_callback(BitstreamReader *bs, struct bs_callback *callback)
-{
-    struct bs_callback *callback_node;
-
-    if (callback != NULL) {
-        if (bs->callbacks_used == NULL)
-            callback_node = malloc(sizeof(struct bs_callback));
-        else {
-            callback_node = bs->callbacks_used;
-            bs->callbacks_used = bs->callbacks_used->next;
-        }
-        callback_node->callback = callback->callback;
-        callback_node->data = callback->data;
-        callback_node->next = bs->callbacks;
-        bs->callbacks = callback_node;
-    }
-}
-
-
-void
 br_abort(BitstreamReader *bs)
 {
     if (bs->exceptions != NULL) {
@@ -1736,7 +1675,6 @@ bw_open(FILE *f, bs_endianness endianness)
     bs->callbacks = NULL;
     bs->exceptions = NULL;
     bs->mark_stacks = NULL;
-    bs->callbacks_used = NULL;
     bs->exceptions_used = NULL;
 
     switch (endianness) {
@@ -1772,6 +1710,10 @@ bw_open(FILE *f, bs_endianness endianness)
     bs->close_internal_stream = bw_close_internal_stream_f;
     bs->free = bw_free_f_a;
     bs->close = bw_close;
+    bs->add_callback = bw_add_callback;
+    bs->push_callback = bw_push_callback;
+    bs->pop_callback = bw_pop_callback;
+    bs->call_callbacks = bw_call_callbacks;
     bs->mark = bw_mark_f;
     bs->has_mark = bw_has_mark;
     bs->rewind = bw_rewind_f;
@@ -1810,7 +1752,6 @@ bw_open_external(void* user_data,
     bs->callbacks = NULL;
     bs->exceptions = NULL;
     bs->mark_stacks = NULL;
-    bs->callbacks_used = NULL;
     bs->exceptions_used = NULL;
 
     switch (endianness) {
@@ -1846,6 +1787,10 @@ bw_open_external(void* user_data,
     bs->close_internal_stream = bw_close_internal_stream_e;
     bs->free = bw_free_e;
     bs->close = bw_close;
+    bs->add_callback = bw_add_callback;
+    bs->push_callback = bw_push_callback;
+    bs->pop_callback = bw_pop_callback;
+    bs->call_callbacks = bw_call_callbacks;
     bs->mark = bw_mark_e;
     bs->has_mark = bw_has_mark;
     bs->rewind = bw_rewind_e;
@@ -1868,7 +1813,6 @@ bw_open_recorder(bs_endianness endianness)
     bs->callbacks = NULL;
     bs->exceptions = NULL;
     bs->mark_stacks = NULL;
-    bs->callbacks_used = NULL;
     bs->exceptions_used = NULL;
 
     switch (endianness) {
@@ -1904,6 +1848,10 @@ bw_open_recorder(bs_endianness endianness)
     bs->close_internal_stream = bw_close_internal_stream_r_a;
     bs->free = bw_free_r;
     bs->close = bw_close;
+    bs->add_callback = bw_add_callback;
+    bs->push_callback = bw_push_callback;
+    bs->pop_callback = bw_pop_callback;
+    bs->call_callbacks = bw_call_callbacks;
     bs->mark = bw_mark_r_a;
     bs->has_mark = bw_has_mark;
     bs->rewind = bw_rewind_r_a;
@@ -1925,7 +1873,6 @@ bw_open_accumulator(bs_endianness endianness)
     bs->callbacks = NULL;
     bs->exceptions = NULL;
     bs->mark_stacks = NULL;
-    bs->callbacks_used = NULL;
     bs->exceptions_used = NULL;
 
     bs->write = bw_write_bits_a;
@@ -1949,6 +1896,10 @@ bw_open_accumulator(bs_endianness endianness)
     bs->close_internal_stream = bw_close_internal_stream_r_a;
     bs->free = bw_free_f_a;
     bs->close = bw_close;
+    bs->add_callback = bw_add_callback;
+    bs->push_callback = bw_push_callback;
+    bs->pop_callback = bw_pop_callback;
+    bs->call_callbacks = bw_call_callbacks;
     bs->mark = bw_mark_r_a;
     bs->has_mark = bw_has_mark;
     bs->rewind = bw_rewind_r_a;
@@ -2802,12 +2753,6 @@ bw_free_f_a(BitstreamWriter* bs)
         free(c_node);
     }
 
-    /*deallocate used callbacks*/
-    for (c_node = bs->callbacks_used; c_node != NULL; c_node = c_next) {
-        c_next = c_node->next;
-        free(c_node);
-    }
-
     /*deallocate exceptions*/
     if (bs->exceptions != NULL) {
         fprintf(stderr, "*** Warning: leftover etry entries on stack\n");
@@ -3031,63 +2976,6 @@ bw_unmark_r_a(BitstreamWriter *bs, int mark_id)
 
 
 void
-bw_add_callback(BitstreamWriter *bs, bs_callback_f callback, void *data)
-{
-    struct bs_callback *callback_node = malloc(sizeof(struct bs_callback));
-    callback_node->callback = callback;
-    callback_node->data = data;
-    callback_node->next = bs->callbacks;
-    bs->callbacks = callback_node;
-}
-
-void
-__bw_pop_callback(BitstreamWriter* bs, struct bs_callback* callback,
-                  const char *file, int lineno) {
-    struct bs_callback *c_node = bs->callbacks;
-    if (c_node != NULL) {
-        if (callback != NULL) {
-            callback->callback = c_node->callback;
-            callback->data = c_node->data;
-            callback->next = NULL;
-        }
-        bs->callbacks = c_node->next;
-        c_node->next = bs->callbacks_used;
-        bs->callbacks_used = c_node;
-    } else {
-        fprintf(stderr, "*** Warning: %s %d: no callbacks to pop\n",
-                file, lineno);
-  }
-}
-
-void
-bw_push_callback(BitstreamWriter* bs, struct bs_callback* callback) {
-    struct bs_callback *callback_node;
-
-    if (callback != NULL) {
-        if (bs->callbacks_used == NULL)
-            callback_node = malloc(sizeof(struct bs_callback));
-        else {
-            callback_node = bs->callbacks_used;
-            bs->callbacks_used = bs->callbacks_used->next;
-        }
-        callback_node->callback = callback->callback;
-        callback_node->data = callback->data;
-        callback_node->next = bs->callbacks;
-        bs->callbacks = callback_node;
-    }
-}
-
-void
-bw_call_callbacks(BitstreamWriter *bs, uint8_t byte) {
-    struct bs_callback *callback;
-    for (callback = bs->callbacks;
-         callback != NULL;
-         callback = callback->next)
-        callback->callback(byte, callback->data);
-}
-
-
-void
 bw_abort(BitstreamWriter *bs)
 {
     if (bs->exceptions != NULL) {
@@ -3262,6 +3150,71 @@ byte_counter(uint8_t byte, unsigned* total_bytes)
 {
     *total_bytes += 1;
 }
+
+
+#define FUNC_ADD_CALLBACK(FUNC_NAME, PUSH_CALLBACK_FUNC, STREAM) \
+  void                                                           \
+  FUNC_NAME(STREAM *bs, bs_callback_f callback, void *data)      \
+  {                                                              \
+      struct bs_callback callback_node;                          \
+                                                                 \
+      callback_node.callback = callback;                         \
+      callback_node.data = data;                                 \
+      PUSH_CALLBACK_FUNC(bs, &callback_node);                    \
+  }
+FUNC_ADD_CALLBACK(br_add_callback, br_push_callback, BitstreamReader)
+FUNC_ADD_CALLBACK(bw_add_callback, bw_push_callback, BitstreamWriter)
+
+#define FUNC_PUSH_CALLBACK(FUNC_NAME, STREAM)           \
+  void                                                  \
+  FUNC_NAME(STREAM *bs, struct bs_callback *callback)   \
+  {                                                     \
+      if (callback != NULL) {                           \
+          struct bs_callback *callback_node =           \
+            malloc(sizeof(struct bs_callback));         \
+          callback_node->callback = callback->callback; \
+          callback_node->data = callback->data;         \
+          callback_node->next = bs->callbacks;          \
+          bs->callbacks = callback_node;                \
+      } \
+  }
+FUNC_PUSH_CALLBACK(br_push_callback, BitstreamReader)
+FUNC_PUSH_CALLBACK(bw_push_callback, BitstreamWriter)
+
+#define FUNC_POP_CALLBACK(FUNC_NAME, STREAM)                     \
+  void                                                           \
+  FUNC_NAME(STREAM *bs, struct bs_callback *callback)            \
+  {                                                              \
+      struct bs_callback *c_node = bs->callbacks;                \
+      if (c_node != NULL) {                                      \
+          if (callback != NULL) {                                \
+              callback->callback = c_node->callback;             \
+              callback->data = c_node->data;                     \
+              callback->next = NULL;                             \
+          }                                                      \
+          bs->callbacks = c_node->next;                          \
+          free(c_node);                                          \
+      } else {                                                   \
+          fprintf(stderr, "*** Warning: no callbacks to pop\n"); \
+      }                                                          \
+  }
+FUNC_POP_CALLBACK(br_pop_callback, BitstreamReader)
+FUNC_POP_CALLBACK(bw_pop_callback, BitstreamWriter)
+
+#define FUNC_CALL_CALLBACKS(FUNC_NAME, STREAM)      \
+  void                                              \
+  FUNC_NAME(STREAM *bs, uint8_t byte)               \
+  {                                                 \
+      struct bs_callback *callback;                 \
+      for (callback = bs->callbacks;                \
+           callback != NULL;                        \
+           callback = callback->next) {             \
+          callback->callback(byte, callback->data); \
+      }                                             \
+  }
+FUNC_CALL_CALLBACKS(br_call_callbacks, BitstreamReader)
+FUNC_CALL_CALLBACKS(bw_call_callbacks, BitstreamWriter)
+
 
 #define FUNC_ADD_MARK(FUNC_NAME, STACK_TYPE, MARK_TYPE) \
   struct STACK_TYPE*                                    \
@@ -4788,7 +4741,7 @@ void test_callbacks_reader(BitstreamReader* reader,
     struct bs_callback saved_callback;
 
     reader->mark(reader, 0);
-    br_add_callback(reader, (bs_callback_f)byte_counter, &byte_count);
+    reader->add_callback(reader, (bs_callback_f)byte_counter, &byte_count);
 
     /*a single callback*/
     byte_count = 0;
@@ -4800,26 +4753,26 @@ void test_callbacks_reader(BitstreamReader* reader,
     /*calling callbacks directly*/
     byte_count = 0;
     for (i = 0; i < 20; i++)
-        br_call_callbacks(reader, 0);
+        reader->call_callbacks(reader, 0);
     assert(byte_count == 20);
 
     /*two callbacks*/
     byte_count = 0;
-    br_add_callback(reader, (bs_callback_f)byte_counter, &byte_count);
+    reader->add_callback(reader, (bs_callback_f)byte_counter, &byte_count);
     for (i = 0; i < 8; i++)
         reader->read(reader, 4);
     assert(byte_count == 8);
-    br_pop_callback(reader, NULL);
+    reader->pop_callback(reader, NULL);
     reader->rewind(reader, 0);
 
     /*temporarily suspending the callback*/
     byte_count = 0;
     reader->read(reader, 8);
     assert(byte_count == 1);
-    br_pop_callback(reader, &saved_callback);
+    reader->pop_callback(reader, &saved_callback);
     reader->read(reader, 8);
     reader->read(reader, 8);
-    br_push_callback(reader, &saved_callback);
+    reader->push_callback(reader, &saved_callback);
     reader->read(reader, 8);
     assert(byte_count == 2);
     reader->rewind(reader, 0);
@@ -4828,10 +4781,10 @@ void test_callbacks_reader(BitstreamReader* reader,
     byte_count = 0;
     reader->read(reader, 8);
     assert(byte_count == 1);
-    br_add_callback(reader, (bs_callback_f)byte_counter, &byte_count);
+    reader->add_callback(reader, (bs_callback_f)byte_counter, &byte_count);
     reader->read(reader, 8);
     reader->read(reader, 8);
-    br_pop_callback(reader, NULL);
+    reader->pop_callback(reader, NULL);
     reader->read(reader, 8);
     assert(byte_count == 6);
     reader->rewind(reader, 0);
@@ -4902,7 +4855,7 @@ void test_callbacks_reader(BitstreamReader* reader,
     assert(byte_count == 4);
     reader->rewind(reader, 0);
 
-    br_pop_callback(reader, NULL);
+    reader->pop_callback(reader, NULL);
     reader->unmark(reader, 0);
 }
 
@@ -5168,9 +5121,9 @@ test_writer(bs_endianness endianness) {
         sums[2] = 1;
         output_file = fopen(temp_filename, "wb");
         writer = bw_open(output_file, endianness);
-        bw_add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
-        bw_add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
-        bw_add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
+        writer->add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
+        writer->add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
+        writer->add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
         checks[i](writer, endianness);
         writer->close(writer);
         assert(sums[0] == 4);
@@ -5183,9 +5136,9 @@ test_writer(bs_endianness endianness) {
         sums[0] = sums[1] = 0;
         sums[2] = 1;
         writer = bw_open_recorder(endianness);
-        bw_add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
-        bw_add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
-        bw_add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
+        writer->add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
+        writer->add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
+        writer->add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
         checks[i](writer, endianness);
         writer->close(writer);
         assert(sums[0] == 4);
@@ -5198,9 +5151,9 @@ test_writer(bs_endianness endianness) {
         sums[0] = sums[1] = 0;
         sums[2] = 1;
         writer = bw_open_accumulator(endianness);
-        bw_add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
-        bw_add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
-        bw_add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
+        writer->add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
+        writer->add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
+        writer->add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
         checks[i](writer, endianness);
         writer->close(writer);
 
@@ -5227,9 +5180,9 @@ test_writer(bs_endianness endianness) {
                                   (ext_flush_f)ext_fflush_test,
                                   (ext_close_f)ext_fclose_test,
                                   (ext_free_f)ext_ffree_test);
-        bw_add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
-        bw_add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
-        bw_add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
+        writer->add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
+        writer->add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
+        writer->add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
         checks[i](writer, endianness);
         writer->close(writer);
         assert(sums[0] == 4);

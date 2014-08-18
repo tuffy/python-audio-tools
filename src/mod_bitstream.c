@@ -899,9 +899,9 @@ BitstreamReader_add_callback(bitstream_BitstreamReader *self, PyObject *args)
     }
 
     Py_INCREF(callback);
-    br_add_callback(self->bitstream,
-                    (bs_callback_f)BitstreamReader_callback,
-                    callback);
+    self->bitstream->add_callback(self->bitstream,
+                                  (bs_callback_f)BitstreamReader_callback,
+                                  callback);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -914,7 +914,7 @@ BitstreamReader_pop_callback(bitstream_BitstreamReader *self, PyObject *args)
     PyObject* callback_obj;
 
     if (self->bitstream->callbacks != NULL) {
-        br_pop_callback(self->bitstream, &callback);
+        self->bitstream->pop_callback(self->bitstream, &callback);
         callback_obj = callback.data;
         /*decref object from stack and then incref object for return
           should have a net effect of noop*/
@@ -933,7 +933,7 @@ BitstreamReader_call_callbacks(bitstream_BitstreamReader *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "b", &byte))
         return NULL;
 
-    br_call_callbacks(self->bitstream, byte);
+    self->bitstream->call_callbacks(self->bitstream, byte);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -2113,9 +2113,9 @@ BitstreamWriter_add_callback(bitstream_BitstreamWriter *self,
     }
 
     Py_INCREF(callback);
-    bw_add_callback(self->bitstream,
-                    (bs_callback_f)BitstreamWriter_callback,
-                    callback);
+    self->bitstream->add_callback(self->bitstream,
+                                  (bs_callback_f)BitstreamWriter_callback,
+                                  callback);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -2129,7 +2129,7 @@ BitstreamWriter_pop_callback(bitstream_BitstreamWriter *self,
     PyObject* callback_obj;
 
     if (self->bitstream->callbacks != NULL) {
-        bw_pop_callback(self->bitstream, &callback);
+        self->bitstream->pop_callback(self->bitstream, &callback);
         callback_obj = callback.data;
         /*decref object from stack and then incref object for return
           should have a net effect of noop*/
@@ -2149,7 +2149,7 @@ BitstreamWriter_call_callbacks(bitstream_BitstreamWriter *self,
     if (!PyArg_ParseTuple(args, "b", &byte))
         return NULL;
 
-    bw_call_callbacks(self->bitstream, byte);
+    self->bitstream->call_callbacks(self->bitstream, byte);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -2646,9 +2646,9 @@ BitstreamRecorder_add_callback(bitstream_BitstreamRecorder *self,
     }
 
     Py_INCREF(callback);
-    bw_add_callback(self->bitstream,
-                    (bs_callback_f)BitstreamWriter_callback,
-                    callback);
+    self->bitstream->add_callback(self->bitstream,
+                                  (bs_callback_f)BitstreamWriter_callback,
+                                  callback);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -2662,7 +2662,7 @@ BitstreamRecorder_pop_callback(bitstream_BitstreamRecorder *self,
     PyObject* callback_obj;
 
     if (self->bitstream->callbacks != NULL) {
-        bw_pop_callback(self->bitstream, &callback);
+        self->bitstream->pop_callback(self->bitstream, &callback);
         callback_obj = callback.data;
         /*decref object from stack and then incref object for return
           should have a net effect of noop*/
@@ -2682,7 +2682,7 @@ BitstreamRecorder_call_callbacks(bitstream_BitstreamRecorder *self,
     if (!PyArg_ParseTuple(args, "b", &byte))
         return NULL;
 
-    bw_call_callbacks(self->bitstream, byte);
+    self->bitstream->call_callbacks(self->bitstream, byte);
 
     Py_INCREF(Py_None);
     return Py_None;

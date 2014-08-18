@@ -159,8 +159,8 @@ encode_frame(BitstreamWriter* output,
     a_int* sum1 = cache->sum1;
     aa_int* residual = cache->residual;
 
-    bw_add_callback(output, (bs_callback_f)tta_byte_counter, &frame_size);
-    bw_add_callback(output, (bs_callback_f)tta_crc32, &frame_crc);
+    output->add_callback(output, (bs_callback_f)tta_byte_counter, &frame_size);
+    output->add_callback(output, (bs_callback_f)tta_crc32, &frame_crc);
 
     cache->predicted->reset(cache->predicted);
     residual->reset(residual);
@@ -250,10 +250,10 @@ encode_frame(BitstreamWriter* output,
     output->byte_align(output);
 
     /*write calculate CRC32 value*/
-    bw_pop_callback(output, NULL);
+    output->pop_callback(output, NULL);
     output->write(output, 32, frame_crc ^ 0xFFFFFFFF);
 
-    bw_pop_callback(output, NULL);
+    output->pop_callback(output, NULL);
 
     return frame_size;
 }
@@ -573,7 +573,7 @@ write_header(BitstreamWriter* output,
              unsigned total_pcm_frames)
 {
     unsigned header_crc = 0xFFFFFFFF;
-    bw_add_callback(output, (bs_callback_f)tta_crc32, &header_crc);
+    output->add_callback(output, (bs_callback_f)tta_crc32, &header_crc);
     output->build(output, "4b 16u 16u 16u 32u 32u",
                   "TTA1",
                   1,
@@ -581,7 +581,7 @@ write_header(BitstreamWriter* output,
                   bits_per_sample,
                   sample_rate,
                   total_pcm_frames);
-    bw_pop_callback(output, NULL);
+    output->pop_callback(output, NULL);
     output->write(output, 32, header_crc ^ 0xFFFFFFFF);
 }
 
@@ -591,11 +591,11 @@ write_seektable(BitstreamWriter* output,
 {
     unsigned i;
     unsigned seektable_crc = 0xFFFFFFFF;
-    bw_add_callback(output, (bs_callback_f)tta_crc32, &seektable_crc);
+    output->add_callback(output, (bs_callback_f)tta_crc32, &seektable_crc);
     for (i = 0; i < frame_sizes->len; i++) {
         output->write(output, 32, frame_sizes->_[i]);
     }
-    bw_pop_callback(output, NULL);
+    output->pop_callback(output, NULL);
     output->write(output, 32, seektable_crc ^ 0xFFFFFFFF);
 }
 

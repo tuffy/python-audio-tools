@@ -125,9 +125,9 @@ ALACEncoder_encode_alac(char *filename,
 #endif
     output->mark(output, MDAT_HEADER);
 
-    bw_add_callback(output,
-                    (bs_callback_f)byte_counter,
-                    &frame_byte_size);
+    output->add_callback(output,
+                         (bs_callback_f)byte_counter,
+                         &frame_byte_size);
 
     /*write placeholder mdat header*/
     output->write(output, 32, 0);
@@ -159,7 +159,7 @@ ALACEncoder_encode_alac(char *filename,
     }
 
     /*return to header and rewrite it with the actual value*/
-    bw_pop_callback(output, NULL);
+    output->pop_callback(output, NULL);
     output->rewind(output, MDAT_HEADER);
     output->write(output, 32,
                   encoder.frame_sizes->sum(encoder.frame_sizes) + 8);

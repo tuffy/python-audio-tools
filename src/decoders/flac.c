@@ -211,13 +211,13 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
 
     if (!setjmp(*br_try(self->bitstream))) {
         /*add callback for CRC16 calculation*/
-        br_add_callback(self->bitstream, (bs_callback_f)flac_crc16, &crc16);
+        self->bitstream->add_callback(self->bitstream, (bs_callback_f)flac_crc16, &crc16);
 
         /*read frame header*/
         if ((error = flacdec_read_frame_header(self->bitstream,
                                                &(self->streaminfo),
                                                &frame_header)) != OK) {
-            br_pop_callback(self->bitstream, NULL);
+            self->bitstream->pop_callback(self->bitstream, NULL);
             PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
             br_etry(self->bitstream);
             return NULL;
@@ -235,7 +235,7 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
                      flacdec_subframe_bits_per_sample(&frame_header,
                                                       channel),
                      self->subframe_data->append(self->subframe_data))) != OK) {
-                br_pop_callback(self->bitstream, NULL);
+                self->bitstream->pop_callback(self->bitstream, NULL);
                 PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
                 br_etry(self->bitstream);
                 return NULL;
@@ -249,7 +249,7 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
         /*check CRC-16*/
         self->bitstream->byte_align(self->bitstream);
         self->bitstream->read(self->bitstream, 16);
-        br_pop_callback(self->bitstream, NULL);
+        self->bitstream->pop_callback(self->bitstream, NULL);
         if (crc16 != 0) {
             PyErr_SetString(PyExc_ValueError, "invalid checksum in frame");
             br_etry(self->bitstream);
@@ -260,7 +260,7 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
         self->remaining_samples -= frame_header.block_size;
     } else {
         /*handle I/O error during read*/
-        br_pop_callback(self->bitstream, NULL);
+        self->bitstream->pop_callback(self->bitstream, NULL);
         PyErr_SetString(PyExc_IOError, "EOF reading frame");
         br_etry(self->bitstream);
         return NULL;
@@ -375,9 +375,9 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
     unsigned samples;
     unsigned long long offset;
 
-    br_add_callback(self->bitstream,
-                    (bs_callback_f)increment_offset,
-                    &total_offset);
+    self->bitstream->add_callback(self->bitstream,
+                                  (bs_callback_f)increment_offset,
+                                  &total_offset);
 
     while (self->remaining_samples > 0) {
         self->subframe_data->reset(self->subframe_data);
@@ -433,13 +433,13 @@ FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
     }
 
     self->stream_finalized = 1;
-    br_pop_callback(self->bitstream, NULL);
+    self->bitstream->pop_callback(self->bitstream, NULL);
 
     return offsets;
 error:
     Py_XDECREF(offsets);
     br_etry(self->bitstream);
-    br_pop_callback(self->bitstream, NULL);
+    self->bitstream->pop_callback(self->bitstream, NULL);
 
     return NULL;
 }
@@ -718,18 +718,18 @@ flacdec_read_frame_header(BitstreamReader *bitstream,
     uint8_t crc8 = 0;
 
     if (!setjmp(*br_try(bitstream))) {
-        br_add_callback(bitstream, (bs_callback_f)flac_crc8, &crc8);
+        bitstream->add_callback(bitstream, (bs_callback_f)flac_crc8, &crc8);
 
         /*read and verify sync code*/
         if (bitstream->read(bitstream, 14) != 0x3FFE) {
-            br_pop_callback(bitstream, NULL);
+            bitstream->pop_callback(bitstream, NULL);
             br_etry(bitstream);
             return ERR_INVALID_SYNC_CODE;
         }
 
         /*read and verify reserved bit*/
         if (bitstream->read(bitstream, 1) != 0) {
-            br_pop_callback(bitstream, NULL);
+            bitstream->pop_callback(bitstream, NULL);
             br_etry(bitstream);
             return ERR_INVALID_RESERVED_BIT;
         }
@@ -820,7 +820,7 @@ flacdec_read_frame_header(BitstreamReader *bitstream,
         bitstream->read(bitstream, 8);
 
         /*no more I/O after this point*/
-        br_pop_callback(bitstream, NULL);
+        bitstream->pop_callback(bitstream, NULL);
         br_etry(bitstream);
 
         if (crc8 != 0)
@@ -845,7 +845,7 @@ flacdec_read_frame_header(BitstreamReader *bitstream,
         return OK;
     } else {
         /*push read error to calling function*/
-        br_pop_callback(bitstream, NULL);
+        bitstream->pop_callback(bitstream, NULL);
         br_etry(bitstream);
         br_abort(bitstream);
         return OK;  /*won't get here*/
@@ -1416,13 +1416,13 @@ int main(int argc, char* argv[]) {
             uint16_t crc16 = 0;
 
             /*add callback for CRC16 calculation*/
-            br_add_callback(reader, (bs_callback_f)flac_crc16, &crc16);
+            reader->add_callback(reader, (bs_callback_f)flac_crc16, &crc16);
 
             /*read frame header*/
             if ((error = flacdec_read_frame_header(reader,
                                                    &streaminfo,
                                                    &frame_header)) != OK) {
-                br_pop_callback(reader, NULL);
+                reader->pop_callback(reader, NULL);
                 br_etry(reader);
                 fprintf(stderr, "*** Error: %s\n", FlacDecoder_strerror(error));
                 goto error;
@@ -1440,7 +1440,7 @@ int main(int argc, char* argv[]) {
                          flacdec_subframe_bits_per_sample(&frame_header,
                                                           channel),
                          subframe_data->append(subframe_data))) != OK) {
-                    br_pop_callback(reader, NULL);
+                    reader->pop_callback(reader, NULL);
                     br_etry(reader);
                     fprintf(stderr, "*** Error: %s\n",
                             FlacDecoder_strerror(error));
@@ -1455,7 +1455,7 @@ int main(int argc, char* argv[]) {
             /*check CRC-16*/
             reader->byte_align(reader);
             reader->read(reader, 16);
-            br_pop_callback(reader, NULL);
+            reader->pop_callback(reader, NULL);
             if (crc16 != 0) {
                 br_etry(reader);
                 fprintf(stderr, "*** Error: invalid checksum in frame\n");
@@ -1468,7 +1468,7 @@ int main(int argc, char* argv[]) {
             br_etry(reader);
         } else {
             /*handle I/O error during read*/
-            br_pop_callback(reader, NULL);
+            reader->pop_callback(reader, NULL);
             br_etry(reader);
             fprintf(stderr, "*** I/O Error reading frame\n");
             goto error;
