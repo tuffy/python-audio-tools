@@ -872,9 +872,9 @@ br_skip_unary_c(BitstreamReader* bs, int stop_bit)
 #define FUNC_READ_HUFFMAN_CODE(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG) \
     int                                                             \
     FUNC_NAME(BitstreamReader *bs,                                  \
-              struct br_huffman_table table[][0x200])         \
+              br_huffman_table_t table[])                           \
     {                                                               \
-        struct br_huffman_table entry = table[0][bs->state];        \
+        br_huffman_entry_t entry = table[0][bs->state];             \
                                                                     \
         while (entry.continue_) {                                   \
             const int byte = BYTE_FUNC(BYTE_FUNC_ARG);              \
@@ -903,7 +903,7 @@ FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_e, ext_getc, bs->input.external)
 
 int
 br_read_huffman_code_c(BitstreamReader *bs,
-                       struct br_huffman_table table[][0x200])
+                       br_huffman_table_t table[])
 {
     br_abort(bs);
     return 0;
@@ -3403,31 +3403,31 @@ sigabort_cleanup(int signum);
 
 void
 test_big_endian_reader(BitstreamReader* reader,
-                       struct br_huffman_table (*table)[][0x200]);
+                       br_huffman_table_t table[]);
 
 void
 test_big_endian_parse(BitstreamReader* reader);
 
 void
 test_little_endian_reader(BitstreamReader* reader,
-                          struct br_huffman_table (*table)[][0x200]);
+                          br_huffman_table_t table[]);
 
 void
 test_little_endian_parse(BitstreamReader* reader);
 
 void
 test_close_errors(BitstreamReader* reader,
-                  struct br_huffman_table (*table)[][0x200]);
+                  br_huffman_table_t table[]);
 
 void
 test_try(BitstreamReader* reader,
-         struct br_huffman_table (*table)[][0x200]);
+         br_huffman_table_t table[]);
 
 void
 test_callbacks_reader(BitstreamReader* reader,
                       int unary_0_reads,
                       int unary_1_reads,
-                      struct br_huffman_table (*table)[][0x200],
+                      br_huffman_table_t table[],
                       int huffman_code_count);
 
 void
@@ -3598,8 +3598,8 @@ int main(int argc, char* argv[]) {
                                               {1, 2, 2},
                                               {1, 3, 3},
                                               {0, 3, 4}};
-    struct br_huffman_table (*be_table)[][0x200];
-    struct br_huffman_table (*le_table)[][0x200];
+    br_huffman_table_t *be_table;
+    br_huffman_table_t *le_table;
     struct bs_buffer* buf;
 
     new_action.sa_handler = sigabort_cleanup;
@@ -3819,7 +3819,7 @@ void sigabort_cleanup(int signum) {
 }
 
 void test_big_endian_reader(BitstreamReader* reader,
-                            struct br_huffman_table (*table)[][0x200]) {
+                            br_huffman_table_t table[]) {
     int bit;
     uint8_t sub_data[2];
 
@@ -3915,21 +3915,21 @@ void test_big_endian_reader(BitstreamReader* reader,
     assert(reader->read_unary(reader, 1) == 0);
 
     reader->rewind(reader, 0);
-    assert(reader->read_huffman_code(reader, *table) == 1);
-    assert(reader->read_huffman_code(reader, *table) == 0);
-    assert(reader->read_huffman_code(reader, *table) == 4);
-    assert(reader->read_huffman_code(reader, *table) == 0);
-    assert(reader->read_huffman_code(reader, *table) == 0);
-    assert(reader->read_huffman_code(reader, *table) == 2);
-    assert(reader->read_huffman_code(reader, *table) == 1);
-    assert(reader->read_huffman_code(reader, *table) == 1);
-    assert(reader->read_huffman_code(reader, *table) == 2);
-    assert(reader->read_huffman_code(reader, *table) == 0);
-    assert(reader->read_huffman_code(reader, *table) == 2);
-    assert(reader->read_huffman_code(reader, *table) == 0);
-    assert(reader->read_huffman_code(reader, *table) == 1);
-    assert(reader->read_huffman_code(reader, *table) == 4);
-    assert(reader->read_huffman_code(reader, *table) == 2);
+    assert(reader->read_huffman_code(reader, table) == 1);
+    assert(reader->read_huffman_code(reader, table) == 0);
+    assert(reader->read_huffman_code(reader, table) == 4);
+    assert(reader->read_huffman_code(reader, table) == 0);
+    assert(reader->read_huffman_code(reader, table) == 0);
+    assert(reader->read_huffman_code(reader, table) == 2);
+    assert(reader->read_huffman_code(reader, table) == 1);
+    assert(reader->read_huffman_code(reader, table) == 1);
+    assert(reader->read_huffman_code(reader, table) == 2);
+    assert(reader->read_huffman_code(reader, table) == 0);
+    assert(reader->read_huffman_code(reader, table) == 2);
+    assert(reader->read_huffman_code(reader, table) == 0);
+    assert(reader->read_huffman_code(reader, table) == 1);
+    assert(reader->read_huffman_code(reader, table) == 4);
+    assert(reader->read_huffman_code(reader, table) == 2);
 
     reader->rewind(reader, 0);
     assert(reader->read(reader, 3) == 5);
@@ -4094,7 +4094,7 @@ void test_big_endian_parse(BitstreamReader* reader) {
 }
 
 void test_little_endian_reader(BitstreamReader* reader,
-                               struct br_huffman_table (*table)[][0x200]) {
+                               br_huffman_table_t table[]) {
     int bit;
     uint8_t sub_data[2];
 
@@ -4190,20 +4190,20 @@ void test_little_endian_reader(BitstreamReader* reader,
     assert(reader->read_unary(reader, 1) == 0);
 
     reader->rewind(reader, 0);
-    assert(reader->read_huffman_code(reader, *table) == 1);
-    assert(reader->read_huffman_code(reader, *table) == 3);
-    assert(reader->read_huffman_code(reader, *table) == 1);
-    assert(reader->read_huffman_code(reader, *table) == 0);
-    assert(reader->read_huffman_code(reader, *table) == 2);
-    assert(reader->read_huffman_code(reader, *table) == 1);
-    assert(reader->read_huffman_code(reader, *table) == 0);
-    assert(reader->read_huffman_code(reader, *table) == 0);
-    assert(reader->read_huffman_code(reader, *table) == 1);
-    assert(reader->read_huffman_code(reader, *table) == 0);
-    assert(reader->read_huffman_code(reader, *table) == 1);
-    assert(reader->read_huffman_code(reader, *table) == 2);
-    assert(reader->read_huffman_code(reader, *table) == 4);
-    assert(reader->read_huffman_code(reader, *table) == 3);
+    assert(reader->read_huffman_code(reader, table) == 1);
+    assert(reader->read_huffman_code(reader, table) == 3);
+    assert(reader->read_huffman_code(reader, table) == 1);
+    assert(reader->read_huffman_code(reader, table) == 0);
+    assert(reader->read_huffman_code(reader, table) == 2);
+    assert(reader->read_huffman_code(reader, table) == 1);
+    assert(reader->read_huffman_code(reader, table) == 0);
+    assert(reader->read_huffman_code(reader, table) == 0);
+    assert(reader->read_huffman_code(reader, table) == 1);
+    assert(reader->read_huffman_code(reader, table) == 0);
+    assert(reader->read_huffman_code(reader, table) == 1);
+    assert(reader->read_huffman_code(reader, table) == 2);
+    assert(reader->read_huffman_code(reader, table) == 4);
+    assert(reader->read_huffman_code(reader, table) == 3);
 
     reader->rewind(reader, 0);
     reader->read_bytes(reader, sub_data, 2);
@@ -4369,7 +4369,7 @@ void test_little_endian_parse(BitstreamReader* reader) {
 
 void
 test_close_errors(BitstreamReader* reader,
-                  struct br_huffman_table (*table)[][0x200]) {
+                  br_huffman_table_t table[]) {
     uint8_t bytes[10];
     struct BitstreamReader_s* subreader;
 
@@ -4430,7 +4430,7 @@ test_close_errors(BitstreamReader* reader,
     }
 
     if (!setjmp(*br_try(reader))) {
-        reader->read_huffman_code(reader, *table);
+        reader->read_huffman_code(reader, table);
         assert(0);
     } else {
         br_etry(reader);
@@ -4475,7 +4475,7 @@ test_close_errors(BitstreamReader* reader,
 }
 
 void test_try(BitstreamReader* reader,
-              struct br_huffman_table (*table)[][0x200]) {
+              br_huffman_table_t table[]) {
     uint8_t bytes[2];
     BitstreamReader* substream;
 
@@ -4550,7 +4550,7 @@ void test_try(BitstreamReader* reader,
         reader->rewind(reader, 0);
     }
     if (!setjmp(*br_try(reader))) {
-        reader->read_huffman_code(reader, *table);
+        reader->read_huffman_code(reader, table);
         assert(0);
     } else {
         br_etry(reader);
@@ -4593,7 +4593,7 @@ void test_try(BitstreamReader* reader,
 void test_callbacks_reader(BitstreamReader* reader,
                            int unary_0_reads,
                            int unary_1_reads,
-                           struct br_huffman_table (*table)[][0x200],
+                           br_huffman_table_t table[],
                            int huffman_code_count) {
     int i;
     unsigned int byte_count;
@@ -4692,7 +4692,7 @@ void test_callbacks_reader(BitstreamReader* reader,
     /*read_huffman_code*/
     byte_count = 0;
     for (i = 0; i < huffman_code_count; i++)
-        reader->read_huffman_code(reader, *table);
+        reader->read_huffman_code(reader, table);
     assert(byte_count == 4);
     reader->rewind(reader, 0);
 

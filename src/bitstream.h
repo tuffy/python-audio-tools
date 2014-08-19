@@ -90,14 +90,23 @@ struct br_mark_stack {
     struct br_mark_stack *next;
 };
 
-/*a Huffman table entry indicating either a next node (if continue == 1)
-  or final value and new context (if continue == 0)*/
-struct br_huffman_table {
+/*a Huffman jump table entry
+
+  if continue_ == 0, state indicates the BitstreamReader's new state
+  and value indicates the value to be returned from the Huffman tree
+
+  if continue_ == 1, node indicates the array index of the next
+  br_huffman_table_t row of values to check against the current state*/
+typedef struct {
     int continue_;
     unsigned node;
     state_t state;
     int value;
-};
+} br_huffman_entry_t;
+
+/*a list of all the Huffman jump table entries for a given node
+  where the current state is the index of which to use*/
+typedef br_huffman_entry_t br_huffman_table_t[0x200];
 
 /*******************************************************************
  *                          BitstreamReader                        *
@@ -173,7 +182,7 @@ typedef struct BitstreamReader_s {
       where the code tree is defined from the given compiled table*/
     int
     (*read_huffman_code)(struct BitstreamReader_s* bs,
-                         struct br_huffman_table table[][0x200]);
+                         br_huffman_table_t table[]);
 
     /*returns 1 if the stream is byte-aligned, 0 if not*/
     int
@@ -508,16 +517,16 @@ br_skip_unary_c(BitstreamReader* bs, int stop_bit);
 /*bs->read_huffman_code(bs, table)  methods*/
 int
 br_read_huffman_code_f(BitstreamReader *bs,
-                       struct br_huffman_table table[][0x200]);
+                       br_huffman_table_t table[]);
 int
 br_read_huffman_code_s(BitstreamReader *bs,
-                       struct br_huffman_table table[][0x200]);
+                       br_huffman_table_t table[]);
 int
 br_read_huffman_code_e(BitstreamReader *bs,
-                       struct br_huffman_table table[][0x200]);
+                       br_huffman_table_t table[]);
 int
 br_read_huffman_code_c(BitstreamReader *bs,
-                       struct br_huffman_table table[][0x200]);
+                       br_huffman_table_t table[]);
 
 
 /*bs->byte_aligned(bs)  method*/

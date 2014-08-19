@@ -69,7 +69,7 @@ enum {
   or a negative value if there's an error
   (whose value is taken from the preceding enum)
 */
-int compile_br_huffman_table(struct br_huffman_table (**table)[][0x200],
+int compile_br_huffman_table(br_huffman_table_t** table,
                              struct huffman_frequency* frequencies,
                              unsigned int total_frequencies,
                              bs_endianness endianness);

@@ -1087,19 +1087,17 @@ read_residuals(BitstreamReader *bs,
     }
 }
 
-#define RICE_THRESHOLD 8
-
 static unsigned
 read_residual(BitstreamReader *bs,
               unsigned int k,
               unsigned int sample_size)
 {
-    static struct br_huffman_table MSB[][0x200] =
+    static br_huffman_table_t MSB[] =
 #include "alac_residual.h"
     ;
     const int msb = bs->read_huffman_code(bs, MSB);
 
-    /*read a unary 0 value to a maximum of RICE_THRESHOLD (8)*/
+    /*read a unary 0 value to a maximum of 9 bits*/
     if (msb == -1) {
         /*we've exceeded the maximum number of 1 bits,
           so return an unencoded value*/

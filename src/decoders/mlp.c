@@ -878,13 +878,13 @@ read_mlp_residual_data(BitstreamReader* bs,
 {
     int signed_huffman_offset[MAX_MLP_CHANNELS];
     unsigned LSB_bits[MAX_MLP_CHANNELS];
-    static struct br_huffman_table mlp_codebook1[][0x200] =
+    static br_huffman_table_t mlp_codebook1[] =
 #include "mlp_codebook1.h"
         ;
-    static struct br_huffman_table mlp_codebook2[][0x200] =
+    static br_huffman_table_t mlp_codebook2[] =
 #include "mlp_codebook2.h"
         ;
-    static struct br_huffman_table mlp_codebook3[][0x200] =
+    static br_huffman_table_t mlp_codebook3[] =
 #include "mlp_codebook3.h"
         ;
 

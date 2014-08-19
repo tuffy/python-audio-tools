@@ -464,8 +464,8 @@ BitstreamReader_read_huffman_code(bitstream_BitstreamReader *self,
     huffman_tree = (bitstream_HuffmanTree*)huffman_tree_obj;
 
     if (!setjmp(*br_try(self->bitstream))) {
-        result = self->bitstream->read_huffman_code(self->bitstream,
-                                                    *(huffman_tree->br_table));
+        result = self->bitstream->read_huffman_code(
+            self->bitstream, huffman_tree->br_table);
 
         br_etry(self->bitstream);
         return Py_BuildValue("i", result);
@@ -1325,8 +1325,7 @@ HuffmanTree_init(bitstream_HuffmanTree *self, PyObject *args)
 void
 HuffmanTree_dealloc(bitstream_HuffmanTree *self)
 {
-    if (self->br_table != NULL)
-        free(self->br_table);
+    free(self->br_table);
 
     free_bw_huffman_table(self->bw_table);
 

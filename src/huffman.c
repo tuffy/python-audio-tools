@@ -30,7 +30,7 @@ struct huffman_node {
         int leaf;
         struct {
             unsigned int id;
-            struct br_huffman_table jump_table[0x200];
+            br_huffman_table_t jump_table;
             struct huffman_node* bit_0;
             struct huffman_node* bit_1;
         } tree;
@@ -73,7 +73,7 @@ free_huffman_tree(struct huffman_node* node);
 /*takes a built Huffman tree and compiles it to a jump table
   with the given endianness*/
 static int
-compile_huffman_tree(struct br_huffman_table (**table)[][0x200],
+compile_huffman_tree(br_huffman_table_t** table,
                      struct huffman_node* tree,
                      bs_endianness endianness);
 
@@ -93,7 +93,7 @@ total_leaf_nodes(struct huffman_node* tree);
 /*transfers the jump tables embedded in the Huffman tree nodes
   to a flattened, 2 dimensional array*/
 static void
-transfer_huffman_tree(struct br_huffman_table (*table)[][0x200],
+transfer_huffman_tree(br_huffman_table_t* table,
                       struct huffman_node* tree);
 
 /*performs the actual walking of the tree
@@ -101,7 +101,7 @@ transfer_huffman_tree(struct br_huffman_table (*table)[][0x200],
   given a byte bank, endianness and tree,
   updates the jump table with which node the bank will wind up at*/
 static void
-next_read_huffman_state(struct br_huffman_table* state,
+next_read_huffman_state(br_huffman_entry_t* state,
                         struct byte_bank bank,
                         struct huffman_node* tree,
                         bs_endianness endianness);
@@ -249,7 +249,7 @@ free_huffman_tree(struct huffman_node* node) {
 }
 
 static int
-compile_huffman_tree(struct br_huffman_table (**table)[][0x200],
+compile_huffman_tree(br_huffman_table_t** table,
                      struct huffman_node* tree,
                      bs_endianness endianness) {
     int total_rows = total_non_leaf_nodes(tree);
@@ -259,30 +259,35 @@ compile_huffman_tree(struct br_huffman_table (**table)[][0x200],
     int bank_int;
 
     if (total_rows > 0) {
+        /*allocate space for all the jump tables across all nodes*/
+        br_huffman_table_t *new_table =
+            malloc(sizeof(br_huffman_table_t) * total_rows);
+
         /*populate the jump tables of each non-leaf node*/
         populate_huffman_tree(tree, endianness);
 
-        /*allocate space for the entire set of jump tables*/
-        *table = malloc(sizeof(struct br_huffman_table) * total_rows * 0x200);
-
         /*transfer jump tables of each node from tree*/
-        transfer_huffman_tree(*table, tree);
+        transfer_huffman_tree(new_table, tree);
+
+        /*transfer new table back to parent*/
+        *table = new_table;
     } else if (total_leaf_nodes(tree) > 0) {
         /*no non-leaf nodes, so the table is trivial
           all inputs consume no bits and return the final value*/
 
-        *table = malloc(sizeof(struct br_huffman_table) * 1 * 0x200);
+        br_huffman_table_t *new_table =
+            malloc(sizeof(br_huffman_table_t) * 1);
 
         /*first 2 nodes are a special case
           since a context of 0 or 1 has no meaning*/
-        (**table)[0][0].continue_ = 0;
-        (**table)[0][0].node = 0;
-        (**table)[0][0].state = 0;
-        (**table)[0][0].value = tree->v.leaf;
-        (**table)[0][1].continue_ = 0;
-        (**table)[0][1].node = 0;
-        (**table)[0][1].state = 0;
-        (**table)[0][1].value = tree->v.leaf;
+        new_table[0][0].continue_ = 0;
+        new_table[0][0].node = 0;
+        new_table[0][0].state = 0;
+        new_table[0][0].value = tree->v.leaf;
+        new_table[0][1].continue_ = 0;
+        new_table[0][1].node = 0;
+        new_table[0][1].state = 0;
+        new_table[0][1].value = tree->v.leaf;
 
         for (size = 1; size < (8 + 1); size++)
             for (value = 0; value < (1 << size); value++) {
@@ -290,10 +295,10 @@ compile_huffman_tree(struct br_huffman_table (**table)[][0x200],
                 bank.value = value;
                 bank_int = bank_to_int(bank);
 
-                (**table)[0][bank_int].continue_ = 0;
-                (**table)[0][bank_int].node = 0;
-                (**table)[0][bank_int].state = bank_int;
-                (**table)[0][bank_int].value = tree->v.leaf;
+                new_table[0][bank_int].continue_ = 0;
+                new_table[0][bank_int].node = 0;
+                new_table[0][bank_int].state = bank_int;
+                new_table[0][bank_int].value = tree->v.leaf;
             }
 
         total_rows = 1;
@@ -337,7 +342,7 @@ populate_huffman_tree(struct huffman_node* tree,
     }
 }
 
-void next_read_huffman_state(struct br_huffman_table* state,
+void next_read_huffman_state(br_huffman_entry_t* state,
                              struct byte_bank bank,
                              struct huffman_node* tree,
                              bs_endianness endianness) {
@@ -416,21 +421,21 @@ total_leaf_nodes(struct huffman_node* tree) {
 }
 
 static void
-transfer_huffman_tree(struct br_huffman_table (*table)[][0x200],
+transfer_huffman_tree(br_huffman_table_t* table,
                       struct huffman_node* tree) {
     int i;
 
     if (tree->type == NODE_TREE) {
         /*not sure if this can be made more efficient*/
         for (i = 0; i < 0x200; i++) {
-            (*table)[tree->v.tree.id][i] = tree->v.tree.jump_table[i];
+            table[tree->v.tree.id][i] = tree->v.tree.jump_table[i];
         }
         transfer_huffman_tree(table, tree->v.tree.bit_0);
         transfer_huffman_tree(table, tree->v.tree.bit_1);
     }
 }
 
-int compile_br_huffman_table(struct br_huffman_table (**table)[][0x200],
+int compile_br_huffman_table(br_huffman_table_t** table,
                              struct huffman_frequency* frequencies,
                              unsigned int total_frequencies,
                              bs_endianness endianness) {
@@ -599,7 +604,7 @@ int main(int argc, char* argv[]) {
     /*the variables for real work*/
     struct huffman_frequency* frequencies;
     unsigned int total_frequencies;
-    struct br_huffman_table (*table)[][0x200];
+    br_huffman_table_t* table;
     int row;
     int state;
     int total_rows;
@@ -667,10 +672,10 @@ int main(int argc, char* argv[]) {
 
         for (state = 0; state < 0x200; state++) {
             printf("    {%d, %d, 0x%X, %d}",
-                   (*table)[row][state].continue_,
-                   (*table)[row][state].node,
-                   (*table)[row][state].state,
-                   (*table)[row][state].value);
+                   table[row][state].continue_,
+                   table[row][state].node,
+                   table[row][state].state,
+                   table[row][state].value);
             if (state < (0x200 - 1))
                 printf(",\n");
             else
