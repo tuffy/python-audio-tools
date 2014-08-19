@@ -110,15 +110,6 @@ out of a larger binary file stream.
    which must be ``0`` or ``1``.
    May raise :exc:`IOError` if an error occurs reading the stream.
 
-.. method:: BitstreamReader.limited_unary(stop_bit, maximum_bits)
-
-   Reads the number of bits until the next ``stop_bit``,
-   which must be ``0`` or ``1``, up to a maximum of ``maximum_bits``.
-   Returns that count as an unsigned integer,
-   or returns ``None`` if the maximum bits are exceeded before
-   ``stop_bit`` is encountered.
-   May raise :exc:`IOError` if an error occurs reading the stream.
-
 .. method:: BitstreamReader.byte_align()
 
    Discards bits as necessary to position the stream on a byte boundary.

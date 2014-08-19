@@ -446,45 +446,6 @@ BitstreamReader_skip_unary(bitstream_BitstreamReader *self, PyObject *args)
 }
 
 static PyObject*
-BitstreamReader_limited_unary(bitstream_BitstreamReader *self, PyObject *args)
-{
-    int stop_bit;
-    int maximum_bits;
-    int result;
-
-    if (!PyArg_ParseTuple(args, "ii", &stop_bit, &maximum_bits))
-        return NULL;
-
-    if ((stop_bit != 0) && (stop_bit != 1)) {
-        PyErr_SetString(PyExc_ValueError, "stop bit must be 0 or 1");
-        return NULL;
-    }
-    if (maximum_bits < 1) {
-        PyErr_SetString(PyExc_ValueError,
-                        "maximum bits must be greater than 0");
-        return NULL;
-    }
-
-    if (!setjmp(*br_try(self->bitstream))) {
-        result = self->bitstream->read_limited_unary(self->bitstream,
-                                                     stop_bit,
-                                                     maximum_bits);
-    } else {
-        br_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
-        return NULL;
-    }
-
-    br_etry(self->bitstream);
-    if (result >= 0) {
-        return Py_BuildValue("i", result);
-    } else {
-        Py_INCREF(Py_None);
-        return Py_None;
-    }
-}
-
-static PyObject*
 BitstreamReader_read_huffman_code(bitstream_BitstreamReader *self,
                                   PyObject* args)
 {

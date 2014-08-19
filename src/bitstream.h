@@ -169,15 +169,6 @@ typedef struct BitstreamReader_s {
     void
     (*skip_unary)(struct BitstreamReader_s* bs, int stop_bit);
 
-    /*returns the number of non-stop bits before the 0 or 1 stop bit
-      from the current stream in the current endian format
-      and limited to "maximum_bits"
-
-      may return -1 if the maximum bits are exceeded*/
-    int
-    (*read_limited_unary)(struct BitstreamReader_s* bs, int stop_bit,
-                          int maximum_bits);
-
     /*reads the next Huffman code from the stream
       where the code tree is defined from the given compiled table*/
     int
@@ -264,9 +255,9 @@ typedef struct BitstreamReader_s {
       for substreams, deallocates buffer
       for external input, calls its .free() method
 
-      deallocates any callbacks/used callbacks
+      deallocates any callbacks
       deallocates any exceptions/used exceptions
-      deallocates any marks/used marks
+      deallocates any marks
 
       deallocates the bitstream struct*/
     void
@@ -512,23 +503,6 @@ void
 br_skip_unary_e_le(BitstreamReader* bs, int stop_bit);
 void
 br_skip_unary_c(BitstreamReader* bs, int stop_bit);
-
-
-/*bs->read_limited_unary(bs, stop_bit, maximum_bits)  methods*/
-int
-br_read_limited_unary_f_be(BitstreamReader* bs, int stop_bit, int maximum_bits);
-int
-br_read_limited_unary_f_le(BitstreamReader* bs, int stop_bit, int maximum_bits);
-int
-br_read_limited_unary_s_be(BitstreamReader* bs, int stop_bit, int maximum_bits);
-int
-br_read_limited_unary_s_le(BitstreamReader* bs, int stop_bit, int maximum_bits);
-int
-br_read_limited_unary_e_be(BitstreamReader* bs, int stop_bit, int maximum_bits);
-int
-br_read_limited_unary_e_le(BitstreamReader* bs, int stop_bit, int maximum_bits);
-int
-br_read_limited_unary_c(BitstreamReader* bs, int stop_bit, int maximum_bits);
 
 
 /*bs->read_huffman_code(bs, table)  methods*/

@@ -19,6 +19,7 @@
 
 from audiotools import iter_last
 from audiotools.bitstream import BitstreamReader
+from audiotools.bitstream import HuffmanTree
 from audiotools.pcm import from_list, from_channels
 from operator import concat
 
@@ -49,6 +50,18 @@ def truncate_bits(value, bits):
         return truncated - (1 << bits)
     else:
         return truncated
+
+
+RESIDUAL = HuffmanTree([[0], 0,
+                        [1, 0], 1,
+                        [1, 1, 0], 2,
+                        [1, 1, 1, 0], 3,
+                        [1, 1, 1, 1, 0], 4,
+                        [1, 1, 1, 1, 1, 0], 5,
+                        [1, 1, 1, 1, 1, 1, 0], 6,
+                        [1, 1, 1, 1, 1, 1, 1, 0], 7,
+                        [1, 1, 1, 1, 1, 1, 1, 1, 0], 8,
+                        [1, 1, 1, 1, 1, 1, 1, 1, 1], -1], False)
 
 
 class ALACDecoder(object):
@@ -339,8 +352,8 @@ class ALACDecoder(object):
         return residuals
 
     def read_residual(self, k, sample_size):
-        msb = self.reader.limited_unary(0, 9)
-        if (msb is None):
+        msb = self.reader.read_huffman_code(RESIDUAL)
+        if (msb == -1):
             return self.reader.read(sample_size)
         elif (k == 0):
             return msb

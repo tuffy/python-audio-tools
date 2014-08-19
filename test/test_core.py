@@ -1968,15 +1968,6 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.unary(1), 0)
 
         reader.rewind()
-        self.assertEqual(reader.limited_unary(0, 2), 1)
-        self.assertEqual(reader.limited_unary(0, 2), None)
-        reader.rewind()
-        self.assertEqual(reader.limited_unary(1, 2), 0)
-        self.assertEqual(reader.limited_unary(1, 2), 1)
-        self.assertEqual(reader.limited_unary(1, 2), 0)
-        self.assertEqual(reader.limited_unary(1, 2), None)
-
-        reader.rewind()
         self.assertEqual(reader.read_huffman_code(table), 1)
         self.assertEqual(reader.read_huffman_code(table), 0)
         self.assertEqual(reader.read_huffman_code(table), 4)
@@ -2092,12 +2083,6 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.unary(1), 0)
 
         reader.rewind()
-        self.assertEqual(reader.limited_unary(0, 2), 1)
-        self.assertEqual(reader.limited_unary(0, 2), 0)
-        self.assertEqual(reader.limited_unary(0, 2), 0)
-        self.assertEqual(reader.limited_unary(0, 2), None)
-
-        reader.rewind()
         self.assertEqual(reader.read_huffman_code(table), 1)
         self.assertEqual(reader.read_huffman_code(table), 3)
         self.assertEqual(reader.read_huffman_code(table), 1)
@@ -2138,10 +2123,6 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read(4), 11)
         reader.set_endianness(1)
         self.assertEqual(reader.read(4), 1)
-
-        reader.rewind()
-        self.assertEqual(reader.limited_unary(1, 2), 0)
-        self.assertEqual(reader.limited_unary(1, 2), None)
 
         reader.rewind()
         reader.mark()
@@ -2185,11 +2166,6 @@ class Bitstream(unittest.TestCase):
         reader.rewind()
         self.assertEqual(reader.unary(1), 0)
         self.assertRaises(IOError, reader.unary, 1)
-        reader.rewind()
-        self.assertRaises(IOError, reader.limited_unary, 0, 3)
-        reader.rewind()
-        self.assertEqual(reader.limited_unary(1, 3), 0)
-        self.assertRaises(IOError, reader.limited_unary, 1, 3)
         reader.rewind()
         self.assertRaises(IOError, reader.read_huffman_code, table)
         reader.rewind()
@@ -2301,18 +2277,6 @@ class Bitstream(unittest.TestCase):
         reader.rewind()
         for i in range(unary_1_reads):
             reader.unary(1)
-        self.assertEqual(int(counter), 4)
-        reader.rewind()
-
-        # read_limited_unary
-        counter.reset()
-        for i in range(unary_0_reads):
-            reader.limited_unary(0, 6)
-        self.assertEqual(int(counter), 4)
-        counter.reset()
-        reader.rewind()
-        for i in range(unary_1_reads):
-            reader.limited_unary(1, 6)
         self.assertEqual(int(counter), 4)
         reader.rewind()
 
@@ -3759,16 +3723,6 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(1), 1)
 
             bitstream = BitstreamReader(new_temp(), 0)
-            self.assertEqual(bitstream.limited_unary(0, 2), 1)
-            self.assertEqual(bitstream.limited_unary(0, 2), None)
-            bitstream.byte_align()
-            bitstream = BitstreamReader(new_temp(), 0)
-            self.assertEqual(bitstream.limited_unary(1, 2), 0)
-            self.assertEqual(bitstream.limited_unary(1, 2), 1)
-            self.assertEqual(bitstream.limited_unary(1, 2), 0)
-            self.assertEqual(bitstream.limited_unary(1, 2), None)
-
-            bitstream = BitstreamReader(new_temp(), 0)
             bitstream.mark()
             self.assertEqual(bitstream.read(4), 0xB)
             bitstream.rewind()
@@ -3833,16 +3787,6 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(1), 0)
             bitstream.unread(1)
             self.assertEqual(bitstream.read(1), 1)
-
-            bitstream = BitstreamReader(new_temp(), 1)
-            self.assertEqual(bitstream.limited_unary(0, 2), 1)
-            self.assertEqual(bitstream.limited_unary(0, 2), 0)
-            self.assertEqual(bitstream.limited_unary(0, 2), 0)
-            self.assertEqual(bitstream.limited_unary(0, 2), None)
-            bitstream.byte_align()
-            bitstream = BitstreamReader(new_temp(), 1)
-            self.assertEqual(bitstream.limited_unary(1, 2), 0)
-            self.assertEqual(bitstream.limited_unary(1, 2), None)
 
             bitstream = BitstreamReader(new_temp(), 1)
             bitstream.mark()
@@ -4039,7 +3983,6 @@ class Bitstream(unittest.TestCase):
             self.assertRaises(IOError, reader.skip_bytes, 1)
             self.assertRaises(IOError, reader.read_signed, 2)
             self.assertRaises(IOError, reader.unary, 1)
-            self.assertRaises(IOError, reader.limited_unary, 1, 2)
             self.assertRaises(IOError, reader.read_bytes, 1)
             self.assertRaises(IOError, reader.parse, "1b2b3b")
             self.assertRaises(IOError, reader.substream, 2)

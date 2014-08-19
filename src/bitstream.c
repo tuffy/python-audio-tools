@@ -39,13 +39,6 @@ struct read_unary {
     state_t state;
 };
 
-struct read_limited_unary {
-    int continue_;
-    int limit_reached;
-    unsigned value;
-    state_t state;
-};
-
 const struct read_bits read_bits_table[0x200][8] =
 #include "read_bits_table.h"
     ;
@@ -68,14 +61,6 @@ const struct read_unary read_unary_table[0x200][2] =
 
 const struct read_unary read_unary_table_le[0x200][2] =
 #include "read_unary_table_le.h"
-    ;
-
-const struct read_limited_unary read_limited_unary_table[0x200][18] =
-#include "read_limited_unary_table.h"
-    ;
-
-const struct read_limited_unary read_limited_unary_table_le[0x200][18] =
-#include "read_limited_unary_table_le.h"
     ;
 
 
@@ -101,7 +86,6 @@ br_open(FILE *f, bs_endianness endianness)
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_f_be;
         bs->skip_unary = br_skip_unary_f_be;
-        bs->read_limited_unary = br_read_limited_unary_f_be;
         bs->set_endianness = br_set_endianness_f_be;
         break;
     case BS_LITTLE_ENDIAN:
@@ -113,7 +97,6 @@ br_open(FILE *f, bs_endianness endianness)
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_f_le;
         bs->skip_unary = br_skip_unary_f_le;
-        bs->read_limited_unary = br_read_limited_unary_f_le;
         bs->set_endianness = br_set_endianness_f_le;
         break;
     }
@@ -162,7 +145,6 @@ br_substream_new(bs_endianness endianness)
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_s_be;
         bs->skip_unary = br_skip_unary_s_be;
-        bs->read_limited_unary = br_read_limited_unary_s_be;
         bs->set_endianness = br_set_endianness_s_be;
         break;
     case BS_LITTLE_ENDIAN:
@@ -174,7 +156,6 @@ br_substream_new(bs_endianness endianness)
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_s_le;
         bs->skip_unary = br_skip_unary_s_le;
-        bs->read_limited_unary = br_read_limited_unary_s_le;
         bs->set_endianness = br_set_endianness_s_le;
         break;
     }
@@ -223,7 +204,6 @@ br_open_buffer(struct bs_buffer* buffer, bs_endianness endianness)
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_s_be;
         bs->skip_unary = br_skip_unary_s_be;
-        bs->read_limited_unary = br_read_limited_unary_s_be;
         bs->set_endianness = br_set_endianness_s_be;
         break;
     case BS_LITTLE_ENDIAN:
@@ -235,7 +215,6 @@ br_open_buffer(struct bs_buffer* buffer, bs_endianness endianness)
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_s_le;
         bs->skip_unary = br_skip_unary_s_le;
-        bs->read_limited_unary = br_read_limited_unary_s_le;
         bs->set_endianness = br_set_endianness_s_le;
         break;
     }
@@ -293,7 +272,6 @@ br_open_external(void* user_data,
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_e_be;
         bs->skip_unary = br_skip_unary_e_be;
-        bs->read_limited_unary = br_read_limited_unary_e_be;
         bs->set_endianness = br_set_endianness_e_be;
         break;
     case BS_LITTLE_ENDIAN:
@@ -305,7 +283,6 @@ br_open_external(void* user_data,
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_e_le;
         bs->skip_unary = br_skip_unary_e_le;
-        bs->read_limited_unary = br_read_limited_unary_e_le;
         bs->set_endianness = br_set_endianness_e_le;
         break;
     }
@@ -892,79 +869,10 @@ br_skip_unary_c(BitstreamReader* bs, int stop_bit)
 }
 
 
-
-#define FUNC_READ_LIMITED_UNARY(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG, UNARY_TABLE) \
-    int                                                                 \
-    FUNC_NAME(BitstreamReader* bs, int stop_bit, int maximum_bits)      \
-    {                                                                   \
-        struct read_limited_unary result = {0, 0, 0, bs->state};        \
-        register int accumulator = 0;                                   \
-                                                                        \
-        assert(maximum_bits > 0);                                       \
-                                                                        \
-        do {                                                            \
-            if (result.state == 0) {                                    \
-                const int byte = BYTE_FUNC(BYTE_FUNC_ARG);              \
-                if (byte != EOF) {                                      \
-                    struct bs_callback* callback;                       \
-                    result.state = NEW_STATE(byte);                     \
-                    for (callback = bs->callbacks;                      \
-                         callback != NULL;                              \
-                         callback = callback->next)                     \
-                         callback->callback((uint8_t)byte,              \
-                                            callback->data);            \
-                } else {                                                \
-                    br_abort(bs);                                       \
-                }                                                       \
-            }                                                           \
-                                                                        \
-            result = UNARY_TABLE[result.state][(stop_bit * 9) +         \
-                                               MIN(maximum_bits, 8)];   \
-                                                                        \
-            accumulator += result.value;                                \
-            maximum_bits -= result.value;                               \
-        } while (result.continue_);                                     \
-                                                                        \
-        bs->state = result.state;                                       \
-                                                                        \
-        if (result.limit_reached) {                                     \
-            /*maximum_bits reached*/                                    \
-            return -1;                                                  \
-        } else {                                                        \
-            /*stop bit reached*/                                        \
-            return accumulator;                                         \
-        }                                                               \
-    }
-
-FUNC_READ_LIMITED_UNARY(br_read_limited_unary_f_be,
-                        fgetc, bs->input.file, read_limited_unary_table)
-FUNC_READ_LIMITED_UNARY(br_read_limited_unary_f_le,
-                        fgetc, bs->input.file, read_limited_unary_table_le)
-FUNC_READ_LIMITED_UNARY(br_read_limited_unary_s_be,
-                        buf_getc, bs->input.substream,
-                        read_limited_unary_table)
-FUNC_READ_LIMITED_UNARY(br_read_limited_unary_s_le,
-                        buf_getc, bs->input.substream,
-                        read_limited_unary_table_le)
-FUNC_READ_LIMITED_UNARY(br_read_limited_unary_e_be,
-                        ext_getc, bs->input.external,
-                        read_limited_unary_table)
-FUNC_READ_LIMITED_UNARY(br_read_limited_unary_e_le,
-                        ext_getc, bs->input.external,
-                        read_limited_unary_table_le)
-
-int
-br_read_limited_unary_c(BitstreamReader* bs, int stop_bit, int maximum_bits)
-{
-    br_abort(bs);
-    return 0;
-}
-
-
 #define FUNC_READ_HUFFMAN_CODE(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG) \
     int                                                             \
     FUNC_NAME(BitstreamReader *bs,                                  \
-              struct br_huffman_table table[][0x200])               \
+              struct br_huffman_table table[][0x200])         \
     {                                                               \
         struct br_huffman_table entry = table[0][bs->state];        \
                                                                     \
@@ -1186,7 +1094,6 @@ br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness)
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_f_le;
         bs->skip_unary = br_skip_unary_f_le;
-        bs->read_limited_unary = br_read_limited_unary_f_le;
         bs->set_endianness = br_set_endianness_f_le;
     }
 }
@@ -1204,7 +1111,6 @@ br_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness)
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_f_be;
         bs->skip_unary = br_skip_unary_f_be;
-        bs->read_limited_unary = br_read_limited_unary_f_be;
         bs->set_endianness = br_set_endianness_f_be;
     }
 }
@@ -1222,7 +1128,6 @@ br_set_endianness_s_be(BitstreamReader *bs, bs_endianness endianness)
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_s_le;
         bs->skip_unary = br_skip_unary_s_le;
-        bs->read_limited_unary = br_read_limited_unary_s_le;
         bs->set_endianness = br_set_endianness_s_le;
     }
 }
@@ -1240,7 +1145,6 @@ br_set_endianness_s_le(BitstreamReader *bs, bs_endianness endianness)
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_s_be;
         bs->skip_unary = br_skip_unary_s_be;
-        bs->read_limited_unary = br_read_limited_unary_s_be;
         bs->set_endianness = br_set_endianness_s_be;
     }
 }
@@ -1258,7 +1162,6 @@ br_set_endianness_e_be(BitstreamReader *bs, bs_endianness endianness)
         bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_e_le;
         bs->skip_unary = br_skip_unary_e_le;
-        bs->read_limited_unary = br_read_limited_unary_e_le;
         bs->set_endianness = br_set_endianness_e_le;
     }
 }
@@ -1276,7 +1179,6 @@ br_set_endianness_e_le(BitstreamReader *bs, bs_endianness endianness)
         bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_e_be;
         bs->skip_unary = br_skip_unary_e_be;
-        bs->read_limited_unary = br_read_limited_unary_e_be;
         bs->set_endianness = br_set_endianness_e_be;
     }
 }
@@ -1299,7 +1201,6 @@ br_close_methods(BitstreamReader* bs)
     bs->unread = br_unread_bit_c;
     bs->read_unary = br_read_unary_c;
     bs->skip_unary = br_skip_unary_c;
-    bs->read_limited_unary = br_read_limited_unary_c;
     bs->read_huffman_code = br_read_huffman_code_c;
     bs->read_bytes = br_read_bytes_c;
     bs->set_endianness = br_set_endianness_c;
@@ -2890,8 +2791,8 @@ bw_mark_e(BitstreamWriter *bs, int mark_id)
 void
 bw_mark_r_a(BitstreamWriter *bs, int mark_id)
 {
-    /*FIXME - spit out warning?*/
-    /*no-op*/
+    /*recorders and accumulators shouldn't set marks*/
+    assert(0);
 }
 
 void
@@ -2933,8 +2834,8 @@ bw_rewind_e(BitstreamWriter *bs, int mark_id)
 void
 bw_rewind_r_a(BitstreamWriter *bs, int mark_id)
 {
-    /*FIXME - spit out warning?*/
-    /*no-op*/
+    /*recorders and accumulators shouldn't rewind to a mark*/
+    assert(0);
 }
 
 
@@ -2970,8 +2871,8 @@ bw_unmark_e(BitstreamWriter *bs, int mark_id)
 void
 bw_unmark_r_a(BitstreamWriter *bs, int mark_id)
 {
-    /*FIXME - spit out warning?*/
-    /*no-op*/
+    /*recorders and accumulators shouldn't attempt to unmark*/
+    assert(0);
 }
 
 
@@ -4014,15 +3915,6 @@ void test_big_endian_reader(BitstreamReader* reader,
     assert(reader->read_unary(reader, 1) == 0);
 
     reader->rewind(reader, 0);
-    assert(reader->read_limited_unary(reader, 0, 2) == 1);
-    assert(reader->read_limited_unary(reader, 0, 2) == -1);
-    reader->rewind(reader, 0);
-    assert(reader->read_limited_unary(reader, 1, 2) == 0);
-    assert(reader->read_limited_unary(reader, 1, 2) == 1);
-    assert(reader->read_limited_unary(reader, 1, 2) == 0);
-    assert(reader->read_limited_unary(reader, 1, 2) == -1);
-
-    reader->rewind(reader, 0);
     assert(reader->read_huffman_code(reader, *table) == 1);
     assert(reader->read_huffman_code(reader, *table) == 0);
     assert(reader->read_huffman_code(reader, *table) == 4);
@@ -4298,12 +4190,6 @@ void test_little_endian_reader(BitstreamReader* reader,
     assert(reader->read_unary(reader, 1) == 0);
 
     reader->rewind(reader, 0);
-    assert(reader->read_limited_unary(reader, 0, 2) == 1);
-    assert(reader->read_limited_unary(reader, 0, 2) == 0);
-    assert(reader->read_limited_unary(reader, 0, 2) == 0);
-    assert(reader->read_limited_unary(reader, 0, 2) == -1);
-
-    reader->rewind(reader, 0);
     assert(reader->read_huffman_code(reader, *table) == 1);
     assert(reader->read_huffman_code(reader, *table) == 3);
     assert(reader->read_huffman_code(reader, *table) == 1);
@@ -4345,10 +4231,6 @@ void test_little_endian_reader(BitstreamReader* reader,
     assert(reader->read(reader, 4) == 11);
     reader->set_endianness(reader, BS_LITTLE_ENDIAN);
     assert(reader->read(reader, 4) == 1);
-
-    reader->rewind(reader, 0);
-    assert(reader->read_limited_unary(reader, 1, 2) == 0);
-    assert(reader->read_limited_unary(reader, 1, 2) == -1);
 
     reader->rewind(reader, 0);
     reader->mark(reader, 0);
@@ -4548,13 +4430,6 @@ test_close_errors(BitstreamReader* reader,
     }
 
     if (!setjmp(*br_try(reader))) {
-        reader->read_limited_unary(reader, 0, 10);
-        assert(0);
-    } else {
-        br_etry(reader);
-    }
-
-    if (!setjmp(*br_try(reader))) {
         reader->read_huffman_code(reader, *table);
         assert(0);
     } else {
@@ -4669,21 +4544,6 @@ void test_try(BitstreamReader* reader,
     if (!setjmp(*br_try(reader))) {
         assert(reader->read_unary(reader, 1) == 0);
         reader->read_unary(reader, 1);
-        assert(0);
-    } else {
-        br_etry(reader);
-        reader->rewind(reader, 0);
-    }
-    if (!setjmp(*br_try(reader))) {
-        reader->read_limited_unary(reader, 0, 3);
-        assert(0);
-    } else {
-        br_etry(reader);
-        reader->rewind(reader, 0);
-    }
-    if (!setjmp(*br_try(reader))) {
-        assert(reader->read_limited_unary(reader, 1, 3) == 0);
-        reader->read_limited_unary(reader, 1, 3);
         assert(0);
     } else {
         br_etry(reader);
@@ -4826,18 +4686,6 @@ void test_callbacks_reader(BitstreamReader* reader,
     reader->rewind(reader, 0);
     for (i = 0; i < unary_1_reads; i++)
         reader->read_unary(reader, 1);
-    assert(byte_count == 4);
-    reader->rewind(reader, 0);
-
-    /*read_limited_unary*/
-    byte_count = 0;
-    for (i = 0; i < unary_0_reads; i++)
-        reader->read_limited_unary(reader, 0, 6);
-    assert(byte_count == 4);
-    byte_count = 0;
-    reader->rewind(reader, 0);
-    for (i = 0; i < unary_1_reads; i++)
-        reader->read_limited_unary(reader, 1, 6);
     assert(byte_count == 4);
     reader->rewind(reader, 0);
 

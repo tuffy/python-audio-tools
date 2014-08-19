@@ -1094,7 +1094,10 @@ read_residual(BitstreamReader *bs,
               unsigned int k,
               unsigned int sample_size)
 {
-    const int msb = bs->read_limited_unary(bs, 0, RICE_THRESHOLD + 1);
+    static struct br_huffman_table MSB[][0x200] =
+#include "alac_residual.h"
+    ;
+    const int msb = bs->read_huffman_code(bs, MSB);
 
     /*read a unary 0 value to a maximum of RICE_THRESHOLD (8)*/
     if (msb == -1) {

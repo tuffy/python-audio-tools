@@ -149,9 +149,6 @@ static PyObject*
 BitstreamReader_skip_unary(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
-BitstreamReader_limited_unary(bitstream_BitstreamReader *self, PyObject *args);
-
-static PyObject*
 BitstreamReader_read_huffman_code(bitstream_BitstreamReader *self,
                                   PyObject *args);
 
@@ -224,10 +221,6 @@ PyMethodDef BitstreamReader_methods[] = {
     {"skip_unary", (PyCFunction)BitstreamReader_skip_unary, METH_VARARGS,
      "skip_unary(stop_bit)\n"
      "skips a number of bits until the next stop bit"},
-    {"limited_unary", (PyCFunction)BitstreamReader_limited_unary, METH_VARARGS,
-     "limited_unary(stop_bit, maximum_bits) -> signed int\n"
-     "counts the number of bits until the next stop bit\n"
-     "or returns -1 if the maximum bits are exceeded"},
     {"read_huffman_code", (PyCFunction)BitstreamReader_read_huffman_code,
      METH_VARARGS,
      "read_huffman_code(huffman_tree) -> int\n"

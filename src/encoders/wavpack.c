@@ -195,6 +195,8 @@ encoders_encode_wavpack(char *filename,
             stream->rewind(stream, WAVE_HEADER);
             write_sub_block(stream, WV_WAVE_HEADER, 1, sub_block);
             stream->unmark(stream, WAVE_HEADER);
+        } else {
+            stream->unmark(stream, WAVE_HEADER);
         }
     }
 
@@ -229,6 +231,9 @@ encoders_encode_wavpack(char *filename,
     /*close open file handles and deallocate temporary space*/
     while (stream->has_mark(stream, TOTAL_PCM_FRAMES)) {
         stream->unmark(stream, TOTAL_PCM_FRAMES);
+    }
+    if (stream->has_mark(stream, WAVE_HEADER)) {
+        stream->unmark(stream, WAVE_HEADER);
     }
 
     free_context(&context);

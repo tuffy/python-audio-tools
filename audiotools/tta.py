@@ -202,6 +202,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                     (encode_tta if encoding_function is None
                      else encoding_function)(file, BufferedPCMReader(counter))
             except (IOError, ValueError) as err:
+                writer.unmark()
                 file.close()
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
@@ -210,6 +211,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
             # matches total_pcm_frames
             if (counter.frames_written != total_pcm_frames):
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+                writer.unmark()
                 cls.__unlink__(filename)
                 raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
 
