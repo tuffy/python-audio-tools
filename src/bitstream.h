@@ -77,7 +77,11 @@ struct br_mark {
     union {
         fpos_t file;
         buf_pos_t substream;
-        buf_pos_t external;
+        struct {
+            void* pos;
+            unsigned buffer_size;
+            uint8_t* buffer;
+        } external;
     } position;
     state_t state;
     struct br_mark *next;
@@ -393,6 +397,9 @@ br_open_external(void* user_data,
                  bs_endianness endianness,
                  unsigned buffer_size,
                  ext_read_f read,
+                 ext_seek_f seek,
+                 ext_tell_f tell,
+                 ext_free_pos_f free_pos,
                  ext_close_f close,
                  ext_free_f free);
 
@@ -1490,11 +1497,11 @@ int bw_write_python(PyObject* writer,
 
 int bw_flush_python(PyObject* writer);
 
-int bw_seek_python(PyObject* writer, PyObject* pos);
+int bs_seek_python(PyObject* stream, PyObject* pos);
 
-PyObject* bw_tell_python(PyObject* writer);
+PyObject* bs_tell_python(PyObject* stream);
 
-void bw_free_pos_python(PyObject* pos);
+void bs_free_pos_python(PyObject* pos);
 
 int bs_close_python(PyObject* obj);
 

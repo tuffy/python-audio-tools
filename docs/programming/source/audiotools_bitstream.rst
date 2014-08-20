@@ -175,16 +175,6 @@ out of a larger binary file stream.
    with the given optional mark ID.
    That position may be returned to with calls to :meth:`rewind`.
 
-.. warning::
-
-   Placing a mark when reading from a file-like object
-   (as opposed to an actual file object) requires the
-   :class:`BitstreamReader` to store all the data between the marked
-   position and the current position,
-   since there's no guarantee such an object has a working seek method.
-   Therefore, one must always :meth:`unmark` the stream
-   as soon as the mark is no longer needed.
-
    If marks are left on the stream, :class:`BitstreamReader` will
    generate a warning at deallocation-time.
 

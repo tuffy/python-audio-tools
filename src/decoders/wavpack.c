@@ -78,6 +78,9 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
             BS_LITTLE_ENDIAN,
             4096,
             (ext_read_f)br_read_python,
+            (ext_seek_f)bs_seek_python,
+            (ext_tell_f)bs_tell_python,
+            (ext_free_pos_f)bs_free_pos_python,
             (ext_close_f)bs_close_python,
             (ext_free_f)bs_free_python_nodecref);
     }
@@ -98,7 +101,17 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
 
     /*read initial block to populate
       sample_rate, bits_per_sample, channels, and channel_mask*/
-    self->bitstream->mark(self->bitstream, BEGINNING_OF_STREAM);
+    if (!setjmp(*br_try(self->bitstream))) {
+        self->bitstream->mark(self->bitstream, BEGINNING_OF_STREAM);
+        br_etry(self->bitstream);
+    } else {
+        br_etry(self->bitstream);
+#ifndef STANDALONE
+        PyErr_SetString(wavpack_exception(IO_ERROR),
+                        wavpack_strerror(IO_ERROR));
+#endif
+        return -1;
+    }
     if ((error = read_block_header(self->bitstream, &header)) != OK) {
 #ifndef STANDALONE
         PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));

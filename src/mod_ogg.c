@@ -384,6 +384,9 @@ PageReader_init(ogg_PageReader *self, PyObject *args, PyObject *kwds)
                                     BS_LITTLE_ENDIAN,
                                     4096,
                                     (ext_read_f)br_read_python,
+                                    (ext_seek_f)bs_seek_python,
+                                    (ext_tell_f)bs_tell_python,
+                                    (ext_free_pos_f)bs_free_pos_python,
                                     (ext_close_f)bs_close_python,
                                     (ext_free_f)bs_free_python_decref);
 
@@ -458,9 +461,9 @@ PageWriter_init(ogg_PageWriter *self, PyObject *args, PyObject *kwds)
                                     BS_LITTLE_ENDIAN,
                                     4096,
                                     (ext_write_f)bw_write_python,
-                                    (ext_seek_f)bw_seek_python,
-                                    (ext_tell_f)bw_tell_python,
-                                    (ext_free_pos_f)bw_free_pos_python,
+                                    (ext_seek_f)bs_seek_python,
+                                    (ext_tell_f)bs_tell_python,
+                                    (ext_free_pos_f)bs_free_pos_python,
                                     (ext_flush_f)bw_flush_python,
                                     (ext_close_f)bs_close_python,
                                     (ext_free_f)bs_free_python_decref);

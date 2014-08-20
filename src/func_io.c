@@ -23,6 +23,9 @@ struct br_external_input*
 ext_open_r(void* user_data,
            unsigned buffer_size,
            ext_read_f read,
+           ext_seek_f seek,
+           ext_tell_f tell,
+           ext_free_pos_f free_pos,
            ext_close_f close,
            ext_free_f free)
 {
@@ -30,6 +33,9 @@ ext_open_r(void* user_data,
 
     input->user_data = user_data;
     input->read = read;
+    input->seek = seek;
+    input->tell = tell;
+    input->free_pos = free_pos;
     input->close = close;
     input->free = free;
 
@@ -89,6 +95,33 @@ ext_fread(struct br_external_input* stream,
         /*read as much of the buffer as necessary/possible to "bytes"
           and return the amount actually read*/
         return buf_read(buffer, data, data_size);
+    }
+}
+
+int
+ext_seek_r(struct br_external_input *stream, void *pos)
+{
+    if (stream->seek != NULL) {
+        return stream->seek(stream->user_data, pos);
+    } else {
+        return EOF;
+    }
+}
+
+void*
+ext_tell_r(struct br_external_input *stream){
+    if (stream->tell != NULL) {
+        return stream->tell(stream->user_data);
+    } else {
+        return NULL;
+    }
+}
+
+void
+ext_free_pos_r(struct br_external_input *stream, void *pos)
+{
+    if ((pos != NULL) && (stream->free_pos != NULL)) {
+        stream->free_pos(pos);
     }
 }
 

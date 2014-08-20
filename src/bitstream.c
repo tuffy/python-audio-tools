@@ -246,6 +246,9 @@ br_open_external(void* user_data,
                  bs_endianness endianness,
                  unsigned buffer_size,
                  ext_read_f read,
+                 ext_seek_f seek,
+                 ext_tell_f tell,
+                 ext_free_pos_f free_pos,
                  ext_close_f close,
                  ext_free_f free)
 {
@@ -254,6 +257,9 @@ br_open_external(void* user_data,
     bs->input.external = ext_open_r(user_data,
                                     buffer_size,
                                     read,
+                                    seek,
+                                    tell,
+                                    free_pos,
                                     close,
                                     free);
     bs->state = 0;
@@ -1248,17 +1254,12 @@ br_close_internal_stream_c(BitstreamReader* bs)
 void
 br_free_f(BitstreamReader* bs)
 {
-    struct bs_callback *c_node;
-    struct bs_callback *c_next;
     struct bs_exception *e_node;
     struct bs_exception *e_next;
-    struct br_mark_stack *ms_node;
-    struct br_mark_stack *ms_next;
 
     /*deallocate callbacks*/
-    for (c_node = bs->callbacks; c_node != NULL; c_node = c_next) {
-        c_next = c_node->next;
-        free(c_node);
+    while (bs->callbacks != NULL) {
+        bs->pop_callback(bs, NULL);
     }
 
     /*deallocate exceptions*/
@@ -1276,23 +1277,11 @@ br_free_f(BitstreamReader* bs)
         free(e_node);
     }
 
-    /*dealloate marks*/
-    for (ms_node = bs->mark_stacks; ms_node != NULL; ms_node = ms_next) {
-        if (ms_node->marks != NULL) {
-            struct br_mark* mark;
-            struct br_mark* next;
-
-            fprintf(stderr,
-                    "*** Warning: leftover marks on stack %d\n",
-                    ms_node->mark_id);
-
-            for (mark = ms_node->marks; mark != NULL; mark = next) {
-                next = mark->next;
-                free(mark);
-            }
-        }
-        ms_next = ms_node->next;
-        free(ms_node);
+    /*free any leftover mark objects on stack*/
+    while (bs->mark_stacks != NULL) {
+        const int mark_id = bs->mark_stacks->mark_id;
+        fprintf(stderr, "*** Warning: leftover mark on stack %d\n", mark_id);
+        bs->unmark(bs, mark_id);
     }
 
     /*deallocate the struct itself*/
@@ -1312,6 +1301,16 @@ br_free_s(BitstreamReader* bs)
 void
 br_free_e(BitstreamReader* bs)
 {
+    /*free any leftover mark objects on stack
+
+      it's important to handle this step before freeing
+      our external file-like object!*/
+    while (bs->mark_stacks != NULL) {
+        const int mark_id = bs->mark_stacks->mark_id;
+        fprintf(stderr, "*** Warning: leftover mark on stack %d\n", mark_id);
+        bs->unmark(bs, mark_id);
+    }
+
     /*free internal file-like object, if necessary*/
     ext_free_r(bs->input.external);
 
@@ -1357,12 +1356,23 @@ br_mark_s(BitstreamReader* bs, int mark_id)
 void
 br_mark_e(BitstreamReader* bs, int mark_id)
 {
+    struct br_external_input* input = bs->input.external;
+    const unsigned buffer_size = buf_window_size(input->buffer);
     struct br_mark* mark = malloc(sizeof(struct br_mark));
-    buf_getpos(bs->input.external->buffer, &(mark->position.external));
-    mark->state = bs->state;
-    bs->mark_stacks = br_add_mark(bs->mark_stacks, mark_id, mark);
 
-    buf_set_rewindable(bs->input.external->buffer, 1);
+    if ((mark->position.external.pos = ext_tell_r(input)) == NULL) {
+        /*unable to get current position*/
+        free(mark);
+        br_abort(bs);
+    }
+    mark->position.external.buffer_size = buffer_size;
+    mark->position.external.buffer = malloc(buffer_size * sizeof(uint8_t));
+    memcpy(mark->position.external.buffer,
+           buf_window_start(input->buffer),
+           buffer_size * sizeof(uint8_t));
+    mark->state = bs->state;
+
+    bs->mark_stacks = br_add_mark(bs->mark_stacks, mark_id, mark);
 }
 
 void
@@ -1404,10 +1414,18 @@ br_rewind_s(BitstreamReader* bs, int mark_id)
 void
 br_rewind_e(BitstreamReader* bs, int mark_id)
 {
+    struct br_external_input* input = bs->input.external;
     const struct br_mark* mark = br_get_mark(bs->mark_stacks, mark_id);
 
     if (mark != NULL) {
-        buf_setpos(bs->input.external->buffer, mark->position.external);
+        if (ext_seek_r(input, mark->position.external.pos)) {
+            /*unable to seek to previous position*/
+            br_abort(bs);
+        }
+        buf_reset(input->buffer);
+        buf_write(input->buffer,
+                  mark->position.external.buffer,
+                  mark->position.external.buffer_size);
         bs->state = mark->state;
     } else {
         fprintf(stderr, "*** Warning: no marks on stack to rewind\n");
@@ -1457,9 +1475,9 @@ br_unmark_e(BitstreamReader* bs, int mark_id)
     struct br_mark* mark;
     bs->mark_stacks = br_pop_mark(bs->mark_stacks, mark_id, &mark);
     if (mark != NULL) {
+        ext_free_pos_r(bs->input.external, mark->position.external.pos);
+        free(mark->position.external.buffer);
         free(mark);
-        buf_set_rewindable(bs->input.external->buffer,
-                           bs->mark_stacks != NULL);
     } else {
         fprintf(stderr,
                 "*** Warning: no marks on stack %d to remove\n",
@@ -2634,17 +2652,12 @@ bw_close_internal_stream_c(BitstreamWriter* bs)
 void
 bw_free_f_a(BitstreamWriter* bs)
 {
-    struct bs_callback *c_node;
-    struct bs_callback *c_next;
     struct bs_exception *e_node;
     struct bs_exception *e_next;
-    struct bw_mark_stack *ms_node;
-    struct bw_mark_stack *ms_next;
 
     /*deallocate callbacks*/
-    for (c_node = bs->callbacks; c_node != NULL; c_node = c_next) {
-        c_next = c_node->next;
-        free(c_node);
+    while (bs->callbacks != NULL) {
+        bs->pop_callback(bs, NULL);
     }
 
     /*deallocate exceptions*/
@@ -2663,22 +2676,10 @@ bw_free_f_a(BitstreamWriter* bs)
     }
 
     /*deallocate marks*/
-    for (ms_node = bs->mark_stacks; ms_node != NULL; ms_node = ms_next) {
-        if (ms_node->marks != NULL) {
-            struct bw_mark* mark;
-            struct bw_mark* next;
-
-            fprintf(stderr,
-                    "*** Warning: leftover marks on stack %d\n",
-                    ms_node->mark_id);
-
-            for (mark = ms_node->marks; mark != NULL; mark = next) {
-                next = mark->next;
-                free(mark);
-            }
-        }
-        ms_next = ms_node->next;
-        free(ms_node);
+    while (bs->mark_stacks != NULL) {
+        const int mark_id = bs->mark_stacks->mark_id;
+        fprintf(stderr, "*** Warning: leftover mark on stack %d\n", mark_id);
+        bs->unmark(bs, mark_id);
     }
 
     /*deallocate the struct itself*/
@@ -2698,9 +2699,6 @@ bw_free_r(BitstreamWriter* bs)
 void
 bw_free_e(BitstreamWriter* bs)
 {
-    struct bw_mark_stack *ms_node;
-    struct bw_mark_stack *ms_next;
-
     /*flush pending data if necessary*/
     if (!bw_closed(bs)) {
         /*if an error occurs during flushing at this point
@@ -2708,24 +2706,14 @@ bw_free_e(BitstreamWriter* bs)
         (void)ext_flush_w(bs->output.external);
     }
 
-    /*free any leftover mark objects on stack*/
-    for (ms_node = bs->mark_stacks; ms_node != NULL; ms_node = ms_next) {
-        if (ms_node->marks != NULL) {
-            struct bw_mark* mark;
-            struct bw_mark* next;
+    /*free any leftover mark objects on stack
 
-            fprintf(stderr,
-                    "*** Warning: leftover marks on stack %d\n",
-                    ms_node->mark_id);
-
-            for (mark = ms_node->marks; mark != NULL; mark = next) {
-                next = mark->next;
-                ext_free_pos_w(bs->output.external, mark->position.external);
-                free(mark);
-            }
-        }
-        ms_next = ms_node->next;
-        free(ms_node);
+      it's important to handle this step before freeing
+      our external file-like object!*/
+    while (bs->mark_stacks != NULL) {
+        const int mark_id = bs->mark_stacks->mark_id;
+        fprintf(stderr, "*** Warning: leftover mark on stack %d\n", mark_id);
+        bs->unmark(bs, mark_id);
     }
 
     ext_free_w(bs->output.external);
@@ -3276,10 +3264,10 @@ int bw_flush_python(PyObject* writer)
     }
 }
 
-int bw_seek_python(PyObject* writer, PyObject* pos)
+int bs_seek_python(PyObject* stream, PyObject* pos)
 {
     if (pos != NULL) {
-        PyObject *seek = PyObject_GetAttrString(writer, "seek");
+        PyObject *seek = PyObject_GetAttrString(stream, "seek");
         if (seek != NULL) {
             PyObject *result = PyObject_CallFunctionObjArgs(seek, pos, NULL);
             if (result != NULL) {
@@ -3287,12 +3275,12 @@ int bw_seek_python(PyObject* writer, PyObject* pos)
                 return 0;
             } else {
                 /*some error occurred calling seek()*/
-                PyErr_Print();
+                PyErr_Clear();
                 return EOF;
             }
         } else {
             /*unable to find seek method in object*/
-            PyErr_Print();
+            PyErr_Clear();
             return EOF;
         }
     }
@@ -3300,18 +3288,18 @@ int bw_seek_python(PyObject* writer, PyObject* pos)
     return 0;
 }
 
-PyObject* bw_tell_python(PyObject* writer)
+PyObject* bs_tell_python(PyObject* stream)
 {
-    PyObject *pos = PyObject_CallMethod(writer, "tell", NULL);
+    PyObject *pos = PyObject_CallMethod(stream, "tell", NULL);
     if (pos != NULL) {
         return pos;
     } else {
-        PyErr_Print();
+        PyErr_Clear();
         return NULL;
     }
 }
 
-void bw_free_pos_python(PyObject* pos)
+void bs_free_pos_python(PyObject* pos)
 {
     Py_XDECREF(pos);
 }
@@ -3648,6 +3636,9 @@ int main(int argc, char* argv[]) {
                               BS_BIG_ENDIAN,
                               2,
                               (ext_read_f)ext_fread_test,
+                              (ext_seek_f)ext_fseek_test,
+                              (ext_tell_f)ext_ftell_test,
+                              (ext_free_pos_f)ext_free_pos_test,
                               (ext_close_f)ext_fclose_test,
                               (ext_free_f)ext_ffree_test);
     test_big_endian_reader(reader, be_table);
@@ -3678,6 +3669,9 @@ int main(int argc, char* argv[]) {
                               BS_LITTLE_ENDIAN,
                               2,
                               (ext_read_f)ext_fread_test,
+                              (ext_seek_f)ext_fseek_test,
+                              (ext_tell_f)ext_ftell_test,
+                              (ext_free_pos_f)ext_free_pos_test,
                               (ext_close_f)ext_fclose_test,
                               (ext_free_f)ext_ffree_test);
     test_little_endian_reader(reader, le_table);

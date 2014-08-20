@@ -800,9 +800,17 @@ BitstreamReader_mark(bitstream_BitstreamReader *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "|i", &mark_id)) {
         return NULL;
     } else {
-        self->bitstream->mark(self->bitstream, mark_id);
-        Py_INCREF(Py_None);
-        return Py_None;
+        if (!setjmp(*br_try(self->bitstream))) {
+            self->bitstream->mark(self->bitstream, mark_id);
+            br_etry(self->bitstream);
+            Py_INCREF(Py_None);
+            return Py_None;
+        } else {
+            br_etry(self->bitstream);
+            PyErr_SetString(PyExc_IOError,
+                            "I/O error getting current position");
+            return NULL;
+        }
     }
 }
 
@@ -827,9 +835,16 @@ BitstreamReader_rewind(bitstream_BitstreamReader *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "|i", &mark_id)) {
         return NULL;
     } else {
-        self->bitstream->rewind(self->bitstream, mark_id);
-        Py_INCREF(Py_None);
-        return Py_None;
+        if (!setjmp(*br_try(self->bitstream))) {
+            self->bitstream->rewind(self->bitstream, mark_id);
+            br_etry(self->bitstream);
+            Py_INCREF(Py_None);
+            return Py_None;
+        } else {
+            br_etry(self->bitstream);
+            PyErr_SetString(PyExc_IOError, "I/O error seeking to position");
+            return NULL;
+        }
     }
 }
 
@@ -1109,6 +1124,9 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
             self->little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
             (unsigned)buffer_size,
             (ext_read_f)br_read_python,
+            (ext_seek_f)bs_seek_python,
+            (ext_tell_f)bs_tell_python,
+            (ext_free_pos_f)bs_free_pos_python,
             (ext_close_f)bs_close_python,
             (ext_free_f)bs_free_python_nodecref);
     }
@@ -1383,9 +1401,9 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
             little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
             (unsigned)buffer_size,
             (ext_write_f)bw_write_python,
-            (ext_seek_f)bw_seek_python,
-            (ext_tell_f)bw_tell_python,
-            (ext_free_pos_f)bw_free_pos_python,
+            (ext_seek_f)bs_seek_python,
+            (ext_tell_f)bs_tell_python,
+            (ext_free_pos_f)bs_free_pos_python,
             (ext_flush_f)bw_flush_python,
             (ext_close_f)bs_close_python,
             (ext_free_f)bs_free_python_nodecref);

@@ -81,6 +81,9 @@ open_dither(void)
                                 BS_BIG_ENDIAN,
                                 4096,
                                 (ext_read_f)read_os_random,
+                                NULL, /*unseekable stream*/
+                                NULL, /*unseekable stream*/
+                                NULL, /*unseekable stream*/
                                 (ext_close_f)close_os_random,
                                 (ext_free_f)free_os_random);
     } else {
