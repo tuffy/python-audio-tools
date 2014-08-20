@@ -1326,8 +1326,7 @@ void
 HuffmanTree_dealloc(bitstream_HuffmanTree *self)
 {
     free(self->br_table);
-
-    free_bw_huffman_table(self->bw_table);
+    free(self->bw_table);
 
     self->ob_type->tp_free((PyObject*)self);
 }

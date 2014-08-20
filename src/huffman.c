@@ -110,11 +110,11 @@ next_read_huffman_state(br_huffman_entry_t* state,
 static int
 bank_to_int(struct byte_bank bank);
 
-static struct bw_huffman_table*
-insert_bw_frequency(struct bw_huffman_table* table,
-                    unsigned int bits,
-                    unsigned int length,
-                    int value);
+
+static void
+bw_fix_tree(bw_huffman_table_t *table,
+            int value_index,
+            int value);
 
 
 /*returns a new set of bits of the same length
@@ -466,18 +466,19 @@ int frequency_cmp(const struct huffman_frequency* f1,
     }
 }
 
-int compile_bw_huffman_table(struct bw_huffman_table** table,
+int compile_bw_huffman_table(bw_huffman_table_t** table,
                              struct huffman_frequency* frequencies,
                              unsigned int total_frequencies,
                              bs_endianness endianness)
 {
+    bw_huffman_table_t *new_table;
     int error = 0;
     struct huffman_node* tree;
     unsigned int i;
 
     *table = NULL;
 
-    /*ensure frequencies generate a value Huffman tree*/
+    /*ensure frequencies generate a valid Huffman tree*/
     tree = build_huffman_tree(frequencies, total_frequencies, &error);
     if (tree == NULL) {
         return error;
@@ -492,18 +493,27 @@ int compile_bw_huffman_table(struct bw_huffman_table** table,
           sizeof(struct huffman_frequency),
           (qsort_cmp_func_t)frequency_cmp);
 
+    new_table = malloc(sizeof(bw_huffman_table_t) * total_frequencies);
+
     /*for each frequency in the list*/
     for (i = 0; i < total_frequencies; i++) {
         /*insert a node into the binary tree
           with the given value, bit count and bit value*/
-        *table = insert_bw_frequency(
-            *table,
-            (endianness == BS_BIG_ENDIAN) ?
-            frequencies[i].bits :
-            swap_bits(frequencies[i].bits, frequencies[i].length),
-            frequencies[i].length,
-            frequencies[i].value);
+        new_table[i].value = frequencies[i].value;
+        new_table[i].write_count = frequencies[i].length;
+        if (endianness == BS_BIG_ENDIAN) {
+            new_table[i].write_value = frequencies[i].bits;
+        } else {
+            new_table[i].write_value = swap_bits(frequencies[i].bits,
+                                                 frequencies[i].length);
+        }
+        new_table[i].smaller = -1;
+        new_table[i].larger = -1;
+
+        bw_fix_tree(new_table, i, frequencies[i].value);
     }
+
+    *table = new_table;
 
     return 0;
 }
@@ -521,57 +531,29 @@ swap_bits(unsigned int bits, unsigned int length){
     return swapped;
 }
 
-static struct bw_huffman_table*
-insert_bw_frequency(struct bw_huffman_table* table,
-                    unsigned int bits,
-                    unsigned int length,
-                    int value)
+static void
+bw_fix_tree(bw_huffman_table_t *table,
+            int value_index,
+            int value)
 {
-    if (table == NULL) {
-        /*reached empty node, so generate binary tree leaf and return it*/
-        table = malloc(sizeof(struct bw_huffman_table));
-
-        table->value = value;
-        table->write_count = length;
-        table->write_value = bits;
-        table->left = NULL;
-        table->right = NULL;
-
-        return table;
-    } else {
-        /*reached non-empty node, so populate left or right side
-          and return current node*/
-        if (value < table->value) {
-            table->left = insert_bw_frequency(table->left,
-                                              bits,
-                                              length,
-                                              value);
-            return table;
-        } else if (value > table->value) {
-            table->right = insert_bw_frequency(table->right,
-                                               bits,
-                                               length,
-                                               value);
-            return table;
+    int current_index = 0;
+    while (current_index != value_index) {
+        const int table_value = table[current_index].value;
+        if (value == table_value) {
+            /*entry with same value found in tree
+              so don't bother adding new one*/
+            return;
+        } else if (value < table_value) {
+            if (table[current_index].smaller == -1) {
+                table[current_index].smaller = value_index;
+            }
+            current_index = table[current_index].smaller;
         } else {
-            /*ignore values that occur multiple times
-
-              It's possible to specify a Huffman tree in which
-              the same value can be read in more than one way.
-              But when writing, there's no reason to use
-              the longer value.*/
-
-            return table;
+            if (table[current_index].larger == -1) {
+                table[current_index].larger = value_index;
+            }
+            current_index = table[current_index].larger;
         }
-    }
-}
-
-void free_bw_huffman_table(struct bw_huffman_table* table)
-{
-    if (table != NULL) {
-        free_bw_huffman_table(table->left);
-        free_bw_huffman_table(table->right);
-        free(table);
     }
 }
 
@@ -588,13 +570,15 @@ struct huffman_frequency parse_json_pair(JSON_Array* bit_list, double value);
 int main(int argc, char* argv[]) {
     /*option handling variables*/
     static int little_endian_arg = 0;
-    bs_endianness little_endian;
+    static int write_arg = 0;
+    bs_endianness endianness;
     char* input_file = NULL;
 
     static struct option long_options[] = {
         {"input", required_argument, 0, 'i'},
         {"help", no_argument, 0, 'h'},
         {"le", no_argument, &little_endian_arg, 1},
+        {"write", no_argument, &write_arg, 1},
         {0, 0, 0, 0}
     };
 
@@ -604,10 +588,6 @@ int main(int argc, char* argv[]) {
     /*the variables for real work*/
     struct huffman_frequency* frequencies;
     unsigned int total_frequencies;
-    br_huffman_table_t* table;
-    int row;
-    int state;
-    int total_rows;
 
     do {
         c = getopt_long(argc, argv, "i:h", long_options, &option_index);
@@ -620,6 +600,8 @@ int main(int argc, char* argv[]) {
                    "input JSON file\n");
             printf("  --le                   "
                    "generate little-endian jump table\n");
+            printf("  --write                "
+                   "generate a write table\n");
             return 0;
         case 'i':
             input_file = optarg;
@@ -638,57 +620,115 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    little_endian = little_endian_arg ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN;
+    endianness = little_endian_arg ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN;
 
     frequencies = json_to_frequencies(input_file, &total_frequencies);
 
-    total_rows = compile_br_huffman_table(&table,
-                                          frequencies,
-                                          total_frequencies,
-                                          little_endian);
-    if (total_rows < 0)
-        switch (total_rows) {
-        case HUFFMAN_MISSING_LEAF:
-            fprintf(stderr, "Huffman table missing leaf node\n");
-            free(frequencies);
-            return 1;
-        case HUFFMAN_DUPLICATE_LEAF:
-            fprintf(stderr, "Huffman table has duplicate leaf node\n");
-            free(frequencies);
-            return 1;
-        case HUFFMAN_ORPHANED_LEAF:
-            fprintf(stderr, "Huffman table has orphaned leaf nodes\n");
-            free(frequencies);
-            return 1;
-        default:
-            fprintf(stderr, "Unknown error\n");
-            free(frequencies);
-            return 1;
+    if (!write_arg) {
+        br_huffman_table_t* table;
+        const int total_rows = compile_br_huffman_table(&table,
+                                                        frequencies,
+                                                        total_frequencies,
+                                                        endianness);
+        int row;
+
+        if (total_rows < 0) {
+            switch (total_rows) {
+            case HUFFMAN_MISSING_LEAF:
+                fprintf(stderr, "Huffman table missing leaf node\n");
+                free(frequencies);
+                return 1;
+            case HUFFMAN_DUPLICATE_LEAF:
+                fprintf(stderr, "Huffman table has duplicate leaf node\n");
+                free(frequencies);
+                return 1;
+            case HUFFMAN_ORPHANED_LEAF:
+                fprintf(stderr, "Huffman table has orphaned leaf nodes\n");
+                free(frequencies);
+                return 1;
+            default:
+                fprintf(stderr, "Unknown error\n");
+                free(frequencies);
+                return 1;
+            }
         }
 
-    printf("{\n");
-    for (row = 0; row < total_rows; row++) {
-        printf("  {\n");
+        printf("{\n");
+        for (row = 0; row < total_rows; row++) {
+            int state;
 
-        for (state = 0; state < 0x200; state++) {
-            printf("    {%d, %d, 0x%X, %d}",
-                   table[row][state].continue_,
-                   table[row][state].node,
-                   table[row][state].state,
-                   table[row][state].value);
-            if (state < (0x200 - 1))
-                printf(",\n");
+            printf("  {\n");
+
+            for (state = 0; state < 0x200; state++) {
+                printf("    {%d, %d, 0x%X, %d}",
+                       table[row][state].continue_,
+                       table[row][state].node,
+                       table[row][state].state,
+                       table[row][state].value);
+                if (state < (0x200 - 1))
+                    printf(",\n");
+                else
+                    printf("\n");
+            }
+            if (row < (total_rows - 1))
+                printf("  },\n");
             else
-                printf("\n");
+                printf("  }\n");
         }
-        if (row < (total_rows - 1))
-            printf("  },\n");
-        else
-            printf("  }\n");
-    }
-    printf("}\n");
+        printf("}\n");
 
-    free(table);
+        free(table);
+    } else {
+        bw_huffman_table_t *table;
+
+        const int result = compile_bw_huffman_table(&table,
+                                                    frequencies,
+                                                    total_frequencies,
+                                                    endianness);
+        int row;
+
+        if (result < 0) {
+            switch (result) {
+            case HUFFMAN_MISSING_LEAF:
+                fprintf(stderr, "Huffman table missing leaf node\n");
+                free(frequencies);
+                return 1;
+            case HUFFMAN_DUPLICATE_LEAF:
+                fprintf(stderr, "Huffman table has duplicate leaf node\n");
+                free(frequencies);
+                return 1;
+            case HUFFMAN_ORPHANED_LEAF:
+                fprintf(stderr, "Huffman table has orphaned leaf nodes\n");
+                free(frequencies);
+                return 1;
+            default:
+                fprintf(stderr, "Unknown error\n");
+                free(frequencies);
+                return 1;
+            }
+        }
+
+        printf("{\n");
+
+        for (row = 0; row < total_frequencies; row++) {
+            printf("  {%d, %u, 0x%X, %d, %d",
+                   table[row].value,
+                   table[row].write_count,
+                   table[row].write_value,
+                   table[row].smaller,
+                   table[row].larger);
+            if (row < (total_frequencies - 1)) {
+                printf("},\n");
+            } else {
+                printf("}\n");
+            }
+        }
+
+        printf("}\n");
+
+        free(table);
+    }
+
     free(frequencies);
     return 0;
 }

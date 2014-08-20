@@ -729,16 +729,18 @@ br_substream_reset(struct BitstreamReader_s *substream);
 
 /*this is a basic binary tree in which the most common values
   (those with the smallest amount of bits to write)
-  occur at the top of the tree*/
-struct bw_huffman_table {
+  occur at the top of the tree
+
+  "smaller" and "larger" are array indexes where -1 means value not found*/
+typedef struct {
     int value;
 
     unsigned int write_count;
     unsigned int write_value;
 
-    struct bw_huffman_table* left;
-    struct bw_huffman_table* right;
-};
+    int smaller;
+    int larger;
+} bw_huffman_table_t;
 
 /*a mark on the BitstreamWriter's stream which can be rewound to*/
 struct bw_mark {
@@ -825,7 +827,7 @@ typedef struct BitstreamWriter_s {
       returns 0 on success, or 1 if the code is not found in the table*/
     int
     (*write_huffman_code)(struct BitstreamWriter_s* bs,
-                          struct bw_huffman_table* table,
+                          bw_huffman_table_t table[],
                           int value);
 
     /*returns 1 if the stream is byte-aligned, 0 if not*/
@@ -1172,13 +1174,8 @@ bw_write_unary_c(BitstreamWriter* bs, int stop_bit, unsigned int value);
 /*bs->write_huffman_code(bs, table, value)  methods*/
 int
 bw_write_huffman(BitstreamWriter* bs,
-                 struct bw_huffman_table* table,
+                 bw_huffman_table_t table[],
                  int value);
-
-int
-bw_write_huffman_c(BitstreamWriter* bs,
-                   struct bw_huffman_table* table,
-                   int value);
 
 
 /*bs->byte_aligned(bs)  method*/

@@ -337,7 +337,7 @@ typedef struct {
     PyObject_HEAD
 
     br_huffman_table_t* br_table;
-    struct bw_huffman_table* bw_table;
+    bw_huffman_table_t* bw_table;
 } bitstream_HuffmanTree;
 
 int

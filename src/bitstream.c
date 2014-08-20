@@ -2176,32 +2176,26 @@ bw_write_unary_c(BitstreamWriter* bs, int stop_bit, unsigned int value)
 
 int
 bw_write_huffman(BitstreamWriter* bs,
-                 struct bw_huffman_table* table,
+                 bw_huffman_table_t* table,
                  int value)
 {
-    while (table != NULL) {
-        if (value == table->value) {
-            bs->write(bs, table->write_count, table->write_value);
+    int current_index = 0;
+
+    while (current_index != -1) {
+        if (table[current_index].value == value) {
+            bs->write(bs,
+                      table[current_index].write_count,
+                      table[current_index].write_value);
             return 0;
-        } else if (value < table->value) {
-            table = table->left;
+        } else if (value < table[current_index].value) {
+            current_index = table[current_index].smaller;
         } else {
-            table = table->right;
+            current_index = table[current_index].larger;
         }
     }
 
     /*walked outside of the Huffman table, so return error*/
     return 1;
-}
-
-int
-bw_write_huffman_c(BitstreamWriter* bs,
-                   struct bw_huffman_table* table,
-                   int value)
-{
-    bw_abort(bs);
-
-    return 1;  /*won't get here*/
 }
 
 
@@ -2594,7 +2588,6 @@ bw_close_methods(BitstreamWriter* bs)
     bs->write_signed = bw_write_signed_bits_c;
     bs->write_signed_64 = bw_write_signed_bits64_c;
     bs->write_unary = bw_write_unary_c;
-    bs->write_huffman_code = bw_write_huffman_c;
     bs->flush = bw_flush_r_a_c;
     bs->byte_aligned = bw_byte_aligned_c;
     bs->byte_align = bw_byte_align_c;
@@ -5515,7 +5508,7 @@ void
 writer_perform_huffman(BitstreamWriter* writer,
                        bs_endianness endianness)
 {
-    struct bw_huffman_table* table;
+    bw_huffman_table_t* table;
     struct huffman_frequency frequencies[] = {{3, 2, 0},
                                               {2, 2, 1},
                                               {1, 2, 2},
@@ -5530,44 +5523,44 @@ writer_perform_huffman(BitstreamWriter* writer,
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
-        writer->write_huffman_code(writer, table, 1);
-        writer->write_huffman_code(writer, table, 0);
-        writer->write_huffman_code(writer, table, 4);
-        writer->write_huffman_code(writer, table, 0);
-        writer->write_huffman_code(writer, table, 0);
-        writer->write_huffman_code(writer, table, 2);
-        writer->write_huffman_code(writer, table, 1);
-        writer->write_huffman_code(writer, table, 1);
-        writer->write_huffman_code(writer, table, 2);
-        writer->write_huffman_code(writer, table, 0);
-        writer->write_huffman_code(writer, table, 2);
-        writer->write_huffman_code(writer, table, 0);
-        writer->write_huffman_code(writer, table, 1);
-        writer->write_huffman_code(writer, table, 4);
-        writer->write_huffman_code(writer, table, 2);
+        assert(writer->write_huffman_code(writer, table, 1) == 0);
+        assert(writer->write_huffman_code(writer, table, 0) == 0);
+        assert(writer->write_huffman_code(writer, table, 4) == 0);
+        assert(writer->write_huffman_code(writer, table, 0) == 0);
+        assert(writer->write_huffman_code(writer, table, 0) == 0);
+        assert(writer->write_huffman_code(writer, table, 2) == 0);
+        assert(writer->write_huffman_code(writer, table, 1) == 0);
+        assert(writer->write_huffman_code(writer, table, 1) == 0);
+        assert(writer->write_huffman_code(writer, table, 2) == 0);
+        assert(writer->write_huffman_code(writer, table, 0) == 0);
+        assert(writer->write_huffman_code(writer, table, 2) == 0);
+        assert(writer->write_huffman_code(writer, table, 0) == 0);
+        assert(writer->write_huffman_code(writer, table, 1) == 0);
+        assert(writer->write_huffman_code(writer, table, 4) == 0);
+        assert(writer->write_huffman_code(writer, table, 2) == 0);
         break;
     case BS_LITTLE_ENDIAN:
-        writer->write_huffman_code(writer, table, 1);
-        writer->write_huffman_code(writer, table, 3);
-        writer->write_huffman_code(writer, table, 1);
-        writer->write_huffman_code(writer, table, 0);
-        writer->write_huffman_code(writer, table, 2);
-        writer->write_huffman_code(writer, table, 1);
-        writer->write_huffman_code(writer, table, 0);
-        writer->write_huffman_code(writer, table, 0);
-        writer->write_huffman_code(writer, table, 1);
-        writer->write_huffman_code(writer, table, 0);
-        writer->write_huffman_code(writer, table, 1);
-        writer->write_huffman_code(writer, table, 2);
-        writer->write_huffman_code(writer, table, 4);
-        writer->write_huffman_code(writer, table, 3);
+        assert(writer->write_huffman_code(writer, table, 1) == 0);
+        assert(writer->write_huffman_code(writer, table, 3) == 0);
+        assert(writer->write_huffman_code(writer, table, 1) == 0);
+        assert(writer->write_huffman_code(writer, table, 0) == 0);
+        assert(writer->write_huffman_code(writer, table, 2) == 0);
+        assert(writer->write_huffman_code(writer, table, 1) == 0);
+        assert(writer->write_huffman_code(writer, table, 0) == 0);
+        assert(writer->write_huffman_code(writer, table, 0) == 0);
+        assert(writer->write_huffman_code(writer, table, 1) == 0);
+        assert(writer->write_huffman_code(writer, table, 0) == 0);
+        assert(writer->write_huffman_code(writer, table, 1) == 0);
+        assert(writer->write_huffman_code(writer, table, 2) == 0);
+        assert(writer->write_huffman_code(writer, table, 4) == 0);
+        assert(writer->write_huffman_code(writer, table, 3) == 0);
         /*table makes us unable to generate single
           trailing 1 bit, so we have to do it manually*/
         writer->write(writer, 1, 1);
         break;
     }
 
-    free_bw_huffman_table(table);
+    free(table);
 }
 
 

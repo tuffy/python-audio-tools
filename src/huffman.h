@@ -142,16 +142,14 @@ int compile_br_huffman_table(br_huffman_table_t** table,
   compiles the Huffman tree into a binary tree
   suitable for use by bitstream->write_huffman_code
 
-  the tree must be freed with free_bw_huffman_table when no longer needed
+  the table must be deallocated with free(table) when no longer needed
 
   returns 0 on success,
   or a negative value if there's an error
 */
-int compile_bw_huffman_table(struct bw_huffman_table** table,
+int compile_bw_huffman_table(bw_huffman_table_t** table,
                              struct huffman_frequency* frequencies,
                              unsigned int total_frequencies,
                              bs_endianness endianness);
-
-void free_bw_huffman_table(struct bw_huffman_table* table);
 
 #endif
