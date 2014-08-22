@@ -342,9 +342,7 @@ class FlacMetaData(MetaData):
         including the block headers
         but not including the 4-byte 'fLaC' file ID"""
 
-        from operator import add
-
-        return reduce(add, [4 + b.size() for b in self.block_list], 0)
+        return sum(4 + b.size() for b in self.block_list)
 
 
 class Flac_STREAMINFO(object):
@@ -718,12 +716,10 @@ class Flac_VORBISCOMMENT(VorbisComment):
         """the size of this metadata block
         not including the 4-byte block header"""
 
-        from operator import add
-
         return (4 + len(self.vendor_string.encode('utf-8')) +
                 4 +
-                reduce(add, [4 + len(comment.encode('utf-8'))
-                             for comment in self.comment_strings], 0))
+                sum(4 + len(comment.encode('utf-8'))
+                    for comment in self.comment_strings))
 
 
 class Flac_CUESHEET(Sheet):

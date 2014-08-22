@@ -1211,7 +1211,10 @@ class ID3v22Comment(MetaData):
 
         writer.build("3b 8u 8u 8u 32u",
                      ("ID3", 0x02, 0x00, 0x00,
-                      encode_syncsafe32(max(tags_size, self.total_size))))
+                      encode_syncsafe32(
+                          max(tags_size,
+                              (self.total_size if
+                               self.total_size is not None else 0)))))
 
         for frame in self:
             writer.build("3b 24u", (frame.id, frame.size()))
@@ -1227,7 +1230,8 @@ class ID3v22Comment(MetaData):
         """returns the total size of the ID3v22Comment, including its header"""
 
         return 10 + max(sum([6 + frame.size() for frame in self]),
-                        self.total_size)
+                        (self.total_size if self.total_size is not None
+                         else 0))
 
     def __len__(self):
         return len(self.frames)
@@ -1872,7 +1876,10 @@ class ID3v23Comment(ID3v22Comment):
 
         writer.build("3b 8u 8u 8u 32u",
                      ("ID3", 0x03, 0x00, 0x00,
-                      encode_syncsafe32(max(tags_size, self.total_size))))
+                      encode_syncsafe32(
+                          max(tags_size,
+                              (self.total_size if
+                               self.total_size is not None else 0)))))
 
         for frame in self:
             writer.build("4b 32u 16u", (frame.id, frame.size(), 0))
@@ -1888,7 +1895,8 @@ class ID3v23Comment(ID3v22Comment):
         """returns the total size of the ID3v23Comment, including its header"""
 
         return 10 + max(sum([10 + frame.size() for frame in self]),
-                        self.total_size)
+                        (self.total_size if self.total_size is not None
+                         else 0))
 
 
 ############################################################
@@ -2297,7 +2305,10 @@ class ID3v24Comment(ID3v23Comment):
 
         writer.build("3b 8u 8u 8u 32u",
                      ("ID3", 0x04, 0x00, 0x00,
-                      encode_syncsafe32(max(tags_size, self.total_size))))
+                      encode_syncsafe32(
+                          max(tags_size,
+                              (self.total_size if
+                               self.total_size is not None else 0)))))
 
         for frame in self:
             writer.write_bytes(frame.id)
@@ -2315,7 +2326,8 @@ class ID3v24Comment(ID3v23Comment):
         """returns the total size of the ID3v24Comment, including its header"""
 
         return 10 + max(sum([10 + frame.size() for frame in self]),
-                        self.total_size)
+                        (self.total_size if self.total_size is not None
+                         else 0))
 
 
 ID3v2Comment = ID3v22Comment

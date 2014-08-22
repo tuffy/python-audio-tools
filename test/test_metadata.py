@@ -3722,8 +3722,8 @@ class FlacMetaData(MetaDataTest):
                                  "album_number",
                                  "album_total",
                                  "comment"]
-        self.supported_formats = [audiotools.FlacAudio]
-                                  #audiotools.OggFlacAudio]
+        self.supported_formats = [audiotools.FlacAudio,
+                                  audiotools.OggFlacAudio]
 
     def empty_metadata(self):
         return self.metadata_class.converted(audiotools.MetaData())

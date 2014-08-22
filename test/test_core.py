@@ -1882,17 +1882,21 @@ class TestFloatFrameList(unittest.TestCase):
 class __SimpleChunkReader__:
     def __init__(self, chunks):
         self.chunks = chunks
-        self.position = 0
+        self.i = 0
 
     def read(self, bytes):
         try:
-            self.position += len(self.chunks[0])
-            return self.chunks.pop(0)
+            chunk = self.chunks[self.i]
+            self.i += 1
+            return chunk
         except IndexError:
             return ""
 
     def tell(self):
-        return self.position
+        return self.i
+
+    def seek(self, position):
+        self.i = position
 
     def close(self):
         pass

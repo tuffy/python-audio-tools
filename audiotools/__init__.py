@@ -2049,6 +2049,7 @@ class ChannelMask(object):
 
     def __int__(self):
         import operator
+        from functools import reduce
 
         return reduce(operator.or_,
                       [self.SPEAKER_TO_MASK[field] for field in
@@ -3421,13 +3422,13 @@ class ReplayGain(object):
              self.album_gain, self.album_peak)
 
     def __eq__(self, rg):
-        from operator import and_
-
-        return reduce(and_,
-                      [(hasattr(rg, attr) and
-                        (getattr(self, attr) == getattr(rg, attr)))
-                       for attr in ["track_gain", "track_peak",
-                                    "album_gain", "album_peak"]])
+        if (isinstance(rg, ReplayGain)):
+            return ((self.track_gain == rg.track_gain) and
+                    (self.track_peak == rg.track_peak) and
+                    (self.album_gain == rg.album_gain) and
+                    (self.album_peak == rg.album_peak))
+        else:
+            return False
 
     def __ne__(self, rg):
         return not self.__eq__(rg)
