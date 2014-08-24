@@ -856,7 +856,7 @@ def write_correlation_samples(writer, correlation_terms, correlation_samples,
 def wv_log2(value):
     from math import log
 
-    a = abs(value) + (abs(value) / 2 ** 9)
+    a = abs(value) + (abs(value) // 2 ** 9)
     if (a != 0):
         c = int(log(a) / log(2)) + 1
     else:

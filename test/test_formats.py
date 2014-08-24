@@ -114,6 +114,12 @@ class Filewrapper:
     def read(self, bytes):
         return self.file.read(bytes)
 
+    def tell(self):
+        return self.file.tell()
+
+    def seek(self, pos):
+        self.file.seek(pos)
+
     def close(self):
         self.file.close()
 

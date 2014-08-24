@@ -3270,6 +3270,7 @@ int bs_seek_python(PyObject* stream, PyObject* pos)
         PyObject *seek = PyObject_GetAttrString(stream, "seek");
         if (seek != NULL) {
             PyObject *result = PyObject_CallFunctionObjArgs(seek, pos, NULL);
+            Py_DECREF(seek);
             if (result != NULL) {
                 Py_DECREF(result);
                 return 0;

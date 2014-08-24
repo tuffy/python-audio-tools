@@ -518,7 +518,7 @@ def encode_residuals(writer, options, sample_size, residuals):
         if (unsigned >= 2 ** sample_size):
             raise ResidualOverflow()
 
-        k = min(LOG2((history / 2 ** 9) + 3), options.maximum_K)
+        k = min(LOG2((history // 2 ** 9) + 3), options.maximum_K)
 
         encode_residual(writer, unsigned - sign_modifier, k, sample_size)
 
@@ -526,10 +526,10 @@ def encode_residuals(writer, options, sample_size, residuals):
 
         if (unsigned <= 0xFFFF):
             history += ((unsigned * options.history_multiplier) -
-                        ((history * options.history_multiplier) / 2 ** 9))
+                        ((history * options.history_multiplier) // 2 ** 9))
             i += 1
             if ((history < 128) and (i < len(residuals))):
-                k = min(7 - LOG2(history) + ((history + 16) / 2 ** 6),
+                k = min(7 - LOG2(history) + ((history + 16) // 2 ** 6),
                         options.maximum_K)
                 zeroes = 0
                 while ((i < len(residuals)) and (residuals[i] == 0)):

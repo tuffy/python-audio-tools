@@ -261,6 +261,7 @@ class Track(SheetTrack):
         """returns SheetTrack's MetaData, or None"""
 
         from operator import or_
+        from functools import reduce
 
         if (reduce(or_, [(attr is not None) for attr in
                          [self.__isrc__,

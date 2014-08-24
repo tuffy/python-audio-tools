@@ -932,8 +932,7 @@ class Test_group_tracks(unittest.TestCase):
     @LIB_CORE
     def test_grouping(self):
         groupings = list(audiotools.group_tracks(self.tracks))
-        groupings.sort(lambda x, y: cmp(x[0].get_metadata().album_name,
-                                        y[0].get_metadata().album_name))
+        groupings.sort(key=lambda x: x[0].get_metadata().album_name)
         self.assertEqual(groupings[0], [self.tracks[0], self.tracks[2]])
         self.assertEqual(groupings[1], [self.tracks[1]])
         self.assertEqual(groupings[2], [self.tracks[3]])

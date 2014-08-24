@@ -219,9 +219,9 @@ WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
 
 #ifndef STANDALONE
     Py_XDECREF(self->audiotools_pcm);
-    Py_XDECREF(self->file);
     if (self->bitstream != NULL)
         self->bitstream->free(self->bitstream);
+    Py_XDECREF(self->file);
 #else
     if (self->bitstream != NULL)
         self->bitstream->close(self->bitstream);
