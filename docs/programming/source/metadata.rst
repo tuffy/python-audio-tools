@@ -427,37 +427,63 @@ CUESHEET
 
 .. classmethod:: Flac_CUESHEET.converted(cuesheet, total_frames[, sample rate])
 
-   Given a cuesheet-compatible object,
+   Given a :class:`audiotools.Sheet`-compatible object,
    total length of the file in PCM frames and an optional sample rate,
    returns a new :class:`Flac_CUESHEET` object.
 
-.. method:: Flac_CUESHEET.catalog()
+.. method:: Flac_CUESHEET.track_numbers()
 
-   Returns the cuesheet's catalog number as a 128 byte binary string.
+   Returns a list of all track numbers in the sheet,
+   typically starting from 1.
 
-.. method:: Flac_CUESHEET.ISRCs()
+.. method:: Flac_CUESHEET.track(track_number)
 
-   Returns a dict of track number integers -> ISRC binary strings.
-   Any tracks without ISRC values will not be present in the dict.
+   Given a track number, returns the corresponnding
+   :class:`Flac_CUESHEET_track` object, or raises :exc:`KeyError`
+   if the track is not found.
 
-.. method:: Flac_CUESHEET.indexes([sample_rate])
+.. method:: Flac_CUESHEET.pre_gap()
 
-   Returns a list of ``(start, end)`` integer tuples
-   indicating all the index points in the cuesheet.
+   Returns the pre-gap of the entire disc as a :class:`Fraction`
+   number of seconds.
 
-.. method:: Flac_CUESHEET.pcm_lengths(total_length, sample_rate)
+.. method:: Flac_CUESHEET.track_offset(track_number)
 
-   Given a total length of the file, in PCM frames,
-   and the sample rate of the stream, in Hz.
-   Returns a list of PCM frame lengths for each track in the cuesheet.
-   This list of lengths can be used to split a single CD image
-   file into several individual tracks.
+   Given a track number, returns the offset to track track
+   from the start of the stream as a :class:`Fraction` number of seconds.
+
+   May raise :exc:`KeyError` if the track is not found.
+
+.. method:: Flac_CUESHEET.track_length(track_number)
+
+   Given a track number, returns the length of that track
+   as a :class:`Fraction` number of seconds.
+
+.. note::
+
+   Unlike with regular :class:`audiotools.Sheet` objects
+   in which the final track's length may be ``None``,
+   the lengths of all valid FLAC cuesheet tracks will be known.
+
+.. method:: Flac_CUESHEET.image_formatted()
+
+   Always returns ``True`` for FLAC cuesheets.
+
+.. method:: Flac_CUESHEET.get_metadata()
+
+   Returns a :class:`audiotools.MetaData` object
+   for sheet-specific metadata embedded in the cuesheet.
+   For FLAC cuesheets, this will only contain the catalog number
+   as a Unicode string.
+
+CUESHEET track
+^^^^^^^^^^^^^^
 
 .. class:: Flac_CUESHEET_track(offset, number, ISRC, track_type, pre_emphasis, index_points)
 
-   ``offset`` is the track's offset.
+   ``offset`` is the track's first index point offset from the start of the stream, in PCM frames.
    ``number`` number is the track's number on the CD, typically starting from 1.
-   ``ISRC`` is the track's ISRC number as a binary string.
+   ``ISRC`` is the track's ISRC number as a 12 byte binary string.
    ``track_type`` is 0 for audio, 1 for non-audio.
    ``pre_emphasis`` is 0 for tracks with no pre-emphasis, 1 for tracks with pre-emphasis.
    ``index_points`` is a list of :class:`Flac_CUESHEET_index` objects.
@@ -479,6 +505,48 @@ CUESHEET
 
    Writes this cuesheet track to the given :class:`audiotools.bitstream.BitstreamWriter`.
 
+.. method:: Flac_CUESHEET_track.number()
+
+   Returns the track's number, typically starting from 1.
+
+.. method:: Flac_CUESHEET_track.indexes()
+
+   Returns a list of all index points numbers in the track.
+   A point number of 0 indicates a pre-gap index point.
+
+.. method:: Flac_CUESHEET_track.index(index_number)
+
+   Given an index number, returns a :class:`Flac_CUESHEET_index` object.
+
+   May raise :exc:`KeyError` if the index point is not found.
+
+.. method:: Flac_CUESHEET_track.get_metadata()
+
+   Returns a :class:`audiotools.MetaData` object of the
+   track's metadata.
+   For FLAC cuesheets, this will be limited to the ISRC.
+
+.. method:: Flac_CUESHEET_track.filename()
+
+   Returns the track's filename as a string.
+   For FLAC cuesheets, this will always be the FLAC file
+   which contains the cuesheet.
+
+.. method:: Flac_CUESHEET_track.is_audio()
+
+   Always returns ``True``.
+
+.. method:: Flac_CUESHEET_track.pre_emphasis()
+
+   Returns ``True`` if the track has pre-emphasis.
+
+.. method:: Flac_CUESHEET_track.copy_permitted()
+
+   Always returns ``True``.
+
+CUESHEET index
+^^^^^^^^^^^^^^
+
 .. class:: Flac_CUESHEET_index(offset, number)
 
    ``offset`` is the index point's offset.
@@ -496,6 +564,15 @@ CUESHEET
 .. method:: Flac_CUESHEET_index.build(writer)
 
    Writes this index point to the given :class:`audiotools.bitstream.BitstreamWriter`.
+
+.. method:: Flac_CUESHEET_index.number()
+
+   Returns this index point's number where 0 indicates a pre-gap index.
+
+.. method:: Flac_CUESHEET_index.offset()
+
+   Returns this index point's offset from the start of the stream
+   as a :class:`Fraction` number of seconds.
 
 PICTURE
 ^^^^^^^
