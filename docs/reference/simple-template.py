@@ -1,21 +1,25 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+from __future__ import print_function
+import sys
+
 
 class Template:
     def __init__(self, replacements):
@@ -36,23 +40,27 @@ class Template:
         elif (command == "file"):
             return self.process_string(open(argument, "rb").read().strip())
         else:
-            print >>sys.stderr,"*** Unknown command \"%s\"" % (command)
+            print("*** Unknown command \"%s\"" % (command),
+                  file=sys.stderr)
             sys.exit(1)
 
 
 if (__name__ == "__main__"):
-    import sys
-    import optparse
+    import argparse
 
-    parser = optparse.OptionParser()
+    parser = argparse.ArgumentParser("trivial Python templating system")
 
-    parser.add_option("-D",
-                      action="append",
-                      dest="const",
-                      help="constant definition")
+    parser.add_argument("-D",
+                        action="append",
+                        dest="const",
+                        help="constant definition")
 
-    (options, args) = parser.parse_args()
+    parser.add_argument("filename",
+                        metavar="FILENAME")
+
+    options = parser.parse_args()
 
     template = Template(dict([arg.split("=", 1) for arg in options.const])
                         if options.const is not None else {})
-    sys.stdout.write(template.process_string(open(args[0], "rb").read()))
+    sys.stdout.write(
+        template.process_string(open(options.filename, "rb").read()))

@@ -1,22 +1,23 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+from __future__ import print_function
 import sys
 import re
 
@@ -26,8 +27,8 @@ try:
     from reportlab.pdfbase.pdfmetrics import registerFont
     from reportlab.pdfbase.ttfonts import TTFont
 except ImportError:
-    print "*** ReportLab is required"
-    print "Please fetch the open-source version from http://www.reportlab.org"
+    print("*** ReportLab is required")
+    print("Please fetch the open-source version from http://www.reportlab.org")
     sys.exit(1)
 
 HEX_WIDTH = 16
@@ -41,28 +42,29 @@ LABEL_S_OFFSET = 2
 
 (BORDER_NONE, BORDER_LINE, BORDER_DOTTED) = range(3)
 
+
 class RGB_Color:
     RGB = re.compile(r'^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})$')
     RGBA = re.compile(r'^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})' +
                       r'([0-9A-Fa-f]{2})$')
 
-    COLOR_TABLE = {u"red":(1.0, 0.0, 0.0),
-                   u"orange":(1.0, 0.4, 0.0),
-                   u"yellow":(1.0, 1.0, 0.0),
-                   u"green":(0.0, 1.0, 0.0),
-                   u"blue":(0.0, 0.0, 1.0),
-                   u"aqua":(0.0, 1.0, 1.0),
-                   u"black":(0.0, 0.0, 0.0),
-                   u"fuchsia":(1.0, 0.0, 1.0),
-                   u"gray":(0.5, 0.5, 0.5),
-                   u"lime":(0.0, 1.0, 0.0),
-                   u"maroon":(0.5, 0.0, 0.0),
-                   u"navy":(0.0, 0.0, 0.5),
-                   u"olive":(0.5, 0.5, 0.0),
-                   u"purple":(0.5, 0.0, 0.5),
-                   u"silver":(0.75, 0.75, 0.75),
-                   u"teal":(0.0, 0.5, 0.5),
-                   u"white":(1.0, 1.0, 1.0)}
+    COLOR_TABLE = {u"red": (1.0, 0.0, 0.0),
+                   u"orange": (1.0, 0.4, 0.0),
+                   u"yellow": (1.0, 1.0, 0.0),
+                   u"green": (0.0, 1.0, 0.0),
+                   u"blue": (0.0, 0.0, 1.0),
+                   u"aqua": (0.0, 1.0, 1.0),
+                   u"black": (0.0, 0.0, 0.0),
+                   u"fuchsia": (1.0, 0.0, 1.0),
+                   u"gray": (0.5, 0.5, 0.5),
+                   u"lime": (0.0, 1.0, 0.0),
+                   u"maroon": (0.5, 0.0, 0.0),
+                   u"navy": (0.0, 0.0, 0.5),
+                   u"olive": (0.5, 0.5, 0.0),
+                   u"purple": (0.5, 0.0, 0.5),
+                   u"silver": (0.75, 0.75, 0.75),
+                   u"teal": (0.0, 0.5, 0.5),
+                   u"white": (1.0, 1.0, 1.0)}
 
     def __init__(self, red, green, blue, alpha=None):
         """all should be floats between 0.0 and 1.0"""
@@ -93,6 +95,7 @@ class RGB_Color:
                 else:
                     raise ValueError("invalid color string %s" % (repr(s)))
 
+
 class HexChunk:
     def __init__(self, digits, label=None, background_color=None,
                  w_border=BORDER_NONE, e_border=BORDER_NONE):
@@ -115,7 +118,7 @@ class HexChunk:
         self.w_border = w_border
         self.e_border = e_border
 
-        #the chunk's location in the PDF, in x,y point pairs
+        # the chunk's location in the PDF, in x,y point pairs
         self.ne = self.nw = self.se = self.sw = (0, 0)
 
     def __repr__(self):
@@ -181,7 +184,7 @@ class HexChunk:
         pts_per_string = self.pts_per_cell()
         pt_offset = self.nw[0] + (pts_per_string / 2)
 
-        #draw background color, if any
+        # draw background color, if any
         if (self.background_color is not None):
             pdf.setFillColorRGB(r=self.background_color.red,
                                 g=self.background_color.green,
@@ -193,22 +196,22 @@ class HexChunk:
         pdf.setFillColorRGB(0.0, 0.0, 0.0, 1.0)
         pdf.setFont("Courier", FONT_SIZE)
         for (i, s) in enumerate(self.cells()):
-            #draw individual cells
+            # draw individual cells
             pdf.drawCentredString((i * pts_per_string) + pt_offset,
-                                   self.se[1] + S_OFFSET,
-                                   unicode(s))
+                                  self.se[1] + S_OFFSET,
+                                  unicode(s))
 
-        #draw label, if any
+        # draw label, if any
         if ((self.label is not None) and
             (pdf.stringWidth(unicode(self.label),
                              "DejaVu",
                              LABEL_FONT_SIZE) <= (self.pt_width() * 2))):
             pdf.setFont("DejaVu", LABEL_FONT_SIZE)
-            pdf.drawCentredString(self.nw[0] + (self.pt_width() / 2),
+            pdf.drawCentredString(self.nw[0] + (self.pt_width() // 2),
                                   self.se[1] + LABEL_S_OFFSET,
                                   unicode(self.label))
 
-        #draw top and bottom borders
+        # draw top and bottom borders
         pdf.setStrokeColorRGB(0.0, 0.0, 0.0, 1.0)
         pdf.setDash()
         pdf.line(self.nw[0], self.nw[1],
@@ -216,7 +219,7 @@ class HexChunk:
         pdf.line(self.sw[0], self.sw[1],
                  self.se[0], self.se[1])
 
-        #draw left and right borders, if any
+        # draw left and right borders, if any
         if (self.w_border == BORDER_LINE):
             pdf.setDash()
             pdf.line(self.nw[0], self.nw[1],
@@ -271,25 +274,25 @@ class HexChunkTable:
         """chunk is a Chunk object to be added"""
 
         if (len(self.rows) == 0):
-            #no current rows, so start a new one
+            # no current rows, so start a new one
             self.rows.append([])
             self.add_chunk(chunk)
         else:
             remaining_space = (self.width -
                                sum([c.size() for c in self.rows[-1]]))
             if (remaining_space == 0):
-                #last row is filled, so start a new one
+                # last row is filled, so start a new one
                 self.rows.append([])
                 self.add_chunk(chunk)
             elif (chunk.size() > remaining_space):
-                #chunk is too big to fit into row,
-                #so split chunk and add as much as possible
+                # chunk is too big to fit into row,
+                # so split chunk and add as much as possible
                 (head, tail) = chunk.split(remaining_space)
                 self.rows[-1].append(head)
                 self.rows.append([])
                 self.add_chunk(tail)
             else:
-                #room remains in row, so add as-is
+                # room remains in row, so add as-is
                 self.rows[-1].append(chunk)
 
     def pt_width(self):
@@ -335,7 +338,7 @@ class ASCIIChunk(HexChunk):
         self.w_border = w_border
         self.e_border = e_border
 
-        #the chunk's location in the PDF, in x,y point pairs
+        # the chunk's location in the PDF, in x,y point pairs
         self.ne = self.nw = self.se = self.sw = (0, 0)
 
     def __repr__(self):
@@ -388,6 +391,7 @@ class ASCIIChunk(HexChunk):
                            w_border=BORDER_NONE,
                            e_border=self.e_border))
 
+
 class ASCIIChunkTable(HexChunkTable):
     def __repr__(self):
         return "ASCIIChunkTable(%s, %s)" % (repr(self.width),
@@ -398,6 +402,7 @@ class ASCIIChunkTable(HexChunkTable):
                                   background_color=background_color,
                                   w_border=BORDER_LINE,
                                   e_border=BORDER_LINE))
+
 
 def populate_tables(xml_filename, hex_table, ascii_table):
     import xml.dom.minidom
@@ -441,30 +446,41 @@ def populate_tables(xml_filename, hex_table, ascii_table):
 
 
 if (__name__ == "__main__"):
-    import optparse
+    import argparse
 
-    parser = optparse.OptionParser()
-    parser.add_option('-i','--input',dest='input',help='input XML file')
-    parser.add_option('-o','--output',dest='output',help='output file')
-    parser.add_option('-d', '--digits-per-row', dest='digits_per_row',
-                      type='int', default=16)
-    parser.add_option('-w','--width',dest='width',
-                      type='int', default=6 * 72,
-                      help='digram width, in PostScript points')
-    parser.add_option(
-        '-s', '--space', dest='space',
-        type='int', default=30,
-        help='space between hex and ASCII sections, in PostScript points')
-    parser.add_option('--no-ascii',
-                      dest='ascii',
-                      action='store_false',
-                      default=True)
-    parser.add_option('-t','--type',dest='type',
-                      choices=("pdf",),
-                      help="type of output file",
-                      default="pdf")
+    parser = argparse.ArgumentParser("byte parsing generator")
+    parser.add_argument('-i', '--input',
+                        dest='input',
+                        help='input XML file')
+    parser.add_argument('-o', '--output',
+                        dest='output',
+                        help='output file')
+    parser.add_argument('-d', '--digits-per-row',
+                        dest='digits_per_row',
+                        type=int,
+                        default=16)
+    parser.add_argument('-w', '--width',
+                        dest='width',
+                        type=int,
+                        default=6 * 72,
+                        help='digram width, in PostScript points')
+    parser.add_argument('-s', '--space',
+                        dest='space',
+                        type=int,
+                        default=30,
+                        help='space between hex and ASCII sections, ' +
+                        'in PostScript points')
+    parser.add_argument('--no-ascii',
+                        dest='ascii',
+                        action='store_false',
+                        default=True)
+    parser.add_argument('-t', '--type',
+                        dest='type',
+                        choices=("pdf",),
+                        help="type of output file",
+                        default="pdf")
 
-    (options,args) = parser.parse_args()
+    options = parser.parse_args()
 
     hex_table = HexChunkTable(options.digits_per_row)
     ascii_table = ASCIIChunkTable(options.digits_per_row)
@@ -478,7 +494,7 @@ if (__name__ == "__main__"):
     else:
         diagram_width = (hex_table.size() * HEX_WIDTH)
 
-    x_offset = (options.width - diagram_width) / 2
+    x_offset = (options.width - diagram_width) // 2
 
     hex_table.set_w_offset(x_offset)
     hex_table.set_s_offset(0)
@@ -500,5 +516,5 @@ if (__name__ == "__main__"):
         pdf.showPage()
         pdf.save()
     else:
-        print >>sys.stderr,"unknown output type"
+        print("unknown output type", file=sys.stderr)
         sys.exit(1)

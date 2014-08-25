@@ -1,22 +1,23 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+from __future__ import print_function
 import sys
 import re
 
@@ -26,38 +27,39 @@ try:
     from reportlab.pdfbase.pdfmetrics import registerFont
     from reportlab.pdfbase.ttfonts import TTFont
 except ImportError:
-    print "*** ReportLab is required"
-    print "Please fetch the open-source version from http://www.reportlab.org"
+    print("*** ReportLab is required")
+    print("Please fetch the open-source version from http://www.reportlab.org")
     sys.exit(1)
 
-#this size of an individual bit cell, in points
+# this size of an individual bit cell, in points
 # BIT_WIDTH = 0
 BIT_HEIGHT = 30
 
 (BORDER_NONE, BORDER_LINE, BORDER_DOTTED) = range(3)
+
 
 class RGB_Color:
     RGB = re.compile(r'^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})$')
     RGBA = re.compile(r'^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})' +
                       r'([0-9A-Fa-f]{2})$')
 
-    COLOR_TABLE = {u"red":(1.0, 0.0, 0.0),
-                   u"orange":(1.0, 0.4, 0.0),
-                   u"yellow":(1.0, 1.0, 0.0),
-                   u"green":(0.0, 1.0, 0.0),
-                   u"blue":(0.0, 0.0, 1.0),
-                   u"aqua":(0.0, 1.0, 1.0),
-                   u"black":(0.0, 0.0, 0.0),
-                   u"fuchsia":(1.0, 0.0, 1.0),
-                   u"gray":(0.5, 0.5, 0.5),
-                   u"lime":(0.0, 1.0, 0.0),
-                   u"maroon":(0.5, 0.0, 0.0),
-                   u"navy":(0.0, 0.0, 0.5),
-                   u"olive":(0.5, 0.5, 0.0),
-                   u"purple":(0.5, 0.0, 0.5),
-                   u"silver":(0.75, 0.75, 0.75),
-                   u"teal":(0.0, 0.5, 0.5),
-                   u"white":(1.0, 1.0, 1.0)}
+    COLOR_TABLE = {u"red": (1.0, 0.0, 0.0),
+                   u"orange": (1.0, 0.4, 0.0),
+                   u"yellow": (1.0, 1.0, 0.0),
+                   u"green": (0.0, 1.0, 0.0),
+                   u"blue": (0.0, 0.0, 1.0),
+                   u"aqua": (0.0, 1.0, 1.0),
+                   u"black": (0.0, 0.0, 0.0),
+                   u"fuchsia": (1.0, 0.0, 1.0),
+                   u"gray": (0.5, 0.5, 0.5),
+                   u"lime": (0.0, 1.0, 0.0),
+                   u"maroon": (0.5, 0.0, 0.0),
+                   u"navy": (0.0, 0.0, 0.5),
+                   u"olive": (0.5, 0.5, 0.0),
+                   u"purple": (0.5, 0.0, 0.5),
+                   u"silver": (0.75, 0.75, 0.75),
+                   u"teal": (0.0, 0.5, 0.5),
+                   u"white": (1.0, 1.0, 1.0)}
 
     def __init__(self, red, green, blue, alpha=None):
         """all should be floats between 0.0 and 1.0"""
@@ -102,7 +104,7 @@ class Chunk:
         self.w_border = w_border
         self.e_border = e_border
 
-        #the chunk's location in the PDF, in x,y point pairs
+        # the chunk's location in the PDF, in x,y point pairs
         self.ne = self.nw = self.se = self.sw = (0, 0)
 
     def set_w_offset(self, x):
@@ -154,7 +156,7 @@ class Chunk:
         pts_per_bit = self.pt_width() / float(len(self.bits))
         pt_offset = self.nw[0] + (pts_per_bit / 2)
 
-        #draw background color, if any
+        # draw background color, if any
         if (self.background_color is not None):
             pdf.setFillColorRGB(r=self.background_color.red,
                                 g=self.background_color.green,
@@ -166,37 +168,37 @@ class Chunk:
         pdf.setFillColorRGB(0.0, 0.0, 0.0, 1.0)
         for (i, (bit, superscript)) in enumerate(zip(self.bits,
                                                      self.superscripts)):
-            #draw bit
+            # draw bit
             pdf.setFont("Courier", 18)
             pdf.drawCentredString((i * pts_per_bit) + pt_offset,
                                   self.se[1] + 12, unicode(bit))
 
-            #draw superscript, if any
+            # draw superscript, if any
             if (superscript is not None):
                 pdf.setFont("Courier", 5)
                 pdf.drawRightString(self.nw[0] + ((i + 1) * pts_per_bit) - 2,
                                     self.se[1] + 25,
                                     unicode(superscript))
 
-        #draw centered name, if any
+        # draw centered name, if any
         if ((self.name is not None) and
             (pdf.stringWidth(unicode(self.name),
                              "DejaVu",
                              6) <= (self.pt_width() * 2))):
             pdf.setFont("DejaVu", 6)
-            pdf.drawCentredString(self.nw[0] + (self.pt_width() / 2),
+            pdf.drawCentredString(self.nw[0] + (self.pt_width() // 2),
                                   self.se[1] + 2,
                                   unicode(self.name))
 
         pdf.setStrokeColorRGB(0.0, 0.0, 0.0, 1.0)
-        #draw top and bottom borders
+        # draw top and bottom borders
         pdf.setDash()
         pdf.line(self.nw[0], self.nw[1],
                  self.ne[0], self.ne[1])
         pdf.line(self.sw[0], self.sw[1],
                  self.se[0], self.se[1])
 
-        #draw left and right borders, if any
+        # draw left and right borders, if any
         if (self.w_border == BORDER_LINE):
             pdf.setDash()
             pdf.line(self.nw[0], self.nw[1],
@@ -219,12 +221,12 @@ class Chunk:
         pts_per_bit = self.pt_width() / float(len(self.bits))
         pt_offset = self.nw[0] + (pts_per_bit / 2)
 
-        #draw background color, if any
-        #FIXME
+        # draw background color, if any
+        # FIXME
 
         for (i, (bit, superscript)) in enumerate(zip(self.bits,
                                                      self.superscripts)):
-            #draw bit
+            # draw bit
             bit_xml = dom.createElement(u"text")
             bit_xml.setAttribute(u"style",
                                  u"font-size: 18pt; font-family: Courier")
@@ -238,7 +240,7 @@ class Chunk:
             bit_xml.appendChild(bit_text)
             svg.appendChild(bit_xml)
 
-            #draw superscript, if any
+            # draw superscript, if any
             if (superscript is not None):
                 ss_xml = dom.createElement(u"text")
                 ss_xml.setAttribute(u"style",
@@ -254,7 +256,7 @@ class Chunk:
                 ss_xml.appendChild(ss_text)
                 svg.appendChild(ss_xml)
 
-        #draw centered name, if any
+        # draw centered name, if any
         name = dom.createElement(u"text")
         name.setAttribute(u"style", u"font-size: 6pt; font-family: sans-serif")
         name.setAttribute(u"text-anchor", u"middle")
@@ -264,7 +266,7 @@ class Chunk:
         name.appendChild(name_text)
         svg.appendChild(name)
 
-        #draw top and bottom borders
+        # draw top and bottom borders
         top = dom.createElement(u"line")
         top.setAttribute(u"x1", "%dpt" % (self.nw[0]))
         top.setAttribute(u"y1", "%dpt" % (total_height - self.nw[1]))
@@ -281,8 +283,8 @@ class Chunk:
         bottom.setAttribute(u"style", u"stroke: black;")
         svg.appendChild(bottom)
 
-        #drop left and right borders, if any
-        #FIXME - handle dotted/line borders
+        # drop left and right borders, if any
+        # FIXME - handle dotted/line borders
         if (self.w_border):
             left = dom.createElement(u"line")
             left.setAttribute(u"x1", "%dpt" % (self.nw[0]))
@@ -292,7 +294,7 @@ class Chunk:
             left.setAttribute(u"style", u"stroke: black;")
             svg.appendChild(left)
 
-        #FIXME - handle dotted/line borders
+        # FIXME - handle dotted/line borders
         if (self.e_border):
             right = dom.createElement(u"line")
             right.setAttribute(u"x1", "%dpt" % (self.ne[0]))
@@ -314,7 +316,7 @@ class TextChunk(Chunk):
         self.w_border = w_border
         self.e_border = e_border
 
-        #the chunk's location in the PDF, in x,y point pairs
+        # the chunk's location in the PDF, in x,y point pairs
         self.ne = self.nw = self.se = self.sw = (0, 0)
 
     def size(self):
@@ -344,7 +346,7 @@ class TextChunk(Chunk):
         pts_per_bit = self.pt_width() / float(self.bit_width)
         pt_offset = self.nw[0] + (pts_per_bit / 2)
 
-        #draw background color, if any
+        # draw background color, if any
         if (self.background_color is not None):
             pdf.setFillColorRGB(r=self.background_color.red,
                                 g=self.background_color.green,
@@ -353,7 +355,7 @@ class TextChunk(Chunk):
             pdf.rect(self.sw[0], self.sw[1], self.pt_width(), self.pt_height(),
                      stroke=0, fill=1)
 
-        #draw centered name, if any
+        # draw centered name, if any
         pdf.setFillColorRGB(0.0, 0.0, 0.0, 1.0)
         pdf.setFont("DejaVu", 12)
         pdf.drawCentredString(self.nw[0] + (self.pt_width() / 2),
@@ -361,14 +363,14 @@ class TextChunk(Chunk):
                               unicode(self.name))
 
         pdf.setStrokeColorRGB(0.0, 0.0, 0.0, 1.0)
-        #drop top and bottom borders
+        # drop top and bottom borders
         pdf.setDash()
         pdf.line(self.nw[0], self.nw[1],
                  self.ne[0], self.ne[1])
         pdf.line(self.sw[0], self.sw[1],
                  self.se[0], self.se[1])
 
-        #draw left and right borders, if any
+        # draw left and right borders, if any
         if (self.w_border == BORDER_LINE):
             pdf.setDash()
             pdf.line(self.nw[0], self.nw[1],
@@ -391,10 +393,10 @@ class TextChunk(Chunk):
         pts_per_bit = self.pt_width() / float(self.bit_width)
         pt_offset = self.nw[0] + (pts_per_bit / 2)
 
-        #draw background color, if any
-        #FIXME
+        # draw background color, if any
+        # FIXME
 
-        #draw centered name, if any
+        # draw centered name, if any
         name = dom.createElement(u"text")
         name.setAttribute(u"style", u"font-size: 18; font-family: sans-serif")
         name.setAttribute(u"text-anchor", u"middle")
@@ -405,7 +407,7 @@ class TextChunk(Chunk):
         name.appendChild(name_text)
         svg.appendChild(name)
 
-        #drop top and bottom borders
+        # drop top and bottom borders
         top = dom.createElement(u"line")
         top.setAttribute(u"x1", "%dpt" % (self.nw[0]))
         top.setAttribute(u"y1", "%dpt" % (total_height - self.nw[1]))
@@ -422,8 +424,8 @@ class TextChunk(Chunk):
         bottom.setAttribute(u"style", u"stroke: black;")
         svg.appendChild(bottom)
 
-        #drop left and right borders, if any
-        #FIXME - handle dotted/line borders
+        # drop left and right borders, if any
+        # FIXME - handle dotted/line borders
         if (self.w_border):
             left = dom.createElement(u"line")
             left.setAttribute(u"x1", "%dpt" % (self.nw[0]))
@@ -433,7 +435,7 @@ class TextChunk(Chunk):
             left.setAttribute(u"style", u"stroke: black;")
             svg.appendChild(left)
 
-        #FIXME - handle dotted/line borders
+        # FIXME - handle dotted/line borders
         if (self.e_border):
             right = dom.createElement(u"line")
             right.setAttribute(u"x1", "%dpt" % (self.ne[0]))
@@ -442,6 +444,7 @@ class TextChunk(Chunk):
             right.setAttribute(u"y2", "%dpt" % (total_height - self.se[1]))
             right.setAttribute(u"style", u"stroke: black;")
             svg.appendChild(right)
+
 
 class BytesChunk(Chunk):
     def __init__(self, bit_width, superscripts,
@@ -456,7 +459,7 @@ class BytesChunk(Chunk):
         self.w_border = w_border
         self.e_border = e_border
 
-        #the chunk's location in the PDF, in x,y point pairs
+        # the chunk's location in the PDF, in x,y point pairs
         self.ne = self.nw = self.se = self.sw = (0, 0)
 
     def size(self):
@@ -487,35 +490,35 @@ class BytesChunk(Chunk):
         pts_per_bit = self.pt_width() / float(self.size())
         pt_offset = self.nw[0] + (pts_per_bit / 2)
 
-        #draw background color, if any
+        # draw background color, if any
         if (self.background_color is not None):
-            #FIXME
+            # FIXME
             raise NotImplementedError()
 
         pdf.setFillColorRGB(0.0, 0.0, 0.0, 1.0)
-        #draw superscripts, if any
+        # draw superscripts, if any
         for (i, superscript) in enumerate(self.superscripts):
             pdf.setFont("Courier", 5)
             pdf.drawRightString(self.nw[0] + ((i + 1) * pts_per_bit) - 2,
                                 self.se[1] + 25,
                                 unicode(superscript))
 
-        #draw centered name, if any
+        # draw centered name, if any
         if (self.name is not None):
             pdf.setFont("DejaVu", 12)
-            pdf.drawCentredString(self.nw[0] + (self.pt_width() / 2),
+            pdf.drawCentredString(self.nw[0] + (self.pt_width() // 2),
                                   self.se[1] + 12,
                                   unicode(self.name))
 
         pdf.setStrokeColorRGB(0.0, 0.0, 0.0, 1.0)
-        #draw top and bottom borders
+        # draw top and bottom borders
         pdf.setDash()
         pdf.line(self.nw[0], self.nw[1],
                  self.ne[0], self.ne[1])
         pdf.line(self.sw[0], self.sw[1],
                  self.se[0], self.se[1])
 
-        #draw left and right borders, if any
+        # draw left and right borders, if any
         if (self.w_border == BORDER_LINE):
             pdf.setDash()
             pdf.line(self.nw[0], self.nw[1],
@@ -548,7 +551,7 @@ class ChunkTable:
         registerFont(TTFont("DejaVu", "DejaVuSans.ttf"))
 
         pdf = canvas.Canvas(filename)
-        pdf.setPageSize((total_width,total_height))
+        pdf.setPageSize((total_width, total_height))
 
         for chunk in self.chunks:
             chunk.to_pdf(pdf)
@@ -565,7 +568,7 @@ class ChunkTable:
         dom = impl.createDocument(None, None, None)
 
         svg = dom.createElement(u"svg")
-        svg.setAttribute(u"xmlns",u"http://www.w3.org/2000/svg")
+        svg.setAttribute(u"xmlns", u"http://www.w3.org/2000/svg")
         svg.setAttribute(u"version", u"1.1")
         svg.setAttribute(u"width", u"%dpt" % (total_width))
         svg.setAttribute(u"height", u"%dpt" % (total_height))
@@ -648,6 +651,7 @@ class Text:
                          e_border=self.e_border,
                          w_border=self.w_border)
 
+
 class Bytes:
     def __init__(self, name, bytes_list, e_border, w_border, background_color):
         self.name = name
@@ -661,14 +665,15 @@ class Bytes:
                       for attr in ["name", "bytes",
                                    "e_border", "w_border"]])
 
-
     def chunk(self, superscript_bits, bits_lookup):
         reverse_bits_lookup = dict([(value, key) for (key, value) in
                                     bits_lookup.items()])
         superscript_len = list(set(map(len, bits_lookup.keys())))[0]
 
         if (len(superscript_bits) != 0):
-            print >>sys.stderr,"*** Warning: <bytes> tag %s not byte-aligned" % (repr(self.name))
+            print("*** Warning: <bytes> tag %s not byte-aligned" %
+                  (repr(self.name)),
+                  file=sys.stderr)
 
         chunk_superscripts = []
         for byte in self.bytes:
@@ -685,6 +690,7 @@ class Bytes:
                           e_border=self.e_border,
                           w_border=self.w_border)
 
+
 def bits(v):
     for i in xrange(8):
         yield v & 1
@@ -692,10 +698,10 @@ def bits(v):
 
 
 BE_LOOKUP = dict([(tuple(reversed(list(bits(value)))), "%2.2X" % (value))
-                  for value in xrange(0,0x100)])
+                  for value in xrange(0, 0x100)])
 
 LE_LOOKUP = dict([(tuple(bits(value)), "%2.2X" % (value))
-                  for value in xrange(0,0x100)])
+                  for value in xrange(0, 0x100)])
 
 
 def bits_to_chunks(bits_iter, lookup=BE_LOOKUP, initial_superscript_bits=None):
@@ -724,38 +730,38 @@ def chunks_to_rows(chunks_iter, bits_per_row, x_offset=0):
     for chunk in chunks_iter:
         remaining_bits = bits_per_row - sum([c.size() for c in chunk_list])
 
-        #split a single chunk across multiple rows, if necessary
+        # split a single chunk across multiple rows, if necessary
         while (chunk.size() > remaining_bits):
             if (remaining_bits > 0):
                 (row_end, row_start) = chunk.split(remaining_bits)
 
-                #populate row_end's east/west positions
+                # populate row_end's east/west positions
                 row_end.set_w_offset(x_position)
 
-                #before appending it to the row's chunks for returning
+                # before appending it to the row's chunks for returning
                 chunk_list.append(row_end)
                 yield chunk_list
                 chunk = row_start
             elif (len(chunk_list) > 0):
                 yield chunk_list
 
-            #and resetting the row for the remainder of the chunk
+            # and resetting the row for the remainder of the chunk
             chunk_list = []
             x_position = x_offset
             remaining_bits = bits_per_row
         else:
             global BIT_WIDTH
 
-            #populate the chunk's east/west positions
+            # populate the chunk's east/west positions
             chunk.set_w_offset(x_position)
 
-            #and update the east/west position
+            # and update the east/west position
             x_position += chunk.size() * BIT_WIDTH
 
-            #before appending it to the row's chunks for returning
+            # before appending it to the row's chunks for returning
             chunk_list.append(chunk)
     else:
-        #return any leftover chunks on the row
+        # return any leftover chunks on the row
         yield chunk_list
 
 
@@ -805,6 +811,7 @@ def bits_converter_le(size, value):
 
     return bits
 
+
 def byte_converter(value):
     if (not re.match(r'^[0-9a-fA-F]+$', value)):
         raise ValueError("bytes value must be hexadecimal")
@@ -817,13 +824,15 @@ def byte_converter(value):
             yield int(value[0:2], 16)
             value = value[2:]
 
+
 def init_converter(node):
     if (node.hasAttribute(u"init")):
-        lookup = {u"0":0, u"1":1}
+        lookup = {u"0": 0, u"1": 1}
         return [lookup[char] for char in
                 node.getAttribute(u'init').split(u",")]
     else:
         return None
+
 
 def get_border(node, attrib):
     if (node.hasAttribute(attrib)):
@@ -839,6 +848,7 @@ def get_border(node, attrib):
     else:
         return BORDER_LINE
 
+
 def xml_to_chunks(xml_filename):
     import xml.dom.minidom
 
@@ -846,11 +856,11 @@ def xml_to_chunks(xml_filename):
     struct = dom.getElementsByTagName(u"struct")[0]
 
     if (not struct.hasAttribute(u'endianness')):
-        print >>sys.stderr,"struct tag's endianness must be big or little"
+        print("struct tag's endianness must be big or little", file=sys.stderr)
         sys.exit(1)
 
     if (struct.hasAttribute(u'init')):
-        lookup = {u"0":0, u"1":1}
+        lookup = {u"0": 0, u"1": 1}
         superscript_bits = [lookup[char] for char in
                             struct.getAttribute(u'init').split(u",")]
     else:
@@ -863,7 +873,7 @@ def xml_to_chunks(xml_filename):
         lookup = LE_LOOKUP
         bits_converter = bits_converter_le
     else:
-        print >>sys.stderr,"struct tag's endianness must be big or little"
+        print("struct tag's endianness must be big or little", file=sys.stderr)
         sys.exit(1)
 
     bits = []
@@ -876,74 +886,87 @@ def xml_to_chunks(xml_filename):
             background_color = None
 
         if (part.nodeName == u'field'):
-            bits.append(Bits(
-                    name=(part.childNodes[0].data.strip()
-                          if len(part.childNodes) else u""),
-                    bits=bits_converter(part.getAttribute(u"size"),
-                                        part.getAttribute(u"value")),
-                    init=init_converter(part),
-                    e_border=get_border(part, u"border_e"),
-                    w_border=get_border(part, u"border_w"),
-                    background_color=background_color))
+            bits.append(
+                Bits(name=(part.childNodes[0].data.strip()
+                     if len(part.childNodes) else u""),
+                     bits=bits_converter(part.getAttribute(u"size"),
+                                         part.getAttribute(u"value")),
+                     init=init_converter(part),
+                     e_border=get_border(part, u"border_e"),
+                     w_border=get_border(part, u"border_w"),
+                     background_color=background_color))
         elif (part.nodeName == u'text'):
-            bits.append(Text(
-                    name=(part.childNodes[0].data.strip()
-                          if len(part.childNodes) else u""),
-                    bit_count=int_converter(part.getAttribute(u"size")),
-                    e_border=get_border(part, u"border_e"),
-                    w_border=get_border(part, u"border_w"),
-                    background_color=background_color))
+            bits.append(
+                Text(name=(part.childNodes[0].data.strip()
+                     if len(part.childNodes) else u""),
+                     bit_count=int_converter(part.getAttribute(u"size")),
+                     e_border=get_border(part, u"border_e"),
+                     w_border=get_border(part, u"border_w"),
+                     background_color=background_color))
         elif (part.nodeName == u'bytes'):
             try:
-                bits.append(Bytes(
-                        name=(part.childNodes[0].data.strip()
-                              if len(part.childNodes) else u""),
-                        bytes_list=byte_converter(part.getAttribute(u"value")),
-                        e_border=get_border(part, u"border_e"),
-                        w_border=get_border(part, u"border_w"),
-                        background_color=background_color))
-            except ValueError,msg:
-                print >>sys.stderr,str(msg)
+                bits.append(
+                    Bytes(name=(part.childNodes[0].data.strip()
+                          if len(part.childNodes) else u""),
+                          bytes_list=byte_converter(
+                              part.getAttribute(u"value")),
+                          e_border=get_border(part, u"border_e"),
+                          w_border=get_border(part, u"border_w"),
+                          background_color=background_color))
+            except ValueError as msg:
+                print(str(msg), file=sys.stderr)
                 sys.exit(1)
 
     return bits_to_chunks(bits, lookup, superscript_bits)
 
 
 if (__name__ == '__main__'):
-    import optparse
+    import argparse
 
-    parser = optparse.OptionParser()
-    parser.add_option('-i','--input',dest='input',help='input XML file')
-    parser.add_option('-o','--output',dest='output',help='output file')
-    parser.add_option('-b', '--bits-per-row', dest='bits_per_row',
-                      type='int', default=16)
-    parser.add_option('-w','--width',dest='width',
-                      type='int', default=6 * 72,
-                      help='diagram width, in PostScript points')
-    parser.add_option('-t','--type',dest='type',
-                      choices=("pdf", "svg"),
-                      help="type of output file",
-                      default="pdf")
-    parser.add_option('--bit-width', dest='bit_width',
-                      type='int', default=20,
-                      help='width of each bit value')
+    parser = argparse.ArgumentParser("bit parsing diagram generator")
+    parser.add_argument('-i', '--input',
+                        dest='input',
+                        help='input XML file')
+    parser.add_argument('-o', '--output',
+                        dest='output',
+                        help='output file')
+    parser.add_argument('-b', '--bits-per-row',
+                        dest='bits_per_row',
+                        type=int,
+                        default=16)
+    parser.add_argument('-w', '--width',
+                        dest='width',
+                        type=int,
+                        default=6 * 72,
+                        help='diagram width, in PostScript points')
+    parser.add_argument('-t', '--type',
+                        dest='type',
+                        choices=("pdf", "svg"),
+                        help="type of output file",
+                        default="pdf")
+    parser.add_argument('--bit-width',
+                        dest='bit_width',
+                        type=int,
+                        default=20,
+                        help='width of each bit value')
 
-    (options,args) = parser.parse_args()
+    options = parser.parse_args()
 
     global BIT_WIDTH
     BIT_WIDTH = options.bit_width
 
-    x_offset = (options.width - (options.bits_per_row * BIT_WIDTH)) / 2
+    x_offset = (options.width - (options.bits_per_row * BIT_WIDTH)) // 2
 
-    table = ChunkTable(list(align_rows(chunks_to_rows(
-                    chunks_iter=xml_to_chunks(options.input),
-                    bits_per_row=options.bits_per_row,
-                    x_offset=x_offset))))
+    table = ChunkTable(
+        list(align_rows(chunks_to_rows(chunks_iter=xml_to_chunks(
+                                       options.input),
+                                       bits_per_row=options.bits_per_row,
+                                       x_offset=x_offset))))
 
     if (options.type == 'pdf'):
         table.to_pdf(options.width, options.output)
     elif (options.type == 'svg'):
         table.to_svg(options.width, options.output)
     else:
-        print >>sys.stderr,"unknown output type"
+        print("unknown output type", file=sys.stderr)
         sys.exit(1)

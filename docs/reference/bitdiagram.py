@@ -1,22 +1,23 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+from __future__ import print_function
 import sys
 import re
 
@@ -26,36 +27,37 @@ try:
     from reportlab.pdfbase.pdfmetrics import registerFont
     from reportlab.pdfbase.ttfonts import TTFont
 except ImportError:
-    print "*** ReportLab is required"
-    print "Please fetch the open-source version from http://www.reportlab.org"
+    print("*** ReportLab is required")
+    print("Please fetch the open-source version from http://www.reportlab.org")
     sys.exit(1)
 
-(SOLID,DASHED,DOTTED,BLANK) = range(4)
-(NE,NW,SE,SW) = range(4)
+(SOLID, DASHED, DOTTED, BLANK) = range(4)
+(NE, NW, SE, SW) = range(4)
 ROW_HEIGHT = 22
+
 
 class RGB_Color:
     RGB = re.compile(r'^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})$')
     RGBA = re.compile(r'^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})' +
                       r'([0-9A-Fa-f]{2})$')
 
-    COLOR_TABLE = {u"red":(1.0, 0.0, 0.0),
-                   u"orange":(1.0, 0.4, 0.0),
-                   u"yellow":(1.0, 1.0, 0.0),
-                   u"green":(0.0, 1.0, 0.0),
-                   u"blue":(0.0, 0.0, 1.0),
-                   u"aqua":(0.0, 1.0, 1.0),
-                   u"black":(0.0, 0.0, 0.0),
-                   u"fuchsia":(1.0, 0.0, 1.0),
-                   u"gray":(0.5, 0.5, 0.5),
-                   u"lime":(0.0, 1.0, 0.0),
-                   u"maroon":(0.5, 0.0, 0.0),
-                   u"navy":(0.0, 0.0, 0.5),
-                   u"olive":(0.5, 0.5, 0.0),
-                   u"purple":(0.5, 0.0, 0.5),
-                   u"silver":(0.75, 0.75, 0.75),
-                   u"teal":(0.0, 0.5, 0.5),
-                   u"white":(1.0, 1.0, 1.0)}
+    COLOR_TABLE = {u"red": (1.0, 0.0, 0.0),
+                   u"orange": (1.0, 0.4, 0.0),
+                   u"yellow": (1.0, 1.0, 0.0),
+                   u"green": (0.0, 1.0, 0.0),
+                   u"blue": (0.0, 0.0, 1.0),
+                   u"aqua": (0.0, 1.0, 1.0),
+                   u"black": (0.0, 0.0, 0.0),
+                   u"fuchsia": (1.0, 0.0, 1.0),
+                   u"gray": (0.5, 0.5, 0.5),
+                   u"lime": (0.0, 1.0, 0.0),
+                   u"maroon": (0.5, 0.0, 0.0),
+                   u"navy": (0.0, 0.0, 0.5),
+                   u"olive": (0.5, 0.5, 0.0),
+                   u"purple": (0.5, 0.0, 0.5),
+                   u"silver": (0.75, 0.75, 0.75),
+                   u"teal": (0.0, 0.5, 0.5),
+                   u"white": (1.0, 1.0, 1.0)}
 
     def __init__(self, red, green, blue, alpha=None):
         """all should be floats between 0.0 and 1.0"""
@@ -115,8 +117,8 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
         self.border_color = border_color
         self.background_color = background_color
 
-        #the chunk's location in the PDF, in x,y point pairs
-        self.ne = self.nw = self.se = self.sw = (0,0)
+        # the chunk's location in the PDF, in x,y point pairs
+        self.ne = self.nw = self.se = self.sw = (0, 0)
 
     def get_corner(self, corner):
         if (corner == NE):
@@ -157,13 +159,13 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
         return abs(self.nw[1] - self.sw[1])
 
     def __repr__(self):
-        return "Chunk(%s,%s,%s,%s,%s,%s)" % \
-            (repr(self.text),self.start_size,self_end_size,
-             self.width,self.id,self.style)
+        return "Chunk(%s, %s, %s, %s, %s, %s)" % \
+            (repr(self.text), self.start_size, self_end_size,
+             self.width, self.id, self.style)
 
     def to_pdf(self, pdf):
         if (self.border_color is None):
-            pdf.setStrokeColorRGB(0,0,0,1)
+            pdf.setStrokeColorRGB(0, 0, 0, 1)
         else:
             pdf.setStrokeColorRGB(r=self.border_color.red,
                                   g=self.border_color.green,
@@ -174,9 +176,9 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
             if (self.style == SOLID):
                 pdf.setDash()
             elif (self.style == DASHED):
-                pdf.setDash(6,6)
+                pdf.setDash(6, 6)
             elif (self.style == DOTTED):
-                pdf.setDash(1,6)
+                pdf.setDash(1, 6)
 
             if (self.background_color is None):
                 pdf.rect(x=self.sw[0],
@@ -198,7 +200,7 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
                          fill=1)
 
         if (self.text_color is None):
-            pdf.setFillColorRGB(0,0,0,1)
+            pdf.setFillColorRGB(0, 0, 0, 1)
         else:
             pdf.setFillColorRGB(r=self.text_color.red,
                                 g=self.text_color.green,
@@ -206,12 +208,12 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
                                 alpha=self.text_color.alpha)
 
         if (self.text is not None):
-            pdf.setFont("DejaVu",10)
+            pdf.setFont("DejaVu", 10)
             pdf.drawCentredString((self.ne[0] + self.nw[0]) / 2,
                                   self.se[1] + 10,
                                   self.text)
 
-            pdf.setFont("DejaVu",6)
+            pdf.setFont("DejaVu", 6)
             if ((self.start_size == self.end_size) and
                 (self.start_size is not None)):
                 pdf.drawCentredString((self.ne[0] + self.nw[0]) / 2,
@@ -227,11 +229,13 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
                                         self.se[1] + 3,
                                         self.end_size)
 
+
 class BlankChunk(Chunk):
-    def __init__(self, width = 1.0):
-        Chunk.__init__(self,text=None,start_size=None,end_size=None,
-                       width=width,chunk_id=None,
+    def __init__(self, width=1.0):
+        Chunk.__init__(self, text=None, start_size=None, end_size=None,
+                       width=width, chunk_id=None,
                        style=BLANK)
+
 
 class Row:
     def __init__(self):
@@ -254,7 +258,7 @@ class Row:
         return self.chunks[i]
 
     def to_pdf(self, pdf, total_width, top, bottom):
-        for (col_pos,chunk) in enumerate(self):
+        for (col_pos, chunk) in enumerate(self):
             previous_column = chunk.previous_column(self)
             if (previous_column is None):
                 left = 0
@@ -262,13 +266,14 @@ class Row:
                 left = previous_column.ne[0]
             right = left + (chunk.width * total_width)
 
-            chunk.nw = (left,top)
-            chunk.ne = (right,top)
-            chunk.sw = (left,bottom)
-            chunk.se = (right,bottom)
+            chunk.nw = (left, top)
+            chunk.ne = (right, top)
+            chunk.sw = (left, bottom)
+            chunk.se = (right, bottom)
 
-            #render the calculated chunk
+            # render the calculated chunk
             chunk.to_pdf(pdf)
+
 
 class Spacer(Row):
     def __init__(self, height):
@@ -299,19 +304,20 @@ class Line:
             if (self.style == SOLID):
                 pdf.setDash()
             elif (self.style == DASHED):
-                pdf.setDash(6,6)
+                pdf.setDash(6, 6)
             elif (self.style == DOTTED):
-                pdf.setDash(1,6)
+                pdf.setDash(1, 6)
             if (self.color is None):
-                pdf.setStrokeColorRGB(0,0,0)
+                pdf.setStrokeColorRGB(0, 0, 0)
             else:
                 pdf.setStrokeColorRGB(r=self.color.red,
                                       g=self.color.green,
                                       b=self.color.blue,
                                       alpha=self.color.alpha)
-            (start_x,start_y) = self.start_chunk.get_corner(self.start_corner)
-            (end_x,end_y) = self.end_chunk.get_corner(self.end_corner)
-            pdf.line(start_x,start_y,end_x,end_y)
+            (start_x, start_y) = self.start_chunk.get_corner(self.start_corner)
+            (end_x, end_y) = self.end_chunk.get_corner(self.end_corner)
+            pdf.line(start_x, start_y, end_x, end_y)
+
 
 class ChunkTable:
     def __init__(self):
@@ -346,8 +352,8 @@ class ChunkTable:
                                style=style,
                                color=color))
 
-    #given a width value (in points) and filename string,
-    #render all the lines and chunks as a PDF file
+    # given a width value (in points) and filename string,
+    # render all the lines and chunks as a PDF file
     def to_pdf(self, total_width, filename):
         total_rows = len(self.rows)
         total_height = sum([row.height for row in self.rows])
@@ -355,16 +361,16 @@ class ChunkTable:
         registerFont(TTFont("DejaVu", "DejaVuSans.ttf"))
 
         pdf = canvas.Canvas(filename)
-        pdf.setPageSize((total_width,total_height))
+        pdf.setPageSize((total_width, total_height))
 
-        #calculate the positions of each row
+        # calculate the positions of each row
         top = total_height
-        for (row_pos,row) in enumerate(self.rows):
+        for (row_pos, row) in enumerate(self.rows):
             bottom = top - row.height
             row.to_pdf(pdf, total_width, top, bottom)
             top = bottom
 
-        #calculate the positions for each line
+        # calculate the positions for each line
         for line in self.lines:
             line.render(pdf)
 
@@ -405,15 +411,15 @@ class ChunkTable:
 def parse_xml(xml_filename):
     import xml.dom.minidom
 
-    STYLE_MAP = {u"solid":SOLID,
-                 u"dashed":DASHED,
-                 u"dotted":DOTTED,
-                 u"blank":BLANK}
+    STYLE_MAP = {u"solid": SOLID,
+                 u"dashed": DASHED,
+                 u"dotted": DOTTED,
+                 u"blank": BLANK}
 
-    CORNER_MAP = {u"ne":NE,
-                  u"se":SE,
-                  u"nw":NW,
-                  u"sw":SW}
+    CORNER_MAP = {u"ne": NE,
+                  u"se": SE,
+                  u"nw": NW,
+                  u"sw": SW}
 
     dom = xml.dom.minidom.parse(xml_filename)
     diagram = dom.getElementsByTagName(u"diagram")[0]
@@ -436,7 +442,8 @@ def parse_xml(xml_filename):
                     if (col.hasAttribute(u"id")):
                         chunk_args["chunk_id"] = col.getAttribute(u"id")
                     if (col.hasAttribute(u"style")):
-                        chunk_args["style"] = STYLE_MAP[col.getAttribute(u"style")]
+                        chunk_args["style"] = \
+                            STYLE_MAP[col.getAttribute(u"style")]
                     if (col.hasAttribute(u"text-color")):
                         chunk_args["text_color"] = RGB_Color.from_string(
                             col.getAttribute(u"text-color"))
@@ -457,8 +464,8 @@ def parse_xml(xml_filename):
             table.add_row(*columns)
         elif (part.nodeName == u"spacer"):
             if (part.hasAttribute("height")):
-                table.add_spacer(int(
-                        round(ROW_HEIGHT *
+                table.add_spacer(
+                    int(round(ROW_HEIGHT *
                               float(part.getAttribute(u"height")))))
             else:
                 table.add_spacer(ROW_HEIGHT)
@@ -468,7 +475,7 @@ def parse_xml(xml_filename):
             if (part.hasAttribute(u"style")):
                 style = part.getAttribute(u"style")
             else:
-                style= u"solid"
+                style = u"solid"
             if (part.hasAttribute(u"color")):
                 color = RGB_Color.from_string(part.getAttribute(u"color"))
             else:
@@ -485,22 +492,28 @@ def parse_xml(xml_filename):
     return table
 
 if (__name__ == '__main__'):
-    import optparse
+    import argparse
 
-    parser = optparse.OptionParser()
-    parser.add_option('-i','--input',dest='input',help='input XML file')
-    parser.add_option('-o','--output',dest='output',help='output PDF file')
-    parser.add_option('-w','--width',dest='width',
-                      type='int',default=6 * 72,
-                      help='digram width, in PostScript points')
+    parser = argparse.ArgumentParser("bit diagram generator")
+    parser.add_argument('-i', '--input',
+                        dest='input',
+                        help='input XML file')
+    parser.add_argument('-o', '--output',
+                        dest='output',
+                        help='output PDF file')
+    parser.add_argument('-w', '--width',
+                        dest='width',
+                        type=int,
+                        default=6 * 72,
+                        help='digram width, in PostScript points')
 
-    (options,args) = parser.parse_args()
+    options = parser.parse_args()
 
     if (options.input is None):
-        print "*** An input file is required"
+        print("*** An input file is required")
         sys.exit(1)
     if (options.output is None):
-        print "*** An output file is required"
+        print("*** An output file is required")
         sys.exit(1)
 
-    parse_xml(options.input).to_pdf(options.width,options.output)
+    parse_xml(options.input).to_pdf(options.width, options.output)

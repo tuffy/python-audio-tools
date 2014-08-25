@@ -1,36 +1,39 @@
 #!/usr/bin/python
 
-#Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
 
-#This program is free software; you can redistribute it and/or modify
-#it under the terms of the GNU General Public License as published by
-#the Free Software Foundation; either version 2 of the License, or
-#(at your option) any later version.
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 
-#This program is distributed in the hope that it will be useful,
-#but WITHOUT ANY WARRANTY; without even the implied warranty of
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 
-#You should have received a copy of the GNU General Public License
-#along with this program; if not, write to the Free Software
-#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import re
 import time
 
 WHITESPACE = re.compile(r'\s+')
 
+
 def subtag(node, name):
     return [child for child in node.childNodes
             if (hasattr(child, "nodeName") and
                 (child.nodeName == name))][0]
 
+
 def subtags(node, name):
     return [child for child in node.childNodes
             if (hasattr(child, "nodeName") and
                 (child.nodeName == name))]
+
 
 def text(node):
     try:
@@ -38,8 +41,9 @@ def text(node):
     except IndexError:
         return u""
 
+
 def man_escape(s):
-    return s.replace('-','\\-').encode('ascii')
+    return s.replace('-', '\\-').encode('ascii')
 
 
 class Manpage:
@@ -163,7 +167,8 @@ class Manpage:
                    examples=examples)
 
     def to_man(self, stream):
-        stream.write(".TH \"%(utility)s\" %(section)d \"%(date)s\" \"\" \"%(title)s\"\n" %
+        stream.write((".TH \"%(utility)s\" %(section)d " +
+                      "\"%(date)s\" \"\" \"%(title)s\"\n") %
                      {"utility": self.utility.upper().encode('ascii'),
                       "section": self.section,
                       "date": time.strftime("%B %Y", time.localtime()),
@@ -198,11 +203,11 @@ class Manpage:
                 self.format_fields_man(stream)
                 break
 
-        self.see_also.sort(lambda x,y: cmp(x.utility, y.utility))
+        self.see_also.sort(key=lambda x: x.utility)
 
         if (len(self.see_also) > 0):
             stream.write(".SH SEE ALSO\n")
-            #handle the trailing comma correctly
+            # handle the trailing comma correctly
             for page in self.see_also[0:-1]:
                 stream.write(".BR %(utility)s (%(section)d),\n" %
                              {"utility": page.utility.encode('ascii'),
@@ -211,7 +216,6 @@ class Manpage:
             stream.write(".BR %(utility)s (%(section)d)\n" %
                          {"utility": self.see_also[-1].utility.encode('ascii'),
                           "section": self.see_also[-1].section})
-
 
         stream.write(".SH AUTHOR\n")
         stream.write("%(author)s\n" % {"author": self.author.encode('ascii')})
@@ -238,21 +242,21 @@ class Manpage:
         stream.write('<div class="utility" id="%s">\n' %
                      (self.utility.encode('utf-8')))
 
-        #display utility name
+        # display utility name
         stream.write("<h2>%s</h2>\n" % (self.utility.encode('utf-8')))
 
-        #display utility description
+        # display utility description
         stream.write("<p>%s</p>\n" % (self.description.encode('utf-8')))
 
-        #display options
+        # display options
         for option_section in self.options:
             option_section.to_html(stream)
 
-        #display additional sections
+        # display additional sections
         for element in self.elements:
             element.to_html(stream)
 
-        #display examples
+        # display examples
         if (len(self.examples) > 0):
             stream.write('<dl class="examples">\n')
             if (len(self.examples) > 1):
@@ -266,6 +270,7 @@ class Manpage:
             stream.write("</dl>\n")
 
         stream.write('</div>\n')
+
 
 class Options:
     def __init__(self, options, category=None):
@@ -292,9 +297,9 @@ class Options:
         if (self.category is None):
             stream.write(".SH OPTIONS\n")
         else:
-            stream.write(".SH %(category)s OPTIONS\n" % \
-                             {"category":
-                                  self.category.upper().encode('ascii')})
+            stream.write(".SH %(category)s OPTIONS\n" %
+                         {"category":
+                          self.category.upper().encode('ascii')})
         for option in self.options:
             option.to_man(stream)
 
@@ -364,8 +369,7 @@ class Option:
 
     def to_man(self, stream):
         stream.write(".TP\n")
-        if ((self.short_arg is not None) and
-            (self.long_arg is not None)):
+        if ((self.short_arg is not None) and (self.long_arg is not None)):
             if (self.arg_name is not None):
                 stream.write(("\\fB\\-%(short_arg)s\\fR, " +
                               "\\fB\\-\\-%(long_arg)s\\fR=" +
@@ -405,8 +409,7 @@ class Option:
 
     def to_html(self, stream):
         stream.write("<dt>\n")
-        if ((self.short_arg is not None) and
-            (self.long_arg is not None)):
+        if ((self.short_arg is not None) and (self.long_arg is not None)):
             if (self.arg_name is not None):
                 stream.write(("<b>-%(short_arg)s</b>, " +
                               "<b>--%(long_arg)s</b>=" +
@@ -424,7 +427,8 @@ class Option:
                 stream.write(("<b>-%(short_arg)s</b> " +
                               "<i>%(arg_name)s</i>\n") %
                              {"short_arg": self.short_arg.encode('utf-8'),
-                              "arg_name": self.arg_name.upper().encode('utf-8')})
+                              "arg_name":
+                              self.arg_name.upper().encode('utf-8')})
             else:
                 stream.write("<b>-%(short_arg)s\n" %
                              {"short_arg": self.short_arg.encode('utf-8')})
@@ -433,7 +437,8 @@ class Option:
                 stream.write(("<b>--%(long_arg)s</b>" +
                               "=<i>%(arg_name)s</i>\n") %
                              {"long_arg": self.long_arg.encode('utf-8'),
-                              "arg_name": self.arg_name.upper().encode('utf-8')})
+                              "arg_name":
+                              self.arg_name.upper().encode('utf-8')})
             else:
                 stream.write("<b>--%(long_arg)s</b>\n" %
                              {"long_arg": self.long_arg.encode('utf-8')})
@@ -467,7 +472,7 @@ class Example:
 
     def to_man(self, stream):
         stream.write(".LP\n")
-        stream.write(self.description.encode('ascii')) #FIXME
+        stream.write(self.description.encode('ascii'))  # FIXME
         stream.write("\n")
         for command in self.commands:
             command.to_man(stream)
@@ -606,7 +611,7 @@ class Element_TABLE:
         stream.write("</table>\n")
 
     def calculate_row_spans(self):
-        #turn rows into arrays of "span" boolean values
+        # turn rows into arrays of "span" boolean values
         row_spans = []
         for row in self.rows:
             if (row.tr_class in (TR_NORMAL, TR_HEADER)):
@@ -614,12 +619,12 @@ class Element_TABLE:
             elif (row.tr_class == TR_DIVIDER):
                 row_spans.append([False] * len(row_spans[-1]))
 
-        #turn columns into arrays of integers containing the row span
+        # turn columns into arrays of integers containing the row span
         columns = [list(self.calculate_span_column([row[i] for
                                                     row in row_spans]))
                    for i in xrange(len(row_spans[0]))]
 
-        #turn columns back into rows and return them
+        # turn columns back into rows and return them
         return zip(*columns)
 
     def calculate_span_column(self, row_spans):
@@ -640,8 +645,8 @@ class Element_TABLE:
                 yield 0
 
 
-
 (TR_NORMAL, TR_HEADER, TR_DIVIDER) = range(3)
+
 
 class Element_TR:
     def __init__(self, columns, tr_class):
@@ -695,6 +700,7 @@ class Element_TR:
                 column.to_html(stream, self.tr_class == TR_HEADER, span)
             stream.write("</tr>\n")
 
+
 class Element_TD:
     def __init__(self, value):
         self.value = value
@@ -706,7 +712,8 @@ class Element_TD:
     def parse(cls, xml_dom):
         try:
             return cls(value=WHITESPACE.sub(
-                    u" ", xml_dom.childNodes[0].wholeText.strip()))
+                       u" ",
+                       xml_dom.childNodes[0].wholeText.strip()))
         except IndexError:
             return cls(value=None)
 
@@ -796,28 +803,35 @@ class Element:
 if (__name__ == '__main__'):
     import sys
     import xml.dom.minidom
-    import optparse
+    import argparse
 
-    parser = optparse.OptionParser()
+    parser = argparse.ArgumentParser(description="manual page generator")
 
-    parser.add_option("-i", "--input",
-                      dest="input",
-                      help="the primary input XML file")
+    parser.add_argument("-i", "--input",
+                        dest="input",
+                        help="the primary input XML file")
 
-    parser.add_option("-t", "--type",
-                      dest="type",
-                      choices=("man", "html"),
-                      default="man",
-                      help="the output type")
+    parser.add_argument("-t", "--type",
+                        dest="type",
+                        choices=("man", "html"),
+                        default="man",
+                        help="the output type")
 
-    (options, args) = parser.parse_args()
+    parser.add_argument("see_also",
+                        metavar="FILENAME",
+                        nargs="*",
+                        help="\"see also\" man pages")
 
-    main_page = Manpage.parse_file(options.input)
-    all_pages = [Manpage.parse_file(filename) for filename in args]
-    main_page.see_also = [page for page in all_pages
-                          if (page.utility != main_page.utility)]
+    options = parser.parse_args()
 
-    if (options.type == "man"):
-        main_page.to_man(sys.stdout)
-    elif (options.type == "html"):
-        main_page.to_html(sys.stdout)
+    if (options.input is not None):
+        main_page = Manpage.parse_file(options.input)
+        all_pages = [Manpage.parse_file(filename)
+                     for filename in options.see_also]
+        main_page.see_also = [page for page in all_pages
+                              if (page.utility != main_page.utility)]
+
+        if (options.type == "man"):
+            main_page.to_man(sys.stdout)
+        elif (options.type == "html"):
+            main_page.to_html(sys.stdout)
