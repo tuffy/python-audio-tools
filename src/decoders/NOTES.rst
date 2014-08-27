@@ -59,7 +59,7 @@ This typically looks like:
   };
 
   PyTypeObject decoders_FooDecoderType = {
-    PyObject_HEAD_INIT(NULL)
+    PyVarObject_HEAD_INIT(NULL, 0)
     0,                         /*ob_size*/
     "decoders.FooDecoder",     /*tp_name*/
     sizeof(decoders_FooDecoder), /*tp_basicsize*/
@@ -204,15 +204,6 @@ However, there's a few vital things to note during implementation.
   to deallocate it beforehand.
   Instead, by "anchoring" all memory to the main class,
   ``FooDecoder_dealloc`` can take care of it all at once.
-* Set the ``PyEval_SaveThread`` and ``PyEval_RestoreThread`` block
-  as wide as possible over the read method.
-  This allows other Python threads to operate while a read is in progress,
-  which is absolutely essential for making the format usable by
-  ``audiotools.player.Player`` and friends.
-  Just remember that access to the Python interpreter is
-  prohibited until ``PyEval_RestoreThread`` is called,
-  so exceptions called by the reader will have to be handled carefully.
-
 
 
 Step 8. Make sure the file's end case works

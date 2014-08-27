@@ -162,8 +162,7 @@ PyMethodDef SHNDecoder_methods[] = {
 };
 
 PyTypeObject decoders_SHNDecoderType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "decoders.SHNDecoder",     /*tp_name*/
     sizeof(decoders_SHNDecoder), /*tp_basicsize*/
     0,                         /*tp_itemsize*/

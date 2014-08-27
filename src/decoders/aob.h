@@ -138,8 +138,7 @@ PyMethodDef DVDA_Title_methods[] = {
 };
 
 PyTypeObject decoders_DVDA_Title_Type = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "decoders.DVDA_Title",     /*tp_name*/
     sizeof(decoders_DVDA_Title), /*tp_basicsize*/
     0,                         /*tp_itemsize*/

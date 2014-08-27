@@ -110,8 +110,7 @@ PyMethodDef CoreAudio_methods[] = {
 };
 
 PyTypeObject output_CoreAudioType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "output.CoreAudio",        /*tp_name*/
     sizeof(output_CoreAudio),  /*tp_basicsize*/
     0,                         /*tp_itemsize*/

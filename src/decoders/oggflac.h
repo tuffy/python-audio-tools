@@ -101,8 +101,7 @@ PyMethodDef OggFlacDecoder_methods[] = {
   };
 
 PyTypeObject decoders_OggFlacDecoderType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "decoders.OggFlacDecoder",     /*tp_name*/
     sizeof(decoders_OggFlacDecoder), /*tp_basicsize*/
     0,                         /*tp_itemsize*/

@@ -115,8 +115,7 @@ static PySequenceMethods pcm_FrameListType_as_sequence = {
 };
 
 PyTypeObject pcm_FrameListType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "pcm.FrameList",           /*tp_name*/
     sizeof(pcm_FrameList),     /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -950,8 +949,7 @@ static PySequenceMethods pcm_FloatFrameListType_as_sequence = {
 };
 
 PyTypeObject pcm_FloatFrameListType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "pcm.FloatFrameList",      /*tp_name*/
     sizeof(pcm_FloatFrameList), /*tp_basicsize*/
     0,                         /*tp_itemsize*/

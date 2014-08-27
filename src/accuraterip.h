@@ -135,8 +135,7 @@ static PyMethodDef Checksum_methods[] = {
 };
 
 static PyTypeObject accuraterip_ChecksumType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "_accuraterip.Checksum",   /*tp_name*/
     sizeof(accuraterip_Checksum), /*tp_basicsize*/
     0,                         /*tp_itemsize*/

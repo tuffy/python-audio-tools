@@ -163,8 +163,7 @@ PyObject*
 alac_exception(status status);
 
 PyTypeObject decoders_ALACDecoderType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "decoders.ALACDecoder",    /*tp_name*/
     sizeof(decoders_ALACDecoder), /*tp_basicsize*/
     0,                         /*tp_itemsize*/

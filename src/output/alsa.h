@@ -72,8 +72,7 @@ PyMethodDef ALSAAudio_methods[] = {
 };
 
 PyTypeObject output_ALSAAudioType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "output.ALSAAudio",        /*tp_name*/
     sizeof(output_ALSAAudio),  /*tp_basicsize*/
     0,                         /*tp_itemsize*/

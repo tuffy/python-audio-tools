@@ -152,8 +152,7 @@ PyObject*
 wavpack_exception(status error);
 
 PyTypeObject decoders_WavPackDecoderType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "decoders.WavPackDecoder", /*tp_name*/
     sizeof(decoders_WavPackDecoder), /*tp_basicsize*/
     0,                         /*tp_itemsize*/

@@ -127,8 +127,7 @@ PyMethodDef TTADecoder_methods[] = {
 };
 
 PyTypeObject decoders_TTADecoderType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "decoders.TTADecoder",     /*tp_name*/
     sizeof(decoders_TTADecoder), /*tp_basicsize*/
     0,                         /*tp_itemsize*/

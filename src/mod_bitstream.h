@@ -291,8 +291,7 @@ void
 BitstreamReader_callback(uint8_t byte, PyObject *callback);
 
 PyTypeObject bitstream_BitstreamReaderType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "bitstream.BitstreamReader",    /*tp_name*/
     sizeof(bitstream_BitstreamReader), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -350,8 +349,7 @@ static PyObject*
 HuffmanTree_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
 PyTypeObject bitstream_HuffmanTreeType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "bitstream.HuffmanTree",    /*tp_name*/
     sizeof(bitstream_HuffmanTree), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -602,8 +600,7 @@ BitstreamWriter_new(PyTypeObject *type, PyObject *args,
                     PyObject *kwds);
 
 PyTypeObject bitstream_BitstreamWriterType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "bitstream.BitstreamWriter", /*tp_name*/
     sizeof(bitstream_BitstreamWriter), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -836,8 +833,7 @@ BitstreamRecorder_new(PyTypeObject *type, PyObject *args,
                       PyObject *kwds);
 
 PyTypeObject bitstream_BitstreamRecorderType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "bitstream.BitstreamRecorder",    /*tp_name*/
     sizeof(bitstream_BitstreamRecorder), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -1029,8 +1025,7 @@ BitstreamAccumulator_new(PyTypeObject *type, PyObject *args,
                          PyObject *kwds);
 
 PyTypeObject bitstream_BitstreamAccumulatorType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "bitstream.BitstreamAccumulator",    /*tp_name*/
     sizeof(bitstream_BitstreamAccumulator), /*tp_basicsize*/
     0,                         /*tp_itemsize*/

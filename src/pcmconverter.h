@@ -72,8 +72,7 @@ PyMethodDef Averager_methods[] = {
 };
 
 PyTypeObject pcmconverter_AveragerType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "pcmconverter.Averager",     /*tp_name*/
     sizeof(pcmconverter_Averager),/*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -167,8 +166,7 @@ PyMethodDef Downmixer_methods[] = {
 };
 
 PyTypeObject pcmconverter_DownmixerType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "pcmconverter.Downmixer",     /*tp_name*/
     sizeof(pcmconverter_Downmixer),/*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -302,8 +300,7 @@ PyMethodDef Resampler_methods[] = {
 };
 
 PyTypeObject pcmconverter_ResamplerType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "pcmconverter.Resampler",     /*tp_name*/
     sizeof(pcmconverter_Resampler),/*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -401,8 +398,7 @@ PyMethodDef BPSConverter_methods[] = {
 };
 
 PyTypeObject pcmconverter_BPSConverterType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "pcmconverter.BPSConverter",     /*tp_name*/
     sizeof(pcmconverter_BPSConverter),/*tp_basicsize*/
     0,                         /*tp_itemsize*/

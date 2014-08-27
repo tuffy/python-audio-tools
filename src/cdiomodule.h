@@ -254,8 +254,7 @@ static PyMethodDef CDDAReader_methods[] = {
 };
 
 static PyTypeObject cdio_CDDAReaderType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "cdio.CDDAReader",         /*tp_name*/
     sizeof(cdio_CDDAReader),   /*tp_basicsize*/
     0,                         /*tp_itemsize*/

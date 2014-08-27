@@ -70,8 +70,7 @@ PyMethodDef CPPMDecoder_methods[] = {
 };
 
 PyTypeObject decoders_CPPMDecoderType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "decoders.CPPMDecoder",    /*tp_name*/
     sizeof(decoders_CPPMDecoder), /*tp_basicsize*/
     0,                         /*tp_itemsize*/

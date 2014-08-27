@@ -146,8 +146,7 @@ PyMethodDef Page_methods[] = {
 };
 
 PyTypeObject ogg_PageType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "_ogg.Page",               /*tp_name*/
     sizeof(ogg_Page),          /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -218,8 +217,7 @@ PyMethodDef PageReader_methods[] = {
 };
 
 PyTypeObject ogg_PageReaderType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "_ogg.PageReader",         /*tp_name*/
     sizeof(ogg_PageReader),    /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -295,8 +293,7 @@ PyMethodDef PageWriter_methods[] = {
 };
 
 PyTypeObject ogg_PageWriterType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "_ogg.PageWriter",         /*tp_name*/
     sizeof(ogg_PageWriter),    /*tp_basicsize*/
     0,                         /*tp_itemsize*/

@@ -95,8 +95,7 @@ PyGetSetDef Sine_Mono_getseters[] = {
 };
 
 PyTypeObject decoders_Sine_Mono_Type = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "decoders.Sine_Mono",      /*tp_name*/
     sizeof(decoders_Sine_Mono),/*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -211,8 +210,7 @@ PyGetSetDef Sine_Stereo_getseters[] = {
 };
 
 PyTypeObject decoders_Sine_Stereo_Type = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "decoders.Sine_Stereo",    /*tp_name*/
     sizeof(decoders_Sine_Stereo),/*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -324,8 +322,7 @@ PyGetSetDef Sine_Simple_getseters[] = {
 };
 
 PyTypeObject decoders_Sine_Simple_Type = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "decoders.Sine_Simple",    /*tp_name*/
     sizeof(decoders_Sine_Simple),/*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -435,8 +432,7 @@ PyGetSetDef SameSample_getseters[] = {
 };
 
 PyTypeObject decoders_SameSample_Type = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "decoders.SameSample",    /*tp_name*/
     sizeof(decoders_SameSample),/*tp_basicsize*/
     0,                         /*tp_itemsize*/

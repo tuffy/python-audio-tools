@@ -60,8 +60,7 @@ PyMethodDef PulseAudio_methods[] = {
 };
 
 PyTypeObject output_PulseAudioType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "output.PulseAudio",        /*tp_name*/
     sizeof(output_PulseAudio),  /*tp_basicsize*/
     0,                         /*tp_itemsize*/

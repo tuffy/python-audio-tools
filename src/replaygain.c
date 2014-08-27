@@ -54,8 +54,7 @@ PyMethodDef ReplayGain_methods[] = {
 };
 
 PyTypeObject replaygain_ReplayGainType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "replaygain.ReplayGain",   /*tp_name*/
     sizeof(replaygain_ReplayGain), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -357,8 +356,7 @@ PyMethodDef ReplayGainReader_methods[] = {
 };
 
 PyTypeObject replaygain_ReplayGainReaderType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "replaygain.ReplayGainReader", /*tp_name*/
     sizeof(replaygain_ReplayGainReader), /*tp_basicsize*/
     0,                         /*tp_itemsize*/

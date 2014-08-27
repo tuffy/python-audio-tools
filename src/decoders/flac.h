@@ -331,8 +331,7 @@ static PyTypeObject decoders_FlacDecoderType = {
 #else
 
 PyTypeObject decoders_FlacDecoderType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "decoders.FlacDecoder",    /*tp_name*/
     sizeof(decoders_FlacDecoder), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
