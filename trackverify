@@ -147,7 +147,7 @@ def accuraterip_checksum(progress,
                             PCMReaderDeHead,
                             PCMReaderProgress)
     from audiotools.accuraterip import Checksum, match_offset
-    from cStringIO import StringIO
+    from io import BytesIO
 
     # unify previous track, current track and next track into a single stream
 
@@ -160,7 +160,7 @@ def accuraterip_checksum(progress,
         pcmreaders.append(PCMReaderDeHead(prev_pcmreader, frames_to_skip))
     else:
         pcmreaders.append(
-            PCMReader(StringIO(chr(0) *
+            PCMReader(BytesIO(chr(0) *
                                (track.bits_per_sample() // 8) *
                                track.channels() *
                                PREVIOUS_TRACK_FRAMES),
@@ -176,7 +176,7 @@ def accuraterip_checksum(progress,
                                         NEXT_TRACK_FRAMES))
     else:
         pcmreaders.append(
-            PCMReader(StringIO(chr(0) *
+            PCMReader(BytesIO(chr(0) *
                                (track.bits_per_sample() // 8) *
                                track.channels() *
                                NEXT_TRACK_FRAMES),

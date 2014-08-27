@@ -21,7 +21,7 @@ from __future__ import print_function
 import sys
 import os
 import os.path
-import cStringIO
+from io import BytesIO
 import audiotools
 import audiotools.text as _
 
@@ -350,7 +350,7 @@ Consult "man python" for further details.
 
             self.path = path
             self.audiotools = image_obj
-            self.pil = Image.open(cStringIO.StringIO(image_obj.data))
+            self.pil = Image.open(BytesIO(image_obj.data))
 
     class Statusbar_Tkinter(Frame):
         def __init__(self, master):

@@ -26,7 +26,7 @@ from hashlib import md5
 import random
 import decimal
 import test_streams
-import cStringIO
+from io import BytesIO
 import subprocess
 import struct
 
@@ -1992,7 +1992,7 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
         for i in range(0, 192000 + 1):
             w = BitstreamRecorder(0)
             audiotools.aiff.build_ieee_extended(w, float(i))
-            s = cStringIO.StringIO(w.data())
+            s = BytesIO(w.data())
             self.assertEqual(w.data(), s.getvalue())
             self.assertEqual(i, audiotools.aiff.parse_ieee_extended(
                 BitstreamReader(s, 0)))

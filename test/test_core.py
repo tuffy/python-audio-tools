@@ -26,7 +26,7 @@ import decimal
 import os
 import os.path
 import test_streams
-import cStringIO
+from io import BytesIO
 from hashlib import md5
 
 from test import (parser, Variable_Reader, BLANK_PCM_Reader,
@@ -63,7 +63,7 @@ class PCMReader(unittest.TestCase):
             for big_endian in [True, False]:
                 for signed in [True, False]:
                     reader = audiotools.PCMReader(
-                        cStringIO.StringIO(
+                        BytesIO(
                             from_list(range(-5, 5),
                                       1,
                                       bps,
@@ -103,7 +103,7 @@ class PCMCat(unittest.TestCase):
         from audiotools.pcm import from_list
 
         # ensure mismatched streams raise ValueError at init time
-        audiotools.PCMCat([audiotools.PCMReader(cStringIO.StringIO(""),
+        audiotools.PCMCat([audiotools.PCMReader(BytesIO(b""),
                                                 sample_rate=44100,
                                                 channels=1,
                                                 channel_mask=0x4,
@@ -111,12 +111,12 @@ class PCMCat(unittest.TestCase):
 
         self.assertRaises(ValueError,
                           audiotools.PCMCat,
-                          [audiotools.PCMReader(cStringIO.StringIO(""),
+                          [audiotools.PCMReader(BytesIO(b""),
                                                 sample_rate=96000,
                                                 channels=1,
                                                 channel_mask=0x4,
                                                 bits_per_sample=16),
-                           audiotools.PCMReader(cStringIO.StringIO(""),
+                           audiotools.PCMReader(BytesIO(b""),
                                                 sample_rate=44100,
                                                 channels=1,
                                                 channel_mask=0x4,
@@ -124,12 +124,12 @@ class PCMCat(unittest.TestCase):
 
         self.assertRaises(ValueError,
                           audiotools.PCMCat,
-                          [audiotools.PCMReader(cStringIO.StringIO(""),
+                          [audiotools.PCMReader(BytesIO(b""),
                                                 sample_rate=44100,
                                                 channels=2,
                                                 channel_mask=0x3,
                                                 bits_per_sample=16),
-                           audiotools.PCMReader(cStringIO.StringIO(""),
+                           audiotools.PCMReader(BytesIO(b""),
                                                 sample_rate=44100,
                                                 channels=1,
                                                 channel_mask=0x4,
@@ -137,12 +137,12 @@ class PCMCat(unittest.TestCase):
 
         self.assertRaises(ValueError,
                           audiotools.PCMCat,
-                          [audiotools.PCMReader(cStringIO.StringIO(""),
+                          [audiotools.PCMReader(BytesIO(b""),
                                                 sample_rate=44100,
                                                 channels=1,
                                                 channel_mask=0x4,
                                                 bits_per_sample=24),
-                           audiotools.PCMReader(cStringIO.StringIO(""),
+                           audiotools.PCMReader(BytesIO(b""),
                                                 sample_rate=44100,
                                                 channels=1,
                                                 channel_mask=0x4,
@@ -150,7 +150,7 @@ class PCMCat(unittest.TestCase):
 
         main_readers = [
             audiotools.PCMReader(
-                cStringIO.StringIO(
+                BytesIO(
                     from_list(samples, 1, 16, True).to_bytes(True,
                                                              True)),
                 sample_rate=44100,
@@ -283,7 +283,7 @@ class LimitedPCMReader(unittest.TestCase):
         from audiotools.pcm import from_list
 
         main_reader = audiotools.PCMReader(
-            cStringIO.StringIO(
+            BytesIO(
                 from_list(range(-50, 50), 1, 16, True).to_bytes(True, True)),
             sample_rate=44100,
             channels=1,
@@ -342,7 +342,7 @@ class PCMReaderWindow(unittest.TestCase):
         for initial_offset in range(-5, 5):
             for pcm_frames in range(5, 15):
                 main_reader = audiotools.PCMReader(
-                    cStringIO.StringIO(
+                    BytesIO(
                         from_list(range(1, 11),
                                   1,
                                   16,
@@ -2635,7 +2635,7 @@ class Bitstream(unittest.TestCase):
         temp.flush()
         temp.seek(0, 0)
 
-        temp_s = cStringIO.StringIO()
+        temp_s = BytesIO()
         temp_s.write(data)
         temp_s.seek(0, 0)
 
@@ -2676,7 +2676,7 @@ class Bitstream(unittest.TestCase):
         temp.flush()
         temp.seek(0, 0)
 
-        temp_s = cStringIO.StringIO()
+        temp_s = BytesIO()
         temp_s.write(data)
         temp_s.seek(0, 0)
 
@@ -3047,7 +3047,7 @@ class Bitstream(unittest.TestCase):
             finally:
                 temp.close()
 
-            data = cStringIO.StringIO()
+            data = BytesIO()
             writer = BitstreamWriter(data, endianness)
             check(writer, endianness)
             del(writer)
@@ -3317,9 +3317,9 @@ class Bitstream(unittest.TestCase):
         from audiotools.bitstream import BitstreamReader
 
         for little_endian in [False, True]:
-            for reader in [BitstreamReader(cStringIO.StringIO("a" * 10),
+            for reader in [BitstreamReader(BytesIO(b"a" * 10),
                                            little_endian),
-                           BitstreamReader(cStringIO.StringIO("a" * 10),
+                           BitstreamReader(BytesIO(b"a" * 10),
                                            little_endian).substream(5)]:
                 # reading negative number of bits shouldn't work
                 self.assertRaises(ValueError,
@@ -3355,7 +3355,7 @@ class Bitstream(unittest.TestCase):
         from audiotools.bitstream import BitstreamAccumulator
 
         for little_endian in [False, True]:
-            for writer in [BitstreamWriter(cStringIO.StringIO(),
+            for writer in [BitstreamWriter(BytesIO(),
                                            little_endian),
                            BitstreamRecorder(little_endian),
                            BitstreamAccumulator(little_endian)]:
@@ -3527,19 +3527,19 @@ class Bitstream(unittest.TestCase):
             bits = b * 8
             for little_endian in [False, True]:
                 unsigned1 = BitstreamReader(
-                    cStringIO.StringIO(data),
+                    BytesIO(data),
                     little_endian).read(bits)
 
                 unsigned2 = BitstreamReader(
-                    cStringIO.StringIO(data),
+                    BytesIO(data),
                     little_endian).parse("%du" % (bits))[0]
 
                 signed1 = BitstreamReader(
-                    cStringIO.StringIO(data),
+                    BytesIO(data),
                     little_endian).read_signed(bits)
 
                 signed2 = BitstreamReader(
-                    cStringIO.StringIO(data),
+                    BytesIO(data),
                     little_endian).parse("%ds" % (bits))[0]
 
                 # check that reading from .read and .parse
@@ -3548,10 +3548,10 @@ class Bitstream(unittest.TestCase):
                 self.assertEqual(signed1, signed2)
 
                 # check that writing round-trips properly
-                unsigned_data1 = cStringIO.StringIO()
-                unsigned_data2 = cStringIO.StringIO()
-                signed_data1 = cStringIO.StringIO()
-                signed_data2 = cStringIO.StringIO()
+                unsigned_data1 = BytesIO()
+                unsigned_data2 = BytesIO()
+                signed_data1 = BytesIO()
+                signed_data2 = BytesIO()
 
                 BitstreamWriter(unsigned_data1,
                                 little_endian).write(bits, unsigned1)
@@ -3601,14 +3601,14 @@ class Bitstream(unittest.TestCase):
 
                 # check that endianness swapping works
                 r = BitstreamReader(
-                    cStringIO.StringIO(data),
+                    BytesIO(data),
                     little_endian)
 
                 unsigned1 = r.read(bits // 2)
                 r.set_endianness(not little_endian)
                 unsigned2 = r.read(bits // 2)
 
-                new_data = cStringIO.StringIO()
+                new_data = BytesIO()
                 w = BitstreamWriter(
                     new_data, little_endian)
                 w.write(bits // 2, unsigned1)
@@ -3644,7 +3644,7 @@ class Bitstream(unittest.TestCase):
         # Therefore, we read a 4KB string and pull individual bytes from
         # it as needed, which should keep performance reasonable.
         def new_temp1():
-            temp = cStringIO.StringIO()
+            temp = BytesIO()
             temp.write(chr(0xB1))
             temp.write(chr(0xED))
             temp.write(chr(0x3B))
@@ -3996,7 +3996,7 @@ class Bitstream(unittest.TestCase):
                                            (0, 0, 0), 4], False))
 
         def new_temp():
-            temp = cStringIO.StringIO()
+            temp = BytesIO()
             temp.write(chr(0xB1))
             temp.write(chr(0xED))
             temp.write(chr(0x3B))
@@ -4022,7 +4022,7 @@ class Bitstream(unittest.TestCase):
         f.close()
         del(f)
 
-        # test a BitstreamReader from a Python cStringIO object
+        # test a BitstreamReader from a Python BytesIO object
         reader = BitstreamReader(new_temp(), 0)
         reader.close()
         test_reader(reader)
@@ -4073,8 +4073,8 @@ class Bitstream(unittest.TestCase):
         finally:
             os.unlink("test.bin")
 
-        # test a BitstreamWriter to a Python cStringIO object
-        s = cStringIO.StringIO()
+        # test a BitstreamWriter to a Python BytesIO object
+        s = BytesIO()
         writer = BitstreamWriter(s, 0)
         writer.close()
         test_writer(writer)
@@ -4083,7 +4083,7 @@ class Bitstream(unittest.TestCase):
         del(writer)
         del(s)
 
-        s = cStringIO.StringIO()
+        s = BytesIO()
         writer = BitstreamWriter(s, 1)
         writer.close()
         test_writer(writer)
@@ -4142,7 +4142,6 @@ class Bitstream(unittest.TestCase):
     @LIB_BITSTREAM
     def test_writer_marks(self):
         from audiotools.bitstream import BitstreamWriter
-        from cStringIO import StringIO
 
         f = open("test.bin", "wb")
         try:
@@ -4164,13 +4163,13 @@ class Bitstream(unittest.TestCase):
         finally:
             os.unlink("test.bin")
 
-        s = StringIO()
+        s = BytesIO()
         writer = BitstreamWriter(s, False)
         self.__test_writer_marks__(writer)
         del(writer)
         self.assertEqual(s.getvalue(), "\xFF\x00\xFF")
 
-        s = StringIO()
+        s = BytesIO()
         writer = BitstreamWriter(s, True)
         self.__test_writer_marks__(writer)
         del(writer)
@@ -4181,7 +4180,6 @@ class TestReplayGain(unittest.TestCase):
     def test_basics(self):
         import audiotools.replaygain
         import audiotools.pcm
-        from cStringIO import StringIO
 
         # check for invalid sample rate
         self.assertRaises(ValueError,
@@ -4192,7 +4190,7 @@ class TestReplayGain(unittest.TestCase):
         rg = audiotools.replaygain.ReplayGain(44100)
 
         self.assertEqual(
-            rg.title_gain(audiotools.PCMReader(StringIO(""),
+            rg.title_gain(audiotools.PCMReader(BytesIO(""),
                                                44100, 2, 0x3, 16)),
             (0.0, 0.0))
         self.assertRaises(ValueError, rg.album_gain)
@@ -6123,11 +6121,10 @@ class Test_Ogg(unittest.TestCase):
     @LIB_OGG
     def test_roundtrip(self):
         import audiotools.ogg
-        import cStringIO
 
         for packet_len in range(0, 1000):
             packet = os.urandom(packet_len)
-            ogg_stream = cStringIO.StringIO()
+            ogg_stream = BytesIO()
             self.assertEqual(packet_len, len(packet))
 
             ogg_writer = audiotools.ogg.PageWriter(ogg_stream)

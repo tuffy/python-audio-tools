@@ -338,7 +338,7 @@ class __TIFF__(ImageMetrics):
 
     @classmethod
     def parse(cls, file_data):
-        import cStringIO
+        from io import BytesIO
 
         def tags(file, order):
             while (True):
@@ -374,7 +374,7 @@ class __TIFF__(ImageMetrics):
                 else:
                     break
 
-        file = cStringIO.StringIO(file_data)
+        file = BytesIO(file_data)
         try:
             byte_order = file.read(2)
             if (byte_order == 'II'):

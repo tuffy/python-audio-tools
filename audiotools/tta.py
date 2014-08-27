@@ -515,7 +515,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         Raises IOError if an error occurs setting the cuesheet"""
 
         import os.path
-        import cStringIO
+        from io import BytesIO
         from audiotools import (MetaData, Filename, FS_ENCODING)
         from audiotools.ape import ApeTag
         from audiotools.cue import write_cuesheet
@@ -529,7 +529,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         else:
             metadata = ApeTag.converted(metadata)
 
-        cuesheet_data = cStringIO.StringIO()
+        cuesheet_data = BytesIO()
         write_cuesheet(cuesheet,
                        str(Filename(self.filename).basename()),
                        cuesheet_data)

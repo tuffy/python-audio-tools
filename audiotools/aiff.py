@@ -80,11 +80,11 @@ def validate_header(header):
 
     raises ValueError if the header is invalid"""
 
-    import cStringIO
+    from io import BytesIO
     from audiotools.bitstream import BitstreamReader
 
     header_size = len(header)
-    aiff_file = BitstreamReader(cStringIO.StringIO(header), 0)
+    aiff_file = BitstreamReader(BytesIO(header), 0)
     try:
         # ensure header starts with FORM<size>AIFF chunk
         (form, remaining_size, aiff) = aiff_file.parse("4b 32u 4b")
@@ -160,11 +160,11 @@ def validate_footer(footer, ssnd_bytes_written):
 
     raises ValueError is the footer is invalid"""
 
-    import cStringIO
+    from io import BytesIO
     from audiotools.bitstream import BitstreamReader
 
     total_size = len(footer)
-    aiff_file = BitstreamReader(cStringIO.StringIO(footer), 0)
+    aiff_file = BitstreamReader(BytesIO(footer), 0)
     try:
         # ensure footer is padded properly if necessary
         # based on size of data bytes written
@@ -238,9 +238,9 @@ class AIFF_Chunk(object):
     def data(self):
         """returns chunk data as file-like object"""
 
-        import cStringIO
+        from io import BytesIO
 
-        return cStringIO.StringIO(self.__data__)
+        return BytesIO(self.__data__)
 
     def verify(self):
         """returns True if chunk size matches chunk's data"""

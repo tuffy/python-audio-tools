@@ -589,9 +589,9 @@ class ApeTag(MetaData):
 
     def __parse_image__(self, key, type):
         from audiotools import Image
-        import cStringIO
+        from io import BytesIO
 
-        data = cStringIO.StringIO(self[key].data)
+        data = BytesIO(self[key].data)
         description = []
         c = data.read(1)
         while (c != '\x00'):

@@ -363,14 +363,14 @@ class OpusAudio(VorbisAudio):
 
         raises IOError if unable to read the file"""
 
-        from cStringIO import StringIO
+        from io import BytesIO
         from audiotools.bitstream import BitstreamReader
         from audiotools.ogg import PacketReader, PageReader
 
         reader = PacketReader(PageReader(open(self.filename, "rb")))
 
         identification = reader.read_packet()
-        comment = BitstreamReader(StringIO(reader.read_packet()), True)
+        comment = BitstreamReader(BytesIO(reader.read_packet()), True)
 
         if (comment.read_bytes(8) == "OpusTags"):
             vendor_string = \

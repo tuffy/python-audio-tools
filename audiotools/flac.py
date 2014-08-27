@@ -2078,7 +2078,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         may raise EncodingError if some problem occurs when
         encoding the input file"""
 
-        import cStringIO
+        from io import BytesIO
         from audiotools.bitstream import BitstreamReader
         from audiotools.bitstream import BitstreamRecorder
         from audiotools.bitstream import format_byte_size
@@ -2093,7 +2093,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         try:
             # read everything from start of header to "data<size>"
             # chunk header
-            r = BitstreamReader(cStringIO.StringIO(header), 1)
+            r = BitstreamReader(BytesIO(header), 1)
             (riff, remaining_size, wave) = r.parse("4b 32u 4b")
             if (riff != "RIFF"):
                 from audiotools.text import ERR_WAV_NOT_WAVE
@@ -2173,7 +2173,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         try:
             # read everything from start of footer to end of footer
-            r = BitstreamReader(cStringIO.StringIO(footer), 1)
+            r = BitstreamReader(BytesIO(footer), 1)
             # skip initial footer pad byte
             if (data_chunk_size % 2):
                 r.skip_bytes(1)
@@ -2316,7 +2316,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         may raise EncodingError if some problem occurs when
         encoding the input file"""
 
-        import cStringIO
+        from io import BytesIO
         from audiotools.bitstream import BitstreamReader
         from audiotools.bitstream import BitstreamRecorder
         from audiotools.bitstream import format_byte_size
@@ -2331,7 +2331,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         try:
             # read everything from start of header to "SSND<size>"
             # chunk header
-            r = BitstreamReader(cStringIO.StringIO(header), 0)
+            r = BitstreamReader(BytesIO(header), 0)
             (form, remaining_size, aiff) = r.parse("4b 32u 4b")
             if (form != "FORM"):
                 from audiotools.text import ERR_AIFF_NOT_AIFF
@@ -2416,7 +2416,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         try:
             # read everything from start of footer to end of footer
-            r = BitstreamReader(cStringIO.StringIO(footer), 0)
+            r = BitstreamReader(BytesIO(footer), 0)
             # skip initial footer pad byte
             if (ssnd_chunk_size % 2):
                 r.skip_bytes(1)
@@ -2906,7 +2906,7 @@ class OggFlacMetaData(FlacMetaData):
 
         raises IOError or ValueError if an error occurs reading MetaData"""
 
-        from cStringIO import StringIO
+        from io import BytesIO
         from audiotools.bitstream import BitstreamReader
 
         streaminfo = None
@@ -2933,7 +2933,7 @@ class OggFlacMetaData(FlacMetaData):
          bits_per_sample,
          total_samples,
          md5sum) = BitstreamReader(
-            StringIO(packetreader.read_packet()),
+            BytesIO(packetreader.read_packet()),
             False).parse(
             "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
 
@@ -2948,7 +2948,7 @@ class OggFlacMetaData(FlacMetaData):
                                       md5sum=md5sum)]
 
         for i in range(header_packets):
-            packet = BitstreamReader(StringIO(packetreader.read_packet()),
+            packet = BitstreamReader(BytesIO(packetreader.read_packet()),
                                      False)
             (block_type, length) = packet.parse("1p 7u 24u")
             if (block_type == 1):    # PADDING

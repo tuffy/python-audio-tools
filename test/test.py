@@ -27,7 +27,6 @@ from hashlib import md5
 import random
 import decimal
 import test_streams
-import cStringIO
 import subprocess
 
 parser = ConfigParser.SafeConfigParser()

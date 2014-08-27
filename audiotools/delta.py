@@ -28,7 +28,6 @@ import subprocess
 import tempfile
 import whichdb
 from audiotools import BIN, transfer_data
-import cStringIO
 
 
 class UndoDB(object):
@@ -206,6 +205,8 @@ class OldUndoDB(object):
 
         both are filename strings"""
 
+        from io import BytesIO
+
         # perform xdelta between old and new track to temporary file
         delta_f = tempfile.NamedTemporaryFile(suffix=".delta")
 
@@ -215,7 +216,7 @@ class OldUndoDB(object):
                                  new_file, old_file, delta_f.name]) != 2):
                 # store the xdelta in our internal db
                 f = open(delta_f.name, 'rb')
-                data = cStringIO.StringIO()
+                data = BytesIO()
                 transfer_data(f.read, data.write)
                 f.close()
 

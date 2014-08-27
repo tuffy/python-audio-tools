@@ -18,7 +18,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import audiotools
-import cStringIO
+from io import BytesIO
 import math
 import os
 from hashlib import md5
@@ -538,7 +538,7 @@ class Raw(audiotools.PCMReader):
         self.channels = channels
         self.bits_per_sample = bits_per_sample
         self.process = None
-        self.file = cStringIO.StringIO()
+        self.file = BytesIO()
 
         full_scale = (1 << (bits_per_sample - 1)) - 1
         f1 = 441.0

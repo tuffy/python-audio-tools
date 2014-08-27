@@ -57,9 +57,9 @@ class RIFF_Chunk(object):
     def data(self):
         """returns chunk data as file-like object"""
 
-        import cStringIO
+        from io import BytesIO
 
-        return cStringIO.StringIO(self.__data__)
+        return BytesIO(self.__data__)
 
     def verify(self):
         """returns True if the chunk is sized properly"""
@@ -160,11 +160,11 @@ def validate_header(header):
     raises ValueError if the header is invalid
     """
 
-    import cStringIO
+    from io import BytesIO
     from audiotools.bitstream import BitstreamReader
 
     header_size = len(header)
-    wave_file = BitstreamReader(cStringIO.StringIO(header), 1)
+    wave_file = BitstreamReader(BytesIO(header), 1)
     try:
         # ensure header starts with RIFF<size>WAVE chunk
         (riff, remaining_size, wave) = wave_file.parse("4b 32u 4b")
@@ -238,11 +238,11 @@ def validate_footer(footer, data_bytes_written):
 
     raises ValueError if the footer is invalid"""
 
-    import cStringIO
+    from io import BytesIO
     from audiotools.bitstream import BitstreamReader
 
     total_size = len(footer)
-    wave_file = BitstreamReader(cStringIO.StringIO(footer), 1)
+    wave_file = BitstreamReader(BytesIO(footer), 1)
     try:
         # ensure footer is padded properly if necessary
         # based on size of data bytes written

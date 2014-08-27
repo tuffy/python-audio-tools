@@ -20,7 +20,7 @@
 import unittest
 import audiotools
 import subprocess
-import cStringIO
+from io import BytesIO
 import unicodedata
 import tempfile
 import os
@@ -60,14 +60,14 @@ class UtilTest(unittest.TestCase):
 
     # takes a list of argument strings
     # returns a returnval integer
-    # self.stdout and self.stderr are set to file-like cStringIO objects
+    # self.stdout and self.stderr are set to file-like BytesIO objects
     def __run_app__(self, arguments):
         sub = subprocess.Popen(arguments,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
 
-        self.stdout = cStringIO.StringIO(sub.stdout.read())
-        self.stderr = cStringIO.StringIO(sub.stderr.read())
+        self.stdout = BytesIO(sub.stdout.read())
+        self.stderr = BytesIO(sub.stderr.read())
         sub.stdout.close()
         sub.stderr.close()
         returnval = sub.wait()
@@ -504,7 +504,7 @@ class coverdump(UtilTest):
         for i in range(10):
             import Image
             img = Image.new("RGB", (100, 100), "#%2.2X%2.2X%2.2X" % (i, i, i))
-            data = cStringIO.StringIO()
+            data = BytesIO()
             img.save(data, "PNG")
             img = audiotools.Image.new(data.getvalue(), u"", i // 2)
             self.images1.append(img)
@@ -518,7 +518,7 @@ class coverdump(UtilTest):
             import Image
             img = Image.new("RGB", (100, 100), "#%2.2X%2.2X%2.2X" %
                             (100 + i, 100 + i, 100 + i))
-            data = cStringIO.StringIO()
+            data = BytesIO()
             img.save(data, "PNG")
             img = audiotools.Image.new(data.getvalue(), u"", i)
             self.images2.append(img)
@@ -3078,7 +3078,6 @@ class trackinfo(UtilTest):
     @UTIL_TRACKINFO
     def test_trackinfo(self):
         import re
-        import StringIO
         from audiotools.text import (LAB_TRACKINFO_CHANNELS,
                                      LAB_TRACKINFO_CHANNEL,
                                      MASK_FRONT_LEFT,
@@ -3111,11 +3110,11 @@ class trackinfo(UtilTest):
                     # check metadata/low-level metadata if -n not present
                     if ("-n" not in options):
                         if ("-L" not in options):
-                            for line in StringIO.StringIO(
+                            for line in BytesIO(
                                 unicode(track.get_metadata())):
                                 self.__check_output__(line.rstrip('\r\n'))
                         else:
-                            for line in StringIO.StringIO(
+                            for line in BytesIO(
                                 track.get_metadata().raw_info()):
                                 self.__check_output__(line.rstrip('\r\n'))
                         if ("-C" in options):

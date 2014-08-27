@@ -375,7 +375,7 @@ class VorbisAudio(AudioFile):
 
         raises IOError if unable to read the file"""
 
-        from cStringIO import StringIO
+        from io import BytesIO
         from audiotools.bitstream import BitstreamReader
         from audiotools.ogg import PacketReader, PageReader
         from audiotools.vorbiscomment import VorbisComment
@@ -383,7 +383,7 @@ class VorbisAudio(AudioFile):
         reader = PacketReader(PageReader(open(self.filename, "rb")))
 
         identification = reader.read_packet()
-        comment = BitstreamReader(StringIO(reader.read_packet()), True)
+        comment = BitstreamReader(BytesIO(reader.read_packet()), True)
 
         (packet_type, packet_header) = comment.parse("8u 6b")
         if ((packet_type == 3) and (packet_header == 'vorbis')):

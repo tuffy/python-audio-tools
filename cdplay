@@ -23,7 +23,6 @@ import select
 import os
 import tty
 import termios
-import cStringIO
 import audiotools
 import audiotools.ui
 import audiotools.player

@@ -21,7 +21,6 @@ from audiotools.bitstream import BitstreamReader
 from audiotools.pcm import from_list, from_channels
 from audiotools.wav import parse_fmt
 from audiotools.aiff import parse_comm
-import cStringIO
 
 
 def shnmean(values):
@@ -60,6 +59,8 @@ class SHNDecoder(object):
         self.reader.unmark()
 
     def read_metadata(self):
+        from io import BytesIO
+
         command = self.unsigned(2)
         if (command == 9):
             # got verbatim, so read data
@@ -67,7 +68,7 @@ class SHNDecoder(object):
                                       for i in range(self.unsigned(5))])
 
             try:
-                wave = BitstreamReader(cStringIO.StringIO(verbatim_bytes), 1)
+                wave = BitstreamReader(BytesIO(verbatim_bytes), 1)
                 header = wave.read_bytes(12)
                 if (header.startswith("RIFF") and header.endswith("WAVE")):
                     # got RIFF/WAVE header, so parse wave blocks as needed
@@ -97,7 +98,7 @@ class SHNDecoder(object):
                 pass
 
             try:
-                aiff = BitstreamReader(cStringIO.StringIO(verbatim_bytes), 0)
+                aiff = BitstreamReader(BytesIO(verbatim_bytes), 0)
                 header = aiff.read_bytes(12)
                 if (header.startswith("FORM") and header.endswith("AIFF")):
                     # got FORM/AIFF header, so parse aiff blocks as needed

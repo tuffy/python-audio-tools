@@ -109,7 +109,6 @@ class MP3Audio(AudioFile):
         AudioFile.__init__(self, filename)
 
         from audiotools.bitstream import BitstreamReader
-        import cStringIO
 
         try:
             mp3file = open(filename, "rb")
