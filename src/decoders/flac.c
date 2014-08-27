@@ -137,7 +137,7 @@ FlacDecoder_dealloc(decoders_FlacDecoder *self)
 
     self->seektable->del(self->seektable);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 PyObject*

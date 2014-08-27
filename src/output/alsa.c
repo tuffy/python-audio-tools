@@ -187,7 +187,7 @@ void ALSAAudio_dealloc(output_ALSAAudio *self)
     if (self->mixer != NULL)
         snd_mixer_close(self->mixer);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
@@ -203,7 +203,7 @@ static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
         return NULL;
 
     /*ensure object is a FrameList*/
-    if (framelist_obj->ob_type != (PyTypeObject*)self->framelist_type) {
+    if (Py_TYPE(framelist_obj) != (PyTypeObject*)self->framelist_type) {
         PyErr_SetString(PyExc_TypeError,
                         "argument must be FrameList object");
         return NULL;

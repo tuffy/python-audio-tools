@@ -89,7 +89,7 @@ MP3Decoders_dealloc(decoders_MP3Decoder *self)
     if (self->buffer != NULL)
         self->buffer->del(self->buffer);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 /*the MP3Decoder.sample_rate attribute getter*/

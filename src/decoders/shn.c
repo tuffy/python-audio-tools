@@ -116,7 +116,7 @@ SHNDecoder_dealloc(decoders_SHNDecoder *self)
         self->bitstream->free(self->bitstream);
     }
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 PyObject*

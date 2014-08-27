@@ -1,5 +1,6 @@
 #include "accuraterip.h"
 #include "pcm.h"
+#include "mod_defs.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -34,22 +35,23 @@ static PyMethodDef accuraterip_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-PyMODINIT_FUNC
-init_accuraterip(void)
+MOD_INIT(_accuraterip)
 {
     PyObject* m;
 
+    MOD_DEF(m, "_accuraterip",
+            "an AccurateRip checksum calculation module",
+            accuraterip_methods)
+
     accuraterip_ChecksumType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&accuraterip_ChecksumType) < 0)
-        return;
-
-    m = Py_InitModule3("_accuraterip",
-                       accuraterip_methods,
-                       "An AccurateRip checksum calculation module.");
+        return MOD_ERROR_VAL;
 
     Py_INCREF(&accuraterip_ChecksumType);
     PyModule_AddObject(m, "Checksum",
                        (PyObject *)&accuraterip_ChecksumType);
+
+    return MOD_SUCCESS_VAL(m);
 }
 
 static PyObject*
@@ -171,7 +173,7 @@ Checksum_dealloc(accuraterip_Checksum *self)
 
     Py_XDECREF(self->framelist_class);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static inline unsigned

@@ -47,7 +47,7 @@ OggFlacDecoder_dealloc(decoders_OggFlacDecoder *self) {
     if (self->ogg_packets != NULL)
         oggiterator_close(self->ogg_packets);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 int

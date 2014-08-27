@@ -1,4 +1,5 @@
 #include <Python.h>
+#include "mod_defs.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -33,29 +34,27 @@ extern PyTypeObject output_PulseAudioType;
 extern PyTypeObject output_CoreAudioType;
 #endif
 
-PyMODINIT_FUNC
-initoutput(void)
+MOD_INIT(output)
 {
     PyObject* m;
+
+    MOD_DEF(m, "output", "system-specific audio output", module_methods)
 
 #ifdef PULSEAUDIO
     output_PulseAudioType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&output_PulseAudioType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 #endif
 #ifdef ALSA
     output_ALSAAudioType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&output_ALSAAudioType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 #endif
 #ifdef CORE_AUDIO
     output_CoreAudioType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&output_CoreAudioType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 #endif
-
-    m = Py_InitModule3("output", module_methods,
-                       "System-specific audio output");
 
 #ifdef PULSEAUDIO
     Py_INCREF(&output_PulseAudioType);
@@ -76,4 +75,6 @@ initoutput(void)
     /*to avoid an unused variable warning if no output types are present*/
     (void)m;
 #endif
+
+    return MOD_SUCCESS_VAL(m);
 }

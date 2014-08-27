@@ -71,7 +71,7 @@ OpusDecoders_dealloc(decoders_OpusDecoder *self)
     if (self->channels != NULL)
         self->channels->del(self->channels);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 /*the OpusDecoder.sample_rate attribute getter*/

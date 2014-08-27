@@ -53,7 +53,7 @@ CPPMDecoder_init(decoders_CPPMDecoder *self,
 void
 CPPMDecoder_dealloc(decoders_CPPMDecoder *self)
 {
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 PyObject*

@@ -1,4 +1,5 @@
 #include <Python.h>
+#include "mod_defs.h"
 #include "pcm.h"
 #include "pcmconv.h"
 #include "bitstream.h"
@@ -97,7 +98,7 @@ PyTypeObject replaygain_ReplayGainType = {
 void
 ReplayGain_dealloc(replaygain_ReplayGain* self)
 {
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 PyObject*
@@ -398,21 +399,21 @@ PyTypeObject replaygain_ReplayGainReaderType = {
 
 
 
-PyMODINIT_FUNC
-initreplaygain(void)
+MOD_INIT(replaygain)
 {
     PyObject* m;
 
+    MOD_DEF(m, "replaygain",
+            "a ReplayGain calculation and synthesis module",
+            module_methods)
+
     replaygain_ReplayGainType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&replaygain_ReplayGainType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     replaygain_ReplayGainReaderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&replaygain_ReplayGainReaderType) < 0)
-        return;
-
-    m = Py_InitModule3("replaygain", module_methods,
-                       "A ReplayGain calculation and synthesis module.");
+        return MOD_ERROR_VAL;
 
     Py_INCREF(&replaygain_ReplayGainType);
     PyModule_AddObject(m, "ReplayGain",
@@ -421,6 +422,8 @@ initreplaygain(void)
     Py_INCREF(&replaygain_ReplayGainReaderType);
     PyModule_AddObject(m, "ReplayGainReader",
                        (PyObject *)&replaygain_ReplayGainReaderType);
+
+    return MOD_SUCCESS_VAL(m);
 }
 
 
@@ -853,7 +856,7 @@ ReplayGainReader_dealloc(replaygain_ReplayGainReader* self) {
         self->white_noise->close(self->white_noise);
     Py_XDECREF(self->audiotools_pcm);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject*

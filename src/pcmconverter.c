@@ -1,4 +1,5 @@
 #include <Python.h>
+#include "mod_defs.h"
 #include "pcmconv.h"
 #include "array.h"
 #include "bitstream.h"
@@ -122,7 +123,7 @@ Averager_dealloc(pcmconverter_Averager *self)
     self->output_channel->del(self->output_channel);
     Py_XDECREF(self->audiotools_pcm);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 int
@@ -169,7 +170,7 @@ Downmixer_dealloc(pcmconverter_Downmixer *self)
     self->output_channels->del(self->output_channels);
     Py_XDECREF(self->audiotools_pcm);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 int
@@ -432,7 +433,7 @@ Resampler_dealloc(pcmconverter_Resampler *self)
     self->output_framelist->del(self->output_framelist);
     Py_XDECREF(self->audiotools_pcm);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject*
@@ -775,7 +776,7 @@ BPSConverter_dealloc(pcmconverter_BPSConverter *self)
     if (self->white_noise != NULL)
         self->white_noise->close(self->white_noise);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 int
@@ -814,29 +815,28 @@ BPSConverter_init(pcmconverter_BPSConverter *self,
     return 0;
 }
 
-PyMODINIT_FUNC
-initpcmconverter(void)
+MOD_INIT(pcmconverter)
 {
     PyObject* m;
 
+    MOD_DEF(m, "pcmconverter", "a PCM stream conversion module",
+            module_methods)
+
     pcmconverter_AveragerType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&pcmconverter_AveragerType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     pcmconverter_DownmixerType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&pcmconverter_DownmixerType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     pcmconverter_ResamplerType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&pcmconverter_ResamplerType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     pcmconverter_BPSConverterType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&pcmconverter_BPSConverterType) < 0)
-        return;
-
-    m = Py_InitModule3("pcmconverter", module_methods,
-                       "A PCM stream conversion module");
+        return MOD_ERROR_VAL;
 
     Py_INCREF(&pcmconverter_AveragerType);
     PyModule_AddObject(m, "Averager",
@@ -853,4 +853,6 @@ initpcmconverter(void)
     Py_INCREF(&pcmconverter_BPSConverterType);
     PyModule_AddObject(m, "BPSConverter",
                        (PyObject *)&pcmconverter_BPSConverterType);
+
+    return MOD_SUCCESS_VAL(m);
 }

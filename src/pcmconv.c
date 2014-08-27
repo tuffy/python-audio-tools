@@ -241,7 +241,7 @@ int pcmreader_read(struct pcmreader_s* reader,
     }
 
     /*ensure result is a pcm.FrameList object*/
-    if (framelist_obj->ob_type != (PyTypeObject*)reader->framelist_type) {
+    if (Py_TYPE(framelist_obj) != (PyTypeObject*)reader->framelist_type) {
         Py_DECREF(framelist_obj);
         PyErr_SetString(PyExc_TypeError,
                         "results from pcmreader.read() must be FrameLists");

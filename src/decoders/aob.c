@@ -141,7 +141,7 @@ DVDA_Title_dealloc(decoders_DVDA_Title *self) {
 #ifndef STANDALONE
     Py_XDECREF(self->audiotools_pcm);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 #endif
 }
 

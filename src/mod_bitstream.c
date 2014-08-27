@@ -1,4 +1,5 @@
 #include <Python.h>
+#include "mod_defs.h"
 #include "bitstream.h"
 #include "huffman.h"
 #include "mod_bitstream.h"
@@ -22,33 +23,31 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-PyMODINIT_FUNC
-initbitstream(void)
+MOD_INIT(bitstream)
 {
     PyObject* m;
 
+    MOD_DEF(m, "bitstream", "a bitstream handling module", module_methods)
+
     bitstream_BitstreamReaderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&bitstream_BitstreamReaderType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     bitstream_HuffmanTreeType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&bitstream_HuffmanTreeType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     bitstream_BitstreamWriterType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&bitstream_BitstreamWriterType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     bitstream_BitstreamRecorderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&bitstream_BitstreamRecorderType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     bitstream_BitstreamAccumulatorType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&bitstream_BitstreamAccumulatorType) < 0)
-        return;
-
-    m = Py_InitModule3("bitstream", module_methods,
-                       "A bitstream handling module");
+        return MOD_ERROR_VAL;
 
     Py_INCREF(&bitstream_BitstreamReaderType);
     PyModule_AddObject(m, "BitstreamReader",
@@ -69,6 +68,8 @@ initbitstream(void)
     Py_INCREF(&bitstream_BitstreamAccumulatorType);
     PyModule_AddObject(m, "BitstreamAccumulator",
                        (PyObject *)&bitstream_BitstreamAccumulatorType);
+
+    return MOD_SUCCESS_VAL(m);
 }
 
 static PyObject*
@@ -456,7 +457,7 @@ BitstreamReader_read_huffman_code(bitstream_BitstreamReader *self,
     if (!PyArg_ParseTuple(args, "O", &huffman_tree_obj))
         return NULL;
 
-    if (huffman_tree_obj->ob_type != &bitstream_HuffmanTreeType) {
+    if (Py_TYPE(huffman_tree_obj) != &bitstream_HuffmanTreeType) {
         PyErr_SetString(PyExc_TypeError, "argument must a HuffmanTree object");
         return NULL;
     }
@@ -930,7 +931,7 @@ BitstreamReader_callback(uint8_t byte, PyObject *callback)
 static PyObject*
 BitstreamReader_substream_meth(bitstream_BitstreamReader *self, PyObject *args)
 {
-    PyTypeObject *type = self->ob_type;
+    PyTypeObject *type = Py_TYPE(self);
     long int bytes;
     bitstream_BitstreamReader *obj;
 
@@ -992,7 +993,7 @@ BitstreamReader_substream_append(bitstream_BitstreamReader *self,
                             UINT_MAX);
     }
 
-    if (self->ob_type != substream_obj->ob_type) {
+    if (Py_TYPE(self) != Py_TYPE(substream_obj)) {
         PyErr_SetString(PyExc_TypeError,
                         "first argument must be a BitstreamReader");
         return NULL;
@@ -1173,7 +1174,7 @@ BitstreamReader_dealloc(bitstream_BitstreamReader *self)
     Py_XDECREF(self->file_obj);
     self->file_obj = NULL;
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject*
@@ -1346,7 +1347,7 @@ HuffmanTree_dealloc(bitstream_HuffmanTree *self)
     free(self->br_table);
     free(self->bw_table);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject*
@@ -1832,7 +1833,7 @@ BitstreamWriter_dealloc(bitstream_BitstreamWriter *self)
 
     Py_XDECREF(self->file_obj);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject*
@@ -1929,7 +1930,7 @@ BitstreamWriter_write_huffman_code(bitstream_BitstreamWriter *self,
     if (!PyArg_ParseTuple(args, "Oi", &huffman_tree_obj, &value))
         return NULL;
 
-    if (huffman_tree_obj->ob_type != &bitstream_HuffmanTreeType) {
+    if (Py_TYPE(huffman_tree_obj) != &bitstream_HuffmanTreeType) {
         PyErr_SetString(PyExc_TypeError, "argument must a HuffmanTree object");
         return NULL;
     }
@@ -2321,7 +2322,7 @@ BitstreamRecorder_write_huffman_code(bitstream_BitstreamRecorder *self,
     if (!PyArg_ParseTuple(args, "Oi", &huffman_tree_obj, &value))
         return NULL;
 
-    if (huffman_tree_obj->ob_type != &bitstream_HuffmanTreeType) {
+    if (Py_TYPE(huffman_tree_obj) != &bitstream_HuffmanTreeType) {
         PyErr_SetString(PyExc_TypeError, "argument must a HuffmanTree object");
         return NULL;
     }
@@ -2511,13 +2512,13 @@ internal_writer(PyObject *writer)
     bitstream_BitstreamRecorder* recorder_obj;
     bitstream_BitstreamAccumulator* accumulator_obj;
 
-    if (writer->ob_type == &bitstream_BitstreamWriterType) {
+    if (Py_TYPE(writer) == &bitstream_BitstreamWriterType) {
         writer_obj = (bitstream_BitstreamWriter*)writer;
         return writer_obj->bitstream;
-    } else if (writer->ob_type == &bitstream_BitstreamRecorderType) {
+    } else if (Py_TYPE(writer) == &bitstream_BitstreamRecorderType) {
         recorder_obj = (bitstream_BitstreamRecorder*)writer;
         return recorder_obj->bitstream;
-    } else if (writer->ob_type == &bitstream_BitstreamAccumulatorType) {
+    } else if (Py_TYPE(writer) == &bitstream_BitstreamAccumulatorType) {
         accumulator_obj = (bitstream_BitstreamAccumulator*)writer;
         return accumulator_obj->bitstream;
     } else {
@@ -2705,7 +2706,7 @@ BitstreamRecorder_dealloc(bitstream_BitstreamRecorder *self)
     if (self->bitstream != NULL)
         self->bitstream->free(self->bitstream);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject*
@@ -2749,7 +2750,7 @@ BitstreamAccumulator_dealloc(bitstream_BitstreamAccumulator *self)
     if (self->bitstream != NULL)
         self->bitstream->free(self->bitstream);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject*
@@ -2858,7 +2859,7 @@ BitstreamAccumulator_write_huffman_code(bitstream_BitstreamAccumulator *self,
     if (!PyArg_ParseTuple(args, "Oi", &huffman_tree_obj, &value))
         return NULL;
 
-    if (huffman_tree_obj->ob_type != &bitstream_HuffmanTreeType) {
+    if (Py_TYPE(huffman_tree_obj) != &bitstream_HuffmanTreeType) {
         PyErr_SetString(PyExc_TypeError, "argument must a HuffmanTree object");
         return NULL;
     }

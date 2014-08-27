@@ -1197,7 +1197,7 @@ ALACEncoder_dealloc(encoders_ALACEncoder *self)
     self->channels->del(self->channels);
     self->output_buffer->close(self->output_buffer);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 /*the ALAC.encode() method*/
@@ -1215,7 +1215,7 @@ ALACEncoder_encode(encoders_ALACEncoder *self, PyObject *args)
         return NULL;
 
     /*ensure argument is FrameList object*/
-    if (framelist_obj->ob_type != (PyTypeObject*)self->framelist_type) {
+    if (Py_TYPE(framelist_obj) != (PyTypeObject*)self->framelist_type) {
         PyErr_SetString(PyExc_TypeError, "argument must be a FrameList");
         return NULL;
     } else {

@@ -123,7 +123,7 @@ ALACDecoder_dealloc(decoders_ALACDecoder *self)
 
     Py_XDECREF(self->audiotools_pcm);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 PyObject*

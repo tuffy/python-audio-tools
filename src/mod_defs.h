@@ -1,8 +1,3 @@
-#include <Python.h>
-#include "mod_defs.h"
-#include "bitstream.h"
-#include "encoders.h"
-
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
  Copyright (C) 2007-2014  Brian Langenberger
@@ -22,21 +17,8 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-extern PyTypeObject encoders_ALACEncoderType;
-
-MOD_INIT(encoders)
-{
-    PyObject* m;
-
-    MOD_DEF(m, "encoders", "low-level audio format encoders",  module_methods)
-
-    encoders_ALACEncoderType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&encoders_ALACEncoderType) < 0)
-        return MOD_ERROR_VAL;
-
-    Py_INCREF(&encoders_ALACEncoderType);
-    PyModule_AddObject(m, "ALACEncoder",
-                       (PyObject *)&encoders_ALACEncoderType);
-
-    return MOD_SUCCESS_VAL(m);
-}
+#define MOD_ERROR_VAL
+#define MOD_SUCCESS_VAL(val)
+#define MOD_INIT(name) PyMODINIT_FUNC init##name(void)
+#define MOD_DEF(ob, name, doc, methods) \
+        ob = Py_InitModule3(name, methods, doc);

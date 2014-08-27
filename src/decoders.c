@@ -1,4 +1,5 @@
 #include <Python.h>
+#include "mod_defs.h"
 #include "decoders.h"
 #ifdef HAS_MP3
 #include <mpg123.h>
@@ -45,79 +46,77 @@ extern PyTypeObject decoders_Sine_Simple_Type;
 extern PyTypeObject decoders_SameSample_Type;
 extern PyTypeObject decoders_CPPMDecoderType;
 
-PyMODINIT_FUNC
-initdecoders(void)
+MOD_INIT(decoders)
 {
     PyObject* m;
 
+    MOD_DEF(m, "decoders", "low-level audio format decoders", module_methods)
+
     decoders_FlacDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_FlacDecoderType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     decoders_OggFlacDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_OggFlacDecoderType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     decoders_SHNDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_SHNDecoderType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     decoders_ALACDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_ALACDecoderType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     decoders_WavPackDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_WavPackDecoderType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     #ifdef HAS_VORBIS
     decoders_VorbisDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_VorbisDecoderType) < 0)
-        return;
+        return MOD_ERROR_VAL;
     #endif
 
     #ifdef HAS_MP3
     decoders_MP3DecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_MP3DecoderType) < 0)
-        return;
+        return MOD_ERROR_VAL;
     #endif
 
     #ifdef HAS_OPUS
     decoders_OpusDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_OpusDecoderType) < 0)
-        return;
+        return MOD_ERROR_VAL;
     #endif
 
     decoders_TTADecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_TTADecoderType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     decoders_CPPMDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_CPPMDecoderType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     decoders_DVDA_Title_Type.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_DVDA_Title_Type) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     decoders_Sine_Mono_Type.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_Sine_Mono_Type) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     decoders_Sine_Stereo_Type.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_Sine_Stereo_Type) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     decoders_Sine_Simple_Type.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_Sine_Simple_Type) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     decoders_SameSample_Type.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_SameSample_Type) < 0)
-        return;
-
-    m = Py_InitModule3("decoders", module_methods,
-                       "Low-level audio format decoders");
+        return MOD_ERROR_VAL;
 
     Py_INCREF(&decoders_FlacDecoderType);
     PyModule_AddObject(m, "FlacDecoder",
@@ -193,4 +192,6 @@ initdecoders(void)
       so we won't worry about it*/
     mpg123_init();
     #endif
+
+    return MOD_SUCCESS_VAL(m);
 }

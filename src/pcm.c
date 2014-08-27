@@ -1,5 +1,6 @@
 #ifndef STANDALONE
 #include <Python.h>
+#include "mod_defs.h"
 #endif
 #include <stdlib.h>
 
@@ -161,7 +162,7 @@ void
 FrameList_dealloc(pcm_FrameList* self)
 {
     free(self->samples);
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 PyObject*
@@ -242,7 +243,7 @@ FrameList_create(void)
 int
 FrameList_CheckExact(PyObject *o)
 {
-    return o->ob_type == &pcm_FrameListType;
+    return Py_TYPE(o) == &pcm_FrameListType;
 }
 
 PyObject*
@@ -993,7 +994,7 @@ void
 FloatFrameList_dealloc(pcm_FloatFrameList* self)
 {
     free(self->samples);
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 PyObject*
@@ -1061,7 +1062,7 @@ FloatFrameList_create(void)
 int
 FloatFrameList_CheckExact(PyObject *o)
 {
-    return o->ob_type == &pcm_FloatFrameListType;
+    return Py_TYPE(o) == &pcm_FloatFrameListType;
 }
 
 PyObject*
@@ -1567,21 +1568,22 @@ FloatFrameList_converter(PyObject* obj, void** floatframelist)
     }
 }
 
-PyMODINIT_FUNC
-initpcm(void)
+MOD_INIT(pcm)
 {
     PyObject* m;
 
+    MOD_DEF(m, "pcm", "a PCM FrameList handling module", module_methods)
+
+    if (!m)
+        return MOD_ERROR_VAL;
+
     pcm_FrameListType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&pcm_FrameListType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     pcm_FloatFrameListType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&pcm_FloatFrameListType) < 0)
-        return;
-
-    m = Py_InitModule3("pcm", module_methods,
-                       "A PCM FrameList handling module.");
+        return MOD_ERROR_VAL;
 
     Py_INCREF(&pcm_FrameListType);
     PyModule_AddObject(m, "FrameList",
@@ -1589,6 +1591,8 @@ initpcm(void)
     Py_INCREF(&pcm_FloatFrameListType);
     PyModule_AddObject(m, "FloatFrameList",
                        (PyObject *)&pcm_FloatFrameListType);
+
+    return MOD_SUCCESS_VAL(m);
 }
 
 #endif

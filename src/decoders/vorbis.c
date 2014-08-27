@@ -46,7 +46,7 @@ VorbisDecoder_dealloc(decoders_VorbisDecoder *self) {
     self->channels->del(self->channels);
     Py_XDECREF(self->audiotools_pcm);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 int

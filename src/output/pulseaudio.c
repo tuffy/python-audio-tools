@@ -507,7 +507,7 @@ void PulseAudio_dealloc(output_PulseAudio *self)
     if (self->mainloop != NULL)
         pa_threaded_mainloop_free(self->mainloop);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 

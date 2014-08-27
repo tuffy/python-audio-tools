@@ -6,6 +6,7 @@
 #include <cdio/types.h>
 #include "pcm.h"
 #include "pcmconv.h"
+#include "mod_defs.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -38,20 +39,20 @@
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
-PyMODINIT_FUNC
-initcdio(void)
+MOD_INIT(cdio)
 {
     PyObject* m;
 
+    MOD_DEF(m, "cdio", "a CDDA reading module", cdioMethods)
+
     cdio_CDDAReaderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&cdio_CDDAReaderType) < 0)
-        return;
-
-    m = Py_InitModule3("cdio", cdioMethods,
-                       "A CDDA reading module.");
+        return MOD_ERROR_VAL;
 
     Py_INCREF(&cdio_CDDAReaderType);
     PyModule_AddObject(m, "CDDAReader", (PyObject *)&cdio_CDDAReaderType);
+
+    return MOD_SUCCESS_VAL(m);
 }
 
 static PyObject*
@@ -203,7 +204,7 @@ CDDAReader_dealloc(cdio_CDDAReader *self)
         self->dealloc(self);
     }
     Py_XDECREF(self->audiotools_pcm);
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static void

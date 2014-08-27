@@ -83,7 +83,7 @@ void Sine_Mono_dealloc(decoders_Sine_Mono* self) {
     self->buffer->del(self->buffer);
     Py_XDECREF(self->audiotools_pcm);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 PyObject*
@@ -232,7 +232,7 @@ void Sine_Stereo_dealloc(decoders_Sine_Stereo* self) {
     self->buffer->del(self->buffer);
     Py_XDECREF(self->audiotools_pcm);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 PyObject*
@@ -376,7 +376,7 @@ void Sine_Simple_dealloc(decoders_Sine_Simple* self) {
     self->buffer->del(self->buffer);
     Py_XDECREF(self->audiotools_pcm);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 PyObject*
@@ -550,7 +550,7 @@ void SameSample_dealloc(decoders_SameSample* self)
     self->buffer->del(self->buffer);
     Py_XDECREF(self->audiotools_pcm);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject*

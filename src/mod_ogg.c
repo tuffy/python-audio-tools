@@ -1,4 +1,5 @@
 #include "mod_ogg.h"
+#include "mod_defs.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -119,7 +120,7 @@ Page_init(ogg_Page *self, PyObject *args, PyObject *keywds)
 void
 Page_dealloc(ogg_Page *self)
 {
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject*
@@ -400,7 +401,7 @@ PageReader_dealloc(ogg_PageReader *self)
     if (self->reader != NULL)
         self->reader->free(self->reader);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject*
@@ -419,7 +420,7 @@ PageReader_read(ogg_PageReader *self, PyObject *args)
     if (result == OGG_OK) {
         return (PyObject*)page;
     } else {
-        page->ob_type->tp_free((PyObject*)page);
+        Py_TYPE(page)->tp_free((PyObject*)page);
         PyErr_SetString(ogg_exception(result), ogg_strerror(result));
         return NULL;
     }
@@ -478,7 +479,7 @@ PageWriter_dealloc(ogg_PageWriter *self)
     if (self->writer != NULL)
         self->writer->free(self->writer);
 
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject*
@@ -490,7 +491,7 @@ PageWriter_write(ogg_PageWriter *self, PyObject *args)
     /*ensure argument is Page object*/
     if (!PyArg_ParseTuple(args, "O", &page_obj)) {
         return NULL;
-    } else if (page_obj->ob_type != &ogg_PageType) {
+    } else if (Py_TYPE(page_obj) != &ogg_PageType) {
         PyErr_SetString(PyExc_TypeError, "argument must be a Page object");
         return NULL;
     } else {
@@ -524,25 +525,23 @@ PageWriter_close(ogg_PageWriter *self, PyObject *args)
 
 
 
-PyMODINIT_FUNC
-init_ogg(void)
+MOD_INIT(_ogg)
 {
     PyObject* m;
 
+    MOD_DEF(m, "_ogg", "an Ogg page handling module", module_methods)
+
     ogg_PageType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&ogg_PageType) < 0)
-        return;
+        return MOD_ERROR_VAL;
 
     ogg_PageReaderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&ogg_PageReaderType) < 0)
-        return ;
+        return MOD_ERROR_VAL;
 
     ogg_PageWriterType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&ogg_PageWriterType) < 0)
-        return ;
-
-    m = Py_InitModule3("_ogg", module_methods,
-                       "An Ogg page handling module");
+        return MOD_ERROR_VAL;
 
     Py_INCREF(&ogg_PageType);
     PyModule_AddObject(m, "Page",
@@ -555,4 +554,6 @@ init_ogg(void)
     Py_INCREF(&ogg_PageWriterType);
     PyModule_AddObject(m, "PageWriter",
                        (PyObject *)&ogg_PageWriterType);
+
+    return MOD_SUCCESS_VAL(m);
 }

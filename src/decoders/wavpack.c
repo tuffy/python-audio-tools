@@ -228,7 +228,7 @@ WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
 #endif
 
 #ifndef STANDALONE
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 #endif
 }
 

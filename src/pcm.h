@@ -1,13 +1,6 @@
 #ifndef PCM_H
 #define PCM_H
 
-#ifndef STANDALONE
-#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
-typedef int Py_ssize_t;
-#define PY_SSIZE_T_MAX INT_MAX
-#define PY_SSIZE_T_MIN INT_MIN
-#endif
-
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
  Copyright (C) 2007-2014  Brian Langenberger
@@ -27,10 +20,6 @@ typedef int Py_ssize_t;
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-#if PY_MAJOR_VERSION >= 3
-#define IS_PY3K
-#endif
-#endif
 
 /******************
   FrameList Object
