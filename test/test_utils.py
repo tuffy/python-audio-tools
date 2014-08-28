@@ -3077,6 +3077,7 @@ class trackinfo(UtilTest):
 
     @UTIL_TRACKINFO
     def test_trackinfo(self):
+        from io import StringIO
         import re
         from audiotools.text import (LAB_TRACKINFO_CHANNELS,
                                      LAB_TRACKINFO_CHANNEL,
@@ -3110,11 +3111,11 @@ class trackinfo(UtilTest):
                     # check metadata/low-level metadata if -n not present
                     if ("-n" not in options):
                         if ("-L" not in options):
-                            for line in BytesIO(
+                            for line in StringIO(
                                 unicode(track.get_metadata())):
                                 self.__check_output__(line.rstrip('\r\n'))
                         else:
-                            for line in BytesIO(
+                            for line in StringIO(
                                 track.get_metadata().raw_info()):
                                 self.__check_output__(line.rstrip('\r\n'))
                         if ("-C" in options):
