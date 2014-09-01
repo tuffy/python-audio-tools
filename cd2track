@@ -119,7 +119,7 @@ if (__name__ == '__main__'):
                             help=_.OPT_DIR)
 
     conversion.add_argument("--format",
-                            default=audiotools.FILENAME_FORMAT,
+                            default=None,
                             dest="format",
                             help=_.OPT_FORMAT)
 
@@ -318,7 +318,9 @@ if (__name__ == '__main__'):
             input_filenames=[audiotools.Filename("track%2.2d.cdda.wav" % (i))
                              for i in tracks_to_rip],
             output_directory=options.dir,
-            format_string=options.format,
+            format_string=(options.format if
+                           (options.format is not None) else
+                           audiotools.FILENAME_FORMAT),
             output_class=AudioType,
             quality=quality,
             completion_label=_.LAB_CD2TRACK_APPLY)

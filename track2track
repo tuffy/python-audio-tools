@@ -494,10 +494,6 @@ if (__name__ == '__main__'):
         # split tracks by album
         albums_iter = audiotools.group_tracks(audiofiles)
 
-        filename_format = (audiotools.FILENAME_FORMAT if
-                           options.format is None else
-                           options.format)
-
         # input_tracks[a][t] is an AudioFile object
         # per album "a", per track "t"
         input_tracks = []
@@ -579,7 +575,9 @@ if (__name__ == '__main__'):
                 metadata_choices=metadata_choices,
                 input_filenames=input_filenames,
                 output_directory=options.dir,
-                format_string=filename_format,
+                format_string=(options.format if
+                               (options.format is not None) else
+                               audiotools.FILENAME_FORMAT),
                 output_class=AudioType,
                 quality=options.quality,
                 completion_label=(_.LAB_TRACK2TRACK_APPLY if
@@ -668,7 +666,7 @@ if (__name__ == '__main__'):
                         metadata_choices=album_metadata_choices,
                         input_filenames=album_filenames,
                         output_directory=options.dir,
-                        format_string=filename_format,
+                        format_string=options.format,
                         output_class=AudioType,
                         quality=options.quality,
                         msg=msg,

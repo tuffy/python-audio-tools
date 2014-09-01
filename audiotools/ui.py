@@ -2617,7 +2617,7 @@ def process_output_options(metadata_choices,
 
     output_directory is a string of the default output dir
 
-    format_string is a UTF-8 encoded format string
+    format_string is a UTF-8 encoded format string, or None
 
     output_class is the default AudioFile-compatible class
 

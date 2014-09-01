@@ -7081,6 +7081,108 @@
     - [X] tracklength
     - [X] trackplay
     - [X] tracksplit
+* TODO Finish version 3.0
+** TODO Make compatible with Python 2.7 and 3.X
+   Like Urwid and PLY, the same code should work on both versions.
+*** TODO Update C-based extensions
+    Use #ifdefs as needed to support both Python versions.
+
+    - [ ] audiotools.pcm
+    - [ ] audiotools.pcmconverter
+    - [ ] audiotools.replaygain
+    - [ ] audiotools.decoders
+    - [ ] audiotools.encoders
+    - [ ] audiotools.bitstream
+    - [ ] audiotools._ogg
+    - [ ] audiotools._accuraterip
+    - [ ] audiotools.output
+*** TODO Update Python modules
+**** TODO audiotools
+     - [ ] __init__
+     - [ ] accuraterip
+     - [ ] aiff
+     - [ ] ape
+     - [ ] au
+     - [ ] delta
+     - [ ] dvda
+     - [ ] flac
+     - [ ] freedb
+     - [ ] id3
+     - [ ] id3v1
+     - [ ] image
+     - [ ] m4a_atoms
+     - [ ] m4a
+     - [ ] mp3
+     - [ ] musicbrainz
+     - [ ] ogg
+     - [ ] opus
+     - [ ] player
+     - [ ] shn
+     - [ ] text
+     - [ ] tta
+     - [ ] ui
+     - [ ] vorbiscomment
+     - [ ] vorbis
+     - [ ] wavpack
+     - [ ] wav
+**** TODO audiotools.cue
+     - [ ] __init__
+     - [ ] tokrules
+     - [ ] yaccrules
+**** TODO audiotools.toc
+     - [ ] __init__
+     - [ ] tokrules
+     - [ ] yaccrules
+*** TODO Update utilities
+    - [ ] audiotools-config
+    - [ ] cd2track
+    - [ ] cdinfo
+    - [ ] cdplay
+    - [ ] coverdump
+    - [ ] covertag
+    - [ ] coverview
+    - [ ] dvda2track
+    - [ ] dvdainfo
+    - [ ] track2cd
+    - [ ] track2track
+    - [ ] trackcat
+    - [ ] trackcmp
+    - [ ] trackinfo
+    - [ ] tracklength
+    - [ ] tracklint
+    - [ ] trackplay
+    - [ ] trackrename
+    - [ ] tracksplit
+    - [ ] tracktag
+    - [ ] trackverify
+*** TODO Update setup script
+*** TODO Update Python-based decoders
+    - [ ] alac
+    - [ ] flac
+    - [ ] shn
+    - [ ] tta
+    - [ ] wavpack
+*** TODO Update Python-based encoders
+    - [ ] alac
+    - [ ] flac
+    - [ ] shn
+    - [ ] tta
+    - [ ] wavpack
+*** TODO Update documentation
+*** TODO Update unit tests
+    - [ ] test
+    - [ ] test_core
+    - [ ] test_formats
+    - [ ] test_metadata
+    - [ ] test_streams
+    - [ ] test_utils
+**** TODO Update unit test utilities
+     - [ ] error.py
+     - [ ] test_cdrdao
+     - [ ] test_cdrecord
+*** TODO Ensure unit tests pass
+    - [ ] Python 2.7
+    - [ ] Python 3
 ** TODO Improve test coverage
    - [X] set_metadata(None) to all formats
 *** TODO Check repr on everything
@@ -7524,108 +7626,6 @@
      - [ ] write wave footer
 **** TODO write_block
      - [ ] all samples are 0
-* TODO Finish version 3.0
-** TODO Make compatible with Python 2.7 and 3.X
-   Like Urwid and PLY, the same code should work on both versions.
-*** TODO Update C-based extensions
-    Use #ifdefs as needed to support both Python versions.
-
-    - [ ] audiotools.pcm
-    - [ ] audiotools.pcmconverter
-    - [ ] audiotools.replaygain
-    - [ ] audiotools.decoders
-    - [ ] audiotools.encoders
-    - [ ] audiotools.bitstream
-    - [ ] audiotools._ogg
-    - [ ] audiotools._accuraterip
-    - [ ] audiotools.output
-*** TODO Update Python modules
-**** TODO audiotools
-     - [ ] __init__
-     - [ ] accuraterip
-     - [ ] aiff
-     - [ ] ape
-     - [ ] au
-     - [ ] delta
-     - [ ] dvda
-     - [ ] flac
-     - [ ] freedb
-     - [ ] id3
-     - [ ] id3v1
-     - [ ] image
-     - [ ] m4a_atoms
-     - [ ] m4a
-     - [ ] mp3
-     - [ ] musicbrainz
-     - [ ] ogg
-     - [ ] opus
-     - [ ] player
-     - [ ] shn
-     - [ ] text
-     - [ ] tta
-     - [ ] ui
-     - [ ] vorbiscomment
-     - [ ] vorbis
-     - [ ] wavpack
-     - [ ] wav
-**** TODO audiotools.cue
-     - [ ] __init__
-     - [ ] tokrules
-     - [ ] yaccrules
-**** TODO audiotools.toc
-     - [ ] __init__
-     - [ ] tokrules
-     - [ ] yaccrules
-*** TODO Update utilities
-    - [ ] audiotools-config
-    - [ ] cd2track
-    - [ ] cdinfo
-    - [ ] cdplay
-    - [ ] coverdump
-    - [ ] covertag
-    - [ ] coverview
-    - [ ] dvda2track
-    - [ ] dvdainfo
-    - [ ] track2cd
-    - [ ] track2track
-    - [ ] trackcat
-    - [ ] trackcmp
-    - [ ] trackinfo
-    - [ ] tracklength
-    - [ ] tracklint
-    - [ ] trackplay
-    - [ ] trackrename
-    - [ ] tracksplit
-    - [ ] tracktag
-    - [ ] trackverify
-*** TODO Update setup script
-*** TODO Update Python-based decoders
-    - [ ] alac
-    - [ ] flac
-    - [ ] shn
-    - [ ] tta
-    - [ ] wavpack
-*** TODO Update Python-based encoders
-    - [ ] alac
-    - [ ] flac
-    - [ ] shn
-    - [ ] tta
-    - [ ] wavpack
-*** TODO Update documentation
-*** TODO Update unit tests
-    - [ ] test
-    - [ ] test_core
-    - [ ] test_formats
-    - [ ] test_metadata
-    - [ ] test_streams
-    - [ ] test_utils
-**** TODO Update unit test utilities
-     - [ ] error.py
-     - [ ] test_cdrdao
-     - [ ] test_cdrecord
-*** TODO Ensure unit tests pass
-    - [ ] Python 2.7
-    - [ ] Python 3
 * TODO Finish version 3.1
 ** TODO Support building cue sheets from discs
    Find some way of grabbing the index points from a disc

@@ -144,7 +144,7 @@ if (__name__ == '__main__'):
                             help=_.OPT_DIR)
 
     conversion.add_argument("--format",
-                            default=audiotools.FILENAME_FORMAT,
+                            default=None,
                             dest="format",
                             help=_.OPT_FORMAT)
 
@@ -401,7 +401,9 @@ if (__name__ == '__main__'):
             input_filenames=[input_filename for i in
                              range(output_track_count)],
             output_directory=options.dir,
-            format_string=options.format,
+            format_string=(options.format if
+                           (options.format is not None) else
+                           audiotools.FILENAME_FORMAT),
             output_class=AudioType,
             quality=options.quality,
             completion_label=_.LAB_TRACKSPLIT_APPLY)
