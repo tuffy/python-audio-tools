@@ -218,6 +218,7 @@ class OpusAudio(VorbisAudio):
                   0x3f,     # FR, FC, FL, BL, BR, LFE
                   0x70f,    # FL, FC, FR, SL, SR, BC, LFE
                   0x63f))):  # FL, FC, FR, SL, SR, BL, BR, LFE
+                from audiotools import UnsupportedChannelMask
                 raise UnsupportedChannelMask(filename, channel_mask)
 
         try:
