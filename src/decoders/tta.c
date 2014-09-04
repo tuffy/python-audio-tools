@@ -42,7 +42,7 @@ TTADecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 int
 TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
-    self->file = NULL;
+    PyObject *file;
 
     /*initialize temporary buffers*/
     self->total_tta_frames = 0;
@@ -59,28 +59,24 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
 
     self->audiotools_pcm = NULL;
 
-    if (!PyArg_ParseTuple(args, "O", &(self->file))) {
+    if (!PyArg_ParseTuple(args, "O", &file)) {
         return -1;
     } else {
-        Py_INCREF(self->file);
+        Py_INCREF(file);
     }
 
     /*open the TTA file*/
-    if (PyFile_Check(self->file)) {
-        self->bitstream = br_open(PyFile_AsFile(self->file), BS_LITTLE_ENDIAN);
-    } else {
-        self->bitstream = br_open_external(
-            self->file,
-            BS_LITTLE_ENDIAN,
-            4096,
-            (ext_read_f)br_read_python,
-            (ext_setpos_f)bs_setpos_python,
-            (ext_getpos_f)bs_getpos_python,
-            (ext_free_pos_f)bs_free_pos_python,
-            (ext_seek_f)bs_fseek_python,
-            (ext_close_f)bs_close_python,
-            (ext_free_f)bs_free_python_nodecref);
-    }
+    self->bitstream = br_open_external(
+        file,
+        BS_LITTLE_ENDIAN,
+        4096,
+        (ext_read_f)br_read_python,
+        (ext_setpos_f)bs_setpos_python,
+        (ext_getpos_f)bs_getpos_python,
+        (ext_free_pos_f)bs_free_pos_python,
+        (ext_seek_f)bs_fseek_python,
+        (ext_close_f)bs_close_python,
+        (ext_free_f)bs_free_python_decref);
 
     switch (read_header(self->bitstream,
                         &(self->header.channels),
@@ -133,8 +129,14 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
 
     /*place a mark after the seektable for possible rewinding
       if the stream is file-based*/
-    if (PyFile_Check(self->file))
+    if (!setjmp(*br_try(self->bitstream))) {
         self->bitstream->mark(self->bitstream, FRAMES_START);
+        br_etry(self->bitstream);
+    } else {
+        br_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error getting stream position");
+        return -1;
+    }
 
     /*mark stream as not closed and ready for reading*/
     self->closed = 0;
@@ -144,8 +146,6 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
 
 void
 TTADecoder_dealloc(decoders_TTADecoder *self) {
-    Py_XDECREF(self->file);
-
     if (self->seektable != NULL)
         free(self->seektable);
 
@@ -272,19 +272,11 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
 static PyObject*
 TTADecoder_seek(decoders_TTADecoder *self, PyObject *args)
 {
-    FILE *file;
     long long seeked_offset;
-    unsigned current_pcm_frame;
 
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot seek closed stream");
         return NULL;
-    } else if (!PyFile_Check(self->file)) {
-        PyErr_SetString(PyExc_TypeError,
-                        "can only seek streams from file objects");
-        return NULL;
-    } else {
-        file = PyFile_AsFile(self->file);
     }
 
     if (!PyArg_ParseTuple(args, "L", &seeked_offset))
@@ -295,37 +287,49 @@ TTADecoder_seek(decoders_TTADecoder *self, PyObject *args)
         return NULL;
     }
 
-    /*rewind to start of TTA blocks*/
-    self->bitstream->rewind(self->bitstream, FRAMES_START);
+    if (!setjmp(*br_try(self->bitstream))) {
+        unsigned current_pcm_frame = 0;
 
-    /*skip frames until we reach the requested one
-      or run out of frames entirely
-      and adjust both current TTA frame and
-      remaining number of PCM frames according to new position*/
-    current_pcm_frame = 0;
-    self->current_tta_frame = 0;
-    self->remaining_pcm_frames = self->header.total_pcm_frames;
+        /*rewind to start of TTA blocks*/
+        self->bitstream->rewind(self->bitstream, FRAMES_START);
 
-    while ((current_pcm_frame + self->block_size) < seeked_offset) {
-        const unsigned block_size = MIN(self->remaining_pcm_frames,
-                                        self->block_size);
-        if (block_size > 0) {
-            const unsigned frame_size =
-                self->seektable[self->current_tta_frame];
+        /*skip frames until we reach the requested one
+          or run out of frames entirely
+          and adjust both current TTA frame and
+          remaining number of PCM frames according to new position*/
+        self->current_tta_frame = 0;
+        self->remaining_pcm_frames = self->header.total_pcm_frames;
 
-            fseek(file, (long)frame_size, SEEK_CUR);
+        while ((current_pcm_frame + self->block_size) < seeked_offset) {
+            const unsigned block_size = MIN(self->remaining_pcm_frames,
+                                            self->block_size);
+            if (block_size > 0) {
+                const unsigned frame_size =
+                    self->seektable[self->current_tta_frame];
 
-            current_pcm_frame += block_size;
-            self->current_tta_frame++;
-            self->remaining_pcm_frames -= block_size;
-        } else {
-            /*no additional frames to seek to*/
-            break;
+                self->bitstream->seek(self->bitstream,
+                                      (long)frame_size,
+                                      BS_SEEK_CUR);
+
+                current_pcm_frame += block_size;
+                self->current_tta_frame++;
+                self->remaining_pcm_frames -= block_size;
+            } else {
+                /*no additional frames to seek to*/
+                break;
+            }
         }
+
+        br_etry(self->bitstream);
+
+        /*return PCM offset actually seeked to*/
+        return Py_BuildValue("I", current_pcm_frame);
+    } else {
+        br_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error seeking in stream");
+        return NULL;
     }
 
-    /*return PCM offset actually seeked to*/
-    return Py_BuildValue("I", current_pcm_frame);
 }
 
 PyObject*
