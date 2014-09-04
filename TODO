@@ -6122,6 +6122,352 @@
 ***** DONE Update TrueAudio to support nested tags
 ***** DONE Have TrueAudio.clean() remove all ID3v2 tags except one
 ***** DONE Update unit tests
+* DONE Finish version 2.22
+** DONE Update ReplayGain interface
+   All ReplayGain should be lossless (if supported at all) and needs an interface
+   that's less dependant on external tools.
+*** DONE Remove add_replay_gain() classmethod
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Add add_replay_gain() function
+    Takes an album's worth of audiofile objects and optional progress function
+    and if any of their classes support it (via the supports_replay_gain() classmethod)
+    calls calculate_replay_gain() on all of them and applies the result
+    using set_replay_gain()
+*** DONE Remove can_add_replay_gain() classmethod
+    If supports_replay_gain() classmethod returns True,
+    set_replay_gain() will be able to do something useful.
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Remove lossless_replay_gain classmethod
+    All ReplayGain will be lossless
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Convert replay_gain() method to get_replay_gain()
+    Returns a ReplayGain object or None, as it does now.
+    Analagous to get_metadata()
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Add set_replay_gain() method
+    Takes a ReplayGain object or None and sets the file's values
+    by updating metadata, or deletes the values if None
+    Analagous to set_metadata()
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Add delete_replay_gain() method
+    Deletes any ReplayGain values, if any
+    Analagous to delete_metadata()
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Update utilities to use new ReplayGain interface
+    - [X] cd2track
+    - [X] dvda2track
+    - [X] track2track
+    - [X] trackinfo
+    - [X] trackplay
+    - [X] tracksplit
+    - [X] tracktag
+*** DONE Update documentation
+*** DONE Update unit tests
+** DONE Catch interrupts more cleanly in utilities
+   When the user cancels a long-running job, utilities should clean the screen
+   as well as possible, delete any partial files and display a "cancelled" message
+   instead of delivering stack traces like they do now.
+   - [X] cd2track
+   - [X] cdplay
+   - [X] dvda2track
+   - [X] track2cd
+   - [X] track2track
+   - [X] trackcat
+   - [X] trackcmp
+   - [X] tracklength
+   - [X] trackplay
+   - [X] tracksplit
+   - [X] tracktag
+   - [X] trackverify
+** DONE Add AudioFile.seekable() method
+   This returns True if the format's PCMReader has a .seek() method
+   and that method supports some sort of fine-grained seeking
+   (i.e. not just return to the beginning of the file).
+*** DONE Update audio formats
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OggFlacAudio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Update documentation
+*** DONE Update utilities
+**** DONE tracksplit
+     If the file being split isn't seekable, decompress it to a temp file
+     so it can be processed across multiple jobs.
+**** DONE trackcmp
+     If comparing multiple tracks against a non-seekable image,
+     decompress it to a temp file so it can be processed across multiple jobs.
+*** DONE Update unit tests
+** DONE Have AccurateRip detect offset tracks
+   If the tracks have been ripped accurately but are merely offset
+   by some small positive or negative number of samples,
+   this should be detected and indicated in the AccurateRip results screens.
+*** DONE Update ChecksumV1
+**** DONE Add keyword parameters with sensible defaults
+**** DONE Add range option
+     This indicates the total range of the window size.
+     Defaults to 1, indicating only a single checksum to be generated.
+**** DONE Change .checksum() method to .checksums()
+     Returns a list of all calculated checksums over the whole range.
+*** DONE Add unit tests
+    Ensure ranged and non-ranged checksums are calculated properly
+    and update tests for new interface.
+*** DONE Build audiotools.cdio.CDDAReader object
+    This functions like a PCMReader object over the entire CDDA device.
+    It should work transparently on physical CD devices as well as CD images
+    and be PCM-frame centric by doing all the CD sector conversions
+    behind-the-scenes.
+**** DONE Add methods and attributes
+***** DONE CDDAReader.sample_rate
+***** DONE CDDAReader.channels
+***** DONE CDDAReader.channel_mask
+***** DONE CDDAReader.bits_per_sample
+***** DONE CDDAReader.track_offsets
+      - [X] CD image
+      - [X] CD drive
+      Returns starting offset of each track, in PCM frames
+***** DONE CDDAReader.track_lengths
+      - [X] CD image
+      - [X] CD drive
+      Returns length of each track, in PCM frames
+***** DONE CDDAReader.first_sector
+      - [X] CD image
+      - [X] CD drive
+      Used for calculating various disc IDs
+***** DONE CDDAReader.last_sector
+      - [X] CD image
+      - [X] CD drive
+      Used for calculating various disc IDs
+***** DONE CDDAReader.is_image
+      - [X] CD drive
+      - [X] CD image
+***** DONE CDDAReader.read(pcm_frames)
+      - [X] CD image
+      - [X] CD drive
+***** DONE CDDAReader.seek(pcm_frames)
+      - [X] CD image
+      - [X] CD drive
+***** DONE CDDAReader.set_speed(speed)
+      - [X] CD image
+      - [X] CD drive
+***** DONE CDDAReader.log()
+      - [X] CD image
+      - [X] CD drive
+***** DONE CDDAReader.reset_log()
+***** DONE CDDAReader.close()
+**** DONE Update documentation
+**** DONE Update unit tests
+**** DONE Detect nonexistent discs
+     CDDAReader should detect when a physical drive doesn't contain a disc
+     and raise an appropriate exception.
+**** DONE Update utilities
+***** DONE cd2track
+***** DONE cdinfo
+***** DONE cdplay
+**** DONE Clean out old audiotools.CDDA object
+     Remove outdated interface, its documentation and unit tests.
+*** DONE Update utilities
+    When verifying AccurateRip, make sure to populate the checksum
+    with the last few samples of the previous track (if any)
+    and the next few samples of the next track (if any)
+    in order to find the checksum's offset.
+**** DONE trackverify
+**** DONE cd2track
+** DONE Simplify lookup services interface
+   The perform_lookup() functions should work on DiscID objects
+   and DiscID objects should be generated from
+   CDDAReaders, track lists or cuesheet/length combinations.
+*** DONE FreeDB
+    - [X] Add from_tracks classmethod
+    - [X] Add from_sheet classmethod
+    - [X] Add unit tests
+*** DONE MusicBrainz
+    - [X] Add from_tracks classmethod
+    - [X] Add from_sheet classmethod
+    - [X] Add unit tests
+*** DONE AccurateRip
+    - [X] Add from_tracks classmethod
+    - [X] Add from_sheet classmethod
+    - [X] Add unit tests
+** DONE Add documentation for lookup services
+   - [X] audiotools.freedb
+   - [X] audiotools.musicbrainz
+   - [X] audiotools.accuraterip
+** DONE Convert TOC and CUE handling to proper grammars
+*** DONE Convert audiotools.cue
+*** DONE Convert audiotools.toc
+** DONE Add AccurateRipV2 support
+*** DONE Add ChecksumV2 object
+**** DONE Add unit tests
+*** DONE Update utilities
+    - [X] cd2track
+    - [X] trackverify
+** DONE Update Sheet interface
+   Although cuesheets are mostly a repository of index points,
+   it would be useful to support a wider subset of options
+   when converting one form to another.
+*** DONE Sheet
+    - [X] @classmethod converted(sheet) -> Sheet
+    builds Sheet object from Sheet-compatible object
+    - [X] __len__() -> total_tracks
+    - [X] __getitem__(track_index) -> SheetTrack
+    - [X] __eq__(sheet) -> boolean
+    - [X] track_numbers() -> [int]
+    - [X] track(track_number) -> SheetTrack
+    - [X] get_metadata() -> MetaData
+    MetaData contains catalog_number and CD-TEXT information
+*** DONE SheetTrack
+    - [X] @classmethod converted(sheet_track) -> SheetTrack
+    builds SheetTrack object from SheetTrack-compatible object
+    - [X] __len__() -> total_indexes
+    - [X] __getitem__(index_index) -> SheetIndex
+    - [X] __eq__(sheet_track) -> boolean
+    - [X] indexes() -> [int]
+    - [X] index(index_number) -> SheetIndex
+    - [X] filename() -> string
+    - [X] number() -> track_number
+    - [X] get_metadata() -> MetaData
+    MetaData contains track_number, ISRC and CD-TEXT information
+    - [X] is_audio() -> boolean
+    - [X] pre_emphasis() -> boolean
+    - [X] copy_peritted() -> boolean
+*** DONE SheetIndex
+    - [X] @classmethod converted(sheet_index) -> SheetIndex
+    - [X] __eq__(sheet_index) -> boolean
+    - [X] number() -> index_number
+    pre-gap is index_number 0
+    - [X] offset() -> Fraction
+    offset of index in seconds from start of stream
+*** DONE Update audiotools.cue.Cuesheet
+*** DONE Update audiotools.toc.TOCFile
+*** DONE Update audiotools.flac.Flac_CUESHEET
+*** DONE Ensure non-image cuesheets are handled properly
+    Given a non-image cuesheet and list of track lengths,
+    it may be possible to convert a non-image cuesheet
+    to an image cuesheet.
+*** DONE Handle 1st track pre-gap correctly
+    Discs with a pre-gap before the 1st track
+    should have that gap removed when split
+    and re-added when concatenating them back together
+    based on the cuesheet contents.
+    - [X] update tracksplit
+    - [X] update trackcat
+    - [X] add unit tests
+*** DONE Update utilities
+    - [X] trackcat
+    - [X] tracksplit
+    - [X] track2cd
+    - [X] trackinfo
+*** DONE Update functions/methods which take cuesheets
+    - [X] sheet_metadata_lookup
+    - [X] accuraterip_sheet_lookup
+*** DONE Update documentation
+*** DONE Update unit tests
+** DONE Converts AudioFile.seconds_length() method to Fraction
+   This should be more useful than the Decmial it was using before.
+*** DONE Update method
+*** DONE Update documentation
+*** DONE Update utilities
+    - [X] track2cd
+    - [X] trackcat
+    - [X] trackinfo
+    - [X] tracklength
+    - [X] trackplay
+    - [X] tracksplit
 * TODO Add support for genre tag?
   I'm not a big fan of the genre tag.
   Unlike track number, album name, ISRC, etc. in which a value
@@ -6735,352 +7081,6 @@
 *** TODO Add Monkey's Audio-specific unit tests
 *** TODO Test encoder/decoder against reference
 *** TODO Restore AudioFile-compatible Python interface
-* TODO Finish version 2.22
-** DONE Update ReplayGain interface
-   All ReplayGain should be lossless (if supported at all) and needs an interface
-   that's less dependant on external tools.
-*** DONE Remove add_replay_gain() classmethod
-    - [X] AudioFile
-    - [X] ALACAudio
-    - [X] AiffAudio
-    - [X] AuAudio
-    - [X] FlacAudio
-    - [X] M4AAudio
-    - [X] MP2Audio
-    - [X] MP3Audio
-    - [X] OggFlacAudio
-    - [X] OpusAudio
-    - [X] ShortenAudio
-    - [X] TrueAudio
-    - [X] VorbisAudio
-    - [X] WavPackAudio
-    - [X] WaveAudio
-*** DONE Add add_replay_gain() function
-    Takes an album's worth of audiofile objects and optional progress function
-    and if any of their classes support it (via the supports_replay_gain() classmethod)
-    calls calculate_replay_gain() on all of them and applies the result
-    using set_replay_gain()
-*** DONE Remove can_add_replay_gain() classmethod
-    If supports_replay_gain() classmethod returns True,
-    set_replay_gain() will be able to do something useful.
-    - [X] AudioFile
-    - [X] ALACAudio
-    - [X] AiffAudio
-    - [X] AuAudio
-    - [X] FlacAudio
-    - [X] M4AAudio
-    - [X] MP2Audio
-    - [X] MP3Audio
-    - [X] OggFlacAudio
-    - [X] OpusAudio
-    - [X] ShortenAudio
-    - [X] TrueAudio
-    - [X] VorbisAudio
-    - [X] WavPackAudio
-    - [X] WaveAudio
-*** DONE Remove lossless_replay_gain classmethod
-    All ReplayGain will be lossless
-    - [X] AudioFile
-    - [X] ALACAudio
-    - [X] AiffAudio
-    - [X] AuAudio
-    - [X] FlacAudio
-    - [X] M4AAudio
-    - [X] MP2Audio
-    - [X] MP3Audio
-    - [X] OggFlacAudio
-    - [X] OpusAudio
-    - [X] ShortenAudio
-    - [X] TrueAudio
-    - [X] VorbisAudio
-    - [X] WavPackAudio
-    - [X] WaveAudio
-*** DONE Convert replay_gain() method to get_replay_gain()
-    Returns a ReplayGain object or None, as it does now.
-    Analagous to get_metadata()
-    - [X] AudioFile
-    - [X] ALACAudio
-    - [X] AiffAudio
-    - [X] AuAudio
-    - [X] FlacAudio
-    - [X] M4AAudio
-    - [X] MP2Audio
-    - [X] MP3Audio
-    - [X] OggFlacAudio
-    - [X] OpusAudio
-    - [X] ShortenAudio
-    - [X] TrueAudio
-    - [X] VorbisAudio
-    - [X] WavPackAudio
-    - [X] WaveAudio
-*** DONE Add set_replay_gain() method
-    Takes a ReplayGain object or None and sets the file's values
-    by updating metadata, or deletes the values if None
-    Analagous to set_metadata()
-    - [X] AudioFile
-    - [X] ALACAudio
-    - [X] AiffAudio
-    - [X] AuAudio
-    - [X] FlacAudio
-    - [X] M4AAudio
-    - [X] MP2Audio
-    - [X] MP3Audio
-    - [X] OggFlacAudio
-    - [X] OpusAudio
-    - [X] ShortenAudio
-    - [X] TrueAudio
-    - [X] VorbisAudio
-    - [X] WavPackAudio
-    - [X] WaveAudio
-*** DONE Add delete_replay_gain() method
-    Deletes any ReplayGain values, if any
-    Analagous to delete_metadata()
-    - [X] AudioFile
-    - [X] ALACAudio
-    - [X] AiffAudio
-    - [X] AuAudio
-    - [X] FlacAudio
-    - [X] M4AAudio
-    - [X] MP2Audio
-    - [X] MP3Audio
-    - [X] OggFlacAudio
-    - [X] OpusAudio
-    - [X] ShortenAudio
-    - [X] TrueAudio
-    - [X] VorbisAudio
-    - [X] WavPackAudio
-    - [X] WaveAudio
-*** DONE Update utilities to use new ReplayGain interface
-    - [X] cd2track
-    - [X] dvda2track
-    - [X] track2track
-    - [X] trackinfo
-    - [X] trackplay
-    - [X] tracksplit
-    - [X] tracktag
-*** DONE Update documentation
-*** DONE Update unit tests
-** DONE Catch interrupts more cleanly in utilities
-   When the user cancels a long-running job, utilities should clean the screen
-   as well as possible, delete any partial files and display a "cancelled" message
-   instead of delivering stack traces like they do now.
-   - [X] cd2track
-   - [X] cdplay
-   - [X] dvda2track
-   - [X] track2cd
-   - [X] track2track
-   - [X] trackcat
-   - [X] trackcmp
-   - [X] tracklength
-   - [X] trackplay
-   - [X] tracksplit
-   - [X] tracktag
-   - [X] trackverify
-** DONE Add AudioFile.seekable() method
-   This returns True if the format's PCMReader has a .seek() method
-   and that method supports some sort of fine-grained seeking
-   (i.e. not just return to the beginning of the file).
-*** DONE Update audio formats
-    - [X] AudioFile
-    - [X] ALACAudio
-    - [X] AiffAudio
-    - [X] AuAudio
-    - [X] FlacAudio
-    - [X] M4AAudio
-    - [X] MP2Audio
-    - [X] MP3Audio
-    - [X] OggFlacAudio
-    - [X] OpusAudio
-    - [X] ShortenAudio
-    - [X] TrueAudio
-    - [X] VorbisAudio
-    - [X] WavPackAudio
-    - [X] WaveAudio
-*** DONE Update documentation
-*** DONE Update utilities
-**** DONE tracksplit
-     If the file being split isn't seekable, decompress it to a temp file
-     so it can be processed across multiple jobs.
-**** DONE trackcmp
-     If comparing multiple tracks against a non-seekable image,
-     decompress it to a temp file so it can be processed across multiple jobs.
-*** DONE Update unit tests
-** DONE Have AccurateRip detect offset tracks
-   If the tracks have been ripped accurately but are merely offset
-   by some small positive or negative number of samples,
-   this should be detected and indicated in the AccurateRip results screens.
-*** DONE Update ChecksumV1
-**** DONE Add keyword parameters with sensible defaults
-**** DONE Add range option
-     This indicates the total range of the window size.
-     Defaults to 1, indicating only a single checksum to be generated.
-**** DONE Change .checksum() method to .checksums()
-     Returns a list of all calculated checksums over the whole range.
-*** DONE Add unit tests
-    Ensure ranged and non-ranged checksums are calculated properly
-    and update tests for new interface.
-*** DONE Build audiotools.cdio.CDDAReader object
-    This functions like a PCMReader object over the entire CDDA device.
-    It should work transparently on physical CD devices as well as CD images
-    and be PCM-frame centric by doing all the CD sector conversions
-    behind-the-scenes.
-**** DONE Add methods and attributes
-***** DONE CDDAReader.sample_rate
-***** DONE CDDAReader.channels
-***** DONE CDDAReader.channel_mask
-***** DONE CDDAReader.bits_per_sample
-***** DONE CDDAReader.track_offsets
-      - [X] CD image
-      - [X] CD drive
-      Returns starting offset of each track, in PCM frames
-***** DONE CDDAReader.track_lengths
-      - [X] CD image
-      - [X] CD drive
-      Returns length of each track, in PCM frames
-***** DONE CDDAReader.first_sector
-      - [X] CD image
-      - [X] CD drive
-      Used for calculating various disc IDs
-***** DONE CDDAReader.last_sector
-      - [X] CD image
-      - [X] CD drive
-      Used for calculating various disc IDs
-***** DONE CDDAReader.is_image
-      - [X] CD drive
-      - [X] CD image
-***** DONE CDDAReader.read(pcm_frames)
-      - [X] CD image
-      - [X] CD drive
-***** DONE CDDAReader.seek(pcm_frames)
-      - [X] CD image
-      - [X] CD drive
-***** DONE CDDAReader.set_speed(speed)
-      - [X] CD image
-      - [X] CD drive
-***** DONE CDDAReader.log()
-      - [X] CD image
-      - [X] CD drive
-***** DONE CDDAReader.reset_log()
-***** DONE CDDAReader.close()
-**** DONE Update documentation
-**** DONE Update unit tests
-**** DONE Detect nonexistent discs
-     CDDAReader should detect when a physical drive doesn't contain a disc
-     and raise an appropriate exception.
-**** DONE Update utilities
-***** DONE cd2track
-***** DONE cdinfo
-***** DONE cdplay
-**** DONE Clean out old audiotools.CDDA object
-     Remove outdated interface, its documentation and unit tests.
-*** DONE Update utilities
-    When verifying AccurateRip, make sure to populate the checksum
-    with the last few samples of the previous track (if any)
-    and the next few samples of the next track (if any)
-    in order to find the checksum's offset.
-**** DONE trackverify
-**** DONE cd2track
-** DONE Simplify lookup services interface
-   The perform_lookup() functions should work on DiscID objects
-   and DiscID objects should be generated from
-   CDDAReaders, track lists or cuesheet/length combinations.
-*** DONE FreeDB
-    - [X] Add from_tracks classmethod
-    - [X] Add from_sheet classmethod
-    - [X] Add unit tests
-*** DONE MusicBrainz
-    - [X] Add from_tracks classmethod
-    - [X] Add from_sheet classmethod
-    - [X] Add unit tests
-*** DONE AccurateRip
-    - [X] Add from_tracks classmethod
-    - [X] Add from_sheet classmethod
-    - [X] Add unit tests
-** DONE Add documentation for lookup services
-   - [X] audiotools.freedb
-   - [X] audiotools.musicbrainz
-   - [X] audiotools.accuraterip
-** DONE Convert TOC and CUE handling to proper grammars
-*** DONE Convert audiotools.cue
-*** DONE Convert audiotools.toc
-** DONE Add AccurateRipV2 support
-*** DONE Add ChecksumV2 object
-**** DONE Add unit tests
-*** DONE Update utilities
-    - [X] cd2track
-    - [X] trackverify
-** DONE Update Sheet interface
-   Although cuesheets are mostly a repository of index points,
-   it would be useful to support a wider subset of options
-   when converting one form to another.
-*** DONE Sheet
-    - [X] @classmethod converted(sheet) -> Sheet
-    builds Sheet object from Sheet-compatible object
-    - [X] __len__() -> total_tracks
-    - [X] __getitem__(track_index) -> SheetTrack
-    - [X] __eq__(sheet) -> boolean
-    - [X] track_numbers() -> [int]
-    - [X] track(track_number) -> SheetTrack
-    - [X] get_metadata() -> MetaData
-    MetaData contains catalog_number and CD-TEXT information
-*** DONE SheetTrack
-    - [X] @classmethod converted(sheet_track) -> SheetTrack
-    builds SheetTrack object from SheetTrack-compatible object
-    - [X] __len__() -> total_indexes
-    - [X] __getitem__(index_index) -> SheetIndex
-    - [X] __eq__(sheet_track) -> boolean
-    - [X] indexes() -> [int]
-    - [X] index(index_number) -> SheetIndex
-    - [X] filename() -> string
-    - [X] number() -> track_number
-    - [X] get_metadata() -> MetaData
-    MetaData contains track_number, ISRC and CD-TEXT information
-    - [X] is_audio() -> boolean
-    - [X] pre_emphasis() -> boolean
-    - [X] copy_peritted() -> boolean
-*** DONE SheetIndex
-    - [X] @classmethod converted(sheet_index) -> SheetIndex
-    - [X] __eq__(sheet_index) -> boolean
-    - [X] number() -> index_number
-    pre-gap is index_number 0
-    - [X] offset() -> Fraction
-    offset of index in seconds from start of stream
-*** DONE Update audiotools.cue.Cuesheet
-*** DONE Update audiotools.toc.TOCFile
-*** DONE Update audiotools.flac.Flac_CUESHEET
-*** DONE Ensure non-image cuesheets are handled properly
-    Given a non-image cuesheet and list of track lengths,
-    it may be possible to convert a non-image cuesheet
-    to an image cuesheet.
-*** DONE Handle 1st track pre-gap correctly
-    Discs with a pre-gap before the 1st track
-    should have that gap removed when split
-    and re-added when concatenating them back together
-    based on the cuesheet contents.
-    - [X] update tracksplit
-    - [X] update trackcat
-    - [X] add unit tests
-*** DONE Update utilities
-    - [X] trackcat
-    - [X] tracksplit
-    - [X] track2cd
-    - [X] trackinfo
-*** DONE Update functions/methods which take cuesheets
-    - [X] sheet_metadata_lookup
-    - [X] accuraterip_sheet_lookup
-*** DONE Update documentation
-*** TODO Update unit tests
-** DONE Converts AudioFile.seconds_length() method to Fraction
-   This should be more useful than the Decmial it was using before.
-*** DONE Update method
-*** DONE Update documentation
-*** DONE Update utilities
-    - [X] track2cd
-    - [X] trackcat
-    - [X] trackinfo
-    - [X] tracklength
-    - [X] trackplay
-    - [X] tracksplit
 * TODO Finish version 3.0
 ** TODO Make compatible with Python 2.7 and 3.X
    Like Urwid and PLY, the same code should work on both versions.

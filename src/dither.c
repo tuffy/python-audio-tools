@@ -35,7 +35,7 @@ read_os_random(PyObject* os_module,
         Py_ssize_t buffer_len;
 
         /*convert Python object to string and length*/
-        if (PyString_AsStringAndSize(string, &buffer_s, &buffer_len) != -1) {
+        if (PyBytes_AsStringAndSize(string, &buffer_s, &buffer_len) != -1) {
             /*extend buffer for additional data*/
             buf_write(buffer, (uint8_t*)buffer_s, (unsigned)buffer_len);
 
@@ -81,6 +81,7 @@ open_dither(void)
                                 BS_BIG_ENDIAN,
                                 4096,
                                 (ext_read_f)read_os_random,
+                                NULL, /*unseekable stream*/
                                 NULL, /*unseekable stream*/
                                 NULL, /*unseekable stream*/
                                 NULL, /*unseekable stream*/

@@ -2028,6 +2028,108 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read(12), 0xD3B)
         reader.unmark()
 
+        reader.seek(3, 0)
+        self.assertEqual(reader.read(8), 0xC1)
+        reader.seek(2, 0)
+        self.assertEqual(reader.read(8), 0x3B)
+        reader.seek(1, 0)
+        self.assertEqual(reader.read(8), 0xED)
+        reader.seek(0, 0)
+        self.assertEqual(reader.read(8), 0xB1)
+        try:
+            reader.seek(4, 0)
+            reader.read(8)
+            self.assert_(False)
+        except IOError:
+            self.assert_(True)
+        try:
+            reader.seek(-1, 0)
+            reader.read(8)
+            self.assert_(False)
+        except IOError:
+            self.assert_(True)
+
+        reader.seek(-1, 2)
+        self.assertEqual(reader.read(8), 0xC1)
+        reader.seek(-2, 2)
+        self.assertEqual(reader.read(8), 0x3B)
+        reader.seek(-3, 2)
+        self.assertEqual(reader.read(8), 0xED)
+        reader.seek(-4, 2)
+        self.assertEqual(reader.read(8), 0xB1)
+        # BytesIO objects allow seeking to before the beginning
+        # of the stream, placing the cursor at the beginning
+        # try:
+        #     reader.seek(-5, 2)
+        #     reader.read(8)
+        #     self.assert_(False)
+        # except IOError:
+        #     self.assert_(True)
+        try:
+            reader.seek(1, 2)
+            reader.read(8)
+            self.assert_(False)
+        except IOError:
+            self.assert_(True)
+
+        reader.seek(0, 0)
+        reader.seek(3, 1)
+        self.assertEqual(reader.read(8), 0xC1)
+        reader.seek(0, 0)
+        reader.seek(2, 1)
+        self.assertEqual(reader.read(8), 0x3B)
+        reader.seek(0, 0)
+        reader.seek(1, 1)
+        self.assertEqual(reader.read(8), 0xED)
+        reader.seek(0, 0)
+        reader.seek(0, 1)
+        self.assertEqual(reader.read(8), 0xB1)
+        try:
+            reader.seek(0, 0)
+            reader.seek(4, 1)
+            reader.read(8)
+            self.assert_(False)
+        except IOError:
+            self.assert_(True)
+        # BytesIO objects allow seeking to before the beginning
+        # of the stream, placing the cursor at the beginning
+        # try:
+        #     reader.seek(0, 0)
+        #     reader.seek(-1, 1)
+        #     reader.read(8)
+        #     self.assert_(False)
+        # except IOError:
+        #     self.assert_(True)
+
+        reader.seek(0, 2)
+        reader.seek(-1, 1)
+        self.assertEqual(reader.read(8), 0xC1)
+        reader.seek(0, 2)
+        reader.seek(-2, 1)
+        self.assertEqual(reader.read(8), 0x3B)
+        reader.seek(0, 2)
+        reader.seek(-3, 1)
+        self.assertEqual(reader.read(8), 0xED)
+        reader.seek(0, 2)
+        reader.seek(-4, 1)
+        self.assertEqual(reader.read(8), 0xB1)
+        # BytesIO objects allow seeking to before the beginning
+        # of the stream, placing the cursor at the beginning
+        # try:
+        #     reader.seek(0, 2)
+        #     reader.seek(-5, 1)
+        #     reader.read(8)
+        #     self.assert_(False)
+        # except IOError:
+        #     self.assert_(True)
+        try:
+            reader.seek(0, 2)
+            reader.seek(1, 1)
+            reader.read(8)
+            self.assert_(False)
+        except IOError:
+            self.assert_(True)
+
         reader.rewind()
         reader.unmark()
 

@@ -74,9 +74,10 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
             BS_LITTLE_ENDIAN,
             4096,
             (ext_read_f)br_read_python,
-            NULL,
-            NULL,
-            NULL,
+            (ext_setpos_f)bs_setpos_python,
+            (ext_getpos_f)bs_getpos_python,
+            (ext_free_pos_f)bs_free_pos_python,
+            (ext_seek_f)bs_fseek_python,
             (ext_close_f)bs_close_python,
             (ext_free_f)bs_free_python_nodecref);
     }

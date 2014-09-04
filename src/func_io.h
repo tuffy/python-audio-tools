@@ -44,13 +44,16 @@ typedef int (*ext_flush_f)(void* user_data);
 /*casts used by both ext_open_r and ext_open_w*/
 
 /*returns 0 on a successful seek, EOF if a seek error occurs*/
-typedef int (*ext_seek_f)(void* user_data, void* pos);
+typedef int (*ext_setpos_f)(void* user_data, void* pos);
 
 /*returns non-NULL on a successful tell, NULL if a tell error occurs*/
-typedef void* (*ext_tell_f)(void* user_data);
+typedef void* (*ext_getpos_f)(void* user_data);
 
 /*frees position object pos as returned by ext_tell_f*/
 typedef void (*ext_free_pos_f)(void *pos);
+
+/*returns 0 on successful seek, nonzero if an error occurs*/
+typedef int (*ext_seek_f)(void* user_data, long position, int whence);
 
 /*returns 0 on a successful close, EOF if a close error occurs*/
 typedef int (*ext_close_f)(void* user_data);
@@ -61,9 +64,10 @@ typedef void (*ext_free_f)(void* user_data);
 struct br_external_input {
     void* user_data;
     ext_read_f read;
-    ext_seek_f seek;
-    ext_tell_f tell;
+    ext_setpos_f setpos;
+    ext_getpos_f getpos;
     ext_free_pos_f free_pos;
+    ext_seek_f seek;
     ext_close_f close;
     ext_free_f free;
 
@@ -74,8 +78,8 @@ struct br_external_input {
 struct bw_external_output {
     void* user_data;
     ext_write_f write;
-    ext_seek_f seek;
-    ext_tell_f tell;
+    ext_setpos_f setpos;
+    ext_getpos_f getpos;
     ext_free_pos_f free_pos;
     ext_flush_f flush;
     ext_close_f close;
@@ -92,9 +96,10 @@ struct br_external_input*
 ext_open_r(void* user_data,
            unsigned buffer_size,
            ext_read_f read,
-           ext_seek_f seek,
-           ext_tell_f tell,
+           ext_setpos_f setpos,
+           ext_getpos_f getpos,
            ext_free_pos_f free_pos,
+           ext_seek_f seek,
            ext_close_f close,
            ext_free_f free);
 
@@ -114,27 +119,37 @@ ext_fread(struct br_external_input* stream,
           uint8_t* data,
           unsigned data_size);
 
-/*analagous to fseek
+/*analagous to fsetpos
 
   moves current stream position to pos
   which has been returned by ext_tell_r
 
   returns 0 on success, EOF on failure*/
 int
-ext_seek_r(struct br_external_input *stream, void *pos);
+ext_setpos_r(struct br_external_input *stream, void *pos);
 
-/*analagous to ftell
+/*analagous to fgetpos
 
   returns current position as pos
   which may be fed to ext_seek_r
 
   returns NULL if an error occurs*/
 void*
-ext_tell_r(struct br_external_input *stream);
+ext_getpos_r(struct br_external_input *stream);
 
 /*frees a pos returned by ext_tell_r*/
 void
 ext_free_pos_r(struct br_external_input *stream, void *pos);
+
+/*analagous to fseek
+
+  moves current stream position to position
+  relative to stream position "whence"
+
+  returns 0 on success, nonzero on failure*/
+int
+ext_fseek_r(struct br_external_input *stream, long position, int whence);
+
 
 /*analagous to fclose
 
@@ -155,8 +170,8 @@ struct bw_external_output*
 ext_open_w(void* user_data,
            unsigned buffer_size,
            ext_write_f write,
-           ext_seek_f seek,
-           ext_tell_f tell,
+           ext_setpos_f setpos,
+           ext_getpos_f getpos,
            ext_free_pos_f free_pos,
            ext_flush_f flush,
            ext_close_f close,
@@ -176,23 +191,23 @@ ext_fwrite(struct bw_external_output* stream,
            const uint8_t *data,
            unsigned data_size);
 
-/*analagous to fseek
+/*analagous to fsetpos
 
   moves current stream position to pos
   which has been returned by ext_tell_w
 
   returns 0 on success, EOF on failure*/
 int
-ext_seek_w(struct bw_external_output *stream, void *pos);
+ext_setpos_w(struct bw_external_output *stream, void *pos);
 
-/*analagous to ftell
+/*analagous to fgetpos
 
   returns current position as pos
   which may be fed to ext_seek_w
 
   returns NULL if an error occurs*/
 void*
-ext_tell_w(struct bw_external_output *stream);
+ext_getpos_w(struct bw_external_output *stream);
 
 /*frees a pos returned by ext_tell_w*/
 void

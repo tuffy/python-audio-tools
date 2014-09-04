@@ -54,6 +54,9 @@ typedef enum {BS_INST_UNSIGNED,
               BS_INST_BYTES,
               BS_INST_ALIGN,
               BS_INST_EOF} bs_instruction_t;
+typedef enum {BS_SEEK_SET=0,
+              BS_SEEK_CUR=1,
+              BS_SEEK_END=2} bs_whence;
 
 typedef void (*bs_callback_f)(uint8_t, void*);
 
@@ -329,6 +332,13 @@ typedef struct BitstreamReader_s {
     void
     (*unmark)(struct BitstreamReader_s* bs, int mark_id);
 
+    /*moves the stream directly to the given location, in bytes,
+      relative to the beginning, current or end of the stream
+
+      no callbacks are called on the intervening bytes*/
+    void
+    (*seek)(struct BitstreamReader_s* bs, long position, bs_whence whence);
+
     /*this appends the given length of bytes from the current stream
       to the given substream
 
@@ -397,9 +407,10 @@ br_open_external(void* user_data,
                  bs_endianness endianness,
                  unsigned buffer_size,
                  ext_read_f read,
-                 ext_seek_f seek,
-                 ext_tell_f tell,
+                 ext_setpos_f setpos,
+                 ext_getpos_f getpos,
                  ext_free_pos_f free_pos,
+                 ext_seek_f seek,
                  ext_close_f close,
                  ext_free_f free);
 
@@ -652,6 +663,17 @@ void
 br_unmark_e(BitstreamReader* bs, int mark_id);
 void
 br_unmark_c(BitstreamReader* bs, int mark_id);
+
+
+/*bs->seek(bs, position, whence)  methods*/
+void
+br_seek_f(BitstreamReader* bs, long position, bs_whence whence);
+void
+br_seek_s(BitstreamReader* bs, long position, bs_whence whence);
+void
+br_seek_e(BitstreamReader* bs, long position, bs_whence whence);
+void
+br_seek_c(BitstreamReader* bs, long position, bs_whence whence);
 
 
 /*bs->substream_append(bs, substream, bytes)  method*/
@@ -1076,8 +1098,8 @@ bw_open_external(void* user_data,
                  bs_endianness endianness,
                  unsigned buffer_size,
                  ext_write_f write,
-                 ext_seek_f seek,
-                 ext_tell_f tell,
+                 ext_setpos_f setpos,
+                 ext_getpos_f getpos,
                  ext_free_pos_f free_pos,
                  ext_flush_f flush,
                  ext_close_f close,
@@ -1497,11 +1519,13 @@ int bw_write_python(PyObject* writer,
 
 int bw_flush_python(PyObject* writer);
 
-int bs_seek_python(PyObject* stream, PyObject* pos);
+int bs_setpos_python(PyObject* stream, PyObject* pos);
 
-PyObject* bs_tell_python(PyObject* stream);
+PyObject* bs_getpos_python(PyObject* stream);
 
 void bs_free_pos_python(PyObject* pos);
+
+int bs_fseek_python(PyObject* stream, long position, int whence);
 
 int bs_close_python(PyObject* obj);
 

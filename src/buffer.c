@@ -91,6 +91,50 @@ buf_skip(struct bs_buffer *stream, unsigned data_size)
 }
 
 
+int
+buf_fseek(struct bs_buffer *stream, long position, int whence)
+{
+    switch (whence) {
+    case 0:  /*SEEK_SET*/
+        if (position < 0) {
+            /*can't seek before the beginning of the buffer*/
+            return -1;
+        } else if (position > stream->window_end) {
+            /*can't seek past the end of the buffer*/
+            return -1;
+        } else {
+            stream->window_start = position;
+            return 0;
+        }
+    case 1:  /*SEEK_CUR*/
+        if ((position < 0) && (-position > stream->window_start)) {
+            /*can't seek past the beginning of the buffer*/
+            return -1;
+        } else if ((position > 0) && (position > buf_window_size(stream))) {
+            /*can't seek past the end of the buffer*/
+            return -1;
+        } else {
+            stream->window_start += position;
+            return 0;
+        }
+    case 2:  /*SEEK_END*/
+        if (position > 0) {
+            /*can't seek past the end of the buffer*/
+            return -1;
+        } else if (-position > stream->window_end) {
+            /*can't seek past the beginning of the buffer*/
+            return -1;
+        } else {
+            stream->window_start = stream->window_end + position;
+            return 0;
+        }
+    default:
+        /*unknown "whence"*/
+        return -1;
+    }
+}
+
+
 void
 buf_write(struct bs_buffer *stream, const uint8_t* data, unsigned data_size)
 {

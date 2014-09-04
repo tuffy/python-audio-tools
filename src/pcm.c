@@ -392,11 +392,11 @@ FrameList_to_bytes(pcm_FrameList *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "ii", &is_big_endian, &is_signed)) {
         return NULL;
     } else if ((bytes_obj =
-                PyString_FromStringAndSize(NULL, bytes_size)) == NULL) {
+                PyBytes_FromStringAndSize(NULL, bytes_size)) == NULL) {
         return NULL;
     } else {
         FrameList_samples_to_char(
-             (uint8_t*)PyString_AsString(bytes_obj),
+             (uint8_t*)PyBytes_AsString(bytes_obj),
              self->samples,
              FrameList_get_int_to_char_converter(self->bits_per_sample,
                                                  is_big_endian,

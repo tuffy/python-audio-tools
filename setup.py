@@ -30,7 +30,10 @@ import re
 import subprocess
 from distutils.core import setup, Extension
 from distutils.command.build_ext import build_ext as _build_ext
-from ConfigParser import (RawConfigParser, NoSectionError, NoOptionError)
+try:
+    from configparser import (RawConfigParser, NoSectionError, NoOptionError)
+except ImportError:
+    from ConfigParser import (RawConfigParser, NoSectionError, NoOptionError)
 
 
 configfile = RawConfigParser()
@@ -111,7 +114,8 @@ class SystemLibraries(object):
             pkg_config = subprocess.Popen(
                 ["pkg-config", "--cflags", library],
                 stdout=subprocess.PIPE,
-                stderr=open(os.devnull, "wb"))
+                stderr=open(os.devnull, "wb"),
+                universal_newlines=True)
 
             pkg_config_stdout = pkg_config.stdout.read().strip()
 
@@ -135,7 +139,8 @@ class SystemLibraries(object):
             pkg_config = subprocess.Popen(
                 ["pkg-config", "--libs", library],
                 stdout=subprocess.PIPE,
-                stderr=open(os.devnull, "wb"))
+                stderr=open(os.devnull, "wb"),
+                universal_newlines=True)
 
             pkg_config_stdout = pkg_config.stdout.read().strip()
 

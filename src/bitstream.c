@@ -111,6 +111,7 @@ br_open(FILE *f, bs_endianness endianness)
     bs->has_mark = br_has_mark;
     bs->rewind = br_rewind_f;
     bs->unmark = br_unmark_f;
+    bs->seek = br_seek_f;
 
     return bs;
 }
@@ -170,6 +171,7 @@ br_substream_new(bs_endianness endianness)
     bs->has_mark = br_has_mark;
     bs->rewind = br_rewind_s;
     bs->unmark = br_unmark_s;
+    bs->seek = br_seek_s;
 
     return bs;
 }
@@ -229,6 +231,7 @@ br_open_buffer(struct bs_buffer* buffer, bs_endianness endianness)
     bs->has_mark = br_has_mark;
     bs->rewind = br_rewind_s;
     bs->unmark = br_unmark_s;
+    bs->seek = br_seek_s;
 
     return bs;
 }
@@ -238,9 +241,10 @@ br_open_external(void* user_data,
                  bs_endianness endianness,
                  unsigned buffer_size,
                  ext_read_f read,
-                 ext_seek_f seek,
-                 ext_tell_f tell,
+                 ext_setpos_f setpos,
+                 ext_getpos_f getpos,
                  ext_free_pos_f free_pos,
+                 ext_seek_f seek,
                  ext_close_f close,
                  ext_free_f free)
 {
@@ -249,9 +253,10 @@ br_open_external(void* user_data,
     bs->input.external = ext_open_r(user_data,
                                     buffer_size,
                                     read,
-                                    seek,
-                                    tell,
+                                    setpos,
+                                    getpos,
                                     free_pos,
+                                    seek,
                                     close,
                                     free);
     bs->state = 0;
@@ -302,6 +307,7 @@ br_open_external(void* user_data,
     bs->has_mark = br_has_mark;
     bs->rewind = br_rewind_e;
     bs->unmark = br_unmark_e;
+    bs->seek = br_seek_e;
     bs->substream_append = br_substream_append;
 
     return bs;
@@ -1047,6 +1053,7 @@ br_close_methods(BitstreamReader* bs)
     bs->mark = br_mark_c;
     bs->rewind = br_rewind_c;
     bs->unmark = br_unmark_c;
+    bs->seek = br_seek_c;
 }
 
 void
@@ -1193,7 +1200,7 @@ br_mark_e(BitstreamReader* bs, int mark_id)
     const unsigned buffer_size = buf_window_size(input->buffer);
     struct br_mark* mark = malloc(sizeof(struct br_mark));
 
-    if ((mark->position.external.pos = ext_tell_r(input)) == NULL) {
+    if ((mark->position.external.pos = ext_getpos_r(input)) == NULL) {
         /*unable to get current position*/
         free(mark);
         br_abort(bs);
@@ -1251,7 +1258,7 @@ br_rewind_e(BitstreamReader* bs, int mark_id)
     const struct br_mark* mark = br_get_mark(bs->mark_stacks, mark_id);
 
     if (mark != NULL) {
-        if (ext_seek_r(input, mark->position.external.pos)) {
+        if (ext_setpos_r(input, mark->position.external.pos)) {
             /*unable to seek to previous position*/
             br_abort(bs);
         }
@@ -1322,6 +1329,40 @@ void
 br_unmark_c(BitstreamReader* bs, int mark_id)
 {
     return;
+}
+
+
+void
+br_seek_f(BitstreamReader* bs, long position, bs_whence whence)
+{
+    bs->state = 0;
+    if (fseek(bs->input.file, position, whence)) {
+        br_abort(bs);
+    }
+}
+
+void
+br_seek_s(BitstreamReader* bs, long position, bs_whence whence)
+{
+    bs->state = 0;
+    if (buf_fseek(bs->input.substream, position, whence)) {
+        br_abort(bs);
+    }
+}
+
+void
+br_seek_e(BitstreamReader* bs, long position, bs_whence whence)
+{
+    bs->state = 0;
+    if (ext_fseek_r(bs->input.external, position, whence)) {
+        br_abort(bs);
+    }
+}
+
+void
+br_seek_c(BitstreamReader* bs, long position, bs_whence whence)
+{
+    br_abort(bs);
 }
 
 
@@ -1479,8 +1520,8 @@ bw_open_external(void* user_data,
                  bs_endianness endianness,
                  unsigned buffer_size,
                  ext_write_f write,
-                 ext_seek_f seek,
-                 ext_tell_f tell,
+                 ext_setpos_f setpos,
+                 ext_getpos_f getpos,
                  ext_free_pos_f free_pos,
                  ext_flush_f flush,
                  ext_close_f close,
@@ -1492,8 +1533,8 @@ bw_open_external(void* user_data,
     bs->output.external = ext_open_w(user_data,
                                      buffer_size,
                                      write,
-                                     seek,
-                                     tell,
+                                     setpos,
+                                     getpos,
                                      free_pos,
                                      flush,
                                      close,
@@ -2588,7 +2629,7 @@ void
 bw_mark_e(BitstreamWriter *bs, int mark_id)
 {
     if (bs->buffer_size == 0) {
-        void *position = ext_tell_w(bs->output.external);
+        void *position = ext_getpos_w(bs->output.external);
         if (position != NULL) {
             struct bw_mark* mark = malloc(sizeof(struct bw_mark));
             mark->position.external = position;
@@ -2632,7 +2673,7 @@ bw_rewind_e(BitstreamWriter *bs, int mark_id)
     if (bs->buffer_size == 0) {
         struct bw_mark* mark = bw_get_mark(bs->mark_stacks, mark_id);
         if (mark != NULL) {
-            if (ext_seek_w(bs->output.external, mark->position.external)) {
+            if (ext_setpos_w(bs->output.external, mark->position.external)) {
                 bw_abort(bs);
             }
         } else {
@@ -3036,9 +3077,9 @@ int br_read_python(PyObject *reader,
         Py_ssize_t string_size;
 
         /*convert returned object to string of bytes*/
-        if (PyString_AsStringAndSize(read_result,
-                                     &string,
-                                     &string_size) != -1) {
+        if (PyBytes_AsStringAndSize(read_result,
+                                    &string,
+                                    &string_size) != -1) {
             /*then append bytes to buffer and return success*/
             buf_write(buffer, (uint8_t*)string, (unsigned)string_size);
 
@@ -3098,7 +3139,7 @@ int bw_flush_python(PyObject* writer)
     }
 }
 
-int bs_seek_python(PyObject* stream, PyObject* pos)
+int bs_setpos_python(PyObject* stream, PyObject* pos)
 {
     if (pos != NULL) {
         PyObject *seek = PyObject_GetAttrString(stream, "seek");
@@ -3123,7 +3164,7 @@ int bs_seek_python(PyObject* stream, PyObject* pos)
     return 0;
 }
 
-PyObject* bs_tell_python(PyObject* stream)
+PyObject* bs_getpos_python(PyObject* stream)
 {
     PyObject *pos = PyObject_CallMethod(stream, "tell", NULL);
     if (pos != NULL) {
@@ -3137,6 +3178,18 @@ PyObject* bs_tell_python(PyObject* stream)
 void bs_free_pos_python(PyObject* pos)
 {
     Py_XDECREF(pos);
+}
+
+int bs_fseek_python(PyObject* stream, long position, int whence)
+{
+    PyObject *result =
+        PyObject_CallMethod(stream, "seek", "li", position, whence);
+    if (result != NULL) {
+        Py_DECREF(result);
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
 int bs_close_python(PyObject* obj)
@@ -3369,9 +3422,11 @@ int ext_fwrite_test(FILE* user_data,
 
 int ext_fflush_test(FILE* user_data);
 
-int ext_fseek_test(FILE *user_data, fpos_t *pos);
+int ext_fsetpos_test(FILE *user_data, fpos_t *pos);
 
-fpos_t* ext_ftell_test(FILE *user_data);
+fpos_t* ext_fgetpos_test(FILE *user_data);
+
+int ext_fseek_test(FILE *user_data, long location, int whence);
 
 void ext_free_pos_test(fpos_t *pos);
 
@@ -3471,9 +3526,10 @@ int main(int argc, char* argv[]) {
                               BS_BIG_ENDIAN,
                               2,
                               (ext_read_f)ext_fread_test,
-                              (ext_seek_f)ext_fseek_test,
-                              (ext_tell_f)ext_ftell_test,
+                              (ext_setpos_f)ext_fsetpos_test,
+                              (ext_getpos_f)ext_fgetpos_test,
                               (ext_free_pos_f)ext_free_pos_test,
+                              (ext_seek_f)ext_fseek_test,
                               (ext_close_f)ext_fclose_test,
                               (ext_free_f)ext_ffree_test);
     test_big_endian_reader(reader, be_table);
@@ -3504,9 +3560,10 @@ int main(int argc, char* argv[]) {
                               BS_LITTLE_ENDIAN,
                               2,
                               (ext_read_f)ext_fread_test,
-                              (ext_seek_f)ext_fseek_test,
-                              (ext_tell_f)ext_ftell_test,
+                              (ext_setpos_f)ext_fsetpos_test,
+                              (ext_getpos_f)ext_fgetpos_test,
                               (ext_free_pos_f)ext_free_pos_test,
+                              (ext_seek_f)ext_fseek_test,
                               (ext_close_f)ext_fclose_test,
                               (ext_free_f)ext_ffree_test);
     test_little_endian_reader(reader, le_table);
@@ -3796,6 +3853,118 @@ void test_big_endian_reader(BitstreamReader* reader,
     assert(reader->read(reader, 12) == 0xD3B);
     reader->unmark(reader, 0);
 
+    reader->seek(reader, 3, BS_SEEK_SET);
+    assert(reader->read(reader, 8) == 0xC1);
+    reader->seek(reader, 2, BS_SEEK_SET);
+    assert(reader->read(reader, 8) == 0x3B);
+    reader->seek(reader, 1, BS_SEEK_SET);
+    assert(reader->read(reader, 8) == 0xED);
+    reader->seek(reader, 0, BS_SEEK_SET);
+    assert(reader->read(reader, 8) == 0xB1);
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, 4, BS_SEEK_SET);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, -1, BS_SEEK_SET);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+
+    reader->seek(reader, -1, BS_SEEK_END);
+    assert(reader->read(reader, 8) == 0xC1);
+    reader->seek(reader, -2, BS_SEEK_END);
+    assert(reader->read(reader, 8) == 0x3B);
+    reader->seek(reader, -3, BS_SEEK_END);
+    assert(reader->read(reader, 8) == 0xED);
+    reader->seek(reader, -4, BS_SEEK_END);
+    assert(reader->read(reader, 8) == 0xB1);
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, -5, BS_SEEK_END);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, 1, BS_SEEK_END);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+
+    reader->seek(reader, 0, BS_SEEK_SET);
+    reader->seek(reader, 3, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0xC1);
+    reader->seek(reader, 0, BS_SEEK_SET);
+    reader->seek(reader, 2, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0x3B);
+    reader->seek(reader, 0, BS_SEEK_SET);
+    reader->seek(reader, 1, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0xED);
+    reader->seek(reader, 0, BS_SEEK_SET);
+    reader->seek(reader, 0, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0xB1);
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, 0, BS_SEEK_SET);
+        reader->seek(reader, 4, BS_SEEK_CUR);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, 0, BS_SEEK_SET);
+        reader->seek(reader, -1, BS_SEEK_CUR);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+
+    reader->seek(reader, 0, BS_SEEK_END);
+    reader->seek(reader, -1, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0xC1);
+    reader->seek(reader, 0, BS_SEEK_END);
+    reader->seek(reader, -2, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0x3B);
+    reader->seek(reader, 0, BS_SEEK_END);
+    reader->seek(reader, -3, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0xED);
+    reader->seek(reader, 0, BS_SEEK_END);
+    reader->seek(reader, -4, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0xB1);
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, 0, BS_SEEK_END);
+        reader->seek(reader, -5, BS_SEEK_CUR);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, 0, BS_SEEK_END);
+        reader->seek(reader, 1, BS_SEEK_CUR);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+
     reader->rewind(reader, 0);
     reader->unmark(reader, 0);
 }
@@ -4069,6 +4238,118 @@ void test_little_endian_reader(BitstreamReader* reader,
     reader->rewind(reader, 0);
     assert(reader->read(reader, 12) == 0x3BE);
     reader->unmark(reader, 0);
+
+    reader->seek(reader, 3, BS_SEEK_SET);
+    assert(reader->read(reader, 8) == 0xC1);
+    reader->seek(reader, 2, BS_SEEK_SET);
+    assert(reader->read(reader, 8) == 0x3B);
+    reader->seek(reader, 1, BS_SEEK_SET);
+    assert(reader->read(reader, 8) == 0xED);
+    reader->seek(reader, 0, BS_SEEK_SET);
+    assert(reader->read(reader, 8) == 0xB1);
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, 4, BS_SEEK_SET);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, -1, BS_SEEK_SET);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+
+    reader->seek(reader, -1, BS_SEEK_END);
+    assert(reader->read(reader, 8) == 0xC1);
+    reader->seek(reader, -2, BS_SEEK_END);
+    assert(reader->read(reader, 8) == 0x3B);
+    reader->seek(reader, -3, BS_SEEK_END);
+    assert(reader->read(reader, 8) == 0xED);
+    reader->seek(reader, -4, BS_SEEK_END);
+    assert(reader->read(reader, 8) == 0xB1);
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, -5, BS_SEEK_END);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, 1, BS_SEEK_END);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+
+    reader->seek(reader, 0, BS_SEEK_SET);
+    reader->seek(reader, 3, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0xC1);
+    reader->seek(reader, 0, BS_SEEK_SET);
+    reader->seek(reader, 2, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0x3B);
+    reader->seek(reader, 0, BS_SEEK_SET);
+    reader->seek(reader, 1, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0xED);
+    reader->seek(reader, 0, BS_SEEK_SET);
+    reader->seek(reader, 0, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0xB1);
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, 0, BS_SEEK_SET);
+        reader->seek(reader, 4, BS_SEEK_CUR);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, 0, BS_SEEK_SET);
+        reader->seek(reader, -1, BS_SEEK_CUR);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+
+    reader->seek(reader, 0, BS_SEEK_END);
+    reader->seek(reader, -1, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0xC1);
+    reader->seek(reader, 0, BS_SEEK_END);
+    reader->seek(reader, -2, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0x3B);
+    reader->seek(reader, 0, BS_SEEK_END);
+    reader->seek(reader, -3, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0xED);
+    reader->seek(reader, 0, BS_SEEK_END);
+    reader->seek(reader, -4, BS_SEEK_CUR);
+    assert(reader->read(reader, 8) == 0xB1);
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, 0, BS_SEEK_END);
+        reader->seek(reader, -5, BS_SEEK_CUR);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
+    if (!setjmp(*br_try(reader))) {
+        reader->seek(reader, 0, BS_SEEK_END);
+        reader->seek(reader, 1, BS_SEEK_CUR);
+        reader->read(reader, 8);
+        assert(0);
+    } else {
+        br_etry(reader);
+        assert(1);
+    }
 
     reader->rewind(reader, 0);
     reader->unmark(reader, 0);
@@ -4618,8 +4899,8 @@ test_writer(bs_endianness endianness) {
                                   endianness,
                                   2,
                                   (ext_write_f)ext_fwrite_test,
-                                  (ext_seek_f)ext_fseek_test,
-                                  (ext_tell_f)ext_ftell_test,
+                                  (ext_setpos_f)ext_fsetpos_test,
+                                  (ext_getpos_f)ext_fgetpos_test,
                                   (ext_free_pos_f)ext_free_pos_test,
                                   (ext_flush_f)ext_fflush_test,
                                   (ext_close_f)ext_fclose_test,
@@ -4636,8 +4917,8 @@ test_writer(bs_endianness endianness) {
                               endianness,
                               2,
                               (ext_write_f)ext_fwrite_test,
-                              (ext_seek_f)ext_fseek_test,
-                              (ext_tell_f)ext_ftell_test,
+                              (ext_setpos_f)ext_fsetpos_test,
+                              (ext_getpos_f)ext_fgetpos_test,
                               (ext_free_pos_f)ext_free_pos_test,
                               (ext_flush_f)ext_fflush_test,
                               (ext_close_f)ext_fclose_test,
@@ -4844,8 +5125,8 @@ test_writer(bs_endianness endianness) {
                                   endianness,
                                   2,
                                   (ext_write_f)ext_fwrite_test,
-                                  (ext_seek_f)ext_fseek_test,
-                                  (ext_tell_f)ext_ftell_test,
+                                  (ext_setpos_f)ext_fsetpos_test,
+                                  (ext_getpos_f)ext_fgetpos_test,
                                   (ext_free_pos_f)ext_free_pos_test,
                                   (ext_flush_f)ext_fflush_test,
                                   (ext_close_f)ext_fclose_test,
@@ -4917,8 +5198,8 @@ test_writer(bs_endianness endianness) {
                               endianness,
                               4096,
                               (ext_write_f)ext_fwrite_test,
-                              (ext_seek_f)ext_fseek_test,
-                              (ext_tell_f)ext_ftell_test,
+                              (ext_setpos_f)ext_fsetpos_test,
+                              (ext_getpos_f)ext_fgetpos_test,
                               (ext_free_pos_f)ext_free_pos_test,
                               (ext_flush_f)ext_fflush_test,
                               (ext_close_f)ext_fclose_test,
@@ -5481,8 +5762,8 @@ void check_alignment_e(const align_check* check,
         endianness,
         4096,
         (ext_write_f)ext_fwrite_test,
-        (ext_seek_f)ext_fseek_test,
-        (ext_tell_f)ext_ftell_test,
+        (ext_setpos_f)ext_fsetpos_test,
+        (ext_getpos_f)ext_fgetpos_test,
         (ext_free_pos_f)ext_free_pos_test,
         (ext_flush_f)ext_fflush_test,
         (ext_close_f)ext_fclose_test,
@@ -6079,7 +6360,7 @@ int ext_fflush_test(FILE* user_data)
     return fflush(user_data);
 }
 
-int ext_fseek_test(FILE *user_data, fpos_t *pos)
+int ext_fsetpos_test(FILE *user_data, fpos_t *pos)
 {
     if (!fsetpos(user_data, pos)) {
         return 0;
@@ -6088,7 +6369,7 @@ int ext_fseek_test(FILE *user_data, fpos_t *pos)
     }
 }
 
-fpos_t* ext_ftell_test(FILE *user_data)
+fpos_t* ext_fgetpos_test(FILE *user_data)
 {
     fpos_t* pos = malloc(sizeof(fpos_t));
     if (!fgetpos(user_data, pos)) {
@@ -6097,6 +6378,11 @@ fpos_t* ext_ftell_test(FILE *user_data)
         free(pos);
         return NULL;
     }
+}
+
+int ext_fseek_test(FILE *user_data, long location, int whence)
+{
+    return fseek(user_data, location, whence);
 }
 
 void ext_free_pos_test(fpos_t *pos)

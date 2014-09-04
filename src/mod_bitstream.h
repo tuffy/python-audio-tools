@@ -175,6 +175,9 @@ static PyObject*
 BitstreamReader_unmark(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
+BitstreamReader_seek(bitstream_BitstreamReader *self, PyObject *args);
+
+static PyObject*
 BitstreamReader_add_callback(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
@@ -259,6 +262,12 @@ PyMethodDef BitstreamReader_methods[] = {
     {"unmark", (PyCFunction)BitstreamReader_unmark, METH_VARARGS,
      "unmark([mark_id])\n"
      "removes the most recently marked position from the stream"},
+    {"seek", (PyCFunction)BitstreamReader_seek, METH_VARARGS,
+     "seek(position, whence)\n"
+     "positions the stream at the given position where\n"
+     "position is stream position in bytes and\n"
+     "whence 0 = stream start, 1 = current position, 2 = stream end\n"
+     "no callbacks are performed on intervening bytes"},
     {"add_callback", (PyCFunction)BitstreamReader_add_callback, METH_VARARGS,
      "add_callback(function)\n"
      "where \"function\" takes a single byte as an argument\n"

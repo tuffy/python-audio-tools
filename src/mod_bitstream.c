@@ -862,6 +862,201 @@ BitstreamReader_unmark(bitstream_BitstreamReader *self, PyObject *args)
     }
 }
 
+/*given a numeric object
+  extracts the highest possible long to "l"
+  and returns a new reference to a numeric object with that amount removed*/
+static PyObject*
+extract_largest_long(PyObject *number, long *l)
+{
+    PyObject *long_max = PyInt_FromLong(LONG_MAX);
+
+    if (PyObject_RichCompareBool(number, long_max, Py_GT)) {
+        PyObject *to_return = PyNumber_Subtract(number, long_max);
+        Py_DECREF(long_max);
+        *l = LONG_MAX;
+        return to_return;
+    } else {
+        Py_DECREF(long_max);
+        *l = PyInt_AsLong(number);
+        return PyNumber_Subtract(number, number);
+    }
+}
+
+/*given a numeric object
+  extracts the smallest possible long to "l"
+  and returns a new reference to a numeric object with that amount removed*/
+static PyObject*
+extract_smallest_long(PyObject *number, long *l)
+{
+    PyObject *long_min = PyInt_FromLong(LONG_MIN);
+
+    if (PyObject_RichCompareBool(number, long_min, Py_LT)) {
+        PyObject *to_return = PyNumber_Subtract(number, long_min);
+        Py_DECREF(long_min);
+        *l = LONG_MIN;
+        return to_return;
+    } else {
+        Py_DECREF(long_min);
+        *l = PyInt_AsLong(number);
+        return PyNumber_Subtract(number, number);
+    }
+}
+
+
+static PyObject*
+BitstreamReader_seek(bitstream_BitstreamReader *self, PyObject *args)
+{
+    BitstreamReader *stream = self->bitstream;
+    PyObject *initial_position;
+    PyObject *position;
+    PyObject *temp;
+    int whence = 0;
+    PyObject *zero;
+    long seek_position;
+
+    if (!PyArg_ParseTuple(args, "O|i", &initial_position, &whence)) {
+        return NULL;
+    } else if (!PyNumber_Check(initial_position)) {
+        PyErr_SetString(PyExc_TypeError, "position must be a numeric object");
+        return NULL;
+    }
+
+    position = initial_position;
+    Py_INCREF(position);
+    zero = PyInt_FromLong(0);
+
+    switch (whence) {
+    case 0:  /*SEEK_SET*/
+        {
+            /*ensure position is non-negative*/
+            if (PyObject_RichCompareBool(position, zero, Py_LT)) {
+                PyErr_SetString(PyExc_IOError, "invalid seek position");
+                goto error;
+            }
+
+            /*perform best absolute seek to initial position*/
+            temp = extract_largest_long(position, &seek_position);
+            Py_DECREF(position);
+            position = temp;
+            if (!setjmp(*br_try(stream))) {
+                stream->seek(stream, seek_position, BS_SEEK_SET);
+                br_etry(stream);
+            } else {
+                /*I/O error when seeking*/
+                br_etry(stream);
+                PyErr_SetString(PyExc_IOError, "I/O error performing seek");
+                goto error;
+            }
+
+            /*cover remaining distance with relative seeks*/
+            while (PyObject_RichCompareBool(position, zero, Py_GT)) {
+                temp = extract_largest_long(position, &seek_position);
+                Py_DECREF(position);
+                position = temp;
+                if (!setjmp(*br_try(stream))) {
+                    stream->seek(stream, seek_position, BS_SEEK_CUR);
+                    br_etry(stream);
+                } else {
+                    /*I/O error when seeking*/
+                    br_etry(stream);
+                    PyErr_SetString(PyExc_IOError, "I/O error performing seek");
+                    goto error;
+                }
+            }
+        }
+        break;
+    case 1:  /*SEEK_CUR*/
+        {
+            if (PyObject_RichCompareBool(position, zero, Py_GT)) {
+                /*cover positive distance with relative seeks*/
+                while (PyObject_RichCompareBool(position, zero, Py_GT)) {
+                    temp = extract_largest_long(position, &seek_position);
+                    Py_DECREF(position);
+                    position = temp;
+                    if (!setjmp(*br_try(stream))) {
+                        stream->seek(stream, seek_position, BS_SEEK_CUR);
+                        br_etry(stream);
+                    } else {
+                        br_etry(stream);
+                        PyErr_SetString(PyExc_IOError,
+                                        "I/O error performing seek");
+                        goto error;
+                    }
+                }
+            } else if (PyObject_RichCompareBool(position, zero, Py_LT)) {
+                /*cover negative distance with relative seeks*/
+                while (PyObject_RichCompareBool(position, zero, Py_LT)) {
+                    temp = extract_smallest_long(position, &seek_position);
+                    Py_DECREF(position);
+                    position = temp;
+                    if (!setjmp(*br_try(stream))) {
+                        stream->seek(stream, seek_position, BS_SEEK_CUR);
+                        br_etry(stream);
+                    } else {
+                        br_etry(stream);
+                        PyErr_SetString(PyExc_IOError,
+                                        "I/O error performing seek");
+                        goto error;
+                    }
+                }
+            }
+            /*position is 0, so no need to move anywhere*/
+        }
+        break;
+    case 2:  /*SEEK_END*/
+        {
+            /*ensure position is non-positive*/
+            if (PyObject_RichCompareBool(position, zero, Py_GT)) {
+                PyErr_SetString(PyExc_IOError, "invalid seek position");
+                goto error;
+            }
+
+            /*perform best absolute seek to initial position*/
+            temp = extract_smallest_long(position, &seek_position);
+            Py_DECREF(position);
+            position = temp;
+            if (!setjmp(*br_try(stream))) {
+                stream->seek(stream, seek_position, BS_SEEK_END);
+                br_etry(stream);
+            } else {
+                /*I/O error when seeking*/
+                br_etry(stream);
+                PyErr_SetString(PyExc_IOError, "I/O error performing seek");
+                goto error;
+            }
+
+            /*cover remaining distance with relative seeks*/
+            while (PyObject_RichCompareBool(position, zero, Py_LT)) {
+                temp = extract_smallest_long(position, &seek_position);
+                Py_DECREF(position);
+                position = temp;
+                if (!setjmp(*br_try(stream))) {
+                    stream->seek(stream, seek_position, BS_SEEK_CUR);
+                    br_etry(stream);
+                } else {
+                    /*I/O error when seeking*/
+                    br_etry(stream);
+                    PyErr_SetString(PyExc_IOError, "I/O error performing seek");
+                    goto error;
+                }
+            }
+        }
+        break;
+    default:
+        PyErr_SetString(PyExc_ValueError, "whence must be 0, 1 or 2");
+        goto error;
+    }
+
+    Py_DECREF(position);
+    Py_DECREF(zero);
+    Py_INCREF(Py_None);
+    return Py_None;
+error:
+    Py_DECREF(position);
+    Py_DECREF(zero);
+    return NULL;
+}
+
 static PyObject*
 BitstreamReader_add_callback(bitstream_BitstreamReader *self, PyObject *args)
 {
@@ -1125,9 +1320,10 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
             self->little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
             (unsigned)buffer_size,
             (ext_read_f)br_read_python,
-            (ext_seek_f)bs_seek_python,
-            (ext_tell_f)bs_tell_python,
+            (ext_setpos_f)bs_setpos_python,
+            (ext_getpos_f)bs_getpos_python,
             (ext_free_pos_f)bs_free_pos_python,
+            (ext_seek_f)bs_fseek_python,
             (ext_close_f)bs_close_python,
             (ext_free_f)bs_free_python_nodecref);
     }
@@ -1402,8 +1598,8 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
             little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
             (unsigned)buffer_size,
             (ext_write_f)bw_write_python,
-            (ext_seek_f)bs_seek_python,
-            (ext_tell_f)bs_tell_python,
+            (ext_setpos_f)bs_setpos_python,
+            (ext_getpos_f)bs_getpos_python,
             (ext_free_pos_f)bs_free_pos_python,
             (ext_flush_f)bw_flush_python,
             (ext_close_f)bs_close_python,

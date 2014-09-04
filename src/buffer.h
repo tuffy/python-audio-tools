@@ -173,6 +173,13 @@ buf_setpos(struct bs_buffer *stream, buf_pos_t pos)
     stream->window_start = pos;
 }
 
+/*analagous to fseek
+  note that writing more data to the buffer may render
+  seek points invalid unless rewindable is true
+  returns 0 on success, nonzero on failure*/
+int
+buf_fseek(struct bs_buffer *stream, long position, int whence);
+
 /*if rewindable is true, the buffer's window can't be moved down
   to fit more data and can only be appended to
   if false, old data can be discarded as space is needed*/

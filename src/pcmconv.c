@@ -275,9 +275,9 @@ int pcmreader_read(struct pcmreader_s* reader,
             return 1;
         }
 
-        if (PyString_AsStringAndSize(string_obj,
-                                     (char**)(&string),
-                                     &string_length) == -1) {
+        if (PyBytes_AsStringAndSize(string_obj,
+                                    (char**)(&string),
+                                    &string_length) == -1) {
             Py_DECREF(framelist_obj);
             Py_DECREF(string_obj);
             return 1;

@@ -23,9 +23,10 @@ struct br_external_input*
 ext_open_r(void* user_data,
            unsigned buffer_size,
            ext_read_f read,
-           ext_seek_f seek,
-           ext_tell_f tell,
+           ext_setpos_f setpos,
+           ext_getpos_f getpos,
            ext_free_pos_f free_pos,
+           ext_seek_f seek,
            ext_close_f close,
            ext_free_f free)
 {
@@ -33,9 +34,10 @@ ext_open_r(void* user_data,
 
     input->user_data = user_data;
     input->read = read;
-    input->seek = seek;
-    input->tell = tell;
+    input->setpos = setpos;
+    input->getpos = getpos;
     input->free_pos = free_pos;
+    input->seek = seek;
     input->close = close;
     input->free = free;
 
@@ -99,19 +101,19 @@ ext_fread(struct br_external_input* stream,
 }
 
 int
-ext_seek_r(struct br_external_input *stream, void *pos)
+ext_setpos_r(struct br_external_input *stream, void *pos)
 {
-    if (stream->seek != NULL) {
-        return stream->seek(stream->user_data, pos);
+    if (stream->setpos != NULL) {
+        return stream->setpos(stream->user_data, pos);
     } else {
         return EOF;
     }
 }
 
 void*
-ext_tell_r(struct br_external_input *stream){
-    if (stream->tell != NULL) {
-        return stream->tell(stream->user_data);
+ext_getpos_r(struct br_external_input *stream){
+    if (stream->getpos != NULL) {
+        return stream->getpos(stream->user_data);
     } else {
         return NULL;
     }
@@ -122,6 +124,54 @@ ext_free_pos_r(struct br_external_input *stream, void *pos)
 {
     if ((pos != NULL) && (stream->free_pos != NULL)) {
         stream->free_pos(pos);
+    }
+}
+
+int
+ext_fseek_r(struct br_external_input *stream, long position, int whence)
+{
+    if (stream->seek == NULL) {
+        /*unseekable stream*/
+        return -1;
+    }
+
+    switch (whence) {
+    case 0:  /*SEEK_SET*/
+    case 2:  /*SEEK_END*/
+        buf_reset(stream->buffer);
+        return stream->seek(stream->user_data, position, whence);
+    case 1:  /*SEEK_CUR*/
+        /*if the relative position being seeked is still in the
+          bounds of the buffer, simply seek within the buffer itself
+          otherwise, perform a relative seek
+          that accounts for the current size of the buffer contents*/
+        if (position > 0) {
+            if (position <= buf_window_size(stream->buffer)) {
+                return buf_fseek(stream->buffer, position, whence);
+            } else {
+                const unsigned buffer_size = buf_window_size(stream->buffer);
+                buf_reset(stream->buffer);
+                return stream->seek(stream->user_data,
+                                    position - buffer_size,
+                                    whence);
+            }
+        } else if (position < 0) {
+            if (-position <= stream->buffer->window_start) {
+                return buf_fseek(stream->buffer, position, whence);
+            } else {
+                const unsigned buffer_size = buf_window_size(stream->buffer);
+                buf_reset(stream->buffer);
+                return stream->seek(stream->user_data,
+                                    position - buffer_size,
+                                    whence);
+            }
+        } else {
+            /*no need to move anywhere*/
+            return 0;
+        }
+    default:
+        /*unknown "whence"*/
+        return -1;
     }
 }
 
@@ -143,8 +193,8 @@ struct bw_external_output*
 ext_open_w(void* user_data,
            unsigned buffer_size,
            ext_write_f write,
-           ext_seek_f seek,
-           ext_tell_f tell,
+           ext_setpos_f setpos,
+           ext_getpos_f getpos,
            ext_free_pos_f free_pos,
            ext_flush_f flush,
            ext_close_f close,
@@ -154,8 +204,8 @@ ext_open_w(void* user_data,
         malloc(sizeof(struct bw_external_output));
     output->user_data = user_data;
     output->write = write;
-    output->seek = seek;
-    output->tell = tell;
+    output->setpos = setpos;
+    output->getpos = getpos;
     output->free_pos = free_pos;
     output->flush = flush;
     output->close = close;
@@ -206,11 +256,11 @@ ext_fwrite(struct bw_external_output* stream,
 }
 
 int
-ext_seek_w(struct bw_external_output *stream, void *pos)
+ext_setpos_w(struct bw_external_output *stream, void *pos)
 {
     /*flush internal buffer before moving to new position*/
     if (!ext_flush_w(stream)) {
-        return stream->seek(stream->user_data, pos);
+        return stream->setpos(stream->user_data, pos);
     } else {
         /*error occurred flushing stream*/
         return EOF;
@@ -218,11 +268,11 @@ ext_seek_w(struct bw_external_output *stream, void *pos)
 }
 
 void*
-ext_tell_w(struct bw_external_output *stream)
+ext_getpos_w(struct bw_external_output *stream)
 {
     /*flush internal buffer before retrieving new position*/
     if (!ext_flush_w(stream)) {
-        return stream->tell(stream->user_data);
+        return stream->getpos(stream->user_data);
     } else {
         /*some error occurred when flushing stream*/
         return NULL;
