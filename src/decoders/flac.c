@@ -30,7 +30,7 @@ int
 FlacDecoder_init(decoders_FlacDecoder *self,
                  PyObject *args, PyObject *kwds)
 {
-    self->file = NULL;
+    PyObject *file;
     self->bitstream = NULL;
 
     self->seektable = a_obj_new((ARRAY_COPY_FUNC)seekpoint_copy,
@@ -44,31 +44,24 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     self->audiotools_pcm = NULL;
     self->remaining_samples = 0;
 
-    if (!PyArg_ParseTuple(args, "O", &self->file)) {
+    if (!PyArg_ParseTuple(args, "O", &file)) {
         return -1;
     } else {
-        Py_INCREF(self->file);
+        Py_INCREF(file);
     }
 
-    /*open BitstreamReader from FLAC file stream
-      based on whether it's a low-level file object*/
-    if (PyFile_Check(self->file)) {
-        /*open bitstream through file object*/
-        self->bitstream = br_open(PyFile_AsFile(self->file), BS_BIG_ENDIAN);
-    } else {
-        /*treat file as Python-implemented file-like object*/
-        self->bitstream = br_open_external(
-            self->file,
-            BS_BIG_ENDIAN,
-            4096,
-            (ext_read_f)br_read_python,
-            (ext_setpos_f)bs_setpos_python,
-            (ext_getpos_f)bs_getpos_python,
-            (ext_free_pos_f)bs_free_pos_python,
-            (ext_seek_f)bs_fseek_python,
-            (ext_close_f)bs_close_python,
-            (ext_free_f)bs_free_python_nodecref);
-    }
+    /*treat file as Python-implemented file-like object*/
+    self->bitstream = br_open_external(
+        file,
+        BS_BIG_ENDIAN,
+        4096,
+        (ext_read_f)br_read_python,
+        (ext_setpos_f)bs_setpos_python,
+        (ext_getpos_f)bs_getpos_python,
+        (ext_free_pos_f)bs_free_pos_python,
+        (ext_seek_f)bs_fseek_python,
+        (ext_close_f)bs_close_python,
+        (ext_free_f)bs_free_python_decref);
 
     /*read the STREAMINFO block, SEEKTABLE block
       and setup the total number of samples to read*/
@@ -80,10 +73,15 @@ FlacDecoder_init(decoders_FlacDecoder *self,
         return -1;
     }
 
-    if (PyFile_Check(self->file)) {
-        /*place mark at beginning of stream but after metadata
-          in case seeking is needed*/
+    /*place mark at beginning of stream but after metadata
+      in case seeking is needed*/
+    if (!setjmp(*br_try(self->bitstream))) {
         self->bitstream->mark(self->bitstream, BEGINNING_OF_FRAMES);
+        br_etry(self->bitstream);
+    } else {
+        br_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "unable to mark beginning of stream");
+        return -1;
     }
 
     self->remaining_samples = self->streaminfo.total_samples;
@@ -133,8 +131,6 @@ FlacDecoder_dealloc(decoders_FlacDecoder *self)
 
         self->bitstream->free(self->bitstream);
     }
-
-    Py_XDECREF(self->file);
 
     self->seektable->del(self->seektable);
 
@@ -299,17 +295,10 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
     uint64_t pcm_frames_offset = 0;
     uint64_t byte_offset = 0;
     unsigned i;
-    FILE *file = NULL;
 
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot seek closed stream");
         return NULL;
-    } else if (!PyFile_Check(self->file)) {
-        PyErr_SetString(PyExc_TypeError,
-                        "can only seek streams from file objects");
-        return NULL;
-    } else {
-        file = PyFile_AsFile(self->file);
     }
 
     if (!PyArg_ParseTuple(args, "L", &seeked_offset))
@@ -335,13 +324,22 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
     }
 
     /*position bitstream to indicated value in file*/
-    self->bitstream->rewind(self->bitstream, BEGINNING_OF_FRAMES);
-    while (byte_offset) {
-        /*perform this in chunks in case seeked distance
-          is longer than a "long" taken by fseek*/
-        const uint64_t seek = MIN(byte_offset, LONG_MAX);
-        fseek(file, (long)seek, SEEK_CUR);
-        byte_offset -= seek;
+    if (!setjmp(*br_try(self->bitstream))) {
+        self->bitstream->rewind(self->bitstream, BEGINNING_OF_FRAMES);
+        while (byte_offset) {
+            /*perform this in chunks in case seeked distance
+              is longer than a "long" taken by fseek*/
+            const uint64_t seek = MIN(byte_offset, LONG_MAX);
+            self->bitstream->seek(self->bitstream,
+                                  (long)seek,
+                                  BS_SEEK_CUR);
+            byte_offset -= seek;
+        }
+        br_etry(self->bitstream);
+    } else {
+        br_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error seeking in stream");
+        return NULL;
     }
 
     /*reset stream's total remaining frames*/

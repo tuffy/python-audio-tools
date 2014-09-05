@@ -26,6 +26,7 @@
 int
 WavPackDecoder_init(decoders_WavPackDecoder *self,
                     PyObject *args, PyObject *kwds) {
+    PyObject* file;
 #else
 int
 WavPackDecoder_init(decoders_WavPackDecoder *self,
@@ -59,32 +60,24 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
-    self->file = NULL;
-
-    if (!PyArg_ParseTuple(args, "O", &(self->file))) {
+    if (!PyArg_ParseTuple(args, "O", &file)) {
         return -1;
     } else {
-        Py_INCREF(self->file);
+        Py_INCREF(file);
     }
 
     /*open the WavPack file*/
-    if (PyFile_Check(self->file)) {
-        /*open bitstream through file object*/
-        self->bitstream = br_open(PyFile_AsFile(self->file), BS_LITTLE_ENDIAN);
-    } else {
-        /*treat file as Python-implemented file-like object*/
-        self->bitstream = br_open_external(
-            self->file,
-            BS_LITTLE_ENDIAN,
-            4096,
-            (ext_read_f)br_read_python,
-            (ext_setpos_f)bs_setpos_python,
-            (ext_getpos_f)bs_getpos_python,
-            (ext_free_pos_f)bs_free_pos_python,
-            (ext_seek_f)bs_fseek_python,
-            (ext_close_f)bs_close_python,
-            (ext_free_f)bs_free_python_nodecref);
-    }
+    self->bitstream = br_open_external(
+        file,
+        BS_LITTLE_ENDIAN,
+        4096,
+        (ext_read_f)br_read_python,
+        (ext_setpos_f)bs_setpos_python,
+        (ext_getpos_f)bs_getpos_python,
+        (ext_free_pos_f)bs_free_pos_python,
+        (ext_seek_f)bs_fseek_python,
+        (ext_close_f)bs_close_python,
+        (ext_free_f)bs_free_python_decref);
 #else
     if ((file = fopen(filename, "rb")) == NULL) {
         return -1;
@@ -222,7 +215,6 @@ WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
     Py_XDECREF(self->audiotools_pcm);
     if (self->bitstream != NULL)
         self->bitstream->free(self->bitstream);
-    Py_XDECREF(self->file);
 #else
     if (self->bitstream != NULL)
         self->bitstream->close(self->bitstream);
@@ -379,87 +371,92 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
 PyObject*
 WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args)
 {
-    long long seeked_offset;
-    fpos_t candidate_offset;
-    unsigned best_pcm_offset;
-    fpos_t best_byte_offset;
-    status status;
+    BitstreamReader *stream = self->bitstream;
+    long long sought_offset;
+    unsigned best_pcm_offset = 0;
     struct block_header header;
-    FILE *file = NULL;
+    enum {BLOCK_START, BEST_BYTE_OFFSET};
 
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot seek closed stream");
         return NULL;
-    } else if (!PyFile_Check(self->file)) {
-        PyErr_SetString(PyExc_TypeError,
-                        "can only seek streams from file objects");
-        return NULL;
-    } else {
-        file = PyFile_AsFile(self->file);
     }
 
-    if (!PyArg_ParseTuple(args, "L", &seeked_offset))
+    if (!PyArg_ParseTuple(args, "L", &sought_offset))
         return NULL;
 
-    if (seeked_offset < 0) {
+    if (sought_offset < 0) {
         PyErr_SetString(PyExc_ValueError, "cannot seek to negative value");
         return NULL;
     }
 
-    /*go to beginning of file*/
-    fseek(file, 0, SEEK_SET);
-    fgetpos(file, &candidate_offset);
-    best_pcm_offset = 0;
-    best_byte_offset = candidate_offset;
+    if (!setjmp(*br_try(stream))) {
+        /*go to beginning of file*/
+        stream->seek(stream, 0, BS_SEEK_SET);
+        stream->mark(stream, BEST_BYTE_OFFSET);
 
-    /*find latest block such that block index <= seeked_offset*/
-    status = read_block_header(self->bitstream, &header);
-    while (status == OK) {
-        /*candidate blocks must have initial bit set
-          and have more than 0 samples
-          (don't seek to multi-channel continuation blocks
-           MD5 blocks or ones with RIFF WAVE footers)*/
-        if (header.initial_block && header.block_samples) {
-            if (header.block_index <= seeked_offset) {
-                /*update new best candidate block*/
-                best_pcm_offset = header.block_index;
-                best_byte_offset = candidate_offset;
-
-                /*move on to next block in file*/
-                fseek(file, header.block_size - 24, SEEK_CUR);
-                fgetpos(file, &candidate_offset);
-                status = read_block_header(self->bitstream, &header);
+        /*find latest block such that block index <= sought_offset*/
+        do {
+            stream->mark(stream, BLOCK_START);
+            if (read_block_header(stream, &header) == OK) {
+                /*candidate blocks must have initial bit set,
+                  have more than 0 samples
+                  and an index <= the sought offset*/
+                if (header.initial_block &&
+                    header.block_samples &&
+                    (header.block_index <= sought_offset)) {
+                    /*transfer BLOCK_START mark to BEST_BYTE_OFFSET mark*/
+                    struct br_mark *mark;
+                    stream->unmark(stream, BEST_BYTE_OFFSET);
+                    stream->mark_stacks = br_pop_mark(stream->mark_stacks,
+                                                      BLOCK_START,
+                                                      &mark);
+                    stream->mark_stacks = br_add_mark(stream->mark_stacks,
+                                                      BEST_BYTE_OFFSET,
+                                                      mark);
+                    best_pcm_offset = header.block_index;
+                } else {
+                    stream->unmark(stream, BLOCK_START);
+                }
             } else {
-                /*block index is greater than seeked offset,
-                  so stop looking for additional blocks*/
+                stream->rewind(stream, BLOCK_START);
+                stream->unmark(stream, BLOCK_START);
                 break;
             }
+            stream->seek(stream, header.block_size - 24, BS_SEEK_CUR);
+        } while (header.block_index < sought_offset);
+
+        /*rewind to start of candidate block*/
+        stream->rewind(stream, BEST_BYTE_OFFSET);
+        stream->unmark(stream, BEST_BYTE_OFFSET);
+
+        br_etry(stream);
+
+        /*reset stream's total remaining frames*/
+        self->remaining_pcm_samples = self->total_pcm_frames - best_pcm_offset;
+
+        if (best_pcm_offset == 0) {
+            /*if returned to start of stream, reset MD5 validation*/
+            audiotools__MD5Init(&(self->md5));
+            self->md5sum_checked = 0;
         } else {
-            /*a continuation block or one with no samples,
-              so automatically move on to next block - if any*/
-            fseek(file, header.block_size - 24, SEEK_CUR);
-            fgetpos(file, &candidate_offset);
-            status = read_block_header(self->bitstream, &header);
+            /*otherwise, disable MD5 validation altogether at end of stream*/
+            self->md5sum_checked = 1;
         }
-    }
 
-    /*rewind to start of candidate block*/
-    fsetpos(file, &best_byte_offset);
-
-    /*reset stream's total remaining frames*/
-    self->remaining_pcm_samples = self->total_pcm_frames - best_pcm_offset;
-
-    if (best_pcm_offset == 0) {
-        /*if returned to start of stream, reset MD5 validation*/
-        audiotools__MD5Init(&(self->md5));
-        self->md5sum_checked = 0;
+        /*return actual PCM frames position in file*/
+        return Py_BuildValue("I", best_pcm_offset);
     } else {
-        /*otherwise, disable MD5 validation altogether at end of stream*/
-        self->md5sum_checked = 1;
+        br_etry(stream);
+        if (stream->has_mark(stream, BLOCK_START)) {
+            stream->unmark(stream, BLOCK_START);
+        }
+        if (stream->has_mark(stream, BEST_BYTE_OFFSET)) {
+            stream->unmark(stream, BEST_BYTE_OFFSET);
+        }
+        PyErr_SetString(PyExc_IOError, "I/O error seeking in stream");
+        return NULL;
     }
-
-    /*return actual PCM frames position in file*/
-    return Py_BuildValue("I", best_pcm_offset);
 }
 
 PyObject*

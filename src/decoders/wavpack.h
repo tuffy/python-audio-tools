@@ -56,7 +56,6 @@ typedef struct {
     PyObject_HEAD
 
     PyObject* audiotools_pcm;
-    PyObject* file;
 #endif
 
     BitstreamReader* bitstream;
