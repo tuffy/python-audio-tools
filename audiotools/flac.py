@@ -1504,7 +1504,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         try:
             f.seek(self.__stream_offset__, 0)
             if (f.read(4) != 'fLaC'):
-                # should be able to get here
+                # shouldn't be able to get here
                 return None
             else:
                 from audiotools.bitstream import BitstreamReader
@@ -1569,15 +1569,18 @@ class FlacAudio(WaveContainer, AiffContainer):
             # then overwrite the beginning of the file
             stream = open(self.filename, 'r+b')
             stream.seek(self.__stream_offset__, 0)
-            stream.write('fLaC')
-            metadata.build(BitstreamWriter(stream, 0))
-            stream.close()
+            writer = BitstreamWriter(stream, 0)
+            writer.write_bytes('fLaC')
+            metadata.build(writer)
+            writer.flush()
+            writer.close()
         else:
             # if padding is smaller than change in metadata,
             # or file has no padding,
             # rewrite entire file to fit new metadata
 
             from audiotools import TemporaryFile, transfer_data
+            from audiotools.bitstream import parse
 
             # dump any prefix data from old file to new one
             old_file = open(self.filename, "rb")
@@ -1590,23 +1593,22 @@ class FlacAudio(WaveContainer, AiffContainer):
                 raise InvalidFLAC(ERR_FLAC_INVALID_FILE)
 
             stop = 0
-            reader = BitstreamReader(old_file, 0)
             while (stop == 0):
-                (stop, length) = reader.parse("1u 7p 24u")
-                reader.skip_bytes(length)
+                (stop, length) = parse("1u 7p 24u", False, old_file.read(4))
+                old_file.read(length)
 
             # write new metadata to new file
-            new_file.write("fLaC")
             writer = BitstreamWriter(new_file, 0)
+            writer.write_bytes("fLaC")
             metadata.build(writer)
-            writer.flush()
 
             # write remaining old data to new file
-            transfer_data(old_file.read, new_file.write)
+            transfer_data(old_file.read, writer.write_bytes)
 
             # commit change to disk
-            reader.close()
-            writer.close()
+            old_file.close()
+            writer.flush()
+            new_file.close()
 
     def set_metadata(self, metadata):
         """takes a MetaData object and sets this track's metadata
@@ -2703,7 +2705,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             for (pcm_frame_offset,
                  seekpoint_offset,
                  pcm_frame_count) in seektable.seekpoints:
-                input_file.seek(seekpoint_offset + metadata_offset)
+                reader.seek(seekpoint_offset + metadata_offset)
                 try:
                     (sync_code,
                      reserved1,
@@ -3355,10 +3357,6 @@ class OggFlacAudio(FlacAudio):
             cls.__unlink__(filename)
             raise
 
-        try:
-            pcmreader.close()
-        except DecodingError as err:
-            raise EncodingError(err.error_message)
         sub.stdin.close()
         devnull.close()
 

@@ -886,9 +886,7 @@ class ApeTaggedAudio(object):
                 new_apev2.close()
         else:
             # no existing metadata, so simply append a fresh tag
-            f = open(self.filename, "ab")
-            metadata.build(BitstreamWriter(f, 1))
-            f.close()
+            metadata.build(BitstreamWriter(open(self.filename, "ab"), 1))
 
     def set_metadata(self, metadata):
         """takes a MetaData object and sets this track's metadata
@@ -943,9 +941,7 @@ class ApeTaggedAudio(object):
                 del(new_metadata["Cuesheet"])
 
             # no existing metadata, so simply append a fresh tag
-            f = open(self.filename, "ab")
-            new_metadata.build(BitstreamWriter(f, 1))
-            f.close()
+            new_metadata.build(BitstreamWriter(open(self.filename, "ab"), 1))
 
     def delete_metadata(self):
         """deletes the track's MetaData

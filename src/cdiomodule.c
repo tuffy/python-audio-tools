@@ -29,7 +29,9 @@
 
 
 #if PY_MAJOR_VERSION >= 3
-#define IS_PY3K
+#ifndef PyInt_FromLong
+#define PyInt_FromLong PyLong_FromLong
+#endif
 #endif
 
 #ifndef MIN

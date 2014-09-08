@@ -84,7 +84,7 @@ Page_init(ogg_Page *self, PyObject *args, PyObject *keywds)
         }
 
         /*get string data from segment*/
-        if (PyString_AsStringAndSize(item, (char **)&buffer, &length) == -1) {
+        if (PyBytes_AsStringAndSize(item, (char **)&buffer, &length) == -1) {
             Py_DECREF(item);
             Py_DECREF(segments_iter);
             return -1;
@@ -293,7 +293,7 @@ static PyObject*
 Page_GetItem(ogg_Page *self, Py_ssize_t i)
 {
     if (i < self->page.header.segment_count) {
-        return PyString_FromStringAndSize(
+        return PyBytes_FromStringAndSize(
             (char *)self->page.segment[i],
             (Py_ssize_t)self->page.header.segment_lengths[i]);
     } else {

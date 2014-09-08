@@ -139,9 +139,6 @@ encoders_encode_wavpack(char *filename,
     while (pcm_frames->_[0]->len > 0) {
         unsigned pcm_frame_count = pcm_frames->_[0]->len;
 
-#ifndef STANDALONE
-        Py_BEGIN_ALLOW_THREADS
-#endif
         /*split PCM frames into 1-2 channel blocks*/
         for (block = 0; block < context.blocks_per_set; block++) {
             pcm_frames->split(pcm_frames,
@@ -159,9 +156,6 @@ encoders_encode_wavpack(char *filename,
                          block == 0,
                          block == (context.blocks_per_set - 1));
         }
-#ifndef STANDALONE
-        Py_END_ALLOW_THREADS
-#endif
 
         block_index += pcm_frame_count;
         if (pcmreader->read(pcmreader, block_size, pcm_frames))
@@ -200,18 +194,12 @@ encoders_encode_wavpack(char *filename,
         }
     }
 
-#ifndef STANDALONE
-    Py_BEGIN_ALLOW_THREADS
-#endif
     /*go back and set block header data as necessary*/
     while (stream->has_mark(stream, TOTAL_PCM_FRAMES)) {
         stream->rewind(stream, TOTAL_PCM_FRAMES);
         stream->write(stream, 32, block_index);
         stream->unmark(stream, TOTAL_PCM_FRAMES);
     }
-#ifndef STANDALONE
-    Py_END_ALLOW_THREADS
-#endif
 
     /*close open file handles and deallocate temporary space*/
     free_context(&context);

@@ -195,6 +195,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
             # write temporary seektable to disk
             writer.mark()
             write_seektable(writer, [0] * total_tta_frames)
+            writer.flush()
 
             # write frames to disk
             try:
@@ -248,10 +249,10 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
             # transfer TTA frames from temporary space to disk
             frames.seek(0, 0)
-            transfer_data(frames.read, file.write)
+            transfer_data(frames.read, writer.write_bytes)
             frames.close()
 
-        file.close()
+        writer.close()
 
         return cls(filename)
 
@@ -378,9 +379,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 del(new_metadata["Cuesheet"])
 
             # no current metadata, so append a fresh APEv2 tag
-            f = open(self.filename, "ab")
-            new_metadata.build(BitstreamWriter(f, 1))
-            f.close()
+            new_metadata.build(BitstreamWriter(open(self.filename, "ab"), 1))
 
     def update_metadata(self, metadata):
         """takes this track's current MetaData object
@@ -415,8 +414,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
             # if new metadata is APEv2 and no current metadata,
             # simply append APEv2 tag
             from audiotools.bitstream import BitstreamWriter
-            f = open(self.filename, "ab")
-            metadata.build(BitstreamWriter(f, True))
+            metadata.build(BitstreamWriter(open(self.filename, "ab"), True))
         elif (isinstance(metadata, ApeTag) and
               isinstance(current_metadata, ApeTag) and
               (metadata.total_size() > current_metadata.total_size())):

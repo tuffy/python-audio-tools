@@ -58,7 +58,6 @@ enum {FN_DIFF0     = 0,
 typedef struct {
 #ifndef STANDALONE
     PyObject_HEAD
-    PyObject *file;
 #endif
 
     BitstreamReader* bitstream;

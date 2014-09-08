@@ -32,13 +32,13 @@ class AuReader(object):
         from audiotools.text import (ERR_AU_INVALID_HEADER,
                                      ERR_AU_UNSUPPORTED_FORMAT)
 
-        self.file = open(au_filename, "rb")
+        self.stream = BitstreamReader(open(au_filename, "rb"), False)
         (magic_number,
          self.data_offset,
          data_size,
          encoding_format,
          self.sample_rate,
-         self.channels) = BitstreamReader(self.file, 0).parse("4b 5* 32u")
+         self.channels) = self.stream.parse("4b 5* 32u")
 
         if (magic_number != '.snd'):
             raise ValueError(ERR_AU_INVALID_HEADER)
@@ -59,7 +59,7 @@ class AuReader(object):
                                    self.remaining_pcm_frames)
         requested_bytes = (self.bytes_per_pcm_frame *
                            requested_pcm_frames)
-        pcm_data = self.file.read(requested_bytes)
+        pcm_data = self.stream.read_bytes(requested_bytes)
 
         # raise exception if data block exhausted early
         if (len(pcm_data) < requested_bytes):
@@ -75,6 +75,9 @@ class AuReader(object):
                              True,
                              True)
 
+    def read_closed(self, pcm_frames):
+        raise ValueError("cannot read closed stream")
+
     def seek(self, pcm_frame_offset):
         if (pcm_frame_offset < 0):
             from audiotools.text import ERR_NEGATIVE_SEEK
@@ -85,16 +88,21 @@ class AuReader(object):
                                self.total_pcm_frames)
 
         # position file in data block
-        self.file.seek(self.data_offset +
-                       (pcm_frame_offset *
-                        self.bytes_per_pcm_frame), 0)
+        self.stream.seek(self.data_offset +
+                         (pcm_frame_offset *
+                          self.bytes_per_pcm_frame), 0)
         self.remaining_pcm_frames = (self.total_pcm_frames -
                                      pcm_frame_offset)
 
         return pcm_frame_offset
 
+    def seek_closed(self, pcm_frame_offset):
+        raise ValueError("cannot seek closed stream")
+
     def close(self):
-        self.file.close()
+        self.stream.close()
+        self.read = self.read_closed
+        self.seek = self.seek_closed
 
 
 def au_header(sample_rate,
@@ -140,14 +148,13 @@ class AuAudio(AudioFile):
                                      ERR_AU_UNSUPPORTED_FORMAT)
 
         try:
-            f = open(filename, 'rb')
-
             (magic_number,
              self.__data_offset__,
              self.__data_size__,
              encoding_format,
              self.__sample_rate__,
-             self.__channels__) = BitstreamReader(f, 0).parse("4b 5* 32u")
+             self.__channels__) = BitstreamReader(
+                 open(filename, "rb"), 0).parse("4b 5* 32u")
         except IOError as msg:
             raise InvalidAU(str(msg))
 

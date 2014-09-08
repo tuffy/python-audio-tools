@@ -23,6 +23,17 @@ from audiotools.bitstream import BitstreamAccumulator
 from audiotools import BufferedPCMReader
 
 
+class Counter(object):
+    def __init__(self, initial_value=0):
+        self.__value__ = int(initial_value)
+
+    def __int__(self):
+        return self.__value__
+
+    def add(self, byte):
+        self.__value__ += 1
+
+
 class Encoding_Options(object):
     def __init__(self, block_size,
                  initial_history, history_multiplier, maximum_K,
@@ -64,7 +75,7 @@ def encode_mdat(file, pcmreader,
     frame_byte_sizes = []
 
     # write placeholder mdat header
-    mdat_start = file.tell()
+    mdat.mark()
     mdat.write(32, 0)
     mdat.write_bytes("mdat")
 
@@ -72,15 +83,17 @@ def encode_mdat(file, pcmreader,
     frame = pcmreader.read(block_size)
     while (len(frame) > 0):
         total_pcm_frames += frame.frames
-        frame_start = file.tell()
+        frame_byte_size = Counter()
+        mdat.add_callback(frame_byte_size.add)
         encode_frameset(mdat, pcmreader, options, frame)
-        mdat.flush()
-        frame_byte_sizes.append(file.tell() - frame_start)
+        mdat.pop_callback()
+        frame_byte_sizes.append(int(frame_byte_size))
         frame = pcmreader.read(block_size)
 
     # finally, return to start of mdat and write actual length
-    file.seek(mdat_start)
+    mdat.rewind()
     mdat.write(32, sum(frame_byte_sizes) + 8)
+    mdat.unmark()
 
     return (frame_byte_sizes, total_pcm_frames)
 

@@ -34,6 +34,12 @@
 
 #ifndef STANDALONE
 
+#if PY_MAJOR_VERSION >= 3
+#ifndef PyInt_AsLong
+#define PyInt_AsLong PyLong_AsLong
+#endif
+#endif
+
 PyMethodDef module_methods[] = {
     {"from_list", (PyCFunction)FrameList_from_list,
      METH_VARARGS,

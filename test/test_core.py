@@ -3925,8 +3925,8 @@ class Bitstream(unittest.TestCase):
             bitstream.write(5, 7)
             bitstream.write(3, 5)
             bitstream.write(19, 342977)
+            bitstream.flush()
             f.close()
-            del(bitstream)
             self.assertEqual(map(ord, open(temp.name, "rb").read()),
                              [0xB1, 0xED, 0x3B, 0xC1])
 
@@ -3937,8 +3937,8 @@ class Bitstream(unittest.TestCase):
             bitstream.write_signed(5, 7)
             bitstream.write_signed(3, -3)
             bitstream.write_signed(19, -181311)
+            bitstream.flush()
             f.close()
-            del(bitstream)
             self.assertEqual(map(ord, open(temp.name, "rb").read()),
                              [0xB1, 0xED, 0x3B, 0xC1])
 
@@ -3959,8 +3959,8 @@ class Bitstream(unittest.TestCase):
             bitstream.unary(0, 0)
             bitstream.unary(0, 0)
             bitstream.write(1, 1)
+            bitstream.flush()
             f.close()
-            del(bitstream)
             self.assertEqual(map(ord, open(temp.name, "rb").read()),
                              [0xB1, 0xED, 0x3B, 0xC1])
 
@@ -3984,8 +3984,8 @@ class Bitstream(unittest.TestCase):
             bitstream.unary(1, 0)
             bitstream.unary(1, 0)
             bitstream.unary(1, 5)
+            bitstream.flush()
             f.close()
-            del(bitstream)
             self.assertEqual(map(ord, open(temp.name, "rb").read()),
                              [0xB1, 0xED, 0x3B, 0xC1])
 
@@ -3998,8 +3998,8 @@ class Bitstream(unittest.TestCase):
             bitstream.write(5, 13)
             bitstream.write(3, 3)
             bitstream.write(19, 395743)
+            bitstream.flush()
             f.close()
-            del(bitstream)
             self.assertEqual(map(ord, open(temp.name, "rb").read()),
                              [0xB1, 0xED, 0x3B, 0xC1])
 
@@ -4010,8 +4010,8 @@ class Bitstream(unittest.TestCase):
             bitstream.write_signed(5, 13)
             bitstream.write_signed(3, 3)
             bitstream.write_signed(19, -128545)
+            bitstream.flush()
             f.close()
-            del(bitstream)
             self.assertEqual(map(ord, open(temp.name, "rb").read()),
                              [0xB1, 0xED, 0x3B, 0xC1])
 
@@ -4032,8 +4032,8 @@ class Bitstream(unittest.TestCase):
             bitstream.unary(0, 0)
             bitstream.unary(0, 0)
             bitstream.write(2, 3)
+            bitstream.flush()
             f.close()
-            del(bitstream)
             self.assertEqual(map(ord, open(temp.name, "rb").read()),
                              [0xB1, 0xED, 0x3B, 0xC1])
 
@@ -4057,8 +4057,8 @@ class Bitstream(unittest.TestCase):
             bitstream.unary(1, 2)
             bitstream.unary(1, 5)
             bitstream.unary(1, 0)
+            bitstream.flush()
             f.close()
-            del(bitstream)
             self.assertEqual(map(ord, open(temp.name, "rb").read()),
                              [0xB1, 0xED, 0x3B, 0xC1])
 
@@ -4068,8 +4068,8 @@ class Bitstream(unittest.TestCase):
             bitstream.byte_align()
             bitstream.write(4, 0xD)
             bitstream.byte_align()
+            bitstream.flush()
             f.close()
-            del(bitstream)
             self.assertEqual(map(ord, open(temp.name, "rb").read()),
                              [0x01, 0x0D])
 

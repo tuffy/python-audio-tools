@@ -216,7 +216,6 @@ encoders_encode_mp3(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     fclose(output_file);
     samples->del(samples);
-    pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
     Py_INCREF(Py_None);
     return Py_None;

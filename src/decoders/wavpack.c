@@ -497,9 +497,9 @@ WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,
         if ((string_obj =
              PyObject_CallMethod(framelist,
                                  "to_bytes", "ii", 0, sign)) != NULL) {
-            if (PyString_AsStringAndSize(string_obj,
-                                         &string_buffer,
-                                         &length) == 0) {
+            if (PyBytes_AsStringAndSize(string_obj,
+                                        &string_buffer,
+                                        &length) == 0) {
                 audiotools__MD5Update(&(self->md5),
                                       (unsigned char *)string_buffer,
                                       length);

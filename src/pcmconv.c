@@ -22,6 +22,12 @@
 
 #ifndef STANDALONE
 
+#if PY_MAJOR_VERSION >= 3
+#ifndef PyInt_AsLong
+#define PyInt_AsLong PyLong_AsLong
+#endif
+#endif
+
 PyObject*
 open_audiotools_pcm(void)
 {

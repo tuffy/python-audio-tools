@@ -37,57 +37,60 @@ class WavPackDecoder(object):
         # read initial block to populate
         # sample_rate, bits_per_sample, channels, and channel_mask
         self.reader.mark()
-        block_header = Block_Header.read(self.reader)
-        sub_blocks_size = block_header.block_size - 24
-        sub_blocks_data = self.reader.substream(sub_blocks_size)
-        if (block_header.sample_rate != 15):
-            self.sample_rate = [6000,  8000,  9600,  11025, 12000,
-                                16000, 22050, 24000, 32000, 44100,
-                                48000, 64000, 88200, 96000,
-                                192000][block_header.sample_rate]
-        else:
-            sub_blocks_data.mark()
-            try:
+        try:
+            block_header = Block_Header.read(self.reader)
+            sub_blocks_size = block_header.block_size - 24
+            sub_blocks_data = self.reader.substream(sub_blocks_size)
+            if (block_header.sample_rate != 15):
+                self.sample_rate = [6000,  8000,  9600,  11025, 12000,
+                                    16000, 22050, 24000, 32000, 44100,
+                                    48000, 64000, 88200, 96000,
+                                    192000][block_header.sample_rate]
+            else:
+                sub_blocks_data.mark()
+                try:
+                    for sub_block in sub_blocks(sub_blocks_data,
+                                                sub_blocks_size):
+                        if (((sub_block.metadata_function == 7) and
+                             (sub_block.nondecoder_data == 1))):
+                            self.sample_rate = sub_block.data.read(
+                                sub_block.data_size() * 8)
+                            break
+                    else:
+                        raise ValueError("invalid sample rate")
+                finally:
+                    sub_blocks_data.rewind()
+                    sub_blocks_data.unmark()
+
+            self.bits_per_sample = [8, 16, 24, 32][block_header.bits_per_sample]
+
+            if (block_header.initial_block and block_header.final_block):
+                if (((block_header.mono_output == 0) or
+                     (block_header.false_stereo == 1))):
+                    self.channels = 2
+                    self.channel_mask = 0x3
+                else:
+                    self.channels = 1
+                    self.channel_mask = 0x4
+            else:
+                # look for channel mask sub block
+                sub_blocks_data.mark()
                 for sub_block in sub_blocks(sub_blocks_data, sub_blocks_size):
-                    if (((sub_block.metadata_function == 7) and
-                         (sub_block.nondecoder_data == 1))):
-                        self.sample_rate = sub_block.data.read(
-                            sub_block.data_size() * 8)
+                    if (((sub_block.metadata_function == 13) and
+                         (sub_block.nondecoder_data == 0))):
+                        self.channels = sub_block.data.read(8)
+                        self.channel_mask = sub_block.data.read(
+                            (sub_block.data_size() - 1) * 8)
                         break
                 else:
-                    raise ValueError("invalid sample rate")
-            finally:
+                    # FIXME - handle case of no channel mask sub block
+                    raise NotImplementedError()
                 sub_blocks_data.rewind()
                 sub_blocks_data.unmark()
 
-        self.bits_per_sample = [8, 16, 24, 32][block_header.bits_per_sample]
-
-        if (block_header.initial_block and block_header.final_block):
-            if (((block_header.mono_output == 0) or
-                 (block_header.false_stereo == 1))):
-                self.channels = 2
-                self.channel_mask = 0x3
-            else:
-                self.channels = 1
-                self.channel_mask = 0x4
-        else:
-            # look for channel mask sub block
-            sub_blocks_data.mark()
-            for sub_block in sub_blocks(sub_blocks_data, sub_blocks_size):
-                if (((sub_block.metadata_function == 13) and
-                     (sub_block.nondecoder_data == 0))):
-                    self.channels = sub_block.data.read(8)
-                    self.channel_mask = sub_block.data.read(
-                        (sub_block.data_size() - 1) * 8)
-                    break
-            else:
-                # FIXME - handle case of no channel mask sub block
-                raise NotImplementedError()
-            sub_blocks_data.rewind()
-            sub_blocks_data.unmark()
-
-        self.reader.rewind()
-        self.reader.unmark()
+            self.reader.rewind()
+        finally:
+            self.reader.unmark()
 
         self.pcm_finished = False
         self.md5_checked = False

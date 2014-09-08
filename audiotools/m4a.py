@@ -971,15 +971,18 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 raise EncodingError(str(err))
             try:
                 m4a_writer = BitstreamWriter(f, 0)
+                m4a_writer.mark(1)
                 m4a_writer.build("32u 4b", (ftyp.size() + 8, ftyp.name))
                 ftyp.build(m4a_writer)
                 m4a_writer.build("32u 4b", (moov.size() + 8, moov.name))
                 moov.build(m4a_writer)
                 m4a_writer.build("32u 4b", (free.size() + 8, free.name))
                 free.build(m4a_writer)
+                m4a_writer.flush()
             except IOError as err:
+                m4a_writer.unmark(1)
                 f.close()
-                self.__unlink__(filename)
+                cls.__unlink__(filename)
                 raise EncodingError(str(err))
 
             # encode the mdat atom based on encoding parameters
@@ -994,12 +997,16 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                         history_multiplier=cls.HISTORY_MULTIPLIER,
                         maximum_k=cls.MAXIMUM_K)
             except (IOError, ValueError) as err:
+                m4a_writer.unmark(1)
                 f.close()
-                self.__unlink__(filename)
+                cls.__unlink__(filename)
                 raise EncodingError(str(err))
 
             if (actual_pcm_frames != total_pcm_frames):
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+                m4a_writer.unmark(1)
+                f.close()
+                cls.__unlink__(filename)
                 raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
             assert(sum(frame_byte_sizes) > 0)
 
@@ -1018,11 +1025,13 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                                      total_pcm_frames,
                                      frame_byte_sizes)
 
-            f.seek(0, 0)
+            m4a_writer.rewind(1)
             m4a_writer.build("32u 4b", (ftyp.size() + 8, ftyp.name))
             ftyp.build(m4a_writer)
             m4a_writer.build("32u 4b", (moov.size() + 8, moov.name))
             moov.build(m4a_writer)
+            m4a_writer.unmark(1)
+            m4a_writer.flush()
             f.close()
 
             return cls(filename)
@@ -1081,8 +1090,9 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 m4a_writer.build("32u 4b", (free.size() + 8, free.name))
                 free.build(m4a_writer)
                 mdat_file.seek(0, 0)
-                transfer_data(mdat_file.read, f.write)
+                transfer_data(mdat_file.read, m4a_writer.write_bytes)
                 mdat_file.close()
+                m4a_writer.close()
             except IOError as err:
                 mdat_file.close()
                 raise EncodingError(str(err))

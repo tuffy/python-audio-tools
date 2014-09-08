@@ -39,7 +39,7 @@ int
 SHNDecoder_init(decoders_SHNDecoder *self,
                 PyObject *args, PyObject *kwds)
 {
-    self->file = NULL;
+    PyObject *file;
     self->bitstream = NULL;
     self->stream_finished = 0;
 
@@ -55,28 +55,24 @@ SHNDecoder_init(decoders_SHNDecoder *self,
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
-    if (!PyArg_ParseTuple(args, "O", &(self->file))) {
+    if (!PyArg_ParseTuple(args, "O", &file)) {
         return -1;
     } else {
-        Py_INCREF(self->file);
+        Py_INCREF(file);
     }
 
     /*open the shn file*/
-    if (PyFile_Check(self->file)) {
-        self->bitstream = br_open(PyFile_AsFile(self->file), BS_BIG_ENDIAN);
-    } else {
-        self->bitstream = br_open_external(
-            self->file,
-            BS_BIG_ENDIAN,
-            4096,
-            (ext_read_f)br_read_python,
-            (ext_setpos_f)bs_setpos_python,
-            (ext_getpos_f)bs_getpos_python,
-            (ext_free_pos_f)bs_free_pos_python,
-            (ext_seek_f)bs_fseek_python,
-            (ext_close_f)bs_close_python,
-            (ext_free_f)bs_free_python_nodecref);
-    }
+    self->bitstream = br_open_external(
+        file,
+        BS_BIG_ENDIAN,
+        4096,
+        (ext_read_f)br_read_python,
+        (ext_setpos_f)bs_setpos_python,
+        (ext_getpos_f)bs_getpos_python,
+        (ext_free_pos_f)bs_free_pos_python,
+        (ext_seek_f)bs_fseek_python,
+        (ext_close_f)bs_close_python,
+        (ext_free_f)bs_free_python_decref);
 
     /*read Shorten header for basic info*/
     switch (read_shn_header(self, self->bitstream)) {
@@ -103,7 +99,6 @@ SHNDecoder_init(decoders_SHNDecoder *self,
 void
 SHNDecoder_dealloc(decoders_SHNDecoder *self)
 {
-    Py_XDECREF(self->file);
     self->means->del(self->means);
     self->previous_samples->del(self->previous_samples);
     self->samples->del(self->samples);

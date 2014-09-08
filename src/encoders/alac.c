@@ -27,6 +27,12 @@
 
 #ifndef STANDALONE
 
+#if PY_MAJOR_VERSION >= 3
+#ifndef PyInt_FromLong
+#define PyInt_FromLong PyLong_FromLong
+#endif
+#endif
+
 PyObject*
 encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
 {
@@ -42,7 +48,6 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
                              NULL};
 
     PyObject *file_obj;
-    FILE *output_file;
     BitstreamWriter *output = NULL;
     pcmreader* pcmreader;
     struct alac_context encoder;
@@ -82,13 +87,16 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     }
 
     /*convert file object to bitstream writer*/
-    if ((output_file = PyFile_AsFile(file_obj)) == NULL) {
-        PyErr_SetString(PyExc_TypeError,
-                        "file must by a concrete file object");
-        goto error;
-    } else {
-        output = bw_open(output_file, BS_BIG_ENDIAN);
-    }
+    output = bw_open_external(file_obj,
+                              BS_BIG_ENDIAN,
+                              4096,
+                              (ext_write_f)bw_write_python,
+                              (ext_setpos_f)bs_setpos_python,
+                              (ext_getpos_f)bs_getpos_python,
+                              (ext_free_pos_f)bs_free_pos_python,
+                              (ext_flush_f)bw_flush_python,
+                              (ext_close_f)bs_close_python,
+                              (ext_free_f)bs_free_python_nodecref);
 
 #else
 
@@ -123,6 +131,7 @@ ALACEncoder_encode_alac(char *filename,
     /*convert file object to bitstream writer*/
     output = bw_open(output_file, BS_BIG_ENDIAN);
 #endif
+    /*FIXME - check marks/rewinds for I/O errors*/
     output->mark(output, MDAT_HEADER);
 
     output->add_callback(output,
@@ -137,9 +146,6 @@ ALACEncoder_encode_alac(char *filename,
     if (pcmreader->read(pcmreader, encoder.options.block_size, channels))
         goto error;
     while (channels->_[0]->len > 0) {
-#ifndef STANDALONE
-        Py_BEGIN_ALLOW_THREADS
-#endif
         /*update the total number of PCM frames read thus far*/
         encoder.total_pcm_frames += channels->_[0]->len;
         frame_byte_size = 0;
@@ -149,10 +155,6 @@ ALACEncoder_encode_alac(char *filename,
         /*log each frameset's total size in bytes*/
         encoder.frame_sizes->append(encoder.frame_sizes,
                                     frame_byte_size);
-
-#ifndef STANDALONE
-        Py_END_ALLOW_THREADS
-#endif
 
         if (pcmreader->read(pcmreader, encoder.options.block_size, channels))
             goto error;
@@ -1222,8 +1224,6 @@ ALACEncoder_encode(encoders_ALACEncoder *self, PyObject *args)
         framelist = (pcm_FrameList*)framelist_obj;
     }
 
-    Py_BEGIN_ALLOW_THREADS
-
     /*convert FrameList object to multidimensional int array*/
     channels->reset(channels);
     for (channel = 0; channel < framelist->channels; channel++) {
@@ -1244,13 +1244,11 @@ ALACEncoder_encode(encoders_ALACEncoder *self, PyObject *args)
     /*write frameset to output buffer*/
     write_frameset(self->output_buffer, &(self->encoder), channels);
 
-    Py_END_ALLOW_THREADS
-
     /*convert output buffer to Python string and return it*/
     bytes_written = self->output_buffer->bytes_written(self->output_buffer);
-    string = PyString_FromStringAndSize(NULL, (Py_ssize_t)bytes_written);
+    string = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)bytes_written);
     bw_read(self->output_buffer,
-            (uint8_t*)PyString_AS_STRING(string),
+            (uint8_t*)PyBytes_AS_STRING(string),
             bytes_written);
 
     return string;

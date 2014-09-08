@@ -28,11 +28,17 @@
 #endif
 
 #ifndef STANDALONE
+
+#if PY_MAJOR_VERSION >= 3
+#ifndef PyInt_FromLong
+#define PyInt_FromLong PyLong_FromLong
+#endif
+#endif
+
 PyObject*
 encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
 {
     PyObject* file_obj;
-    FILE* output_file;
     BitstreamWriter *output;
     pcmreader* pcmreader;
     unsigned block_size;
@@ -41,9 +47,7 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
     a_int* frame_sizes;
     PyObject* frame_sizes_obj;
     unsigned i;
-    static char *kwlist[] = {"file",
-                             "pcmreader",
-                             NULL};
+    static char *kwlist[] = {"file", "pcmreader", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(
             args, keywds, "OO&", kwlist,
@@ -52,31 +56,31 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
             &pcmreader))
         return NULL;
 
-    /*convert file object to bitstream writer*/
-    if ((output_file = PyFile_AsFile(file_obj)) == NULL) {
-        PyErr_SetString(PyExc_TypeError,
-                        "file must by a concrete file object");
-        return NULL;
-    } else {
-        /*initialize temporary buffers*/
-        block_size = (pcmreader->sample_rate * 256) / 245;
-        output = bw_open(output_file, BS_LITTLE_ENDIAN);
-        framelist = aa_int_new();
-        cache_init(&cache);
-        frame_sizes = a_int_new();
-    }
+    /*initialize temporary buffers and output file*/
+    block_size = (pcmreader->sample_rate * 256) / 245;
+    output = bw_open_external(file_obj,
+                              BS_LITTLE_ENDIAN,
+                              4096,
+                              (ext_write_f)bw_write_python,
+                              (ext_setpos_f)bs_setpos_python,
+                              (ext_getpos_f)bs_getpos_python,
+                              (ext_free_pos_f)bs_free_pos_python,
+                              (ext_flush_f)bw_flush_python,
+                              (ext_close_f)bs_close_python,
+                              (ext_free_f)bs_free_python_nodecref);
+    framelist = aa_int_new();
+    cache_init(&cache);
+    frame_sizes = a_int_new();
 
     /*convert PCMReader input to TTA frames*/
     if (pcmreader->read(pcmreader, block_size, framelist))
         goto error;
     while (framelist->_[0]->len) {
-        Py_BEGIN_ALLOW_THREADS
         frame_sizes->append(frame_sizes,
                             encode_frame(output,
                                          &cache,
                                          framelist,
                                          pcmreader->bits_per_sample));
-        Py_END_ALLOW_THREADS
         if (pcmreader->read(pcmreader, block_size, framelist))
             goto error;
     }
@@ -95,6 +99,7 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
     }
 
     /*free temporary buffers*/
+    output->free(output);
     framelist->del(framelist);
     cache_free(&cache);
     frame_sizes->del(frame_sizes);
@@ -104,6 +109,7 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
     return frame_sizes_obj;
 error:
     /*free temporary buffers*/
+    output->free(output);
     framelist->del(framelist);
     cache_free(&cache);
     frame_sizes->del(frame_sizes);

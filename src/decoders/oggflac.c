@@ -293,7 +293,7 @@ OggFlacDecoder_update_md5sum(decoders_OggFlacDecoder *self,
     Py_ssize_t length;
 
     if (string != NULL) {
-        if (PyString_AsStringAndSize(string, &string_buffer, &length) == 0) {
+        if (PyBytes_AsStringAndSize(string, &string_buffer, &length) == 0) {
             audiotools__MD5Update(&(self->md5),
                                   (unsigned char *)string_buffer,
                                   length);

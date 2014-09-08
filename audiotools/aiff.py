@@ -350,13 +350,13 @@ class AiffReader(object):
 
         from audiotools.bitstream import BitstreamReader
 
-        self.file = open(aiff_filename, "rb")
+        self.stream = BitstreamReader(open(aiff_filename, "rb"), False)
 
         # ensure FORM<size>AIFF header is ok
         try:
             (form,
              total_size,
-             aiff) = struct.unpack(">4sI4s", self.file.read(12))
+             aiff) = self.stream.parse("4b 32u 4b")
         except struct.error:
             from audiotools.text import ERR_AIFF_INVALID_AIFF
             raise InvalidAIFF(ERR_AIFF_INVALID_AIFF)
@@ -375,7 +375,7 @@ class AiffReader(object):
         while (total_size > 0):
             try:
                 (chunk_id,
-                 chunk_size) = struct.unpack(">4sI", self.file.read(8))
+                 chunk_size) = self.stream.parse("4b 32u")
             except struct.error:
                 from audiotools.text import ERR_AIFF_INVALID_AIFF
                 raise ValueError(ERR_AIFF_INVALID_AIFF)
@@ -393,7 +393,7 @@ class AiffReader(object):
                  self.total_pcm_frames,
                  self.bits_per_sample,
                  self.sample_rate,
-                 channel_mask) = parse_comm(BitstreamReader(self.file, False))
+                 channel_mask) = parse_comm(self.stream)
                 self.channel_mask = int(channel_mask)
                 self.bytes_per_pcm_frame = ((self.bits_per_sample // 8) *
                                             self.channels)
@@ -407,15 +407,15 @@ class AiffReader(object):
                     from audiotools.text import ERR_AIFF_PREMATURE_SSND_CHUNK
                     raise ValueError(ERR_AIFF_PREMATURE_SSND_CHUNK)
                 else:
-                    self.file.read(8)
-                    self.ssnd_chunk_offset = self.file.tell()
+                    self.stream.skip_bytes(8)
+                    self.stream.mark()
                     return
             else:
                 # all other chunks are ignored
-                self.file.read(chunk_size)
+                self.stream.skip_bytes(chunk_size)
 
             if (chunk_size % 2):
-                if (len(self.file.read(1)) < 1):
+                if (len(self.stream.read_bytes(1)) < 1):
                     from audiotools.text import ERR_AIFF_INVALID_CHUNK
                     raise ValueError(ERR_AIFF_INVALID_CHUNK)
                 total_size -= (chunk_size + 1)
@@ -426,6 +426,10 @@ class AiffReader(object):
             from audiotools.text import ERR_AIFF_NO_SSND_CHUNK
             raise ValueError(ERR_AIFF_NO_SSND_CHUNK)
 
+    def __del__(self):
+        if (self.stream.has_mark()):
+            self.stream.unmark()
+
     def read(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of PCM frames"""
 
@@ -434,7 +438,7 @@ class AiffReader(object):
                                    self.remaining_pcm_frames)
         requested_bytes = (self.bytes_per_pcm_frame *
                            requested_pcm_frames)
-        pcm_data = self.file.read(requested_bytes)
+        pcm_data = self.stream.read_bytes(requested_bytes)
 
         # raise exception if "SSND" chunk exhausted early
         if (len(pcm_data) < requested_bytes):
@@ -450,6 +454,9 @@ class AiffReader(object):
                              True,
                              True)
 
+    def read_closed(self, pcm_frames):
+        raise ValueError("cannot read closed stream")
+
     def seek(self, pcm_frame_offset):
         """tries to seek to the given PCM frame offset
         returns the total amount of frames actually seeked over"""
@@ -463,18 +470,22 @@ class AiffReader(object):
                                self.total_pcm_frames)
 
         # position file in "SSND" chunk
-        self.file.seek(self.ssnd_chunk_offset +
-                       (pcm_frame_offset *
-                        self.bytes_per_pcm_frame), 0)
+        self.stream.rewind()
+        self.stream.seek((pcm_frame_offset * self.bytes_per_pcm_frame), 1)
         self.remaining_pcm_frames = (self.total_pcm_frames -
                                      pcm_frame_offset)
 
         return pcm_frame_offset
 
+    def seek_closed(self, pcm_frame_offset):
+        raise ValueError("cannot seek closed stream")
+
     def close(self):
         """closes the stream for reading"""
 
-        self.file.close()
+        self.stream.close()
+        self.read = self.read_closed
+        self.seek = self.seek_closed
 
 
 def aiff_header(sample_rate,

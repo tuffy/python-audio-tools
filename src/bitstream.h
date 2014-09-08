@@ -661,8 +661,6 @@ void
 br_unmark_s(BitstreamReader* bs, int mark_id);
 void
 br_unmark_e(BitstreamReader* bs, int mark_id);
-void
-br_unmark_c(BitstreamReader* bs, int mark_id);
 
 
 /*bs->seek(bs, position, whence)  methods*/

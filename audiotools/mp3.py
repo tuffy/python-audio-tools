@@ -108,7 +108,7 @@ class MP3Audio(AudioFile):
 
         AudioFile.__init__(self, filename)
 
-        from audiotools.bitstream import BitstreamReader
+        from audiotools.bitstream import parse
 
         try:
             mp3file = open(filename, "rb")
@@ -128,8 +128,9 @@ class MP3Audio(AudioFile):
              bit_rate,
              sample_rate,
              pad,
-             channels) = BitstreamReader(mp3file, 0).parse(
-                "11u 2u 2u 1p 4u 2u 1u 1p 2u 6p")
+             channels) = parse("11u 2u 2u 1p 4u 2u 1u 1p 2u 6p",
+                               False,
+                               mp3file.read(4))
 
             self.__samplerate__ = self.SAMPLE_RATE[mpeg_id][sample_rate]
             if (self.__samplerate__ is None):
@@ -151,13 +152,15 @@ class MP3Audio(AudioFile):
                                  first_frame.index("Xing") + 160]) == 160)):
                 # pull length from Xing header, if present
                 self.__pcm_frames__ = (
-                    BitstreamReader(
-                        first_frame[first_frame.index("Xing"):
-                                    first_frame.index("Xing") + 160],
-                        0).parse("32p 32p 32u 32p 832p")[0] *
+                    parse("32p 32p 32u 32p 832p",
+                          0,
+                          first_frame[first_frame.index("Xing"):
+                                      first_frame.index("Xing") + 160])[0] *
                     self.PCM_FRAMES_PER_MPEG_FRAME[layer])
             else:
                 # otherwise, bounce through file frames
+                from audiotools.bitstream import BitstreamReader
+
                 reader = BitstreamReader(mp3file, 0)
                 self.__pcm_frames__ = 0
 

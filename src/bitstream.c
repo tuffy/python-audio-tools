@@ -1052,7 +1052,6 @@ br_close_methods(BitstreamReader* bs)
     bs->close_internal_stream = br_close_internal_stream_c;
     bs->mark = br_mark_c;
     bs->rewind = br_rewind_c;
-    bs->unmark = br_unmark_c;
     bs->seek = br_seek_c;
 }
 
@@ -1268,7 +1267,8 @@ br_rewind_e(BitstreamReader* bs, int mark_id)
                   mark->position.external.buffer_size);
         bs->state = mark->state;
     } else {
-        fprintf(stderr, "*** Warning: no marks on stack to rewind\n");
+        fprintf(stderr, "*** Warning: no marks on stack %d to rewind\n",
+                mark_id);
     }
 }
 
@@ -1323,12 +1323,6 @@ br_unmark_e(BitstreamReader* bs, int mark_id)
                 "*** Warning: no marks on stack %d to remove\n",
                 mark_id);
     }
-}
-
-void
-br_unmark_c(BitstreamReader* bs, int mark_id)
-{
-    return;
 }
 
 
@@ -2580,16 +2574,6 @@ bw_free_e(BitstreamWriter* bs)
         (void)ext_flush_w(bs->output.external);
     }
 
-    /*free any leftover mark objects on stack
-
-      it's important to handle this step before freeing
-      our external file-like object!*/
-    while (bs->mark_stacks != NULL) {
-        const int mark_id = bs->mark_stacks->mark_id;
-        fprintf(stderr, "*** Warning: leftover mark on stack %d\n", mark_id);
-        bs->unmark(bs, mark_id);
-    }
-
     ext_free_w(bs->output.external);
 
     /*perform additional deallocations on rest of struct*/
@@ -3455,6 +3439,14 @@ void func_mult_three(uint8_t byte, int* value);
 
 void test_buffer();
 
+enum {M_MAIN1, M_MAIN2,
+      M_BE1, M_BE2, M_BE3, M_BEP,
+      M_LE1, M_LE2, M_LE3, M_LEP,
+      M_CLOSE, M_TRY1, M_TRY2,
+      M_CALLBACKS,
+      M_BE_EDGE, M_LE_EDGE,
+      M_W_MARKS};
+
 int main(int argc, char* argv[]) {
     int fd;
     FILE* temp_file;
@@ -3588,7 +3580,7 @@ int main(int argc, char* argv[]) {
     fseek(temp_file, 0, SEEK_SET);
 
     reader = br_open(temp_file, BS_BIG_ENDIAN);
-    reader->mark(reader, 0);
+    reader->mark(reader, M_MAIN1);
 
     /*check a big-endian substream built from a file*/
     subreader = br_substream_new(BS_BIG_ENDIAN);
@@ -3600,7 +3592,7 @@ int main(int argc, char* argv[]) {
     test_callbacks_reader(subreader, 14, 18, be_table, 14);
     br_substream_reset(subreader);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_MAIN1);
     reader->skip(reader, 16);
     reader->substream_append(reader, subreader, 4);
     test_close_errors(subreader, be_table);
@@ -3609,7 +3601,7 @@ int main(int argc, char* argv[]) {
     subreader = br_substream_new(BS_BIG_ENDIAN);
 
     /*check a big-endian substream built from another substream*/
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_MAIN1);
     reader->skip(reader, 8);
     reader->substream_append(reader, subreader, 6);
     subreader->skip(subreader, 8);
@@ -3621,12 +3613,12 @@ int main(int argc, char* argv[]) {
     test_callbacks_reader(subsubreader, 14, 18, be_table, 14);
     subsubreader->close(subsubreader);
     subreader->close(subreader);
-    reader->rewind(reader, 0);
-    reader->unmark(reader, 0);
+    reader->rewind(reader, M_MAIN1);
+    reader->unmark(reader, M_MAIN1);
     reader->free(reader);
 
     reader = br_open(temp_file, BS_LITTLE_ENDIAN);
-    reader->mark(reader, 0);
+    reader->mark(reader, M_MAIN2);
 
     /*check a little-endian substream built from a file*/
     subreader = br_substream_new(BS_LITTLE_ENDIAN);
@@ -3638,7 +3630,7 @@ int main(int argc, char* argv[]) {
     test_callbacks_reader(subreader, 14, 18, le_table, 13);
     br_substream_reset(subreader);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_MAIN2);
     reader->skip(reader, 16);
     reader->substream_append(reader, subreader, 4);
     test_close_errors(subreader, le_table);
@@ -3647,7 +3639,7 @@ int main(int argc, char* argv[]) {
     subreader = br_substream_new(BS_LITTLE_ENDIAN);
 
     /*check a little-endian substream built from another substream*/
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_MAIN2);
     reader->skip(reader, 8);
     reader->substream_append(reader, subreader, 6);
     subreader->skip(subreader, 8);
@@ -3659,8 +3651,8 @@ int main(int argc, char* argv[]) {
     test_callbacks_reader(subsubreader, 14, 18, le_table, 13);
     subsubreader->close(subsubreader);
     subreader->close(subreader);
-    reader->rewind(reader, 0);
-    reader->unmark(reader, 0);
+    reader->rewind(reader, M_MAIN2);
+    reader->unmark(reader, M_MAIN2);
     reader->free(reader);
 
     free(be_table);
@@ -3705,52 +3697,52 @@ void test_big_endian_reader(BitstreamReader* reader,
     /*check the bitstream reader
       against some known big-endian values*/
 
-    reader->mark(reader, 0);
+    reader->mark(reader, M_BE1);
     assert(reader->read(reader, 2) == 0x2);
     assert(reader->read(reader, 3) == 0x6);
     assert(reader->read(reader, 5) == 0x07);
     assert(reader->read(reader, 3) == 0x5);
     assert(reader->read(reader, 19) == 0x53BC1);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read_64(reader, 2) == 0x2);
     assert(reader->read_64(reader, 3) == 0x6);
     assert(reader->read_64(reader, 5) == 0x07);
     assert(reader->read_64(reader, 3) == 0x5);
     assert(reader->read_64(reader, 19) == 0x53BC1);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read(reader, 2) == 0x2);
     reader->skip(reader, 3);
     assert(reader->read(reader, 5) == 0x07);
     reader->skip(reader, 3);
     assert(reader->read(reader, 19) == 0x53BC1);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     reader->skip_bytes(reader, 1);
     assert(reader->read(reader, 4) == 0xE);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     reader->skip_bytes(reader, 2);
     assert(reader->read(reader, 4) == 0x3);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     reader->skip_bytes(reader, 3);
     assert(reader->read(reader, 4) == 0xC);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read(reader, 1) == 1);
     reader->skip_bytes(reader, 1);
     assert(reader->read(reader, 4) == 0xD);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read(reader, 1) == 1);
     reader->skip_bytes(reader, 2);
     assert(reader->read(reader, 4) == 0x7);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read(reader, 1) == 1);
     reader->skip_bytes(reader, 3);
     assert(reader->read(reader, 4) == 0x8);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read(reader, 1) == 1);
     bit = reader->read(reader, 1);
     assert(bit == 0);
@@ -3758,42 +3750,42 @@ void test_big_endian_reader(BitstreamReader* reader,
     assert(reader->read(reader, 2) == 1);
     reader->byte_align(reader);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read(reader, 8) == 0xB1);
     reader->unread(reader, 0);
     assert(reader->read(reader, 1) == 0);
     reader->unread(reader, 1);
     assert(reader->read(reader, 1) == 1);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read_signed(reader, 2) == -2);
     assert(reader->read_signed(reader, 3) == -2);
     assert(reader->read_signed(reader, 5) == 7);
     assert(reader->read_signed(reader, 3) == -3);
     assert(reader->read_signed(reader, 19) == -181311);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read_signed_64(reader, 2) == -2);
     assert(reader->read_signed_64(reader, 3) == -2);
     assert(reader->read_signed_64(reader, 5) == 7);
     assert(reader->read_signed_64(reader, 3) == -3);
     assert(reader->read_signed_64(reader, 19) == -181311);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read_unary(reader, 0) == 1);
     assert(reader->read_unary(reader, 0) == 2);
     assert(reader->read_unary(reader, 0) == 0);
     assert(reader->read_unary(reader, 0) == 0);
     assert(reader->read_unary(reader, 0) == 4);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read_unary(reader, 1) == 0);
     assert(reader->read_unary(reader, 1) == 1);
     assert(reader->read_unary(reader, 1) == 0);
     assert(reader->read_unary(reader, 1) == 3);
     assert(reader->read_unary(reader, 1) == 0);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read_huffman_code(reader, table) == 1);
     assert(reader->read_huffman_code(reader, table) == 0);
     assert(reader->read_huffman_code(reader, table) == 4);
@@ -3810,7 +3802,7 @@ void test_big_endian_reader(BitstreamReader* reader,
     assert(reader->read_huffman_code(reader, table) == 4);
     assert(reader->read_huffman_code(reader, table) == 2);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read(reader, 3) == 5);
     reader->byte_align(reader);
     assert(reader->read(reader, 3) == 7);
@@ -3820,15 +3812,15 @@ void test_big_endian_reader(BitstreamReader* reader,
     reader->byte_align(reader);
     assert(reader->read(reader, 4) == 12);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     reader->read_bytes(reader, sub_data, 2);
     assert(memcmp(sub_data, "\xB1\xED", 2) == 0);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read(reader, 4) == 11);
     reader->read_bytes(reader, sub_data, 2);
     assert(memcmp(sub_data, "\x1E\xD3", 2) == 0);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE1);
     assert(reader->read(reader, 3) == 5);
     reader->set_endianness(reader, BS_LITTLE_ENDIAN);
     assert(reader->read(reader, 3) == 5);
@@ -3837,21 +3829,21 @@ void test_big_endian_reader(BitstreamReader* reader,
     reader->set_endianness(reader, BS_BIG_ENDIAN);
     assert(reader->read(reader, 4) == 12);
 
-    reader->rewind(reader, 0);
-    reader->mark(reader, 0);
+    reader->rewind(reader, M_BE1);
+    reader->mark(reader, M_BE2);
     assert(reader->read(reader, 4) == 0xB);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE2);
     assert(reader->read(reader, 8) == 0xB1);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE2);
     assert(reader->read(reader, 12) == 0xB1E);
-    reader->unmark(reader, 0);
-    reader->mark(reader, 0);
+    reader->unmark(reader, M_BE2);
+    reader->mark(reader, M_BE3);
     assert(reader->read(reader, 4) == 0xD);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE3);
     assert(reader->read(reader, 8) == 0xD3);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE3);
     assert(reader->read(reader, 12) == 0xD3B);
-    reader->unmark(reader, 0);
+    reader->unmark(reader, M_BE3);
 
     reader->seek(reader, 3, BS_SEEK_SET);
     assert(reader->read(reader, 8) == 0xC1);
@@ -3965,8 +3957,8 @@ void test_big_endian_reader(BitstreamReader* reader,
         assert(1);
     }
 
-    reader->rewind(reader, 0);
-    reader->unmark(reader, 0);
+    reader->rewind(reader, M_BE1);
+    reader->unmark(reader, M_BE1);
 }
 
 void test_big_endian_parse(BitstreamReader* reader) {
@@ -3977,7 +3969,7 @@ void test_big_endian_parse(BitstreamReader* reader) {
     uint8_t sub_data1[2];
     uint8_t sub_data2[2];
 
-    reader->mark(reader, 0);
+    reader->mark(reader, M_BEP);
 
     /*first, check all the defined format fields*/
     reader->parse(reader, "2u 3u 5u 3u 19u", &u1, &u2, &u3, &u4, &u5);
@@ -3987,7 +3979,7 @@ void test_big_endian_parse(BitstreamReader* reader) {
     assert(u4 == 0x5);
     assert(u5 == 0x53BC1);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BEP);
     reader->parse(reader, "2s 3s 5s 3s 19s", &s1, &s2, &s3, &s4, &s5);
     assert(s1 == -2);
     assert(s2 == -2);
@@ -3995,7 +3987,7 @@ void test_big_endian_parse(BitstreamReader* reader) {
     assert(s4 == -3);
     assert(s5 == -181311);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BEP);
     reader->parse(reader, "2U 3U 5U 3U 19U", &U1, &U2, &U3, &U4, &U5);
     assert(U1 == 0x2);
     assert(U2 == 0x6);
@@ -4003,7 +3995,7 @@ void test_big_endian_parse(BitstreamReader* reader) {
     assert(U4 == 0x5);
     assert(U5 == 0x53BC1);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BEP);
     reader->parse(reader, "2S 3S 5S 3S 19S", &S1, &S2, &S3, &S4, &S5);
     assert(S1 == -2);
     assert(S2 == -2);
@@ -4012,25 +4004,25 @@ void test_big_endian_parse(BitstreamReader* reader) {
     assert(S5 == -181311);
 
     u1 = u2 = u3 = u4 = u5 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BEP);
     reader->parse(reader, "2u 3p 5u 3p 19u", &u1, &u3, &u5);
     assert(u1 == 0x2);
     assert(u3 == 0x07);
     assert(u5 == 0x53BC1);
 
     u1 = u2 = u3 = u4 = u5 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BEP);
     reader->parse(reader, "2p 1P 3u 19u", &u4, &u5);
     assert(u4 == 0x5);
     assert(u5 == 0x53BC1);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BEP);
     reader->parse(reader, "2b 2b", sub_data1, sub_data2);
     assert(memcmp(sub_data1, "\xB1\xED", 2) == 0);
     assert(memcmp(sub_data2, "\x3B\xC1", 2) == 0);
 
     u1 = u2 = u3 = u4 = u5 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BEP);
     reader->parse(reader, "2u a 3u a 4u a 5u", &u1, &u2, &u3, &u4);
     assert(u1 == 2);
     assert(u2 == 7);
@@ -4038,14 +4030,14 @@ void test_big_endian_parse(BitstreamReader* reader) {
     assert(u4 == 24);
 
     u1 = u2 = u3 = u4 = u5 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BEP);
     reader->parse(reader, "3* 2u", &u1, &u2, &u3);
     assert(u1 == 2);
     assert(u2 == 3);
     assert(u3 == 0);
 
     u1 = u2 = u3 = u4 = u5 = u6 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BEP);
     reader->parse(reader, "3* 2* 2u", &u1, &u2, &u3, &u4, &u5, &u6);
     assert(u1 == 2);
     assert(u2 == 3);
@@ -4058,30 +4050,30 @@ void test_big_endian_parse(BitstreamReader* reader) {
 
     /*unknown instruction*/
     u1 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BEP);
     reader->parse(reader, "2u ? 3u", &u1);
     assert(u1 == 2);
 
     /*unknown instruction prefixed by number*/
     u1 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BEP);
     reader->parse(reader, "2u 10? 3u", &u1);
     assert(u1 == 2);
 
     /*unknown instruction prefixed by multiplier*/
     u1 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BEP);
     reader->parse(reader, "2u 10* ? 3u", &u1);
     assert(u1 == 2);
 
     /*unknown instruction prefixed by number and multiplier*/
     u1 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BEP);
     reader->parse(reader, "2u 10* 3? 3u", &u1);
     assert(u1 == 2);
 
-    reader->rewind(reader, 0);
-    reader->unmark(reader, 0);
+    reader->rewind(reader, M_BEP);
+    reader->unmark(reader, M_BEP);
 }
 
 void test_little_endian_reader(BitstreamReader* reader,
@@ -4092,52 +4084,52 @@ void test_little_endian_reader(BitstreamReader* reader,
     /*check the bitstream reader
       against some known little-endian values*/
 
-    reader->mark(reader, 0);
+    reader->mark(reader, M_LE1);
     assert(reader->read(reader, 2) == 0x1);
     assert(reader->read(reader, 3) == 0x4);
     assert(reader->read(reader, 5) == 0x0D);
     assert(reader->read(reader, 3) == 0x3);
     assert(reader->read(reader, 19) == 0x609DF);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read_64(reader, 2) == 1);
     assert(reader->read_64(reader, 3) == 4);
     assert(reader->read_64(reader, 5) == 13);
     assert(reader->read_64(reader, 3) == 3);
     assert(reader->read_64(reader, 19) == 395743);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read(reader, 2) == 0x1);
     reader->skip(reader, 3);
     assert(reader->read(reader, 5) == 0x0D);
     reader->skip(reader, 3);
     assert(reader->read(reader, 19) == 0x609DF);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     reader->skip_bytes(reader, 1);
     assert(reader->read(reader, 4) == 0xD);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     reader->skip_bytes(reader, 2);
     assert(reader->read(reader, 4) == 0xB);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     reader->skip_bytes(reader, 3);
     assert(reader->read(reader, 4) == 0x1);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read(reader, 1) == 1);
     reader->skip_bytes(reader, 1);
     assert(reader->read(reader, 4) == 0x6);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read(reader, 1) == 1);
     reader->skip_bytes(reader, 2);
     assert(reader->read(reader, 4) == 0xD);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read(reader, 1) == 1);
     reader->skip_bytes(reader, 3);
     assert(reader->read(reader, 4) == 0x0);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read(reader, 1) == 1);
     bit = reader->read(reader, 1);
     assert(bit == 0);
@@ -4145,42 +4137,42 @@ void test_little_endian_reader(BitstreamReader* reader,
     assert(reader->read(reader, 4) == 8);
     reader->byte_align(reader);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read(reader, 8) == 0xB1);
     reader->unread(reader, 0);
     assert(reader->read(reader, 1) == 0);
     reader->unread(reader, 1);
     assert(reader->read(reader, 1) == 1);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read_signed(reader, 2) == 1);
     assert(reader->read_signed(reader, 3) == -4);
     assert(reader->read_signed(reader, 5) == 13);
     assert(reader->read_signed(reader, 3) == 3);
     assert(reader->read_signed(reader, 19) == -128545);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read_signed_64(reader, 2) == 1);
     assert(reader->read_signed_64(reader, 3) == -4);
     assert(reader->read_signed_64(reader, 5) == 13);
     assert(reader->read_signed_64(reader, 3) == 3);
     assert(reader->read_signed_64(reader, 19) == -128545);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read_unary(reader, 0) == 1);
     assert(reader->read_unary(reader, 0) == 0);
     assert(reader->read_unary(reader, 0) == 0);
     assert(reader->read_unary(reader, 0) == 2);
     assert(reader->read_unary(reader, 0) == 2);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read_unary(reader, 1) == 0);
     assert(reader->read_unary(reader, 1) == 3);
     assert(reader->read_unary(reader, 1) == 0);
     assert(reader->read_unary(reader, 1) == 1);
     assert(reader->read_unary(reader, 1) == 0);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read_huffman_code(reader, table) == 1);
     assert(reader->read_huffman_code(reader, table) == 3);
     assert(reader->read_huffman_code(reader, table) == 1);
@@ -4196,15 +4188,15 @@ void test_little_endian_reader(BitstreamReader* reader,
     assert(reader->read_huffman_code(reader, table) == 4);
     assert(reader->read_huffman_code(reader, table) == 3);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     reader->read_bytes(reader, sub_data, 2);
     assert(memcmp(sub_data, "\xB1\xED", 2) == 0);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read(reader, 4) == 1);
     reader->read_bytes(reader, sub_data, 2);
     assert(memcmp(sub_data, "\xDB\xBE", 2) == 0);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read(reader, 3) == 1);
     reader->byte_align(reader);
     assert(reader->read(reader, 3) == 5);
@@ -4214,7 +4206,7 @@ void test_little_endian_reader(BitstreamReader* reader,
     reader->byte_align(reader);
     assert(reader->read(reader, 4) == 1);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE1);
     assert(reader->read(reader, 3) == 1);
     reader->set_endianness(reader, BS_BIG_ENDIAN);
     assert(reader->read(reader, 3) == 7);
@@ -4223,21 +4215,21 @@ void test_little_endian_reader(BitstreamReader* reader,
     reader->set_endianness(reader, BS_LITTLE_ENDIAN);
     assert(reader->read(reader, 4) == 1);
 
-    reader->rewind(reader, 0);
-    reader->mark(reader, 0);
+    reader->rewind(reader, M_LE1);
+    reader->mark(reader, M_LE2);
     assert(reader->read(reader, 4) == 0x1);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE2);
     assert(reader->read(reader, 8) == 0xB1);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE2);
     assert(reader->read(reader, 12) == 0xDB1);
-    reader->unmark(reader, 0);
-    reader->mark(reader, 0);
+    reader->unmark(reader, M_LE2);
+    reader->mark(reader, M_LE3);
     assert(reader->read(reader, 4) == 0xE);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE3);
     assert(reader->read(reader, 8) == 0xBE);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE3);
     assert(reader->read(reader, 12) == 0x3BE);
-    reader->unmark(reader, 0);
+    reader->unmark(reader, M_LE3);
 
     reader->seek(reader, 3, BS_SEEK_SET);
     assert(reader->read(reader, 8) == 0xC1);
@@ -4351,8 +4343,8 @@ void test_little_endian_reader(BitstreamReader* reader,
         assert(1);
     }
 
-    reader->rewind(reader, 0);
-    reader->unmark(reader, 0);
+    reader->rewind(reader, M_LE1);
+    reader->unmark(reader, M_LE1);
 }
 
 void test_little_endian_parse(BitstreamReader* reader) {
@@ -4363,7 +4355,7 @@ void test_little_endian_parse(BitstreamReader* reader) {
     uint8_t sub_data1[2];
     uint8_t sub_data2[2];
 
-    reader->mark(reader, 0);
+    reader->mark(reader, M_LEP);
 
     /*first, check all the defined format fields*/
     reader->parse(reader, "2u 3u 5u 3u 19u", &u1, &u2, &u3, &u4, &u5);
@@ -4373,7 +4365,7 @@ void test_little_endian_parse(BitstreamReader* reader) {
     assert(u4 == 0x3);
     assert(u5 == 0x609DF);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LEP);
     reader->parse(reader, "2s 3s 5s 3s 19s", &s1, &s2, &s3, &s4, &s5);
     assert(s1 == 1);
     assert(s2 == -4);
@@ -4381,7 +4373,7 @@ void test_little_endian_parse(BitstreamReader* reader) {
     assert(s4 == 3);
     assert(s5 == -128545);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LEP);
     reader->parse(reader, "2U 3U 5U 3U 19U", &U1, &U2, &U3, &U4, &U5);
     assert(u1 == 0x1);
     assert(u2 == 0x4);
@@ -4389,7 +4381,7 @@ void test_little_endian_parse(BitstreamReader* reader) {
     assert(u4 == 0x3);
     assert(u5 == 0x609DF);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LEP);
     reader->parse(reader, "2S 3S 5S 3S 19S", &S1, &S2, &S3, &S4, &S5);
     assert(s1 == 1);
     assert(s2 == -4);
@@ -4398,25 +4390,25 @@ void test_little_endian_parse(BitstreamReader* reader) {
     assert(s5 == -128545);
 
     u1 = u2 = u3 = u4 = u5 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LEP);
     reader->parse(reader, "2u 3p 5u 3p 19u", &u1, &u3, &u5);
     assert(u1 == 0x1);
     assert(u3 == 0x0D);
     assert(u5 == 0x609DF);
 
     u1 = u2 = u3 = u4 = u5 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LEP);
     reader->parse(reader, "2p 1P 3u 19u", &u4, &u5);
     assert(u4 == 0x3);
     assert(u5 == 0x609DF);
 
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LEP);
     reader->parse(reader, "2b 2b", sub_data1, sub_data2);
     assert(memcmp(sub_data1, "\xB1\xED", 2) == 0);
     assert(memcmp(sub_data2, "\x3B\xC1", 2) == 0);
 
     u1 = u2 = u3 = u4 = u5 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LEP);
     reader->parse(reader, "2u a 3u a 4u a 5u", &u1, &u2, &u3, &u4);
     assert(u1 == 1);
     assert(u2 == 5);
@@ -4424,14 +4416,14 @@ void test_little_endian_parse(BitstreamReader* reader) {
     assert(u4 == 1);
 
     u1 = u2 = u3 = u4 = u5 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LEP);
     reader->parse(reader, "3* 2u", &u1, &u2, &u3);
     assert(u1 == 1);
     assert(u2 == 0);
     assert(u3 == 3);
 
     u1 = u2 = u3 = u4 = u5 = u6 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LEP);
     reader->parse(reader, "3* 2* 2u", &u1, &u2, &u3, &u4, &u5, &u6);
     assert(u1 == 1);
     assert(u2 == 0);
@@ -4444,30 +4436,30 @@ void test_little_endian_parse(BitstreamReader* reader) {
 
     /*unknown instruction*/
     u1 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LEP);
     reader->parse(reader, "2u ? 3u", &u1);
     assert(u1 == 1);
 
     /*unknown instruction prefixed by number*/
     u1 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LEP);
     reader->parse(reader, "2u 10? 3u", &u1);
     assert(u1 == 1);
 
     /*unknown instruction prefixed by multiplier*/
     u1 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LEP);
     reader->parse(reader, "2u 10* ? 3u", &u1);
     assert(u1 == 1);
 
     /*unknown instruction prefixed by number and multiplier*/
     u1 = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LEP);
     reader->parse(reader, "2u 10* 3? 3u", &u1);
     assert(u1 == 1);
 
-    reader->rewind(reader, 0);
-    reader->unmark(reader, 0);
+    reader->rewind(reader, M_LEP);
+    reader->unmark(reader, M_LEP);
 }
 
 void
@@ -4555,7 +4547,7 @@ test_close_errors(BitstreamReader* reader,
         br_etry(reader);
     }
 
-    reader->mark(reader, 0); /*should do nothing*/
+    reader->mark(reader, M_CLOSE); /*should do nothing*/
 
     if (!setjmp(*br_try(reader))) {
         reader->read(reader, 1);
@@ -4564,8 +4556,7 @@ test_close_errors(BitstreamReader* reader,
         br_etry(reader);
     }
 
-    reader->rewind(reader, 0);
-    reader->unmark(reader, 0);
+    reader->rewind(reader, M_CLOSE);  /*should also do nothing*/
 
     subreader = br_substream_new(BS_BIG_ENDIAN); /*doesn't really matter*/
     if (!setjmp(*br_try(reader))) {
@@ -4582,13 +4573,13 @@ void test_try(BitstreamReader* reader,
     uint8_t bytes[2];
     BitstreamReader* substream;
 
-    reader->mark(reader, 0);
+    reader->mark(reader, M_TRY1);
 
     /*bounce to the very end of the stream*/
     reader->skip(reader, 31);
-    reader->mark(reader, 0);
+    reader->mark(reader, M_TRY2);
     assert(reader->read(reader, 1) == 1);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_TRY2);
 
     /*then test all the read methods to ensure they trigger br_abort
 
@@ -4600,49 +4591,49 @@ void test_try(BitstreamReader* reader,
         assert(0);
     } else {
         br_etry(reader);
-        reader->rewind(reader, 0);
+        reader->rewind(reader, M_TRY2);
     }
     if (!setjmp(*br_try(reader))) {
         reader->read_64(reader, 2);
         assert(0);
     } else {
         br_etry(reader);
-        reader->rewind(reader, 0);
+        reader->rewind(reader, M_TRY2);
     }
     if (!setjmp(*br_try(reader))) {
         reader->read_signed(reader, 2);
         assert(0);
     } else {
         br_etry(reader);
-        reader->rewind(reader, 0);
+        reader->rewind(reader, M_TRY2);
     }
     if (!setjmp(*br_try(reader))) {
         reader->read_signed_64(reader, 2);
         assert(0);
     } else {
         br_etry(reader);
-        reader->rewind(reader, 0);
+        reader->rewind(reader, M_TRY2);
     }
     if (!setjmp(*br_try(reader))) {
         reader->skip(reader, 2);
         assert(0);
     } else {
         br_etry(reader);
-        reader->rewind(reader, 0);
+        reader->rewind(reader, M_TRY2);
     }
     if (!setjmp(*br_try(reader))) {
         reader->skip_bytes(reader, 1);
         assert(0);
     } else {
         br_etry(reader);
-        reader->rewind(reader, 0);
+        reader->rewind(reader, M_TRY2);
     }
     if (!setjmp(*br_try(reader))) {
         reader->read_unary(reader, 0);
         assert(0);
     } else {
         br_etry(reader);
-        reader->rewind(reader, 0);
+        reader->rewind(reader, M_TRY2);
     }
     if (!setjmp(*br_try(reader))) {
         assert(reader->read_unary(reader, 1) == 0);
@@ -4650,21 +4641,21 @@ void test_try(BitstreamReader* reader,
         assert(0);
     } else {
         br_etry(reader);
-        reader->rewind(reader, 0);
+        reader->rewind(reader, M_TRY2);
     }
     if (!setjmp(*br_try(reader))) {
         reader->read_huffman_code(reader, table);
         assert(0);
     } else {
         br_etry(reader);
-        reader->rewind(reader, 0);
+        reader->rewind(reader, M_TRY2);
     }
     if (!setjmp(*br_try(reader))) {
         reader->read_bytes(reader, bytes, 2);
         assert(0);
     } else {
         br_etry(reader);
-        reader->rewind(reader, 0);
+        reader->rewind(reader, M_TRY2);
     }
     substream = br_substream_new(BS_BIG_ENDIAN); /*doesn't really matter*/
     if (!setjmp(*br_try(reader))) {
@@ -4672,7 +4663,7 @@ void test_try(BitstreamReader* reader,
         assert(0);
     } else {
         br_etry(reader);
-        reader->rewind(reader, 0);
+        reader->rewind(reader, M_TRY2);
     }
 
     /*ensure substream_append doesn't use all the RAM in the world
@@ -4682,15 +4673,15 @@ void test_try(BitstreamReader* reader,
         assert(0);
     } else {
         br_etry(reader);
-        reader->rewind(reader, 0);
+        reader->rewind(reader, M_TRY2);
     }
 
     substream->close(substream);
 
-    reader->unmark(reader, 0);
+    reader->unmark(reader, M_TRY2);
 
-    reader->rewind(reader, 0);
-    reader->unmark(reader, 0);
+    reader->rewind(reader, M_TRY1);
+    reader->unmark(reader, M_TRY1);
 }
 
 void test_callbacks_reader(BitstreamReader* reader,
@@ -4703,7 +4694,7 @@ void test_callbacks_reader(BitstreamReader* reader,
     uint8_t bytes[2];
     struct bs_callback saved_callback;
 
-    reader->mark(reader, 0);
+    reader->mark(reader, M_CALLBACKS);
     reader->add_callback(reader, (bs_callback_f)byte_counter, &byte_count);
 
     /*a single callback*/
@@ -4711,7 +4702,7 @@ void test_callbacks_reader(BitstreamReader* reader,
     for (i = 0; i < 8; i++)
         reader->read(reader, 4);
     assert(byte_count == 4);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_CALLBACKS);
 
     /*calling callbacks directly*/
     byte_count = 0;
@@ -4726,7 +4717,7 @@ void test_callbacks_reader(BitstreamReader* reader,
         reader->read(reader, 4);
     assert(byte_count == 8);
     reader->pop_callback(reader, NULL);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_CALLBACKS);
 
     /*temporarily suspending the callback*/
     byte_count = 0;
@@ -4738,7 +4729,7 @@ void test_callbacks_reader(BitstreamReader* reader,
     reader->push_callback(reader, &saved_callback);
     reader->read(reader, 8);
     assert(byte_count == 2);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_CALLBACKS);
 
     /*temporarily adding two callbacks*/
     byte_count = 0;
@@ -4750,35 +4741,35 @@ void test_callbacks_reader(BitstreamReader* reader,
     reader->pop_callback(reader, NULL);
     reader->read(reader, 8);
     assert(byte_count == 6);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_CALLBACKS);
 
     /*read_signed*/
     byte_count = 0;
     for (i = 0; i < 8; i++)
         reader->read_signed(reader, 4);
     assert(byte_count == 4);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_CALLBACKS);
 
     /*read_64*/
     byte_count = 0;
     for (i = 0; i < 8; i++)
         reader->read_64(reader, 4);
     assert(byte_count == 4);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_CALLBACKS);
 
     /*skip*/
     byte_count = 0;
     for (i = 0; i < 8; i++)
         reader->skip(reader, 4);
     assert(byte_count == 4);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_CALLBACKS);
 
     /*skip_bytes*/
     byte_count = 0;
     for (i = 0; i < 2; i++)
         reader->skip_bytes(reader, 2);
     assert(byte_count == 4);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_CALLBACKS);
 
     /*read_unary*/
     byte_count = 0;
@@ -4786,28 +4777,28 @@ void test_callbacks_reader(BitstreamReader* reader,
         reader->read_unary(reader, 0);
     assert(byte_count == 4);
     byte_count = 0;
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_CALLBACKS);
     for (i = 0; i < unary_1_reads; i++)
         reader->read_unary(reader, 1);
     assert(byte_count == 4);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_CALLBACKS);
 
     /*read_huffman_code*/
     byte_count = 0;
     for (i = 0; i < huffman_code_count; i++)
         reader->read_huffman_code(reader, table);
     assert(byte_count == 4);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_CALLBACKS);
 
     /*read_bytes*/
     byte_count = 0;
     reader->read_bytes(reader, bytes, 2);
     reader->read_bytes(reader, bytes, 2);
     assert(byte_count == 4);
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_CALLBACKS);
 
     reader->pop_callback(reader, NULL);
-    reader->unmark(reader, 0);
+    reader->unmark(reader, M_CALLBACKS);
 }
 
 void
@@ -5277,9 +5268,6 @@ test_writer_close_errors(BitstreamWriter* writer)
     assert(writer->bits_written(writer) == 0);
 
     writer->flush(writer);
-
-
-
 }
 
 void
@@ -5879,10 +5867,10 @@ test_edge_reader_be(BitstreamReader* reader)
     int64_t s_val64_3;
     int64_t s_val64_4;
 
-    reader->mark(reader, 0);
+    reader->mark(reader, M_BE_EDGE);
 
     /*try the unsigned 32 and 64 bit values*/
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE_EDGE);
     assert(reader->read(reader, 32) == 0);
     assert(reader->read(reader, 32) == 4294967295UL);
     assert(reader->read(reader, 32) == 2147483648UL);
@@ -5893,7 +5881,7 @@ test_edge_reader_be(BitstreamReader* reader)
     assert(reader->read_64(reader, 64) == 9223372036854775807ULL);
 
     /*try the signed 32 and 64 bit values*/
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE_EDGE);
     assert(reader->read_signed(reader, 32) == 0);
     assert(reader->read_signed(reader, 32) == -1);
     assert(reader->read_signed(reader, 32) == -2147483648LL);
@@ -5904,7 +5892,7 @@ test_edge_reader_be(BitstreamReader* reader)
     assert(reader->read_signed_64(reader, 64) == 9223372036854775807LL);
 
     /*try the unsigned values via parse()*/
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE_EDGE);
     reader->parse(reader,
                   "32u 32u 32u 32u 64U 64U 64U 64U",
                   &u_val_1, &u_val_2, &u_val_3, &u_val_4,
@@ -5919,7 +5907,7 @@ test_edge_reader_be(BitstreamReader* reader)
     assert(u_val64_4 == 9223372036854775807ULL);
 
     /*try the signed values via parse()*/
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_BE_EDGE);
     reader->parse(reader,
                   "32s 32s 32s 32s 64S 64S 64S 64S",
                   &s_val_1, &s_val_2, &s_val_3, &s_val_4,
@@ -5933,7 +5921,7 @@ test_edge_reader_be(BitstreamReader* reader)
     assert(s_val64_3 == (9223372036854775808ULL * -1));
     assert(s_val64_4 == 9223372036854775807LL);
 
-    reader->unmark(reader, 0);
+    reader->unmark(reader, M_BE_EDGE);
 }
 
 void
@@ -5956,7 +5944,7 @@ test_edge_reader_le(BitstreamReader* reader)
     int64_t s_val64_3;
     int64_t s_val64_4;
 
-    reader->mark(reader, 0);
+    reader->mark(reader, M_LE_EDGE);
 
     /*try the unsigned 32 and 64 bit values*/
     assert(reader->read(reader, 32) == 0);
@@ -5969,7 +5957,7 @@ test_edge_reader_le(BitstreamReader* reader)
     assert(reader->read_64(reader, 64) == 9223372036854775807ULL);
 
     /*try the signed 32 and 64 bit values*/
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE_EDGE);
     assert(reader->read_signed(reader, 32) == 0);
     assert(reader->read_signed(reader, 32) == -1);
     assert(reader->read_signed(reader, 32) == -2147483648LL);
@@ -5980,7 +5968,7 @@ test_edge_reader_le(BitstreamReader* reader)
     assert(reader->read_signed_64(reader, 64) == 9223372036854775807LL);
 
     /*try the unsigned values via parse()*/
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE_EDGE);
     reader->parse(reader,
                   "32u 32u 32u 32u 64U 64U 64U 64U",
                   &u_val_1, &u_val_2, &u_val_3, &u_val_4,
@@ -5995,7 +5983,7 @@ test_edge_reader_le(BitstreamReader* reader)
     assert(u_val64_4 == 9223372036854775807ULL);
 
     /*try the signed values via parse()*/
-    reader->rewind(reader, 0);
+    reader->rewind(reader, M_LE_EDGE);
     reader->parse(reader,
                   "32s 32s 32s 32s 64S 64S 64S 64S",
                   &s_val_1, &s_val_2, &s_val_3, &s_val_4,
@@ -6009,7 +5997,7 @@ test_edge_reader_le(BitstreamReader* reader)
     assert(s_val64_3 == (9223372036854775808ULL * -1));
     assert(s_val64_4 == 9223372036854775807LL);
 
-    reader->unmark(reader, 0);
+    reader->unmark(reader, M_LE_EDGE);
 }
 
 void
@@ -6516,11 +6504,11 @@ test_writer_marks(BitstreamWriter* writer)
     writer->write(writer, 2, 3);
     writer->write(writer, 3, 7);
     writer->write(writer, 2, 3);
-    writer->mark(writer, 0);
+    writer->mark(writer, M_W_MARKS);
     writer->write(writer, 8, 0xFF);
     writer->write(writer, 8, 0xFF);
-    writer->rewind(writer, 0);
+    writer->rewind(writer, M_W_MARKS);
     writer->write(writer, 8, 0);
-    writer->unmark(writer, 0);
+    writer->unmark(writer, M_W_MARKS);
 }
 #endif

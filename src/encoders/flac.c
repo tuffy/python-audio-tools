@@ -254,8 +254,6 @@ encoders_encode_flac(char *filename,
                                samples->_[0]->len);
         PyList_Append(frame_offsets, offset);
         Py_DECREF(offset);
-
-        Py_BEGIN_ALLOW_THREADS
 #endif
         encoder.frame->reset(encoder.frame);
         flacenc_write_frame(encoder.frame, &encoder, samples);
@@ -268,9 +266,6 @@ encoders_encode_flac(char *filename,
                 encoder.frame->bits_written(encoder.frame) / 8);
         current_offset += encoder.frame->bytes_written(encoder.frame);
         encoder.frame->copy(encoder.frame, output_stream);
-#ifndef STANDALONE
-        Py_END_ALLOW_THREADS
-#endif
 
         if (pcmreader->read(pcmreader, block_size, samples))
             goto error;

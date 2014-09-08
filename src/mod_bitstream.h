@@ -65,7 +65,6 @@ typedef PyObject* (*read_object_f)(BitstreamReader *br,
 typedef struct {
     PyObject_HEAD
 
-    PyObject* file_obj;
     BitstreamReader* bitstream;
     int little_endian;
     struct bs_buffer *string_buffer;
@@ -428,7 +427,6 @@ typedef int (*write_object_f)(BitstreamWriter *bw,
 typedef struct {
     PyObject_HEAD
 
-    PyObject* file_obj;
     BitstreamWriter* bitstream;
     write_object_f write_unsigned;
     write_object_f write_signed;
@@ -454,6 +452,9 @@ bw_validate_unsigned_range(unsigned bits, PyObject *value);
 
 static int
 bw_validate_signed_range(unsigned bits, PyObject *value);
+
+static int
+is_positive(PyObject *value);
 
 static int
 bwpy_write_unsigned_be(BitstreamWriter *bw, unsigned bits, PyObject *value);

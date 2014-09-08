@@ -23,6 +23,15 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#if PY_MAJOR_VERSION >= 3
+#ifndef PyInt_AsLong
+#define PyInt_AsLong PyLong_AsLong
+#endif
+#ifndef PyInt_FromLong
+#define PyInt_FromLong PyLong_FromLong
+#endif
+#endif
+
 MOD_INIT(bitstream)
 {
     PyObject* m;
@@ -588,7 +597,7 @@ brpy_read_bytes_obj(BitstreamReader *reader, PyObject *byte_count)
         /*byte_count no longer greater than 0*/
 
         /*convert buffer to Python string*/
-        PyObject *string_obj = PyString_FromStringAndSize(
+        PyObject *string_obj = PyBytes_FromStringAndSize(
             (char *)buf_window_start(buffer),
             buf_window_size(buffer));
 
@@ -730,7 +739,7 @@ brpy_read_bytes(BitstreamReader *reader, unsigned byte_count)
         return NULL;
     } else {
         /*convert buffer to Python string*/
-        PyObject *string = PyString_FromStringAndSize(
+        PyObject *string = PyBytes_FromStringAndSize(
             (char *)buf_window_start(buffer),
             buf_window_size(buffer));
 
@@ -1142,7 +1151,6 @@ BitstreamReader_substream_meth(bitstream_BitstreamReader *self, PyObject *args)
     }
 
     obj = (bitstream_BitstreamReader *)type->tp_alloc(type, 0);
-    obj->file_obj = NULL;
     obj->little_endian = self->little_endian;
     obj->bitstream = br_substream_new(obj->little_endian ?
                                       BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
@@ -1258,7 +1266,6 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
     PyObject *file_obj;
     int buffer_size = 4096;
 
-    self->file_obj = NULL;
     self->bitstream = NULL;
     self->string_buffer = NULL;
 
@@ -1272,30 +1279,12 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
         return -1;
     }
 
-    /*store a reference to the Python object so that it doesn't decref
-      (and close) the file out from under us*/
-    Py_INCREF(file_obj);
-    self->file_obj = file_obj;
-
-    if (PyFile_CheckExact(file_obj)) {
-        self->bitstream = br_open(PyFile_AsFile(self->file_obj),
-                                  self->little_endian ?
-                                  BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-
-        /*swap the regular FILE-based close_internal_stream method
-          with a specialized one that does *not* perform fclose
-          on the FILE pointer itself
-
-          it is important that we leave that task
-          to the file object itself*/
-        self->bitstream->close_internal_stream =
-            br_close_internal_stream_python_file;
-    } else if (PyString_CheckExact(file_obj)) {
+    if (PyBytes_CheckExact(file_obj)) {
         /*dump contents of Python string into internal buffer*/
         char *buffer;
         Py_ssize_t length;
 
-        if (PyString_AsStringAndSize(file_obj, &buffer, &length) == -1) {
+        if (PyBytes_AsStringAndSize(file_obj, &buffer, &length) == -1) {
             /*some error during string conversion*/
             return -1;
         }
@@ -1315,8 +1304,12 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
                                          self->little_endian ?
                                          BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
     } else {
+        /*store a reference to the Python object so that it doesn't decref
+          (and close) the file out from under us*/
+        Py_INCREF(file_obj);
+
         self->bitstream = br_open_external(
-            self->file_obj,
+            file_obj,
             self->little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
             (unsigned)buffer_size,
             (ext_read_f)br_read_python,
@@ -1325,7 +1318,7 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
             (ext_free_pos_f)bs_free_pos_python,
             (ext_seek_f)bs_fseek_python,
             (ext_close_f)bs_close_python,
-            (ext_free_f)bs_free_python_nodecref);
+            (ext_free_f)bs_free_python_decref);
     }
 
     if (self->little_endian) {
@@ -1367,9 +1360,6 @@ BitstreamReader_dealloc(bitstream_BitstreamReader *self)
         buf_close(self->string_buffer);
     }
 
-    Py_XDECREF(self->file_obj);
-    self->file_obj = NULL;
-
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -1385,7 +1375,6 @@ BitstreamReader_Substream(PyObject *dummy, PyObject *args)
 
     reader = (bitstream_BitstreamReader *)type->tp_alloc(type, 0);
 
-    reader->file_obj = NULL;
     reader->bitstream = br_substream_new(endianness ?
                                          BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
     reader->little_endian = endianness;
@@ -1563,7 +1552,6 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
     int little_endian;
     int buffer_size = 4096;
 
-    self->file_obj = NULL;
     self->bitstream = NULL;
 
     if (!PyArg_ParseTuple(args, "Oi|i", &file_obj, &little_endian,
@@ -1577,34 +1565,18 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
     /*store a reference to the Python object so that it doesn't decref
       (and close) the file out from under us*/
     Py_INCREF(file_obj);
-    self->file_obj = file_obj;
 
-    if (PyFile_CheckExact(file_obj)) {
-        self->bitstream = bw_open(PyFile_AsFile(self->file_obj),
-                                  little_endian ?
-                                  BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-
-        /*swap the regular FILE-based close_internal_stream method
-          with a specialized one that does *not* perform fclose
-          on the FILE pointer itself
-
-          it is important that we leave that task
-          to the file object itself*/
-        self->bitstream->close_internal_stream =
-            bw_close_internal_stream_python_file;
-    } else {
-        self->bitstream = bw_open_external(
-            self->file_obj,
-            little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
-            (unsigned)buffer_size,
-            (ext_write_f)bw_write_python,
-            (ext_setpos_f)bs_setpos_python,
-            (ext_getpos_f)bs_getpos_python,
-            (ext_free_pos_f)bs_free_pos_python,
-            (ext_flush_f)bw_flush_python,
-            (ext_close_f)bs_close_python,
-            (ext_free_f)bs_free_python_nodecref);
-    }
+    self->bitstream = bw_open_external(
+        file_obj,
+        little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
+        (unsigned)buffer_size,
+        (ext_write_f)bw_write_python,
+        (ext_setpos_f)bs_setpos_python,
+        (ext_getpos_f)bs_getpos_python,
+        (ext_free_pos_f)bs_free_pos_python,
+        (ext_flush_f)bw_flush_python,
+        (ext_close_f)bs_close_python,
+        (ext_free_f)bs_free_python_decref);
 
     if (little_endian) {
         self->write_unsigned = bwpy_write_unsigned_le;
@@ -1736,19 +1708,10 @@ bwpy_max_signed(unsigned bits)
 static int
 bwpy_in_range(PyObject *min_value, PyObject *value, PyObject *max_value)
 {
-    int cmp_min;
-    int cmp_max;
+    const int cmp_min = PyObject_RichCompareBool(min_value, value, Py_LE);
+    const int cmp_max = PyObject_RichCompareBool(value, max_value, Py_LE);
 
-    if (PyObject_Cmp(value, min_value, &cmp_min) == -1) {
-        PyErr_Print();
-        return 0;
-    }
-    if (PyObject_Cmp(value, max_value, &cmp_max) == -1) {
-        PyErr_Print();
-        return 0;
-    }
-
-    return (cmp_min >= 0) && (cmp_max <= 0);
+    return (cmp_min == 1) && (cmp_max == 1);
 }
 
 #define FUNC_VALIDATE_RANGE(FUNC_NAME, MIN_FUNC, MAX_FUNC, TYPE_STR) \
@@ -1925,20 +1888,22 @@ bwpy_write_unsigned_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
 }
 
 static int
-bwpy_write_signed_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
+is_positive(PyObject *value)
 {
     PyObject *zero = PyInt_FromLong(0);
-    int cmp;
-    if (PyObject_Cmp(value, zero, &cmp) == -1) {
-        Py_DECREF(zero);
-        return 1;
-    } else {
-        Py_DECREF(zero);
-    }
+    const int cmp_result = PyObject_RichCompareBool(value, zero, Py_GE);
+    Py_DECREF(zero);
+    return (cmp_result == 1);
+}
+
+static int
+bwpy_write_signed_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
+{
+    const int positive = is_positive(value);
 
     /*write sign bit first*/
     if (!setjmp(*bw_try(bw))) {
-        bw->write(bw, 1, cmp >= 0 ? 0 : 1);
+        bw->write(bw, 1, positive ? 0 : 1);
         bw_etry(bw);
     } else {
         bw_etry(bw);
@@ -1946,7 +1911,7 @@ bwpy_write_signed_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
         return 1;
     }
 
-    if (cmp >= 0) {
+    if (positive) {
         /*positive number*/
         return bwpy_write_unsigned_be(bw, bits - 1, value);
     } else {
@@ -1973,16 +1938,9 @@ bwpy_write_signed_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
 static int
 bwpy_write_signed_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
 {
-    PyObject *zero = PyInt_FromLong(0);
-    int cmp;
-    if (PyObject_Cmp(value, zero, &cmp) == -1) {
-        Py_DECREF(zero);
-        return 1;
-    } else {
-        Py_DECREF(zero);
-    }
+    const int positive = is_positive(value);
 
-    if (cmp >= 0) {
+    if (positive) {
         /*positive number*/
         int result = bwpy_write_unsigned_le(bw, bits - 1, value);
         if (result)
@@ -2010,7 +1968,7 @@ bwpy_write_signed_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
 
     /*write sign bit last*/
     if (!setjmp(*bw_try(bw))) {
-        bw->write(bw, 1, cmp >= 0 ? 0 : 1);
+        bw->write(bw, 1, positive ? 0 : 1);
         bw_etry(bw);
         return 0;
     } else {
@@ -2026,8 +1984,6 @@ BitstreamWriter_dealloc(bitstream_BitstreamWriter *self)
     if (self->bitstream != NULL) {
         self->bitstream->free(self->bitstream);
     }
-
-    Py_XDECREF(self->file_obj);
 
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -2670,7 +2626,7 @@ static PyObject*
 BitstreamRecorder_data(bitstream_BitstreamRecorder *self,
                        PyObject *args)
 {
-    return PyString_FromStringAndSize(
+    return PyBytes_FromStringAndSize(
         (char *)buf_window_start(self->bitstream->output.buffer),
         buf_window_size(self->bitstream->output.buffer));
 }
@@ -3296,7 +3252,7 @@ bitstream_build_func(PyObject *dummy, PyObject *args)
                              write_signed,
                              format,
                              iterator)) {
-            PyObject* data = PyString_FromStringAndSize(
+            PyObject* data = PyBytes_FromStringAndSize(
                 (char *)buf_window_start(stream->output.buffer),
                 (Py_ssize_t)buf_window_size(stream->output.buffer));
             stream->close(stream);
@@ -3567,9 +3523,9 @@ bitstream_build(BitstreamWriter* stream,
                         char *bytes;
                         Py_ssize_t bytes_len;
 
-                        if (PyString_AsStringAndSize(py_value,
-                                                     &bytes,
-                                                     &bytes_len) != -1) {
+                        if (PyBytes_AsStringAndSize(py_value,
+                                                    &bytes,
+                                                    &bytes_len) != -1) {
                             if (size <= bytes_len) {
                                 /*ensure py_value gets DECREFed
                                   especially if a write error occurs*/

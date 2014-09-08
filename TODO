@@ -7084,18 +7084,19 @@
 * TODO Finish version 3.0
 ** TODO Make compatible with Python 2.7 and 3.X
    Like Urwid and PLY, the same code should work on both versions.
-*** TODO Update C-based extensions
+*** DONE Update setup script
+*** DONE Update C-based extensions
     Use #ifdefs as needed to support both Python versions.
 
-    - [ ] audiotools.pcm
-    - [ ] audiotools.pcmconverter
-    - [ ] audiotools.replaygain
-    - [ ] audiotools.decoders
-    - [ ] audiotools.encoders
-    - [ ] audiotools.bitstream
-    - [ ] audiotools._ogg
-    - [ ] audiotools._accuraterip
-    - [ ] audiotools.output
+    - [X] audiotools.pcm
+    - [X] audiotools.pcmconverter
+    - [X] audiotools.replaygain
+    - [X] audiotools.decoders
+    - [X] audiotools.encoders
+    - [X] audiotools.bitstream
+    - [X] audiotools._ogg
+    - [X] audiotools._accuraterip
+    - [X] audiotools.output
 *** TODO Update Python modules
 **** TODO audiotools
      - [ ] __init__
@@ -7155,7 +7156,6 @@
     - [ ] tracksplit
     - [ ] tracktag
     - [ ] trackverify
-*** TODO Update setup script
 *** TODO Update Python-based decoders
     - [ ] alac
     - [ ] flac
