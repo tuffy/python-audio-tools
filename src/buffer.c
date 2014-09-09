@@ -103,7 +103,7 @@ buf_fseek(struct bs_buffer *stream, long position, int whence)
             /*can't seek past the end of the buffer*/
             return -1;
         } else {
-            stream->window_start = position;
+            stream->window_start = (unsigned)position;
             return 0;
         }
     case 1:  /*SEEK_CUR*/
@@ -125,7 +125,7 @@ buf_fseek(struct bs_buffer *stream, long position, int whence)
             /*can't seek past the beginning of the buffer*/
             return -1;
         } else {
-            stream->window_start = stream->window_end + position;
+            stream->window_start = stream->window_end + (unsigned)position;
             return 0;
         }
     default:

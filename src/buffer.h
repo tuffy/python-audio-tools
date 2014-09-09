@@ -158,7 +158,7 @@ buf_write(struct bs_buffer *stream, const uint8_t *data, unsigned data_size);
 
 /*places the current position of the buffer in "pos"
 
-  Subsequent calls to read/write may render that position invalid
+  Subsequent calls to buf_write may render that position invalid
   unless the stream has been set to be rewindable.*/
 static inline void
 buf_getpos(struct bs_buffer *stream, buf_pos_t *pos)

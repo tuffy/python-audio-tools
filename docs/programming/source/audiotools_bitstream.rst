@@ -55,6 +55,16 @@ BitstreamReader Objects
 This is a file-like object for pulling individual bits or bytes
 out of a larger binary file stream.
 
+.. warning::
+
+   BitstreamReaders process the given file object in chunks
+   of the given buffer size.
+   This means the position of the file is likely to be further along
+   than one might expect given the number of bits already read.
+   The BitstreamReader's mark, rewind and seek methods
+   will handle buffering correctly and are preferable
+   to intermingling BitstreamReader and ``file`` operations.
+
 .. class:: BitstreamReader(file, is_little_endian[, buffer_size=4096])
 
    ``file`` may be a regular file object, a file-like object
@@ -194,6 +204,12 @@ out of a larger binary file stream.
    with the given mark ID.
    This has no effect on the stream's current position.
 
+.. method:: BitstreamReader.seek(position, [whence])
+
+   Positions the stream at the given byte relative
+   to whence, which may be 0 for the beginning of the stream
+   (the default), 1 for the current position and 2 for the stream end.
+
 .. method:: BitstreamReader.add_callback(callback)
 
    Adds a callable function to the stream's callback stack.
@@ -246,6 +262,16 @@ BitstreamWriter Objects
 
 This is a file-like object for pushing individual bits or bytes
 into a larger binary file stream.
+
+.. warning::
+
+   BitstreamWriters process the given file object in chunks
+   of the given buffer size.
+   This means the position of the file is likely to be not as far along
+   as one might expect given the number of bits already written.
+   The BitstreamWriters's mark and rewind methods
+   will handle buffering correctly and are preferable
+   to intermingling BitstreamWriter and ``file`` operations.
 
 .. class:: BitstreamWriter(file, is_little_endian[, buffer_size=4096])
 
