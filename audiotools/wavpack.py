@@ -28,9 +28,9 @@ class InvalidWavPack(InvalidFile):
 
 def __riff_chunk_ids__(data_size, data):
     (riff, size, wave) = data.parse("4b 32u 4b")
-    if (riff != "RIFF"):
+    if (riff != b"RIFF"):
         return
-    elif (wave != "WAVE"):
+    elif (wave != b"WAVE"):
         return
     else:
         data_size -= 12
@@ -41,7 +41,7 @@ def __riff_chunk_ids__(data_size, data):
         if ((chunk_size % 2) == 1):
             chunk_size += 1
         yield chunk_id
-        if (chunk_id != 'data'):
+        if (chunk_id != b"data"):
             data.skip_bytes(chunk_size)
             data_size -= chunk_size
 
@@ -143,7 +143,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         for (sub_header, nondecoder, data_size, data) in self.sub_blocks():
             if ((sub_header == 1) and nondecoder):
                 if (set(__riff_chunk_ids__(data_size,
-                                           data)) != {'fmt ', 'data'}):
+                                           data)) != {b"fmt ", b"data"}):
                     return True
             elif ((sub_header == 2) and nondecoder):
                 return True
@@ -170,7 +170,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                 tail = data.read_bytes(data_size)
 
         if (head is not None):
-            return (head, tail if tail is not None else "")
+            return (head, tail if tail is not None else b"")
         else:
             raise ValueError("no wave header found")
 
@@ -257,7 +257,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
             try:
                 while (True):
                     (wvpk, block_size) = reader.parse("4b 32u 192p")
-                    if (wvpk == 'wvpk'):
+                    if (wvpk == b"wvpk"):
                         yield (block_size - 24,
                                reader.substream(block_size - 24))
                     else:
@@ -330,7 +330,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
              sample_rate) = reader.parse(
                 "4b 64p 32u 64p 2u 1u 8p 1u 1u 5p 5p 4u 37p")
 
-            if (block_id != 'wvpk'):
+            if (block_id != b"wvpk"):
                 from audiotools.text import ERR_WAVPACK_INVALID_HEADER
                 raise InvalidWavPack(ERR_WAVPACK_INVALID_HEADER)
 
@@ -519,15 +519,15 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
              data) in self.sub_blocks(reader):
             if ((block_id == 1) and nondecoder):
                 (riff, wave) = data.parse("4b 32p 4b")
-                if ((riff != 'RIFF') or (wave != 'WAVE')):
+                if ((riff != b"RIFF") or (wave != b"WAVE")):
                     from audiotools.text import ERR_WAVPACK_INVALID_FMT
                     raise InvalidWavPack(ERR_WAVPACK_INVALID_FMT)
                 else:
                     while (True):
                         (chunk_id, chunk_size) = data.parse("4b 32u")
-                        if (chunk_id == 'fmt '):
+                        if (chunk_id == b"fmt "):
                             return data.substream(chunk_size)
-                        elif (chunk_id == 'data'):
+                        elif (chunk_id == b"data"):
                             from audiotools.text import ERR_WAVPACK_INVALID_FMT
                             raise InvalidWavPack(ERR_WAVPACK_INVALID_FMT)
                         else:
@@ -552,7 +552,8 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         if ((metadata is not None) and ('Cuesheet' in metadata.keys())):
             try:
                 return cue.read_cuesheet_string(
-                    unicode(metadata['Cuesheet']).encode('utf-8', 'replace'))
+                    metadata['Cuesheet'].__unicode__().encode('utf-8',
+                                                              'replace'))
             except cue.CueException:
                 # unlike FLAC, just because a cuesheet is embedded
                 # does not mean it is compliant

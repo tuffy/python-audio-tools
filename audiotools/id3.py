@@ -18,16 +18,23 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools import (MetaData, Image, InvalidImage)
+import sys
 import codecs
 
-from id3v1 import ID3v1Comment
+from audiotools.id3v1 import ID3v1Comment
 
 
 def is_latin_1(unicode_string):
     """returns True if the given unicode string is a subset of latin-1"""
 
-    return frozenset(unicode_string).issubset(
-        frozenset(map(unichr, range(32, 127) + range(160, 256))))
+    try:
+        latin1_chars = ({unichr(i) for i in range(32, 127)} |
+                        {unichr(i) for i in range(160, 256)})
+    except NameError:
+        latin1_chars = ({chr(i) for i in range(32, 127)} |
+                        {chr(i) for i in range(160, 256)})
+
+    return {i for i in unicode_string}.issubset(latin1_chars)
 
 
 class UCS2Codec(codecs.Codec):
@@ -124,16 +131,16 @@ def encode_syncsafe32(i):
 
 
 class C_string(object):
-    TERMINATOR = {'ascii': chr(0),
-                  'latin_1': chr(0),
-                  'latin-1': chr(0),
-                  'ucs2': chr(0) * 2,
-                  'utf_16': chr(0) * 2,
-                  'utf-16': chr(0) * 2,
-                  'utf_16be': chr(0) * 2,
-                  'utf-16be': chr(0) * 2,
-                  'utf_8': chr(0),
-                  'utf-8': chr(0)}
+    TERMINATOR = {'ascii': b"\x00",
+                  'latin_1': b"\x00",
+                  'latin-1': b"\x00",
+                  'ucs2': b"\x00" * 2,
+                  'utf_16': b"\x00" * 2,
+                  'utf-16': b"\x00" * 2,
+                  'utf_16be': b"\x00" * 2,
+                  'utf-16be': b"\x00" * 2,
+                  'utf_8': b"\x00",
+                  'utf-8': b"\x00"}
 
     def __init__(self, encoding, unicode_string):
         """encoding is a string such as 'utf-8', 'latin-1', etc"""
@@ -145,6 +152,13 @@ class C_string(object):
         return "C_string(%s, %s)" % (repr(self.encoding),
                                      repr(self.unicode_string))
 
+    if (sys.version_info[0] >= 3):
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('utf-8')
+
     def __unicode__(self):
         return self.unicode_string
 
@@ -155,22 +169,22 @@ class C_string(object):
         return len(self.unicode_string)
 
     def __eq__(self, s):
-        return (self.unicode_string == unicode(s))
+        return (self.unicode_string == (u"%s" % (s)))
 
     def __ne__(self, s):
-        return (self.unicode_string != unicode(s))
+        return (self.unicode_string != (u"%s" % (s)))
 
     def __lt__(self, s):
-        return (self.unicode_string < unicode(s))
+        return (self.unicode_string < (u"%s" % (s)))
 
     def __le__(self, s):
-        return (self.unicode_string <= unicode(s))
+        return (self.unicode_string <= (u"%s" % (s)))
 
     def __gt__(self, s):
-        return (self.unicode_string > unicode(s))
+        return (self.unicode_string > (u"%s" % (s)))
 
     def __ge__(self, s):
-        return (self.unicode_string >= unicode(s))
+        return (self.unicode_string >= (u"%s" % (s)))
 
     @classmethod
     def parse(cls, encoding, reader):
@@ -192,7 +206,7 @@ class C_string(object):
             s.append(char)
             char = reader.read_bytes(terminator_size)
 
-        return cls(encoding, "".join(s).decode(encoding, 'replace'))
+        return cls(encoding, b"".join(s).decode(encoding, 'replace'))
 
     def build(self, writer):
         """writes our C_string data to the given BitstreamWriter
@@ -258,7 +272,7 @@ def read_id3v2_comment(filename):
     reader.mark()
     try:
         (tag, version_major, version_minor) = reader.parse("3b 8u 8u")
-        if (tag != 'ID3'):
+        if (tag != b'ID3'):
             raise ValueError("invalid ID3 header")
         elif (version_major == 0x2):
             reader.rewind()
@@ -285,7 +299,7 @@ def skip_id3v2_comment(file):
     start = file.tell()
     try:
         # check initial header
-        if (file.read(3) == "ID3"):
+        if (file.read(3) == b"ID3"):
             bytes_skipped = 3
         else:
             file.seek(start)
@@ -333,7 +347,7 @@ def total_id3v2_comments(file):
     start = file.tell()
     try:
         # check initial header
-        if (file.read(3) != "ID3"):
+        if (file.read(3) != b"ID3"):
             file.seek(start)
             return 0
 
@@ -381,14 +395,16 @@ class ID3v22_Frame(object):
         return "ID3v22_Frame(%s, %s)" % (repr(self.id), repr(self.data))
 
     def raw_info(self):
+        from audiotools import hex_string
+
         if (len(self.data) > 20):
             return u"%s = %s\u2026" % \
                 (self.id.decode('ascii', 'replace'),
-                 u"".join([u"%2.2X" % (ord(b)) for b in self.data[0:20]]))
+                 hex_string(self.data[0:20]))
         else:
             return u"%s = %s" % \
                 (self.id.decode('ascii', 'replace'),
-                 u"".join([u"%2.2X" % (ord(b)) for b in self.data]))
+                 hex_string(self.data))
 
     def __eq__(self, frame):
         return __attrib_equals__(["id", "data"], self, frame)
@@ -427,7 +443,7 @@ class ID3v22_Frame(object):
 
 
 class ID3v22_T__Frame(object):
-    NUMERICAL_IDS = ('TRK', 'TPA')
+    NUMERICAL_IDS = (b'TRK', b'TPA')
 
     def __init__(self, frame_id, encoding, data):
         """fields are as follows:
@@ -455,15 +471,22 @@ class ID3v22_T__Frame(object):
         return u"%s = (%s) %s" % \
             (self.id.decode('ascii'),
              {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
-             unicode(self))
+             self.__unicode__())
 
     def __eq__(self, frame):
         return __attrib_equals__(["id", "encoding", "data"], self, frame)
 
+    if (sys.version_info[0] >= 3):
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('utf-8')
+
     def __unicode__(self):
         return self.data.decode(
             {0: 'latin-1', 1: 'ucs2'}[self.encoding],
-            'replace').split(unichr(0), 1)[0]
+            'replace').split(u"\x00", 1)[0]
 
     def number(self):
         """if the frame is numerical, returns the track/album_number portion
@@ -472,7 +495,7 @@ class ID3v22_T__Frame(object):
         import re
 
         if (self.id in self.NUMERICAL_IDS):
-            unicode_value = unicode(self)
+            unicode_value = self.__unicode__()
             int_string = re.search(r'\d+', unicode_value)
             if (int_string is not None):
                 int_value = int(int_string.group(0))
@@ -499,7 +522,7 @@ class ID3v22_T__Frame(object):
         import re
 
         if (self.id in self.NUMERICAL_IDS):
-            int_value = re.search(r'/\D*?(\d+)', unicode(self))
+            int_value = re.search(r'/\D*?(\d+)', self.__unicode__())
             if (int_value is not None):
                 return int(int_value.group(1))
             else:
@@ -549,7 +572,7 @@ class ID3v22_T__Frame(object):
 
         fixes_performed = []
         field = self.id.decode('ascii')
-        value = unicode(self)
+        value = self.__unicode__()
 
         # check for an empty tag
         if (len(value.strip()) == 0):
@@ -587,7 +610,7 @@ class ID3v22_T__Frame(object):
 
 class ID3v22_TXX_Frame(object):
     def __init__(self, encoding, description, data):
-        self.id = 'TXX'
+        self.id = b'TXX'
 
         self.encoding = encoding
         self.description = description
@@ -609,15 +632,22 @@ class ID3v22_TXX_Frame(object):
             (self.id,
              {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
              self.description,
-             unicode(self))
+             self.__unicode__())
 
     def __eq__(self, frame):
         return __attrib_equals__(["id", "encoding", "description", "data"])
 
+    if (sys.version_info[0] >= 3):
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('utf-8')
+
     def __unicode__(self):
         return self.data.decode(
             {0: 'latin-1', 1: 'ucs2'}[self.encoding],
-            'replace').split(unichr(0), 1)[0]
+            'replace').split(u'\x00', 1)[0]
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
@@ -656,7 +686,7 @@ class ID3v22_TXX_Frame(object):
 
         fixes_performed = []
         field = self.id.decode('ascii')
-        value = unicode(self)
+        value = self.__unicode__()
 
         # check for an empty tag
         if (len(value.strip()) == 0):
@@ -725,7 +755,7 @@ class ID3v22_W__Frame(object):
 
 class ID3v22_WXX_Frame(object):
     def __init__(self, encoding, description, data):
-        self.id = 'WXX'
+        self.id = b'WXX'
 
         self.encoding = encoding
         self.description = description
@@ -797,7 +827,7 @@ class ID3v22_COM_Frame(object):
         | data              | plain string of the comment data itself   |
         """
 
-        self.id = "COM"
+        self.id = b"COM"
         self.encoding = encoding
         self.language = language
         self.short_description = short_description
@@ -831,6 +861,13 @@ class ID3v22_COM_Frame(object):
 
     def __ne__(self, frame):
         return not self.__eq__(frame)
+
+    if (sys.version_info[0] >= 3):
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('utf-8')
 
     def __unicode__(self):
         return self.data.decode({0: 'latin-1', 1: 'ucs2'}[self.encoding],
@@ -920,7 +957,7 @@ class ID3v22_PIC_Frame(Image):
         | data         | image data itself as a raw string           |
         """
 
-        self.id = 'PIC'
+        self.id = b'PIC'
 
         # add PIC-specific fields
         self.pic_format = image_format
@@ -966,27 +1003,27 @@ class ID3v22_PIC_Frame(Image):
              len(self.data))
 
     def type_string(self):
-        return {0: "Other",
-                1: "32x32 pixels 'file icon' (PNG only)",
-                2: "Other file icon",
-                3: "Cover (front)",
-                4: "Cover (back)",
-                5: "Leaflet page",
-                6: "Media (e.g. label side of CD)",
-                7: "Lead artist/lead performer/soloist",
-                8: "Artist / Performer",
-                9: "Conductor",
-                10: "Band / Orchestra",
-                11: "Composer",
-                12: "Lyricist / Text writer",
-                13: "Recording Location",
-                14: "During recording",
-                15: "During performance",
-                16: "Movie/Video screen capture",
-                17: "A bright coloured fish",
-                18: "Illustration",
-                19: "Band/Artist logotype",
-                20: "Publisher/Studio logotype"}.get(self.pic_type, "Other")
+        return {0: u"Other",
+                1: u"32x32 pixels 'file icon' (PNG only)",
+                2: u"Other file icon",
+                3: u"Cover (front)",
+                4: u"Cover (back)",
+                5: u"Leaflet page",
+                6: u"Media (e.g. label side of CD)",
+                7: u"Lead artist/lead performer/soloist",
+                8: u"Artist / Performer",
+                9: u"Conductor",
+                10: u"Band / Orchestra",
+                11: u"Composer",
+                12: u"Lyricist / Text writer",
+                13: u"Recording Location",
+                14: u"During recording",
+                15: u"During performance",
+                16: u"Movie/Video screen capture",
+                17: u"A bright coloured fish",
+                18: u"Illustration",
+                19: u"Band/Artist logotype",
+                20: u"Publisher/Studio logotype"}.get(self.pic_type, u"Other")
 
     def __getattr__(self, attr):
         from audiotools import (FRONT_COVER,
@@ -1002,7 +1039,7 @@ class ID3v22_PIC_Frame(Image):
                     6: MEDIA
                     }.get(self.pic_type, OTHER)
         elif (attr == 'description'):
-            return unicode(self.pic_description)
+            return self.pic_description.__unicode__()
         else:
             raise AttributeError(attr)
 
@@ -1097,23 +1134,23 @@ class ID3v22_PIC_Frame(Image):
 class ID3v22Comment(MetaData):
     NAME = u'ID3v2.2'
 
-    ATTRIBUTE_MAP = {'track_name': 'TT2',
-                     'track_number': 'TRK',
-                     'track_total': 'TRK',
-                     'album_name': 'TAL',
-                     'artist_name': 'TP1',
-                     'performer_name': 'TP2',
-                     'conductor_name': 'TP3',
-                     'composer_name': 'TCM',
-                     'media': 'TMT',
-                     'ISRC': 'TRC',
-                     'copyright': 'TCR',
-                     'publisher': 'TPB',
-                     'year': 'TYE',
-                     'date': 'TRD',
-                     'album_number': 'TPA',
-                     'album_total': 'TPA',
-                     'comment': 'COM'}
+    ATTRIBUTE_MAP = {'track_name': b'TT2',
+                     'track_number': b'TRK',
+                     'track_total': b'TRK',
+                     'album_name': b'TAL',
+                     'artist_name': b'TP1',
+                     'performer_name': b'TP2',
+                     'conductor_name': b'TP3',
+                     'composer_name': b'TCM',
+                     'media': b'TMT',
+                     'ISRC': b'TRC',
+                     'copyright': b'TCR',
+                     'publisher': b'TPB',
+                     'year': b'TYE',
+                     'date': b'TRD',
+                     'album_number': b'TPA',
+                     'album_total': b'TPA',
+                     'comment': b'COM'}
 
     RAW_FRAME = ID3v22_Frame
     TEXT_FRAME = ID3v22_T__Frame
@@ -1122,7 +1159,7 @@ class ID3v22Comment(MetaData):
     USER_WEB_FRAME = ID3v22_WXX_Frame
     COMMENT_FRAME = ID3v22_COM_Frame
     IMAGE_FRAME = ID3v22_PIC_Frame
-    IMAGE_FRAME_ID = 'PIC'
+    IMAGE_FRAME_ID = b'PIC'
 
     def __init__(self, frames, total_size=None):
         MetaData.__setattr__(self, "frames", frames[:])
@@ -1143,7 +1180,7 @@ class ID3v22Comment(MetaData):
 
         from os import linesep
 
-        return linesep.decode('ascii').join(
+        return linesep.join(
             ["%s:" % (self.NAME)] +
             [frame.raw_info() for frame in self])
 
@@ -1155,7 +1192,7 @@ class ID3v22Comment(MetaData):
          major_version,
          minor_version,
          flags) = reader.parse("3b 8u 8u 8u")
-        if (id3 != 'ID3'):
+        if (id3 != b'ID3'):
             raise ValueError("invalid ID3 header")
         elif (major_version != 0x02):
             raise ValueError("invalid major version")
@@ -1168,29 +1205,29 @@ class ID3v22Comment(MetaData):
         while (remaining_size > 6):
             (frame_id, frame_size) = reader.parse("3b 24u")
 
-            if (frame_id == chr(0) * 3):
+            if (frame_id == b"\x00" * 3):
                 break
-            elif (frame_id == 'TXX'):
+            elif (frame_id == b'TXX'):
                 frames.append(
                     cls.USER_TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == 'WXX'):
+            elif (frame_id == b'WXX'):
                 frames.append(
                     cls.USER_WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == 'COM'):
+            elif (frame_id == b'COM'):
                 frames.append(
                     cls.COMMENT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == 'PIC'):
+            elif (frame_id == b'PIC'):
                 frames.append(
                     cls.IMAGE_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id.startswith('T')):
+            elif (frame_id.startswith(b'T')):
                 frames.append(
                     cls.TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id.startswith('W')):
+            elif (frame_id.startswith(b'W')):
                 frames.append(
                     cls.WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
@@ -1210,7 +1247,7 @@ class ID3v22Comment(MetaData):
         tags_size = sum([6 + frame.size() for frame in self])
 
         writer.build("3b 8u 8u 8u 32u",
-                     ("ID3", 0x02, 0x00, 0x00,
+                     (b"ID3", 0x02, 0x00, 0x00,
                       encode_syncsafe32(
                           max(tags_size,
                               (self.total_size if
@@ -1224,7 +1261,7 @@ class ID3v22Comment(MetaData):
         # is less than the total size of the whole ID3v2.2 tag
         if (((self.total_size is not None) and
              ((self.total_size - tags_size) > 0))):
-            writer.write_bytes(chr(0) * (self.total_size - tags_size))
+            writer.write_bytes(u"\x00" * (self.total_size - tags_size))
 
     def size(self):
         """returns the total size of the ID3v22Comment, including its header"""
@@ -1290,7 +1327,7 @@ class ID3v22Comment(MetaData):
                 elif (attr in ('track_total', 'album_total')):
                     return frame.total()
                 else:
-                    return unicode(frame)
+                    return frame.__unicode__()
             except KeyError:
                 return None
         elif (attr in self.FIELDS):
@@ -1309,8 +1346,8 @@ class ID3v22Comment(MetaData):
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
                             re.sub(r'\d+',
-                                   unicode(int(value)),
-                                   unicode(self[frame_id][0]),
+                                   u"%d" % (int(value),),
+                                   self[frame_id][0].__unicode__(),
                                    1))
                     except KeyError:
                         new_frame = self.TEXT_FRAME.converted(
@@ -1318,18 +1355,19 @@ class ID3v22Comment(MetaData):
                             __number_pair__(value, self.track_total))
                 elif (attr == 'track_total'):
                     try:
-                        if (re.search(r'/\D*\d+',
-                                      unicode(self[frame_id][0])) is not None):
+                        if (re.search(
+                                r'/\D*\d+',
+                                self[frame_id][0].__unicode__()) is not None):
                             new_frame = self.TEXT_FRAME.converted(
                                 frame_id,
                                 re.sub(r'(/\D*)(\d+)',
-                                       u"\\g<1>" + unicode(int(value)),
-                                       unicode(self[frame_id][0]),
+                                       u"\\g<1>" + u"%d" % (int(value),),
+                                       self[frame_id][0].__unicode__(),
                                        1))
                         else:
                             new_frame = self.TEXT_FRAME.converted(
                                 frame_id,
-                                u"%s/%d" % (unicode(self[frame_id][0]),
+                                u"%s/%d" % (self[frame_id][0].__unicode__(),
                                             int(value)))
                     except KeyError:
                         new_frame = self.TEXT_FRAME.converted(
@@ -1340,8 +1378,8 @@ class ID3v22Comment(MetaData):
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
                             re.sub(r'\d+',
-                                   unicode(int(value)),
-                                   unicode(self[frame_id][0]),
+                                   u"%d" % (int(value),),
+                                   self[frame_id][0].__unicode__(),
                                    1))
                     except KeyError:
                         new_frame = self.TEXT_FRAME.converted(
@@ -1349,18 +1387,19 @@ class ID3v22Comment(MetaData):
                             __number_pair__(value, self.album_total))
                 elif (attr == 'album_total'):
                     try:
-                        if (re.search(r'/\D*\d+',
-                                      unicode(self[frame_id][0])) is not None):
+                        if (re.search(
+                                r'/\D*\d+',
+                                self[frame_id][0].__unicode__()) is not None):
                             new_frame = self.TEXT_FRAME.converted(
                                 frame_id,
                                 re.sub(r'(/\D*)(\d+)',
-                                       u"\\g<1>" + unicode(int(value)),
-                                       unicode(self[frame_id][0]),
+                                       u"\\g<1>" + u"%d" % (int(value),),
+                                       self[frame_id][0].__unicode__(),
                                        1))
                         else:
                             new_frame = self.TEXT_FRAME.converted(
                                 frame_id,
-                                u"%s/%d" % (unicode(self[frame_id][0]),
+                                u"%s/%d" % (self[frame_id][0].__unicode__(),
                                             int(value)))
                     except KeyError:
                         new_frame = self.TEXT_FRAME.converted(
@@ -1371,7 +1410,7 @@ class ID3v22Comment(MetaData):
                         frame_id, value)
                 else:
                     new_frame = self.TEXT_FRAME.converted(
-                        frame_id, unicode(value))
+                        frame_id, u"%s" % (value,))
 
                 try:
                     self[frame_id] = [new_frame] + self[frame_id][1:]
@@ -1395,14 +1434,14 @@ class ID3v22Comment(MetaData):
 
                         # if *_number field contains a slashed total
                         if (re.search(r'\d+.*?/.*?\d+',
-                                      unicode(frame)) is not None):
+                                      frame.__unicode__()) is not None):
                             # replace unslashed portion with 0
                             updated_frames.append(
                                 self.TEXT_FRAME.converted(
                                     frame.id,
                                     re.sub(r'\d+',
-                                           unicode(int(0)),
-                                           unicode(frame),
+                                           u"0",
+                                           frame.__unicode__(),
                                            1)))
                         else:
                             # otherwise, remove *_number field
@@ -1412,8 +1451,8 @@ class ID3v22Comment(MetaData):
                         import re
 
                         # if *_number is nonzero
-                        _number = re.search(r'\d+',
-                                            unicode(frame).split(u"/")[0])
+                        _number = re.search(
+                            r'\d+', frame.__unicode__().split(u"/")[0])
                         if (((_number is not None) and
                              (int(_number.group(0)) != 0))):
                             # if field contains a slashed total
@@ -1423,13 +1462,13 @@ class ID3v22Comment(MetaData):
                                     frame.id,
                                     re.sub(r'\s*/\D*\d+.*',
                                            u"",
-                                           unicode(frame),
+                                           frame.__unicode__(),
                                            1)))
                         else:
                             # if field contains a slashed total
                             # remove field entirely
                             if (re.search(r'/.*?\d+',
-                                          unicode(frame)) is not None):
+                                          frame.__unicode__()) is not None):
                                 continue
                             else:
                                 # no number or total,
@@ -1536,7 +1575,7 @@ class ID3v23_Frame(ID3v22_Frame):
 
 
 class ID3v23_T___Frame(ID3v22_T__Frame):
-    NUMERICAL_IDS = ('TRCK', 'TPOS')
+    NUMERICAL_IDS = (b'TRCK', b'TPOS')
 
     def __repr__(self):
         return "ID3v23_T___Frame(%s, %s, %s)" % \
@@ -1545,7 +1584,7 @@ class ID3v23_T___Frame(ID3v22_T__Frame):
 
 class ID3v23_TXXX_Frame(ID3v22_TXX_Frame):
     def __init__(self, encoding, description, data):
-        self.id = 'TXXX'
+        self.id = b'TXXX'
 
         self.encoding = encoding
         self.description = description
@@ -1564,7 +1603,7 @@ class ID3v23_W___Frame(ID3v22_W__Frame):
 
 class ID3v23_WXXX_Frame(ID3v22_WXX_Frame):
     def __init__(self, encoding, description, data):
-        self.id = 'WXXX'
+        self.id = b'WXXX'
 
         self.encoding = encoding
         self.description = description
@@ -1584,7 +1623,7 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
         | data         | image data itself as a raw string           |
         """
 
-        self.id = 'APIC'
+        self.id = b'APIC'
 
         # add APIC-specific fields
         self.pic_type = picture_type
@@ -1642,9 +1681,9 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
                     6: MEDIA
                     }.get(self.pic_type, 4)  # other
         elif (attr == 'description'):
-            return unicode(self.pic_description)
+            return self.pic_description.__unicode__()
         elif (attr == 'mime_type'):
-            return unicode(self.pic_mime_type)
+            return self.pic_mime_type.__unicode__()
         else:
             raise AttributeError(attr)
 
@@ -1732,7 +1771,7 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
         any fixes are appended to fixes_applied as unicode string"""
 
         actual_mime_type = Image.new(self.data, u"", 0).mime_type
-        if (unicode(self.pic_mime_type) != actual_mime_type):
+        if (self.pic_mime_type.__unicode__() != actual_mime_type):
             from audiotools.text import (CLEAN_FIX_IMAGE_FIELDS)
             return (ID3v23_APIC_Frame(
                 C_string('ascii', actual_mime_type.encode('ascii')),
@@ -1756,7 +1795,7 @@ class ID3v23_COMM_Frame(ID3v22_COM_Frame):
         | data              | plain string of the comment data itself   |
         """
 
-        self.id = "COMM"
+        self.id = b"COMM"
         self.encoding = encoding
         self.language = language
         self.short_description = short_description
@@ -1780,23 +1819,23 @@ class ID3v23_COMM_Frame(ID3v22_COM_Frame):
 class ID3v23Comment(ID3v22Comment):
     NAME = u'ID3v2.3'
 
-    ATTRIBUTE_MAP = {'track_name': 'TIT2',
-                     'track_number': 'TRCK',
-                     'track_total': 'TRCK',
-                     'album_name': 'TALB',
-                     'artist_name': 'TPE1',
-                     'performer_name': 'TPE2',
-                     'composer_name': 'TCOM',
-                     'conductor_name': 'TPE3',
-                     'media': 'TMED',
-                     'ISRC': 'TSRC',
-                     'copyright': 'TCOP',
-                     'publisher': 'TPUB',
-                     'year': 'TYER',
-                     'date': 'TRDA',
-                     'album_number': 'TPOS',
-                     'album_total': 'TPOS',
-                     'comment': 'COMM'}
+    ATTRIBUTE_MAP = {'track_name': b'TIT2',
+                     'track_number': b'TRCK',
+                     'track_total': b'TRCK',
+                     'album_name': b'TALB',
+                     'artist_name': b'TPE1',
+                     'performer_name': b'TPE2',
+                     'composer_name': b'TCOM',
+                     'conductor_name': b'TPE3',
+                     'media': b'TMED',
+                     'ISRC': b'TSRC',
+                     'copyright': b'TCOP',
+                     'publisher': b'TPUB',
+                     'year': b'TYER',
+                     'date': b'TRDA',
+                     'album_number': b'TPOS',
+                     'album_total': b'TPOS',
+                     'comment': b'COMM'}
 
     RAW_FRAME = ID3v23_Frame
     TEXT_FRAME = ID3v23_T___Frame
@@ -1805,8 +1844,8 @@ class ID3v23Comment(ID3v22Comment):
     USER_WEB_FRAME = ID3v23_WXXX_Frame
     COMMENT_FRAME = ID3v23_COMM_Frame
     IMAGE_FRAME = ID3v23_APIC_Frame
-    IMAGE_FRAME_ID = 'APIC'
-    ITUNES_COMPILATION_ID = 'TCMP'
+    IMAGE_FRAME_ID = b'APIC'
+    ITUNES_COMPILATION_ID = b'TCMP'
 
     def __repr__(self):
         return "ID3v23Comment(%s, %s)" % (repr(self.frames),
@@ -1820,7 +1859,7 @@ class ID3v23Comment(ID3v22Comment):
          major_version,
          minor_version,
          flags) = reader.parse("3b 8u 8u 8u")
-        if (id3 != 'ID3'):
+        if (id3 != b'ID3'):
             raise ValueError("invalid ID3 header")
         elif (major_version != 0x03):
             raise ValueError("invalid major version")
@@ -1833,29 +1872,29 @@ class ID3v23Comment(ID3v22Comment):
         while (remaining_size > 10):
             (frame_id, frame_size, frame_flags) = reader.parse("4b 32u 16u")
 
-            if (frame_id == chr(0) * 4):
+            if (frame_id == b"\x00" * 4):
                 break
-            elif (frame_id == 'TXXX'):
+            elif (frame_id == b'TXXX'):
                 frames.append(
                     cls.USER_TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == 'WXXX'):
+            elif (frame_id == b'WXXX'):
                 frames.append(
                     cls.USER_WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == 'COMM'):
+            elif (frame_id == b'COMM'):
                 frames.append(
                     cls.COMMENT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == 'APIC'):
+            elif (frame_id == b'APIC'):
                 frames.append(
                     cls.IMAGE_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id.startswith('T')):
+            elif (frame_id.startswith(b'T')):
                 frames.append(
                     cls.TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id.startswith('W')):
+            elif (frame_id.startswith(b'W')):
                 frames.append(
                     cls.WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
@@ -1875,7 +1914,7 @@ class ID3v23Comment(ID3v22Comment):
         tags_size = sum([10 + frame.size() for frame in self])
 
         writer.build("3b 8u 8u 8u 32u",
-                     ("ID3", 0x03, 0x00, 0x00,
+                     (b"ID3", 0x03, 0x00, 0x00,
                       encode_syncsafe32(
                           max(tags_size,
                               (self.total_size if
@@ -1889,7 +1928,7 @@ class ID3v23Comment(ID3v22Comment):
         # is less than the total size of the whole ID3v2.3 tag
         if (((self.total_size is not None) and
              ((self.total_size - tags_size) > 0))):
-            writer.write_bytes(chr(0) * (self.total_size - tags_size))
+            writer.write_bytes(b"\x00" * (self.total_size - tags_size))
 
     def size(self):
         """returns the total size of the ID3v23Comment, including its header"""
@@ -1922,12 +1961,19 @@ class ID3v24_T___Frame(ID3v23_T___Frame):
         return "ID3v24_T___Frame(%s, %s, %s)" % \
             (repr(self.id), repr(self.encoding), repr(self.data))
 
+    if (sys.version_info[0] >= 3):
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('utf-8')
+
     def __unicode__(self):
         return self.data.decode(
             {0: u"latin-1",
              1: u"utf-16",
              2: u"utf-16BE",
-             3: u"utf-8"}[self.encoding], 'replace').split(unichr(0), 1)[0]
+             3: u"utf-8"}[self.encoding], 'replace').split(u"\x00", 1)[0]
 
     def raw_info(self):
         """returns a human-readable version of this frame as unicode"""
@@ -1937,7 +1983,7 @@ class ID3v24_T___Frame(ID3v23_T___Frame):
                                    1: u"UTF-16",
                                    2: u"UTF-16BE",
                                    3: u"UTF-8"}[self.encoding],
-                                  unicode(self))
+                                  self.__unicode__())
 
     @classmethod
     def converted(cls, frame_id, unicode_string):
@@ -1964,14 +2010,21 @@ class ID3v24_TXXX_Frame(ID3v23_TXXX_Frame):
               2: u"UTF-16BE",
               3: u"UTF-8"}[self.encoding],
              self.description,
-             unicode(self))
+             self.__unicode__())
+
+    if (sys.version_info[0] >= 3):
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('utf-8')
 
     def __unicode__(self):
         return self.data.decode(
             {0: u"latin-1",
              1: u"utf-16",
              2: u"utf-16BE",
-             3: u"utf-8"}[self.encoding], 'replace').split(unichr(0), 1)[0]
+             3: u"utf-8"}[self.encoding], 'replace').split(u"\x00", 1)[0]
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
@@ -2073,7 +2126,7 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
         any fixes are appended to fixes_applied as unicode string"""
 
         actual_mime_type = Image.new(self.data, u"", 0).mime_type
-        if (unicode(self.pic_mime_type) != actual_mime_type):
+        if (self.pic_mime_type.__unicode__() != actual_mime_type):
             from audiotools.text import (CLEAN_FIX_IMAGE_FIELDS)
             return (ID3v24_APIC_Frame(
                 C_string('ascii',
@@ -2133,6 +2186,13 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
         return "ID3v24_COMM_Frame(%s, %s, %s, %s)" % \
             (repr(self.encoding), repr(self.language),
              repr(self.short_description), repr(self.data))
+
+    if (sys.version_info[0] >= 3):
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('utf-8')
 
     def __unicode__(self):
         return self.data.decode({0: 'latin-1',
@@ -2232,8 +2292,8 @@ class ID3v24Comment(ID3v23Comment):
     USER_WEB_FRAME = ID3v24_WXXX_Frame
     COMMENT_FRAME = ID3v24_COMM_Frame
     IMAGE_FRAME = ID3v24_APIC_Frame
-    IMAGE_FRAME_ID = 'APIC'
-    ITUNES_COMPILATION_ID = 'TCMP'
+    IMAGE_FRAME_ID = b'APIC'
+    ITUNES_COMPILATION_ID = b'TCMP'
 
     def __repr__(self):
         return "ID3v24Comment(%s, %s)" % (repr(self.frames),
@@ -2247,7 +2307,7 @@ class ID3v24Comment(ID3v23Comment):
          major_version,
          minor_version,
          flags) = reader.parse("3b 8u 8u 8u")
-        if (id3 != 'ID3'):
+        if (id3 != b'ID3'):
             raise ValueError("invalid ID3 header")
         elif (major_version != 0x04):
             raise ValueError("invalid major version")
@@ -2262,29 +2322,29 @@ class ID3v24Comment(ID3v23Comment):
             frame_size = decode_syncsafe32(reader.read(32))
             flags = reader.read(16)
 
-            if (frame_id == chr(0) * 4):
+            if (frame_id == b"\x00" * 4):
                 break
-            elif (frame_id == 'TXXX'):
+            elif (frame_id == b'TXXX'):
                 frames.append(
                     cls.USER_TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == 'WXXX'):
+            elif (frame_id == b'WXXX'):
                 frames.append(
                     cls.USER_WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == 'COMM'):
+            elif (frame_id == b'COMM'):
                 frames.append(
                     cls.COMMENT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == 'APIC'):
+            elif (frame_id == b'APIC'):
                 frames.append(
                     cls.IMAGE_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id.startswith('T')):
+            elif (frame_id.startswith(b'T')):
                 frames.append(
                     cls.TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id.startswith('W')):
+            elif (frame_id.startswith(b'W')):
                 frames.append(
                     cls.WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
@@ -2304,7 +2364,7 @@ class ID3v24Comment(ID3v23Comment):
         tags_size = sum([10 + frame.size() for frame in self])
 
         writer.build("3b 8u 8u 8u 32u",
-                     ("ID3", 0x04, 0x00, 0x00,
+                     (b"ID3", 0x04, 0x00, 0x00,
                       encode_syncsafe32(
                           max(tags_size,
                               (self.total_size if
@@ -2320,7 +2380,7 @@ class ID3v24Comment(ID3v23Comment):
         # is less than the total size of the whole ID3v2.2 tag
         if (((self.total_size is not None) and
              ((self.total_size - tags_size) > 0))):
-            writer.write_bytes(chr(0) * (self.total_size - tags_size))
+            writer.write_bytes(b"\x00" * (self.total_size - tags_size))
 
     def size(self):
         """returns the total size of the ID3v24Comment, including its header"""
@@ -2422,7 +2482,7 @@ class ID3CommentPair(MetaData):
             from os import linesep
 
             return (self.id3v2.raw_info() +
-                    linesep.decode('ascii') * 2 +
+                    linesep * 2 +
                     self.id3v1.raw_info())
         elif (self.id3v2 is not None):
             # only ID3v2

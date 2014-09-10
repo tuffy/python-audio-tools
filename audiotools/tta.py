@@ -499,7 +499,8 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         if ((metadata is not None) and ('Cuesheet' in metadata.keys())):
             try:
                 return cue.read_cuesheet_string(
-                    unicode(metadata['Cuesheet']).encode('utf-8', 'replace'))
+                    metadata['Cuesheet'].__unicode__().encode('utf-8',
+                                                              'replace'))
             except cue.CueException:
                 # unlike FLAC, just because a cuesheet is embedded
                 # does not mean it is compliant

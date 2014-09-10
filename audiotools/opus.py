@@ -64,7 +64,7 @@ class OpusAudio(VorbisAudio):
                  segment_count) = ogg_reader.parse(
                     "4b 8u 8u 64S 32u 32u 32u 8u")
 
-                if (magic_number != 'OggS'):
+                if (magic_number != b'OggS'):
                     from audiotools.text import ERR_OGG_INVALID_MAGIC_NUMBER
                     raise InvalidOpus(ERR_OGG_INVALID_MAGIC_NUMBER)
                 if (version != 0):
@@ -82,7 +82,7 @@ class OpusAudio(VorbisAudio):
                  mapping_family) = ogg_reader.parse(
                     "8b 8u 8u 16u 32u 16s 8u")
 
-                if (opushead != "OpusHead"):
+                if (opushead != b"OpusHead"):
                     from audiotools.text import ERR_OPUS_INVALID_TYPE
                     raise InvalidOpus(ERR_OPUS_INVALID_TYPE)
                 if (version != 1):
@@ -292,7 +292,7 @@ class OpusAudio(VorbisAudio):
 
         # generate new comment packet
         comment_writer = BitstreamRecorder(True)
-        comment_writer.write_bytes("OpusTags")
+        comment_writer.write_bytes(b"OpusTags")
         vendor_string = metadata.vendor_string.encode('utf-8')
         comment_writer.build("32u %db" % (len(vendor_string)),
                              (len(vendor_string), vendor_string))
@@ -373,7 +373,7 @@ class OpusAudio(VorbisAudio):
         identification = reader.read_packet()
         comment = BitstreamReader(BytesIO(reader.read_packet()), True)
 
-        if (comment.read_bytes(8) == "OpusTags"):
+        if (comment.read_bytes(8) == b"OpusTags"):
             vendor_string = \
                 comment.read_bytes(comment.read(32)).decode('utf-8')
             comment_strings = [

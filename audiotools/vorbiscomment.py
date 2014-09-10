@@ -173,8 +173,8 @@ class VorbisComment(MetaData):
                 row.add_column(u"")
 
         return (u"%s:  %s" % (self.__comment_name__(),
-                              self.vendor_string) + linesep.decode('ascii') +
-                linesep.decode('ascii').join(table.format()))
+                              self.vendor_string) + linesep +
+                linesep.join(table.format()))
 
     def __getattr__(self, attr):
         # returns the first matching key for the given attribute
@@ -252,7 +252,7 @@ class VorbisComment(MetaData):
                     if (re.search(r'\d+', new_values[i]) is not None):
                         # and replace the integer part of the field
                         new_values[i] = re.sub(r'\d+',
-                                               unicode(int(value)),
+                                               u"%d" % (value),
                                                new_values[i],
                                                1)
 
@@ -263,11 +263,11 @@ class VorbisComment(MetaData):
                 else:
                     # no integer field with matching key
                     # so append new integer field
-                    self[key] = self[key] + [unicode(int(value))]
+                    self[key] = self[key] + [u"%d" % (value)]
             except KeyError:
                 # no TRACKNUMBER/DISCNUMBER field
                 # so add a new one
-                self[key] = [unicode(int(value))]
+                self[key] = [u"%d" % (value)]
         elif ((attr == "track_total") or (attr == "album_total")):
             key = self.ATTRIBUTE_MAP[attr]
             try:
@@ -278,7 +278,7 @@ class VorbisComment(MetaData):
                     if (re.search(r'\d+', new_values[i]) is not None):
                         # and replace the integer part of the field
                         new_values[i] = re.sub(r'\d+',
-                                               unicode(int(value)),
+                                               u"%d" % (value),
                                                new_values[i],
                                                1)
                         self[key] = new_values
@@ -301,7 +301,7 @@ class VorbisComment(MetaData):
                         # and replace the slashed part of the field
                         new_slashed_values[i] = re.sub(
                             r'(/\D*)(\d+)',
-                            u'\\g<1>' + unicode(int(value)),
+                            u'\\g<1>' + (u"%d" % (value)),
                             new_slashed_values[i],
                             1)
                         self[slashed_key] = new_slashed_values
@@ -315,16 +315,16 @@ class VorbisComment(MetaData):
             # and no slashed TRACKNUMBER/DISCNUMBER values
             # or no integer values in those fields,
             # so append a TRACKTOTAL/DISCTOTAL field
-            self[key] = new_values + [unicode(int(value))]
+            self[key] = new_values + [u"%d" % (value)]
         elif (attr in self.ATTRIBUTE_MAP.keys()):
             key = self.ATTRIBUTE_MAP[attr]
             try:
                 current_values = self[key]
                 # try to leave subsequent fields with the same key as-is
-                self[key] = [unicode(value)] + current_values[1:]
+                self[key] = [u"%s" % (value)] + current_values[1:]
             except KeyError:
                 # no current field with the same key, so add a new one
-                self[key] = [unicode(value)]
+                self[key] = [u"%s" % (value)]
         elif (attr in self.FIELDS):
             # attribute is supported by MetaData
             # but not supported by VorbisComment

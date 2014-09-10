@@ -1773,9 +1773,10 @@ try:
                 for (filename, track) in zip(self.output_filenames,
                                              self.output_tracks):
                     if (filename not in collisions):
-                        track.set_text(unicode(filename))
+                        track.set_text(u"%s" % (filename,))
                     else:
-                        track.set_text(("duplicate", unicode(filename)))
+                        track.set_text(("duplicate",
+                                       u"%s" % (filename,)))
                 if ((self.output_tracks_frame.get_body() is not
                      self.output_tracks_list)):
                     self.output_tracks_frame.set_body(
@@ -2389,7 +2390,7 @@ try:
                                            (track_number,
                                             track_total))
                 else:
-                    self.tracknum.set_text(unicode(track_number))
+                    self.tracknum.set_text(u"%d" % (track_number,))
             else:
                 self.tracknum.set_text(u"")
 
@@ -2403,7 +2404,7 @@ try:
                 else:
                     self.albumnum_label.set_text(('label',
                                                   LAB_ALBUM_NUMBER + u" : "))
-                    self.albumnum.set_text(unicode(album_number))
+                    self.albumnum.set_text(u"%d" % (album_number,))
             else:
                 self.albumnum_label.set_text(u"")
                 self.albumnum.set_text(u"")

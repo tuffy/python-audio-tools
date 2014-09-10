@@ -65,7 +65,7 @@ def display_defaults(config, msg):
     table.divider_row([u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
 
     for audio_type in sorted(audiotools.AVAILABLE_TYPES,
-                             lambda x, y: cmp(x.NAME, y.NAME)):
+                             key=lambda x: x.NAME):
         row = table.row()
         row.add_column(u"  ")
 
@@ -1043,7 +1043,7 @@ if (__name__ == '__main__'):
 
     transcoding.add_argument("-t", "--type",
                              dest="type",
-                             choices=sorted(audiotools.TYPE_MAP.keys() +
+                             choices=sorted(list(audiotools.TYPE_MAP.keys()) +
                                             ["help"]),
                              help=_.OPT_TYPE_AT_CONFIG)
 

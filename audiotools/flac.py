@@ -312,8 +312,8 @@ class FlacMetaData(MetaData):
 
         from os import linesep
 
-        return linesep.decode('ascii').join(
-            ["FLAC Tags:"] + [block.raw_info() for block in self.blocks()])
+        return linesep.join(
+            [u"FLAC Tags:"] + [block.raw_info() for block in self.blocks()])
 
     def blocks(self):
         """yields FlacMetaData's individual metadata blocks"""
@@ -411,9 +411,10 @@ class Flac_STREAMINFO(object):
         """returns a human-readable version of this metadata block
         as unicode"""
 
+        from audiotools import hex_string
         from os import linesep
 
-        return linesep.decode('ascii').join(
+        return linesep.join(
             [u"  STREAMINFO:",
              u"    minimum block size = %d" % (self.minimum_block_size),
              u"    maximum block size = %d" % (self.maximum_block_size),
@@ -423,8 +424,7 @@ class Flac_STREAMINFO(object):
              u"              channels = %d" % (self.channels),
              u"       bits-per-sample = %d" % (self.bits_per_sample),
              u"         total samples = %d" % (self.total_samples),
-             u"               MD5 sum = %s" %
-             (u"".join(["%2.2X" % (ord(b)) for b in self.md5sum]))])
+             u"               MD5 sum = %s" % (hex_string(self.md5sum))])
 
     @classmethod
     def parse(cls, reader):
@@ -476,7 +476,7 @@ class Flac_PADDING(object):
 
         from os import linesep
 
-        return linesep.decode('ascii').join(
+        return linesep.join(
             [u"  PADDING:",
              u"    length = %d" % (self.length)])
 
@@ -531,7 +531,7 @@ class Flac_APPLICATION(object):
         from os import linesep
 
         return u"  APPLICATION:%s    %s (%d bytes)" % \
-            (linesep.decode('ascii'),
+            (linesep,
              self.application_id.decode('ascii'),
              len(self.data))
 
@@ -583,7 +583,7 @@ class Flac_SEEKTABLE(object):
 
         from os import linesep
 
-        return linesep.decode('ascii').join(
+        return linesep.join(
             [u"  SEEKTABLE:",
              u"    first sample   file offset   frame samples"] +
             [u"  %14.1d %13.1X %15.d" % seekpoint
@@ -670,9 +670,9 @@ class Flac_VORBISCOMMENT(VorbisComment):
                 row.add_column(u"")
                 row.add_column(u"")
 
-        return (u"  VORBIS_COMMENT:" + linesep.decode('ascii') +
-                u"    %s" % (self.vendor_string) + linesep.decode('ascii') +
-                linesep.decode('ascii').join(table.format()))
+        return (u"  VORBIS_COMMENT:" + linesep +
+                u"    %s" % (self.vendor_string) + linesep +
+                linesep.join(table.format()))
 
     @classmethod
     def converted(cls, metadata):
@@ -770,7 +770,7 @@ class Flac_CUESHEET(Sheet):
 
         from os import linesep
 
-        return linesep.decode('ascii').join(
+        return linesep.join(
             [u"  CUESHEET:",
              u"     catalog number = %s" %
              (self.__catalog_number__.decode('ascii', 'replace')),
@@ -989,11 +989,11 @@ class Flac_CUESHEET_track(SheetTrack):
                   "offset": self.__offset__,
                   "type": self.__track_type__,
                   "pre_emphasis": self.__pre_emphasis__,
-                  "ISRC": self.__ISRC__.strip(chr(0)).decode('ascii',
-                                                             'replace')})
+                  "ISRC": self.__ISRC__.strip(b"\x00").decode('ascii',
+                                                              'replace')})
                  ] + [i.raw_info(1) for i in self.__index_points__]
 
-        return linesep.decode('ascii').join(
+        return linesep.join(
             [u" " * indent + line for line in lines])
 
     def __eq__(self, track):
@@ -1263,7 +1263,7 @@ class Flac_PICTURE(Image):
 
         from os import linesep
 
-        return linesep.decode('ascii').join(
+        return linesep.join(
             [u"  PICTURE:",
              u"    picture type = %d" % (self.picture_type),
              u"       MIME type = %s" % (self.mime_type),
@@ -1503,7 +1503,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         f = open(self.filename, 'rb')
         try:
             f.seek(self.__stream_offset__, 0)
-            if (f.read(4) != 'fLaC'):
+            if (f.read(4) != b"fLaC"):
                 # shouldn't be able to get here
                 return None
             else:
@@ -2992,7 +2992,7 @@ class OggFlacMetaData(FlacMetaData):
                         if ((b.BLOCK_ID != Flac_STREAMINFO.BLOCK_ID) and
                             (b.size() < (2 ** 24)))]
 
-        page = packet_to_pages(
+        page = next(packet_to_pages(
             build("8u 4b 8u 8u 16u " +
                   "4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b",
                   False,
@@ -3014,7 +3014,7 @@ class OggFlacMetaData(FlacMetaData):
                    streaminfo.total_samples,
                    streaminfo.md5sum)),
             bitstream_serial_number=serial_number,
-            starting_sequence_number=0).next()
+            starting_sequence_number=0))
 
         page.stream_beginning = True
         pagewriter.write(page)
@@ -3184,7 +3184,7 @@ class OggFlacAudio(FlacAudio):
              checksum,
              segment_count) = ogg_reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
 
-            if (magic_number != 'OggS'):
+            if (magic_number != b'OggS'):
                 from audiotools.text import ERR_OGG_INVALID_MAGIC_NUMBER
                 raise InvalidFLAC(ERR_OGG_INVALID_MAGIC_NUMBER)
             if (version != 0):
@@ -3217,7 +3217,7 @@ class OggFlacAudio(FlacAudio):
             if (packet_byte != 0x7F):
                 from audiotools.text import ERR_OGGFLAC_INVALID_PACKET_BYTE
                 raise InvalidFLAC(ERR_OGGFLAC_INVALID_PACKET_BYTE)
-            if (ogg_signature != 'FLAC'):
+            if (ogg_signature != b'FLAC'):
                 from audiotools.text import ERR_OGGFLAC_INVALID_OGG_SIGNATURE
                 raise InvalidFLAC(ERR_OGGFLAC_INVALID_OGG_SIGNATURE)
             if (major_version != 1):
@@ -3226,7 +3226,7 @@ class OggFlacAudio(FlacAudio):
             if (minor_version != 0):
                 from audiotools.text import ERR_OGGFLAC_INVALID_MINOR_VERSION
                 raise InvalidFLAC(ERR_OGGFLAC_INVALID_MINOR_VERSION)
-            if (flac_signature != 'fLaC'):
+            if (flac_signature != b'fLaC'):
                 from audiotools.text import ERR_OGGFLAC_VALID_FLAC_SIGNATURE
                 raise InvalidFLAC(ERR_OGGFLAC_VALID_FLAC_SIGNATURE)
 

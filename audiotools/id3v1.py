@@ -40,13 +40,13 @@ class ID3v1Comment(MetaData):
                      "year": 4,
                      "comment": 28}
 
-    def __init__(self, track_name=chr(0) * 30,
-                 artist_name=chr(0) * 30,
-                 album_name=chr(0) * 30,
-                 year=chr(0) * 4,
-                 comment=chr(0) * 28,
-                 track_number=chr(0),
-                 genre=chr(0)):
+    def __init__(self, track_name=b"\x00" * 30,
+                 artist_name=b"\x00" * 30,
+                 album_name=b"\x00" * 30,
+                 year=b"\x00" * 4,
+                 comment=b"\x00" * 28,
+                 track_number=0,
+                 genre=0):
         """fields are as follows:
 
         | field        | length |
@@ -74,10 +74,6 @@ class ID3v1Comment(MetaData):
             raise ValueError("year must be exactly 4 bytes")
         if (len(comment) != 28):
             raise ValueError("comment must be exactly 28 bytes")
-        if (len(track_number) != 1):
-            raise ValueError("track_number must be exactly 1 byte")
-        if (len(genre) != 1):
-            raise ValueError("genre must be exactly 1 byte")
 
         MetaData.__setattr__(self, "__track_name__", track_name)
         MetaData.__setattr__(self, "__artist_name__", artist_name)
@@ -99,7 +95,7 @@ class ID3v1Comment(MetaData):
 
     def __getattr__(self, attr):
         if (attr == "track_number"):
-            number = ord(self.__track_number__)
+            number = self.__track_number__
             if (number > 0):
                 return number
             else:
@@ -107,8 +103,8 @@ class ID3v1Comment(MetaData):
         elif (attr in self.ID3v1_FIELDS):
             value = getattr(
                 self,
-                self.ID3v1_FIELDS[attr]).rstrip(chr(0)).decode('ascii',
-                                                               'replace')
+                self.ID3v1_FIELDS[attr]).rstrip(b"\x00").decode('ascii',
+                                                                'replace')
             if (len(value) > 0):
                 return value
             else:
@@ -120,12 +116,10 @@ class ID3v1Comment(MetaData):
 
     def __setattr__(self, attr, value):
         if (attr == "track_number"):
-            if (value is None):
-                MetaData.__setattr__(self, "__track_number__", chr(0))
-            else:
-                MetaData.__setattr__(self,
-                                     "__track_number__",
-                                     chr(min(int(value), 0xFF)))
+            MetaData.__setattr__(
+                self,
+                "__track_number__",
+                min(0 if (value is None) else int(value), 0xFF))
         elif (attr in self.FIELD_LENGTHS):
             if (value is None):
                 delattr(self, attr)
@@ -136,7 +130,7 @@ class ID3v1Comment(MetaData):
                     MetaData.__setattr__(
                         self,
                         self.ID3v1_FIELDS[attr],
-                        encoded + chr(0) * (self.FIELD_LENGTHS[attr] -
+                        encoded + b"\x00" * (self.FIELD_LENGTHS[attr] -
                                             len(encoded)))
                 elif (len(encoded) > self.FIELD_LENGTHS[attr]):
                     MetaData.__setattr__(
@@ -156,11 +150,11 @@ class ID3v1Comment(MetaData):
 
     def __delattr__(self, attr):
         if (attr == "track_number"):
-            MetaData.__setattr__(self, "__track_number__", chr(0))
+            MetaData.__setattr__(self, "__track_number__", 0)
         elif (attr in self.FIELD_LENGTHS):
             MetaData.__setattr__(self,
                                  self.ID3v1_FIELDS[attr],
-                                 chr(0) * self.FIELD_LENGTHS[attr])
+                                 b"\x00" * self.FIELD_LENGTHS[attr])
         elif (attr in self.FIELDS):
             # field not supported by ID3v1Comment, so ignore it
             pass
@@ -173,7 +167,7 @@ class ID3v1Comment(MetaData):
 
         from os import linesep
 
-        return linesep.decode('ascii').join(
+        return linesep.join(
             [u"ID3v1.1:"] +
             [u"%s = %s" % (label, getattr(self, attr))
              for (label, attr) in [(u"  track name", "track_name"),
@@ -183,7 +177,7 @@ class ID3v1Comment(MetaData):
                                    (u"     comment", "comment"),
                                    (u"track number", "track_number")]
              if (getattr(self, attr) is not None)] +
-            [u"       genre = %d" % (ord(self.__genre__))])
+            [u"       genre = %d" % (self.__genre__)])
 
     @classmethod
     def parse(cls, mp3_file):
@@ -202,8 +196,8 @@ class ID3v1Comment(MetaData):
          year,
          comment,
          track_number,
-         genre) = reader.parse("3b 30b 30b 30b 4b 28b 8p 1b 1b")
-        if (tag != 'TAG'):
+         genre) = reader.parse("3b 30b 30b 30b 4b 28b 8p 8u 8u")
+        if (tag != b'TAG'):
             raise ValueError(u"invalid ID3v1 tag")
 
         return ID3v1Comment(track_name=track_name,
@@ -220,8 +214,8 @@ class ID3v1Comment(MetaData):
         from audiotools.bitstream import BitstreamWriter
 
         BitstreamWriter(mp3_file, 0).build(
-            "3b 30b 30b 30b 4b 28b 8p 1b 1b",
-            ("TAG",
+            "3b 30b 30b 30b 4b 28b 8p 8u 8u",
+            (b"TAG",
              self.__track_name__,
              self.__artist_name__,
              self.__album_name__,
@@ -284,7 +278,7 @@ class ID3v1Comment(MetaData):
                        ("year", "__year__", u"year"),
                        ("comment", "__comment__", u"comment")]:
             # strip out trailing NULL bytes
-            initial_value = getattr(self, attr).rstrip(chr(0))
+            initial_value = getattr(self, attr).rstrip(b"\x00")
 
             fix1 = initial_value.rstrip()
             if (fix1 != initial_value):
@@ -296,7 +290,7 @@ class ID3v1Comment(MetaData):
                                        {"field": name})
 
             # restore trailing NULL bytes
-            fields[init_attr] = (fix2 + chr(0) *
+            fields[init_attr] = (fix2 + b"\x00" *
                                  (self.FIELD_LENGTHS[init_attr] - len(fix2)))
 
         # copy non-text fields as-is

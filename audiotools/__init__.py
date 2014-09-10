@@ -23,29 +23,43 @@ import sys
 import re
 import os
 import os.path
-import ConfigParser
-import optparse
 import audiotools.pcm as pcm
 from functools import total_ordering
 
 
-class RawConfigParser(ConfigParser.RawConfigParser):
+try:
+    from configparser import RawConfigParser
+except ImportError:
+    from ConfigParser import RawConfigParser
+
+
+class RawConfigParser(RawConfigParser):
     """extends RawConfigParser to provide additional methods"""
 
     def get_default(self, section, option, default):
         """returns a default if option is not found in section"""
 
         try:
+            from configparser import NoSectionError, NoOptionError
+        except ImportError:
+            from ConfigParser import NoSectionError, NoOptionError
+
+        try:
             return self.get(section, option)
-        except ConfigParser.NoSectionError:
+        except NoSectionError:
             return default
-        except ConfigParser.NoOptionError:
+        except NoOptionError:
             return default
 
     def set_default(self, section, option, value):
         try:
+            from configparser import NoSectionError
+        except ImportError:
+            from ConfigParser import NoSectionError
+
+        try:
             self.set(section, option, value)
-        except ConfigParser.NoSectionError:
+        except NoSectionError:
             self.add_section(section)
             self.set(section, option, value)
 
@@ -53,20 +67,30 @@ class RawConfigParser(ConfigParser.RawConfigParser):
         """returns a default int if option is not found in section"""
 
         try:
+            from configparser import NoSectionError, NoOptionError
+        except ImportError:
+            from ConfigParser import NoSectionError, NoOptionError
+
+        try:
             return self.getint(section, option)
-        except ConfigParser.NoSectionError:
+        except NoSectionError:
             return default
-        except ConfigParser.NoOptionError:
+        except NoOptionError:
             return default
 
     def getboolean_default(self, section, option, default):
         """returns a default boolean if option is not found in section"""
 
         try:
+            from configparser import NoSectionError, NoOptionError
+        except ImportError:
+            from ConfigParser import NoSectionError, NoOptionError
+
+        try:
             return self.getboolean(section, option)
-        except ConfigParser.NoSectionError:
+        except NoSectionError:
             return default
-        except ConfigParser.NoOptionError:
+        except NoOptionError:
             return default
 
 
@@ -85,10 +109,15 @@ class __system_binaries__(object):
 
     def __getitem__(self, command):
         try:
+            from configparser import NoSectionError, NoOptionError
+        except ImportError:
+            from ConfigParser import NoSectionError, NoOptionError
+
+        try:
             return self.config.get("Binaries", command)
-        except ConfigParser.NoSectionError:
+        except NoSectionError:
             return command
-        except ConfigParser.NoOptionError:
+        except NoOptionError:
             return command
 
     def can_execute(self, command):
@@ -126,8 +155,6 @@ FS_ENCODING = config.get_default("System", "fs_encoding",
                                  sys.getfilesystemencoding())
 if (FS_ENCODING is None):
     FS_ENCODING = 'UTF-8'
-
-IO_ENCODING = config.get_default("System", "io_encoding", "UTF-8")
 
 VERBOSITY_LEVELS = ("quiet", "normal", "debug")
 DEFAULT_VERBOSITY = config.get_default("Defaults", "verbosity", "normal")
@@ -248,19 +275,6 @@ else:
         MAX_JOBS = 1
 
 
-class OptionParser(optparse.OptionParser):
-    """extends OptionParser to use IO_ENCODING as text encoding
-
-    this ensures the encoding remains consistent if --help
-    output is piped to a pager vs. sent to a tty
-    """
-
-    def _get_encoding(self, file):
-        return IO_ENCODING
-
-OptionGroup = optparse.OptionGroup
-
-
 class DummyOutput(object):
     """a writable FILE-like object which generates no output"""
 
@@ -310,7 +324,7 @@ class Messenger(object):
 
         this appends a newline to that message"""
 
-        self.__stdout__.write(s.encode(IO_ENCODING, 'replace'))
+        self.__stdout__.write(s)
         self.__stdout__.write(os.linesep)
 
     def partial_output(self, s):
@@ -318,7 +332,7 @@ class Messenger(object):
 
         this flushes output so that message is displayed"""
 
-        self.__stdout__.write(s.encode(IO_ENCODING, 'replace'))
+        self.__stdout__.write(s)
         self.__stdout__.flush()
 
     def info(self, s):
@@ -326,7 +340,7 @@ class Messenger(object):
 
         this appends a newline to that message"""
 
-        self.__stderr__.write(s.encode(IO_ENCODING, 'replace'))
+        self.__stderr__.write(s)
         self.__stderr__.write(os.linesep)
 
     def partial_info(self, s):
@@ -334,7 +348,7 @@ class Messenger(object):
 
         this flushes output so that message is displayed"""
 
-        self.__stderr__.write(s.encode(IO_ENCODING, 'replace'))
+        self.__stderr__.write(s)
         self.__stderr__.flush()
 
     # what's the difference between output() and info() ?
@@ -351,8 +365,8 @@ class Messenger(object):
 
         this appends a newline to that message"""
 
-        self.__stderr__.write("*** Error: ")
-        self.__stderr__.write(s.encode(IO_ENCODING, 'replace'))
+        self.__stderr__.write(u"*** Error: ")
+        self.__stderr__.write(s)
         self.__stderr__.write(os.linesep)
 
     def os_error(self, oserror):
@@ -362,7 +376,7 @@ class Messenger(object):
 
         self.error(u"[Errno %d] %s: '%s'" %
                    (oserror.errno,
-                    oserror.strerror.decode('utf-8', 'replace'),
+                    oserror.strerror,
                     Filename(oserror.filename)))
 
     def warning(self, s):
@@ -370,8 +384,8 @@ class Messenger(object):
 
         this appends a newline to that message"""
 
-        self.__stderr__.write("*** Warning: ")
-        self.__stderr__.write(s.encode(IO_ENCODING, 'replace'))
+        self.__stderr__.write(u"*** Warning: ")
+        self.__stderr__.write(s)
         self.__stderr__.write(os.linesep)
 
     def usage(self, s):
@@ -379,10 +393,10 @@ class Messenger(object):
 
         this appends a newline to that message"""
 
-        self.__stderr__.write("*** Usage: ")
-        self.__stderr__.write(self.executable.decode('ascii'))
-        self.__stderr__.write(" ")
-        self.__stderr__.write(s.encode(IO_ENCODING, 'replace'))
+        self.__stderr__.write(u"*** Usage: ")
+        self.__stderr__.write(self.executable)
+        self.__stderr__.write(u" ")
+        self.__stderr__.write(s)
         self.__stderr__.write(os.linesep)
 
     def ansi_clearline(self):
@@ -400,7 +414,7 @@ class Messenger(object):
         if (self.__stdout__.isatty()):
             self.__stdout__.write((u"\u001B[0G" +  # move cursor to column 0
                                    # clear everything after cursor
-                                   u"\u001B[0K").encode(IO_ENCODING))
+                                   u"\u001B[0K"))
             self.__stdout__.flush()
 
     def ansi_uplines(self, lines):
@@ -457,6 +471,17 @@ def khz(hz):
         return u"%d.%dkHz" % (num, den)
 
 
+def hex_string(byte_string):
+    """given a string of bytes, returns a Unicode string encoded as hex"""
+
+    if (sys.version_info[0] >= 3):
+        hex_digits = [u"%2.2X" % (b,) for b in byte_string]
+    else:
+        hex_digits = [u"%2.2X" % (ord(b)) for b in byte_string]
+
+    return u"".join(hex_digits)
+
+
 class output_text(tuple):
     """a class for formatting unicode strings for display"""
 
@@ -494,7 +519,7 @@ class output_text(tuple):
                        "N": 1,
                        "H": 1}
 
-        string = unicodedata.normalize("NFC", unicode(unicode_string))
+        string = unicodedata.normalize("NFC", u"%s" % (unicode_string))
 
         return cls.__construct__(
             unicode_string=string,
@@ -525,7 +550,7 @@ class output_text(tuple):
         # 6 - close escape codes for TTY output
 
         return tuple.__new__(cls,
-                             [unicode(unicode_string),
+                             [unicode_string,
                               tuple(char_widths),
                               fg_color,
                               bg_color,
@@ -613,6 +638,13 @@ class output_text(tuple):
             return u"\u001B[%sm" % (u";".join(map(unicode, close_codes)))
         else:
             return u""
+
+    if (sys.version_info[0] >= 3):
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('utf-8')
 
     def __unicode__(self):
         return self[0]
@@ -838,7 +870,7 @@ class output_list(output_text):
              repr(self[3]))
 
     def __unicode__(self):
-        return u"".join(map(unicode, self[0]))
+        return u"".join(s[0] for s in self[0])
 
     def __len__(self):
         return sum(map(len, self[0]))
@@ -1473,18 +1505,6 @@ class EncodingError(IOError):
         IOError.__init__(self)
         self.error_message = error_message
 
-    def __reduce__(self):
-        return (EncodingError, (self.error_message, ))
-
-    def __str__(self):
-        if (isinstance(self.error_message, unicode)):
-            return self.error_message.encode('ascii', 'replace')
-        else:
-            return str(self.error_message)
-
-    def __unicode__(self):
-        return unicode(self.error_message)
-
 
 class UnsupportedChannelMask(EncodingError):
     """raised if the encoder does not support the file's channel mask"""
@@ -1532,8 +1552,7 @@ class DecodingError(IOError):
     and raise EncodingError"""
 
     def __init__(self, error_message):
-        IOError.__init__(self)
-        self.error_message = error_message
+        IOError.__init__(self, error_message)
 
 
 def file_type(file):
@@ -1547,10 +1566,10 @@ def file_type(file):
     header = file.read(37)
     file.seek(start, 0)
 
-    if ((header[4:8] == "ftyp") and (header[8:12] in ('mp41',
-                                                      'mp42',
-                                                      'M4A ',
-                                                      'M4B '))):
+    if ((header[4:8] == b"ftyp") and (header[8:12] in (b"mp41",
+                                                       b"mp42",
+                                                       b"M4A ",
+                                                       b"M4B "))):
 
         # possibly ALAC or M4A
 
@@ -1562,15 +1581,17 @@ def file_type(file):
         # so get contents of moov->trak->mdia->minf->stbl->stsd atom
         try:
             stsd = get_m4a_atom(reader,
-                                "moov", "trak", "mdia",
-                                "minf", "stbl", "stsd")[1]
-            (stsd_version, descriptions,
-             atom_size, atom_type) = stsd.parse("8u 24p 32u 32u 4b")
+                                b"moov", b"trak", b"mdia",
+                                b"minf", b"stbl", b"stsd")[1]
+            (stsd_version,
+             descriptions,
+             atom_size,
+             atom_type) = stsd.parse("8u 24p 32u 32u 4b")
 
-            if (atom_type == "alac"):
+            if (atom_type == b"alac"):
                 # if first description is "alac" atom, it's an ALAC
                 return ALACAudio
-            elif (atom_type == "mp4a"):
+            elif (atom_type == b"mp4a"):
                 # if first description is "mp4a" atom, it's M4A
                 return M4AAudio
             else:
@@ -1582,13 +1603,13 @@ def file_type(file):
         except IOError:
             # error reading atom, so unknown
             return None
-    elif ((header[0:4] == "FORM") and (header[8:12] == "AIFF")):
+    elif ((header[0:4] == b"FORM") and (header[8:12] == b"AIFF")):
         return AiffAudio
-    elif (header[0:4] == ".snd"):
+    elif (header[0:4] == b".snd"):
         return AuAudio
-    elif (header[0:4] == "fLaC"):
+    elif (header[0:4] == b"fLaC"):
         return FlacAudio
-    elif ((len(header) >= 4) and (header[0] == "\xFF")):
+    elif ((len(header) >= 4) and (header[0:1] == b"\xFF")):
         # possibly MP3 or MP2
 
         from audiotools.bitstream import parse
@@ -1628,32 +1649,34 @@ def file_type(file):
             # nothing else starts with an initial byte of 0xFF
             # so the file is unknown
             return None
-    elif (header[0:4] == "OggS"):
+    elif (header[0:4] == b"OggS"):
         # possibly Ogg FLAC, Ogg Vorbis or Ogg Opus
-        if (header[0x1C:0x21] == "\x7FFLAC"):
+        if (header[0x1C:0x21] == b"\x7FFLAC"):
             return OggFlacAudio
-        elif (header[0x1C:0x23] == "\x01vorbis"):
+        elif (header[0x1C:0x23] == b"\x01vorbis"):
             return VorbisAudio
-        elif (header[0x1C:0x26] == "OpusHead\x01"):
+        elif (header[0x1C:0x26] == b"OpusHead\x01"):
             return OpusAudio
         else:
             return None
-    elif (header[0:5] == "ajkg\x02"):
+    elif (header[0:5] == b"ajkg\x02"):
         return ShortenAudio
-    elif (header[0:4] == "wvpk"):
+    elif (header[0:4] == b"wvpk"):
         return WavPackAudio
-    elif ((header[0:4] == "RIFF") and (header[8:12] == "WAVE")):
+    elif ((header[0:4] == b"RIFF") and (header[8:12] == b"WAVE")):
         return WaveAudio
     elif ((len(header) >= 10) and
-          (header[0:3] == "ID3") and
-          (ord(header[3]) in (2, 3, 4))):
+          (header[0:3] == b"ID3") and
+          (header[3:4] in {b"\x02", b"\x03", b"\x04"})):
         # file contains ID3v2 tag
         # so it may be MP3, MP2, FLAC or TTA
 
+        from audiotools.bitstream import parse
+
         # determine sync-safe tag size and skip entire tag
         tag_size = 0
-        for b in header[6:10]:
-            tag_size = (tag_size << 7) | (ord(b) & 0x7F)
+        for b in parse("1p 7u" * 4, False, header[6:10]):
+            tag_size = (tag_size << 7) | b
         file.seek(start + 10 + tag_size, 0)
 
         t = file_type(file)
@@ -1666,7 +1689,7 @@ def file_type(file):
             return t
         else:
             return None
-    elif (header[0:4] == "TTA1"):
+    elif (header[0:4] == b"TTA1"):
         return TrueAudio
     else:
         return None
@@ -1704,12 +1727,8 @@ class DuplicateFile(Exception):
     def __init__(self, filename):
         """filename is a Filename object"""
 
-        self.filename = filename
-
-    def __unicode__(self):
         from audiotools.text import ERR_DUPLICATE_FILE
-
-        return ERR_DUPLICATE_FILE % (self.filename,)
+        Exception.__init__(self, ERR_DUPLICATE_FILE % (self.filename,))
 
 
 class DuplicateOutputFile(Exception):
@@ -1718,12 +1737,8 @@ class DuplicateOutputFile(Exception):
     def __init__(self, filename):
         """filename is a Filename object"""
 
-        self.filename = filename
-
-    def __unicode__(self):
         from audiotools.text import ERR_DUPLICATE_OUTPUT_FILE
-
-        return ERR_DUPLICATE_OUTPUT_FILE % (self.filename,)
+        Exception.__init__(self, ERR_DUPLICATE_OUTPUT_FILE % (self.filename,))
 
 
 class OutputFileIsInput(Exception):
@@ -1732,12 +1747,8 @@ class OutputFileIsInput(Exception):
     def __init__(self, filename):
         """filename is a Filename object"""
 
-        self.filename = filename
-
-    def __unicode__(self):
         from audiotools.text import ERR_OUTPUT_IS_INPUT
-
-        return ERR_OUTPUT_IS_INPUT % (self.filename,)
+        Exception.__init__(self, ERR_OUTPUT_IS_INPUT % (self.filename,))
 
 
 class Filename(tuple):
@@ -1747,7 +1758,6 @@ class Filename(tuple):
         if (isinstance(filename, cls)):
             return filename
         else:
-            filename = str(filename)
             try:
                 stat = os.stat(filename)
                 return tuple.__new__(cls, [os.path.normpath(filename),
@@ -1901,7 +1911,7 @@ def open_files(filename_list, sorted=True, messenger=None,
                 messenger.warning(ERR_OPEN_IOERROR % (filename,))
         except InvalidFile as err:
             if (messenger is not None):
-                messenger.error(unicode(err))
+                messenger.error(str(err))
 
     return (sorted_tracks(to_return) if sorted else to_return)
 
@@ -2103,11 +2113,6 @@ class ChannelMask(object):
 
         for (speaker, speaker_mask) in self.SPEAKER_TO_MASK.items():
             setattr(self, speaker, (mask & speaker_mask) != 0)
-
-    def __unicode__(self):
-        return u", ".join([self.MASK_TO_NAME[key] for key in
-                          sorted(self.MASK_TO_SPEAKER.keys())
-                          if getattr(self, self.MASK_TO_SPEAKER[key])])
 
     def __repr__(self):
         return "ChannelMask(%s)" % \
@@ -3138,6 +3143,13 @@ class MetaData(object):
             if (field is None):
                 yield (attr, field)
 
+    if (sys.version_info[0] >= 3):
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('utf-8')
+
     def __unicode__(self):
         table = output_table()
 
@@ -3155,7 +3167,7 @@ class MetaData(object):
                     row = table.row()
                     row.add_column(self.FIELD_NAMES[attr], "right")
                     row.add_column(SEPARATOR)
-                    row.add_column(unicode(track_number))
+                    row.add_column(u"%d" % (track_number))
                 elif ((track_number is None) and (track_total is not None)):
                     row = table.row()
                     row.add_column(self.FIELD_NAMES[attr], "right")
@@ -3180,7 +3192,7 @@ class MetaData(object):
                     row = table.row()
                     row.add_column(self.FIELD_NAMES[attr], "right")
                     row.add_column(SEPARATOR)
-                    row.add_column(unicode(album_number))
+                    row.add_column(u"%d" % (track_number))
                 elif ((album_number is None) and (album_total is not None)):
                     row = table.row()
                     row.add_column(self.FIELD_NAMES[attr], "right")
@@ -3207,9 +3219,9 @@ class MetaData(object):
             row = table.row()
             row.add_column(LAB_PICTURE, "right")
             row.add_column(SEPARATOR)
-            row.add_column(unicode(image))
+            row.add_column(image)
 
-        return os.linesep.decode('ascii').join(table.format())
+        return os.linesep.join(table.format())
 
     def raw_info(self):
         """returns a Unicode string of low-level MetaData information
@@ -3407,6 +3419,13 @@ class Image(object):
                                "type"]]
         return "Image(%s)" % (",".join(fields))
 
+    if (sys.version_info[0] >= 3):
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('utf-8')
+
     def __unicode__(self):
         return u"%s (%d\u00D7%d,'%s')" % \
                (self.type_string(),
@@ -3457,12 +3476,6 @@ class Image(object):
 
 class InvalidImage(Exception):
     """raised if an image cannot be parsed correctly"""
-
-    def __init__(self, err):
-        self.err = unicode(err)
-
-    def __unicode__(self):
-        return self.err
 
 
 class ReplayGain(object):
@@ -3529,9 +3542,9 @@ class InvalidFilenameFormat(Exception):
     """raised by AudioFile.track_name()
     if its format string contains broken fields"""
 
-    def __unicode__(self):
+    def __init__(self, *args):
         from audiotools.text import ERR_INVALID_FILENAME_FORMAT
-        return ERR_INVALID_FILENAME_FORMAT
+        Exception.__init__(self, ERR_INVALID_FILENAME_FORMAT)
 
 
 class AudioFile(object):
@@ -3566,10 +3579,10 @@ class AudioFile(object):
         metadata = self.get_metadata()
         return ((metadata.album_number if
                  ((metadata is not None) and
-                  (metadata.album_number is not None)) else -sys.maxint - 1),
+                  (metadata.album_number is not None)) else -(2 ** 31)),
                 (metadata.track_number if
                  ((metadata is not None) and
-                  (metadata.track_number is not None)) else -sys.maxint - 1),
+                  (metadata.track_number is not None)) else -(2 ** 31)),
                 self.filename)
 
     def __eq__(self, audiofile):
@@ -3880,7 +3893,7 @@ class AudioFile(object):
             return (format.decode('utf-8', 'replace') % format_dict).encode(
                 FS_ENCODING, 'replace').lstrip(os.sep)
         except KeyError as error:
-            raise UnsupportedTracknameField(unicode(error.args[0]))
+            raise UnsupportedTracknameField(error.args[0])
         except TypeError:
             raise InvalidFilenameFormat()
         except ValueError:
@@ -4138,7 +4151,7 @@ class WaveContainer(AudioFile):
             try:
                 (header, footer) = self.wave_header_footer()
             except (ValueError, IOError) as err:
-                raise EncodingError(unicode(err))
+                raise EncodingError(err)
 
             return target_class.from_wave(target_path,
                                           header,
@@ -4211,7 +4224,7 @@ class AiffContainer(AudioFile):
             try:
                 (header, footer) = self.aiff_header_footer()
             except (ValueError, IOError) as err:
-                raise EncodingError(unicode(err))
+                raise EncodingError(err)
 
             return target_class.from_aiff(target_path,
                                           header,
@@ -4571,13 +4584,13 @@ def iter_last(iterator):
     iterator = iter(iterator)
 
     try:
-        cached_item = iterator.next()
+        cached_item = next(iterator)
     except StopIteration:
         return
 
     while (True):
         try:
-            next_item = iterator.next()
+            next_item = next(iterator)
             yield (False, cached_item)
             cached_item = next_item
         except StopIteration:
@@ -5108,7 +5121,7 @@ class ExecProgressQueue(object):
 
                         if (output is not None):
                             self.progress_display.output_line(
-                                output_progress(unicode(output),
+                                output_progress(output,
                                                 completed_job_number,
                                                 total_jobs))
 

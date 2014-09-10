@@ -64,7 +64,7 @@ class VorbisAudio(AudioFile):
              checksum,
              segment_count) = ogg_reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
 
-            if (magic_number != 'OggS'):
+            if (magic_number != b'OggS'):
                 from audiotools.text import ERR_OGG_INVALID_MAGIC_NUMBER
                 raise InvalidVorbis(ERR_OGG_INVALID_MAGIC_NUMBER)
             if (version != 0):
@@ -89,7 +89,7 @@ class VorbisAudio(AudioFile):
             if (vorbis_type != 1):
                 from audiotools.text import ERR_VORBIS_INVALID_TYPE
                 raise InvalidVorbis(ERR_VORBIS_INVALID_TYPE)
-            if (header != 'vorbis'):
+            if (header != b'vorbis'):
                 from audiotools.text import ERR_VORBIS_INVALID_HEADER
                 raise InvalidVorbis(ERR_VORBIS_INVALID_HEADER)
             if (version != 0):
@@ -298,7 +298,7 @@ class VorbisAudio(AudioFile):
 
         # generate new comment packet
         comment_writer = BitstreamRecorder(True)
-        comment_writer.build("8u 6b", (3, "vorbis"))
+        comment_writer.build("8u 6b", (3, b"vorbis"))
         vendor_string = metadata.vendor_string.encode('utf-8')
         comment_writer.build("32u %db" % (len(vendor_string)),
                              (len(vendor_string), vendor_string))
@@ -387,7 +387,7 @@ class VorbisAudio(AudioFile):
         comment = BitstreamReader(BytesIO(reader.read_packet()), True)
 
         (packet_type, packet_header) = comment.parse("8u 6b")
-        if ((packet_type == 3) and (packet_header == 'vorbis')):
+        if ((packet_type == 3) and (packet_header == b'vorbis')):
             vendor_string = \
                 comment.read_bytes(comment.read(32)).decode('utf-8')
             comment_strings = [

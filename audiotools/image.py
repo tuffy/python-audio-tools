@@ -164,11 +164,11 @@ class __PNG__(ImageMetrics):
     @classmethod
     def parse(cls, file_data):
         def chunks(reader):
-            if (reader.read_bytes(8) != '\x89\x50\x4E\x47\x0D\x0A\x1A\x0A'):
+            if (reader.read_bytes(8) != b'\x89\x50\x4E\x47\x0D\x0A\x1A\x0A'):
                 from audiotools.text import ERR_IMAGE_INVALID_PNG
                 raise InvalidPNG(ERR_IMAGE_INVALID_PNG)
             (chunk_length, chunk_type) = reader.parse("32u 4b")
-            while (chunk_type != 'IEND'):
+            while (chunk_type != b'IEND'):
                 yield (chunk_type,
                        chunk_length,
                        reader.substream(chunk_length))
@@ -182,9 +182,9 @@ class __PNG__(ImageMetrics):
             for (chunk_type,
                  chunk_length,
                  chunk_data) in chunks(BitstreamReader(file_data, 0)):
-                if (chunk_type == 'IHDR'):
+                if (chunk_type == b'IHDR'):
                     ihdr = chunk_data
-                elif (chunk_type == 'PLTE'):
+                elif (chunk_type == b'PLTE'):
                     plte_length = chunk_length
 
             if (ihdr is None):
@@ -271,7 +271,7 @@ class __BMP__(ImageMetrics):
             from audiotools.text import ERR_IMAGE_IOERROR_BMP
             raise InvalidBMP(ERR_IMAGE_IOERROR_BMP)
 
-        if (magic_number != 'BM'):
+        if (magic_number != b'BM'):
             from audiotools.text import ERR_IMAGE_INVALID_BMP
             raise InvalidBMP(ERR_IMAGE_INVALID_BMP)
         else:
@@ -310,7 +310,7 @@ class __GIF__(ImageMetrics):
             from audiotools.text import ERR_IMAGE_IOERROR_GIF
             raise InvalidGIF(ERR_IMAGE_IOERROR_GIF)
 
-        if (gif != 'GIF'):
+        if (gif != b'GIF'):
             from audiotools.text import ERR_IMAGE_INVALID_GIF
             raise InvalidGIF(ERR_IMAGE_INVALID_GIF)
         else:
@@ -377,9 +377,9 @@ class __TIFF__(ImageMetrics):
         file = BytesIO(file_data)
         try:
             byte_order = file.read(2)
-            if (byte_order == 'II'):
+            if (byte_order == b'II'):
                 order = 1
-            elif (byte_order == 'MM'):
+            elif (byte_order == b'MM'):
                 order = 0
             else:
                 from audiotools.text import ERR_IMAGE_INVALID_TIFF

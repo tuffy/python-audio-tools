@@ -1032,15 +1032,15 @@ class WaveAudio(WaveContainer):
         try:
             (header, footer) = self.wave_header_footer()
         except IOError as err:
-            raise InvalidWave(unicode(err))
+            raise InvalidWave(err)
         except ValueError as err:
-            raise InvalidWave(unicode(err))
+            raise InvalidWave(err)
 
         # ensure header is valid
         try:
             (total_size, data_size) = validate_header(header)
         except ValueError as err:
-            raise InvalidWave(unicode(err))
+            raise InvalidWave(err)
 
         # ensure "data" chunk has all its data
         counter = CounterPCMReader(to_pcm_progress(self, progress))

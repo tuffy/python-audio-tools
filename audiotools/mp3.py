@@ -147,15 +147,15 @@ class MP3Audio(AudioFile):
                                                          sample_rate,
                                                          pad) - 4)
 
-            if (("Xing" in first_frame) and
-                (len(first_frame[first_frame.index("Xing"):
-                                 first_frame.index("Xing") + 160]) == 160)):
+            if ((b"Xing" in first_frame) and
+                (len(first_frame[first_frame.index(b"Xing"):
+                                 first_frame.index(b"Xing") + 160]) == 160)):
                 # pull length from Xing header, if present
                 self.__pcm_frames__ = (
                     parse("32p 32p 32u 32p 832p",
                           0,
-                          first_frame[first_frame.index("Xing"):
-                                      first_frame.index("Xing") + 160])[0] *
+                          first_frame[first_frame.index(b"Xing"):
+                                      first_frame.index(b"Xing") + 160])[0] *
                     self.PCM_FRAMES_PER_MPEG_FRAME[layer])
             else:
                 # otherwise, bounce through file frames
@@ -191,7 +191,7 @@ class MP3Audio(AudioFile):
                 except IOError:
                     pass
                 except ValueError as err:
-                    raise InvalidMP3(unicode(err))
+                    raise InvalidMP3(err)
         finally:
             mp3file.close()
 
@@ -288,7 +288,7 @@ class MP3Audio(AudioFile):
 
         f = open(self.filename, "rb")
         try:
-            if (f.read(3) == "ID3"):
+            if (f.read(3) == b"ID3"):
                 id3v2 = read_id3v2_comment(self.filename)
 
                 try:
@@ -576,7 +576,7 @@ class MP3Audio(AudioFile):
         """
 
         mp3file.seek(-128, 2)
-        if (mp3file.read(3) == 'TAG'):
+        if (mp3file.read(3) == b'TAG'):
             mp3file.seek(-128, 2)
             return
         else:

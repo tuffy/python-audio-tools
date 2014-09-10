@@ -18,6 +18,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
+import sys
+
+
 class DiscID(object):
     def __init__(self, first_track_number, last_track_number,
                  lead_out_offset, offsets):
@@ -79,23 +82,27 @@ class DiscID(object):
                                     "lead_out_offset",
                                     "offsets"]])
 
-    def __str__(self):
+    if (sys.version_info[0] >= 3):
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('ascii')
+
+    def __unicode__(self):
         from hashlib import sha1
         from base64 import b64encode
 
-        return b64encode(
-            sha1("%2.2X%2.2X%s" %
-                 (self.first_track_number,
-                  self.last_track_number,
-                  "".join(["%8.8X" % (offset) for offset in
-                           [self.lead_out_offset] +
-                           self.offsets +
-                           [0] * (99 - len(self.offsets))
-                           ]))).digest(),
-            "._").replace("=", "-")
+        raw_id = (u"%2.2X%2.2X%s" %
+                  (self.first_track_number,
+                   self.last_track_number,
+                  u"".join([u"%8.8X" % (offset) for offset in
+                            [self.lead_out_offset] +
+                            self.offsets +
+                            [0] * (99 - len(self.offsets))])))
 
-    def __unicode__(self):
-        return str(self).decode('ascii')
+        return b64encode(sha1(raw_id).digest(),
+                         b"._").replace(b"=", b"-").decode('ascii')
 
 
 def perform_lookup(disc_id, musicbrainz_server, musicbrainz_port):
@@ -245,7 +252,7 @@ def parse_release(release, disc_id):
 
     for medium in get_nodes(medium_list, u"medium"):
         try:
-            if (unicode(disc_id) in
+            if (disc_id.__unicode__() in
                 [disc.getAttribute(u"id")
                  for disc in get_nodes(get_node(medium, u"disc-list"),
                                        u"disc")]):

@@ -18,6 +18,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
+import sys
 from audiotools import (AudioFile, MetaData)
 
 
@@ -124,11 +125,15 @@ class ApeTagItem(object):
             return (self.key.decode('ascii'),
                     u"(reserved) %d bytes" % (len(self.data)))
 
-    def __str__(self):
-        return self.data
+    if (sys.version_info[0] >= 3):
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.data
 
     def __unicode__(self):
-        return self.data.rstrip(chr(0)).decode('utf-8', 'replace')
+        return self.data.rstrip(b"\x00").decode('utf-8', 'replace')
 
     @classmethod
     def parse(cls, reader):
@@ -307,7 +312,7 @@ class ApeTag(MetaData):
 
         if (attr == 'track_number'):
             try:
-                track_text = unicode(self["Track"])
+                track_text = u"%s" % (self["Track"],)
                 track = re.search(r'\d+', track_text)
                 if (track is not None):
                     track_number = int(track.group(0))
@@ -328,7 +333,7 @@ class ApeTag(MetaData):
                 return None
         elif (attr == 'track_total'):
             try:
-                track = re.search(r'/.*?(\d+)', unicode(self["Track"]))
+                track = re.search(r'/.*?(\d+)', u"%s" % (self["Track"],))
                 if (track is not None):
                     return int(track.group(1))
                 else:
@@ -339,7 +344,7 @@ class ApeTag(MetaData):
                 return None
         elif (attr == 'album_number'):
             try:
-                media_text = unicode(self["Media"])
+                media_text = u"%s" % (self["Media"],)
                 media = re.search(r'\d+', media_text)
                 if (media is not None):
                     album_number = int(media.group(0))
@@ -360,7 +365,7 @@ class ApeTag(MetaData):
                 return None
         elif (attr == 'album_total'):
             try:
-                media = re.search(r'/.*?(\d+)', unicode(self["Media"]))
+                media = re.search(r'/.*?(\d+)', u"%s" % (self["Media"],))
                 if (media is not None):
                     return int(media.group(1))
                 else:
@@ -371,7 +376,7 @@ class ApeTag(MetaData):
                 return None
         elif (attr in self.ATTRIBUTE_MAP):
             try:
-                return unicode(self[self.ATTRIBUTE_MAP[attr]])
+                return u"%s" % (self[self.ATTRIBUTE_MAP[attr]],)
             except KeyError:
                 return None
         elif (attr in MetaData.FIELDS):
@@ -543,7 +548,7 @@ class ApeTag(MetaData):
                 if (((field not in cls.INTEGER_FIELDS) and
                      (getattr(metadata, field) is not None))):
                     tags[key] = cls.ITEM.string(
-                        key, unicode(getattr(metadata, field)))
+                        key, getattr(metadata, field))
 
             if (((metadata.track_number is not None) or
                  (metadata.track_total is not None))):
@@ -578,8 +583,7 @@ class ApeTag(MetaData):
             row.add_column(u" = ")
             row.add_column(value)
 
-        return (u"APEv2:" + linesep.decode('ascii') +
-                linesep.decode('ascii').join(table.format()))
+        return (u"APEv2:" + linesep + linesep.join(table.format()))
 
     @classmethod
     def supports_images(cls):
@@ -594,12 +598,12 @@ class ApeTag(MetaData):
         data = BytesIO(self[key].data)
         description = []
         c = data.read(1)
-        while (c != '\x00'):
+        while (c != b'\x00'):
             description.append(c)
             c = data.read(1)
 
         return Image.new(data.read(),
-                         "".join(description).decode('utf-8', 'replace'),
+                         b"".join(description).decode('utf-8', 'replace'),
                          type)
 
     def add_image(self, image):
@@ -617,7 +621,7 @@ class ApeTag(MetaData):
             self['Cover Art (back)'] = self.ITEM.binary(
                 'Cover Art (back)',
                 image.description.encode('utf-8', 'replace') +
-                chr(0) +
+                b"\x00" +
                 image.data)
 
     def delete_image(self, image):
@@ -665,7 +669,7 @@ class ApeTag(MetaData):
          no_footer,
          has_header) = reader.parse(cls.HEADER_FORMAT)
 
-        if ((preamble != "APETAGEX") or (version != 2000)):
+        if ((preamble != b"APETAGEX") or (version != 2000)):
             return None
 
         apefile.seek(-tag_size, 2)
@@ -686,7 +690,7 @@ class ApeTag(MetaData):
 
         if (self.contains_header):
             writer.build(ApeTag.HEADER_FORMAT,
-                         ("APETAGEX",                # preamble
+                         (b"APETAGEX",               # preamble
                           2000,                      # version
                           tags.bytes() + 32,         # tag size
                           len(self.tags),            # item count
@@ -699,7 +703,7 @@ class ApeTag(MetaData):
         tags.copy(writer)
         if (self.contains_footer):
             writer.build(ApeTag.HEADER_FORMAT,
-                         ("APETAGEX",                # preamble
+                         (b"APETAGEX",               # preamble
                           2000,                      # version
                           tags.bytes() + 32,         # tag size
                           len(self.tags),            # item count
@@ -727,7 +731,7 @@ class ApeTag(MetaData):
                     {"field": tag.key.decode('ascii')})
             elif (tag.type == 0):
                 used_tags.add(tag.key.upper())
-                text = unicode(tag)
+                text = u"%s" % (tag,)
 
                 # check trailing whitespace
                 fix1 = text.rstrip()
@@ -768,7 +772,7 @@ class ApeTag(MetaData):
                         current_int = re.search(r'\d+', fix2)
                         if (current_int is not None):
                             # item contains an integer
-                            fix3 = unicode(int(current_int.group(0)))
+                            fix3 = u"%d" % (int(current_int.group(0)),)
                         else:
                             # item contains no integer value so ignore it
                             # (although 'Track' should only contain
@@ -816,7 +820,7 @@ class ApeTaggedAudio(object):
 
         raises IOError if unable to read the file"""
 
-        f = open(self.filename, 'rb')
+        f = open(self.filename, "rb")
         try:
             return ApeTag.read(f)
         finally:
@@ -852,7 +856,7 @@ class ApeTaggedAudio(object):
          no_footer,
          has_header) = BitstreamReader(f, 1).parse(ApeTag.HEADER_FORMAT)
 
-        if ((preamble == 'APETAGEX') and (version == 2000)):
+        if ((preamble == b'APETAGEX') and (version == 2000)):
             if (has_header):
                 old_tag_size = 32 + tag_size
             else:
@@ -971,7 +975,7 @@ class ApeTaggedAudio(object):
              no_footer,
              has_header) = BitstreamReader(f, 1).parse(ApeTag.HEADER_FORMAT)
 
-            if ((preamble == 'APETAGEX') and (version == 2000)):
+            if ((preamble == b'APETAGEX') and (version == 2000)):
                 from audiotools import TemporaryFile
                 from os.path import getsize
 
@@ -1019,10 +1023,14 @@ class ApeGainedAudio(object):
                 metadata.keys())):  # we have ReplayGain data
             try:
                 return ReplayGain(
-                    unicode(metadata['replaygain_track_gain'])[0:-len(" dB")],
-                    unicode(metadata['replaygain_track_peak']),
-                    unicode(metadata['replaygain_album_gain'])[0:-len(" dB")],
-                    unicode(metadata['replaygain_album_peak']))
+                    metadata[
+                        'replaygain_track_gain'].__unicode__()[0:-len(" dB")],
+                    metadata[
+                        'replaygain_track_peak'].__unicode__(),
+                    metadata[
+                        'replaygain_album_gain'].__unicode__()[0:-len(" dB")],
+                    metadata[
+                        'replaygain_album_peak'].__unicode__())
             except ValueError:
                 return None
         else:

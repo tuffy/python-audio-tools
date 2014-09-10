@@ -58,7 +58,7 @@ class PacketReader(object):
             segment = self.read_segment()
             segments.append(segment)
 
-        return "".join(segments)
+        return b"".join(segments)
 
     def close(self):
         """closes stream for further reading"""
@@ -68,13 +68,13 @@ class PacketReader(object):
 
 def packet_to_segments(packet):
     if (len(packet) == 0):
-        yield ""
+        yield b""
     else:
         while (len(packet) > 0):
             if (len(packet) == 255):
                 yield packet
-                yield ""
-                packet = ""
+                yield b""
+                packet = b""
             else:
                 yield packet[0:255]
                 packet = packet[255:]

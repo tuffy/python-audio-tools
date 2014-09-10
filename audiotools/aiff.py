@@ -1021,15 +1021,15 @@ class AiffAudio(AiffContainer):
         try:
             (header, footer) = self.aiff_header_footer()
         except IOError as err:
-            raise InvalidAIFF(unicode(err))
+            raise InvalidAIFF(err)
         except ValueError as err:
-            raise InvalidAIFF(unicode(err))
+            raise InvalidAIFF(err)
 
         # ensure header is valid
         try:
             (total_size, data_size) = validate_header(header)
         except ValueError as err:
-            raise InvalidAIFF(unicode(err))
+            raise InvalidAIFF(err)
 
         # ensure "ssnd" chunk has all its data
         counter = CounterPCMReader(to_pcm_progress(self, progress))

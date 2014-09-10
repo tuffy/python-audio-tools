@@ -124,33 +124,33 @@ class M4ATaggedAudio(object):
         try:
             try:
                 (meta_size,
-                 meta_reader) = get_m4a_atom(reader, "moov", "udta", "meta")
+                 meta_reader) = get_m4a_atom(reader, b"moov", b"udta", b"meta")
             except KeyError:
                 return None
 
-            return M4A_META_Atom.parse("meta", meta_size, meta_reader,
-                                       {"hdlr": M4A_HDLR_Atom,
-                                        "ilst": M4A_Tree_Atom,
-                                        "free": M4A_FREE_Atom,
-                                        "\xa9alb": M4A_ILST_Leaf_Atom,
-                                        "\xa9ART": M4A_ILST_Leaf_Atom,
-                                        'aART': M4A_ILST_Leaf_Atom,
-                                        "\xa9cmt": M4A_ILST_Leaf_Atom,
-                                        "covr": M4A_ILST_Leaf_Atom,
-                                        "cpil": M4A_ILST_Leaf_Atom,
-                                        "cprt": M4A_ILST_Leaf_Atom,
-                                        "\xa9day": M4A_ILST_Leaf_Atom,
-                                        "disk": M4A_ILST_Leaf_Atom,
-                                        "gnre": M4A_ILST_Leaf_Atom,
-                                        "----": M4A_ILST_Leaf_Atom,
-                                        "pgap": M4A_ILST_Leaf_Atom,
-                                        "rtng": M4A_ILST_Leaf_Atom,
-                                        "tmpo": M4A_ILST_Leaf_Atom,
-                                        "\xa9grp": M4A_ILST_Leaf_Atom,
-                                        "\xa9nam": M4A_ILST_Leaf_Atom,
-                                        "\xa9too": M4A_ILST_Leaf_Atom,
-                                        "trkn": M4A_ILST_Leaf_Atom,
-                                        "\xa9wrt": M4A_ILST_Leaf_Atom})
+            return M4A_META_Atom.parse(b"meta", meta_size, meta_reader,
+                                       {b"hdlr": M4A_HDLR_Atom,
+                                        b"ilst": M4A_Tree_Atom,
+                                        b"free": M4A_FREE_Atom,
+                                        b"\xa9alb": M4A_ILST_Leaf_Atom,
+                                        b"\xa9ART": M4A_ILST_Leaf_Atom,
+                                        b'aART': M4A_ILST_Leaf_Atom,
+                                        b"\xa9cmt": M4A_ILST_Leaf_Atom,
+                                        b"covr": M4A_ILST_Leaf_Atom,
+                                        b"cpil": M4A_ILST_Leaf_Atom,
+                                        b"cprt": M4A_ILST_Leaf_Atom,
+                                        b"\xa9day": M4A_ILST_Leaf_Atom,
+                                        b"disk": M4A_ILST_Leaf_Atom,
+                                        b"gnre": M4A_ILST_Leaf_Atom,
+                                        b"----": M4A_ILST_Leaf_Atom,
+                                        b"pgap": M4A_ILST_Leaf_Atom,
+                                        b"rtng": M4A_ILST_Leaf_Atom,
+                                        b"tmpo": M4A_ILST_Leaf_Atom,
+                                        b"\xa9grp": M4A_ILST_Leaf_Atom,
+                                        b"\xa9nam": M4A_ILST_Leaf_Atom,
+                                        b"\xa9too": M4A_ILST_Leaf_Atom,
+                                        b"trkn": M4A_ILST_Leaf_Atom,
+                                        b"\xa9wrt": M4A_ILST_Leaf_Atom})
         finally:
             reader.close()
 
@@ -184,17 +184,17 @@ class M4ATaggedAudio(object):
         # first, attempt to resize the one inside the "meta" atom
         if ((old_metadata is not None) and
             metadata.has_child("free") and
-            ((metadata.size() - metadata["free"].size()) <=
+            ((metadata.size() - metadata[b"free"].size()) <=
              old_metadata.size())):
 
             metadata.replace_child(
                 M4A_FREE_Atom(old_metadata.size() -
                               (metadata.size() -
-                               metadata["free"].size())))
+                               metadata[b"free"].size())))
 
             f = open(self.filename, 'r+b')
             (meta_size, meta_offset) = get_m4a_atom_offset(
-                BitstreamReader(f, 0), "moov", "udta", "meta")
+                BitstreamReader(f, 0), b"moov", b"udta", b"meta")
             f.seek(meta_offset + 8, 0)
             metadata.build(BitstreamWriter(f, 0))
             f.close()
@@ -215,27 +215,27 @@ class M4ATaggedAudio(object):
                 None,
                 os.path.getsize(self.filename),
                 BitstreamReader(open(self.filename, "rb"), 0),
-                {"moov": M4A_Tree_Atom,
-                 "trak": M4A_Tree_Atom,
-                 "mdia": M4A_Tree_Atom,
-                 "minf": M4A_Tree_Atom,
-                 "stbl": M4A_Tree_Atom,
-                 "stco": M4A_STCO_Atom,
-                 "udta": M4A_Tree_Atom})
+                {b"moov": M4A_Tree_Atom,
+                 b"trak": M4A_Tree_Atom,
+                 b"mdia": M4A_Tree_Atom,
+                 b"minf": M4A_Tree_Atom,
+                 b"stbl": M4A_Tree_Atom,
+                 b"stco": M4A_STCO_Atom,
+                 b"udta": M4A_Tree_Atom})
 
             # find initial mdat offset
             initial_mdat_offset = m4a_tree.child_offset("mdat")
 
             # adjust moov -> udta -> meta atom
             # (generating sub-atoms as necessary)
-            if (not m4a_tree.has_child("moov")):
+            if (not m4a_tree.has_child(b"moov")):
                 return
             else:
-                moov = m4a_tree["moov"]
-            if (not moov.has_child("udta")):
-                moov.append_child(M4A_Tree_Atom("udta", []))
-            udta = moov["udta"]
-            if (not udta.has_child("meta")):
+                moov = m4a_tree[b"moov"]
+            if (not moov.has_child(b"udta")):
+                moov.append_child(M4A_Tree_Atom(b"udta", []))
+            udta = moov[b"udta"]
+            if (not udta.has_child(b"meta")):
                 udta.append_child(metadata)
             else:
                 udta.replace_child(metadata)
@@ -247,7 +247,7 @@ class M4ATaggedAudio(object):
             # based on the difference between the new mdat position and the old
             try:
                 delta_offset = new_mdat_offset - initial_mdat_offset
-                stco = m4a_tree["moov"]["trak"]["mdia"]["minf"]["stbl"]["stco"]
+                stco = m4a_tree[b"moov"][b"trak"][b"mdia"][b"minf"][b"stbl"][b"stco"]
                 stco.offsets = [offset + delta_offset for offset in
                                 stco.offsets]
             except KeyError:
@@ -275,7 +275,7 @@ class M4ATaggedAudio(object):
         # with ones from old metadata (if any)
         # which can happen if we're shifting metadata
         # from one M4A file to another
-        file_specific_atoms = frozenset(['\xa9too', '----', 'pgap', 'tmpo'])
+        file_specific_atoms = {b'\xa9too', b'----', b'pgap', b'tmpo'}
 
         if (metadata.has_ilst_atom()):
             metadata.ilst_atom().leaf_atoms = filter(
@@ -307,7 +307,9 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
     NAME = SUFFIX
     DESCRIPTION = u"Advanced Audio Coding"
     DEFAULT_COMPRESSION = "100"
-    COMPRESSION_MODES = tuple(["10"] + map(str, range(50, 500, 25)) + ["500"])
+    COMPRESSION_MODES = tuple(["10"] +
+                              list(map(str, range(50, 500, 25))) +
+                              ["500"])
     BINARIES = ("faac", "faad")
     BINARY_URLS = {"faac": "http://www.audiocoding.com/",
                    "faad": "http://www.audiocoding.com/"}
@@ -323,7 +325,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         # which is the parent of both the mp4a and mdhd atoms
         try:
             mdia = get_m4a_atom(BitstreamReader(open(filename, 'rb'), 0),
-                                "moov", "trak", "mdia")[1]
+                                b"moov", b"trak", b"mdia")[1]
         except IOError:
             from audiotools.text import ERR_M4A_IOERROR
             raise InvalidM4A(ERR_M4A_IOERROR)
@@ -333,7 +335,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         mdia.mark()
         try:
             try:
-                stsd = get_m4a_atom(mdia, "minf", "stbl", "stsd")[1]
+                stsd = get_m4a_atom(mdia, b"minf", b"stbl", b"stsd")[1]
             except KeyError:
                 from audiotools.text import ERR_M4A_MISSING_STSD
                 raise InvalidM4A(ERR_M4A_MISSING_STSD)
@@ -352,7 +354,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
             # finally, fetch the mdhd atom for total track length
             mdia.rewind()
             try:
-                mdhd = get_m4a_atom(mdia, "mdhd")[1]
+                mdhd = get_m4a_atom(mdia, b"mdhd")[1]
             except KeyError:
                 from audiotools.text import ERR_M4A_MISSING_MDHD
                 raise InvalidM4A(ERR_M4A_MISSING_MDHD)
@@ -703,7 +705,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         # which is the parent of both the alac and mdhd atoms
         try:
             mdia = get_m4a_atom(BitstreamReader(open(filename, 'rb'), 0),
-                                "moov", "trak", "mdia")[1]
+                                b"moov", b"trak", b"mdia")[1]
         except IOError:
             from audiotools.text import ERR_ALAC_IOERROR
             raise InvalidALAC(ERR_ALAC_IOERROR)
@@ -713,7 +715,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         mdia.mark()
         try:
             try:
-                stsd = get_m4a_atom(mdia, "minf", "stbl", "stsd")[1]
+                stsd = get_m4a_atom(mdia, b"minf", b"stbl", b"stsd")[1]
             except KeyError:
                 from audiotools.text import ERR_M4A_MISSING_STSD
                 raise InvalidALAC(ERR_M4A_MISSING_STSD)
@@ -741,7 +743,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 from audiotools.text import ERR_ALAC_INVALID_ALAC
                 raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
 
-            if ((alac1 != 'alac') or (alac2 != 'alac')):
+            if ((alac1 != b'alac') or (alac2 != b'alac')):
                 from audiotools.text import ERR_ALAC_INVALID_ALAC
                 mdia.unmark()
                 raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
@@ -749,7 +751,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             # finally, fetch the mdhd atom for total track length
             mdia.rewind()
             try:
-                mdhd = get_m4a_atom(mdia, "mdhd")[1]
+                mdhd = get_m4a_atom(mdia, b"mdhd")[1]
             except KeyError:
                 from audiotools.text import ERR_M4A_MISSING_MDHD
                 raise InvalidALAC(ERR_M4A_MISSING_MDHD)
@@ -863,28 +865,28 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         reader.mark()
         try:
             has_stts = has_m4a_atom(reader,
-                                    "moov",
-                                    "trak",
-                                    "mdia",
-                                    "minf",
-                                    "stbl",
-                                    "stts")
+                                    b"moov",
+                                    b"trak",
+                                    b"mdia",
+                                    b"minf",
+                                    b"stbl",
+                                    b"stts")
             reader.rewind()
             has_stsc = has_m4a_atom(reader,
-                                    "moov",
-                                    "trak",
-                                    "mdia",
-                                    "minf",
-                                    "stbl",
-                                    "stsc")
+                                    b"moov",
+                                    b"trak",
+                                    b"mdia",
+                                    b"minf",
+                                    b"stbl",
+                                    b"stsc")
             reader.rewind()
             has_stco = has_m4a_atom(reader,
-                                    "moov",
-                                    "trak",
-                                    "mdia",
-                                    "minf",
-                                    "stbl",
-                                    "stco")
+                                    b"moov",
+                                    b"trak",
+                                    b"mdia",
+                                    b"minf",
+                                    b"stbl",
+                                    b"stco")
             return has_stts and has_stsc and has_stco
         finally:
             reader.unmark()
@@ -1101,12 +1103,12 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
     @classmethod
     def __ftyp_atom__(cls):
-        return M4A_FTYP_Atom(major_brand='M4A ',
+        return M4A_FTYP_Atom(major_brand=b'M4A ',
                              major_brand_version=0,
-                             compatible_brands=['M4A ',
-                                                'mp42',
-                                                'isom',
-                                                chr(0) * 4])
+                             compatible_brands=[b'M4A ',
+                                                b'mp42',
+                                                b'isom',
+                                                b"\x00\x00\x00\x00"])
 
     @classmethod
     def __moov_atom__(cls, pcmreader,
@@ -1125,24 +1127,24 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         """
 
         return M4A_Tree_Atom(
-            "moov",
+            b"moov",
             [cls.__mvhd_atom__(pcmreader, create_date, total_pcm_frames),
              M4A_Tree_Atom(
-                 "trak",
+                 b"trak",
                  [cls.__tkhd_atom__(create_date, total_pcm_frames),
                   M4A_Tree_Atom(
-                      "mdia",
+                      b"mdia",
                       [cls.__mdhd_atom__(pcmreader,
                                          create_date,
                                          total_pcm_frames),
                        cls.__hdlr_atom__(),
-                       M4A_Tree_Atom("minf",
+                       M4A_Tree_Atom(b"minf",
                                      [cls.__smhd_atom__(),
                                       M4A_Tree_Atom(
-                                          "dinf",
+                                          b"dinf",
                                           [cls.__dref_atom__()]),
                                       M4A_Tree_Atom(
-                                          "stbl",
+                                          b"stbl",
                                           [cls.__stsd_atom__(
                                               pcmreader,
                                               mdat_size,
@@ -1160,7 +1162,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                                            cls.__stco_atom__(
                                                mdat_offset,
                                                frame_byte_sizes)])])])]),
-             M4A_Tree_Atom("udta", [cls.__meta_atom__()])])
+             M4A_Tree_Atom(b"udta", [cls.__meta_atom__()])])
 
     @classmethod
     def __mvhd_atom__(cls, pcmreader, create_date, total_pcm_frames):
@@ -1221,19 +1223,19 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                              modified_utc_date=create_date,
                              sample_rate=pcmreader.sample_rate,
                              track_length=total_pcm_frames,
-                             language=[ord(c) - 0x60 for c in "und"],
+                             language=[21, 14, 4],
                              quality=0)
 
     @classmethod
     def __hdlr_atom__(cls):
         return M4A_HDLR_Atom(version=0,
                              flags=0,
-                             qt_type=chr(0) * 4,
-                             qt_subtype='soun',
-                             qt_manufacturer=chr(0) * 4,
+                             qt_type=b"\x00\x00\x00\x00",
+                             qt_subtype=b'soun',
+                             qt_manufacturer=b"\x00\x00\x00\x00",
                              qt_reserved_flags=0,
                              qt_reserved_flags_mask=0,
-                             component_name="",
+                             component_name=b"",
                              padding_size=1)
 
     @classmethod
@@ -1246,8 +1248,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
     def __dref_atom__(cls):
         return M4A_DREF_Atom(version=0,
                              flags=0,
-                             references=[M4A_Leaf_Atom("url ",
-                                                       "\x00\x00\x00\x01")])
+                             references=[M4A_Leaf_Atom(b"url ",
+                                                       b"\x00\x00\x00\x01")])
 
     @classmethod
     def __stsd_atom__(cls, pcmreader,
@@ -1263,7 +1265,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                     reference_index=1,
                     qt_version=0,
                     qt_revision_level=0,
-                    qt_vendor=chr(0) * 4,
+                    qt_vendor=b"\x00\x00\x00\x00",
                     channels=pcmreader.channels,
                     bits_per_sample=pcmreader.bits_per_sample,
                     qt_compression_id=0,
@@ -1348,19 +1350,19 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             leaf_atoms=[
                 M4A_HDLR_Atom(version=0,
                               flags=0,
-                              qt_type=chr(0) * 4,
-                              qt_subtype='mdir',
-                              qt_manufacturer='appl',
+                              qt_type=b"\x00\x00\x00\x00",
+                              qt_subtype=b'mdir',
+                              qt_manufacturer=b'appl',
                               qt_reserved_flags=0,
                               qt_reserved_flags_mask=0,
-                              component_name="",
+                              component_name=b"",
                               padding_size=1),
                 M4A_Tree_Atom(
-                    "ilst",
+                    b"ilst",
                     [M4A_ILST_Leaf_Atom(
-                        '\xa9too',
+                        b'\xa9too',
                         [M4A_ILST_Unicode_Data_Atom(
-                            0, 1, "Python Audio Tools %s" % (VERSION))])]),
+                            0, 1, b"Python Audio Tools %s" % (VERSION))])]),
                 M4A_FREE_Atom(1024)])
 
     @classmethod
