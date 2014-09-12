@@ -489,7 +489,7 @@ if (__name__ == '__main__'):
     if (options.output is None):
         # the default encoding method, without an output file
 
-        queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
+        queue = audiotools.ExecProgressQueue(msg)
 
         # split tracks by album
         albums_iter = audiotools.group_tracks(audiofiles)

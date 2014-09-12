@@ -20,7 +20,7 @@
 import unittest
 import audiotools
 import subprocess
-from io import BytesIO
+from io import BytesIO, StringIO
 import unicodedata
 import tempfile
 import os
@@ -66,9 +66,9 @@ class UtilTest(unittest.TestCase):
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
 
-        self.stdout = BytesIO(sub.stdout.read())
-        self.stderr = BytesIO(sub.stderr.read())
+        self.stdout = StringIO(sub.stdout.read().decode("utf-8"))
         sub.stdout.close()
+        self.stderr = StringIO(sub.stderr.read().decode("utf-8"))
         sub.stderr.close()
         returnval = sub.wait()
         return returnval
@@ -80,11 +80,10 @@ class UtilTest(unittest.TestCase):
         for (stream, expected_output) in self.line_checks:
             stream_line = unicodedata.normalize(
                 'NFC',
-                getattr(self,
-                        stream).readline().decode(audiotools.IO_ENCODING))
+                getattr(self, stream).readline())
             expected_line = unicodedata.normalize(
                 'NFC',
-                expected_output) + unicode(os.linesep)
+                expected_output) + os.linesep
             self.assertEqual(
                 stream_line,
                 expected_line,
@@ -1513,24 +1512,18 @@ class track2track(UtilTest):
 
     @UTIL_TRACK2TRACK
     def tearDown(self):
+        from shutil import rmtree
+
         os.chdir(self.original_dir)
 
-        for f in os.listdir(self.input_dir):
-            os.unlink(os.path.join(self.input_dir, f))
-        os.rmdir(self.input_dir)
-
-        for f in os.listdir(self.output_dir):
-            os.unlink(os.path.join(self.output_dir, f))
-        os.rmdir(self.output_dir)
-
-        for f in os.listdir(self.cwd_dir):
-            os.unlink(os.path.join(self.cwd_dir, f))
-        os.rmdir(self.cwd_dir)
+        rmtree(self.input_dir)
+        rmtree(self.output_dir)
+        rmtree(self.cwd_dir)
 
         self.output_file.close()
 
         os.chmod(self.unwritable_dir, 0700)
-        os.rmdir(self.unwritable_dir)
+        rmtree(self.unwritable_dir)
 
     def clean_output_dirs(self):
         for f in os.listdir(self.output_dir):

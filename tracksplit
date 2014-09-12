@@ -452,7 +452,7 @@ if (__name__ == '__main__'):
     # perform actual track splitting and tagging
     jobs = zip(cuesheet_offsets, cuesheet_lengths, output_tracks)
 
-    queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
+    queue = audiotools.ExecProgressQueue(msg)
 
     if (audiofile.seekable()):
         for (offset, length, (output_class,

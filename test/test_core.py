@@ -6306,26 +6306,22 @@ class Test_ExecProgressQueue(unittest.TestCase):
         def range_sum_output(total):
             return unicode(total)
 
-        queue = audiotools.ExecProgressQueue(
-            audiotools.ProgressDisplay(
-                audiotools.SilentMessenger()))
+        for max_processes in range(1, 21):
+            queue = audiotools.ExecProgressQueue(audiotools.SilentMessenger())
 
-        queue.execute(function=range_sum,
-                      progress_text=u"Sum 1",
-                      completion_output=u"Sum 1 Finished",
-                      start=0,
-                      end=10)
+            for i in range(max_processes):
+                queue.execute(
+                    function=range_sum,
+                    progress_text=u"Sum %d" % (i + 1),
+                    completion_output=((u"Sum %d Finished" % (i + 1))
+                                       if (i % 2) else range_sum_output),
+                    start=i,
+                    end=i + 10)
 
-        queue.execute(function=range_sum,
-                      progress_text=u"Sum 2",
-                      completion_output=range_sum_output,
-                      start=1,
-                      end=11)
+            results = queue.run(max_processes)
 
-        results = queue.run(2)
-
-        self.assertEqual(results[0], sum(range(0, 10)))
-        self.assertEqual(results[1], sum(range(1, 11)))
+            for i in range(max_processes):
+                self.assertEqual(results[i], sum(range(i, i + 10)))
 
 
 class Test_Output_Text(unittest.TestCase):

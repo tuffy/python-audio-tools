@@ -294,6 +294,28 @@ class DummyOutput(object):
         return
 
 
+class UnicodeOutput(object):
+    """a writable FILE-like object which performs proper Unicode conversions"""
+
+    def __init__(self, file):
+        self.__file__ = file
+
+    def isatty(self):
+        return self.__file__.isatty()
+
+    def write(self, s):
+        if (isinstance(s, unicode)):
+            return self.__file__.write(s.encode("utf-8"))
+        else:
+            return self.__file__.write(s)
+
+    def flush(self):
+        return self.__file__.flush()
+
+    def close(self):
+        return self.__file__.close()
+
+
 class Messenger(object):
     """this class is for displaying formatted output in a consistent way"""
 
@@ -307,8 +329,8 @@ class Messenger(object):
             self.__stdout__ = DummyOutput()
             self.__stderr__ = DummyOutput()
         else:
-            self.__stdout__ = sys.stdout
-            self.__stderr__ = sys.stderr
+            self.__stdout__ = UnicodeOutput(sys.stdout)
+            self.__stderr__ = UnicodeOutput(sys.stderr)
 
     def output_isatty(self):
         return self.__stdout__.isatty()
@@ -519,7 +541,7 @@ class output_text(tuple):
                        "N": 1,
                        "H": 1}
 
-        string = unicodedata.normalize("NFC", u"%s" % (unicode_string))
+        string = unicodedata.normalize("NFC", u"%s" % (unicode_string,))
 
         return cls.__construct__(
             unicode_string=string,
@@ -1502,7 +1524,7 @@ class EncodingError(IOError):
     due to an error by the encoder"""
 
     def __init__(self, error_message):
-        IOError.__init__(self)
+        IOError.__init__(self, error_message)
         self.error_message = error_message
 
 
@@ -1728,7 +1750,8 @@ class DuplicateFile(Exception):
         """filename is a Filename object"""
 
         from audiotools.text import ERR_DUPLICATE_FILE
-        Exception.__init__(self, ERR_DUPLICATE_FILE % (self.filename,))
+        Exception.__init__(self, ERR_DUPLICATE_FILE % (filename,))
+        self.filename = filename
 
 
 class DuplicateOutputFile(Exception):
@@ -1738,7 +1761,8 @@ class DuplicateOutputFile(Exception):
         """filename is a Filename object"""
 
         from audiotools.text import ERR_DUPLICATE_OUTPUT_FILE
-        Exception.__init__(self, ERR_DUPLICATE_OUTPUT_FILE % (self.filename,))
+        Exception.__init__(self, ERR_DUPLICATE_OUTPUT_FILE % (filename,))
+        self.filename = filename
 
 
 class OutputFileIsInput(Exception):
@@ -1748,7 +1772,8 @@ class OutputFileIsInput(Exception):
         """filename is a Filename object"""
 
         from audiotools.text import ERR_OUTPUT_IS_INPUT
-        Exception.__init__(self, ERR_OUTPUT_IS_INPUT % (self.filename,))
+        Exception.__init__(self, ERR_OUTPUT_IS_INPUT % (filename,))
+        self.filename = filename
 
 
 class Filename(tuple):
@@ -4998,12 +5023,14 @@ def output_progress(u, current, total):
 class ExecProgressQueue(object):
     """a class for running multiple jobs in parallel with progress updates"""
 
-    def __init__(self, progress_display):
-        """takes a ProgressDisplay object"""
+    def __init__(self, messenger):
+        """takes a Messenger object"""
 
-        self.progress_display = progress_display
+        from collections import deque
+
+        self.messenger = messenger
         self.__displayed_rows__ = {}
-        self.__queued_jobs__ = []
+        self.__queued_jobs__ = deque()
         self.__raised_exception__ = None
 
     def execute(self, function,
@@ -5034,11 +5061,64 @@ class ExecProgressQueue(object):
                                      kwargs))
 
     def run(self, max_processes=1):
+        """runs all the queued jobs"""
+
+        if ((max_processes == 1) or (len(self.__queued_jobs__) == 1)):
+            return self.__run_serial__()
+        else:
+            return self.__run_parallel__(max_processes=max_processes)
+
+    def __run_serial__(self):
+        """runs all the queued jobs in serial"""
+
+        results = []
+        total_jobs = len(self.__queued_jobs__)
+
+        # pull parameters from job queue
+        for (completed_job_number,
+             (job_index,
+              progress_text,
+              completion_output,
+              function,
+              args,
+              kwargs)) in enumerate(self.__queued_jobs__, 1):
+            # add job to progress display, if any text to display
+            if (progress_text is not None):
+                progress_display = SingleProgressDisplay(self.messenger,
+                                                         progress_text)
+
+                # execute job with displayed progress
+                result = function(*args,
+                                  progress=progress_display.update,
+                                  **kwargs)
+
+                # add result to results list
+                results.append(result)
+
+                # remove job from progress display, if present
+                progress_display.clear_rows()
+            else:
+                result = function(*args, **kwargs)
+
+            # display any output message attached to job
+            if (callable(completion_output)):
+                output = completion_output(result)
+            else:
+                output = completion_output
+
+            self.messenger.output(output_progress(output,
+                                                  completed_job_number,
+                                                  total_jobs))
+
+        self.__queued_jobs__.clear()
+        return results
+
+    def __run_parallel__(self, max_processes=1):
         """runs all the queued jobs in parallel"""
 
         from select import select
 
-        def execute_next_job():
+        def execute_next_job(progress_display):
             """pulls the next job from the queue and returns a
             (Process, Array, Connection, progress_text, completed_text) tuple
             where Process is the subprocess
@@ -5053,7 +5133,7 @@ class ExecProgressQueue(object):
              completion_output,
              function,
              args,
-             kwargs) = self.__queued_jobs__.pop(0)
+             kwargs) = self.__queued_jobs__.popleft()
 
             # spawn new __ProgressQueueJob__ object
             job = __ProgressQueueJob__.spawn(
@@ -5067,9 +5147,11 @@ class ExecProgressQueue(object):
             # add job to progress display, if any text to display
             if (progress_text is not None):
                 self.__displayed_rows__[job.job_fd()] = \
-                    self.progress_display.add_row(progress_text)
+                    progress_display.add_row(progress_text)
 
             return job
+
+        progress_display = ProgressDisplay(self.messenger)
 
         # variables for X/Y output display
         # Note that the order a job is inserted into the queue
@@ -5090,7 +5172,7 @@ class ExecProgressQueue(object):
 
         # populate job pool up to "max_processes" number of jobs
         for i in range(min(max_processes, len(self.__queued_jobs__))):
-            job = execute_next_job()
+            job = execute_next_job(progress_display)
             job_pool[job.job_fd()] = job
 
         # while the pool still contains running jobs
@@ -5102,7 +5184,7 @@ class ExecProgressQueue(object):
                  elist) = select(job_pool.keys(), [], [], 0.25)
 
                 # clear out old display
-                self.progress_display.clear_rows()
+                progress_display.clear_rows()
 
                 for finished_job in [job_pool[fd] for fd in rlist]:
                     job_fd = finished_job.job_fd()
@@ -5120,7 +5202,7 @@ class ExecProgressQueue(object):
                             output = completion_output
 
                         if (output is not None):
-                            self.progress_display.output_line(
+                            progress_display.output_line(
                                 output_progress(output,
                                                 completed_job_number,
                                                 total_jobs))
@@ -5135,7 +5217,7 @@ class ExecProgressQueue(object):
                         # once working jobs are finished
                         self.__raised_exception__ = result
                         while (len(self.__queued_jobs__) > 0):
-                            self.__queued_jobs__.pop(0)
+                            self.__queued_jobs__.popleft()
 
                     # remove job from pool
                     del(job_pool[job_fd])
@@ -5146,7 +5228,7 @@ class ExecProgressQueue(object):
 
                     # add new jobs from the job queue, if any
                     if (len(self.__queued_jobs__) > 0):
-                        job = execute_next_job()
+                        job = execute_next_job(progress_display)
                         job_pool[job.job_fd()] = job
 
                     # updated completed job number for X/Y display
@@ -5159,12 +5241,12 @@ class ExecProgressQueue(object):
                             job.current(), job.total())
 
                 # display new set of progress rows
-                self.progress_display.display_rows()
+                progress_display.display_rows()
         except:
             # an exception occurred (perhaps KeyboardInterrupt)
             # so kill any running child jobs
             # clear any progress rows
-            self.progress_display.clear_rows()
+            progress_display.clear_rows()
             # and pass exception to caller
             raise
 

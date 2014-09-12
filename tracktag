@@ -531,8 +531,7 @@ if (__name__ == '__main__'):
                     sys.exit(1)
 
     # add ReplayGain to tracks, if indicated
-    display = audiotools.ProgressDisplay(msg)
-    queue = audiotools.ExecProgressQueue(display)
+    queue = audiotools.ExecProgressQueue(msg)
 
     if (len(tracks) > 0):
         for album_tracks in audiotools.group_tracks(tracks):
@@ -566,7 +565,7 @@ if (__name__ == '__main__'):
                     except IOError as err:
                         msg.error(unicode(err))
                         sys.exit(1)
-                display.output_line(
+                msg.output(
                     _.RG_REPLAYGAIN_REMOVED if album_number is None else
                     (_.REPLAYGAIN_REMOVED_FROM_ALBUM % (album_number)))
 

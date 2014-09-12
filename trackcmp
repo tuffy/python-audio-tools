@@ -322,8 +322,7 @@ if (__name__ == '__main__'):
                     sys.stdout.flush()
                     results.append((filename, None, 0))
 
-            queue = audiotools.ExecProgressQueue(
-                audiotools.ProgressDisplay(msg))
+            queue = audiotools.ExecProgressQueue(msg)
 
             for (track1, track2) in sorted(to_compare,
                                            key=lambda f: f[0].filename):
@@ -403,7 +402,7 @@ if (__name__ == '__main__'):
 
         cd_data = audiotools.BufferedPCMReader(cd_image.to_pcm())
 
-        queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
+        queue = audiotools.ExecProgressQueue(msg)
 
         pcm_offset = 0
 

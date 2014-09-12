@@ -428,7 +428,7 @@ if (__name__ == '__main__'):
 
     if (not options.accuraterip):
         queued_files = set()  # a set of Filename objects already encountered
-        queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
+        queue = audiotools.ExecProgressQueue(msg)
         for track in get_tracks(options.filenames,
                                 queued_files,
                                 options.accept_list):

@@ -426,8 +426,7 @@ if (__name__ == '__main__'):
         wave_files = []
 
         if (write_offset == 0):
-            queue = audiotools.ExecProgressQueue(
-                audiotools.ProgressDisplay(msg))
+            queue = audiotools.ExecProgressQueue(msg)
 
             for audiofile in audiofiles:
                 if (isinstance(audiofile, audiotools.WaveAudio)):

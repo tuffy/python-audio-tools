@@ -1752,12 +1752,10 @@ ExecQueue Objects
 ExecProgressQueue Objects
 -------------------------
 
-.. class:: ExecProgressQueue(progress_display[, total_progress_message])
+.. class:: ExecProgressQueue(messenger)
 
    This class runs multiple jobs in parallel and displays their
-   progress output to the given :class:`ProgressDisplay` object.
-   The optional ``total_progress_message`` argument is a Unicode string
-   which displays an additional progress bar of the queue's total progress.
+   progress output to the given :class:`Messenger` object.
 
 .. method:: ExecProgressQueue.execute(function[, progress_text[, completion_output[, *args[, **kwargs]]]])
 
