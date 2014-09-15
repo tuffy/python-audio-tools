@@ -40,10 +40,9 @@ class AccurateRipReader(object):
 
         is_first and is_last indicate the track's position in the stream"""
 
-        self.__read__ = pcmreader.read
-        self.__close__ = pcmreader.close
+        self.pcmreader = pcmreader
 
-        self.__checksummer__ = audiotools.accuraterip.Checksum(
+        self.checksummer = audiotools.accuraterip.Checksum(
             total_pcm_frames=total_pcm_frames,
             sample_rate=pcmreader.sample_rate,
             is_first=is_first,
@@ -57,18 +56,18 @@ class AccurateRipReader(object):
         self.bits_per_sample = pcmreader.bits_per_sample
 
     def read(self, pcm_frames):
-        frame = self.__read__(pcm_frames)
-        self.__checksummer__.update(frame)
+        frame = self.pcmreader.read(pcm_frames)
+        self.checksummer.update(frame)
         return frame
 
     def close(self):
-        self.__close__()
+        self.pcmreader.close()
 
     def checksums_v1(self):
-        return self.__checksummer__.checksums_v1()
+        return self.checksummer.checksums_v1()
 
     def checksums_v2(self):
-        return [self.__checksummer__.checksum_v2()]
+        return [self.checksummer.checksum_v2()]
 
 
 if (__name__ == '__main__'):
@@ -408,8 +407,6 @@ if (__name__ == '__main__'):
             cddareader,
             track_offset - seeked_offset,
             PREVIOUS_TRACK_FRAMES + track_length + NEXT_TRACK_FRAMES)
-        # ensure closing track doesn't close whole CD
-        track_data.close = lambda self: None
 
         accuraterip = AccurateRipReader(
             track_data,
@@ -424,7 +421,8 @@ if (__name__ == '__main__'):
                     audiotools.PCMReaderWindow(
                         accuraterip,
                         PREVIOUS_TRACK_FRAMES,
-                        track_length),
+                        track_length,
+                        forward_close=False),
                     track_length,
                     progress.update),
                 output_quality,

@@ -7181,8 +7181,142 @@
      - [ ] test_cdrdao
      - [ ] test_cdrecord
 *** TODO Ensure unit tests pass
-    - [ ] Python 2.7
-    - [ ] Python 3
+**** TODO Python 2.7
+***** TODO Lib
+      - [ ] core
+      - [ ] cuesheet
+      - [ ] cdio
+      - [ ] freedb
+      - [ ] image
+      - [ ] musicbrainz
+      - [ ] accuraterip
+      - [ ] pcm
+      - [ ] bitstream
+      - [ ] replaygain
+      - [ ] resample
+      - [ ] tocfile
+      - [ ] verify
+      - [ ] ogg
+***** TODO Format
+      - [ ] audiofile
+      - [ ] lossless
+      - [ ] lossy
+      - [ ] aiff
+      - [ ] alac
+      - [ ] au
+      - [ ] dvda
+      - [ ] flac
+      - [ ] m4a
+      - [ ] mp2
+      - [ ] mp3
+      - [ ] oggflac
+      - [ ] opus
+      - [ ] shorten
+      - [ ] sines
+      - [ ] tta
+      - [ ] vorbis
+      - [ ] wave
+      - [ ] wavpack
+***** TODO Metadata
+      - [ ] metadata
+      - [ ] flac
+      - [ ] wavpack
+      - [ ] id3v1
+      - [ ] id3v2
+      - [ ] vorbis
+      - [ ] opus
+      - [ ] m4a
+      - [ ] tta
+***** TODO Util
+      - [ ] audiotools_config
+      - [ ] cd2track
+      - [ ] cdinfo
+      - [ ] cdplay
+      - [ ] coverdump
+      - [ ] covertag
+      - [ ] coverview
+      - [ ] dvda2track
+      - [ ] dvdainfo
+      - [ ] track2cd
+      - [ ] track2track
+      - [ ] trackcat
+      - [ ] trackcmp
+      - [ ] trackinfo
+      - [ ] tracklength
+      - [ ] tracklint
+      - [ ] trackplay
+      - [ ] trackrename
+      - [ ] tracksplit
+      - [ ] tracktag
+      - [ ] trackverify
+**** TODO Python 3
+***** TODO Lib
+      - [ ] core
+      - [ ] cuesheet
+      - [ ] cdio
+      - [ ] freedb
+      - [ ] image
+      - [ ] musicbrainz
+      - [ ] accuraterip
+      - [ ] pcm
+      - [ ] bitstream
+      - [ ] replaygain
+      - [ ] resample
+      - [ ] tocfile
+      - [ ] verify
+      - [ ] ogg
+***** TODO Format
+      - [ ] audiofile
+      - [ ] lossless
+      - [ ] lossy
+      - [ ] aiff
+      - [ ] alac
+      - [ ] au
+      - [ ] dvda
+      - [ ] flac
+      - [ ] m4a
+      - [ ] mp2
+      - [ ] mp3
+      - [ ] oggflac
+      - [ ] opus
+      - [ ] shorten
+      - [ ] sines
+      - [ ] tta
+      - [ ] vorbis
+      - [ ] wave
+      - [ ] wavpack
+***** TODO Metadata
+      - [ ] metadata
+      - [ ] flac
+      - [ ] wavpack
+      - [ ] id3v1
+      - [ ] id3v2
+      - [ ] vorbis
+      - [ ] opus
+      - [ ] m4a
+      - [ ] tta
+***** TODO Util
+      - [ ] audiotools_config
+      - [ ] cd2track
+      - [ ] cdinfo
+      - [ ] cdplay
+      - [ ] coverdump
+      - [ ] covertag
+      - [ ] coverview
+      - [ ] dvda2track
+      - [ ] dvdainfo
+      - [ ] track2cd
+      - [ ] track2track
+      - [ ] trackcat
+      - [ ] trackcmp
+      - [ ] trackinfo
+      - [ ] tracklength
+      - [ ] tracklint
+      - [ ] trackplay
+      - [ ] trackrename
+      - [ ] tracksplit
+      - [ ] tracktag
+      - [ ] trackverify
 ** TODO Improve test coverage
    - [X] set_metadata(None) to all formats
 *** TODO Check repr on everything

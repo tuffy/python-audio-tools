@@ -461,7 +461,8 @@ class CDAudioPlayer(AudioPlayer):
             # seek to specified track number
             self.__cddareader__.seek(self.__offsets__[self.__track_number__])
             track = PCMReaderHead(self.__cddareader__,
-                                  self.__lengths__[self.__track_number__])
+                                  self.__lengths__[self.__track_number__],
+                                  False)
 
             # decode PCMReader in thread
             # and place in buffer so one can process small chunks of data

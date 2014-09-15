@@ -40,7 +40,7 @@ class AuReader(object):
          self.sample_rate,
          self.channels) = self.stream.parse("4b 5* 32u")
 
-        if (magic_number != '.snd'):
+        if (magic_number != b'.snd'):
             raise ValueError(ERR_AU_INVALID_HEADER)
         try:
             self.bits_per_sample = {2: 8, 3: 16, 4: 24}[encoding_format]
@@ -123,7 +123,7 @@ def au_header(sample_rate,
     else:
         return build("4b 5*32u",
                      False,
-                     (".snd",
+                     (b".snd",
                       24,
                       (channels *
                        (bits_per_sample // 8) *
@@ -143,22 +143,22 @@ class AuAudio(AudioFile):
     def __init__(self, filename):
         AudioFile.__init__(self, filename)
 
-        from audiotools.bitstream import BitstreamReader
+        from audiotools.bitstream import parse
         from audiotools.text import (ERR_AU_INVALID_HEADER,
                                      ERR_AU_UNSUPPORTED_FORMAT)
 
         try:
-            (magic_number,
-             self.__data_offset__,
-             self.__data_size__,
-             encoding_format,
-             self.__sample_rate__,
-             self.__channels__) = BitstreamReader(
-                 open(filename, "rb"), 0).parse("4b 5* 32u")
+            with open(filename, "rb") as f:
+                (magic_number,
+                 self.__data_offset__,
+                 self.__data_size__,
+                 encoding_format,
+                 self.__sample_rate__,
+                 self.__channels__) = parse("4b 5* 32u", False, f.read(24))
         except IOError as msg:
             raise InvalidAU(str(msg))
 
-        if (magic_number != '.snd'):
+        if (magic_number != b'.snd'):
             raise InvalidAU(ERR_AU_INVALID_HEADER)
         try:
             self.__bits_per_sample__ = {2: 8, 3: 16, 4: 24}[encoding_format]
@@ -247,6 +247,7 @@ class AuAudio(AudioFile):
             from audiotools import Filename
             from audiotools import UnsupportedBitsPerSample
             from audiotools.text import ERR_UNSUPPORTED_BITS_PER_SAMPLE
+            pcmreader.close()
             raise UnsupportedBitsPerSample(
                 ERR_UNSUPPORTED_BITS_PER_SAMPLE %
                 {"target_filename": Filename(filename),
@@ -264,13 +265,16 @@ class AuAudio(AudioFile):
         try:
             f = open(filename, "wb")
         except IOError as err:
+            pcmreader.close()
             raise EncodingError(str(err))
 
         counter = CounterPCMReader(pcmreader)
         f.write(header)
         try:
             transfer_framelist_data(counter, f.write, True, True)
+            counter.close()
         except (IOError, ValueError) as err:
+            counter.close()
             cls.__unlink__(filename)
             raise EncodingError(str(err))
 

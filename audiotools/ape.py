@@ -615,7 +615,7 @@ class ApeTag(MetaData):
             self['Cover Art (front)'] = self.ITEM.binary(
                 'Cover Art (front)',
                 image.description.encode('utf-8', 'replace') +
-                chr(0) +
+                b"\x00" +
                 image.data)
         elif (image.type == BACK_COVER):
             self['Cover Art (back)'] = self.ITEM.binary(

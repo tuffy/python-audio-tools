@@ -485,6 +485,8 @@ AudioFile Objects
    optional compression level string and optional total_pcm_frames integer.
    Creates a new audio file as the same format as this audio class
    and returns a new :class:`AudioFile`-compatible object.
+   The :meth:`PCMReader.close` method is called once encoding is complete.
+
    Raises :exc:`EncodingError` if a problem occurs during encoding.
 
    Specifying the total number of PCM frames to be encoded,
@@ -1254,7 +1256,7 @@ PCMCat Objects
 PCMReaderWindow Objects
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-.. class:: PCMReaderWindow(pcmreader, initial_offset, total_pcm_frames)
+.. class:: PCMReaderWindow(pcmreader, initial_offset, total_pcm_frames, [forward_close=True])
 
    This class wraps around an existing :class:`PCMReader` object
    and truncates or extends its samples as needed.
@@ -1268,6 +1270,14 @@ PCMReaderWindow Objects
    the reader is truncated.
    If longer, the stream is extended by as many PCM frames as needed.
    Again, padding frames have a value of 0.
+
+   If ``forward_close`` is True, calls to :meth:`PCMReaderWindow.close`
+   are passed along to the wrapped :class:`PCMReader` object.
+   Otherwise, the close is confined to the :class:`PCMReaderWindow`
+   object.
+   This may be necessary when encoding sub-streams from a larger
+   stream in which closing the larger stream after each encode
+   isn't desirable.
 
 LimitedPCMReader Objects
 ^^^^^^^^^^^^^^^^^^^^^^^^

@@ -490,7 +490,7 @@ class Flac_PADDING(object):
     def build(self, writer):
         """writes this metadata block to a BitstreamWriter"""
 
-        writer.write_bytes(chr(0) * self.length)
+        writer.write_bytes(b"\x00" * self.length)
 
     def size(self):
         """the size of this metadata block
@@ -850,7 +850,7 @@ class Flac_CUESHEET(Sheet):
         this metadata often contains information such as catalog number
         or CD-TEXT values"""
 
-        catalog = self.__catalog_number__.rstrip(chr(0))
+        catalog = self.__catalog_number__.rstrip(b"\x00")
         if (len(catalog) > 0):
             from audiotools import MetaData
 
@@ -877,15 +877,15 @@ class Flac_CUESHEET(Sheet):
         def pad(u, chars):
             if (u is not None):
                 s = u.encode("ascii", "replace")
-                return s[0:chars] + (chr(0) * (chars - len(s)))
+                return s[0:chars] + (b"\x00" * (chars - len(s)))
             else:
-                return chr(0) * chars
+                return b"\x00" * chars
 
         metadata = sheet.get_metadata()
         if (metadata is not None):
             catalog_number = pad(metadata.catalog, 128)
         else:
-            catalog_number = chr(0) * 128
+            catalog_number = b"\x00" * 128
 
         # assume standard 2 second disc lead-in
         # and append empty lead-out track
@@ -896,7 +896,7 @@ class Flac_CUESHEET(Sheet):
                             for t in sheet] +
                            [Flac_CUESHEET_track(offset=total_pcm_frames,
                                                 number=170,
-                                                ISRC=chr(0) * 12,
+                                                ISRC=b"\x00" * 12,
                                                 track_type=0,
                                                 pre_emphasis=0,
                                                 index_points=[])]))
@@ -930,9 +930,9 @@ class Flac_CUESHEET_track(SheetTrack):
         def pad(u, chars):
             if (u is not None):
                 s = u.encode("ascii", "replace")
-                return s[0:chars] + (chr(0) * (chars - len(s)))
+                return s[0:chars] + (b"\x00" * (chars - len(s)))
             else:
-                return chr(0) * chars
+                return b"\x00" * chars
 
         if (len(sheet_track) > 0):
             offset = int(sheet_track[0].offset() * sample_rate)
@@ -945,7 +945,7 @@ class Flac_CUESHEET_track(SheetTrack):
         if (metadata is not None):
             ISRC = pad(metadata.ISRC, 12)
         else:
-            ISRC = chr(0) * 12
+            ISRC = b"\x00" * 12
 
         return cls(offset=offset,
                    number=sheet_track.number(),
@@ -1048,7 +1048,7 @@ class Flac_CUESHEET_track(SheetTrack):
     def get_metadata(self):
         """returns SheetTrack's MetaData, or None"""
 
-        isrc = self.__ISRC__.rstrip(chr(0))
+        isrc = self.__ISRC__.rstrip(b"\x00")
         if (len(isrc) > 0):
             from audiotools import MetaData
 
@@ -1414,7 +1414,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         self.__total_frames__ = 0
         self.__stream_offset__ = 0
         self.__stream_suffix__ = 0
-        self.__md5__ = chr(0) * 16
+        self.__md5__ = b"\x00" * 16
 
         try:
             self.__read_streaminfo__()
@@ -1500,8 +1500,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         # even if the blocks aren't present
         # so there's no need to test for None
 
-        f = open(self.filename, 'rb')
-        try:
+        with open(self.filename, 'rb') as f:
             f.seek(self.__stream_offset__, 0)
             if (f.read(4) != b"fLaC"):
                 # shouldn't be able to get here
@@ -1510,8 +1509,6 @@ class FlacAudio(WaveContainer, AiffContainer):
                 from audiotools.bitstream import BitstreamReader
 
                 return FlacMetaData.parse(BitstreamReader(f, 0))
-        finally:
-            f.close()
 
     def update_metadata(self, metadata):
         """takes this track's current MetaData object
@@ -1570,7 +1567,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             stream = open(self.filename, 'r+b')
             stream.seek(self.__stream_offset__, 0)
             writer = BitstreamWriter(stream, 0)
-            writer.write_bytes('fLaC')
+            writer.write_bytes(b'fLaC')
             metadata.build(writer)
             writer.flush()
             writer.close()
@@ -1588,7 +1585,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
             new_file.write(old_file.read(self.__stream_offset__))
 
-            if (old_file.read(4) != 'fLaC'):
+            if (old_file.read(4) != b'fLaC'):
                 from audiotools.text import ERR_FLAC_INVALID_FILE
                 raise InvalidFLAC(ERR_FLAC_INVALID_FILE)
 
@@ -1599,7 +1596,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
             # write new metadata to new file
             writer = BitstreamWriter(new_file, 0)
-            writer.write_bytes("fLaC")
+            writer.write_bytes(b"fLaC")
             metadata.build(writer)
 
             # write remaining old data to new file
@@ -1709,12 +1706,11 @@ class FlacAudio(WaveContainer, AiffContainer):
         from audiotools.bitstream import BitstreamReader
 
         counter = 0
-        f = open(self.filename, 'rb')
-        try:
+        with open(self.filename, 'rb') as f:
             f.seek(self.__stream_offset__, 0)
             reader = BitstreamReader(f, 0)
 
-            if (reader.read_bytes(4) != 'fLaC'):
+            if (reader.read_bytes(4) != b'fLaC'):
                 from audiotools.text import ERR_FLAC_INVALID_FILE
                 raise InvalidFLAC(ERR_FLAC_INVALID_FILE)
 
@@ -1727,8 +1723,6 @@ class FlacAudio(WaveContainer, AiffContainer):
                 counter += length
 
             return counter
-        finally:
-            f.close()
 
     def delete_metadata(self):
         """deletes the track's MetaData
@@ -2039,7 +2033,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         if (pad_data(self.total_frames(),
                      self.channels(),
                      self.bits_per_sample())):
-            footer = [chr(0)]
+            footer = [b"\x00"]
         else:
             footer = []
         current_block = header
@@ -2050,10 +2044,10 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         # convert individual chunks into combined header and footer strings
         for block in metadata.get_blocks(Flac_APPLICATION.BLOCK_ID):
-            if (block.application_id == "riff"):
+            if (block.application_id == b"riff"):
                 chunk_id = block.data[0:4]
                 # combine APPLICATION metadata blocks up to "data" as header
-                if (chunk_id != "data"):
+                if (chunk_id != b"data"):
                     current_block.append(block.data)
                 else:
                     # combine APPLICATION metadata blocks past "data" as footer
@@ -2097,16 +2091,16 @@ class FlacAudio(WaveContainer, AiffContainer):
             # chunk header
             r = BitstreamReader(BytesIO(header), 1)
             (riff, remaining_size, wave) = r.parse("4b 32u 4b")
-            if (riff != "RIFF"):
+            if (riff != b"RIFF"):
                 from audiotools.text import ERR_WAV_NOT_WAVE
                 raise EncodingError(ERR_WAV_NOT_WAVE)
-            elif (wave != "WAVE"):
+            elif (wave != b"WAVE"):
                 from audiotools.text import ERR_WAV_INVALID_WAVE
                 raise EncodingError(ERR_WAV_INVALID_WAVE)
             else:
                 block_data = BitstreamRecorder(1)
                 block_data.build("4b 32u 4b", (riff, remaining_size, wave))
-                blocks.append(Flac_APPLICATION("riff", block_data.data()))
+                blocks.append(Flac_APPLICATION(b"riff", block_data.data()))
                 total_size = remaining_size + 8
                 header_len -= format_byte_size("4b 32u 4b")
 
@@ -2122,7 +2116,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                     header_len -= format_byte_size("4b 32u")
                     block_data.build("4b 32u", (chunk_id, chunk_size))
 
-                if (chunk_id == "data"):
+                if (chunk_id == b"data"):
                     # transfer only "data" chunk header to APPLICATION block
                     if (header_len != 0):
                         from audiotools.text import ERR_WAV_HEADER_EXTRA_DATA
@@ -2133,10 +2127,10 @@ class FlacAudio(WaveContainer, AiffContainer):
                         raise EncodingError(ERR_WAV_NO_FMT_CHUNK)
                     else:
                         blocks.append(
-                            Flac_APPLICATION("riff", block_data.data()))
+                            Flac_APPLICATION(b"riff", block_data.data()))
                         data_chunk_size = chunk_size
                         break
-                elif (chunk_id == "fmt "):
+                elif (chunk_id == b"fmt "):
                     if (not fmt_found):
                         fmt_found = True
                         if (chunk_size % 2):
@@ -2151,7 +2145,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                             header_len -= chunk_size
 
                         blocks.append(
-                            Flac_APPLICATION("riff", block_data.data()))
+                            Flac_APPLICATION(b"riff", block_data.data()))
                     else:
                         from audiotools.text import ERR_WAV_MULTIPLE_FMT
                         raise EncodingError(ERR_WAV_MULTIPLE_FMT)
@@ -2165,7 +2159,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                         block_data.write_bytes(r.read_bytes(chunk_size))
                         header_len -= chunk_size
 
-                    blocks.append(Flac_APPLICATION("riff", block_data.data()))
+                    blocks.append(Flac_APPLICATION(b"riff", block_data.data()))
             else:
                 from audiotools.text import ERR_WAV_NO_DATA_CHUNK
                 raise EncodingError(ERR_WAV_NO_DATA_CHUNK)
@@ -2190,11 +2184,11 @@ class FlacAudio(WaveContainer, AiffContainer):
                     # ensure chunk ID is valid
                     from audiotools.text import ERR_WAV_INVALID_CHUNK
                     raise EncodingError(ERR_WAV_INVALID_CHUNK)
-                elif (chunk_id == "fmt "):
+                elif (chunk_id == b"fmt "):
                     # multiple "fmt " chunks is an error
                     from audiotools.text import ERR_WAV_MULTIPLE_FMT
                     raise EncodingError(ERR_WAV_MULTIPLE_FMT)
-                elif (chunk_id == "data"):
+                elif (chunk_id == b"data"):
                     # multiple "data" chunks is an error
                     from audiotools.text import ERR_WAV_MULTIPLE_DATA
                     raise EncodingError(ERR_WAV_MULTIPLE_DATA)
@@ -2211,7 +2205,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                         block_data.write_bytes(r.read_bytes(chunk_size))
                         footer_len -= chunk_size
 
-                    blocks.append(Flac_APPLICATION("riff", block_data.data()))
+                    blocks.append(Flac_APPLICATION(b"riff", block_data.data()))
         except IOError:
             from audiotools.text import ERR_WAV_FOOTER_IOERROR
             raise EncodingError(ERR_WAV_FOOTER_IOERROR)
@@ -2251,7 +2245,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         try:
             metadata = self.get_metadata()
             if (metadata is not None):
-                return 'aiff' in [
+                return b'aiff' in [
                     block.application_id for block in
                     metadata.get_blocks(Flac_APPLICATION.BLOCK_ID)]
             else:
@@ -2273,7 +2267,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         if (pad_data(self.total_frames(),
                      self.channels(),
                      self.bits_per_sample())):
-            footer = [chr(0)]
+            footer = [b"\x00"]
         else:
             footer = []
         current_block = header
@@ -2284,10 +2278,10 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         # convert individual chunks into combined header and footer strings
         for block in metadata.get_blocks(Flac_APPLICATION.BLOCK_ID):
-            if (block.application_id == "aiff"):
+            if (block.application_id == b"aiff"):
                 chunk_id = block.data[0:4]
                 # combine APPLICATION metadata blocks up to "SSND" as header
-                if (chunk_id != "SSND"):
+                if (chunk_id != b"SSND"):
                     current_block.append(block.data)
                 else:
                     # combine APPLICATION metadata blocks past "SSND" as footer
@@ -2296,7 +2290,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         # return tuple of header and footer
         if ((len(header) != 0) or (len(footer) != 0)):
-            return ("".join(header), "".join(footer))
+            return (b"".join(header), b"".join(footer))
         else:
             raise ValueError("no foreign AIFF chunks")
 
@@ -2335,10 +2329,10 @@ class FlacAudio(WaveContainer, AiffContainer):
             # chunk header
             r = BitstreamReader(BytesIO(header), 0)
             (form, remaining_size, aiff) = r.parse("4b 32u 4b")
-            if (form != "FORM"):
+            if (form != b"FORM"):
                 from audiotools.text import ERR_AIFF_NOT_AIFF
                 raise EncodingError(ERR_AIFF_NOT_AIFF)
-            elif (aiff != "AIFF"):
+            elif (aiff != b"AIFF"):
                 from audiotools.text import ERR_AIFF_INVALID_AIFF
                 raise EncodingError(ERR_AIFF_INVALID_AIFF)
             else:
@@ -2360,7 +2354,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                     header_len -= format_byte_size("4b 32u")
                     block_data.build("4b 32u", (chunk_id, chunk_size))
 
-                if (chunk_id == "SSND"):
+                if (chunk_id == b"SSND"):
                     from audiotools.text import (ERR_AIFF_HEADER_EXTRA_SSND,
                                                  ERR_AIFF_HEADER_MISSING_SSND,
                                                  ERR_AIFF_NO_COMM_CHUNK)
@@ -2376,10 +2370,10 @@ class FlacAudio(WaveContainer, AiffContainer):
                     else:
                         block_data.write_bytes(r.read_bytes(8))
                         blocks.append(
-                            Flac_APPLICATION("aiff", block_data.data()))
+                            Flac_APPLICATION(b"aiff", block_data.data()))
                         ssnd_chunk_size = (chunk_size - 8)
                         break
-                elif (chunk_id == "COMM"):
+                elif (chunk_id == b"COMM"):
                     from audiotools.text import ERR_AIFF_MULTIPLE_COMM_CHUNKS
 
                     if (not comm_found):
@@ -2395,7 +2389,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                                 r.read_bytes(chunk_size))
                             header_len -= chunk_size
                         blocks.append(
-                            Flac_APPLICATION("aiff", block_data.data()))
+                            Flac_APPLICATION(b"aiff", block_data.data()))
                     else:
                         raise EncodingError(ERR_AIFF_MULTIPLE_COMM_CHUNKS)
                 else:
@@ -2408,7 +2402,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                         block_data.write_bytes(r.read_bytes(chunk_size))
                         header_len -= chunk_size
 
-                    blocks.append(Flac_APPLICATION("aiff", block_data.data()))
+                    blocks.append(Flac_APPLICATION(b"aiff", block_data.data()))
             else:
                 from audiotools.text import ERR_AIFF_NO_SSND_CHUNK
                 raise EncodingError(ERR_AIFF_NO_SSND_CHUNK)
@@ -2433,11 +2427,11 @@ class FlacAudio(WaveContainer, AiffContainer):
                     # ensure chunk ID is valid
                     from audiotools.text import ERR_AIFF_INVALID_CHUNK
                     raise EncodingError(ERR_AIFF_INVALID_CHUNK)
-                elif (chunk_id == "COMM"):
+                elif (chunk_id == b"COMM"):
                     # multiple "COMM" chunks is an error
                     from audiotools.text import ERR_AIFF_MULTIPLE_COMM_CHUNKS
                     raise EncodingError(ERR_AIFF_MULTIPLE_COMM_CHUNKS)
-                elif (chunk_id == "SSND"):
+                elif (chunk_id == b"SSND"):
                     # multiple "SSND" chunks is an error
                     from audiotools.text import ERR_AIFF_MULTIPLE_SSND_CHUNKS
                     raise EncodingError(ERR_AIFF_MULTIPLE_SSND_CHUNKS)
@@ -2454,7 +2448,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                         block_data.write_bytes(r.read_bytes(chunk_size))
                         footer_len -= chunk_size
 
-                    blocks.append(Flac_APPLICATION("aiff", block_data.data()))
+                    blocks.append(Flac_APPLICATION(b"aiff", block_data.data()))
         except IOError:
             from audiotools.text import ERR_AIFF_FOOTER_IOERROR
             raise EncodingError(ERR_AIFF_FOOTER_IOERROR)
@@ -2550,11 +2544,10 @@ class FlacAudio(WaveContainer, AiffContainer):
 
     def __read_streaminfo__(self):
         valid_header_types = frozenset(range(0, 6 + 1))
-        f = open(self.filename, "rb")
-        try:
+        with open(self.filename, "rb") as f:
             try:
                 f.seek(-128, 2)
-                if (f.read(3) == "TAG"):
+                if (f.read(3) == b"TAG"):
                     self.__stream_suffix__ = 128
                 else:
                     self.__stream_suffix__ = 0
@@ -2589,8 +2582,6 @@ class FlacAudio(WaveContainer, AiffContainer):
                     # though the STREAMINFO should always be first,
                     # we'll be permissive and check them all if necessary
                     reader.skip_bytes(length)
-        finally:
-            f.close()
 
     @classmethod
     def supports_replay_gain(cls):
@@ -2733,7 +2724,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                     fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V2)
                 try:
                     input_f.seek(-128, 2)
-                    if (input_f.read(3) == 'TAG'):
+                    if (input_f.read(3) == b'TAG'):
                         from audiotools.text import CLEAN_FLAC_REMOVE_ID3V1
                         fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V1)
                 except IOError:
@@ -2741,7 +2732,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                     pass
 
                 # fix empty MD5SUM
-                if (self.__md5__ == chr(0) * 16):
+                if (self.__md5__ == b"\x00" * 16):
                     from audiotools.text import CLEAN_FLAC_POPULATE_MD5
                     fixes_performed.append(CLEAN_FLAC_POPULATE_MD5)
 
@@ -2794,7 +2785,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
                 try:
                     input_f.seek(-128, 2)
-                    if (input_f.read(3) == 'TAG'):
+                    if (input_f.read(3) == b'TAG'):
                         from audiotools.text import CLEAN_FLAC_REMOVE_ID3V1
                         fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V1)
                         stream_size -= 128
@@ -2819,7 +2810,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 metadata = self.get_metadata()
                 if (metadata is not None):
                     # fix empty MD5SUM
-                    if (self.__md5__ == chr(0) * 16):
+                    if (self.__md5__ == b"\x00" * 16):
                         from hashlib import md5
                         from audiotools import transfer_framelist_data
 
@@ -2997,11 +2988,11 @@ class OggFlacMetaData(FlacMetaData):
                   "4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b",
                   False,
                   (0x7F,
-                   "FLAC",
+                   b"FLAC",
                    1,
                    0,
                    len(valid_blocks),
-                   "fLaC",
+                   b"fLaC",
                    0,
                    format_size("16u 16u 24u 24u 20u 3u 5u 36U 16b") // 8,
                    streaminfo.minimum_block_size,
@@ -3104,8 +3095,8 @@ class OggFlacAudio(FlacAudio):
         from audiotools.ogg import PacketReader, PageReader
 
         try:
-            return OggFlacMetaData.parse(
-                PacketReader(PageReader(open(self.filename, "rb"))))
+            with open(self.filename, "rb") as f:
+                return OggFlacMetaData.parse(PacketReader(PageReader(f)))
         except ValueError:
             return None
 
@@ -3172,8 +3163,7 @@ class OggFlacAudio(FlacAudio):
     def __read_streaminfo__(self):
         from audiotools.bitstream import BitstreamReader
 
-        f = open(self.filename, "rb")
-        try:
+        with open(self.filename, "rb") as f:
             ogg_reader = BitstreamReader(f, 1)
             (magic_number,
              version,
@@ -3232,8 +3222,6 @@ class OggFlacAudio(FlacAudio):
 
             self.__channels__ += 1
             self.__bitspersample__ += 1
-        finally:
-            f.close()
 
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
@@ -3346,12 +3334,15 @@ class OggFlacAudio(FlacAudio):
 
         try:
             transfer_framelist_data(pcmreader, sub.stdin.write)
+            pcmreader.close()
         except (ValueError, IOError) as err:
+            pcmreader.close()
             sub.stdin.close()
             sub.wait()
             cls.__unlink__(filename)
             raise EncodingError(str(err))
         except Exception:
+            pcmreader.close()
             sub.stdin.close()
             sub.wait()
             cls.__unlink__(filename)

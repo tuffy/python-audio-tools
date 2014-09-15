@@ -2344,8 +2344,8 @@ class PCMReaderProgress(object):
         progress(current, total) is a callable function
         current_frames is the current amount of PCM frames in the stream"""
 
-        self.__read__ = pcmreader.read
-        self.__close__ = pcmreader.close
+
+        self.pcmreader = pcmreader
         self.sample_rate = pcmreader.sample_rate
         self.channels = pcmreader.channels
         self.channel_mask = pcmreader.channel_mask
@@ -2358,13 +2358,13 @@ class PCMReaderProgress(object):
             self.progress = lambda current_frames, total_frames: None
 
     def read(self, pcm_frames):
-        frame = self.__read__(pcm_frames)
+        frame = self.pcmreader.read(pcm_frames)
         self.current_frames += frame.frames
         self.progress(self.current_frames, self.total_frames)
         return frame
 
     def close(self):
-        self.__close__()
+        self.pcmreader.close()
 
 
 class ReorderedPCMReader(object):
@@ -4623,18 +4623,35 @@ def iter_last(iterator):
             return
 
 
-def PCMReaderWindow(pcmreader, initial_offset, pcm_frames):
+def PCMReaderWindow(pcmreader, initial_offset, pcm_frames, forward_close=True):
+    """pcmreader is the parent stream
+
+    initial offset is the offset of the stream's beginning,
+    which may be negative
+
+    pcm_frames is the total length of the stream
+
+    if forward_close is True, calls to .close() are forwarded
+    to the parent stream, otherwise the parent is left as-is"""
+
     if (initial_offset == 0):
-        return PCMReaderHead(pcmreader, pcm_frames)
+        return PCMReaderHead(
+            pcmreader=pcmreader,
+            pcm_frames=pcm_frames,
+            forward_close=forward_close)
     else:
-        return PCMReaderHead(PCMReaderDeHead(pcmreader, initial_offset),
-                             pcm_frames)
+        return PCMReaderHead(
+            pcmreader=PCMReaderDeHead(pcmreader=pcmreader,
+                                      pcm_frames=initial_offset,
+                                      forward_close=forward_close),
+            pcm_frames=pcm_frames,
+            forward_close=forward_close)
 
 
 class PCMReaderHead(object):
     """a wrapper around PCMReader for truncating a stream's ending"""
 
-    def __init__(self, pcmreader, pcm_frames):
+    def __init__(self, pcmreader, pcm_frames, forward_close=True):
         """pcmreader is a PCMReader object
         pcm_frames is the total number of PCM frames in the stream
 
@@ -4653,6 +4670,7 @@ class PCMReaderHead(object):
         self.channel_mask = pcmreader.channel_mask
         self.bits_per_sample = pcmreader.bits_per_sample
         self.pcm_frames = pcm_frames
+        self.forward_close = forward_close
 
     def __repr__(self):
         return "PCMReaderHead(%s, %s)" % (repr(self.pcmreader),
@@ -4697,14 +4715,15 @@ class PCMReaderHead(object):
         raise ValueError()
 
     def close(self):
-        self.pcmreader.close()
+        if (self.forward_close):
+            self.pcmreader.close()
         self.read = self.read_closed
 
 
 class PCMReaderDeHead(object):
     """a wrapper around PCMReader for truncating a stream's beginning"""
 
-    def __init__(self, pcmreader, pcm_frames):
+    def __init__(self, pcmreader, pcm_frames, forward_close=True):
         """pcmreader is a PCMReader object
         pcm_frames is the total number of PCM frames to remove
 
@@ -4720,6 +4739,7 @@ class PCMReaderDeHead(object):
         self.channel_mask = pcmreader.channel_mask
         self.bits_per_sample = pcmreader.bits_per_sample
         self.pcm_frames = pcm_frames
+        self.forward_close = forward_close
 
     def __repr__(self):
         return "PCMReaderDeHead(%s, %s)" % (repr(self.pcmreader),
@@ -4764,7 +4784,8 @@ class PCMReaderDeHead(object):
         raise ValueError()
 
     def close(self):
-        self.pcmreader.close()
+        if (self.forward_close):
+            self.pcmreader.close()
         self.read = self.read_closed
 
 

@@ -121,6 +121,9 @@ SHNDecoder_close(decoders_SHNDecoder* self, PyObject *args)
     /*mark stream as closed so more calls to read() generate ValueErrors*/
     self->closed = 1;
 
+    /*close bitstream for further reading*/
+    self->bitstream->close_internal_stream(self->bitstream);
+
     Py_INCREF(Py_None);
     return Py_None;
 }

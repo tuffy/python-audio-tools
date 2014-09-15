@@ -18,6 +18,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
+import sys
+
+
 def digit_sum(i):
     """returns the sum of all digits for the given integer"""
 
@@ -82,8 +85,15 @@ class DiscID(object):
                                     "total_length",
                                     "track_count"]])
 
-    def __str__(self):
-        return "%8.8X" % (int(self))
+    if (sys.version_info[0] >= 3):
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('ascii')
+
+    def __unicode__(self):
+        return u"%8.8X" % (int(self))
 
     def __int__(self):
         digit_sum_ = sum([digit_sum(o // 75) for o in self.offsets])

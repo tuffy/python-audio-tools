@@ -57,6 +57,23 @@ for section in parser.sections():
                               option.upper())] = lambda function: do_nothing
 
 
+class CLOSE_PCM_Reader(object):
+    def __init__(self, pcmreader):
+        self.pcmreader = pcmreader
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
+        self.bits_per_sample = pcmreader.bits_per_sample
+        self.close_called = False
+
+    def read(self, pcm_frames):
+        return self.pcmreader.read(pcm_frames)
+
+    def close(self):
+        self.close_called = True
+        self.pcmreader.close()
+
+
 class ERROR_PCM_Reader(audiotools.PCMReader):
     def __init__(self, error,
                  sample_rate=44100, channels=2, bits_per_sample=16,
@@ -270,7 +287,7 @@ class AudioFileTest(unittest.TestCase):
             self.assertEqual(track.get_metadata(), nonblank_metadata)
 
             old_mode = os.stat(track.filename).st_mode
-            os.chmod(track.filename, 0400)
+            os.chmod(track.filename, 0o400)
             try:
                 # check IOError on set_metadata()
                 self.assertRaises(IOError,
@@ -338,6 +355,30 @@ class AudioFileTest(unittest.TestCase):
             del(pcmreader)
 
         temp.close()
+
+    @FORMAT_AUDIOFILE
+    def test_close(self):
+        if (self.audio_class is audiotools.AudioFile):
+            return
+
+        pcm_frames = 123456
+
+        with tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX) as f:
+            reader = CLOSE_PCM_Reader(EXACT_SILENCE_PCM_Reader(pcm_frames))
+            self.assertFalse(reader.close_called)
+            track = self.audio_class.from_pcm(f.name,
+                                              reader)
+            self.assertTrue(reader.close_called)
+
+        with tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX) as f:
+            reader = CLOSE_PCM_Reader(EXACT_SILENCE_PCM_Reader(pcm_frames))
+            self.assertFalse(reader.close_called)
+            track = self.audio_class.from_pcm(f.name,
+                                              reader,
+                                              total_pcm_frames=pcm_frames)
+            self.assertTrue(reader.close_called)
 
     @FORMAT_AUDIOFILE
     def test_convert_progress(self):

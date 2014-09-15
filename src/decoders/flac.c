@@ -109,6 +109,9 @@ FlacDecoder_close(decoders_FlacDecoder* self,
       generate ValueErrors*/
     self->closed = 1;
 
+    /*close internal stream itself*/
+    self->bitstream->close_internal_stream(self->bitstream);
+
     Py_INCREF(Py_None);
     return Py_None;
 }

@@ -3092,8 +3092,13 @@ int bw_write_python(PyObject* writer,
                     unsigned buffer_size)
 {
     while (buf_window_size(buffer) >= buffer_size) {
+#if PY_MAJOR_VERSION >= 3
+        char format[] = "y#";
+#else
+        char format[] = "s#";
+#endif
         PyObject* write_result =
-            PyObject_CallMethod(writer, "write", "s#",
+            PyObject_CallMethod(writer, "write", format,
                                 buf_window_start(buffer),
                                 buffer_size);
         if (write_result != NULL) {

@@ -45,33 +45,33 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         AudioFile.__init__(self, filename)
 
         try:
-            f = open(filename, "rb")
-            skip_id3v2_comment(f)
+            with open(filename, "rb") as f:
+                skip_id3v2_comment(f)
 
-            from audiotools.bitstream import BitstreamReader
-            from audiotools.text import (ERR_TTA_INVALID_SIGNATURE,
-                                         ERR_TTA_INVALID_FORMAT)
+                from audiotools.bitstream import BitstreamReader
+                from audiotools.text import (ERR_TTA_INVALID_SIGNATURE,
+                                             ERR_TTA_INVALID_FORMAT)
 
-            reader = BitstreamReader(f, True)
+                reader = BitstreamReader(f, True)
 
-            (signature,
-             format_,
-             self.__channels__,
-             self.__bits_per_sample__,
-             self.__sample_rate__,
-             self.__total_pcm_frames__) = reader.parse(
-                "4b 16u 16u 16u 32u 32u 32p")
+                (signature,
+                 format_,
+                 self.__channels__,
+                 self.__bits_per_sample__,
+                 self.__sample_rate__,
+                 self.__total_pcm_frames__) = reader.parse(
+                    "4b 16u 16u 16u 32u 32u 32p")
 
-            if (signature != "TTA1"):
-                raise InvalidTTA(ERR_TTA_INVALID_SIGNATURE)
-            elif (format_ != 1):
-                raise InvalidTTA(ERR_TTA_INVALID_FORMAT)
+                if (signature != b"TTA1"):
+                    raise InvalidTTA(ERR_TTA_INVALID_SIGNATURE)
+                elif (format_ != 1):
+                    raise InvalidTTA(ERR_TTA_INVALID_FORMAT)
 
-            self.__total_tta_frames__ = div_ceil(
-                self.__total_pcm_frames__ * 245,
-                self.__sample_rate__ * 256)
-            self.__frame_lengths__ = list(reader.parse(
-                "%d* 32u" % (self.__total_tta_frames__) + "32p"))
+                self.__total_tta_frames__ = div_ceil(
+                    self.__total_pcm_frames__ * 245,
+                    self.__sample_rate__ * 256)
+                self.__frame_lengths__ = list(reader.parse(
+                    "%d* 32u" % (self.__total_tta_frames__) + "32p"))
         except IOError as msg:
             raise InvalidTTA(str(msg))
 
@@ -208,6 +208,9 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
 
+            # close pcmreader for further reading
+            counter.close()
+
             # ensure written number of PCM frames
             # matches total_pcm_frames
             if (counter.frames_written != total_pcm_frames):
@@ -236,6 +239,9 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 file.close()
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
+
+            # close pcmreader for further reading
+            counter.close()
 
             # write header to disk
             write_header(writer,
@@ -279,14 +285,14 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         # first, attempt to find APEv2 comment at end of file
         f.seek(-32, 2)
-        if (f.read(10) == "APETAGEX\xd0\x07"):
+        if (f.read(10) == b"APETAGEX\xd0\x07"):
             from audiotools import ApeTag
 
             return ApeTag.read(f)
         else:
             # then, look for ID3v2 comment at beginning of file
             f.seek(0, 0)
-            if (f.read(3) == "ID3"):
+            if (f.read(3) == b"ID3"):
                 from audiotools.id3 import read_id3v2_comment
                 try:
                     id3v2 = read_id3v2_comment(self.filename)
@@ -298,7 +304,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
             # and look for ID3v1 comment at end of file
             try:
                 f.seek(-128, 2)
-                if (f.read(3) == "TAG"):
+                if (f.read(3) == b"TAG"):
                     from audiotools.id3v1 import ID3v1Comment
                     try:
                         id3v1 = ID3v1Comment.parse(f)
@@ -668,7 +674,7 @@ def write_header(writer,
     crc = CRC32()
     writer.add_callback(crc.update)
     writer.build("4b 16u 16u 16u 32u 32u",
-                 ["TTA1",
+                 [b"TTA1",
                   1,
                   channels,
                   bits_per_sample,

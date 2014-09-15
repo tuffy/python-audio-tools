@@ -165,22 +165,15 @@ class cd2track(UtilTest):
 
     @UTIL_CD2TRACK
     def tearDown(self):
+        from shutil import rmtree
+
         os.chdir(self.original_dir)
 
-        for f in os.listdir(self.input_dir):
-            os.unlink(os.path.join(self.input_dir, f))
-        os.rmdir(self.input_dir)
-
-        for f in os.listdir(self.output_dir):
-            os.unlink(os.path.join(self.output_dir, f))
-        os.rmdir(self.output_dir)
-
-        for f in os.listdir(self.cwd_dir):
-            os.unlink(os.path.join(self.cwd_dir, f))
-        os.rmdir(self.cwd_dir)
-
-        os.chmod(self.unwritable_dir, 0700)
-        os.rmdir(self.unwritable_dir)
+        rmtree(self.input_dir)
+        rmtree(self.output_dir)
+        rmtree(self.cwd_dir)
+        os.chmod(self.unwritable_dir, 0o700)
+        rmtree(self.unwritable_dir)
 
     @UTIL_CD2TRACK
     def test_version(self):
@@ -1522,7 +1515,7 @@ class track2track(UtilTest):
 
         self.output_file.close()
 
-        os.chmod(self.unwritable_dir, 0700)
+        os.chmod(self.unwritable_dir, 0o700)
         rmtree(self.unwritable_dir)
 
     def clean_output_dirs(self):
@@ -4566,7 +4559,7 @@ class tracksplit(UtilTest):
 
         rmtree(self.cwd_dir)
 
-        os.chmod(self.unwritable_dir, 0700)
+        os.chmod(self.unwritable_dir, 0o700)
         os.rmdir(self.unwritable_dir)
 
     def clean_output_dirs(self):
@@ -5500,7 +5493,7 @@ class tracktag_errors(UtilTest):
             self.__check_error__(ERR_TRACKTAG_COMMENT_NOT_UTF8 %
                                  (audiotools.Filename(temp_comment.name),))
 
-            os.chmod(temp_track_file.name, temp_track_stat & 07555)
+            os.chmod(temp_track_file.name, temp_track_stat & 0o7555)
             self.assertEqual(
                 self.__run_app__(["tracktag", "--name=Bar",
                                  temp_track.filename]), 1)

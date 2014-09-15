@@ -220,6 +220,8 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                                      wave_footer=footer,
                                      **cls.__options__[compression])
 
+            counter.close()
+
             data_bytes_written = counter.bytes_written()
 
             # ensure output data size matches the "data" chunk's size
@@ -240,9 +242,11 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
             return cls(filename)
         except (ValueError, IOError) as msg:
+            counter.close()
             cls.__unlink__(filename)
             raise EncodingError(str(msg))
         except Exception as err:
+            counter.close()
             cls.__unlink__(filename)
             raise err
 
@@ -479,10 +483,13 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                 total_pcm_frames=(total_pcm_frames if
                                   total_pcm_frames is not None else 0),
                 **cls.__options__[compression])
+            counter.close()
         except (ValueError, IOError) as msg:
+            counter.close()
             cls.__unlink__(filename)
             raise EncodingError(str(msg))
         except Exception:
+            counter.close()
             cls.__unlink__(filename)
             raise
 

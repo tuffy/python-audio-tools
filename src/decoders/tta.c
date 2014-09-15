@@ -337,6 +337,8 @@ TTADecoder_close(decoders_TTADecoder* self, PyObject *args)
 {
     self->closed = 1;
 
+    self->bitstream->close_internal_stream(self->bitstream);
+
     Py_INCREF(Py_None);
     return Py_None;
 }

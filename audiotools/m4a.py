@@ -183,7 +183,7 @@ class M4ATaggedAudio(object):
 
         # first, attempt to resize the one inside the "meta" atom
         if ((old_metadata is not None) and
-            metadata.has_child("free") and
+            metadata.has_child(b"free") and
             ((metadata.size() - metadata[b"free"].size()) <=
              old_metadata.size())):
 
@@ -324,8 +324,9 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         # first, fetch the mdia atom
         # which is the parent of both the mp4a and mdhd atoms
         try:
-            mdia = get_m4a_atom(BitstreamReader(open(filename, 'rb'), 0),
-                                b"moov", b"trak", b"mdia")[1]
+            with open(filename, "rb") as f:
+                mdia = get_m4a_atom(BitstreamReader(f, 0),
+                                    b"moov", b"trak", b"mdia")[1]
         except IOError:
             from audiotools.text import ERR_M4A_IOERROR
             raise InvalidM4A(ERR_M4A_IOERROR)
@@ -704,8 +705,9 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         # first, fetch the mdia atom
         # which is the parent of both the alac and mdhd atoms
         try:
-            mdia = get_m4a_atom(BitstreamReader(open(filename, 'rb'), 0),
-                                b"moov", b"trak", b"mdia")[1]
+            with open(filename, "rb") as f:
+                mdia = get_m4a_atom(BitstreamReader(f, 0),
+                                    b"moov", b"trak", b"mdia")[1]
         except IOError:
             from audiotools.text import ERR_ALAC_IOERROR
             raise InvalidALAC(ERR_ALAC_IOERROR)
@@ -923,6 +925,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         if (pcmreader.bits_per_sample not in (16, 24)):
             from audiotools import UnsupportedBitsPerSample
 
+            pcmreader.close()
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
         if (int(pcmreader.channel_mask) not in
@@ -938,6 +941,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
              0x0000)):  # undefined
             from audiotools import UnsupportedChannelMask
 
+            pcmreader.close()
             raise UnsupportedChannelMask(filename,
                                          int(pcmreader.channel_mask))
 
@@ -951,7 +955,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
         ftyp = cls.__ftyp_atom__()
         free = cls.__free_atom__(0x1000)
-        create_date = long(time.time()) + 2082844800
+        create_date = int(time.time()) + 2082844800
 
         if (total_pcm_frames is not None):
             total_alac_frames = ((total_pcm_frames // block_size) +
@@ -1004,6 +1008,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
 
+            pcmreader.close()
+
             if (actual_pcm_frames != total_pcm_frames):
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
                 m4a_writer.unmark(1)
@@ -1055,6 +1061,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                         maximum_k=cls.MAXIMUM_K)
             except (IOError, ValueError) as err:
                 raise EncodingError(str(err))
+
+            pcmreader.close()
 
             mdat_size = 8 + sum(frame_byte_sizes)
 
@@ -1362,7 +1370,10 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                     [M4A_ILST_Leaf_Atom(
                         b'\xa9too',
                         [M4A_ILST_Unicode_Data_Atom(
-                            0, 1, b"Python Audio Tools %s" % (VERSION))])]),
+                            0,
+                            1,
+                            (u"Python Audio Tools %s" %
+                             (VERSION)).encode("ascii"))])]),
                 M4A_FREE_Atom(1024)])
 
     @classmethod

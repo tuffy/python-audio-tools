@@ -219,6 +219,7 @@ class OpusAudio(VorbisAudio):
                   0x70f,    # FL, FC, FR, SL, SR, BC, LFE
                   0x63f))):  # FL, FC, FR, SL, SR, BL, BR, LFE
                 from audiotools import UnsupportedChannelMask
+                pcmreader.close()
                 raise UnsupportedChannelMask(filename, channel_mask)
 
         try:
@@ -236,6 +237,8 @@ class OpusAudio(VorbisAudio):
                         quality=int(compression),
                         original_sample_rate=pcmreader.sample_rate)
 
+            pcmreader.close()
+
             if ((total_pcm_frames is not None) and
                 (total_pcm_frames != pcmreader.frames_written)):
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
@@ -244,6 +247,7 @@ class OpusAudio(VorbisAudio):
 
             return cls(filename)
         except (ValueError, IOError) as err:
+            pcmreader.close()
             cls.__unlink__(filename)
             raise EncodingError(err)
 

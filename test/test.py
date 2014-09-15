@@ -19,7 +19,6 @@
 
 import unittest
 import audiotools
-import ConfigParser
 import tempfile
 import os
 import os.path
@@ -28,8 +27,12 @@ import random
 import decimal
 import test_streams
 import subprocess
+try:
+    from configparser import SafeConfigParser
+except ImportError:
+    from ConfigParser import SafeConfigParser
 
-parser = ConfigParser.SafeConfigParser()
+parser = SafeConfigParser()
 parser.read("test.cfg")
 
 
@@ -79,8 +82,9 @@ class RANDOM_PCM_Reader:
 
         self.total_frames = length * sample_rate
         self.original_frames = self.total_frames
+        self.read = self.read_opened
 
-    def read(self, pcm_frames):
+    def read_opened(self, pcm_frames):
         if (self.total_frames > 0):
             frames_to_read = min(pcm_frames, self.total_frames)
             frame = audiotools.pcm.FrameList(
@@ -97,13 +101,14 @@ class RANDOM_PCM_Reader:
             return audiotools.pcm.FrameList(
                 "", self.channels, self.bits_per_sample, True, True)
 
-    def read_error(self, pcm_frames):
+    def read_closed(self, pcm_frames):
         raise ValueError("unable to read closed stream")
 
     def close(self):
-        self.read = self.read_error
+        self.read = self.read_closed
 
     def reset(self):
+        self.read = self.read_opened
         self.total_frames = self.original_frames
 
 
@@ -154,7 +159,7 @@ class EXACT_RANDOM_PCM_Reader(RANDOM_PCM_Reader):
 
         self.single_pcm_frame = audiotools.pcm.from_list(
             [1] * channels, channels, bits_per_sample, True)
-
+        self.read = self.read_opened
 
 class MD5_Reader:
     def __init__(self, pcmreader):

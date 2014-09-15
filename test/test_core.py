@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import sys
 import unittest
 import audiotools
 import struct
@@ -64,7 +65,7 @@ class PCMReader(unittest.TestCase):
                 for signed in [True, False]:
                     reader = audiotools.PCMReader(
                         BytesIO(
-                            from_list(range(-5, 5),
+                            from_list(list(range(-5, 5)),
                                       1,
                                       bps,
                                       True).to_bytes(big_endian, signed)),
@@ -83,7 +84,7 @@ class PCMReader(unittest.TestCase):
                     # ensure the FrameList is read correctly
                     f = reader.read((bps // 8) * 10)
                     self.assertEqual(len(f), 10)
-                    self.assertEqual(list(f), range(-5, 5))
+                    self.assertEqual(list(f), list(range(-5, 5)))
 
                     # ensure subsequent reads return empty FrameLists
                     for i in range(10):
@@ -176,7 +177,7 @@ class PCMCat(unittest.TestCase):
             samples.extend(list(f))
             f = reader.read(2)
 
-        self.assertEqual(samples, range(-15, 15))
+        self.assertEqual(samples, list(range(-15, 15)))
 
         # ensure subsequent reads return empty FrameLists
         for i in range(10):
@@ -211,7 +212,7 @@ class BufferedPCMReader(unittest.TestCase):
 
         # ensure our reader is generating randomly-sized frames
         reader = Variable_Reader(EXACT_BLANK_PCM_Reader(4096 * 100))
-        self.assert_(len(set(frame_lengths(reader, 4096))) > 1)
+        self.assertGreater(len(set(frame_lengths(reader, 4096))), 1)
 
         # then, ensure that wrapped our reader in a BufferedPCMReader
         # results in equal-sized frames
@@ -284,7 +285,10 @@ class LimitedPCMReader(unittest.TestCase):
 
         main_reader = audiotools.PCMReader(
             BytesIO(
-                from_list(range(-50, 50), 1, 16, True).to_bytes(True, True)),
+                from_list(list(range(-50, 50)),
+                          1,
+                          16,
+                          True).to_bytes(True, True)),
             sample_rate=44100,
             channels=1,
             channel_mask=0x4,
@@ -321,7 +325,7 @@ class LimitedPCMReader(unittest.TestCase):
 
             self.assertRaises(ValueError, reader.read, 2)
 
-        self.assertEqual(total_samples, range(-50, 50))
+        self.assertEqual(total_samples, list(range(-50, 50)))
 
         # ensure subsequent reads of main reader return empty FrameLists
         for i in range(10):
@@ -343,7 +347,7 @@ class PCMReaderWindow(unittest.TestCase):
             for pcm_frames in range(5, 15):
                 main_reader = audiotools.PCMReader(
                     BytesIO(
-                        from_list(range(1, 11),
+                        from_list(list(range(1, 11)),
                                   1,
                                   16,
                                   True).to_bytes(True, True)),
@@ -376,7 +380,7 @@ class PCMReaderWindow(unittest.TestCase):
 
                 self.assertEqual(len(samples), pcm_frames)
 
-                target_samples = range(1, 11)
+                target_samples = list(range(1, 11))
                 if (initial_offset < 0):
                     # negative offsets pad window with 0s
                     target_samples = (([0] * abs(initial_offset)) +
@@ -527,7 +531,10 @@ class CDDA(unittest.TestCase):
             remaining_offset = offset - cdda.seek(offset)
             self.reader.reset()
             self.assertEqual(audiotools.pcm_frame_cmp(
-                audiotools.PCMReaderWindow(cdda, remaining_offset, length),
+                audiotools.PCMReaderWindow(cdda,
+                                           remaining_offset,
+                                           length,
+                                           False),
                 audiotools.PCMReaderWindow(self.reader, offset, length)),
                 None)
 
@@ -542,21 +549,21 @@ class ChannelMask(unittest.TestCase):
     @LIB_CORE
     def test_mask(self):
         mask = audiotools.ChannelMask.from_fields()
-        self.assert_(not mask.defined())
-        self.assert_(mask.undefined())
+        self.assertFalse(mask.defined())
+        self.assertTrue(mask.undefined())
         self.assertEqual(len(mask), 0)
         self.assertEqual(set([]), set(mask.channels()))
         mask2 = audiotools.ChannelMask(int(mask))
         self.assertEqual(mask, mask2)
 
-        mask_fields = audiotools.ChannelMask.SPEAKER_TO_MASK.keys()
+        mask_fields = list(audiotools.ChannelMask.SPEAKER_TO_MASK.keys())
         for count in range(1, len(mask_fields) + 1):
             for fields in Combinations(mask_fields, count):
                 # build a mask from fields
                 mask = audiotools.ChannelMask.from_fields(
                     **dict([(field, True) for field in fields]))
-                self.assert_(mask.defined())
-                self.assert_(not mask.undefined())
+                self.assertTrue(mask.defined())
+                self.assertFalse(mask.undefined())
                 self.assertEqual(len(mask), len(fields))
                 self.assertEqual(set(fields), set(mask.channels()))
                 mask2 = audiotools.ChannelMask(int(mask))
@@ -586,28 +593,28 @@ class Filename(unittest.TestCase):
         file4 = audiotools.Filename(os.path.join(self.temp_dir, "./file3"))
         file5 = audiotools.Filename(os.path.join(self.temp_dir, "file4"))
 
-        self.assert_(file1.disk_file())
-        self.assert_(file2.disk_file())
+        self.assertTrue(file1.disk_file())
+        self.assertTrue(file2.disk_file())
         self.assertNotEqual(str(file1), str(file2))
-        self.assertNotEqual(unicode(file1), unicode(file2))
+        self.assertNotEqual(u"%s" % (file1,), u"%s" % (file2,))
         self.assertEqual(file1, file2)
         self.assertEqual(hash(file1), hash(file2))
 
-        self.assert_(not file3.disk_file())
+        self.assertFalse(file3.disk_file())
         self.assertNotEqual(str(file1), str(file3))
-        self.assertNotEqual(unicode(file1), unicode(file3))
+        self.assertNotEqual(u"%s" % (file1,), u"%s" % (file3,))
         self.assertNotEqual(file1, file3)
         self.assertNotEqual(hash(file1), hash(file3))
 
-        self.assert_(not file4.disk_file())
+        self.assertFalse(file4.disk_file())
         self.assertEqual(str(file3), str(file4))
-        self.assertEqual(unicode(file3), unicode(file4))
+        self.assertEqual(u"%s" % (file3,), u"%s" % (file4,))
         self.assertEqual(file3, file4)
         self.assertEqual(hash(file3), hash(file4))
 
-        self.assert_(not file5.disk_file())
+        self.assertFalse(file5.disk_file())
         self.assertNotEqual(str(file3), str(file5))
-        self.assertNotEqual(unicode(file3), unicode(file5))
+        self.assertNotEqual(u"%s" % (file3,), u"%s" % (file5,))
         self.assertNotEqual(file3, file5)
         self.assertNotEqual(hash(file3), hash(file5))
 
@@ -615,17 +622,14 @@ class Filename(unittest.TestCase):
 class ImageJPEG(unittest.TestCase):
     @LIB_CORE
     def setUp(self):
-        self.image = open("imagejpeg_setup.jpg", "rb").read()
+        with open("imagejpeg_setup.jpg", "rb") as f:
+            self.image = f.read()
         self.md5sum = "f8c43ff52c53aff1625979de47a04cec"
         self.width = 12
         self.height = 21
         self.bpp = 24
         self.colors = 0
         self.mime_type = "image/jpeg"
-
-    @LIB_CORE
-    def tearDown(self):
-        pass
 
     @LIB_CORE
     def test_checksum(self):
@@ -647,7 +651,8 @@ class ImageJPEG(unittest.TestCase):
 class ImagePNG(ImageJPEG):
     @LIB_CORE
     def setUp(self):
-        self.image = open("imagepng_setup.png", "rb").read()
+        with open("imagepng_setup.png", "rb") as f:
+            self.image = f.read()
         self.md5sum = "31c4c5224327d5869aa6059bcda84d2e"
         self.width = 12
         self.height = 21
@@ -695,7 +700,8 @@ class ImageCover3(ImageJPEG):
 class ImageGIF(ImageJPEG):
     @LIB_CORE
     def setUp(self):
-        self.image = open("imagegif_setup.gif", "rb").read()
+        with open("imagegif_setup.gif", "rb") as f:
+            self.image = f.read()
         self.md5sum = "1d4d36801b53c41d01086cbf9d0cb471"
         self.width = 12
         self.height = 21
@@ -707,7 +713,8 @@ class ImageGIF(ImageJPEG):
 class ImageBMP(ImageJPEG):
     @LIB_CORE
     def setUp(self):
-        self.image = open("imagebmp_setup.bmp", "rb").read()
+        with open("imagebmp_setup.bmp", "rb") as f:
+            self.image = f.read()
         self.md5sum = "cb6ef2f7a458ab1d315c329f72ec9898"
         self.width = 12
         self.height = 21
@@ -719,7 +726,8 @@ class ImageBMP(ImageJPEG):
 class ImageTIFF(ImageJPEG):
     @LIB_CORE
     def setUp(self):
-        self.image = open("imagetiff_setup.tiff", "rb").read()
+        with open("imagetiff_setup.tiff", "rb") as f:
+            self.image = f.read()
         self.md5sum = "192ceb086d217421a5f151cc0afa3f05"
         self.width = 12
         self.height = 21
@@ -731,7 +739,8 @@ class ImageTIFF(ImageJPEG):
 class ImageHugeBMP(ImageJPEG):
     @LIB_CORE
     def setUp(self):
-        self.image = HUGE_BMP.decode('bz2')
+        from bz2 import decompress
+        self.image = decompress(HUGE_BMP)
         self.md5sum = "558d875195829de829059fd4952fed46"
         self.width = 2366
         self.height = 2366
@@ -945,19 +954,21 @@ class Test_open(unittest.TestCase):
         self.dummy1 = tempfile.NamedTemporaryFile()
         self.dummy2 = tempfile.NamedTemporaryFile()
         self.dummy3 = tempfile.NamedTemporaryFile()
-        self.dummy1.write("12345" * 1000)
+        self.dummy1.write(b"12345" * 1000)
         self.dummy1.flush()
-        self.dummy2.write("54321" * 1000)
+        self.dummy2.write(b"54321" * 1000)
         self.dummy2.flush()
 
-        data = open("flac-allframes.flac", "rb").read()
-        self.dummy3.write(data[0:0x4] + chr(0xFF) + data[0x5:])
+        with open("flac-allframes.flac", "rb") as f:
+            data = f.read()
+        self.dummy3.write(data[0:0x4] + b"\xFF" + data[0x5:])
         self.dummy3.flush()
 
     @LIB_CORE
     def tearDown(self):
         self.dummy1.close()
         self.dummy2.close()
+        self.dummy3.close()
 
     @LIB_CORE
     def test_open(self):
@@ -983,7 +994,7 @@ class Test_open(unittest.TestCase):
                               audiotools.open,
                               self.dummy1.name)
         finally:
-            os.chmod(self.dummy1.name, 0600)
+            os.chmod(self.dummy1.name, 0o600)
 
         self.assertRaises(audiotools.InvalidFile,
                           audiotools.open,
@@ -1071,7 +1082,7 @@ class Test_open_files(unittest.TestCase):
         track3 = self.make_track(self.dir, 3)
         dummy1_name = os.path.join(self.dir, "4" + self.suffix)
         dummy1 = open(dummy1_name, "wb")
-        dummy1.write("Hello World")
+        dummy1.write(b"Hello World")
         dummy1.close()
 
         tracks = list(audiotools.open_files([track1.filename, track2.filename,
@@ -1112,7 +1123,7 @@ class Test_sorted_tracks(unittest.TestCase):
     def __test_order__(self, sorted_tracks):
         from random import shuffle
 
-        self.assert_(len(sorted_tracks) > 1)
+        self.assertGreater(len(sorted_tracks), 1)
 
         shuffled_tracks = sorted_tracks[:]
         while ([f.filename for f in shuffled_tracks] ==
@@ -1194,13 +1205,13 @@ class Test_sorted_tracks(unittest.TestCase):
 class Test_pcm_frame_cmp(unittest.TestCase):
     @LIB_CORE
     def test_pcm_frame_cmp(self):
-        self.assert_(audiotools.pcm_frame_cmp(
+        self.assertIsNone(audiotools.pcm_frame_cmp(
             test_streams.Sine16_Stereo(44100, 44100,
                                        441.0, 0.50,
                                        4410.0, 0.49, 1.0),
             test_streams.Sine16_Stereo(44100, 44100,
                                        441.0, 0.50,
-                                       4410.0, 0.49, 1.0)) is None)
+                                       4410.0, 0.49, 1.0)))
         self.assertEqual(audiotools.pcm_frame_cmp(BLANK_PCM_Reader(1),
                                                   RANDOM_PCM_Reader(1)), 0)
 
@@ -1224,23 +1235,42 @@ class Test_pcm_frame_cmp(unittest.TestCase):
 
 
 class TestFrameList(unittest.TestCase):
-    @classmethod
-    def Bits8(cls):
-        for i in range(0, 0xFF + 1):
-            yield chr(i)
+    if (sys.version_info[0] >= 3):
+        @classmethod
+        def Bits8(cls):
+            for i in range(0, 0xFF + 1):
+                yield bytes([i])
 
-    @classmethod
-    def Bits16(cls):
-        for i in range(0, 0xFF + 1):
-            for j in range(0, 0xFF + 1):
-                yield chr(i) + chr(j)
+        @classmethod
+        def Bits16(cls):
+            for i in range(0, 0xFF + 1):
+                for j in range(0, 0xFF + 1):
+                    yield bytes([i, j])
 
-    @classmethod
-    def Bits24(cls):
-        for i in range(0, 0xFF + 1):
-            for j in range(0, 0xFF + 1):
-                for k in range(0, 0xFF + 1):
-                    yield chr(i) + chr(j) + chr(k)
+        @classmethod
+        def Bits24(cls):
+            for i in range(0, 0xFF + 1):
+                for j in range(0, 0xFF + 1):
+                    for k in range(0, 0xFF + 1):
+                        yield bytes([i, j, k])
+    else:
+        @classmethod
+        def Bits8(cls):
+            for i in range(0, 0xFF + 1):
+                yield chr(i)
+
+        @classmethod
+        def Bits16(cls):
+            for i in range(0, 0xFF + 1):
+                for j in range(0, 0xFF + 1):
+                    yield chr(i) + chr(j)
+
+        @classmethod
+        def Bits24(cls):
+            for i in range(0, 0xFF + 1):
+                for j in range(0, 0xFF + 1):
+                    for k in range(0, 0xFF + 1):
+                        yield chr(i) + chr(j) + chr(k)
 
     @LIB_CORE
     def test_basics(self):
@@ -1295,13 +1325,13 @@ class TestFrameList(unittest.TestCase):
         for bps in [8, 16, 24]:
             self.assertEqual(list(audiotools.pcm.from_list(
                 range(-40, 40), 1, bps, True)),
-                range(-40, 40))
+                list(range(-40, 40)))
 
         for bps in [8, 16, 24]:
             self.assertEqual(list(audiotools.pcm.from_list(
                 range((1 << (bps - 1)) - 40,
                       (1 << (bps - 1)) + 40), 1, bps, False)),
-                range(-40, 40))
+                list(range(-40, 40)))
 
         for channels in range(1, 9):
             for bps in [8, 16, 24]:
@@ -1329,10 +1359,10 @@ class TestFrameList(unittest.TestCase):
 
         self.assertEqual(
             f.to_bytes(True, True),
-            '\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f')
+            b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f')
         self.assertEqual(
             f.to_bytes(False, True),
-            '\x01\x00\x03\x02\x05\x04\x07\x06\t\x08\x0b\n\r\x0c\x0f\x0e')
+            b'\x01\x00\x03\x02\x05\x04\x07\x06\t\x08\x0b\n\r\x0c\x0f\x0e')
         # FIXME - check signed
 
         self.assertEqual(list(f),
@@ -1359,54 +1389,62 @@ class TestFrameList(unittest.TestCase):
                           [0x0001, 0x0203, 0x0405, 0x0607,
                            0x0809, 0x0A0B, 0x0C0D, 0x0E0F], 2, 15, True)
 
-        self.assertRaises(TypeError,
-                          audiotools.pcm.from_frames,
-                          [audiotools.pcm.from_list(range(2), 2, 16, False),
-                           range(2)])
+        self.assertRaises(
+            TypeError,
+            audiotools.pcm.from_frames,
+            [audiotools.pcm.from_list(list(range(2)), 2, 16, False),
+             list(range(2))])
 
-        self.assertRaises(ValueError,
-                          audiotools.pcm.from_frames,
-                          [audiotools.pcm.from_list(range(2), 2, 16, False),
-                           audiotools.pcm.from_list(range(4), 2, 16, False)])
+        self.assertRaises(
+            ValueError,
+            audiotools.pcm.from_frames,
+            [audiotools.pcm.from_list(list(range(2)), 2, 16, False),
+             audiotools.pcm.from_list(list(range(4)), 2, 16, False)])
 
-        self.assertRaises(ValueError,
-                          audiotools.pcm.from_frames,
-                          [audiotools.pcm.from_list(range(2), 2, 16, False),
-                           audiotools.pcm.from_list(range(2), 1, 16, False)])
+        self.assertRaises(
+            ValueError,
+            audiotools.pcm.from_frames,
+            [audiotools.pcm.from_list(list(range(2)), 2, 16, False),
+             audiotools.pcm.from_list(list(range(2)), 1, 16, False)])
 
-        self.assertRaises(ValueError,
-                          audiotools.pcm.from_frames,
-                          [audiotools.pcm.from_list(range(2), 2, 16, False),
-                           audiotools.pcm.from_list(range(2), 2, 8, False)])
+        self.assertRaises(
+            ValueError,
+            audiotools.pcm.from_frames,
+            [audiotools.pcm.from_list(list(range(2)), 2, 16, False),
+             audiotools.pcm.from_list(list(range(2)), 2, 8, False)])
 
         self.assertEqual(list(audiotools.pcm.from_frames(
-            [audiotools.pcm.from_list(range(2), 2, 16, True),
-             audiotools.pcm.from_list(range(2, 4), 2, 16, True)])),
-            range(4))
+            [audiotools.pcm.from_list(list(range(2)), 2, 16, True),
+             audiotools.pcm.from_list(list(range(2, 4)), 2, 16, True)])),
+            list(range(4)))
 
-        self.assertRaises(TypeError,
-                          audiotools.pcm.from_channels,
-                          [audiotools.pcm.from_list(range(2), 1, 16, False),
-                           range(2)])
+        self.assertRaises(
+            TypeError,
+            audiotools.pcm.from_channels,
+            [audiotools.pcm.from_list(list(range(2)), 1, 16, False),
+             list(range(2))])
 
-        self.assertRaises(ValueError,
-                          audiotools.pcm.from_channels,
-                          [audiotools.pcm.from_list(range(1), 1, 16, False),
-                           audiotools.pcm.from_list(range(2), 2, 16, False)])
+        self.assertRaises(
+            ValueError,
+            audiotools.pcm.from_channels,
+            [audiotools.pcm.from_list(list(range(1)), 1, 16, False),
+             audiotools.pcm.from_list(list(range(2)), 2, 16, False)])
 
-        self.assertRaises(ValueError,
-                          audiotools.pcm.from_channels,
-                          [audiotools.pcm.from_list(range(2), 1, 16, False),
-                           audiotools.pcm.from_list(range(3), 1, 16, False)])
+        self.assertRaises(
+            ValueError,
+            audiotools.pcm.from_channels,
+            [audiotools.pcm.from_list(list(range(2)), 1, 16, False),
+             audiotools.pcm.from_list(list(range(3)), 1, 16, False)])
 
-        self.assertRaises(ValueError,
-                          audiotools.pcm.from_channels,
-                          [audiotools.pcm.from_list(range(2), 1, 16, False),
-                           audiotools.pcm.from_list(range(2), 1, 8, False)])
+        self.assertRaises(
+            ValueError,
+            audiotools.pcm.from_channels,
+            [audiotools.pcm.from_list(list(range(2)), 1, 16, False),
+             audiotools.pcm.from_list(list(range(2)), 1, 8, False)])
 
         self.assertEqual(list(audiotools.pcm.from_channels(
-            [audiotools.pcm.from_list(range(2), 1, 16, True),
-             audiotools.pcm.from_list(range(2, 4), 1, 16, True)])),
+            [audiotools.pcm.from_list(list(range(2)), 1, 16, True),
+             audiotools.pcm.from_list(list(range(2, 4)), 1, 16, True)])),
             [0, 2, 1, 3])
 
         self.assertRaises(IndexError, f.split, -1)
@@ -1445,34 +1483,39 @@ class TestFrameList(unittest.TestCase):
 
         import operator
 
-        f1 = audiotools.pcm.from_list(range(10), 2, 16, False)
+        f1 = audiotools.pcm.from_list(list(range(10)), 2, 16, False)
         self.assertRaises(TypeError, operator.concat, f1, [1, 2, 3])
-        f2 = audiotools.pcm.from_list(range(10, 20), 1, 16, False)
+        f2 = audiotools.pcm.from_list(list(range(10, 20)), 1, 16, False)
         self.assertRaises(ValueError, operator.concat, f1, f2)
-        f2 = audiotools.pcm.from_list(range(10, 20), 2, 8, False)
+        f2 = audiotools.pcm.from_list(list(range(10, 20)), 2, 8, False)
         self.assertRaises(ValueError, operator.concat, f1, f2)
 
-        f1 = audiotools.pcm.from_list(range(10), 2, 16, False)
+        f1 = audiotools.pcm.from_list(list(range(10)), 2, 16, False)
         self.assertEqual(f1, audiotools.pcm.from_list(range(10), 2, 16, False))
         self.assertNotEqual(f1, 10)
-        self.assertNotEqual(f1, range(10))
-        self.assertNotEqual(f1,
-                            audiotools.pcm.from_list(range(10), 1, 16, False))
-        self.assertNotEqual(f1,
-                            audiotools.pcm.from_list(range(10), 2, 8, False))
-        self.assertNotEqual(f1,
-                            audiotools.pcm.from_list(range(10), 1, 8, False))
-        self.assertNotEqual(f1,
-                            audiotools.pcm.from_list(range(8), 2, 16, False))
-        self.assertNotEqual(f1,
-                            audiotools.pcm.from_list(range(12), 2, 8, False))
+        self.assertNotEqual(f1, list(range(10)))
+        self.assertNotEqual(
+            f1,
+            audiotools.pcm.from_list(list(range(10)), 1, 16, False))
+        self.assertNotEqual(
+            f1,
+            audiotools.pcm.from_list(list(range(10)), 2, 8, False))
+        self.assertNotEqual(
+            f1,
+            audiotools.pcm.from_list(list(range(10)), 1, 8, False))
+        self.assertNotEqual(
+            f1,
+            audiotools.pcm.from_list(list(range(8)), 2, 16, False))
+        self.assertNotEqual(
+            f1,
+            audiotools.pcm.from_list(list(range(12)), 2, 8, False))
 
     @LIB_CORE
     def test_8bit_roundtrip(self):
         import audiotools.pcm
 
-        unsigned_ints = range(0, 0xFF + 1)
-        signed_ints = range(-0x80, 0x7F + 1)
+        unsigned_ints = list(range(0, 0xFF + 1))
+        signed_ints = list(range(-0x80, 0x7F + 1))
 
         # unsigned, big-endian
         self.assertEqual(
@@ -1506,7 +1549,7 @@ class TestFrameList(unittest.TestCase):
     def test_8bit_roundtrip_str(self):
         import audiotools.pcm
 
-        s = "".join(TestFrameList.Bits8())
+        s = b"".join(TestFrameList.Bits8())
 
         # big endian, unsigned
         self.assertEqual(
@@ -1532,8 +1575,8 @@ class TestFrameList(unittest.TestCase):
     def test_16bit_roundtrip(self):
         import audiotools.pcm
 
-        unsigned_ints = range(0, 0xFFFF + 1)
-        signed_ints = range(-0x8000, 0x7FFF + 1)
+        unsigned_ints = list(range(0, 0xFFFF + 1))
+        signed_ints = list(range(-0x8000, 0x7FFF + 1))
 
         # unsigned, big-endian
         self.assertEqual(
@@ -1567,7 +1610,7 @@ class TestFrameList(unittest.TestCase):
     def test_16bit_roundtrip_str(self):
         import audiotools.pcm
 
-        s = "".join(TestFrameList.Bits16())
+        s = b"".join(TestFrameList.Bits16())
 
         # big-endian, unsigned
         self.assertEqual(
@@ -1602,7 +1645,7 @@ class TestFrameList(unittest.TestCase):
         import audiotools.pcm
         from audiotools.bitstream import BitstreamRecorder
 
-        unsigned_values = range(0, 2 ** 24, 1024)
+        unsigned_values = list(range(0, 2 ** 24, 1024))
         unsigned_values.append(2 ** 24 - 1)
 
         #unsigned, big-endian
@@ -1623,7 +1666,7 @@ class TestFrameList(unittest.TestCase):
             [i - (1 << 23) for i in unsigned_values],
             list(framelist))
 
-        signed_values = range(-(2 ** 23), 2 ** 23, 1024)
+        signed_values = list(range(-(2 ** 23), 2 ** 23, 1024))
         signed_values.append(2 ** 23 - 1)
 
         rec = BitstreamRecorder(0)
@@ -1642,7 +1685,7 @@ class TestFrameList(unittest.TestCase):
     def test_24bit_roundtrip_str(self):
         import audiotools.pcm
 
-        s = "".join(TestFrameList.Bits24())
+        s = b"".join(TestFrameList.Bits24())
         # big-endian, unsigned
         self.assertEqual(
             audiotools.pcm.FrameList(s, 1, 24,
@@ -1685,8 +1728,10 @@ class TestFrameList(unittest.TestCase):
                         continue
                     if (track.lossless()):
                         md5sum = md5()
-                        audiotools.transfer_framelist_data(track.to_pcm(),
+                        pcmreader = track.to_pcm()
+                        audiotools.transfer_framelist_data(pcmreader,
                                                            md5sum.update)
+                        pcmreader.close()
                         self.assertEqual(
                             md5sum.hexdigest(), sine.hexdigest(),
                             "MD5 mismatch for %s using %s" % (
@@ -1699,17 +1744,19 @@ class TestFrameList(unittest.TestCase):
                                     track2 = new_format.from_pcm(
                                         temp_track2.name,
                                         track.to_pcm())
-                                    if (track2.lossless()):
-                                        md5sum2 = md5()
-                                        audiotools.transfer_framelist_data(
-                                            track2.to_pcm(),
-                                            md5sum2.update)
-                                        self.assertEqual(
-                                            md5sum.hexdigest(),
-                                            sine.hexdigest(),
-                                            "MD5 mismatch for converting %s from %s to %s" % (repr(sine), track.NAME, track2.NAME))
                                 except audiotools.UnsupportedBitsPerSample:
                                     continue
+                                if (track2.lossless()):
+                                    md5sum2 = md5()
+                                    pcmreader = track2.to_pcm()
+                                    audiotools.transfer_framelist_data(
+                                        pcmreader,
+                                        md5sum2.update)
+                                    pcmreader.close()
+                                    self.assertEqual(
+                                        md5sum.hexdigest(),
+                                        sine.hexdigest(),
+                                        "MD5 mismatch for converting %s from %s to %s" % (repr(sine), track.NAME, track2.NAME))
                             finally:
                                 temp_track2.close()
             finally:
@@ -1754,7 +1801,7 @@ class TestFloatFrameList(unittest.TestCase):
                           audiotools.pcm.FloatFrameList,
                           [1.0, 2.0, "a"], 1)
 
-        f = audiotools.pcm.FloatFrameList(map(float, range(8)), 2)
+        f = audiotools.pcm.FloatFrameList(list(map(float, range(8))), 2)
         self.assertEqual(len(f), 8)
         self.assertEqual(f.channels, 2)
         self.assertEqual(f.frames, 4)
@@ -1827,7 +1874,7 @@ class TestFloatFrameList(unittest.TestCase):
 
         import operator
 
-        f1 = audiotools.pcm.FloatFrameList(map(float, range(10)), 2)
+        f1 = audiotools.pcm.FloatFrameList(list(map(float, range(10))), 2)
         self.assertRaises(TypeError, operator.concat, f1, [1, 2, 3])
 
         # check round-trip from float->int->float
@@ -1840,12 +1887,12 @@ class TestFloatFrameList(unittest.TestCase):
 
         # check round-trip from int->float->int
         for bps in [8, 16, 24]:
-            l = range(0, 1 << bps, 4)
+            l = list(range(0, 1 << bps, 4))
             self.assertEqual(
                 [i - (1 << (bps - 1)) for i in l],
                 list(audiotools.pcm.from_list(l, 1, bps, False).to_float().to_int(bps)))
 
-            l = range(-(1 << (bps - 1)), (1 << (bps - 1)) - 1, 4)
+            l = list(range(-(1 << (bps - 1)), (1 << (bps - 1)) - 1, 4))
             self.assertEqual(
                 l,
                 list(audiotools.pcm.from_list(l, 1, bps, True).to_float().to_int(bps)))
@@ -2039,15 +2086,15 @@ class Bitstream(unittest.TestCase):
         try:
             reader.seek(4, 0)
             reader.read(8)
-            self.assert_(False)
+            self.assertTrue(False)
         except IOError:
-            self.assert_(True)
+            self.assertTrue(True)
         try:
             reader.seek(-1, 0)
             reader.read(8)
-            self.assert_(False)
+            self.assertTrue(False)
         except IOError:
-            self.assert_(True)
+            self.assertTrue(True)
 
         reader.seek(-1, 2)
         self.assertEqual(reader.read(8), 0xC1)
@@ -2062,15 +2109,15 @@ class Bitstream(unittest.TestCase):
         # try:
         #     reader.seek(-5, 2)
         #     reader.read(8)
-        #     self.assert_(False)
+        #     self.assertTrue(False)
         # except IOError:
-        #     self.assert_(True)
+        #     self.assertTrue(True)
         try:
             reader.seek(1, 2)
             reader.read(8)
-            self.assert_(False)
+            self.assertTrue(False)
         except IOError:
-            self.assert_(True)
+            self.assertTrue(True)
 
         reader.seek(0, 0)
         reader.seek(3, 1)
@@ -2088,18 +2135,18 @@ class Bitstream(unittest.TestCase):
             reader.seek(0, 0)
             reader.seek(4, 1)
             reader.read(8)
-            self.assert_(False)
+            self.assertTrue(False)
         except IOError:
-            self.assert_(True)
+            self.assertTrue(True)
         # BytesIO objects allow seeking to before the beginning
         # of the stream, placing the cursor at the beginning
         # try:
         #     reader.seek(0, 0)
         #     reader.seek(-1, 1)
         #     reader.read(8)
-        #     self.assert_(False)
+        #     self.assertTrue(False)
         # except IOError:
-        #     self.assert_(True)
+        #     self.assertTrue(True)
 
         reader.seek(0, 2)
         reader.seek(-1, 1)
@@ -2119,16 +2166,16 @@ class Bitstream(unittest.TestCase):
         #     reader.seek(0, 2)
         #     reader.seek(-5, 1)
         #     reader.read(8)
-        #     self.assert_(False)
+        #     self.assertTrue(False)
         # except IOError:
-        #     self.assert_(True)
+        #     self.assertTrue(True)
         try:
             reader.seek(0, 2)
             reader.seek(1, 1)
             reader.read(8)
-            self.assert_(False)
+            self.assertTrue(False)
         except IOError:
-            self.assert_(True)
+            self.assertTrue(True)
 
         reader.rewind()
         reader.unmark()
@@ -2472,9 +2519,9 @@ class Bitstream(unittest.TestCase):
              2147483648,
              2147483647,
              0,
-             0xFFFFFFFFFFFFFFFFL,
-             9223372036854775808L,
-             9223372036854775807L])
+             0xFFFFFFFFFFFFFFFF,
+             9223372036854775808,
+             9223372036854775807])
 
         # test several big-endian signed edge cases
         self.assertEqual(
@@ -2492,8 +2539,8 @@ class Bitstream(unittest.TestCase):
              2147483647,
              0,
              -1,
-             -9223372036854775808L,
-             9223372036854775807L])
+             -9223372036854775808,
+             9223372036854775807])
 
         # test big-endian read errors
         for s in ["3u", "3s", "3U", "3S", "3p", "3P", "3b"]:
@@ -2555,9 +2602,9 @@ class Bitstream(unittest.TestCase):
              2147483648,
              2147483647,
              0,
-             0xFFFFFFFFFFFFFFFFL,
-             9223372036854775808L,
-             9223372036854775807L])
+             0xFFFFFFFFFFFFFFFF,
+             9223372036854775808,
+             9223372036854775807])
 
         # test several little-endian signed edge cases
         self.assertEqual(
@@ -2575,8 +2622,8 @@ class Bitstream(unittest.TestCase):
              2147483647,
              0,
              -1,
-             -9223372036854775808L,
-             9223372036854775807L])
+             -9223372036854775808,
+             9223372036854775807])
 
         # test little-endian read errors
         for s in ["3u", "3s", "3U", "3S", "3p", "3P", "3b"]:
@@ -2605,9 +2652,9 @@ class Bitstream(unittest.TestCase):
                    2147483648,
                    2147483647,
                    0,
-                   0xFFFFFFFFFFFFFFFFL,
-                   9223372036854775808L,
-                   9223372036854775807L]),
+                   0xFFFFFFFFFFFFFFFF,
+                   9223372036854775808,
+                   9223372036854775807]),
             "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
                               128, 0, 0, 0, 127, 255, 255, 255,
                               0, 0, 0, 0, 0, 0, 0, 0,
@@ -2625,8 +2672,8 @@ class Bitstream(unittest.TestCase):
                    2147483647,
                    0,
                    -1,
-                   -9223372036854775808L,
-                   9223372036854775807L]),
+                   -9223372036854775808,
+                   9223372036854775807]),
             "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
                               128, 0, 0, 0, 127, 255, 255, 255,
                               0, 0, 0, 0, 0, 0, 0, 0,
@@ -2657,9 +2704,9 @@ class Bitstream(unittest.TestCase):
                    2147483648,
                    2147483647,
                    0,
-                   0xFFFFFFFFFFFFFFFFL,
-                   9223372036854775808L,
-                   9223372036854775807L]),
+                   0xFFFFFFFFFFFFFFFF,
+                   9223372036854775808,
+                   9223372036854775807]),
             "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
                               0, 0, 0, 128, 255, 255, 255, 127,
                               0, 0, 0, 0, 0, 0, 0, 0,
@@ -2677,8 +2724,8 @@ class Bitstream(unittest.TestCase):
                    2147483647,
                    0,
                    -1,
-                   -9223372036854775808L,
-                   9223372036854775807L]),
+                   -9223372036854775808,
+                   9223372036854775807]),
             "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
                               0, 0, 0, 128, 255, 255, 255, 127,
                               0, 0, 0, 0, 0, 0, 0, 0,
@@ -2713,8 +2760,8 @@ class Bitstream(unittest.TestCase):
                                         ("6s a",   [-1]),
                                         ("7s a",   [-1]),
                                         ("8s a",   [-1]),
-                                        ("64U",    [0xFFFFFFFFFFFFFFFFL]),
-                                        ("64S",    [-9223372036854775808L]),
+                                        ("64U",    [0xFFFFFFFFFFFFFFFF]),
+                                        ("64S",    [-9223372036854775808]),
                                         ("10b",    [chr(0) * 10]),
                                         ("10p10b a", [chr(1) * 10]),
                                         ("10P10b", [chr(2) * 10])]:
@@ -2847,9 +2894,9 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read(32), 2147483648)
         self.assertEqual(reader.read(32), 2147483647)
         self.assertEqual(reader.read(64), 0)
-        self.assertEqual(reader.read(64), 0xFFFFFFFFFFFFFFFFL)
-        self.assertEqual(reader.read(64), 9223372036854775808L)
-        self.assertEqual(reader.read(64), 9223372036854775807L)
+        self.assertEqual(reader.read(64), 0xFFFFFFFFFFFFFFFF)
+        self.assertEqual(reader.read(64), 9223372036854775808)
+        self.assertEqual(reader.read(64), 9223372036854775807)
 
         # try the signed 32 and 64 bit values
         reader.rewind()
@@ -2859,8 +2906,8 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read_signed(32), 2147483647)
         self.assertEqual(reader.read_signed(64), 0)
         self.assertEqual(reader.read_signed(64), -1)
-        self.assertEqual(reader.read_signed(64), -9223372036854775808L)
-        self.assertEqual(reader.read_signed(64), 9223372036854775807L)
+        self.assertEqual(reader.read_signed(64), -9223372036854775808)
+        self.assertEqual(reader.read_signed(64), 9223372036854775807)
 
         # try the unsigned values via parse()
         reader.rewind()
@@ -2877,9 +2924,9 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(u_val_3, 2147483648)
         self.assertEqual(u_val_4, 2147483647)
         self.assertEqual(u_val64_1, 0)
-        self.assertEqual(u_val64_2, 0xFFFFFFFFFFFFFFFFL)
-        self.assertEqual(u_val64_3, 9223372036854775808L)
-        self.assertEqual(u_val64_4, 9223372036854775807L)
+        self.assertEqual(u_val64_2, 0xFFFFFFFFFFFFFFFF)
+        self.assertEqual(u_val64_3, 9223372036854775808)
+        self.assertEqual(u_val64_4, 9223372036854775807)
 
         # try the signed values via parse()
         reader.rewind()
@@ -2897,8 +2944,8 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(s_val_4, 2147483647)
         self.assertEqual(s_val64_1, 0)
         self.assertEqual(s_val64_2, -1)
-        self.assertEqual(s_val64_3, -9223372036854775808L)
-        self.assertEqual(s_val64_4, 9223372036854775807L)
+        self.assertEqual(s_val64_3, -9223372036854775808)
+        self.assertEqual(s_val64_4, 9223372036854775807)
 
         reader.unmark()
 
@@ -2911,9 +2958,9 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read(32), 2147483648)
         self.assertEqual(reader.read(32), 2147483647)
         self.assertEqual(reader.read(64), 0)
-        self.assertEqual(reader.read(64), 0xFFFFFFFFFFFFFFFFL)
-        self.assertEqual(reader.read(64), 9223372036854775808L)
-        self.assertEqual(reader.read(64), 9223372036854775807L)
+        self.assertEqual(reader.read(64), 0xFFFFFFFFFFFFFFFF)
+        self.assertEqual(reader.read(64), 9223372036854775808)
+        self.assertEqual(reader.read(64), 9223372036854775807)
 
         # try the signed 32 and 64 bit values
         reader.rewind()
@@ -2923,8 +2970,8 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read_signed(32), 2147483647)
         self.assertEqual(reader.read_signed(64), 0)
         self.assertEqual(reader.read_signed(64), -1)
-        self.assertEqual(reader.read_signed(64), -9223372036854775808L)
-        self.assertEqual(reader.read_signed(64), 9223372036854775807L)
+        self.assertEqual(reader.read_signed(64), -9223372036854775808)
+        self.assertEqual(reader.read_signed(64), 9223372036854775807)
 
         # try the unsigned values via parse()
         reader.rewind()
@@ -2941,9 +2988,9 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(u_val_3, 2147483648)
         self.assertEqual(u_val_4, 2147483647)
         self.assertEqual(u_val64_1, 0)
-        self.assertEqual(u_val64_2, 0xFFFFFFFFFFFFFFFFL)
-        self.assertEqual(u_val64_3, 9223372036854775808L)
-        self.assertEqual(u_val64_4, 9223372036854775807L)
+        self.assertEqual(u_val64_2, 0xFFFFFFFFFFFFFFFF)
+        self.assertEqual(u_val64_3, 9223372036854775808)
+        self.assertEqual(u_val64_4, 9223372036854775807)
 
         # try the signed values via parse()
         reader.rewind()
@@ -2961,8 +3008,8 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(s_val_4, 2147483647)
         self.assertEqual(s_val64_1, 0)
         self.assertEqual(s_val64_2, -1)
-        self.assertEqual(s_val64_3, -9223372036854775808L)
-        self.assertEqual(s_val64_4, 9223372036854775807L)
+        self.assertEqual(s_val64_3, -9223372036854775808)
+        self.assertEqual(s_val64_4, 9223372036854775807)
 
         reader.unmark()
 
@@ -2974,9 +3021,9 @@ class Bitstream(unittest.TestCase):
         writer.write(32, 2147483648)
         writer.write(32, 2147483647)
         writer.write(64, 0)
-        writer.write(64, 0xFFFFFFFFFFFFFFFFL)
-        writer.write(64, 9223372036854775808L)
-        writer.write(64, 9223372036854775807L)
+        writer.write(64, 0xFFFFFFFFFFFFFFFF)
+        writer.write(64, 9223372036854775808)
+        writer.write(64, 9223372036854775807)
         validate_writer(writer, temp)
 
         # try the signed 32 and 64 bit values
@@ -2987,8 +3034,8 @@ class Bitstream(unittest.TestCase):
         writer.write_signed(32, 2147483647)
         writer.write_signed(64, 0)
         writer.write_signed(64, -1)
-        writer.write_signed(64, -9223372036854775808L)
-        writer.write_signed(64, 9223372036854775807L)
+        writer.write_signed(64, -9223372036854775808)
+        writer.write_signed(64, 9223372036854775807)
         validate_writer(writer, temp)
 
         # try the unsigned values via build()
@@ -2998,9 +3045,9 @@ class Bitstream(unittest.TestCase):
         u_val_3 = 2147483648
         u_val_4 = 2147483647
         u_val64_1 = 0
-        u_val64_2 = 0xFFFFFFFFFFFFFFFFL
-        u_val64_3 = 9223372036854775808L
-        u_val64_4 = 9223372036854775807L
+        u_val64_2 = 0xFFFFFFFFFFFFFFFF
+        u_val64_3 = 9223372036854775808
+        u_val64_4 = 9223372036854775807
         writer.build("32u 32u 32u 32u 64u 64u 64u 64u",
                      [u_val_1, u_val_2, u_val_3, u_val_4,
                       u_val64_1, u_val64_2, u_val64_3, u_val64_4])
@@ -3014,8 +3061,8 @@ class Bitstream(unittest.TestCase):
         s_val_4 = 2147483647
         s_val64_1 = 0
         s_val64_2 = -1
-        s_val64_3 = -9223372036854775808L
-        s_val64_4 = 9223372036854775807L
+        s_val64_3 = -9223372036854775808
+        s_val64_4 = 9223372036854775807
         writer.build("32s 32s 32s 32s 64s 64s 64s 64s",
                      [s_val_1, s_val_2, s_val_3, s_val_4,
                       s_val64_1, s_val64_2, s_val64_3, s_val64_4])
@@ -4316,9 +4363,9 @@ class TestReplayGain(unittest.TestCase):
                                                           track2,
                                                           track3]))
             self.assertEqual(len(gain), 3)
-            self.assert_(gain[0][0] is track1)
-            self.assert_(gain[1][0] is track2)
-            self.assert_(gain[2][0] is track3)
+            self.assertIs(gain[0][0], track1)
+            self.assertIs(gain[1][0], track2)
+            self.assertIs(gain[2][0], track3)
         finally:
             track_file1.close()
             track_file2.close()
@@ -4338,8 +4385,8 @@ class TestReplayGain(unittest.TestCase):
                                               16,
                                               (30000, sample_rate // 100))
             (gain, peak) = gain.title_gain(reader)
-            self.assert_(gain < -4.0)
-            self.assert_(peak > .90)
+            self.assertLess(gain, -4.0)
+            self.assertGreater(peak, .90)
 
     @LIB_REPLAYGAIN
     def test_pcm(self):
@@ -4408,7 +4455,7 @@ class TestReplayGain(unittest.TestCase):
             gain2 = audiotools.replaygain.ReplayGain(track1.sample_rate())
             (gain2, peak2) = gain2.title_gain(track2.to_pcm())
 
-            self.assert_(gain2 > gain)
+            self.assertGreater(gain2, gain)
         finally:
             dummy1.close()
             dummy2.close()
@@ -4452,7 +4499,7 @@ class testcuesheet(unittest.TestCase):
                      SheetTrack(
                      number=6,
                      track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(27, 34, 05))]),
+                         SheetIndex(1, timestamp_to_frac(27, 34, 5))]),
                      SheetTrack(
                      number=7,
                      track_indexes=[
@@ -4901,7 +4948,7 @@ class test_flac_cuesheet(testcuesheet):
 
             # get cuesheet
             track_sheet = audiotools.open(temp_file.name).get_cuesheet()
-            self.assert_(track_sheet is not None)
+            self.assertIsNot(track_sheet, None)
 
             # ensure they match
             self.assertEqual(track_sheet, sheet)
@@ -4913,14 +4960,14 @@ class test_flac_cuesheet(testcuesheet):
     def test_metadata(self):
         # FLAC cuesheets don't support meaningful metadata
         # outside of catalog and ISRC
-        self.assert_(True)
+        self.assertTrue(True)
 
     @LIB_CUESHEET
     def test_flags(self):
         # FLAC cuesheets only support pre-emphasis flag
         #FIXME
 
-        self.assert_(True)
+        self.assertTrue(True)
 
 
 class test_oggflac_cuesheet(test_flac_cuesheet):
@@ -5386,7 +5433,7 @@ class Test_FreeDB(unittest.TestCase):
                 self.assertEqual(cddareader.seek(offset), offset)
                 tracks.append(audiotools.WaveAudio.from_pcm(
                     os.path.join(dir, "track%d.wav"),
-                    audiotools.PCMReaderHead(cddareader, length),
+                    audiotools.PCMReaderHead(cddareader, length, False),
                     total_pcm_frames=length))
 
             # ensure DiscID from tracks matches
@@ -6297,10 +6344,13 @@ class Test_ExecProgressQueue(unittest.TestCase):
     @LIB_CORE
     def test_queue(self):
         def range_sum(start, end, progress):
+            import time
+
             sum_ = 0
             for i in range(start, end):
                 progress(start, end)
                 sum_ += i
+                time.sleep(0.1)
             return sum_
 
         def range_sum_output(total):
@@ -6309,7 +6359,7 @@ class Test_ExecProgressQueue(unittest.TestCase):
         for max_processes in range(1, 21):
             queue = audiotools.ExecProgressQueue(audiotools.SilentMessenger())
 
-            for i in range(max_processes):
+            for i in range(100):
                 queue.execute(
                     function=range_sum,
                     progress_text=u"Sum %d" % (i + 1),
@@ -6318,7 +6368,7 @@ class Test_ExecProgressQueue(unittest.TestCase):
                     start=i,
                     end=i + 10)
 
-            results = queue.run(max_processes)
+            results = queue.run(100)
 
             for i in range(max_processes):
                 self.assertEqual(results[i], sum(range(i, i + 10)))
@@ -6349,7 +6399,7 @@ class Test_Output_Text(unittest.TestCase):
         t1 = output_text(unicode_string=u"Foo")
         self.assertEqual(unicode(t1), u"Foo")
         self.assertEqual(t1.format(False), u"Foo")
-        self.assert_(u"Foo" in t1.format(True))
+        self.assertIn(u"Foo", t1.format(True))
         self.assertEqual(t1.fg_color(), None)
         self.assertEqual(t1.fg_color(), None)
         self.assertEqual(t1.style(), None)
@@ -6359,7 +6409,7 @@ class Test_Output_Text(unittest.TestCase):
                            style="underline")
         self.assertEqual(unicode(t2), u"Foo")
         self.assertEqual(t2.format(False), u"Foo")
-        self.assert_(u"Foo" in t2.format(True))
+        self.assertIn(u"Foo", t2.format(True))
         self.assertEqual(t2.fg_color(), "black")
         self.assertEqual(t2.bg_color(), "blue")
         self.assertEqual(t2.style(), "underline")
@@ -6369,7 +6419,7 @@ class Test_Output_Text(unittest.TestCase):
                            style=None)
         self.assertEqual(unicode(t3), u"Foo")
         self.assertEqual(t3.format(False), u"Foo")
-        self.assert_(u"Foo" in t3.format(True))
+        self.assertIn(u"Foo", t3.format(True))
         self.assertEqual(t3.fg_color(), None)
         self.assertEqual(t3.fg_color(), None)
         self.assertEqual(t3.style(), None)
@@ -6409,7 +6459,7 @@ class Test_Output_Text(unittest.TestCase):
                 # with the same formatting as the original
                 for i in range(len(t) + 5):
                     t2 = t.head(i)
-                    self.assert_(len(t2) <= i)
+                    self.assertLessEqual(len(t2), i)
                     self.assertEqual(t2.fg_color(), fg_color)
                     self.assertEqual(t2.bg_color(), bg_color)
                     self.assertEqual(t2.style(), style)
@@ -6419,7 +6469,7 @@ class Test_Output_Text(unittest.TestCase):
                 # with the same formatting as the original
                 for i in range(len(t) + 5):
                     t2 = t.tail(i)
-                    self.assert_(len(t2) <= i)
+                    self.assertLessEqual(len(t2), i)
                     self.assertEqual(t2.fg_color(), fg_color)
                     self.assertEqual(t2.bg_color(), bg_color)
                     self.assertEqual(t2.style(), style)
@@ -6429,7 +6479,7 @@ class Test_Output_Text(unittest.TestCase):
                 # and with the same formatting as the original
                 for i in range(len(t) + 5):
                     (t2, t3) = t.split(i)
-                    self.assert_(len(t2) <= i)
+                    self.assertLessEqual(len(t2), i)
                     self.assertEqual(len(t2) + len(t3), len(t))
                     self.assertEqual(t2.fg_color(), fg_color)
                     self.assertEqual(t2.bg_color(), bg_color)
@@ -6462,7 +6512,7 @@ class Test_Output_Text(unittest.TestCase):
         t1 = output_list(output_texts=[u"Foo", output_text(u"Bar")])
         self.assertEqual(unicode(t1), u"FooBar")
         self.assertEqual(t1.format(False), u"FooBar")
-        self.assert_(u"FooBar" in t1.format(True))
+        self.assertIn(u"FooBar", t1.format(True))
         self.assertEqual(t1.fg_color(), None)
         self.assertEqual(t1.fg_color(), None)
         self.assertEqual(t1.style(), None)
@@ -6472,7 +6522,7 @@ class Test_Output_Text(unittest.TestCase):
                            style="underline")
         self.assertEqual(unicode(t2), u"FooBar")
         self.assertEqual(t2.format(False), u"FooBar")
-        self.assert_(u"FooBar" in t2.format(True))
+        self.assertIn(u"FooBar", t2.format(True))
         self.assertEqual(t2.fg_color(), "black")
         self.assertEqual(t2.bg_color(), "blue")
         self.assertEqual(t2.style(), "underline")
@@ -6482,7 +6532,7 @@ class Test_Output_Text(unittest.TestCase):
                            style=None)
         self.assertEqual(unicode(t3), u"FooBar")
         self.assertEqual(t3.format(False), u"FooBar")
-        self.assert_(u"FooBar" in t3.format(True))
+        self.assertIn(u"FooBar", t3.format(True))
         self.assertEqual(t3.fg_color(), None)
         self.assertEqual(t3.fg_color(), None)
         self.assertEqual(t3.style(), None)
@@ -6530,7 +6580,7 @@ class Test_Output_Text(unittest.TestCase):
                 # with the same formatting as the original
                 for i in range(len(t) + 5):
                     t2 = t.head(i)
-                    self.assert_(len(t2) <= i)
+                    self.assertLessEqual(len(t2), i)
                     self.assertEqual(t2.fg_color(), fg_color)
                     self.assertEqual(t2.bg_color(), bg_color)
                     self.assertEqual(t2.style(), style)
@@ -6540,7 +6590,7 @@ class Test_Output_Text(unittest.TestCase):
                 # with the same formatting as the original
                 for i in range(len(t) + 5):
                     t2 = t.tail(i)
-                    self.assert_(len(t2) <= i)
+                    self.assertLessEqual(len(t2), i)
                     self.assertEqual(t2.fg_color(), fg_color)
                     self.assertEqual(t2.bg_color(), bg_color)
                     self.assertEqual(t2.style(), style)
@@ -6550,7 +6600,7 @@ class Test_Output_Text(unittest.TestCase):
                 # and with the same formatting as the original
                 for i in range(len(t) + 5):
                     (t2, t3) = t.split(i)
-                    self.assert_(len(t2) <= i)
+                    self.assertLessEqual(len(t2), i)
                     self.assertEqual(len(t2) + len(t3), len(t))
                     self.assertEqual(t2.fg_color(), fg_color)
                     self.assertEqual(t2.bg_color(), bg_color)

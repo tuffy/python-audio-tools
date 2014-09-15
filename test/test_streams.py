@@ -49,8 +49,9 @@ class FrameListReader:
         else:
             self.channel_mask = channel_mask
         self.bits_per_sample = bits_per_sample
+        self.read = self.read_opened
 
-    def read(self, pcm_frames):
+    def read_opened(self, pcm_frames):
         (framelist, self.framelist) = self.framelist.split(pcm_frames)
         return framelist
 
@@ -59,6 +60,7 @@ class FrameListReader:
                                                   self.channels,
                                                   self.bits_per_sample,
                                                   True)
+        self.read = self.read_opened
 
     def read_closed(self, pcm_frames):
         raise ValueError()
@@ -495,8 +497,9 @@ class WastedBPS16:
         self.signed = True
         self.sample_frame = audiotools.pcm.FrameList("", 2, 16, False, False)
         self.md5 = md5()
+        self.read = self.read_opened
 
-    def read(self, pcm_frames):
+    def read_opened(self, pcm_frames):
         wave = []
         for i in range(min(pcm_frames, self.pcm_frames)):
             wave.append((self.i % 2000) << 2)
@@ -515,6 +518,7 @@ class WastedBPS16:
         raise ValueError()
 
     def reset(self):
+        self.read = self.read_opened
         self.i = 0
         self.pcm_frames = self.total_frames
         self.md5 = md5()

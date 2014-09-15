@@ -241,6 +241,8 @@ class VorbisAudio(AudioFile):
                           BufferedPCMReader(pcmreader),
                           float(compression) / 10)
 
+            pcmreader.close()
+
             if ((total_pcm_frames is not None) and
                 (total_pcm_frames != pcmreader.frames_written)):
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH

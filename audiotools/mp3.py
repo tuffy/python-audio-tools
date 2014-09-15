@@ -245,6 +245,8 @@ class MP3Audio(AudioFile):
                                         bits_per_sample=16)),
                        compression)
 
+            pcmreader.close()
+
             if ((total_pcm_frames is not None) and
                 (total_pcm_frames != pcmreader.frames_written)):
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
