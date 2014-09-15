@@ -296,8 +296,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
         from io import BytesIO
 
         try:
-            (head, tail) = decoders.SHNDecoder(
-                open(self.filename, "rb")).pcm_split()
+            decoder = decoders.SHNDecoder(open(self.filename, "rb"))
+            (head, tail) = decoder.pcm_split()
+            decoder.close()
             header = bitstream.BitstreamReader(BytesIO(head), 1)
             (RIFF, SIZE, WAVE) = header.parse("4b 32u 4b")
             if ((RIFF != b'RIFF') or (WAVE != b'WAVE')):
@@ -451,8 +452,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
         from io import BytesIO
 
         try:
-            (head, tail) = decoders.SHNDecoder(
-                open(self.filename, "rb")).pcm_split()
+            decoder = decoders.SHNDecoder(open(self.filename, "rb"))
+            (head, tail) = decoder.pcm_split()
+            decoder.close()
             header = bitstream.BitstreamReader(BytesIO(head), 0)
             (FORM, SIZE, AIFF) = header.parse("4b 32u 4b")
             if ((FORM != b'FORM') or (AIFF != b'AIFF')):

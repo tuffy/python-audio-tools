@@ -447,12 +447,11 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         import subprocess
         import os
 
-        devnull = open(os.devnull, "ab")
-
-        sub = subprocess.Popen([BIN['faad'], "-f", str(2), "-w",
-                                self.filename],
-                               stdout=subprocess.PIPE,
-                               stderr=devnull)
+        sub = subprocess.Popen(
+            [BIN['faad'], "-f", str(2), "-w", self.filename],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
+                   open(os.devnull, "wb"))
         return PCMReader(sub.stdout,
                          sample_rate=self.sample_rate(),
                          channels=self.channels(),
@@ -503,21 +502,22 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         else:
             actual_filename = tempfile = None
 
-        devnull = open(os.devnull, "ab")
-
-        sub = subprocess.Popen([BIN['faac'],
-                                "-q", compression,
-                                "-P",
-                                "-R", str(pcmreader.sample_rate),
-                                "-B", str(pcmreader.bits_per_sample),
-                                "-C", str(pcmreader.channels),
-                                "-X",
-                                "-o", filename,
-                                "-"],
-                               stdin=subprocess.PIPE,
-                               stderr=devnull,
-                               stdout=devnull,
-                               preexec_fn=ignore_sigint)
+        sub = subprocess.Popen(
+            [BIN['faac'],
+             "-q", compression,
+             "-P",
+             "-R", str(pcmreader.sample_rate),
+             "-B", str(pcmreader.bits_per_sample),
+             "-C", str(pcmreader.channels),
+             "-X",
+             "-o", filename,
+             "-"],
+            stdin=subprocess.PIPE,
+            stderr=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
+                   open(os.devnull, "wb"),
+            stdout=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
+                   open(os.devnull, "wb"),
+            preexec_fn=ignore_sigint)
         # Note: faac handles SIGINT on its own,
         # so trying to ignore it doesn't work like on most other encoders.
 
@@ -635,11 +635,13 @@ class M4AAudio_nero(M4AAudio_faac):
         import subprocess
         import os
 
-        sub = subprocess.Popen([BIN["neroAacDec"],
-                                "-if", self.filename,
-                                "-of", "-"],
-                               stdout=subprocess.PIPE,
-                               stderr=open(os.devnull, "wb"))
+        sub = subprocess.Popen(
+            [BIN["neroAacDec"],
+             "-if", self.filename,
+             "-of", "-"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
+                   open(os.devnull, "wb"))
 
         return PCMReader(file=sub.stdout,
                          sample_rate=self.sample_rate(),
@@ -654,21 +656,20 @@ class M4AAudio_nero(M4AAudio_faac):
         import os
         from audiotools import EncodingError
 
-        devnull = open(os.devnull, "w")
-        try:
-            sub = subprocess.Popen([BIN["neroAacEnc"],
-                                    "-q", compression,
-                                    "-if", wave_filename,
-                                    "-of", filename],
-                                   stdout=devnull,
-                                   stderr=devnull)
+        sub = subprocess.Popen(
+            [BIN["neroAacEnc"],
+             "-q", compression,
+             "-if", wave_filename,
+             "-of", filename],
+            stdout=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
+                   open(os.devnull, "wb"),
+            stderr=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
+                   open(os.devnull, "wb"))
 
-            if (sub.wait() != 0):
-                raise EncodingError(u"neroAacEnc unable to write file")
-            else:
-                return cls(filename)
-        finally:
-            devnull.close()
+        if (sub.wait() != 0):
+            raise EncodingError(u"neroAacEnc unable to write file")
+        else:
+            return cls(filename)
 
 if (BIN.can_execute(BIN["neroAacEnc"]) and BIN.can_execute(BIN["neroAacDec"])):
     M4AAudio = M4AAudio_nero

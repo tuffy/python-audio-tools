@@ -96,6 +96,9 @@ class RIFF_File_Chunk(RIFF_Chunk):
         self.__wav_file__ = wav_file
         self.__offset__ = chunk_data_offset
 
+    def __del__(self):
+        self.__wav_file__.close()
+
     def __repr__(self):
         return "RIFF_File_Chunk(%s)" % (repr(self.id))
 
@@ -432,13 +435,16 @@ class WaveReader(object):
              wave) = self.stream.parse("4b 32u 4b")
         except struct.error:
             from audiotools.text import ERR_WAV_INVALID_WAVE
+            self.stream.close()
             raise ValueError(ERR_WAV_INVALID_WAVE)
 
         if (riff != b'RIFF'):
             from audiotools.text import ERR_WAV_NOT_WAVE
+            self.stream.close()
             raise ValueError(ERR_WAV_NOT_WAVE)
         elif (wave != b'WAVE'):
             from audiotools.text import ERR_WAV_INVALID_WAVE
+            self.stream.close()
             raise ValueError(ERR_WAV_INVALID_WAVE)
         else:
             total_size -= 4
@@ -451,9 +457,11 @@ class WaveReader(object):
                  chunk_size) = self.stream.parse("4b 32u")
             except struct.error:
                 from audiotools.text import ERR_WAV_INVALID_WAVE
+                self.stream.close()
                 raise ValueError(ERR_WAV_INVALID_WAVE)
             if (not frozenset(chunk_id).issubset(WaveAudio.PRINTABLE_ASCII)):
                 from audiotools.text import ERR_WAV_INVALID_CHUNK
+                self.stream.close()
                 raise ValueError(ERR_WAV_INVALID_CHUNK)
             else:
                 total_size -= 8
@@ -475,6 +483,7 @@ class WaveReader(object):
                 # and ready PCMReader for reading
                 if (not fmt_chunk_read):
                     from audiotools.text import ERR_WAV_PREMATURE_DATA
+                    self.stream.close()
                     raise ValueError(ERR_WAV_PREMATURE_DATA)
                 else:
                     self.total_pcm_frames = (chunk_size //
@@ -489,6 +498,7 @@ class WaveReader(object):
             if (chunk_size % 2):
                 if (len(self.stream.read_bytes(1)) < 1):
                     from audiotools.text import ERR_WAV_INVALID_CHUNK
+                    self.stream.close()
                     raise ValueError(ERR_WAV_INVALID_CHUNK)
                 total_size -= (chunk_size + 1)
             else:
@@ -496,6 +506,7 @@ class WaveReader(object):
         else:
             # raise an error if no "data" chunk is encountered
             from audiotools.text import ERR_WAV_NO_DATA_CHUNK
+            self.stream.close()
             raise ValueError(ERR_WAV_NO_DATA_CHUNK)
 
     def __del__(self):
@@ -638,7 +649,6 @@ class WaveAudio(WaveContainer):
                     if (fmt_read and data_read):
                         break
         except IOError:
-            # FIXME
             raise InvalidWave("I/O error reading wave")
 
     def lossless(self):
@@ -710,10 +720,12 @@ class WaveAudio(WaveContainer):
                                     False)
             counter.close()
         except (IOError, ValueError) as err:
+            f.close()
             counter.close()
             cls.__unlink__(filename)
             raise EncodingError(str(err))
         except Exception as err:
+            f.close()
             counter.close()
             cls.__unlink__(filename)
             raise err
@@ -727,10 +739,9 @@ class WaveAudio(WaveContainer):
                 # ensure written number of PCM frames
                 # matches total_pcm_frames argument
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+                f.close()
                 cls.__unlink__(filename)
                 raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
-            else:
-                f.close()
         else:
             # go back and rewrite populated header
             # with counted number of PCM frames
@@ -740,8 +751,8 @@ class WaveAudio(WaveContainer):
                                 pcmreader.channel_mask,
                                 pcmreader.bits_per_sample,
                                 counter.frames_written))
-            f.close()
 
+        f.close()
         return WaveAudio(filename)
 
     def total_frames(self):
@@ -1055,7 +1066,9 @@ class WaveAudio(WaveContainer):
         counter = CounterPCMReader(to_pcm_progress(self, progress))
         try:
             transfer_framelist_data(counter, lambda f: f)
+            counter.close()
         except IOError:
+            counter.close()
             from audiotools.text import ERR_WAV_TRUNCATED_DATA_CHUNK
             raise InvalidWave(ERR_WAV_TRUNCATED_DATA_CHUNK)
 

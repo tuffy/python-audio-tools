@@ -7183,7 +7183,7 @@
 *** TODO Ensure unit tests pass
 **** TODO Python 2.7
 ***** TODO Lib
-      - [ ] core
+      - [X] core
       - [ ] cuesheet
       - [ ] cdio
       - [ ] freedb
@@ -7251,7 +7251,7 @@
       - [ ] trackverify
 **** TODO Python 3
 ***** TODO Lib
-      - [ ] core
+      - [X] core
       - [ ] cuesheet
       - [ ] cdio
       - [ ] freedb

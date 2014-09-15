@@ -595,39 +595,39 @@ class output_text(tuple):
             if (fg_color not in cls.COLORS):
                 raise ValueError("invalid fg_color %s" % (repr(fg_color)))
             else:
-                open_codes.append({"black": 30,
-                                   "red": 31,
-                                   "green": 32,
-                                   "yellow": 33,
-                                   "blue": 34,
-                                   "magenta": 35,
-                                   "cyan": 36,
-                                   "white": 37}[fg_color])
+                open_codes.append({"black": u"30",
+                                   "red": u"31",
+                                   "green": u"32",
+                                   "yellow": u"33",
+                                   "blue": u"34",
+                                   "magenta": u"35",
+                                   "cyan": u"36",
+                                   "white": u"37"}[fg_color])
 
         if (bg_color is not None):
             if (bg_color not in cls.COLORS):
                 raise ValueError("invalid bg_color %s" % (repr(bg_color)))
             else:
-                open_codes.append({"black": 40,
-                                   "red": 41,
-                                   "green": 42,
-                                   "yellow": 43,
-                                   "blue": 44,
-                                   "magenta": 45,
-                                   "cyan": 46,
-                                   "white": 47}[bg_color])
+                open_codes.append({"black": u"40",
+                                   "red": u"41",
+                                   "green": u"42",
+                                   "yellow": u"43",
+                                   "blue": u"44",
+                                   "magenta": u"45",
+                                   "cyan": u"46",
+                                   "white": u"47"}[bg_color])
 
         if (style is not None):
             if (style not in cls.STYLES):
                 raise ValueError("invalid style %s" % (repr(style)))
             else:
-                open_codes.append({"bold": 1,
-                                   "underline": 4,
-                                   "blink": 5,
-                                   "inverse": 7}[style])
+                open_codes.append({"bold": u"1",
+                                   "underline": u"4",
+                                   "blink": u"5",
+                                   "inverse": u"7"}[style])
 
         if (len(open_codes) > 0):
-            return u"\u001B[%sm" % (u";".join(map(unicode, open_codes)))
+            return u"\u001B[%sm" % (u";".join(open_codes))
         else:
             return u""
 
@@ -639,25 +639,25 @@ class output_text(tuple):
             if (fg_color not in cls.COLORS):
                 raise ValueError("invalid fg_color %s" % (repr(fg_color)))
             else:
-                close_codes.append(39)
+                close_codes.append(u"39")
 
         if (bg_color is not None):
             if (bg_color not in cls.COLORS):
                 raise ValueError("invalid bg_color %s" % (repr(bg_color)))
             else:
-                close_codes.append(49)
+                close_codes.append(u"49")
 
         if (style is not None):
             if (style not in cls.STYLES):
                 raise ValueError("invalid style %s" % (repr(style)))
             else:
-                close_codes.append({"bold": 22,
-                                    "underline": 24,
-                                    "blink": 25,
-                                    "inverse": 27}[style])
+                close_codes.append({"bold": u"22",
+                                    "underline": u"24",
+                                    "blink": u"25",
+                                    "inverse": u"27"}[style])
 
         if (len(close_codes) > 0):
-            return u"\u001B[%sm" % (u";".join(map(unicode, close_codes)))
+            return u"\u001B[%sm" % (u";".join(close_codes))
         else:
             return u""
 

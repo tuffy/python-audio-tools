@@ -1902,27 +1902,27 @@ class TestFloatFrameList(unittest.TestCase):
         # check string that's too large
         self.assertRaises(ValueError,
                           audiotools.pcm.FrameList,
-                          chr(0) * 5, 2, 16, 1, 1)
+                          b"\x00" * 5, 2, 16, 1, 1)
 
         # check string that's too small
         self.assertRaises(ValueError,
                           audiotools.pcm.FrameList,
-                          chr(0) * 3, 2, 16, 1, 1)
+                          b"\x00" * 3, 2, 16, 1, 1)
 
         # check channels <= 0
         self.assertRaises(ValueError,
                           audiotools.pcm.FrameList,
-                          chr(0) * 4, 0, 16, 1, 1)
+                          b"\x00" * 4, 0, 16, 1, 1)
 
         self.assertRaises(ValueError,
                           audiotools.pcm.FrameList,
-                          chr(0) * 4, -1, 16, 1, 1)
+                          b"\x00" * 4, -1, 16, 1, 1)
 
         # check bps != 8,16,24
         for bps in [0, 7, 9, 15, 17, 23, 25, 64]:
             self.assertRaises(ValueError,
                               audiotools.pcm.FrameList,
-                              chr(0) * 4, 2, bps, 1, 1)
+                              b"\x00" * 4, 2, bps, 1, 1)
 
 
 class __SimpleChunkReader__:
@@ -5000,7 +5000,7 @@ class test_wavpack_cuesheet(test_flac_cuesheet):
 # takes several 1-channel PCMReaders and combines them into a single PCMReader
 class PCM_Reader_Multiplexer:
     def __init__(self, pcm_readers, channel_mask):
-        self.buffers = map(audiotools.BufferedPCMReader, pcm_readers)
+        self.buffers = [audiotools.BufferedPCMReader(r) for r in pcm_readers]
         self.sample_rate = pcm_readers[0].sample_rate
         self.channels = len(pcm_readers)
         self.channel_mask = channel_mask
@@ -5030,9 +5030,8 @@ class TestMultiChannel(unittest.TestCase):
                                      audiotools.OpusAudio]
 
     def __test_mask_blank__(self, audio_class, channel_mask):
-        temp_file = tempfile.NamedTemporaryFile(
-            suffix="." + audio_class.SUFFIX)
-        try:
+        with tempfile.NamedTemporaryFile(
+                 suffix="." + audio_class.SUFFIX) as temp_file:
             temp_track = audio_class.from_pcm(
                 temp_file.name,
                 PCM_Reader_Multiplexer(
@@ -5049,8 +5048,6 @@ class TestMultiChannel(unittest.TestCase):
             self.assertEqual(int(pcm.channel_mask), int(channel_mask))
             audiotools.transfer_framelist_data(pcm, lambda x: x)
             pcm.close()
-        finally:
-            temp_file.close()
 
     def __test_undefined_mask_blank__(self, audio_class, channels,
                                       should_be_blank):
@@ -6354,7 +6351,7 @@ class Test_ExecProgressQueue(unittest.TestCase):
             return sum_
 
         def range_sum_output(total):
-            return unicode(total)
+            return u"%d" % (total)
 
         for max_processes in range(1, 21):
             queue = audiotools.ExecProgressQueue(audiotools.SilentMessenger())
@@ -6397,7 +6394,7 @@ class Test_Output_Text(unittest.TestCase):
 
         # ensure setting format returns new output_text with that format
         t1 = output_text(unicode_string=u"Foo")
-        self.assertEqual(unicode(t1), u"Foo")
+        self.assertEqual(u"%s" % (t1,), u"Foo")
         self.assertEqual(t1.format(False), u"Foo")
         self.assertIn(u"Foo", t1.format(True))
         self.assertEqual(t1.fg_color(), None)
@@ -6407,7 +6404,7 @@ class Test_Output_Text(unittest.TestCase):
         t2 = t1.set_format(fg_color="black",
                            bg_color="blue",
                            style="underline")
-        self.assertEqual(unicode(t2), u"Foo")
+        self.assertEqual(u"%s" % (t2,), u"Foo")
         self.assertEqual(t2.format(False), u"Foo")
         self.assertIn(u"Foo", t2.format(True))
         self.assertEqual(t2.fg_color(), "black")
@@ -6417,7 +6414,7 @@ class Test_Output_Text(unittest.TestCase):
         t3 = t2.set_format(fg_color=None,
                            bg_color=None,
                            style=None)
-        self.assertEqual(unicode(t3), u"Foo")
+        self.assertEqual(u"%s" % (t3,), u"Foo")
         self.assertEqual(t3.format(False), u"Foo")
         self.assertIn(u"Foo", t3.format(True))
         self.assertEqual(t3.fg_color(), None)
@@ -6440,9 +6437,9 @@ class Test_Output_Text(unittest.TestCase):
         for string in [u"a",
                        u"Foo",
                        u"a" * 100,
-                       unichr(4359) * 50,
-                       u"a" + (unichr(4359) * 50),
-                       u"a" + (unichr(4359) * 50) + u"b"]:
+                       u'\u1107' * 50,
+                       u"a" + (u'\u1107' * 50),
+                       u"a" + (u'\u1107' * 50) + u"b"]:
             for (fg_color,
                  bg_color,
                  style) in Possibilities([None, "black"],
@@ -6510,7 +6507,7 @@ class Test_Output_Text(unittest.TestCase):
 
         # ensure setting format returns new output_list with that format
         t1 = output_list(output_texts=[u"Foo", output_text(u"Bar")])
-        self.assertEqual(unicode(t1), u"FooBar")
+        self.assertEqual(u"%s" % (t1,), u"FooBar")
         self.assertEqual(t1.format(False), u"FooBar")
         self.assertIn(u"FooBar", t1.format(True))
         self.assertEqual(t1.fg_color(), None)
@@ -6520,7 +6517,7 @@ class Test_Output_Text(unittest.TestCase):
         t2 = t1.set_format(fg_color="black",
                            bg_color="blue",
                            style="underline")
-        self.assertEqual(unicode(t2), u"FooBar")
+        self.assertEqual(u"%s" % (t2,), u"FooBar")
         self.assertEqual(t2.format(False), u"FooBar")
         self.assertIn(u"FooBar", t2.format(True))
         self.assertEqual(t2.fg_color(), "black")
@@ -6530,7 +6527,7 @@ class Test_Output_Text(unittest.TestCase):
         t3 = t2.set_format(fg_color=None,
                            bg_color=None,
                            style=None)
-        self.assertEqual(unicode(t3), u"FooBar")
+        self.assertEqual(u"%s" % (t3,), u"FooBar")
         self.assertEqual(t3.format(False), u"FooBar")
         self.assertIn(u"FooBar", t3.format(True))
         self.assertEqual(t3.fg_color(), None)
@@ -6559,8 +6556,8 @@ class Test_Output_Text(unittest.TestCase):
                         [u"a" * 100],
                         [output_text(u"Foo")],
                         [u"Foo", output_text(u"Bar")],
-                        [output_text(unichr(4359) * 10)],
-                        [u"a", output_text(unichr(4359) * 20,
+                        [output_text(u'\u1107' * 10)],
+                        [u"a", output_text(u'\u1107' * 20,
                                            fg_color="white",
                                            bg_color="blue",
                                            style="underline"), u"b"]]:
@@ -6670,7 +6667,7 @@ class Test_Output_Text(unittest.TestCase):
         row4.add_column(output_text(u"Foo",
                                     fg_color="black",
                                     bg_color="white"))
-        row4.add_column(output_list([u"Bar", unichr(4359) * 5],
+        row4.add_column(output_list([u"Bar", u'\u1107' * 5],
                                     fg_color="blue",
                                     bg_color="red"), "center")
         row4.add_column(output_text(u"Blah"), "right")

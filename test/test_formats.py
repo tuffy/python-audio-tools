@@ -64,13 +64,13 @@ class CLOSE_PCM_Reader(object):
         self.channels = pcmreader.channels
         self.channel_mask = pcmreader.channel_mask
         self.bits_per_sample = pcmreader.bits_per_sample
-        self.close_called = False
+        self.closes_called = 0
 
     def read(self, pcm_frames):
         return self.pcmreader.read(pcm_frames)
 
     def close(self):
-        self.close_called = True
+        self.closes_called += 1
         self.pcmreader.close()
 
 
@@ -366,19 +366,19 @@ class AudioFileTest(unittest.TestCase):
         with tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX) as f:
             reader = CLOSE_PCM_Reader(EXACT_SILENCE_PCM_Reader(pcm_frames))
-            self.assertFalse(reader.close_called)
+            self.assertEqual(reader.closes_called, 0)
             track = self.audio_class.from_pcm(f.name,
                                               reader)
-            self.assertTrue(reader.close_called)
+            self.assertEqual(reader.closes_called, 1)
 
         with tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX) as f:
             reader = CLOSE_PCM_Reader(EXACT_SILENCE_PCM_Reader(pcm_frames))
-            self.assertFalse(reader.close_called)
+            self.assertEqual(reader.closes_called, 0)
             track = self.audio_class.from_pcm(f.name,
                                               reader,
                                               total_pcm_frames=pcm_frames)
-            self.assertTrue(reader.close_called)
+            self.assertEqual(reader.closes_called, 1)
 
     @FORMAT_AUDIOFILE
     def test_convert_progress(self):

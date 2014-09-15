@@ -196,6 +196,12 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
 static PyObject*
 SHNDecoder_pcm_split(decoders_SHNDecoder* self, PyObject *args)
 {
+#if PY_MAJOR_VERSION >= 3
+    char format[] = "y#y#";
+#else
+    char format[] = "s#s#";
+#endif
+
     if (!setjmp(*br_try(self->bitstream))) {
         a_int* header = self->pcm_header;
         a_int* footer = self->pcm_footer;
@@ -280,7 +286,7 @@ SHNDecoder_pcm_split(decoders_SHNDecoder* self, PyObject *args)
             footer_s[i] = (uint8_t)(footer->_[i] & 0xFF);
 
         /*generate a tuple from the strings*/
-        tuple = Py_BuildValue("(s#s#)",
+        tuple = Py_BuildValue(format,
                               header_s, header->len,
                               footer_s, footer->len);
 
