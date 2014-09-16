@@ -40,11 +40,11 @@ class ID3v1Comment(MetaData):
                      "year": 4,
                      "comment": 28}
 
-    def __init__(self, track_name=b"\x00" * 30,
-                 artist_name=b"\x00" * 30,
-                 album_name=b"\x00" * 30,
-                 year=b"\x00" * 4,
-                 comment=b"\x00" * 28,
+    def __init__(self, track_name=u"",
+                 artist_name=u"",
+                 album_name=u"",
+                 year=u"",
+                 comment=u"",
                  track_number=0,
                  genre=0):
         """fields are as follows:
@@ -60,20 +60,22 @@ class ID3v1Comment(MetaData):
         | genre        |      1 |
         |--------------+--------|
 
-        all are binary strings of the given length
-        and must not be any shorter or longer
+        track_name, artist_name, album_name, year and comment
+        are unicode strings to a maximum of 30 characters
+
+        track_number and genre are integers
         """
 
-        if (len(track_name) != 30):
-            raise ValueError("track_name must be exactly 30 bytes")
-        if (len(artist_name) != 30):
-            raise ValueError("artist_name must be exactly 30 bytes")
-        if (len(album_name) != 30):
-            raise ValueError("album_name must be exactly 30 bytes")
-        if (len(year) != 4):
-            raise ValueError("year must be exactly 4 bytes")
-        if (len(comment) != 28):
-            raise ValueError("comment must be exactly 28 bytes")
+        if (len(track_name) > 30):
+            raise ValueError("track_name cannot be longer than 30 characters")
+        if (len(artist_name) > 30):
+            raise ValueError("artist_name cannot be longer than 30 characters")
+        if (len(album_name) > 30):
+            raise ValueError("album_name cannot be longer than 30 characters")
+        if (len(year) > 4):
+            raise ValueError("year cannot be longer than 4 characters")
+        if (len(comment) > 28):
+            raise ValueError("comment cannot be longer than 28 characters")
 
         MetaData.__setattr__(self, "__track_name__", track_name)
         MetaData.__setattr__(self, "__artist_name__", artist_name)
@@ -101,10 +103,7 @@ class ID3v1Comment(MetaData):
             else:
                 return None
         elif (attr in self.ID3v1_FIELDS):
-            value = getattr(
-                self,
-                self.ID3v1_FIELDS[attr]).rstrip(b"\x00").decode('ascii',
-                                                                'replace')
+            value = getattr(self, self.ID3v1_FIELDS[attr])
             if (len(value) > 0):
                 return value
             else:
@@ -125,23 +124,10 @@ class ID3v1Comment(MetaData):
                 delattr(self, attr)
             else:
                 # all are text fields
-                encoded = value.encode('ascii', 'replace')
-                if (len(encoded) < self.FIELD_LENGTHS[attr]):
-                    MetaData.__setattr__(
-                        self,
-                        self.ID3v1_FIELDS[attr],
-                        encoded + b"\x00" * (self.FIELD_LENGTHS[attr] -
-                                            len(encoded)))
-                elif (len(encoded) > self.FIELD_LENGTHS[attr]):
-                    MetaData.__setattr__(
-                        self,
-                        self.ID3v1_FIELDS[attr],
-                        encoded[0:self.FIELD_LENGTHS[attr]])
-                else:
-                    MetaData.__setattr__(
-                        self,
-                        self.ID3v1_FIELDS[attr],
-                        encoded)
+                MetaData.__setattr__(
+                    self,
+                    self.ID3v1_FIELDS[attr],
+                    value[0:self.FIELD_LENGTHS[attr]])
         elif (attr in self.FIELDS):
             # field not supported by ID3v1Comment, so ignore it
             pass
@@ -154,7 +140,7 @@ class ID3v1Comment(MetaData):
         elif (attr in self.FIELD_LENGTHS):
             MetaData.__setattr__(self,
                                  self.ID3v1_FIELDS[attr],
-                                 b"\x00" * self.FIELD_LENGTHS[attr])
+                                 u"")
         elif (attr in self.FIELDS):
             # field not supported by ID3v1Comment, so ignore it
             pass
@@ -185,10 +171,12 @@ class ID3v1Comment(MetaData):
 
         raises ValueError if the comment is invalid"""
 
-        from audiotools.bitstream import BitstreamReader
+        from audiotools.bitstream import parse
+
+        def decode_string(s):
+            return s.rstrip(b"\x00").decode("ascii", "replace")
 
         mp3_file.seek(-128, 2)
-        reader = BitstreamReader(mp3_file, 0)
         (tag,
          track_name,
          artist_name,
@@ -196,33 +184,43 @@ class ID3v1Comment(MetaData):
          year,
          comment,
          track_number,
-         genre) = reader.parse("3b 30b 30b 30b 4b 28b 8p 8u 8u")
+         genre) = parse("3b 30b 30b 30b 4b 28b 8p 8u 8u",
+                        False,
+                        mp3_file.read(128))
         if (tag != b'TAG'):
             raise ValueError(u"invalid ID3v1 tag")
 
-        return ID3v1Comment(track_name=track_name,
-                            artist_name=artist_name,
-                            album_name=album_name,
-                            year=year,
-                            comment=comment,
+        return ID3v1Comment(track_name=decode_string(track_name),
+                            artist_name=decode_string(artist_name),
+                            album_name=decode_string(album_name),
+                            year=decode_string(year),
+                            comment=decode_string(comment),
                             track_number=track_number,
                             genre=genre)
 
     def build(self, mp3_file):
         """given an MP3 file positioned at the file's end, generate a tag"""
 
-        from audiotools.bitstream import BitstreamWriter
+        from audiotools.bitstream import build
 
-        BitstreamWriter(mp3_file, 0).build(
-            "3b 30b 30b 30b 4b 28b 8p 8u 8u",
-            (b"TAG",
-             self.__track_name__,
-             self.__artist_name__,
-             self.__album_name__,
-             self.__year__,
-             self.__comment__,
-             self.__track_number__,
-             self.__genre__))
+        def encode_string(u, max_chars):
+            s = u.encode("ascii", "replace")
+            if (len(s) >= max_chars):
+                return s[0:max_chars]
+            else:
+                return s + b"\x00" * (max_chars - len(s))
+
+        mp3_file.write(
+            build("3b 30b 30b 30b 4b 28b 8p 8u 8u",
+                  False,
+                  (b"TAG",
+                   encode_string(self.__track_name__, 30),
+                   encode_string(self.__artist_name__, 30),
+                   encode_string(self.__album_name__, 30),
+                   encode_string(self.__year__, 4),
+                   encode_string(self.__comment__, 28),
+                   self.__track_number__,
+                   self.__genre__)))
 
     @classmethod
     def supports_images(cls):
@@ -263,6 +261,8 @@ class ID3v1Comment(MetaData):
         return []
 
     def clean(self):
+        import sys
+
         """returns a new ID3v1Comment object that's been cleaned of problems"""
 
         from audiotools.text import (CLEAN_REMOVE_TRAILING_WHITESPACE,
@@ -270,31 +270,29 @@ class ID3v1Comment(MetaData):
 
         fixes_performed = []
         fields = {}
-        for (init_attr,
-             attr,
-             name) in [("track_name", "__track_name__", u"title"),
-                       ("artist_name", "__artist_name__", u"artist"),
-                       ("album_name", "__album_name__", u"album"),
-                       ("year", "__year__", u"year"),
-                       ("comment", "__comment__", u"comment")]:
+        for (attr,
+             name) in [("track_name", u"title"),
+                       ("artist_name", u"artist"),
+                       ("album_name", u"album"),
+                       ("year", u"year"),
+                       ("comment", u"comment")]:
             # strip out trailing NULL bytes
-            initial_value = getattr(self, attr).rstrip(b"\x00")
+            initial_value = getattr(self, attr)
 
-            fix1 = initial_value.rstrip()
-            if (fix1 != initial_value):
-                fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
-                                       {"field": name})
-            fix2 = fix1.lstrip()
-            if (fix2 != fix1):
-                fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
-                                       {"field": name})
+            if (initial_value is not None):
+                fix1 = initial_value.rstrip()
+                if (fix1 != initial_value):
+                    fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
+                                           {"field": name})
+                fix2 = fix1.lstrip()
+                if (fix2 != fix1):
+                    fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
+                                           {"field": name})
 
-            # restore trailing NULL bytes
-            fields[init_attr] = (fix2 + b"\x00" *
-                                 (self.FIELD_LENGTHS[init_attr] - len(fix2)))
+                # restore trailing NULL bytes
+                fields[attr] = fix2
 
         # copy non-text fields as-is
-        fields["track_number"] = self.__track_number__
-        fields["genre"] = self.__genre__
-
-        return (ID3v1Comment(**fields), fixes_performed)
+        return (ID3v1Comment(track_number=self.__track_number__,
+                             genre=self.__genre__,
+                             **fields), fixes_performed)

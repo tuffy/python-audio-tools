@@ -2066,15 +2066,17 @@ class ID3v1MetaData(MetaDataTest):
 
     @METADATA_ID3V1
     def test_attribs(self):
+        import sys
         import string
         import random
 
         # ID3v1 only supports ASCII characters
         # and not very many of them
-        chars = u"".join(map(unichr,
-                             range(0x30, 0x39 + 1) +
-                             range(0x41, 0x5A + 1) +
-                             range(0x61, 0x7A + 1)))
+        chars = u"".join([u"".join(map(chr if (sys.version_info[0] >= 3)
+                                       else unichr, l))
+                          for l in [range(0x30, 0x39 + 1),
+                                    range(0x41, 0x5A + 1),
+                                    range(0x61, 0x7A + 1)]])
 
         for audio_class in self.supported_formats:
             temp_file = tempfile.NamedTemporaryFile(
@@ -2101,6 +2103,24 @@ class ID3v1MetaData(MetaDataTest):
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field), number)
+
+                # check that overlong fields are truncated
+                for field in self.supported_fields:
+                    metadata = self.empty_metadata()
+                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
+                        unicode_string = u"a" * 50
+                        setattr(metadata, field, unicode_string)
+                        track.set_metadata(metadata)
+                        metadata = track.get_metadata()
+                        if (field == "comment"):
+                            self.assertEqual(getattr(metadata, field),
+                                             u"a" * 28)
+                        elif (field == "year"):
+                            self.assertEqual(getattr(metadata, field),
+                                             u"a" * 4)
+                        else:
+                            self.assertEqual(getattr(metadata, field),
+                                             u"a" * 30)
 
                 # check that blanking out the fields works
                 for field in self.supported_fields:
@@ -2182,28 +2202,24 @@ class ID3v1MetaData(MetaDataTest):
                                      CLEAN_REMOVE_LEADING_WHITESPACE)
 
         # check trailing whitespace
-        metadata = audiotools.ID3v1Comment(
-            track_name="Title " + chr(0) * 24)
+        metadata = audiotools.ID3v1Comment(track_name=u"Title ")
         (cleaned, results) = metadata.clean()
         self.assertEqual(results,
                          [CLEAN_REMOVE_TRAILING_WHITESPACE %
                           {"field": u"title"}])
         self.assertEqual(
             cleaned,
-            audiotools.ID3v1Comment(
-                track_name="Title" + chr(0) * 25))
+            audiotools.ID3v1Comment(track_name=u"Title"))
 
         # check leading whitespace
-        metadata = audiotools.ID3v1Comment(
-            track_name=" Title" + chr(0) * 24)
+        metadata = audiotools.ID3v1Comment(track_name=u" Title")
         (cleaned, results) = metadata.clean()
         self.assertEqual(results,
                          [CLEAN_REMOVE_LEADING_WHITESPACE %
                           {"field": u"title"}])
         self.assertEqual(
             cleaned,
-            audiotools.ID3v1Comment(
-                track_name="Title" + chr(0) * 25))
+            audiotools.ID3v1Comment(track_name=u"Title"))
 
         # ID3v1 has no empty fields, image data or leading zeroes
         # so those can be safely ignored
@@ -4015,7 +4031,7 @@ class FlacMetaData(MetaDataTest):
                         metadata.get_block(
                             audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID
                             )[key][0],
-                        unicode(value))
+                        u"%s" % (value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
@@ -4023,7 +4039,7 @@ class FlacMetaData(MetaDataTest):
                         metadata2.get_block(
                             audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID
                             )[key][0],
-                        unicode(value))
+                        u"%s" % (value))
 
                 # ensure that updating the low-level implementation
                 # is reflected in the class field
@@ -4032,13 +4048,13 @@ class FlacMetaData(MetaDataTest):
                     metadata = self.empty_metadata()
                     metadata.get_block(
                         audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)[key] = \
-                        [unicode(value)]
+                        [u"%s" % (value)]
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
                         metadata.get_block(
                             audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID
                             )[key][0],
-                        unicode(value))
+                        u"%s" % (value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
@@ -4046,7 +4062,7 @@ class FlacMetaData(MetaDataTest):
                         metadata2.get_block(
                             audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID
                             )[key][0],
-                        unicode(value))
+                        u"%s" % (value))
             finally:
                 # temp_file.close()
                 pass
@@ -4080,7 +4096,9 @@ class FlacMetaData(MetaDataTest):
 
     @METADATA_FLAC
     def test_oversized(self):
-        oversized_image = audiotools.Image.new(HUGE_BMP.decode('bz2'), u'', 0)
+        from bz2 import decompress
+
+        oversized_image = audiotools.Image.new(decompress(HUGE_BMP), u'', 0)
         oversized_text = u"a" * 16777216
 
         for audio_class in self.supported_formats:
@@ -5495,8 +5513,10 @@ class FlacMetaData(MetaDataTest):
 
     @METADATA_FLAC
     def test_id3(self):
-        id3v2_tag = 'x\x9c\xf3t1ff\x00\x02\xd6\xd8\x90\x00WC C\x00\x88=]\x8c\x15BR\x8bK\x14\x1c\x8bJ2\x8bKB<C\x8c\x80\xa2|\xc82\xc1\xf9y\xe9\x0c\xa3`\x14\x0c\r\x00\x00{g\x0c\xcf'.decode('zlib')
-        id3v1_tag = 'x\x9c\x0bqt\xf7t1V\x08I-.Q\x08\xce\xcfKg@\x07pY\xc7\xa2\x92\xcc\xe2\x12\x0cy\xca\xc0\x7f\x00\x1dK\x0b*'.decode('zlib')
+        from zlib import decompress
+
+        id3v2_tag = decompress(b'x\x9c\xf3t1ff\x00\x02\xd6\xd8\x90\x00WC C\x00\x88=]\x8c\x15BR\x8bK\x14\x1c\x8bJ2\x8bKB<C\x8c\x80\xa2|\xc82\xc1\xf9y\xe9\x0c\xa3`\x14\x0c\r\x00\x00{g\x0c\xcf')
+        id3v1_tag = decompress(b'x\x9c\x0bqt\xf7t1V\x08I-.Q\x08\xce\xcfKg@\x07pY\xc7\xa2\x92\xcc\xe2\x12\x0cy\xca\xc0\x7f\x00\x1dK\x0b*')
 
         dummy_flac = tempfile.NamedTemporaryFile(suffix=".flac")
         dummy_id3flac = tempfile.NamedTemporaryFile(suffix=".flac")

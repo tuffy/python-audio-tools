@@ -7221,7 +7221,7 @@
       - [X] metadata
       - [ ] flac
       - [ ] wavpack
-      - [ ] id3v1
+      - [X] id3v1
       - [ ] id3v2
       - [ ] vorbis
       - [ ] opus
@@ -7289,7 +7289,7 @@
       - [X] metadata
       - [ ] flac
       - [ ] wavpack
-      - [ ] id3v1
+      - [X] id3v1
       - [ ] id3v2
       - [ ] vorbis
       - [ ] opus

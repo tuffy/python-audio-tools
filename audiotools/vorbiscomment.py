@@ -382,7 +382,8 @@ class VorbisComment(MetaData):
 
             # preserve the non-slashed side of TRACKNUMBER/DISCNUMBER fields
             try:
-                self[slashed_key] = map(slash_filter, self[slashed_key])
+                self[slashed_key] = [slash_filter(s) for s in
+                                     self[slashed_key]]
             except KeyError:
                 # no TRACKNUMBER/DISCNUMBER fields
                 pass
