@@ -1279,40 +1279,43 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             ilst_atom = self.ilst_atom()
 
             if (attr in self.UNICODE_ATTRIB_TO_ILST):
-                ilst_atom.leaf_atoms = filter(
-                    lambda atom: atom.name !=
-                    self.UNICODE_ATTRIB_TO_ILST[attr],
-                    ilst_atom)
+                ilst_atom.leaf_atoms = [
+                    atom for atom in ilst_atom if
+                    atom.name != self.UNICODE_ATTRIB_TO_ILST[attr]]
             elif (attr == "track_number"):
                 if (self.track_total is None):
                     # if track_number and track_total are both 0
                     # remove trkn atom
-                    ilst_atom.leaf_atoms = filter(
-                        lambda atom: atom.name != b"trkn", ilst_atom)
+                    ilst_atom.leaf_atoms = [
+                        atom for atom in ilst_atom if
+                        atom.name != b"trkn"]
                 else:
                     self.track_number = 0
             elif (attr == "track_total"):
                 if (self.track_number is None):
                     # if track_number and track_total are both 0
                     # remove trkn atom
-                    ilst_atom.leaf_atoms = filter(
-                        lambda atom: atom.name != b"trkn", ilst_atom)
+                    ilst_atom.leaf_atoms = [
+                        atom for atom in ilst_atom if
+                        atom.name != b"trkn"]
                 else:
                     self.track_total = 0
             elif (attr == "album_number"):
                 if (self.album_total is None):
                     # if album_number and album_total are both 0
                     # remove disk atom
-                    ilst_atom.leaf_atoms = filter(
-                        lambda atom: atom.name != b"disk", ilst_atom)
+                    ilst_atom.leaf_atoms = [
+                        atom for atom in ilst_atom if
+                        atom.name != b"disk"]
                 else:
                     self.album_number = 0
             elif (attr == "album_total"):
                 if (self.album_number is None):
                     # if album_number and album_total are both 0
                     # remove disk atom
-                    ilst_atom.leaf_atoms = filter(
-                        lambda atom: atom.name != b"disk", ilst_atom)
+                    ilst_atom.leaf_atoms =[
+                        atom for atom in ilst_atom if
+                        atom.name != b"disk"]
                 else:
                     self.album_total = 0
             else:
@@ -1340,7 +1343,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
 
         # filter out old cover image before adding new one
         ilst_atom.leaf_atoms = (
-            filter(not_cover, ilst_atom) +
+            [atom for atom in ilst_atom if not_cover(atom)] +
             [M4A_ILST_Leaf_Atom(b'covr', [M4A_ILST_COVR_Data_Atom.converted(
                 image)])])
 
@@ -1350,11 +1353,11 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         if (self.has_ilst_atom()):
             ilst_atom = self.ilst_atom()
 
-            ilst_atom.leaf_atoms = filter(
-                lambda atom: not ((atom.name == b'covr') and
-                                  (atom.has_child(b'data')) and
-                                  (atom[b'data'].data == image.data)),
-                ilst_atom)
+            ilst_atom.leaf_atoms = [
+                atom for atom in ilst_atom if
+                not ((atom.name == b'covr') and
+                     (atom.has_child(b'data')) and
+                     (atom[b'data'].data == image.data))]
 
     @classmethod
     def converted(cls, metadata):
@@ -1473,8 +1476,9 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 self.version,
                 self.flags,
                 [M4A_Tree_Atom(b'ilst',
-                               filter(lambda atom: atom is not None,
-                                      map(cleaned_atom, self.ilst_atom())))]),
+                               [atom for atom in
+                                map(cleaned_atom, self.ilst_atom())
+                                if atom is not None])]),
                 fixes_performed)
         else:
             # if no ilst atom, return a copy of the meta atom as-is

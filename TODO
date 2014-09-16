@@ -7218,7 +7218,7 @@
       - [ ] wave
       - [ ] wavpack
 ***** TODO Metadata
-      - [ ] metadata
+      - [X] metadata
       - [ ] flac
       - [ ] wavpack
       - [ ] id3v1
@@ -7286,7 +7286,7 @@
       - [ ] wave
       - [ ] wavpack
 ***** TODO Metadata
-      - [ ] metadata
+      - [X] metadata
       - [ ] flac
       - [ ] wavpack
       - [ ] id3v1

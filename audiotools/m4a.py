@@ -211,20 +211,21 @@ class M4ATaggedAudio(object):
 
             # if neither fix is possible, the whole file must be rewritten
             # which also requires adjusting the "stco" atom offsets
-            m4a_tree = M4A_Tree_Atom.parse(
-                None,
-                os.path.getsize(self.filename),
-                BitstreamReader(open(self.filename, "rb"), 0),
-                {b"moov": M4A_Tree_Atom,
-                 b"trak": M4A_Tree_Atom,
-                 b"mdia": M4A_Tree_Atom,
-                 b"minf": M4A_Tree_Atom,
-                 b"stbl": M4A_Tree_Atom,
-                 b"stco": M4A_STCO_Atom,
-                 b"udta": M4A_Tree_Atom})
+            with open(self.filename, "rb") as f:
+                m4a_tree = M4A_Tree_Atom.parse(
+                    None,
+                    os.path.getsize(self.filename),
+                    BitstreamReader(f, 0),
+                    {b"moov": M4A_Tree_Atom,
+                     b"trak": M4A_Tree_Atom,
+                     b"mdia": M4A_Tree_Atom,
+                     b"minf": M4A_Tree_Atom,
+                     b"stbl": M4A_Tree_Atom,
+                     b"stco": M4A_STCO_Atom,
+                     b"udta": M4A_Tree_Atom})
 
             # find initial mdat offset
-            initial_mdat_offset = m4a_tree.child_offset("mdat")
+            initial_mdat_offset = m4a_tree.child_offset(b"mdat")
 
             # adjust moov -> udta -> meta atom
             # (generating sub-atoms as necessary)
@@ -241,7 +242,7 @@ class M4ATaggedAudio(object):
                 udta.replace_child(metadata)
 
             # find new mdat offset
-            new_mdat_offset = m4a_tree.child_offset("mdat")
+            new_mdat_offset = m4a_tree.child_offset(b"mdat")
 
             # adjust moov -> trak -> mdia -> minf -> stbl -> stco offsets
             # based on the difference between the new mdat position and the old
@@ -278,14 +279,14 @@ class M4ATaggedAudio(object):
         file_specific_atoms = {b'\xa9too', b'----', b'pgap', b'tmpo'}
 
         if (metadata.has_ilst_atom()):
-            metadata.ilst_atom().leaf_atoms = filter(
-                lambda atom: atom.name not in file_specific_atoms,
-                metadata.ilst_atom())
+            metadata.ilst_atom().leaf_atoms = [
+                atom for atom in metadata.ilst_atom()
+                if atom.name not in file_specific_atoms]
 
             if (old_metadata.has_ilst_atom()):
                 metadata.ilst_atom().leaf_atoms.extend(
-                    filter(lambda atom: atom.name in file_specific_atoms,
-                           old_metadata.ilst_atom()))
+                    [atom for atom in old_metadata.ilst_atom()
+                     if atom.name in file_specific_atoms])
 
         self.update_metadata(metadata, old_metadata)
 

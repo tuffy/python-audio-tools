@@ -701,7 +701,7 @@ class AiffAudio(AiffContainer):
         from audiotools.id3 import ID3v22Comment
 
         for chunk in self.chunks():
-            if (chunk.id == 'ID3 '):
+            if (chunk.id == b'ID3 '):
                 return ID3v22Comment.parse(BitstreamReader(chunk.data(), 0))
         else:
             return None

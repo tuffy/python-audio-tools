@@ -902,10 +902,10 @@ class ID3v22_COM_Frame(object):
     @classmethod
     def converted(cls, frame_id, unicode_string):
         if (is_latin_1(unicode_string)):
-            return cls(0, "eng", C_string("latin-1", u""),
+            return cls(0, b"eng", C_string("latin-1", u""),
                        unicode_string.encode('latin-1'))
         else:
-            return cls(1, "eng", C_string("ucs2", u""),
+            return cls(1, b"eng", C_string("ucs2", u""),
                        unicode_string.encode('ucs2'))
 
     def clean(self):
@@ -1099,13 +1099,13 @@ class ID3v22_PIC_Frame(Image):
         else:
             description = C_string('ucs2', image.description)
 
-        return cls(image_format={u"image/png": u"PNG",
-                                 u"image/jpeg": u"JPG",
-                                 u"image/jpg": u"JPG",
-                                 u"image/x-ms-bmp": u"BMP",
-                                 u"image/gif": u"GIF",
-                                 u"image/tiff": u"TIF"}.get(image.mime_type,
-                                                            'UNK'),
+        return cls(image_format={u"image/png": b"PNG",
+                                 u"image/jpeg": b"JPG",
+                                 u"image/jpg": b"JPG",
+                                 u"image/x-ms-bmp": b"BMP",
+                                 u"image/gif": b"GIF",
+                                 u"image/tiff": b"TIF"}.get(image.mime_type,
+                                                            b'UNK'),
                    picture_type={0: 3,                   # front cover
                                  1: 4,                   # back cover
                                  2: 5,                   # leaflet page
@@ -2233,10 +2233,10 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
     @classmethod
     def converted(cls, frame_id, unicode_string):
         if (is_latin_1(unicode_string)):
-            return cls(0, "eng", C_string("latin-1", u""),
+            return cls(0, b"eng", C_string("latin-1", u""),
                        unicode_string.encode('latin-1'))
         else:
-            return cls(3, "eng", C_string("utf-8", u""),
+            return cls(3, b"eng", C_string("utf-8", u""),
                        unicode_string.encode('utf-8'))
 
     def clean(self):

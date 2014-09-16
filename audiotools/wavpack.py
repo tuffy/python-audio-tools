@@ -556,11 +556,11 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
         metadata = self.get_metadata()
 
-        if ((metadata is not None) and ('Cuesheet' in metadata.keys())):
+        if ((metadata is not None) and (b'Cuesheet' in metadata.keys())):
             try:
                 return cue.read_cuesheet_string(
-                    metadata['Cuesheet'].__unicode__().encode('utf-8',
-                                                              'replace'))
+                    metadata[b'Cuesheet'].__unicode__().encode('utf-8',
+                                                               'replace'))
             except cue.CueException:
                 # unlike FLAC, just because a cuesheet is embedded
                 # does not mean it is compliant
@@ -592,8 +592,8 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                        str(Filename(self.filename).basename()),
                        cuesheet_data)
 
-        metadata['Cuesheet'] = ApeTag.ITEM.string(
-            'Cuesheet',
+        metadata[b'Cuesheet'] = ApeTag.ITEM.string(
+            b'Cuesheet',
             cuesheet_data.getvalue().decode(FS_ENCODING, 'replace'))
 
         self.update_metadata(metadata)
@@ -604,6 +604,6 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         Raises IOError if a problem occurs when updating the file"""
 
         metadata = self.get_metadata()
-        if ((metadata is not None) and ('Cuesheet' in metadata)):
-            del(metadata['Cuesheet'])
+        if ((metadata is not None) and (b'Cuesheet' in metadata)):
+            del(metadata[b'Cuesheet'])
             self.update_metadata(metadata)

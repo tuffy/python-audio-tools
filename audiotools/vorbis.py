@@ -383,24 +383,25 @@ class VorbisAudio(AudioFile):
         from audiotools.ogg import PacketReader, PageReader
         from audiotools.vorbiscomment import VorbisComment
 
-        reader = PacketReader(PageReader(open(self.filename, "rb")))
+        with open(self.filename, "rb") as f:
+            reader = PacketReader(PageReader(f))
 
-        identification = reader.read_packet()
-        comment = BitstreamReader(BytesIO(reader.read_packet()), True)
+            identification = reader.read_packet()
+            comment = BitstreamReader(BytesIO(reader.read_packet()), True)
 
-        (packet_type, packet_header) = comment.parse("8u 6b")
-        if ((packet_type == 3) and (packet_header == b'vorbis')):
-            vendor_string = \
-                comment.read_bytes(comment.read(32)).decode('utf-8')
-            comment_strings = [
-                comment.read_bytes(comment.read(32)).decode('utf-8')
-                for i in range(comment.read(32))]
-            if (comment.read(1) == 1):   # framing bit
-                return VorbisComment(comment_strings, vendor_string)
+            (packet_type, packet_header) = comment.parse("8u 6b")
+            if ((packet_type == 3) and (packet_header == b'vorbis')):
+                vendor_string = \
+                    comment.read_bytes(comment.read(32)).decode('utf-8')
+                comment_strings = [
+                    comment.read_bytes(comment.read(32)).decode('utf-8')
+                    for i in range(comment.read(32))]
+                if (comment.read(1) == 1):   # framing bit
+                    return VorbisComment(comment_strings, vendor_string)
+                else:
+                    return None
             else:
                 return None
-        else:
-            return None
 
     def delete_metadata(self):
         """deletes the track's MetaData

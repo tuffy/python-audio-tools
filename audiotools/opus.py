@@ -51,8 +51,7 @@ class OpusAudio(VorbisAudio):
         # get channel count and channel mask from first packet
         from audiotools.bitstream import BitstreamReader
         try:
-            f = open(filename, "rb")
-            try:
+            with open(filename, "rb") as f:
                 ogg_reader = BitstreamReader(f, 1)
                 (magic_number,
                  version,
@@ -110,8 +109,6 @@ class OpusAudio(VorbisAudio):
                         raise InvalidOpus(ERR_OPUS_INVALID_CHANNELS)
                     channel_mapping = [ogg_reader.read(8)
                                        for i in range(self.__channels__)]
-            finally:
-                f.close()
         except IOError as msg:
             raise InvalidOpus(str(msg))
 
@@ -372,21 +369,22 @@ class OpusAudio(VorbisAudio):
         from audiotools.bitstream import BitstreamReader
         from audiotools.ogg import PacketReader, PageReader
 
-        reader = PacketReader(PageReader(open(self.filename, "rb")))
+        with open(self.filename, "rb") as f:
+            reader = PacketReader(PageReader(f))
 
-        identification = reader.read_packet()
-        comment = BitstreamReader(BytesIO(reader.read_packet()), True)
+            identification = reader.read_packet()
+            comment = BitstreamReader(BytesIO(reader.read_packet()), True)
 
-        if (comment.read_bytes(8) == b"OpusTags"):
-            vendor_string = \
-                comment.read_bytes(comment.read(32)).decode('utf-8')
-            comment_strings = [
-                comment.read_bytes(comment.read(32)).decode('utf-8')
-                for i in range(comment.read(32))]
+            if (comment.read_bytes(8) == b"OpusTags"):
+                vendor_string = \
+                    comment.read_bytes(comment.read(32)).decode('utf-8')
+                comment_strings = [
+                    comment.read_bytes(comment.read(32)).decode('utf-8')
+                    for i in range(comment.read(32))]
 
-            return VorbisComment(comment_strings, vendor_string)
-        else:
-            return None
+                return VorbisComment(comment_strings, vendor_string)
+            else:
+                return None
 
     def delete_metadata(self):
         """deletes the track's MetaData
