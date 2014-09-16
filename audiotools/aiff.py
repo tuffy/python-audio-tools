@@ -277,6 +277,9 @@ class AIFF_File_Chunk(AIFF_Chunk):
         self.__aiff_file__ = aiff_file
         self.__offset__ = chunk_data_offset
 
+    def __del__(self):
+        self.__aiff_file__.close()
+
     def __repr__(self):
         return "AIFF_File_Chunk(%s)" % (repr(self.id))
 

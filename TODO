@@ -7222,7 +7222,7 @@
       - [ ] flac
       - [ ] wavpack
       - [X] id3v1
-      - [ ] id3v2
+      - [X] id3v2
       - [ ] vorbis
       - [ ] opus
       - [ ] m4a
@@ -7290,7 +7290,7 @@
       - [ ] flac
       - [ ] wavpack
       - [X] id3v1
-      - [ ] id3v2
+      - [X] id3v2
       - [ ] vorbis
       - [ ] opus
       - [ ] m4a

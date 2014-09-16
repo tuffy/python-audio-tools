@@ -2260,7 +2260,7 @@ class ID3v22MetaData(MetaDataTest):
     def unknown_tag(self, binary_string):
         from audiotools.id3 import ID3v22_Frame
 
-        return ID3v22_Frame("XXX", binary_string)
+        return ID3v22_Frame(b"XXX", binary_string)
 
     @METADATA_ID3V2
     def test_update(self):
@@ -2304,11 +2304,11 @@ class ID3v22MetaData(MetaDataTest):
     @METADATA_ID3V2
     def test_foreign_field(self):
         metadata = audiotools.ID3v22Comment(
-            [audiotools.id3.ID3v22_T__Frame("TT2", 0, "Track Name"),
-             audiotools.id3.ID3v22_T__Frame("TAL", 0, "Album Name"),
-             audiotools.id3.ID3v22_T__Frame("TRK", 0, "1/3"),
-             audiotools.id3.ID3v22_T__Frame("TPA", 0, "2/4"),
-             audiotools.id3.ID3v22_T__Frame("TFO", 0, "Bar")])
+            [audiotools.id3.ID3v22_T__Frame(b"TT2", 0, b"Track Name"),
+             audiotools.id3.ID3v22_T__Frame(b"TAL", 0, b"Album Name"),
+             audiotools.id3.ID3v22_T__Frame(b"TRK", 0, b"1/3"),
+             audiotools.id3.ID3v22_T__Frame(b"TPA", 0, b"2/4"),
+             audiotools.id3.ID3v22_T__Frame(b"TFO", 0, b"Bar")])
         for format in self.supported_formats:
             temp_file = tempfile.NamedTemporaryFile(
                 suffix="." + format.SUFFIX)
@@ -2319,7 +2319,7 @@ class ID3v22MetaData(MetaDataTest):
                 metadata2 = track.get_metadata()
                 self.assertEqual(metadata, metadata2)
                 self.assertEqual(metadata.__class__, metadata2.__class__)
-                self.assertEqual(metadata["TFO"][0].data, "Bar")
+                self.assertEqual(metadata[b"TFO"][0].data, b"Bar")
             finally:
                 temp_file.close()
 
@@ -2353,7 +2353,7 @@ class ID3v22MetaData(MetaDataTest):
 
         # ensure that all the keys for non-integer items match up
         for (key, value) in attribs2.items():
-            self.assertEqual(unicode(id3[key][0]), value)
+            self.assertEqual(u"%s" % (id3[key][0],), value)
 
         # ensure the keys for integer items match up
         self.assertEqual(
@@ -2376,7 +2376,8 @@ class ID3v22MetaData(MetaDataTest):
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if (key not in id3_class.TEXT_FRAME.NUMERICAL_IDS):
                 setattr(id3, attribute, u"new value %d" % (i))
-                self.assertEqual(unicode(id3[key][0]), u"new value %d" % (i))
+                self.assertEqual(u"%s" % (id3[key][0],),
+                                 u"new value %d" % (i))
 
         # ensure that changing integer attributes changes the underlying frame
         # >>> id3.track_number = 2
@@ -2384,23 +2385,23 @@ class ID3v22MetaData(MetaDataTest):
         id3.track_number = 3
         id3.track_total = None
         self.assertEqual(
-            unicode(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0]),
+            u"%s" % (id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0],),
             u"3")
 
         id3.track_total = 8
         self.assertEqual(
-            unicode(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0]),
+            u"%s" % (id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0],),
             u"3/8")
 
         id3.album_number = 2
         id3.album_total = None
         self.assertEqual(
-            unicode(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0]),
+            u"%s" % (id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0],),
             u"2")
 
         id3.album_total = 4
         self.assertEqual(
-            unicode(id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0]),
+            u"%s" % (id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0],),
             u"2/4")
 
         # reset and re-check everything for the next round
@@ -2412,7 +2413,7 @@ class ID3v22MetaData(MetaDataTest):
 
         for (key, value) in attribs2.items():
             if (key not in id3_class.TEXT_FRAME.NUMERICAL_IDS):
-                self.assertEqual(unicode(id3[key][0]), value)
+                self.assertEqual(u"%s" % (id3[key][0],), value)
             else:
                 self.assertEqual(int(id3[key][0]), value)
 
@@ -2422,24 +2423,25 @@ class ID3v22MetaData(MetaDataTest):
         for (i,
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if (attribute not in INTEGER_ATTRIBS):
-                id3[key] = [id3_class.TEXT_FRAME(key, 0, "new value %d" % (i))]
+                id3[key] = [id3_class.TEXT_FRAME(
+                    key, 0, (u"new value %d" % (i)).encode("ascii"))]
                 self.assertEqual(getattr(id3, attribute),
                                  u"new value %d" % (i))
 
         # ensure that changing the underlying integer frames changes attributes
         key = id3_class.TEXT_FRAME.NUMERICAL_IDS[0]
-        id3[key] = [id3_class.TEXT_FRAME(key, 0, "7")]
+        id3[key] = [id3_class.TEXT_FRAME(key, 0, b"7")]
         self.assertEqual(id3.track_number, 7)
 
-        id3[key] = [id3_class.TEXT_FRAME(key, 0, "8/9")]
+        id3[key] = [id3_class.TEXT_FRAME(key, 0, b"8/9")]
         self.assertEqual(id3.track_number, 8)
         self.assertEqual(id3.track_total, 9)
 
         key = id3_class.TEXT_FRAME.NUMERICAL_IDS[1]
-        id3[key] = [id3_class.TEXT_FRAME(key, 0, "4")]
+        id3[key] = [id3_class.TEXT_FRAME(key, 0, b"4")]
         self.assertEqual(id3.album_number, 4)
 
-        id3[key] = [id3_class.TEXT_FRAME(key, 0, "5/6")]
+        id3[key] = [id3_class.TEXT_FRAME(key, 0, b"5/6")]
         self.assertEqual(id3.album_number, 5)
         self.assertEqual(id3.album_total, 6)
 
@@ -2450,8 +2452,8 @@ class ID3v22MetaData(MetaDataTest):
         for (i,
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if (attribute not in INTEGER_ATTRIBS):
-                id3[key] = [id3_class.TEXT_FRAME.converted(key, unicode(i))]
-                self.assertEqual(getattr(id3, attribute), unicode(i))
+                id3[key] = [id3_class.TEXT_FRAME.converted(key, u"%s" % (i,))]
+                self.assertEqual(getattr(id3, attribute), u"%s" % (i,))
 
         # and ensure explicitly setting integer frames also changes attribs
         id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]] = [
@@ -2492,7 +2494,7 @@ class ID3v22MetaData(MetaDataTest):
                           metadata.__getitem__,
                           field)
 
-        metadata = self.metadata_class([self.unknown_tag("FOO")])
+        metadata = self.metadata_class([self.unknown_tag(b"FOO")])
         self.assertRaises(KeyError,
                           metadata.__getitem__,
                           field)
@@ -2506,7 +2508,7 @@ class ID3v22MetaData(MetaDataTest):
 
         metadata = self.metadata_class([self.text_tag("track_name",
                                                       u"Track Name"),
-                                        self.unknown_tag("FOO")])
+                                        self.unknown_tag(b"FOO")])
         self.assertEqual(metadata[field],
                          [self.text_tag("track_name",
                                         u"Track Name")])
@@ -2521,9 +2523,9 @@ class ID3v22MetaData(MetaDataTest):
                           self.text_tag("track_name", u"3")])
 
         metadata = self.metadata_class([self.text_tag("track_name", u"1"),
-                                        self.unknown_tag("FOO"),
+                                        self.unknown_tag(b"FOO"),
                                         self.text_tag("track_name", u"2"),
-                                        self.unknown_tag("BAR"),
+                                        self.unknown_tag(b"BAR"),
                                         self.text_tag("track_name", u"3")])
         self.assertEqual(metadata[field],
                          [self.text_tag("track_name", u"1"),
@@ -2599,28 +2601,28 @@ class ID3v22MetaData(MetaDataTest):
                           self.text_tag("track_name", u"B")])
 
         # setitem leaves other items alone
-        metadata = self.metadata_class([self.unknown_tag("FOO")])
+        metadata = self.metadata_class([self.unknown_tag(b"FOO")])
         metadata[field] = []
         self.assertIsNone(metadata.track_name)
-        self.assertEqual(metadata.frames, [self.unknown_tag("FOO")])
+        self.assertEqual(metadata.frames, [self.unknown_tag(b"FOO")])
 
-        metadata = self.metadata_class([self.unknown_tag("FOO"),
+        metadata = self.metadata_class([self.unknown_tag(b"FOO"),
                                         self.text_tag("track_name", u"X")])
         metadata[field] = [self.text_tag("track_name", u"A")]
         self.assertEqual(metadata.track_name, u"A")
         self.assertEqual(metadata.frames,
-                         [self.unknown_tag("FOO"),
+                         [self.unknown_tag(b"FOO"),
                           self.text_tag("track_name", u"A")])
 
         metadata = self.metadata_class([self.text_tag("track_name", u"X"),
-                                        self.unknown_tag("FOO"),
+                                        self.unknown_tag(b"FOO"),
                                         self.text_tag("track_name", u"Y")])
         metadata[field] = [self.text_tag("track_name", u"A"),
                            self.text_tag("track_name", u"B")]
         self.assertEqual(metadata.track_name, u"A")
         self.assertEqual(metadata.frames,
                          [self.text_tag("track_name", u"A"),
-                          self.unknown_tag("FOO"),
+                          self.unknown_tag(b"FOO"),
                           self.text_tag("track_name", u"B")])
 
     @METADATA_ID3V2
@@ -3152,12 +3154,12 @@ class ID3v22MetaData(MetaDataTest):
         from audiotools.bitstream import BitstreamReader, BitstreamWriter
         from operator import or_
 
-        mp3_data = open("sine.mp3", "rb").read()
+        with open("sine.mp3", "rb") as f:
+            mp3_data = f.read()
 
         # build temporary track with no metadata
         temp_file = tempfile.NamedTemporaryFile(suffix=".mp3")
         temp_file_name = temp_file.name
-        open(temp_file_name, "wb").write(mp3_data)
         temp_file.write(mp3_data)
         temp_file.flush()
 
@@ -3202,7 +3204,7 @@ class ID3v22MetaData(MetaDataTest):
     def test_clean(self):
         # check trailing whitespace
         metadata = audiotools.ID3v22Comment(
-            [audiotools.id3.ID3v22_T__Frame.converted("TT2", u"Title ")])
+            [audiotools.id3.ID3v22_T__Frame.converted(b"TT2", u"Title ")])
         self.assertEqual(metadata.track_name, u"Title ")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
@@ -3212,7 +3214,7 @@ class ID3v22MetaData(MetaDataTest):
 
         # check leading whitespace
         metadata = audiotools.ID3v22Comment(
-            [audiotools.id3.ID3v22_T__Frame.converted("TT2", u" Title")])
+            [audiotools.id3.ID3v22_T__Frame.converted(b"TT2", u" Title")])
         self.assertEqual(metadata.track_name, u" Title")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
@@ -3222,15 +3224,15 @@ class ID3v22MetaData(MetaDataTest):
 
         # check empty fields
         metadata = audiotools.ID3v22Comment(
-            [audiotools.id3.ID3v22_T__Frame.converted("TT2", u"")])
-        self.assertEqual(metadata["TT2"][0].data, "")
+            [audiotools.id3.ID3v22_T__Frame.converted(b"TT2", u"")])
+        self.assertEqual(metadata[b"TT2"][0].data, b"")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          ["removed empty field %(field)s" %
                           {"field": u"TT2"}])
         self.assertRaises(KeyError,
                           cleaned.__getitem__,
-                          "TT2")
+                          b"TT2")
 
         # check leading zeroes,
         # depending on whether we're preserving them or not
@@ -3243,30 +3245,30 @@ class ID3v22MetaData(MetaDataTest):
                              True)
 
             metadata = audiotools.ID3v22Comment(
-                [audiotools.id3.ID3v22_T__Frame.converted("TRK", u"1")])
+                [audiotools.id3.ID3v22_T__Frame.converted(b"TRK", u"1")])
             self.assertEqual(metadata.track_number, 1)
             self.assertIsNone(metadata.track_total)
-            self.assertEqual(metadata["TRK"][0].data, "1")
+            self.assertEqual(metadata[b"TRK"][0].data, b"1")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              ["added leading zeroes to %(field)s" %
                               {"field": u"TRK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertIsNone(cleaned.track_total)
-            self.assertEqual(cleaned["TRK"][0].data, "01")
+            self.assertEqual(cleaned[b"TRK"][0].data, b"01")
 
             metadata = audiotools.ID3v22Comment(
-                [audiotools.id3.ID3v22_T__Frame.converted("TRK", u"1/2")])
+                [audiotools.id3.ID3v22_T__Frame.converted(b"TRK", u"1/2")])
             self.assertEqual(metadata.track_number, 1)
             self.assertEqual(metadata.track_total, 2)
-            self.assertEqual(metadata["TRK"][0].data, "1/2")
+            self.assertEqual(metadata[b"TRK"][0].data, b"1/2")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              ["added leading zeroes to %(field)s" %
                               {"field": u"TRK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
-            self.assertEqual(cleaned["TRK"][0].data, "01/02")
+            self.assertEqual(cleaned[b"TRK"][0].data, b"01/02")
 
             # don't pad ID3v2 tags with 0
             audiotools.config.set_default("ID3", "pad", "off")
@@ -3274,56 +3276,56 @@ class ID3v22MetaData(MetaDataTest):
                              False)
 
             metadata = audiotools.ID3v22Comment(
-                [audiotools.id3.ID3v22_T__Frame.converted("TRK", u"01")])
+                [audiotools.id3.ID3v22_T__Frame.converted(b"TRK", u"01")])
             self.assertEqual(metadata.track_number, 1)
             self.assertIsNone(metadata.track_total)
-            self.assertEqual(metadata["TRK"][0].data, "01")
+            self.assertEqual(metadata[b"TRK"][0].data, b"01")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              ["removed leading zeroes from %(field)s" %
                               {"field": u"TRK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertIsNone(cleaned.track_total)
-            self.assertEqual(cleaned["TRK"][0].data, "1")
+            self.assertEqual(cleaned[b"TRK"][0].data, b"1")
 
             metadata = audiotools.ID3v22Comment(
-                [audiotools.id3.ID3v22_T__Frame.converted("TRK", u"01/2")])
+                [audiotools.id3.ID3v22_T__Frame.converted(b"TRK", u"01/2")])
             self.assertEqual(metadata.track_number, 1)
             self.assertEqual(metadata.track_total, 2)
-            self.assertEqual(metadata["TRK"][0].data, "01/2")
+            self.assertEqual(metadata[b"TRK"][0].data, b"01/2")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              ["removed leading zeroes from %(field)s" %
                               {"field": u"TRK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
-            self.assertEqual(cleaned["TRK"][0].data, "1/2")
+            self.assertEqual(cleaned[b"TRK"][0].data, b"1/2")
 
             metadata = audiotools.ID3v22Comment(
-                [audiotools.id3.ID3v22_T__Frame.converted("TRK", u"1/02")])
+                [audiotools.id3.ID3v22_T__Frame.converted(b"TRK", u"1/02")])
             self.assertEqual(metadata.track_number, 1)
             self.assertEqual(metadata.track_total, 2)
-            self.assertEqual(metadata["TRK"][0].data, "1/02")
+            self.assertEqual(metadata[b"TRK"][0].data, b"1/02")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              ["removed leading zeroes from %(field)s" %
                               {"field": u"TRK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
-            self.assertEqual(cleaned["TRK"][0].data, "1/2")
+            self.assertEqual(cleaned[b"TRK"][0].data, b"1/2")
 
             metadata = audiotools.ID3v22Comment(
-                [audiotools.id3.ID3v22_T__Frame.converted("TRK", u"01/02")])
+                [audiotools.id3.ID3v22_T__Frame.converted(b"TRK", u"01/02")])
             self.assertEqual(metadata.track_number, 1)
             self.assertEqual(metadata.track_total, 2)
-            self.assertEqual(metadata["TRK"][0].data, "01/02")
+            self.assertEqual(metadata[b"TRK"][0].data, b"01/02")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              ["removed leading zeroes from %(field)s" %
                               {"field": u"TRK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
-            self.assertEqual(cleaned["TRK"][0].data, "1/2")
+            self.assertEqual(cleaned[b"TRK"][0].data, b"1/2")
         finally:
             audiotools.config.set_default("ID3", "pad", id3_pad)
 
@@ -3354,16 +3356,16 @@ class ID3v23MetaData(ID3v22MetaData):
     def unknown_tag(self, binary_string):
         from audiotools.id3 import ID3v23_Frame
 
-        return ID3v23_Frame("XXXX", binary_string)
+        return ID3v23_Frame(b"XXXX", binary_string)
 
     @METADATA_ID3V2
     def test_foreign_field(self):
         metadata = self.metadata_class(
-            [audiotools.id3.ID3v23_T___Frame("TIT2", 0, "Track Name"),
-             audiotools.id3.ID3v23_T___Frame("TALB", 0, "Album Name"),
-             audiotools.id3.ID3v23_T___Frame("TRCK", 0, "1/3"),
-             audiotools.id3.ID3v23_T___Frame("TPOS", 0, "2/4"),
-             audiotools.id3.ID3v23_T___Frame("TFOO", 0, "Bar")])
+            [audiotools.id3.ID3v23_T___Frame(b"TIT2", 0, b"Track Name"),
+             audiotools.id3.ID3v23_T___Frame(b"TALB", 0, b"Album Name"),
+             audiotools.id3.ID3v23_T___Frame(b"TRCK", 0, b"1/3"),
+             audiotools.id3.ID3v23_T___Frame(b"TPOS", 0, b"2/4"),
+             audiotools.id3.ID3v23_T___Frame(b"TFOO", 0, b"Bar")])
         for format in self.supported_formats:
             temp_file = tempfile.NamedTemporaryFile(
                 suffix="." + format.SUFFIX)
@@ -3374,7 +3376,7 @@ class ID3v23MetaData(ID3v22MetaData):
                 metadata2 = track.get_metadata()
                 self.assertEqual(metadata, metadata2)
                 self.assertEqual(metadata.__class__, metadata2.__class__)
-                self.assertEqual(metadata["TFOO"][0].data, "Bar")
+                self.assertEqual(metadata[b"TFOO"][0].data, b"Bar")
             finally:
                 temp_file.close()
 
@@ -3396,7 +3398,7 @@ class ID3v23MetaData(ID3v22MetaData):
 
         # check trailing whitespace
         metadata = audiotools.ID3v23Comment(
-            [audiotools.id3.ID3v23_T___Frame.converted("TIT2", u"Title ")])
+            [audiotools.id3.ID3v23_T___Frame.converted(b"TIT2", u"Title ")])
         self.assertEqual(metadata.track_name, u"Title ")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
@@ -3406,7 +3408,7 @@ class ID3v23MetaData(ID3v22MetaData):
 
         # check leading whitespace
         metadata = audiotools.ID3v23Comment(
-            [audiotools.id3.ID3v23_T___Frame.converted("TIT2", u" Title")])
+            [audiotools.id3.ID3v23_T___Frame.converted(b"TIT2", u" Title")])
         self.assertEqual(metadata.track_name, u" Title")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
@@ -3416,15 +3418,15 @@ class ID3v23MetaData(ID3v22MetaData):
 
         # check empty fields
         metadata = audiotools.ID3v23Comment(
-            [audiotools.id3.ID3v23_T___Frame.converted("TIT2", u"")])
-        self.assertEqual(metadata["TIT2"][0].data, "")
+            [audiotools.id3.ID3v23_T___Frame.converted(b"TIT2", u"")])
+        self.assertEqual(metadata[b"TIT2"][0].data, b"")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_REMOVE_EMPTY_TAG %
                           {"field": u"TIT2"}])
         self.assertRaises(KeyError,
                           cleaned.__getitem__,
-                          "TIT2")
+                          b"TIT2")
 
         # check leading zeroes,
         # depending on whether we're preserving them or not
@@ -3437,30 +3439,30 @@ class ID3v23MetaData(ID3v22MetaData):
                              True)
 
             metadata = audiotools.ID3v23Comment(
-                [audiotools.id3.ID3v23_T___Frame.converted("TRCK", u"1")])
+                [audiotools.id3.ID3v23_T___Frame.converted(b"TRCK", u"1")])
             self.assertEqual(metadata.track_number, 1)
             self.assertIsNone(metadata.track_total)
-            self.assertEqual(metadata["TRCK"][0].data, "1")
+            self.assertEqual(metadata[b"TRCK"][0].data, b"1")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              [CLEAN_ADD_LEADING_ZEROES %
                               {"field": u"TRCK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertIsNone(cleaned.track_total)
-            self.assertEqual(cleaned["TRCK"][0].data, "01")
+            self.assertEqual(cleaned[b"TRCK"][0].data, b"01")
 
             metadata = audiotools.ID3v23Comment(
-                [audiotools.id3.ID3v23_T___Frame.converted("TRCK", u"1/2")])
+                [audiotools.id3.ID3v23_T___Frame.converted(b"TRCK", u"1/2")])
             self.assertEqual(metadata.track_number, 1)
             self.assertEqual(metadata.track_total, 2)
-            self.assertEqual(metadata["TRCK"][0].data, "1/2")
+            self.assertEqual(metadata[b"TRCK"][0].data, b"1/2")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              [CLEAN_ADD_LEADING_ZEROES %
                               {"field": u"TRCK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
-            self.assertEqual(cleaned["TRCK"][0].data, "01/02")
+            self.assertEqual(cleaned[b"TRCK"][0].data, b"01/02")
 
             # don't pad ID3v2 tags with 0
             audiotools.config.set_default("ID3", "pad", "off")
@@ -3468,56 +3470,56 @@ class ID3v23MetaData(ID3v22MetaData):
                              False)
 
             metadata = audiotools.ID3v23Comment(
-                [audiotools.id3.ID3v23_T___Frame.converted("TRCK", u"01")])
+                [audiotools.id3.ID3v23_T___Frame.converted(b"TRCK", u"01")])
             self.assertEqual(metadata.track_number, 1)
             self.assertIsNone(metadata.track_total)
-            self.assertEqual(metadata["TRCK"][0].data, "01")
+            self.assertEqual(metadata[b"TRCK"][0].data, b"01")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              [CLEAN_REMOVE_LEADING_ZEROES %
                               {"field": u"TRCK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertIsNone(cleaned.track_total)
-            self.assertEqual(cleaned["TRCK"][0].data, "1")
+            self.assertEqual(cleaned[b"TRCK"][0].data, b"1")
 
             metadata = audiotools.ID3v23Comment(
-                [audiotools.id3.ID3v23_T___Frame.converted("TRCK", u"01/2")])
+                [audiotools.id3.ID3v23_T___Frame.converted(b"TRCK", u"01/2")])
             self.assertEqual(metadata.track_number, 1)
             self.assertEqual(metadata.track_total, 2)
-            self.assertEqual(metadata["TRCK"][0].data, "01/2")
+            self.assertEqual(metadata[b"TRCK"][0].data, b"01/2")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              [CLEAN_REMOVE_LEADING_ZEROES %
                               {"field": u"TRCK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
-            self.assertEqual(cleaned["TRCK"][0].data, "1/2")
+            self.assertEqual(cleaned[b"TRCK"][0].data, b"1/2")
 
             metadata = audiotools.ID3v23Comment(
-                [audiotools.id3.ID3v23_T___Frame.converted("TRCK", u"1/02")])
+                [audiotools.id3.ID3v23_T___Frame.converted(b"TRCK", u"1/02")])
             self.assertEqual(metadata.track_number, 1)
             self.assertEqual(metadata.track_total, 2)
-            self.assertEqual(metadata["TRCK"][0].data, "1/02")
+            self.assertEqual(metadata[b"TRCK"][0].data, b"1/02")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              [CLEAN_REMOVE_LEADING_ZEROES %
                               {"field": u"TRCK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
-            self.assertEqual(cleaned["TRCK"][0].data, "1/2")
+            self.assertEqual(cleaned[b"TRCK"][0].data, b"1/2")
 
             metadata = audiotools.ID3v23Comment(
-                [audiotools.id3.ID3v23_T___Frame.converted("TRCK", u"01/02")])
+                [audiotools.id3.ID3v23_T___Frame.converted(b"TRCK", u"01/02")])
             self.assertEqual(metadata.track_number, 1)
             self.assertEqual(metadata.track_total, 2)
-            self.assertEqual(metadata["TRCK"][0].data, "01/02")
+            self.assertEqual(metadata[b"TRCK"][0].data, b"01/02")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              [CLEAN_REMOVE_LEADING_ZEROES %
                               {"field": u"TRCK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
-            self.assertEqual(cleaned["TRCK"][0].data, "1/2")
+            self.assertEqual(cleaned[b"TRCK"][0].data, b"1/2")
         finally:
             audiotools.config.set_default("ID3", "pad", id3_pad)
 
@@ -3548,7 +3550,7 @@ class ID3v24MetaData(ID3v22MetaData):
     def unknown_tag(self, binary_string):
         from audiotools.id3 import ID3v24_Frame
 
-        return ID3v24_Frame("XXXX", binary_string)
+        return ID3v24_Frame(b"XXXX", binary_string)
 
     def empty_metadata(self):
         return self.metadata_class([])
@@ -3568,7 +3570,7 @@ class ID3v24MetaData(ID3v22MetaData):
 
         # check trailing whitespace
         metadata = audiotools.ID3v24Comment(
-            [audiotools.id3.ID3v24_T___Frame.converted("TIT2", u"Title ")])
+            [audiotools.id3.ID3v24_T___Frame.converted(b"TIT2", u"Title ")])
         self.assertEqual(metadata.track_name, u"Title ")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
@@ -3578,7 +3580,7 @@ class ID3v24MetaData(ID3v22MetaData):
 
         # check leading whitespace
         metadata = audiotools.ID3v24Comment(
-            [audiotools.id3.ID3v24_T___Frame.converted("TIT2", u" Title")])
+            [audiotools.id3.ID3v24_T___Frame.converted(b"TIT2", u" Title")])
         self.assertEqual(metadata.track_name, u" Title")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
@@ -3588,15 +3590,15 @@ class ID3v24MetaData(ID3v22MetaData):
 
         # check empty fields
         metadata = audiotools.ID3v24Comment(
-            [audiotools.id3.ID3v24_T___Frame.converted("TIT2", u"")])
-        self.assertEqual(metadata["TIT2"][0].data, "")
+            [audiotools.id3.ID3v24_T___Frame.converted(b"TIT2", u"")])
+        self.assertEqual(metadata[b"TIT2"][0].data, b"")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_REMOVE_EMPTY_TAG %
                           {"field": u"TIT2"}])
         self.assertRaises(KeyError,
                           cleaned.__getitem__,
-                          "TIT2")
+                          b"TIT2")
 
         # check leading zeroes,
         # depending on whether we're preserving them or not
@@ -3609,30 +3611,30 @@ class ID3v24MetaData(ID3v22MetaData):
                              True)
 
             metadata = audiotools.ID3v24Comment(
-                [audiotools.id3.ID3v24_T___Frame.converted("TRCK", u"1")])
+                [audiotools.id3.ID3v24_T___Frame.converted(b"TRCK", u"1")])
             self.assertEqual(metadata.track_number, 1)
             self.assertIsNone(metadata.track_total)
-            self.assertEqual(metadata["TRCK"][0].data, "1")
+            self.assertEqual(metadata[b"TRCK"][0].data, b"1")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              [CLEAN_ADD_LEADING_ZEROES %
                               {"field": u"TRCK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertIsNone(cleaned.track_total)
-            self.assertEqual(cleaned["TRCK"][0].data, "01")
+            self.assertEqual(cleaned[b"TRCK"][0].data, b"01")
 
             metadata = audiotools.ID3v24Comment(
-                [audiotools.id3.ID3v24_T___Frame.converted("TRCK", u"1/2")])
+                [audiotools.id3.ID3v24_T___Frame.converted(b"TRCK", u"1/2")])
             self.assertEqual(metadata.track_number, 1)
             self.assertEqual(metadata.track_total, 2)
-            self.assertEqual(metadata["TRCK"][0].data, "1/2")
+            self.assertEqual(metadata[b"TRCK"][0].data, b"1/2")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              [CLEAN_ADD_LEADING_ZEROES %
                               {"field": u"TRCK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
-            self.assertEqual(cleaned["TRCK"][0].data, "01/02")
+            self.assertEqual(cleaned[b"TRCK"][0].data, b"01/02")
 
             # don't pad ID3v2 tags with 0
             audiotools.config.set_default("ID3", "pad", "off")
@@ -3640,56 +3642,56 @@ class ID3v24MetaData(ID3v22MetaData):
                              False)
 
             metadata = audiotools.ID3v24Comment(
-                [audiotools.id3.ID3v24_T___Frame.converted("TRCK", u"01")])
+                [audiotools.id3.ID3v24_T___Frame.converted(b"TRCK", u"01")])
             self.assertEqual(metadata.track_number, 1)
             self.assertIsNone(metadata.track_total)
-            self.assertEqual(metadata["TRCK"][0].data, "01")
+            self.assertEqual(metadata[b"TRCK"][0].data, b"01")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              [CLEAN_REMOVE_LEADING_ZEROES %
                               {"field": u"TRCK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertIsNone(cleaned.track_total)
-            self.assertEqual(cleaned["TRCK"][0].data, "1")
+            self.assertEqual(cleaned[b"TRCK"][0].data, b"1")
 
             metadata = audiotools.ID3v24Comment(
-                [audiotools.id3.ID3v24_T___Frame.converted("TRCK", u"01/2")])
+                [audiotools.id3.ID3v24_T___Frame.converted(b"TRCK", u"01/2")])
             self.assertEqual(metadata.track_number, 1)
             self.assertEqual(metadata.track_total, 2)
-            self.assertEqual(metadata["TRCK"][0].data, "01/2")
+            self.assertEqual(metadata[b"TRCK"][0].data, b"01/2")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              [CLEAN_REMOVE_LEADING_ZEROES %
                               {"field": u"TRCK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
-            self.assertEqual(cleaned["TRCK"][0].data, "1/2")
+            self.assertEqual(cleaned[b"TRCK"][0].data, b"1/2")
 
             metadata = audiotools.ID3v24Comment(
-                [audiotools.id3.ID3v24_T___Frame.converted("TRCK", u"1/02")])
+                [audiotools.id3.ID3v24_T___Frame.converted(b"TRCK", u"1/02")])
             self.assertEqual(metadata.track_number, 1)
             self.assertEqual(metadata.track_total, 2)
-            self.assertEqual(metadata["TRCK"][0].data, "1/02")
+            self.assertEqual(metadata[b"TRCK"][0].data, b"1/02")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              [CLEAN_REMOVE_LEADING_ZEROES %
                               {"field": u"TRCK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
-            self.assertEqual(cleaned["TRCK"][0].data, "1/2")
+            self.assertEqual(cleaned[b"TRCK"][0].data, b"1/2")
 
             metadata = audiotools.ID3v24Comment(
-                [audiotools.id3.ID3v24_T___Frame.converted("TRCK", u"01/02")])
+                [audiotools.id3.ID3v24_T___Frame.converted(b"TRCK", u"01/02")])
             self.assertEqual(metadata.track_number, 1)
             self.assertEqual(metadata.track_total, 2)
-            self.assertEqual(metadata["TRCK"][0].data, "01/02")
+            self.assertEqual(metadata[b"TRCK"][0].data, b"01/02")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
                              [CLEAN_REMOVE_LEADING_ZEROES %
                               {"field": u"TRCK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
-            self.assertEqual(cleaned["TRCK"][0].data, "1/2")
+            self.assertEqual(cleaned[b"TRCK"][0].data, b"1/2")
         finally:
             audiotools.config.set_default("ID3", "pad", id3_pad)
 
