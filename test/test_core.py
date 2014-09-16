@@ -54,6 +54,14 @@ for section in parser.sections():
                               option.upper())] = lambda function: do_nothing
 
 
+if (sys.version_info[0] >= 3):
+    def ints_to_bytes(l):
+        return bytes(l)
+else:
+    def ints_to_bytes(l):
+        return b"".join(map(chr, l))
+
+
 class PCMReader(unittest.TestCase):
     @LIB_PCM
     def test_pcm(self):
@@ -476,9 +484,9 @@ class CDDA(unittest.TestCase):
         audiotools.transfer_framelist_data(self.reader, bin_file.write)
         bin_file.close()
 
-        f = open(self.cue, "w")
-        f.write(open("cdda_test.cue", "rb").read())
-        f.close()
+        with open(self.cue, "wb") as f1:
+            with open("cdda_test.cue", "rb") as f2:
+                f1.write(f2.read())
 
     @LIB_CDIO
     def tearDown(self):
@@ -2045,10 +2053,10 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read(4), 12)
 
         reader.rewind()
-        self.assertEqual(reader.read_bytes(2), "\xB1\xED")
+        self.assertEqual(reader.read_bytes(2), b"\xB1\xED")
         reader.rewind()
         self.assertEqual(reader.read(4), 11)
-        self.assertEqual(reader.read_bytes(2), "\x1E\xD3")
+        self.assertEqual(reader.read_bytes(2), b"\x1E\xD3")
 
         reader.rewind()
         self.assertEqual(reader.read(3), 5)
@@ -2251,11 +2259,11 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read_huffman_code(table), 3)
 
         reader.rewind()
-        self.assertEqual(reader.read_bytes(2), "\xB1\xED")
+        self.assertEqual(reader.read_bytes(2), b"\xB1\xED")
         reader.rewind()
         self.assertEqual(reader.read(4), 1)
 
-        self.assertEqual(reader.read_bytes(2), "\xDB\xBE")
+        self.assertEqual(reader.read_bytes(2), b"\xDB\xBE")
 
         reader.rewind()
         self.assertEqual(reader.read(3), 1)
@@ -2470,7 +2478,7 @@ class Bitstream(unittest.TestCase):
         # test basic big-endian string
         self.assertEqual(parse("2u3u5u3s19s",
                                False,
-                               "".join(map(chr, [0xB1, 0xED, 0x3B, 0xC1]))),
+                               ints_to_bytes([0xB1, 0xED, 0x3B, 0xC1])),
                          [2, 6, 7, -3, -181311])
 
         # test all the defined format fields
@@ -2487,7 +2495,7 @@ class Bitstream(unittest.TestCase):
                                  ("2p 1P 3u 19u",
                                   [0x5, 0x53BC1]),
                                  ("2b 2b",
-                                  ["\xB1\xED", "\x3B\xC1"]),
+                                  [b"\xB1\xED", b"\x3B\xC1"]),
                                  ("2u a 3u a 4u a 5u",
                                   [2, 7, 3, 24]),
                                  ("3* 2u",
@@ -2500,20 +2508,19 @@ class Bitstream(unittest.TestCase):
                                  ("2u 10* 3? 3u", [2])]:
             self.assertEqual(parse(fields,
                                    False,
-                                   "".join(map(chr,
-                                               [0xB1, 0xED, 0x3B, 0xC1]))),
+                                   ints_to_bytes([0xB1, 0xED, 0x3B, 0xC1])),
                              values)
 
         # test several big-endian unsigned edge cases
         self.assertEqual(
             parse("32u 32u 32u 32u 64U 64U 64U 64U",
                   False,
-                  "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
-                                    128, 0, 0, 0, 127, 255, 255, 255,
-                                    0, 0, 0, 0, 0, 0, 0, 0,
-                                    255, 255, 255, 255, 255, 255, 255, 255,
-                                    128, 0, 0, 0, 0, 0, 0, 0,
-                                    127, 255, 255, 255, 255, 255, 255, 255]))),
+                  ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
+                                 128, 0, 0, 0, 127, 255, 255, 255,
+                                 0, 0, 0, 0, 0, 0, 0, 0,
+                                 255, 255, 255, 255, 255, 255, 255, 255,
+                                 128, 0, 0, 0, 0, 0, 0, 0,
+                                 127, 255, 255, 255, 255, 255, 255, 255])),
             [0,
              4294967295,
              2147483648,
@@ -2527,12 +2534,12 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(
             parse("32s 32s 32s 32s 64S 64S 64S 64S",
                   False,
-                  "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
-                                    128, 0, 0, 0, 127, 255, 255, 255,
-                                    0, 0, 0, 0, 0, 0, 0, 0,
-                                    255, 255, 255, 255, 255, 255, 255, 255,
-                                    128, 0, 0, 0, 0, 0, 0, 0,
-                                    127, 255, 255, 255, 255, 255, 255, 255]))),
+                  ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
+                                 128, 0, 0, 0, 127, 255, 255, 255,
+                                 0, 0, 0, 0, 0, 0, 0, 0,
+                                 255, 255, 255, 255, 255, 255, 255, 255,
+                                 128, 0, 0, 0, 0, 0, 0, 0,
+                                 127, 255, 255, 255, 255, 255, 255, 255])),
             [0,
              -1,
              -2147483648,
@@ -2553,7 +2560,7 @@ class Bitstream(unittest.TestCase):
         # test basic little-endian string
         self.assertEqual(parse("2u3u5u3s19s",
                                True,
-                               "".join(map(chr, [0xB1, 0xED, 0x3B, 0xC1]))),
+                               ints_to_bytes([0xB1, 0xED, 0x3B, 0xC1])),
                          [1, 4, 13, 3, -128545])
 
         # test all the defined format fields
@@ -2570,7 +2577,7 @@ class Bitstream(unittest.TestCase):
                                  ("2p 1P 3u 19u",
                                   [0x3, 0x609DF]),
                                  ("2b 2b",
-                                  ["\xB1\xED", "\x3B\xC1"]),
+                                  [b"\xB1\xED", b"\x3B\xC1"]),
                                  ("2u a 3u a 4u a 5u",
                                   [1, 5, 11, 1]),
                                  ("3* 2u",
@@ -2583,20 +2590,19 @@ class Bitstream(unittest.TestCase):
                                  ("2u 10* 3? 3u", [1])]:
             self.assertEqual(parse(fields,
                                    True,
-                                   "".join(map(chr,
-                                               [0xB1, 0xED, 0x3B, 0xC1]))),
+                                   ints_to_bytes([0xB1, 0xED, 0x3B, 0xC1])),
                              values)
 
         # test several little-endian unsigned edge cases
         self.assertEqual(
             parse("32u 32u 32u 32u 64U 64U 64U 64U",
                   True,
-                  "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
-                                    0, 0, 0, 128, 255, 255, 255, 127,
-                                    0, 0, 0, 0, 0, 0, 0, 0,
-                                    255, 255, 255, 255, 255, 255, 255, 255,
-                                    0, 0, 0, 0, 0, 0, 0, 128,
-                                    255, 255, 255, 255, 255, 255, 255, 127]))),
+                  ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
+                                 0, 0, 0, 128, 255, 255, 255, 127,
+                                 0, 0, 0, 0, 0, 0, 0, 0,
+                                 255, 255, 255, 255, 255, 255, 255, 255,
+                                 0, 0, 0, 0, 0, 0, 0, 128,
+                                 255, 255, 255, 255, 255, 255, 255, 127])),
             [0,
              4294967295,
              2147483648,
@@ -2610,12 +2616,12 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(
             parse("32s 32s 32s 32s 64S 64S 64S 64S",
                   True,
-                  "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
-                                    0, 0, 0, 128, 255, 255, 255, 127,
-                                    0, 0, 0, 0, 0, 0, 0, 0,
-                                    255, 255, 255, 255, 255, 255, 255, 255,
-                                    0, 0, 0, 0, 0, 0, 0, 128,
-                                    255, 255, 255, 255, 255, 255, 255, 127]))),
+                  ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
+                                 0, 0, 0, 128, 255, 255, 255, 127,
+                                 0, 0, 0, 0, 0, 0, 0, 0,
+                                 255, 255, 255, 255, 255, 255, 255, 255,
+                                 0, 0, 0, 0, 0, 0, 0, 128,
+                                 255, 255, 255, 255, 255, 255, 255, 127])),
             [0,
              -1,
              -2147483648,
@@ -2641,7 +2647,7 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(build("2u3u5u3s19s",
                                False,
                                [2, 6, 7, -3, -181311]),
-                         "".join(map(chr, [0xB1, 0xED, 0x3B, 0xC1])))
+                         ints_to_bytes([0xB1, 0xED, 0x3B, 0xC1]))
 
         # test several big-endian unsigned edge cases
         self.assertEqual(
@@ -2655,12 +2661,12 @@ class Bitstream(unittest.TestCase):
                    0xFFFFFFFFFFFFFFFF,
                    9223372036854775808,
                    9223372036854775807]),
-            "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
-                              128, 0, 0, 0, 127, 255, 255, 255,
-                              0, 0, 0, 0, 0, 0, 0, 0,
-                              255, 255, 255, 255, 255, 255, 255, 255,
-                              128, 0, 0, 0, 0, 0, 0, 0,
-                              127, 255, 255, 255, 255, 255, 255, 255])))
+            ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
+                           128, 0, 0, 0, 127, 255, 255, 255,
+                           0, 0, 0, 0, 0, 0, 0, 0,
+                           255, 255, 255, 255, 255, 255, 255, 255,
+                           128, 0, 0, 0, 0, 0, 0, 0,
+                           127, 255, 255, 255, 255, 255, 255, 255]))
 
         # test several big-endian signed edge cases
         self.assertEqual(
@@ -2674,12 +2680,12 @@ class Bitstream(unittest.TestCase):
                    -1,
                    -9223372036854775808,
                    9223372036854775807]),
-            "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
-                              128, 0, 0, 0, 127, 255, 255, 255,
-                              0, 0, 0, 0, 0, 0, 0, 0,
-                              255, 255, 255, 255, 255, 255, 255, 255,
-                              128, 0, 0, 0, 0, 0, 0, 0,
-                              127, 255, 255, 255, 255, 255, 255, 255])))
+            ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
+                           128, 0, 0, 0, 127, 255, 255, 255,
+                           0, 0, 0, 0, 0, 0, 0, 0,
+                           255, 255, 255, 255, 255, 255, 255, 255,
+                           128, 0, 0, 0, 0, 0, 0, 0,
+                           127, 255, 255, 255, 255, 255, 255, 255]))
 
         # test big-endian write errors
         for l in [[2, 6, 7, -3], [2, 6, 7], [2, 6], [2], []]:
@@ -2693,7 +2699,7 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(build("2u3u5u3s19s",
                                True,
                                [1, 4, 13, 3, -128545]),
-                         "".join(map(chr, [0xB1, 0xED, 0x3B, 0xC1])))
+                         ints_to_bytes([0xB1, 0xED, 0x3B, 0xC1]))
 
         # test several little-endian unsigned edge cases
         self.assertEqual(
@@ -2707,12 +2713,12 @@ class Bitstream(unittest.TestCase):
                    0xFFFFFFFFFFFFFFFF,
                    9223372036854775808,
                    9223372036854775807]),
-            "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
-                              0, 0, 0, 128, 255, 255, 255, 127,
-                              0, 0, 0, 0, 0, 0, 0, 0,
-                              255, 255, 255, 255, 255, 255, 255, 255,
-                              0, 0, 0, 0, 0, 0, 0, 128,
-                              255, 255, 255, 255, 255, 255, 255, 127])))
+            ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
+                           0, 0, 0, 128, 255, 255, 255, 127,
+                           0, 0, 0, 0, 0, 0, 0, 0,
+                           255, 255, 255, 255, 255, 255, 255, 255,
+                           0, 0, 0, 0, 0, 0, 0, 128,
+                           255, 255, 255, 255, 255, 255, 255, 127]))
 
         # test several little-endian signed edge cases
         self.assertEqual(
@@ -2726,12 +2732,12 @@ class Bitstream(unittest.TestCase):
                    -1,
                    -9223372036854775808,
                    9223372036854775807]),
-            "".join(map(chr, [0, 0, 0, 0, 255, 255, 255, 255,
-                              0, 0, 0, 128, 255, 255, 255, 127,
-                              0, 0, 0, 0, 0, 0, 0, 0,
-                              255, 255, 255, 255, 255, 255, 255, 255,
-                              0, 0, 0, 0, 0, 0, 0, 128,
-                              255, 255, 255, 255, 255, 255, 255, 127])))
+            ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
+                           0, 0, 0, 128, 255, 255, 255, 127,
+                           0, 0, 0, 0, 0, 0, 0, 0,
+                           255, 255, 255, 255, 255, 255, 255, 255,
+                           0, 0, 0, 0, 0, 0, 0, 128,
+                           255, 255, 255, 255, 255, 255, 255, 127]))
 
         # test little-endian write errors
         for l in [[1, 4, 13, 3], [1, 4, 13], [1, 4], [1], []]:
@@ -2762,9 +2768,9 @@ class Bitstream(unittest.TestCase):
                                         ("8s a",   [-1]),
                                         ("64U",    [0xFFFFFFFFFFFFFFFF]),
                                         ("64S",    [-9223372036854775808]),
-                                        ("10b",    [chr(0) * 10]),
-                                        ("10p10b a", [chr(1) * 10]),
-                                        ("10P10b", [chr(2) * 10])]:
+                                        ("10b",    [b"\x00" * 10]),
+                                        ("10p10b a", [b"\x01" * 10]),
+                                        ("10P10b", [b"\x02" * 10])]:
             self.assertEqual(parse(format_string, False,
                                    build(format_string, False, values)),
                              values)
@@ -2776,7 +2782,7 @@ class Bitstream(unittest.TestCase):
     def test_simple_reader(self):
         from audiotools.bitstream import BitstreamReader, HuffmanTree
 
-        data = chr(0xB1) + chr(0xED) + chr(0x3B) + chr(0xC1)
+        data = b"\xB1\xED\x3B\xC1"
 
         temp = tempfile.TemporaryFile()
 
@@ -2818,7 +2824,7 @@ class Bitstream(unittest.TestCase):
             self.__test_callbacks_reader__(reader, 14, 18, table_le, 13)
 
         # pad the stream with some additional data at both ends
-        data = chr(0xFF) + chr(0xFF) + data + chr(0xFF) + chr(0xFF)
+        data = b"\xFF" + b"\xFF" + data + b"\xFF" + b"\xFF"
 
         temp.seek(0, 0)
         temp.write(data)
@@ -3077,15 +3083,15 @@ class Bitstream(unittest.TestCase):
     def __validate_edge_writer_be__(self, writer, temp_file):
         writer.close()
 
-        self.assertEqual(open(temp_file.name, "rb").read(),
-                         "".join(map(chr,
-                                     [0, 0, 0, 0, 255, 255, 255, 255,
-                                      128, 0, 0, 0, 127, 255, 255, 255,
-                                      0, 0, 0, 0, 0, 0, 0, 0,
-                                      255, 255, 255, 255, 255, 255, 255, 255,
-                                      128, 0, 0, 0, 0, 0, 0, 0,
-                                      127, 255, 255, 255, 255, 255, 255, 255]
-                                     )))
+        with open(temp_file.name, "rb") as f:
+            self.assertEqual(
+                f.read(),
+                ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
+                               128, 0, 0, 0, 127, 255, 255, 255,
+                               0, 0, 0, 0, 0, 0, 0, 0,
+                               255, 255, 255, 255, 255, 255, 255, 255,
+                               128, 0, 0, 0, 0, 0, 0, 0,
+                               127, 255, 255, 255, 255, 255, 255, 255]))
 
         temp_file.close()
 
@@ -3101,15 +3107,15 @@ class Bitstream(unittest.TestCase):
         writer.copy(writer2)
         writer2.close()
 
-        self.assertEqual(open(temp_file.name, "rb").read(),
-                         "".join(map(chr,
-                                     [0, 0, 0, 0, 255, 255, 255, 255,
-                                      128, 0, 0, 0, 127, 255, 255, 255,
-                                      0, 0, 0, 0, 0, 0, 0, 0,
-                                      255, 255, 255, 255, 255, 255, 255, 255,
-                                      128, 0, 0, 0, 0, 0, 0, 0,
-                                      127, 255, 255, 255, 255, 255, 255, 255]
-                                     )))
+        with open(temp_file.name, "rb") as f:
+            self.assertEqual(
+                f.read(),
+                ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
+                               128, 0, 0, 0, 127, 255, 255, 255,
+                               0, 0, 0, 0, 0, 0, 0, 0,
+                               255, 255, 255, 255, 255, 255, 255, 255,
+                               128, 0, 0, 0, 0, 0, 0, 0,
+                               127, 255, 255, 255, 255, 255, 255, 255]))
 
         temp_file.close()
 
@@ -3130,15 +3136,15 @@ class Bitstream(unittest.TestCase):
     def __validate_edge_writer_le__(self, writer, temp_file):
         writer.close()
 
-        self.assertEqual(open(temp_file.name, "rb").read(),
-                         "".join(map(chr,
-                                     [0, 0, 0, 0, 255, 255, 255, 255,
-                                      0, 0, 0, 128, 255, 255, 255, 127,
-                                      0, 0, 0, 0, 0, 0, 0, 0,
-                                      255, 255, 255, 255, 255, 255, 255, 255,
-                                      0, 0, 0, 0, 0, 0, 0, 128,
-                                      255, 255, 255, 255, 255, 255, 255, 127]
-                                     )))
+        with open(temp_file.name, "rb") as f:
+            self.assertEqual(
+                f.read(),
+                ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
+                               0, 0, 0, 128, 255, 255, 255, 127,
+                               0, 0, 0, 0, 0, 0, 0, 0,
+                               255, 255, 255, 255, 255, 255, 255, 255,
+                               0, 0, 0, 0, 0, 0, 0, 128,
+                               255, 255, 255, 255, 255, 255, 255, 127]))
 
         temp_file.close()
 
@@ -3154,15 +3160,15 @@ class Bitstream(unittest.TestCase):
         writer.copy(writer2)
         writer2.close()
 
-        self.assertEqual(open(temp_file.name, "rb").read(),
-                         "".join(map(chr,
-                                     [0, 0, 0, 0, 255, 255, 255, 255,
-                                      0, 0, 0, 128, 255, 255, 255, 127,
-                                      0, 0, 0, 0, 0, 0, 0, 0,
-                                      255, 255, 255, 255, 255, 255, 255, 255,
-                                      0, 0, 0, 0, 0, 0, 0, 128,
-                                      255, 255, 255, 255, 255, 255, 255, 127]
-                                     )))
+        with open(temp_file.name, "rb") as f:
+            self.assertEqual(
+                f.read(),
+                ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
+                               0, 0, 0, 128, 255, 255, 255, 127,
+                               0, 0, 0, 0, 0, 0, 0, 0,
+                               255, 255, 255, 255, 255, 255, 255, 255,
+                               0, 0, 0, 0, 0, 0, 0, 128,
+                               255, 255, 255, 255, 255, 255, 255, 127]))
 
         temp_file.close()
 
@@ -3200,7 +3206,7 @@ class Bitstream(unittest.TestCase):
             writer = BitstreamWriter(data, endianness)
             check(writer, endianness)
             del(writer)
-            self.assertEqual(data.getvalue(), "\xB1\xED\x3B\xC1")
+            self.assertEqual(data.getvalue(), b"\xB1\xED\x3B\xC1")
 
         # perform recorder-based checks
         for check in checks:
@@ -3459,7 +3465,8 @@ class Bitstream(unittest.TestCase):
             writer.write(1, 1)
 
     def __check_output_file__(self, temp_file):
-        self.assertEqual(open(temp_file.name, "rb").read(), "\xB1\xED\x3B\xC1")
+        with open(temp_file.name, "rb") as f:
+            self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
     @LIB_BITSTREAM
     def test_read_errors(self):
@@ -3595,48 +3602,50 @@ class Bitstream(unittest.TestCase):
         temp = tempfile.NamedTemporaryFile()
         try:
             # write the temp file with a set of known big-endian data
-            temp.write("".join(map(chr,
-                                   [0, 0, 0, 0, 255, 255, 255, 255,
-                                    128, 0, 0, 0, 127, 255, 255, 255,
-                                    0, 0, 0, 0, 0, 0, 0, 0,
-                                    255, 255, 255, 255, 255, 255, 255, 255,
-                                    128, 0, 0, 0, 0, 0, 0, 0,
-                                    127, 255, 255, 255, 255, 255, 255, 255])))
+            temp.write(ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
+                                      128, 0, 0, 0, 127, 255, 255, 255,
+                                      0, 0, 0, 0, 0, 0, 0, 0,
+                                      255, 255, 255, 255, 255, 255, 255, 255,
+                                      128, 0, 0, 0, 0, 0, 0, 0,
+                                      127, 255, 255, 255, 255, 255, 255, 255]))
             temp.flush()
 
             # ensure a big-endian reader reads the values correctly
             reader = BitstreamReader(open(temp.name, "rb"), 0)
             self.__test_edge_reader_be__(reader)
-            del(reader)
+            reader.close()
 
             # ensure a big-endian sub-reader reads the values correctly
             reader = BitstreamReader(open(temp.name, "rb"), 0)
             subreader = reader.substream(48)
             self.__test_edge_reader_be__(subreader)
+            subreader.close()
+            reader.close()
         finally:
             temp.close()
 
         temp = tempfile.NamedTemporaryFile()
         try:
             # write the temp file with a collection of known little-endian data
-            temp.write("".join(map(chr,
-                                   [0, 0, 0, 0, 255, 255, 255, 255,
-                                    0, 0, 0, 128, 255, 255, 255, 127,
-                                    0, 0, 0, 0, 0, 0, 0, 0,
-                                    255, 255, 255, 255, 255, 255, 255, 255,
-                                    0, 0, 0, 0, 0, 0, 0, 128,
-                                    255, 255, 255, 255, 255, 255, 255, 127])))
+            temp.write(ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
+                                      0, 0, 0, 128, 255, 255, 255, 127,
+                                      0, 0, 0, 0, 0, 0, 0, 0,
+                                      255, 255, 255, 255, 255, 255, 255, 255,
+                                      0, 0, 0, 0, 0, 0, 0, 128,
+                                      255, 255, 255, 255, 255, 255, 255, 127]))
             temp.flush()
 
             # ensure a little-endian reader reads the values correctly
             reader = BitstreamReader(open(temp.name, "rb"), 1)
             self.__test_edge_reader_le__(reader)
-            del(reader)
+            reader.close()
 
             # ensure a little-endian sub-reader reads the values correctly
             reader = BitstreamReader(open(temp.name, "rb"), 1)
             subreader = reader.substream(48)
             self.__test_edge_reader_be__(subreader)
+            subreader.close()
+            reader.close()
         finally:
             temp.close()
 
@@ -3794,36 +3803,36 @@ class Bitstream(unittest.TestCase):
         # it as needed, which should keep performance reasonable.
         def new_temp1():
             temp = BytesIO()
-            temp.write(chr(0xB1))
-            temp.write(chr(0xED))
-            temp.write(chr(0x3B))
-            temp.write(chr(0xC1))
+            temp.write(b"\xB1")
+            temp.write(b"\xED")
+            temp.write(b"\x3B")
+            temp.write(b"\xC1")
             temp.seek(0, 0)
             return temp
 
         def new_temp2():
-            return __SimpleChunkReader__([chr(0xB1) +
-                                          chr(0xED) +
-                                          chr(0x3B) +
-                                          chr(0xC1)])
+            return __SimpleChunkReader__([b"\xB1" +
+                                          b"\xED" +
+                                          b"\x3B" +
+                                          b"\xC1"])
 
         def new_temp3():
-            return __SimpleChunkReader__([chr(0xB1) +
-                                          chr(0xED),
-                                          chr(0x3B) +
-                                          chr(0xC1)])
+            return __SimpleChunkReader__([b"\xB1" +
+                                          b"\xED",
+                                          b"\x3B" +
+                                          b"\xC1"])
 
         def new_temp4():
-            return __SimpleChunkReader__([chr(0xB1),
-                                          chr(0xED),
-                                          chr(0x3B) +
-                                          chr(0xC1)])
+            return __SimpleChunkReader__([b"\xB1",
+                                          b"\xED",
+                                          b"\x3B" +
+                                          b"\xC1"])
 
         def new_temp5():
-            return __SimpleChunkReader__([chr(0xB1),
-                                          chr(0xED),
-                                          chr(0x3B),
-                                          chr(0xC1)])
+            return __SimpleChunkReader__([b"\xB1",
+                                          b"\xED",
+                                          b"\x3B",
+                                          b"\xC1"])
 
         for new_temp in [new_temp1, new_temp2, new_temp3, new_temp4,
                          new_temp5]:
@@ -3974,8 +3983,8 @@ class Bitstream(unittest.TestCase):
             bitstream.write(19, 342977)
             bitstream.flush()
             f.close()
-            self.assertEqual(map(ord, open(temp.name, "rb").read()),
-                             [0xB1, 0xED, 0x3B, 0xC1])
+            with open(temp.name, "rb") as f:
+                self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             f = open(temp.name, "wb")
             bitstream = BitstreamWriter(f, 0)
@@ -3986,8 +3995,8 @@ class Bitstream(unittest.TestCase):
             bitstream.write_signed(19, -181311)
             bitstream.flush()
             f.close()
-            self.assertEqual(map(ord, open(temp.name, "rb").read()),
-                             [0xB1, 0xED, 0x3B, 0xC1])
+            with open(temp.name, "rb") as f:
+                self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             f = open(temp.name, "wb")
             bitstream = BitstreamWriter(f, 0)
@@ -4008,8 +4017,8 @@ class Bitstream(unittest.TestCase):
             bitstream.write(1, 1)
             bitstream.flush()
             f.close()
-            self.assertEqual(map(ord, open(temp.name, "rb").read()),
-                             [0xB1, 0xED, 0x3B, 0xC1])
+            with open(temp.name, "rb") as f:
+                self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             f = open(temp.name, "wb")
             bitstream = BitstreamWriter(f, 0)
@@ -4033,8 +4042,8 @@ class Bitstream(unittest.TestCase):
             bitstream.unary(1, 5)
             bitstream.flush()
             f.close()
-            self.assertEqual(map(ord, open(temp.name, "rb").read()),
-                             [0xB1, 0xED, 0x3B, 0xC1])
+            with open(temp.name, "rb") as f:
+                self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             # then, have the bitstream writer generate
             # a set of known little-endian values
@@ -4047,8 +4056,8 @@ class Bitstream(unittest.TestCase):
             bitstream.write(19, 395743)
             bitstream.flush()
             f.close()
-            self.assertEqual(map(ord, open(temp.name, "rb").read()),
-                             [0xB1, 0xED, 0x3B, 0xC1])
+            with open(temp.name, "rb") as f:
+                self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             f = open(temp.name, "wb")
             bitstream = BitstreamWriter(f, 1)
@@ -4059,8 +4068,8 @@ class Bitstream(unittest.TestCase):
             bitstream.write_signed(19, -128545)
             bitstream.flush()
             f.close()
-            self.assertEqual(map(ord, open(temp.name, "rb").read()),
-                             [0xB1, 0xED, 0x3B, 0xC1])
+            with open(temp.name, "rb") as f:
+                self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             f = open(temp.name, "wb")
             bitstream = BitstreamWriter(f, 1)
@@ -4081,8 +4090,8 @@ class Bitstream(unittest.TestCase):
             bitstream.write(2, 3)
             bitstream.flush()
             f.close()
-            self.assertEqual(map(ord, open(temp.name, "rb").read()),
-                             [0xB1, 0xED, 0x3B, 0xC1])
+            with open(temp.name, "rb") as f:
+                self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             f = open(temp.name, "wb")
             bitstream = BitstreamWriter(f, 1)
@@ -4106,8 +4115,8 @@ class Bitstream(unittest.TestCase):
             bitstream.unary(1, 0)
             bitstream.flush()
             f.close()
-            self.assertEqual(map(ord, open(temp.name, "rb").read()),
-                             [0xB1, 0xED, 0x3B, 0xC1])
+            with open(temp.name, "rb") as f:
+                self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             f = open(temp.name, "wb")
             bitstream = BitstreamWriter(f, 1)
@@ -4117,8 +4126,8 @@ class Bitstream(unittest.TestCase):
             bitstream.byte_align()
             bitstream.flush()
             f.close()
-            self.assertEqual(map(ord, open(temp.name, "rb").read()),
-                             [0x01, 0x0D])
+            with open(temp.name, "rb") as f:
+                self.assertEqual(f.read(), b"\x01\x0D")
 
         finally:
             temp.close()
@@ -4146,10 +4155,10 @@ class Bitstream(unittest.TestCase):
 
         def new_temp():
             temp = BytesIO()
-            temp.write(chr(0xB1))
-            temp.write(chr(0xED))
-            temp.write(chr(0x3B))
-            temp.write(chr(0xC1))
+            temp.write(b"\xB1")
+            temp.write(b"\xED")
+            temp.write(b"\x3B")
+            temp.write(b"\xC1")
             temp.seek(0, 0)
             return temp
 
@@ -4194,7 +4203,7 @@ class Bitstream(unittest.TestCase):
             self.assertRaises(IOError, writer.write, 1, 1)
             self.assertRaises(IOError, writer.write_signed, 2, 1)
             self.assertRaises(IOError, writer.unary, 1, 1)
-            self.assertRaises(IOError, writer.write_bytes, "foo")
+            self.assertRaises(IOError, writer.write_bytes, b"foo")
             self.assertRaises(IOError, writer.build, "1u2u3u", [0, 1, 2])
 
         # test a BitstreamWriter to a Python file object
@@ -4298,7 +4307,8 @@ class Bitstream(unittest.TestCase):
             self.__test_writer_marks__(writer)
             del(writer)
             f.close()
-            self.assertEqual(open("test.bin", "rb").read(), "\xFF\x00\xFF")
+            with open("test.bin", "rb") as f:
+                self.assertEqual(f.read(), b"\xFF\x00\xFF")
         finally:
             os.unlink("test.bin")
 
@@ -4308,7 +4318,8 @@ class Bitstream(unittest.TestCase):
             self.__test_writer_marks__(writer)
             del(writer)
             f.close()
-            self.assertEqual(open("test.bin", "rb").read(), "\xFF\x00\xFF")
+            with open("test.bin", "rb") as f:
+                self.assertEqual(f.read(), b"\xFF\x00\xFF")
         finally:
             os.unlink("test.bin")
 
@@ -4316,13 +4327,14 @@ class Bitstream(unittest.TestCase):
         writer = BitstreamWriter(s, False)
         self.__test_writer_marks__(writer)
         del(writer)
-        self.assertEqual(s.getvalue(), "\xFF\x00\xFF")
+        self.assertEqual(s.getvalue(), b"\xFF\x00\xFF")
 
         s = BytesIO()
         writer = BitstreamWriter(s, True)
         self.__test_writer_marks__(writer)
         del(writer)
-        self.assertEqual(s.getvalue(), "\xFF\x00\xFF")
+        self.assertEqual(s.getvalue(), b"\xFF\x00\xFF")
+
 
 class TestReplayGain(unittest.TestCase):
     @LIB_REPLAYGAIN
@@ -4339,7 +4351,7 @@ class TestReplayGain(unittest.TestCase):
         rg = audiotools.replaygain.ReplayGain(44100)
 
         self.assertEqual(
-            rg.title_gain(audiotools.PCMReader(BytesIO(""),
+            rg.title_gain(audiotools.PCMReader(BytesIO(b""),
                                                44100, 2, 0x3, 16)),
             (0.0, 0.0))
         self.assertRaises(ValueError, rg.album_gain)
@@ -4442,7 +4454,9 @@ class TestReplayGain(unittest.TestCase):
 
             # calculate its ReplayGain
             gain = audiotools.replaygain.ReplayGain(track1.sample_rate())
-            (gain, peak) = gain.title_gain(track1.to_pcm())
+            pcm = track1.to_pcm()
+            (gain, peak) = gain.title_gain(pcm)
+            pcm.close()
 
             # apply gain to dummy file
             track2 = test_format.from_pcm(
@@ -4453,7 +4467,9 @@ class TestReplayGain(unittest.TestCase):
 
             # ensure gain applied is quieter than without gain applied
             gain2 = audiotools.replaygain.ReplayGain(track1.sample_rate())
-            (gain2, peak2) = gain2.title_gain(track2.to_pcm())
+            pcm = track2.to_pcm()
+            (gain2, peak2) = gain2.title_gain(pcm)
+            pcm.close()
 
             self.assertGreater(gain2, gain)
         finally:
@@ -6294,47 +6310,53 @@ class Test_Image(unittest.TestCase):
     def test_metrics(self):
         from audiotools.image import image_metrics
 
-        jpeg = image_metrics(open("image_test_metrics-1.jpg", "rb").read())
-        self.assertEqual(jpeg.width, 3)
-        self.assertEqual(jpeg.height, 2)
-        self.assertEqual(jpeg.bits_per_pixel, 24)
-        self.assertEqual(jpeg.color_count, 0)
-        self.assertEqual(jpeg.mime_type, "image/jpeg")
+        with open("image_test_metrics-1.jpg", "rb") as f:
+            jpeg = image_metrics(f.read())
+            self.assertEqual(jpeg.width, 3)
+            self.assertEqual(jpeg.height, 2)
+            self.assertEqual(jpeg.bits_per_pixel, 24)
+            self.assertEqual(jpeg.color_count, 0)
+            self.assertEqual(jpeg.mime_type, "image/jpeg")
 
-        png1 = image_metrics(open("image_test_metrics-2.png", "rb").read())
-        self.assertEqual(png1.width, 3)
-        self.assertEqual(png1.height, 2)
-        self.assertEqual(png1.bits_per_pixel, 24)
-        self.assertEqual(png1.color_count, 0)
-        self.assertEqual(png1.mime_type, "image/png")
+        with open("image_test_metrics-2.png", "rb") as f:
+            png1 = image_metrics(f.read())
+            self.assertEqual(png1.width, 3)
+            self.assertEqual(png1.height, 2)
+            self.assertEqual(png1.bits_per_pixel, 24)
+            self.assertEqual(png1.color_count, 0)
+            self.assertEqual(png1.mime_type, "image/png")
 
-        png2 = image_metrics(open("image_test_metrics-3.png", "rb").read())
-        self.assertEqual(png2.width, 3)
-        self.assertEqual(png2.height, 2)
-        self.assertEqual(png2.bits_per_pixel, 8)
-        self.assertEqual(png2.color_count, 1)
-        self.assertEqual(png2.mime_type, "image/png")
+        with open("image_test_metrics-3.png", "rb") as f:
+            png2 = image_metrics(f.read())
+            self.assertEqual(png2.width, 3)
+            self.assertEqual(png2.height, 2)
+            self.assertEqual(png2.bits_per_pixel, 8)
+            self.assertEqual(png2.color_count, 1)
+            self.assertEqual(png2.mime_type, "image/png")
 
-        gif = image_metrics(open("image_test_metrics-4.gif", "rb").read())
-        self.assertEqual(gif.width, 3)
-        self.assertEqual(gif.height, 2)
-        self.assertEqual(gif.bits_per_pixel, 8)
-        self.assertEqual(gif.color_count, 2)
-        self.assertEqual(gif.mime_type, "image/gif")
+        with open("image_test_metrics-4.gif", "rb") as f:
+            gif = image_metrics(f.read())
+            self.assertEqual(gif.width, 3)
+            self.assertEqual(gif.height, 2)
+            self.assertEqual(gif.bits_per_pixel, 8)
+            self.assertEqual(gif.color_count, 2)
+            self.assertEqual(gif.mime_type, "image/gif")
 
-        bmp = image_metrics(open("image_test_metrics-5.bmp", "rb").read())
-        self.assertEqual(bmp.width, 3)
-        self.assertEqual(bmp.height, 2)
-        self.assertEqual(bmp.bits_per_pixel, 24)
-        self.assertEqual(bmp.color_count, 0)
-        self.assertEqual(bmp.mime_type, "image/x-ms-bmp")
+        with open("image_test_metrics-5.bmp", "rb") as f:
+            bmp = image_metrics(f.read())
+            self.assertEqual(bmp.width, 3)
+            self.assertEqual(bmp.height, 2)
+            self.assertEqual(bmp.bits_per_pixel, 24)
+            self.assertEqual(bmp.color_count, 0)
+            self.assertEqual(bmp.mime_type, "image/x-ms-bmp")
 
-        tiff = image_metrics(open("image_test_metrics-6.tiff", "rb").read())
-        self.assertEqual(tiff.width, 3)
-        self.assertEqual(tiff.height, 2)
-        self.assertEqual(tiff.bits_per_pixel, 24)
-        self.assertEqual(tiff.color_count, 0)
-        self.assertEqual(tiff.mime_type, "image/tiff")
+        with open("image_test_metrics-6.tiff", "rb") as f:
+            tiff = image_metrics(f.read())
+            self.assertEqual(tiff.width, 3)
+            self.assertEqual(tiff.height, 2)
+            self.assertEqual(tiff.bits_per_pixel, 24)
+            self.assertEqual(tiff.color_count, 0)
+            self.assertEqual(tiff.mime_type, "image/tiff")
 
 
 class Test_ExecProgressQueue(unittest.TestCase):

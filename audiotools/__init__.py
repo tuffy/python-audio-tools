@@ -2810,7 +2810,7 @@ def PCMConverter(pcmreader,
         #  since there's no way to summon surround channels
         #  out of thin air)
         pcmreader = ReorderedPCMReader(pcmreader,
-                                       range(pcmreader.channels) +
+                                       list(range(pcmreader.channels)) +
                                        [0] * (channels - pcmreader.channels),
                                        channel_mask)
 
@@ -2905,6 +2905,8 @@ def calculate_replay_gain(tracks, progress=None):
                               current_frames=current_frames))
         current_frames += track_frames
         gains.append((track, track_gain, track_peak))
+
+        pcm.close()
 
     # once everything is calculated, get the album gain
     (album_gain, album_peak) = rg.album_gain()

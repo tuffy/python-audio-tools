@@ -7185,18 +7185,18 @@
 ***** TODO Lib
       - [X] core
       - [ ] cuesheet
-      - [ ] cdio
+      - [X] cdio
       - [ ] freedb
-      - [ ] image
+      - [X] image
       - [ ] musicbrainz
       - [ ] accuraterip
-      - [ ] pcm
-      - [ ] bitstream
-      - [ ] replaygain
-      - [ ] resample
+      - [X] pcm
+      - [X] bitstream
+      - [X] replaygain
+      - [X] resample
       - [ ] tocfile
-      - [ ] verify
-      - [ ] ogg
+      - [X] verify
+      - [X] ogg
 ***** TODO Format
       - [ ] audiofile
       - [ ] lossless
@@ -7253,18 +7253,18 @@
 ***** TODO Lib
       - [X] core
       - [ ] cuesheet
-      - [ ] cdio
+      - [X] cdio
       - [ ] freedb
-      - [ ] image
+      - [X] image
       - [ ] musicbrainz
       - [ ] accuraterip
-      - [ ] pcm
-      - [ ] bitstream
-      - [ ] replaygain
-      - [ ] resample
+      - [X] pcm
+      - [X] bitstream
+      - [X] replaygain
+      - [X] resample
       - [ ] tocfile
-      - [ ] verify
-      - [ ] ogg
+      - [X] verify
+      - [X] ogg
 ***** TODO Format
       - [ ] audiofile
       - [ ] lossless
