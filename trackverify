@@ -499,7 +499,7 @@ if (__name__ == '__main__'):
             sys.exit(1)
     else:
         queued_files = set()  # a set of Filename objects already encountered
-        queue = audiotools.ExecProgressQueue(audiotools.ProgressDisplay(msg))
+        queue = audiotools.ExecProgressQueue(msg)
 
         for tracks in audiotools.group_tracks(
                 get_tracks(options.filenames,
