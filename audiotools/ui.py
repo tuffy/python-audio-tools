@@ -1719,7 +1719,8 @@ try:
             self.update_tracks(output_directory=new_value.encode(FS_ENCODING))
 
         def format_changed(self, widget, new_value):
-            self.update_tracks(filename_format=new_value)
+            self.update_tracks(filename_format=new_value.encode("UTF-8",
+                                                                "replace"))
 
         def update_tracks(self, output_directory=None, filename_format=None):
             FS_ENCODING = audiotools.FS_ENCODING

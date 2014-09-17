@@ -570,11 +570,9 @@ AudioFile Objects
 
 .. classmethod:: AudioFile.track_name(file_path[, track_metadata[, format[, suffix]]])
 
-   Given a file path string and optional :class:`MetaData`-compatible object
-   a UTF-8 encoded Python format string, and an ASCII-encoded suffix string,
+   Given a file path string, optional :class:`MetaData`-compatible object,
+   optional Python format string, and optional suffix string,
    returns a filename string with the format string fields filled-in.
-   If not provided by metadata, ``track_number`` and ``album_number``
-   will be determined from ``file_path``, if possible.
    Raises :exc:`UnsupportedTracknameField` if the format string contains
    unsupported fields.
 

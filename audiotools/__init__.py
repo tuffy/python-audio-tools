@@ -3842,12 +3842,12 @@ class AudioFile(object):
                    suffix=None):
         """constructs a new filename string
 
-        given a plain string to an existing path,
+        given a string to an existing path,
         a MetaData-compatible object (or None),
-        a UTF-8-encoded Python format string
-        and an ASCII-encoded suffix string (such as "mp3")
-        returns a plain string of a new filename with format's
-        fields filled-in and encoded as FS_ENCODING
+        a Python format string
+        and a suffix string (such as "mp3")
+        returns a string of a new filename with format's
+        fields filled-in
 
         raises UnsupportedTracknameField if the format string
         contains invalid template fields
@@ -3855,76 +3855,103 @@ class AudioFile(object):
         raises InvalidFilenameFormat if the format string
         has broken template fields"""
 
+        # these should be traditional strings under
+        # both Python 2 and 3
+        assert((format is None) or isinstance(format, str))
+        assert((suffix is None) or isinstance(suffix, str))
+
+        # handle defaults
         if (format is None):
             format = FILENAME_FORMAT
         if (suffix is None):
             suffix = cls.SUFFIX
-        try:
-            if (track_metadata is not None):
-                track_number = (track_metadata.track_number
-                                if track_metadata.track_number is not None
-                                else 0)
-                album_number = (track_metadata.album_number
-                                if track_metadata.album_number is not None
-                                else 0)
-                track_total = (track_metadata.track_total
-                               if track_metadata.track_total is not None
-                               else 0)
-                album_total = (track_metadata.album_total
-                               if track_metadata.album_total is not None
-                               else 0)
-            else:
-                track_number = 0
-                album_number = 0
-                track_total = 0
-                album_total = 0
 
-            format_dict = {u"track_number": track_number,
-                           u"album_number": album_number,
-                           u"track_total": track_total,
-                           u"album_total": album_total,
-                           u"suffix": suffix.decode('ascii')}
+        # convert arguments to unicode to simplify everything internally
+        if (sys.version_info[0] < 3):
+            format = format.decode("UTF-8", "replace")
+            suffix = suffix.decode("UTF-8", "replace")
 
-            if (album_number == 0):
-                format_dict[u"album_track_number"] = u"%2.2d" % (track_number)
-            else:
-                album_digits = len(str(album_total))
+        # grab numeric arguments from MetaData, if any
+        if (track_metadata is not None):
+            track_number = (track_metadata.track_number
+                            if track_metadata.track_number is not None
+                            else 0)
+            album_number = (track_metadata.album_number
+                            if track_metadata.album_number is not None
+                            else 0)
+            track_total = (track_metadata.track_total
+                           if track_metadata.track_total is not None
+                           else 0)
+            album_total = (track_metadata.album_total
+                           if track_metadata.album_total is not None
+                           else 0)
+        else:
+            track_number = 0
+            album_number = 0
+            track_total = 0
+            album_total = 0
 
-                format_dict[u"album_track_number"] = (
-                    u"%%%(album_digits)d.%(album_digits)dd%%2.2d" %
-                    {"album_digits": album_digits} %
-                    (album_number, track_number))
+        # setup preliminary format dictionary
+        format_dict = {u"track_number": track_number,
+                       u"album_number": album_number,
+                       u"track_total": track_total,
+                       u"album_total": album_total,
+                       u"suffix": suffix}
 
-            if (track_metadata is not None):
-                for field in track_metadata.FIELDS:
-                    if ((field != "suffix") and (field not in
-                                                 MetaData.INTEGER_FIELDS)):
-                        if (getattr(track_metadata, field) is not None):
-                            format_dict[field.decode('ascii')] = getattr(
-                                track_metadata,
-                                field).replace(u'/',
-                                               u'-').replace(unichr(0),
-                                                             u' ')
-                        else:
-                            format_dict[field.decode('ascii')] = u""
-            else:
-                for field in MetaData.FIELDS:
-                    if (field not in MetaData.INTEGER_FIELDS):
-                        format_dict[field.decode('ascii')] = u""
+        if (album_number == 0):
+            format_dict[u"album_track_number"] = u"%2.2d" % (track_number)
+        else:
+            album_digits = len(str(album_total))
 
+            format_dict[u"album_track_number"] = (
+                u"%%%(album_digits)d.%(album_digits)dd%%2.2d" %
+                {u"album_digits": album_digits} %
+                (album_number, track_number))
+
+        if (sys.version_info[0] < 3):
             format_dict[u"basename"] = os.path.splitext(
-                os.path.basename(file_path))[0].decode(FS_ENCODING,
-                                                       'replace')
+                os.path.basename(file_path))[0].decode("UTF-8", "replace")
+        else:
+            format_dict[u"basename"] = os.path.splitext(
+                os.path.basename(file_path))[0]
 
-            # apply format dictionary and ensure filename isn't absolute
-            return (format.decode('utf-8', 'replace') % format_dict).encode(
-                FS_ENCODING, 'replace').lstrip(os.sep)
+        # populate remainder of format dictionary
+        # with fields from MetaData, if any
+        for field in MetaData.FIELDS:
+            if (field in MetaData.INTEGER_FIELDS):
+                continue
+
+            if (sys.version_info[0] < 3):
+                field_name = field.decode("ascii")
+            else:
+                field_name = field
+
+            if (track_metadata is not None):
+                attr = getattr(track_metadata, field)
+                if (attr is None):
+                    attr = u""
+            else:
+                attr = u""
+
+            format_dict[field_name] = \
+                attr.replace(u"/", u"-").replace(u"\x00", u" ")
+
+        try:
+            # apply format dictionary
+            if (sys.version_info[0] < 3):
+                formatted_filename = (format % format_dict).encode("UTF-8",
+                                                                   "replace")
+            else:
+                formatted_filename = (format % format_dict)
         except KeyError as error:
             raise UnsupportedTracknameField(error.args[0])
         except TypeError:
             raise InvalidFilenameFormat()
         except ValueError:
             raise InvalidFilenameFormat()
+
+        # ensure filename isn't absoluate
+        return formatted_filename.lstrip(os.sep)
 
     @classmethod
     def supports_replay_gain(cls):

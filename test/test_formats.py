@@ -159,7 +159,7 @@ class AudioFileTest(unittest.TestCase):
         f = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             # then check empty files
-            f.write("")
+            f.write(b"")
             f.flush()
             self.assertEqual(os.path.isfile(f.name), True)
             self.assertRaises(audiotools.InvalidFile,
@@ -167,8 +167,7 @@ class AudioFileTest(unittest.TestCase):
                               f.name)
 
             # then check files with a bit of junk at the beginning
-            f.write("".join(map(chr,
-                                [26, 83, 201, 240, 73, 178, 34, 67, 87, 214])))
+            f.write('\x1aS\xc9\xf0I\xb2"CW\xd6')
             f.flush()
             self.assert_(os.path.getsize(f.name) > 0)
             self.assertRaises(audiotools.InvalidFile,
@@ -420,6 +419,8 @@ class AudioFileTest(unittest.TestCase):
 
     @FORMAT_AUDIOFILE
     def test_track_name(self):
+        import sys
+
         if (self.audio_class is audiotools.AudioFile):
             return
 
@@ -430,18 +431,26 @@ class AudioFileTest(unittest.TestCase):
                 metadata = audiotools.MetaData()
                 value = u"\u00dcnicode value \u2ec1"
                 setattr(metadata, field, value)
-                format_string = format_template % {u"field":
-                                                   field.decode('ascii')}
+                format_string = format_template % {u"field": field}
                 track_name = self.audio_class.track_name(
                     file_path="track",
                     track_metadata=metadata,
-                    format=format_string.encode('utf-8'))
-                self.assert_(len(track_name) > 0)
-                self.assertEqual(
-                    track_name,
-                    (format_template %
-                     {u"field": u"foo"} %
-                     {u"foo": value}).encode(audiotools.FS_ENCODING))
+                    format=(format_string if
+                            (sys.version_info[0] >= 3) else
+                            format_string.encode("UTF-8", "replace")))
+                self.assertGreater(len(track_name), 0)
+                if (sys.version_info[0] >= 3):
+                    self.assertEqual(
+                        track_name,
+                        (format_template %
+                         {u"field": u"foo"} %
+                         {u"foo": value}))
+                else:
+                    self.assertEqual(
+                        track_name,
+                        (format_template %
+                         {u"field": u"foo"} %
+                         {u"foo": value}).encode("UTF-8", "replace"))
 
         # then, check integer fields
         format_template = (u"Fo\u00f3 %(album_number)d " +
@@ -458,121 +467,40 @@ class AudioFileTest(unittest.TestCase):
             (0, 36, u"3600"),
             (1, 36, u"3601"),
             (25, 36, u"3625")]:
-            for basepath in ["track",
-                             "/foo/bar/track",
-                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(
-                    audiotools.FS_ENCODING)]:
+            for basepath in [u"track",
+                             u"/foo/bar/track",
+                             u"/f\u00f3o/bar/tr\u00e1ck"]:
                 metadata = audiotools.MetaData(track_number=track_number,
                                                album_number=album_number)
-                self.assertEqual(
-                    self.audio_class.track_name(
+
+                if (sys.version_info[0] < 3):
+                    track_name = self.audio_class.track_name(
+                        file_path=basepath.encode("UTF-8", "replace"),
+                        track_metadata=metadata,
+                        format=format_template.encode("UTF-8", "replace"))
+
+                    self.assertEqual(
+                        track_name.decode("UTF-8", "replace"),
+                        (format_template % {u"album_number":
+                                            album_number,
+                                            u"track_number":
+                                            track_number,
+                                            u"album_track_number":
+                                            album_track_number}))
+                else:
+                    track_name = self.audio_class.track_name(
                         file_path=basepath,
                         track_metadata=metadata,
-                        format=format_template.encode('utf-8')),
-                    (format_template % {u"album_number":
-                                        album_number,
-                                        u"track_number":
-                                        track_number,
-                                        u"album_track_number":
-                                        album_track_number}
-                     ).encode('utf-8'))
+                        format=format_template)
 
-        # then, check integers pulled from the track filename
-        for metadata in [None, audiotools.MetaData()]:
-            for basepath in ["track",
-                             "/foo/bar/track",
-                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(
-                    audiotools.FS_ENCODING)]:
-
-                album_number = 0
-                track_number = 0
-                album_track_number = u"00"
-
-                self.assertEqual(
-                    self.audio_class.track_name(
-                        file_path=basepath + "01",
-                        track_metadata=metadata,
-                        format=format_template.encode('utf-8')),
-                    (format_template % {u"album_number":
-                                        album_number,
-                                        u"track_number":
-                                        track_number,
-                                        u"album_track_number":
-                                        album_track_number}).encode('utf-8'))
-
-                album_number = 0
-                track_number = 0
-                album_track_number = u"00"
-
-                self.assertEqual(
-                    self.audio_class.track_name(
-                        file_path=basepath + "track23",
-                        track_metadata=metadata,
-                        format=format_template.encode('utf-8')),
-                    (format_template % {u"album_number":
-                                        album_number,
-                                        u"track_number":
-                                        track_number,
-                                        u"album_track_number":
-                                        album_track_number}).encode('utf-8'))
-
-                album_number = 0
-                track_number = 0
-                album_track_number = u"00"
-
-                self.assertEqual(
-                    self.audio_class.track_name(
-                        file_path=basepath + "track123",
-                        track_metadata=metadata,
-                        format=format_template.encode('utf-8')),
-                    (format_template % {u"album_number":
-                                        album_number,
-                                        u"track_number":
-                                        track_number,
-                                        u"album_track_number":
-                                        album_track_number}).encode('utf-8'))
-
-                album_number = 0
-                track_number = 0
-                album_track_number = u"00"
-
-                self.assertEqual(
-                    self.audio_class.track_name(
-                        file_path=basepath + "4567",
-                        track_metadata=metadata,
-                        format=format_template.encode('utf-8')),
-                    (format_template % {u"album_number":
-                                        album_number,
-                                        u"track_number":
-                                        track_number,
-                                        u"album_track_number":
-                                        album_track_number}).encode('utf-8'))
-
-        # then, ensure metadata takes precedence over filename for integers
-        for (track_number, album_number,
-             album_track_number, incorrect) in [(1, 0, u"01", "10"),
-                                                (25, 0, u"25", "52"),
-                                                (1, 1, u"101", "210"),
-                                                (25, 1, u"125", "214"),
-                                                (1, 36, u"3601", "4710"),
-                                                (25, 36, u"3625", "4714")]:
-            for basepath in ["track",
-                             "/foo/bar/track",
-                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(
-                    audiotools.FS_ENCODING)]:
-                metadata = audiotools.MetaData(track_number=track_number,
-                                               album_number=album_number)
-                self.assertEqual(
-                    self.audio_class.track_name(
-                        file_path=basepath + incorrect,
-                        track_metadata=metadata,
-                        format=format_template.encode('utf-8')),
-                    (format_template % {u"album_number":
-                                        album_number,
-                                        u"track_number":
-                                        track_number,
-                                        u"album_track_number":
-                                        album_track_number}).encode('utf-8'))
+                    self.assertEqual(
+                        track_name,
+                        (format_template % {u"album_number":
+                                            album_number,
+                                            u"track_number":
+                                            track_number,
+                                            u"album_track_number":
+                                            album_track_number}))
 
         # also, check track_total/album_total from metadata
         format_template = u"Fo\u00f3 %(track_total)d %(album_total)d"
@@ -580,52 +508,91 @@ class AudioFileTest(unittest.TestCase):
             for album_total in [0, 1, 25, 99]:
                 metadata = audiotools.MetaData(track_total=track_total,
                                                album_total=album_total)
-                self.assertEqual(
-                    self.audio_class.track_name(
-                        file_path=basepath + incorrect,
+
+                if (sys.version_info[0] < 3):
+                    track_name = self.audio_class.track_name(
+                        file_path="track",
                         track_metadata=metadata,
-                        format=format_template.encode('utf-8')),
-                    (format_template % {u"track_total":
-                                        track_total,
-                                        u"album_total":
-                                        album_total}).encode('utf-8'))
+                        format=format_template.encode("UTF-8", "replace"))
+
+                    self.assertEqual(
+                        track_name.decode("UTF-8", "replace"),
+                        (format_template % {u"track_total":
+                                            track_total,
+                                            u"album_total":
+                                            album_total}))
+                else:
+                    track_name = self.audio_class.track_name(
+                        file_path="track",
+                        track_metadata=metadata,
+                        format=format_template)
+
+                    self.assertEqual(
+                        track_name,
+                        (format_template % {u"track_total":
+                                            track_total,
+                                            u"album_total":
+                                            album_total}))
 
         # ensure %(basename)s is set properly
         format_template = u"Fo\u00f3 %(basename)s"
-        for (path, base) in [("track", "track"),
-                             ("/foo/bar/track", "track"),
-                             ((u"/f\u00f3o/bar/tr\u00e1ck").encode(
-                audiotools.FS_ENCODING), u"tr\u00e1ck")]:
+        for (path, base) in [(u"track", u"track"),
+                             (u"/foo/bar/track", u"track"),
+                             (u"/f\u00f3o/bar/tr\u00e1ck", u"tr\u00e1ck")]:
             for metadata in [None, audiotools.MetaData()]:
-                self.assertEqual(
-                    self.audio_class.track_name(
+                if (sys.version_info[0] < 3):
+                    track_name = self.audio_class.track_name(
+                        file_path=path.encode("UTF-8", "replace"),
+                        track_metadata=metadata,
+                        format=format_template.encode("UTF-8", "replace"))
+
+                    self.assertEqual(
+                         track_name.decode("UTF-8", "replace"),
+                         format_template % {u"basename": base})
+                else:
+                    track_name = self.audio_class.track_name(
                         file_path=path,
                         track_metadata=metadata,
-                        format=format_template.encode('utf-8')),
-                    (format_template % {u"basename": base}).encode('utf-8'))
+                        format=format_template)
+
+                    self.assertEqual(
+                         track_name,
+                         format_template % {u"basename": base})
 
         # ensure %(suffix)s is set properly
         format_template = u"Fo\u00f3 %(suffix)s"
-        for path in ["track",
-                     "/foo/bar/track",
-                     (u"/f\u00f3o/bar/tr\u00e1ck").encode(
-                audiotools.FS_ENCODING)]:
+        for path in [u"track",
+                     u"/foo/bar/track",
+                     u"/f\u00f3o/bar/tr\u00e1ck"]:
             for metadata in [None, audiotools.MetaData()]:
-                self.assertEqual(
-                    self.audio_class.track_name(
+                if (sys.version_info[0] < 3):
+                    track_name = self.audio_class.track_name(
+                        file_path=path.encode("UTF-8", "replace"),
+                        track_metadata=metadata,
+                        format=format_template.encode("UTF-8", "replace"))
+
+                    self.assertEqual(
+                        track_name.decode("UTF-8", "replace"),
+                        (format_template % {
+                         u"suffix":
+                         self.audio_class.SUFFIX.decode('ascii')}))
+                else:
+                    track_name = self.audio_class.track_name(
                         file_path=path,
                         track_metadata=metadata,
-                        format=format_template.encode('utf-8')),
-                    (format_template %
-                     {u"suffix":
-                      self.audio_class.SUFFIX.decode('ascii')}).encode('utf-8'))
+                        format=format_template)
+
+                    self.assertEqual(
+                        track_name,
+                        (format_template % {
+                         u"suffix":
+                         self.audio_class.SUFFIX}))
 
         for metadata in [None, audiotools.MetaData()]:
             # unsupported template fields raise UnsupportedTracknameField
             self.assertRaises(audiotools.UnsupportedTracknameField,
                               self.audio_class.track_name,
-                              "", metadata,
-                              "%(foo)s")
+                              "", metadata, "%(foo)s")
 
             # broken template fields raise InvalidFilenameFormat
             self.assertRaises(audiotools.InvalidFilenameFormat,

@@ -5437,6 +5437,7 @@ class FlacMetaData(MetaDataTest):
         self.assertEqual(metadata.get_block(4).comment_strings,
                          [u"DISCNUMBER= foo 2 bar"])
 
+    @LIB_CUESHEET
     @METADATA_FLAC
     def test_flac_cuesheet(self):
         self.assertTrue(
