@@ -7226,7 +7226,7 @@
       - [X] vorbis
       - [X] opus
       - [ ] m4a
-      - [ ] tta
+      - [X] tta
 ***** TODO Util
       - [ ] audiotools_config
       - [ ] cd2track
@@ -7294,7 +7294,7 @@
       - [X] vorbis
       - [X] opus
       - [ ] m4a
-      - [ ] tta
+      - [X] tta
 ***** TODO Util
       - [ ] audiotools_config
       - [ ] cd2track

@@ -8056,33 +8056,33 @@ class TrueAudioTest(unittest.TestCase):
                     # but can be updated with update_metadata()
                     self.assertRaises(KeyError,
                                       track.get_metadata().__getitem__,
-                                      "replaygain_track_gain")
-                    metadata["replaygain_track_gain"] = \
+                                      b"replaygain_track_gain")
+                    metadata[b"replaygain_track_gain"] = \
                         audiotools.ape.ApeTagItem.string(
-                        "replaygain_track_gain", u"???")
+                        b"replaygain_track_gain", u"???")
                     track.set_metadata(metadata)
                     self.assertRaises(KeyError,
                                       track.get_metadata().__getitem__,
-                                      "replaygain_track_gain")
+                                      b"replaygain_track_gain")
                     track.update_metadata(metadata)
                     self.assertEqual(
-                        track.get_metadata()["replaygain_track_gain"],
+                        track.get_metadata()[b"replaygain_track_gain"],
                         audiotools.ape.ApeTagItem.string(
-                            "replaygain_track_gain", u"???"))
+                            b"replaygain_track_gain", u"???"))
 
                     # cuesheet not updated with set_metadata()
                     # but can be updated with update_metadata()
-                    metadata["Cuesheet"] = \
+                    metadata[b"Cuesheet"] = \
                         audiotools.ape.ApeTagItem.string(
-                        "Cuesheet", u"???")
+                        b"Cuesheet", u"???")
                     track.set_metadata(metadata)
                     self.assertRaises(KeyError,
                                       track.get_metadata().__getitem__,
-                                      "Cuesheet")
+                                      b"Cuesheet")
                     track.update_metadata(metadata)
                     self.assertEqual(
-                        track.get_metadata()["Cuesheet"],
-                        audiotools.ape.ApeTagItem.string("Cuesheet", u"???"))
+                        track.get_metadata()[b"Cuesheet"],
+                        audiotools.ape.ApeTagItem.string(b"Cuesheet", u"???"))
             finally:
                 temp_file.close()
 
@@ -8169,7 +8169,7 @@ class TrueAudioTest(unittest.TestCase):
                     test_streams.Sine16_Stereo(44100, 44100,
                                                441.0, 0.50,
                                                4410.0, 0.49, 1.0))
-                self.asserIsNone(
+                self.assertIsNone(
                     track1.get_replay_gain(),
                     "ReplayGain present for class %s" %
                     (audiotools.TrueAudio.NAME))
