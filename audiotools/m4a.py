@@ -33,9 +33,10 @@ def get_m4a_atom(reader, *atoms):
     after traversing the parent atoms
     """
 
-    from audiotools import iter_last
+    for (last, next_atom) in [(i == len(atoms), v)
+                              for (i, v) in enumerate(atoms, 1)]:
+        # assert(isinstance(next_atom, bytes))
 
-    for (last, next_atom) in iter_last(iter(atoms)):
         try:
             (length, stream_atom) = reader.parse("32u 4b")
             while (stream_atom != next_atom):
@@ -58,11 +59,12 @@ def get_m4a_atom_offset(reader, *atoms):
     (including its 64-bit size/name header)
     after traversing the parent atoms"""
 
-    from audiotools import iter_last
-
     offset = 0
 
-    for (last, next_atom) in iter_last(iter(atoms)):
+    for (last, next_atom) in [(i == len(atoms), v)
+                              for (i, v) in enumerate(atoms, 1)]:
+        # assert(isinstance(next_atom, bytes))
+
         try:
             (length, stream_atom) = reader.parse("32u 4b")
             offset += 8
@@ -87,9 +89,10 @@ def has_m4a_atom(reader, *atoms):
     returns True if the final atom is present
     after traversing the parent atoms"""
 
-    from audiotools import iter_last
+    for (last, next_atom) in [(i == len(atoms), v)
+                              for (i, v) in enumerate(atoms, 1)]:
+        # assert(isinstance(next_atom, bytes))
 
-    for (last, next_atom) in iter_last(iter(atoms)):
         try:
             (length, stream_atom) = reader.parse("32u 4b")
             while (stream_atom != next_atom):

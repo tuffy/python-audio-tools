@@ -84,6 +84,8 @@ class M4A_Tree_Atom(object):
 
         children should be a list of M4A_Tree_Atoms or M4A_Leaf_Atoms"""
 
+        # assert((name is None) or isinstance(name, bytes))
+
         self.name = name
         try:
             iter(leaf_atoms)
@@ -121,6 +123,8 @@ class M4A_Tree_Atom(object):
         """returns the first instance of the given child atom
         raises KeyError if the child is not found"""
 
+        # assert(isinstance(atom_name, bytes))
+
         for leaf in self:
             if (leaf.name == atom_name):
                 return leaf
@@ -130,6 +134,8 @@ class M4A_Tree_Atom(object):
     def has_child(self, atom_name):
         """returns True if the given atom name
         is an immediate child of this atom"""
+
+        # assert(isinstance(atom_name, bytes))
 
         for leaf in self:
             if (leaf.name == atom_name):
@@ -144,6 +150,8 @@ class M4A_Tree_Atom(object):
 
     def remove_child(self, atom_name):
         """removes the first instance of the given atom from this container"""
+
+        # assert(isinstance(atom_name, bytes))
 
         new_leaf_atoms = []
         data_deleted = False
@@ -219,6 +227,9 @@ class M4A_Leaf_Atom(object):
 
         data should be a binary string of atom data"""
 
+        # assert(isinstance(name, bytes))
+        # assert(isinstance(data, bytes))
+
         self.name = name
         self.data = data
 
@@ -291,6 +302,10 @@ class M4A_Leaf_Atom(object):
 
 class M4A_FTYP_Atom(M4A_Leaf_Atom):
     def __init__(self, major_brand, major_brand_version, compatible_brands):
+        # assert(isinstance(major_brand, bytes))
+        # for b in compatible_brands:
+        #     assert(isinstance(b, bytes))
+
         self.name = b'ftyp'
         self.major_brand = major_brand
         self.major_brand_version = major_brand_version
@@ -917,6 +932,8 @@ class M4A_ALAC_Atom(M4A_Leaf_Atom):
     def __init__(self, reference_index, qt_version, qt_revision_level,
                  qt_vendor, channels, bits_per_sample, qt_compression_id,
                  audio_packet_size, sample_rate, sub_alac):
+        # assert(isinstance(qt_vendor, bytes))
+
         self.name = b'alac'
         self.reference_index = reference_index
         self.qt_version = qt_version
@@ -1552,6 +1569,8 @@ class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
 
 class M4A_ILST_Unicode_Data_Atom(M4A_Leaf_Atom):
     def __init__(self, type, flags, data):
+        # assert(isinstance(data, bytes))
+
         self.name = b"data"
         self.type = type
         self.flags = flags
@@ -1782,6 +1801,8 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
 
 class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):
     def __init__(self, version, flags, image_data):
+        # assert(isinstance(image_data, bytes))
+
         self.version = version
         self.flags = flags
         self.name = b"data"
@@ -1853,6 +1874,10 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
     def __init__(self, version, flags, qt_type, qt_subtype,
                  qt_manufacturer, qt_reserved_flags, qt_reserved_flags_mask,
                  component_name, padding_size):
+        # assert(isinstance(qt_type, bytes))
+        # assert(isinstance(qt_subtype, bytes))
+        # assert(isinstance(qt_manufacturer, bytes))
+
         self.name = b'hdlr'
         self.version = version
         self.flags = flags
@@ -1958,7 +1983,7 @@ class M4A_FREE_Atom(M4A_Leaf_Atom):
         """writes the atom to the given BitstreamWriter
         not including its 64-bit size / name header"""
 
-        writer.write_bytes(chr(0) * self.bytes)
+        writer.write_bytes(b"\x00" * self.bytes)
 
     def size(self):
         """returns the atom's size

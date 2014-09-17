@@ -5651,31 +5651,31 @@ class M4AMetaDataTest(MetaDataTest):
 
                 # set_metadata can't alter the '\xa9too' field
                 metadata = track.get_metadata()
-                old_ilst = metadata.ilst_atom()["\xa9too"]
+                old_ilst = metadata.ilst_atom()[b"\xa9too"]
                 new_ilst = audiotools.m4a_atoms.M4A_ILST_Leaf_Atom(
-                    '\xa9too',
+                    b'\xa9too',
                     [audiotools.m4a_atoms.M4A_ILST_Unicode_Data_Atom(
-                        0, 1, "Fooz")])
+                        0, 1, b"Fooz")])
                 metadata.ilst_atom().replace_child(new_ilst)
-                self.assertEqual(metadata.ilst_atom()["\xa9too"],
+                self.assertEqual(metadata.ilst_atom()[b"\xa9too"],
                                  new_ilst)
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(metadata.ilst_atom()["\xa9too"], old_ilst)
+                self.assertEqual(metadata.ilst_atom()[b"\xa9too"], old_ilst)
 
                 # update_metadata can alter the '\xa9too' field
                 metadata = track.get_metadata()
-                old_ilst = metadata.ilst_atom()["\xa9too"]
+                old_ilst = metadata.ilst_atom()[b"\xa9too"]
                 new_ilst = audiotools.m4a_atoms.M4A_ILST_Leaf_Atom(
-                    '\xa9too',
+                    b'\xa9too',
                     [audiotools.m4a_atoms.M4A_ILST_Unicode_Data_Atom(
-                        0, 1, "Fooz")])
+                        0, 1, b"Fooz")])
                 metadata.ilst_atom().replace_child(new_ilst)
-                self.assertEqual(metadata.ilst_atom()["\xa9too"],
+                self.assertEqual(metadata.ilst_atom()[b"\xa9too"],
                                  new_ilst)
                 track.update_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(metadata.ilst_atom()["\xa9too"], new_ilst)
+                self.assertEqual(metadata.ilst_atom()[b"\xa9too"], new_ilst)
             finally:
                 temp_file.close()
 
@@ -5692,29 +5692,28 @@ class M4AMetaDataTest(MetaDataTest):
 
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_HDLR_Atom(0, 0, '\x00\x00\x00\x00',
-                           'mdir', 'appl', 0, 0, '', 0),
+            [M4A_HDLR_Atom(0, 0, b'\x00\x00\x00\x00',
+                           b'mdir', b'appl', 0, 0, b'', 0),
              M4A_Tree_Atom(
-                'ilst',
+                b'ilst',
                 [M4A_ILST_Leaf_Atom(
-                    '\xa9nam',
-                    [M4A_ILST_Unicode_Data_Atom(0, 1, "Track Name")]),
+                    b'\xa9nam',
+                    [M4A_ILST_Unicode_Data_Atom(0, 1, b"Track Name")]),
                  M4A_ILST_Leaf_Atom(
-                    '\xa9alb',
-                    [M4A_ILST_Unicode_Data_Atom(0, 1, "Album Name")]),
+                    b'\xa9alb',
+                    [M4A_ILST_Unicode_Data_Atom(0, 1, b"Album Name")]),
                  M4A_ILST_Leaf_Atom(
-                    'trkn', [M4A_ILST_TRKN_Data_Atom(1, 3)]),
+                    b'trkn', [M4A_ILST_TRKN_Data_Atom(1, 3)]),
                  M4A_ILST_Leaf_Atom(
-                    'disk', [M4A_ILST_DISK_Data_Atom(2, 4)]),
+                    b'disk', [M4A_ILST_DISK_Data_Atom(2, 4)]),
                  M4A_ILST_Leaf_Atom(
-                    '\xa9foo',
-                    [M4A_ILST_Unicode_Data_Atom(0, 1, "Bar")])]),
+                    b'\xa9foo',
+                    [M4A_ILST_Unicode_Data_Atom(0, 1, b"Bar")])]),
              M4A_FREE_Atom(1024)])
 
         for format in self.supported_formats:
-            temp_file = tempfile.NamedTemporaryFile(
-                suffix="." + format.SUFFIX)
-            try:
+            with tempfile.NamedTemporaryFile(
+                suffix="." + format.SUFFIX) as temp_file:
                 track = format.from_pcm(temp_file.name,
                                         BLANK_PCM_Reader(1))
                 track.set_metadata(metadata)
@@ -5722,24 +5721,22 @@ class M4AMetaDataTest(MetaDataTest):
                 self.assertEqual(metadata, metadata2)
                 self.assertEqual(metadata.__class__, metadata2.__class__)
                 self.assertEqual(
-                    track.get_metadata().ilst_atom()["\xa9foo"].data,
-                    "\x00\x00\x00\x13data\x00\x00\x00\x01\x00\x00\x00\x00Bar")
-            finally:
-                temp_file.close()
+                    track.get_metadata().ilst_atom()[b"\xa9foo"].data,
+                    b"\x00\x00\x00\x13data\x00\x00\x00\x01\x00\x00\x00\x00Bar")
 
     @METADATA_M4A
     def test_field_mapping(self):
-        mapping = [('track_name', '\xA9nam', u'a'),
-                   ('artist_name', '\xA9ART', u'b'),
-                   ('year', '\xA9day', u'c'),
-                   ('album_name', '\xA9alb', u'd'),
-                   ('composer_name', '\xA9wrt', u'e'),
-                   ('comment', '\xA9cmt', u'f'),
-                   ('copyright', 'cprt', u'g')]
+        mapping = [('track_name', b'\xA9nam', u'a'),
+                   ('artist_name', b'\xA9ART', u'b'),
+                   ('year', b'\xA9day', u'c'),
+                   ('album_name', b'\xA9alb', u'd'),
+                   ('composer_name', b'\xA9wrt', u'e'),
+                   ('comment', b'\xA9cmt', u'f'),
+                   ('copyright', b'cprt', u'g')]
 
         for format in self.supported_formats:
-            temp_file = tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)
-            try:
+            with tempfile.NamedTemporaryFile(
+                suffix="." + format.SUFFIX) as temp_file:
                 track = format.from_pcm(temp_file.name, BLANK_PCM_Reader(1))
 
                 # ensure that setting a class field
@@ -5750,35 +5747,35 @@ class M4AMetaDataTest(MetaDataTest):
                     setattr(metadata, field, value)
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
-                        metadata['ilst'][key]['data'].data.decode('utf-8'),
-                        unicode(value))
+                        metadata[b'ilst'][key][b'data'].data.decode('utf-8'),
+                        value)
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
                     self.assertEqual(
-                        metadata2['ilst'][key]['data'].data.decode('utf-8'),
-                        unicode(value))
+                        metadata2[b'ilst'][key][b'data'].data.decode('utf-8'),
+                        value)
 
                 # ensure that updating the low-level implementation
                 # is reflected in the class field
                 for (field, key, value) in mapping:
                     track.delete_metadata()
                     metadata = self.empty_metadata()
-                    metadata['ilst'].add_child(
+                    metadata[b'ilst'].add_child(
                         audiotools.m4a_atoms.M4A_ILST_Leaf_Atom(
                             key,
                             [audiotools.m4a_atoms.M4A_ILST_Unicode_Data_Atom(
-                                0, 1, unicode(value).encode('utf-8'))]))
+                                0, 1, value.encode('utf-8'))]))
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
-                        metadata['ilst'][key]['data'].data.decode('utf-8'),
-                        unicode(value))
+                        metadata[b'ilst'][key][b'data'].data.decode('utf-8'),
+                        value)
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
-                        metadata['ilst'][key]['data'].data.decode('utf-8'),
-                        unicode(value))
+                        metadata[b'ilst'][key][b'data'].data.decode('utf-8'),
+                        value)
 
                 # ensure that setting numerical fields also
                 # updates the low-level implementation
@@ -5787,63 +5784,73 @@ class M4AMetaDataTest(MetaDataTest):
                 metadata.track_number = 1
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(metadata['ilst']['trkn']['data'].track_number,
-                                 1)
-                self.assertEqual(metadata['ilst']['trkn']['data'].track_total,
-                                 0)
+                self.assertEqual(
+                    metadata[b'ilst'][b'trkn'][b'data'].track_number,
+                    1)
+                self.assertEqual(
+                    metadata[b'ilst'][b'trkn'][b'data'].track_total,
+                    0)
                 metadata.track_total = 2
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(metadata['ilst']['trkn']['data'].track_number,
-                                 1)
-                self.assertEqual(metadata['ilst']['trkn']['data'].track_total,
-                                 2)
+                self.assertEqual(
+                    metadata[b'ilst'][b'trkn'][b'data'].track_number,
+                    1)
+                self.assertEqual(
+                    metadata[b'ilst'][b'trkn'][b'data'].track_total,
+                    2)
                 del(metadata.track_number)
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(metadata['ilst']['trkn']['data'].track_number,
-                                 0)
-                self.assertEqual(metadata['ilst']['trkn']['data'].track_total,
-                                 2)
+                self.assertEqual(
+                    metadata[b'ilst'][b'trkn'][b'data'].track_number,
+                    0)
+                self.assertEqual(
+                    metadata[b'ilst'][b'trkn'][b'data'].track_total,
+                    2)
                 del(metadata.track_total)
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertRaises(KeyError,
-                                  metadata['ilst'].__getitem__,
-                                  'trkn')
+                                  metadata[b'ilst'].__getitem__,
+                                  b'trkn')
 
                 track.delete_metadata()
                 metadata = self.empty_metadata()
                 metadata.album_number = 3
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(metadata['ilst']['disk']['data'].disk_number,
-                                 3)
-                self.assertEqual(metadata['ilst']['disk']['data'].disk_total,
-                                 0)
+                self.assertEqual(
+                    metadata[b'ilst'][b'disk'][b'data'].disk_number,
+                    3)
+                self.assertEqual(
+                    metadata[b'ilst'][b'disk'][b'data'].disk_total,
+                    0)
 
                 metadata.album_total = 4
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(metadata['ilst']['disk']['data'].disk_number,
-                                 3)
-                self.assertEqual(metadata['ilst']['disk']['data'].disk_total,
-                                 4)
+                self.assertEqual(
+                    metadata[b'ilst'][b'disk'][b'data'].disk_number,
+                    3)
+                self.assertEqual(
+                    metadata[b'ilst'][b'disk'][b'data'].disk_total,
+                    4)
                 del(metadata.album_number)
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(metadata['ilst']['disk']['data'].disk_number,
-                                 0)
-                self.assertEqual(metadata['ilst']['disk']['data'].disk_total,
-                                 4)
+                self.assertEqual(
+                    metadata[b'ilst'][b'disk'][b'data'].disk_number,
+                    0)
+                self.assertEqual(
+                    metadata[b'ilst'][b'disk'][b'data'].disk_total,
+                    4)
                 del(metadata.album_total)
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertRaises(KeyError,
-                                  metadata['ilst'].__getitem__,
-                                  'disk')
-            finally:
-                temp_file.close()
+                                  metadata[b'ilst'].__getitem__,
+                                  b'disk')
 
     @METADATA_M4A
     def test_getattr(self):
@@ -5861,58 +5868,58 @@ class M4AMetaDataTest(MetaDataTest):
 
         # empty ilst atom is okay
         for attr in audiotools.MetaData.FIELDS:
-            metadata = M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])])
+            metadata = M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])])
             self.assertIsNone(getattr(metadata, attr))
 
         # fields grab the first available atom from ilst atom, if any
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst',
-                           [M4A_ILST_Leaf_Atom('\xa9nam', [])])])
+            [M4A_Tree_Atom(b'ilst',
+                           [M4A_ILST_Leaf_Atom(b'\xa9nam', [])])])
         self.assertIsNone(metadata.track_name)
 
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    '\xa9nam',
+                    b'\xa9nam',
                     [M4A_ILST_Unicode_Data_Atom(0, 1,
-                                                "Track Name")])])])
+                                                b"Track Name")])])])
         self.assertEqual(metadata.track_name, u"Track Name")
 
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    '\xa9nam',
+                    b'\xa9nam',
                     [M4A_ILST_Unicode_Data_Atom(0, 1,
-                                                "Track Name")]),
+                                                b"Track Name")]),
                 M4A_ILST_Leaf_Atom(
-                    '\xa9nam',
+                    b'\xa9nam',
                     [M4A_ILST_Unicode_Data_Atom(0, 1,
-                                                "Another Name")])])])
+                                                b"Another Name")])])])
         self.assertEqual(metadata.track_name, u"Track Name")
 
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    '\xa9nam',
+                    b'\xa9nam',
                     [M4A_ILST_Unicode_Data_Atom(0, 1,
-                                                "Track Name"),
+                                                b"Track Name"),
                      M4A_ILST_Unicode_Data_Atom(0, 1,
-                                                "Another Name")])])])
+                                                b"Another Name")])])])
         self.assertEqual(metadata.track_name, u"Track Name")
 
         # ensure track_number/_total/album_number/_total fields work
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst',
+            [M4A_Tree_Atom(b'ilst',
                            [M4A_ILST_Leaf_Atom(
-                            'trkn',
+                            b'trkn',
                             [M4A_ILST_TRKN_Data_Atom(1, 2)]),
                             M4A_ILST_Leaf_Atom(
-                            'disk',
+                            b'disk',
                             [M4A_ILST_DISK_Data_Atom(3, 4)])])])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 2)
@@ -5936,93 +5943,93 @@ class M4AMetaDataTest(MetaDataTest):
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst', [
+                [M4A_Tree_Atom(b'ilst', [
                     M4A_ILST_Leaf_Atom(
-                        '\xa9nam',
+                        b'\xa9nam',
                         [M4A_ILST_Unicode_Data_Atom(0, 1,
-                                                    "Track Name")])])]))
+                                                    b"Track Name")])])]))
 
         # fields add a new entry to ilst atom, if necessary
-        metadata = M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])])
+        metadata = M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])])
         metadata.track_name = u"Track Name"
         self.assertEqual(metadata.track_name, u"Track Name")
         self.assertEqual(
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst', [
+                [M4A_Tree_Atom(b'ilst', [
                     M4A_ILST_Leaf_Atom(
-                        '\xa9nam',
+                        b'\xa9nam',
                         [M4A_ILST_Unicode_Data_Atom(0, 1,
-                                                    "Track Name")])])]))
+                                                    b"Track Name")])])]))
 
         # fields overwrite first child of ilst atom and leave rest alone
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    '\xa9nam',
+                    b'\xa9nam',
                     [M4A_ILST_Unicode_Data_Atom(0, 1,
-                                                "Old Track Name")])])])
+                                                b"Old Track Name")])])])
         metadata.track_name = u"Track Name"
         self.assertEqual(metadata.track_name, u"Track Name")
         self.assertEqual(
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst', [
+                [M4A_Tree_Atom(b'ilst', [
                     M4A_ILST_Leaf_Atom(
-                        '\xa9nam',
+                        b'\xa9nam',
                         [M4A_ILST_Unicode_Data_Atom(0, 1,
-                                                    "Track Name")])])]))
+                                                    b"Track Name")])])]))
 
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    '\xa9nam',
+                    b'\xa9nam',
                     [M4A_ILST_Unicode_Data_Atom(0, 1,
-                                                "Old Track Name")]),
+                                                b"Old Track Name")]),
                 M4A_ILST_Leaf_Atom(
-                    '\xa9nam',
+                    b'\xa9nam',
                     [M4A_ILST_Unicode_Data_Atom(0, 1,
-                                                "Old Track Name 2")])])])
+                                                b"Old Track Name 2")])])])
         metadata.track_name = u"Track Name"
         self.assertEqual(metadata.track_name, u"Track Name")
         self.assertEqual(
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst', [
+                [M4A_Tree_Atom(b'ilst', [
                     M4A_ILST_Leaf_Atom(
-                        '\xa9nam',
+                        b'\xa9nam',
                         [M4A_ILST_Unicode_Data_Atom(0, 1,
-                                                    "Track Name")]),
+                                                    b"Track Name")]),
                     M4A_ILST_Leaf_Atom(
-                        '\xa9nam',
+                        b'\xa9nam',
                         [M4A_ILST_Unicode_Data_Atom(0, 1,
-                                                    "Old Track Name 2")])])]))
+                                                    b"Old Track Name 2")])])]))
 
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    '\xa9nam',
-                    [M4A_ILST_Unicode_Data_Atom(0, 1, "Old Track Name"),
-                     M4A_ILST_Unicode_Data_Atom(0, 1, "Track Name 2")])])])
+                    b'\xa9nam',
+                    [M4A_ILST_Unicode_Data_Atom(0, 1, b"Old Track Name"),
+                     M4A_ILST_Unicode_Data_Atom(0, 1, b"Track Name 2")])])])
         metadata.track_name = u"Track Name"
         self.assertEqual(metadata.track_name, u"Track Name")
         self.assertEqual(
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst', [
+                [M4A_Tree_Atom(b'ilst', [
                     M4A_ILST_Leaf_Atom(
-                        '\xa9nam',
+                        b'\xa9nam',
                         [M4A_ILST_Unicode_Data_Atom(
-                            0, 1, "Track Name"),
+                            0, 1, b"Track Name"),
                          M4A_ILST_Unicode_Data_Atom(
-                            0, 1, "Track Name 2")])])]))
+                            0, 1, b"Track Name 2")])])]))
 
         # setting track_number/_total/album_number/_total
         # adds a new field if necessary
@@ -6033,21 +6040,21 @@ class M4AMetaDataTest(MetaDataTest):
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst',
+                [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                   'trkn',
+                                   b'trkn',
                                    [M4A_ILST_TRKN_Data_Atom(1, 0)])])]))
 
-        metadata = M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])])
+        metadata = M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])])
         metadata.track_number = 1
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst',
+                [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                   'trkn',
+                                   b'trkn',
                                    [M4A_ILST_TRKN_Data_Atom(1, 0)])])]))
 
         metadata = M4A_META_Atom(0, 0, [])
@@ -6057,21 +6064,21 @@ class M4AMetaDataTest(MetaDataTest):
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst',
+                [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                   'trkn',
+                                   b'trkn',
                                    [M4A_ILST_TRKN_Data_Atom(0, 2)])])]))
 
-        metadata = M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])])
+        metadata = M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])])
         metadata.track_total = 2
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst',
+                [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                   'trkn',
+                                   b'trkn',
                                    [M4A_ILST_TRKN_Data_Atom(0, 2)])])]))
 
         metadata = M4A_META_Atom(0, 0, [])
@@ -6081,21 +6088,21 @@ class M4AMetaDataTest(MetaDataTest):
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst',
+                [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                   'disk',
+                                   b'disk',
                                    [M4A_ILST_DISK_Data_Atom(3, 0)])])]))
 
-        metadata = M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])])
+        metadata = M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])])
         metadata.album_number = 3
         self.assertEqual(metadata.album_number, 3)
         self.assertEqual(
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst',
+                [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                   'disk',
+                                   b'disk',
                                    [M4A_ILST_DISK_Data_Atom(3, 0)])])]))
 
         metadata = M4A_META_Atom(0, 0, [])
@@ -6105,33 +6112,33 @@ class M4AMetaDataTest(MetaDataTest):
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst',
+                [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                   'disk',
+                                   b'disk',
                                    [M4A_ILST_TRKN_Data_Atom(0, 4)])])]))
 
-        metadata = M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])])
+        metadata = M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])])
         metadata.album_total = 4
         self.assertEqual(metadata.album_total, 4)
         self.assertEqual(
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst',
+                [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                   'disk',
+                                   b'disk',
                                    [M4A_ILST_TRKN_Data_Atom(0, 4)])])]))
 
         # setting track_number/_total/album_number/_total
         # overwrites existing field if necessary
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst',
+            [M4A_Tree_Atom(b'ilst',
                            [M4A_ILST_Leaf_Atom(
-                            'trkn',
+                            b'trkn',
                             [M4A_ILST_TRKN_Data_Atom(1, 2)]),
                             M4A_ILST_Leaf_Atom(
-                            'disk',
+                            b'disk',
                             [M4A_ILST_DISK_Data_Atom(3, 4)])])])
         metadata.track_number = 6
         self.assertEqual(metadata.track_number, 6)
@@ -6139,22 +6146,22 @@ class M4AMetaDataTest(MetaDataTest):
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst',
+                [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                'trkn',
+                                b'trkn',
                                 [M4A_ILST_TRKN_Data_Atom(6, 2)]),
                                 M4A_ILST_Leaf_Atom(
-                                'disk',
+                                b'disk',
                                 [M4A_ILST_DISK_Data_Atom(3, 4)])])]))
 
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst',
+            [M4A_Tree_Atom(b'ilst',
                            [M4A_ILST_Leaf_Atom(
-                            'trkn',
+                            b'trkn',
                             [M4A_ILST_TRKN_Data_Atom(1, 2)]),
                             M4A_ILST_Leaf_Atom(
-                            'disk',
+                            b'disk',
                             [M4A_ILST_DISK_Data_Atom(3, 4)])])])
         metadata.track_total = 7
         self.assertEqual(metadata.track_total, 7)
@@ -6162,22 +6169,22 @@ class M4AMetaDataTest(MetaDataTest):
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst',
+                [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                'trkn',
+                                b'trkn',
                                 [M4A_ILST_TRKN_Data_Atom(1, 7)]),
                                 M4A_ILST_Leaf_Atom(
-                                'disk',
+                                b'disk',
                                 [M4A_ILST_DISK_Data_Atom(3, 4)])])]))
 
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst',
+            [M4A_Tree_Atom(b'ilst',
                            [M4A_ILST_Leaf_Atom(
-                            'trkn',
+                            b'trkn',
                             [M4A_ILST_TRKN_Data_Atom(1, 2)]),
                             M4A_ILST_Leaf_Atom(
-                            'disk',
+                            b'disk',
                             [M4A_ILST_DISK_Data_Atom(3, 4)])])])
         metadata.album_number = 8
         self.assertEqual(metadata.album_number, 8)
@@ -6185,22 +6192,22 @@ class M4AMetaDataTest(MetaDataTest):
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst',
+                [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                'trkn',
+                                b'trkn',
                                 [M4A_ILST_TRKN_Data_Atom(1, 2)]),
                                 M4A_ILST_Leaf_Atom(
-                                'disk',
+                                b'disk',
                                 [M4A_ILST_DISK_Data_Atom(8, 4)])])]))
 
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst',
+            [M4A_Tree_Atom(b'ilst',
                            [M4A_ILST_Leaf_Atom(
-                            'trkn',
+                            b'trkn',
                             [M4A_ILST_TRKN_Data_Atom(1, 2)]),
                             M4A_ILST_Leaf_Atom(
-                            'disk',
+                            b'disk',
                             [M4A_ILST_DISK_Data_Atom(3, 4)])])])
         metadata.album_total = 9
         self.assertEqual(metadata.album_total, 9)
@@ -6208,12 +6215,12 @@ class M4AMetaDataTest(MetaDataTest):
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst',
+                [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                'trkn',
+                                b'trkn',
                                 [M4A_ILST_TRKN_Data_Atom(1, 2)]),
                                 M4A_ILST_Leaf_Atom(
-                                'disk',
+                                b'disk',
                                 [M4A_ILST_DISK_Data_Atom(3, 9)])])]))
 
     @METADATA_M4A
@@ -6233,70 +6240,70 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertEqual(metadata, M4A_META_Atom(0, 0, []))
 
         # - empty ilst atom
-        metadata = M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])])
+        metadata = M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])])
         del(metadata.track_name)
         self.assertIsNone(metadata.track_name)
         self.assertEqual(metadata,
-                         M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])]))
+                         M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])]))
 
         # - 1 matching item in ilst atom
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    '\xa9nam',
-                    [M4A_ILST_Unicode_Data_Atom(0, 1, "Track Name")])])])
+                    b'\xa9nam',
+                    [M4A_ILST_Unicode_Data_Atom(0, 1, b"Track Name")])])])
         del(metadata.track_name)
         self.assertIsNone(metadata.track_name)
         self.assertEqual(metadata,
-                         M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])]))
+                         M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])]))
 
         # - 2 maching items in ilst atom
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    '\xa9nam',
-                    [M4A_ILST_Unicode_Data_Atom(0, 1, "Track Name")]),
+                    b'\xa9nam',
+                    [M4A_ILST_Unicode_Data_Atom(0, 1, b"Track Name")]),
                 M4A_ILST_Leaf_Atom(
-                    '\xa9nam',
-                    [M4A_ILST_Unicode_Data_Atom(0, 1, "Track Name 2")])])])
+                    b'\xa9nam',
+                    [M4A_ILST_Unicode_Data_Atom(0, 1, b"Track Name 2")])])])
         del(metadata.track_name)
         self.assertIsNone(metadata.track_name)
         self.assertEqual(metadata,
-                         M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])]))
+                         M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])]))
 
         # - 2 matching data atoms in ilst child
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    '\xa9nam',
-                    [M4A_ILST_Unicode_Data_Atom(0, 1, "Track Name"),
-                     M4A_ILST_Unicode_Data_Atom(0, 1, "Track Name 2")])])])
+                    b'\xa9nam',
+                    [M4A_ILST_Unicode_Data_Atom(0, 1, b"Track Name"),
+                     M4A_ILST_Unicode_Data_Atom(0, 1, b"Track Name 2")])])])
         del(metadata.track_name)
         self.assertIsNone(metadata.track_name)
         self.assertEqual(metadata,
-                         M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])]))
+                         M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])]))
 
         # setting item to None is the same as deleting it
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    '\xa9nam',
-                    [M4A_ILST_Unicode_Data_Atom(0, 1, "Track Name")])])])
+                    b'\xa9nam',
+                    [M4A_ILST_Unicode_Data_Atom(0, 1, b"Track Name")])])])
         metadata.track_name = None
         self.assertIsNone(metadata.track_name)
         self.assertEqual(metadata,
-                         M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])]))
+                         M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])]))
 
         # removing track number removes atom if track total is 0
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    'trkn',
+                    b'trkn',
                     [M4A_ILST_TRKN_Data_Atom(1, 0)])])])
         self.assertEqual(metadata.track_number, 1)
         self.assertIsNone(metadata.track_total)
@@ -6304,14 +6311,14 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertIsNone(metadata.track_number)
         self.assertIsNone(metadata.track_total)
         self.assertEqual(metadata,
-                         M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])]))
+                         M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])]))
 
         # removing track number sets value to None if track total is > 0
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    'trkn',
+                    b'trkn',
                     [M4A_ILST_TRKN_Data_Atom(1, 2)])])])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 2)
@@ -6322,17 +6329,17 @@ class M4AMetaDataTest(MetaDataTest):
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst', [
+                [M4A_Tree_Atom(b'ilst', [
                     M4A_ILST_Leaf_Atom(
-                        'trkn',
+                        b'trkn',
                         [M4A_ILST_TRKN_Data_Atom(0, 2)])])]))
 
         # removing track total removes atom if track number is 0
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    'trkn',
+                    b'trkn',
                     [M4A_ILST_TRKN_Data_Atom(0, 2)])])])
         self.assertIsNone(metadata.track_number)
         self.assertEqual(metadata.track_total, 2)
@@ -6340,14 +6347,14 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertIsNone(metadata.track_number)
         self.assertIsNone(metadata.track_total)
         self.assertEqual(metadata,
-                         M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])]))
+                         M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])]))
 
         # removing track total sets value to None if track number is > 0
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    'trkn',
+                    b'trkn',
                     [M4A_ILST_TRKN_Data_Atom(1, 2)])])])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 2)
@@ -6358,17 +6365,17 @@ class M4AMetaDataTest(MetaDataTest):
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst', [
+                [M4A_Tree_Atom(b'ilst', [
                     M4A_ILST_Leaf_Atom(
-                        'trkn',
+                        b'trkn',
                         [M4A_ILST_TRKN_Data_Atom(1, 0)])])]))
 
         # removing album number removes atom if album total is 0
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    'disk',
+                    b'disk',
                     [M4A_ILST_DISK_Data_Atom(3, 0)])])])
         self.assertEqual(metadata.album_number, 3)
         self.assertIsNone(metadata.album_total)
@@ -6376,14 +6383,14 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertIsNone(metadata.album_number)
         self.assertIsNone(metadata.album_total)
         self.assertEqual(metadata,
-                         M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])]))
+                         M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])]))
 
         # removing album number sets value to None if album total is > 0
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    'disk',
+                    b'disk',
                     [M4A_ILST_DISK_Data_Atom(3, 4)])])])
         self.assertEqual(metadata.album_number, 3)
         self.assertEqual(metadata.album_total, 4)
@@ -6394,17 +6401,17 @@ class M4AMetaDataTest(MetaDataTest):
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst', [
+                [M4A_Tree_Atom(b'ilst', [
                     M4A_ILST_Leaf_Atom(
-                        'disk',
+                        b'disk',
                         [M4A_ILST_DISK_Data_Atom(0, 4)])])]))
 
         # removing album total removes atom if album number if 0
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    'disk',
+                    b'disk',
                     [M4A_ILST_DISK_Data_Atom(0, 4)])])])
         self.assertIsNone(metadata.album_number)
         self.assertEqual(metadata.album_total, 4)
@@ -6412,14 +6419,14 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertIsNone(metadata.album_number)
         self.assertIsNone(metadata.album_total)
         self.assertEqual(metadata,
-                         M4A_META_Atom(0, 0, [M4A_Tree_Atom('ilst', [])]))
+                         M4A_META_Atom(0, 0, [M4A_Tree_Atom(b'ilst', [])]))
 
         # removing album total sets value to None if album number is > 0
         metadata = M4A_META_Atom(
             0, 0,
-            [M4A_Tree_Atom('ilst', [
+            [M4A_Tree_Atom(b'ilst', [
                 M4A_ILST_Leaf_Atom(
-                    'disk',
+                    b'disk',
                     [M4A_ILST_DISK_Data_Atom(3, 4)])])])
         self.assertEqual(metadata.album_number, 3)
         self.assertEqual(metadata.album_total, 4)
@@ -6430,17 +6437,16 @@ class M4AMetaDataTest(MetaDataTest):
             metadata,
             M4A_META_Atom(
                 0, 0,
-                [M4A_Tree_Atom('ilst', [
+                [M4A_Tree_Atom(b'ilst', [
                     M4A_ILST_Leaf_Atom(
-                        'disk',
+                        b'disk',
                         [M4A_ILST_DISK_Data_Atom(3, 0)])])]))
 
     @METADATA_M4A
     def test_images(self):
         for audio_class in self.supported_formats:
-            temp_file = tempfile.NamedTemporaryFile(
-                suffix="." + audio_class.SUFFIX)
-            try:
+            with tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX) as temp_file:
                 track = audio_class.from_pcm(temp_file.name,
                                              BLANK_PCM_Reader(1))
 
@@ -6464,13 +6470,10 @@ class M4AMetaDataTest(MetaDataTest):
                 metadata = track.get_metadata()
                 self.assertEqual(metadata.images(), [])
 
-            finally:
-                temp_file.close()
-
     @METADATA_M4A
     def test_converted(self):
         # build a generic MetaData with everything
-        image1 = audiotools.Image.new(TEST_COVER1, "", 0)
+        image1 = audiotools.Image.new(TEST_COVER1, u"", 0)
 
         metadata_orig = audiotools.MetaData(track_name=u"a",
                                             track_number=1,
@@ -6510,13 +6513,15 @@ class M4AMetaDataTest(MetaDataTest):
 
         # check non-MetaData fields
         metadata_orig = self.empty_metadata()
-        metadata_orig['ilst'].add_child(
+        metadata_orig[b'ilst'].add_child(
             audiotools.m4a_atoms.M4A_ILST_Leaf_Atom(
-                'test',
-                [audiotools.m4a_atoms.M4A_Leaf_Atom("data", "foobar")]))
-        self.assertEqual(metadata_orig['ilst']['test']['data'].data, "foobar")
+                b'test',
+                [audiotools.m4a_atoms.M4A_Leaf_Atom(b"data", b"foobar")]))
+        self.assertEqual(
+            metadata_orig[b'ilst'][b'test'][b'data'].data, b"foobar")
         metadata_new = self.metadata_class.converted(metadata_orig)
-        self.assertEqual(metadata_orig['ilst']['test']['data'].data, "foobar")
+        self.assertEqual(
+            metadata_orig[b'ilst'][b'test'][b'data'].data, b"foobar")
 
         # ensure that convert() builds a whole new object
         metadata_new.track_name = u"Foo"
@@ -6535,56 +6540,56 @@ class M4AMetaDataTest(MetaDataTest):
 
         # check trailing whitespace
         metadata = audiotools.m4a_atoms.M4A_META_Atom(
-            0, 0, [audiotools.m4a_atoms.M4A_Tree_Atom('ilst', [])])
-        metadata['ilst'].add_child(
+            0, 0, [audiotools.m4a_atoms.M4A_Tree_Atom(b'ilst', [])])
+        metadata[b'ilst'].add_child(
             audiotools.m4a_atoms.M4A_ILST_Leaf_Atom(
-                "\xa9nam",
+                b"\xa9nam",
                 [audiotools.m4a_atoms.M4A_ILST_Unicode_Data_Atom(0,
                                                                  1,
-                                                                 "Foo ")]))
-        self.assertEqual(metadata['ilst']["\xa9nam"]['data'].data, "Foo ")
+                                                                 b"Foo ")]))
+        self.assertEqual(metadata[b'ilst'][b"\xa9nam"][b'data'].data, b"Foo ")
         self.assertEqual(metadata.track_name, u'Foo ')
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_REMOVE_TRAILING_WHITESPACE %
                           {"field": "nam"}])
-        self.assertEqual(cleaned['ilst']['\xa9nam']['data'].data, "Foo")
+        self.assertEqual(cleaned[b'ilst'][b'\xa9nam'][b'data'].data, b"Foo")
         self.assertEqual(cleaned.track_name, u'Foo')
 
         # check leading whitespace
         metadata = audiotools.m4a_atoms.M4A_META_Atom(
-            0, 0, [audiotools.m4a_atoms.M4A_Tree_Atom('ilst', [])])
-        metadata['ilst'].add_child(
+            0, 0, [audiotools.m4a_atoms.M4A_Tree_Atom(b'ilst', [])])
+        metadata[b'ilst'].add_child(
             audiotools.m4a_atoms.M4A_ILST_Leaf_Atom(
-                "\xa9nam",
+                b"\xa9nam",
                 [audiotools.m4a_atoms.M4A_ILST_Unicode_Data_Atom(0,
                                                                  1,
-                                                                 " Foo")]))
-        self.assertEqual(metadata['ilst']["\xa9nam"]['data'].data, " Foo")
+                                                                 b" Foo")]))
+        self.assertEqual(metadata[b'ilst'][b"\xa9nam"][b'data'].data, b" Foo")
         self.assertEqual(metadata.track_name, u' Foo')
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_REMOVE_LEADING_WHITESPACE %
                           {"field": "nam"}])
-        self.assertEqual(cleaned['ilst']['\xa9nam']['data'].data, "Foo")
+        self.assertEqual(cleaned[b'ilst'][b'\xa9nam'][b'data'].data, b"Foo")
         self.assertEqual(cleaned.track_name, u'Foo')
 
         # check empty fields
         metadata = audiotools.m4a_atoms.M4A_META_Atom(
-            0, 0, [audiotools.m4a_atoms.M4A_Tree_Atom('ilst', [])])
-        metadata['ilst'].add_child(
+            0, 0, [audiotools.m4a_atoms.M4A_Tree_Atom(b'ilst', [])])
+        metadata[b'ilst'].add_child(
             audiotools.m4a_atoms.M4A_ILST_Leaf_Atom(
-                "\xa9nam",
-                [audiotools.m4a_atoms.M4A_ILST_Unicode_Data_Atom(0, 1, "")]))
-        self.assertEqual(metadata['ilst']["\xa9nam"]['data'].data, "")
+                b"\xa9nam",
+                [audiotools.m4a_atoms.M4A_ILST_Unicode_Data_Atom(0, 1, b"")]))
+        self.assertEqual(metadata[b'ilst'][b"\xa9nam"][b'data'].data, b"")
         self.assertEqual(metadata.track_name, u'')
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_REMOVE_EMPTY_TAG %
                           {"field": "nam"}])
         self.assertRaises(KeyError,
-                          cleaned['ilst'].__getitem__,
-                          '\xa9nam')
+                          cleaned[b'ilst'].__getitem__,
+                          b'\xa9nam')
         self.assertIsNone(cleaned.track_name)
 
         # numerical fields can't have whitespace

@@ -7225,7 +7225,7 @@
       - [X] id3v2
       - [X] vorbis
       - [X] opus
-      - [ ] m4a
+      - [X] m4a
       - [X] tta
 ***** TODO Util
       - [ ] audiotools_config
@@ -7293,7 +7293,7 @@
       - [X] id3v2
       - [X] vorbis
       - [X] opus
-      - [ ] m4a
+      - [X] m4a
       - [X] tta
 ***** TODO Util
       - [ ] audiotools_config
