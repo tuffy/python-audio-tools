@@ -69,13 +69,16 @@ class ApeTagItem(object):
 
         item_type is 0 = UTF-8, 1 = binary, 2 = external, 3 = reserved
         read_only is 1 if the item is read only
-        key is an ASCII string
-        data is a binary string of the data itself
+        key is a bytes object of the item's key
+        data is a bytes object of the data itself
         """
 
         self.type = item_type
         self.read_only = read_only
+
+        # assert(isinstance(key, bytes))
         self.key = key
+        # assert(isinstance(data, bytes))
         self.data = data
 
     def __eq__(self, item):
@@ -184,11 +187,11 @@ class ApeTagItem(object):
     def string(cls, key, data):
         """returns an ApeTagItem of text data
 
-        key is an ASCII string, data is a unicode string"""
+        key is a bytes object, data is a unicode string"""
 
-        assert(isinstance(key, bytes))
-        assert(isinstance(data,
-                          str if (sys.version_info[0] >= 3) else unicode))
+        # assert(isinstance(key, bytes))
+        # assert(isinstance(data,
+        #                   str if (sys.version_info[0] >= 3) else unicode))
 
         return cls(0, 0, key, data.encode('utf-8', 'replace'))
 
@@ -278,6 +281,8 @@ class ApeTag(MetaData):
             return False
 
     def __getitem__(self, key):
+        # assert(isinstance(key, bytes))
+
         for tag in self.tags:
             if (tag.key == key):
                 return tag
@@ -415,7 +420,7 @@ class ApeTag(MetaData):
                                 r'(/\D*)(\d+)',
                                 u"\\g<1>" + u"%d" % (value),
                                 self[b'Track'].__unicode__(),
-                                1))
+                                1).encode("utf-8"))
                         else:
                             self[b'Track'].data = (u"%s/%d" % (
                                 self[b'Track'].__unicode__(),
@@ -444,7 +449,7 @@ class ApeTag(MetaData):
                                 r'(/\D*)(\d+)',
                                 u"\\g<1>" + u"%d" % (value),
                                 self[b'Media'].__unicode__(),
-                                1))
+                                1).encode("utf-8"))
                         else:
                             self[b'Media'].data = (u"%s/%d" % (
                                 self[b'Media'].__unicode__(),

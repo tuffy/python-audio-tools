@@ -7220,11 +7220,11 @@
 ***** TODO Metadata
       - [X] metadata
       - [ ] flac
-      - [ ] wavpack
+      - [X] wavpack
       - [X] id3v1
       - [X] id3v2
-      - [ ] vorbis
-      - [ ] opus
+      - [X] vorbis
+      - [X] opus
       - [ ] m4a
       - [ ] tta
 ***** TODO Util
@@ -7288,11 +7288,11 @@
 ***** TODO Metadata
       - [X] metadata
       - [ ] flac
-      - [ ] wavpack
+      - [X] wavpack
       - [X] id3v1
       - [X] id3v2
-      - [ ] vorbis
-      - [ ] opus
+      - [X] vorbis
+      - [X] opus
       - [ ] m4a
       - [ ] tta
 ***** TODO Util

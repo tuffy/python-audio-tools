@@ -814,22 +814,23 @@ class WavPackApeTagMetaData(MetaDataTest):
         from audiotools.ape import ApeTag, ApeTagItem
 
         # getitem with no matches raises KeyError
-        self.assertRaises(KeyError, ApeTag([]).__getitem__, "Title")
+        self.assertRaises(KeyError, ApeTag([]).__getitem__, b"Title")
 
         # getitem with one match returns that item
-        self.assertEqual(ApeTag([ApeTagItem(0, 0, "Foo", "Bar")])["Foo"],
-                         ApeTagItem(0, 0, "Foo", "Bar"))
+        self.assertEqual(ApeTag([ApeTagItem(0, 0, b"Foo", b"Bar")])[b"Foo"],
+                         ApeTagItem(0, 0, b"Foo", b"Bar"))
 
         # getitem with multiple matches returns the first match
         # (this is not a valid ApeTag and should be cleaned)
-        self.assertEqual(ApeTag([ApeTagItem(0, 0, "Foo", "Bar"),
-                                 ApeTagItem(0, 0, "Foo", "Baz")])["Foo"],
-                         ApeTagItem(0, 0, "Foo", "Bar"))
+        self.assertEqual(ApeTag([ApeTagItem(0, 0, b"Foo", b"Bar"),
+                                 ApeTagItem(0, 0, b"Foo", b"Baz")])[b"Foo"],
+                         ApeTagItem(0, 0, b"Foo", b"Bar"))
 
         # tag items *are* case-sensitive according to the specification
-        self.assertRaises(KeyError,
-                          ApeTag([ApeTagItem(0, 0, "Foo", "Bar")]).__getitem__,
-                          "foo")
+        self.assertRaises(
+            KeyError,
+            ApeTag([ApeTagItem(0, 0, b"Foo", b"Bar")]).__getitem__,
+            b"foo")
 
     @METADATA_WAVPACK
     def test_setitem(self):
@@ -837,37 +838,37 @@ class WavPackApeTagMetaData(MetaDataTest):
 
         # setitem adds new key if necessary
         metadata = ApeTag([])
-        metadata["Foo"] = ApeTagItem(0, 0, "Foo", "Bar")
+        metadata[b"Foo"] = ApeTagItem(0, 0, b"Foo", b"Bar")
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Foo", "Bar")])
+                         [ApeTagItem(0, 0, b"Foo", b"Bar")])
 
         # setitem replaces matching key with new value
-        metadata = ApeTag([ApeTagItem(0, 0, "Foo", "Bar")])
-        metadata["Foo"] = ApeTagItem(0, 0, "Foo", "Baz")
+        metadata = ApeTag([ApeTagItem(0, 0, b"Foo", b"Bar")])
+        metadata[b"Foo"] = ApeTagItem(0, 0, b"Foo", b"Baz")
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Foo", "Baz")])
+                         [ApeTagItem(0, 0, b"Foo", b"Baz")])
 
         # setitem leaves other items alone
         # when adding or replacing tags
-        metadata = ApeTag([ApeTagItem(0, 0, "Kelp", "Spam")])
-        metadata["Foo"] = ApeTagItem(0, 0, "Foo", "Bar")
+        metadata = ApeTag([ApeTagItem(0, 0, b"Kelp", b"Spam")])
+        metadata[b"Foo"] = ApeTagItem(0, 0, b"Foo", b"Bar")
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Kelp", "Spam"),
-                          ApeTagItem(0, 0, "Foo", "Bar")])
+                         [ApeTagItem(0, 0, b"Kelp", b"Spam"),
+                          ApeTagItem(0, 0, b"Foo", b"Bar")])
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Foo", "Bar"),
-                           ApeTagItem(0, 0, "Kelp", "Spam")])
-        metadata["Foo"] = ApeTagItem(0, 0, "Foo", "Baz")
+        metadata = ApeTag([ApeTagItem(0, 0, b"Foo", b"Bar"),
+                           ApeTagItem(0, 0, b"Kelp", b"Spam")])
+        metadata[b"Foo"] = ApeTagItem(0, 0, b"Foo", b"Baz")
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Foo", "Baz"),
-                          ApeTagItem(0, 0, "Kelp", "Spam")])
+                         [ApeTagItem(0, 0, b"Foo", b"Baz"),
+                          ApeTagItem(0, 0, b"Kelp", b"Spam")])
 
         # setitem is case-sensitive
-        metadata = ApeTag([ApeTagItem(0, 0, "foo", "Spam")])
-        metadata["Foo"] = ApeTagItem(0, 0, "Foo", "Bar")
+        metadata = ApeTag([ApeTagItem(0, 0, b"foo", b"Spam")])
+        metadata[b"Foo"] = ApeTagItem(0, 0, b"Foo", b"Bar")
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "foo", "Spam"),
-                          ApeTagItem(0, 0, "Foo", "Bar")])
+                         [ApeTagItem(0, 0, b"foo", b"Spam"),
+                          ApeTagItem(0, 0, b"Foo", b"Bar")])
 
     @METADATA_WAVPACK
     def test_getattr(self):
@@ -877,64 +878,64 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertIsNone(ApeTag([]).track_number)
 
         self.assertEqual(
-            ApeTag([ApeTagItem(0, 0, "Track", "2")]).track_number,
+            ApeTag([ApeTagItem(0, 0, b"Track", b"2")]).track_number,
             2)
 
         self.assertEqual(
-            ApeTag([ApeTagItem(0, 0, "Track", "2/3")]).track_number,
+            ApeTag([ApeTagItem(0, 0, b"Track", b"2/3")]).track_number,
             2)
 
         self.assertEqual(
-            ApeTag([ApeTagItem(0, 0, "Track", "foo 2 bar")]).track_number,
+            ApeTag([ApeTagItem(0, 0, b"Track", b"foo 2 bar")]).track_number,
             2)
 
         # album_number grabs the first available from "Media"
         self.assertIsNone(ApeTag([]).album_number)
 
         self.assertEqual(
-            ApeTag([ApeTagItem(0, 0, "Media", "4")]).album_number,
+            ApeTag([ApeTagItem(0, 0, b"Media", b"4")]).album_number,
             4)
 
         self.assertEqual(
-            ApeTag([ApeTagItem(0, 0, "Media", "4/5")]).album_number,
+            ApeTag([ApeTagItem(0, 0, b"Media", b"4/5")]).album_number,
             4)
 
         self.assertEqual(
-            ApeTag([ApeTagItem(0, 0, "Media", "foo 4 bar")]).album_number,
+            ApeTag([ApeTagItem(0, 0, b"Media", b"foo 4 bar")]).album_number,
             4)
 
         # track_total grabs the second number in a slashed field, if any
         self.assertIsNone(ApeTag([]).track_total)
 
         self.assertEqual(
-            ApeTag([ApeTagItem(0, 0, "Track", "2")]).track_total,
+            ApeTag([ApeTagItem(0, 0, b"Track", b"2")]).track_total,
             None)
 
         self.assertEqual(
-            ApeTag([ApeTagItem(0, 0, "Track", "2/3")]).track_total,
+            ApeTag([ApeTagItem(0, 0, b"Track", b"2/3")]).track_total,
             3)
 
         self.assertEqual(
             ApeTag([ApeTagItem(0, 0,
-                               "Track",
-                               "foo 2 bar / baz 3 blah")]).track_total,
+                               b"Track",
+                               b"foo 2 bar / baz 3 blah")]).track_total,
             3)
 
         # album_total grabs the second number in a slashed field, if any
         self.assertIsNone(ApeTag([]).album_total)
 
         self.assertEqual(
-            ApeTag([ApeTagItem(0, 0, "Media", "4")]).album_total,
+            ApeTag([ApeTagItem(0, 0, b"Media", b"4")]).album_total,
             None)
 
         self.assertEqual(
-            ApeTag([ApeTagItem(0, 0, "Media", "4/5")]).album_total,
+            ApeTag([ApeTagItem(0, 0, b"Media", b"4/5")]).album_total,
             5)
 
         self.assertEqual(
             ApeTag([ApeTagItem(0, 0,
-                               "Media",
-                               "foo 4 bar / baz 5 blah")]).album_total,
+                               b"Media",
+                               b"foo 4 bar / baz 5 blah")]).album_total,
             5)
 
         # other fields grab the first available item
@@ -942,12 +943,14 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(ApeTag([]).track_name,
                          None)
 
-        self.assertEqual(ApeTag([ApeTagItem(0, 0, "Title", "foo")]).track_name,
-                         u"foo")
+        self.assertEqual(
+            ApeTag([ApeTagItem(0, 0, b"Title", b"foo")]).track_name,
+            u"foo")
 
-        self.assertEqual(ApeTag([ApeTagItem(0, 0, "Title", "foo"),
-                                 ApeTagItem(0, 0, "Title", "bar")]).track_name,
-                         u"foo")
+        self.assertEqual(
+            ApeTag([ApeTagItem(0, 0, b"Title", b"foo"),
+                    ApeTagItem(0, 0, b"Title", b"bar")]).track_name,
+            u"foo")
 
     @METADATA_WAVPACK
     def test_setattr(self):
@@ -957,188 +960,188 @@ class WavPackApeTagMetaData(MetaDataTest):
         metadata = ApeTag([])
         metadata.track_number = 2
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track", "2")])
+                         [ApeTagItem(0, 0, b"Track", b"2")])
         self.assertEqual(metadata.track_number, 2)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Foo", "Bar")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Foo", b"Bar")])
         metadata.track_number = 2
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Foo", "Bar"),
-                          ApeTagItem(0, 0, "Track", "2")])
+                         [ApeTagItem(0, 0, b"Foo", b"Bar"),
+                          ApeTagItem(0, 0, b"Track", b"2")])
         self.assertEqual(metadata.track_number, 2)
 
         # track_number updates the first integer field
         # and leaves other junk in that field alone
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"1")])
         metadata.track_number = 2
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track", "2")])
+                         [ApeTagItem(0, 0, b"Track", b"2")])
         self.assertEqual(metadata.track_number, 2)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/3")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"1/3")])
         metadata.track_number = 2
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track", "2/3")])
+                         [ApeTagItem(0, 0, b"Track", b"2/3")])
         self.assertEqual(metadata.track_number, 2)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "foo 1 bar")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"foo 1 bar")])
         metadata.track_number = 2
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track", "foo 2 bar")])
+                         [ApeTagItem(0, 0, b"Track", b"foo 2 bar")])
         self.assertEqual(metadata.track_number, 2)
 
         # album_number adds new field if necessary
         metadata = ApeTag([])
         metadata.album_number = 4
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media", "4")])
+                         [ApeTagItem(0, 0, b"Media", b"4")])
         self.assertEqual(metadata.album_number, 4)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Foo", "Bar")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Foo", b"Bar")])
         metadata.album_number = 4
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Foo", "Bar"),
-                          ApeTagItem(0, 0, "Media", "4")])
+                         [ApeTagItem(0, 0, b"Foo", b"Bar"),
+                          ApeTagItem(0, 0, b"Media", b"4")])
         self.assertEqual(metadata.album_number, 4)
 
         # album_number updates the first integer field
         # and leaves other junk in that field alone
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"3")])
         metadata.album_number = 4
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media", "4")])
+                         [ApeTagItem(0, 0, b"Media", b"4")])
         self.assertEqual(metadata.album_number, 4)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3/5")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"3/5")])
         metadata.album_number = 4
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media", "4/5")])
+                         [ApeTagItem(0, 0, b"Media", b"4/5")])
         self.assertEqual(metadata.album_number, 4)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "foo 3 bar")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"foo 3 bar")])
         metadata.album_number = 4
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media", "foo 4 bar")])
+                         [ApeTagItem(0, 0, b"Media", b"foo 4 bar")])
         self.assertEqual(metadata.album_number, 4)
 
         # track_total adds a new field if necessary
         metadata = ApeTag([])
         metadata.track_total = 3
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track", "0/3")])
+                         [ApeTagItem(0, 0, b"Track", b"0/3")])
         self.assertEqual(metadata.track_total, 3)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Foo", "Bar")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Foo", b"Bar")])
         metadata.track_total = 3
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Foo", "Bar"),
-                          ApeTagItem(0, 0, "Track", "0/3")])
+                         [ApeTagItem(0, 0, b"Foo", b"Bar"),
+                          ApeTagItem(0, 0, b"Track", b"0/3")])
         self.assertEqual(metadata.track_total, 3)
 
         # track_total adds a slashed side of the integer field
         # and leaves other junk in that field alone
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"1")])
         metadata.track_total = 3
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track", "1/3")])
+                         [ApeTagItem(0, 0, b"Track", b"1/3")])
         self.assertEqual(metadata.track_total, 3)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1  ")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"1  ")])
         metadata.track_total = 3
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track", "1  /3")])
+                         [ApeTagItem(0, 0, b"Track", b"1  /3")])
         self.assertEqual(metadata.track_total, 3)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/2")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"1/2")])
         metadata.track_total = 3
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track", "1/3")])
+                         [ApeTagItem(0, 0, b"Track", b"1/3")])
         self.assertEqual(metadata.track_total, 3)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1 / baz 2 blah")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"1 / baz 2 blah")])
         metadata.track_total = 3
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track", "1 / baz 3 blah")])
+                         [ApeTagItem(0, 0, b"Track", b"1 / baz 3 blah")])
         self.assertEqual(metadata.track_total, 3)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track",
-                                      "foo 1 bar / baz 2 blah")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track",
+                                      b"foo 1 bar / baz 2 blah")])
         metadata.track_total = 3
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track",
-                                     "foo 1 bar / baz 3 blah")])
+                         [ApeTagItem(0, 0, b"Track",
+                                     b"foo 1 bar / baz 3 blah")])
         self.assertEqual(metadata.track_total, 3)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1 / 2 / 4")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"1 / 2 / 4")])
         metadata.track_total = 3
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track", "1 / 3 / 4")])
+                         [ApeTagItem(0, 0, b"Track", b"1 / 3 / 4")])
         self.assertEqual(metadata.track_total, 3)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "foo / 2")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"foo / 2")])
         metadata.track_total = 3
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track", "foo / 3")])
+                         [ApeTagItem(0, 0, b"Track", b"foo / 3")])
         self.assertEqual(metadata.track_total, 3)
 
         # album_total adds a new field if necessary
         metadata = ApeTag([])
         metadata.album_total = 5
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media", "0/5")])
+                         [ApeTagItem(0, 0, b"Media", b"0/5")])
         self.assertEqual(metadata.album_total, 5)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Foo", "Bar")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Foo", b"Bar")])
         metadata.album_total = 5
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Foo", "Bar"),
-                          ApeTagItem(0, 0, "Media", "0/5")])
+                         [ApeTagItem(0, 0, b"Foo", b"Bar"),
+                          ApeTagItem(0, 0, b"Media", b"0/5")])
         self.assertEqual(metadata.album_total, 5)
 
         # album_total adds a slashed side of the integer field
         # and leaves other junk in that field alone
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"3")])
         metadata.album_total = 5
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media", "3/5")])
+                         [ApeTagItem(0, 0, b"Media", b"3/5")])
         self.assertEqual(metadata.album_total, 5)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3  ")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"3  ")])
         metadata.album_total = 5
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media", "3  /5")])
+                         [ApeTagItem(0, 0, b"Media", b"3  /5")])
         self.assertEqual(metadata.album_total, 5)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3/4")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"3/4")])
         metadata.album_total = 5
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media", "3/5")])
+                         [ApeTagItem(0, 0, b"Media", b"3/5")])
         self.assertEqual(metadata.album_total, 5)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "1 / baz 2 blah")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"1 / baz 2 blah")])
         metadata.album_total = 5
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media", "1 / baz 5 blah")])
+                         [ApeTagItem(0, 0, b"Media", b"1 / baz 5 blah")])
         self.assertEqual(metadata.album_total, 5)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media",
-                                      "foo 1 bar / baz 2 blah")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media",
+                                      b"foo 1 bar / baz 2 blah")])
         metadata.album_total = 5
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media",
-                                     "foo 1 bar / baz 5 blah")])
+                         [ApeTagItem(0, 0, b"Media",
+                                     b"foo 1 bar / baz 5 blah")])
         self.assertEqual(metadata.album_total, 5)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3 / 4 / 6")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"3 / 4 / 6")])
         metadata.album_total = 5
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media", "3 / 5 / 6")])
+                         [ApeTagItem(0, 0, b"Media", b"3 / 5 / 6")])
         self.assertEqual(metadata.album_total, 5)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "foo / 4")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"foo / 4")])
         metadata.album_total = 5
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media", "foo / 5")])
+                         [ApeTagItem(0, 0, b"Media", b"foo / 5")])
         self.assertEqual(metadata.album_total, 5)
 
         # other fields add a new item if necessary
@@ -1146,37 +1149,37 @@ class WavPackApeTagMetaData(MetaDataTest):
         metadata = ApeTag([])
         metadata.track_name = u"Track Name"
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Title", "Track Name")])
+                         [ApeTagItem(0, 0, b"Title", b"Track Name")])
         self.assertEqual(metadata.track_name, u"Track Name")
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Foo", "Bar")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Foo", b"Bar")])
         metadata.track_name = u"Track Name"
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Foo", "Bar"),
-                          ApeTagItem(0, 0, "Title", "Track Name")])
+                         [ApeTagItem(0, 0, b"Foo", b"Bar"),
+                          ApeTagItem(0, 0, b"Title", b"Track Name")])
         self.assertEqual(metadata.track_name, u"Track Name")
 
         # other fields update the first match
         # while leaving the rest alone
-        metadata = ApeTag([ApeTagItem(0, 0, "Title", "Blah")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Title", b"Blah")])
         metadata.track_name = u"Track Name"
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Title", "Track Name")])
+                         [ApeTagItem(0, 0, b"Title", b"Track Name")])
         self.assertEqual(metadata.track_name, u"Track Name")
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Title", "Blah"),
-                           ApeTagItem(0, 0, "Title", "Spam")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Title", b"Blah"),
+                           ApeTagItem(0, 0, b"Title", b"Spam")])
         metadata.track_name = u"Track Name"
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Title", "Track Name"),
-                          ApeTagItem(0, 0, "Title", "Spam")])
+                         [ApeTagItem(0, 0, b"Title", b"Track Name"),
+                          ApeTagItem(0, 0, b"Title", b"Spam")])
         self.assertEqual(metadata.track_name, u"Track Name")
 
         # setting field to an empty string is okay
         metadata = ApeTag([])
         metadata.track_name = u""
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Title", "")])
+                         [ApeTagItem(0, 0, b"Title", b"")])
         self.assertEqual(metadata.track_name, u"")
 
     @METADATA_WAVPACK
@@ -1195,13 +1198,13 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.track_name)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Title", "Track Name")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Title", b"Track Name")])
         del(metadata.track_name)
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.track_name)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Title", "Track Name"),
-                           ApeTagItem(0, 0, "Title", "Track Name 2")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Title", b"Track Name"),
+                           ApeTagItem(0, 0, b"Title", b"Track Name 2")])
         del(metadata.track_name)
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.track_name)
@@ -1212,191 +1215,191 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.track_name)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Title", "Track Name")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Title", b"Track Name")])
         metadata.track_name = None
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.track_name)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Title", "Track Name"),
-                           ApeTagItem(0, 0, "Title", "Track Name 2")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Title", b"Track Name"),
+                           ApeTagItem(0, 0, b"Title", b"Track Name 2")])
         metadata.track_name = None
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.track_name)
 
         # deleting track_number without track_total removes "Track" field
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"1")])
         del(metadata.track_number)
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.track_number)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"1")])
         metadata.track_number = None
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.track_number)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "foo 1 bar")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"foo 1 bar")])
         metadata.track_number = None
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.track_number)
 
         # deleting track_number with track_total converts track_number to 0
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/2")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"1/2")])
         del(metadata.track_number)
-        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Track", "0/2")])
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, b"Track", b"0/2")])
         self.assertIsNone(metadata.track_number)
         self.assertEqual(metadata.track_total, 2)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/2")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"1/2")])
         metadata.track_number = None
-        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Track", "0/2")])
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, b"Track", b"0/2")])
         self.assertIsNone(metadata.track_number)
         self.assertEqual(metadata.track_total, 2)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track",
-                                      "foo 1 bar / baz 2 blah")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track",
+                                      b"foo 1 bar / baz 2 blah")])
         metadata.track_number = None
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track", "foo 0 bar / baz 2 blah")])
+                         [ApeTagItem(0, 0, b"Track", b"foo 0 bar / baz 2 blah")])
         self.assertIsNone(metadata.track_number)
         self.assertEqual(metadata.track_total, 2)
 
         # deleting track_total without track_number removes "Track" field
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "0/2")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"0/2")])
         del(metadata.track_total)
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.track_number)
         self.assertIsNone(metadata.track_total)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "0/2")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"0/2")])
         metadata.track_total = None
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.track_number)
         self.assertIsNone(metadata.track_total)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track",
-                                      "foo 0 bar / baz 2 blah")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track",
+                                      b"foo 0 bar / baz 2 blah")])
         metadata.track_total = None
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.track_number)
         self.assertIsNone(metadata.track_total)
 
         # deleting track_total with track_number removes slashed field
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/2")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"1/2")])
         del(metadata.track_total)
-        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Track", "1")])
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, b"Track", b"1")])
         self.assertEqual(metadata.track_number, 1)
         self.assertIsNone(metadata.track_total)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track", "1/2/3")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track", b"1/2/3")])
         del(metadata.track_total)
-        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Track", "1")])
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, b"Track", b"1")])
         self.assertEqual(metadata.track_number, 1)
         self.assertIsNone(metadata.track_total)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track",
-                                      "foo 1 bar / baz 2 blah")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track",
+                                      b"foo 1 bar / baz 2 blah")])
         del(metadata.track_total)
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track", "foo 1 bar")])
+                         [ApeTagItem(0, 0, b"Track", b"foo 1 bar")])
         self.assertEqual(metadata.track_number, 1)
         self.assertIsNone(metadata.track_total)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Track",
-                                      "foo 1 bar / baz 2 blah")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Track",
+                                      b"foo 1 bar / baz 2 blah")])
         metadata.track_total = None
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Track", "foo 1 bar")])
+                         [ApeTagItem(0, 0, b"Track", b"foo 1 bar")])
         self.assertEqual(metadata.track_number, 1)
         self.assertIsNone(metadata.track_total)
 
         # deleting album_number without album_total removes "Media" field
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "0/4")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"0/4")])
         del(metadata.album_total)
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.album_number)
         self.assertIsNone(metadata.album_total)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "0/4")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"0/4")])
         metadata.album_total = None
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.album_number)
         self.assertIsNone(metadata.album_total)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media",
-                                      "foo 0 bar / baz 4 blah")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media",
+                                      b"foo 0 bar / baz 4 blah")])
         metadata.album_total = None
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.album_number)
         self.assertIsNone(metadata.album_total)
 
         # deleting album_number with album_total converts album_number to 0
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3/4")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"3/4")])
         del(metadata.album_number)
-        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Media", "0/4")])
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, b"Media", b"0/4")])
         self.assertIsNone(metadata.album_number)
         self.assertEqual(metadata.album_total, 4)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "3/4")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"3/4")])
         metadata.album_number = None
-        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Media", "0/4")])
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, b"Media", b"0/4")])
         self.assertIsNone(metadata.album_number)
         self.assertEqual(metadata.album_total, 4)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media",
-                                      "foo 3 bar / baz 4 blah")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media",
+                                      b"foo 3 bar / baz 4 blah")])
         metadata.album_number = None
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media",
-                                     "foo 0 bar / baz 4 blah")])
+                         [ApeTagItem(0, 0, b"Media",
+                                     b"foo 0 bar / baz 4 blah")])
         self.assertIsNone(metadata.album_number)
         self.assertEqual(metadata.album_total, 4)
 
         # deleting album_total without album_number removes "Media" field
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "0/4")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"0/4")])
         del(metadata.album_total)
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.album_number)
         self.assertIsNone(metadata.album_total)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "0/4")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"0/4")])
         metadata.album_total = None
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.album_number)
         self.assertIsNone(metadata.album_total)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media",
-                                      "foo 0 bar / baz 4 blah")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media",
+                                      b"foo 0 bar / baz 4 blah")])
         metadata.album_total = None
         self.assertEqual(metadata.tags, [])
         self.assertIsNone(metadata.album_number)
         self.assertIsNone(metadata.album_total)
 
         # deleting album_total with album_number removes slashed field
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "1/2")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"1/2")])
         del(metadata.album_total)
-        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Media", "1")])
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, b"Media", b"1")])
         self.assertEqual(metadata.album_number, 1)
         self.assertIsNone(metadata.album_total)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media", "1/2/3")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media", b"1/2/3")])
         del(metadata.album_total)
-        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, "Media", "1")])
+        self.assertEqual(metadata.tags, [ApeTagItem(0, 0, b"Media", b"1")])
         self.assertEqual(metadata.album_number, 1)
         self.assertIsNone(metadata.album_total)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media",
-                                      "foo 1 bar / baz 2 blah")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media",
+                                      b"foo 1 bar / baz 2 blah")])
         del(metadata.album_total)
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media", "foo 1 bar")])
+                         [ApeTagItem(0, 0, b"Media", b"foo 1 bar")])
         self.assertEqual(metadata.album_number, 1)
         self.assertIsNone(metadata.album_total)
 
-        metadata = ApeTag([ApeTagItem(0, 0, "Media",
-                                      "foo 1 bar / baz 2 blah")])
+        metadata = ApeTag([ApeTagItem(0, 0, b"Media",
+                                      b"foo 1 bar / baz 2 blah")])
         metadata.album_total = None
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, "Media", "foo 1 bar")])
+                         [ApeTagItem(0, 0, b"Media", b"foo 1 bar")])
         self.assertEqual(metadata.album_number, 1)
         self.assertIsNone(metadata.album_total)
 
@@ -1405,11 +1408,12 @@ class WavPackApeTagMetaData(MetaDataTest):
         import os
 
         for audio_class in self.supported_formats:
-            temp_file = tempfile.NamedTemporaryFile(
-                suffix="." + audio_class.SUFFIX)
-            track = audio_class.from_pcm(temp_file.name, BLANK_PCM_Reader(10))
-            temp_file_stat = os.stat(temp_file.name)[0]
-            try:
+            with tempfile.NamedTemporaryFile(
+                 suffix="." + audio_class.SUFFIX) as temp_file:
+                track = audio_class.from_pcm(temp_file.name,
+                                             BLANK_PCM_Reader(10))
+                temp_file_stat = os.stat(temp_file.name)[0]
+
                 # update_metadata on file's internal metadata round-trips okay
                 track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
                 metadata = track.get_metadata()
@@ -1441,46 +1445,43 @@ class WavPackApeTagMetaData(MetaDataTest):
                 # but can be updated with update_metadata()
                 self.assertRaises(KeyError,
                                   track.get_metadata().__getitem__,
-                                  "replaygain_track_gain")
-                metadata["replaygain_track_gain"] = \
+                                  b"replaygain_track_gain")
+                metadata[b"replaygain_track_gain"] = \
                     audiotools.ape.ApeTagItem.string(
-                    "replaygain_track_gain", u"???")
+                    b"replaygain_track_gain", u"???")
                 track.set_metadata(metadata)
                 self.assertRaises(KeyError,
                                   track.get_metadata().__getitem__,
-                                  "replaygain_track_gain")
+                                  b"replaygain_track_gain")
                 track.update_metadata(metadata)
                 self.assertEqual(
-                    track.get_metadata()["replaygain_track_gain"],
+                    track.get_metadata()[b"replaygain_track_gain"],
                     audiotools.ape.ApeTagItem.string(
-                        "replaygain_track_gain", u"???"))
+                        b"replaygain_track_gain", u"???"))
 
                 # cuesheet not updated with set_metadata()
                 # but can be updated with update_metadata()
-                metadata["Cuesheet"] = \
+                metadata[b"Cuesheet"] = \
                     audiotools.ape.ApeTagItem.string(
-                    "Cuesheet", u"???")
+                    b"Cuesheet", u"???")
                 track.set_metadata(metadata)
                 self.assertRaises(KeyError,
                                   track.get_metadata().__getitem__,
-                                  "Cuesheet")
+                                  b"Cuesheet")
                 track.update_metadata(metadata)
                 self.assertEqual(
-                    track.get_metadata()["Cuesheet"],
+                    track.get_metadata()[b"Cuesheet"],
                     audiotools.ape.ApeTagItem.string(
-                        "Cuesheet", u"???"))
-
-            finally:
-                temp_file.close()
+                        b"Cuesheet", u"???"))
 
     @METADATA_WAVPACK
     def test_foreign_field(self):
         metadata = audiotools.ApeTag(
-            [audiotools.ape.ApeTagItem(0, False, "Title", 'Track Name'),
-             audiotools.ape.ApeTagItem(0, False, "Album", 'Album Name'),
-             audiotools.ape.ApeTagItem(0, False, "Track", "1/3"),
-             audiotools.ape.ApeTagItem(0, False, "Media", "2/4"),
-             audiotools.ape.ApeTagItem(0, False, "Foo", "Bar")])
+            [audiotools.ape.ApeTagItem(0, False, b"Title", b'Track Name'),
+             audiotools.ape.ApeTagItem(0, False, b"Album", b'Album Name'),
+             audiotools.ape.ApeTagItem(0, False, b"Track", b"1/3"),
+             audiotools.ape.ApeTagItem(0, False, b"Media", b"2/4"),
+             audiotools.ape.ApeTagItem(0, False, b"Foo", b"Bar")])
         for format in self.supported_formats:
             temp_file = tempfile.NamedTemporaryFile(
                 suffix="." + format.SUFFIX)
@@ -1491,28 +1492,28 @@ class WavPackApeTagMetaData(MetaDataTest):
                 metadata2 = track.get_metadata()
                 self.assertEqual(metadata, metadata2)
                 self.assertEqual(metadata.__class__, metadata2.__class__)
-                self.assertEqual(unicode(metadata2["Foo"]), u"Bar")
+                self.assertEqual(metadata2[b"Foo"].__unicode__(), u"Bar")
             finally:
                 temp_file.close()
 
     @METADATA_WAVPACK
     def test_field_mapping(self):
-        mapping = [('track_name', 'Title', u'a'),
-                   ('album_name', 'Album', u'b'),
-                   ('artist_name', 'Artist', u'c'),
-                   ('performer_name', 'Performer', u'd'),
-                   ('composer_name', 'Composer', u'e'),
-                   ('conductor_name', 'Conductor', u'f'),
-                   ('ISRC', 'ISRC', u'g'),
-                   ('catalog', 'Catalog', u'h'),
-                   ('publisher', 'Publisher', u'i'),
-                   ('year', 'Year', u'j'),
-                   ('date', 'Record Date', u'k'),
-                   ('comment', 'Comment', u'l')]
+        mapping = [('track_name', b'Title', u'a'),
+                   ('album_name', b'Album', u'b'),
+                   ('artist_name', b'Artist', u'c'),
+                   ('performer_name', b'Performer', u'd'),
+                   ('composer_name', b'Composer', u'e'),
+                   ('conductor_name', b'Conductor', u'f'),
+                   ('ISRC', b'ISRC', u'g'),
+                   ('catalog', b'Catalog', u'h'),
+                   ('publisher', b'Publisher', u'i'),
+                   ('year', b'Year', u'j'),
+                   ('date', b'Record Date', u'k'),
+                   ('comment', b'Comment', u'l')]
 
         for format in self.supported_formats:
-            temp_file = tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)
-            try:
+            with tempfile.NamedTemporaryFile(
+                suffix="." + format.SUFFIX) as temp_file:
                 track = format.from_pcm(temp_file.name, BLANK_PCM_Reader(1))
 
                 # ensure that setting a class field
@@ -1522,11 +1523,11 @@ class WavPackApeTagMetaData(MetaDataTest):
                     metadata = self.empty_metadata()
                     setattr(metadata, field, value)
                     self.assertEqual(getattr(metadata, field), value)
-                    self.assertEqual(unicode(metadata[key]), unicode(value))
+                    self.assertEqual(metadata[key].__unicode__(), value)
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
-                    self.assertEqual(unicode(metadata2[key]), unicode(value))
+                    self.assertEqual(metadata2[key].__unicode__(), value)
 
                 # ensure that updating the low-level implementation
                 # is reflected in the class field
@@ -1534,13 +1535,13 @@ class WavPackApeTagMetaData(MetaDataTest):
                     track.delete_metadata()
                     metadata = self.empty_metadata()
                     metadata[key] = audiotools.ape.ApeTagItem.string(
-                        key, unicode(value))
+                        key, value)
                     self.assertEqual(getattr(metadata, field), value)
-                    self.assertEqual(unicode(metadata[key]), unicode(value))
+                    self.assertEqual(metadata[key].__unicode__(), value)
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata, field), value)
-                    self.assertEqual(unicode(metadata[key]), unicode(value))
+                    self.assertEqual(metadata[key].__unicode__(), value)
 
                 # ensure that setting numerical fields also
                 # updates the low-level implementation
@@ -1549,66 +1550,66 @@ class WavPackApeTagMetaData(MetaDataTest):
                 metadata.track_number = 1
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(unicode(metadata['Track']), u'1')
+                self.assertEqual(metadata[b'Track'].__unicode__(), u'1')
                 metadata.track_total = 2
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(unicode(metadata['Track']), u'1/2')
+                self.assertEqual(metadata[b'Track'].__unicode__(), u'1/2')
                 del(metadata.track_total)
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(unicode(metadata['Track']), u'1')
+                self.assertEqual(metadata[b'Track'].__unicode__(), u'1')
                 del(metadata.track_number)
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertRaises(KeyError,
                                   metadata.__getitem__,
-                                  'Track')
+                                  b'Track')
 
                 track.delete_metadata()
                 metadata = self.empty_metadata()
                 metadata.album_number = 3
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(unicode(metadata['Media']), u'3')
+                self.assertEqual(metadata[b'Media'].__unicode__(), u'3')
                 metadata.album_total = 4
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(unicode(metadata['Media']), u'3/4')
+                self.assertEqual(metadata[b'Media'].__unicode__(), u'3/4')
                 del(metadata.album_total)
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(unicode(metadata['Media']), u'3')
+                self.assertEqual(metadata[b'Media'].__unicode__(), u'3')
                 del(metadata.album_number)
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertRaises(KeyError,
                                   metadata.__getitem__,
-                                  'Media')
+                                  b'Media')
 
                 # and ensure updating the low-level implementation
                 # updates the numerical fields
                 track.delete_metadata()
                 metadata = self.empty_metadata()
-                metadata['Track'] = audiotools.ape.ApeTagItem.string(
-                    'Track', u"1")
+                metadata[b'Track'] = audiotools.ape.ApeTagItem.string(
+                    b'Track', u"1")
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertEqual(metadata.track_number, 1)
                 self.assertIsNone(metadata.track_total)
-                metadata['Track'] = audiotools.ape.ApeTagItem.string(
-                    'Track', u"1/2")
+                metadata[b'Track'] = audiotools.ape.ApeTagItem.string(
+                    b'Track', u"1/2")
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertEqual(metadata.track_number, 1)
                 self.assertEqual(metadata.track_total, 2)
-                metadata['Track'] = audiotools.ape.ApeTagItem.string(
-                    'Track', u"0/2")
+                metadata[b'Track'] = audiotools.ape.ApeTagItem.string(
+                    b'Track', u"0/2")
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertIsNone(metadata.track_number)
                 self.assertEqual(metadata.track_total, 2)
-                del(metadata['Track'])
+                del(metadata[b'Track'])
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertIsNone(metadata.track_number)
@@ -1616,37 +1617,35 @@ class WavPackApeTagMetaData(MetaDataTest):
 
                 track.delete_metadata()
                 metadata = self.empty_metadata()
-                metadata['Media'] = audiotools.ape.ApeTagItem.string(
-                    'Media', u"3")
+                metadata[b'Media'] = audiotools.ape.ApeTagItem.string(
+                    b'Media', u"3")
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertEqual(metadata.album_number, 3)
                 self.assertIsNone(metadata.album_total)
-                metadata['Media'] = audiotools.ape.ApeTagItem.string(
-                    'Media', u"3/4")
+                metadata[b'Media'] = audiotools.ape.ApeTagItem.string(
+                    b'Media', u"3/4")
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertEqual(metadata.album_number, 3)
                 self.assertEqual(metadata.album_total, 4)
-                metadata['Media'] = audiotools.ape.ApeTagItem.string(
-                    'Media', u"0/4")
+                metadata[b'Media'] = audiotools.ape.ApeTagItem.string(
+                    b'Media', u"0/4")
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertIsNone(metadata.album_number)
                 self.assertEqual(metadata.album_total, 4)
-                del(metadata['Media'])
+                del(metadata[b'Media'])
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
                 self.assertIsNone(metadata.album_number)
                 self.assertIsNone(metadata.album_total)
-            finally:
-                temp_file.close()
 
     @METADATA_WAVPACK
     def test_converted(self):
         # build a generic MetaData with everything
-        image1 = audiotools.Image.new(TEST_COVER1, "Text 1", 0)
-        image2 = audiotools.Image.new(TEST_COVER2, "Text 2", 1)
+        image1 = audiotools.Image.new(TEST_COVER1, u"Text 1", 0)
+        image2 = audiotools.Image.new(TEST_COVER2, u"Text 2", 1)
 
         metadata_orig = audiotools.MetaData(track_name=u"a",
                                             track_number=1,
@@ -1685,11 +1684,11 @@ class WavPackApeTagMetaData(MetaDataTest):
 
         # ensure non-MetaData fields are converted
         metadata_orig = self.empty_metadata()
-        metadata_orig['Foo'] = audiotools.ape.ApeTagItem.string(
-            'Foo', u'Bar'.encode('utf-8'))
+        metadata_orig[b'Foo'] = audiotools.ape.ApeTagItem.string(
+            b'Foo', u'Bar')
         metadata_new = self.metadata_class.converted(metadata_orig)
-        self.assertEqual(metadata_orig['Foo'].data,
-                         metadata_new['Foo'].data)
+        self.assertEqual(metadata_orig[b'Foo'].data,
+                         metadata_new[b'Foo'].data)
 
         # ensure that convert() builds a whole new object
         metadata_new.track_name = u"Foo"
@@ -1703,9 +1702,8 @@ class WavPackApeTagMetaData(MetaDataTest):
     @METADATA_WAVPACK
     def test_images(self):
         for audio_class in self.supported_formats:
-            temp_file = tempfile.NamedTemporaryFile(
-                suffix="." + audio_class.SUFFIX)
-            try:
+            with tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX) as temp_file:
                 track = audio_class.from_pcm(temp_file.name,
                                              BLANK_PCM_Reader(1))
 
@@ -1745,9 +1743,6 @@ class WavPackApeTagMetaData(MetaDataTest):
                 metadata = track.get_metadata()
                 self.assertEqual(metadata.images(), [])
 
-            finally:
-                temp_file.close()
-
     @METADATA_WAVPACK
     def test_clean(self):
         from audiotools.ape import ApeTag, ApeTagItem
@@ -1762,180 +1757,180 @@ class WavPackApeTagMetaData(MetaDataTest):
 
         # check trailing whitespace
         metadata = ApeTag(
-            [ApeTagItem.string('Title', u'Foo ')])
+            [ApeTagItem.string(b'Title', u'Foo ')])
         self.assertEqual(metadata.track_name, u'Foo ')
-        self.assertEqual(metadata['Title'].data, u'Foo '.encode('ascii'))
+        self.assertEqual(metadata[b'Title'].data, u'Foo '.encode('utf-8'))
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_REMOVE_TRAILING_WHITESPACE %
-                          {"field": 'Title'.decode('ascii')}])
+                          {"field": b'Title'.decode('ascii')}])
         self.assertEqual(cleaned.track_name, u'Foo')
-        self.assertEqual(cleaned['Title'].data, u'Foo'.encode('ascii'))
+        self.assertEqual(cleaned[b'Title'].data, u'Foo'.encode('utf-8'))
 
         # check leading whitespace
         metadata = ApeTag(
-            [ApeTagItem.string('Title', u' Foo')])
+            [ApeTagItem.string(b'Title', u' Foo')])
         self.assertEqual(metadata.track_name, u' Foo')
-        self.assertEqual(metadata['Title'].data, u' Foo'.encode('ascii'))
+        self.assertEqual(metadata[b'Title'].data, u' Foo'.encode('utf-8'))
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_REMOVE_LEADING_WHITESPACE %
-                          {"field": 'Title'.decode('ascii')}])
+                          {"field": b'Title'.decode('ascii')}])
         self.assertEqual(cleaned.track_name, u'Foo')
-        self.assertEqual(cleaned['Title'].data, u'Foo'.encode('ascii'))
+        self.assertEqual(cleaned[b'Title'].data, u'Foo'.encode('utf-8'))
 
         # check empty fields
         metadata = ApeTag(
-            [ApeTagItem.string('Title', u'')])
+            [ApeTagItem.string(b'Title', u'')])
         self.assertEqual(metadata.track_name, u'')
-        self.assertEqual(metadata['Title'].data, u''.encode('ascii'))
+        self.assertEqual(metadata[b'Title'].data, u''.encode('utf-8'))
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_REMOVE_EMPTY_TAG %
-                          {"field": 'Title'.decode('ascii')}])
+                          {"field": b'Title'.decode('ascii')}])
         self.assertIsNone(cleaned.track_name)
         self.assertRaises(KeyError,
                           cleaned.__getitem__,
-                          'Title')
+                          b'Title')
 
         # check duplicate fields
         metadata = ApeTag(
-            [ApeTagItem.string('Title', u'Track Name 1'),
-             ApeTagItem.string('Title', u'Track Name 2')])
+            [ApeTagItem.string(b'Title', u'Track Name 1'),
+             ApeTagItem.string(b'Title', u'Track Name 2')])
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_REMOVE_DUPLICATE_TAG %
-                          {"field": 'Title'.decode('ascii')}])
+                          {"field": b'Title'.decode('ascii')}])
         self.assertEqual(cleaned.tags,
-                         [ApeTagItem.string('Title', u'Track Name 1')])
+                         [ApeTagItem.string(b'Title', u'Track Name 1')])
 
         # check fields that differ only by case
         metadata = ApeTag(
-            [ApeTagItem.string('title', u'Track Name 1'),
-             ApeTagItem.string('Title', u'Track Name 2')])
+            [ApeTagItem.string(b'title', u'Track Name 1'),
+             ApeTagItem.string(b'Title', u'Track Name 2')])
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_REMOVE_DUPLICATE_TAG %
-                          {"field": 'Title'.decode('ascii')}])
+                          {"field": b'Title'.decode('ascii')}])
         self.assertEqual(cleaned.tags,
-                         [ApeTagItem.string('title', u'Track Name 1')])
+                         [ApeTagItem.string(b'title', u'Track Name 1')])
 
         # check leading zeroes
         metadata = ApeTag(
-            [ApeTagItem.string('Track', u'01')])
+            [ApeTagItem.string(b'Track', u'01')])
         self.assertEqual(metadata.track_number, 1)
         self.assertIsNone(metadata.track_total)
-        self.assertEqual(metadata['Track'].data, u'01'.encode('ascii'))
+        self.assertEqual(metadata[b'Track'].data, u'01'.encode('utf-8'))
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": 'Track'.decode('ascii')}])
+                          {"field": b'Track'.decode('ascii')}])
         self.assertEqual(cleaned.track_number, 1)
         self.assertIsNone(cleaned.track_total)
-        self.assertEqual(cleaned['Track'].data, u'1'.encode('ascii'))
+        self.assertEqual(cleaned[b'Track'].data, u'1'.encode('utf-8'))
 
         metadata = ApeTag(
-            [ApeTagItem.string('Track', u'01/2')])
+            [ApeTagItem.string(b'Track', u'01/2')])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 2)
-        self.assertEqual(metadata['Track'].data, u'01/2'.encode('ascii'))
+        self.assertEqual(metadata[b'Track'].data, u'01/2'.encode('utf-8'))
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": 'Track'.decode('ascii')}])
+                          {"field": b'Track'.decode('ascii')}])
         self.assertEqual(cleaned.track_number, 1)
         self.assertEqual(cleaned.track_total, 2)
-        self.assertEqual(cleaned['Track'].data, u'1/2'.encode('ascii'))
+        self.assertEqual(cleaned[b'Track'].data, u'1/2'.encode('utf-8'))
 
         metadata = ApeTag(
-            [ApeTagItem.string('Track', u'1/02')])
+            [ApeTagItem.string(b'Track', u'1/02')])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 2)
-        self.assertEqual(metadata['Track'].data, u'1/02'.encode('ascii'))
+        self.assertEqual(metadata[b'Track'].data, u'1/02'.encode('utf-8'))
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": 'Track'.decode('ascii')}])
+                          {"field": b'Track'.decode('ascii')}])
         self.assertEqual(cleaned.track_number, 1)
         self.assertEqual(cleaned.track_total, 2)
-        self.assertEqual(cleaned['Track'].data, u'1/2'.encode('ascii'))
+        self.assertEqual(cleaned[b'Track'].data, u'1/2'.encode('utf-8'))
 
         metadata = ApeTag(
-            [ApeTagItem.string('Track', u'01/02')])
+            [ApeTagItem.string(b'Track', u'01/02')])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 2)
-        self.assertEqual(metadata['Track'].data, u'01/02'.encode('ascii'))
+        self.assertEqual(metadata[b'Track'].data, u'01/02'.encode('utf-8'))
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": 'Track'.decode('ascii')}])
+                          {"field": b'Track'.decode('ascii')}])
         self.assertEqual(cleaned.track_number, 1)
         self.assertEqual(cleaned.track_total, 2)
-        self.assertEqual(cleaned['Track'].data, u'1/2'.encode('ascii'))
+        self.assertEqual(cleaned[b'Track'].data, u'1/2'.encode('utf-8'))
 
         # check junk in slashed fields
         metadata = ApeTag(
-            [ApeTagItem.string('Track', u'1/foo')])
+            [ApeTagItem.string(b'Track', u'1/foo')])
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": 'Track'.decode('ascii')}])
+                          {"field": b'Track'.decode('ascii')}])
         self.assertEqual(cleaned.tags,
-                         [ApeTagItem.string('Track', u'1')])
+                         [ApeTagItem.string(b'Track', u'1')])
 
         metadata = ApeTag(
-            [ApeTagItem.string('Track', u'foo/2')])
+            [ApeTagItem.string(b'Track', u'foo/2')])
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": 'Track'.decode('ascii')}])
+                          {"field": b'Track'.decode('ascii')}])
         self.assertEqual(cleaned.tags,
-                         [ApeTagItem.string('Track', u'0/2')])
+                         [ApeTagItem.string(b'Track', u'0/2')])
 
         metadata = ApeTag(
-            [ApeTagItem.string('Track', u'1/ baz 2 blah')])
+            [ApeTagItem.string(b'Track', u'1/ baz 2 blah')])
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": 'Track'.decode('ascii')}])
+                          {"field": b'Track'.decode('ascii')}])
         self.assertEqual(cleaned.tags,
-                         [ApeTagItem.string('Track', u'1/2')])
+                         [ApeTagItem.string(b'Track', u'1/2')])
 
         metadata = ApeTag(
-            [ApeTagItem.string('Track', u'foo 1 bar /2')])
+            [ApeTagItem.string(b'Track', u'foo 1 bar /2')])
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": 'Track'.decode('ascii')}])
+                          {"field": b'Track'.decode('ascii')}])
         self.assertEqual(cleaned.tags,
-                         [ApeTagItem.string('Track', u'1/2')])
+                         [ApeTagItem.string(b'Track', u'1/2')])
 
         metadata = ApeTag(
-            [ApeTagItem.string('Track', u'foo 1 bar / baz 2 blah')])
+            [ApeTagItem.string(b'Track', u'foo 1 bar / baz 2 blah')])
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": 'Track'.decode('ascii')}])
+                          {"field": b'Track'.decode('ascii')}])
         self.assertEqual(cleaned.tags,
-                         [ApeTagItem.string('Track', u'1/2')])
+                         [ApeTagItem.string(b'Track', u'1/2')])
 
         metadata = ApeTag(
-            [ApeTagItem.string('Track', u'1/2/3')])
+            [ApeTagItem.string(b'Track', u'1/2/3')])
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": 'Track'.decode('ascii')}])
+                          {"field": b'Track'.decode('ascii')}])
         self.assertEqual(cleaned.tags,
-                         [ApeTagItem.string('Track', u'1/2')])
+                         [ApeTagItem.string(b'Track', u'1/2')])
 
         metadata = ApeTag(
-            [ApeTagItem.string('Track', u'1 / 2 / 3')])
+            [ApeTagItem.string(b'Track', u'1 / 2 / 3')])
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
                          [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": 'Track'.decode('ascii')}])
+                          {"field": b'Track'.decode('ascii')}])
         self.assertEqual(cleaned.tags,
-                         [ApeTagItem.string('Track', u'1/2')])
+                         [ApeTagItem.string(b'Track', u'1/2')])
 
         # images don't store metadata,
         # so no need to check their fields
@@ -1945,9 +1940,8 @@ class WavPackApeTagMetaData(MetaDataTest):
         import test_streams
 
         for input_class in [audiotools.WavPackAudio]:
-            temp1 = tempfile.NamedTemporaryFile(
-                suffix="." + input_class.SUFFIX)
-            try:
+            with tempfile.NamedTemporaryFile(
+                suffix="." + input_class.SUFFIX) as temp1:
                 track1 = input_class.from_pcm(
                     temp1.name,
                     test_streams.Sine16_Stereo(44100, 44100,
@@ -1964,9 +1958,8 @@ class WavPackApeTagMetaData(MetaDataTest):
                                      (input_class.NAME))
 
                 for output_class in [audiotools.WavPackAudio]:
-                    temp2 = tempfile.NamedTemporaryFile(
-                        suffix="." + input_class.SUFFIX)
-                    try:
+                    with tempfile.NamedTemporaryFile(
+                        suffix="." + input_class.SUFFIX) as temp2:
                         track2 = output_class.from_pcm(
                             temp2.name,
                             test_streams.Sine16_Stereo(66150, 44100,
@@ -1997,11 +1990,6 @@ class WavPackApeTagMetaData(MetaDataTest):
                                          u"Bar")
                         self.assertEqual(track2.get_replay_gain(),
                                          old_replay_gain)
-
-                    finally:
-                        temp2.close()
-            finally:
-                temp1.close()
 
 
 class ID3v1MetaData(MetaDataTest):
@@ -6755,30 +6743,30 @@ class VorbisCommentTest(MetaDataTest):
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
                         metadata[key][0],
-                        unicode(value))
+                        u"%s" % (value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
                     self.assertEqual(
                         metadata2[key][0],
-                        unicode(value))
+                        u"%s" % (value))
 
                 # ensure that updating the low-level implementation
                 # is reflected in the class field
                 for (field, key, value) in mapping:
                     track.delete_metadata()
                     metadata = self.empty_metadata()
-                    metadata[key] = [unicode(value)]
+                    metadata[key] = [u"%s" % (value)]
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
                         metadata[key][0],
-                        unicode(value))
+                        u"%s" % (value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
                     self.assertEqual(
                         metadata2[key][0],
-                        unicode(value))
+                        u"%s" % (value))
             finally:
                 temp_file.close()
 
@@ -7975,30 +7963,30 @@ class OpusTagsTest(MetaDataTest):
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
                         metadata[key][0],
-                        unicode(value))
+                        u"%s" % (value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
                     self.assertEqual(
                         metadata2[key][0],
-                        unicode(value))
+                        u"%s" % (value))
 
                 # ensure that updating the low-level implementation
                 # is reflected in the class field
                 for (field, key, value) in mapping:
                     track.delete_metadata()
                     metadata = self.empty_metadata()
-                    metadata[key] = [unicode(value)]
+                    metadata[key] = [u"%s" % (value)]
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
                         metadata[key][0],
-                        unicode(value))
+                        u"%s" % (value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
                     self.assertEqual(
                         metadata2[key][0],
-                        unicode(value))
+                        u"%s" % (value))
             finally:
                 temp_file.close()
 
