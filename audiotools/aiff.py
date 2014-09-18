@@ -284,8 +284,8 @@ class AIFF_File_Chunk(AIFF_Chunk):
 
         from audiotools import LimitedFileReader
 
-        self.__wav_file__.seek(self.__offset__)
-        return LimitedFileReader(self.__wav_file__, self.size())
+        self.__aiff_file__.seek(self.__offset__)
+        return LimitedFileReader(self.__aiff_file__, self.size())
 
     def verify(self):
         """returns True if chunk size matches chunk's data"""
