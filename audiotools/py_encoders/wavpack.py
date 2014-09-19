@@ -347,7 +347,7 @@ def encode_wavpack(filename,
                    wave_header=None,
                    wave_footer=None):
     pcmreader = BufferedPCMReader(pcmreader)
-    writer = BitstreamWriter(open(filename, "wb"), 1)
+    writer = BitstreamWriter(open(filename, "wb"), True)
     context = EncoderContext(pcmreader,
                              block_parameters(pcmreader.channels,
                                               pcmreader.channel_mask,

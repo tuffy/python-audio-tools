@@ -128,7 +128,7 @@ def encode_flac(filename,
 
     pcmreader = BufferedPCMReader(pcmreader)
     output_file = open(filename, "wb")
-    writer = BitstreamWriter(output_file, 0)
+    writer = BitstreamWriter(output_file, False)
 
     # write placeholder metadata blocks
     writer.write_bytes("fLaC")

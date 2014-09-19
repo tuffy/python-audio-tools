@@ -70,7 +70,7 @@ def encode_mdat(file, pcmreader,
 
     pcmreader = BufferedPCMReader(pcmreader)
 
-    mdat = BitstreamWriter(file, 0)
+    mdat = BitstreamWriter(file, False)
     total_pcm_frames = 0
     frame_byte_sizes = []
 

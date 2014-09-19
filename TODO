@@ -7317,6 +7317,24 @@
       - [ ] tracksplit
       - [ ] tracktag
       - [ ] trackverify
+** TODO Add context manager support
+   Having file-like objects work with "with" context managers
+   should hopefully make file handle management a bit simpler.
+*** DONE BitstreamReader
+    Call .close() on internal stream,
+    eat any exception (like the "file" object does) and return a False value
+**** DONE Add documentation
+**** DONE Add unit tests
+*** DONE BitstreamWriters
+    If no exception, call .flush() on internal stream and eat any exception.
+    Then call .close() on internal stream and eat any exception also.
+    Returns a False value.
+**** DONE Add documentation
+**** DONE Add unit tests
+*** TODO PCMReaders
+    Call .close() and eat any exception (like the "file" object does).
+**** TODO Add documentation
+**** TODO Add unit tests
 ** TODO Improve test coverage
    - [X] set_metadata(None) to all formats
 *** TODO Check repr on everything

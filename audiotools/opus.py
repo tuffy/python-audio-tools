@@ -51,8 +51,7 @@ class OpusAudio(VorbisAudio):
         # get channel count and channel mask from first packet
         from audiotools.bitstream import BitstreamReader
         try:
-            with open(filename, "rb") as f:
-                ogg_reader = BitstreamReader(f, 1)
+            with BitstreamReader(open(filename, "rb"), True) as ogg_reader:
                 (magic_number,
                  version,
                  header_type,

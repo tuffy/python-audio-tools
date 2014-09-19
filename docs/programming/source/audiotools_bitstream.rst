@@ -257,6 +257,19 @@ out of a larger binary file stream.
    Closes the stream and any underlying file object,
    by calling its ``close`` method.
 
+.. method:: BitstreamReader.__enter__()
+
+   Returns the reader's context manager.
+
+.. method:: BitstreamReader.__exit__(exc_type, exc_value, traceback)
+
+   Exits the reader's context manager by calling :meth:`file.close`
+   on the wrapped file object.
+   If one wishes to keep the stream open for further reading,
+   don't use a context manager and simply delete the reader object.
+   But again, be aware that buffering may make its current position
+   different than one might expect.
+
 BitstreamWriter Objects
 -----------------------
 
@@ -438,6 +451,19 @@ into a larger binary file stream.
 
    Flushes cached bytes to the stream and closes the underlying
    file object with its ``close`` method.
+
+.. method:: BitstreamWriter.__enter__()
+
+   Returns the writers's context manager.
+
+.. method:: BitstreamWriter.__exit__(exc_type, exc_value, traceback)
+
+   Exits the writer's context manager by calling :meth:`file.close`
+   on the wrapped file object.
+   If one wishes to keep the stream open for further writing,
+   don't use a context manager and simply delete the writer object.
+   But again, be aware that buffering may make its current position
+   different than one might expect.
 
 BitstreamRecorder Objects
 -------------------------
@@ -623,6 +649,14 @@ bits or bytes, for possible output into a :class:`BitstreamWriter`.
    swapping and resetting allows :class:`BitstreamRecorder`
    to reuse allocated data buffers.
 
+.. method:: BitstreamRecorder.__enter__()
+
+   Returns the recorder's context manager.
+
+.. method:: BitstreamRecorder.__exit__(exc_type, exc_value, traceback)
+
+   Exits the recorders's context manager.
+
 BitstreamAccumulator Objects
 ----------------------------
 
@@ -737,6 +771,14 @@ The actual writes themselves are not recorded.
 .. method:: BitstreamAccumulator.reset()
 
    Resets the counted number of bits to zero.
+
+.. method:: BitstreamAccumulator.__enter__()
+
+   Returns the accumulator's context manager.
+
+.. method:: BitstreamAccumulator.__exit__(exc_type, exc_value, traceback)
+
+   Exits the accumulator's context manager.
 
 HuffmanTree Objects
 -------------------

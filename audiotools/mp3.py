@@ -161,7 +161,7 @@ class MP3Audio(AudioFile):
                 # otherwise, bounce through file frames
                 from audiotools.bitstream import BitstreamReader
 
-                reader = BitstreamReader(mp3file, 0)
+                reader = BitstreamReader(mp3file, False)
                 self.__pcm_frames__ = 0
 
                 try:
@@ -349,11 +349,11 @@ class MP3Audio(AudioFile):
 
         # write id3v2 + data + id3v1 to file
         if (isinstance(metadata, ID3CommentPair)):
-            metadata.id3v2.build(BitstreamWriter(new_mp3, 0))
+            metadata.id3v2.build(BitstreamWriter(new_mp3, False))
             transfer_data(old_mp3.read, new_mp3.write)
             metadata.id3v1.build(new_mp3)
         elif (isinstance(metadata, ID3v2Comment)):
-            metadata.build(BitstreamWriter(new_mp3, 0))
+            metadata.build(BitstreamWriter(new_mp3, False))
             transfer_data(old_mp3.read, new_mp3.write)
         elif (isinstance(metadata, ID3v1Comment)):
             transfer_data(old_mp3.read, new_mp3.write)
@@ -511,7 +511,7 @@ class MP3Audio(AudioFile):
         # then find the next mp3 frame
         from audiotools.bitstream import BitstreamReader
 
-        reader = BitstreamReader(mp3file, 0)
+        reader = BitstreamReader(mp3file, False)
         reader.mark()
         try:
             (sync,
@@ -552,7 +552,7 @@ class MP3Audio(AudioFile):
 
         from audiotools.bitstream import BitstreamReader
 
-        reader = BitstreamReader(mp3file, 0)
+        reader = BitstreamReader(mp3file, False)
 
         # skip over any bytes that aren't a valid MPEG header
         reader.mark()

@@ -97,7 +97,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                         b"".join([chr(read_unsigned(reader, 8) & 0xFF)
                                   for i in range(read_unsigned(reader, 5))])
                 try:
-                    wave = BitstreamReader(BytesIO(verbatim_bytes), 1)
+                    wave = BitstreamReader(BytesIO(verbatim_bytes), True)
                     header = wave.read_bytes(12)
                     if (header.startswith(b"RIFF") and
                         header.endswith(b"WAVE")):
@@ -131,7 +131,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                     pass
 
                 try:
-                    aiff = BitstreamReader(BytesIO(verbatim_bytes), 0)
+                    aiff = BitstreamReader(BytesIO(verbatim_bytes), False)
                     header = aiff.read_bytes(12)
                     if (header.startswith(b"FORM") and
                         header.endswith(b"AIFF")):
@@ -299,7 +299,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
             decoder = decoders.SHNDecoder(open(self.filename, "rb"))
             (head, tail) = decoder.pcm_split()
             decoder.close()
-            header = bitstream.BitstreamReader(BytesIO(head), 1)
+            header = bitstream.BitstreamReader(BytesIO(head), True)
             (RIFF, SIZE, WAVE) = header.parse("4b 32u 4b")
             if ((RIFF != b'RIFF') or (WAVE != b'WAVE')):
                 return False
@@ -338,17 +338,14 @@ class ShortenAudio(WaveContainer, AiffContainer):
         header or footer data from the file"""
 
         from audiotools import decoders
-        from audiotools import bitstream
-        from io import BytesIO
 
-        (head, tail) = decoders.SHNDecoder(
-            open(self.filename, "rb")).pcm_split()
-        header = bitstream.BitstreamReader(BytesIO(head), 1)
-        (RIFF, SIZE, WAVE) = header.parse("4b 32u 4b")
-        if ((RIFF != b'RIFF') or (WAVE != b'WAVE')):
-            raise ValueError("invalid wave header")
-        else:
+        decoder = decoders.SHNDecoder(open(self.filename, "rb"))
+        (head, tail) = decoder.pcm_split()
+        decoder.close()
+        if ((head[0:4] == b"RIFF") and (head[8:12] == b"WAVE")):
             return (head, tail)
+        else:
+            raise ValueError("invalid wave header")
 
     @classmethod
     def from_wave(cls, filename, header, pcmreader, footer, compression=None,
@@ -455,7 +452,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
             decoder = decoders.SHNDecoder(open(self.filename, "rb"))
             (head, tail) = decoder.pcm_split()
             decoder.close()
-            header = bitstream.BitstreamReader(BytesIO(head), 0)
+            header = bitstream.BitstreamReader(BytesIO(head), False)
             (FORM, SIZE, AIFF) = header.parse("4b 32u 4b")
             if ((FORM != b'FORM') or (AIFF != b'AIFF')):
                 return False
@@ -496,14 +493,13 @@ class ShortenAudio(WaveContainer, AiffContainer):
         from audiotools import bitstream
         from io import BytesIO
 
-        (head, tail) = decoders.SHNDecoder(
-            open(self.filename, "rb")).pcm_split()
-        header = bitstream.BitstreamReader(BytesIO(head), 0)
-        (FORM, SIZE, AIFF) = header.parse("4b 32u 4b")
-        if ((FORM != b'FORM') or (AIFF != b'AIFF')):
-            raise ValueError("invalid AIFF header")
-        else:
+        decoder = decoders.SHNDecoder(open(self.filename, "rb"))
+        (head, tail) = decoder.pcm_split()
+        decoder.close()
+        if ((head[0:4] == b"FORM") and (head[8:12] == b"AIFF")):
             return (head, tail)
+        else:
+            raise ValueError("invalid AIFF header")
 
     @classmethod
     def from_aiff(cls, filename, header, pcmreader, footer, compression=None,

@@ -167,9 +167,9 @@ class AudioFileTest(unittest.TestCase):
                               f.name)
 
             # then check files with a bit of junk at the beginning
-            f.write('\x1aS\xc9\xf0I\xb2"CW\xd6')
+            f.write(b'\x1aS\xc9\xf0I\xb2"CW\xd6')
             f.flush()
-            self.assert_(os.path.getsize(f.name) > 0)
+            self.assertGreater(os.path.getsize(f.name), 0)
             self.assertRaises(audiotools.InvalidFile,
                               self.audio_class,
                               f.name)
@@ -195,8 +195,8 @@ class AudioFileTest(unittest.TestCase):
         invalid = tempfile.NamedTemporaryFile(suffix=self.suffix)
         # generate a valid file and check audiotools.file_type
         self.audio_class.from_pcm(valid.name, BLANK_PCM_Reader(1))
-        self.assertEqual(audiotools.file_type(open(valid.name, "rb")),
-                         self.audio_class)
+        with open(valid.name, "rb") as f:
+            self.assertEqual(audiotools.file_type(f), self.audio_class)
 
         # several invalid files and ensure audiotools.file_type
         # returns None
@@ -204,9 +204,8 @@ class AudioFileTest(unittest.TestCase):
         # by virtue of being random that's extremely unlikely in practice)
         for i in range(256):
             self.assertEqual(os.path.getsize(invalid.name), i)
-            self.assertEqual(
-                audiotools.file_type(open(invalid.name, "rb")),
-                None)
+            with open(invalid.name, "rb") as f:
+                self.assertEqual(audiotools.file_type(f), None)
             invalid.write(os.urandom(1))
             invalid.flush()
 
@@ -351,6 +350,7 @@ class AudioFileTest(unittest.TestCase):
         # open it a large number of times
         for i in range(5000):
             pcmreader = track.to_pcm()
+            pcmreader.close()
             del(pcmreader)
 
         temp.close()
@@ -384,38 +384,42 @@ class AudioFileTest(unittest.TestCase):
         if (self.audio_class is audiotools.AudioFile):
             return
 
-        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        track = self.audio_class.from_pcm(temp.name,
-                                          BLANK_PCM_Reader(10))
-        if (track.lossless()):
-            self.assert_(
-                audiotools.pcm_frame_cmp(track.to_pcm(),
-                                         BLANK_PCM_Reader(10)) is None)
-        for audio_class in audiotools.AVAILABLE_TYPES:
-            outfile = tempfile.NamedTemporaryFile(
-                suffix="." + audio_class.SUFFIX)
-            log = Log()
-            track2 = track.convert(outfile.name,
-                                   audio_class,
-                                   progress=log.update)
-            self.assert_(len(log.results) > 0,
-                         "no logging converting %s to %s" %
-                         (self.audio_class.NAME,
-                          audio_class.NAME))
-            self.assert_(len(set([r[1] for r in log.results])) == 1)
-            for x, y in zip(log.results[1:], log.results):
-                self.assert_((x[0] - y[0]) >= 0)
+        with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp:
+            track = self.audio_class.from_pcm(temp.name,
+                                              BLANK_PCM_Reader(10))
+            if (track.lossless()):
+                pcmreader = track.to_pcm()
+                self.assertIsNone(
+                    audiotools.pcm_frame_cmp(pcmreader,
+                                             BLANK_PCM_Reader(10)))
+                pcmreader.close()
+            for audio_class in audiotools.AVAILABLE_TYPES:
+                with tempfile.NamedTemporaryFile(
+                        suffix="." + audio_class.SUFFIX) as outfile:
+                    log = Log()
+                    track2 = track.convert(outfile.name,
+                                           audio_class,
+                                           progress=log.update)
+                    self.assertGreater(
+                        len(log.results),
+                        0,
+                        "no logging converting %s to %s" %
+                        (self.audio_class.NAME,
+                         audio_class.NAME))
+                    self.assertEqual(len({r[1] for r in log.results}), 1)
+                    for x, y in zip(log.results[1:], log.results):
+                        self.assertGreaterEqual((x[0] - y[0]), 0)
 
-            if (track.lossless() and track2.lossless()):
-                self.assert_(
-                    audiotools.pcm_frame_cmp(
-                        track.to_pcm(),
-                        track2.to_pcm()) is None,
-                    "PCM mismatch converting %s to %s" % (
-                        self.audio_class.NAME,
-                        audio_class.NAME))
-            outfile.close()
-        temp.close()
+                    if (track.lossless() and track2.lossless()):
+                        pcm1 = track.to_pcm()
+                        pcm2 = track2.to_pcm()
+                        self.assertIsNone(
+                            audiotools.pcm_frame_cmp(pcm1, pcm2),
+                            "PCM mismatch converting %s to %s" % (
+                                self.audio_class.NAME,
+                                audio_class.NAME))
+                        pcm1.close()
+                        pcm2.close()
 
     @FORMAT_AUDIOFILE
     def test_track_name(self):
@@ -718,7 +722,8 @@ class AudioFileTest(unittest.TestCase):
 
         # ensure that our dummy file doesn't exist
         dummy_filename = "invalid." + self.audio_class.SUFFIX
-        self.assert_(not os.path.isfile(dummy_filename))
+        if (os.path.isfile(dummy_filename)):
+            os.unlink(dummy_filename)
 
         # a decoder that raises IOError on to_pcm()
         # should trigger an EncodingError
@@ -728,7 +733,7 @@ class AudioFileTest(unittest.TestCase):
                           ERROR_PCM_Reader(IOError("I/O Error")))
 
         # and ensure invalid files aren't left lying around
-        self.assert_(not os.path.isfile(dummy_filename))
+        self.assertFalse(os.path.isfile(dummy_filename))
 
         # a decoder that raises ValueError on to_pcm()
         # should trigger an EncodingError
@@ -738,7 +743,7 @@ class AudioFileTest(unittest.TestCase):
                           ERROR_PCM_Reader(ValueError("Value Error")))
 
         # and ensure invalid files aren't left lying around
-        self.assert_(not os.path.isfile(dummy_filename))
+        self.assertFalse(os.path.isfile(dummy_filename))
 
     @FORMAT_AUDIOFILE
     def test_total_pcm_frames(self):
@@ -2003,7 +2008,7 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
             s = BytesIO(w.data())
             self.assertEqual(w.data(), s.getvalue())
             self.assertEqual(i, audiotools.aiff.parse_ieee_extended(
-                BitstreamReader(s, 0)))
+                BitstreamReader(s, False)))
 
     @FORMAT_AIFF
     def test_overlong_file(self):
@@ -3549,7 +3554,7 @@ class FlacFileTest(TestForeignAiffChunks,
             try:
                 temp.seek(0, 0)
                 temp.write(header)
-                BitstreamWriter(temp.file, 0).build(
+                BitstreamWriter(temp.file, False).build(
                     "16u 16u 24u 24u 20u 3u 5u 36U 16b",
                     streaminfo)
                 temp.write(data)

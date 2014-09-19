@@ -1598,7 +1598,7 @@ def file_type(file):
         from audiotools.bitstream import BitstreamReader
         from audiotools.m4a import get_m4a_atom
 
-        reader = BitstreamReader(file, 0)
+        reader = BitstreamReader(file, False)
 
         # so get contents of moov->trak->mdia->minf->stbl->stsd atom
         try:

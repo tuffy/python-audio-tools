@@ -52,9 +52,7 @@ class VorbisAudio(AudioFile):
     def __read_identification__(self):
         from audiotools.bitstream import BitstreamReader
 
-        f = open(self.filename, "rb")
-        try:
-            ogg_reader = BitstreamReader(f, 1)
+        with BitstreamReader(open(self.filename, "rb"), True) as ogg_reader:
             (magic_number,
              version,
              header_type,
@@ -98,8 +96,6 @@ class VorbisAudio(AudioFile):
             if (framing != 1):
                 from audiotools.text import ERR_VORBIS_INVALID_FRAMING_BIT
                 raise InvalidVorbis(ERR_VORBIS_INVALID_FRAMING_BIT)
-        finally:
-            f.close()
 
     def lossless(self):
         """returns False"""

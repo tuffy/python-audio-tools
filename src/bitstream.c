@@ -2344,7 +2344,8 @@ bw_flush_f(BitstreamWriter* bs)
 void
 bw_flush_r_a_c(BitstreamWriter* bs)
 {
-    /*recorders and accumulators are always flushed*/
+    /*recorders and accumulators are always flushed,
+      closed streams do nothing when flushed*/
     return;
 }
 
@@ -2567,13 +2568,7 @@ bw_free_r(BitstreamWriter* bs)
 void
 bw_free_e(BitstreamWriter* bs)
 {
-    /*flush pending data if necessary*/
-    if (!bw_closed(bs)) {
-        /*if an error occurs during flushing at this point
-          there's not much we can do*/
-        (void)ext_flush_w(bs->output.external);
-    }
-
+    /*calls free function on user data*/
     ext_free_w(bs->output.external);
 
     /*perform additional deallocations on rest of struct*/
@@ -5201,6 +5196,7 @@ test_writer(bs_endianness endianness) {
                               (ext_close_f)ext_fclose_test,
                               (ext_free_f)ext_ffree_test);
     test_writer_marks(writer);
+    writer->flush(writer);
     writer->free(writer);
     fseek(output_file, 0, 0);
     assert(fgetc(output_file) == 0xFF);

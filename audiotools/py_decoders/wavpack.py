@@ -32,7 +32,7 @@ def sub_blocks(reader, sub_blocks_size):
 
 class WavPackDecoder(object):
     def __init__(self, filename):
-        self.reader = BitstreamReader(open(filename, "rb"), 1)
+        self.reader = BitstreamReader(open(filename, "rb"), True)
 
         # read initial block to populate
         # sample_rate, bits_per_sample, channels, and channel_mask

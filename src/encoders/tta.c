@@ -99,6 +99,7 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
     }
 
     /*free temporary buffers*/
+    output->flush(output);
     output->free(output);
     framelist->del(framelist);
     cache_free(&cache);

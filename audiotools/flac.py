@@ -1508,7 +1508,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             else:
                 from audiotools.bitstream import BitstreamReader
 
-                return FlacMetaData.parse(BitstreamReader(f, 0))
+                return FlacMetaData.parse(BitstreamReader(f, False))
 
     def update_metadata(self, metadata):
         """takes this track's current MetaData object
@@ -1595,7 +1595,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 old_file.read(length)
 
             # write new metadata to new file
-            writer = BitstreamWriter(new_file, 0)
+            writer = BitstreamWriter(new_file, False)
             writer.write_bytes(b"fLaC")
             metadata.build(writer)
 
@@ -1604,8 +1604,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
             # commit change to disk
             old_file.close()
-            writer.flush()
-            new_file.close()
+            writer.close()
 
     def set_metadata(self, metadata):
         """takes a MetaData object and sets this track's metadata
@@ -1708,7 +1707,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         counter = 0
         with open(self.filename, 'rb') as f:
             f.seek(self.__stream_offset__, 0)
-            reader = BitstreamReader(f, 0)
+            reader = BitstreamReader(f, False)
 
             if (reader.read_bytes(4) != b'fLaC'):
                 from audiotools.text import ERR_FLAC_INVALID_FILE
@@ -2089,7 +2088,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         try:
             # read everything from start of header to "data<size>"
             # chunk header
-            r = BitstreamReader(BytesIO(header), 1)
+            r = BitstreamReader(BytesIO(header), True)
             (riff, remaining_size, wave) = r.parse("4b 32u 4b")
             if (riff != b"RIFF"):
                 from audiotools.text import ERR_WAV_NOT_WAVE
@@ -2098,14 +2097,14 @@ class FlacAudio(WaveContainer, AiffContainer):
                 from audiotools.text import ERR_WAV_INVALID_WAVE
                 raise EncodingError(ERR_WAV_INVALID_WAVE)
             else:
-                block_data = BitstreamRecorder(1)
+                block_data = BitstreamRecorder(True)
                 block_data.build("4b 32u 4b", (riff, remaining_size, wave))
                 blocks.append(Flac_APPLICATION(b"riff", block_data.data()))
                 total_size = remaining_size + 8
                 header_len -= format_byte_size("4b 32u 4b")
 
             while (header_len):
-                block_data = BitstreamRecorder(1)
+                block_data = BitstreamRecorder(True)
                 (chunk_id, chunk_size) = r.parse("4b 32u")
                 # ensure chunk ID is valid
                 if (not frozenset(chunk_id).issubset(
@@ -2169,14 +2168,14 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         try:
             # read everything from start of footer to end of footer
-            r = BitstreamReader(BytesIO(footer), 1)
+            r = BitstreamReader(BytesIO(footer), True)
             # skip initial footer pad byte
             if (data_chunk_size % 2):
                 r.skip_bytes(1)
                 footer_len -= 1
 
             while (footer_len):
-                block_data = BitstreamRecorder(1)
+                block_data = BitstreamRecorder(True)
                 (chunk_id, chunk_size) = r.parse("4b 32u")
 
                 if (not frozenset(chunk_id).issubset(
@@ -2327,7 +2326,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         try:
             # read everything from start of header to "SSND<size>"
             # chunk header
-            r = BitstreamReader(BytesIO(header), 0)
+            r = BitstreamReader(BytesIO(header), False)
             (form, remaining_size, aiff) = r.parse("4b 32u 4b")
             if (form != b"FORM"):
                 from audiotools.text import ERR_AIFF_NOT_AIFF
@@ -2412,7 +2411,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         try:
             # read everything from start of footer to end of footer
-            r = BitstreamReader(BytesIO(footer), 0)
+            r = BitstreamReader(BytesIO(footer), False)
             # skip initial footer pad byte
             if (ssnd_chunk_size % 2):
                 r.skip_bytes(1)
@@ -2560,7 +2559,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
             from audiotools.bitstream import BitstreamReader
 
-            reader = BitstreamReader(f, 0)
+            reader = BitstreamReader(f, False)
 
             stop = 0
 
@@ -2691,7 +2690,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         def seektable_valid(seektable, metadata_offset, input_file):
             from audiotools.bitstream import BitstreamReader
-            reader = BitstreamReader(input_file, 0)
+            reader = BitstreamReader(input_file, False)
 
             for (pcm_frame_offset,
                  seekpoint_offset,
@@ -2900,7 +2899,7 @@ class OggFlacMetaData(FlacMetaData):
         raises IOError or ValueError if an error occurs reading MetaData"""
 
         from io import BytesIO
-        from audiotools.bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamReader, parse
 
         streaminfo = None
         applications = []
@@ -2925,10 +2924,10 @@ class OggFlacMetaData(FlacMetaData):
          channels,
          bits_per_sample,
          total_samples,
-         md5sum) = BitstreamReader(
-            BytesIO(packetreader.read_packet()),
-            False).parse(
-            "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
+         md5sum) = parse(
+            "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b",
+            False,
+            packetreader.read_packet())
 
         block_list = [Flac_STREAMINFO(minimum_block_size=minimum_block_size,
                                       maximum_block_size=maximum_block_size,
@@ -3163,8 +3162,7 @@ class OggFlacAudio(FlacAudio):
     def __read_streaminfo__(self):
         from audiotools.bitstream import BitstreamReader
 
-        with open(self.filename, "rb") as f:
-            ogg_reader = BitstreamReader(f, 1)
+        with BitstreamReader(open(self.filename, "rb"), True) as ogg_reader:
             (magic_number,
              version,
              header_type,

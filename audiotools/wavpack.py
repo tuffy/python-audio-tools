@@ -272,12 +272,9 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         if (reader is None):
             from audiotools.bitstream import BitstreamReader
 
-            reader = BitstreamReader(open(self.filename, "rb"), 1)
-            try:
+            with BitstreamReader(open(self.filename, "rb"), True) as reader:
                 for block in blocks_iter(reader):
                     yield block
-            finally:
-                reader.close()
         else:
             for block in blocks_iter(reader):
                 yield block

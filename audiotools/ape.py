@@ -677,7 +677,7 @@ class ApeTag(MetaData):
         from audiotools.bitstream import BitstreamReader
 
         apefile.seek(-32, 2)
-        reader = BitstreamReader(apefile, 1)
+        reader = BitstreamReader(apefile, True)
 
         (preamble,
          version,
@@ -840,11 +840,8 @@ class ApeTaggedAudio(object):
 
         raises IOError if unable to read the file"""
 
-        f = open(self.filename, "rb")
-        try:
+        with open(self.filename, "rb") as f:
             return ApeTag.read(f)
-        finally:
-            f.close()
 
     def update_metadata(self, metadata):
         """takes this track's current MetaData object
@@ -874,7 +871,7 @@ class ApeTaggedAudio(object):
          item_encoding,
          is_header,
          no_footer,
-         has_header) = BitstreamReader(f, 1).parse(ApeTag.HEADER_FORMAT)
+         has_header) = BitstreamReader(f, True).parse(ApeTag.HEADER_FORMAT)
 
         if ((preamble == b'APETAGEX') and (version == 2000)):
             if (has_header):
@@ -886,7 +883,7 @@ class ApeTaggedAudio(object):
                 # metadata has grown
                 # so append it to existing file
                 f.seek(-old_tag_size, 2)
-                writer = BitstreamWriter(f, 1)
+                writer = BitstreamWriter(f, True)
                 metadata.build(writer)
                 writer.close()
             else:
@@ -908,14 +905,15 @@ class ApeTaggedAudio(object):
                     getsize(self.filename) - old_tag_size)
 
                 # append new tag to rewritten file
-                metadata.build(BitstreamWriter(new_apev2, 1))
+                metadata.build(BitstreamWriter(new_apev2, True))
 
                 old_apev2.close()
                 new_apev2.close()
         else:
             # no existing metadata, so simply append a fresh tag
-            with open(self.filename, "ab") as f:
-                metadata.build(BitstreamWriter(f, 1))
+            f.close()
+            with BitstreamWriter(open(self.filename, "ab"), True) as writer:
+                metadata.build(writer)
 
     def set_metadata(self, metadata):
         """takes a MetaData object and sets this track's metadata
@@ -970,8 +968,8 @@ class ApeTaggedAudio(object):
                 del(new_metadata[b"Cuesheet"])
 
             # no existing metadata, so simply append a fresh tag
-            with open(self.filename, "ab") as f:
-                new_metadata.build(BitstreamWriter(f, 1))
+            with BitstreamWriter(open(self.filename, "ab"), True) as writer:
+                new_metadata.build(writer)
 
     def delete_metadata(self):
         """deletes the track's MetaData
@@ -984,9 +982,12 @@ class ApeTaggedAudio(object):
             self.set_metadata(MetaData())
         else:
             # no non-textual metadata, so wipe out the entire block
-
-            from audiotools.bitstream import BitstreamReader, BitstreamWriter
+            from os import access, R_OK, W_OK
+            from audiotools.bitstream import BitstreamReader
             from audiotools import transfer_data
+
+            if (not access(self.filename, R_OK | W_OK)):
+                raise IOError(self.filename)
 
             with open(self.filename, "rb") as f:
                 f.seek(-32, 2)
@@ -999,7 +1000,8 @@ class ApeTaggedAudio(object):
                  item_encoding,
                  is_header,
                  no_footer,
-                 has_header) = BitstreamReader(f, 1).parse(ApeTag.HEADER_FORMAT)
+                 has_header) = BitstreamReader(f, True).parse(
+                    ApeTag.HEADER_FORMAT)
 
             if ((preamble == b'APETAGEX') and (version == 2000)):
                 from audiotools import TemporaryFile

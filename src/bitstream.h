@@ -966,9 +966,10 @@ typedef struct BitstreamWriter_s {
     (*close_internal_stream)(struct BitstreamWriter_s* bs);
 
     /*for recorders, deallocates buffer
-      for external functions, flushes data if not already closed
 
-      deallocates any callbacks
+      for external functions, call free function on user data
+
+      deallocates any callbacks, exceptions and marks
 
       frees BitstreamWriter struct*/
     void

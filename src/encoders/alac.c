@@ -175,6 +175,7 @@ ALACEncoder_encode_alac(char *filename,
     log_output = alac_log_output(&encoder);
 
     pcmreader->del(pcmreader);
+    output->flush(output);
     output->free(output);
     free_encoder(&encoder);
     channels->del(channels);

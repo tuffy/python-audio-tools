@@ -204,7 +204,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                      else encoding_function)(file, BufferedPCMReader(counter))
             except (IOError, ValueError) as err:
                 writer.unmark()
-                file.close()
+                writer.close()
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
 
@@ -236,7 +236,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                                              BufferedPCMReader(counter))
             except (IOError, ValueError) as err:
                 frames.close()
-                file.close()
+                writer.close()
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
 
@@ -384,8 +384,8 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 del(new_metadata[b"Cuesheet"])
 
             # no current metadata, so append a fresh APEv2 tag
-            with open(self.filename, "ab") as f:
-                new_metadata.build(BitstreamWriter(f, 1))
+            with BitstreamWriter(open(self.filename, "ab"), True) as writer:
+                new_metadata.build(writer)
 
     def update_metadata(self, metadata):
         """takes this track's current MetaData object
@@ -420,8 +420,8 @@ class TrueAudio(AudioFile, ApeGainedAudio):
             # if new metadata is APEv2 and no current metadata,
             # simply append APEv2 tag
             from audiotools.bitstream import BitstreamWriter
-            with open(self.filename, "ab") as f:
-                metadata.build(BitstreamWriter(f, True))
+            with BitstreamWriter(open(self.filename, "ab"), True) as writer:
+                metadata.build(writer)
         elif (isinstance(metadata, ApeTag) and
               isinstance(current_metadata, ApeTag) and
               (metadata.total_size() > current_metadata.total_size())):

@@ -129,7 +129,7 @@ class __JPEG__(ImageMetrics):
 
         try:
             for (segment_type,
-                 segment_data) in segments(BitstreamReader(file_data, 0)):
+                 segment_data) in segments(BitstreamReader(file_data, False)):
                 if (segment_type in (0xC0, 0xC1, 0xC2, 0xC3,
                                      0xC5, 0XC5, 0xC6, 0xC7,
                                      0xC9, 0xCA, 0xCB, 0xCD,
@@ -181,7 +181,7 @@ class __PNG__(ImageMetrics):
         try:
             for (chunk_type,
                  chunk_length,
-                 chunk_data) in chunks(BitstreamReader(file_data, 0)):
+                 chunk_data) in chunks(BitstreamReader(file_data, False)):
                 if (chunk_type == b'IHDR'):
                     ihdr = chunk_data
                 elif (chunk_type == b'PLTE'):
@@ -264,7 +264,7 @@ class __BMP__(ImageMetrics):
              horizontal_resolution,
              vertical_resolution,
              colors_used,
-             important_colors_used) = BitstreamReader(file_data, 1).parse(
+             important_colors_used) = BitstreamReader(file_data, True).parse(
                 "2b 32u 16p 16p 32u " +
                 "32u 32u 32u 16u 16u 32u 32u 32u 32u 32u 32u")
         except IOError:
@@ -304,7 +304,7 @@ class __GIF__(ImageMetrics):
              version,
              width,
              height,
-             color_table_size) = BitstreamReader(file_data, 1).parse(
+             color_table_size) = BitstreamReader(file_data, True).parse(
                 "3b 3b 16u 16u 3u 5p")
         except IOError:
             from audiotools.text import ERR_IMAGE_IOERROR_GIF

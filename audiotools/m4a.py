@@ -123,8 +123,7 @@ class M4ATaggedAudio(object):
 
         from audiotools.bitstream import BitstreamReader
 
-        reader = BitstreamReader(open(self.filename, 'rb'), 0)
-        try:
+        with BitstreamReader(open(self.filename, 'rb'), False) as reader:
             try:
                 (meta_size,
                  meta_reader) = get_m4a_atom(reader, b"moov", b"udta", b"meta")
@@ -154,8 +153,6 @@ class M4ATaggedAudio(object):
                                         b"\xa9too": M4A_ILST_Leaf_Atom,
                                         b"trkn": M4A_ILST_Leaf_Atom,
                                         b"\xa9wrt": M4A_ILST_Leaf_Atom})
-        finally:
-            reader.close()
 
     def update_metadata(self, metadata, old_metadata=None):
         """takes this track's updated MetaData object
@@ -197,9 +194,9 @@ class M4ATaggedAudio(object):
 
             f = open(self.filename, 'r+b')
             (meta_size, meta_offset) = get_m4a_atom_offset(
-                BitstreamReader(f, 0), b"moov", b"udta", b"meta")
+                BitstreamReader(f, False), b"moov", b"udta", b"meta")
             f.seek(meta_offset + 8, 0)
-            metadata.build(BitstreamWriter(f, 0))
+            metadata.build(BitstreamWriter(f, False))
             f.close()
             return
         else:
@@ -218,7 +215,7 @@ class M4ATaggedAudio(object):
                 m4a_tree = M4A_Tree_Atom.parse(
                     None,
                     os.path.getsize(self.filename),
-                    BitstreamReader(f, 0),
+                    BitstreamReader(f, False),
                     {b"moov": M4A_Tree_Atom,
                      b"trak": M4A_Tree_Atom,
                      b"mdia": M4A_Tree_Atom,
@@ -259,9 +256,9 @@ class M4ATaggedAudio(object):
                 pass
 
             # then write entire tree back to disk
-            writer = BitstreamWriter(TemporaryFile(self.filename), 0)
-            m4a_tree.build(writer)
-            writer.close()
+            with BitstreamWriter(TemporaryFile(self.filename),
+                                 False) as writer:
+                m4a_tree.build(writer)
 
     def set_metadata(self, metadata):
         """takes a MetaData object and sets this track's metadata
@@ -328,8 +325,8 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         # first, fetch the mdia atom
         # which is the parent of both the mp4a and mdhd atoms
         try:
-            with open(filename, "rb") as f:
-                mdia = get_m4a_atom(BitstreamReader(f, 0),
+            with BitstreamReader(open(filename, "rb"), False) as reader:
+                mdia = get_m4a_atom(reader,
                                     b"moov", b"trak", b"mdia")[1]
         except IOError:
             from audiotools.text import ERR_M4A_IOERROR
@@ -710,8 +707,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         # first, fetch the mdia atom
         # which is the parent of both the alac and mdhd atoms
         try:
-            with open(filename, "rb") as f:
-                mdia = get_m4a_atom(BitstreamReader(f, 0),
+            with BitstreamReader(open(filename, "rb"), False) as reader:
+                mdia = get_m4a_atom(reader,
                                     b"moov", b"trak", b"mdia")[1]
         except IOError:
             from audiotools.text import ERR_ALAC_IOERROR
@@ -868,7 +865,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
         from audiotools.bitstream import BitstreamReader
 
-        reader = BitstreamReader(open(self.filename, "rb"), 0)
+        reader = BitstreamReader(open(self.filename, "rb"), False)
         reader.mark()
         try:
             has_stts = has_m4a_atom(reader,
@@ -981,7 +978,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             except IOError as err:
                 raise EncodingError(str(err))
             try:
-                m4a_writer = BitstreamWriter(f, 0)
+                m4a_writer = BitstreamWriter(f, False)
                 m4a_writer.mark(1)
                 m4a_writer.build("32u 4b", (ftyp.size() + 8, ftyp.name))
                 ftyp.build(m4a_writer)
@@ -992,7 +989,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 m4a_writer.flush()
             except IOError as err:
                 m4a_writer.unmark(1)
-                f.close()
+                m4a_writer.close()
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
 
@@ -1009,7 +1006,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                         maximum_k=cls.MAXIMUM_K)
             except (IOError, ValueError) as err:
                 m4a_writer.unmark(1)
-                f.close()
+                m4a_writer.close()
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
 
@@ -1018,7 +1015,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             if (actual_pcm_frames != total_pcm_frames):
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
                 m4a_writer.unmark(1)
-                f.close()
+                m4a_writer.close()
                 cls.__unlink__(filename)
                 raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
             assert(sum(frame_byte_sizes) > 0)
@@ -1045,7 +1042,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             moov.build(m4a_writer)
             m4a_writer.unmark(1)
             m4a_writer.flush()
-            f.close()
+            m4a_writer.close()
 
             return cls(filename)
         else:
@@ -1096,8 +1093,11 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
             # build our complete output file
             try:
-                f = open(filename, 'wb')
-                m4a_writer = BitstreamWriter(f, 0)
+                m4a_writer = BitstreamWriter(open(filename, "wb"), False)
+            except IOError as err:
+                mdat_file.close()
+                raise EncodingError(str(err))
+            try:
                 m4a_writer.build("32u 4b", (ftyp.size() + 8, ftyp.name))
                 ftyp.build(m4a_writer)
                 m4a_writer.build("32u 4b", (moov.size() + 8, moov.name))
@@ -1110,6 +1110,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 m4a_writer.close()
             except IOError as err:
                 mdat_file.close()
+                m4a_writer.close()
                 raise EncodingError(str(err))
 
             return cls(filename)

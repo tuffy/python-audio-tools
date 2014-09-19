@@ -29,7 +29,7 @@ def shnmean(values):
 
 class SHNDecoder(object):
     def __init__(self, filename):
-        self.reader = BitstreamReader(open(filename, "rb"), 0)
+        self.reader = BitstreamReader(open(filename, "rb"), False)
 
         (self.file_type,
          self.channels,
@@ -68,7 +68,7 @@ class SHNDecoder(object):
                                       for i in range(self.unsigned(5))])
 
             try:
-                wave = BitstreamReader(BytesIO(verbatim_bytes), 1)
+                wave = BitstreamReader(BytesIO(verbatim_bytes), True)
                 header = wave.read_bytes(12)
                 if (header.startswith("RIFF") and header.endswith("WAVE")):
                     # got RIFF/WAVE header, so parse wave blocks as needed
@@ -98,7 +98,7 @@ class SHNDecoder(object):
                 pass
 
             try:
-                aiff = BitstreamReader(BytesIO(verbatim_bytes), 0)
+                aiff = BitstreamReader(BytesIO(verbatim_bytes), False)
                 header = aiff.read_bytes(12)
                 if (header.startswith("FORM") and header.endswith("AIFF")):
                     # got FORM/AIFF header, so parse aiff blocks as needed

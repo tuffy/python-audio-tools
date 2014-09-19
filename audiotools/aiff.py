@@ -85,7 +85,7 @@ def validate_header(header):
     from audiotools.bitstream import BitstreamReader
 
     header_size = len(header)
-    aiff_file = BitstreamReader(BytesIO(header), 0)
+    aiff_file = BitstreamReader(BytesIO(header), False)
     try:
         # ensure header starts with FORM<size>AIFF chunk
         (form, remaining_size, aiff) = aiff_file.parse("4b 32u 4b")
@@ -165,7 +165,7 @@ def validate_footer(footer, ssnd_bytes_written):
     from audiotools.bitstream import BitstreamReader
 
     total_size = len(footer)
-    aiff_file = BitstreamReader(BytesIO(footer), 0)
+    aiff_file = BitstreamReader(BytesIO(footer), False)
     try:
         # ensure footer is padded properly if necessary
         # based on size of data bytes written
@@ -567,7 +567,7 @@ class AiffAudio(AiffContainer):
                          self.__bits_per_sample__,
                          self.__sample_rate__,
                          self.__channel_mask__) = parse_comm(
-                            BitstreamReader(chunk.data(), 0))
+                            BitstreamReader(chunk.data(), False))
                         break
                     except IOError:
                         continue
@@ -705,7 +705,7 @@ class AiffAudio(AiffContainer):
 
         for chunk in self.chunks():
             if (chunk.id == b'ID3 '):
-                return ID3v22Comment.parse(BitstreamReader(chunk.data(), 0))
+                return ID3v22Comment.parse(BitstreamReader(chunk.data(), False))
         else:
             return None
 
@@ -879,7 +879,7 @@ class AiffAudio(AiffContainer):
     def has_foreign_aiff_chunks(self):
         """returns True if the audio file contains non-audio AIFF chunks"""
 
-        return ({'COMM', 'SSND'} != {c.id for c in self.chunks()})
+        return ({b'COMM', b'SSND'} != {c.id for c in self.chunks()})
 
     def aiff_header_footer(self):
         """returns (header, footer) tuple of strings
@@ -899,8 +899,7 @@ class AiffAudio(AiffContainer):
         tail = BitstreamRecorder(0)
         current_block = head
 
-        aiff_file = BitstreamReader(open(self.filename, 'rb'), 0)
-        try:
+        with BitstreamReader(open(self.filename, 'rb'), False) as aiff_file:
             # transfer the 12-byte "RIFFsizeWAVE" header to head
             (form, size, aiff) = aiff_file.parse("4b 32u 4b")
             if (form != b'FORM'):
@@ -944,8 +943,6 @@ class AiffAudio(AiffContainer):
                         total_size -= chunk_size
 
             return (head.data(), tail.data())
-        finally:
-            aiff_file.close()
 
     @classmethod
     def from_aiff(cls, filename, header, pcmreader, footer, compression=None):

@@ -2795,9 +2795,9 @@ class Bitstream(unittest.TestCase):
         temp_s.seek(0, 0)
 
         # test a big-endian stream
-        for reader in [BitstreamReader(temp, 0),
-                       BitstreamReader(temp_s, 0),
-                       BitstreamReader(data, 0)]:
+        for reader in [BitstreamReader(temp, False),
+                       BitstreamReader(temp_s, False),
+                       BitstreamReader(data, False)]:
             table_be = HuffmanTree([[1, 1], 0,
                                     [1, 0], 1,
                                     [0, 1], 2,
@@ -2811,9 +2811,9 @@ class Bitstream(unittest.TestCase):
         temp_s.seek(0, 0)
 
         # test a little-endian stream
-        for reader in [BitstreamReader(temp, 1),
-                       BitstreamReader(temp_s, 1),
-                       BitstreamReader(data, 1)]:
+        for reader in [BitstreamReader(temp, True),
+                       BitstreamReader(temp_s, True),
+                       BitstreamReader(data, True)]:
             table_le = HuffmanTree([[1, 1], 0,
                                     [1, 0], 1,
                                     [0, 1], 2,
@@ -2836,9 +2836,9 @@ class Bitstream(unittest.TestCase):
         temp_s.seek(0, 0)
 
         # check a big-endian substream
-        for reader in [BitstreamReader(temp, 0),
-                       BitstreamReader(temp_s, 0),
-                       BitstreamReader(data, 0)]:
+        for reader in [BitstreamReader(temp, False),
+                       BitstreamReader(temp_s, False),
+                       BitstreamReader(data, False)]:
             reader.mark()
 
             reader.skip(16)
@@ -2862,9 +2862,9 @@ class Bitstream(unittest.TestCase):
         temp_s.seek(0, 0)
 
         # check a little-endian substream built from a file
-        for reader in [BitstreamReader(temp, 1),
-                       BitstreamReader(temp_s, 1),
-                       BitstreamReader(data, 1)]:
+        for reader in [BitstreamReader(temp, True),
+                       BitstreamReader(temp_s, True),
+                       BitstreamReader(data, True)]:
             reader.mark()
 
             reader.skip(16)
@@ -3078,7 +3078,7 @@ class Bitstream(unittest.TestCase):
         from audiotools.bitstream import BitstreamWriter
 
         temp_file = tempfile.NamedTemporaryFile()
-        return (BitstreamWriter(open(temp_file.name, "wb"), 0), temp_file)
+        return (BitstreamWriter(open(temp_file.name, "wb"), False), temp_file)
 
     def __validate_edge_writer_be__(self, writer, temp_file):
         writer.close()
@@ -3103,7 +3103,7 @@ class Bitstream(unittest.TestCase):
     def __validate_edge_recorder_be__(self, writer, temp_file):
         from audiotools.bitstream import BitstreamWriter
 
-        writer2 = BitstreamWriter(open(temp_file.name, "wb"), 0)
+        writer2 = BitstreamWriter(open(temp_file.name, "wb"), False)
         writer.copy(writer2)
         writer2.close()
 
@@ -3131,7 +3131,7 @@ class Bitstream(unittest.TestCase):
         from audiotools.bitstream import BitstreamWriter
 
         temp_file = tempfile.NamedTemporaryFile()
-        return (BitstreamWriter(open(temp_file.name, "wb"), 1), temp_file)
+        return (BitstreamWriter(open(temp_file.name, "wb"), True), temp_file)
 
     def __validate_edge_writer_le__(self, writer, temp_file):
         writer.close()
@@ -3156,7 +3156,7 @@ class Bitstream(unittest.TestCase):
     def __validate_edge_recorder_le__(self, writer, temp_file):
         from audiotools.bitstream import BitstreamWriter
 
-        writer2 = BitstreamWriter(open(temp_file.name, "wb"), 1)
+        writer2 = BitstreamWriter(open(temp_file.name, "wb"), True)
         writer.copy(writer2)
         writer2.close()
 
@@ -3538,7 +3538,7 @@ class Bitstream(unittest.TestCase):
                                   writer.write,
                                   8, -1)
 
-                # write unsigneed value that's too large shouldn't work
+                # write unsigned value that's too large shouldn't work
                 self.assertRaises(ValueError,
                                   writer.write,
                                   8, 2 ** 8)
@@ -3611,12 +3611,12 @@ class Bitstream(unittest.TestCase):
             temp.flush()
 
             # ensure a big-endian reader reads the values correctly
-            reader = BitstreamReader(open(temp.name, "rb"), 0)
+            reader = BitstreamReader(open(temp.name, "rb"), False)
             self.__test_edge_reader_be__(reader)
             reader.close()
 
             # ensure a big-endian sub-reader reads the values correctly
-            reader = BitstreamReader(open(temp.name, "rb"), 0)
+            reader = BitstreamReader(open(temp.name, "rb"), False)
             subreader = reader.substream(48)
             self.__test_edge_reader_be__(subreader)
             subreader.close()
@@ -3636,12 +3636,12 @@ class Bitstream(unittest.TestCase):
             temp.flush()
 
             # ensure a little-endian reader reads the values correctly
-            reader = BitstreamReader(open(temp.name, "rb"), 1)
+            reader = BitstreamReader(open(temp.name, "rb"), True)
             self.__test_edge_reader_le__(reader)
             reader.close()
 
             # ensure a little-endian sub-reader reads the values correctly
-            reader = BitstreamReader(open(temp.name, "rb"), 1)
+            reader = BitstreamReader(open(temp.name, "rb"), True)
             subreader = reader.substream(48)
             self.__test_edge_reader_be__(subreader)
             subreader.close()
@@ -3838,7 +3838,7 @@ class Bitstream(unittest.TestCase):
                          new_temp5]:
             # first, check the bitstream reader
             # against some simple known big-endian values
-            bitstream = BitstreamReader(new_temp(), 0)
+            bitstream = BitstreamReader(new_temp(), False)
 
             self.assertEqual(bitstream.read(2), 2)
             self.assertEqual(bitstream.read(3), 6)
@@ -3846,21 +3846,21 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(3), 5)
             self.assertEqual(bitstream.read(19), 342977)
 
-            bitstream = BitstreamReader(new_temp(), 0)
+            bitstream = BitstreamReader(new_temp(), False)
             self.assertEqual(bitstream.read_signed(2), -2)
             self.assertEqual(bitstream.read_signed(3), -2)
             self.assertEqual(bitstream.read_signed(5), 7)
             self.assertEqual(bitstream.read_signed(3), -3)
             self.assertEqual(bitstream.read_signed(19), -181311)
 
-            bitstream = BitstreamReader(new_temp(), 0)
+            bitstream = BitstreamReader(new_temp(), False)
             self.assertEqual(bitstream.unary(0), 1)
             self.assertEqual(bitstream.unary(0), 2)
             self.assertEqual(bitstream.unary(0), 0)
             self.assertEqual(bitstream.unary(0), 0)
             self.assertEqual(bitstream.unary(0), 4)
             bitstream.byte_align()
-            bitstream = BitstreamReader(new_temp(), 0)
+            bitstream = BitstreamReader(new_temp(), False)
             self.assertEqual(bitstream.unary(1), 0)
             self.assertEqual(bitstream.unary(1), 1)
             self.assertEqual(bitstream.unary(1), 0)
@@ -3868,7 +3868,7 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.unary(1), 0)
             bitstream.byte_align()
 
-            bitstream = BitstreamReader(new_temp(), 0)
+            bitstream = BitstreamReader(new_temp(), False)
             self.assertEqual(bitstream.read(1), 1)
             bit = bitstream.read(1)
             self.assertEqual(bit, 0)
@@ -3876,14 +3876,14 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(2), 1)
             bitstream.byte_align()
 
-            bitstream = BitstreamReader(new_temp(), 0)
+            bitstream = BitstreamReader(new_temp(), False)
             self.assertEqual(bitstream.read(8), 0xB1)
             bitstream.unread(0)
             self.assertEqual(bitstream.read(1), 0)
             bitstream.unread(1)
             self.assertEqual(bitstream.read(1), 1)
 
-            bitstream = BitstreamReader(new_temp(), 0)
+            bitstream = BitstreamReader(new_temp(), False)
             bitstream.mark()
             self.assertEqual(bitstream.read(4), 0xB)
             bitstream.rewind()
@@ -3900,11 +3900,11 @@ class Bitstream(unittest.TestCase):
             bitstream.unmark()
 
             del(bitstream)
-            bitstream = BitstreamReader(new_temp(), 0)
+            bitstream = BitstreamReader(new_temp(), False)
 
             # then, check the bitstream reader
             # against some simple known little-endian values
-            bitstream = BitstreamReader(new_temp(), 1)
+            bitstream = BitstreamReader(new_temp(), True)
 
             self.assertEqual(bitstream.read(2), 1)
             self.assertEqual(bitstream.read(3), 4)
@@ -3912,21 +3912,21 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(3), 3)
             self.assertEqual(bitstream.read(19), 395743)
 
-            bitstream = BitstreamReader(new_temp(), 1)
+            bitstream = BitstreamReader(new_temp(), True)
             self.assertEqual(bitstream.read_signed(2), 1)
             self.assertEqual(bitstream.read_signed(3), -4)
             self.assertEqual(bitstream.read_signed(5), 13)
             self.assertEqual(bitstream.read_signed(3), 3)
             self.assertEqual(bitstream.read_signed(19), -128545)
 
-            bitstream = BitstreamReader(new_temp(), 1)
+            bitstream = BitstreamReader(new_temp(), True)
             self.assertEqual(bitstream.unary(0), 1)
             self.assertEqual(bitstream.unary(0), 0)
             self.assertEqual(bitstream.unary(0), 0)
             self.assertEqual(bitstream.unary(0), 2)
             self.assertEqual(bitstream.unary(0), 2)
             bitstream.byte_align()
-            bitstream = BitstreamReader(new_temp(), 1)
+            bitstream = BitstreamReader(new_temp(), True)
             self.assertEqual(bitstream.unary(1), 0)
             self.assertEqual(bitstream.unary(1), 3)
             self.assertEqual(bitstream.unary(1), 0)
@@ -3934,7 +3934,7 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.unary(1), 0)
             bitstream.byte_align()
 
-            bitstream = BitstreamReader(new_temp(), 1)
+            bitstream = BitstreamReader(new_temp(), True)
             self.assertEqual(bitstream.read(1), 1)
             bit = bitstream.read(1)
             self.assertEqual(bit, 0)
@@ -3942,14 +3942,14 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(4), 8)
             bitstream.byte_align()
 
-            bitstream = BitstreamReader(new_temp(), 1)
+            bitstream = BitstreamReader(new_temp(), True)
             self.assertEqual(bitstream.read(8), 0xB1)
             bitstream.unread(0)
             self.assertEqual(bitstream.read(1), 0)
             bitstream.unread(1)
             self.assertEqual(bitstream.read(1), 1)
 
-            bitstream = BitstreamReader(new_temp(), 1)
+            bitstream = BitstreamReader(new_temp(), True)
             bitstream.mark()
             self.assertEqual(bitstream.read(4), 0x1)
             bitstream.rewind()
@@ -3969,37 +3969,36 @@ class Bitstream(unittest.TestCase):
     def test_simple_writer(self):
         from audiotools.bitstream import BitstreamWriter
 
-        temp = tempfile.NamedTemporaryFile()
-        try:
+        with tempfile.NamedTemporaryFile() as temp:
             # first, have the bitstream writer generate
             # a set of known big-endian values
 
             f = open(temp.name, "wb")
-            bitstream = BitstreamWriter(f, 0)
+            bitstream = BitstreamWriter(f, False)
             bitstream.write(2, 2)
             bitstream.write(3, 6)
             bitstream.write(5, 7)
             bitstream.write(3, 5)
             bitstream.write(19, 342977)
             bitstream.flush()
-            f.close()
+            bitstream.close()
             with open(temp.name, "rb") as f:
                 self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             f = open(temp.name, "wb")
-            bitstream = BitstreamWriter(f, 0)
+            bitstream = BitstreamWriter(f, False)
             bitstream.write_signed(2, -2)
             bitstream.write_signed(3, -2)
             bitstream.write_signed(5, 7)
             bitstream.write_signed(3, -3)
             bitstream.write_signed(19, -181311)
             bitstream.flush()
-            f.close()
+            bitstream.close()
             with open(temp.name, "rb") as f:
                 self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             f = open(temp.name, "wb")
-            bitstream = BitstreamWriter(f, 0)
+            bitstream = BitstreamWriter(f, False)
             bitstream.unary(0, 1)
             bitstream.unary(0, 2)
             bitstream.unary(0, 0)
@@ -4016,12 +4015,12 @@ class Bitstream(unittest.TestCase):
             bitstream.unary(0, 0)
             bitstream.write(1, 1)
             bitstream.flush()
-            f.close()
+            bitstream.close()
             with open(temp.name, "rb") as f:
                 self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             f = open(temp.name, "wb")
-            bitstream = BitstreamWriter(f, 0)
+            bitstream = BitstreamWriter(f, False)
             bitstream.unary(1, 0)
             bitstream.unary(1, 1)
             bitstream.unary(1, 0)
@@ -4041,38 +4040,38 @@ class Bitstream(unittest.TestCase):
             bitstream.unary(1, 0)
             bitstream.unary(1, 5)
             bitstream.flush()
-            f.close()
+            bitstream.close()
             with open(temp.name, "rb") as f:
                 self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             # then, have the bitstream writer generate
             # a set of known little-endian values
             f = open(temp.name, "wb")
-            bitstream = BitstreamWriter(f, 1)
+            bitstream = BitstreamWriter(f, True)
             bitstream.write(2, 1)
             bitstream.write(3, 4)
             bitstream.write(5, 13)
             bitstream.write(3, 3)
             bitstream.write(19, 395743)
             bitstream.flush()
-            f.close()
+            bitstream.close()
             with open(temp.name, "rb") as f:
                 self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             f = open(temp.name, "wb")
-            bitstream = BitstreamWriter(f, 1)
+            bitstream = BitstreamWriter(f, True)
             bitstream.write_signed(2, 1)
             bitstream.write_signed(3, -4)
             bitstream.write_signed(5, 13)
             bitstream.write_signed(3, 3)
             bitstream.write_signed(19, -128545)
             bitstream.flush()
-            f.close()
+            bitstream.close()
             with open(temp.name, "rb") as f:
                 self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             f = open(temp.name, "wb")
-            bitstream = BitstreamWriter(f, 1)
+            bitstream = BitstreamWriter(f, True)
             bitstream.unary(0, 1)
             bitstream.unary(0, 0)
             bitstream.unary(0, 0)
@@ -4089,12 +4088,12 @@ class Bitstream(unittest.TestCase):
             bitstream.unary(0, 0)
             bitstream.write(2, 3)
             bitstream.flush()
-            f.close()
+            bitstream.close()
             with open(temp.name, "rb") as f:
                 self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             f = open(temp.name, "wb")
-            bitstream = BitstreamWriter(f, 1)
+            bitstream = BitstreamWriter(f, True)
             bitstream.unary(1, 0)
             bitstream.unary(1, 3)
             bitstream.unary(1, 0)
@@ -4114,23 +4113,20 @@ class Bitstream(unittest.TestCase):
             bitstream.unary(1, 5)
             bitstream.unary(1, 0)
             bitstream.flush()
-            f.close()
+            bitstream.close()
             with open(temp.name, "rb") as f:
                 self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
 
             f = open(temp.name, "wb")
-            bitstream = BitstreamWriter(f, 1)
+            bitstream = BitstreamWriter(f, True)
             bitstream.write(4, 0x1)
             bitstream.byte_align()
             bitstream.write(4, 0xD)
             bitstream.byte_align()
             bitstream.flush()
-            f.close()
+            bitstream.close()
             with open(temp.name, "rb") as f:
                 self.assertEqual(f.read(), b"\x01\x0D")
-
-        finally:
-            temp.close()
 
     # and have the bitstream reader check those values are accurate
 
@@ -4165,13 +4161,13 @@ class Bitstream(unittest.TestCase):
         # test a BitstreamReader from a Python file object
         f = open("test_core.py", "rb")
 
-        reader = BitstreamReader(f, 0)
+        reader = BitstreamReader(f, False)
         reader.close()
         test_reader(reader)
         reader.set_endianness(1)
         test_reader(reader)
 
-        reader = BitstreamReader(f, 1)
+        reader = BitstreamReader(f, True)
         reader.close()
         test_reader(reader)
         reader.set_endianness(0)
@@ -4181,17 +4177,72 @@ class Bitstream(unittest.TestCase):
         del(f)
 
         # test a BitstreamReader from a Python BytesIO object
-        reader = BitstreamReader(new_temp(), 0)
+        reader = BitstreamReader(new_temp(), False)
         reader.close()
         test_reader(reader)
         reader.set_endianness(1)
         test_reader(reader)
 
-        reader = BitstreamReader(new_temp(), 1)
+        reader = BitstreamReader(new_temp(), True)
         reader.close()
         test_reader(reader)
         reader.set_endianness(0)
         test_reader(reader)
+
+    @LIB_BITSTREAM
+    def test_reader_context(self):
+        from io import BytesIO
+        from audiotools.bitstream import BitstreamReader
+
+        b = BytesIO(b"\xB1\xED\x3B\xC1")
+        self.assertFalse(b.closed)
+        r = BitstreamReader(b, False)
+        self.assertEqual(r.read(2), 0x2)
+        self.assertEqual(r.read(3), 0x6)
+        self.assertEqual(r.read(5), 0x07)
+        self.assertEqual(r.read(3), 0x5)
+        self.assertEqual(r.read(19), 0x53BC1)
+        self.assertRaises(IOError, r.read, 8)
+        self.assertFalse(b.closed)
+        del(r)
+        self.assertFalse(b.closed)
+
+        b = BytesIO(b"\xB1\xED\x3B\xC1")
+        self.assertFalse(b.closed)
+        r = BitstreamReader(b, True)
+        self.assertEqual(r.read(2), 0x1)
+        self.assertEqual(r.read(3), 0x4)
+        self.assertEqual(r.read(5), 0x0D)
+        self.assertEqual(r.read(3), 0x3)
+        self.assertEqual(r.read(19), 0x609DF)
+        self.assertRaises(IOError, r.read, 8)
+        self.assertFalse(b.closed)
+        del(r)
+        self.assertFalse(b.closed)
+
+        b = BytesIO(b"\xB1\xED\x3B\xC1")
+        self.assertFalse(b.closed)
+        with BitstreamReader(b, False) as r:
+            self.assertEqual(r.read(2), 0x2)
+            self.assertEqual(r.read(3), 0x6)
+            self.assertEqual(r.read(5), 0x07)
+            self.assertEqual(r.read(3), 0x5)
+            self.assertEqual(r.read(19), 0x53BC1)
+            self.assertRaises(IOError, r.read, 8)
+            self.assertFalse(b.closed)
+        self.assertTrue(b.closed)
+
+        b = BytesIO(b"\xB1\xED\x3B\xC1")
+        self.assertFalse(b.closed)
+        with BitstreamReader(b, True) as r:
+            self.assertEqual(r.read(2), 0x1)
+            self.assertEqual(r.read(3), 0x4)
+            self.assertEqual(r.read(5), 0x0D)
+            self.assertEqual(r.read(3), 0x3)
+            self.assertEqual(r.read(19), 0x609DF)
+            self.assertRaises(IOError, r.read, 8)
+            self.assertFalse(b.closed)
+        self.assertTrue(b.closed)
 
     @LIB_BITSTREAM
     def test_writer_close(self):
@@ -4209,7 +4260,7 @@ class Bitstream(unittest.TestCase):
         # test a BitstreamWriter to a Python file object
         f = open("test.bin", "wb")
         try:
-            writer = BitstreamWriter(f, 0)
+            writer = BitstreamWriter(f, False)
             writer.close()
             test_writer(writer)
             writer.set_endianness(1)
@@ -4221,7 +4272,7 @@ class Bitstream(unittest.TestCase):
 
         f = open("test.bin", "wb")
         try:
-            writer = BitstreamWriter(f, 1)
+            writer = BitstreamWriter(f, True)
             writer.close()
             test_writer(writer)
             writer.set_endianness(0)
@@ -4233,7 +4284,7 @@ class Bitstream(unittest.TestCase):
 
         # test a BitstreamWriter to a Python BytesIO object
         s = BytesIO()
-        writer = BitstreamWriter(s, 0)
+        writer = BitstreamWriter(s, False)
         writer.close()
         test_writer(writer)
         writer.set_endianness(1)
@@ -4242,7 +4293,7 @@ class Bitstream(unittest.TestCase):
         del(s)
 
         s = BytesIO()
-        writer = BitstreamWriter(s, 1)
+        writer = BitstreamWriter(s, True)
         writer.close()
         test_writer(writer)
         writer.set_endianness(0)
@@ -4279,6 +4330,109 @@ class Bitstream(unittest.TestCase):
         writer.set_endianness(0)
         test_writer(writer)
         del(writer)
+
+    @LIB_BITSTREAM
+    def test_writer_context(self):
+        from io import BytesIO
+        from audiotools.bitstream import BitstreamWriter
+        from audiotools.bitstream import BitstreamRecorder
+        from audiotools.bitstream import BitstreamAccumulator
+
+        # if simply deallocated, writers should flush contents
+        # but not close internal stream
+        b = BytesIO()
+        self.assertFalse(b.closed)
+        w = BitstreamWriter(b, False)
+        w.write(2, 0x2)
+        w.write(3, 0x6)
+        w.write(5, 0x07)
+        w.write(3, 0x5)
+        w.write(19, 0x53BC1)
+        del(w)
+        self.assertFalse(b.closed)
+        self.assertEqual(b.getvalue(), b"\xB1\xED\x3B\xC1")
+
+        b = BytesIO()
+        self.assertFalse(b.closed)
+        w = BitstreamWriter(b, True)
+        w.write(2, 0x1)
+        w.write(3, 0x4)
+        w.write(5, 0x0D)
+        w.write(3, 0x3)
+        w.write(19, 0x609DF)
+        del(w)
+        self.assertFalse(b.closed)
+        self.assertEqual(b.getvalue(), b"\xB1\xED\x3B\xC1")
+
+        # if put into a context manager, writers should flush contents
+        # but also close internal stream
+        b = open("test.bin", "wb")
+        try:
+            self.assertFalse(b.closed)
+            with BitstreamWriter(b, False) as w:
+                w.write(2, 0x2)
+                w.write(3, 0x6)
+                w.write(5, 0x07)
+                w.write(3, 0x5)
+                w.write(19, 0x53BC1)
+                self.assertFalse(b.closed)
+            self.assertTrue(b.closed)
+            with open("test.bin", "rb") as f:
+                self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
+        finally:
+            os.unlink("test.bin")
+
+        b = open("test.bin", "wb")
+        try:
+            self.assertFalse(b.closed)
+            with BitstreamWriter(b, True) as w:
+                w.write(2, 0x1)
+                w.write(3, 0x4)
+                w.write(5, 0x0D)
+                w.write(3, 0x3)
+                w.write(19, 0x609DF)
+                self.assertFalse(b.closed)
+            self.assertTrue(b.closed)
+            with open("test.bin", "rb") as f:
+                self.assertEqual(f.read(), b"\xB1\xED\x3B\xC1")
+        finally:
+            os.unlink("test.bin")
+
+        # recorders should work in a context manager
+        # even if it's not particularly useful
+        with BitstreamRecorder(False) as w:
+            w.write(2, 0x2)
+            w.write(3, 0x6)
+            w.write(5, 0x07)
+            w.write(3, 0x5)
+            w.write(19, 0x53BC1)
+            self.assertEqual(w.data(), b"\xB1\xED\x3B\xC1")
+
+        with BitstreamRecorder(True) as w:
+            w.write(2, 0x1)
+            w.write(3, 0x4)
+            w.write(5, 0x0D)
+            w.write(3, 0x3)
+            w.write(19, 0x609DF)
+            self.assertEqual(w.data(), b"\xB1\xED\x3B\xC1")
+
+        # accumulators should work in a context manager
+        # even if it's not particularly useful
+        with BitstreamAccumulator(False) as w:
+            w.write(2, 0x2)
+            w.write(3, 0x6)
+            w.write(5, 0x07)
+            w.write(3, 0x5)
+            w.write(19, 0x53BC1)
+            self.assertEqual(w.bits(), 32)
+
+        with BitstreamAccumulator(True) as w:
+            w.write(2, 0x1)
+            w.write(3, 0x4)
+            w.write(5, 0x0D)
+            w.write(3, 0x3)
+            w.write(19, 0x609DF)
+            self.assertEqual(w.bits(), 32)
 
     def __test_writer_marks__(self, writer):
         writer.write(1, 1)

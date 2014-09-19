@@ -53,7 +53,7 @@ def encode_shn(filename,
 
     pcmreader = BufferedPCMReader(pcmreader)
     output_file = open(filename, "wb")
-    writer = BitstreamWriter(output_file, 0)
+    writer = BitstreamWriter(output_file, False)
 
     left_shift = 0
     wrapped_channels = [[] for c in range(pcmreader.channels)]

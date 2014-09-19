@@ -291,4 +291,5 @@ def perform_lookup(disc_id,
                             tuple(response.parse("8u 32u 32u")))
     except IOError:
         # keep trying to parse values until the data runs out
+        response.close()
         return matches

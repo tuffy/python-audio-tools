@@ -3139,7 +3139,6 @@ class ID3v22MetaData(MetaDataTest):
     @METADATA_ID3V2
     def test_padding(self):
         from os.path import getsize
-        from audiotools.bitstream import BitstreamReader, BitstreamWriter
         from operator import or_
 
         with open("sine.mp3", "rb") as f:

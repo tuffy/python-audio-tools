@@ -1382,6 +1382,21 @@ BitstreamReader_Substream(PyObject *dummy, PyObject *args)
     return (PyObject *)reader;
 }
 
+static PyObject*
+BitstreamReader_enter(bitstream_BitstreamReader *self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+BitstreamReader_exit(bitstream_BitstreamReader *self, PyObject *args)
+{
+    self->bitstream->close_internal_stream(self->bitstream);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 /*this functions similarly to json_to_frequencies -> compile_huffman_table*/
 int
 HuffmanTree_init(bitstream_HuffmanTree *self, PyObject *args)
@@ -1982,6 +1997,19 @@ void
 BitstreamWriter_dealloc(bitstream_BitstreamWriter *self)
 {
     if (self->bitstream != NULL) {
+        /*if stream is already closed,
+          flush will do nothing*/
+        if (!setjmp(*bw_try(self->bitstream))) {
+            self->bitstream->flush(self->bitstream);
+            bw_etry(self->bitstream);
+        } else {
+            /*trying to dealloc BitstreamWriter after stream is closed
+              is likely to be a problem*/
+            bw_etry(self->bitstream);
+            fprintf(stderr,
+                    "*** Warning: Error occurred trying "
+                    "to flush stream during dealloc\n");
+        }
         self->bitstream->free(self->bitstream);
     }
 
@@ -2383,6 +2411,41 @@ static PyObject*
 BitstreamWriter_close(bitstream_BitstreamWriter *self, PyObject *args)
 {
     self->bitstream->close_internal_stream(self->bitstream);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamWriter_enter(bitstream_BitstreamWriter *self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+BitstreamWriter_exit(bitstream_BitstreamWriter *self, PyObject *args)
+{
+    PyObject *exc_type;
+    PyObject *exc_value;
+    PyObject *traceback;
+
+    if (!PyArg_ParseTuple(args, "OOO", &exc_type, &exc_value, &traceback))
+        return NULL;
+
+    if ((exc_type == Py_None) &&
+        (exc_value == Py_None) &&
+        (traceback == Py_None)) {
+        /*writer exited normally, so perform flush*/
+        if (!setjmp(*bw_try(self->bitstream))) {
+            self->bitstream->flush(self->bitstream);
+        }
+        /*eat any error rather than propogate it with an exception*/
+        bw_etry(self->bitstream);
+    }
+
+    /*close internal stream*/
+    self->bitstream->close_internal_stream(self->bitstream);
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -2819,6 +2882,23 @@ BitstreamRecorder_call_callbacks(bitstream_BitstreamRecorder *self,
 }
 
 static PyObject*
+BitstreamRecorder_enter(bitstream_BitstreamRecorder *self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+BitstreamRecorder_exit(bitstream_BitstreamRecorder *self, PyObject *args)
+{
+    /*close internal stream*/
+    self->bitstream->close_internal_stream(self->bitstream);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
 BitstreamRecorder_close(bitstream_BitstreamRecorder *self,
                         PyObject *args)
 {
@@ -2914,6 +2994,25 @@ BitstreamAccumulator_new(PyTypeObject *type, PyObject *args,
     self = (bitstream_BitstreamAccumulator *)type->tp_alloc(type, 0);
 
     return (PyObject *)self;
+}
+
+static PyObject*
+BitstreamAccumulator_enter(bitstream_BitstreamAccumulator *self,
+                           PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+BitstreamAccumulator_exit(bitstream_BitstreamAccumulator *self,
+                          PyObject *args)
+{
+    /*close internal stream*/
+    self->bitstream->close_internal_stream(self->bitstream);
+
+    Py_INCREF(Py_None);
+    return Py_None;
 }
 
 static PyObject*

@@ -198,6 +198,12 @@ BitstreamReader_parse(bitstream_BitstreamReader *self, PyObject *args);
 int
 BitstreamReader_init(bitstream_BitstreamReader *self, PyObject *args);
 
+static PyObject*
+BitstreamReader_enter(bitstream_BitstreamReader *self, PyObject *args);
+
+static PyObject*
+BitstreamReader_exit(bitstream_BitstreamReader *self, PyObject *args);
+
 PyMethodDef BitstreamReader_methods[] = {
     {"read", (PyCFunction)BitstreamReader_read, METH_VARARGS,
      "read(bits) -> unsigned int"},
@@ -285,6 +291,10 @@ PyMethodDef BitstreamReader_methods[] = {
      METH_VARARGS,
      "substream_append(BitstreamReader, bytes)\n"
      "appends an additional number of bytes to the given substream"},
+    {"__enter__", (PyCFunction)BitstreamReader_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)BitstreamReader_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 
@@ -528,6 +538,12 @@ BitstreamWriter_flush(bitstream_BitstreamWriter *self, PyObject *args);
 static PyObject*
 BitstreamWriter_close(bitstream_BitstreamWriter *self, PyObject *args);
 
+static PyObject*
+BitstreamWriter_enter(bitstream_BitstreamWriter *self, PyObject *args);
+
+static PyObject*
+BitstreamWriter_exit(bitstream_BitstreamWriter *self, PyObject *args);
+
 int
 BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args);
 
@@ -599,6 +615,10 @@ PyMethodDef BitstreamWriter_methods[] = {
     {"unmark", (PyCFunction)BitstreamWriter_unmark, METH_VARARGS,
      "unmark([mark_id])\n"
      "removes the most recently marked position from the stream"},
+    {"__enter__", (PyCFunction)BitstreamWriter_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)BitstreamWriter_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 
@@ -748,6 +768,12 @@ static PyObject*
 BitstreamRecorder_close(bitstream_BitstreamRecorder *self,
                         PyObject *args);
 
+static PyObject*
+BitstreamRecorder_enter(bitstream_BitstreamRecorder *self, PyObject *args);
+
+static PyObject*
+BitstreamRecorder_exit(bitstream_BitstreamRecorder *self, PyObject *args);
+
 int
 BitstreamRecorder_init(bitstream_BitstreamRecorder *self,
                        PyObject *args);
@@ -832,6 +858,10 @@ PyMethodDef BitstreamRecorder_methods[] = {
      METH_VARARGS,
      "call_callbacks(byte)\n"
      "calls the attached callbacks as if the byte had been written"},
+    {"__enter__", (PyCFunction)BitstreamRecorder_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)BitstreamRecorder_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 
@@ -969,6 +999,13 @@ static PyObject*
 BitstreamAccumulator_reset(bitstream_BitstreamAccumulator *self,
                            PyObject *args);
 
+static PyObject*
+BitstreamAccumulator_enter(bitstream_BitstreamAccumulator *self,
+                           PyObject *args);
+
+static PyObject*
+BitstreamAccumulator_exit(bitstream_BitstreamAccumulator *self,
+                          PyObject *args);
 
 PyMethodDef BitstreamAccumulator_methods[] = {
     {"write", (PyCFunction)BitstreamAccumulator_write, METH_VARARGS,
@@ -1024,6 +1061,10 @@ PyMethodDef BitstreamAccumulator_methods[] = {
      "returns the total number of bytes written thus far"},
     {"reset", (PyCFunction)BitstreamAccumulator_reset, METH_NOARGS,
      "reset()\n"},
+    {"__enter__", (PyCFunction)BitstreamAccumulator_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)BitstreamAccumulator_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 

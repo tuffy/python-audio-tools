@@ -168,7 +168,7 @@ def validate_header(header):
     from audiotools.bitstream import BitstreamReader
 
     header_size = len(header)
-    wave_file = BitstreamReader(BytesIO(header), 1)
+    wave_file = BitstreamReader(BytesIO(header), True)
     try:
         # ensure header starts with RIFF<size>WAVE chunk
         (riff, remaining_size, wave) = wave_file.parse("4b 32u 4b")
@@ -246,7 +246,7 @@ def validate_footer(footer, data_bytes_written):
     from audiotools.bitstream import BitstreamReader
 
     total_size = len(footer)
-    wave_file = BitstreamReader(BytesIO(footer), 1)
+    wave_file = BitstreamReader(BytesIO(footer), True)
     try:
         # ensure footer is padded properly if necessary
         # based on size of data bytes written
@@ -635,7 +635,7 @@ class WaveAudio(WaveContainer):
                          self.__sample_rate__,
                          self.__bits_per_sample__,
                          self.__channel_mask__) = parse_fmt(
-                            BitstreamReader(chunk.data(), 1))
+                            BitstreamReader(chunk.data(), True))
                         fmt_read = True
                         if (fmt_read and data_read):
                             break
@@ -907,8 +907,7 @@ class WaveAudio(WaveContainer):
         current_block = head
         fmt_found = False
 
-        wave_file = BitstreamReader(open(self.filename, 'rb'), 1)
-        try:
+        with BitstreamReader(open(self.filename, 'rb'), 1) as wave_file:
             # transfer the 12-byte "RIFFsizeWAVE" header to head
             (riff, size, wave) = wave_file.parse("4b 32u 4b")
             if (riff != b'RIFF'):
@@ -963,8 +962,6 @@ class WaveAudio(WaveContainer):
             else:
                 from audiotools.text import ERR_WAV_NO_FMT_CHUNK
                 return ValueError(ERR_WAV_NO_FMT_CHUNK)
-        finally:
-            wave_file.close()
 
     @classmethod
     def from_wave(cls, filename, header, pcmreader, footer, compression=None):

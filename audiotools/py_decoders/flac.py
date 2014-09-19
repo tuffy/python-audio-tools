@@ -32,7 +32,7 @@ class FlacDecoder(object):
      SUBFRAME_LPC) = range(4)
 
     def __init__(self, filename, channel_mask):
-        self.reader = BitstreamReader(open(filename, "rb"), 0)
+        self.reader = BitstreamReader(open(filename, "rb"), False)
 
         if (self.reader.read_bytes(4) != 'fLaC'):
             raise ValueError("invalid FLAC file")

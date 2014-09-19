@@ -66,7 +66,7 @@ RESIDUAL = HuffmanTree([[0], 0,
 
 class ALACDecoder(object):
     def __init__(self, filename):
-        self.reader = BitstreamReader(open(filename, "rb"), 0)
+        self.reader = BitstreamReader(open(filename, "rb"), False)
 
         self.reader.mark()
         try:
