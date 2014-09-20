@@ -7317,7 +7317,7 @@
       - [ ] tracksplit
       - [ ] tracktag
       - [ ] trackverify
-** TODO Add context manager support
+** DONE Add context manager support
    Having file-like objects work with "with" context managers
    should hopefully make file handle management a bit simpler.
 *** DONE BitstreamReader
@@ -7331,10 +7331,55 @@
     Returns a False value.
 **** DONE Add documentation
 **** DONE Add unit tests
-*** TODO PCMReaders
+*** DONE PCMReaders
     Call .close() and eat any exception (like the "file" object does).
-**** TODO Add documentation
-**** TODO Add unit tests
+    - [X] aiff/AIFFReader
+    - [X] au/AuReader
+    - [X] audiotools/BufferedPCMReader
+    - [X] audiotools/CounterPCMReader
+    - [X] audiotools/LimitedPCMReader
+    - [X] audiotools/PCMCat
+    - [X] audiotools/PCMReader
+    - [X] audiotools/PCMReaderDeHead
+    - [X] audiotools/PCMReaderError
+    - [X] audiotools/PCMReaderHead
+    - [X] audiotools/PCMReaderProgress
+    - [X] audiotools/ReorderedPCMReader
+    - [X] decoders/ALACDecoder
+    - [X] decoders/DVDA_Title
+    - [X] decoders/FlacDecoder
+    - [X] decoders/MP3Decoder
+    - [X] decoders/OggFlacDecoder
+    - [X] decoders/OpusDecoder
+    - [X] decoders/SHNDecoder
+    - [X] decoders/SameSample
+    - [X] decoders/Sine_Mono
+    - [X] decoders/Sine_Simple
+    - [X] decoders/Sine_Stereo
+    - [X] decoders/TTADecoder
+    - [X] decoders/VorbisDecoder
+    - [X] decoders/WavPackDecoder
+    - [X] player/ThreadedPCMReader
+    - [X] py_decoders/ALACDecoder
+    - [X] py_decoders/FlacDecoder
+    - [X] py_decoders/SHNDecoder
+    - [X] py_decoders/TTADecoder
+    - [X] py_decoders/WavPackDecoder
+    - [X] test/EXACT_RANDOM_PCM_Reader
+    - [X] test/Join_Reader
+    - [X] test/MD5_Reader
+    - [X] test/RANDOM_PCM_Reader
+    - [X] test/Variable_Reader
+    - [X] test_formats/CLOSE_PCM_Reader
+    - [X] test_formats/ERROR_PCM_Reader
+    - [X] test_streams/FrameListReader
+    - [X] test_streams/MD5Reader
+    - [X] test_streams/Raw
+    - [X] test_streams/Simple_Sine
+    - [X] test_streams/WastedBPS16
+    - [X] wav/WaveReader
+**** DONE Add documentation
+**** DONE Add unit tests
 ** TODO Improve test coverage
    - [X] set_metadata(None) to all formats
 *** TODO Check repr on everything

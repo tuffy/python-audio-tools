@@ -282,6 +282,22 @@ OggFlacDecoder_close(decoders_OggFlacDecoder *self, PyObject *args)
     return Py_None;
 }
 
+static PyObject*
+OggFlacDecoder_enter(decoders_OggFlacDecoder* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+OggFlacDecoder_exit(decoders_OggFlacDecoder* self, PyObject *args)
+{
+    self->closed = 1;
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 int
 OggFlacDecoder_update_md5sum(decoders_OggFlacDecoder *self,
                              PyObject *framelist) {

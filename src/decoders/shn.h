@@ -104,59 +104,64 @@ typedef struct {
 PyObject*
 SHNDecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
-/*the SHNDecoder.__init__() method*/
 int
 SHNDecoder_init(decoders_SHNDecoder *self, PyObject *args, PyObject *kwds);
 
 void SHNDecoder_dealloc(decoders_SHNDecoder *self);
 
-/*the SHNDecoder.close() method*/
 static PyObject*
 SHNDecoder_close(decoders_SHNDecoder* self, PyObject *args);
 
-/*the SHNDecoder.sample_rate attribute getter*/
 static PyObject*
 SHNDecoder_sample_rate(decoders_SHNDecoder *self, void *closure);
 
-/*the SHNDecoder.bits_per_sample attribute getter*/
 static PyObject*
 SHNDecoder_bits_per_sample(decoders_SHNDecoder *self, void *closure);
 
-/*the SHNDecoder.channels attribute getter*/
 static PyObject*
 SHNDecoder_channels(decoders_SHNDecoder *self, void *closure);
 
-/*the SHNDecoder.channel_mask attribute getter*/
 static PyObject*
 SHNDecoder_channel_mask(decoders_SHNDecoder *self, void *closure);
 
-/*the SHNDecoder.read() method*/
 static PyObject*
 SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args);
 
-/*returns a pair of strings before and after PCM data*/
 static PyObject*
 SHNDecoder_pcm_split(decoders_SHNDecoder* self, PyObject *args);
+
+static PyObject*
+SHNDecoder_close(decoders_SHNDecoder* self, PyObject *args);
+
+static PyObject*
+SHNDecoder_enter(decoders_SHNDecoder* self, PyObject *args);
+
+static PyObject*
+SHNDecoder_exit(decoders_SHNDecoder* self, PyObject *args);
 
 PyGetSetDef SHNDecoder_getseters[] = {
     {"channels",
      (getter)SHNDecoder_channels, NULL, "channels", NULL},
     {"bits_per_sample",
-     (getter)SHNDecoder_bits_per_sample, NULL, "bits_per_sample", NULL},
+     (getter)SHNDecoder_bits_per_sample, NULL, "bits-per-sample", NULL},
     {"sample_rate",
-     (getter)SHNDecoder_sample_rate, NULL, "sample_rate", NULL},
+     (getter)SHNDecoder_sample_rate, NULL, "sample rate", NULL},
     {"channel_mask",
-     (getter)SHNDecoder_channel_mask, NULL, "channel_mask", NULL},
+     (getter)SHNDecoder_channel_mask, NULL, "channel mask", NULL},
     {NULL}
 };
 
 PyMethodDef SHNDecoder_methods[] = {
     {"read", (PyCFunction)SHNDecoder_read,
-     METH_VARARGS, "Reads a frame of data from the SHN file"},
+     METH_VARARGS, "read(pcm_frame_count) -> FrameList"},
     {"close", (PyCFunction)SHNDecoder_close,
-     METH_NOARGS, "Closes the SHN decoder stream"},
+     METH_NOARGS, "close() -> None"},
     {"pcm_split", (PyCFunction)SHNDecoder_pcm_split,
-     METH_NOARGS, "Returns a pair of strings before and after PCM data"},
+     METH_NOARGS, "split() -> (before_pcm_string, after_pcm_string)"},
+    {"__enter__", (PyCFunction)SHNDecoder_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)SHNDecoder_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 

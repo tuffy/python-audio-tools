@@ -98,34 +98,33 @@ typedef enum {OK,
               INVALID_SEEKTABLE} status;
 
 #ifndef STANDALONE
-/*the ALACDecoder.sample_rate attribute getter*/
 static PyObject*
 ALACDecoder_sample_rate(decoders_ALACDecoder *self, void *closure);
 
-/*the ALACDecoder.bits_per_sample attribute getter*/
 static PyObject*
 ALACDecoder_bits_per_sample(decoders_ALACDecoder *self, void *closure);
 
-/*the ALACDecoder.channels attribute getter*/
 static PyObject*
 ALACDecoder_channels(decoders_ALACDecoder *self, void *closure);
 
-/*the ALACDecoder.channel_mask attribute getter*/
 static PyObject*
 ALACDecoder_channel_mask(decoders_ALACDecoder *self, void *closure);
 
-/*the ALACDecoder.read() method*/
 static PyObject*
 ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args);
 
 static PyObject*
 ALACDecoder_seek(decoders_ALACDecoder* self, PyObject *args);
 
-/*the ALACDecoder.close() method*/
 static PyObject*
 ALACDecoder_close(decoders_ALACDecoder* self, PyObject *args);
 
-/*the ALACDecoder.__init__() method*/
+static PyObject*
+ALACDecoder_enter(decoders_ALACDecoder* self, PyObject *args);
+
+static PyObject*
+ALACDecoder_exit(decoders_ALACDecoder* self, PyObject *args);
+
 int
 ALACDecoder_init(decoders_ALACDecoder *self,
                  PyObject *args, PyObject *kwds);
@@ -144,12 +143,15 @@ PyGetSetDef ALACDecoder_getseters[] = {
 
 PyMethodDef ALACDecoder_methods[] = {
     {"read", (PyCFunction)ALACDecoder_read,
-     METH_VARARGS,
-     "Reads the given number of PCM frames from the ALAC file, if possible"},
+     METH_VARARGS, "read(pcm_frame_count) -> FrameList"},
     {"seek", (PyCFunction)ALACDecoder_seek,
-     METH_VARARGS, "Seeks to the given PCM offset"},
+     METH_VARARGS, "seek(desired_pcm_offset) -> actual_pcm_offset"},
     {"close", (PyCFunction)ALACDecoder_close,
-     METH_NOARGS, "Closes the ALAC decoder stream"},
+     METH_NOARGS, "close() -> None"},
+    {"__enter__", (PyCFunction)ALACDecoder_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)ALACDecoder_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 

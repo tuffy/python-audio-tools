@@ -31,6 +31,8 @@ While ``PyMethodDef`` functions include:
 
 * ``static PyObject* FooDecoder_read(decoders_FooDecoder *self, PyObject *args)``
 * ``static PyObject* FooDecoder_close(decoders_FooDecoder *self, PyObject *args)``
+* ``static PyObject* FooDecoder_enter(decoders_FooDecoder *self, PyObject *args)``
+* ``static PyObject* FooDecoder_exit(decoders_FooDecoder *self, PyObject *args)``
 
 In addition, in order to allocate/deallocate objects correctly,
 one will need prototypes for:
@@ -55,6 +57,8 @@ This typically looks like:
   PyMethodDef FooDecoder_methods[] = {
     {"read", (PyCFunction)FooDecoder_read, METH_VARARGS, ""},
     {"close", (PyCFunction)FooDecoder_close, METH_NOARGS, ""},
+    {"__enter__", (PyCFunction)FooDecoder_enter, METH_NOARGS, ""},
+    {"__exit__", (PyCFunction)FooDecoder_exit, METH_VARARGS, ""},
     {NULL}
   };
 
@@ -106,7 +110,9 @@ Step 2. Add decoders/foo.c
 At this point, ``FooDecoder_new`` needs to be implemented to
 perform allocation and return an object,
 ``FooDecoder_dealloc`` needs to deallocate that object,
-and ``FooDecoder_init`` needs to return 0.
+``FooDecoder_init`` needs to return 0,
+``FooDecoder_enter`` returns a new reference to that object,
+and ``FooDecoder_exit`` duplicates the object's .close() call.
 All our other functions can simply return ``Py_None``.
 We'll work on filling these in to work later on.
 

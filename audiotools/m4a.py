@@ -444,7 +444,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        from audiotools import PCMReader
+        from audiotools import PCMFileReader
         import subprocess
         import os
 
@@ -453,12 +453,12 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
                    open(os.devnull, "wb"))
-        return PCMReader(sub.stdout,
-                         sample_rate=self.sample_rate(),
-                         channels=self.channels(),
-                         channel_mask=int(self.channel_mask()),
-                         bits_per_sample=self.bits_per_sample(),
-                         process=sub)
+        return PCMFileReader(sub.stdout,
+                             sample_rate=self.sample_rate(),
+                             channels=self.channels(),
+                             channel_mask=int(self.channel_mask()),
+                             bits_per_sample=self.bits_per_sample(),
+                             process=sub)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
@@ -632,7 +632,7 @@ class M4AAudio_nero(M4AAudio_faac):
                 tempwavefile.close_called = True
 
     def to_pcm(self):
-        from audiotools import PCMReader
+        from audiotools import PCMFileReader
         import subprocess
         import os
 
@@ -644,12 +644,12 @@ class M4AAudio_nero(M4AAudio_faac):
             stderr=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
                    open(os.devnull, "wb"))
 
-        return PCMReader(file=sub.stdout,
-                         sample_rate=self.sample_rate(),
-                         channels=self.channels(),
-                         channel_mask=int(self.channel_mask()),
-                         bits_per_sample=self.bits_per_sample(),
-                         process=sub)
+        return PCMFileReader(file=sub.stdout,
+                             sample_rate=self.sample_rate(),
+                             channels=self.channels(),
+                             channel_mask=int(self.channel_mask()),
+                             bits_per_sample=self.bits_per_sample(),
+                             process=sub)
 
     @classmethod
     def __from_wave__(cls, filename, wave_filename, compression):

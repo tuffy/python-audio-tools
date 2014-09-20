@@ -2234,6 +2234,75 @@ class ChannelMask(object):
 
 
 class PCMReader(object):
+    def __init__(self, sample_rate, channels, channel_mask, bits_per_sample):
+        """fields are as follows:
+
+        sample rate     - integer number of Hz
+        channels        - integer channel count
+        channel_mask    - integer channel mask value
+        bits_per_sample - number number of bits-per-sample
+
+        where channel mask is a logical OR of the following:
+
+        | channel               |   value |
+        |-----------------------+---------|
+        | front left            |     0x1 |
+        | front right           |     0x2 |
+        | front center          |     0x4 |
+        | low frequency         |     0x8 |
+        | back left             |    0x10 |
+        | back right            |    0x20 |
+        | front left of center  |    0x40 |
+        | front right of center |    0x80 |
+        | back center           |   0x100 |
+        | side left             |   0x200 |
+        | side right            |   0x400 |
+        | top center            |   0x800 |
+        | top front left        |  0x1000 |
+        | top front center      |  0x2000 |
+        | top front right       |  0x4000 |
+        | top back left         |  0x8000 |
+        | top back center       | 0x10000 |
+        | top back right        | 0x20000 |
+        |-----------------------+---------|
+        """
+
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.channel_mask = channel_mask
+        self.bits_per_sample = bits_per_sample
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def read(self, pcm_frames):
+        """try to read the given number of PCM frames from the stream
+        as a FrameList object
+
+        this is *not* guaranteed to read exactly that number of frames
+        it may return less (at the end of the stream, especially)
+        it may return more
+        however, it must always return a non-empty FrameList until the
+        end of the PCM stream is reached
+
+        may raise IOError if unable to read the input file,
+        or ValueError if the input file has some sort of error
+        """
+
+        raise NotImplementedError()
+
+    def close(self):
+        """closes the stream for reading
+
+        subsequent calls to read() raise ValueError"""
+
+        raise NotImplementedError()
+
+
+class PCMFileReader(PCMReader):
     """a class that wraps around a file object and generates pcm.FrameLists"""
 
     def __init__(self, file,
@@ -2256,11 +2325,12 @@ class PCMReader(object):
         along with the read() and close() methods
         """
 
+        PCMReader.__init__(self,
+                           sample_rate=sample_rate,
+                           channels=channels,
+                           channel_mask=channel_mask,
+                           bits_per_sample=bits_per_sample)
         self.file = file
-        self.sample_rate = sample_rate
-        self.channels = channels
-        self.channel_mask = channel_mask
-        self.bits_per_sample = bits_per_sample
         self.process = process
         self.signed = signed
         self.big_endian = big_endian
@@ -2303,7 +2373,7 @@ class PCMReader(object):
         self.file.close()
 
 
-class PCMReaderError(object):
+class PCMReaderError(PCMReader):
     """a dummy PCMReader which automatically raises ValueError
 
     this is to be returned by an AudioFile's to_pcm() method
@@ -2311,10 +2381,11 @@ class PCMReaderError(object):
 
     def __init__(self, error_message,
                  sample_rate, channels, channel_mask, bits_per_sample):
-        self.sample_rate = sample_rate
-        self.channels = channels
-        self.channel_mask = channel_mask
-        self.bits_per_sample = bits_per_sample
+        PCMReader.__init__(self,
+                           sample_rate=sample_rate,
+                           channels=channels,
+                           channel_mask=channel_mask,
+                           bits_per_sample=bits_per_sample)
         self.error_message = error_message
 
     def read(self, pcm_frames):
@@ -2337,19 +2408,20 @@ def to_pcm_progress(audiofile, progress):
                                  progress)
 
 
-class PCMReaderProgress(object):
+class PCMReaderProgress(PCMReader):
     def __init__(self, pcmreader, total_frames, progress, current_frames=0):
         """pcmreader is a PCMReader compatible object
         total_frames is the total PCM frames of the stream
         progress(current, total) is a callable function
         current_frames is the current amount of PCM frames in the stream"""
 
+        PCMReader.__init__(self,
+                           sample_rate=pcmreader.sample_rate,
+                           channels=pcmreader.channels,
+                           channel_mask=pcmreader.channel_mask,
+                           bits_per_sample=pcmreader.bits_per_sample)
 
         self.pcmreader = pcmreader
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
         self.current_frames = current_frames
         self.total_frames = total_frames
         if (callable(progress)):
@@ -2367,7 +2439,7 @@ class PCMReaderProgress(object):
         self.pcmreader.close()
 
 
-class ReorderedPCMReader(object):
+class ReorderedPCMReader(PCMReader):
     """a PCMReader wrapper which reorders its output channels"""
 
     def __init__(self, pcmreader, channel_order, channel_mask=None):
@@ -2381,13 +2453,16 @@ class ReorderedPCMReader(object):
         if channel mask is nonzero
         """
 
+        PCMReader.__init__(self,
+                           sample_rate=pcmreader.sample_rate,
+                           channels=len(channel_order),
+                           channel_mask=(pcmreader.channel_mask
+                                         if (channel_mask is None) else
+                                         channel_mask),
+                           bits_per_sample=pcmreader.bits_per_sample)
+
         self.pcmreader = pcmreader
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = len(channel_order)
-        if (channel_mask is None):
-            self.channel_mask = pcmreader.channel_mask
-        else:
-            self.channel_mask = channel_mask
+        self.channel_order = channel_order
 
         if (((self.channel_mask != 0) and
              (len(ChannelMask(self.channel_mask)) != self.channels))):
@@ -2395,8 +2470,6 @@ class ReorderedPCMReader(object):
             # than the channel count attribute
             from audiotools.text import ERR_CHANNEL_COUNT_MASK_MISMATCH
             raise ValueError(ERR_CHANNEL_COUNT_MASK_MISMATCH)
-        self.bits_per_sample = pcmreader.bits_per_sample
-        self.channel_order = channel_order
 
     def read(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of frames"""
@@ -2549,7 +2622,7 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
             return None
 
 
-class PCMCat(object):
+class PCMCat(PCMReader):
     """a PCMReader for concatenating several PCMReaders"""
 
     def __init__(self, pcmreaders):
@@ -2557,7 +2630,9 @@ class PCMCat(object):
 
         all must have the same stream attributes"""
 
+        self.index = 0
         self.pcmreaders = list(pcmreaders)
+
         if (len(self.pcmreaders) == 0):
             from audiotools.text import ERR_NO_PCMREADERS
             raise ValueError(ERR_NO_PCMREADERS)
@@ -2565,52 +2640,41 @@ class PCMCat(object):
         if (len({r.sample_rate for r in self.pcmreaders}) != 1):
             from audiotools.text import ERR_SAMPLE_RATE_MISMATCH
             raise ValueError(ERR_SAMPLE_RATE_MISMATCH)
+
         if (len({r.channels for r in self.pcmreaders}) != 1):
             from audiotools.text import ERR_CHANNEL_COUNT_MISMATCH
             raise ValueError(ERR_CHANNEL_COUNT_MISMATCH)
+
         if (len({r.bits_per_sample for r in self.pcmreaders}) != 1):
             from audiotools.text import ERR_BPS_MISMATCH
             raise ValueError(ERR_BPS_MISMATCH)
 
-        self.__index__ = 0
-        reader = self.pcmreaders[self.__index__]
-        self.__read__ = reader.read
+        first_reader = self.pcmreaders[self.index]
+        PCMReader.__init__(self,
+                           sample_rate=first_reader.sample_rate,
+                           channels=first_reader.channels,
+                           channel_mask=first_reader.channel_mask,
+                           bits_per_sample=first_reader.bits_per_sample)
 
-        self.sample_rate = reader.sample_rate
-        self.channels = reader.channels
-        self.channel_mask = reader.channel_mask
-        self.bits_per_sample = reader.bits_per_sample
 
     def read(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of frames
 
         raises ValueError if any of the streams is mismatched"""
 
-        # read a FrameList from the current PCMReader
-        framelist = self.__read__(pcm_frames)
-
-        # while the FrameList is empty
-        while (len(framelist) == 0):
-            # move on to the next PCMReader in the queue, if any
-            self.__index__ += 1
-            try:
-                reader = self.pcmreaders[self.__index__]
-                self.__read__ = reader.read
-
-                # and read a FrameList from the new PCMReader
-                framelist = self.__read__(pcm_frames)
-            except IndexError:
-                # if no PCMReaders remain, have all further reads
-                # return empty FrameList objects
-                # and return an empty FrameList object
-                self.read = self.read_finished
-                return self.read_finished(pcm_frames)
+        if (self.index < len(self.pcmreaders)):
+            # read a FrameList from the current PCMReader
+            framelist = self.pcmreaders[self.index].read(pcm_frames)
+            if (len(framelist) > 0):
+                # if it has data, return it
+                return framelist
+            else:
+                # otherwise, move on to next pcmreader
+                self.index += 1
+                return self.read(pcm_frames)
         else:
-            # otherwise, return the filled FrameList
-            return framelist
-
-    def read_finished(self, pcm_frames):
-        return pcm.from_list([], self.channels, self.bits_per_sample, True)
+            # all PCMReaders exhausted, so return empty FrameList
+            return pcm.from_list([], self.channels, self.bits_per_sample, True)
 
     def read_closed(self, pcm_frames):
         raise ValueError()
@@ -2623,27 +2687,23 @@ class PCMCat(object):
             reader.close()
 
 
-class BufferedPCMReader(object):
+class BufferedPCMReader(PCMReader):
     """a PCMReader which reads exact counts of PCM frames"""
 
     def __init__(self, pcmreader):
         """pcmreader is a regular PCMReader object"""
 
+        PCMReader.__init__(self,
+                           sample_rate=pcmreader.sample_rate,
+                           channels=pcmreader.channels,
+                           channel_mask=pcmreader.channel_mask,
+                           bits_per_sample=pcmreader.bits_per_sample)
+
         self.pcmreader = pcmreader
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
         self.buffer = pcm.from_list([],
                                     self.channels,
                                     self.bits_per_sample,
                                     True)
-
-    def close(self):
-        """closes the sub-pcmreader and frees our internal buffer"""
-
-        self.pcmreader.close()
-        self.read = self.read_closed
 
     def read(self, pcm_frames):
         """reads the given number of PCM frames
@@ -2669,17 +2729,23 @@ class BufferedPCMReader(object):
     def read_closed(self, pcm_frames):
         raise ValueError()
 
+    def close(self):
+        """closes the sub-pcmreader and frees our internal buffer"""
 
-class CounterPCMReader(object):
+        self.pcmreader.close()
+        self.read = self.read_closed
+
+
+class CounterPCMReader(PCMReader):
     """a PCMReader which counts bytes and frames written"""
 
     def __init__(self, pcmreader):
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
-
-        self.__pcmreader__ = pcmreader
+        PCMReader.__init__(self,
+                           sample_rate=pcmreader.sample_rate,
+                           channels=pcmreader.channels,
+                           channel_mask=pcmreader.channel_mask,
+                           bits_per_sample=pcmreader.bits_per_sample)
+        self.pcmreader = pcmreader
         self.frames_written = 0
 
     def bytes_written(self):
@@ -2688,12 +2754,12 @@ class CounterPCMReader(object):
                 (self.bits_per_sample // 8))
 
     def read(self, pcm_frames):
-        frame = self.__pcmreader__.read(pcm_frames)
+        frame = self.pcmreader.read(pcm_frames)
         self.frames_written += frame.frames
         return frame
 
     def close(self):
-        self.__pcmreader__.close()
+        self.pcmreader.close()
 
 
 class LimitedFileReader(object):
@@ -2718,19 +2784,22 @@ class LimitedFileReader(object):
         self.__file__.close()
 
 
-class LimitedPCMReader(object):
+class LimitedPCMReader(PCMReader):
     def __init__(self, buffered_pcmreader, total_pcm_frames):
         """buffered_pcmreader should be a BufferedPCMReader
 
         which ensures we won't pull more frames off the reader
         than necessary upon calls to read()"""
 
+        PCMReader.__init__(
+            self,
+            sample_rate=buffered_pcmreader.sample_rate,
+            channels=buffered_pcmreader.channels,
+            channel_mask=buffered_pcmreader.channel_mask,
+            bits_per_sample=buffered_pcmreader.bits_per_sample)
+
         self.pcmreader = buffered_pcmreader
         self.total_pcm_frames = total_pcm_frames
-        self.sample_rate = self.pcmreader.sample_rate
-        self.channels = self.pcmreader.channels
-        self.channel_mask = self.pcmreader.channel_mask
-        self.bits_per_sample = self.pcmreader.bits_per_sample
 
     def read(self, pcm_frames):
         if (self.total_pcm_frames > 0):
@@ -4677,7 +4746,7 @@ def PCMReaderWindow(pcmreader, initial_offset, pcm_frames, forward_close=True):
             forward_close=forward_close)
 
 
-class PCMReaderHead(object):
+class PCMReaderHead(PCMReader):
     """a wrapper around PCMReader for truncating a stream's ending"""
 
     def __init__(self, pcmreader, pcm_frames, forward_close=True):
@@ -4693,11 +4762,13 @@ class PCMReaderHead(object):
         if (pcm_frames < 0):
             raise ValueError("invalid pcm_frames value")
 
+        PCMReader.__init__(self,
+                           sample_rate=pcmreader.sample_rate,
+                           channels=pcmreader.channels,
+                           channel_mask=pcmreader.channel_mask,
+                           bits_per_sample=pcmreader.bits_per_sample)
+
         self.pcmreader = pcmreader
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
         self.pcm_frames = pcm_frames
         self.forward_close = forward_close
 
@@ -4749,7 +4820,7 @@ class PCMReaderHead(object):
         self.read = self.read_closed
 
 
-class PCMReaderDeHead(object):
+class PCMReaderDeHead(PCMReader):
     """a wrapper around PCMReader for truncating a stream's beginning"""
 
     def __init__(self, pcmreader, pcm_frames, forward_close=True):
@@ -4762,11 +4833,13 @@ class PCMReaderDeHead(object):
         if pcm_frames is negative, the stream will be padded
         with that many PCM frames"""
 
+        PCMReader.__init__(self,
+                           sample_rate=pcmreader.sample_rate,
+                           channels=pcmreader.channels,
+                           channel_mask=pcmreader.channel_mask,
+                           bits_per_sample=pcmreader.bits_per_sample)
+
         self.pcmreader = pcmreader
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
         self.pcm_frames = pcm_frames
         self.forward_close = forward_close
 

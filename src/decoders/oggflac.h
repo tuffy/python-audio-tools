@@ -86,17 +86,33 @@ int
 OggFlacDecoder_init(decoders_OggFlacDecoder *self,
                     PyObject *args, PyObject *kwds);
 
+static PyObject*
+OggFlacDecoder_enter(decoders_OggFlacDecoder* self, PyObject *args);
+
+static PyObject*
+OggFlacDecoder_exit(decoders_OggFlacDecoder* self, PyObject *args);
+
 PyGetSetDef OggFlacDecoder_getseters[] = {
-    {"sample_rate", (getter)OggFlacDecoder_sample_rate, NULL, "sample rate", NULL},
-    {"bits_per_sample", (getter)OggFlacDecoder_bits_per_sample, NULL, "bits per sample", NULL},
-    {"channels", (getter)OggFlacDecoder_channels, NULL, "channels", NULL},
-    {"channel_mask", (getter)OggFlacDecoder_channel_mask, NULL, "channel_mask", NULL},
+    {"sample_rate", (getter)OggFlacDecoder_sample_rate, NULL,
+     "sample rate", NULL},
+    {"bits_per_sample", (getter)OggFlacDecoder_bits_per_sample,
+     NULL, "bits-per-sample", NULL},
+    {"channels", (getter)OggFlacDecoder_channels,
+     NULL, "channels", NULL},
+    {"channel_mask", (getter)OggFlacDecoder_channel_mask,
+     NULL, "channel mask", NULL},
     {NULL}
 };
 
 PyMethodDef OggFlacDecoder_methods[] = {
-    {"read", (PyCFunction)OggFlacDecoder_read, METH_VARARGS, ""},
-    {"close", (PyCFunction)OggFlacDecoder_close, METH_NOARGS, ""},
+    {"read", (PyCFunction)OggFlacDecoder_read,
+     METH_VARARGS, "read(pcm_frame_count) -> FrameList"},
+    {"close", (PyCFunction)OggFlacDecoder_close,
+     METH_NOARGS, "close() -> None"},
+    {"__enter__", (PyCFunction)OggFlacDecoder_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)OggFlacDecoder_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
   };
 

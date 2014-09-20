@@ -509,6 +509,12 @@ class WaveReader(object):
             self.stream.close()
             raise ValueError(ERR_WAV_NO_DATA_CHUNK)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
     def __del__(self):
         if (self.stream.has_mark()):
             self.stream.unmark()

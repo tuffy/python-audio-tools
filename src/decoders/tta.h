@@ -97,6 +97,12 @@ TTADecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 void
 TTADecoder_dealloc(decoders_TTADecoder *self);
 
+static PyObject*
+TTADecoder_enter(decoders_TTADecoder* self, PyObject *args);
+
+static PyObject*
+TTADecoder_exit(decoders_TTADecoder* self, PyObject *args);
+
 int
 TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds);
 
@@ -114,13 +120,15 @@ PyGetSetDef TTADecoder_getseters[] = {
 
 PyMethodDef TTADecoder_methods[] = {
     {"read", (PyCFunction)TTADecoder_read,
-     METH_VARARGS,
-     "Reads the given number of PCM frames from the TTA file, if possible"},
+     METH_VARARGS, "read(pcm_frame_count) -> FrameList"},
     {"seek", (PyCFunction)TTADecoder_seek,
-     METH_VARARGS, "Seeks to the given PCM frames offset"},
-    {"close",
-    (PyCFunction)TTADecoder_close,
-     METH_NOARGS, "Closes the TTA decoder stream"},
+     METH_VARARGS, "seek(desired_pcm_offset) -> actual_pcm_offset"},
+    {"close", (PyCFunction)TTADecoder_close,
+     METH_NOARGS, "close() -> None"},
+    {"__enter__", (PyCFunction)TTADecoder_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)TTADecoder_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 

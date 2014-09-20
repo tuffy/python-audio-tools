@@ -92,28 +92,24 @@ MP3Decoders_dealloc(decoders_MP3Decoder *self)
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-/*the MP3Decoder.sample_rate attribute getter*/
 static PyObject*
 MP3Decoder_sample_rate(decoders_MP3Decoder *self, void *closure)
 {
     return Py_BuildValue("l", self->rate);
 }
 
-/*the MP3Decoder.bits_per_sample attribute getter*/
 static PyObject*
 MP3Decoder_bits_per_sample(decoders_MP3Decoder *self, void *closure)
 {
     return Py_BuildValue("i", 16);
 }
 
-/*the MP3Decoder.channels attribute getter*/
 static PyObject*
 MP3Decoder_channels(decoders_MP3Decoder *self, void *closure)
 {
     return Py_BuildValue("i", self->channels);
 }
 
-/*the MP3Decoder.channel_mask attribute getter*/
 static PyObject*
 MP3Decoder_channel_mask(decoders_MP3Decoder *self, void *closure)
 {
@@ -129,7 +125,6 @@ MP3Decoder_channel_mask(decoders_MP3Decoder *self, void *closure)
 
 #define BUFFER_SIZE 4608
 
-/*the MP3Decoder.read() method*/
 static PyObject*
 MP3Decoder_read(decoders_MP3Decoder* self, PyObject *args)
 {
@@ -170,10 +165,23 @@ MP3Decoder_read(decoders_MP3Decoder* self, PyObject *args)
     }
 }
 
-
-/*the MP3Decoder.close() method*/
 static PyObject*
 MP3Decoder_close(decoders_MP3Decoder* self, PyObject *args)
+{
+    self->closed = 1;
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+MP3Decoder_enter(decoders_MP3Decoder* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+MP3Decoder_exit(decoders_MP3Decoder* self, PyObject *args)
 {
     self->closed = 1;
     Py_INCREF(Py_None);

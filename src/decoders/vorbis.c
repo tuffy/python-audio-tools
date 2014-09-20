@@ -303,3 +303,19 @@ VorbisDecoder_close(decoders_VorbisDecoder *self, PyObject *args) {
     Py_INCREF(Py_None);
     return Py_None;
 }
+
+static PyObject*
+VorbisDecoder_enter(decoders_VorbisDecoder* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+VorbisDecoder_exit(decoders_VorbisDecoder* self, PyObject *args)
+{
+    self->closed = 1;
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}

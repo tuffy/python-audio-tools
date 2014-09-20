@@ -312,6 +312,22 @@ ALACDecoder_close(decoders_ALACDecoder* self, PyObject *args)
     return Py_None;
 }
 
+static PyObject*
+ALACDecoder_enter(decoders_ALACDecoder* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+ALACDecoder_exit(decoders_ALACDecoder* self, PyObject *args)
+{
+    self->closed = 1;
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 PyObject*
 alac_exception(status status)
 {

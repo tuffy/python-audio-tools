@@ -292,10 +292,10 @@ class cd2track(UtilTest):
                     for filename in output_filenames]
                 self.assertEqual(len(output_tracks), 3)
                 self.stream.reset()
-                self.assert_(
-                    audiotools.pcm_frame_cmp(
-                        audiotools.PCMCat([t.to_pcm() for t in output_tracks]),
-                        self.stream) is None)
+                with audiotools.PCMCat(
+                    [t.to_pcm() for t in output_tracks]) as pcmreader:
+                    self.assertIsNone(
+                        audiotools.pcm_frame_cmp(pcmreader, self.stream))
 
                 # make sure metadata fits our expectations
                 for i in range(len(output_tracks)):
@@ -1042,9 +1042,8 @@ class covertag_errors(UtilTest):
                 big_bmp.flush()
 
                 orig_md5 = md5()
-                pcm = flac.to_pcm()
-                audiotools.transfer_framelist_data(pcm, orig_md5.update)
-                pcm.close()
+                with flac.to_pcm() as pcm:
+                    audiotools.transfer_framelist_data(pcm, orig_md5.update)
 
                 # ensure that setting a big image via covertag
                 # doesn't break the file
@@ -1052,9 +1051,8 @@ class covertag_errors(UtilTest):
                                  "--front-cover=%s" % (big_bmp.name),
                                  flac.filename])
                 new_md5 = md5()
-                pcm = flac.to_pcm()
-                audiotools.transfer_framelist_data(pcm, new_md5.update)
-                pcm.close()
+                with flac.to_pcm() as pcm:
+                    audiotools.transfer_framelist_data(pcm, new_md5.update)
                 self.assertEqual(orig_md5.hexdigest(),
                                  new_md5.hexdigest())
             finally:
@@ -1699,9 +1697,13 @@ class track2track(UtilTest):
                     ("--channels" not in options) and
                     ("--bits-per-sample" not in options)):
 
-                    self.assert_(
-                        audiotools.pcm_frame_cmp(self.track1.to_pcm(),
-                                                 track2.to_pcm()) is None)
+
+                    pcm1 = self.track1.to_pcm()
+                    pcm2 = track2.to_pcm()
+                    self.assertIsNone(
+                        audiotools.pcm_frame_cmp(pcm1, pcm2))
+                    pcm1.close()
+                    pcm2.close()
 
                 if (track2.lossless()):
                     self.assertEqual(
@@ -1757,12 +1759,12 @@ class track2track(UtilTest):
                      "--format", format_string,
                      file_path]), 0)
 
-            self.assertEqual(
-                audiotools.pcm_frame_cmp(
-                    track.to_pcm(),
-                    audiotools.open(os.path.join(output_directory,
-                                                 format_string)).to_pcm()),
-                None)
+            pcm1 = track.to_pcm()
+            pcm2 = audiotools.open(os.path.join(output_directory,
+                                                format_string)).to_pcm()
+            self.assertIsNone(audiotools.pcm_frame_cmp(pcm1, pcm2))
+            pcm1.close()
+            pcm2.close()
 
             if (os.path.isdir(output_directory)):
                 rmtree(output_directory)
@@ -1788,11 +1790,11 @@ class track2track(UtilTest):
                 self.__run_app__(
                     ["track2track", "-o", output_path, file_path]), 0)
 
-            self.assertEqual(
-                audiotools.pcm_frame_cmp(
-                    track.to_pcm(),
-                    audiotools.open(output_path).to_pcm()),
-                None)
+            pcm1 = track.to_pcm()
+            pcm2 = audiotools.open(output_path).to_pcm()
+            self.assertIsNone(audiotools.pcm_frame_cmp(pcm1, pcm2))
+            pcm1.close()
+            pcm2.close()
 
             if (os.path.isfile(output_path)):
                 os.unlink(output_path)
@@ -2500,13 +2502,14 @@ class trackcat(UtilTest):
             new_track = audiotools.open(outfile)
             self.assertEqual(new_track.NAME, output_format.NAME)
             self.assertEqual(new_track.total_frames(), 793800)
-            self.assert_(
-                audiotools.pcm_frame_cmp(
-                    new_track.to_pcm(),
-                    audiotools.PCMCat([track.to_pcm() for track in
-                                       [self.track1,
-                                        self.track2,
-                                        self.track3]])) is None)
+            pcm1 = new_track.to_pcm()
+            pcm2 = audiotools.PCMCat([track.to_pcm() for track in
+                                      [self.track1,
+                                       self.track2,
+                                       self.track3]])
+            self.assertIsNone(audiotools.pcm_frame_cmp(pcm1, pcm2))
+            pcm1.close()
+            pcm2.close()
 
             # check that metadata is merged properly
             metadata = new_track.get_metadata()
@@ -2571,10 +2574,11 @@ class trackcat(UtilTest):
                     ([cuesheet_file] if cuesheet_file is not None else []) +
                     ["--output", output_path]), 0)
 
-            self.assertEqual(
-                audiotools.pcm_frame_cmp(
-                    audiotools.PCMCat([t.to_pcm() for t in tracks]),
-                    audiotools.open(output_path).to_pcm()), None)
+            pcm1 = audiotools.PCMCat([t.to_pcm() for t in tracks])
+            pcm2 = audiotools.open(output_path).to_pcm()
+            self.assertIsNone(audiotools.pcm_frame_cmp(pcm1, pcm2))
+            pcm1.close()
+            pcm2.close()
 
             for input_filename in input_filenames:
                 if (os.path.isfile(input_filename)):
@@ -2632,9 +2636,11 @@ class trackcat_pre_gap(UtilTest):
             offset = pre_gap_size + sum(track_lengths[0:i])
             pcmreader = output_track.to_pcm()
             self.assertEqual(pcmreader.seek(offset), offset)
-            self.assertEqual(audiotools.pcm_frame_cmp(
-                track.to_pcm(),
-                audiotools.PCMReaderHead(pcmreader, expected_length)), None)
+            pcm1 = track.to_pcm()
+            pcm2 = audiotools.PCMReaderHead(pcmreader, expected_length)
+            self.assertIsNone(audiotools.pcm_frame_cmp(pcm1, pcm2))
+            pcm1.close()
+            pcm2.close()
 
         # cleanup temporary files
         for temp_track_f in temp_tracks_f:
@@ -3007,10 +3013,11 @@ class trackcmp(UtilTest):
                 self.__run_app__(
                     ["trackcmp", file1, file2]), 0)
 
-            self.assertEqual(
-                audiotools.pcm_frame_cmp(
-                    track1.to_pcm(),
-                    track2.to_pcm()), None)
+            pcm1 = track1.to_pcm()
+            pcm2 = track2.to_pcm()
+            self.assertIsNone(audiotools.pcm_frame_cmp(pcm1, pcm2))
+            pcm1.close()
+            pcm2.close()
 
             if (os.path.isfile(file1)):
                 os.unlink(file1)
@@ -3445,9 +3452,8 @@ class tracklint(UtilTest):
                     ["tracklint", "-V", "quiet", "--fix", tempflac.name]), 0)
             flac = audiotools.open(tempflac.name)
             md5sum = md5()
-            pcm = flac.to_pcm()
-            audiotools.transfer_framelist_data(pcm, md5sum.update)
-            pcm.close()
+            with flac.to_pcm() as pcm:
+                audiotools.transfer_framelist_data(pcm, md5sum.update)
             self.assertEqual(md5sum.hexdigest(),
                              "9a0ab096c517a627b0ab5a0b959e5f36")
         finally:
@@ -3473,9 +3479,8 @@ class tracklint(UtilTest):
                     ["tracklint", "-V", "quiet", "--fix", tempflac.name]), 0)
             flac = audiotools.open(tempflac.name)
             md5sum = md5()
-            pcm = flac.to_pcm()
-            audiotools.transfer_framelist_data(pcm, md5sum.update)
-            pcm.close()
+            with flac.to_pcm() as pcm:
+                audiotools.transfer_framelist_data(pcm, md5sum.update)
             self.assertEqual(md5sum.hexdigest(),
                              "9a0ab096c517a627b0ab5a0b959e5f36")
         finally:
@@ -4692,10 +4697,10 @@ class tracksplit(UtilTest):
                     audiotools.open(os.path.join(output_dir, filename))
                     for filename in output_filenames]
                 self.stream.reset()
-                self.assert_(
-                    audiotools.pcm_frame_cmp(
-                        audiotools.PCMCat([t.to_pcm() for t in output_tracks]),
-                        self.stream) is None)
+                with audiotools.PCMCat([t.to_pcm() for t in
+                                        output_tracks]) as pcmreader:
+                    self.assertIsNone(
+                        audiotools.pcm_frame_cmp(pcmreader, self.stream))
 
                 # make sure metadata fits our expectations
                 for i in range(len(output_tracks)):
@@ -4808,10 +4813,10 @@ class tracksplit(UtilTest):
                     audiotools.open(os.path.join(output_dir, filename))
                     for filename in output_filenames]
                 self.stream.reset()
-                self.assert_(
-                    audiotools.pcm_frame_cmp(
-                        audiotools.PCMCat([t.to_pcm() for t in output_tracks]),
-                        self.stream) is None)
+                with audiotools.PCMCat([t.to_pcm() for t in
+                                        output_tracks]) as pcmreader:
+                    self.assertIsNone(
+                        audiotools.pcm_frame_cmp(pcmreader, self.stream))
 
                 # make sure metadata fits our expectations
                 for i in range(len(output_tracks)):
@@ -4894,11 +4899,11 @@ class tracksplit(UtilTest):
             tracks = [audiotools.open(os.path.join(output_directory, f))
                       for f in output_filenames]
 
-            self.assertEqual(
-                audiotools.pcm_frame_cmp(
-                    track.to_pcm(),
-                    audiotools.PCMCat([t.to_pcm() for t in tracks])),
-                None)
+            pcm1 = track.to_pcm()
+            pcm2 = audiotools.PCMCat([t.to_pcm() for t in tracks])
+            self.assertIsNone(audiotools.pcm_frame_cmp( pcm1, pcm2))
+            pcm1.close()
+            pcm2.close()
 
             if (os.path.isfile(input_filename)):
                 os.unlink(input_filename)
@@ -5109,10 +5114,11 @@ class tracksplit_pre_gap(UtilTest):
             offset = pre_gap_size + sum(track_lengths[0:i])
             pcmreader = temp_track.to_pcm()
             self.assertEqual(pcmreader.seek(offset), offset)
-            self.assertEqual(audiotools.pcm_frame_cmp(
-                track.to_pcm(),
-                audiotools.PCMReaderHead(pcmreader, expected_length)),
-                             None)
+            pcm1 = track.to_pcm()
+            pcm2 = audiotools.PCMReaderHead(pcmreader, expected_length)
+            self.assertIsNone(audiotools.pcm_frame_cmp(pcm1, pcm2))
+            pcm1.close()
+            pcm2.close()
 
         # cleanup temporary files
         temp_track_f.close()
@@ -5524,9 +5530,8 @@ class tracktag_errors(UtilTest):
                 big_text.flush()
 
                 orig_md5 = md5()
-                pcm = flac.to_pcm()
-                audiotools.transfer_framelist_data(pcm, orig_md5.update)
-                pcm.close()
+                with flac.to_pcm() as pcm:
+                    audiotools.transfer_framelist_data(pcm, orig_md5.update)
 
                 # ensure that setting big text via tracktag
                 # doesn't break the file
@@ -5534,9 +5539,8 @@ class tracktag_errors(UtilTest):
                                  "--comment-file=%s" % (big_text.name),
                                  flac.filename])
                 new_md5 = md5()
-                pcm = flac.to_pcm()
-                audiotools.transfer_framelist_data(pcm, new_md5.update)
-                pcm.close()
+                with flac.to_pcm() as pcm:
+                    audiotools.transfer_framelist_data(pcm, new_md5.update)
                 self.assertEqual(orig_md5.hexdigest(),
                                  new_md5.hexdigest())
 
@@ -5546,9 +5550,11 @@ class tracktag_errors(UtilTest):
 
                 wv = audiotools.open(tempwv.name)
 
-                self.assertEqual(
-                    audiotools.pcm_frame_cmp(flac.to_pcm(),
-                                             wv.to_pcm()), None)
+                pcm1 = flac.to_pcm()
+                pcm2 = wv.to_pcm()
+                self.assertIsNone(audiotools.pcm_frame_cmp(pcm1, pcm2))
+                pcm1.close()
+                pcm2.close()
 
                 self.assertEqual(
                     subprocess.call(["tracktag", "-V", "quiet",
@@ -5562,9 +5568,11 @@ class tracktag_errors(UtilTest):
                                  flac.filename, wv.filename])
 
                 flac = audiotools.open(tempflac.name)
-                self.assertEqual(
-                    audiotools.pcm_frame_cmp(flac.to_pcm(),
-                                             wv.to_pcm()), None)
+                pcm1 = flac.to_pcm()
+                pcm2 = wv.to_pcm()
+                self.assertIsNone(audiotools.pcm_frame_cmp(pcm1, pcm2))
+                pcm1.close()
+                pcm2.close()
             finally:
                 tempflac.close()
                 tempwv.close()

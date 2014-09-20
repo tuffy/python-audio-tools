@@ -553,6 +553,12 @@ class ThreadedPCMReader(object):
     def close(self):
         self.__pcmreader_close__()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
 
 class AudioOutput(object):
     """an abstract parent class for playing audio"""

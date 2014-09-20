@@ -421,6 +421,20 @@ DVDA_Title_close(decoders_DVDA_Title *self, PyObject *args)
     Py_INCREF(Py_None);
     return Py_None;
 }
+
+static PyObject*
+DVDA_Title_enter(decoders_DVDA_Title* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+DVDA_Title_exit(decoders_DVDA_Title* self, PyObject *args)
+{
+    Py_INCREF(Py_None);
+    return Py_None;
+}
 #endif
 
 

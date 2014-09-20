@@ -48,48 +48,51 @@ MP3Decoder_init(decoders_MP3Decoder *self,
 void
 MP3Decoders_dealloc(decoders_MP3Decoder *self);
 
-/*the MP3Decoder.sample_rate attribute getter*/
 static PyObject*
 MP3Decoder_sample_rate(decoders_MP3Decoder *self, void *closure);
 
-/*the MP3Decoder.bits_per_sample attribute getter*/
 static PyObject*
 MP3Decoder_bits_per_sample(decoders_MP3Decoder *self, void *closure);
 
-/*the MP3Decoder.channels attribute getter*/
 static PyObject*
 MP3Decoder_channels(decoders_MP3Decoder *self, void *closure);
 
-/*the MP3Decoder.channel_mask attribute getter*/
 static PyObject*
 MP3Decoder_channel_mask(decoders_MP3Decoder *self, void *closure);
 
-/*the MP3Decoder.read() method*/
 static PyObject*
 MP3Decoder_read(decoders_MP3Decoder* self, PyObject *args);
 
-/*the MP3Decoder.close() method*/
 static PyObject*
 MP3Decoder_close(decoders_MP3Decoder* self, PyObject *args);
+
+static PyObject*
+MP3Decoder_enter(decoders_MP3Decoder* self, PyObject *args);
+
+static PyObject*
+MP3Decoder_exit(decoders_MP3Decoder* self, PyObject *args);
 
 PyGetSetDef MP3Decoder_getseters[] = {
     {"sample_rate",
      (getter)MP3Decoder_sample_rate, NULL, "sample rate", NULL},
     {"bits_per_sample",
-     (getter)MP3Decoder_bits_per_sample, NULL, "bits per sample", NULL},
+     (getter)MP3Decoder_bits_per_sample, NULL, "bits-per-sample", NULL},
     {"channels",
      (getter)MP3Decoder_channels, NULL, "channels", NULL},
     {"channel_mask",
-     (getter)MP3Decoder_channel_mask, NULL, "channel_mask", NULL},
+     (getter)MP3Decoder_channel_mask, NULL, "channel mask", NULL},
     {NULL}
 };
 
 PyMethodDef MP3Decoder_methods[] = {
     {"read", (PyCFunction)MP3Decoder_read,
-     METH_VARARGS,
-     "Reads an MP3 frame, if possible"},
+     METH_VARARGS, "read(pcm_frame_count) -> FrameList"},
     {"close", (PyCFunction)MP3Decoder_close,
-     METH_NOARGS, "Closes the MP3 decoder stream"},
+     METH_NOARGS, "close() -> None"},
+    {"__enter__", (PyCFunction)MP3Decoder_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)MP3Decoder_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 

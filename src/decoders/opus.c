@@ -74,7 +74,6 @@ OpusDecoders_dealloc(decoders_OpusDecoder *self)
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-/*the OpusDecoder.sample_rate attribute getter*/
 static PyObject*
 OpusDecoder_sample_rate(decoders_OpusDecoder *self, void *closure)
 {
@@ -84,7 +83,6 @@ OpusDecoder_sample_rate(decoders_OpusDecoder *self, void *closure)
     return Py_BuildValue("i", sample_rate);
 }
 
-/*the OpusDecoder.bits_per_sample attribute getter*/
 static PyObject*
 OpusDecoder_bits_per_sample(decoders_OpusDecoder *self, void *closure)
 {
@@ -94,14 +92,12 @@ OpusDecoder_bits_per_sample(decoders_OpusDecoder *self, void *closure)
     return Py_BuildValue("i", bits_per_sample);
 }
 
-/*the OpusDecoder.channels attribute getter*/
 static PyObject*
 OpusDecoder_channels(decoders_OpusDecoder *self, void *closure)
 {
     return Py_BuildValue("i", self->channel_count);
 }
 
-/*the OpusDecoder.channel_mask attribute getter*/
 static PyObject*
 OpusDecoder_channel_mask(decoders_OpusDecoder *self, void *closure)
 {
@@ -165,7 +161,6 @@ OpusDecoder_channel_mask(decoders_OpusDecoder *self, void *closure)
 /*assume at least 120ms across 8 channels, minimum*/
 #define BUF_SIZE 5760 * 8
 
-/*the OpusDecoder.read() method*/
 static PyObject*
 OpusDecoder_read(decoders_OpusDecoder* self, PyObject *args)
 {
@@ -269,9 +264,23 @@ OpusDecoder_read(decoders_OpusDecoder* self, PyObject *args)
     }
 }
 
-/*the OpusDecoder.close() method*/
 static PyObject*
 OpusDecoder_close(decoders_OpusDecoder* self, PyObject *args)
+{
+    self->closed = 1;
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+OpusDecoder_enter(decoders_OpusDecoder* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+OpusDecoder_exit(decoders_OpusDecoder* self, PyObject *args)
 {
     self->closed = 1;
     Py_INCREF(Py_None);

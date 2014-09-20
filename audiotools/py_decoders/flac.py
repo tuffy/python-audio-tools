@@ -435,6 +435,12 @@ class FlacDecoder(object):
     def close(self):
         self.reader.close()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
 
 class CRC8(object):
     TABLE = [0x00, 0x07, 0x0E, 0x09, 0x1C, 0x1B, 0x12, 0x15,

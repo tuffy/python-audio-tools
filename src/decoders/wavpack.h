@@ -88,24 +88,19 @@ typedef struct {
 } decoders_WavPackDecoder;
 
 #ifndef STANDALONE
-/*the WavPackDecoder.__init__() method*/
 int
 WavPackDecoder_init(decoders_WavPackDecoder *self,
                     PyObject *args, PyObject *kwds);
 
-/*the WavPackDecoder.sample_rate attribute getter*/
 static PyObject*
 WavPackDecoder_sample_rate(decoders_WavPackDecoder *self, void *closure);
 
-/*the WavPackDecoder.bits_per_sample attribute getter*/
 static PyObject*
 WavPackDecoder_bits_per_sample(decoders_WavPackDecoder *self, void *closure);
 
-/*the WavPackDecoder.channels attribute getter*/
 static PyObject*
 WavPackDecoder_channels(decoders_WavPackDecoder *self, void *closure);
 
-/*the WavPackDecoder.channel_mask attribute getter*/
 static PyObject*
 WavPackDecoder_channel_mask(decoders_WavPackDecoder *self, void *closure);
 
@@ -113,11 +108,11 @@ PyGetSetDef WavPackDecoder_getseters[] = {
     {"sample_rate",
      (getter)WavPackDecoder_sample_rate, NULL, "sample rate", NULL},
     {"bits_per_sample",
-     (getter)WavPackDecoder_bits_per_sample, NULL, "bits per sample", NULL},
+     (getter)WavPackDecoder_bits_per_sample, NULL, "bits-per-sample", NULL},
     {"channels",
      (getter)WavPackDecoder_channels, NULL, "channels", NULL},
     {"channel_mask",
-     (getter)WavPackDecoder_channel_mask, NULL, "channel_mask", NULL},
+     (getter)WavPackDecoder_channel_mask, NULL, "channel mask", NULL},
     {NULL}
 };
 
@@ -130,13 +125,23 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args);
 PyObject*
 WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args);
 
+static PyObject*
+WavPackDecoder_enter(decoders_WavPackDecoder* self, PyObject *args);
+
+static PyObject*
+WavPackDecoder_exit(decoders_WavPackDecoder* self, PyObject *args);
+
 PyMethodDef WavPackDecoder_methods[] = {
     {"read", (PyCFunction)WavPackDecoder_read,
-     METH_VARARGS, "Returns a decoded frame"},
+     METH_VARARGS, "read(pcm_frame_count) -> FrameList"},
     {"seek", (PyCFunction)WavPackDecoder_seek,
-     METH_VARARGS, "Tries to seek to the given PCM frames offset"},
+     METH_VARARGS, "seek(desired_pcm_offset) -> actual_pcm_offset"},
     {"close", (PyCFunction)WavPackDecoder_close,
-     METH_NOARGS, "Closes the stream"},
+     METH_NOARGS, "close() -> None"},
+    {"__enter__", (PyCFunction)WavPackDecoder_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)WavPackDecoder_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 

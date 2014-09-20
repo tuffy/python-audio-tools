@@ -53,6 +53,12 @@ class AuReader(object):
         self.total_pcm_frames = (data_size // self.bytes_per_pcm_frame)
         self.remaining_pcm_frames = self.total_pcm_frames
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
     def read(self, pcm_frames):
         # try to read requested PCM frames or remaining frames
         requested_pcm_frames = min(max(pcm_frames, 1),

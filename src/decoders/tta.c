@@ -342,6 +342,24 @@ TTADecoder_close(decoders_TTADecoder* self, PyObject *args)
     Py_INCREF(Py_None);
     return Py_None;
 }
+
+static PyObject*
+TTADecoder_enter(decoders_TTADecoder* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+TTADecoder_exit(decoders_TTADecoder* self, PyObject *args)
+{
+    self->closed = 1;
+
+    self->bitstream->close_internal_stream(self->bitstream);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
 #endif
 
 static void

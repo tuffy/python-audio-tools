@@ -67,11 +67,10 @@ def BLANK_PCM_Reader(length, sample_rate=44100, channels=2,
                       bits_per_sample=bits_per_sample)
 
 
-class RANDOM_PCM_Reader:
-    def __init__(self, length,
+class EXACT_RANDOM_PCM_Reader(object):
+    def __init__(self, pcm_frames,
                  sample_rate=44100, channels=2, bits_per_sample=16,
                  channel_mask=None):
-        self.length = length
         self.sample_rate = sample_rate
         self.channels = channels
         if (channel_mask is None):
@@ -80,9 +79,16 @@ class RANDOM_PCM_Reader:
             self.channel_mask = channel_mask
         self.bits_per_sample = bits_per_sample
 
-        self.total_frames = length * sample_rate
+        self.total_frames = pcm_frames
         self.original_frames = self.total_frames
+
         self.read = self.read_opened
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
     def read_opened(self, pcm_frames):
         if (self.total_frames > 0):
@@ -110,6 +116,19 @@ class RANDOM_PCM_Reader:
     def reset(self):
         self.read = self.read_opened
         self.total_frames = self.original_frames
+
+
+class RANDOM_PCM_Reader(EXACT_RANDOM_PCM_Reader):
+    def __init__(self, length,
+                 sample_rate=44100, channels=2, bits_per_sample=16,
+                 channel_mask=None):
+        EXACT_RANDOM_PCM_Reader.__init__(
+            self,
+            pcm_frames=length * sample_rate,
+            sample_rate=sample_rate,
+            channels=channels,
+            bits_per_sample=bits_per_sample,
+            channel_mask=channel_mask)
 
 
 def EXACT_BLANK_PCM_Reader(pcm_frames, sample_rate=44100, channels=2,
@@ -142,37 +161,15 @@ def EXACT_SILENCE_PCM_Reader(pcm_frames, sample_rate=44100, channels=2,
                       bits_per_sample=bits_per_sample)
 
 
-class EXACT_RANDOM_PCM_Reader(RANDOM_PCM_Reader):
-    def __init__(self, pcm_frames,
-                 sample_rate=44100, channels=2, bits_per_sample=16,
-                 channel_mask=None):
-        self.sample_rate = sample_rate
-        self.channels = channels
-        if (channel_mask is None):
-            self.channel_mask = audiotools.ChannelMask.from_channels(channels)
-        else:
-            self.channel_mask = channel_mask
-        self.bits_per_sample = bits_per_sample
-
-        self.total_frames = pcm_frames
-        self.original_frames = self.total_frames
-
-        self.single_pcm_frame = audiotools.pcm.from_list(
-            [1] * channels, channels, bits_per_sample, True)
-        self.read = self.read_opened
-
-class MD5_Reader:
+class MD5_Reader(audiotools.PCMReader):
     def __init__(self, pcmreader):
+        audiotools.PCMReader.__init__(
+            self,
+            sample_rate=pcmreader.sample_rate,
+            channels=pcmreader.channels,
+            channel_mask=pcmreader.channel_mask,
+            bits_per_sample=pcmreader.bits_per_sample)
         self.pcmreader = pcmreader
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
-        self.md5 = md5()
-
-    def reset(self):
-        if (hasattr(self.pcmreader, "reset")):
-            self.pcmreader.reset()
         self.md5 = md5()
 
     def __repr__(self):
@@ -180,10 +177,18 @@ class MD5_Reader:
                                         self.channels,
                                         self.bits_per_sample)
 
+    def reset(self):
+        if (hasattr(self.pcmreader, "reset")):
+            self.pcmreader.reset()
+        self.md5 = md5()
+
     def read(self, pcm_frames):
         framelist = self.pcmreader.read(pcm_frames)
         self.md5.update(framelist.to_bytes(False, True))
         return framelist
+
+    def close(self):
+        self.pcmreader.close()
 
     def digest(self):
         return self.md5.digest()
@@ -191,17 +196,16 @@ class MD5_Reader:
     def hexdigest(self):
         return self.md5.hexdigest()
 
-    def close(self):
-        self.pcmreader.close()
 
-
-class Variable_Reader:
+class Variable_Reader(audiotools.PCMReader):
     def __init__(self, pcmreader):
+        audiotools.PCMReader.__init__(
+            self,
+            sample_rate=pcmreader.sample_rate,
+            channels=pcmreader.channels,
+            channel_mask=pcmreader.channel_mask,
+            bits_per_sample=pcmreader.bits_per_sample)
         self.pcmreader = audiotools.BufferedPCMReader(pcmreader)
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
         self.md5 = md5()
         self.range = range(self.channels * (self.bits_per_sample // 8),
                            4096)
@@ -213,21 +217,25 @@ class Variable_Reader:
         self.pcmreader.close()
 
 
-class Join_Reader:
+class Join_Reader(audiotools.PCMReader):
     # given a list of 1 channel PCM readers,
     # combines them into a single reader
     # a bit like PCMCat but across channels instead of PCM frames
     def __init__(self, pcm_readers, channel_mask):
-        if (len(set([r.sample_rate for r in pcm_readers])) != 1):
+        if (len({r.sample_rate for r in pcm_readers}) != 1):
             raise ValueError("all readers must have the same sample rate")
-        if (len(set([r.bits_per_sample for r in pcm_readers])) != 1):
+        if (len({r.bits_per_sample for r in pcm_readers}) != 1):
             raise ValueError("all readers must have the same bits per sample")
-        if (set([r.channels for r in pcm_readers]) != set([1])):
+        if ({r.channels for r in pcm_readers} != {1}):
             raise ValueError("all readers must be 1 channel")
-        self.channels = len(pcm_readers)
-        self.channel_mask = channel_mask
-        self.sample_rate = pcm_readers[0].sample_rate
-        self.bits_per_sample = pcm_readers[0].bits_per_sample
+
+        audiotools.PCMReader.__init__(
+            self,
+            sample_rate=pcm_readers[0].sample_rate,
+            channels=len(pcm_readers),
+            channel_mask=channel_mask,
+            bits_per_sample=pcm_readers[0].bits_per_sample)
+
         self.pcm_readers = pcm_readers
         self.readers = map(audiotools.BufferedPCMReader, pcm_readers)
 

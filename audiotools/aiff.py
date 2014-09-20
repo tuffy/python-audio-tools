@@ -430,6 +430,12 @@ class AiffReader(object):
             from audiotools.text import ERR_AIFF_NO_SSND_CHUNK
             raise ValueError(ERR_AIFF_NO_SSND_CHUNK)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
     def __del__(self):
         if (self.stream.has_mark()):
             self.stream.unmark()

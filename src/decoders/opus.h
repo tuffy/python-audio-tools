@@ -44,48 +44,51 @@ OpusDecoder_init(decoders_OpusDecoder *self,
 void
 OpusDecoders_dealloc(decoders_OpusDecoder *self);
 
-/*the OpusDecoder.sample_rate attribute getter*/
 static PyObject*
 OpusDecoder_sample_rate(decoders_OpusDecoder *self, void *closure);
 
-/*the OpusDecoder.bits_per_sample attribute getter*/
 static PyObject*
 OpusDecoder_bits_per_sample(decoders_OpusDecoder *self, void *closure);
 
-/*the OpusDecoder.channels attribute getter*/
 static PyObject*
 OpusDecoder_channels(decoders_OpusDecoder *self, void *closure);
 
-/*the OpusDecoder.channel_mask attribute getter*/
 static PyObject*
 OpusDecoder_channel_mask(decoders_OpusDecoder *self, void *closure);
 
-/*the OpusDecoder.read() method*/
 static PyObject*
 OpusDecoder_read(decoders_OpusDecoder* self, PyObject *args);
 
-/*the OpusDecoder.close() method*/
 static PyObject*
 OpusDecoder_close(decoders_OpusDecoder* self, PyObject *args);
+
+static PyObject*
+OpusDecoder_enter(decoders_OpusDecoder* self, PyObject *args);
+
+static PyObject*
+OpusDecoder_exit(decoders_OpusDecoder* self, PyObject *args);
 
 PyGetSetDef OpusDecoder_getseters[] = {
     {"sample_rate",
      (getter)OpusDecoder_sample_rate, NULL, "sample rate", NULL},
     {"bits_per_sample",
-     (getter)OpusDecoder_bits_per_sample, NULL, "bits per sample", NULL},
+     (getter)OpusDecoder_bits_per_sample, NULL, "bits-per-sample", NULL},
     {"channels",
      (getter)OpusDecoder_channels, NULL, "channels", NULL},
     {"channel_mask",
-     (getter)OpusDecoder_channel_mask, NULL, "channel_mask", NULL},
+     (getter)OpusDecoder_channel_mask, NULL, "channel mask", NULL},
     {NULL}
 };
 
 PyMethodDef OpusDecoder_methods[] = {
     {"read", (PyCFunction)OpusDecoder_read,
-     METH_VARARGS,
-     "Reads an Opus frame, if possible"},
+     METH_VARARGS, "read(pcm_frame_count) -> FrameList"},
     {"close", (PyCFunction)OpusDecoder_close,
-     METH_NOARGS, "Closes the Opus decoder stream"},
+     METH_NOARGS, "close() -> None"},
+    {"__enter__", (PyCFunction)OpusDecoder_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)OpusDecoder_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 

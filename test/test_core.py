@@ -33,7 +33,7 @@ from hashlib import md5
 from test import (parser, Variable_Reader, BLANK_PCM_Reader,
                   RANDOM_PCM_Reader, EXACT_SILENCE_PCM_Reader,
                   EXACT_BLANK_PCM_Reader, SHORT_PCM_COMBINATIONS,
-                  MD5_Reader, FrameCounter,
+                  MD5_Reader, FrameCounter, Join_Reader,
                   Combinations, Possibilities,
                   TEST_COVER1, TEST_COVER2, TEST_COVER3, HUGE_BMP)
 
@@ -71,7 +71,7 @@ class PCMReader(unittest.TestCase):
         for bps in [8, 16, 24]:
             for big_endian in [True, False]:
                 for signed in [True, False]:
-                    reader = audiotools.PCMReader(
+                    reader = audiotools.PCMFileReader(
                         BytesIO(
                             from_list(list(range(-5, 5)),
                                       1,
@@ -112,53 +112,53 @@ class PCMCat(unittest.TestCase):
         from audiotools.pcm import from_list
 
         # ensure mismatched streams raise ValueError at init time
-        audiotools.PCMCat([audiotools.PCMReader(BytesIO(b""),
-                                                sample_rate=44100,
-                                                channels=1,
-                                                channel_mask=0x4,
-                                                bits_per_sample=16)])
+        audiotools.PCMCat([audiotools.PCMFileReader(BytesIO(b""),
+                                                    sample_rate=44100,
+                                                    channels=1,
+                                                    channel_mask=0x4,
+                                                    bits_per_sample=16)])
 
         self.assertRaises(ValueError,
                           audiotools.PCMCat,
-                          [audiotools.PCMReader(BytesIO(b""),
-                                                sample_rate=96000,
-                                                channels=1,
-                                                channel_mask=0x4,
-                                                bits_per_sample=16),
-                           audiotools.PCMReader(BytesIO(b""),
-                                                sample_rate=44100,
-                                                channels=1,
-                                                channel_mask=0x4,
-                                                bits_per_sample=16)])
+                          [audiotools.PCMFileReader(BytesIO(b""),
+                                                    sample_rate=96000,
+                                                    channels=1,
+                                                    channel_mask=0x4,
+                                                    bits_per_sample=16),
+                           audiotools.PCMFileReader(BytesIO(b""),
+                                                    sample_rate=44100,
+                                                    channels=1,
+                                                    channel_mask=0x4,
+                                                    bits_per_sample=16)])
 
         self.assertRaises(ValueError,
                           audiotools.PCMCat,
-                          [audiotools.PCMReader(BytesIO(b""),
-                                                sample_rate=44100,
-                                                channels=2,
-                                                channel_mask=0x3,
-                                                bits_per_sample=16),
-                           audiotools.PCMReader(BytesIO(b""),
-                                                sample_rate=44100,
-                                                channels=1,
-                                                channel_mask=0x4,
-                                                bits_per_sample=16)])
+                          [audiotools.PCMFileReader(BytesIO(b""),
+                                                    sample_rate=44100,
+                                                    channels=2,
+                                                    channel_mask=0x3,
+                                                    bits_per_sample=16),
+                           audiotools.PCMFileReader(BytesIO(b""),
+                                                    sample_rate=44100,
+                                                    channels=1,
+                                                    channel_mask=0x4,
+                                                    bits_per_sample=16)])
 
         self.assertRaises(ValueError,
                           audiotools.PCMCat,
-                          [audiotools.PCMReader(BytesIO(b""),
-                                                sample_rate=44100,
-                                                channels=1,
-                                                channel_mask=0x4,
-                                                bits_per_sample=24),
-                           audiotools.PCMReader(BytesIO(b""),
-                                                sample_rate=44100,
-                                                channels=1,
-                                                channel_mask=0x4,
-                                                bits_per_sample=16)])
+                          [audiotools.PCMFileReader(BytesIO(b""),
+                                                    sample_rate=44100,
+                                                    channels=1,
+                                                    channel_mask=0x4,
+                                                    bits_per_sample=24),
+                           audiotools.PCMFileReader(BytesIO(b""),
+                                                    sample_rate=44100,
+                                                    channels=1,
+                                                    channel_mask=0x4,
+                                                    bits_per_sample=16)])
 
         main_readers = [
-            audiotools.PCMReader(
+            audiotools.PCMFileReader(
                 BytesIO(
                     from_list(samples, 1, 16, True).to_bytes(True,
                                                              True)),
@@ -291,7 +291,7 @@ class LimitedPCMReader(unittest.TestCase):
     def test_pcm(self):
         from audiotools.pcm import from_list
 
-        main_reader = audiotools.PCMReader(
+        main_reader = audiotools.PCMFileReader(
             BytesIO(
                 from_list(list(range(-50, 50)),
                           1,
@@ -353,7 +353,7 @@ class PCMReaderWindow(unittest.TestCase):
 
         for initial_offset in range(-5, 5):
             for pcm_frames in range(5, 15):
-                main_reader = audiotools.PCMReader(
+                main_reader = audiotools.PCMFileReader(
                     BytesIO(
                         from_list(list(range(1, 11)),
                                   1,
@@ -1736,10 +1736,9 @@ class TestFrameList(unittest.TestCase):
                         continue
                     if (track.lossless()):
                         md5sum = md5()
-                        pcmreader = track.to_pcm()
-                        audiotools.transfer_framelist_data(pcmreader,
-                                                           md5sum.update)
-                        pcmreader.close()
+                        with track.to_pcm() as pcmreader:
+                            audiotools.transfer_framelist_data(
+                                pcmreader, md5sum.update)
                         self.assertEqual(
                             md5sum.hexdigest(), sine.hexdigest(),
                             "MD5 mismatch for %s using %s" % (
@@ -1756,11 +1755,9 @@ class TestFrameList(unittest.TestCase):
                                     continue
                                 if (track2.lossless()):
                                     md5sum2 = md5()
-                                    pcmreader = track2.to_pcm()
-                                    audiotools.transfer_framelist_data(
-                                        pcmreader,
-                                        md5sum2.update)
-                                    pcmreader.close()
+                                    with track2.to_pcm() as pcmreader:
+                                        audiotools.transfer_framelist_data(
+                                            pcmreader, md5sum2.update)
                                     self.assertEqual(
                                         md5sum.hexdigest(),
                                         sine.hexdigest(),
@@ -4505,8 +4502,8 @@ class TestReplayGain(unittest.TestCase):
         rg = audiotools.replaygain.ReplayGain(44100)
 
         self.assertEqual(
-            rg.title_gain(audiotools.PCMReader(BytesIO(b""),
-                                               44100, 2, 0x3, 16)),
+            rg.title_gain(audiotools.PCMFileReader(BytesIO(b""),
+                                                   44100, 2, 0x3, 16)),
             (0.0, 0.0))
         self.assertRaises(ValueError, rg.album_gain)
 
@@ -4608,9 +4605,8 @@ class TestReplayGain(unittest.TestCase):
 
             # calculate its ReplayGain
             gain = audiotools.replaygain.ReplayGain(track1.sample_rate())
-            pcm = track1.to_pcm()
-            (gain, peak) = gain.title_gain(pcm)
-            pcm.close()
+            with track1.to_pcm() as pcm:
+                (gain, peak) = gain.title_gain(pcm)
 
             # apply gain to dummy file
             track2 = test_format.from_pcm(
@@ -4621,9 +4617,8 @@ class TestReplayGain(unittest.TestCase):
 
             # ensure gain applied is quieter than without gain applied
             gain2 = audiotools.replaygain.ReplayGain(track1.sample_rate())
-            pcm = track2.to_pcm()
-            (gain2, peak2) = gain2.title_gain(pcm)
-            pcm.close()
+            with track2.to_pcm() as pcm:
+                (gain2, peak2) = gain2.title_gain(pcm)
 
             self.assertGreater(gain2, gain)
         finally:
@@ -5167,24 +5162,6 @@ class test_wavpack_cuesheet(test_flac_cuesheet):
         pass
 
 
-# takes several 1-channel PCMReaders and combines them into a single PCMReader
-class PCM_Reader_Multiplexer:
-    def __init__(self, pcm_readers, channel_mask):
-        self.buffers = [audiotools.BufferedPCMReader(r) for r in pcm_readers]
-        self.sample_rate = pcm_readers[0].sample_rate
-        self.channels = len(pcm_readers)
-        self.channel_mask = channel_mask
-        self.bits_per_sample = pcm_readers[0].bits_per_sample
-
-    def read(self, pcm_frames):
-        return audiotools.pcm.from_channels(
-            [reader.read(pcm_frames) for reader in self.buffers])
-
-    def close(self):
-        for reader in self.buffers:
-            reader.close()
-
-
 class TestMultiChannel(unittest.TestCase):
     def setUp(self):
         # these support the full range of ChannelMasks
@@ -5204,7 +5181,7 @@ class TestMultiChannel(unittest.TestCase):
                  suffix="." + audio_class.SUFFIX) as temp_file:
             temp_track = audio_class.from_pcm(
                 temp_file.name,
-                PCM_Reader_Multiplexer(
+                Join_Reader(
                     [BLANK_PCM_Reader(2, channels=1)
                      for i in range(len(channel_mask))],
                     channel_mask))
@@ -5214,10 +5191,9 @@ class TestMultiChannel(unittest.TestCase):
                               channel_mask,
                               audio_class.NAME))
 
-            pcm = temp_track.to_pcm()
-            self.assertEqual(int(pcm.channel_mask), int(channel_mask))
-            audiotools.transfer_framelist_data(pcm, lambda x: x)
-            pcm.close()
+            with temp_track.to_pcm() as pcm:
+                self.assertEqual(int(pcm.channel_mask), int(channel_mask))
+                audiotools.transfer_framelist_data(pcm, lambda x: x)
 
     def __test_undefined_mask_blank__(self, audio_class, channels,
                                       should_be_blank):
@@ -5226,28 +5202,26 @@ class TestMultiChannel(unittest.TestCase):
         try:
             temp_track = audio_class.from_pcm(
                 temp_file.name,
-                PCM_Reader_Multiplexer(
+                Join_Reader(
                     [BLANK_PCM_Reader(2, channels=1)
                      for i in range(channels)],
                     audiotools.ChannelMask(0)))
             self.assertEqual(temp_track.channels(), channels)
             if (should_be_blank):
                 self.assertEqual(int(temp_track.channel_mask()), 0)
-                pcm = temp_track.to_pcm()
-                self.assertEqual(int(pcm.channel_mask), 0)
-                audiotools.transfer_framelist_data(pcm, lambda x: x)
-                pcm.close()
+                with temp_track.to_pcm() as pcm:
+                    self.assertEqual(int(pcm.channel_mask), 0)
+                    audiotools.transfer_framelist_data(pcm, lambda x: x)
             else:
                 self.assertNotEqual(int(temp_track.channel_mask()), 0,
                                     "mask = %s for format %s at %d channels" %
                                     (temp_track.channel_mask(),
                                      audio_class,
                                      channels))
-                pcm = temp_track.to_pcm()
-                self.assertEqual(int(pcm.channel_mask),
-                                 int(temp_track.channel_mask()))
-                audiotools.transfer_framelist_data(pcm, lambda x: x)
-                pcm.close()
+                with temp_track.to_pcm() as pcm:
+                    self.assertEqual(int(pcm.channel_mask),
+                                     int(temp_track.channel_mask()))
+                    audiotools.transfer_framelist_data(pcm, lambda x: x)
         finally:
             temp_file.close()
 
@@ -5260,9 +5234,9 @@ class TestMultiChannel(unittest.TestCase):
                 audiotools.UnsupportedChannelMask,
                 audio_class.from_pcm,
                 temp_file.name,
-                PCM_Reader_Multiplexer([BLANK_PCM_Reader(2, channels=1)
-                                        for i in range(channels)],
-                                       channel_mask))
+                Join_Reader([BLANK_PCM_Reader(2, channels=1)
+                             for i in range(channels)],
+                            channel_mask))
         finally:
             temp_file.close()
 
@@ -5275,9 +5249,9 @@ class TestMultiChannel(unittest.TestCase):
                 audiotools.UnsupportedChannelCount,
                 audio_class.from_pcm,
                 temp_file.name,
-                PCM_Reader_Multiplexer([BLANK_PCM_Reader(2, channels=1)
-                                        for i in range(channels)],
-                                       channel_mask))
+                Join_Reader([BLANK_PCM_Reader(2, channels=1)
+                             for i in range(channels)],
+                            channel_mask))
         finally:
             temp_file.close()
 
@@ -5293,7 +5267,7 @@ class TestMultiChannel(unittest.TestCase):
         try:
             source_track = source_audio_class.from_pcm(
                 source_file.name,
-                PCM_Reader_Multiplexer(
+                Join_Reader(
                     [BLANK_PCM_Reader(2, channels=1)
                      for i in range(len(channel_mask))],
                     channel_mask))
@@ -5517,7 +5491,7 @@ class TestMultiChannel(unittest.TestCase):
                 try:
                     temp_track = stereo_audio_class.from_pcm(
                         temp_file.name,
-                        PCM_Reader_Multiplexer(
+                        Join_Reader(
                             [BLANK_PCM_Reader(2, channels=1)
                              for i in range(channels)],
                             audiotools.ChannelMask(0)))
@@ -5526,11 +5500,10 @@ class TestMultiChannel(unittest.TestCase):
                         int(temp_track.channel_mask()),
                         int(audiotools.ChannelMask.from_fields(
                             front_left=True, front_right=True)))
-                    pcm = temp_track.to_pcm()
-                    self.assertEqual(int(pcm.channel_mask),
-                                     int(temp_track.channel_mask()))
-                    audiotools.transfer_framelist_data(pcm, lambda x: x)
-                    pcm.close()
+                    with temp_track.to_pcm() as pcm:
+                        self.assertEqual(int(pcm.channel_mask),
+                                         int(temp_track.channel_mask()))
+                        audiotools.transfer_framelist_data(pcm, lambda x: x)
                 finally:
                     temp_file.close()
 
@@ -5946,7 +5919,8 @@ class Test_Accuraterip(Test_FreeDB):
                                 sample_rate=track.sample_rate(),
                                 is_first=False,
                                 is_last=False)
-        audiotools.transfer_data(track.to_pcm().read, middle_track.update)
+        with track.to_pcm() as pcmreader:
+            audiotools.transfer_data(pcmreader.read, middle_track.update)
         self.assertEqual(middle_track.checksums_v1(), [0xF6E4AD26])
         self.assertEqual(middle_track.checksum_v2(), 0x4781FC37)
 
@@ -5956,11 +5930,10 @@ class Test_Accuraterip(Test_FreeDB):
                                 is_last=False,
                                 pcm_frame_range=3,
                                 accurateripv2_offset=1)
-        audiotools.transfer_data(
-            audiotools.PCMReaderWindow(track.to_pcm(),
-                                       -1,
-                                       track.total_frames() + 2).read,
-            middle_track.update)
+        with audiotools.PCMReaderWindow(track.to_pcm(),
+                                        -1,
+                                        track.total_frames() + 2) as pcmreader:
+            audiotools.transfer_data(pcmreader.read, middle_track.update)
         self.assertEqual(middle_track.checksums_v1(), [0xCA705E69,
                                                        0xF6E4AD26,
                                                        0x951FB12F])
@@ -5973,7 +5946,8 @@ class Test_Accuraterip(Test_FreeDB):
                                sample_rate=track.sample_rate(),
                                is_first=True,
                                is_last=False)
-        audiotools.transfer_data(track.to_pcm().read, first_track.update)
+        with track.to_pcm() as pcmreader:
+            audiotools.transfer_data(pcmreader.read, first_track.update)
         self.assertEqual(first_track.checksums_v1(), [0xEE4DBEB4])
         self.assertEqual(first_track.checksum_v2(), 0x3ECA2C04)
 
@@ -5983,11 +5957,10 @@ class Test_Accuraterip(Test_FreeDB):
                                is_last=False,
                                pcm_frame_range=3,
                                accurateripv2_offset=1)
-        audiotools.transfer_data(
-            audiotools.PCMReaderWindow(track.to_pcm(),
-                                       -1,
-                                       track.total_frames() + 2).read,
-            first_track.update)
+        with audiotools.PCMReaderWindow(track.to_pcm(),
+                                        -1,
+                                        track.total_frames() + 2) as pcmreader:
+            audiotools.transfer_data(pcmreader.read, first_track.update)
         self.assertEqual(first_track.checksums_v1(), [0x7CC66A55,
                                                       0xEE4DBEB4,
                                                       0x9A58C7EC])
@@ -6000,7 +5973,8 @@ class Test_Accuraterip(Test_FreeDB):
                               sample_rate=track.sample_rate(),
                               is_first=False,
                               is_last=True)
-        audiotools.transfer_data(track.to_pcm().read, last_track.update)
+        with track.to_pcm() as pcmreader:
+            audiotools.transfer_data(pcmreader.read, last_track.update)
         self.assertEqual(last_track.checksums_v1(), [0xF819E862])
         self.assertEqual(last_track.checksum_v2(), 0x222E32FA)
 
@@ -6010,11 +5984,10 @@ class Test_Accuraterip(Test_FreeDB):
                               is_last=True,
                               pcm_frame_range=3,
                               accurateripv2_offset=1)
-        audiotools.transfer_data(
-            audiotools.PCMReaderWindow(track.to_pcm(),
-                                       -1,
-                                       track.total_frames() + 2).read,
-            last_track.update)
+        with audiotools.PCMReaderWindow(track.to_pcm(),
+                                        -1,
+                                        track.total_frames() + 2) as pcmreader:
+            audiotools.transfer_data(pcmreader.read, last_track.update)
         self.assertEqual(last_track.checksums_v1(), [0x682F9316,
                                                      0xF819E862,
                                                      0x00DBAF4E])
@@ -6027,7 +6000,8 @@ class Test_Accuraterip(Test_FreeDB):
                               sample_rate=track.sample_rate(),
                               is_first=True,
                               is_last=True)
-        audiotools.transfer_data(track.to_pcm().read, only_track.update)
+        with track.to_pcm() as pcmreader:
+            audiotools.transfer_data(pcmreader.read, only_track.update)
         self.assertEqual(only_track.checksums_v1(), [0xEF82F9F0])
         self.assertEqual(only_track.checksum_v2(), 0x197662C7)
 
@@ -6037,11 +6011,10 @@ class Test_Accuraterip(Test_FreeDB):
                               is_last=True,
                               pcm_frame_range=3,
                               accurateripv2_offset=1)
-        audiotools.transfer_data(
-            audiotools.PCMReaderWindow(track.to_pcm(),
-                                       -1,
-                                       track.total_frames() + 2).read,
-            only_track.update)
+        with audiotools.PCMReaderWindow(track.to_pcm(),
+                                        -1,
+                                        track.total_frames() + 2) as pcmreader:
+            audiotools.transfer_data(pcmreader.read, only_track.update)
         self.assertEqual(only_track.checksums_v1(), [0x1A859F02,
                                                      0xEF82F9F0,
                                                      0x0614C60B])
@@ -6058,8 +6031,9 @@ class Test_Accuraterip(Test_FreeDB):
             is_first=False,
             is_last=False,
             pcm_frame_range=1)
-        audiotools.transfer_data(track.to_pcm().read,
-                                 insufficient_samples.update)
+        with track.to_pcm() as pcmreader:
+            audiotools.transfer_data(pcmreader.read,
+                                     insufficient_samples.update)
         self.assertRaises(ValueError, insufficient_samples.checksums_v1)
         self.assertRaises(ValueError, insufficient_samples.checksum_v2)
 
@@ -6071,8 +6045,9 @@ class Test_Accuraterip(Test_FreeDB):
             is_last=False,
             pcm_frame_range=2,
             accurateripv2_offset=1)
-        audiotools.transfer_data(track.to_pcm().read,
-                                 insufficient_samples.update)
+        with track.to_pcm() as pcmreader:
+            audiotools.transfer_data(pcmreader.read,
+                                     insufficient_samples.update)
         self.assertRaises(ValueError, insufficient_samples.checksums_v1)
         self.assertRaises(ValueError, insufficient_samples.checksum_v2)
 
@@ -6084,10 +6059,11 @@ class Test_Accuraterip(Test_FreeDB):
             is_first=False,
             is_last=False,
             pcm_frame_range=1)
-        self.assertRaises(ValueError,
-                          audiotools.transfer_data,
-                          track.to_pcm().read,
-                          too_many_samples.update)
+        with track.to_pcm() as pcmreader:
+            self.assertRaises(ValueError,
+                              audiotools.transfer_data,
+                              pcmreader.read,
+                              too_many_samples.update)
 
         # ensure too many samples also works with a range
         too_many_samples = Checksum(
@@ -6096,10 +6072,11 @@ class Test_Accuraterip(Test_FreeDB):
             is_first=False,
             is_last=False,
             pcm_frame_range=2)
-        self.assertRaises(ValueError,
-                          audiotools.transfer_data,
-                          track.to_pcm().read,
-                          too_many_samples.update)
+        with track.to_pcm() as pcmreader:
+            self.assertRaises(ValueError,
+                              audiotools.transfer_data,
+                              pcmreader.read,
+                              too_many_samples.update)
 
     @LIB_ACCURATERIP
     def test_perform_lookup(self):

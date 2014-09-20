@@ -1073,21 +1073,11 @@ ReplayGain Objects
 PCMReader Objects
 -----------------
 
-.. class:: PCMReader(file, sample_rate, channels, channel_mask, bits_per_sample[, process[, signed[, big_endian]]])
+.. class:: PCMReader(sample_rate, channels, channel_mask, bits_per_sample)
 
-   This class wraps around file-like objects and generates
-   :class:`pcm.FrameList` objects on each call to :meth:`read`.
-   ``sample_rate``, ``channels``, ``channel_mask`` and ``bits_per_sample``
-   should be integers.
-   ``process`` is a subprocess helper object which generates PCM data.
-   ``signed`` is ``True`` if the generated PCM data is signed.
-   ``big_endian`` is ``True`` if the generated PCM data is big-endian.
-
-   Note that :class:`PCMReader`-compatible objects need only implement the
-   ``sample_rate``, ``channels``, ``channel_mask`` and ``bits_per_sample``
-   fields.
-   The rest are helpers for converting raw strings into :class:`pcm.FrameList`
-   objects.
+   This is an abstract base class for streams of audio data
+   which are file-like objects with additional stream parameters.
+   Subclasses are expected to implement ``read`` and ``close``.
 
 .. data:: PCMReader.sample_rate
 
@@ -1130,6 +1120,29 @@ PCMReader Objects
 
    Subsequent calls to :meth:`PCMReader.read` will
    raise :exc:`ValueError` exceptions once the stream is closed.
+
+.. method:: PCMReader.__enter__()
+
+   Returns the PCMReader.
+   This is used for implementing context management.
+
+.. method:: PCMReader.__exit__(exc_type, exc_value, traceback)
+
+   Calls :meth:`PCMReader.close`.
+   This is used for implementing context management.
+
+PCMFileReader Objects
+^^^^^^^^^^^^^^^^^^^^^
+
+.. class:: PCMFileReader(file, sample_rate, channels, channel_mask, bits_per_sample[, process[, signed[, big_endian]]])
+
+   This class wraps around file-like objects and generates
+   :class:`pcm.FrameList` objects on each call to :meth:`read`.
+   ``sample_rate``, ``channels``, ``channel_mask`` and ``bits_per_sample``
+   should be integers.
+   ``process`` is a subprocess helper object which generates PCM data.
+   ``signed`` is ``True`` if the generated PCM data is signed.
+   ``big_endian`` is ``True`` if the generated PCM data is big-endian.
 
 PCMReaderError Objects
 ^^^^^^^^^^^^^^^^^^^^^^

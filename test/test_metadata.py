@@ -82,9 +82,8 @@ class MetaDataTest(unittest.TestCase):
                 self.assertIsInstance(metadata2, self.metadata_class)
 
                 # also ensure that the new track is playable
-                pcm = track.to_pcm()
-                audiotools.transfer_framelist_data(pcm, lambda f: f)
-                pcm.close()
+                with track.to_pcm() as pcm:
+                    audiotools.transfer_framelist_data(pcm, lambda f: f)
 
     @METADATA_METADATA
     def test_attribs(self):
@@ -3175,10 +3174,11 @@ class ID3v22MetaData(MetaDataTest):
             mp3_track.update_metadata(metadata)
 
             # ensure file isn't broken
-            self.assertEqual(
-                audiotools.pcm_frame_cmp(
-                    audiotools.open("sine.mp3").to_pcm(),
-                    audiotools.open(temp_file_name).to_pcm()), None)
+            pcm1 = audiotools.open("sine.mp3").to_pcm()
+            pcm2 = audiotools.open(temp_file_name).to_pcm()
+            self.assertIsNone(audiotools.pcm_frame_cmp(pcm1, pcm2))
+            pcm1.close()
+            pcm2.close()
 
             # ensure metadata is unchanged
             # and has the expected buffer size

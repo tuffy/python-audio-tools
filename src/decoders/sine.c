@@ -154,6 +154,22 @@ Sine_Mono_reset(decoders_Sine_Mono* self, PyObject* args) {
 }
 
 static PyObject*
+Sine_Mono_enter(decoders_Sine_Mono* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+Sine_Mono_exit(decoders_Sine_Mono* self, PyObject *args)
+{
+    self->closed = 1;
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
 Sine_Mono_channels(decoders_Sine_Mono *self, void *closure) {
     return Py_BuildValue("i", 1);
 }
@@ -308,6 +324,22 @@ Sine_Stereo_reset(decoders_Sine_Stereo* self, PyObject* args) {
 }
 
 static PyObject*
+Sine_Stereo_enter(decoders_Sine_Stereo* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+Sine_Stereo_exit(decoders_Sine_Stereo* self, PyObject *args)
+{
+    self->closed = 1;
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
 Sine_Stereo_channels(decoders_Sine_Stereo *self, void *closure) {
     return Py_BuildValue("i", 2);
 }
@@ -441,6 +473,22 @@ Sine_Simple_reset(decoders_Sine_Simple* self, PyObject* args) {
     self->i = 0;
     self->remaining_pcm_frames = self->total_pcm_frames;
     self->closed = 0;
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+Sine_Simple_enter(decoders_Sine_Simple* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+Sine_Simple_exit(decoders_Sine_Simple* self, PyObject *args)
+{
+    self->closed = 1;
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -594,6 +642,22 @@ SameSample_reset(decoders_SameSample* self, PyObject* args)
 {
     self->closed = 0;
     self->remaining_pcm_frames = self->total_pcm_frames;
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+SameSample_enter(decoders_SameSample* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+SameSample_exit(decoders_SameSample* self, PyObject *args)
+{
+    self->closed = 1;
 
     Py_INCREF(Py_None);
     return Py_None;

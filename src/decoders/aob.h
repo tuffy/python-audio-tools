@@ -108,13 +108,13 @@ PyGetSetDef DVDA_Title_getseters[] = {
     {"channels",
      (getter)DVDA_Title_channels, NULL, "channels", NULL},
     {"bits_per_sample",
-     (getter)DVDA_Title_bits_per_sample, NULL, "bits_per_sample", NULL},
+     (getter)DVDA_Title_bits_per_sample, NULL, "bits-per-sample", NULL},
     {"sample_rate",
-     (getter)DVDA_Title_sample_rate, NULL, "sample_rate", NULL},
+     (getter)DVDA_Title_sample_rate, NULL, "sample rate", NULL},
     {"channel_mask",
-     (getter)DVDA_Title_channel_mask, NULL, "channel_mask", NULL},
+     (getter)DVDA_Title_channel_mask, NULL, "channel mask", NULL},
     {"pcm_frames",
-     (getter)DVDA_Title_pcm_frames, NULL, "pcm_frames", NULL},
+     (getter)DVDA_Title_pcm_frames, NULL, "pcm frames", NULL},
     {NULL}
 };
 
@@ -127,13 +127,23 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args);
 static PyObject*
 DVDA_Title_close(decoders_DVDA_Title *self, PyObject *args);
 
+static PyObject*
+DVDA_Title_enter(decoders_DVDA_Title* self, PyObject *args);
+
+static PyObject*
+DVDA_Title_exit(decoders_DVDA_Title* self, PyObject *args);
+
 PyMethodDef DVDA_Title_methods[] = {
     {"next_track", (PyCFunction)DVDA_Title_next_track,
      METH_VARARGS, "Reinitializes the title for the next track in the stream"},
     {"read", (PyCFunction)DVDA_Title_read,
-     METH_VARARGS, "Reads a frame of data from the AOB stream"},
+     METH_VARARGS, "read(pcm_frame_count) -> FrameList"},
     {"close", (PyCFunction)DVDA_Title_close,
-     METH_NOARGS, "Closes the AOB stream"},
+     METH_NOARGS, "close() -> None"},
+    {"__enter__", (PyCFunction)DVDA_Title_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)DVDA_Title_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 

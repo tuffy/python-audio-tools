@@ -155,6 +155,12 @@ class WavPackDecoder(object):
     def close(self):
         self.reader.close()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
 
 class Block_Header(object):
     def __init__(self,

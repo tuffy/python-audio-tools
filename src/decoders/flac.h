@@ -106,23 +106,18 @@ typedef struct {
     PyObject* audiotools_pcm;
 } decoders_FlacDecoder;
 
-/*the FlacDecoder.sample_rate attribute getter*/
 static PyObject*
 FlacDecoder_sample_rate(decoders_FlacDecoder *self, void *closure);
 
-/*the FlacDecoder.bits_per_sample attribute getter*/
 static PyObject*
 FlacDecoder_bits_per_sample(decoders_FlacDecoder *self, void *closure);
 
-/*the FlacDecoder.channels attribute getter*/
 static PyObject*
 FlacDecoder_channels(decoders_FlacDecoder *self, void *closure);
 
-/*the FlacDecoder.channel_mask attribute getter*/
 static PyObject*
 FlacDecoder_channel_mask(decoders_FlacDecoder *self, void *closure);
 
-/*the FlacDecoder.read() method*/
 static PyObject*
 FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args);
 
@@ -132,9 +127,14 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args);
 static PyObject*
 FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args);
 
-/*the FlacDecoder.close() method*/
 static PyObject*
 FlacDecoder_close(decoders_FlacDecoder* self, PyObject *args);
+
+static PyObject*
+FlacDecoder_enter(decoders_FlacDecoder* self, PyObject *args);
+
+static PyObject*
+FlacDecoder_exit(decoders_FlacDecoder* self, PyObject *args);
 
 /*the FlacDecoder.__init__() method*/
 int
@@ -145,24 +145,27 @@ PyGetSetDef FlacDecoder_getseters[] = {
     {"sample_rate",
      (getter)FlacDecoder_sample_rate, NULL, "sample rate", NULL},
     {"bits_per_sample",
-     (getter)FlacDecoder_bits_per_sample, NULL, "bits per sample", NULL},
+     (getter)FlacDecoder_bits_per_sample, NULL, "bits-per-sample", NULL},
     {"channels",
      (getter)FlacDecoder_channels, NULL, "channels", NULL},
     {"channel_mask",
-     (getter)FlacDecoder_channel_mask, NULL, "channel_mask", NULL},
+     (getter)FlacDecoder_channel_mask, NULL, "channel mask", NULL},
     {NULL}
 };
 
 PyMethodDef FlacDecoder_methods[] = {
     {"read", (PyCFunction)FlacDecoder_read,
-     METH_VARARGS,
-     "Reads the given number of PCM frames from the FLAC file, if possible"},
+     METH_VARARGS, "read(pcm_frame_count) -> FrameList"},
     {"seek", (PyCFunction)FlacDecoder_seek,
-     METH_VARARGS, "Tries to seek to the given PCM frames offset"},
+     METH_VARARGS, "seek(desired_pcm_offset) -> actual_pcm_offset"},
     {"offsets", (PyCFunction)FlacDecoder_offsets,
-     METH_NOARGS, "Returns a list of (offset, PCM frame count) values"},
+     METH_NOARGS, "offsets() -> [(byte_offset, pcm_frame_count), ...]"},
     {"close", (PyCFunction)FlacDecoder_close,
-     METH_NOARGS, "Closes the FLAC decoder stream"},
+     METH_NOARGS, "close() -> None"},
+    {"__enter__", (PyCFunction)FlacDecoder_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)FlacDecoder_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 

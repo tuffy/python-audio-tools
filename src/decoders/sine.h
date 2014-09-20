@@ -61,6 +61,12 @@ static PyObject*
 Sine_Mono_reset(decoders_Sine_Mono* self, PyObject* args);
 
 static PyObject*
+Sine_Mono_enter(decoders_Sine_Mono* self, PyObject *args);
+
+static PyObject*
+Sine_Mono_exit(decoders_Sine_Mono* self, PyObject *args);
+
+static PyObject*
 Sine_Mono_channels(decoders_Sine_Mono *self, void *closure);
 
 static PyObject*
@@ -74,11 +80,15 @@ Sine_Mono_channel_mask(decoders_Sine_Mono *self, void *closure);
 
 PyMethodDef Sine_Mono_methods[] = {
     {"read", (PyCFunction)Sine_Mono_read,
-     METH_VARARGS, "Reads a frame of sine data"},
+     METH_VARARGS, "read(pcm_frame_count) -> FrameList"},
     {"close", (PyCFunction)Sine_Mono_close,
-     METH_NOARGS, "Closes the stream"},
+     METH_NOARGS, "close() -> None"},
     {"reset", (PyCFunction)Sine_Mono_reset,
-     METH_NOARGS, "Resets the stream to be read again"},
+     METH_NOARGS, "resets the stream to be read again"},
+    {"__enter__", (PyCFunction)Sine_Mono_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)Sine_Mono_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 
@@ -86,11 +96,11 @@ PyGetSetDef Sine_Mono_getseters[] = {
     {"channels",
      (getter)Sine_Mono_channels, NULL, "channels", NULL},
     {"bits_per_sample",
-     (getter)Sine_Mono_bits_per_sample, NULL, "bits_per_sample", NULL},
+     (getter)Sine_Mono_bits_per_sample, NULL, "bits-per-sample", NULL},
     {"sample_rate",
-     (getter)Sine_Mono_sample_rate, NULL, "sample_rate", NULL},
+     (getter)Sine_Mono_sample_rate, NULL, "sample rate", NULL},
     {"channel_mask",
-     (getter)Sine_Mono_channel_mask, NULL, "channel_mask", NULL},
+     (getter)Sine_Mono_channel_mask, NULL, "channel mask", NULL},
     {NULL}
 };
 
@@ -176,6 +186,12 @@ static PyObject*
 Sine_Stereo_reset(decoders_Sine_Stereo* self, PyObject* args);
 
 static PyObject*
+Sine_Stereo_enter(decoders_Sine_Stereo* self, PyObject *args);
+
+static PyObject*
+Sine_Stereo_exit(decoders_Sine_Stereo* self, PyObject *args);
+
+static PyObject*
 Sine_Stereo_channels(decoders_Sine_Stereo *self, void *closure);
 
 static PyObject*
@@ -189,11 +205,15 @@ Sine_Stereo_channel_mask(decoders_Sine_Stereo *self, void *closure);
 
 PyMethodDef Sine_Stereo_methods[] = {
     {"read", (PyCFunction)Sine_Stereo_read,
-     METH_VARARGS, "Reads a frame of sine data"},
+     METH_VARARGS, "read(pcm_frame_count) -> FrameList"},
     {"close", (PyCFunction)Sine_Stereo_close,
-     METH_NOARGS, "Closes the stream"},
+     METH_NOARGS, "close() -> None"},
     {"reset", (PyCFunction)Sine_Stereo_reset,
-     METH_NOARGS, "Resets the stream to be read again"},
+     METH_NOARGS, "resets the stream to be read again"},
+    {"__enter__", (PyCFunction)Sine_Stereo_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)Sine_Stereo_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 
@@ -201,11 +221,11 @@ PyGetSetDef Sine_Stereo_getseters[] = {
     {"channels",
      (getter)Sine_Stereo_channels, NULL, "channels", NULL},
     {"bits_per_sample",
-     (getter)Sine_Stereo_bits_per_sample, NULL, "bits_per_sample", NULL},
+     (getter)Sine_Stereo_bits_per_sample, NULL, "bits-per-sample", NULL},
     {"sample_rate",
-     (getter)Sine_Stereo_sample_rate, NULL, "sample_rate", NULL},
+     (getter)Sine_Stereo_sample_rate, NULL, "sample rate", NULL},
     {"channel_mask",
-     (getter)Sine_Stereo_channel_mask, NULL, "channel_mask", NULL},
+     (getter)Sine_Stereo_channel_mask, NULL, "channel mask", NULL},
     {NULL}
 };
 
@@ -288,6 +308,12 @@ static PyObject*
 Sine_Simple_reset(decoders_Sine_Simple* self, PyObject* args);
 
 static PyObject*
+Sine_Simple_enter(decoders_Sine_Simple* self, PyObject *args);
+
+static PyObject*
+Sine_Simple_exit(decoders_Sine_Simple* self, PyObject *args);
+
+static PyObject*
 Sine_Simple_channels(decoders_Sine_Simple *self, void *closure);
 
 static PyObject*
@@ -301,11 +327,15 @@ Sine_Simple_channel_mask(decoders_Sine_Simple *self, void *closure);
 
 PyMethodDef Sine_Simple_methods[] = {
     {"read", (PyCFunction)Sine_Simple_read,
-     METH_VARARGS, "Reads a frame of sine data"},
+     METH_VARARGS, "read(pcm_frame_count) -> FrameList"},
     {"close", (PyCFunction)Sine_Simple_close,
-     METH_NOARGS, "Closes the stream"},
+     METH_NOARGS, "close() -> None"},
     {"reset", (PyCFunction)Sine_Simple_reset,
-     METH_NOARGS, "Resets the stream to be read again"},
+     METH_NOARGS, "resets the stream to be read again"},
+    {"__enter__", (PyCFunction)Sine_Simple_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)Sine_Simple_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 
@@ -313,11 +343,11 @@ PyGetSetDef Sine_Simple_getseters[] = {
     {"channels",
      (getter)Sine_Simple_channels, NULL, "channels", NULL},
     {"bits_per_sample",
-     (getter)Sine_Simple_bits_per_sample, NULL, "bits_per_sample", NULL},
+     (getter)Sine_Simple_bits_per_sample, NULL, "bits-per-sample", NULL},
     {"sample_rate",
-     (getter)Sine_Simple_sample_rate, NULL, "sample_rate", NULL},
+     (getter)Sine_Simple_sample_rate, NULL, "sample rate", NULL},
     {"channel_mask",
-     (getter)Sine_Simple_channel_mask, NULL, "channel_mask", NULL},
+     (getter)Sine_Simple_channel_mask, NULL, "channel mask", NULL},
     {NULL}
 };
 
@@ -398,6 +428,12 @@ static PyObject*
 SameSample_reset(decoders_SameSample* self, PyObject* args);
 
 static PyObject*
+SameSample_enter(decoders_SameSample* self, PyObject *args);
+
+static PyObject*
+SameSample_exit(decoders_SameSample* self, PyObject *args);
+
+static PyObject*
 SameSample_channels(decoders_SameSample *self, void *closure);
 
 static PyObject*
@@ -411,11 +447,15 @@ SameSample_channel_mask(decoders_SameSample *self, void *closure);
 
 PyMethodDef SameSample_methods[] = {
     {"read", (PyCFunction)SameSample_read,
-     METH_VARARGS, "Reads a frame of data"},
+     METH_VARARGS, "read(pcm_frame_count) -> FrameList"},
     {"close", (PyCFunction)SameSample_close,
-     METH_NOARGS, "Closes the stream"},
+     METH_NOARGS, "close() -> None"},
     {"reset", (PyCFunction)SameSample_reset,
-     METH_NOARGS, "Resets the stream to be read again"},
+     METH_NOARGS, "resets the stream to be read again"},
+    {"__enter__", (PyCFunction)SameSample_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)SameSample_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 
@@ -423,11 +463,11 @@ PyGetSetDef SameSample_getseters[] = {
     {"channels",
      (getter)SameSample_channels, NULL, "channels", NULL},
     {"bits_per_sample",
-     (getter)SameSample_bits_per_sample, NULL, "bits_per_sample", NULL},
+     (getter)SameSample_bits_per_sample, NULL, "bits-per-sample", NULL},
     {"sample_rate",
-     (getter)SameSample_sample_rate, NULL, "sample_rate", NULL},
+     (getter)SameSample_sample_rate, NULL, "sample rate", NULL},
     {"channel_mask",
-     (getter)SameSample_channel_mask, NULL, "channel_mask", NULL},
+     (getter)SameSample_channel_mask, NULL, "channel mask", NULL},
     {NULL}
 };
 

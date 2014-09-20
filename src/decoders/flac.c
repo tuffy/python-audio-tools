@@ -116,6 +116,22 @@ FlacDecoder_close(decoders_FlacDecoder* self,
     return Py_None;
 }
 
+static PyObject*
+FlacDecoder_enter(decoders_FlacDecoder* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+FlacDecoder_exit(decoders_FlacDecoder* self, PyObject *args)
+{
+    self->closed = 1;
+    self->bitstream->close_internal_stream(self->bitstream);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 void
 FlacDecoder_dealloc(decoders_FlacDecoder *self)
 {

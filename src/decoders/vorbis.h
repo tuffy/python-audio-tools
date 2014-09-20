@@ -63,17 +63,33 @@ VorbisDecoder_dealloc(decoders_VorbisDecoder *self);
 int
 VorbisDecoder_init(decoders_VorbisDecoder *self, PyObject *args, PyObject *kwds);
 
+static PyObject*
+VorbisDecoder_enter(decoders_VorbisDecoder* self, PyObject *args);
+
+static PyObject*
+VorbisDecoder_exit(decoders_VorbisDecoder* self, PyObject *args);
+
 PyGetSetDef VorbisDecoder_getseters[] = {
-    {"sample_rate", (getter)VorbisDecoder_sample_rate, NULL, "sample rate", NULL},
-    {"bits_per_sample", (getter)VorbisDecoder_bits_per_sample, NULL, "bits per sample", NULL},
-    {"channels", (getter)VorbisDecoder_channels, NULL, "channels", NULL},
-    {"channel_mask", (getter)VorbisDecoder_channel_mask, NULL, "channel_mask", NULL},
+    {"sample_rate", (getter)VorbisDecoder_sample_rate,
+     NULL, "sample rate", NULL},
+    {"bits_per_sample", (getter)VorbisDecoder_bits_per_sample,
+     NULL, "bits-per-sample", NULL},
+    {"channels", (getter)VorbisDecoder_channels, NULL,
+     "channels", NULL},
+    {"channel_mask", (getter)VorbisDecoder_channel_mask,
+     NULL, "channel mask", NULL},
     {NULL}
 };
 
 PyMethodDef VorbisDecoder_methods[] = {
-    {"read", (PyCFunction)VorbisDecoder_read, METH_VARARGS, ""},
-    {"close", (PyCFunction)VorbisDecoder_close, METH_NOARGS, ""},
+    {"read", (PyCFunction)VorbisDecoder_read, METH_VARARGS,
+     "read(pcm_frame_count) -> FrameList"},
+    {"close", (PyCFunction)VorbisDecoder_close, METH_NOARGS,
+     "close() -> None"},
+    {"__enter__", (PyCFunction)VorbisDecoder_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)VorbisDecoder_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 

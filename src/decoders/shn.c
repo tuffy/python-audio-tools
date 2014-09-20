@@ -129,6 +129,24 @@ SHNDecoder_close(decoders_SHNDecoder* self, PyObject *args)
 }
 
 static PyObject*
+SHNDecoder_enter(decoders_SHNDecoder* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+SHNDecoder_exit(decoders_SHNDecoder* self, PyObject *args)
+{
+    self->closed = 1;
+
+    self->bitstream->close_internal_stream(self->bitstream);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
 SHNDecoder_sample_rate(decoders_SHNDecoder *self, void *closure)
 {
     return Py_BuildValue("I", self->sample_rate);

@@ -51,6 +51,12 @@ class FrameListReader:
         self.bits_per_sample = bits_per_sample
         self.read = self.read_opened
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
     def read_opened(self, pcm_frames):
         (framelist, self.framelist) = self.framelist.split(pcm_frames)
         return framelist
@@ -69,13 +75,15 @@ class FrameListReader:
         self.read = self.read_closed
 
 
-class MD5Reader:
+class MD5Reader(audiotools.PCMReader):
     def __init__(self, pcmreader):
+        audiotools.PCMReader.__init__(
+            self,
+            sample_rate=pcmreader.sample_rate,
+            channels=pcmreader.channels,
+            channel_mask=pcmreader.channel_mask,
+            bits_per_sample=pcmreader.bits_per_sample)
         self.pcmreader = pcmreader
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
         self.md5 = md5()
 
     def reset(self):
@@ -430,19 +438,21 @@ class Sine24_Stereo(Sine8_Stereo):
              repr(self.fmult))
 
 
-class Simple_Sine:
+class Simple_Sine(audiotools.PCMReader):
     def __init__(self, pcm_frames, sample_rate, channel_mask,
                  bits_per_sample, *values):
+        audiotools.PCMReader.__init__(
+            self,
+            sample_rate=sample_rate,
+            channels=len(values),
+            channel_mask=channel_mask,
+            bits_per_sample=bits_per_sample)
+
         self.pcm_frames = pcm_frames
         self.total_frames = pcm_frames
         self.i = 0
         self.channel_max_values = [v[0] for v in values]
         self.channel_counts = [v[1] for v in values]
-
-        self.sample_rate = sample_rate
-        self.channels = len(values)
-        self.channel_mask = channel_mask
-        self.bits_per_sample = bits_per_sample
 
         self.streams = [Sine_Simple(pcm_frames,
                                     bits_per_sample,
@@ -499,6 +509,12 @@ class WastedBPS16:
         self.md5 = md5()
         self.read = self.read_opened
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
     def read_opened(self, pcm_frames):
         wave = []
         for i in range(min(pcm_frames, self.pcm_frames)):
@@ -538,10 +554,13 @@ class WastedBPS16:
 
 class Raw(audiotools.PCMReader):
     def __init__(self, pcm_frames, channels, bits_per_sample):
-        self.sample_rate = 44100
-        self.channels = channels
-        self.bits_per_sample = bits_per_sample
-        self.process = None
+        audiotools.PCMReader.__init__(
+            self,
+            sample_rate=44100,
+            channels=channels,
+            channel_mask=0,
+            bits_per_sample=bits_per_sample)
+
         self.file = BytesIO()
 
         full_scale = (1 << (bits_per_sample - 1)) - 1

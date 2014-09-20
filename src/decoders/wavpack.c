@@ -268,6 +268,22 @@ WavPackDecoder_close(decoders_WavPackDecoder* self, PyObject *args) {
     return Py_None;
 }
 
+static PyObject*
+WavPackDecoder_enter(decoders_WavPackDecoder* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+WavPackDecoder_exit(decoders_WavPackDecoder* self, PyObject *args)
+{
+    self->closed = 1;
+    self->bitstream->close_internal_stream(self->bitstream);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 PyObject*
 WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     BitstreamReader* bs = self->bitstream;
