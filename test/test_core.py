@@ -538,13 +538,12 @@ class CDDA(unittest.TestCase):
             length = cdda.track_lengths[track_num]
             remaining_offset = offset - cdda.seek(offset)
             self.reader.reset()
-            self.assertEqual(audiotools.pcm_frame_cmp(
+            self.assertTrue(audiotools.pcm_cmp(
                 audiotools.PCMReaderWindow(cdda,
                                            remaining_offset,
                                            length,
                                            False),
-                audiotools.PCMReaderWindow(self.reader, offset, length)),
-                None)
+                audiotools.PCMReaderWindow(self.reader, offset, length)))
 
         # verify close raises exceptions when reading/seeking
         cdda.close()
@@ -1213,33 +1212,77 @@ class Test_sorted_tracks(unittest.TestCase):
 class Test_pcm_frame_cmp(unittest.TestCase):
     @LIB_CORE
     def test_pcm_frame_cmp(self):
-        self.assertIsNone(audiotools.pcm_frame_cmp(
+        from test_formats import CLOSE_PCM_Reader
+
+        reader1 = CLOSE_PCM_Reader(
             test_streams.Sine16_Stereo(44100, 44100,
                                        441.0, 0.50,
-                                       4410.0, 0.49, 1.0),
+                                       4410.0, 0.49, 1.0))
+        reader2 = CLOSE_PCM_Reader(
             test_streams.Sine16_Stereo(44100, 44100,
                                        441.0, 0.50,
-                                       4410.0, 0.49, 1.0)))
-        self.assertEqual(audiotools.pcm_frame_cmp(BLANK_PCM_Reader(1),
-                                                  RANDOM_PCM_Reader(1)), 0)
+                                       4410.0, 0.49, 1.0))
 
-        self.assertEqual(audiotools.pcm_frame_cmp(
-            BLANK_PCM_Reader(1),
-            BLANK_PCM_Reader(1, sample_rate=48000)), 0)
-        self.assertEqual(audiotools.pcm_frame_cmp(
-            BLANK_PCM_Reader(1),
-            BLANK_PCM_Reader(1, channels=1)), 0)
-        self.assertEqual(audiotools.pcm_frame_cmp(
-            BLANK_PCM_Reader(1),
-            BLANK_PCM_Reader(1, bits_per_sample=24)), 0)
-        self.assertEqual(audiotools.pcm_frame_cmp(
-            BLANK_PCM_Reader(1),
-            BLANK_PCM_Reader(1, channel_mask=0x30)), 0)
+        self.assertEqual(reader1.closes_called, 0)
+        self.assertEqual(reader2.closes_called, 0)
+        self.assertIsNone(audiotools.pcm_frame_cmp(reader1 , reader2))
+        self.assertEqual(reader1.closes_called, 1)
+        self.assertEqual(reader2.closes_called, 1)
 
-        self.assertEqual(audiotools.pcm_frame_cmp(
-            BLANK_PCM_Reader(2),
-            audiotools.PCMCat(iter([BLANK_PCM_Reader(1),
-                                    RANDOM_PCM_Reader(1)]))), 44100)
+        reader1 = CLOSE_PCM_Reader(BLANK_PCM_Reader(1))
+        reader2 = CLOSE_PCM_Reader(RANDOM_PCM_Reader(1))
+
+        self.assertEqual(reader1.closes_called, 0)
+        self.assertEqual(reader2.closes_called, 0)
+        self.assertEqual(audiotools.pcm_frame_cmp(reader1, reader2), 0)
+        self.assertEqual(reader1.closes_called, 1)
+        self.assertEqual(reader2.closes_called, 1)
+
+        reader1 = CLOSE_PCM_Reader(BLANK_PCM_Reader(1))
+        reader2 = CLOSE_PCM_Reader(BLANK_PCM_Reader(1, sample_rate=48000))
+
+        self.assertEqual(reader1.closes_called, 0)
+        self.assertEqual(reader2.closes_called, 0)
+        self.assertEqual(audiotools.pcm_frame_cmp(reader1, reader2), 0)
+        self.assertEqual(reader1.closes_called, 1)
+        self.assertEqual(reader2.closes_called, 1)
+
+        reader1 = CLOSE_PCM_Reader(BLANK_PCM_Reader(1))
+        reader2 = CLOSE_PCM_Reader(BLANK_PCM_Reader(1, channels=1))
+
+        self.assertEqual(reader1.closes_called, 0)
+        self.assertEqual(reader2.closes_called, 0)
+        self.assertEqual(audiotools.pcm_frame_cmp(reader1, reader2), 0)
+        self.assertEqual(reader1.closes_called, 1)
+        self.assertEqual(reader2.closes_called, 1)
+
+        reader1 = CLOSE_PCM_Reader(BLANK_PCM_Reader(1))
+        reader2 = CLOSE_PCM_Reader(BLANK_PCM_Reader(1, bits_per_sample=24))
+
+        self.assertEqual(reader1.closes_called, 0)
+        self.assertEqual(reader2.closes_called, 0)
+        self.assertEqual(audiotools.pcm_frame_cmp(reader1, reader2), 0)
+        self.assertEqual(reader1.closes_called, 1)
+        self.assertEqual(reader2.closes_called, 1)
+
+        reader1 = CLOSE_PCM_Reader(BLANK_PCM_Reader(1))
+        reader2 = CLOSE_PCM_Reader(BLANK_PCM_Reader(1, channel_mask=0x30))
+
+        self.assertEqual(reader1.closes_called, 0)
+        self.assertEqual(reader2.closes_called, 0)
+        self.assertEqual(audiotools.pcm_frame_cmp(reader1, reader2), 0)
+        self.assertEqual(reader1.closes_called, 1)
+        self.assertEqual(reader2.closes_called, 1)
+
+        reader1 = CLOSE_PCM_Reader(BLANK_PCM_Reader(2))
+        reader2 = CLOSE_PCM_Reader(
+            audiotools.PCMCat([BLANK_PCM_Reader(1), RANDOM_PCM_Reader(1)]))
+
+        self.assertEqual(reader1.closes_called, 0)
+        self.assertEqual(reader2.closes_called, 0)
+        self.assertEqual(audiotools.pcm_frame_cmp(reader1, reader2), 44100)
+        self.assertEqual(reader1.closes_called, 1)
+        self.assertEqual(reader2.closes_called, 1)
 
 
 class TestFrameList(unittest.TestCase):

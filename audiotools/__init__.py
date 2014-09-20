@@ -2551,50 +2551,45 @@ def threaded_transfer_framelist_data(pcmreader, to_function,
         s = data_queue.get()
 
 
-def pcm_cmp(pcmreader1, pcmreader2):
+def pcm_cmp(pcmreader1, pcmreader2, close_streams=True):
     """returns True if the PCM data in pcmreader1 equals pcmreader2
 
-    the readers must be closed separately
+    if close_streams is True, both streams are closed
+    once comparison is completed
+
+    may raise IOError or ValueError if problems occur
+    when reading PCM streams
+    """
+
+    return (pcm_frame_cmp(pcmreader1, pcmreader2, close_streams) is None)
+
+
+def pcm_frame_cmp(pcmreader1, pcmreader2, close_streams=True):
+    """returns the PCM Frame number of the first mismatch
+
+    if the two streams match completely, returns None
+
+    if close_streams is True, both streams are closed
+    once comparison is completed
+
+    may raise IOError or ValueError if problems occur
+    when reading PCM streams
     """
 
     if (((pcmreader1.sample_rate != pcmreader2.sample_rate) or
          (pcmreader1.channels != pcmreader2.channels) or
          (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample))):
-        return False
-
-    reader1 = BufferedPCMReader(pcmreader1)
-    reader2 = BufferedPCMReader(pcmreader2)
-
-    s1 = reader1.read(FRAMELIST_SIZE)
-    s2 = reader2.read(FRAMELIST_SIZE)
-
-    while ((len(s1) > 0) and (len(s2) > 0)):
-        if (s1 != s2):
-            transfer_data(reader1.read, lambda x: x)
-            transfer_data(reader2.read, lambda x: x)
-            return False
-        else:
-            s1 = reader1.read(FRAMELIST_SIZE)
-            s2 = reader2.read(FRAMELIST_SIZE)
-
-    return True
-
-
-def pcm_frame_cmp(pcmreader1, pcmreader2):
-    """returns the PCM Frame number of the first mismatch
-
-    if the two streams match completely, returns None
-    may raise IOError or ValueError if problems occur
-    when reading PCM streams"""
-
-    if (((pcmreader1.sample_rate != pcmreader2.sample_rate) or
-         (pcmreader1.channels != pcmreader2.channels) or
-         (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample))):
+        if (close_streams):
+            pcmreader1.close()
+            pcmreader2.close()
         return 0
 
     if (((pcmreader1.channel_mask != 0) and
          (pcmreader2.channel_mask != 0) and
          (pcmreader1.channel_mask != pcmreader2.channel_mask))):
+        if (close_streams):
+            pcmreader1.close()
+            pcmreader2.close()
         return 0
 
     frame_number = 0
@@ -2604,22 +2599,35 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
     framelist1 = reader1.read(FRAMELIST_SIZE)
     framelist2 = reader2.read(FRAMELIST_SIZE)
 
+    # so long as both framelists contain data
     while ((len(framelist1) > 0) and (len(framelist2) > 0)):
-        if (framelist1 != framelist2):
+        # compare both entire framelists
+        if (framelist1 == framelist2):
+            # if they both match, continue to the next pair
+            frame_number += framelist1.frames
+            framelist1 = reader1.read(FRAMELIST_SIZE)
+            framelist2 = reader2.read(FRAMELIST_SIZE)
+        else:
+            if (close_streams):
+                reader1.close()
+                reader2.close()
+            # if there's a mismatch, determine the exact frame
             for i in range(min(framelist1.frames, framelist2.frames)):
                 if (framelist1.frame(i) != framelist2.frame(i)):
                     return frame_number + i
             else:
                 return frame_number + i
-        else:
-            frame_number += framelist1.frames
-            framelist1 = reader1.read(FRAMELIST_SIZE)
-            framelist2 = reader2.read(FRAMELIST_SIZE)
     else:
-        if ((len(framelist1) > 0) or (len(framelist2) > 0)):
-            return frame_number
-        else:
+        if (close_streams):
+            reader1.close()
+            reader2.close()
+        # at least one framelist is empty
+        if ((len(framelist1) == 0) and (len(framelist2) == 0)):
+            # if they're both empty, there's no mismatch
             return None
+        else:
+            # if only one is empty, return as far as we've gotten
+            return frame_number
 
 
 class PCMCat(PCMReader):
@@ -4757,7 +4765,11 @@ class PCMReaderHead(PCMReader):
         the stream will be truncated
 
         if pcm_frames is longer than the pcmreader's stream,
-        the stream will be extended with additional empty frames"""
+        the stream will be extended with additional empty frames
+
+        if forward_close is True, calls to .close() are forwarded
+        to the parent stream, otherwise the parent is left as-is
+        """
 
         if (pcm_frames < 0):
             raise ValueError("invalid pcm_frames value")
@@ -4831,7 +4843,11 @@ class PCMReaderDeHead(PCMReader):
         removed from the beginning of the stream
 
         if pcm_frames is negative, the stream will be padded
-        with that many PCM frames"""
+        with that many PCM frames
+
+        if forward_close is True, calls to .close() are forwarded
+        to the parent stream, otherwise the parent is left as-is
+        """
 
         PCMReader.__init__(self,
                            sample_rate=pcmreader.sample_rate,

@@ -204,19 +204,29 @@ classes and functions upon which all of the other modules depend.
    >>> pcm_data.close()
    >>> outfile.close()
 
-.. function:: pcm_cmp(pcmreader1, pcmreader2)
+.. function:: pcm_cmp(pcmreader1, pcmreader2, [close_streams=True])
 
    This function takes two :class:`PCMReader` objects and compares
    their PCM output.
    Returns ``True`` if that output matches exactly, ``False`` if not.
 
-.. function:: pcm_frame_cmp(pcmreader1, pcmreader2)
+   If ``close_streams`` is ``True``, both streams are closed
+   once comparison is completed.
+
+   May raise :exc:`IOError` or :exc:`ValueError` if problems
+   occur during reading.
+
+.. function:: pcm_frame_cmp(pcmreader1, pcmreader2, [close_streams=True])
 
    This function takes two :class:`PCMReader` objects and compares
    their PCM frame output.
    It returns the frame number of the first mismatch as an integer
    which begins at frame number 0.
    If the two streams match completely, it returns ``None``.
+
+   If ``close_streams`` is ``True``, both streams are closed
+   once comparison is completed.
+
    May raise :exc:`IOError` or :exc:`ValueError` if problems
    occur during reading.
 

@@ -3174,11 +3174,10 @@ class ID3v22MetaData(MetaDataTest):
             mp3_track.update_metadata(metadata)
 
             # ensure file isn't broken
-            pcm1 = audiotools.open("sine.mp3").to_pcm()
-            pcm2 = audiotools.open(temp_file_name).to_pcm()
-            self.assertIsNone(audiotools.pcm_frame_cmp(pcm1, pcm2))
-            pcm1.close()
-            pcm2.close()
+            self.assertTrue(
+                audiotools.pcm_cmp(
+                    audiotools.open("sine.mp3").to_pcm(),
+                    audiotools.open(temp_file_name).to_pcm()))
 
             # ensure metadata is unchanged
             # and has the expected buffer size

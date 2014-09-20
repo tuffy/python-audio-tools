@@ -401,10 +401,8 @@ class AudioFileTest(unittest.TestCase):
             track = self.audio_class.from_pcm(temp.name,
                                               BLANK_PCM_Reader(10))
             if (track.lossless()):
-                with track.to_pcm() as pcmreader:
-                    self.assertIsNone(
-                        audiotools.pcm_frame_cmp(pcmreader,
-                                                 BLANK_PCM_Reader(10)))
+                self.assertTrue(
+                    audiotools.pcm_cmp(track.to_pcm(), BLANK_PCM_Reader(10)))
             for audio_class in audiotools.AVAILABLE_TYPES:
                 with tempfile.NamedTemporaryFile(
                         suffix="." + audio_class.SUFFIX) as outfile:
@@ -423,15 +421,12 @@ class AudioFileTest(unittest.TestCase):
                         self.assertGreaterEqual((x[0] - y[0]), 0)
 
                     if (track.lossless() and track2.lossless()):
-                        pcm1 = track.to_pcm()
-                        pcm2 = track2.to_pcm()
-                        self.assertIsNone(
-                            audiotools.pcm_frame_cmp(pcm1, pcm2),
+                        self.assertTrue(
+                            audiotools.pcm_cmp(track.to_pcm(),
+                                               track2.to_pcm()),
                             "PCM mismatch converting %s to %s" % (
                                 self.audio_class.NAME,
                                 audio_class.NAME))
-                        pcm1.close()
-                        pcm2.close()
 
     @FORMAT_AUDIOFILE
     def test_track_name(self):
@@ -859,14 +854,14 @@ class AudioFileTest(unittest.TestCase):
 
                         # if lossless, ensure seeking works as advertised
                         # by comparing stream to file window
-                        self.assertEqual(
-                            audiotools.pcm_frame_cmp(
+                        self.assertTrue(
+                            audiotools.pcm_cmp(
                                 pcmreader,
                                 audiotools.PCMReaderWindow(
                                     EXACT_SILENCE_PCM_Reader(total_pcm_frames),
                                     actual_position,
-                                    total_pcm_frames - actual_position)),
-                            None)
+                                    total_pcm_frames - actual_position),
+                                False))
 
                     # seeking to some huge value should work
                     # even if its position doesn't get to the end of the file
@@ -1196,17 +1191,13 @@ class LosslessFileTest(AudioFileTest):
                     track2 = track.convert(temp2.name,
                                            audio_class)
                     if (track2.lossless()):
-                        pcm = track.to_pcm()
-                        pcm2 = track2.to_pcm()
-                        self.assertIsNone(
-                            audiotools.pcm_frame_cmp(pcm, pcm2),
-                            "error round-tripping %s to %s" %
-                            (self.audio_class.NAME,
-                             audio_class.NAME))
-                        pcm.close()
-                        pcm2.close()
+                        self.assertTrue(
+                            audiotools.pcm_cmp(
+                                track.to_pcm(), track2.to_pcm()),
+                                "error round-tripping %s to %s" %
+                                (self.audio_class.NAME,
+                                 audio_class.NAME))
                     else:
-
                         with track2.to_pcm() as pcm:
                             counter = FrameCounter(pcm.channels,
                                                    pcm.bits_per_sample,
@@ -1233,16 +1224,13 @@ class LosslessFileTest(AudioFileTest):
                                                audio_class,
                                                compression)
                         if (track2.lossless()):
-                            pcm = track.to_pcm()
-                            pcm2 = track2.to_pcm()
-                            self.assertIsNone(
-                                audiotools.pcm_frame_cmp(pcm, pcm2),
+                            self.assertTrue(
+                                audiotools.pcm_cmp(
+                                    track.to_pcm(), track2.to_pcm()),
                                 "error round-tripping %s to %s at %s" %
                                 (self.audio_class.NAME,
                                  audio_class.NAME,
                                  compression))
-                            pcm.close()
-                            pcm2.close()
                         else:
                             with track2.to_pcm() as pcm:
                                 counter = FrameCounter(
@@ -1694,12 +1682,9 @@ class TestForeignWaveChunks:
                             self.assertEqual(footer, track2_footer)
 
                             # ensure newly converted file has same PCM data
-                            pcm = track.to_pcm()
-                            pcm2 = track2.to_pcm()
-                            self.assertIsNone(
-                                audiotools.pcm_frame_cmp(pcm, pcm2))
-                            pcm.close()
-                            pcm2.close()
+                            self.assertTrue(
+                                audiotools.pcm_cmp(
+                                    track.to_pcm(), track2.to_pcm()))
                         finally:
                             temp2.close()
             finally:
@@ -1916,12 +1901,9 @@ class TestForeignAiffChunks:
                             self.assertEqual(footer, track2_footer)
 
                             # ensure newly converted file has same PCM data
-                            pcm = track.to_pcm()
-                            pcm2 = track2.to_pcm()
-                            self.assertIsNone(
-                                audiotools.pcm_frame_cmp(pcm, pcm2))
-                            pcm.close()
-                            pcm2.close()
+                            self.assertTrue(
+                                audiotools.pcm_cmp(track.to_pcm(),
+                                                   track2.to_pcm()))
                         finally:
                             temp2.close()
             finally:
@@ -2831,10 +2813,10 @@ class ALACFileTest(LosslessFileTest):
             from audiotools.py_decoders import ALACDecoder as ALACDecoder1
             from audiotools.decoders import ALACDecoder as ALACDecoder2
 
-            self.assertEqual(
-                audiotools.pcm_frame_cmp(
+            self.assertTrue(
+                audiotools.pcm_cmp(
                     ALACDecoder1(temp_file.name),
-                    ALACDecoder2(temp_file.name)), None)
+                    ALACDecoder2(temp_file.name)))
 
             # test from_pcm() with total_pcm_frames indicated
             pcmreader.reset()
@@ -2851,10 +2833,10 @@ class ALACFileTest(LosslessFileTest):
             from audiotools.py_decoders import ALACDecoder as ALACDecoder1
             from audiotools.decoders import ALACDecoder as ALACDecoder2
 
-            self.assertEqual(
-                audiotools.pcm_frame_cmp(
+            self.assertTrue(
+                audiotools.pcm_cmp(
                     ALACDecoder1(temp_file.name),
-                    ALACDecoder2(temp_file.name)), None)
+                    ALACDecoder2(temp_file.name)))
 
             temp_file.close()
 
@@ -4116,11 +4098,8 @@ class FlacFileTest(TestForeignAiffChunks,
             f.close()
             track2 = audiotools.open(temp.name)
             self.assertEqual(metadata1, track2.get_metadata())
-            pcm = track.to_pcm()
-            pcm2 = track2.to_pcm()
-            self.assertIsNone(audiotools.pcm_frame_cmp(pcm, pcm2))
-            pcm.close()
-            pcm2.close()
+            self.assertTrue(
+                audiotools.pcm_cmp(track.to_pcm(), track2.to_pcm()))
         finally:
             temp.close()
 
@@ -4143,11 +4122,8 @@ class FlacFileTest(TestForeignAiffChunks,
             f.close()
             track2 = audiotools.open(temp.name)
             self.assertEqual(metadata1, track2.get_metadata())
-            pcm = track.to_pcm()
-            pcm2 = track2.to_pcm()
-            self.assertIsNone(audiotools.pcm_frame_cmp(pcm, pcm2))
-            pcm.close()
-            pcm2.close()
+            self.assertTrue(
+                audiotools.pcm_cmp(track.to_pcm(), track2.to_pcm()))
         finally:
             temp.close()
 
@@ -4170,11 +4146,8 @@ class FlacFileTest(TestForeignAiffChunks,
             f.close()
             track2 = audiotools.open(temp.name)
             self.assertEqual(metadata1, track2.get_metadata())
-            pcm = track.to_pcm()
-            pcm2 = track.to_pcm()
-            self.assertIsNone(audiotools.pcm_frame_cmp(pcm, pcm2))
-            pcm.close()
-            pcm2.close()
+            self.assertTrue(
+                audiotools.pcm_cmp(track.to_pcm(), track2.to_pcm()))
         finally:
             temp.close()
 
@@ -4196,11 +4169,8 @@ class FlacFileTest(TestForeignAiffChunks,
                     audiotools.flac.Flac_STREAMINFO.BLOCK_ID).md5sum,
                 '\xd2\xb1 \x19\x90\x19\xb69' +
                 '\xd5\xa7\xe2\xb3F>\x9c\x97')
-            pcm = track.to_pcm()
-            pcm2 = track2.to_pcm()
-            self.assertIsNone(audiotools.pcm_frame_cmp(pcm, pcm2))
-            pcm.close()
-            pcm2.close()
+            self.assertTrue(
+                audiotools.pcm_cmp(track.to_pcm(), track2.to_pcm()))
         finally:
             temp.close()
 
@@ -4301,10 +4271,10 @@ class FlacFileTest(TestForeignAiffChunks,
             from audiotools.py_decoders import FlacDecoder as FlacDecoder1
             from audiotools.decoders import FlacDecoder as FlacDecoder2
 
-            self.assertEqual(
-                audiotools.pcm_frame_cmp(
+            self.assertTrue(
+                audiotools.pcm_cmp(
                     FlacDecoder1(temp_file.name, 0),
-                    FlacDecoder2(open(temp_file.name, "rb"))), None)
+                    FlacDecoder2(open(temp_file.name, "rb"))))
 
             temp_file.close()
 
@@ -5208,11 +5178,10 @@ class ShortenFileTest(TestForeignWaveChunks,
         wave = audiotools.WaveAudio(temp_wav_file2.name)
         wave.verify()
 
-        pcm1 = audiotools.WaveAudio(temp_wav_file1.name).to_pcm()
-        pcm2 = audiotools.WaveAudio(temp_wav_file2.name).to_pcm()
-        self.assertIsNone(audiotools.pcm_frame_cmp(pcm1, pcm2))
-        pcm1.close()
-        pcm2.close()
+        self.assertTrue(
+            audiotools.pcm_cmp(
+                audiotools.WaveAudio(temp_wav_file1.name).to_pcm(),
+                audiotools.WaveAudio(temp_wav_file2.name).to_pcm()))
 
         temp_wav_file1.close()
         temp_wav_file2.close()
@@ -5267,11 +5236,10 @@ class ShortenFileTest(TestForeignWaveChunks,
         aiff = audiotools.AiffAudio(temp_aiff_file2.name)
         aiff.verify()
 
-        pcm1 = audiotools.AiffAudio(temp_aiff_file1.name).to_pcm()
-        pcm2 = audiotools.AiffAudio(temp_aiff_file2.name).to_pcm()
-        self.assertIsNone(audiotools.pcm_frame_cmp( pcm1, pcm2))
-        pcm1.close()
-        pcm2.close()
+        self.assertTrue(
+            audiotools.pcm_cmp(
+                audiotools.AiffAudio(temp_aiff_file1.name).to_pcm(),
+                audiotools.AiffAudio(temp_aiff_file2.name).to_pcm()))
 
         temp_file.close()
         temp_input_aiff_file.close()
@@ -5356,9 +5324,9 @@ class ShortenFileTest(TestForeignWaveChunks,
             from audiotools.decoders import SHNDecoder as SHNDecoder1
             from audiotools.py_decoders import SHNDecoder as SHNDecoder2
 
-            self.assertEqual(audiotools.pcm_frame_cmp(
+            self.assertTrue(audiotools.pcm_cmp(
                 SHNDecoder1(open(temp_file.name, "rb")),
-                SHNDecoder2(temp_file.name)), None)
+                SHNDecoder2(temp_file.name)))
 
             # try test again, this time with total_pcm_frames indicated
             pcmreader.reset()
@@ -5369,9 +5337,9 @@ class ShortenFileTest(TestForeignWaveChunks,
                 block_size=block_size,
                 encoding_function=encode_shn)
 
-            self.assertEqual(audiotools.pcm_frame_cmp(
+            self.assertTrue(audiotools.pcm_cmp(
                 SHNDecoder1(open(temp_file.name, "rb")),
-                SHNDecoder2(temp_file.name)), None)
+                SHNDecoder2(temp_file.name)))
 
             temp_file.close()
 
@@ -6417,10 +6385,10 @@ class WavPackFileTest(TestForeignWaveChunks,
             from audiotools.py_decoders import WavPackDecoder as WavPackDecoder1
             from audiotools.decoders import WavPackDecoder as WavPackDecoder2
 
-            self.assertEqual(
-                audiotools.pcm_frame_cmp(
+            self.assertTrue(
+                audiotools.pcm_cmp(
                     WavPackDecoder1(temp_file.name),
-                    WavPackDecoder2(open(temp_file.name, "rb"))), None)
+                    WavPackDecoder2(open(temp_file.name, "rb"))))
 
             # redo test with total_pcm_frames indicated
             pcmreader.reset()
@@ -6436,10 +6404,10 @@ class WavPackFileTest(TestForeignWaveChunks,
             from audiotools.py_decoders import WavPackDecoder as WavPackDecoder1
             from audiotools.decoders import WavPackDecoder as WavPackDecoder2
 
-            self.assertEqual(
-                audiotools.pcm_frame_cmp(
+            self.assertTrue(
+                audiotools.pcm_cmp(
                     WavPackDecoder1(temp_file.name),
-                    WavPackDecoder2(open(temp_file.name, "rb"))), None)
+                    WavPackDecoder2(open(temp_file.name, "rb"))))
 
             temp_file.close()
 
@@ -7159,20 +7127,18 @@ class TTAFileTest(LosslessFileTest):
                 self.assertEqual(sub.wait(), 0,
                                  "tta decode error on %s" % (repr(pcmreader)))
 
-                pcm1 = TTADecoder2(open(temp_tta_file.name, "rb"))
-                pcm2 = audiotools.WaveAudio(temp_wav_file.name).to_pcm()
-                self.assertIsNone(audiotools.pcm_frame_cmp(pcm1, pcm2))
-                pcm1.close()
-                pcm2.close()
-                temp_wav_file.close()
+                self.assertTrue(
+                    audiotools.pcm_cmp(
+                        TTADecoder2(open(temp_tta_file.name, "rb")),
+                        audiotools.WaveAudio(temp_wav_file.name).to_pcm()))
 
             # verify contents of file decoded by
             # Python-based decoder against contents decoded by
             # C-based decoder
-            self.assertEqual(
-                audiotools.pcm_frame_cmp(
+            self.assertTrue(
+                audiotools.pcm_cmp(
                     TTADecoder1(temp_tta_file.name),
-                    TTADecoder2(open(temp_tta_file.name, "rb"))), None)
+                    TTADecoder2(open(temp_tta_file.name, "rb"))))
 
             # perform tests again with total_pcm_frames indicated
             pcmreader.reset()
@@ -7196,21 +7162,18 @@ class TTAFileTest(LosslessFileTest):
                 self.assertEqual(sub.wait(), 0,
                                  "tta decode error on %s" % (repr(pcmreader)))
 
-                pcm1 = TTADecoder2(open(temp_tta_file.name, "rb"))
-                pcm2 = audiotools.WaveAudio(temp_wav_file.name).to_pcm()
-                self.assertIsNone(audiotools.pcm_frame_cmp(pcm1, pcm2))
-                pcm1.close()
-                pcm2.close()
-                temp_wav_file.close()
+                self.assertTrue(
+                    audiotools.pcm_cmp(
+                        TTADecoder2(open(temp_tta_file.name, "rb")),
+                        audiotools.WaveAudio(temp_wav_file.name).to_pcm()))
 
             # verify contents of file decoded by
             # Python-based decoder against contents decoded by
             # C-based decoder
-            self.assertEqual(
-                audiotools.pcm_frame_cmp(
+            self.assertTrue(
+                audiotools.pcm_cmp(
                     TTADecoder1(temp_tta_file.name),
-                    TTADecoder2(open(temp_tta_file.name, "rb"))),
-                None)
+                    TTADecoder2(open(temp_tta_file.name, "rb"))))
 
             temp_tta_file.close()
 
