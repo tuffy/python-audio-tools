@@ -149,9 +149,8 @@ class cd2track(UtilTest):
         f.write('FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC JPPI00652340\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC JPPI00652349\r\n    INDEX 00 00:03:00\r\n    INDEX 01 00:05:00\r\n  TRACK 03 AUDIO\r\n    ISRC JPPI00652341\r\n    INDEX 00 00:9:00\r\n    INDEX 01 00:11:00\r\n')
         f.close()
 
-        f = open(self.bin_file, "w")
-        audiotools.transfer_framelist_data(self.stream, f.write)
-        f.close()
+        with open(self.bin_file, "w") as f:
+            audiotools.transfer_framelist_data(self.stream, f.write)
 
         self.output_dir = tempfile.mkdtemp()
         self.format = "%(track_number)2.2d.%(suffix)s"
@@ -1042,8 +1041,8 @@ class covertag_errors(UtilTest):
                 big_bmp.flush()
 
                 orig_md5 = md5()
-                with flac.to_pcm() as pcm:
-                    audiotools.transfer_framelist_data(pcm, orig_md5.update)
+                audiotools.transfer_framelist_data(flac.to_pcm(),
+                                                   orig_md5.update)
 
                 # ensure that setting a big image via covertag
                 # doesn't break the file
@@ -1051,8 +1050,8 @@ class covertag_errors(UtilTest):
                                  "--front-cover=%s" % (big_bmp.name),
                                  flac.filename])
                 new_md5 = md5()
-                with flac.to_pcm() as pcm:
-                    audiotools.transfer_framelist_data(pcm, new_md5.update)
+                audiotools.transfer_framelist_data(flac.to_pcm(),
+                                                   new_md5.update)
                 self.assertEqual(orig_md5.hexdigest(),
                                  new_md5.hexdigest())
             finally:
@@ -3439,8 +3438,7 @@ class tracklint(UtilTest):
                     ["tracklint", "-V", "quiet", "--fix", tempflac.name]), 0)
             flac = audiotools.open(tempflac.name)
             md5sum = md5()
-            with flac.to_pcm() as pcm:
-                audiotools.transfer_framelist_data(pcm, md5sum.update)
+            audiotools.transfer_framelist_data(flac.to_pcm(), md5sum.update)
             self.assertEqual(md5sum.hexdigest(),
                              "9a0ab096c517a627b0ab5a0b959e5f36")
         finally:
@@ -3466,8 +3464,7 @@ class tracklint(UtilTest):
                     ["tracklint", "-V", "quiet", "--fix", tempflac.name]), 0)
             flac = audiotools.open(tempflac.name)
             md5sum = md5()
-            with flac.to_pcm() as pcm:
-                audiotools.transfer_framelist_data(pcm, md5sum.update)
+            audiotools.transfer_framelist_data(flac.to_pcm(), md5sum.update)
             self.assertEqual(md5sum.hexdigest(),
                              "9a0ab096c517a627b0ab5a0b959e5f36")
         finally:
@@ -5515,8 +5512,8 @@ class tracktag_errors(UtilTest):
                 big_text.flush()
 
                 orig_md5 = md5()
-                with flac.to_pcm() as pcm:
-                    audiotools.transfer_framelist_data(pcm, orig_md5.update)
+                audiotools.transfer_framelist_data(flac.to_pcm(),
+                                                   orig_md5.update)
 
                 # ensure that setting big text via tracktag
                 # doesn't break the file
@@ -5524,8 +5521,8 @@ class tracktag_errors(UtilTest):
                                  "--comment-file=%s" % (big_text.name),
                                  flac.filename])
                 new_md5 = md5()
-                with flac.to_pcm() as pcm:
-                    audiotools.transfer_framelist_data(pcm, new_md5.update)
+                audiotools.transfer_framelist_data(flac.to_pcm(),
+                                                   new_md5.update)
                 self.assertEqual(orig_md5.hexdigest(),
                                  new_md5.hexdigest())
 

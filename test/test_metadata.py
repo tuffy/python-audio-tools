@@ -82,8 +82,8 @@ class MetaDataTest(unittest.TestCase):
                 self.assertIsInstance(metadata2, self.metadata_class)
 
                 # also ensure that the new track is playable
-                with track.to_pcm() as pcm:
-                    audiotools.transfer_framelist_data(pcm, lambda f: f)
+                audiotools.transfer_framelist_data(track.to_pcm(),
+                                                   lambda f: f)
 
     @METADATA_METADATA
     def test_attribs(self):

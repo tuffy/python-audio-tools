@@ -3332,15 +3332,12 @@ class OggFlacAudio(FlacAudio):
 
         try:
             transfer_framelist_data(pcmreader, sub.stdin.write)
-            pcmreader.close()
         except (ValueError, IOError) as err:
-            pcmreader.close()
             sub.stdin.close()
             sub.wait()
             cls.__unlink__(filename)
             raise EncodingError(str(err))
         except Exception:
-            pcmreader.close()
             sub.stdin.close()
             sub.wait()
             cls.__unlink__(filename)

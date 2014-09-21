@@ -477,12 +477,11 @@ class CDDA(unittest.TestCase):
         self.bin = os.path.join(self.temp_dir, "Test.BIN")
         self.cue = os.path.join(self.temp_dir, "Test.CUE")
 
-        bin_file = open(self.bin, "wb")
-        self.reader = test_streams.Sine16_Stereo(43646652, 44100,
-                                                 441.0, 0.50,
-                                                 4410.0, 0.49, 1.0)
-        audiotools.transfer_framelist_data(self.reader, bin_file.write)
-        bin_file.close()
+        with open(self.bin, "wb") as bin_file:
+            self.reader = test_streams.Sine16_Stereo(43646652, 44100,
+                                                     441.0, 0.50,
+                                                     4410.0, 0.49, 1.0)
+            audiotools.transfer_framelist_data(self.reader, bin_file.write)
 
         with open(self.cue, "wb") as f1:
             with open("cdda_test.cue", "rb") as f2:
@@ -524,7 +523,10 @@ class CDDA(unittest.TestCase):
 
         # verify whole disc
         checksum = md5()
-        audiotools.transfer_framelist_data(cdda, checksum.update)
+        frame = cdda.read(44100)
+        while (len(frame) > 0):
+            checksum.update(frame.to_bytes(False, True))
+            frame = cdda.read(44100)
         self.assertEqual(self.reader.hexdigest(),
                          checksum.hexdigest())
 
@@ -1779,9 +1781,8 @@ class TestFrameList(unittest.TestCase):
                         continue
                     if (track.lossless()):
                         md5sum = md5()
-                        with track.to_pcm() as pcmreader:
-                            audiotools.transfer_framelist_data(
-                                pcmreader, md5sum.update)
+                        audiotools.transfer_framelist_data(
+                            track.to_pcm(), md5sum.update)
                         self.assertEqual(
                             md5sum.hexdigest(), sine.hexdigest(),
                             "MD5 mismatch for %s using %s" % (
@@ -1798,9 +1799,8 @@ class TestFrameList(unittest.TestCase):
                                     continue
                                 if (track2.lossless()):
                                     md5sum2 = md5()
-                                    with track2.to_pcm() as pcmreader:
-                                        audiotools.transfer_framelist_data(
-                                            pcmreader, md5sum2.update)
+                                    audiotools.transfer_framelist_data(
+                                        track2.to_pcm(), md5sum2.update)
                                     self.assertEqual(
                                         md5sum.hexdigest(),
                                         sine.hexdigest(),
@@ -5234,9 +5234,9 @@ class TestMultiChannel(unittest.TestCase):
                               channel_mask,
                               audio_class.NAME))
 
-            with temp_track.to_pcm() as pcm:
-                self.assertEqual(int(pcm.channel_mask), int(channel_mask))
-                audiotools.transfer_framelist_data(pcm, lambda x: x)
+            pcm = temp_track.to_pcm()
+            self.assertEqual(int(pcm.channel_mask), int(channel_mask))
+            audiotools.transfer_framelist_data(pcm, lambda x: None)
 
     def __test_undefined_mask_blank__(self, audio_class, channels,
                                       should_be_blank):
@@ -5252,19 +5252,19 @@ class TestMultiChannel(unittest.TestCase):
             self.assertEqual(temp_track.channels(), channels)
             if (should_be_blank):
                 self.assertEqual(int(temp_track.channel_mask()), 0)
-                with temp_track.to_pcm() as pcm:
-                    self.assertEqual(int(pcm.channel_mask), 0)
-                    audiotools.transfer_framelist_data(pcm, lambda x: x)
+                pcm = temp_track.to_pcm()
+                self.assertEqual(int(pcm.channel_mask), 0)
+                audiotools.transfer_framelist_data(pcm, lambda x: None)
             else:
                 self.assertNotEqual(int(temp_track.channel_mask()), 0,
                                     "mask = %s for format %s at %d channels" %
                                     (temp_track.channel_mask(),
                                      audio_class,
                                      channels))
-                with temp_track.to_pcm() as pcm:
-                    self.assertEqual(int(pcm.channel_mask),
-                                     int(temp_track.channel_mask()))
-                    audiotools.transfer_framelist_data(pcm, lambda x: x)
+                pcm = temp_track.to_pcm()
+                self.assertEqual(int(pcm.channel_mask),
+                                 int(temp_track.channel_mask()))
+                audiotools.transfer_framelist_data(pcm, lambda x: None)
         finally:
             temp_file.close()
 
@@ -5543,10 +5543,10 @@ class TestMultiChannel(unittest.TestCase):
                         int(temp_track.channel_mask()),
                         int(audiotools.ChannelMask.from_fields(
                             front_left=True, front_right=True)))
-                    with temp_track.to_pcm() as pcm:
-                        self.assertEqual(int(pcm.channel_mask),
-                                         int(temp_track.channel_mask()))
-                        audiotools.transfer_framelist_data(pcm, lambda x: x)
+                    pcm = temp_track.to_pcm()
+                    self.assertEqual(int(pcm.channel_mask),
+                                     int(temp_track.channel_mask()))
+                    audiotools.transfer_framelist_data(pcm, lambda x: x)
                 finally:
                     temp_file.close()
 

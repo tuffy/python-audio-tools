@@ -198,25 +198,29 @@ classes and functions upon which all of the other modules depend.
    objects returned by its :meth:`PCMReader.read` method to ``to_function``
    after converting them to plain strings.
 
+   The pcmreader is closed once decoding is complete.
+
+   May raise :exc:`IOError` or :exc:`ValueError` if a problem
+   occurs during decoding.
+
    >>> pcm_data = audiotools.open("file.wav").to_pcm()
    >>> outfile = open("output.pcm","wb")
    >>> transfer_framelist_data(pcm_data,outfile)
    >>> pcm_data.close()
    >>> outfile.close()
 
-.. function:: pcm_cmp(pcmreader1, pcmreader2, [close_streams=True])
+.. function:: pcm_cmp(pcmreader1, pcmreader2)
 
    This function takes two :class:`PCMReader` objects and compares
    their PCM output.
    Returns ``True`` if that output matches exactly, ``False`` if not.
 
-   If ``close_streams`` is ``True``, both streams are closed
-   once comparison is completed.
+   Both streams are closed once comparison is completed.
 
    May raise :exc:`IOError` or :exc:`ValueError` if problems
    occur during reading.
 
-.. function:: pcm_frame_cmp(pcmreader1, pcmreader2, [close_streams=True])
+.. function:: pcm_frame_cmp(pcmreader1, pcmreader2)
 
    This function takes two :class:`PCMReader` objects and compares
    their PCM frame output.
@@ -224,8 +228,7 @@ classes and functions upon which all of the other modules depend.
    which begins at frame number 0.
    If the two streams match completely, it returns ``None``.
 
-   If ``close_streams`` is ``True``, both streams are closed
-   once comparison is completed.
+   Both streams are closed once comparison is completed.
 
    May raise :exc:`IOError` or :exc:`ValueError` if problems
    occur during reading.

@@ -724,15 +724,12 @@ class WaveAudio(WaveContainer):
                                     f.write,
                                     pcmreader.bits_per_sample > 8,
                                     False)
-            counter.close()
         except (IOError, ValueError) as err:
             f.close()
-            counter.close()
             cls.__unlink__(filename)
             raise EncodingError(str(err))
         except Exception as err:
             f.close()
-            counter.close()
             cls.__unlink__(filename)
             raise err
 
@@ -1069,9 +1066,7 @@ class WaveAudio(WaveContainer):
         counter = CounterPCMReader(to_pcm_progress(self, progress))
         try:
             transfer_framelist_data(counter, lambda f: f)
-            counter.close()
         except IOError:
-            counter.close()
             from audiotools.text import ERR_WAV_TRUNCATED_DATA_CHUNK
             raise InvalidWave(ERR_WAV_TRUNCATED_DATA_CHUNK)
 

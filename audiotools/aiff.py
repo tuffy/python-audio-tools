@@ -851,9 +851,7 @@ class AiffAudio(AiffContainer):
         f.write(header)
         try:
             transfer_framelist_data(counter, f.write, True, True)
-            counter.close()
         except (IOError, ValueError) as err:
-            counter.close()
             cls.__unlink__(filename)
             raise EncodingError(str(err))
 

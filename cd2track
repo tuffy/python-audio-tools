@@ -432,7 +432,7 @@ if (__name__ == '__main__'):
             # since the inner PCMReaderWindow only outputs part
             # of the accuraterip reader, we need to ensure
             # anything left over in accuraterip gets processed also
-            audiotools.transfer_framelist_data(accuraterip, lambda s: None)
+            audiotools.transfer_data(accuraterip.read, lambda f: None)
         except audiotools.EncodingError as err:
             progress.clear_rows()
             msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
