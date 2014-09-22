@@ -545,10 +545,6 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
             cls.__unlink__(filename)
             raise
 
-        try:
-            pcmreader.close()
-        except DecodingError as err:
-            raise EncodingError(err.error_message)
         sub.stdin.close()
 
         if (sub.wait() == 0):
@@ -606,11 +602,12 @@ class M4AAudio_nero(M4AAudio_faac):
                                       cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
 
-        tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav")
+        tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+        tempwave_name = tempwavefile.name
         try:
             if (pcmreader.sample_rate > 96000):
                 tempwave = WaveAudio.from_pcm(
-                    tempwavefile.name,
+                    tempwave_name,
                     PCMConverter(pcmreader,
                                  sample_rate=96000,
                                  channels=pcmreader.channels,
@@ -619,17 +616,16 @@ class M4AAudio_nero(M4AAudio_faac):
                     total_pcm_frames=total_pcm_frames)
             else:
                 tempwave = WaveAudio.from_pcm(
-                    tempwavefile.name,
+                    tempwave_name,
                     pcmreader,
                     total_pcm_frames=total_pcm_frames)
 
             cls.__from_wave__(filename, tempwave.filename, compression)
             return cls(filename)
         finally:
-            if (os.path.isfile(tempwavefile.name)):
-                tempwavefile.close()
-            else:
-                tempwavefile.close_called = True
+            tempwavefile.close()
+            if (os.path.isfile(tempwave_name)):
+                os.unlink(tempwave_name)
 
     def to_pcm(self):
         from audiotools import PCMFileReader
@@ -1062,6 +1058,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                         history_multiplier=cls.HISTORY_MULTIPLIER,
                         maximum_k=cls.MAXIMUM_K)
             except (IOError, ValueError) as err:
+                pcmreader.close()
+                mdat_file.close()
                 raise EncodingError(str(err))
 
             pcmreader.close()

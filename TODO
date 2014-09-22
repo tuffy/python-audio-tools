@@ -7198,7 +7198,7 @@
       - [X] verify
       - [X] ogg
 ***** TODO Format
-      - [ ] audiofile
+      - [X] audiofile
       - [ ] lossless
       - [ ] lossy
       - [ ] aiff
@@ -7266,7 +7266,7 @@
       - [X] verify
       - [X] ogg
 ***** TODO Format
-      - [ ] audiofile
+      - [X] audiofile
       - [ ] lossless
       - [ ] lossy
       - [ ] aiff

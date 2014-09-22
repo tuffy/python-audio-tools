@@ -3334,11 +3334,13 @@ class OggFlacAudio(FlacAudio):
             transfer_framelist_data(pcmreader, sub.stdin.write)
         except (ValueError, IOError) as err:
             sub.stdin.close()
+            devnull.close()
             sub.wait()
             cls.__unlink__(filename)
             raise EncodingError(str(err))
         except Exception:
             sub.stdin.close()
+            devnull.close()
             sub.wait()
             cls.__unlink__(filename)
             raise
@@ -3349,6 +3351,7 @@ class OggFlacAudio(FlacAudio):
         if ((total_pcm_frames is not None) and
             (total_pcm_frames != pcmreader.frames_written)):
             from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+            cls.__unlink__(filename)
             raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
 
         if (sub.wait() == 0):

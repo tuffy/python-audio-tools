@@ -740,7 +740,16 @@ class AudioFileTest(unittest.TestCase):
                           dummy_filename,
                           ERROR_PCM_Reader(IOError("I/O Error")))
 
-        # and ensure invalid files aren't left lying around
+        # ensure invalid files aren't left lying around
+        self.assertFalse(os.path.isfile(dummy_filename))
+
+        # perform the same check with total_pcm_frames set
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          dummy_filename,
+                          ERROR_PCM_Reader(IOError("I/O Error")),
+                          total_pcm_frames=44100)
+
         self.assertFalse(os.path.isfile(dummy_filename))
 
         # a decoder that raises ValueError on to_pcm()
@@ -753,6 +762,15 @@ class AudioFileTest(unittest.TestCase):
         # and ensure invalid files aren't left lying around
         self.assertFalse(os.path.isfile(dummy_filename))
 
+        # perform the same check with total_pcm_frames set
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          dummy_filename,
+                          ERROR_PCM_Reader(ValueError("Value Error")),
+                          total_pcm_frames=44100)
+
+        self.assertFalse(os.path.isfile(dummy_filename))
+
     @FORMAT_AUDIOFILE
     def test_total_pcm_frames(self):
         # all formats take a total_pcm_frames argument to from_pcm()
@@ -763,45 +781,53 @@ class AudioFileTest(unittest.TestCase):
         if (self.audio_class is audiotools.AudioFile):
             return
 
-        temp_file = tempfile.NamedTemporaryFile(
-            suffix="." + self.audio_class.SUFFIX,
-            delete=False)
-        try:
-            # encode a file without the total_pcm_frames argument
-            track = self.audio_class.from_pcm(
-                temp_file.name,
-                EXACT_SILENCE_PCM_Reader(123456))
-            track.verify()
+        temp_name = "test." + self.audio_class.SUFFIX
 
-            if (track.lossless()):
-                self.assertEqual(track.total_frames(), 123456)
+        if (os.path.isfile(temp_name)):
+            os.unlink(temp_name)
 
-            # encode a file with the total_pcm_frames argument
-            track = self.audio_class.from_pcm(
-                temp_file.name,
-                EXACT_SILENCE_PCM_Reader(234567),
-                total_pcm_frames=234567)
-            track.verify()
+        # encode a file without the total_pcm_frames argument
+        track = self.audio_class.from_pcm(
+            temp_name,
+            EXACT_SILENCE_PCM_Reader(123456))
+        track.verify()
 
-            if (track.lossless()):
-                self.assertEqual(track.total_frames(), 234567)
+        if (track.lossless()):
+            self.assertEqual(track.total_frames(), 123456)
 
-            # check too many total_pcm_frames
-            self.assertRaises(audiotools.EncodingError,
-                              self.audio_class.from_pcm,
-                              temp_file.name,
-                              EXACT_SILENCE_PCM_Reader(345678),
-                              total_pcm_frames=345679)
+        del(track)
+        os.unlink(temp_name)
 
-            # check not enough total_pcm_frames
-            self.assertRaises(audiotools.EncodingError,
-                              self.audio_class.from_pcm,
-                              temp_file.name,
-                              EXACT_SILENCE_PCM_Reader(345678),
-                              total_pcm_frames=345677)
-        finally:
-            if (os.path.isfile(temp_file.name)):
-                temp_file.close()
+        # encode a file with the total_pcm_frames argument
+        track = self.audio_class.from_pcm(
+            temp_name,
+            EXACT_SILENCE_PCM_Reader(234567),
+            total_pcm_frames=234567)
+        track.verify()
+
+        if (track.lossless()):
+            self.assertEqual(track.total_frames(), 234567)
+
+        del(track)
+        os.unlink(temp_name)
+
+        # check too many total_pcm_frames
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          temp_name,
+                          EXACT_SILENCE_PCM_Reader(345678),
+                          total_pcm_frames=345679)
+
+        self.assertFalse(os.path.isfile(temp_name))
+
+        # check not enough total_pcm_frames
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          temp_name,
+                          EXACT_SILENCE_PCM_Reader(345678),
+                          total_pcm_frames=345677)
+
+        self.assertFalse(os.path.isfile(temp_name))
 
     @FORMAT_AUDIOFILE
     def test_seekable(self):

@@ -266,9 +266,10 @@ class ShortenAudio(WaveContainer, AiffContainer):
             from audiotools import WaveAudio
             import tempfile
 
-            f = tempfile.NamedTemporaryFile(suffix=".wav")
+            f = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+            wave_name = f.name
             try:
-                w = WaveAudio.from_pcm(f.name, pcmreader)
+                w = WaveAudio.from_pcm(wave_name, pcmreader)
                 (header, footer) = w.wave_header_footer()
                 return cls.from_wave(filename,
                                      header,
@@ -278,10 +279,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
                                      block_size,
                                      encoding_function)
             finally:
-                if (os.path.isfile(f.name)):
-                    f.close()
-                else:
-                    f.close_called = True
+                f.close()
+                if (os.path.isfile(wave_name)):
+                    os.unlink(wave_name)
 
     def has_foreign_wave_chunks(self):
         """returns True if the audio file contains non-audio RIFF chunks
@@ -427,7 +427,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                 raise EncodingError(ERR_WAV_INVALID_SIZE)
 
             return cls(filename)
-        except IOError as err:
+        except (IOError, ValueError) as err:
             counter.close()
             cls.__unlink__(filename)
             raise EncodingError(str(err))

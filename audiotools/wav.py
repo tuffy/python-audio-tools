@@ -738,11 +738,11 @@ class WaveAudio(WaveContainer):
             f.write(b"\x00")
 
         if (total_pcm_frames is not None):
+            f.close()
             if (total_pcm_frames != counter.frames_written):
                 # ensure written number of PCM frames
                 # matches total_pcm_frames argument
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
-                f.close()
                 cls.__unlink__(filename)
                 raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
         else:
@@ -754,8 +754,8 @@ class WaveAudio(WaveContainer):
                                 pcmreader.channel_mask,
                                 pcmreader.bits_per_sample,
                                 counter.frames_written))
+            f.close()
 
-        f.close()
         return WaveAudio(filename)
 
     def total_frames(self):

@@ -216,6 +216,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
             if (counter.frames_written != total_pcm_frames):
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
                 writer.unmark()
+                writer.close()
                 cls.__unlink__(filename)
                 raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
 

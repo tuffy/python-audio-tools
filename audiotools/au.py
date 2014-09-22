@@ -279,18 +279,18 @@ class AuAudio(AudioFile):
         try:
             transfer_framelist_data(counter, f.write, True, True)
         except (IOError, ValueError) as err:
+            f.close()
             cls.__unlink__(filename)
             raise EncodingError(str(err))
 
         if (total_pcm_frames is not None):
+            f.close()
             if (total_pcm_frames != counter.frames_written):
                 # ensure written number of PCM frames
                 # matches total_pcm_frames argument
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
                 cls.__unlink__(filename)
                 raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
-            else:
-                f.close()
         else:
             # go back and rewrite populated header
             # with counted number of PCM frames
