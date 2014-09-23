@@ -7199,7 +7199,7 @@
       - [X] ogg
 ***** TODO Format
       - [X] audiofile
-      - [ ] lossless
+      - [X] lossless
       - [ ] lossy
       - [ ] aiff
       - [ ] alac
@@ -7267,7 +7267,7 @@
       - [X] ogg
 ***** TODO Format
       - [X] audiofile
-      - [ ] lossless
+      - [X] lossless
       - [ ] lossy
       - [ ] aiff
       - [ ] alac

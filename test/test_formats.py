@@ -376,6 +376,7 @@ class AudioFileTest(unittest.TestCase):
 
         pcm_frames = 123456
 
+        # ensure regular encode closes pcmreader
         with tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX) as f:
             reader = CLOSE_PCM_Reader(EXACT_SILENCE_PCM_Reader(pcm_frames))
@@ -384,6 +385,7 @@ class AudioFileTest(unittest.TestCase):
                                               reader)
             self.assertEqual(reader.closes_called, 1)
 
+        # ensure encode closes pcmreader with "total_pcm_frames" set
         with tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX) as f:
             reader = CLOSE_PCM_Reader(EXACT_SILENCE_PCM_Reader(pcm_frames))
@@ -392,6 +394,81 @@ class AudioFileTest(unittest.TestCase):
                                               reader,
                                               total_pcm_frames=pcm_frames)
             self.assertEqual(reader.closes_called, 1)
+
+        unwritable_path = "/dev/null/foo." + self.audio_class.SUFFIX
+        self.assertFalse(os.access(unwritable_path, os.W_OK))
+
+        # encoding to unwritable file should still close pcmreader
+        reader = CLOSE_PCM_Reader(EXACT_SILENCE_PCM_Reader(pcm_frames))
+        self.assertEqual(reader.closes_called, 0)
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          unwritable_path,
+                          reader)
+        self.assertEqual(reader.closes_called, 1)
+
+        # encoding to unwritable file with total_pcm_frames
+        # should still close pcmreader
+        reader = CLOSE_PCM_Reader(EXACT_SILENCE_PCM_Reader(pcm_frames))
+        self.assertEqual(reader.closes_called, 0)
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          unwritable_path,
+                          reader,
+                          total_pcm_frames=pcm_frames)
+        self.assertEqual(reader.closes_called, 1)
+
+        # raising IOError should still close pcmreader
+        reader = CLOSE_PCM_Reader(
+                     ERROR_PCM_Reader(IOError("I/O error!"),
+                                      failure_chance=1.0))
+        self.assertEqual(reader.closes_called, 0)
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          "error." + self.audio_class.SUFFIX,
+                          reader)
+        self.assertEqual(reader.closes_called, 1)
+        self.assertFalse(os.path.isfile("error." + self.audio_class.SUFFIX))
+
+        # raising ValueError should still close pcmreader
+        reader = CLOSE_PCM_Reader(
+                     ERROR_PCM_Reader(ValueError("value error!"),
+                                      failure_chance=1.0))
+        self.assertEqual(reader.closes_called, 0)
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          "error." + self.audio_class.SUFFIX,
+                          reader)
+        self.assertEqual(reader.closes_called, 1)
+        self.assertFalse(os.path.isfile("error." + self.audio_class.SUFFIX))
+
+        # raising IOError with total_pcm_frames set
+        # should still close pcmreader
+        reader = CLOSE_PCM_Reader(
+                     ERROR_PCM_Reader(IOError("I/O error!"),
+                                      failure_chance=1.0))
+        self.assertEqual(reader.closes_called, 0)
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          "error." + self.audio_class.SUFFIX,
+                          reader,
+                          total_pcm_frames=pcm_frames)
+        self.assertEqual(reader.closes_called, 1)
+        self.assertFalse(os.path.isfile("error." + self.audio_class.SUFFIX))
+
+        # raising IOError with total_pcm_frames set
+        # should still close pcmreader
+        reader = CLOSE_PCM_Reader(
+                     ERROR_PCM_Reader(ValueError("value error!"),
+                                      failure_chance=1.0))
+        self.assertEqual(reader.closes_called, 0)
+        self.assertRaises(audiotools.EncodingError,
+                          self.audio_class.from_pcm,
+                          "error." + self.audio_class.SUFFIX,
+                          reader,
+                          total_pcm_frames=pcm_frames)
+        self.assertEqual(reader.closes_called, 1)
+        self.assertFalse(os.path.isfile("error." + self.audio_class.SUFFIX))
 
     @FORMAT_AUDIOFILE
     def test_convert_progress(self):
@@ -1206,18 +1283,24 @@ class LosslessFileTest(AudioFileTest):
             return
 
         # check various round-trip options
-        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
+        with tempfile.NamedTemporaryFile(
+                 suffix="." + self.audio_class.SUFFIX) as temp_input:
             track = self.audio_class.from_pcm(
-                temp.name,
+                temp_input.name,
                 test_streams.Sine16_Stereo(441000, 44100,
                                            8820.0, 0.70, 4410.0, 0.29, 1.0))
             for audio_class in audiotools.AVAILABLE_TYPES:
-                temp2 = tempfile.NamedTemporaryFile(
-                    suffix="." + audio_class.SUFFIX)
-                try:
-                    track2 = track.convert(temp2.name,
-                                           audio_class)
+                self.assertFalse(os.path.isfile("/dev/null/foo.%s" %
+                                                (audio_class.SUFFIX)))
+                self.assertRaises(audiotools.EncodingError,
+                                  track.convert,
+                                  "/dev/null/foo.%s" %
+                                  (audio_class.SUFFIX),
+                                  audio_class)
+
+                with tempfile.NamedTemporaryFile(
+                         suffix="." + audio_class.SUFFIX) as temp_output:
+                    track2 = track.convert(temp_output.name, audio_class)
                     if (track2.lossless()):
                         self.assertTrue(
                             audiotools.pcm_cmp(
@@ -1242,14 +1325,8 @@ class LosslessFileTest(AudioFileTest):
                              int(counter),
                              10))
 
-                    self.assertRaises(audiotools.EncodingError,
-                                      track.convert,
-                                      "/dev/null/foo.%s" %
-                                      (audio_class.SUFFIX),
-                                      audio_class)
-
                     for compression in audio_class.COMPRESSION_MODES:
-                        track2 = track.convert(temp2.name,
+                        track2 = track.convert(temp_output.name,
                                                audio_class,
                                                compression)
                         if (track2.lossless()):
@@ -1282,11 +1359,6 @@ class LosslessFileTest(AudioFileTest):
                                           (audio_class.SUFFIX),
                                           audio_class,
                                           compression)
-
-                finally:
-                    temp2.close()
-        finally:
-            temp.close()
 
 
 class LossyFileTest(AudioFileTest):
@@ -1586,31 +1658,60 @@ class LossyFileTest(AudioFileTest):
 
 class TestForeignWaveChunks:
     @FORMAT_LOSSLESS
+    def test_from_wave_close(self):
+        temp_name = "closed." + self.audio_class.SUFFIX
+        if (os.path.isfile(temp_name)):
+            os.unlink(temp_name)
+        try:
+            pcmreader = CLOSE_PCM_Reader(
+                EXACT_SILENCE_PCM_Reader(304844))
+
+            self.assertEqual(pcmreader.closes_called, 0)
+
+            # build our audio file using the .from_wave() interface
+            track = self.audio_class.from_wave(
+                filename=temp_name,
+                header=(b'RIFFT\x9b\x12\x00WAVEfmt ' +
+                        b'\x10\x00\x00\x00\x01\x00\x02\x00D' +
+                        b'\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00' +
+                        b'data0\x9b\x12\x00'),
+                pcmreader=pcmreader,
+                footer=b"")
+
+            # ensure pcmreader gets closed properly
+            self.assertEqual(pcmreader.closes_called, 1)
+        finally:
+            os.unlink(temp_name)
+
+    @FORMAT_LOSSLESS
     def test_convert_wave_chunks(self):
         import filecmp
+        from zlib import decompress
 
-        self.assert_(issubclass(self.audio_class,
-                                audiotools.WaveContainer))
+        self.assertTrue(issubclass(self.audio_class,
+                                   audiotools.WaveContainer))
 
         # several even-sized chunks
-        chunks1 = (("x\x9c\x0b\xf2ts\xdbQ\xc9\xcb\x10\xee\x18" +
-                    "\xe6\x9a\x96[\xa2 \xc0\xc0\xc0\xc0\xc8\xc0" +
-                    "\xc4\xe0\xb2\x86\x81A`#\x13\x03\x0b\x83" +
-                    "\x00CZ~~\x15\x07P\xbc$\xb5\xb8\xa4$\xb5" +
-                    "\xa2$)\xb1\xa8\n\xa4\xae8?757\xbf(\x15!^U" +
-                    "\x05\xd40\nF\xc1(\x18\xc1 %\xb1$1\xa0\x94" +
-                    "\x97\x01\x00`\xb0\x18\xf7").decode('zlib'),
+        chunks1 = (decompress(
+                       b"x\x9c\x0b\xf2ts\xdbQ\xc9\xcb\x10\xee\x18" +
+                       b"\xe6\x9a\x96[\xa2 \xc0\xc0\xc0\xc0\xc8\xc0" +
+                       b"\xc4\xe0\xb2\x86\x81A`#\x13\x03\x0b\x83" +
+                       b"\x00CZ~~\x15\x07P\xbc$\xb5\xb8\xa4$\xb5" +
+                       b"\xa2$)\xb1\xa8\n\xa4\xae8?757\xbf(\x15!^U" +
+                       b"\x05\xd40\nF\xc1(\x18\xc1 %\xb1$1\xa0\x94" +
+                       b"\x97\x01\x00`\xb0\x18\xf7"),
                    (220500, 44100, 2, 16, 0x3),
-                   "spam\x0c\x00\x00\x00anotherchunk")
+                   b"spam\x0c\x00\x00\x00anotherchunk")
 
         # several odd-sized chunks
-        chunks2 = (("x\x9c\x0b\xf2ts\xcbc``\x08w\x0csM\xcb\xcf\xaf" +
-                    "\xe2b@\x06i\xb9%\n\x02@\x9a\x11\x08]\xd60" +
-                    "\x801#\x03\x07CRbQ\x157H\x1c\x01\x18R\x12K\x12" +
-                    "\xf9\x81b\x00\x19\xdd\x0ba").decode('zlib'),
+        chunks2 = (decompress(
+                       b"x\x9c\x0b\xf2ts\xcbc``\x08w\x0csM\xcb\xcf\xaf" +
+                       b"\xe2b@\x06i\xb9%\n\x02@\x9a\x11\x08]\xd60" +
+                       b"\x801#\x03\x07CRbQ\x157H\x1c\x01\x18R\x12K\x12" +
+                       b"\xf9\x81b\x00\x19\xdd\x0ba"),
                    (15, 44100, 1, 8, 0x4),
-                   "\x00barz\x0b\x00\x00\x00\x01\x01\x01\x01" +
-                   "\x01\x01\x01\x01\x01\x01\x01\x00")
+                   b"\x00barz\x0b\x00\x00\x00\x01\x01\x01\x01" +
+                   b"\x01\x01\x01\x01\x01\x01\x01\x00")
 
         for (header,
              (total_frames,
@@ -1680,21 +1781,20 @@ class TestForeignWaveChunks:
 
                             # ensure the progress function
                             # gets called during conversion
-                            self.assert_(
-                                len(log.results) > 0,
+                            self.assertGreater(
+                                len(log.results), 0,
                                 "no logging converting %s to %s" %
                                 (self.audio_class.NAME,
                                  new_class.NAME))
 
-                            self.assert_(
-                                len(set([r[1] for r in log.results])) == 1)
+                            self.assertEqual(
+                                len({r[1] for r in log.results}), 1)
                             for x, y in zip(log.results[1:], log.results):
-                                self.assert_((x[0] - y[0]) >= 0)
+                                self.assertGreaterEqual((x[0] - y[0]), 0)
 
                             # ensure newly converted file
                             # matches has_foreign_wave_chunks
-                            self.assertEqual(
-                                track2.has_foreign_wave_chunks(), True)
+                            self.assertTrue(track2.has_foreign_wave_chunks())
 
                             # ensure newly converted file
                             # has same header and footer
@@ -1717,78 +1817,78 @@ class TestForeignWaveChunks:
 
         for (header, footer) in [
             # wave header without "RIFF<size>WAVE raises an error
-            ("", ""),
-            ("FOOZ\x00\x00\x00\x00BARZ", ""),
+            (b"", b""),
+            (b"FOOZ\x00\x00\x00\x00BARZ", b""),
 
             # invalid total size raises an error
-            ("RIFFZ\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
-             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00" +
-             "\x10\x00data2\x00\x00\x00", ""),
+            (b"RIFFZ\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             b"\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00" +
+             b"\x10\x00data2\x00\x00\x00", b""),
 
             # invalid data size raises an error
-            ("RIFFV\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
-             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00" +
-             "\x10\x00data6\x00\x00\x00", ""),
+            (b"RIFFV\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             b"\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00" +
+             b"\x10\x00data6\x00\x00\x00", b""),
 
             # invalid chunk IDs in header raise an error
-            ("RIFFb\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
-             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
-             "chn\x00\x04\x00\x00\x00\x01\x02\x03\x04" +
-             "data2\x00\x00\x00", ""),
+            (b"RIFFb\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             b"\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
+             b"chn\x00\x04\x00\x00\x00\x01\x02\x03\x04" +
+             b"data2\x00\x00\x00", b""),
 
             # mulitple fmt chunks raise an error
-            ("RIFFn\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
-             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00" +
-             "\x10\x00" +
-             "fmt \x10\x00\x00\x00\x01" +
-             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00" +
-             "\x10\x00" +
-             "data2\x00\x00\x00", ""),
+            (b"RIFFn\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             b"\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00" +
+             b"\x10\x00" +
+             b"fmt \x10\x00\x00\x00\x01" +
+             b"\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00" +
+             b"\x10\x00" +
+             b"data2\x00\x00\x00", b""),
 
             # data chunk before fmt chunk raises an error
-            ("RIFFJ\x00\x00\x00WAVE" +
-             "chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
-             "data2\x00\x00\x00", ""),
+            (b"RIFFJ\x00\x00\x00WAVE" +
+             b"chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
+             b"data2\x00\x00\x00", b""),
 
             # bytes after data chunk raises an error
-            ("RIFFb\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
-             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
-             "chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
-             "data3\x00\x00\x00\x01", ""),
+            (b"RIFFb\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             b"\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
+             b"chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
+             b"data3\x00\x00\x00\x01", b""),
 
             # truncated chunks in header raise an error
-            ("RIFFb\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
-             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
-             "chnk\x04\x00\x00\x00\x01\x02\x03", ""),
+            (b"RIFFb\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             b"\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
+             b"chnk\x04\x00\x00\x00\x01\x02\x03", b""),
 
             # fmt chunk in footer raises an error
-            ("RIFFz\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
-             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
-             "chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
-             "data2\x00\x00\x00",
-             "fmt \x10\x00\x00\x00\x01" +
-             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00"),
+            (b"RIFFz\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             b"\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
+             b"chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
+             b"data2\x00\x00\x00",
+             b"fmt \x10\x00\x00\x00\x01" +
+             b"\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00"),
 
             # data chunk in footer raises an error
-            ("RIFFn\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
-             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
-             "chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
-             "data2\x00\x00\x00",
-             "data\x04\x00\x00\x00\x01\x02\x03\x04"),
+            (b"RIFFn\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             b"\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
+             b"chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
+             b"data2\x00\x00\x00",
+             b"data\x04\x00\x00\x00\x01\x02\x03\x04"),
 
             # invalid chunk IDs in footer raise an error
-            ("RIFFn\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
-             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
-             "chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
-             "data2\x00\x00\x00",
-             "chn\x00\x04\x00\x00\x00\x01\x02\x03\x04"),
+            (b"RIFFn\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             b"\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
+             b"chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
+             b"data2\x00\x00\x00",
+             b"chn\x00\x04\x00\x00\x00\x01\x02\x03\x04"),
 
             # truncated chunks in footer raise an error
-            ("RIFFn\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
-             "\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
-             "chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
-             "data2\x00\x00\x00",
-             "chnk\x04\x00\x00\x00\x01\x02\x03")]:
+            (b"RIFFn\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01" +
+             b"\x00\x01\x00D\xac\x00\x00\x88X\x01\x00\x02\x00\x10\x00" +
+             b"chnk\x04\x00\x00\x00\x01\x02\x03\x04" +
+             b"data2\x00\x00\x00",
+             b"chnk\x04\x00\x00\x00\x01\x02\x03")]:
             self.assertRaises(audiotools.EncodingError,
                               self.audio_class.from_wave,
                               "bad.wav",
@@ -1804,32 +1904,61 @@ class TestForeignWaveChunks:
 
 class TestForeignAiffChunks:
     @FORMAT_LOSSLESS
+    def test_from_wave_close(self):
+        temp_name = "closed." + self.audio_class.SUFFIX
+        if (os.path.isfile(temp_name)):
+            os.unlink(temp_name)
+        try:
+            pcmreader = CLOSE_PCM_Reader(
+                EXACT_SILENCE_PCM_Reader(304844))
+
+            self.assertEqual(pcmreader.closes_called, 0)
+
+            # build our audio file using the .from_wave() interface
+            track = self.audio_class.from_aiff(
+                filename=temp_name,
+                header=(b'FORM\x00\x12\x9b^AIFFCOMM' +
+                        b'\x00\x00\x00\x12\x00\x02\x00\x04\xa6\xcc\x00' +
+                        b'\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00' +
+                        b'SSND\x00\x12\x9b8\x00\x00\x00\x00\x00\x00\x00\x00'),
+                pcmreader=pcmreader,
+                footer=b"")
+
+            # ensure pcmreader gets closed properly
+            self.assertEqual(pcmreader.closes_called, 1)
+        finally:
+            os.unlink(temp_name)
+
+    @FORMAT_LOSSLESS
     def test_convert_aiff_chunks(self):
         import filecmp
+        from zlib import decompress
 
-        self.assert_(issubclass(self.audio_class,
-                                audiotools.AiffContainer))
+        self.assertTrue(issubclass(self.audio_class,
+                                   audiotools.AiffContainer))
 
         # several even-sized chunks
-        chunks1 = (("x\x9cs\xf3\x0f\xf2e\xe0\xad<\xe4\xe8\xe9\xe6\xe6" +
-                    "\xec\xef\xeb\xcb\xc0\xc0 \xc4\xc0\xc4\xc0\x1c\x1b" +
-                    "\xc2 \xe0\xc0\xb7\xc6\x85\x01\x0c\xdc\xfc\xfd\xa3" +
-                    "\x80\x14GIjqIIjE\x89\x93c\x10\x88/P\x9c\x9f\x9b" +
-                    "\x9a\x9b_\x94\x8a\x10\x8f\x02\x8a\xb30\x8c" +
-                    "\x82Q0\nF.\x08\x0e\xf6sa\xe0-\x8d\x80\xf1\x01" +
-                    "\xcf\x8c\x17\x18").decode('zlib'),
+        chunks1 = (decompress(
+                       b"x\x9cs\xf3\x0f\xf2e\xe0\xad<\xe4\xe8\xe9\xe6\xe6" +
+                       b"\xec\xef\xeb\xcb\xc0\xc0 \xc4\xc0\xc4\xc0\x1c\x1b" +
+                       b"\xc2 \xe0\xc0\xb7\xc6\x85\x01\x0c\xdc\xfc\xfd\xa3" +
+                       b"\x80\x14GIjqIIjE\x89\x93c\x10\x88/P\x9c\x9f\x9b" +
+                       b"\x9a\x9b_\x94\x8a\x10\x8f\x02\x8a\xb30\x8c" +
+                       b"\x82Q0\nF.\x08\x0e\xf6sa\xe0-\x8d\x80\xf1\x01" +
+                       b"\xcf\x8c\x17\x18"),
                    (220500, 44100, 2, 16, 0x3),
-                   "SPAM\x00\x00\x00\x0canotherchunk")
+                   b"SPAM\x00\x00\x00\x0canotherchunk")
 
         # several odd-sized chunks
-        chunks2 = (("x\x9cs\xf3\x0f\xf2e``\xa8p\xf4tss\xf3\xf7\x8f" +
-                    "\x02\xb2\xb9\x18\xe0\xc0\xd9\xdf\x17$+\xc4\xc0" +
-                    "\x08$\xf9\x198\x1c\xf8\xd6\xb8@d\x9c\x1c\x83@j" +
-                    "\xb9\x19\x11\x80!8\xd8\x0f$+\x0e\xd3\r" +
-                    "\x00\x16\xa5\t3").decode('zlib'),
+        chunks2 = (decompress(
+                       b"x\x9cs\xf3\x0f\xf2e``\xa8p\xf4tss\xf3\xf7\x8f" +
+                       b"\x02\xb2\xb9\x18\xe0\xc0\xd9\xdf\x17$+\xc4\xc0" +
+                       b"\x08$\xf9\x198\x1c\xf8\xd6\xb8@d\x9c\x1c\x83@j" +
+                       b"\xb9\x19\x11\x80!8\xd8\x0f$+\x0e\xd3\r" +
+                       b"\x00\x16\xa5\t3"),
                    (15, 44100, 1, 8, 0x4),
-                   "\x00BAZZ\x00\x00\x00\x0b\x02\x02\x02\x02" +
-                   "\x02\x02\x02\x02\x02\x02\x02\x00")
+                   b"\x00BAZZ\x00\x00\x00\x0b\x02\x02\x02\x02" +
+                   b"\x02\x02\x02\x02\x02\x02\x02\x00")
 
         for (header,
              (total_frames,
@@ -1899,21 +2028,20 @@ class TestForeignAiffChunks:
 
                             # ensure the progress function
                             # gets called during conversion
-                            self.assert_(
-                                len(log.results) > 0,
+                            self.assertGreater(
+                                len(log.results), 0,
                                 "no logging converting %s to %s" %
                                 (self.audio_class.NAME,
                                  new_class.NAME))
 
-                            self.assert_(
-                                len(set([r[1] for r in log.results])) == 1)
+                            self.assertEqual(
+                                len({r[1] for r in log.results}), 1)
                             for x, y in zip(log.results[1:], log.results):
-                                self.assert_((x[0] - y[0]) >= 0)
+                                self.assertGreaterEqual((x[0] - y[0]), 0)
 
                             # ensure newly converted file
                             # matches has_foreign_wave_chunks
-                            self.assertEqual(
-                                track2.has_foreign_aiff_chunks(), True)
+                            self.assertTrue(track2.has_foreign_aiff_chunks())
 
                             # ensure newly converted file
                             # has same header and footer
@@ -1936,94 +2064,94 @@ class TestForeignAiffChunks:
 
         for (header, footer) in [
             # aiff header without "FORM<size>AIFF raises an error
-            ("", ""),
-            ("FOOZ\x00\x00\x00\x00BARZ", ""),
+            (b"", b""),
+            (b"FOOZ\x00\x00\x00\x00BARZ", b""),
 
             # invalid total size raises an error
-            ("FORM\x00\x00\x00tAIFF" +
-             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
-             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
-             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
-             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+            (b"FORM\x00\x00\x00tAIFF" +
+             b"COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             b"\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             b"SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             b"ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
 
             # invalid SSND size raises an error
-            ("FORM\x00\x00\x00rAIFF" +
-             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
-             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
-             "SSND\x00\x00\x00<\x00\x00\x00\x00\x00\x00\x00\x00",
-             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+            (b"FORM\x00\x00\x00rAIFF" +
+             b"COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             b"\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             b"SSND\x00\x00\x00<\x00\x00\x00\x00\x00\x00\x00\x00",
+             b"ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
 
             # invalid chunk IDs in header raise an error
-            ("FORM\x00\x00\x00~AIFF" +
-             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
-             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
-             "CHN\x00\x00\x00\x00\x04\x01\x02\x03\x04" +
-             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
-             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+            (b"FORM\x00\x00\x00~AIFF" +
+             b"COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             b"\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             b"CHN\x00\x00\x00\x00\x04\x01\x02\x03\x04" +
+             b"SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             b"ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
 
             # mulitple COMM chunks raise an error
-            ("FORM\x00\x00\x00\x8cAIFF" +
-             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
-             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
-             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
-             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
-             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
-             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+            (b"FORM\x00\x00\x00\x8cAIFF" +
+             b"COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             b"\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             b"COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             b"\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             b"SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             b"ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
 
             # SSND chunk before COMM chunk raises an error
-            ("FORM\x00\x00\x00XAIFF" +
-             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
-             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+            (b"FORM\x00\x00\x00XAIFF" +
+             b"SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             b"ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
 
             # bytes missing from SSNK chunk raises an error
-            ("FORM\x00\x00\x00rAIFF" +
-             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
-             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
-             "SSND\x00\x00\x00<\x00\x00\x00\x00\x00\x00",
-             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+            (b"FORM\x00\x00\x00rAIFF" +
+             b"COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             b"\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             b"SSND\x00\x00\x00<\x00\x00\x00\x00\x00\x00",
+             b"ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
 
             # bytes after SSND chunk raises an error
-            ("FORM\x00\x00\x00rAIFF" +
-             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
-             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
-             "SSND\x00\x00\x00<\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+            (b"FORM\x00\x00\x00rAIFF" +
+             b"COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             b"\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             b"SSND\x00\x00\x00<\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+             b"ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
 
             # truncated chunks in header raise an error
-            ("FORM\x00\x00\x00rAIFF" +
-             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00",
-             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+            (b"FORM\x00\x00\x00rAIFF" +
+             b"COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00",
+             b"ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
 
             # COMM chunk in footer raises an error
-            ("FORM\x00\x00\x00\x8cAIFF" +
-             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
-             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
-             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
-             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
-             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
-             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+            (b"FORM\x00\x00\x00\x8cAIFF" +
+             b"COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             b"\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             b"SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             b"COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             b"\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             b"ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
 
             # SSND chunk in footer raises an error
-            ("FORM\x00\x00\x00rAIFF" +
-             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
-             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
-             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
-             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00" +
-             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00"),
+            (b"FORM\x00\x00\x00rAIFF" +
+             b"COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             b"\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             b"SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             b"ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00" +
+             b"SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00"),
 
             # invalid chunk IDs in footer raise an error
-            ("FORM\x00\x00\x00rAIFF" +
-             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
-             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
-             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
-             "ID3\00\x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
+            (b"FORM\x00\x00\x00rAIFF" +
+             b"COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             b"\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             b"SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             b"ID3\00\x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00\x00"),
 
             # truncated chunks in footer raise an error
-            ("FORM\x00\x00\x00rAIFF" +
-             "COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
-             "\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
-             "SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
-             "ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00")]:
+            (b"FORM\x00\x00\x00rAIFF" +
+             b"COMM\x00\x00\x00\x12\x00\x01\x00\x00\x00\x19\x00" +
+             b"\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00" +
+             b"SSND\x00\x00\x00:\x00\x00\x00\x00\x00\x00\x00\x00",
+             b"ID3 \x00\x00\x00\nID3\x02\x00\x00\x00\x00\x00")]:
             self.assertRaises(audiotools.EncodingError,
                               self.audio_class.from_aiff,
                               "bad.aiff",

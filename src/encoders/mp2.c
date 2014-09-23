@@ -151,7 +151,6 @@ encoders_encode_mp2(PyObject *dummy, PyObject *args, PyObject *keywds)
         twolame_close(&twolame_opts);
     fclose(output_file);
     samples->del(samples);
-    pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
     Py_INCREF(Py_None);
     return Py_None;

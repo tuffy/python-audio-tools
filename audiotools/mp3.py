@@ -245,8 +245,6 @@ class MP3Audio(AudioFile):
                                         bits_per_sample=16)),
                        compression)
 
-            pcmreader.close()
-
             if ((total_pcm_frames is not None) and
                 (total_pcm_frames != pcmreader.frames_written)):
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
@@ -257,6 +255,8 @@ class MP3Audio(AudioFile):
         except (ValueError, IOError) as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
+        finally:
+            pcmreader.close()
 
     def bits_per_sample(self):
         """returns an integer number of bits-per-sample this track contains"""
@@ -711,11 +711,11 @@ class MP2Audio(MP3Audio):
                                                  48000],
                                                 pcmreader.sample_rate)]
 
-        try:
-            if (total_pcm_frames is not None):
-                from audiotools import CounterPCMReader
-                pcmreader = CounterPCMReader(pcmreader)
+        if (total_pcm_frames is not None):
+            from audiotools import CounterPCMReader
+            pcmreader = CounterPCMReader(pcmreader)
 
+        try:
             encode_mp2(filename,
                        BufferedPCMReader(
                            PCMConverter(pcmreader,
@@ -736,6 +736,8 @@ class MP2Audio(MP3Audio):
         except (ValueError, IOError) as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
+        finally:
+            pcmreader.close()
 
     @classmethod
     def available(cls, system_binaries):

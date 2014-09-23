@@ -41,10 +41,12 @@ class AuReader(object):
          self.channels) = self.stream.parse("4b 5* 32u")
 
         if (magic_number != b'.snd'):
+            self.stream.close()
             raise ValueError(ERR_AU_INVALID_HEADER)
         try:
             self.bits_per_sample = {2: 8, 3: 16, 4: 24}[encoding_format]
         except KeyError:
+            self.stream.close()
             raise ValueError(ERR_AU_UNSUPPORTED_FORMAT)
 
         self.channel_mask = {1: 0x4, 2: 0x3}.get(self.channels, 0)

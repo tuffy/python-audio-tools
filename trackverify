@@ -142,12 +142,11 @@ def accuraterip_checksum(progress,
                          ar_matches):
     from audiotools import (transfer_data,
                             PCMCat,
-                            PCMReader,
                             PCMReaderHead,
                             PCMReaderDeHead,
                             PCMReaderProgress)
+    from audiotools.decoders import SameSample
     from audiotools.accuraterip import Checksum, match_offset
-    from io import BytesIO
 
     # unify previous track, current track and next track into a single stream
 
@@ -160,14 +159,12 @@ def accuraterip_checksum(progress,
         pcmreaders.append(PCMReaderDeHead(prev_pcmreader, frames_to_skip))
     else:
         pcmreaders.append(
-            PCMReader(BytesIO(chr(0) *
-                               (track.bits_per_sample() // 8) *
-                               track.channels() *
-                               PREVIOUS_TRACK_FRAMES),
-                      track.sample_rate(),
-                      track.channels(),
-                      int(track.channel_mask()),
-                      track.bits_per_sample()))
+            SameSample(sample=0,
+                       total_pcm_frames=PREVIOUS_TRACK_FRAMES,
+                       sample_rate=track.sample_rate(),
+                       channels=track.channels(),
+                       channel_mask=int(track.channel_mask()),
+                       bits_per_sample=track.bits_per_sample()))
 
     pcmreaders.append(track.to_pcm())
 
@@ -176,14 +173,12 @@ def accuraterip_checksum(progress,
                                         NEXT_TRACK_FRAMES))
     else:
         pcmreaders.append(
-            PCMReader(BytesIO(chr(0) *
-                               (track.bits_per_sample() // 8) *
-                               track.channels() *
-                               NEXT_TRACK_FRAMES),
-                      track.sample_rate(),
-                      track.channels(),
-                      int(track.channel_mask()),
-                      track.bits_per_sample()))
+            SameSample(sample=0,
+                       total_pcm_frames=NEXT_TRACK_FRAMES,
+                       sample_rate=track.sample_rate(),
+                       channels=track.channels(),
+                       channel_mask=int(track.channel_mask()),
+                       bits_per_sample=track.bits_per_sample()))
 
     # feed stream to checksummer
     checksummer = Checksum(

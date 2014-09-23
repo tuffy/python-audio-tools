@@ -278,7 +278,6 @@ encoders_encode_flac(char *filename,
     output_stream->unmark(output_stream, STREAMINFO);
 
     samples->del(samples); /*deallocate the temporary samples block*/
-    pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
     flacenc_free_encoder(&encoder);
     output_stream->close(output_stream); /*close the output file*/

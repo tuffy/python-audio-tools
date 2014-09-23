@@ -1912,13 +1912,11 @@ class FlacAudio(WaveContainer, AiffContainer):
                  (1 if (total_pcm_frames % (pcmreader.sample_rate * 10)) else
                   0))
             padding_size = 4096 + 4 + (expected_seekpoints * 18)
+            pcmreader = CounterPCMReader(pcmreader)
         else:
             padding_size = 4096
 
         try:
-            if (total_pcm_frames is not None):
-                pcmreader = CounterPCMReader(pcmreader)
-
             offsets = (encode_flac if encoding_function is None
                        else encoding_function)(
                 filename,
@@ -1962,6 +1960,8 @@ class FlacAudio(WaveContainer, AiffContainer):
         except Exception:
             cls.__unlink__(filename)
             raise
+        finally:
+            pcmreader.close()
 
     def seekable(self):
         """returns True if the file is seekable"""
@@ -2008,7 +2008,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         try:
             metadata = self.get_metadata()
             if (metadata is not None):
-                return 'riff' in [
+                return b'riff' in [
                     block.application_id for block in
                     metadata.get_blocks(Flac_APPLICATION.BLOCK_ID)]
             else:
@@ -2055,7 +2055,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         # return tuple of header and footer
         if ((len(header) != 0) or (len(footer) != 0)):
-            return ("".join(header), "".join(footer))
+            return (b"".join(header), b"".join(footer))
         else:
             raise ValueError("no foreign RIFF chunks")
 
@@ -3333,13 +3333,19 @@ class OggFlacAudio(FlacAudio):
         try:
             transfer_framelist_data(pcmreader, sub.stdin.write)
         except (ValueError, IOError) as err:
-            sub.stdin.close()
+            try:
+                sub.stdin.close()
+            except:
+                pass
             devnull.close()
             sub.wait()
             cls.__unlink__(filename)
             raise EncodingError(str(err))
         except Exception:
-            sub.stdin.close()
+            try:
+                sub.stdin.close()
+            except:
+                pass
             devnull.close()
             sub.wait()
             cls.__unlink__(filename)

@@ -228,16 +228,14 @@ class VorbisAudio(AudioFile):
                 from audiotools import UnsupportedChannelMask
                 raise UnsupportedChannelMask(filename, channel_mask)
 
+        if (total_pcm_frames is not None):
+            from audiotools import CounterPCMReader
+            pcmreader = CounterPCMReader(pcmreader)
         try:
-            if (total_pcm_frames is not None):
-                from audiotools import CounterPCMReader
-                pcmreader = CounterPCMReader(pcmreader)
 
             encode_vorbis(filename,
                           BufferedPCMReader(pcmreader),
                           float(compression) / 10)
-
-            pcmreader.close()
 
             if ((total_pcm_frames is not None) and
                 (total_pcm_frames != pcmreader.frames_written)):
@@ -249,6 +247,8 @@ class VorbisAudio(AudioFile):
         except (ValueError, IOError) as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
+        finally:
+            pcmreader.close()
 
     def update_metadata(self, metadata):
         """takes this track's current MetaData object

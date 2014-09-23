@@ -973,11 +973,16 @@ class AiffAudio(AiffContainer):
         try:
             (total_size, ssnd_size) = validate_header(header)
         except ValueError as err:
+            pcmreader.close()
             raise EncodingError(str(err))
 
         try:
-            # write header to output file
             f = open(filename, "wb")
+        except IOError as msg:
+            raise EncodingError(msg)
+
+        try:
+            # write header to output file
             f.write(header)
 
             # write PCM data to output file
@@ -995,15 +1000,10 @@ class AiffAudio(AiffContainer):
                 raise EncodingError(ERR_AIFF_TRUNCATED_SSND_CHUNK)
 
             # ensure footer validates correctly
-            try:
-                validate_footer(footer, SSND_bytes_written)
-                # before writing it to disk
-                f.write(footer)
-            except ValueError as err:
-                cls.__unlink__(filename)
-                raise EncodingError(str(err))
-
-            f.close()
+            # before writing it to disk
+            validate_footer(footer, SSND_bytes_written)
+            f.write(footer)
+            f.flush()
 
             # ensure total size is correct
             if ((len(header) + ssnd_size + len(footer)) != total_size):
@@ -1012,12 +1012,12 @@ class AiffAudio(AiffContainer):
                 raise EncodingError(ERR_AIFF_INVALID_SIZE)
 
             return cls(filename)
-        except IOError as err:
+        except (IOError, ValueError) as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
-        except DecodingError as err:
-            cls.__unlink__(filename)
-            raise EncodingError(err.error_message)
+        finally:
+            f.close()
+            pcmreader.close()
 
     def verify(self, progress=None):
         """verifies the current file for correctness

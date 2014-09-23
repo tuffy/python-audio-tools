@@ -972,6 +972,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             try:
                 f = open(filename, 'wb')
             except IOError as err:
+                pcmreader.close()
                 raise EncodingError(str(err))
             try:
                 m4a_writer = BitstreamWriter(f, False)
@@ -986,6 +987,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             except IOError as err:
                 m4a_writer.unmark(1)
                 m4a_writer.close()
+                pcmreader.close()
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
 
@@ -1005,8 +1007,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 m4a_writer.close()
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
-
-            pcmreader.close()
+            finally:
+                pcmreader.close()
 
             if (actual_pcm_frames != total_pcm_frames):
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
@@ -1058,11 +1060,10 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                         history_multiplier=cls.HISTORY_MULTIPLIER,
                         maximum_k=cls.MAXIMUM_K)
             except (IOError, ValueError) as err:
-                pcmreader.close()
                 mdat_file.close()
                 raise EncodingError(str(err))
-
-            pcmreader.close()
+            finally:
+                pcmreader.close()
 
             mdat_size = 8 + sum(frame_byte_sizes)
 

@@ -131,11 +131,11 @@ def image_compare_raw(progress, source_filename,
         return (
             audiotools.pcm_frame_cmp(
                 audiotools.PCMReaderHead(
-                    audiotools.PCMReader(file=f,
-                                         sample_rate=sample_rate,
-                                         channels=channels,
-                                         channel_mask=channel_mask,
-                                         bits_per_sample=bits_per_sample),
+                    audiotools.PCMFileReader(file=f,
+                                             sample_rate=sample_rate,
+                                             channels=channels,
+                                             channel_mask=channel_mask,
+                                             bits_per_sample=bits_per_sample),
                     total_pcm_frames),
                 audiotools.PCMReaderProgress(track_audiofile.to_pcm(),
                                              total_pcm_frames,
