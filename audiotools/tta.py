@@ -129,12 +129,20 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         try:
             tta = open(self.filename, "rb")
+        except IOError as msg:
+            return PCMReaderError(error_message=str(msg),
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.bits_per_sample())
+        try:
             skip_id3v2_comment(tta)
             return decoders.TTADecoder(tta)
         except (IOError, ValueError) as msg:
             # This isn't likely unless the TTA file is modified
             # between when TrueAudio is instantiated
             # and to_pcm() is called.
+            tta.close()
             return PCMReaderError(error_message=str(msg),
                                   sample_rate=self.sample_rate(),
                                   channels=self.channels(),

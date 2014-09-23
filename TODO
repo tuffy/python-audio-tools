@@ -7213,7 +7213,7 @@
       - [ ] opus
       - [X] shorten
       - [X] sines
-      - [ ] tta
+      - [X] tta
       - [ ] vorbis
       - [X] wave
       - [X] wavpack
@@ -7281,7 +7281,7 @@
       - [ ] opus
       - [X] shorten
       - [X] sines
-      - [ ] tta
+      - [X] tta
       - [ ] vorbis
       - [X] wave
       - [X] wavpack

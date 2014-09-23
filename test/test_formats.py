@@ -6659,16 +6659,14 @@ class TTAFileTest(LosslessFileTest):
                           "/dev/null/foo")
 
         # check invalid file
-        invalid_file = tempfile.NamedTemporaryFile(suffix=".tta")
-        try:
-            for c in "invalidstringxxx":
+        with tempfile.NamedTemporaryFile(suffix=".tta") as invalid_file:
+            for c in [b"i", b"n", b"v", b"a", b"l", b"i", b"d",
+                      b"s", b"t", b"r", b"i", b"n", b"g", b"x", b"x", b"x"]:
                 invalid_file.write(c)
                 invalid_file.flush()
                 self.assertRaises(audiotools.tta.InvalidTTA,
                                   audiotools.TrueAudio,
                                   invalid_file.name)
-        finally:
-            invalid_file.close()
 
         # check some decoder errors
         self.assertRaises(TypeError, self.decoder)
@@ -6679,58 +6677,52 @@ class TTAFileTest(LosslessFileTest):
 
     @FORMAT_TTA
     def test_verify(self):
-        tta_data = open("trueaudio.tta", "rb").read()
+        from test_core import ints_to_bytes, bytes_to_ints
 
-        self.assertEqual(audiotools.open("trueaudio.tta").verify(), True)
+        with open("trueaudio.tta", "rb") as f:
+            tta_data = f.read()
+
+        self.assertTrue(audiotools.open("trueaudio.tta").verify())
 
         # try changing the file underfoot
-        temp = tempfile.NamedTemporaryFile(suffix=".tta")
-        try:
+        with tempfile.NamedTemporaryFile(suffix=".tta") as temp:
             temp.write(tta_data)
             temp.flush()
             tta_file = audiotools.open(temp.name)
-            self.assertEqual(tta_file.verify(), True)
+            self.assertTrue(tta_file.verify())
 
             for i in range(0, len(tta_data)):
-                f = open(temp.name, "wb")
-                f.write(tta_data[0:i])
-                f.close()
+                with open(temp.name, "wb") as f:
+                    f.write(tta_data[0:i])
                 self.assertRaises(audiotools.InvalidFile,
                                   tta_file.verify)
 
             for i in range(0x2A, len(tta_data)):
                 for j in range(8):
-                    new_data = list(tta_data)
-                    new_data[i] = chr(ord(new_data[i]) ^ (1 << j))
-                    f = open(temp.name, "wb")
-                    f.write("".join(new_data))
-                    f.close()
+                    new_data = bytes_to_ints(tta_data)
+                    new_data[i] = new_data[i] ^ (1 << j)
+                    with open(temp.name, "wb") as f:
+                        f.write(ints_to_bytes(new_data))
                     self.assertRaises(audiotools.InvalidFile,
                                       tta_file.verify)
-        finally:
-            temp.close()
 
         # check a TTA file with a short header
-        temp = tempfile.NamedTemporaryFile(suffix=".tta")
-        try:
+        with tempfile.NamedTemporaryFile(suffix=".tta") as temp:
             for i in range(0, 18):
                 temp.seek(0, 0)
                 temp.write(tta_data[0:i])
                 temp.flush()
                 self.assertEqual(os.path.getsize(temp.name), i)
                 if (i < 4):
-                    self.assertEqual(
-                        audiotools.file_type(open(temp.name, "rb")),
-                        None)
-                self.assertRaises(IOError,
-                                  audiotools.decoders.TTADecoder,
-                                  open(temp.name, "rb"))
-        finally:
-            temp.close()
+                    with open(temp.name, "rb") as f:
+                        self.assertIsNone(audiotools.file_type(f))
+                with open(temp.name, "rb") as f:
+                    self.assertRaises(IOError,
+                                      audiotools.decoders.TTADecoder,
+                                      f)
 
         # check a TTA file that's been truncated
-        temp = tempfile.NamedTemporaryFile(suffix=".tta")
-        try:
+        with tempfile.NamedTemporaryFile(suffix=".tta") as temp:
             for i in range(30, len(tta_data)):
                 temp.seek(0, 0)
                 temp.write(tta_data[0:i])
@@ -6744,18 +6736,15 @@ class TTAFileTest(LosslessFileTest):
 
                 self.assertRaises(audiotools.InvalidFile,
                                   audiotools.open(temp.name).verify)
-        finally:
-            temp.close()
 
         # check a TTA file with a single swapped bit
-        temp = tempfile.NamedTemporaryFile(suffix=".tta")
-        try:
+        with tempfile.NamedTemporaryFile(suffix=".tta") as temp:
             for i in range(0x30, len(tta_data)):
                 for j in range(8):
-                    bytes = map(ord, tta_data[:])
+                    bytes = bytes_to_ints(tta_data)
                     bytes[i] ^= (1 << j)
                     temp.seek(0, 0)
-                    temp.write("".join(map(chr, bytes)))
+                    temp.write(ints_to_bytes(bytes))
                     temp.flush()
                     self.assertEqual(len(tta_data),
                                      os.path.getsize(temp.name))
@@ -6772,8 +6761,6 @@ class TTAFileTest(LosslessFileTest):
                             # a CRC-16 error.
                             # We simply need to catch that case and continue
                             continue
-        finally:
-            temp.close()
 
     def __stream_variations__(self):
         for stream in [
@@ -6917,18 +6904,20 @@ class TTAFileTest(LosslessFileTest):
                 False,
                 "reference TrueAudio binary tta(1) required for this test")
 
+        devnull = open(os.devnull, "wb")
         temp_tta_file = tempfile.NamedTemporaryFile(suffix=".tta")
         self.encode(temp_tta_file.name, pcmreader)
 
         if ((pcmreader.bits_per_sample > 8) and (pcmreader.channels <= 6)):
             # reference decoder doesn't like 8 bit .wav files?!
             # or files with too many channels?
+
             temp_wav_file = tempfile.NamedTemporaryFile(suffix=".wav")
             sub = subprocess.Popen([audiotools.BIN["tta"],
                                     "-d", temp_tta_file.name,
                                     temp_wav_file.name],
-                                   stdout=open(os.devnull, "wb"),
-                                   stderr=open(os.devnull, "wb"))
+                                   stdout=devnull,
+                                   stderr=devnull)
             self.assertEqual(sub.wait(), 0,
                              "tta decode error on %s" % (repr(pcmreader)))
         else:
@@ -6971,8 +6960,8 @@ class TTAFileTest(LosslessFileTest):
             sub = subprocess.Popen([audiotools.BIN["tta"],
                                     "-d", temp_tta_file.name,
                                     temp_wav_file.name],
-                                   stdout=open(os.devnull, "wb"),
-                                   stderr=open(os.devnull, "wb"))
+                                   stdout=devnull,
+                                   stderr=devnull)
             self.assertEqual(sub.wait(), 0,
                              "tta decode error on %s" % (repr(pcmreader)))
         else:
@@ -7002,6 +6991,8 @@ class TTAFileTest(LosslessFileTest):
 
         if (temp_wav_file is not None):
             temp_wav_file.close()
+
+        devnull.close()
 
     @FORMAT_TTA
     def test_small_files(self):
@@ -7140,6 +7131,8 @@ class TTAFileTest(LosslessFileTest):
             from audiotools.py_decoders import TTADecoder as TTADecoder1
             from audiotools.decoders import TTADecoder as TTADecoder2
 
+            devnull = open(os.devnull, "wb")
+
             # encode file using Python-based encoder
             temp_tta_file = tempfile.NamedTemporaryFile(suffix=".tta")
 
@@ -7156,8 +7149,8 @@ class TTAFileTest(LosslessFileTest):
                 sub = subprocess.Popen([audiotools.BIN["tta"],
                                         "-d", temp_tta_file.name,
                                         temp_wav_file.name],
-                                       stdout=open(os.devnull, "wb"),
-                                       stderr=open(os.devnull, "wb"))
+                                       stdout=devnull,
+                                       stderr=devnull)
                 self.assertEqual(sub.wait(), 0,
                                  "tta decode error on %s" % (repr(pcmreader)))
 
@@ -7191,8 +7184,8 @@ class TTAFileTest(LosslessFileTest):
                 sub = subprocess.Popen([audiotools.BIN["tta"],
                                         "-d", temp_tta_file.name,
                                         temp_wav_file.name],
-                                       stdout=open(os.devnull, "wb"),
-                                       stderr=open(os.devnull, "wb"))
+                                       stdout=devnull,
+                                       stderr=devnull)
                 self.assertEqual(sub.wait(), 0,
                                  "tta decode error on %s" % (repr(pcmreader)))
 
@@ -7210,6 +7203,8 @@ class TTAFileTest(LosslessFileTest):
                     TTADecoder2(open(temp_tta_file.name, "rb"))))
 
             temp_tta_file.close()
+
+            devnull.close()
 
         # test small files
         for g in [test_streams.Generate01,

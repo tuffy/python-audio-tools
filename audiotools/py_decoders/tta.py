@@ -351,8 +351,7 @@ class TTADecoder(object):
                                   for decorrelated_ch in decorrelated])
 
     def close(self):
-        # FIXME - should mark stream as closed
-        pass
+        self.reader.close()
 
     def __enter__(self):
         return self
