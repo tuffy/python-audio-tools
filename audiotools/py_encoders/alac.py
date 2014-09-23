@@ -77,7 +77,7 @@ def encode_mdat(file, pcmreader,
     # write placeholder mdat header
     mdat.mark()
     mdat.write(32, 0)
-    mdat.write_bytes("mdat")
+    mdat.write_bytes(b"mdat")
 
     # read FrameList objects until stream is empty
     frame = pcmreader.read(block_size)

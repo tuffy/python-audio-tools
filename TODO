@@ -7202,7 +7202,7 @@
       - [X] lossless
       - [X] lossy
       - [X] aiff
-      - [ ] alac
+      - [X] alac
       - [X] au
       - [X] dvda
       - [X] flac
@@ -7270,7 +7270,7 @@
       - [X] lossless
       - [X] lossy
       - [X] aiff
-      - [ ] alac
+      - [X] alac
       - [X] au
       - [X] dvda
       - [X] flac

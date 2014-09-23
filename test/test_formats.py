@@ -2367,16 +2367,14 @@ class ALACFileTest(LosslessFileTest):
                           "/dev/null/foo")
 
         # check invalid file
-        invalid_file = tempfile.NamedTemporaryFile(suffix=".m4a")
-        try:
-            for c in "invalidstringxxx":
+        with tempfile.NamedTemporaryFile(suffix=".m4a") as invalid_file:
+            for c in [b"i", b"n", b"v", b"a", b"l", b"i", b"d",
+                      b"s", b"t", b"r", b"i", b"n", b"g", b"x", b"x", b"x"]:
                 invalid_file.write(c)
                 invalid_file.flush()
                 self.assertRaises(audiotools.m4a.InvalidALAC,
                                   audiotools.ALACAudio,
                                   invalid_file.name)
-        finally:
-            invalid_file.close()
 
         # check some decoder errors,
         # mostly to ensure a failed init doesn't make Python explode
@@ -2386,21 +2384,17 @@ class ALACFileTest(LosslessFileTest):
 
     @FORMAT_ALAC
     def test_bits_per_sample(self):
-        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
+        with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp:
             for bps in (16, 24):
                 track = self.audio_class.from_pcm(
                     temp.name, BLANK_PCM_Reader(1, bits_per_sample=bps))
                 self.assertEqual(track.bits_per_sample(), bps)
                 track2 = audiotools.open(temp.name)
                 self.assertEqual(track2.bits_per_sample(), bps)
-        finally:
-            temp.close()
 
     @FORMAT_ALAC
     def test_channel_mask(self):
-        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
+        with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp:
             for mask in [["front_center"],
                          ["front_left",
                           "front_right"]]:
@@ -2474,16 +2468,14 @@ class ALACFileTest(LosslessFileTest):
                               temp.name,
                               BLANK_PCM_Reader(1, channels=5,
                                                channel_mask=0x003B))
-        finally:
-            temp.close()
 
     @FORMAT_ALAC
     def test_verify(self):
-        alac_data = open("alac-allframes.m4a", "rb").read()
+        with open("alac-allframes.m4a", "rb") as f:
+            alac_data = f.read()
 
         # test truncating the mdat atom triggers IOError
-        temp = tempfile.NamedTemporaryFile(suffix='.m4a')
-        try:
+        with tempfile.NamedTemporaryFile(suffix='.m4a') as temp:
             for i in range(0x16CD, len(alac_data)):
                 temp.seek(0, 0)
                 temp.write(alac_data[0:i])
@@ -2497,43 +2489,36 @@ class ALACFileTest(LosslessFileTest):
 
                 self.assertRaises(audiotools.InvalidFile,
                                   audiotools.open(temp.name).verify)
-        finally:
-            temp.close()
 
         # test a truncated file's convert() method raises EncodingError
-        temp = tempfile.NamedTemporaryFile(suffix=".m4a")
-        try:
-            temp.write(open("alac-allframes.m4a", "rb").read()[0:-10])
-            temp.flush()
-            flac = audiotools.open(temp.name)
+        with tempfile.NamedTemporaryFile(suffix=".m4a") as temp:
+            with open("alac-allframes.m4a", "rb") as f:
+                temp.write(f.read()[0:-10])
+                temp.flush()
+            alac = audiotools.open(temp.name)
             if (os.path.isfile("dummy.wav")):
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
-                              flac.convert,
+                              alac.convert,
                               "dummy.wav",
                               audiotools.WaveAudio)
             self.assertEqual(os.path.isfile("dummy.wav"), False)
-        finally:
-            temp.close()
 
     @FORMAT_ALAC
     def test_too(self):
         # ensure that the 'too' meta atom isn't modified by setting metadata
-        temp = tempfile.NamedTemporaryFile(
-            suffix=self.suffix)
-        try:
+        with tempfile.NamedTemporaryFile(
+            suffix=self.suffix) as temp:
             track = self.audio_class.from_pcm(
                 temp.name,
                 BLANK_PCM_Reader(1))
             metadata = track.get_metadata()
-            encoder = unicode(metadata['ilst']['\xa9too'])
+            encoder = u"%s" % (metadata[b'ilst'][b'\xa9too'],)
             track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
             metadata = track.get_metadata()
             self.assertEqual(metadata.track_name, u"Foo")
-            self.assertEqual(unicode(metadata['ilst']['\xa9too']), encoder)
-        finally:
-            temp.close()
+            self.assertEqual(u"%s" % (metadata[b'ilst'][b'\xa9too'],), encoder)
 
     def __test_reader__(self, pcmreader, total_pcm_frames, block_size=4096):
         if (not audiotools.BIN.can_execute(audiotools.BIN["alac"])):
@@ -2567,6 +2552,7 @@ class ALACFileTest(LosslessFileTest):
         md5sum_reference = md5()
         audiotools.transfer_data(reference.stdout.read,
                                  md5sum_reference.update)
+        reference.stdout.close()
         self.assertEqual(reference.wait(), 0)
         self.assertEqual(md5sum_reference.digest(), pcmreader.digest(),
                          "mismatch decoding %s from reference (%s != %s)" %
@@ -2604,6 +2590,7 @@ class ALACFileTest(LosslessFileTest):
         md5sum_reference = md5()
         audiotools.transfer_data(reference.stdout.read,
                                  md5sum_reference.update)
+        reference.stdout.close()
         self.assertEqual(reference.wait(), 0)
         self.assertEqual(md5sum_reference.digest(), pcmreader.digest(),
                          "mismatch decoding %s from reference (%s != %s)" %
@@ -2655,6 +2642,8 @@ class ALACFileTest(LosslessFileTest):
                 md5sum_decoder.update(f.to_bytes(False, True))
                 f = d.read(audiotools.FRAMELIST_SIZE)
         self.assertEqual(md5sum_decoder.digest(), pcmreader.digest())
+
+        temp_file.close()
 
     def __stream_variations__(self):
         for stream in [

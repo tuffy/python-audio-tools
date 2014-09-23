@@ -73,8 +73,8 @@ class ALACDecoder(object):
             # locate the "alac" atom
             # which is full of required decoding parameters
             try:
-                stsd = self.find_sub_atom("moov", "trak", "mdia",
-                                          "minf", "stbl", "stsd")
+                stsd = self.find_sub_atom(b"moov", b"trak", b"mdia",
+                                          b"minf", b"stbl", b"stsd")
             except KeyError:
                 raise ValueError("required stsd atom not found")
 
@@ -102,13 +102,13 @@ class ALACDecoder(object):
                                  7: 0x013F,
                                  8: 0x00FF}.get(self.channels, 0)
 
-            if ((alac1 != 'alac') or (alac2 != 'alac')):
+            if ((alac1 != b'alac') or (alac2 != b'alac')):
                 raise ValueError("Invalid alac atom")
 
             # also locate the "mdhd" atom
             # which contains the stream's length in PCM frames
             self.reader.rewind()
-            mdhd = self.find_sub_atom("moov", "trak", "mdia", "mdhd")
+            mdhd = self.find_sub_atom(b"moov", b"trak", b"mdia", b"mdhd")
             (version, ) = mdhd.parse("8u 24p")
             if (version == 0):
                 (self.total_pcm_frames,) = mdhd.parse(
@@ -122,7 +122,7 @@ class ALACDecoder(object):
             # finally, set our stream to the "mdat" atom
             self.reader.rewind()
             (atom_size, atom_name) = self.reader.parse("32u 4b")
-            while (atom_name != "mdat"):
+            while (atom_name != b"mdat"):
                 self.reader.skip_bytes(atom_size - 8)
                 (atom_size, atom_name) = self.reader.parse("32u 4b")
 
@@ -454,8 +454,7 @@ class ALACDecoder(object):
             return [left, right]
 
     def close(self):
-        # FIXME - should mark stream as closed
-        pass
+        self.reader.close()
 
     def __enter__(self):
         return self
