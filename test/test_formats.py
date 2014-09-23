@@ -4991,16 +4991,14 @@ class ShortenFileTest(TestForeignWaveChunks,
     @FORMAT_SHORTEN
     def test_init(self):
         # check invalid file
-        invalid_file = tempfile.NamedTemporaryFile(suffix=".shn")
-        try:
-            for c in "invalidstringxxx":
+        with tempfile.NamedTemporaryFile(suffix=".shn") as invalid_file:
+            for c in [b"i", b"n", b"v", b"a", b"l", b"i", b"d",
+                      b"s", b"t", b"r", b"i", b"n", b"g", b"x", b"x", b"x"]:
                 invalid_file.write(c)
                 invalid_file.flush()
                 self.assertRaises(audiotools.shn.InvalidShorten,
                                   audiotools.ShortenAudio,
                                   invalid_file.name)
-        finally:
-            invalid_file.close()
 
         # check some decoder errors,
         # mostly to ensure a failed init doesn't make Python explode
@@ -5012,96 +5010,86 @@ class ShortenFileTest(TestForeignWaveChunks,
 
     @FORMAT_SHORTEN
     def test_bits_per_sample(self):
-        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
+        with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp:
             for bps in (8, 16):
                 track = self.audio_class.from_pcm(
                     temp.name, BLANK_PCM_Reader(1, bits_per_sample=bps))
                 self.assertEqual(track.bits_per_sample(), bps)
                 track2 = audiotools.open(temp.name)
                 self.assertEqual(track2.bits_per_sample(), bps)
-        finally:
-            temp.close()
 
     @FORMAT_SHORTEN
     def test_verify(self):
         # test changing the file underfoot
-        temp = tempfile.NamedTemporaryFile(suffix=".shn")
-        try:
-            shn_data = open("shorten-frames.shn", "rb").read()
-            temp.write(shn_data)
-            temp.flush()
+        with tempfile.NamedTemporaryFile(suffix=".shn") as temp:
+            with open("shorten-frames.shn", "rb") as f:
+                shn_data = f.read()
+                temp.write(shn_data)
+                temp.flush()
             shn_file = audiotools.open(temp.name)
             self.assertEqual(shn_file.verify(), True)
 
-            for i in range(0, len(shn_data.rstrip(chr(0)))):
-                f = open(temp.name, "wb")
-                f.write(shn_data[0:i])
-                f.close()
+            for i in range(0, len(shn_data.rstrip(b"\x00"))):
+                with open(temp.name, "wb") as f:
+                    f.write(shn_data[0:i])
+                    f.close()
                 self.assertRaises(audiotools.InvalidFile,
                                   shn_file.verify)
 
             # unfortunately, Shorten doesn't have any checksumming
             # or other ways to reliably detect swapped bits
-        finally:
-            temp.close()
 
         # testing truncating various Shorten files
         for (first, last, filename) in [(62, 89, "shorten-frames.shn"),
                                         (61, 116, "shorten-lpc.shn")]:
 
-            f = open(filename, "rb")
-            shn_data = f.read()
-            f.close()
+            with open(filename, "rb") as f:
+                shn_data = f.read()
 
-            temp = tempfile.NamedTemporaryFile(suffix=".shn")
-            try:
+            with tempfile.NamedTemporaryFile(suffix=".shn") as temp:
                 for i in range(0, first):
                     temp.seek(0, 0)
                     temp.write(shn_data[0:i])
                     temp.flush()
                     self.assertEqual(os.path.getsize(temp.name), i)
-                    self.assertRaises(IOError,
-                                      audiotools.decoders.SHNDecoder,
-                                      open(temp.name, "rb"))
+                    with open(temp.name, "rb") as f:
+                        self.assertRaises(IOError,
+                                          audiotools.decoders.SHNDecoder,
+                                          f)
 
-                for i in range(first, len(shn_data[0:last].rstrip(chr(0)))):
+                for i in range(first, len(shn_data[0:last].rstrip(b"\x00"))):
                     temp.seek(0, 0)
                     temp.write(shn_data[0:i])
                     temp.flush()
                     self.assertEqual(os.path.getsize(temp.name), i)
                     decoder = audiotools.decoders.SHNDecoder(
                         open(temp.name, "rb"))
-                    self.assertNotEqual(decoder, None)
-                    self.assertRaises(IOError,
-                                      decoder.pcm_split)
+                    self.assertIsNotNone(decoder)
+                    self.assertRaises(IOError, decoder.pcm_split)
+                    decoder.close()
 
                     decoder = audiotools.decoders.SHNDecoder(
                         open(temp.name, "rb"))
-                    self.assertNotEqual(decoder, None)
+                    self.assertIsNotNone(decoder)
                     self.assertRaises(IOError,
                                       audiotools.transfer_framelist_data,
                                       decoder, lambda x: x)
-            finally:
-                temp.close()
 
         # test running convert() on a truncated file
         # triggers EncodingError
-        temp = tempfile.NamedTemporaryFile(suffix=".shn")
-        try:
-            temp.write(open("shorten-frames.shn", "rb").read()[0:-10])
-            temp.flush()
-            flac = audiotools.open(temp.name)
+        with tempfile.NamedTemporaryFile(suffix=".shn") as temp:
+            with open("shorten-frames.shn", "rb") as f:
+                temp.write(f.read()[0:-10])
+                temp.flush()
+            shn = audiotools.open(temp.name)
             if (os.path.isfile("dummy.wav")):
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
-                              flac.convert,
+                              shn.convert,
                               "dummy.wav",
                               audiotools.WaveAudio)
             self.assertEqual(os.path.isfile("dummy.wav"), False)
-        finally:
-            temp.close()
 
     def __stream_variations__(self):
         for stream in [
@@ -5227,9 +5215,10 @@ class ShortenFileTest(TestForeignWaveChunks,
         if (len(tail) > 0):
             options["footer_data"] = tail
 
-        self.encode(temp_file.name,
-                    temp_input_wave.to_pcm(),
-                    **options)
+        with temp_input_wave.to_pcm() as pcmreader2:
+            self.encode(temp_file.name,
+                        pcmreader2,
+                        **options)
 
         shn = audiotools.open(temp_file.name)
         self.assertGreater(shn.total_frames(), 0)
@@ -5284,9 +5273,10 @@ class ShortenFileTest(TestForeignWaveChunks,
         if (len(tail) > 0):
             options["footer_data"] = tail
 
-        self.encode(temp_file.name,
-                    temp_input_aiff.to_pcm(),
-                    **options)
+        with temp_input_aiff.to_pcm() as pcmreader2:
+            self.encode(temp_file.name,
+                        pcmreader2,
+                        **options)
 
         shn = audiotools.open(temp_file.name)
         self.assertGreater(shn.total_frames(), 0)

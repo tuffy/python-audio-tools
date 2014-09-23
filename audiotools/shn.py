@@ -208,11 +208,21 @@ class ShortenAudio(WaveContainer, AiffContainer):
         from audiotools import PCMReaderError
 
         try:
-            return SHNDecoder(open(self.filename, "rb"))
+            f = open(self.filename, "rb")
+        except IOError as msg:
+            return PCMReaderError(error_message=str(msg),
+                                  sample_rate=self.__samplerate__,
+                                  channels=self.__channels__,
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.__bitspersample__)
+
+        try:
+            return SHNDecoder(f)
         except (IOError, ValueError) as msg:
             # these may not be accurate if the Shorten file is broken
             # but if it is broken, there'll be no way to
             # cross-check the results anyway
+            f.close()
             return PCMReaderError(error_message=str(msg),
                                   sample_rate=44100,
                                   channels=2,
@@ -296,9 +306,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         from io import BytesIO
 
         try:
-            decoder = decoders.SHNDecoder(open(self.filename, "rb"))
-            (head, tail) = decoder.pcm_split()
-            decoder.close()
+            with decoders.SHNDecoder(open(self.filename, "rb")) as decoder:
+                (head, tail) = decoder.pcm_split()
             header = bitstream.BitstreamReader(BytesIO(head), True)
             (RIFF, SIZE, WAVE) = header.parse("4b 32u 4b")
             if ((RIFF != b'RIFF') or (WAVE != b'WAVE')):
@@ -449,9 +458,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         from io import BytesIO
 
         try:
-            decoder = decoders.SHNDecoder(open(self.filename, "rb"))
-            (head, tail) = decoder.pcm_split()
-            decoder.close()
+            with decoders.SHNDecoder(open(self.filename, "rb")) as decoder:
+                (head, tail) = decoder.pcm_split()
             header = bitstream.BitstreamReader(BytesIO(head), False)
             (FORM, SIZE, AIFF) = header.parse("4b 32u 4b")
             if ((FORM != b'FORM') or (AIFF != b'AIFF')):

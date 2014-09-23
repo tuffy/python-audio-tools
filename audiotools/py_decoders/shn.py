@@ -17,10 +17,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+from sys import version_info
 from audiotools.bitstream import BitstreamReader
 from audiotools.pcm import from_list, from_channels
 from audiotools.wav import parse_fmt
 from audiotools.aiff import parse_comm
+
+
+if (version_info[0] >= 3):
+    def ints_to_bytes(l):
+        return bytes(l)
+else:
+    def ints_to_bytes(l):
+        return b"".join(map(chr, l))
 
 
 def shnmean(values):
@@ -64,19 +73,19 @@ class SHNDecoder(object):
         command = self.unsigned(2)
         if (command == 9):
             # got verbatim, so read data
-            verbatim_bytes = "".join([chr(self.unsigned(8) & 0xFF)
-                                      for i in range(self.unsigned(5))])
+            verbatim_bytes = ints_to_bytes([self.unsigned(8) & 0xFF
+                                            for i in range(self.unsigned(5))])
 
             try:
                 wave = BitstreamReader(BytesIO(verbatim_bytes), True)
                 header = wave.read_bytes(12)
-                if (header.startswith("RIFF") and header.endswith("WAVE")):
+                if (header.startswith(b"RIFF") and header.endswith(b"WAVE")):
                     # got RIFF/WAVE header, so parse wave blocks as needed
                     total_size = len(verbatim_bytes) - 12
                     while (total_size > 0):
                         (chunk_id, chunk_size) = wave.parse("4b 32u")
                         total_size -= 8
-                        if (chunk_id == 'fmt '):
+                        if (chunk_id == b'fmt '):
                             (channels,
                              self.sample_rate,
                              bits_per_sample,
@@ -100,13 +109,13 @@ class SHNDecoder(object):
             try:
                 aiff = BitstreamReader(BytesIO(verbatim_bytes), False)
                 header = aiff.read_bytes(12)
-                if (header.startswith("FORM") and header.endswith("AIFF")):
+                if (header.startswith(b"FORM") and header.endswith(b"AIFF")):
                     # got FORM/AIFF header, so parse aiff blocks as needed
                     total_size = len(verbatim_bytes) - 12
                     while (total_size > 0):
                         (chunk_id, chunk_size) = aiff.parse("4b 32u")
                         total_size -= 8
-                        if (chunk_id == 'COMM'):
+                        if (chunk_id == b'COMM'):
                             (channels,
                              total_sample_frames,
                              bits_per_sample,
@@ -158,7 +167,7 @@ class SHNDecoder(object):
 
     def read_header(self):
         magic = self.reader.read_bytes(4)
-        if (magic != "ajkg"):
+        if (magic != b"ajkg"):
             raise ValueError("invalid magic number")
         version = self.reader.read(8)
         if (version != 2):

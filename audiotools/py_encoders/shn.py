@@ -17,8 +17,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+from sys import version_info
 from audiotools.bitstream import BitstreamWriter
 from audiotools import BufferedPCMReader
+
+
+if (version_info[0] >= 3):
+    def bytes_to_ints(b):
+        return list(b)
+else:
+    def bytes_to_ints(b):
+        return map(ord, b)
+
 
 COMMAND_SIZE = 2
 VERBATIM_SIZE = 5
@@ -43,7 +53,7 @@ def encode_shn(filename,
                is_big_endian,
                signed_samples,
                header_data,
-               footer_data="",
+               footer_data=b"",
                block_size=256):
     """filename is a string to the output file's path
     pcmreader is a PCMReader object
@@ -59,7 +69,7 @@ def encode_shn(filename,
     wrapped_channels = [[] for c in range(pcmreader.channels)]
 
     # write magic number and version
-    writer.build("4b 8u", ["ajkg", 2])
+    writer.build("4b 8u", [b"ajkg", 2])
 
     bytes_written = __Counter__()
     writer.add_callback(bytes_written.byte)
@@ -98,8 +108,8 @@ def encode_shn(filename,
     # write header as a VERBATIM block
     write_unsigned(writer, COMMAND_SIZE, FN_VERBATIM)
     write_unsigned(writer, VERBATIM_SIZE, len(header_data))
-    for b in header_data:
-        write_unsigned(writer, VERBATIM_BYTE_SIZE, ord(b))
+    for b in bytes_to_ints(header_data):
+        write_unsigned(writer, VERBATIM_BYTE_SIZE, b)
 
     # split PCMReader into block_size chunks
     # and continue until the number of PCM frames is 0
@@ -169,8 +179,8 @@ def encode_shn(filename,
     if (len(footer_data) > 0):
         write_unsigned(writer, COMMAND_SIZE, FN_VERBATIM)
         write_unsigned(writer, VERBATIM_SIZE, len(footer_data))
-        for b in footer_data:
-            write_unsigned(writer, VERBATIM_BYTE_SIZE, ord(b))
+        for b in bytes_to_ints(footer_data):
+            write_unsigned(writer, VERBATIM_BYTE_SIZE, b)
 
     # issue a QUIT command
     write_unsigned(writer, COMMAND_SIZE, FN_QUIT)
@@ -182,6 +192,7 @@ def encode_shn(filename,
     writer.byte_align()
     while ((int(bytes_written) % 4) != 0):
         writer.write(8, 0)
+    writer.close()
 
 
 def write_unsigned(writer, size, value):
