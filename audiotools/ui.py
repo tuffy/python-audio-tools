@@ -39,8 +39,11 @@ try:
             self.__key_map__ = {"enter": "down"}
 
         def keypress(self, size, key):
-            return urwid.Edit.keypress(self, size,
-                                       self.__key_map__.get(key, key))
+            if (key == "ctrl k"):
+                self.set_edit_text(u"")
+            else:
+                return urwid.Edit.keypress(self, size,
+                                           self.__key_map__.get(key, key))
 
     class DownIntEdit(urwid.IntEdit):
         """a subclass of urwid.IntEdit which performs a down-arrow keypress
@@ -52,8 +55,11 @@ try:
             self.__key_map__ = {"enter": "down"}
 
         def keypress(self, size, key):
-            return urwid.Edit.keypress(self, size,
-                                       self.__key_map__.get(key, key))
+            if (key == "ctrl k"):
+                self.set_edit_text(u"0")
+            else:
+                return urwid.Edit.keypress(self, size,
+                                           self.__key_map__.get(key, key))
 
     class FocusFrame(urwid.Frame):
         """a special Frame widget which performs callbacks on focus changes"""
