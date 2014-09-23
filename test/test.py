@@ -241,7 +241,7 @@ class Join_Reader(audiotools.PCMReader):
 
     def read(self, pcm_frames):
         return audiotools.pcm.from_channels(
-            [r.read(pcm_frames) for r in self.readers])
+            [r.read(pcm_frames) for r in self.pcm_readers])
 
     def reset(self):
         for r in self.pcm_readers:
@@ -249,7 +249,7 @@ class Join_Reader(audiotools.PCMReader):
         self.readers = map(audiotools.BufferedPCMReader, self.pcm_readers)
 
     def close(self):
-        for r in self.readers:
+        for r in self.pcm_readers:
             r.close()
 
 

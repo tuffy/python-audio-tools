@@ -98,8 +98,8 @@ def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
                       22,       # CB size
                       pcmreader.bits_per_sample,
                       int(pcmreader.channel_mask),
-                      '\x01\x00\x00\x00\x00\x00\x10\x00' +
-                      '\x80\x00\x00\xaa\x00\x38\x9b\x71'  # sub format
+                      b'\x01\x00\x00\x00\x00\x00\x10\x00' +
+                      b'\x80\x00\x00\xaa\x00\x38\x9b\x71'  # sub format
                       )
     total_size += format_size(fmt) // 8
 
@@ -112,9 +112,9 @@ def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
     total_size += wave_footer_len
 
     writer.build("4b 32u 4b 4b 32u" + fmt + "4b 32u",
-                 (('RIFF', total_size - 8, 'WAVE',
-                   'fmt ', format_size(fmt) // 8) + fmt_fields +
-                  ('data', data_size)))
+                 ((b'RIFF', total_size - 8, b'WAVE',
+                   b'fmt ', format_size(fmt) // 8) + fmt_fields +
+                  (b'data', data_size)))
 
 
 class CorrelationParameters(object):
@@ -711,13 +711,11 @@ def calculate_crc(samples):
 
 
 def joint_stereo(left, right):
-    from itertools import izip
-
     assert(len(left) == len(right))
 
     mid = []
     side = []
-    for (l, r) in izip(left, right):
+    for (l, r) in zip(left, right):
         mid.append(l - r)
         side.append((l + r) // 2)
     return [mid, side]
@@ -739,7 +737,7 @@ def write_block_header(writer,
                        sample_rate,
                        false_stereo,
                        CRC):
-    writer.write_bytes("wvpk")              # block ID
+    writer.write_bytes(b"wvpk")             # block ID
     # block size
     if (sub_blocks_size > 0):
         writer.write(32, sub_blocks_size + 24)

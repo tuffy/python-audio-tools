@@ -7216,7 +7216,7 @@
       - [ ] tta
       - [ ] vorbis
       - [X] wave
-      - [ ] wavpack
+      - [X] wavpack
 ***** TODO Metadata
       - [X] metadata
       - [ ] flac
@@ -7284,7 +7284,7 @@
       - [ ] tta
       - [ ] vorbis
       - [X] wave
-      - [ ] wavpack
+      - [X] wavpack
 ***** TODO Metadata
       - [X] metadata
       - [ ] flac

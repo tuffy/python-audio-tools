@@ -3374,8 +3374,7 @@ class FlacFileTest(TestForeignAiffChunks,
                           "/dev/null/foo")
 
         # check invalid file
-        invalid_file = tempfile.NamedTemporaryFile(suffix=".flac")
-        try:
+        with tempfile.NamedTemporaryFile(suffix=".flac") as invalid_file:
             for c in [b"i", b"n", b"v", b"a", b"l", b"i", b"d",
                       b"s", b"t", b"r", b"i", b"n", b"g", b"x", b"x", b"x"]:
                 invalid_file.write(c)
@@ -3383,8 +3382,6 @@ class FlacFileTest(TestForeignAiffChunks,
                 self.assertRaises(audiotools.flac.InvalidFLAC,
                                   audiotools.FlacAudio,
                                   invalid_file.name)
-        finally:
-            invalid_file.close()
 
         # check some decoder errors,
         # mostly to ensure a failed init doesn't make Python explode
@@ -5898,16 +5895,14 @@ class WavPackFileTest(TestForeignWaveChunks,
                           "/dev/null/foo")
 
         # check invalid file
-        invalid_file = tempfile.NamedTemporaryFile(suffix=".wv")
-        try:
-            for c in "invalidstringxxx":
+        with tempfile.NamedTemporaryFile(suffix=".wv") as invalid_file:
+            for c in [b"i", b"n", b"v", b"a", b"l", b"i", b"d",
+                      b"s", b"t", b"r", b"i", b"n", b"g", b"x", b"x", b"x"]:
                 invalid_file.write(c)
                 invalid_file.flush()
                 self.assertRaises(audiotools.wavpack.InvalidWavPack,
                                   audiotools.WavPackAudio,
                                   invalid_file.name)
-        finally:
-            invalid_file.close()
 
         # check some decoder errors,
         # mostly to ensure a failed init doesn't make Python explode
@@ -5921,19 +5916,18 @@ class WavPackFileTest(TestForeignWaveChunks,
     def test_verify(self):
         # test truncating a WavPack file causes verify()
         # to raise InvalidFile as necessary
-        wavpackdata = open("wavpack-combo.wv", "rb").read()
-        temp = tempfile.NamedTemporaryFile(
-            suffix="." + self.audio_class.SUFFIX)
-        try:
+        with open("wavpack-combo.wv", "rb") as f:
+            wavpackdata = f.read()
+        with tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX) as temp:
             self.assertEqual(audiotools.open("wavpack-combo.wv").verify(),
                              True)
             temp.write(wavpackdata)
             temp.flush()
             test_wavpack = audiotools.open(temp.name)
             for i in range(0, 0x20B):
-                f = open(temp.name, "wb")
-                f.write(wavpackdata[0:i])
-                f.close()
+                with open(temp.name, "wb") as f:
+                    f.write(wavpackdata[0:i])
                 self.assertEqual(os.path.getsize(temp.name), i)
                 self.assertRaises(audiotools.InvalidFile,
                                   test_wavpack.verify)
@@ -5945,61 +5939,53 @@ class WavPackFileTest(TestForeignWaveChunks,
                 # This resilience may be related to its hybrid mode,
                 # but it doesn't inspire confidence.
 
-        finally:
-            temp.close()
-
         # test truncating a WavPack file causes the WavPackDecoder
         # to raise IOError as necessary
         from audiotools.decoders import WavPackDecoder
+        from test_core import ints_to_bytes, bytes_to_ints
 
-        f = open("silence.wv")
-        wavpack_data = f.read()
-        f.close()
+        with open("silence.wv", "rb") as f:
+            wavpack_data = bytes_to_ints(f.read())
 
-        temp = tempfile.NamedTemporaryFile(suffix=".wv")
-
-        try:
+        with tempfile.NamedTemporaryFile(suffix=".wv") as temp:
             for i in range(0, len(wavpack_data)):
                 temp.seek(0, 0)
-                temp.write(wavpack_data[0:i])
+                temp.write(ints_to_bytes(wavpack_data[0:i]))
                 temp.flush()
                 self.assertEqual(os.path.getsize(temp.name), i)
+                f = open(temp.name, "rb")
                 try:
-                    decoder = WavPackDecoder(open(temp.name, "rb"))
+                    decoder = WavPackDecoder(f)
                 except IOError:
                     # chopping off the first few bytes might trigger
                     # an IOError at init-time, which is ok
+                    f.close()
                     continue
-                self.assertNotEqual(decoder, None)
-                decoder = WavPackDecoder(open(temp.name, "rb"))
-                self.assertNotEqual(decoder, None)
+                self.assertIsNotNone(decoder)
                 self.assertRaises(IOError,
                                   audiotools.transfer_framelist_data,
                                   decoder, lambda f: f)
-        finally:
-            temp.close()
 
         # test a truncated WavPack file's convert() method
         # generates EncodingErrors
-        temp = tempfile.NamedTemporaryFile(
-            suffix="." + self.audio_class.SUFFIX)
-        try:
-            temp.write(open("wavpack-combo.wv", "rb").read())
-            temp.flush()
+        with tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX) as temp:
+            with open("wavpack-combo.wv", "rb") as f:
+                temp.write(f.read())
+                temp.flush()
             wavpack = audiotools.open(temp.name)
-            f = open(temp.name, "wb")
-            f.write(open("wavpack-combo.wv", "rb").read()[0:-0x20B])
-            f.close()
+            with open(temp.name, "wb") as w:
+                with open("wavpack-combo.wv", "rb") as r:
+                    w.write(r.read()[0:-0x20B])
+
             if (os.path.isfile("dummy.wav")):
                 os.unlink("dummy.wav")
-            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertFalse(os.path.isfile("dummy.wav"))
             self.assertRaises(audiotools.EncodingError,
                               wavpack.convert,
                               "dummy.wav",
                               audiotools.WaveAudio)
-            self.assertEqual(os.path.isfile("dummy.wav"), False)
-        finally:
-            temp.close()
+            self.assertFalse(os.path.isfile("dummy.wav"))
 
     def __stream_variations__(self):
         for stream in [
@@ -6149,10 +6135,12 @@ class WavPackFileTest(TestForeignWaveChunks,
                     audiotools.BufferedPCMReader(pcmreader),
                     **encode_options)
 
+        devnull = open(os.devnull, "wb")
+
         sub = subprocess.Popen([audiotools.BIN["wvunpack"],
                                 "-vmq", temp_file.name],
-                               stdout=open(os.devnull, "wb"),
-                               stderr=open(os.devnull, "wb"))
+                               stdout=devnull,
+                               stderr=devnull)
 
         self.assertEqual(sub.wait(), 0,
                          "wvunpack decode error on %s with options %s" %
@@ -6184,8 +6172,10 @@ class WavPackFileTest(TestForeignWaveChunks,
 
         sub = subprocess.Popen([audiotools.BIN["wvunpack"],
                                 "-vmq", temp_file.name],
-                               stdout=open(os.devnull, "wb"),
-                               stderr=open(os.devnull, "wb"))
+                               stdout=devnull,
+                               stderr=devnull)
+
+        devnull.close()
 
         self.assertEqual(sub.wait(), 0,
                          "wvunpack decode error on %s with options %s" %

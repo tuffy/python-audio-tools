@@ -506,8 +506,18 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         from audiotools import PCMReaderError
 
         try:
-            return decoders.WavPackDecoder(open(self.filename, "rb"))
+            f = open(self.filename, "rb")
+        except IOError as msg:
+            return PCMReaderError(error_message=str(msg),
+                                  sample_rate=self.__samplerate__,
+                                  channels=self.__channels__,
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.__bitspersample__)
+
+        try:
+            return decoders.WavPackDecoder(f)
         except (IOError, ValueError) as msg:
+            f.close()
             return PCMReaderError(error_message=str(msg),
                                   sample_rate=self.__samplerate__,
                                   channels=self.__channels__,

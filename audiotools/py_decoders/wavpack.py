@@ -172,7 +172,7 @@ class Block_Header(object):
                  hybrid_noise_balanced, initial_block, final_block,
                  left_shift_data, maximum_magnitude, sample_rate,
                  use_IIR, false_stereo, CRC):
-        if (block_id != "wvpk"):
+        if (block_id != b"wvpk"):
             raise ValueError("invalid WavPack block ID")
         self.block_size = block_size
         self.version = version
