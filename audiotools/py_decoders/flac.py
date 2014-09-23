@@ -34,7 +34,7 @@ class FlacDecoder(object):
     def __init__(self, filename, channel_mask):
         self.reader = BitstreamReader(open(filename, "rb"), False)
 
-        if (self.reader.read_bytes(4) != 'fLaC'):
+        if (self.reader.read_bytes(4) != b'fLaC'):
             raise ValueError("invalid FLAC file")
 
         self.current_md5sum = md5()

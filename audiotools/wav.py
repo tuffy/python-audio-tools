@@ -964,7 +964,7 @@ class WaveAudio(WaveContainer):
                 return (head.data(), tail.data())
             else:
                 from audiotools.text import ERR_WAV_NO_FMT_CHUNK
-                return ValueError(ERR_WAV_NO_FMT_CHUNK)
+                raise ValueError(ERR_WAV_NO_FMT_CHUNK)
 
     @classmethod
     def from_wave(cls, filename, header, pcmreader, footer, compression=None):

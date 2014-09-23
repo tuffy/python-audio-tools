@@ -57,9 +57,15 @@ for section in parser.sections():
 if (sys.version_info[0] >= 3):
     def ints_to_bytes(l):
         return bytes(l)
+
+    def bytes_to_ints(b):
+        return list(b)
 else:
     def ints_to_bytes(l):
         return b"".join(map(chr, l))
+
+    def bytes_to_ints(b):
+        return map(ord, b)
 
 
 class PCMReader(unittest.TestCase):

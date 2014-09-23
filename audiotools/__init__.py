@@ -4098,23 +4098,18 @@ class AudioFile(object):
         raises an InvalidFile with an error message if there is
         some problem with the file"""
 
-        try:
-            total_frames = self.total_frames()
-            decoder = self.to_pcm()
-            pcm_frame_count = 0
-            framelist = decoder.read(FRAMELIST_SIZE)
-            while (len(framelist) > 0):
-                pcm_frame_count += framelist.frames
-                if (progress is not None):
-                    progress(pcm_frame_count, total_frames)
+        total_frames = self.total_frames()
+        pcm_frame_count = 0
+        with self.to_pcm() as decoder:
+            try:
                 framelist = decoder.read(FRAMELIST_SIZE)
-        except (IOError, ValueError) as err:
-            raise InvalidFile(str(err))
-
-        try:
-            decoder.close()
-        except DecodingError as err:
-            raise InvalidFile(err.error_message)
+                while (len(framelist) > 0):
+                    pcm_frame_count += framelist.frames
+                    if (progress is not None):
+                        progress(pcm_frame_count, total_frames)
+                    framelist = decoder.read(FRAMELIST_SIZE)
+            except (IOError, ValueError) as err:
+                raise InvalidFile(str(err))
 
         if (self.lossless()):
             if (pcm_frame_count == total_frames):

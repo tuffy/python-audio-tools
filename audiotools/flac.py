@@ -1796,6 +1796,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             # The only time this is likely to occur is
             # if the FLAC is modified between when FlacAudio
             # is initialized and when to_pcm() is called.
+            flac.close()
             return PCMReaderError(error_message=str(msg),
                                   sample_rate=self.sample_rate(),
                                   channels=self.channels(),
@@ -1975,7 +1976,8 @@ class FlacAudio(WaveContainer, AiffContainer):
         from bisect import bisect_right
 
         if (offsets is None):
-            offsets = self.to_pcm().offsets()
+            with self.to_pcm() as pcmreader:
+                offsets = pcmreader.offsets()
 
         if (seekpoint_interval is None):
             seekpoint_interval = self.sample_rate() * 10
@@ -2843,7 +2845,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                             fixes_performed.append(CLEAN_FLAC_ADD_CHANNELMASK)
                             vorbis_comment[
                                 u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
-                                [u"0x%.4X" % (self.channel_mask())]
+                                [u"0x%.4X" % (int(self.channel_mask()))]
 
                             metadata.replace_blocks(
                                 Flac_VORBISCOMMENT.BLOCK_ID,

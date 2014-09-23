@@ -7200,22 +7200,22 @@
 ***** TODO Format
       - [X] audiofile
       - [X] lossless
-      - [ ] lossy
-      - [ ] aiff
+      - [X] lossy
+      - [X] aiff
       - [ ] alac
-      - [ ] au
-      - [ ] dvda
-      - [ ] flac
+      - [X] au
+      - [X] dvda
+      - [X] flac
       - [ ] m4a
       - [ ] mp2
       - [ ] mp3
       - [ ] oggflac
       - [ ] opus
       - [ ] shorten
-      - [ ] sines
+      - [X] sines
       - [ ] tta
       - [ ] vorbis
-      - [ ] wave
+      - [X] wave
       - [ ] wavpack
 ***** TODO Metadata
       - [X] metadata
@@ -7268,22 +7268,22 @@
 ***** TODO Format
       - [X] audiofile
       - [X] lossless
-      - [ ] lossy
-      - [ ] aiff
+      - [X] lossy
+      - [X] aiff
       - [ ] alac
-      - [ ] au
-      - [ ] dvda
-      - [ ] flac
+      - [X] au
+      - [X] dvda
+      - [X] flac
       - [ ] m4a
       - [ ] mp2
       - [ ] mp3
       - [ ] oggflac
       - [ ] opus
       - [ ] shorten
-      - [ ] sines
+      - [X] sines
       - [ ] tta
       - [ ] vorbis
-      - [ ] wave
+      - [X] wave
       - [ ] wavpack
 ***** TODO Metadata
       - [X] metadata
