@@ -24,6 +24,13 @@ from audiotools import Sheet, SheetTrack, SheetIndex, SheetException
 
 class TOCFile(Sheet):
     def __init__(self, type, tracks, catalog=None, cd_text=None):
+        from sys import version_info
+        str_type = str if (version_info[0] >= 3) else unicode
+
+        assert(isinstance(type, str_type))
+        assert((catalog is None) or isinstance(catalog, str_type))
+        assert((cd_text is None) or isinstance(cd_text, CDText))
+
         self.__type__ = type
         for (i, t) in enumerate(tracks, 1):
             t.__number__ = i
@@ -49,7 +56,7 @@ class TOCFile(Sheet):
 
         if (metadata is not None):
             if (metadata.catalog is not None):
-                catalog = encode_string(metadata.catalog)
+                catalog = metadata.catalog
             else:
                 catalog = None
 
@@ -58,7 +65,7 @@ class TOCFile(Sheet):
             catalog = None
             cd_text = None
 
-        return cls(type="CD_DA",
+        return cls(type=u"CD_DA",
                    tracks=[TOCTrack.converted(sheettrack=track,
                                               next_sheettrack=next_track,
                                               filename=filename)
@@ -78,13 +85,13 @@ class TOCFile(Sheet):
 
         output = [self.__type__, ""]
         if (self.__catalog__ is not None):
-            output.extend(["CATALOG %s" % (format_string(self.__catalog__)),
-                           ""])
+            output.extend([u"CATALOG %s" % (format_string(self.__catalog__)),
+                           u""])
         if (self.__cd_text__ is not None):
             output.append(self.__cd_text__.build())
         output.extend([track.build() for track in self.__tracks__])
 
-        return "\n".join(output) + "\n"
+        return u"\n".join(output) + u"\n"
 
     def get_metadata(self):
         """returns MetaData of Sheet, or None
@@ -95,10 +102,10 @@ class TOCFile(Sheet):
 
         if ((self.__catalog__ is not None) and (self.__cd_text__ is not None)):
             metadata = self.__cd_text__.to_disc_metadata()
-            metadata.catalog = decode_string(self.__catalog__)
+            metadata.catalog = self.__catalog__
             return metadata
         elif (self.__catalog__ is not None):
-            return MetaData(catalog=decode_string(self.__catalog__))
+            return MetaData(catalog=self.__catalog__)
         elif (self.__cd_text__ is not None):
             return self.__cd_text__.to_disc_metadata()
         else:
@@ -108,6 +115,12 @@ class TOCFile(Sheet):
 class TOCTrack(SheetTrack):
     def __init__(self, mode, flags, sub_channel_mode=None):
         from audiotools import SheetIndex
+        from sys import version_info
+        str_type = str if (version_info[0] >= 3) else unicode
+
+        assert(isinstance(mode, str_type))
+        assert((sub_channel_mode is None) or
+               isinstance(sub_channel_mode, str_type))
 
         self.__number__ = None  # to be filled-in later
         self.__mode__ = mode
@@ -154,7 +167,7 @@ class TOCTrack(SheetTrack):
 
         if (metadata is not None):
             if (metadata.ISRC is not None):
-                flags.append(TOCFlag_ISRC(encode_string(metadata.ISRC)))
+                flags.append(TOCFlag_ISRC(metadata.ISRC))
             cdtext = CDText.from_track_metadata(metadata)
             if (cdtext is not None):
                 flags.append(cdtext)
@@ -174,7 +187,7 @@ class TOCTrack(SheetTrack):
                 length = None
 
             flags.append(TOCFlag_FILE(
-                type="AUDIOFILE",
+                type=u"AUDIOFILE",
                 filename=(filename if
                           filename is not None else
                           sheettrack.filename()),
@@ -191,7 +204,7 @@ class TOCTrack(SheetTrack):
                 for index in sheettrack[1:]:
                     flags.append(TOCFlag_INDEX(index.offset()))
 
-        return cls(mode=("AUDIO" if sheettrack.is_audio() else "MODE1"),
+        return cls(mode=(u"AUDIO" if sheettrack.is_audio() else u"MODE1"),
                    flags=flags)
 
     def first_flag(self, flag_class):
@@ -254,12 +267,12 @@ class TOCTrack(SheetTrack):
         if (filename is not None):
             return filename.filename()
         else:
-            return ""
+            return u""
 
     def is_audio(self):
         """returns True if track contains audio data"""
 
-        return self.__mode__ == "AUDIO"
+        return self.__mode__ == u"AUDIO"
 
     def pre_emphasis(self):
         """returns whether SheetTrack has pre-emphasis"""
@@ -282,13 +295,13 @@ class TOCTrack(SheetTrack):
     def build(self):
         """returns the TOCTrack as a string"""
 
-        output = [("TRACK %s" % (self.__mode__) if
+        output = [(u"TRACK %s" % (self.__mode__) if
                    (self.__sub_channel_mode__ is None) else
-                   "TRACK %s %s" % (self.__mode__,
+                   u"TRACK %s %s" % (self.__mode__,
                                     self.__sub_channel_mode__))]
         output.extend([flag.build() for flag in self.__flags__])
-        output.append("")
-        return "\n".join(output)
+        output.append(u"")
+        return u"\n".join(output)
 
 
 class TOCFlag(object):
@@ -312,53 +325,66 @@ class TOCFlag(object):
 class TOCFlag_COPY(TOCFlag):
     def __init__(self, copy):
         TOCFlag.__init__(self, ["copy"])
+        assert(isinstance(copy, bool))
         self.__copy__ = copy
 
     def copy(self):
         return self.__copy__
 
     def build(self):
-        return "COPY" if self.__copy__ else "NO COPY"
+        return u"COPY" if self.__copy__ else u"NO COPY"
 
 
 class TOCFlag_PRE_EMPHASIS(TOCFlag):
     def __init__(self, pre_emphasis):
         TOCFlag.__init__(self, ["pre_emphasis"])
+        assert(isinstance(pre_emphasis, bool))
         self.__pre_emphasis__ = pre_emphasis
 
     def pre_emphasis(self):
         return self.__pre_emphasis__
 
     def build(self):
-        return "PRE_EMPHASIS" if self.__pre_emphasis__ else "NO PRE_EMPHASIS"
+        return u"PRE_EMPHASIS" if self.__pre_emphasis__ else u"NO PRE_EMPHASIS"
 
 
 class TOCFlag_CHANNELS(TOCFlag):
     def __init__(self, channels):
         TOCFlag.__init__(self, ["channels"])
+        assert((channels == 2) or (channels == 4))
         self.__channels__ = channels
 
     def build(self):
-        return ("TWO_CHANNEL_AUDIO" if
+        return (u"TWO_CHANNEL_AUDIO" if
                 (self.__channels__ == 2) else
-                "FOUR_CHANNEL_AUDIO")
+                u"FOUR_CHANNEL_AUDIO")
 
 
 class TOCFlag_ISRC(TOCFlag):
     def __init__(self, isrc):
         TOCFlag.__init__(self, ["isrc"])
+        from sys import version_info
+        str_type = str if (version_info[0] >= 3) else unicode
+        assert(isinstance(isrc, str_type))
         self.__isrc__ = isrc
 
     def isrc(self):
         return self.__isrc__
 
     def build(self):
-        return "ISRC %s" % (format_string(self.__isrc__))
+        return u"ISRC %s" % (format_string(self.__isrc__))
 
 
 class TOCFlag_FILE(TOCFlag):
     def __init__(self, type, filename, start, length=None):
         TOCFlag.__init__(self, ["type", "filename", "start", "length"])
+        from sys import version_info
+        from fractions import Fraction
+        str_type = str if (version_info[0] >= 3) else unicode
+        assert(isinstance(type, str_type))
+        assert(isinstance(filename, str_type))
+        assert(isinstance(start, Fraction))
+        assert((length is None) or isinstance(length, Fraction))
         self.__type__ = type
         self.__filename__ = filename
         self.__start__ = start
@@ -375,19 +401,21 @@ class TOCFlag_FILE(TOCFlag):
 
     def build(self):
         if (self.__length__ is None):
-            return "%s %s %s" % (self.__type__,
-                                 format_string(self.__filename__),
-                                 format_timestamp(self.__start__))
+            return u"%s %s %s" % (self.__type__,
+                                  format_string(self.__filename__),
+                                  format_timestamp(self.__start__))
         else:
-            return "%s %s %s %s" % (self.__type__,
-                                    format_string(self.__filename__),
-                                    format_timestamp(self.__start__),
-                                    format_timestamp(self.__length__))
+            return u"%s %s %s %s" % (self.__type__,
+                                     format_string(self.__filename__),
+                                     format_timestamp(self.__start__),
+                                     format_timestamp(self.__length__))
 
 
 class TOCFlag_START(TOCFlag):
     def __init__(self, start=None):
         TOCFlag.__init__(self, ["start"])
+        from fractions import Fraction
+        assert((start is None) or isinstance(start, Fraction))
         self.__start__ = start
 
     def start(self):
@@ -395,21 +423,23 @@ class TOCFlag_START(TOCFlag):
 
     def build(self):
         if (self.__start__ is None):
-            return "START"
+            return u"START"
         else:
-            return "START %s" % (format_timestamp(self.__start__))
+            return u"START %s" % (format_timestamp(self.__start__))
 
 
 class TOCFlag_INDEX(TOCFlag):
     def __init__(self, index):
         TOCFlag.__init__(self, ["index"])
+        from fractions import Fraction
+        assert(isinstance(index, Fraction))
         self.__index__ = index
 
     def index(self):
         return self.__index__
 
     def build(self):
-        return "INDEX %s" % (format_timestamp(self.__index__))
+        return u"INDEX %s" % (format_timestamp(self.__index__))
 
 
 class CDText(object):
@@ -432,48 +462,43 @@ class CDText(object):
             return default
 
     def build(self):
-        output = ["CD_TEXT {"]
+        output = [u"CD_TEXT {"]
         if (self.__language_map__ is not None):
             output.append(self.__language_map__.build())
-            output.append("")
+            output.append(u"")
         output.extend([language.build() for language in self.__languages__])
-        output.append("}")
-        return "\n".join(output)
+        output.append(u"}")
+        return u"\n".join(output)
 
     def to_disc_metadata(self):
         from audiotools import MetaData
 
         return MetaData(
-            album_name=decode_string(self.get("TITLE", None)),
-            performer_name=decode_string(self.get("PERFORMER", None)),
-            artist_name=decode_string(self.get("SONGWRITER", None)),
-            composer_name=decode_string(self.get("COMPOSER", None)),
-            comment=decode_string(self.get("MESSAGE", None)))
+            album_name=self.get(u"TITLE", None),
+            performer_name=self.get(u"PERFORMER", None),
+            artist_name=self.get(u"SONGWRITER", None),
+            composer_name=self.get(u"COMPOSER", None),
+            comment=self.get(u"MESSAGE", None))
 
     @classmethod
     def from_disc_metadata(cls, metadata):
         text_pairs = []
         if (metadata is not None):
             if (metadata.album_name is not None):
-                text_pairs.append(("TITLE",
-                                   encode_string(metadata.album_name)))
+                text_pairs.append((u"TITLE", metadata.album_name))
             if (metadata.performer_name is not None):
-                text_pairs.append(("PERFORMER",
-                                   encode_string(metadata.performer_name)))
+                text_pairs.append((u"PERFORMER", metadata.performer_name))
             if (metadata.artist_name is not None):
-                text_pairs.append(("SONGWRITER",
-                                   encode_string(metadata.artist_name)))
+                text_pairs.append((u"SONGWRITER", metadata.artist_name))
             if (metadata.composer_name is not None):
-                text_pairs.append(("COMPOSER",
-                                   encode_string(metadata.composer_name)))
+                text_pairs.append((u"COMPOSER", metadata.composer_name))
             if (metadata.comment is not None):
-                text_pairs.append(("MESSAGE",
-                                   encode_string(metadata.comment)))
+                text_pairs.append((u"MESSAGE", metadata.comment))
 
         if (len(text_pairs) > 0):
             return cls(languages=[CDTextLanguage(language_id=0,
                                                  text_pairs=text_pairs)],
-                       language_map=CDTextLanguageMap([(0, "EN")]))
+                       language_map=CDTextLanguageMap([(0, u"EN")]))
         else:
             return None
 
@@ -481,32 +506,27 @@ class CDText(object):
         from audiotools import MetaData
 
         return MetaData(
-            track_name=decode_string(self.get("TITLE", None)),
-            performer_name=decode_string(self.get("PERFORMER", None)),
-            artist_name=decode_string(self.get("SONGWRITER", None)),
-            composer_name=decode_string(self.get("COMPOSER", None)),
-            comment=decode_string(self.get("MESSAGE", None)),
-            ISRC=decode_string(self.get("ISRC", None)))
+            track_name=self.get(u"TITLE", None),
+            performer_name=self.get(u"PERFORMER", None),
+            artist_name=self.get(u"SONGWRITER", None),
+            composer_name=self.get(u"COMPOSER", None),
+            comment=self.get(u"MESSAGE", None),
+            ISRC=self.get(u"ISRC", None))
 
     @classmethod
     def from_track_metadata(cls, metadata):
         text_pairs = []
         if (metadata is not None):
             if (metadata.track_name is not None):
-                text_pairs.append(("TITLE",
-                                   encode_string(metadata.track_name)))
+                text_pairs.append((u"TITLE", metadata.track_name))
             if (metadata.performer_name is not None):
-                text_pairs.append(("PERFORMER",
-                                   encode_string(metadata.performer_name)))
+                text_pairs.append((u"PERFORMER", metadata.performer_name))
             if (metadata.artist_name is not None):
-                text_pairs.append(("SONGWRITER",
-                                   encode_string(metadata.artist_name)))
+                text_pairs.append((u"SONGWRITER", metadata.artist_name))
             if (metadata.composer_name is not None):
-                text_pairs.append(("COMPOSER",
-                                   encode_string(metadata.composer_name)))
+                text_pairs.append((u"COMPOSER", metadata.composer_name))
             if (metadata.comment is not None):
-                text_pairs.append(("MESSAGE",
-                                   encode_string(metadata.comment)))
+                text_pairs.append((u"MESSAGE", metadata.comment))
             # ISRC is handled in its own flag
 
         if (len(text_pairs) > 0):
@@ -537,16 +557,14 @@ class CDTextLanguage(object):
             raise KeyError(key)
 
     def build(self):
-        output = ["LANGUAGE %d {" % (self.__id__)]
+        output = [u"LANGUAGE %d {" % (self.__id__)]
         for (key, value) in self.__text_pairs__:
-            if (key in ["TOC_INFO1",
-                        "TOC_INFO2",
-                        "SIZE_INFO"]):
-                output.append("  %s %s" % (key, format_binary(value)))
+            if (key in {u"TOC_INFO1", u"TOC_INFO2", u"SIZE_INFO"}):
+                output.append(u"  %s %s" % (key, format_binary(value)))
             else:
-                output.append("  %s %s" % (key, format_string(value)))
-        output.append("}")
-        return "\n".join(["  " + l for l in output])
+                output.append(u"  %s %s" % (key, format_string(value)))
+        output.append(u"}")
+        return u"\n".join([u"  " + l for l in output])
 
 
 class CDTextLanguageMap(object):
@@ -557,38 +575,25 @@ class CDTextLanguageMap(object):
         return "CDTextLanguageMap(mapping=%s)" % (repr(self.__mapping__))
 
     def build(self):
-        output = ["LANGUAGE_MAP {"]
-        output.extend(["  %d : %s" % (i, l) for (i, l) in self.__mapping__])
-        output.append("}")
-        return "\n".join(["  " + l for l in output])
+        output = [u"LANGUAGE_MAP {"]
+        output.extend([u"  %d : %s" % (i, l) for (i, l) in self.__mapping__])
+        output.append(u"}")
+        return u"\n".join([u"  " + l for l in output])
 
 
 def format_string(s):
-    return "\"%s\"" % (s.replace('\\', '\\\\').replace('"', '\\"'))
+    return u"\"%s\"" % (s.replace(u'\\', u'\\\\').replace(u'"', u'\\"'))
 
 
 def format_timestamp(t):
     sectors = int(t * 75)
-    return "%2.2d:%2.2d:%2.2d" % (sectors // 75 // 60,
-                                  sectors // 75 % 60,
-                                  sectors % 75)
+    return u"%2.2d:%2.2d:%2.2d" % (sectors // 75 // 60,
+                                   sectors // 75 % 60,
+                                   sectors % 75)
 
 
 def format_binary(s):
-    return "{%s}" % (",".join([str(int(c)) for c in s]))
-
-
-def decode_string(s):
-    if (s is not None):
-        # FIXME - determine what character encodings are supported
-        return s.decode("ascii", "replace")
-    else:
-        return None
-
-
-def encode_string(u):
-    # FIXME - determine what character encodings are supported
-    return u.encode("ascii", "replace")
+    return u"{%s}" % (",".join([u"%d" % (int(c)) for c in s]))
 
 
 def read_tocfile(filename):
@@ -598,13 +603,14 @@ def read_tocfile(filename):
     """
 
     try:
-        return read_tocfile_string(open(filename, "rb").read())
+        with open(filename, "rb") as f:
+            return read_tocfile_string(f.read().decode("UTF-8"))
     except IOError:
         raise SheetException("unable to open file")
 
 
 def read_tocfile_string(tocfile):
-    """given a plain string of .toc data, returns a TOCFile object
+    """given a unicode string of .toc data, returns a TOCFile object
 
     raises SheetException if some error occurs parsing the file"""
 
@@ -627,7 +633,8 @@ def read_tocfile_string(tocfile):
 
 
 def write_tocfile(sheet, filename, file):
-    """given a Sheet object and filename string,
+    """given a Sheet object and filename unicode string,
     writes a .toc file to the given file object"""
 
-    file.write(TOCFile.converted(sheet, filename=filename).build())
+    file.write(
+        TOCFile.converted(sheet, filename=filename).build().encode("UTF-8"))

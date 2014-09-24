@@ -560,15 +560,15 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         raises IOError if a problem occurs when reading the file"""
 
         from audiotools import cue as cue
+        from audiotools import SheetException
 
         metadata = self.get_metadata()
 
         if ((metadata is not None) and (b'Cuesheet' in metadata.keys())):
             try:
                 return cue.read_cuesheet_string(
-                    metadata[b'Cuesheet'].__unicode__().encode('utf-8',
-                                                               'replace'))
-            except cue.CueException:
+                    metadata[b'Cuesheet'].__unicode__())
+            except SheetException:
                 # unlike FLAC, just because a cuesheet is embedded
                 # does not mean it is compliant
                 return None
@@ -596,7 +596,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
         cuesheet_data = BytesIO()
         write_cuesheet(cuesheet,
-                       str(Filename(self.filename).basename()),
+                       u"%s" % (Filename(self.filename).basename(),),
                        cuesheet_data)
 
         metadata[b'Cuesheet'] = ApeTag.ITEM.string(

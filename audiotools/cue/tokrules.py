@@ -48,7 +48,7 @@ tokens = ["REM",
           "CDI",
           "NUMBER",
           "ID",
-          "STRING"] + RESERVED.values()
+          "STRING"] + list(RESERVED.values())
 
 
 def t_REM(t):

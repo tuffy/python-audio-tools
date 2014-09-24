@@ -259,7 +259,10 @@ def perform_lookup(disc_id,
     """
 
     from audiotools.bitstream import BitstreamReader
-    from urllib2 import urlopen, URLError
+    try:
+        from urllib.request import urlopen, URLError
+    except ImportError:
+        from urllib2 import urlopen, URLError
 
     matches = {n: [] for n in disc_id.track_numbers()}
 

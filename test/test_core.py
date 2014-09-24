@@ -4728,42 +4728,42 @@ class testcuesheet(unittest.TestCase):
                      number=1,
                      track_indexes=[
                          SheetIndex(1, timestamp_to_frac(0, 0, 0))],
-                     filename="TRACK1.WAV"),
+                     filename=u"TRACK1.WAV"),
                      SheetTrack(
                      number=2,
                      track_indexes=[
                          SheetIndex(1, timestamp_to_frac(5, 50, 65))],
-                     filename="TRACK1.WAV"),
+                     filename=u"TRACK1.WAV"),
                      SheetTrack(
                      number=3,
                      track_indexes=[
                          SheetIndex(1, timestamp_to_frac(9, 47, 50))],
-                     filename="TRACK1.WAV"),
+                     filename=u"TRACK1.WAV"),
                      SheetTrack(
                      number=4,
                      track_indexes=[
                          SheetIndex(1, timestamp_to_frac(15, 12, 53))],
-                     filename="TRACK1.WAV"),
+                     filename=u"TRACK1.WAV"),
                      SheetTrack(
                      number=5,
                      track_indexes=[
                          SheetIndex(1, timestamp_to_frac(0, 0, 0))],
-                     filename="TRACK2.WAV"),
+                     filename=u"TRACK2.WAV"),
                      SheetTrack(
                      number=6,
                      track_indexes=[
                          SheetIndex(1, timestamp_to_frac(2, 31, 40))],
-                     filename="TRACK2.WAV"),
+                     filename=u"TRACK2.WAV"),
                      SheetTrack(
                      number=7,
                      track_indexes=[
                          SheetIndex(1, timestamp_to_frac(6, 56, 13))],
-                     filename="TRACK2.WAV"),
+                     filename=u"TRACK2.WAV"),
                      SheetTrack(
                      number=8,
                      track_indexes=[
                          SheetIndex(1, timestamp_to_frac(10, 6, 25))],
-                     filename="TRACK2.WAV")])
+                     filename=u"TRACK2.WAV")])
 
         # mix in some pre-gaps
         yield Sheet([SheetTrack(
@@ -4795,14 +4795,14 @@ class testcuesheet(unittest.TestCase):
                          SheetIndex(3, timestamp_to_frac(4, 0, 0))],
                      metadata=audiotools.MetaData(
                          ISRC=u"ABCDE1234567"),
-                     filename="MYAUDIO1.WAV"),
+                     filename=u"MYAUDIO1.WAV"),
                      SheetTrack(
                      number=2,
                      track_indexes=[
                          SheetIndex(1, timestamp_to_frac(0, 0, 0))],
                      metadata=audiotools.MetaData(
                          ISRC=u"XYZZY0000000"),
-                     filename="MYAUDIO2.WAV"),
+                     filename=u"MYAUDIO2.WAV"),
                      SheetTrack(
                      number=3,
                      track_indexes=[
@@ -4813,7 +4813,7 @@ class testcuesheet(unittest.TestCase):
                          SheetIndex(4, timestamp_to_frac(10, 1, 74))],
                     metadata=audiotools.MetaData(
                          ISRC=u"123456789012"),
-                    filename="MYAUDIO2.WAV")],
+                    filename=u"MYAUDIO2.WAV")],
                     metadata=audiotools.MetaData(catalog=u"3898347789120"))
 
     def __metadata_sheets__(self):
@@ -4832,7 +4832,7 @@ class testcuesheet(unittest.TestCase):
                          track_name=u"Track 1",
                          performer_name=u"Performer 1",
                          artist_name=u"Artist 1"),
-                     filename="CDImage.wav"),
+                     filename=u"CDImage.wav"),
                      SheetTrack(
                      number=2,
                      track_indexes=[
@@ -4842,7 +4842,7 @@ class testcuesheet(unittest.TestCase):
                          track_name=u"Track 2",
                          performer_name=u"Performer 2",
                          artist_name=u"Artist 2"),
-                     filename="CDImage.wav")],
+                     filename=u"CDImage.wav")],
                      metadata=audiotools.MetaData(
                          album_name=u"Album Name",
                          performer_name=u"Album Performer",
@@ -4857,7 +4857,7 @@ class testcuesheet(unittest.TestCase):
                          track_name=u"Track \"1\"",
                          performer_name=u"Performer \"1\"",
                          artist_name=u"Artist \"1\""),
-                     filename="CD\"Image\".wav"),
+                     filename=u"CD\"Image\".wav"),
                      SheetTrack(
                      number=2,
                      track_indexes=[
@@ -4867,7 +4867,7 @@ class testcuesheet(unittest.TestCase):
                          track_name=u"Track \"2\"",
                          performer_name=u"Performer \"2\"",
                          artist_name=u"Artist \"2\""),
-                     filename="CD\"Image\".wav")],
+                     filename=u"CD\"Image\".wav")],
                      metadata=audiotools.MetaData(
                          album_name=u"Album \"Name\"",
                          performer_name=u"Album \"Performer\"",
@@ -4882,7 +4882,7 @@ class testcuesheet(unittest.TestCase):
                          track_name=u"Track \\ 1",
                          performer_name=u"Performer \\ 1",
                          artist_name=u"Artist \\ 1"),
-                     filename="CD\\Image.wav"),
+                     filename=u"CD\\Image.wav"),
                      SheetTrack(
                      number=2,
                      track_indexes=[
@@ -4892,7 +4892,7 @@ class testcuesheet(unittest.TestCase):
                          track_name=u"Track \\ 2",
                          performer_name=u"Performer \\ 2",
                          artist_name=u"Artist \\ 2"),
-                     filename="CD\\Image.wav")],
+                     filename=u"CD\\Image.wav")],
                      metadata=audiotools.MetaData(
                          album_name=u"Album \\ Name",
                          performer_name=u"Album \\ Performer",
@@ -4913,14 +4913,14 @@ class testcuesheet(unittest.TestCase):
                                SheetIndex(1, timestamp_to_frac(0, 1, 0))],
                            metadata=audiotools.MetaData(
                                track_name=u"Track 1"),
-                           filename="CDImage.wav"),
+                           filename=u"CDImage.wav"),
                            SheetTrack(
                            number=2,
                            track_indexes=[
                                SheetIndex(1, timestamp_to_frac(0, 5, 0))],
                            metadata=audiotools.MetaData(
                                track_name=u"Track 2"),
-                           filename="CDImage.wav"),
+                           filename=u"CDImage.wav"),
                            SheetTrack(
                            number=3,
                            track_indexes=[
@@ -4929,7 +4929,7 @@ class testcuesheet(unittest.TestCase):
                                SheetIndex(2, timestamp_to_frac(0, 12, 0))],
                            metadata=audiotools.MetaData(
                                track_name=u"Track 3"),
-                           filename="CDImage.wav")])
+                           filename=u"CDImage.wav")])
 
         sheet = self.sheet_class.converted(raw_sheet)
 
@@ -4965,7 +4965,7 @@ class testcuesheet(unittest.TestCase):
             converted = self.sheet_class.converted(sheet)
             self.assertEqual(converted, sheet)
             temp_sheet = tempfile.NamedTemporaryFile(suffix=self.suffix)
-            temp_sheet.write(converted.build())
+            temp_sheet.write(converted.build().encode("UTF-8"))
             temp_sheet.flush()
             re_read = self.read_sheet(temp_sheet.name)
             temp_sheet.close()
@@ -4977,7 +4977,7 @@ class testcuesheet(unittest.TestCase):
             converted = self.sheet_class.converted(sheet)
             self.assertEqual(converted, sheet)
             temp_sheet = tempfile.NamedTemporaryFile(suffix=self.suffix)
-            temp_sheet.write(converted.build())
+            temp_sheet.write(converted.build().encode("UTF-8"))
             temp_sheet.flush()
             re_read = self.read_sheet(temp_sheet.name)
             temp_sheet.close()
@@ -4991,53 +4991,53 @@ class testcuesheet(unittest.TestCase):
         raw_sheet = Sheet([SheetTrack(
                            number=1,
                            track_indexes=[SheetIndex(1, Fraction(0, 1))],
-                           filename="track1.wav",
+                           filename=u"track1.wav",
                            pre_emphasis=False,
                            copy_permitted=False),
                            SheetTrack(
                            number=2,
                            track_indexes=[SheetIndex(1, Fraction(0, 1))],
-                           filename="track2.wav",
+                           filename=u"track2.wav",
                            pre_emphasis=True,
                            copy_permitted=False),
                            SheetTrack(
                            number=3,
                            track_indexes=[SheetIndex(1, Fraction(0, 1))],
-                           filename="track3.wav",
+                           filename=u"track3.wav",
                            pre_emphasis=False,
                            copy_permitted=True),
                            SheetTrack(
                            number=4,
                            track_indexes=[SheetIndex(1, Fraction(0, 1))],
-                           filename="track4.wav",
+                           filename=u"track4.wav",
                            pre_emphasis=True,
                            copy_permitted=True)])
 
-        self.assertEqual(raw_sheet.track(1).filename(), "track1.wav")
+        self.assertEqual(raw_sheet.track(1).filename(), u"track1.wav")
         self.assertEqual(raw_sheet.track(1).pre_emphasis(), False)
         self.assertEqual(raw_sheet.track(1).copy_permitted(), False)
-        self.assertEqual(raw_sheet.track(2).filename(), "track2.wav")
+        self.assertEqual(raw_sheet.track(2).filename(), u"track2.wav")
         self.assertEqual(raw_sheet.track(2).pre_emphasis(), True)
         self.assertEqual(raw_sheet.track(2).copy_permitted(), False)
-        self.assertEqual(raw_sheet.track(3).filename(), "track3.wav")
+        self.assertEqual(raw_sheet.track(3).filename(), u"track3.wav")
         self.assertEqual(raw_sheet.track(3).pre_emphasis(), False)
         self.assertEqual(raw_sheet.track(3).copy_permitted(), True)
-        self.assertEqual(raw_sheet.track(4).filename(), "track4.wav")
+        self.assertEqual(raw_sheet.track(4).filename(), u"track4.wav")
         self.assertEqual(raw_sheet.track(4).pre_emphasis(), True)
         self.assertEqual(raw_sheet.track(4).copy_permitted(), True)
 
         sheet = self.sheet_class.converted(raw_sheet)
 
-        self.assertEqual(sheet.track(1).filename(), "track1.wav")
+        self.assertEqual(sheet.track(1).filename(), u"track1.wav")
         self.assertEqual(sheet.track(1).pre_emphasis(), False)
         self.assertEqual(sheet.track(1).copy_permitted(), False)
-        self.assertEqual(sheet.track(2).filename(), "track2.wav")
+        self.assertEqual(sheet.track(2).filename(), u"track2.wav")
         self.assertEqual(sheet.track(2).pre_emphasis(), True)
         self.assertEqual(sheet.track(2).copy_permitted(), False)
-        self.assertEqual(sheet.track(3).filename(), "track3.wav")
+        self.assertEqual(sheet.track(3).filename(), u"track3.wav")
         self.assertEqual(sheet.track(3).pre_emphasis(), False)
         self.assertEqual(sheet.track(3).copy_permitted(), True)
-        self.assertEqual(sheet.track(4).filename(), "track4.wav")
+        self.assertEqual(sheet.track(4).filename(), u"track4.wav")
         self.assertEqual(sheet.track(4).pre_emphasis(), True)
         self.assertEqual(sheet.track(4).copy_permitted(), True)
 
@@ -5048,7 +5048,7 @@ class testcuesheet(unittest.TestCase):
 
         # round-trip sheet to disk to ensure it still works
         temp_sheet = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        temp_sheet.write(sheet.build())
+        temp_sheet.write(sheet.build().encode("UTF-8"))
         temp_sheet.flush()
         re_read = self.read_sheet(temp_sheet.name)
         temp_sheet.close()
@@ -5091,14 +5091,14 @@ class test_flac_cuesheet(testcuesheet):
                                SheetIndex(1, timestamp_to_frac(0, 1, 0))],
                            metadata=audiotools.MetaData(
                                track_name=u"Track 1"),
-                           filename="CDImage.wav"),
+                           filename=u"CDImage.wav"),
                            SheetTrack(
                            number=2,
                            track_indexes=[
                                SheetIndex(1, timestamp_to_frac(0, 5, 0))],
                            metadata=audiotools.MetaData(
                                track_name=u"Track 2"),
-                           filename="CDImage.wav"),
+                           filename=u"CDImage.wav"),
                            SheetTrack(
                            number=3,
                            track_indexes=[
@@ -5107,7 +5107,7 @@ class test_flac_cuesheet(testcuesheet):
                                SheetIndex(2, timestamp_to_frac(0, 12, 0))],
                            metadata=audiotools.MetaData(
                                track_name=u"Track 3"),
-                           filename="CDImage.wav")])
+                           filename=u"CDImage.wav")])
 
         sheet = Flac_CUESHEET.converted(raw_sheet, 882000, 44100)
 

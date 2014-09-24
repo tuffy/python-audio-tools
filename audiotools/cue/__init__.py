@@ -29,7 +29,15 @@ class Cuesheet(Sheet):
                  performer=None,
                  songwriter=None,
                  cdtextfile=None):
-        # FIXME - sanity check files
+        from sys import version_info
+        str_type = str if (version_info[0] >= 3) else unicode
+
+        assert((catalog is None) or isinstance(catalog, str_type))
+        assert((title is None) or isinstance(title, str_type))
+        assert((performer is None) or isinstance(performer, str_type))
+        assert((songwriter is None) or isinstance(songwriter, str_type))
+        assert((cdtextfile is None) or isinstance(cdtextfile, str_type))
+
         self.__files__ = files
         self.__catalog__ = catalog
         self.__title__ = title
@@ -74,15 +82,15 @@ class Cuesheet(Sheet):
         args = {"files": [File(filename=(track_filename if
                                          filename is None else
                                          filename),
-                               file_type="WAVE",
-                               tracks=map(Track.converted, tracks))
+                               file_type=u"WAVE",
+                               tracks=[Track.converted(t) for t in tracks])
                           for (track_filename, tracks) in group_tracks(sheet)]}
 
         if (metadata is not None):
-            args["catalog"] = encode_string(metadata.catalog)
-            args["title"] = encode_string(metadata.album_name)
-            args["performer"] = encode_string(metadata.performer_name)
-            args["songwriter"] = encode_string(metadata.artist_name)
+            args["catalog"] = metadata.catalog
+            args["title"] = metadata.album_name
+            args["performer"] = metadata.performer_name
+            args["songwriter"] = metadata.artist_name
 
         return cls(**args)
 
@@ -114,44 +122,50 @@ class Cuesheet(Sheet):
                           self.__songwriter__]], False)):
             from audiotools import MetaData
 
-            return MetaData(catalog=decode_string(self.__catalog__),
-                            album_name=decode_string(self.__title__),
-                            performer_name=decode_string(self.__performer__),
-                            artist_name=decode_string(self.__songwriter__))
+            return MetaData(catalog=self.__catalog__,
+                            album_name=self.__title__,
+                            performer_name=self.__performer__,
+                            artist_name=self.__songwriter__)
         else:
             return None
 
     def build(self):
-        """returns the Cuesheet as a string"""
+        """returns the Cuesheet as a unicode string"""
 
         items = []
         if (self.__catalog__ is not None):
             items.append(
-                "CATALOG %s" % (format_string(self.__catalog__)))
+                u"CATALOG %s" % (format_string(self.__catalog__)))
         if (self.__title__ is not None):
             items.append(
-                "TITLE %s" % (format_string(self.__title__)))
+                u"TITLE %s" % (format_string(self.__title__)))
         if (self.__performer__ is not None):
             items.append(
-                "PERFORMER %s" % (format_string(self.__performer__)))
+                u"PERFORMER %s" % (format_string(self.__performer__)))
         if (self.__songwriter__ is not None):
             items.append(
-                "SONGWRITER %s" % (format_string(self.__songwriter__)))
+                u"SONGWRITER %s" % (format_string(self.__songwriter__)))
         if (self.__cdtextfile__ is not None):
             items.append(
-                "CDTEXTFILE %s" % (format_string(self.__cdtextfile__)))
+                u"CDTEXTFILE %s" % (format_string(self.__cdtextfile__)))
 
         if (len(items) > 0):
-            return ("\r\n".join(items) +
-                    "\r\n" +
-                    "\r\n".join([f.build() for f in self.__files__]) +
-                    "\r\n")
+            return (u"\r\n".join(items) +
+                    u"\r\n" +
+                    u"\r\n".join([f.build() for f in self.__files__]) +
+                    u"\r\n")
         else:
-            return "\r\n".join([f.build() for f in self.__files__]) + "\r\n"
+            return u"\r\n".join([f.build() for f in self.__files__]) + u"\r\n"
 
 
 class File(object):
     def __init__(self, filename, file_type, tracks):
+        from sys import version_info
+        str_type = str if (version_info[0] >= 3) else unicode
+
+        assert(isinstance(filename, str_type))
+        assert(isinstance(file_type, str_type))
+
         self.__filename__ = filename
         self.__file_type__ = file_type
         for t in tracks:
@@ -174,12 +188,12 @@ class File(object):
         return self.__filename__
 
     def build(self):
-        """returns the File as a string"""
+        """returns the File as a unicode string"""
 
-        return "FILE %s %s\r\n%s" % \
+        return u"FILE %s %s\r\n%s" % \
             (format_string(self.__filename__),
              self.__file_type__,
-             "\r\n".join([t.build() for t in self.__tracks__]))
+             u"\r\n".join([t.build() for t in self.__tracks__]))
 
 
 class Track(SheetTrack):
@@ -193,10 +207,25 @@ class Track(SheetTrack):
                  title=None,
                  performer=None,
                  songwriter=None):
+        from sys import version_info
+        str_type = str if (version_info[0] >= 3) else unicode
+
+        assert(isinstance(number, int))
+        assert(isinstance(track_type, str_type))
+        assert((isrc is None) or isinstance(isrc, str_type))
+        assert((pregap is None) or isinstance(pregap, int))
+        assert((postgap is None) or isinstance(postgap, int))
+        if (flags is not None):
+            for flag in flags:
+                assert(isinstance(flag, str_type))
+        assert((title is None) or isinstance(title, str_type))
+        assert((performer is None) or isinstance(performer, str_type))
+        assert((songwriter is None) or isinstance(songwriter, str_type))
+
         self.__parent_file__ = None  # to be assigned by File
         self.__number__ = number
         self.__track_type__ = track_type
-        self.__indexes__ = indexes
+        self.__indexes__ = list(indexes)
         self.__isrc__ = isrc
         self.__pregap__ = pregap
         self.__postgap__ = postgap
@@ -227,22 +256,22 @@ class Track(SheetTrack):
         metadata = sheettrack.get_metadata()
 
         args = {"number": sheettrack.number(),
-                "track_type": ("AUDIO" if sheettrack.is_audio() else
-                               "MODE1/2352"),
+                "track_type": (u"AUDIO" if sheettrack.is_audio() else
+                               u"MODE1/2352"),
                 "indexes": [Index.converted(i) for i in sheettrack]}
 
         if (metadata is not None):
-            args["isrc"] = encode_string(metadata.ISRC)
-            args["title"] = encode_string(metadata.track_name)
-            args["performer"] = encode_string(metadata.performer_name)
-            args["songwriter"] = encode_string(metadata.artist_name)
+            args["isrc"] = metadata.ISRC
+            args["title"] = metadata.track_name
+            args["performer"] = metadata.performer_name
+            args["songwriter"] = metadata.artist_name
 
         if (sheettrack.pre_emphasis() and sheettrack.copy_permitted()):
-            args["flags"] = ["PRE", "DCP"]
+            args["flags"] = [u"PRE", u"DCP"]
         elif (sheettrack.pre_emphasis()):
-            args["flags"] = ["PRE"]
+            args["flags"] = [u"PRE"]
         elif (sheettrack.copy_permitted()):
-            args["flags"] = ["DCP"]
+            args["flags"] = [u"DCP"]
 
         return cls(**args)
 
@@ -270,31 +299,31 @@ class Track(SheetTrack):
                           self.__songwriter__]], False)):
             from audiotools import MetaData
 
-            return MetaData(ISRC=decode_string(self.__isrc__),
-                            track_name=decode_string(self.__title__),
-                            performer_name=decode_string(self.__performer__),
-                            artist_name=decode_string(self.__songwriter__))
+            return MetaData(ISRC=self.__isrc__,
+                            track_name=self.__title__,
+                            performer_name=self.__performer__,
+                            artist_name=self.__songwriter__)
         else:
             return None
 
     def filename(self):
-        """returns SheetTrack's filename as a string"""
+        """returns SheetTrack's filename as a unicode string"""
 
         if (self.__parent_file__ is not None):
             return self.__parent_file__.filename()
         else:
-            return ""
+            return u""
 
     def is_audio(self):
         """returns whether SheetTrack contains audio data"""
 
-        return self.__track_type__ == "AUDIO"
+        return self.__track_type__ == u"AUDIO"
 
     def pre_emphasis(self):
         """returns whether SheetTrack has pre-emphasis"""
 
         if (self.__flags__ is not None):
-            return "PRE" in self.__flags__
+            return u"PRE" in self.__flags__
         else:
             return False
 
@@ -302,7 +331,7 @@ class Track(SheetTrack):
         """returns whether copying is permitted"""
 
         if (self.__flags__ is not None):
-            return "DCP" in self.__flags__
+            return u"DCP" in self.__flags__
         else:
             return False
 
@@ -312,41 +341,43 @@ class Track(SheetTrack):
         items = []
 
         if (self.__title__ is not None):
-            items.append("    TITLE %s" %
+            items.append(u"    TITLE %s" %
                          (format_string(self.__title__)))
 
         if (self.__performer__ is not None):
-            items.append("    PERFORMER %s" %
+            items.append(u"    PERFORMER %s" %
                          (format_string(self.__performer__)))
 
         if (self.__songwriter__ is not None):
-            items.append("    SONGWRITER %s" %
+            items.append(u"    SONGWRITER %s" %
                          (format_string(self.__songwriter__)))
 
         if (self.__flags__ is not None):
-            items.append("    FLAGS %s" % (" ".join(self.__flags__)))
+            items.append(u"    FLAGS %s" % (" ".join(self.__flags__)))
 
         if (self.__isrc__ is not None):
-            items.append("    ISRC %s" % (self.__isrc__))
+            items.append(u"    ISRC %s" % (self.__isrc__))
 
         if (self.__pregap__ is not None):
-            items.append("    PREGAP %s" %
+            items.append(u"    PREGAP %s" %
                          (format_timestamp(self.__pregap__)))
 
         for index in self.__indexes__:
             items.append(index.build())
 
         if (self.__postgap__ is not None):
-            items.append("    POSTGAP %s" %
+            items.append(u"    POSTGAP %s" %
                          (format_timestamp(self.__postgap__)))
 
-        return "  TRACK %2.2d %s\r\n%s" % (self.__number__,
-                                           self.__track_type__,
-                                           "\r\n".join(items))
+        return u"  TRACK %2.2d %s\r\n%s" % (self.__number__,
+                                            self.__track_type__,
+                                            u"\r\n".join(items))
 
 
 class Index(SheetIndex):
     def __init__(self, number, timestamp):
+        assert(isinstance(number, int))
+        assert(isinstance(timestamp, int))
         self.__number__ = number
         self.__timestamp__ = timestamp
 
@@ -365,8 +396,8 @@ class Index(SheetIndex):
     def build(self):
         """returns the Index as a string"""
 
-        return "    INDEX %2.2d %s" % (self.__number__,
-                                       format_timestamp(self.__timestamp__))
+        return u"    INDEX %2.2d %s" % (self.__number__,
+                                        format_timestamp(self.__timestamp__))
 
     def number(self):
         """returns the index's number (typically starting from 1)"""
@@ -383,29 +414,13 @@ class Index(SheetIndex):
 
 
 def format_string(s):
-    return "\"%s\"" % (s.replace('\\', '\\\\').replace('"', '\\"'))
+    return u"\"%s\"" % (s.replace(u'\\', u'\\\\').replace(u'"', u'\\"'))
 
 
 def format_timestamp(t):
-    return "%2.2d:%2.2d:%2.2d" % (t // 75 // 60,
-                                  t // 75 % 60,
-                                  t % 75)
-
-
-def decode_string(s):
-    if (s is not None):
-        # FIXME - make a best guess at text encoding?
-        return s.decode("ascii", "replace")
-    else:
-        return None
-
-
-def encode_string(u):
-    if (u is not None):
-        # FIXME - make a best guess at text encoding?
-        return u.encode("ascii", "replace")
-    else:
-        return None
+    return u"%2.2d:%2.2d:%2.2d" % (t // 75 // 60,
+                                   t // 75 % 60,
+                                   t % 75)
 
 
 def read_cuesheet(filename):
@@ -417,13 +432,14 @@ def read_cuesheet(filename):
     from audiotools import SheetException
 
     try:
-        return read_cuesheet_string(open(filename, "rb").read())
+        with open(filename, "rb") as f:
+            return read_cuesheet_string(f.read().decode("UTF-8"))
     except IOError:
         raise SheetException("unable to open file")
 
 
 def read_cuesheet_string(cuesheet):
-    """given a plain string of cuesheet data returns a Cuesheet object
+    """given a unicode string of cuesheet data returns a Cuesheet object
 
     raises SheetException if some error occurs parsing the file"""
 
@@ -446,7 +462,8 @@ def read_cuesheet_string(cuesheet):
 
 
 def write_cuesheet(sheet, filename, file):
-    """given a Sheet object and filename string,
+    """given a Sheet object and filename unicode string,
     writes a .cue file to the given file object"""
 
-    file.write(Cuesheet.converted(sheet, filename=filename).build())
+    file.write(
+        Cuesheet.converted(sheet, filename=filename).build().encode("UTF-8"))

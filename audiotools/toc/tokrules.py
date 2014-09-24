@@ -73,7 +73,7 @@ tokens = ["COMMENT",
           "TIMESTAMP",
           "NUMBER",
           "ID",
-          "STRING"] + RESERVED.values()
+          "STRING"] + list(RESERVED.values())
 
 
 def t_COMMENT(t):

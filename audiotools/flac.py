@@ -1057,9 +1057,13 @@ class Flac_CUESHEET_track(SheetTrack):
             return None
 
     def filename(self):
-        """returns SheetTrack's filename as a string"""
+        """returns SheetTrack's filename as a unicode string"""
 
-        return self.__filename__
+        from sys import version_info
+        if (version_info[0] >= 3):
+            return self.__filename__
+        else:
+            return self.__filename__.decode("UTF-8")
 
     def is_audio(self):
         """returns whether SheetTrack contains audio data"""

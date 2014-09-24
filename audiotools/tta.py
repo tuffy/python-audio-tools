@@ -504,15 +504,15 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         raises IOError if a problem occurs when reading the file"""
 
         import audiotools.cue as cue
+        from audiotools import SheetException
 
         metadata = self.get_metadata()
 
         if ((metadata is not None) and (b'Cuesheet' in metadata.keys())):
             try:
                 return cue.read_cuesheet_string(
-                    metadata[b'Cuesheet'].__unicode__().encode('utf-8',
-                                                               'replace'))
-            except cue.CueException:
+                    metadata[b'Cuesheet'].__unicode__())
+            except SheetException:
                 # unlike FLAC, just because a cuesheet is embedded
                 # does not mean it is compliant
                 return None
@@ -541,7 +541,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         cuesheet_data = BytesIO()
         write_cuesheet(cuesheet,
-                       str(Filename(self.filename).basename()),
+                       u"%s" % (Filename(self.filename).basename(),),
                        cuesheet_data)
 
         metadata[b'Cuesheet'] = ApeTag.ITEM.string(
@@ -633,10 +633,11 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         from audiotools import transfer_data
         from audiotools.text import CLEAN_REMOVE_DUPLICATE_ID3V2
 
-        if (total_id3v2_comments(open(self.filename, "rb")) > 1):
-            file_fixes = [CLEAN_REMOVE_DUPLICATE_ID3V2]
-        else:
-            file_fixes = []
+        with open(self.filename, "rb") as f:
+            if (total_id3v2_comments(f) > 1):
+                file_fixes = [CLEAN_REMOVE_DUPLICATE_ID3V2]
+            else:
+                file_fixes = []
 
         if (output_filename is None):
             # dry run only

@@ -189,7 +189,7 @@ def p_index(t):
 def p_isrc(t):
     '''isrc : ISRC_ID ISRC
             | ISRC_ID NUMBER'''
-    t[0] = ("isrc", str(t[2]))
+    t[0] = ("isrc", u"%s" % (t[2],))
 
 
 def p_pregap(t):

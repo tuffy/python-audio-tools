@@ -4416,7 +4416,7 @@ class Sheet(object):
     def converted(cls, sheet):
         """given a Sheet-compatible object, returns a Sheet"""
 
-        return cls(sheet_tracks=map(SheetTrack.converted, sheet),
+        return cls(sheet_tracks=[SheetTrack.converted(t) for t in sheet],
                    metadata=sheet.get_metadata())
 
     def __repr__(self):
@@ -4528,7 +4528,7 @@ class SheetTrack(object):
     def __init__(self, number,
                  track_indexes,
                  metadata=None,
-                 filename="CDImage.wav",
+                 filename=u"CDImage.wav",
                  is_audio=True,
                  pre_emphasis=False,
                  copy_permitted=False):
@@ -4538,11 +4538,15 @@ class SheetTrack(object):
 | number         | int          | track number, starting from 1         |
 | track_indexes  | [SheetIndex] | list of SheetIndex objects            |
 | metadata       | MetaData     | track's metadata, or None             |
-| filename       | str          | track's filename on disc              |
+| filename       | unicode      | track's filename on disc              |
 | is_audio       | boolean      | whether track contains audio data     |
 | pre_emphasis   | boolean      | whether track has pre-emphasis        |
 | copy_permitted | boolean      | whether copying is permitted          |
         """
+
+        assert(isinstance(number, int))
+        assert(isinstance(filename,
+                          str if (sys.version_info[0] >= 3) else unicode))
 
         self.__number__ = number
         self.__track_indexes__ = list(track_indexes)
@@ -4557,7 +4561,7 @@ class SheetTrack(object):
         """Given a SheetTrack-compatible object, returns a SheetTrack"""
 
         return cls(number=sheet_track.number(),
-                   track_indexes=map(SheetIndex.converted, sheet_track),
+                   track_indexes=[SheetIndex.converted(i) for i in sheet_track],
                    metadata=sheet_track.get_metadata(),
                    filename=sheet_track.filename(),
                    is_audio=sheet_track.is_audio(),
@@ -4630,7 +4634,7 @@ class SheetTrack(object):
         return self.__metadata__
 
     def filename(self):
-        """returns SheetTrack's filename as a string"""
+        """returns SheetTrack's filename as unicode"""
 
         return self.__filename__
 

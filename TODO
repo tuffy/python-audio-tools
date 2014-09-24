@@ -7184,7 +7184,7 @@
 **** TODO Python 2.7
 ***** TODO Lib
       - [X] core
-      - [ ] cuesheet
+      - [X] cuesheet
       - [X] cdio
       - [ ] freedb
       - [X] image
@@ -7194,7 +7194,7 @@
       - [X] bitstream
       - [X] replaygain
       - [X] resample
-      - [ ] tocfile
+      - [X] tocfile
       - [X] verify
       - [X] ogg
 ***** DONE Format
@@ -7252,7 +7252,7 @@
 **** TODO Python 3
 ***** TODO Lib
       - [X] core
-      - [ ] cuesheet
+      - [X] cuesheet
       - [X] cdio
       - [ ] freedb
       - [X] image
@@ -7262,7 +7262,7 @@
       - [X] bitstream
       - [X] replaygain
       - [X] resample
-      - [ ] tocfile
+      - [X] tocfile
       - [X] verify
       - [X] ogg
 ***** DONE Format
