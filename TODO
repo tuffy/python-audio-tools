@@ -7217,9 +7217,9 @@
       - [X] vorbis
       - [X] wave
       - [X] wavpack
-***** TODO Metadata
+***** DONE Metadata
       - [X] metadata
-      - [ ] flac
+      - [X] flac
       - [X] wavpack
       - [X] id3v1
       - [X] id3v2
@@ -7285,9 +7285,9 @@
       - [X] vorbis
       - [X] wave
       - [X] wavpack
-***** TODO Metadata
+***** DONE Metadata
       - [X] metadata
-      - [ ] flac
+      - [X] flac
       - [X] wavpack
       - [X] id3v1
       - [X] id3v2

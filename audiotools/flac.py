@@ -731,6 +731,10 @@ class Flac_CUESHEET(Sheet):
         is_cdda is 1 if audio if from CDDA, 0 otherwise
         tracks is a list of Flac_CHESHEET_track objects"""
 
+        assert(isinstance(catalog_number, bytes))
+        assert(isinstance(lead_in_samples, int))
+        assert(is_cdda in {1, 2})
+
         self.__catalog_number__ = catalog_number
         self.__lead_in_samples__ = lead_in_samples
         self.__is_cdda__ = is_cdda
@@ -882,8 +886,9 @@ class Flac_CUESHEET(Sheet):
                 return b"\x00" * chars
 
         metadata = sheet.get_metadata()
-        if (metadata is not None):
-            catalog_number = pad(metadata.catalog, 128)
+        if ((metadata is not None) and (metadata.catalog is not None)):
+            catalog_number = pad(metadata.catalog.encode("ascii", "replace"),
+                                 128)
         else:
             catalog_number = b"\x00" * 128
 
@@ -912,6 +917,12 @@ class Flac_CUESHEET_track(SheetTrack):
         track_type is 0 for audio, 1 for non-audio
         pre_emphasis is 0 for no, 1 for yes
         index_points is a list of Flac_CUESHEET_index objects"""
+
+        assert(isinstance(offset, int))
+        assert(isinstance(number, int))
+        assert(isinstance(ISRC, bytes))
+        assert(track_type in {0, 1})
+        assert(pre_emphasis in {0, 1})
 
         self.__offset__ = offset
         self.__number__ = number

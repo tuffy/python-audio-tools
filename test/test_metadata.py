@@ -3880,13 +3880,13 @@ class FlacMetaData(MetaDataTest):
                 # cuesheet not updated with set_metadata()
                 # but can be updated with update_metadata()
                 new_cuesheet = audiotools.flac.Flac_CUESHEET(
-                    catalog_number=chr(0) * 128,
+                    catalog_number=b"\x00" * 128,
                     lead_in_samples=0,
                     is_cdda=1,
                     tracks=[audiotools.flac.Flac_CUESHEET_track(
                             offset=0,
                             number=0,
-                            ISRC=" " * 12,
+                            ISRC=b" " * 12,
                             track_type=0,
                             pre_emphasis=0,
                             index_points=[audiotools.flac.Flac_CUESHEET_index(
@@ -3939,8 +3939,8 @@ class FlacMetaData(MetaDataTest):
                 # application blocks not updated with set_metadata()
                 # but can be updated with update_metadata()
                 application = audiotools.flac.Flac_APPLICATION(
-                    application_id="fooz",
-                    data="kelp")
+                    application_id=b"fooz",
+                    data=b"kelp")
                 metadata = track.get_metadata()
                 self.assertRaises(IndexError,
                                   metadata.get_block,
@@ -4199,10 +4199,11 @@ class FlacMetaData(MetaDataTest):
                           {"field": u"TITLE"}])
 
         # check mis-tagged images
-        metadata = audiotools.FlacMetaData(
-            [audiotools.flac.Flac_PICTURE(
-             0, "image/jpeg", u"", 20, 20, 24, 10,
-             open("metadata_flac_clean.jpg", "rb").read())])
+        with open("metadata_flac_clean.jpg", "rb") as jpg:
+            metadata = audiotools.FlacMetaData(
+                [audiotools.flac.Flac_PICTURE(
+                 0, "image/jpeg", u"", 20, 20, 24, 10,
+                 jpg.read())])
         self.assertEqual(
             len(metadata.get_blocks(audiotools.flac.Flac_PICTURE.BLOCK_ID)), 1)
         image = metadata.images()[0]
@@ -4317,14 +4318,14 @@ class FlacMetaData(MetaDataTest):
                 (138903552, 540416, 4096)]),
             audiotools.flac.Flac_VORBISCOMMENT(["TITLE=Foo "], u""),
             audiotools.flac.Flac_CUESHEET(
-                catalog_number='4560248013904' + chr(0) * (128 - 13),
+                catalog_number=b'4560248013904' + b"\x00" * (128 - 13),
                 lead_in_samples=88200,
                 is_cdda=1,
                 tracks=[
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=0,
                         number=1,
-                        ISRC='JPK631002201',
+                        ISRC=b'JPK631002201',
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
@@ -4335,7 +4336,7 @@ class FlacMetaData(MetaDataTest):
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=8336076,
                         number=2,
-                        ISRC='JPK631002202',
+                        ISRC=b'JPK631002202',
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
@@ -4350,7 +4351,7 @@ class FlacMetaData(MetaDataTest):
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=17379516,
                         number=3,
-                        ISRC='JPK631002203',
+                        ISRC=b'JPK631002203',
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
@@ -4365,7 +4366,7 @@ class FlacMetaData(MetaDataTest):
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=28042308,
                         number=4,
-                        ISRC='JPK631002204',
+                        ISRC=b'JPK631002204',
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
@@ -4380,7 +4381,7 @@ class FlacMetaData(MetaDataTest):
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=41672736,
                         number=5,
-                        ISRC='JPK631002205',
+                        ISRC=b'JPK631002205',
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
@@ -4395,7 +4396,7 @@ class FlacMetaData(MetaDataTest):
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=54447624,
                         number=6,
-                        ISRC='JPK631002206',
+                        ISRC=b'JPK631002206',
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
@@ -4410,7 +4411,7 @@ class FlacMetaData(MetaDataTest):
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=65689596,
                         number=7,
-                        ISRC='JPK631002207',
+                        ISRC=b'JPK631002207',
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
@@ -4425,7 +4426,7 @@ class FlacMetaData(MetaDataTest):
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=76267716,
                         number=8,
-                        ISRC='JPK631002208',
+                        ISRC=b'JPK631002208',
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
@@ -4440,7 +4441,7 @@ class FlacMetaData(MetaDataTest):
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=89627076,
                         number=9,
-                        ISRC='JPK631002209',
+                        ISRC=b'JPK631002209',
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
@@ -4455,7 +4456,7 @@ class FlacMetaData(MetaDataTest):
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=99691872,
                         number=10,
-                        ISRC='JPK631002210',
+                        ISRC=b'JPK631002210',
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
@@ -4470,7 +4471,7 @@ class FlacMetaData(MetaDataTest):
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=114176076,
                         number=11,
-                        ISRC='JPK631002211',
+                        ISRC=b'JPK631002211',
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
@@ -4485,7 +4486,7 @@ class FlacMetaData(MetaDataTest):
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=125415696,
                         number=12,
-                        ISRC='JPK631002212',
+                        ISRC=b'JPK631002212',
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
@@ -4500,7 +4501,7 @@ class FlacMetaData(MetaDataTest):
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=138791520,
                         number=13,
-                        ISRC='JPK631002213',
+                        ISRC=b'JPK631002213',
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[
@@ -4515,7 +4516,7 @@ class FlacMetaData(MetaDataTest):
                     audiotools.flac.Flac_CUESHEET_track(
                         offset=149606016,
                         number=170,
-                        ISRC=chr(0) * 12,
+                        ISRC=b"\x00" * 12,
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[])]),
@@ -5522,7 +5523,8 @@ class FlacMetaData(MetaDataTest):
 
             # wrap in ID3v2/ID3v1 tags (with different values)
             dummy_id3flac.write(id3v2_tag)
-            dummy_id3flac.write(open(dummy_flac.name, "rb").read())
+            with open(dummy_flac.name, "rb") as f:
+                dummy_id3flac.write(f.read())
             dummy_id3flac.write(id3v1_tag)
             dummy_id3flac.flush()
 
@@ -5531,12 +5533,10 @@ class FlacMetaData(MetaDataTest):
             self.assertEqual(flac2.verify(), True)
 
             # ensure start and end of file still match tags
-            self.assertEqual(
-                open(dummy_id3flac.name, "rb").read()[0:len(id3v2_tag)],
-                id3v2_tag)
-            self.assertEqual(
-                open(dummy_id3flac.name, "rb").read()[-len(id3v1_tag):],
-                id3v1_tag)
+            with open(dummy_id3flac.name, "rb") as f:
+                self.assertEqual(f.read()[0:len(id3v2_tag)], id3v2_tag)
+            with open(dummy_id3flac.name, "rb") as f:
+                self.assertEqual(f.read()[-len(id3v1_tag):], id3v1_tag)
 
             # ensure metadata values don't come from ID3v2/ID3v1
             metadata = flac2.get_metadata()
@@ -5550,12 +5550,10 @@ class FlacMetaData(MetaDataTest):
             flac2.update_metadata(metadata)
 
             # ensure start and end of file still match tags
-            self.assertEqual(
-                open(dummy_id3flac.name, "rb").read()[0:len(id3v2_tag)],
-                id3v2_tag)
-            self.assertEqual(
-                open(dummy_id3flac.name, "rb").read()[-len(id3v1_tag):],
-                id3v1_tag)
+            with open(dummy_id3flac.name, "rb") as f:
+                self.assertEqual(f.read()[0:len(id3v2_tag)], id3v2_tag)
+            with open(dummy_id3flac.name, "rb") as f:
+                self.assertEqual(f.read()[-len(id3v1_tag):], id3v1_tag)
 
             # ensure file still tests okay
             self.assertEqual(flac2.verify(), True)
@@ -5571,12 +5569,10 @@ class FlacMetaData(MetaDataTest):
             flac2.update_metadata(metadata)
 
             # ensure start and end of file still match tags
-            self.assertEqual(
-                open(dummy_id3flac.name, "rb").read()[0:len(id3v2_tag)],
-                id3v2_tag)
-            self.assertEqual(
-                open(dummy_id3flac.name, "rb").read()[-len(id3v1_tag):],
-                id3v1_tag)
+            with open(dummy_id3flac.name, "rb") as f:
+                self.assertEqual(f.read()[0:len(id3v2_tag)], id3v2_tag)
+            with open(dummy_id3flac.name, "rb") as f:
+                self.assertEqual(f.read()[-len(id3v1_tag):], id3v1_tag)
 
             # ensure file still tests okay
             self.assertEqual(flac2.verify(), True)
