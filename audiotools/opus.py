@@ -417,17 +417,23 @@ class OpusAudio(VorbisAudio):
         import os.path
 
         try:
-            reader = PageReader(open(self.filename, "rb"))
+            f = open(self.filename, "rb")
         except IOError as err:
+            raise InvalidOpus(str(err))
+        try:
+            reader = PageReader(f)
+        except IOError as err:
+            f.close()
             raise InvalidOpus(str(err))
 
         try:
             page = reader.read()
             while (not page.stream_end):
                 page = reader.read()
-            reader.close()
         except (IOError, ValueError) as err:
             raise InvalidOpus(str(err))
+        finally:
+            reader.close()
 
         return AudioFile.verify(self, progress)
 

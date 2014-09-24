@@ -4535,19 +4535,15 @@ class M4AFileTest(LossyFileTest):
 
     @FORMAT_M4A
     def test_length(self):
-        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
+        with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp:
             for seconds in [1, 2, 3, 4, 5, 10, 20, 60, 120]:
                 track = self.audio_class.from_pcm(temp.name,
                                                   BLANK_PCM_Reader(seconds))
                 self.assertEqual(int(round(track.seconds_length())), seconds)
-        finally:
-            temp.close()
 
     @FORMAT_LOSSY
     def test_channels(self):
-        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
+        with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp:
             for channels in [1, 2, 3, 4, 5, 6]:
                 track = self.audio_class.from_pcm(
                     temp.name, BLANK_PCM_Reader(1,
@@ -4561,26 +4557,20 @@ class M4AFileTest(LossyFileTest):
                 self.assertEqual(track.channels(), max(2, channels))
                 track = audiotools.open(temp.name)
                 self.assertEqual(track.channels(), max(2, channels))
-        finally:
-            temp.close()
 
     @FORMAT_M4A
     def test_too(self):
         # ensure that the 'too' meta atom isn't modified by setting metadata
-        temp = tempfile.NamedTemporaryFile(
-            suffix=self.suffix)
-        try:
+        with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp:
             track = self.audio_class.from_pcm(
                 temp.name,
                 BLANK_PCM_Reader(1))
             metadata = track.get_metadata()
-            encoder = unicode(metadata['ilst']['\xa9too'])
+            encoder = u"%s" % (metadata[b'ilst'][b'\xa9too'],)
             track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
             metadata = track.get_metadata()
             self.assertEqual(metadata.track_name, u"Foo")
-            self.assertEqual(unicode(metadata['ilst']['\xa9too']), encoder)
-        finally:
-            temp.close()
+            self.assertEqual(u"%s" % (metadata[b'ilst'][b'\xa9too'],), encoder)
 
 
 class MP3FileTest(LossyFileTest):
@@ -4590,14 +4580,11 @@ class MP3FileTest(LossyFileTest):
 
     @FORMAT_MP3
     def test_length(self):
-        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
+        with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp:
             for seconds in [1, 2, 3, 4, 5, 10, 20, 60, 120]:
                 track = self.audio_class.from_pcm(temp.name,
                                                   BLANK_PCM_Reader(seconds))
                 self.assertEqual(int(round(track.seconds_length())), seconds)
-        finally:
-            temp.close()
 
     @FORMAT_MP3
     def test_verify(self):
@@ -4704,8 +4691,7 @@ class MP3FileTest(LossyFileTest):
 
     @FORMAT_MP3
     def test_id3_ladder(self):
-        temp_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
+        with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp_file:
             track = self.audio_class.from_pcm(temp_file.name,
                                               BLANK_PCM_Reader(5))
 
@@ -4722,16 +4708,13 @@ class MP3FileTest(LossyFileTest):
                 metadata = new_class.converted(track.get_metadata())
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(isinstance(metadata, new_class), True)
+                self.assertTrue(isinstance(metadata, new_class))
                 self.assertEqual(metadata.__class__, new_class([]).__class__)
                 self.assertEqual(metadata, dummy_metadata)
-        finally:
-            temp_file.close()
 
     @FORMAT_MP3
     def test_ucs2(self):
-        temp_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
+        with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp_file:
             track = self.audio_class.from_pcm(temp_file.name,
                                               BLANK_PCM_Reader(5))
 
@@ -4812,8 +4795,6 @@ class MP3FileTest(LossyFileTest):
                     id3 = track.get_metadata()
                     self.assertEqual(id3.images()[0].description,
                                      test_string_out)
-        finally:
-            temp_file.close()
 
     @FORMAT_MP3
     def test_clean(self):
@@ -4831,8 +4812,7 @@ class MP3FileTest(LossyFileTest):
         fixes = track.clean()
         self.assertEqual(fixes,
                          [CLEAN_REMOVE_DUPLICATE_ID3V2])
-        temp = tempfile.NamedTemporaryFile(suffix=".mp3")
-        try:
+        with tempfile.NamedTemporaryFile(suffix=".mp3") as temp:
             fixes = track.clean(temp.name)
             self.assertEqual(fixes,
                              [CLEAN_REMOVE_DUPLICATE_ID3V2])
@@ -4842,8 +4822,6 @@ class MP3FileTest(LossyFileTest):
             # and the padding is preserved in the old tag
             self.assertEqual(os.path.getsize(temp.name),
                              original_size - 0x46A)
-        finally:
-            temp.close()
 
 
 class MP2FileTest(MP3FileTest):
@@ -4857,6 +4835,8 @@ class OggVerify:
     @FORMAT_OPUS
     @FORMAT_OGGFLAC
     def test_verify(self):
+        from test_core import ints_to_bytes, bytes_to_ints
+
         good_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
         bad_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
         try:
@@ -4875,9 +4855,9 @@ class OggVerify:
 
             # first, try truncating the file
             for i in range(len(good_file_data)):
-                f = open(bad_file.name, "wb")
-                f.write(good_file_data[0:i])
-                f.flush()
+                with open(bad_file.name, "wb") as f:
+                    f.write(good_file_data[0:i])
+                    f.flush()
                 self.assertEqual(os.path.getsize(bad_file.name), i)
                 try:
                     new_track = self.audio_class(bad_file.name)
@@ -4889,11 +4869,11 @@ class OggVerify:
             # then, try flipping a bit
             for i in range(len(good_file_data)):
                 for j in range(8):
-                    bad_file_data = list(good_file_data)
-                    bad_file_data[i] = chr(ord(bad_file_data[i]) ^ (1 << j))
-                    f = open(bad_file.name, "wb")
-                    f.write("".join(bad_file_data))
-                    f.close()
+                    bad_file_data = bytes_to_ints(good_file_data)
+                    bad_file_data[i] = bad_file_data[i] ^ (1 << j)
+                    with open(bad_file.name, "wb") as f:
+                        f.write(ints_to_bytes(bad_file_data))
+                        f.close()
                     self.assertEqual(os.path.getsize(bad_file.name),
                                      len(good_file_data))
                     try:
@@ -4913,16 +4893,15 @@ class OggVerify:
             # (this is a known bug)
             return
 
-        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
+        with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp:
             track = self.audio_class.from_pcm(
                 temp.name,
                 BLANK_PCM_Reader(1))
-            self.assertEqual(track.verify(), True)
-            good_data = open(temp.name, 'rb').read()
-            f = open(temp.name, 'wb')
-            f.write(good_data[0:min(100, len(good_data) - 1)])
-            f.close()
+            self.assertTrue(track.verify())
+            with open(temp.name, 'rb') as f:
+                good_data = f.read()
+            with open(temp.name, 'wb') as f:
+                f.write(good_data[0:min(100, len(good_data) - 1)])
             if (os.path.isfile("dummy.wav")):
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
@@ -4931,8 +4910,6 @@ class OggVerify:
                               "dummy.wav",
                               audiotools.WaveAudio)
             self.assertEqual(os.path.isfile("dummy.wav"), False)
-        finally:
-            temp.close()
 
 
 class OggFlacFileTest(OggVerify,
@@ -4953,16 +4930,14 @@ class OggFlacFileTest(OggVerify,
                           "/dev/null/foo")
 
         # check invalid file
-        invalid_file = tempfile.NamedTemporaryFile(suffix=".oga")
-        try:
-            for c in "invalidstringxxx":
+        with tempfile.NamedTemporaryFile(suffix=".oga") as invalid_file:
+            for c in [b"i", b"n", b"v", b"a", b"l", b"i", b"d",
+                      b"s", b"t", b"r", b"i", b"n", b"g", b"x", b"x", b"x"]:
                 invalid_file.write(c)
                 invalid_file.flush()
                 self.assertRaises(audiotools.flac.InvalidFLAC,
                                   audiotools.OggFlacAudio,
                                   invalid_file.name)
-        finally:
-            invalid_file.close()
 
         # check some decoder errors,
         # mostly to ensure a failed init doesn't make Python explode
@@ -5540,8 +5515,7 @@ class VorbisFileTest(OggVerify, LossyFileTest):
 
     @FORMAT_VORBIS
     def test_channels(self):
-        temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
-        try:
+        with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp:
             for channels in [1, 2, 3, 4, 5, 6]:
                 track = self.audio_class.from_pcm(
                     temp.name, BLANK_PCM_Reader(1,
@@ -5550,14 +5524,11 @@ class VorbisFileTest(OggVerify, LossyFileTest):
             self.assertEqual(track.channels(), channels)
             track = audiotools.open(temp.name)
             self.assertEqual(track.channels(), channels)
-        finally:
-            temp.close()
 
     @FORMAT_VORBIS
     def test_big_comment(self):
-        track_file = tempfile.NamedTemporaryFile(
-            suffix="." + self.audio_class.SUFFIX)
-        try:
+        with tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX) as track_file:
             track = self.audio_class.from_pcm(track_file.name,
                                               BLANK_PCM_Reader(1))
 
@@ -5579,8 +5550,6 @@ class VorbisFileTest(OggVerify, LossyFileTest):
 
             self.assertEqual(original_pcm_sum.hexdigest(),
                              new_pcm_sum.hexdigest())
-        finally:
-            track_file.close()
 
 
 class OpusFileTest(OggVerify, LossyFileTest):
@@ -5595,9 +5564,8 @@ class OpusFileTest(OggVerify, LossyFileTest):
 
     @FORMAT_OPUS
     def test_big_comment(self):
-        track_file = tempfile.NamedTemporaryFile(
-            suffix="." + self.audio_class.SUFFIX)
-        try:
+        with tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX) as track_file:
             track = self.audio_class.from_pcm(track_file.name,
                                               BLANK_PCM_Reader(1))
             original_pcm_sum = md5()
@@ -5618,8 +5586,6 @@ class OpusFileTest(OggVerify, LossyFileTest):
 
             self.assertEqual(original_pcm_sum.hexdigest(),
                              new_pcm_sum.hexdigest())
-        finally:
-            track_file.close()
 
 
 class WaveFileTest(TestForeignWaveChunks,

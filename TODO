@@ -7197,7 +7197,7 @@
       - [ ] tocfile
       - [X] verify
       - [X] ogg
-***** TODO Format
+***** DONE Format
       - [X] audiofile
       - [X] lossless
       - [X] lossy
@@ -7206,15 +7206,15 @@
       - [X] au
       - [X] dvda
       - [X] flac
-      - [ ] m4a
-      - [ ] mp2
-      - [ ] mp3
-      - [ ] oggflac
-      - [ ] opus
+      - [X] m4a
+      - [X] mp2
+      - [X] mp3
+      - [X] oggflac
+      - [X] opus
       - [X] shorten
       - [X] sines
       - [X] tta
-      - [ ] vorbis
+      - [X] vorbis
       - [X] wave
       - [X] wavpack
 ***** TODO Metadata
@@ -7265,7 +7265,7 @@
       - [ ] tocfile
       - [X] verify
       - [X] ogg
-***** TODO Format
+***** DONE Format
       - [X] audiofile
       - [X] lossless
       - [X] lossy
@@ -7274,15 +7274,15 @@
       - [X] au
       - [X] dvda
       - [X] flac
-      - [ ] m4a
-      - [ ] mp2
-      - [ ] mp3
-      - [ ] oggflac
-      - [ ] opus
+      - [X] m4a
+      - [X] mp2
+      - [X] mp3
+      - [X] oggflac
+      - [X] opus
       - [X] shorten
       - [X] sines
       - [X] tta
-      - [ ] vorbis
+      - [X] vorbis
       - [X] wave
       - [X] wavpack
 ***** TODO Metadata

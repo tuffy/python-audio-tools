@@ -466,10 +466,11 @@ class MP3Audio(AudioFile):
         from audiotools import open as open_audiofile
         from audiotools.text import CLEAN_REMOVE_DUPLICATE_ID3V2
 
-        if (total_id3v2_comments(open(self.filename, "rb")) > 1):
-            file_fixes = [CLEAN_REMOVE_DUPLICATE_ID3V2]
-        else:
-            file_fixes = []
+        with open(self.filename, "rb") as f:
+            if (total_id3v2_comments(f) > 1):
+                file_fixes = [CLEAN_REMOVE_DUPLICATE_ID3V2]
+            else:
+                file_fixes = []
 
         if (output_filename is None):
             # dry run only

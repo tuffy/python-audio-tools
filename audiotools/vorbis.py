@@ -161,7 +161,12 @@ class VorbisAudio(AudioFile):
         from audiotools._ogg import PageReader
 
         try:
-            reader = PageReader(open(self.filename, "rb"))
+            f = open(self.filename, "rb")
+        except IOError:
+            return 0
+
+        reader = PageReader(f)
+        try:
             page = reader.read()
             pcm_samples = page.granule_position
 
@@ -169,10 +174,11 @@ class VorbisAudio(AudioFile):
                 page = reader.read()
                 pcm_samples = max(pcm_samples, page.granule_position)
 
-            reader.close()
             return pcm_samples
         except (IOError, ValueError):
             return 0
+        finally:
+            reader.close()
 
     def sample_rate(self):
         """returns the rate of the track's audio as an integer number of Hz"""
