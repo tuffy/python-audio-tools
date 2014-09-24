@@ -2277,11 +2277,13 @@ rather than instantiated directly.
 
    Returns the total number of columns in the table.
 
-.. method:: output_table_row.add_column(text[, alignment="left"])
+.. method:: output_table_row.add_column(text[, alignment="left"][, colspan=1])
 
    Adds text, which may be a Unicode string or
    :class:`output_text` object.
    ``alignment`` may be ``"left"``, ``"center"`` or ``"right"``.
+   If `colspan` is greater than 1, the column is widened to span
+   that many other non-spanning columns.
 
 .. method:: output_table_row.column_width(column)
 

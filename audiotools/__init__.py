@@ -1027,8 +1027,7 @@ class output_table(object):
             # no rows, so do nothing
             return
 
-        row_columns = {len(r) for r in self.__rows__ if
-                       not isinstance(r, output_table_blank)}
+        row_columns = {len(r) for r in self.__rows__ if not r.blank()}
 
         if (len(row_columns) == 0):
             # all rows are blank
@@ -1039,8 +1038,7 @@ class output_table(object):
             column_widths = [
                 max([row.column_width(col) for row in self.__rows__])
                 for col in
-                range(len([r for r in self.__rows__ if
-                           not isinstance(r, output_table_blank)][0]))]
+                range(len([r for r in self.__rows__ if not r.blank()][0]))]
 
             for row in self.__rows__:
                 yield row.format(column_widths, is_tty)
@@ -1048,77 +1046,32 @@ class output_table(object):
             raise ValueError("all rows must have same number of columns")
 
 
-class output_table_row(object):
+class output_table_blank(object):
+    """a class for an empty table row"""
+
     def __init__(self):
-        """a class for formatting columns for display"""
+        pass
 
-        self.__columns__ = []
-
-    def __len__(self):
-        return len(self.__columns__)
-
-    def add_column(self, text, alignment="left"):
-        """adds text, which may be unicode or a formatted output_text object
-
-        alignment may be 'left', 'center', 'right'"""
-
-        if (alignment not in ("left", "center", "right")):
-            raise ValueError("alignment must be 'left', 'center', or 'right'")
-
-        self.__columns__.append(
-            (text if isinstance(text, output_text) else output_text(text),
-             alignment))
+    def blank(self):
+        return True
 
     def column_width(self, column):
-        return len(self.__columns__[column][0])
+        return 0
 
     def format(self, column_widths, is_tty=False):
         """returns formatted row as unicode"""
 
-        def align_left(text, width, is_tty):
-            spaces = width - len(text)
-
-            if (spaces > 0):
-                return text.format(is_tty) + u" " * spaces
-            else:
-                return text.format(is_tty)
-
-        def align_right(text, width, is_tty):
-            spaces = width - len(text)
-
-            if (spaces > 0):
-                return u" " * spaces + text.format(is_tty)
-            else:
-                return text.format(is_tty)
-
-        def align_center(text, width, is_tty):
-            left_spaces = (width - len(text)) // 2
-            right_spaces = width - (left_spaces + len(text))
-
-            if ((left_spaces + right_spaces) > 0):
-                return (u" " * left_spaces +
-                        text.format(is_tty) +
-                        u" " * right_spaces)
-            else:
-                return text.format(is_tty)
-
-        # attribute to method mapping
-        align_meth = {"left": align_left,
-                      "right": align_right,
-                      "center": align_center}
-
-        assert(len(column_widths) == len(self.__columns__))
-
-        return u"".join([align_meth[alignment](text, width, is_tty)
-                         for ((text, alignment), width) in
-                         zip(self.__columns__, column_widths)]).rstrip()
+        return u""
 
 
-class output_table_divider(object):
+class output_table_divider(output_table_blank):
     """a class for formatting a row of divider characters"""
 
     def __init__(self, dividers):
         self.__dividers__ = dividers[:]
+
+    def blank(self):
+        return False
 
     def __len__(self):
         return len(self.__dividers__)
@@ -1136,19 +1089,134 @@ class output_table_divider(object):
                          zip(self.__dividers__, column_widths)]).rstrip()
 
 
-class output_table_blank(object):
-    """a class for an empty table row"""
-
+class output_table_row(output_table_divider):
     def __init__(self):
-        pass
+        """a class for formatting columns for display"""
+
+        self.__columns__ = []
+
+    def __len__(self):
+        return len(self.__columns__)
 
     def column_width(self, column):
-        return 0
+        return self.__columns__[column].minimum_width()
 
     def format(self, column_widths, is_tty=False):
         """returns formatted row as unicode"""
 
+        assert(len(column_widths) == len(self.__columns__))
+
+        return u"".join([column.format(width, is_tty)
+                         for (column, width) in
+                         zip(self.__columns__, column_widths)]).rstrip()
+
+    def add_column(self, text, alignment="left", colspan=1):
+        """adds text, which may be unicode or a formatted output_text object
+
+        alignment may be 'left', 'center', 'right'"""
+
+        if (alignment not in {"left", "center", "right"}):
+            raise ValueError("alignment must be 'left', 'center', or 'right'")
+        if (colspan == 1):
+            self.__columns__.append(output_table_col(text, alignment))
+        elif (colspan > 1):
+            accumulators = [output_table_multicol_accumulator()
+                            for i in range(colspan - 1)]
+            self.__columns__.extend(accumulators)
+            self.__columns__.append(output_table_multicol(
+                accumulators, text, alignment))
+        else:
+            raise ValueError("colspan must be >= 1")
+
+
+class output_table_col(object):
+    def __init__(self, text, alignment="left"):
+        """text is an output_text or unicode object,
+        alignment is 'left', 'center', or 'right'
+        """
+
+        if (isinstance(text, output_text)):
+            self.__text__ = text
+        else:
+            self.__text__ = output_text(text)
+
+        if (alignment == "left"):
+            self.format = self.__format_left__
+        elif (alignment == "center"):
+            self.format = self.__format_center__
+        elif (alignment == "right"):
+            self.format = self.__format_right__
+        else:
+            raise ValueError("alignment must be 'left', 'center', or 'right'")
+
+    def minimum_width(self):
+        return len(self.__text__)
+
+    def __format_left__(self, column_width, is_tty):
+        padding = column_width - len(self.__text__)
+        if (padding > 0):
+            return self.__text__.format(is_tty) + u" " * padding
+        elif (padding == 0):
+            return self.__text__.format(is_tty)
+        else:
+            truncated = self.__text__.head(column_width)
+            return (truncated.format(is_tty) +
+                    u" " * (column_width - len(truncated)))
+
+    def __format_center__(self, column_width, is_tty):
+        left_padding = (column_width - len(self.__text__)) // 2
+        right_padding = column_width - (left_padding + len(self.__text__))
+
+        if ((left_padding > 0) or (right_padding > 0)):
+            return (u" " * left_padding +
+                    self.__text__.format(is_tty) +
+                    u" " * right_padding)
+        elif ((left_padding == 0) and (right_padding == 0)):
+            return self.__text__.format(is_tty)
+        else:
+            truncated = self.__text__.head(column_width)
+            return (truncated.format(is_tty) +
+                    u" " * (column_width - len(truncated)))
+
+    def __format_right__(self, column_width, is_tty):
+        padding = column_width - len(self.__text__)
+        if (padding > 0):
+            return u" " * padding + self.__text__.format(is_tty)
+        elif (padding == 0):
+            return self.__text__.format(is_tty)
+        else:
+            truncated = self.__text__.tail(column_width)
+            return (u" " * (column_width - len(truncated)) +
+                    truncated.format(is_tty))
+
+
+class output_table_multicol_accumulator(output_table_col):
+    def __init__(self):
+        self.__actual_width__ = 0
+
+    def minimum_width(self):
+        return 0
+
+    def actual_width(self):
+        return self.__actual_width__
+
+    def format(self, column_width, is_tty):
+        self.__actual_width__ = column_width
         return u""
+
+
+class output_table_multicol(output_table_col):
+    def __init__(self, accumulators, text, alignment="left"):
+        self.__base_col__ = output_table_col(text, alignment)
+        self.__accumulators__ = accumulators
+
+    def minimum_width(self):
+        return 0
+
+    def format(self, column_width, is_tty):
+        return self.__base_col__.format(
+            sum([a.actual_width() for a in self.__accumulators__]) +
+            column_width, is_tty)
 
 
 class ProgressDisplay(object):
