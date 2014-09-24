@@ -4966,7 +4966,10 @@ def metadata_lookup(musicbrainz_disc_id,
     # MusicBrainz takes precedence over FreeDB
     if (use_musicbrainz):
         import audiotools.musicbrainz as musicbrainz
-        from urllib2 import HTTPError
+        try:
+            from urllib.request import HTTPError
+        except ImportError:
+            from urllib2 import HTTPError
         from xml.parsers.expat import ExpatError
         try:
             matches.extend(
@@ -4979,7 +4982,10 @@ def metadata_lookup(musicbrainz_disc_id,
 
     if (use_freedb):
         import audiotools.freedb as freedb
-        from urllib2 import HTTPError
+        try:
+            from urllib.request import HTTPError
+        except ImportError:
+            from urllib2 import HTTPError
         try:
             matches.extend(
                 freedb.perform_lookup(

@@ -7182,13 +7182,13 @@
      - [ ] test_cdrecord
 *** TODO Ensure unit tests pass
 **** TODO Python 2.7
-***** TODO Lib
+***** DONE Lib
       - [X] core
       - [X] cuesheet
       - [X] cdio
-      - [ ] freedb
+      - [X] freedb
       - [X] image
-      - [ ] musicbrainz
+      - [X] musicbrainz
       - [X] accuraterip
       - [X] pcm
       - [X] bitstream
@@ -7250,13 +7250,13 @@
       - [ ] tracktag
       - [ ] trackverify
 **** TODO Python 3
-***** TODO Lib
+***** DONE Lib
       - [X] core
       - [X] cuesheet
       - [X] cdio
-      - [ ] freedb
+      - [X] freedb
       - [X] image
-      - [ ] musicbrainz
+      - [X] musicbrainz
       - [X] accuraterip
       - [X] pcm
       - [X] bitstream

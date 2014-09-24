@@ -109,39 +109,26 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
     iterates over a list of MetaData objects per successful match, like:
     [track1, track2, ...], [track1, track2, ...], ...
 
-    may raise urllib2.HTTPError if an error occurs querying the server
+    may raise HTTPError if an error occurs querying the server
     or ValueError if the server returns invalid data
     """
 
     import re
-    from socket import getfqdn
-    from urllib2 import urlopen
-    from urllib import urlencode
-    from itertools import izip
     from time import sleep
-    from audiotools import VERSION
 
     RESPONSE = re.compile(r'(\d{3}) (.+?)[\r\n]+')
     QUERY_RESULT = re.compile(r'(\S+) ([0-9a-fA-F]{8}) (.+)')
     FREEDB_LINE = re.compile(r'(\S+?)=(.+?)[\r\n]+')
 
-    # perform initial FreeDB query
-    # and get a list of category/disc id/title results
-    # if any matches are found
-    m = urlopen("http://%s:%d/~cddb/cddb.cgi" % (freedb_server, freedb_port),
-                urlencode({"hello": "user %s %s %s" %
-                           (getfqdn(),
-                            "audiotools",
-                            VERSION),
-                           "proto": str(6),
-                           "cmd": ("cddb query %(disc_id)s %(track_count)d " +
-                                   "%(offsets)s %(seconds)d") %
-                           {"disc_id": disc_id,
-                            "track_count": disc_id.track_count,
-                            "offsets": " ".join(map(str, disc_id.offsets)),
-                            "seconds": disc_id.total_length}}))
+    query = freedb_command(freedb_server,
+                           freedb_port,
+                           "query",
+                           *([disc_id,
+                              disc_id.track_count] +
+                             disc_id.offsets +
+                             [disc_id.total_length]))
 
-    response = RESPONSE.match(m.readline())
+    response = RESPONSE.match(next(query))
     if (response is None):
         raise ValueError("invalid response from server")
     else:
@@ -159,7 +146,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
                 raise ValueError("invalid query result")
         elif ((code == 211) or (code == 210)):
             # multiple exact or inexact matches
-            line = m.readline()
+            line = next(query)
             while (not line.startswith(".")):
                 match = QUERY_RESULT.match(line)
                 if (match is not None):
@@ -168,7 +155,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
                                     match.group(3)))
                 else:
                     raise ValueError("invalid query result")
-                line = m.readline()
+                line = next(query)
         elif (code == 202):
             # no match found
             pass
@@ -176,42 +163,75 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
             # some error has occurred
             raise ValueError(response.group(2))
 
-    m.close()
-
     if (len(matches) > 0):
         # for each result, query FreeDB for XMCD file data
         for (category, disc_id, title) in matches:
-            from audiotools import VERSION
-
             sleep(1)  # add a slight delay to keep the server happy
-            m = urlopen("http://%s:%d/~cddb/cddb.cgi" % (freedb_server,
-                                                         freedb_port),
-                        urlencode({"hello": "user %s %s %s" %
-                                   (getfqdn(),
-                                    "audiotools",
-                                    VERSION),
-                                   "proto": str(6),
-                                   "cmd": ("cddb read %(category)s " +
-                                           "%(disc_id)s") %
-                                   {"category": category,
-                                    "disc_id": disc_id}}))
-            response = RESPONSE.match(m.readline())
+
+            query = freedb_command(freedb_server,
+                                   freedb_port,
+                                   "read",
+                                   category,
+                                   disc_id)
+
+            response = RESPONSE.match(next(query))
             if (response is None):
                 raise ValueError("invalid response from server")
             else:
                 # FIXME - check response code here
                 freedb = {}
-                line = m.readline()
-                while (not line.startswith(".")):
-                    if (not line.startswith("#")):
+                line = next(query)
+                while (not line.startswith(u".")):
+                    if (not line.startswith(u"#")):
                         entry = FREEDB_LINE.match(line)
                         if (entry is not None):
                             if (entry.group(1) in freedb):
                                 freedb[entry.group(1)] += entry.group(2)
                             else:
                                 freedb[entry.group(1)] = entry.group(2)
-                    line = m.readline()
+                    line = next(query)
                 yield list(xmcd_metadata(freedb))
+
+
+def freedb_command(freedb_server, freedb_port, cmd, *args):
+    """given a freedb_server string, freedb_port int,
+    command string and argument strings,
+    yields a list of Unicode strings"""
+
+    try:
+        from urllib.request import urlopen
+    except ImportError:
+        from urllib2 import urlopen
+    try:
+        from urllib.parse import urlencode
+    except ImportError:
+        from urllib import urlencode
+    from socket import getfqdn
+    from audiotools import VERSION
+    from sys import version_info
+
+    # generate query to post
+    POST = {"hello": "user %s %s %s" % (getfqdn(), "audiotools", VERSION),
+            "proto": "6"}
+
+    if (len(args) > 0):
+        POST["cmd"] = "cddb %s %s" % (cmd, " ".join(map(str, args)))
+    else:
+        POST["cmd"] = "cddb %s" % (cmd)
+
+    # get Request object from post
+    request = urlopen(
+        "http://%s:%d/~cddb/cddb.cgi" % (freedb_server, freedb_port),
+        urlencode(POST).encode("UTF-8") if (version_info[0] >= 3) else
+        urlencode(POST))
+    try:
+        # yield lines of output
+        line = request.readline()
+        while (len(line) > 0):
+            yield line.decode("UTF-8", "replace")
+            line = request.readline()
+    finally:
+        request.close()
 
 
 def xmcd_metadata(freedb_file):
@@ -222,14 +242,14 @@ def xmcd_metadata(freedb_file):
 
     TTITLE = re.compile(r'TTITLE(\d+)')
 
-    dtitle = freedb_file.get("DTITLE", "")
-    if (" / " in dtitle):
-        (album_artist, album_name) = dtitle.split(" / ", 1)
+    dtitle = freedb_file.get(u"DTITLE", u"")
+    if (u" / " in dtitle):
+        (album_artist, album_name) = dtitle.split(u" / ", 1)
     else:
         album_artist = None
         album_name = dtitle
 
-    year = freedb_file.get("DYEAR", None)
+    year = freedb_file.get(u"DYEAR", None)
 
     ttitles = [(int(m.group(1)), value) for (m, value) in
                [(TTITLE.match(key), value) for (key, value) in
@@ -241,9 +261,9 @@ def xmcd_metadata(freedb_file):
         track_total = 0
 
     for (tracknum, ttitle) in sorted(ttitles, key=lambda t: t[0]):
-        if (" / " in ttitle):
+        if (u" / " in ttitle):
             (track_artist,
-             track_name) = ttitle.split(" / ", 1)
+             track_name) = ttitle.split(u" / ", 1)
         else:
             track_artist = album_artist
             track_name = ttitle
@@ -251,11 +271,9 @@ def xmcd_metadata(freedb_file):
         from audiotools import MetaData
 
         yield MetaData(
-            track_name=track_name.decode('utf-8', 'replace'),
+            track_name=track_name,
             track_number=tracknum + 1,
             track_total=track_total,
-            album_name=album_name.decode('utf-8', 'replace'),
-            artist_name=(track_artist.decode('utf-8', 'replace')
-                         if track_artist is not None else None),
-            year=(year.decode('utf-8', 'replace') if
-                  year is not None else None))
+            album_name=album_name,
+            artist_name=(track_artist if track_artist is not None else None),
+            year=(year if year is not None else None))

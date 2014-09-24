@@ -101,7 +101,7 @@ class DiscID(object):
                             self.offsets +
                             [0] * (99 - len(self.offsets))])))
 
-        return b64encode(sha1(raw_id).digest(),
+        return b64encode(sha1(raw_id.encode("ascii")).digest(),
                          b"._").replace(b"=", b"-").decode('ascii')
 
 
@@ -111,14 +111,19 @@ def perform_lookup(disc_id, musicbrainz_server, musicbrainz_port):
     iterates over a list of MetaData objects per successful match, like:
     [track1, track2, ...], [track1, track2, ...], ...
 
-    may raise urllib2.HTTPError if an error occurs querying the server
+    may raise HTTPError if an error occurs querying the server
     or xml.parsers.expat.ExpatError if there's an error parsing the data
     """
 
-    from urllib2 import urlopen
-    from urllib import urlencode
+    try:
+        from urllib.request import urlopen
+    except ImportError:
+        from urllib2 import urlopen
+    try:
+        from urllib.parse import urlencode
+    except ImportError:
+        from urllib import urlencode
     import xml.dom.minidom
-    from itertools import izip
 
     # query MusicBrainz web service (version 2) for <metadata>
     m = urlopen("http://%s:%d/ws/2/discid/%s?%s" %
