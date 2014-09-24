@@ -5593,6 +5593,9 @@ class Test_FreeDB(unittest.TestCase):
                                 disc_id):
         from audiotools.cdio import CDDAReader
         from shutil import rmtree
+        from sys import version_info
+
+        self.assertTrue(isinstance(cuesheet, bytes))
 
         dir = tempfile.mkdtemp()
         try:
@@ -5603,7 +5606,7 @@ class Test_FreeDB(unittest.TestCase):
 
             # build CD image from track lengths
             f = open(os.path.join(dir, "CDImage.bin"), "wb")
-            f.write(chr(0) * 2 * 2 * sum(track_lengths))
+            f.write(b"\x00" * 2 * 2 * sum(track_lengths))
             f.close()
 
             # open disc image with CDDAReader
@@ -5647,6 +5650,8 @@ class Test_FreeDB(unittest.TestCase):
         from audiotools.cdio import CDDAReader
         from shutil import rmtree
 
+        self.assertTrue(isinstance(cuesheet, bytes))
+
         dir = tempfile.mkdtemp()
         try:
             # dump cuesheet to temporary directory
@@ -5656,7 +5661,7 @@ class Test_FreeDB(unittest.TestCase):
 
             # build CD image from total length
             f = open(os.path.join(dir, "CDImage.bin"), "wb")
-            f.write(chr(0) * 2 * 2 * total_length)
+            f.write(b"\x00" * 2 * 2 * total_length)
             f.close()
 
             # open disc image with CDDAReader
@@ -5767,42 +5772,47 @@ class Test_Accuraterip(Test_FreeDB):
     def test_discid(self):
         from audiotools.accuraterip import DiscID
 
-        self.__test_disc_id_tracks__(
-            disc_id_obj=DiscID,
-            track_lengths=[7939176, 4799256, 6297480, 5383140,
-                           5246136, 5052684, 5013876],
-            cuesheet=open("freedb_test_discid-1.cue", "rb").read(),
-            disc_id="dBAR-007-00045db7-0019b8d8-5a038407.bin")
+        with open("freedb_test_discid-1.cue", "rb") as cue:
+            self.__test_disc_id_tracks__(
+                disc_id_obj=DiscID,
+                track_lengths=[7939176, 4799256, 6297480, 5383140,
+                               5246136, 5052684, 5013876],
+                cuesheet=cue.read(),
+                disc_id="dBAR-007-00045db7-0019b8d8-5a038407.bin")
 
-        self.__test_disc_id_tracks__(
-            disc_id_obj=DiscID,
-            track_lengths=[1339464, 4048380, 692076, 10600464, 10602816,
-                           1178940, 7454664, 2664816, 989604, 7008960,
-                           9632616, 1070160, 6094620, 1622880, 13361124,
-                           403956, 5208504, 7373520, 483336, 12012840,
-                           8534820, 439824, 7626360, 1262436, 4874520,
-                           398664, 11229036, 483924, 9003456, 883764,
-                           5018580],
-            cuesheet=open("freedb_test_discid-2.cue", "rb").read(),
-            disc_id="dBAR-031-003fee31-058c64b9-be0d9a1f.bin")
+        with open("freedb_test_discid-2.cue", "rb") as cue:
+            self.__test_disc_id_tracks__(
+                disc_id_obj=DiscID,
+                track_lengths=[1339464, 4048380, 692076, 10600464, 10602816,
+                               1178940, 7454664, 2664816, 989604, 7008960,
+                               9632616, 1070160, 6094620, 1622880, 13361124,
+                               403956, 5208504, 7373520, 483336, 12012840,
+                               8534820, 439824, 7626360, 1262436, 4874520,
+                               398664, 11229036, 483924, 9003456, 883764,
+                               5018580],
+                cuesheet=cue.read(),
+                disc_id="dBAR-031-003fee31-058c64b9-be0d9a1f.bin")
 
-        self.__test_disc_id__(
-            disc_id_obj=DiscID,
-            total_length=190928304,
-            cuesheet=open("freedb_test_discid-3.cue", "rb").read(),
-            disc_id="dBAR-010-00193b54-00c9f723-a610e90a.bin")
+        with open("freedb_test_discid-3.cue", "rb") as cue:
+            self.__test_disc_id__(
+                disc_id_obj=DiscID,
+                total_length=190928304,
+                cuesheet=cue.read(),
+                disc_id="dBAR-010-00193b54-00c9f723-a610e90a.bin")
 
-        self.__test_disc_id__(
-            disc_id_obj=DiscID,
-            total_length=127937040,
-            cuesheet=open("freedb_test_discid-4.cue", "rb").read(),
-            disc_id="dBAR-014-001977f9-01097144-ce0ad30e.bin")
+        with open("freedb_test_discid-4.cue", "rb") as cue:
+            self.__test_disc_id__(
+                disc_id_obj=DiscID,
+                total_length=127937040,
+                cuesheet=cue.read(),
+                disc_id="dBAR-014-001977f9-01097144-ce0ad30e.bin")
 
-        self.__test_disc_id__(
-            disc_id_obj=DiscID,
-            total_length=119882616,
-            cuesheet=open("freedb_test_discid-5.cue", "rb").read(),
-            disc_id="dBAR-020-001d4d13-01bab5f6-fc0a9e14.bin")
+        with open("freedb_test_discid-5.cue", "rb") as cue:
+            self.__test_disc_id__(
+                disc_id_obj=DiscID,
+                total_length=119882616,
+                cuesheet=cue.read(),
+                disc_id="dBAR-020-001d4d13-01bab5f6-fc0a9e14.bin")
 
     @LIB_ACCURATERIP
     def test_checksum(self):
@@ -6194,8 +6204,9 @@ class Test_Accuraterip(Test_FreeDB):
         import time
 
         cuesheet = tempfile.NamedTemporaryFile(suffix=".cue")
-        cuesheet.write(open("freedb_test_discid-2.cue", "rb").read())
-        cuesheet.flush()
+        with open("freedb_test_discid-2.cue", "rb") as f:
+            cuesheet.write(f.read())
+            cuesheet.flush()
         sheet = audiotools.read_sheet(cuesheet.name)
         cuesheet.close()
 

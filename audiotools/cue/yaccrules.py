@@ -63,7 +63,7 @@ def p_catalog_string(t):
 def p_catalog_number(t):
     'catalog : CATALOG NUMBER'
 
-    t[0] = ("catalog", "%13.13d" % (t[2]))
+    t[0] = ("catalog", u"%13.13d" % (t[2]))
 
 
 def p_title(t):

@@ -4380,7 +4380,8 @@ def read_sheet(filename):
     may raise a SheetException if the file cannot be parsed correctly"""
 
     try:
-        return read_sheet_string(__open__(filename, "rb").read())
+        with __open__(filename, "rb") as f:
+            return read_sheet_string(f.read().decode("UTF-8", "replace"))
     except IOError:
         from audiotools.text import ERR_CUE_IOERROR
         raise SheetException(ERR_CUE_IOERROR)
@@ -4391,7 +4392,11 @@ def read_sheet_string(sheet_string):
 
     may raise a SheetException if the file cannot be parsed correctly"""
 
-    if ("CD_DA" in sheet_string):
+    str_type = str if (sys.version_info[0] >= 3) else unicode
+
+    assert(isinstance(sheet_string, str_type))
+
+    if (u"CD_DA" in sheet_string):
         from audiotools.toc import read_tocfile_string
 
         return read_tocfile_string(sheet_string)

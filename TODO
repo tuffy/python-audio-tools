@@ -7189,7 +7189,7 @@
       - [ ] freedb
       - [X] image
       - [ ] musicbrainz
-      - [ ] accuraterip
+      - [X] accuraterip
       - [X] pcm
       - [X] bitstream
       - [X] replaygain
@@ -7257,7 +7257,7 @@
       - [ ] freedb
       - [X] image
       - [ ] musicbrainz
-      - [ ] accuraterip
+      - [X] accuraterip
       - [X] pcm
       - [X] bitstream
       - [X] replaygain

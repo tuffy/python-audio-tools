@@ -448,6 +448,11 @@ def read_cuesheet_string(cuesheet):
     from audiotools.ply.yacc import NullLogger
     import audiotools.cue.tokrules
     import audiotools.cue.yaccrules
+    from sys import version_info
+
+    str_type = str if (version_info[0] >= 3) else unicode
+
+    assert(isinstance(cuesheet, str_type))
 
     lexer = lex.lex(module=audiotools.cue.tokrules)
     lexer.input(cuesheet)

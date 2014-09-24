@@ -1626,7 +1626,7 @@ These objects represent a track on a given cuesheet.
    number          int          track number, starting from 1
    track_indexes   [SheetIndex] list of SheetIndex objects
    metadata        MetaData     track's metadata, or None
-   filename        str          track's filename on disc
+   filename        unicode      track's filename on disc
    is_audio        boolean      whether track contains audio data
    pre_emphasis    boolean      whether track has pre-emphasis
    copy_permitted  boolean      whether copying is permitted
@@ -1669,7 +1669,7 @@ These objects represent a track on a given cuesheet.
 
 .. method:: SheetTrack.filename()
 
-   Returns the track's filename as a plain string.
+   Returns the track's filename as a Unicode string.
 
 .. method:: SheetTrack.is_audio()
 

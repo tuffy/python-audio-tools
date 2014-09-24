@@ -619,6 +619,11 @@ def read_tocfile_string(tocfile):
     from audiotools.ply.yacc import NullLogger
     import audiotools.toc.tokrules
     import audiotools.toc.yaccrules
+    from sys import version_info
+
+    str_type = str if (version_info[0] >= 3) else unicode
+
+    assert(isinstance(tocfile, str_type))
 
     lexer = lex.lex(module=audiotools.toc.tokrules)
     lexer.input(tocfile)
