@@ -486,46 +486,51 @@ if (__name__ == '__main__'):
 
     table = audiotools.output_table()
 
-    row = table.row()
-    extract_headers = [u"track",
-                       u"error",
-                       u"skip",
-                       u"atom",
-                       u"edge",
-                       u"drop",
-                       u"dup",
-                       u"drift",
-                       _.LAB_TRACKVERIFY_AR_CHECKSUM,
-                       _.LAB_TRACKVERIFY_AR_CHECKSUM_VER,
-                       _.LAB_TRACKVERIFY_AR_OFFSET,
-                       _.LAB_TRACKVERIFY_AR_CONFIDENCE]
-    extract_keys = ["readrr",
+    header = table.row()
+    header.add_column(u"", colspan=1 + 7 * 2 + 1)
+    header.add_column(_.LAB_TRACKVERIFY_AR_VERSION1, "center", colspan=5)
+    header.add_column(u"")
+    header.add_column(_.LAB_TRACKVERIFY_AR_VERSION2, "center", colspan=5)
+
+    header = table.row()
+
+    header.add_column(u" #")
+    for label in [u"err",
+                  u"skip",
+                  u"atom",
+                  u"edge",
+                  u"drop",
+                  u"dup",
+                  u"drift",
+                  _.LAB_TRACKVERIFY_AR_CONFIDENCE,
+                  _.LAB_TRACKVERIFY_AR_OFFSET,
+                  _.LAB_TRACKVERIFY_AR_CHECKSUM,
+                  _.LAB_TRACKVERIFY_AR_CONFIDENCE,
+                  _.LAB_TRACKVERIFY_AR_OFFSET,
+                  _.LAB_TRACKVERIFY_AR_CHECKSUM]:
+        header.add_column(u" ")
+        header.add_column(label, "right")
+
+    table.divider_row([_.DIV] +
+                      [u" ", _.DIV] * (7 + 3 + 3))
+
+    for track_number in tracks_to_rip:
+        row = table.row()
+
+        #first output the filename
+        row.add_column(unicode(track_number), "right")
+
+        # then output the 7 log fields
+        log = rip_log[track_number]
+        for key in ["readrr",
                     "skip",
                     "fixup_atom",
                     "fixup_edge",
                     "fixup_dropped",
                     "fixup_duped",
-                    "drift"]
-
-    dividers = []
-
-    row.add_column(extract_headers[0])
-    dividers.append(_.DIV)
-    for header in extract_headers[1:]:
-        row.add_column(u" ")
-        row.add_column(header, "right")
-        dividers.append(u" ")
-        dividers.append(_.DIV)
-
-    table.divider_row(dividers)
-
-    for track_number in tracks_to_rip:
-        row = table.row()
-        row.add_column(unicode(track_number), "right")
-        log = rip_log[track_number]
-        for key in extract_keys:
+                    "drift"]:
             row.add_column(u" ")
-            row.add_column(unicode(log.get(key, 0)), "right")
+            row.add_column(u"%d" % (log.get(key, 0)), "right")
 
         (checksum_v2,
          confidence_v2,
@@ -541,36 +546,24 @@ if (__name__ == '__main__'):
             accuraterip_log_v1[track_number],
             -PREVIOUS_TRACK_FRAMES)
 
-        if (len(ar_result.get(track_number, [])) == 0):
-            checksum = checksum_v2
-            version = 2
-            offset = offset_v2
-            confidence = _.LAB_TRACKVERIFY_ACCURATERIP_NOTFOUND
-        elif (confidence_v2 is not None):
-            checksum = checksum_v2
-            version = 2
-            offset = offset_v2
-            confidence = unicode(confidence_v2)
-        elif (confidence_v1 is not None):
-            checksum = checksum_v1
-            version = 1
-            offset = offset_v1
-            confidence = unicode(confidence_v1)
-        else:
-            checksum = checksum_v2
-            version = 2
-            offset = offset_v2
-            confidence = _.LAB_TRACKVERIFY_ACCURATERIP_MISMATCH
-
-        # AccurateRip columns
-        row.add_column(u"")
-        row.add_column(u"%8.8X" % (checksum), "right")
-        row.add_column(u"")
-        row.add_column(u"v%d" % (version), "right")
-        row.add_column(u"")
-        row.add_column(unicode(offset), "right")
-        row.add_column(u"")
-        row.add_column(confidence, "right")
+        # finally output the 6 AccurateRip fields
+        for (checksum,
+             confidence,
+             offset) in [(checksum_v1,
+                          confidence_v1,
+                          offset_v1),
+                         (checksum_v2,
+                          confidence_v2,
+                          offset_v2)]:
+            row.add_column(u"")
+            if (confidence >= 0):
+                row.add_column(u"%d" % (confidence), "right")
+            else:
+                row.add_column(u"", "right")
+            row.add_column(u"")
+            row.add_column(u"%d" % (offset), "right")
+            row.add_column(u"")
+            row.add_column(u"%8.8X" % (checksum), "right")
 
     for row in table.format(msg.output_isatty()):
         msg.output(row)

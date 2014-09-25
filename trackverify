@@ -203,11 +203,13 @@ def accuraterip_checksum(progress,
         audiotools.transfer_data(pcmreader.read, checksummer.update)
     except (IOError, ValueError) as err:
         return {"filename": track.filename,
-                "checksum": None,
-                "version": None,
-                "offset": None,
-                "confidence": None,
-                "error": str(err)}
+                "error": str(err),
+                "v1": {"checksum": None,
+                       "offset": None,
+                       "confidence": None},
+                "v2": {"checksum": None,
+                       "offset": None,
+                       "confidence": None}}
 
     # determine checksum, confidence and offset from
     # the calculated checksums and possible AccurateRip matches
@@ -225,32 +227,26 @@ def accuraterip_checksum(progress,
 
     if (len(ar_matches) == 0):
         return {"filename": track.filename,
-                "checksum": checksum_v2,
-                "version": 2,
-                "offset": offset_v2,
-                "confidence": AR_NOT_FOUND,
-                "error": None}
-    elif (confidence_v2 is not None):
-        return {"filename": track.filename,
-                "checksum": checksum_v2,
-                "version": 2,
-                "offset": offset_v2,
-                "confidence": confidence_v2,
-                "error": None}
-    elif (confidence_v1 is not None):
-        return {"filename": track.filename,
-                "checksum": checksum_v1,
-                "version": 1,
-                "offset": offset_v1,
-                "confidence": confidence_v1,
-                "error": None}
+                "error": None,
+                "v1": {"checksum": checksum_v1,
+                       "offset": offset_v1,
+                       "confidence": AR_NOT_FOUND},
+                "v2": {"checksum": checksum_v2,
+                       "offset": offset_v2,
+                       "confidence": AR_NOT_FOUND}}
     else:
         return {"filename": track.filename,
-                "checksum": checksum_v2,
-                "version": 2,
-                "offset": offset_v2,
-                "confidence": AR_MISMATCH,
-                "error": None}
+                "error": None,
+                "v1": {"checksum": checksum_v1,
+                       "offset": offset_v1,
+                       "confidence": (confidence_v1 if
+                                      (confidence_v1 is not None) else
+                                      AR_MISMATCH)},
+                "v2": {"checksum": checksum_v2,
+                       "offset": offset_v2,
+                       "confidence": (confidence_v2 if
+                                      (confidence_v2 is not None) else
+                                      AR_MISMATCH)}}
 
 
 def accuraterip_image_checksum(progress,
@@ -297,11 +293,13 @@ def accuraterip_image_checksum(progress,
         audiotools.transfer_data(pcmreader.read, checksummer.update)
     except (IOError, ValueError) as err:
         return {"filename": displayed_filename,
-                "checksum": None,
-                "version": None,
-                "offset": None,
-                "confidence": None,
-                "error": str(err)}
+                "error": str(err),
+                "v1": {"checksum": None,
+                       "offset": None,
+                       "confidence": None},
+                "v2": {"checksum": None,
+                       "offset": None,
+                       "confidence": None}}
 
     # determine checksum, confidence and offset from
     # the calculated checksums and possible AccurateRip matches
@@ -319,51 +317,58 @@ def accuraterip_image_checksum(progress,
 
     if (len(ar_matches) == 0):
         return {"filename": displayed_filename,
-                "checksum": checksum_v2,
-                "version": 2,
-                "offset": offset_v2,
-                "confidence": AR_NOT_FOUND,
-                "error": None}
-    elif (confidence_v2 is not None):
-        return {"filename": displayed_filename,
-                "checksum": checksum_v2,
-                "version": 2,
-                "offset": offset_v2,
-                "confidence": confidence_v2,
-                "error": None}
-    elif (confidence_v1 is not None):
-        return {"filename": displayed_filename,
-                "checksum": checksum_v1,
-                "version": 1,
-                "offset": offset_v1,
-                "confidence": confidence_v1,
-                "error": None}
+                "error": None,
+                "v1": {"checksum": checksum_v1,
+                       "offset": offset_v1,
+                       "confidence": AR_NOT_FOUND},
+                "v2": {"checksum": checksum_v2,
+                       "offset": offset_v2,
+                       "confidence": AR_NOT_FOUND}}
     else:
         return {"filename": displayed_filename,
-                "checksum": checksum_v2,
-                "version": 2,
-                "offset": offset_v2,
-                "confidence": AR_MISMATCH,
-                "error": None}
+                "error": None,
+                "v1": {"checksum": checksum_v1,
+                       "offset": offset_v1,
+                       "confidence": (confidence_v1 if
+                                      (confidence_v1 is not None) else
+                                      AR_MISMATCH)},
+                "v2": {"checksum": checksum_v2,
+                       "offset": offset_v2,
+                       "confidence": (confidence_v2 if
+                                      (confidence_v2 is not None) else
+                                      AR_MISMATCH)}}
 
 
 def accuraterip_display_result(result):
     if (result["error"] is None):
-        confidence = result["confidence"]
+        confidence_v1 = result["v1"]["confidence"]
+        confidence_v2 = result["v2"]["confidence"]
         path = audiotools.Filename(result["filename"])
 
-        if (confidence == AR_NOT_FOUND):
+        if ((confidence_v1 == AR_NOT_FOUND) and
+            (confidence_v2 == AR_NOT_FOUND)):
+            # no matches found for disc
             return _.LAB_TRACKVERIFY_RESULT % \
                 {"path": path, "result": _.LAB_ACCURATERIP_NOT_FOUND}
-        elif (confidence == AR_MISMATCH):
+        elif ((confidence_v1 == AR_MISMATCH) and
+              (confidence_v2 == AR_MISMATCH)):
+            # neither checksum matches
             return _.LAB_TRACKVERIFY_RESULT % \
                 {"path": path, "result": _.LAB_ACCURATERIP_MISMATCH}
-        else:
+        elif (confidence_v2 == AR_MISMATCH):
+            # only AccurateRip V1 matches
             return _.LAB_TRACKVERIFY_RESULT % \
                 {"path": path,
                  "result": u"%s (%s)" % (
                      _.LAB_ACCURATERIP_FOUND,
-                     _.LAB_ACCURATERIP_CONFIDENCE % (confidence))}
+                     _.LAB_ACCURATERIP_CONFIDENCE % (confidence_v1))}
+        else:
+            # AccurateRip V2 has a match, so display that by default
+            return _.LAB_TRACKVERIFY_RESULT % \
+                {"path": path,
+                 "result": u"%s (%s)" % (
+                     _.LAB_ACCURATERIP_FOUND,
+                     _.LAB_ACCURATERIP_CONFIDENCE % (confidence_v2))}
     else:
         # FIXME - display actual error
         return u"read error"
@@ -528,8 +533,9 @@ if (__name__ == '__main__'):
 
                     for track_num in sheet.track_numbers():
 
-                        filename = "%s - track %2.2d" % \
-                            (tracks[0].filename, track_num)
+                        filename = u"%2.2d - %s" % \
+                            (track_num,
+                             audiotools.Filename(tracks[0].filename).basename())
 
                         offset = int(sheet.track_offset(track_num) *
                                      sample_rate)
@@ -605,65 +611,71 @@ if (__name__ == '__main__'):
         table = audiotools.output_table()
 
         row = table.row()
+        row.add_column(u"")
+        row.add_column(u"")
+        row.add_column(_.LAB_TRACKVERIFY_AR_VERSION1, "center", colspan=5)
+        row.add_column(u"")
+        row.add_column(_.LAB_TRACKVERIFY_AR_VERSION2, "center", colspan=5)
+
+        row = table.row()
         row.add_column(_.LAB_TRACKVERIFY_AR_TRACK)
+
         row.add_column(u" ")
-        row.add_column(_.LAB_TRACKVERIFY_AR_CHECKSUM)
-        row.add_column(u" ")
-        row.add_column(_.LAB_TRACKVERIFY_AR_CHECKSUM_VER)
+        row.add_column(_.LAB_TRACKVERIFY_AR_CONFIDENCE)
         row.add_column(u" ")
         row.add_column(_.LAB_TRACKVERIFY_AR_OFFSET)
         row.add_column(u" ")
+        row.add_column(_.LAB_TRACKVERIFY_AR_CHECKSUM)
+
+        row.add_column(u" ")
         row.add_column(_.LAB_TRACKVERIFY_AR_CONFIDENCE)
+        row.add_column(u" ")
+        row.add_column(_.LAB_TRACKVERIFY_AR_OFFSET)
+        row.add_column(u" ")
+        row.add_column(_.LAB_TRACKVERIFY_AR_CHECKSUM)
 
-        filename_max = (msg.terminal_size(sys.stdout)[1] -
-                        (sum([len(c[0]) for c in
-                              table.__rows__[0].__columns__[1:]])))
+        if (sys.stdout.isatty()):
+            filename_max = (msg.terminal_size(sys.stdout)[1] -
+                            (sum([c.minimum_width() for c in
+                                  table.__rows__[1].__columns__[1:]])))
+        else:
+            # effectively no maximum
+            filename_max = 2 ** 32
 
-        table.divider_row([_.DIV, u" ",
-                           _.DIV, u" ",
-                           _.DIV, u" ",
-                           _.DIV, u" ",
-                           _.DIV])
+        table.divider_row([_.DIV] + [u" ", _.DIV] * 6)
 
         for result in results:
             filename = result["filename"]
             err = result["error"]
 
             row = table.row()
+
             # truncate long filenames if necessary
-            filename = audiotools.output_text(
-                audiotools.Filename(filename).basename())
+            filename = audiotools.output_text(filename)
             if (len(filename) <= filename_max):
                 row.add_column(filename)
             else:
-                row.add_column(unicode(filename.head(filename_max - 1)) +
-                               u"\u2026")
-            row.add_column(u"")
+                head = filename.head(filename_max - 1)
+                row.add_column(
+                    u"%s%s" % (head, u"\u2026" * (filename_max - len(head))))
 
             if (err is None):
-                checksum = result["checksum"]
-                version = result["version"]
-                offset = result["offset"]
-                confidence = result["confidence"]
+                for version in ["v1", "v2"]:
+                    checksum = result[version]["checksum"]
+                    offset = result[version]["offset"]
+                    confidence = result[version]["confidence"]
 
-                row.add_column(u"%8.8X" % (checksum), "right")
-                row.add_column(u"")
-                row.add_column(u"v%d" % (version), "right")
-                row.add_column(u"")
-                row.add_column(unicode(offset), "right")
-                row.add_column(u"")
-                if (confidence >= 0):
-                    row.add_column(unicode(confidence), "right")
-                else:
-                    row.add_column(u"", "right")
+                    row.add_column(u"")
+                    if (confidence >= 0):
+                        row.add_column(u"%d" % (confidence), "right")
+                    else:
+                        row.add_column(u"", "right")
+                    row.add_column(u"")
+                    row.add_column(u"%d" % (offset), "right")
+                    row.add_column(u"")
+                    row.add_column(u"%8.8X" % (checksum), "right")
             else:
-                row.add_column(_.ERR_READ_ERROR, "right")  # checksum
-                row.add_column(u"")
-                row.add_column(u"")  # checksum version
-                row.add_column(u"")
-                row.add_column(u"")  # offset
-                row.add_column(u"")
-                row.add_column(u"")  # confidence
+                row.add_column(_.ERR_READ_ERROR, "right", colspan=6)
 
         for row in table.format(msg.output_isatty()):
             msg.output(row)
