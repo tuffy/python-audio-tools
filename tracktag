@@ -322,7 +322,7 @@ if (__name__ == '__main__'):
 
     options = parser.parse_args()
 
-    msg = audiotools.Messenger("tracktag", options)
+    msg = audiotools.Messenger(options.verbosity == "quiet")
 
     # ensure interactive mode is available, if selected
     if (options.interactive and (not audiotools.ui.AVAILABLE)):

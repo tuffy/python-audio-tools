@@ -40,7 +40,7 @@ if (__name__ == '__main__'):
 
     options = parser.parse_args()
 
-    msg = audiotools.Messenger("dvdainfo", options)
+    msg = audiotools.Messenger()
 
     try:
         dvda = audiotools.DVDAudio(options.audio_ts)

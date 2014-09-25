@@ -130,8 +130,8 @@ if (__name__ == '__main__'):
 
     conversion.add_argument("-t", "--type",
                             dest="type",
-                            choices=sorted(audiotools.TYPE_MAP.keys() +
-                                           ["help"]),
+                            choices=list(sorted(audiotools.TYPE_MAP.keys()) +
+                                    ["help"]),
                             help=_.OPT_TYPE)
 
     conversion.add_argument("-q", "--quality",
@@ -228,7 +228,7 @@ if (__name__ == '__main__'):
 
     options = parser.parse_args()
 
-    msg = audiotools.Messenger("tracksplit", options)
+    msg = audiotools.Messenger(options.verbosity == "quiet")
 
     # ensure interactive mode is available, if selected
     if (options.interactive and (not audiotools.ui.AVAILABLE)):

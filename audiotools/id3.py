@@ -145,6 +145,11 @@ class C_string(object):
     def __init__(self, encoding, unicode_string):
         """encoding is a string such as 'utf-8', 'latin-1', etc"""
 
+        from sys import version_info
+        str_type = str if (version_info[0] >= 3) else unicode
+        assert(encoding in C_string.TERMINATOR.keys())
+        assert(isinstance(unicode_string, str_type))
+
         self.encoding = encoding
         self.unicode_string = unicode_string
 
@@ -1774,7 +1779,7 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
         if (self.pic_mime_type.__unicode__() != actual_mime_type):
             from audiotools.text import (CLEAN_FIX_IMAGE_FIELDS)
             return (ID3v23_APIC_Frame(
-                C_string('ascii', actual_mime_type.encode('ascii')),
+                C_string('ascii', actual_mime_type),
                 self.pic_type,
                 self.pic_description,
                 self.data), [CLEAN_FIX_IMAGE_FIELDS])
@@ -2129,8 +2134,7 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
         if (self.pic_mime_type.__unicode__() != actual_mime_type):
             from audiotools.text import (CLEAN_FIX_IMAGE_FIELDS)
             return (ID3v24_APIC_Frame(
-                C_string('ascii',
-                         actual_mime_type.encode('ascii')),
+                C_string('ascii', actual_mime_type),
                 self.pic_type,
                 self.pic_description,
                 self.data), [CLEAN_FIX_IMAGE_FIELDS])

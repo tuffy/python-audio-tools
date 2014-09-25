@@ -197,7 +197,7 @@ if (__name__ == '__main__'):
                         help=_.OPT_INPUT_FILENAME)
 
     options = parser.parse_args()
-    msg = audiotools.Messenger("trackrename", options)
+    msg = audiotools.Messenger(options.verbosity == "quiet")
 
     # ensure interactive mode is available, if selected
     if (options.interactive and (not audiotools.ui.AVAILABLE)):

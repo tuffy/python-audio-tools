@@ -84,7 +84,7 @@ if (__name__ == '__main__'):
 
     options = parser.parse_args()
 
-    msg = audiotools.Messenger("covertag", options)
+    msg = audiotools.Messenger(options.verbosity == "quiet")
 
     # open our set of input files for tagging
     try:

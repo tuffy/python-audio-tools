@@ -70,7 +70,7 @@ class ImageMetrics:
         height         - image height as an integer number of pixels
         bits_per_pixel - the number of bits per pixel as an integer
         color_count    - for palette-based images, the total number of colors
-        mime_type      - the image's MIME type, as a string
+        mime_type      - the image's MIME type, as a unicode string
 
         all of the ImageMetrics subclasses implement these fields
         in addition, they all implement a parse() classmethod

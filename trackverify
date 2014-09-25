@@ -419,7 +419,7 @@ if (__name__ == '__main__'):
                         help=_.OPT_INPUT_FILENAME_OR_DIR)
 
     options = parser.parse_args()
-    msg = audiotools.Messenger("trackverify", options)
+    msg = audiotools.Messenger(options.verbosity == "quiet")
 
     if (not options.accuraterip):
         queued_files = set()  # a set of Filename objects already encountered

@@ -59,7 +59,7 @@ if (__name__ == '__main__'):
 
     options = parser.parse_args()
 
-    msg = audiotools.Messenger("coverdump", options)
+    msg = audiotools.Messenger(options.verbosity == "quiet")
 
     audiofiles = audiotools.open_files(options.filenames,
                                        sorted=False,

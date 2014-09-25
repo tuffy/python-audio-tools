@@ -1165,7 +1165,7 @@ if (__name__ == '__main__'):
 
     options = parser.parse_args()
 
-    msg = audiotools.Messenger("audiotools-config", None)
+    msg = audiotools.Messenger()
 
     if (len(sys.argv) < 2):
         # no arguments at all so display current default

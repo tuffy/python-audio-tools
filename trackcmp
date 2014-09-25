@@ -202,7 +202,7 @@ if (__name__ == '__main__'):
 
     options = parser.parse_args()
 
-    msg = audiotools.Messenger("trackcmp", options)
+    msg = audiotools.Messenger(options.verbosity == "quiet")
 
     args = [options.filename] + options.filenames
 
@@ -389,7 +389,7 @@ if (__name__ == '__main__'):
 
         if ((sum([t.total_frames() for t in audiofiles[0:-1]]) !=
              audiofiles[-1].total_frames())):
-            msg.usage(_.USAGE_TRACKCMP_CDIMAGE)
+            msg.output(_.USAGE_TRACKCMP_CDIMAGE)
             sys.exit(1)
 
         cd_image = audiofiles[-1]
@@ -498,5 +498,5 @@ if (__name__ == '__main__'):
             # then delete the blob when finished
             temp_blob.close()
     else:
-        msg.usage(_.USAGE_TRACKCMP_FILES)
+        msg.output(_.USAGE_TRACKCMP_FILES)
         sys.exit(1)

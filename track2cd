@@ -150,7 +150,7 @@ if (__name__ == '__main__'):
 
     options = parser.parse_args()
 
-    msg = audiotools.Messenger("track2cd", options)
+    msg = audiotools.Messenger(options.verbosity == "quiet")
 
     if (options.max_processes < 1):
         msg.error(_.ERR_INVALID_JOINT)

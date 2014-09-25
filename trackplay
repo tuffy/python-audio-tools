@@ -176,7 +176,7 @@ if (__name__ == '__main__'):
                         help=_.OPT_INPUT_FILENAME)
 
     options = parser.parse_args()
-    msg = audiotools.Messenger("trackplay", options)
+    msg = audiotools.Messenger()
 
     if (options.interactive and (not interactive_available)):
         msg.error(_.ERR_URWID_REQUIRED)

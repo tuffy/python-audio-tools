@@ -1855,15 +1855,12 @@ ExecProgressQueue Objects
 Messenger Objects
 -----------------
 
-.. class:: Messenger(executable_name, options)
+.. class:: Messenger(silent=False)
 
    This is a helper class for displaying program data,
    analogous to a primitive logging facility.
-   It takes a raw ``executable_name`` string and
-   :class:`optparse.OptionParser` object.
-   Its behavior changes depending on whether the
-   ``options`` object's ``verbosity`` attribute is
-   ``"normal"``, ``"debug"`` or ``"silent"``.
+   If ``silent`` is ``True``, the output methods will not
+   actually display any output to the screen.
 
 .. method:: Messenger.output(string)
 
@@ -1903,7 +1900,7 @@ Messenger Objects
    Outputs warning text, Unicode ``string`` and a newline to stderr,
    unless ``verbosity`` level is ``"silent"``.
 
-   >>> m = audiotools.Messenger("audiotools",options)
+   >>> m = audiotools.Messenger()
    >>> m.warning(u"Watch Out!")
    *** Warning: Watch Out!
 
@@ -1940,20 +1937,13 @@ Messenger Objects
 
    Returns ``True`` if the error method sends to a TTY rather than a file.
 
-.. method:: Messenger.usage(string)
-
-   Outputs usage text, Unicode ``string`` and a newline to stderr.
-
-   >>> m.usage(u"<arg1> <arg2> <arg3>")
-   *** Usage: audiotools <arg1> <arg2> <arg3>
-
 .. method:: Messenger.ansi_clearline()
 
    Generates a ANSI escape codes to clear the current line.
 
    This works only if ``stdout`` is a TTY, otherwise is does nothing.
 
-   >>> msg = Messenger("audiotools", None)
+   >>> msg = Messenger()
    >>> msg.partial_output(u"working")
    >>> time.sleep(1)
    >>> msg.ansi_clearline()
@@ -1968,7 +1958,7 @@ Messenger Objects
    Clears all the output below the current line.
    This is typically used in conjunction with :meth:`Messenger.ansi_uplines`.
 
-   >>> msg = Messenger("audiotools", None)
+   >>> msg = Messenger()
    >>> msg.output(u"line 1")
    >>> msg.output(u"line 2")
    >>> msg.output(u"line 3")

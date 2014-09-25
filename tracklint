@@ -22,23 +22,7 @@ import os
 import os.path
 import tempfile
 import audiotools
-import audiotools.delta
 import audiotools.text as _
-
-try:
-    from hashlib import sha1
-except ImportError:
-    from sha import sha as sha1
-
-
-def checksum(path):
-    f = open(path, "rb")
-    c = sha1("")
-    try:
-        audiotools.transfer_data(f.read, c.update)
-        return c.hexdigest()
-    finally:
-        f.close()
 
 
 def display_messages(messenger, track, messages):
@@ -70,7 +54,7 @@ def audiofiles(paths, processed_filenames, unsupported_types, messenger):
                 yield f
 
 
-def update_without_backup(track, messenger):
+def update(track, messenger):
     fixes = []
 
     temp_track_f = tempfile.NamedTemporaryFile(suffix="." + track.SUFFIX)
@@ -90,38 +74,6 @@ def update_without_backup(track, messenger):
             display_messages(messenger, track, fixes)
     finally:
         temp_track_f.close()
-
-
-def update_and_backup(track, undo_db, messenger):
-    fixes = []
-
-    temp_track_f = tempfile.NamedTemporaryFile(suffix="." + track.SUFFIX)
-    try:
-        # perform cleanup on a temporary track
-        fixes = track.clean(temp_track_f.name)
-
-        # if changes are made
-        if (len(fixes) > 0):
-            # store undo information between old and new track
-            undo_db.add(track.filename, temp_track_f.name)
-
-            # copy temporary track over original
-            input_f = open(temp_track_f.name, 'rb')
-            output_f = open(track.filename, 'wb')
-            audiotools.transfer_data(input_f.read, output_f.write)
-            output_f.close()
-            input_f.close()
-
-            # display output messages
-            display_messages(messenger, track, fixes)
-    finally:
-        temp_track_f.close()
-
-
-def undo_from_backup(track, undo_db, messenger):
-    if (undo_db.undo(track.filename)):
-        messenger.info(_.LAB_TRACKLINT_RESTORED %
-                       (audiotools.Filename(track.filename),))
 
 
 if (__name__ == '__main__'):
@@ -146,16 +98,6 @@ if (__name__ == '__main__'):
                         dest="fix",
                         help=_.OPT_TRACKLINT_FIX)
 
-    parser.add_argument("--db",
-                        dest="db",
-                        help=_.OPT_TRACKLINT_DB)
-
-    parser.add_argument("--undo",
-                        action="store_true",
-                        default=False,
-                        dest="undo",
-                        help=_.OPT_TRACKLINT_UNDO)
-
     parser.add_argument("filenames",
                         metavar="FILENAME",
                         nargs="+",
@@ -163,78 +105,25 @@ if (__name__ == '__main__'):
 
     options = parser.parse_args()
 
-    msg = audiotools.Messenger("tracklint", options)
+    msg = audiotools.Messenger(options.verbosity == "quiet")
 
     processed_filenames = set()
     unsupported_types = set()
 
-    if (options.undo and (options.db is None)):
-        msg.error(_.ERR_NO_UNDO_DB)
-        sys.exit(1)
-
     if (options.fix):
-        if (options.db is not None):
-            # if we're fixing tracks and have an undo DB,
-            # save undo information to it during the fixing process
+        for track in audiofiles(options.filenames,
+                                processed_filenames,
+                                unsupported_types,
+                                messenger=msg):
             try:
-                undo_db = audiotools.delta.open_db(options.db)
-            except:
-                msg.error(_.ERR_OPEN_IOERROR %
-                          (audiotools.Filename(options.db),))
+                update(track, msg)
+            except IOError:
+                msg.error(_.ERR_ENCODING_ERROR %
+                          (audiotools.Filename(track.filename),))
                 sys.exit(1)
-            try:
-                for track in audiofiles(options.filenames,
-                                        processed_filenames,
-                                        unsupported_types,
-                                        messenger=msg):
-                    try:
-                        update_and_backup(track, undo_db, msg)
-                    except IOError:
-                        msg.error(_.ERR_ENCODING_ERROR %
-                                  (audiotools.Filename(track.filename),))
-                        sys.exit(1)
-                    except ValueError as err:
-                        msg.error(unicode(err))
-                        sys.exit(1)
-            finally:
-                undo_db.close()
-        else:
-            # if we're fixing tracks and have no undo DB,
-            # simply overwrite the track and track metadata directly
-            # if changes have been made
-            for track in audiofiles(options.filenames,
-                                    processed_filenames,
-                                    unsupported_types,
-                                    messenger=msg):
-                try:
-                    update_without_backup(track, msg)
-                except IOError:
-                    msg.error(_.ERR_ENCODING_ERROR %
-                              (audiotools.Filename(track.filename),))
-                    sys.exit(1)
-                except ValueError as err:
-                    msg.error(unicode(err))
-                    sys.exit(1)
-    elif (options.undo):
-        try:
-            undo_db = audiotools.delta.open_db(options.db)
-        except:
-            msg.error(_.ERR_OPEN_IOERROR %
-                      (audiotools.Filename(options.db),))
-            sys.exit(1)
-        try:
-            for track in audiofiles(options.filenames,
-                                    processed_filenames,
-                                    unsupported_types,
-                                    messenger=msg):
-                try:
-                    undo_from_backup(track, undo_db, msg)
-                except IOError:
-                    msg.error(_.ERR_ENCODING_ERROR %
-                              (audiotools.Filename(track.filename),))
-                    sys.exit(1)
-        finally:
-            undo_db.close()
+            except ValueError as err:
+                msg.error(unicode(err))
+                sys.exit(1)
     else:  # a dry-run of the fixing procedure, with no changes made
         for track in audiofiles(options.filenames,
                                 processed_filenames,

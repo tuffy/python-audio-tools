@@ -30,22 +30,6 @@ San Francisco, California, 94105, USA.
     <option long="fix">
       perform tracklint's suggested fixes on the given audio tracks
     </option>
-    <option long="db" arg="filename">
-      The undo database file.
-      When used with the --fix option, undo information will be stored
-      in the given file.
-      When used with the --undo option, files will be restored to
-      their original state using information from the given file.
-    </option>
-    <option long="undo">
-      Undo tracklint's fixes on the given audio tracks using information
-      from the undo database.
-      Tracks restored in this way will be byte-for-byte identical to
-      their original condition prior to running tracklint.
-      However, it is important that the tracks not be modified further
-      prior to using this option or else tracklint's undo information will
-      no longer be applicable.
-    </option>
     <option short="V" long="verbose" arg="verbosity">
       The level of output to display.
       Choose between 'normal', 'quiet' and 'debug'.

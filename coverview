@@ -492,7 +492,7 @@ Consult "man python" for further details.
                     self.show_error(_.ERR_UNSUPPORTED_FILE % (new_file))
                 except audiotools.InvalidFile:
                     self.show_error(_.ERR_INVALID_FILE % (new_file))
-                except IOError, err:
+                except IOError as err:
                     self.show_error(_.ERR_OPEN_IOERROR % (new_file))
 
         def quit(self, *args):
@@ -622,7 +622,7 @@ if (__name__ == '__main__'):
 
     args = options.filenames
 
-    messenger = audiotools.Messenger("coverview", None)
+    messenger = audiotools.Messenger()
 
     use_gtk = (hasattr(options, "no_gtk") and not options.no_gtk)
     use_tkinter = (hasattr(options, "no_tkinter") and not options.no_tkinter)

@@ -62,7 +62,7 @@ if (__name__ == '__main__'):
 
     options = parser.parse_args()
 
-    msg = audiotools.Messenger("trackinfo", options)
+    msg = audiotools.Messenger()
 
     for file in audiotools.open_files(options.filenames, messenger=msg):
         length = int(file.seconds_length())

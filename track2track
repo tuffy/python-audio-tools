@@ -22,9 +22,7 @@ import sys
 import os
 import os.path
 import select
-import cPickle
 from operator import concat
-from itertools import izip
 import audiotools
 import audiotools.ui
 import audiotools.text as _
@@ -236,8 +234,6 @@ if (audiotools.ui.AVAILABLE):
 
             output_metadata is a newly created MetaData object"""
 
-            from itertools import izip
-
             (audiofile_class,
              quality,
              output_filenames) = self.options.selected_options()
@@ -277,7 +273,7 @@ if (__name__ == '__main__'):
 
     conversion.add_argument("-t", "--type",
                             dest="type",
-                            choices=sorted(audiotools.TYPE_MAP.keys() +
+                            choices=sorted(list(audiotools.TYPE_MAP.keys()) +
                                            ["help"]),
                             help=_.OPT_TYPE)
 
@@ -393,7 +389,7 @@ if (__name__ == '__main__'):
 
     options = parser.parse_args()
 
-    msg = audiotools.Messenger("track2track", options)
+    msg = audiotools.Messenger(options.verbosity == "quiet")
 
     # ensure interactive mode is available, if selected
     if (options.interactive and (not audiotools.ui.AVAILABLE)):
@@ -603,9 +599,9 @@ if (__name__ == '__main__'):
 
             for (album_tracks,
                  album_metadatas,
-                 album_output) in izip(input_tracks,
-                                       input_metadatas,
-                                       output_widget.output_albums()):
+                 album_output) in zip(input_tracks,
+                                      input_metadatas,
+                                      output_widget.output_albums()):
 
                 # use existing ReplayGain values if we're to add it
                 # and *all* input tracks have it
@@ -625,10 +621,10 @@ if (__name__ == '__main__'):
                       output_filename,
                       output_quality,
                       output_metadata),
-                     output_replay_gain) in izip(album_tracks,
-                                                 album_metadatas,
-                                                 album_output,
-                                                 album_track_gains):
+                     output_replay_gain) in zip(album_tracks,
+                                                album_metadatas,
+                                                album_output,
+                                                album_track_gains):
                     # merge current track metadata (if any)
                     # with metadata returned from widget
                     if (current_metadata is not None):
@@ -690,9 +686,9 @@ if (__name__ == '__main__'):
                           output_filename,
                           output_quality,
                           output_metadata),
-                         output_replay_gain) in izip(album_tracks,
-                                                     output_tracks,
-                                                     album_track_gains):
+                         output_replay_gain) in zip(album_tracks,
+                                                    output_tracks,
+                                                    album_track_gains):
                         conversion_jobs.append((album_track,
                                                 output_class,
                                                 output_filename,

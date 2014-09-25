@@ -103,7 +103,7 @@ if (__name__ == '__main__'):
                         help=_.OPT_INPUT_FILENAME_OR_DIR)
 
     options = parser.parse_args()
-    msg = audiotools.Messenger("tracklength", options)
+    msg = audiotools.Messenger()
 
     format_summaries = {}
     total_summary = FormatSummary()

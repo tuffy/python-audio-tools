@@ -7243,7 +7243,7 @@
       - [ ] trackcmp
       - [ ] trackinfo
       - [ ] tracklength
-      - [ ] tracklint
+      - [X] tracklint
       - [ ] trackplay
       - [ ] trackrename
       - [ ] tracksplit
@@ -7311,7 +7311,7 @@
       - [ ] trackcmp
       - [ ] trackinfo
       - [ ] tracklength
-      - [ ] tracklint
+      - [X] tracklint
       - [ ] trackplay
       - [ ] trackrename
       - [ ] tracksplit
@@ -7823,6 +7823,13 @@
      - [ ] write wave footer
 **** TODO write_block
      - [ ] all samples are 0
+** TODO Calculate ReplayGain at rip-time
+   For utilities that operated single-threaded,
+   calculate ReplayGain during operation rather
+   than put off until ripping is done.
+*** TODO cd2track
+*** TODO dvda2track
+*** TODO tracksplit with -j 1
 * TODO Finish version 3.1
 ** TODO Support building cue sheets from discs
    Find some way of grabbing the index points from a disc

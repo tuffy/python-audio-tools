@@ -27,6 +27,10 @@ import audiotools.pcm as pcm
 from functools import total_ordering
 
 
+PY3 = sys.version_info[0] >= 3
+PY2 = not PY3
+
+
 try:
     from configparser import RawConfigParser
 except ImportError:
@@ -275,62 +279,22 @@ else:
         MAX_JOBS = 1
 
 
-class DummyOutput(object):
-    """a writable FILE-like object which generates no output"""
-
-    def __init__(self):
-        pass
-
-    def isatty(self):
-        return False
-
-    def write(self, s):
-        return
-
-    def flush(self):
-        return
-
-    def close(self):
-        return
-
-
-class UnicodeOutput(object):
-    """a writable FILE-like object which performs proper Unicode conversions"""
-
-    def __init__(self, file):
-        self.__file__ = file
-
-    def isatty(self):
-        return self.__file__.isatty()
-
-    def write(self, s):
-        if (isinstance(s, unicode)):
-            return self.__file__.write(s.encode("utf-8"))
-        else:
-            return self.__file__.write(s)
-
-    def flush(self):
-        return self.__file__.flush()
-
-    def close(self):
-        return self.__file__.close()
-
-
 class Messenger(object):
     """this class is for displaying formatted output in a consistent way"""
 
-    def __init__(self, executable, options):
-        """executable is a plain string of what script is being run
+    def __init__(self, silent=False):
+        """executable is a unicode string of what script is being run
 
         this is typically for use by the usage() method"""
 
-        self.executable = executable
-        if (hasattr(options, "verbosity") and (options.verbosity == "quiet")):
-            self.__stdout__ = DummyOutput()
-            self.__stderr__ = DummyOutput()
+        self.__stdout__ = sys.stdout
+        self.__stderr__ = sys.stderr
+        if (silent):
+            self.__print__ = self.__print_silent__
+        elif PY3:
+            self.__print__ = self.__print_py3__
         else:
-            self.__stdout__ = UnicodeOutput(sys.stdout)
-            self.__stderr__ = UnicodeOutput(sys.stderr)
+            self.__print__ = self.__print_py2__
 
     def output_isatty(self):
         return self.__stdout__.isatty()
@@ -341,37 +305,80 @@ class Messenger(object):
     def error_isatty(self):
         return self.__stderr__.isatty()
 
+    def __print_silent__(self, string, stream, add_newline, flush):
+        """prints unicode string to the given stream
+        and if 'add_newline' is True, appends a newline
+        if 'flush' is True, flushes the stream"""
+
+        assert(isinstance(string, str if PY3 else unicode))
+        # do nothing
+        pass
+
+    def __print_py2__(self, string, stream, add_newline, flush):
+        """prints unicode string to the given stream
+        and if 'add_newline' is True, appends a newline
+        if 'flush' is True, flushes the stream"""
+
+        assert(isinstance(string, unicode))
+        # we can't output unicode strings directly to streams
+        # because non-TTYs will raise UnicodeEncodeErrors
+        stream.write(string.encode("UTF-8", "replace"))
+        if (add_newline):
+            stream.write(os.linesep)
+        if (flush):
+            stream.flush()
+
+    def __print_py3__(self, string, stream, add_newline, flush):
+        """prints unicode string to the given stream
+        and if 'add_newline' is True, appends a newline
+        if 'flush' is True, flushes the stream"""
+
+        assert(isinstance(string, str))
+        stream.write(string)
+        if (add_newline):
+            stream.write(os.linesep)
+        if (flush):
+            stream.flush()
+
     def output(self, s):
         """displays an output message unicode string to stdout
 
         this appends a newline to that message"""
 
-        self.__stdout__.write(s)
-        self.__stdout__.write(os.linesep)
+        self.__print__(string=s,
+                       stream=self.__stdout__,
+                       add_newline=True,
+                       flush=False)
 
     def partial_output(self, s):
         """displays a partial output message unicode string to stdout
 
         this flushes output so that message is displayed"""
 
-        self.__stdout__.write(s)
-        self.__stdout__.flush()
+        self.__print__(string=s,
+                       stream=self.__stdout__,
+                       add_newline=False,
+                       flush=True)
 
     def info(self, s):
         """displays an informative message unicode string to stderr
 
         this appends a newline to that message"""
 
-        self.__stderr__.write(s)
-        self.__stderr__.write(os.linesep)
+        self.__print__(string=s,
+                       stream=self.__stderr__,
+                       add_newline=True,
+                       flush=False)
 
     def partial_info(self, s):
         """displays a partial informative message unicode string to stdout
 
         this flushes output so that message is displayed"""
 
-        self.__stderr__.write(s)
-        self.__stderr__.flush()
+        self.__print__(string=s,
+                       stream=self.__stderr__,
+                       add_newline=False,
+                       flush=True)
 
     # what's the difference between output() and info() ?
     # output() is for a program's primary data
@@ -387,9 +394,10 @@ class Messenger(object):
 
         this appends a newline to that message"""
 
-        self.__stderr__.write(u"*** Error: ")
-        self.__stderr__.write(s)
-        self.__stderr__.write(os.linesep)
+        self.__print__(string=u"*** Error: " + s,
+                       stream=self.__stderr__,
+                       add_newline=True,
+                       flush=False)
 
     def os_error(self, oserror):
         """displays an properly formatted OSError exception to stderr
@@ -406,20 +414,10 @@ class Messenger(object):
 
         this appends a newline to that message"""
 
-        self.__stderr__.write(u"*** Warning: ")
-        self.__stderr__.write(s)
-        self.__stderr__.write(os.linesep)
-
-    def usage(self, s):
-        """displays the program's usage unicode string to stderr
-
-        this appends a newline to that message"""
-
-        self.__stderr__.write(u"*** Usage: ")
-        self.__stderr__.write(self.executable)
-        self.__stderr__.write(u" ")
-        self.__stderr__.write(s)
-        self.__stderr__.write(os.linesep)
+        self.__print__(string=u"*** Warning: " + s,
+                       stream=self.__stderr__,
+                       add_newline=True,
+                       flush=False)
 
     def ansi_clearline(self):
         """generates a set of clear line ANSI escape codes to stdout
@@ -433,33 +431,28 @@ class Messenger(object):
         >>> msg.output(u"done")
         """
 
-        if (self.__stdout__.isatty()):
-            self.__stdout__.write((u"\u001B[0G" +  # move cursor to column 0
-                                   # clear everything after cursor
-                                   u"\u001B[0K"))
-            self.__stdout__.flush()
+        if (self.output_isatty()):
+            self.partial_output((u"\u001B[0G" +  # move cursor to column 0
+                                 # clear everything after cursor
+                                 u"\u001B[0K"))
 
     def ansi_uplines(self, lines):
         """moves the cursor up by the given number of lines"""
 
-        if (self.__stdout__.isatty()):
-            self.__stdout__.write(u"\u001B[%dA" % (lines))
-            self.__stdout__.flush()
+        if (self.output_isatty()):
+            self.partial_output(u"\u001B[%dA" % (lines))
 
     def ansi_cleardown(self):
         """clears the remainder of the screen from the cursor downward"""
 
-        if (self.__stdout__.isatty()):
-            self.__stdout__.write(u"\u001B[0J")
-            self.__stdout__.flush()
+        if (self.output_isatty()):
+            self.partial_output(u"\u001B[0J")
 
     def ansi_clearscreen(self):
         """clears the entire screen and moves cursor to upper left corner"""
 
-        if (self.__stdout__.isatty()):
-            self.__stdout__.write(u"\u001B[2J")
-            self.__stdout__.write(u"\u001B[1;1H")
-            self.__stdout__.flush()
+        if (self.output_isatty()):
+            self.partial_output(u"\u001B[2J" + u"\u001B[1;1H")
 
     def terminal_size(self, fd):
         """returns the current terminal size as (height, width)"""
@@ -474,10 +467,7 @@ class Messenger(object):
 
 class SilentMessenger(Messenger):
     def __init__(self):
-        self.executable = ""
-        self.__stdout__ = DummyOutput()
-        self.__stderr__ = DummyOutput()
-
+        Messenger.__init__(self, verbose=False)
 
 def khz(hz):
     """given an integer sample rate value in Hz,
@@ -496,7 +486,7 @@ def khz(hz):
 def hex_string(byte_string):
     """given a string of bytes, returns a Unicode string encoded as hex"""
 
-    if (sys.version_info[0] >= 3):
+    if PY3:
         hex_digits = [u"%2.2X" % (b,) for b in byte_string]
     else:
         hex_digits = [u"%2.2X" % (ord(b)) for b in byte_string]
@@ -661,7 +651,7 @@ class output_text(tuple):
         else:
             return u""
 
-    if (sys.version_info[0] >= 3):
+    if PY3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -3248,7 +3238,7 @@ class MetaData(object):
             if (field is None):
                 yield (attr, field)
 
-    if (sys.version_info[0] >= 3):
+    if PY3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -3524,7 +3514,7 @@ class Image(object):
                                "type"]]
         return "Image(%s)" % (",".join(fields))
 
-    if (sys.version_info[0] >= 3):
+    if PY3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -3945,7 +3935,7 @@ class AudioFile(object):
             suffix = cls.SUFFIX
 
         # convert arguments to unicode to simplify everything internally
-        if (sys.version_info[0] < 3):
+        if (PY2):
             format = format.decode("UTF-8", "replace")
             suffix = suffix.decode("UTF-8", "replace")
 
@@ -3986,7 +3976,7 @@ class AudioFile(object):
                 {u"album_digits": album_digits} %
                 (album_number, track_number))
 
-        if (sys.version_info[0] < 3):
+        if (PY2):
             format_dict[u"basename"] = os.path.splitext(
                 os.path.basename(file_path))[0].decode("UTF-8", "replace")
         else:
@@ -3999,7 +3989,7 @@ class AudioFile(object):
             if (field in MetaData.INTEGER_FIELDS):
                 continue
 
-            if (sys.version_info[0] < 3):
+            if (PY2):
                 field_name = field.decode("ascii")
             else:
                 field_name = field
@@ -4016,7 +4006,7 @@ class AudioFile(object):
 
         try:
             # apply format dictionary
-            if (sys.version_info[0] < 3):
+            if (PY2):
                 formatted_filename = (format % format_dict).encode("UTF-8",
                                                                    "replace")
             else:
@@ -4392,7 +4382,7 @@ def read_sheet_string(sheet_string):
 
     may raise a SheetException if the file cannot be parsed correctly"""
 
-    str_type = str if (sys.version_info[0] >= 3) else unicode
+    str_type = str if PY3 else unicode
 
     assert(isinstance(sheet_string, str_type))
 
@@ -4550,8 +4540,7 @@ class SheetTrack(object):
         """
 
         assert(isinstance(number, int))
-        assert(isinstance(filename,
-                          str if (sys.version_info[0] >= 3) else unicode))
+        assert(isinstance(filename, str if PY3 else unicode))
 
         self.__number__ = number
         self.__track_indexes__ = list(track_indexes)

@@ -236,7 +236,7 @@ if (__name__ == '__main__'):
                         help=_.OPT_TRACK_INDEX)
 
     options = parser.parse_args()
-    msg = audiotools.Messenger("cdplay", options)
+    msg = audiotools.Messenger(options.verbosity == "quiet")
 
     if (options.interactive and (not interactive_available)):
         msg.error(_.ERR_URWID_REQUIRED)

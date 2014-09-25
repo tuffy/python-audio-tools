@@ -42,7 +42,7 @@ if (__name__ == '__main__'):
                         default=audiotools.DEFAULT_CDROM)
 
     options = parser.parse_args()
-    msg = audiotools.Messenger("cd2info", options)
+    msg = audiotools.Messenger()
 
     try:
         cdda = CDDAReader(options.cdrom)
