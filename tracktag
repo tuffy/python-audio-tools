@@ -58,7 +58,7 @@ if (audiotools.ui.AVAILABLE):
             self.metadatas_status = [urwid.Text(u"") for a in tracks]
             self.metadatas = [
                 audiotools.ui.MetaDataFiller(
-                    [unicode(audiotools.Filename(t.filename).basename())
+                    [audiotools.Filename(t.filename).basename().__unicode__()
                      for t in tracks],
                     choices,
                     status) for (tracks, choices, status) in
@@ -435,12 +435,10 @@ if (__name__ == '__main__'):
                 for attr in audiotools.MetaData.FIELD_ORDER:
                     if (getattr(options, "update_%s" % (attr)) is not None):
                         value = getattr(options, "update_%s" % (attr))
-                        setattr(metadata,
-                                attr,
-                                value.decode(audiotools.FS_ENCODING)
-                                if (attr not in
-                                    audiotools.MetaData.INTEGER_FIELDS)
-                                else value)
+                        if ((attr not in audiotools.MetaData.INTEGER_FIELDS) and
+                            (sys.version_info[0] < 3)):
+                            value = value.decode("UTF-8")
+                        setattr(metadata, attr, value)
 
                 # apply comment file across all metadata choices, if any
                 if (comment_file is not None):
@@ -465,11 +463,9 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
         if (not widget.cancelled()):
-            from itertools import izip
-
-            to_tag = map(tuple, izip(iter(album_tracks),
-                                     iter(album_current_metadatas),
-                                     widget.populated_metadata()))
+            to_tag = map(tuple, zip(album_tracks,
+                                    album_current_metadatas,
+                                    widget.populated_metadata()))
         else:
             sys.exit(0)
     else:
@@ -563,7 +559,7 @@ if (__name__ == '__main__'):
                     try:
                         track.delete_replay_gain()
                     except IOError as err:
-                        msg.error(unicode(err))
+                        msg.error(err)
                         sys.exit(1)
                 msg.output(
                     _.RG_REPLAYGAIN_REMOVED if album_number is None else
@@ -573,7 +569,7 @@ if (__name__ == '__main__'):
     try:
         queue.run(options.max_processes)
     except (ValueError, IOError) as err:
-        msg.error(unicode(err))
+        msg.error(err)
         sys.exit(1)
     except KeyboardInterrupt:
         msg.error(_.ERR_CANCELLED)

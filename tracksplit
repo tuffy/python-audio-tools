@@ -277,7 +277,7 @@ if (__name__ == '__main__'):
             cuesheet = audiotools.read_sheet(options.cuesheet)
             input_filenames.add(audiotools.Filename(options.cuesheet))
         except audiotools.SheetException as err:
-            msg.error(unicode(err))
+            msg.error(err)
             sys.exit(1)
     else:
         cuesheet = audiofile.get_cuesheet()
@@ -446,7 +446,7 @@ if (__name__ == '__main__'):
         except (audiotools.InvalidFilenameFormat,
                 audiotools.OutputFileIsInput,
                 audiotools.DuplicateOutputFile) as err:
-            msg.error(unicode(err))
+            msg.error(err)
             sys.exit(1)
 
     # perform actual track splitting and tagging
@@ -467,7 +467,7 @@ if (__name__ == '__main__'):
 
             queue.execute(
                 function=split,
-                progress_text=unicode(output_filename),
+                progress_text=output_filename.__unicode__(),
                 completion_output=_.LAB_ENCODE % {
                     "source": audiotools.Filename(audiofile.filename),
                     "destination": output_filename},
@@ -483,7 +483,7 @@ if (__name__ == '__main__'):
             encoded_tracks = audiotools.open_files(
                 queue.run(options.max_processes))
         except audiotools.EncodingError as err:
-            msg.error(unicode(err))
+            msg.error(err)
             sys.exit(1)
         except KeyboardInterrupt:
             msg.error(_.ERR_CANCELLED)
@@ -506,7 +506,7 @@ if (__name__ == '__main__'):
                 temp_blob.write)
         except audiotools.DecodingError as err:
             cache_progress.clear_rows()
-            msg.error(unicode(err))
+            msg.error(err)
             temp_blob.close()
             sys.exit(1)
         except KeyboardInterrupt:
@@ -532,7 +532,7 @@ if (__name__ == '__main__'):
 
             queue.execute(
                 function=split_raw,
-                progress_text=unicode(output_filename),
+                progress_text=output_filename.__unicode__(),
                 completion_output=_.LAB_ENCODE % {
                     "source": audiotools.Filename(audiofile.filename),
                     "destination": output_filename},
@@ -552,7 +552,7 @@ if (__name__ == '__main__'):
             encoded_tracks = audiotools.open_files(
                 queue.run(options.max_processes))
         except audiotools.EncodingError as err:
-            msg.error(unicode(err))
+            msg.error(err)
             temp_blob.close()
             sys.exit(1)
         except KeyboardInterrupt:
@@ -578,7 +578,7 @@ if (__name__ == '__main__'):
                 audiotools.add_replay_gain(album, rg_progress.update)
         except ValueError as err:
             rg_progress.clear_rows()
-            msg.error(unicode(err))
+            msg.error(err)
             sys.exit(1)
         except KeyboardInterrupt:
             rg_progress.clear_rows()

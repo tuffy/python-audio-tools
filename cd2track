@@ -243,7 +243,7 @@ if (__name__ == '__main__'):
         track_offsets = cddareader.track_offsets
         track_lengths = cddareader.track_lengths
     except (IOError, ValueError) as err:
-        msg.error(unicode(err) + _.ERR_INVALID_CDDA)
+        msg.error(_.ERR_INVALID_CDDA)
         sys.exit(-1)
 
     # only apply read_offset if cddareader is a physical drive
@@ -364,7 +364,7 @@ if (__name__ == '__main__'):
         except (audiotools.InvalidFilenameFormat,
                 audiotools.OutputFileIsInput,
                 audiotools.DuplicateOutputFile) as err:
-            msg.error(unicode(err))
+            msg.error(err)
             sys.exit(1)
 
     # perform actual ripping of tracks from CDDA
@@ -401,7 +401,7 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
         progress = audiotools.SingleProgressDisplay(
-            msg, unicode(output_filename))
+            msg, output_filename.__unicode__())
 
         track_data = audiotools.PCMReaderWindow(
             cddareader,
@@ -471,7 +471,7 @@ if (__name__ == '__main__'):
             audiotools.add_replay_gain(encoded, rg_progress.update)
         except ValueError as err:
             rg_progress.clear_rows()
-            msg.error(unicode(err))
+            msg.error(err)
             sys.exit(1)
         except KeyboardInterrupt:
             rg_progress.clear_rows()
@@ -516,7 +516,7 @@ if (__name__ == '__main__'):
         row = table.row()
 
         #first output the filename
-        row.add_column(unicode(track_number), "right")
+        row.add_column(u"%d" % (track_number), "right")
 
         # then output the 7 log fields
         log = rip_log[track_number]
@@ -554,10 +554,10 @@ if (__name__ == '__main__'):
                           confidence_v2,
                           offset_v2)]:
             row.add_column(u"")
-            if (confidence >= 0):
-                row.add_column(u"%d" % (confidence), "right")
-            else:
+            if ((confidence == None) or (confidence < 0)):
                 row.add_column(u"", "right")
+            else:
+                row.add_column(u"%d" % (confidence), "right")
             row.add_column(u"")
             row.add_column(u"%d" % (offset), "right")
             row.add_column(u"")

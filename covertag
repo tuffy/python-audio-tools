@@ -119,7 +119,7 @@ if (__name__ == '__main__'):
             for path in options.other_image:
                 images.setdefault(4, []).append(get_image(path, 4))
     except audiotools.InvalidImage as err:
-        msg.error(unicode(err))
+        msg.error(err)
         sys.exit(1)
 
     for track in audiofiles:

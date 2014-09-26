@@ -18,6 +18,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
+from audiotools import PY3
 from audiotools._accuraterip import Checksum
 
 
@@ -228,8 +229,15 @@ class DiscID(object):
     def freedb_disc_id(self):
         return int(self.__freedb_disc_id__)
 
-    def __str__(self):
-        return "dBAR-%(tracks)3.3d-%(id1)8.8x-%(id2)8.8x-%(freedb)8.8x.bin" % \
+    if PY3:
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('utf-8')
+
+    def __unicode__(self):
+        return u"dBAR-%(tracks)3.3d-%(id1)8.8x-%(id2)8.8x-%(freedb)8.8x.bin" % \
             {"tracks": len(self.__track_numbers__),
              "id1": self.id1(),
              "id2": self.id2(),

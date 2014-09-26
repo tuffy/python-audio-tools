@@ -52,7 +52,7 @@ class FormatSummary(object):
         row = table.row()
         row.add_column(name, "right")
         row.add_column(u" ")
-        row.add_column(unicode(self.file_count), "right")
+        row.add_column(u"%d" % (self.file_count), "right")
         row.add_column(u" ")
         format_length = int(self.total_length)
         row.add_column(_.LAB_TRACKLENGTH %
@@ -83,7 +83,7 @@ class FormatSummary(object):
                   Decimal(2 ** 10)).quantize(Decimal("1.0")))
         else:
             # bytes
-            total_size = unicode(self.total_size)
+            total_size = u"%d" % (self.total_size)
 
         row.add_column(total_size, "right")
 
@@ -135,7 +135,7 @@ if (__name__ == '__main__'):
         table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
 
         for name in sorted(format_summaries.keys()):
-            format_summaries[name].to_row(name.decode('ascii'), table)
+            format_summaries[name].to_row(name, table)
 
         if (len(format_summaries.keys()) > 1):
             table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])

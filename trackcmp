@@ -113,8 +113,8 @@ def image_compare(progress, image_audiofile, track_audiofile,
                 audiotools.PCMReaderProgress(track_audiofile.to_pcm(),
                                              total_pcm_frames,
                                              progress)),
-            unicode(image_filename),
-            unicode(track_filename))
+            image_filename,
+            track_filename)
     except (IOError, ValueError, KeyboardInterrupt, audiotools.DecodingError):
         return (-2, unicode(image_filename), unicode(track_filename))
 
@@ -140,8 +140,8 @@ def image_compare_raw(progress, source_filename,
                 audiotools.PCMReaderProgress(track_audiofile.to_pcm(),
                                              total_pcm_frames,
                                              progress)),
-            unicode(image_filename),
-            unicode(track_filename))
+            image_filename,
+            track_filename)
     finally:
         f.close()
 
@@ -360,11 +360,11 @@ if (__name__ == '__main__'):
                 table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV])
 
                 row = table.row()
-                row.add_column(unicode(successes), "right")
+                row.add_column(u"%d" % (successes), "right")
                 row.add_column(u" ")
-                row.add_column(unicode(failures), "right")
+                row.add_column(u"%d" % (failures), "right")
                 row.add_column(u" ")
-                row.add_column(unicode(successes + failures), "right")
+                row.add_column(u"%d" % (successes + failures), "right")
 
                 for row in table.format(msg.output_isatty()):
                     msg.output(row)
@@ -450,7 +450,7 @@ if (__name__ == '__main__'):
                     temp_blob.write)
             except audiotools.DecodingError as err:
                 cache_progress.clear_rows()
-                msg.error(unicode(err))
+                msg.error(err)
                 temp_blob.close()
                 sys.exit(1)
             except KeyboardInterrupt:

@@ -93,15 +93,15 @@ def track_number(track, default):
 def verify(progress, track):
     try:
         track.verify(progress)
-        return (unicode(audiotools.Filename(track.filename)),
+        return (audiotools.Filename(track.filename).__unicode__(),
                 track.NAME,
                 None)
     except audiotools.InvalidFile as err:
-        return (unicode(audiotools.Filename(track.filename)),
+        return (audiotools.Filename(track.filename).__unicode__(),
                 track.NAME,
-                unicode(err))
+                err)
     except KeyboardInterrupt:
-        return (unicode(audiotools.Filename(track.filename)),
+        return (audiotools.Filename(track.filename).__unicode__(),
                 track.NAME,
                 _.ERR_CANCELLED)
 
@@ -429,7 +429,7 @@ if (__name__ == '__main__'):
                                 options.accept_list):
             queue.execute(
                 function=verify,
-                progress_text=unicode(audiotools.Filename(track.filename)),
+                progress_text=audiotools.Filename(track.filename).__unicode__(),
                 completion_output=(display_results_tty
                                    if msg.output_isatty() else
                                    display_results),
@@ -471,21 +471,21 @@ if (__name__ == '__main__'):
                 row = table.row()
                 row.add_column(format.decode('ascii'), "right")
                 row.add_column(u" ")
-                row.add_column(unicode(success), "right")
+                row.add_column(u"%d" % (success), "right")
                 row.add_column(u" ")
-                row.add_column(unicode(failure), "right")
+                row.add_column(u"%d" % (failure), "right")
                 row.add_column(u" ")
-                row.add_column(unicode(success + failure), "right")
+                row.add_column(u"%d" % (success + failure), "right")
 
             table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
             row = table.row()
             row.add_column(_.LAB_TRACKVERIFY_SUMMARY, "right")
             row.add_column(u" ")
-            row.add_column(unicode(success_total), "right")
+            row.add_column(u"%d" % (success_total), "right")
             row.add_column(u" ")
-            row.add_column(unicode(failure_total), "right")
+            row.add_column(u"%d" % (failure_total), "right")
             row.add_column(u" ")
-            row.add_column(unicode(success_total + failure_total), "right")
+            row.add_column(u"%d" % (success_total + failure_total), "right")
 
             for row in table.format(msg.output_isatty()):
                 msg.output(row)
@@ -517,7 +517,7 @@ if (__name__ == '__main__'):
                         try:
                             sheet = audiotools.read_sheet(options.cuesheet)
                         except audiotools.SheetException as err:
-                            msg.error(unicode(err))
+                            msg.error(err)
                             sys.exit(1)
                     else:
                         sheet = tracks[0].get_cuesheet()
@@ -564,7 +564,7 @@ if (__name__ == '__main__'):
                         try:
                             sheet = audiotools.read_sheet(options.cuesheet)
                         except audiotools.SheetException as err:
-                            msg.error(unicode(err))
+                            msg.error(err)
                             sys.exit(1)
 
                         ar_results = audiotools.accuraterip_sheet_lookup(
@@ -586,7 +586,7 @@ if (__name__ == '__main__'):
 
                         queue.execute(
                             function=accuraterip_checksum,
-                            progress_text=unicode(filename),
+                            progress_text=filename.__unicode__(),
                             completion_output=accuraterip_display_result,
                             track=track,
                             previous_track=previous_track,

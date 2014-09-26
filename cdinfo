@@ -47,7 +47,7 @@ if (__name__ == '__main__'):
     try:
         cdda = CDDAReader(options.cdrom)
     except (ValueError, IOError) as err:
-        msg.error(unicode(err))
+        msg.error(err)
         sys.exit(1)
 
     offsets = cdda.track_offsets
@@ -58,7 +58,7 @@ if (__name__ == '__main__'):
     row = table.row()
     row.add_column(_.LAB_TOTAL_TRACKS, "right")
     row.add_column(u" : ")
-    row.add_column(unicode(max(offsets.keys())))
+    row.add_column(u"%d" % (max(offsets.keys())))
 
     row = table.row()
     row.add_column(_.LAB_TOTAL_LENGTH, "right")
@@ -70,20 +70,20 @@ if (__name__ == '__main__'):
     row = table.row()
     row.add_column(_.LAB_FREEDB_ID, "right")
     row.add_column(u" : ")
-    row.add_column(str(
-        audiotools.freedb.DiscID.from_cddareader(cdda)).decode('ascii'))
+    row.add_column(
+        audiotools.freedb.DiscID.from_cddareader(cdda).__unicode__())
 
     row = table.row()
     row.add_column(_.LAB_MUSICBRAINZ_ID, "right")
     row.add_column(u" : ")
-    row.add_column(str(
-        audiotools.musicbrainz.DiscID.from_cddareader(cdda)).decode('ascii'))
+    row.add_column(
+        audiotools.musicbrainz.DiscID.from_cddareader(cdda).__unicode__())
 
     row = table.row()
     row.add_column(_.LAB_ACCURATERIP_ID, "right")
     row.add_column(u" : ")
-    row.add_column(str(
-        audiotools.accuraterip.DiscID.from_cddareader(cdda)).decode('ascii'))
+    row.add_column(
+        audiotools.accuraterip.DiscID.from_cddareader(cdda).__unicode__())
 
     for row in table.format(sys.stdout.isatty()):
         msg.output(row)
@@ -105,15 +105,15 @@ if (__name__ == '__main__'):
     for key in sorted(offsets.keys()):
         track_length = lengths[key] // 588
         row = table.row()
-        row.add_column(unicode(key), "right")
+        row.add_column(u"%d" % (key), "right")
         row.add_column(u" ")
         row.add_column(
             _.LAB_TRACK_LENGTH % (track_length // 75 // 60,
                                   track_length // 75 % 60), "right")
         row.add_column(u" ")
-        row.add_column(unicode(track_length), "right")
+        row.add_column(u"%d" % (track_length), "right")
         row.add_column(u" ")
-        row.add_column(unicode((offsets[key] // 588) + 150), "right")
+        row.add_column(u"%d" % ((offsets[key] // 588) + 150), "right")
 
     for row in table.format(sys.stdout.isatty()):
         msg.output(row)

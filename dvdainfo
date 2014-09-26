@@ -45,7 +45,7 @@ if (__name__ == '__main__'):
     try:
         dvda = audiotools.DVDAudio(options.audio_ts)
     except audiotools.InvalidDVDA as err:
-        msg.error(unicode(err))
+        msg.error(err)
         sys.exit(1)
     except OSError as err:
         msg.os_error(err)
@@ -106,9 +106,9 @@ if (__name__ == '__main__'):
                      end_sector)) in enumerate(track.sectors()):
                 row = table.row()
                 if (i == 0):
-                    row.add_column(unicode(title_num + 1), "right")
+                    row.add_column(u"%d" % (title_num + 1), "right")
                     row.add_column(u" ")
-                    row.add_column(unicode(track_num + 1), "right")
+                    row.add_column(u"%d" % (track_num + 1), "right")
                     row.add_column(u" ")
                     row.add_column(_.LAB_TRACK_LENGTH %
                                    (track.pts_length // 90000 // 60,
@@ -122,15 +122,16 @@ if (__name__ == '__main__'):
                     row.add_column(u"")
                 row.add_column(u"   ")
                 row.add_column(
-                    unicode(audiotools.Filename(os.path.basename(aob_file))),
+                    audiotools.Filename(
+                        os.path.basename(aob_file).__unicode__()),
                     "right")
                 row.add_column(u" ")
-                row.add_column(unicode(start_sector), "right")
+                row.add_column(u"%d" % (start_sector), "right")
                 row.add_column(u" ")
-                row.add_column(unicode(end_sector - 1), "right")
+                row.add_column(u"%d" % (end_sector - 1), "right")
                 row.add_column(u" ")
                 if (i == 0):
-                    row.add_column(unicode(track.pts_length), "right")
+                    row.add_column(u"%d" % (track.pts_length), "right")
                 else:
                     row.add_column(u" ")
 

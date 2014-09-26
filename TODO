@@ -7227,28 +7227,28 @@
       - [X] opus
       - [X] m4a
       - [X] tta
-***** TODO Util
-      - [ ] audiotools_config
-      - [ ] cd2track
+***** DONE Util
+      - [X] audiotools-config
+      - [X] cd2track
       - [ ] cdinfo
-      - [ ] cdplay
-      - [ ] coverdump
-      - [ ] covertag
-      - [ ] coverview
-      - [ ] dvda2track
-      - [ ] dvdainfo
-      - [ ] track2cd
-      - [ ] track2track
-      - [ ] trackcat
-      - [ ] trackcmp
-      - [ ] trackinfo
-      - [ ] tracklength
+      - [X] cdplay
+      - [X] coverdump
+      - [X] covertag
+      - [X] coverview
+      - [X] dvda2track
+      - [X] dvdainfo
+      - [X] track2cd
+      - [X] track2track
+      - [X] trackcat
+      - [X] trackcmp
+      - [X] trackinfo
+      - [X] tracklength
       - [X] tracklint
-      - [ ] trackplay
-      - [ ] trackrename
-      - [ ] tracksplit
-      - [ ] tracktag
-      - [ ] trackverify
+      - [X] trackplay
+      - [X] trackrename
+      - [X] tracksplit
+      - [X] tracktag
+      - [X] trackverify
 **** TODO Python 3
 ***** DONE Lib
       - [X] core
@@ -7295,28 +7295,28 @@
       - [X] opus
       - [X] m4a
       - [X] tta
-***** TODO Util
-      - [ ] audiotools_config
-      - [ ] cd2track
-      - [ ] cdinfo
-      - [ ] cdplay
-      - [ ] coverdump
-      - [ ] covertag
-      - [ ] coverview
-      - [ ] dvda2track
-      - [ ] dvdainfo
-      - [ ] track2cd
-      - [ ] track2track
-      - [ ] trackcat
-      - [ ] trackcmp
-      - [ ] trackinfo
-      - [ ] tracklength
+***** DONE Util
+      - [X] audiotools-config
+      - [X] cd2track
+      - [X] cdinfo
+      - [X] cdplay
+      - [X] coverdump
+      - [X] covertag
+      - [X] coverview
+      - [X] dvda2track
+      - [X] dvdainfo
+      - [X] track2cd
+      - [X] track2track
+      - [X] trackcat
+      - [X] trackcmp
+      - [X] trackinfo
+      - [X] tracklength
       - [X] tracklint
-      - [ ] trackplay
-      - [ ] trackrename
-      - [ ] tracksplit
-      - [ ] tracktag
-      - [ ] trackverify
+      - [X] trackplay
+      - [X] trackrename
+      - [X] tracksplit
+      - [X] tracktag
+      - [X] trackverify
 ** DONE Add context manager support
    Having file-like objects work with "with" context managers
    should hopefully make file handle management a bit simpler.
@@ -7830,6 +7830,12 @@
 *** TODO cd2track
 *** TODO dvda2track
 *** TODO tracksplit with -j 1
+** TODO Improve utility test coverage
+*** TODO Add some basic tests to ensure they still works
+    - [ ] cdinfo
+    - [ ] cdplay
+    - [ ] trackplay
+    - [ ] trackverify
 * TODO Finish version 3.1
 ** TODO Support building cue sheets from discs
    Find some way of grabbing the index points from a disc

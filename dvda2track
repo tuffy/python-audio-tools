@@ -224,7 +224,7 @@ if (__name__ == '__main__'):
     try:
         dvda = audiotools.DVDAudio(options.audio_ts, options.cdrom)
     except audiotools.InvalidDVDA as err:
-        msg.error(unicode(err))
+        msg.error(err)
         sys.exit(1)
     except OSError as err:
         msg.os_error(err)
@@ -340,7 +340,7 @@ if (__name__ == '__main__'):
         except (audiotools.InvalidFilenameFormat,
                 audiotools.OutputFileIsInput,
                 audiotools.DuplicateOutputFile) as err:
-            msg.error(unicode(err))
+            msg.error(err)
             sys.exit(1)
 
     # perform actual track extraction
@@ -363,7 +363,7 @@ if (__name__ == '__main__'):
                 sys.exit(1)
 
             progress = audiotools.SingleProgressDisplay(
-                msg, unicode(output_filename))
+                msg, output_filename.__unicode__())
 
             try:
                 encoded.append(
@@ -414,7 +414,7 @@ if (__name__ == '__main__'):
             audiotools.add_replay_gain(encoded, rg_progress.update)
         except ValueError as err:
             rg_progress.clear_rows()
-            msg.error(unicode(err))
+            msg.error(err)
             sys.exit(1)
         except KeyboardInterrupt:
             rg_progress.clear_rows()

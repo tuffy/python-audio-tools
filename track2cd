@@ -186,7 +186,10 @@ if (__name__ == '__main__'):
         temptoc = tempfile.NamedTemporaryFile(suffix='.toc')
         tempwav = tempfile.NamedTemporaryFile(suffix='.wav')
 
-        audiotools.toc.write_tocfile(cuesheet, tempwav.name, temptoc)
+        audiotools.toc.write_tocfile(
+            cuesheet,
+            audiotools.Filename(tempwav.name).__unicode__(),
+            temptoc)
         temptoc.flush()
 
         progress = audiotools.SingleProgressDisplay(
@@ -285,7 +288,7 @@ if (__name__ == '__main__'):
         try:
             cuesheet = audiotools.read_sheet(options.cuesheet)
         except audiotools.SheetException as err:
-            msg.error(unicode(err))
+            msg.error(err)
             sys.exit(1)
 
         # ensure sheet is formatted for CD images
@@ -309,7 +312,10 @@ if (__name__ == '__main__'):
         tempcue = tempfile.NamedTemporaryFile(suffix='.cue')
         tempwav = tempfile.NamedTemporaryFile(suffix='.wav')
 
-        audiotools.toc.write_tocfile(cuesheet, tempwav.name, tempcue)
+        audiotools.toc.write_tocfile(
+            cuesheet,
+            audiotools.Filename(tempwav.name).__unicode__(),
+            tempcue)
         tempcue.flush()
 
         input_frames = (int(audiofiles[0].sample_rate() * cuesheet.pre_gap()) +

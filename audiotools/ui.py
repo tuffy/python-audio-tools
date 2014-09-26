@@ -224,14 +224,12 @@ try:
             # This is because we don't want to modify MetaData objects
             # in the event they're being used elsewhere.
 
-            from itertools import izip
-
             (audiofile_class,
              quality,
              output_filenames) = self.options.selected_options()
             for (metadata,
-                 output_filename) in izip(self.metadata.populated_metadata(),
-                                          iter(output_filenames)):
+                 output_filename) in zip(self.metadata.populated_metadata(),
+                                         output_filenames):
                 yield (audiofile_class,
                        output_filename,
                        quality,

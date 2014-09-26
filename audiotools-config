@@ -44,7 +44,7 @@ def display_defaults(config, msg):
                    _.LAB_AT_CONFIG_VERBOSITY,
                    config.get_default("Defaults",
                                       "verbosity",
-                                      "normal").decode('utf-8'),
+                                      "normal"),
                    indent=0)
     for row in table.format(msg.output_isatty()):
         msg.output(row)
@@ -71,7 +71,7 @@ def display_defaults(config, msg):
 
         row.add_column(
             audiotools.output_text(
-                audio_type.NAME.decode('ascii'),
+                audio_type.NAME,
                 fg_color=("green" if audio_type.available(audiotools.BIN)
                           else "red"),
                 style=("underline" if
@@ -87,7 +87,7 @@ def display_defaults(config, msg):
             row.add_column(u"")
         elif (len(audio_type.BINARIES) < 2):
             row.add_column(audiotools.output_text(
-                audio_type.BINARIES[0].decode('ascii'),
+                audio_type.BINARIES[0],
                 fg_color=("green" if
                           audiotools.BIN.can_execute(
                               audiotools.BIN[audio_type.BINARIES[0]])
@@ -97,7 +97,7 @@ def display_defaults(config, msg):
             row.add_column(
                 audiotools.output_text(u", ").join(
                     [audiotools.output_text(
-                        b.decode('ascii'),
+                        b,
                         fg_color=("green" if
                                   audiotools.BIN.can_execute(
                                       audiotools.BIN[b]) else "red"))
@@ -115,11 +115,10 @@ def display_defaults(config, msg):
             if (quality in audio_type.COMPRESSION_DESCRIPTIONS):
                 row.add_column(
                     u"%s - %s" %
-                    (quality.decode('ascii'),
+                    (quality,
                      audio_type.COMPRESSION_DESCRIPTIONS[quality]))
             else:
-                row.add_column(
-                    quality.decode('ascii'))
+                row.add_column(quality)
 
     for row in table.format(msg.output_isatty()):
         msg.output(row)
@@ -132,7 +131,7 @@ def display_defaults(config, msg):
         _.LAB_OPTIONS_FILENAME_FORMAT,
         config.get_default("Filenames",
                            "format",
-                           audiotools.DEFAULT_FILENAME_FORMAT).decode('utf-8'))
+                           audiotools.DEFAULT_FILENAME_FORMAT))
 
     for row in table.format(msg.output_isatty()):
         msg.output(row)
@@ -142,9 +141,9 @@ def display_defaults(config, msg):
     display_option(
         table,
         _.LAB_AT_CONFIG_JOBS,
-        unicode(config.get_default("System",
-                                   "maximum_jobs",
-                                   audiotools.MAX_JOBS)))
+        u"%d" % (config.getint_default("System",
+                                       "maximum_jobs",
+                                       audiotools.MAX_JOBS)))
 
     display_boolean_option(
         table,
@@ -203,13 +202,13 @@ def display_defaults(config, msg):
                    _.LAB_AT_CONFIG_MUSICBRAINZ_SERVER,
                    config.get_default("MusicBrainz",
                                       "server",
-                                      "musicbrainz.org").decode('utf-8'))
+                                      "musicbrainz.org"))
 
     display_option(table,
                    _.LAB_AT_CONFIG_MUSICBRAINZ_PORT,
-                   unicode(config.getint_default("MusicBrainz",
-                                                 "port",
-                                                 80)))
+                   u"%d" % (config.getint_default("MusicBrainz",
+                                                  "port",
+                                                  80)))
 
     table.blank_row()
 
@@ -222,13 +221,13 @@ def display_defaults(config, msg):
                    _.LAB_AT_CONFIG_FREEDB_SERVER,
                    config.get_default("FreeDB",
                                       "server",
-                                      "us.freedb.org").decode('utf-8'))
+                                      "us.freedb.org"))
 
     display_option(table,
                    _.LAB_AT_CONFIG_FREEDB_PORT,
-                   unicode(config.getint_default("FreeDB",
-                                                 "port",
-                                                 80)))
+                   u"%d" % (config.getint_default("FreeDB",
+                                                  "port",
+                                                  80)))
 
     for row in table.format(msg.output_isatty()):
         msg.output(row)
@@ -243,38 +242,33 @@ def display_defaults(config, msg):
         _.LAB_AT_CONFIG_DEFAULT_CDROM,
         config.get_default("System",
                            "cdrom",
-                           "/dev/cdrom").decode(audiotools.FS_ENCODING))
+                           "/dev/cdrom"))
 
     display_option(
         table,
         _.LAB_AT_CONFIG_CDROM_READ_OFFSET,
-        unicode(config.getint_default("System",
-                                      "cdrom_read_offset",
-                                      0)))
+        u"%d" % (config.getint_default("System",
+                                       "cdrom_read_offset",
+                                       0)))
 
     display_option(
         table,
         _.LAB_AT_CONFIG_CDROM_WRITE_OFFSET,
-        unicode(config.getint_default("System",
-                                      "cdrom_write_offset",
-                                      0)))
+        u"%d" % (config.getint_default("System",
+                                       "cdrom_write_offset",
+                                       0)))
 
     display_option(
         table,
         _.LAB_AT_CONFIG_FS_ENCODING,
         config.get_default("System",
                            "fs_encoding",
-                           sys.getfilesystemencoding()).decode('ascii'))
-
-    display_option(
-        table,
-        _.LAB_AT_CONFIG_IO_ENCODING,
-        config.get_default("System", "io_encoding", "UTF-8").decode('ascii'))
+                           sys.getfilesystemencoding()))
 
     display_option(
         table,
         _.LAB_AT_CONFIG_AUDIO_OUTPUT,
-        u", ".join([player.NAME.decode('ascii')
+        u", ".join([player.NAME
                     for player in audiotools.player.available_outputs()]))
 
     for row in table.format(msg.output_isatty()):
@@ -371,9 +365,6 @@ def apply_options(options, config):
 
     if (options.system_fs_encoding is not None):
         config.set_default("System", "fs_encoding", options.system_fs_encoding)
-
-    if (options.system_io_encoding is not None):
-        config.set_default("System", "io_encoding", options.system_io_encoding)
 
     # apply binaries options
     bins = set()
@@ -1145,12 +1136,6 @@ if (__name__ == '__main__'):
                         dest="system_fs_encoding",
                         help=_.OPT_AT_CONFIG_FS_ENCODING)
 
-    system.add_argument("--io-encoding",
-                        action="store",
-                        metavar="ENCODING",
-                        dest="system_io_encoding",
-                        help=_.OPT_AT_CONFIG_IO_ENCODING)
-
     binaries = parser.add_argument_group(_.OPT_CAT_BINARIES)
 
     bins = set()
@@ -1226,7 +1211,7 @@ if (__name__ == '__main__'):
                 err.error_msg(msg)
                 sys.exit(1)
             except audiotools.InvalidFilenameFormat as err:
-                msg.error(unicode(err))
+                msg.error(err)
                 sys.exit(1)
 
         # verify --type is valid, if present

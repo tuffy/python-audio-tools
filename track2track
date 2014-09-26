@@ -515,8 +515,10 @@ if (__name__ == '__main__'):
             track_metadatas = [f.get_metadata() for f in album_tracks]
             input_metadatas.append(track_metadatas)
 
-            filenames = [audiotools.Filename(f.filename) for f in album_tracks]
-            track_labels.append([unicode(f.basename()) for f in filenames])
+            filenames = [audiotools.Filename(f.filename)
+                         for f in album_tracks]
+            track_labels.append([f.basename().__unicode__()
+                                 for f in filenames])
             input_filenames.append(filenames)
 
             if (not options.metadata_lookup):
@@ -701,7 +703,7 @@ if (__name__ == '__main__'):
                 except (audiotools.InvalidFilenameFormat,
                         audiotools.OutputFileIsInput,
                         audiotools.DuplicateOutputFile) as err:
-                    msg.error(unicode(err))
+                    msg.error(err)
                     sys.exit(1)
 
         # re-check that the same output file doesn't occur more than once
@@ -735,7 +737,7 @@ if (__name__ == '__main__'):
 
             queue.execute(
                 function=convert,
-                progress_text=unicode(output_filename),
+                progress_text=output_filename.__unicode__(),
                 completion_output=(_.LAB_ENCODE % {
                     "source": audiotools.Filename(audiofile.filename),
                     "destination": output_filename}),
@@ -754,7 +756,7 @@ if (__name__ == '__main__'):
             output_files = audiotools.open_files(
                 queue.run(options.max_processes))
         except audiotools.EncodingError as err:
-            msg.error(unicode(err))
+            msg.error(err)
             sys.exit(1)
         except KeyboardInterrupt:
             msg.error(_.ERR_CANCELLED)
@@ -763,7 +765,8 @@ if (__name__ == '__main__'):
         # add ReplayGain to converted files, if necessary
 
         # separate encoded files by album_name and album_number
-        for album in [map(audiotools.open, fs) for fs in replaygain_jobs]:
+        for album in [[audiotools.open(f) for f in fs]
+                      for fs in replaygain_jobs]:
             # add ReplayGain to groups of files
             # belonging to the same album
 
@@ -788,7 +791,7 @@ if (__name__ == '__main__'):
         try:
             queue.run(options.max_processes)
         except ValueError as err:
-            msg.error(unicode(err))
+            msg.error(err)
             sys.exit(1)
         except KeyboardInterrupt:
             msg.error(_.ERR_CANCELLED)
@@ -802,7 +805,7 @@ if (__name__ == '__main__'):
             track_metadata = audiofile.get_metadata()
 
             output_widget = audiotools.ui.SingleOutputFiller(
-                track_label=unicode(input_filename),
+                track_label=input_filename.__unicode__(),
                 metadata_choices=[track_metadata if track_metadata is not None
                                   else audiotools.MetaData()],
                 input_filenames=[input_filename],
@@ -838,7 +841,7 @@ if (__name__ == '__main__'):
 
         progress = audiotools.SingleProgressDisplay(
             messenger=msg,
-            progress_text=unicode(output_filename))
+            progress_text=output_filename.__unicode__())
         try:
             convert(progress=progress.update,
                     source_audiofile=audiofile,
@@ -857,7 +860,7 @@ if (__name__ == '__main__'):
                                        "destination": output_filename})
         except audiotools.EncodingError as err:
             progress.clear_rows()
-            msg.error(unicode(err))
+            msg.error(err)
             sys.exit(1)
         except KeyboardInterrupt:
             progress.clear_rows()

@@ -137,7 +137,7 @@ if (audiotools.ui.AVAILABLE):
                 # and populate output files list
                 for (path, preview) in zip(self.output_filenames,
                                            self.track_previews):
-                    preview.set_text(unicode(path))
+                    preview.set_text(path.__unicode__())
 
                 if ((self.output_tracks_frame.get_body() is not
                      self.output_tracks_list)):
@@ -269,7 +269,7 @@ if (__name__ == '__main__'):
             err.error_msg(msg)
             sys.exit(1)
         except audiotools.InvalidFilenameFormat as err:
-            msg.error(unicode(err))
+            msg.error(err)
             sys.exit(1)
 
     # create subdirectories for renamed files if necessary

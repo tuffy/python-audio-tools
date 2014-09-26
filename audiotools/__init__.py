@@ -394,7 +394,7 @@ class Messenger(object):
 
         this appends a newline to that message"""
 
-        self.__print__(string=u"*** Error: " + s,
+        self.__print__(string=u"*** Error: %s" % (s,),
                        stream=self.__stderr__,
                        add_newline=True,
                        flush=False)
@@ -414,7 +414,7 @@ class Messenger(object):
 
         this appends a newline to that message"""
 
-        self.__print__(string=u"*** Warning: " + s,
+        self.__print__(string=u"*** Warning: %s" % (s,),
                        stream=self.__stderr__,
                        add_newline=True,
                        flush=False)
@@ -1770,9 +1770,13 @@ class Filename(tuple):
     def __new__(cls, filename):
         """filename is a string of the file on disk"""
 
+        # under Python 2, filename should be a plain string
+        # under Python 3, filename should be a unicode string
+
         if (isinstance(filename, cls)):
             return filename
         else:
+            assert(isinstance(filename, str if PY3 else bytes))
             try:
                 stat = os.stat(filename)
                 return tuple.__new__(cls, [os.path.normpath(filename),
@@ -1839,11 +1843,18 @@ class Filename(tuple):
         else:
             return hash((self[0], self[1], self[2]))
 
-    def __str__(self):
-        return self[0]
+    if PY3:
+        def __str__(self):
+            return self[0]
 
-    def __unicode__(self):
-        return self[0].decode(FS_ENCODING, "replace")
+        def __unicode__(self):
+            return self[0]
+    else:
+        def __str__(self):
+            return self[0]
+
+        def __unicode__(self):
+            return self[0].decode(FS_ENCODING, "replace")
 
 
 def sorted_tracks(audiofiles):
@@ -1960,12 +1971,19 @@ def group_tracks(tracks):
     for track in tracks:
         metadata = track.get_metadata()
         if (metadata is not None):
-            collection.setdefault((metadata.album_number,
-                                   metadata.album_name), []).append(track)
+            collection.setdefault(
+                (metadata.album_number if
+                 metadata.album_number is not None else
+                 -(2 ** 31),
+                 metadata.album_name if
+                 metadata.album_name is not None else
+                 u""), []).append(track)
         else:
             collection.setdefault(None, []).append(track)
 
-    for key in sorted(collection.keys()):
+    if (None in collection):
+        yield collection[None]
+    for key in sorted([key for key in collection.keys() if key is not None]):
         yield collection[key]
 
 
@@ -2134,6 +2152,20 @@ class ChannelMask(object):
             ",".join(["%s=%s" % (field, getattr(self, field))
                       for field in self.SPEAKER_TO_MASK.keys()
                       if (getattr(self, field))])
+
+    if PY3:
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('utf-8')
+
+    def __unicode__(self):
+        current_mask = int(self)
+
+        return u",".join(ChannelMask.MASK_TO_NAME[mask]
+                         for mask in sorted(ChannelMask.MASK_TO_NAME.keys())
+                         if mask & current_mask)
 
     def __int__(self):
         import operator
