@@ -448,7 +448,7 @@ class MetaDataTest(unittest.TestCase):
                               track_indexes=[
                                   SheetIndex(number=1,
                                              offset=Fraction(0, 1))],
-                              filename="CDImage.wav"),
+                              filename=u"CDImage.wav"),
                           SheetTrack(
                               number=2,
                               track_indexes=[
@@ -456,7 +456,7 @@ class MetaDataTest(unittest.TestCase):
                                              offset=Fraction(4507, 25)),
                                   SheetIndex(number=1,
                                              offset=Fraction(4557, 25))],
-                              filename="CDImage.wav"),
+                              filename=u"CDImage.wav"),
                           SheetTrack(
                               number=3,
                               track_indexes=[
@@ -464,7 +464,7 @@ class MetaDataTest(unittest.TestCase):
                                              offset=Fraction(27013, 75)),
                                   SheetIndex(number=1,
                                              offset=Fraction(27161, 75))],
-                              filename="CDImage.wav"),
+                              filename=u"CDImage.wav"),
                           SheetTrack(
                               number=4,
                               track_indexes=[
@@ -472,7 +472,7 @@ class MetaDataTest(unittest.TestCase):
                                              offset=Fraction(37757, 75)),
                                   SheetIndex(number=1,
                                              offset=Fraction(37907, 75))],
-                              filename="CDImage.wav"),
+                              filename=u"CDImage.wav"),
                           SheetTrack(
                               number=5,
                               track_indexes=[
@@ -480,7 +480,7 @@ class MetaDataTest(unittest.TestCase):
                                              offset=Fraction(11213, 15)),
                                   SheetIndex(number=1,
                                              offset=Fraction(11243, 15))],
-                              filename="CDImage.wav"),
+                              filename=u"CDImage.wav"),
                           SheetTrack(
                               number=6,
                               track_indexes=[
@@ -488,11 +488,10 @@ class MetaDataTest(unittest.TestCase):
                                              offset=Fraction(13081, 15)),
                                   SheetIndex(number=1,
                                              offset=Fraction(13111, 15))],
-                              filename="CDImage.wav")])
+                              filename=u"CDImage.wav")])
 
-            temp_file = tempfile.NamedTemporaryFile(
-                suffix="." + audio_class.SUFFIX)
-            try:
+            with tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX) as temp_file:
                 # build empty audio file
                 temp_track = audio_class.from_pcm(
                     temp_file.name,
@@ -516,11 +515,9 @@ class MetaDataTest(unittest.TestCase):
 
                 # setting cuesheet to None should delete cuesheet
                 temp_track.set_cuesheet(sheet)
-                self.assertNotEqual(temp_track.get_cuesheet(), sheet)
+                self.assertEqual(temp_track.get_cuesheet(), sheet)
                 temp_track.set_cuesheet(None)
                 self.assertIsNone(temp_track.get_cuesheet())
-            finally:
-                temp_file.close()
 
     @LIB_CUESHEET
     @METADATA_METADATA
@@ -542,7 +539,7 @@ class MetaDataTest(unittest.TestCase):
                           track_indexes=[
                               SheetIndex(number=1,
                                          offset=Fraction(0, 1))],
-                          filename="CDImage.wav"),
+                          filename=u"CDImage.wav"),
                       SheetTrack(
                           number=2,
                           track_indexes=[
@@ -550,7 +547,7 @@ class MetaDataTest(unittest.TestCase):
                                          offset=Fraction(4507, 25)),
                               SheetIndex(number=1,
                                          offset=Fraction(4557, 25))],
-                          filename="CDImage.wav"),
+                          filename=u"CDImage.wav"),
                       SheetTrack(
                           number=3,
                           track_indexes=[
@@ -558,7 +555,7 @@ class MetaDataTest(unittest.TestCase):
                                          offset=Fraction(27013, 75)),
                               SheetIndex(number=1,
                                          offset=Fraction(27161, 75))],
-                          filename="CDImage.wav"),
+                          filename=u"CDImage.wav"),
                       SheetTrack(
                           number=4,
                           track_indexes=[
@@ -566,7 +563,7 @@ class MetaDataTest(unittest.TestCase):
                                          offset=Fraction(37757, 75)),
                               SheetIndex(number=1,
                                          offset=Fraction(37907, 75))],
-                          filename="CDImage.wav"),
+                          filename=u"CDImage.wav"),
                       SheetTrack(
                           number=5,
                           track_indexes=[
@@ -574,7 +571,7 @@ class MetaDataTest(unittest.TestCase):
                                          offset=Fraction(11213, 15)),
                               SheetIndex(number=1,
                                          offset=Fraction(11243, 15))],
-                          filename="CDImage.wav"),
+                          filename=u"CDImage.wav"),
                       SheetTrack(
                           number=6,
                           track_indexes=[
@@ -582,12 +579,11 @@ class MetaDataTest(unittest.TestCase):
                                          offset=Fraction(13081, 15)),
                               SheetIndex(number=1,
                                          offset=Fraction(13111, 15))],
-                          filename="CDImage.wav")])
+                          filename=u"CDImage.wav")])
 
         for audio_class in self.supported_formats:
-            temp_file = tempfile.NamedTemporaryFile(
-                suffix="." + audio_class.SUFFIX)
-            try:
+            with tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX) as temp_file:
                 if (audio_class.supports_cuesheet()):
                     track = audio_class.from_pcm(
                         temp_file.name,
@@ -745,8 +741,6 @@ class MetaDataTest(unittest.TestCase):
                     self.assertEqual(track.get_replay_gain(), replay_gain)
                 else:
                     self.assertIsNone(track.get_replay_gain())
-            finally:
-                temp_file.close()
 
     @METADATA_METADATA
     def test_converted_duplication(self):
@@ -5478,8 +5472,9 @@ class FlacMetaData(MetaDataTest):
                 # and get its CUESHEET block
                 temp_cue = tempfile.NamedTemporaryFile(suffix=".cue")
                 try:
-                    temp_cue.write(open(cuesheet_filename, "rb").read())
-                    temp_cue.flush()
+                    with open(cuesheet_filename, "rb") as f:
+                        temp_cue.write(f.read())
+                        temp_cue.flush()
 
                     self.assertEqual(
                         subprocess.call([audiotools.BIN["metaflac"],

@@ -1198,7 +1198,12 @@ class dvdainfo(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["dvdainfo",
                                            "--version"]), 0)
-        self.__check_info__(u"Python Audio Tools %s" % (audiotools.VERSION))
+        if (PY3):
+            self.__check_output__(
+                u"Python Audio Tools %s" % (audiotools.VERSION))
+        else:
+            self.__check_info__(
+                u"Python Audio Tools %s" % (audiotools.VERSION))
 
     @UTIL_DVDAINFO
     def test_errors(self):

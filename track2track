@@ -138,6 +138,8 @@ if (audiotools.ui.AVAILABLE):
             quality is a string of the default output quality to use
             """
 
+            from functools import reduce
+
             self.__cancelled__ = True
 
             # ensure there's at least one album
@@ -209,6 +211,8 @@ if (audiotools.ui.AVAILABLE):
                 # one of the metadata pages is selected
                 self.set_footer(new_page.status)
             else:
+                from functools import reduce
+
                 # the final options page is selected
                 self.options.set_metadatas(
                     reduce(concat, [list(m.populated_metadata())

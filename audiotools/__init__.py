@@ -467,7 +467,7 @@ class Messenger(object):
 
 class SilentMessenger(Messenger):
     def __init__(self):
-        Messenger.__init__(self, verbose=False)
+        Messenger.__init__(self, silent=True)
 
 def khz(hz):
     """given an integer sample rate value in Hz,

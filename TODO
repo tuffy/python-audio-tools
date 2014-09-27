@@ -7181,7 +7181,7 @@
      - [ ] test_cdrdao
      - [ ] test_cdrecord
 *** TODO Ensure unit tests pass
-**** TODO Python 2.7
+**** DONE Python 2.7
 ***** DONE Lib
       - [X] core
       - [X] cuesheet
@@ -7249,7 +7249,7 @@
       - [X] tracksplit
       - [X] tracktag
       - [X] trackverify
-**** TODO Python 3
+**** DONE Python 3
 ***** DONE Lib
       - [X] core
       - [X] cuesheet
