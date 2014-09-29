@@ -103,7 +103,7 @@ class DVDAudio(object):
                 False,
                 f.read(104))
 
-            if (identifier != 'DVDAUDIO-AMG'):
+            if (identifier != b'DVDAUDIO-AMG'):
                 from audiotools.text import ERR_DVDA_INVALID_AUDIO_TS
                 raise InvalidDVDA(ERR_DVDA_INVALID_AUDIO_TS)
 
@@ -134,7 +134,7 @@ class DVDAudio(object):
         try:
             # ensure the file's identifier is correct
             # which is all we care about from the first sector
-            if (f.read(12) != 'DVDAUDIO-ATS'):
+            if (f.read(12) != b'DVDAUDIO-ATS'):
                 from audiotools.text import ERR_DVDA_INVALID_ATS
                 raise InvalidDVDA(ERR_DVDA_INVALID_ATS % (titleset))
 
@@ -289,10 +289,8 @@ class DVDATitle(object):
             raise ValueError(ERR_DVDA_NO_TRACK_SECTOR)
 
         # open that AOB file and seek to that track's first sector
-        aob_file = open(aob_path, 'rb')
-        try:
-            aob_file.seek(track_sector * DVDAudio.SECTOR_SIZE)
-            aob_reader = BitstreamReader(aob_file, False)
+        with BitstreamReader(open(aob_path, 'rb'), False) as aob_reader:
+            aob_reader.seek(track_sector * DVDAudio.SECTOR_SIZE)
 
             # read and validate the pack header
             # (there's one pack header per sector, at the sector's start)
@@ -375,9 +373,6 @@ class DVDATitle(object):
             self.channel_mask = DVDATrack.CHANNEL_MASK[channel_assignment]
             self.bits_per_sample = DVDATrack.BITS_PER_SAMPLE[group1_bps]
             self.stream_id = stream_id
-
-        finally:
-            aob_file.close()
 
     def __len__(self):
         return len(self.tracks)

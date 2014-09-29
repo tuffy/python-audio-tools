@@ -1776,7 +1776,7 @@ class Filename(tuple):
         if (isinstance(filename, cls)):
             return filename
         else:
-            assert(isinstance(filename, str if PY3 else bytes))
+            assert(isinstance(filename, str))
             try:
                 stat = os.stat(filename)
                 return tuple.__new__(cls, [os.path.normpath(filename),
@@ -1786,6 +1786,14 @@ class Filename(tuple):
                 return tuple.__new__(cls, [os.path.normpath(filename),
                                            None,
                                            None])
+
+    @classmethod
+    def from_unicode(cls, unicode_string):
+        """given a unicode string for a given path,
+        returns a Filename object"""
+
+        return cls(unicode_string if PY3 else
+                   unicode_string.encode(FS_ENCODING))
 
     def open(self, mode):
         """returns a file object of this filename opened
@@ -1812,6 +1820,11 @@ class Filename(tuple):
         """returns a Filename object with user directory expanded"""
 
         return Filename(os.path.expanduser(self[0]))
+
+    def abspath(self):
+        """returns the Filename's absolute path as a Filename object"""
+
+        return Filename(os.path.abspath(self[0]))
 
     def __repr__(self):
         return "Filename(%s, %s, %s)" % \
@@ -1843,16 +1856,13 @@ class Filename(tuple):
         else:
             return hash((self[0], self[1], self[2]))
 
-    if PY3:
-        def __str__(self):
-            return self[0]
+    def __str__(self):
+        return self[0]
 
+    if PY3:
         def __unicode__(self):
             return self[0]
     else:
-        def __str__(self):
-            return self[0]
-
         def __unicode__(self):
             return self[0].decode(FS_ENCODING, "replace")
 
@@ -2558,7 +2568,10 @@ def threaded_transfer_framelist_data(pcmreader, to_function,
     """
 
     import threading
-    import Queue
+    try:
+        from queue import Queue
+    except ImportError:
+        from Queue import Queue
 
     def send_data(pcmreader, queue):
         try:
@@ -2570,7 +2583,7 @@ def threaded_transfer_framelist_data(pcmreader, to_function,
         except (IOError, ValueError):
             queue.put(None)
 
-    data_queue = Queue.Queue(10)
+    data_queue = Queue(10)
     thread = threading.Thread(target=send_data,
                               args=(pcmreader, data_queue))
     thread.setDaemon(True)

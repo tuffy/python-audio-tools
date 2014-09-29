@@ -7380,6 +7380,19 @@
     - [X] wav/WaveReader
 **** DONE Add documentation
 **** DONE Add unit tests
+** DONE Update interactive utilities
+   Ensure they run under Python 2 and 3
+   - [X] audiotools/ui.py
+   - [X] audiotools-config
+   - [X] cd2track
+   - [X] cdplay
+   - [X] dvda2track
+   - [X] track2track
+   - [X] trackcat
+   - [X] trackplay
+   - [X] trackrename
+   - [X] tracksplit
+   - [X] tracktag
 ** TODO Improve test coverage
    - [X] set_metadata(None) to all formats
 *** TODO Check repr on everything

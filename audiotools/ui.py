@@ -20,6 +20,7 @@
 """a module for reusable GUI widgets"""
 
 import audiotools
+from audiotools import PY3, PY2
 
 try:
     import urwid
@@ -117,7 +118,7 @@ try:
 
             output_directory is a string of the default output dir
 
-            format_string is a UTF-8 encoded format string
+            format_string is a format string
 
             output_class is the default AudioFile-compatible class
 
@@ -125,6 +126,13 @@ try:
             """
 
             self.__cancelled__ = True
+
+            # a few debug type checks
+            for label in track_labels:
+                assert(isinstance(label, str if PY3 else unicode))
+            assert(isinstance(output_directory, str))
+            assert(isinstance(format_string, str))
+            assert(isinstance(quality, str))
 
             # ensure label count equals path count
             assert(len(track_labels) == len(input_filenames))
@@ -260,6 +268,12 @@ try:
 
             quality is a string of the default output quality to use"""
 
+            # a few debut type checks
+            assert(isinstance(track_label, str if PY3 else unicode))
+            assert(isinstance(output_file, str))
+            assert(isinstance(quality, str))
+            assert(isinstance(completion_label, str if PY3 else unicode))
+
             self.input_filenames = input_filenames
             self.__cancelled__ = True
 
@@ -367,6 +381,10 @@ try:
 
             status is an urwid.Text object
             """
+
+            # a few debug type checks
+            for label in track_labels:
+                assert(isinstance(label, str if PY3 else unicode))
 
             # there must be at least one choice
             assert(len(metadata_choices) > 0)
@@ -491,6 +509,9 @@ try:
             on_swivel_change is a callback for when
             tracks and fields are swapped
             """
+
+            for (id, label, metadata) in tracks:
+                assert(isinstance(label, str if PY3 else unicode))
 
             # a list of track IDs in the order they appear
             self.track_ids = []
@@ -1153,8 +1174,8 @@ try:
 
             urwid.Edit.__init__(
                 self,
-                edit_text=os.path.abspath(
-                    os.path.expanduser(initial_directory)).decode(FS_ENCODING),
+                edit_text=audiotools.Filename(
+                    initial_directory).expanduser().abspath().__unicode__(),
                 wrap='clip',
                 allow_tab=False)
 
@@ -1167,9 +1188,10 @@ try:
                 # only tab complete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
                 new_prefix = tab_complete(
-                    os.path.abspath(
-                        os.path.expanduser(
-                            prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
+                    str(audiotools.Filename.from_unicode(
+                        prefix).expanduser().abspath()))
+                if PY2:
+                    new_prefix = new_prefix.decode(FS_ENCODING)
 
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
@@ -1177,29 +1199,36 @@ try:
                 # only delete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
                 new_prefix = pop_directory(
-                    os.path.abspath(
-                        os.path.expanduser(
-                            prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
+                    str(audiotools.Filename.from_unicode(
+                        prefix).expanduser().abspath()))
+                if PY2:
+                    new_prefix = new_prefix.decode(FS_ENCODING)
 
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
+            elif (key == 'ctrl k'):
+                # delete entire line
+                self.set_edit_text(u"")
+                self.set_edit_pos(0)
             else:
                 return key
 
         def set_directory(self, directory):
             """directory is a plain directory string to set"""
 
-            FS_ENCODING = audiotools.FS_ENCODING
-
-            new_text = directory.decode(FS_ENCODING)
-            self.set_edit_text(new_text)
-            self.set_edit_pos(len(new_text))
+            assert(isinstance(directory, str))
+            if PY2:
+                directory = directory.decode(audiotools.FS_ENCODING)
+            self.set_edit_text(directory)
+            self.set_edit_pos(len(directory))
 
         def get_directory(self):
             """returns selected directory as a plain string"""
 
-            FS_ENCODING = audiotools.FS_ENCODING
-            return self.get_edit_text().encode(FS_ENCODING)
+            directory = self.get_edit_text()
+            if PY2:
+                directory = directory.encode(audiotools.FS_ENCODING)
+            return directory
 
     class BrowseDirectory(urwid.PopUpLauncher):
         def __init__(self, edit_directory):
@@ -1434,23 +1463,24 @@ try:
 
             urwid.Edit.__init__(
                 self,
-                edit_text=os.path.abspath(
-                    os.path.expanduser(initial_filename)).decode(FS_ENCODING),
+                edit_text=audiotools.Filename(
+                    initial_filename).expanduser().abspath().__unicode__(),
                 wrap="clip",
                 allow_tab=False)
 
         def keypress(self, size, key):
             key = urwid.Edit.keypress(self, size, key)
-            FS_ENCODING = audiotools.FS_ENCODING
             import os.path
+            FS_ENCODING = audiotools.FS_ENCODING
 
             if (key == 'tab'):
                 # only tab complete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
-                new_prefix = tab_complete_file(
-                    os.path.abspath(
-                        os.path.expanduser(
-                            prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
+                new_prefix = tab_complete(
+                    str(audiotools.Filename.from_unicode(
+                        prefix).expanduser().abspath()))
+                if PY2:
+                    new_prefix = new_prefix.decode(FS_ENCODING)
 
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
@@ -1458,24 +1488,36 @@ try:
                 # only delete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
                 new_prefix = pop_directory(
-                    os.path.abspath(
-                        os.path.expanduser(
-                            prefix.encode(FS_ENCODING)))).decode(FS_ENCODING)
+                    str(audiotools.Filename.from_unicode(
+                        prefix).expanduser().abspath()))
+                if PY2:
+                    new_prefix = new_prefix.decode(FS_ENCODING)
 
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
+            elif (key == 'ctrl k'):
+                # delete entire line
+                self.set_edit_text(u"")
+                self.set_edit_pos(0)
             else:
                 return key
 
         def set_filename(self, filename):
-            """filename is a plain filename string to set"""
+            """filename is a string to set"""
 
-            self.set_edit_text(filename.decode(audiotools.FS_ENCODING))
+            assert(isinstance(filename, str))
+            if PY2:
+                filename = filename.decode(audiotools.FS_ENCODING)
+            self.set_edit_text(filename)
+            self.set_edit_pos(len(filename))
 
         def get_filename(self):
-            """returns selected filename as a plain string"""
+            """returns selected filename as a string"""
 
-            return self.get_edit_text().encode(audiotools.FS_ENCODING)
+            filename = self.get_edit_text()
+            if PY2:
+                filename = filename.encode(audiotools.FS_ENCODING)
+            return filename
 
     class BrowseFields(urwid.PopUpLauncher):
         def __init__(self, output_format):
@@ -1580,6 +1622,11 @@ try:
             must equal length of metadatas
             """
 
+            # a few debug type checks
+            assert(isinstance(output_dir, str))
+            assert(isinstance(format_string, str))
+            assert(isinstance(quality, str))
+
             assert(len(input_filenames) == len(metadatas))
 
             for f in input_filenames:
@@ -1603,7 +1650,8 @@ try:
             self.has_errors = False      # if format string is invalid
 
             self.output_format = urwid.Edit(
-                edit_text=format_string.decode('utf-8'),
+                edit_text=(format_string if PY3 else
+                           format_string.decode('utf-8')),
                 wrap='clip')
             urwid.connect_signal(self.output_format,
                                  'change',
@@ -1636,9 +1684,8 @@ try:
                 label=LAB_OPTIONS_AUDIO_QUALITY)
 
             self.output_type = SelectOne(
-                items=sorted([(u"%s - %s" % (t.NAME.decode('ascii'),
-                                             t.DESCRIPTION), t) for t in
-                              audiotools.AVAILABLE_TYPES
+                items=sorted([(u"%s - %s" % (t.NAME, t.DESCRIPTION), t)
+                              for t in audiotools.AVAILABLE_TYPES
                               if t.available(audiotools.BIN)],
                              key=lambda pair: pair[0]),
                 selected_value=audio_class,
@@ -1708,10 +1755,9 @@ try:
                     default = [q for q in qualities if
                                q == audio_class.DEFAULT_COMPRESSION][0]
                 self.output_quality.set_items(
-                    [(q.decode('ascii') if q not in
+                    [(u"%s" % (q,) if q not in
                       audio_class.COMPRESSION_DESCRIPTIONS else
-                      u"%s - %s" % (q.decode('ascii'),
-                                    audio_class.COMPRESSION_DESCRIPTIONS[q]),
+                      u"%s - %s" % (q, audio_class.COMPRESSION_DESCRIPTIONS[q]),
                       q)
                      for q in qualities],
                     default)
@@ -1719,12 +1765,20 @@ try:
             self.update_tracks()
 
         def directory_changed(self, widget, new_value):
-            FS_ENCODING = audiotools.FS_ENCODING
-            self.update_tracks(output_directory=new_value.encode(FS_ENCODING))
+            if PY3:
+                output_directory = new_value
+            else:
+                output_directory = new_value.encode(audiotools.FS_ENCODING)
+
+            self.update_tracks(output_directory=output_directory)
 
         def format_changed(self, widget, new_value):
-            self.update_tracks(filename_format=new_value.encode("UTF-8",
-                                                                "replace"))
+            if PY3:
+                filename_format = new_value
+            else:
+                filename_format = new_value.encode("UTF-8", "replace")
+
+            self.update_tracks(filename_format=filename_format)
 
         def update_tracks(self, output_directory=None, filename_format=None):
             FS_ENCODING = audiotools.FS_ENCODING
@@ -1739,8 +1793,11 @@ try:
 
             # get current filename format
             if (filename_format is None):
-                filename_format = \
-                    self.output_format.get_edit_text().encode('utf-8')
+                output_format_text = self.output_format.get_edit_text()
+                if PY3:
+                    filename_format = output_format_text
+                else:
+                    filename_format = output_format_text.encode('utf-8')
             try:
                 # generate list of Filename objects
                 # from paths, metadatas and format
@@ -1778,10 +1835,10 @@ try:
                 for (filename, track) in zip(self.output_filenames,
                                              self.output_tracks):
                     if (filename not in collisions):
-                        track.set_text(u"%s" % (filename,))
+                        track.set_text(filename.__unicode__())
                     else:
                         track.set_text(("duplicate",
-                                       u"%s" % (filename,)))
+                                       filename.__unicode__()))
                 if ((self.output_tracks_frame.get_body() is not
                      self.output_tracks_list)):
                     self.output_tracks_frame.set_body(
@@ -1840,6 +1897,9 @@ try:
                                          LAB_OPTIONS_AUDIO_CLASS,
                                          LAB_OPTIONS_AUDIO_QUALITY)
 
+            assert(isinstance(output_filename, str))
+            assert(isinstance(quality, str))
+
             self.output_filename = EditFilename(
                 initial_filename=output_filename)
 
@@ -1848,9 +1908,8 @@ try:
                 label=LAB_OPTIONS_AUDIO_QUALITY)
 
             self.output_type = SelectOne(
-                items=sorted([(u"%s - %s" % (t.NAME.decode('ascii'),
-                                             t.DESCRIPTION), t) for t in
-                              audiotools.AVAILABLE_TYPES
+                items=sorted([(u"%s - %s" % (t.NAME, t.DESCRIPTION), t)
+                              for t in audiotools.AVAILABLE_TYPES
                               if t.available(audiotools.BIN)],
                              key=lambda pair: pair[0]),
                 selected_value=audio_class,
@@ -1913,10 +1972,9 @@ try:
                     default = [q for q in qualities if
                                q == audio_class.DEFAULT_COMPRESSION][0]
                 self.output_quality.set_items(
-                    [(q.decode('ascii') if q not in
+                    [(u"%s" % (q,) if q not in
                       audio_class.COMPRESSION_DESCRIPTIONS else
-                      u"%s - %s" % (q.decode('ascii'),
-                                    audio_class.COMPRESSION_DESCRIPTIONS[q]),
+                      u"%s - %s" % (q, audio_class.COMPRESSION_DESCRIPTIONS[q]),
                       q)
                      for q in qualities],
                     default)
@@ -2515,7 +2573,7 @@ def show_available_formats(msg):
     for name in sorted(audiotools.TYPE_MAP.keys()):
         row = table.row()
         row.add_column(
-            output_text(name.decode('ascii'),
+            output_text(u"%s" % (name),
                         style=("underline" if
                                (name == audiotools.DEFAULT_TYPE)
                                else None)),
@@ -2538,8 +2596,7 @@ def show_available_qualities(msg, audiotype):
                                  ERR_NO_COMPRESSION_MODES)
 
     if (len(audiotype.COMPRESSION_MODES) > 1):
-        msg.info(LAB_AVAILABLE_COMPRESSION_TYPES %
-                 (audiotype.NAME.decode('ascii')))
+        msg.info(LAB_AVAILABLE_COMPRESSION_TYPES % (audiotype.NAME))
         msg.info(u"")
 
         table = audiotools.output_table()
@@ -2554,7 +2611,7 @@ def show_available_qualities(msg, audiotype):
         for mode in audiotype.COMPRESSION_MODES:
             row = table.row()
             row.add_column(
-                output_text(mode.decode('ascii'),
+                output_text(u"%s" % (mode),
                             style=("underline" if
                                    (mode == audiotools.__default_quality__(
                                        audiotype.NAME))
@@ -2570,8 +2627,7 @@ def show_available_qualities(msg, audiotype):
         for row in table.format(msg.info_isatty()):
             msg.info(row)
     else:
-        msg.info(ERR_NO_COMPRESSION_MODES %
-                 (audiotype.NAME.decode('ascii')))
+        msg.info(ERR_NO_COMPRESSION_MODES % (audiotype.NAME))
 
 
 def select_metadata(metadata_choices, msg, use_default=False):
@@ -2771,20 +2827,20 @@ class PlayerTTY(object):
                                                              [], [], 1)
                     if (len(r_list) > 0):
                         char = os.read(stdin.fileno(), 1)
-                        if (((char == 'q') or
-                             (char == 'Q') or
-                             (char == '\x1B'))):
+                        if (((char == b'q') or
+                             (char == b'Q') or
+                             (char == b'\x1B'))):
                             self.playing_finished = True
-                        elif (char == ' '):
+                        elif (char == b' '):
                             self.toggle_play_pause()
-                        elif ((char == 'n') or
-                              (char == 'N')):
+                        elif ((char == b'n') or
+                              (char == b'N')):
                             self.next_track()
-                        elif ((char == 'p') or
-                              (char == 'P')):
+                        elif ((char == b'p') or
+                              (char == b'P')):
                             self.previous_track()
-                        elif ((char == 's') or
-                              (char == 'S')):
+                        elif ((char == b's') or
+                              (char == b'S')):
                             self.stop()
                         else:
                             pass

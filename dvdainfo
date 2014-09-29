@@ -122,8 +122,7 @@ if (__name__ == '__main__'):
                     row.add_column(u"")
                 row.add_column(u"   ")
                 row.add_column(
-                    audiotools.Filename(
-                        os.path.basename(aob_file).__unicode__()),
+                    audiotools.Filename(aob_file).basename().__unicode__(),
                     "right")
                 row.add_column(u" ")
                 row.add_column(u"%d" % (start_sector), "right")

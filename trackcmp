@@ -59,6 +59,10 @@ def cmp_files(progress, audiofile1, audiofile2):
 def cmp_result(result, is_tty=False):
     (path1, path2, mismatch) = result
 
+    assert(isinstance(path1, str))
+    assert(isinstance(path2, str))
+    assert((mismatch is None) or isinstance(mismatch, int))
+
     if (mismatch is None):
         return ((_.LAB_TRACKCMP_CMP %
                  {"file1": audiotools.Filename(path1),
@@ -116,15 +120,14 @@ def image_compare(progress, image_audiofile, track_audiofile,
             image_filename,
             track_filename)
     except (IOError, ValueError, KeyboardInterrupt, audiotools.DecodingError):
-        return (-2, unicode(image_filename), unicode(track_filename))
+        return (-2, image_filename, track_filename)
 
 
 def image_compare_raw(progress, source_filename,
                       sample_rate, channels, channel_mask, bits_per_sample,
                       track_audiofile, image_filename, track_filename,
                       pcm_frames_offset, total_pcm_frames):
-    f = open(source_filename, "rb")
-    try:
+    with open(source_filename, "rb") as f:
         # skip initial offset
         f.seek(pcm_frames_offset * channels * (bits_per_sample // 8))
 
@@ -142,8 +145,6 @@ def image_compare_raw(progress, source_filename,
                                              progress)),
             image_filename,
             track_filename)
-    finally:
-        f.close()
 
 
 def image_compare_results(result, is_tty=False):
@@ -418,8 +419,8 @@ if (__name__ == '__main__'):
                                        else image_compare_results),
                     image_audiofile=cd_image,
                     track_audiofile=track,
-                    image_filename=image_name,
-                    track_filename=track_name,
+                    image_filename=str(image_name),
+                    track_filename=str(track_name),
                     pcm_frames_offset=pcm_offset,
                     total_pcm_frames=track.total_frames())
 
@@ -478,8 +479,8 @@ if (__name__ == '__main__'):
                     channel_mask=int(cd_image.channel_mask()),
                     bits_per_sample=cd_image.bits_per_sample(),
                     track_audiofile=track,
-                    image_filename=image_name,
-                    track_filename=track_name,
+                    image_filename=str(image_name),
+                    track_filename=str(track_name),
                     pcm_frames_offset=pcm_offset,
                     total_pcm_frames=track.total_frames())
 

@@ -20,9 +20,14 @@
 from __future__ import print_function
 import sys
 
-if (sys.version_info < (2, 7, 0, "final", 0)):
-    print("*** Python 2.7.0 or better required")
-    sys.exit(1)
+if (sys.version_info[0] == 3):
+    if (sys.version_info[1] < 3):
+        print("*** Python 3.3 or better required")
+        sys.exit(1)
+elif (sys.version_info[0] == 2):
+    if (sys.version_info[1] < 7):
+        print("*** Python 2.7 or better required")
+        sys.exit(1)
 
 import os
 import os.path

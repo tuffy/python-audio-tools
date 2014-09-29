@@ -44,7 +44,10 @@ class Player(object):
         Raises :exc:`ValueError` if unable to start player subprocess."""
 
         import threading
-        import Queue
+        try:
+            from queue import Queue
+        except ImportError:
+            from Queue import Queue
 
         if (not isinstance(audio_output, AudioOutput)):
             raise TypeError("invalid output object")
@@ -53,8 +56,8 @@ class Player(object):
         self.__player__ = AudioPlayer(audio_output,
                                       next_track_callback,
                                       replay_gain)
-        self.__commands__ = Queue.Queue()
-        self.__responses__ = Queue.Queue()
+        self.__commands__ = Queue()
+        self.__responses__ = Queue()
 
         self.__thread__ = threading.Thread(
             target=self.__player__.run,
@@ -313,7 +316,10 @@ class AudioPlayer(object):
         """runs the audio playing thread while accepting commands
         from the given Queue"""
 
-        from Queue import Empty
+        try:
+            from queue import Empty
+        except ImportError:
+            from Queue import Empty
 
         while (True):
             try:
@@ -378,7 +384,10 @@ class CDPlayer(Player):
         which is called by the player when the current track is finished"""
 
         import threading
-        import Queue
+        try:
+            from queue import Queue
+        except ImportError:
+            from Queue import Queue
 
         if (not isinstance(audio_output, AudioOutput)):
             raise TypeError("invalid output object")
@@ -387,8 +396,8 @@ class CDPlayer(Player):
         self.__player__ = CDAudioPlayer(cddareader,
                                         audio_output,
                                         next_track_callback)
-        self.__commands__ = Queue.Queue()
-        self.__responses__ = Queue.Queue()
+        self.__commands__ = Queue()
+        self.__responses__ = Queue()
 
         self.__thread__ = threading.Thread(
             target=self.__player__.run,
@@ -496,7 +505,10 @@ class ThreadedPCMReader(object):
     """
 
     def __init__(self, pcmreader):
-        from Queue import Queue
+        try:
+            from queue import Queue
+        except ImportError:
+            from Queue import Queue
         from threading import (Thread, Event)
 
         def transfer_data(read, queue, stop_event):

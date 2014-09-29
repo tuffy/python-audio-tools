@@ -22,6 +22,7 @@ from __future__ import print_function
 import sys
 import os.path
 
+PY3 = sys.version_info[0] >= 3
 
 def display_defaults(config, msg):
     def display_option(table, label, value, indent=2):
@@ -417,7 +418,7 @@ if (__name__ == '__main__'):
                     DEFAULT_TYPE = "wav"
 
                 audio_types = list(sorted(audiotools.TYPE_MAP.values(),
-                                          lambda x, y: cmp(x.NAME, y.NAME)))
+                                          key=lambda x: x.NAME))
                 name_size = max(len(t.NAME) for t in audio_types)
                 default_format = []
 
@@ -465,12 +466,11 @@ if (__name__ == '__main__'):
 
                         qualities = \
                             audiotools.ui.SelectOne(
-                                [(q.decode('ascii') if
+                                [(u"%s" % (q,) if
                                   q not in
                                   audio_type.COMPRESSION_DESCRIPTIONS else
                                   u"%s - %s" %
-                                  (q.decode('ascii'),
-                                   audio_type.COMPRESSION_DESCRIPTIONS[q]),
+                                  (q, audio_type.COMPRESSION_DESCRIPTIONS[q]),
                                   q) for q in
                                  audio_type.COMPRESSION_MODES],
                                 DEFAULT_QUALITY,
@@ -498,7 +498,7 @@ if (__name__ == '__main__'):
                               len(audiotools.output_text(
                                   _.LAB_AT_CONFIG_TYPE)),
                               urwid.Text(
-                                  markup=audio_type.NAME.decode('ascii'),
+                                  markup=u"%s" % (audio_type.NAME),
                                   align="right")),
                              ("fixed", 1,
                               urwid.Text(u" " if no_modes else u"-")),
@@ -506,10 +506,11 @@ if (__name__ == '__main__'):
                              ],
                             dividechars=1))
 
-                current_format = config.get_default(
-                    "Filenames",
-                    "format",
-                    audiotools.DEFAULT_FILENAME_FORMAT).decode('utf-8')
+                current_format = audiotools.Filename(
+                    config.get_default(
+                        "Filenames",
+                        "format",
+                        audiotools.DEFAULT_FILENAME_FORMAT)).__unicode__()
 
                 format = urwid.Edit(
                     caption=("label",
@@ -595,11 +596,11 @@ if (__name__ == '__main__'):
                             conductor_name=u"Conductor Name",
                             media=u"media",
                             ISRC=u"CCXXXYYNNNNN",
-                            catalog="catalog # ",
-                            copyright="Copyright",
-                            publisher="Publisher Name",
-                            year=strftime("%Y").decode('ascii'),
-                            date=strftime("%x").decode('ascii'),
+                            catalog=u"Catalog # ",
+                            copyright=u"Copyright",
+                            publisher=u"Publisher Name",
+                            year=u"%s" % (strftime("%Y")),
+                            date=u"%s" % (strftime("%x")),
                             album_number=3,
                             album_total=4,
                             comment=u"Comment Text"),
@@ -653,13 +654,14 @@ if (__name__ == '__main__'):
                                "MusicBrainz",
                                "service"))
 
+                server = config.get_default("MusicBrainz",
+                                            "server",
+                                            "musicbrainz.org")
+
                 musicbrainz_server = urwid.Edit(
                     caption=("label",
                              u"%s : " % (_.LAB_AT_CONFIG_MUSICBRAINZ_SERVER)),
-                    edit_text=config.get_default(
-                        "MusicBrainz",
-                        "server",
-                        "musicbrainz.org").decode('utf-8'))
+                    edit_text=server if PY3 else server.decode("UTF-8"))
                 urwid.connect_signal(musicbrainz_server,
                                      "change",
                                      self.change_text,
@@ -692,13 +694,14 @@ if (__name__ == '__main__'):
                                "FreeDB",
                                "service"))
 
+                server = config.get_default("FreeDB",
+                                            "server",
+                                            "us.freedb.org")
+
                 freedb_server = urwid.Edit(
                     caption=("label",
                              u"%s : " % (_.LAB_AT_CONFIG_FREEDB_SERVER)),
-                    edit_text=config.get_default(
-                        "FreeDB",
-                        "server",
-                        "us.freedb.org").decode('utf-8'))
+                    edit_text=server if PY3 else server.decode("UTF-8"))
                 urwid.connect_signal(freedb_server,
                                      "change",
                                      self.change_text,
@@ -838,10 +841,11 @@ if (__name__ == '__main__'):
                 cdrom_device = urwid.Edit(
                     caption=("label",
                              u"%s : " % (_.LAB_AT_CONFIG_DEFAULT_CDROM)),
-                    edit_text=config.get_default(
-                        "System",
-                        "cdrom",
-                        "/dev/cdrom").decode(audiotools.FS_ENCODING))
+                    edit_text=audiotools.Filename(
+                        config.get_default(
+                            "System",
+                            "cdrom",
+                            "/dev/cdrom")).__unicode__())
                 urwid.connect_signal(cdrom_device,
                                      "change",
                                      self.change_text,
@@ -920,7 +924,9 @@ if (__name__ == '__main__'):
                     [("weight", 1,
                       urwid.RadioButton(
                           group=verbosity,
-                          label=level.decode('ascii'),
+                          label={"quiet":u"quiet",
+                                 "normal":u"normal",
+                                 "debug":u"debug"}[level],
                           state=level == verbosity_level,
                           on_state_change=self.change_choice,
                           user_data=(config,

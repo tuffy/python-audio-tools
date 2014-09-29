@@ -25,6 +25,7 @@ import os.path
 import shutil
 import termios
 import audiotools.text as _
+from audiotools import PY3
 
 
 if (audiotools.ui.AVAILABLE):
@@ -38,7 +39,11 @@ if (audiotools.ui.AVAILABLE):
             input_filenames is a list of Filename objects
             metadata is a list of MetaData objects, or Nones"""
 
+            assert(isinstance(format_string, str))
             assert(len(input_filenames) == len(metadatas))
+            for filename in input_filenames:
+                assert(isinstance(filename, audiotools.Filename))
+
             self.__cancelled__ = True
 
             self.input_filenames = input_filenames
@@ -67,7 +72,8 @@ if (audiotools.ui.AVAILABLE):
 
             # setup a widget with the rename template
             output_format = urwid.Edit(
-                edit_text=format_string.decode('utf-8'),
+                edit_text=(format_string if PY3 else
+                           format_string.decode('utf-8')),
                 wrap='clip')
             urwid.connect_signal(output_format,
                                  'change',
@@ -125,12 +131,14 @@ if (audiotools.ui.AVAILABLE):
             try:
                 # generate list of Filename objects
                 # from paths, metadatas and format
+                format_string = new_value if PY3 else new_value.encode("UTF-8")
+
                 self.output_filenames = [
                     audiotools.Filename(
                         output_class.track_name(
                             file_path=str(filename),
                             track_metadata=metadata,
-                            format=new_value.encode('utf-8')))
+                            format=format_string))
                     for (filename,
                          metadata) in zip(input_filenames, metadatas)]
 

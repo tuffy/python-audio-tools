@@ -122,13 +122,14 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
 
     query = freedb_command(freedb_server,
                            freedb_port,
-                           "query",
-                           *([disc_id,
-                              disc_id.track_count] +
-                             disc_id.offsets +
-                             [disc_id.total_length]))
+                           u"query",
+                           *([disc_id.__unicode__(),
+                              u"%d" % (disc_id.track_count)] +
+                             [u"%d" % (o) for o in disc_id.offsets] +
+                             [u"%d" % (disc_id.total_length)]))
 
-    response = RESPONSE.match(next(query))
+    line = next(query)
+    response = RESPONSE.match(line)
     if (response is None):
         raise ValueError("invalid response from server")
     else:
@@ -147,7 +148,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
         elif ((code == 211) or (code == 210)):
             # multiple exact or inexact matches
             line = next(query)
-            while (not line.startswith(".")):
+            while (not line.startswith(u".")):
                 match = QUERY_RESULT.match(line)
                 if (match is not None):
                     matches.append((match.group(1),
@@ -170,7 +171,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
 
             query = freedb_command(freedb_server,
                                    freedb_port,
-                                   "read",
+                                   u"read",
                                    category,
                                    disc_id)
 
@@ -195,7 +196,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
 
 def freedb_command(freedb_server, freedb_port, cmd, *args):
     """given a freedb_server string, freedb_port int,
-    command string and argument strings,
+    command unicode string and argument unicode strings,
     yields a list of Unicode strings"""
 
     try:
@@ -210,14 +211,33 @@ def freedb_command(freedb_server, freedb_port, cmd, *args):
     from audiotools import VERSION
     from sys import version_info
 
-    # generate query to post
-    POST = {"hello": "user %s %s %s" % (getfqdn(), "audiotools", VERSION),
-            "proto": "6"}
+    PY3 = version_info[0] >= 3
 
+    # some debug type checking
+    assert(isinstance(cmd, str if PY3 else unicode))
+    for arg in args:
+        assert(isinstance(arg, str if PY3 else unicode))
+
+    POST = []
+
+    # generate query to post with arguments in specific order
     if (len(args) > 0):
-        POST["cmd"] = "cddb %s %s" % (cmd, " ".join(map(str, args)))
+        POST.append((u"cmd", u"cddb %s %s" % (cmd, " ".join(args))))
     else:
-        POST["cmd"] = "cddb %s" % (cmd)
+        POST.append((u"cmd", u"cddb %s" % (cmd)))
+
+    if PY3:
+        POST.append((u"hello",
+                     u"user %s %s %s" % (getfqdn(),
+                                         u"audiotools",
+                                         VERSION)))
+    else:
+        POST.append((u"hello",
+                     u"user %s %s %s" % (getfqdn().decode("UTF-8", "replace"),
+                                         u"audiotools",
+                                         VERSION.decode("ascii"))))
+
+    POST.append((u"proto", u"6"))
 
     # get Request object from post
     request = urlopen(
