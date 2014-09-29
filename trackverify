@@ -469,7 +469,7 @@ if (__name__ == '__main__'):
                 failure = len([r for r in results if ((r[1] == format) and
                                                       (r[2] is not None))])
                 row = table.row()
-                row.add_column(format.decode('ascii'), "right")
+                row.add_column(u"%s" % (format), "right")
                 row.add_column(u" ")
                 row.add_column(u"%d" % (success), "right")
                 row.add_column(u" ")

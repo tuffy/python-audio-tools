@@ -332,8 +332,8 @@ if (__name__ == '__main__'):
     # open a --comment-file as UTF-8 formatted text file
     if (options.comment_file is not None):
         try:
-            comment_file = open(options.comment_file,
-                                "rb").read().decode('utf-8', 'replace')
+            with open(options.comment_file, "rb") as f:
+                comment_file = f.read().decode('utf-8', 'replace')
         except IOError:
             msg.error(_.ERR_TRACKTAG_COMMENT_IOERROR %
                       (audiotools.Filename(options.comment_file),))
