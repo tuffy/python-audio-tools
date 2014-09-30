@@ -346,6 +346,7 @@ if (__name__ == '__main__'):
     # perform actual track extraction
     encoded = []
     pcmreader = title.to_pcm()
+    replay_gain = audiotools.ReplayGainCalculator(title.sample_rate)
     for (i, pts_ticks) in enumerate([t.pts_length for t in title]):
         pcmreader.next_track(pts_ticks)
         pcm_frames = pcmreader.pcm_frames
@@ -366,14 +367,16 @@ if (__name__ == '__main__'):
                 msg, output_filename.__unicode__())
 
             try:
-                encoded.append(
-                    output_class.from_pcm(
-                        str(output_filename),
+                track = output_class.from_pcm(
+                    str(output_filename),
+                    replay_gain.to_pcm(
                         audiotools.PCMReaderProgress(pcmreader,
                                                      pcm_frames,
-                                                     progress.update),
-                        output_quality,
-                        total_pcm_frames=pcm_frames))
+                                                     progress.update)),
+                    output_quality,
+                    total_pcm_frames=pcm_frames)
+
+                encoded.append(track)
             except audiotools.EncodingError as err:
                 progress.clear_rows()
                 msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
@@ -387,7 +390,7 @@ if (__name__ == '__main__'):
                     pass
                 sys.exit(1)
 
-            encoded[-1].set_metadata(output_metadata)
+            track.set_metadata(output_metadata)
             progress.clear_rows()
 
             msg.info(
@@ -401,23 +404,18 @@ if (__name__ == '__main__'):
                     len(to_rip)))
         else:
             # bypass skipped tracks by decoding them to null
-            audiotools.transfer_framelist_data(pcmreader, lambda f: f)
+            audiotools.transfer_data(pcmreader.read, lambda f: None)
 
     # add ReplayGain to ripped tracks, if necessary
     if (output_class.supports_replay_gain() and
         (options.add_replay_gain if options.add_replay_gain is not None else
          audiotools.ADD_REPLAYGAIN)):
-        rg_progress = audiotools.ReplayGainProgressDisplay(msg)
-        rg_progress.initial_message()
-        try:
-            # all audio files must belong to the same album, by definition
-            audiotools.add_replay_gain(encoded, rg_progress.update)
-        except ValueError as err:
-            rg_progress.clear_rows()
-            msg.error(err)
-            sys.exit(1)
-        except KeyboardInterrupt:
-            rg_progress.clear_rows()
-            msg.error(_.ERR_CANCELLED)
-            sys.exit(1)
-        rg_progress.final_message()
+        for (track, (track_gain, track_peak,
+                     album_gain, album_peak)) in zip(encoded, replay_gain):
+            track.set_replay_gain(
+                audiotools.ReplayGain(track_gain=track_gain,
+                                      track_peak=track_peak,
+                                      album_gain=album_gain,
+                                      album_peak=album_peak))
+        else:
+            msg.info(_.RG_REPLAYGAIN_ADDED)

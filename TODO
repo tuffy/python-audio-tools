@@ -7836,12 +7836,12 @@
      - [ ] write wave footer
 **** TODO write_block
      - [ ] all samples are 0
-** TODO Calculate ReplayGain at rip-time
+** DONE Calculate ReplayGain at rip-time
    For utilities that operated single-threaded,
    calculate ReplayGain during operation rather
    than put off until ripping is done.
-*** TODO cd2track
-*** TODO dvda2track
+*** DONE cd2track
+*** DONE dvda2track
 ** TODO Improve utility test coverage
 *** TODO Add some basic tests to ensure they still works
     - [ ] cdinfo

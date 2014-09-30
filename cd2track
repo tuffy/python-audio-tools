@@ -372,6 +372,7 @@ if (__name__ == '__main__'):
     rip_log = {}
     accuraterip_log_v1 = {}
     accuraterip_log_v2 = {}
+    replay_gain = audiotools.ReplayGainCalculator(cddareader.sample_rate)
 
     for (track_number,
          index,
@@ -417,14 +418,15 @@ if (__name__ == '__main__'):
         try:
             track = output_class.from_pcm(
                 str(output_filename),
-                audiotools.PCMReaderProgress(
-                    audiotools.PCMReaderWindow(
-                        accuraterip,
-                        PREVIOUS_TRACK_FRAMES,
+                replay_gain.to_pcm(
+                    audiotools.PCMReaderProgress(
+                        audiotools.PCMReaderWindow(
+                            accuraterip,
+                            PREVIOUS_TRACK_FRAMES,
+                            track_length,
+                            forward_close=False),
                         track_length,
-                        forward_close=False),
-                    track_length,
-                    progress.update),
+                        progress.update)),
                 output_quality,
                 total_pcm_frames=track_length)
             encoded.append(track)
@@ -464,20 +466,15 @@ if (__name__ == '__main__'):
     if (output_class.supports_replay_gain() and
         (options.add_replay_gain if options.add_replay_gain is not None else
          audiotools.ADD_REPLAYGAIN)):
-        rg_progress = audiotools.ReplayGainProgressDisplay(msg)
-        rg_progress.initial_message()
-        try:
-            # all audio files must belong to the same album, by definition
-            audiotools.add_replay_gain(encoded, rg_progress.update)
-        except ValueError as err:
-            rg_progress.clear_rows()
-            msg.error(err)
-            sys.exit(1)
-        except KeyboardInterrupt:
-            rg_progress.clear_rows()
-            msg.error(_.ERR_CANCELLED)
-            sys.exit(1)
-        rg_progress.final_message()
+        for (track, (track_gain, track_peak,
+                     album_gain, album_peak)) in zip(encoded, replay_gain):
+            track.set_replay_gain(
+                audiotools.ReplayGain(track_gain=track_gain,
+                                      track_peak=track_peak,
+                                      album_gain=album_gain,
+                                      album_peak=album_peak))
+        else:
+            msg.info(_.RG_REPLAYGAIN_ADDED)
 
     # display ripping log
     msg.output(_.LAB_CD2TRACK_LOG)

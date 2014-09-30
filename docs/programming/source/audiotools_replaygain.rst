@@ -24,10 +24,8 @@ ReplayGain Objects
 
 .. method:: ReplayGain.update(framelist)
 
-   Given a 1 or 2 channel :class:`pcm.FrameList` object,
-   updates the current gain values with its data.
-   May raise :exc:`ValueError` if the framelist contains
-   too many channels.
+   Given a :class:`pcm.FrameList` object, updates the current
+   gain values with its data.
 
 .. method:: ReplayGain.title_gain()
 

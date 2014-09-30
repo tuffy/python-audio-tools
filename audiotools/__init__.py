@@ -3062,21 +3062,13 @@ def calculate_replay_gain(tracks, progress=None):
     for (track, track_frames) in zip(tracks, track_frames):
         pcm = track.to_pcm()
 
-        # convert PCMReader to something useable
-        if (pcm.channels > 2):
-            output_channels = 2
-            output_channel_mask = 0x3
-        else:
-            output_channels = pcm.channels
-            output_channel_mask = pcm.channel_mask
-
         # perform calculation by decoding through ReplayGain
         with rg.to_pcm(
             PCMReaderProgress(
                 PCMConverter(pcm,
                              target_rate,
-                             output_channels,
-                             output_channel_mask,
+                             pcm.channels,
+                             pcm.channel_mask,
                              pcm.bits_per_sample),
                 total_frames,
                 progress,

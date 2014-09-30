@@ -264,13 +264,6 @@ ReplayGain_update(replaygain_ReplayGain *self, PyObject *args)
         return NULL;
     }
 
-    /*ensure FrameList only contains 1 or 2 channels*/
-    if ((framelist->channels != 1) && (framelist->channels != 2)) {
-        PyErr_SetString(PyExc_ValueError,
-                        "FrameList must have 1 or 2 channels");
-        return NULL;
-    }
-
     /*if FrameList contains no samples, do nothing*/
     if (framelist->samples_length == 0) {
         Py_INCREF(Py_None);
@@ -279,8 +272,9 @@ ReplayGain_update(replaygain_ReplayGain *self, PyObject *args)
 
     channels = aa_int_new();
 
-    /*split FrameList's packed ints into a set of channels*/
-    for (channel = 0; channel < framelist->channels; channel++) {
+    /*split FrameList's packed ints into a set of channels
+      to a maximum of 2 channels*/
+    for (channel = 0; channel < MIN(framelist->channels, 2); channel++) {
         a_int* channel_a = channels->append(channels);
         unsigned frame;
         channel_a->resize(channel_a, framelist->frames);
