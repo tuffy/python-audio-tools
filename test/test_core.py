@@ -4547,41 +4547,12 @@ class TestReplayGain(unittest.TestCase):
                           audiotools.replaygain.ReplayGain,
                           200000)
 
-        # check for a very small sample count
-        rg = audiotools.replaygain.ReplayGain(44100)
-
-        self.assertEqual(
-            rg.title_gain(audiotools.PCMFileReader(BytesIO(b""),
-                                                   44100, 2, 0x3, 16)),
-            (0.0, 0.0))
-        self.assertRaises(ValueError, rg.album_gain)
-
-        # check for no tracks
-        assert(len(list(audiotools.calculate_replay_gain([]))) == 0)
-
-        # check for lots of invalid combinations for calculate_replay_gain
-        track_file1 = tempfile.NamedTemporaryFile(suffix=".wav")
-        track_file2 = tempfile.NamedTemporaryFile(suffix=".wav")
-        track_file3 = tempfile.NamedTemporaryFile(suffix=".wav")
-        try:
-            track1 = audiotools.WaveAudio.from_pcm(track_file1.name,
-                                                   BLANK_PCM_Reader(2))
-            track2 = audiotools.WaveAudio.from_pcm(track_file2.name,
-                                                   BLANK_PCM_Reader(3))
-            track3 = audiotools.WaveAudio.from_pcm(track_file3.name,
-                                                   BLANK_PCM_Reader(2))
-
-            gain = list(audiotools.calculate_replay_gain([track1,
-                                                          track2,
-                                                          track3]))
-            self.assertEqual(len(gain), 3)
-            self.assertIs(gain[0][0], track1)
-            self.assertIs(gain[1][0], track2)
-            self.assertIs(gain[2][0], track3)
-        finally:
-            track_file1.close()
-            track_file2.close()
-            track_file3.close()
+        # check for no samples
+        gain = audiotools.replaygain.ReplayGain(44100)
+        self.assertRaises(ValueError, gain.title_gain)
+        self.assertRaises(ValueError, gain.album_gain)
+        self.assertEqual(gain.title_peak(), 0.0)
+        self.assertEqual(gain.album_peak(), 0.0)
 
     @LIB_REPLAYGAIN
     def test_valid_rates(self):
@@ -4596,27 +4567,39 @@ class TestReplayGain(unittest.TestCase):
                                               0x4,
                                               16,
                                               (30000, sample_rate // 100))
-            (gain, peak) = gain.title_gain(reader)
-            self.assertLess(gain, -4.0)
-            self.assertGreater(peak, .90)
+            audiotools.transfer_data(reader.read, gain.update)
+            title_gain = gain.title_gain()
+            title_peak = gain.title_peak()
+            gain.next_title()
+            album_gain = gain.album_gain()
+            album_peak = gain.album_peak()
+            self.assertLess(title_gain, -4.0)
+            self.assertGreater(title_peak, .90)
+            self.assertEqual(title_gain, album_gain)
+            self.assertEqual(title_peak, album_peak)
 
     @LIB_REPLAYGAIN
     def test_pcm(self):
         import audiotools.replaygain
 
         gain = audiotools.replaygain.ReplayGain(44100)
-        (gain, peak) = gain.title_gain(
+        audiotools.transfer_data(
             test_streams.Sine16_Stereo(44100, 44100,
                                        441.0, 0.50,
-                                       4410.0, 0.49, 1.0))
+                                       4410.0, 0.49, 1.0).read,
+            gain.update)
+
+        title_gain = gain.title_gain()
+        title_peak = gain.title_peak()
+        gain.next_title()
 
         main_reader = test_streams.Sine16_Stereo(44100, 44100,
                                                  441.0, 0.50,
                                                  4410.0, 0.49, 1.0)
 
         reader = audiotools.replaygain.ReplayGainReader(main_reader,
-                                                        gain,
-                                                        peak)
+                                                        title_gain,
+                                                        title_peak)
 
         # read FrameLists from ReplayGainReader
         f = reader.read(4096)
@@ -4655,21 +4638,27 @@ class TestReplayGain(unittest.TestCase):
             # calculate its ReplayGain
             gain = audiotools.replaygain.ReplayGain(track1.sample_rate())
             with track1.to_pcm() as pcm:
-                (gain, peak) = gain.title_gain(pcm)
+                audiotools.transfer_data(pcm.read, gain.update)
+                title_gain = gain.title_gain()
+                title_peak = gain.title_peak()
+                gain.next_title()
 
             # apply gain to dummy file
             track2 = test_format.from_pcm(
                 dummy2.name,
                 audiotools.replaygain.ReplayGainReader(track1.to_pcm(),
-                                                       gain,
-                                                       peak))
+                                                       title_gain,
+                                                       title_peak))
 
             # ensure gain applied is quieter than without gain applied
             gain2 = audiotools.replaygain.ReplayGain(track1.sample_rate())
             with track2.to_pcm() as pcm:
-                (gain2, peak2) = gain2.title_gain(pcm)
+                audiotools.transfer_data(pcm.read, gain2.update)
+                title_gain2 = gain2.title_gain()
+                title_peak2 = gain2.title_peak()
+                gain2.next_title()
 
-            self.assertGreater(gain2, gain)
+            self.assertGreater(title_gain2, title_gain)
         finally:
             dummy1.close()
             dummy2.close()

@@ -2940,6 +2940,79 @@ def PCMConverter(pcmreader,
     return pcmreader
 
 
+class ReplayGainCalculator:
+    def __init__(self, sample_rate):
+        from audiotools.replaygain import ReplayGain
+
+        self.__replaygain__ = ReplayGain(sample_rate)
+        self.__tracks__ = []
+
+    def __iter__(self):
+        try:
+            album_gain = self.__replaygain__.album_gain()
+        except ValueError:
+            album_gain = 0.0
+        album_peak = self.__replaygain__.album_peak()
+
+        for t in self.__tracks__:
+            title_gain = t.title_gain()
+            title_peak = t.title_peak()
+            yield (title_gain, title_peak, album_gain, album_peak)
+
+    def to_pcm(self, pcmreader):
+        """given a PCMReader, returns a ReplayGainCalculatorReader
+        which can be used to calculate the ReplayGain
+        for the contents of that reader"""
+
+        if (pcmreader.sample_rate != self.__replaygain__.sample_rate):
+            raise ValueError("sample rate mismatch, %d != %d" %
+                             (pcmreader.sample_rate,
+                             self.__replaygain__.sample_rate))
+        reader = ReplayGainCalculatorReader(self.__replaygain__, pcmreader)
+        self.__tracks__.append(reader)
+        return reader
+
+
+class ReplayGainCalculatorReader(PCMReader):
+    def __init__(self, replaygain, pcmreader):
+        PCMReader.__init__(self,
+                           sample_rate=pcmreader.sample_rate,
+                           channels=pcmreader.channels,
+                           channel_mask=pcmreader.channel_mask,
+                           bits_per_sample=pcmreader.bits_per_sample)
+        self.__replaygain__ = replaygain
+        self.__pcmreader__ = pcmreader
+        self.__title_gain__ = None
+        self.__title_peak__ = None
+
+    def read(self, pcm_frames):
+        framelist = self.__pcmreader__.read(pcm_frames)
+        self.__replaygain__.update(framelist)
+        return framelist
+
+    def close(self):
+        self.__pcmreader__.close()
+        try:
+            self.__title_gain__ = self.__replaygain__.title_gain()
+        except ValueError:
+            self.__title_gain__ = 0.0
+
+        self.__title_peak__ = self.__replaygain__.title_peak()
+        self.__replaygain__.next_title()
+
+    def title_gain(self):
+        if (self.__title_gain__ is not None):
+            return self.__title_gain__
+        else:
+            raise ValueError("cannot get title_gain before closing pcmreader")
+
+    def title_peak(self):
+        if (self.__title_peak__ is not None):
+            return self.__title_peak__
+        else:
+            raise ValueError("cannot get title_peak before closing pcmreader")
+
+
 def resampled_frame_count(initial_frame_count,
                           initial_sample_rate,
                           new_sample_rate):
@@ -2967,7 +3040,6 @@ def calculate_replay_gain(tracks, progress=None):
     if (len(tracks) == 0):
         return
 
-    import audiotools.replaygain as replaygain
     from bisect import bisect
 
     SUPPORTED_RATES = [8000,  11025,  12000,  16000,  18900,  22050, 24000,
@@ -2985,47 +3057,36 @@ def calculate_replay_gain(tracks, progress=None):
     current_frames = 0
     total_frames = sum(track_frames)
 
-    rg = replaygain.ReplayGain(target_rate)
-
-    gains = []
+    rg = ReplayGainCalculator(target_rate)
 
     for (track, track_frames) in zip(tracks, track_frames):
         pcm = track.to_pcm()
 
+        # convert PCMReader to something useable
         if (pcm.channels > 2):
-            # add a wrapper to cull any channels above 2
             output_channels = 2
             output_channel_mask = 0x3
         else:
             output_channels = pcm.channels
             output_channel_mask = pcm.channel_mask
 
-        if (((pcm.channels != output_channels) or
-             (pcm.channel_mask != output_channel_mask) or
-             (pcm.sample_rate) != target_rate)):
-            pcm = PCMConverter(pcm,
-                               target_rate,
-                               output_channels,
-                               output_channel_mask,
-                               pcm.bits_per_sample)
-
-        # finally, perform the gain calculation on the PCMReader
-        # and accumulate the title gain
-        (track_gain, track_peak) = rg.title_gain(
-            PCMReaderProgress(pcm,
-                              total_frames,
-                              progress,
-                              current_frames=current_frames))
-        current_frames += track_frames
-        gains.append((track, track_gain, track_peak))
-
-        pcm.close()
-
-    # once everything is calculated, get the album gain
-    (album_gain, album_peak) = rg.album_gain()
+        # perform calculation by decoding through ReplayGain
+        with rg.to_pcm(
+            PCMReaderProgress(
+                PCMConverter(pcm,
+                             target_rate,
+                             output_channels,
+                             output_channel_mask,
+                             pcm.bits_per_sample),
+                total_frames,
+                progress,
+                current_frames)) as pcmreader:
+            transfer_data(pcmreader.read, lambda f: None)
+            current_frames += track_frames
 
     # yield a set of accumulated track and album gains
-    for (track, track_gain, track_peak) in gains:
+    for (track, (track_gain, track_peak,
+                 album_gain, album_peak)) in zip(tracks, rg):
         yield (track, track_gain, track_peak, album_gain, album_peak)
 
 

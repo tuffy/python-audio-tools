@@ -1343,6 +1343,49 @@ PCMReaderProgress Objects
    ...                                                         progress_display.update))
 
 
+ReplayGainCalculator Objects
+----------------------------
+
+.. class:: ReplayGainCalculator(sample_rate)
+
+   This class is for incrementally calculating ReplayGain
+   for an album during decoding.
+   All tracks calculated must have the same sample rate
+   which may mean resampling them to that rate if necessary.
+
+.. method:: ReplayGainCalculator.to_pcm(pcmreader)
+
+   Given a :class:`PCMReader` object,
+   returns a :class:`ReplayGainCalculatorReader`
+   linked to this calculator.
+
+.. method:: ReplayGainCalculator.__iter__()
+
+   Yields ``(title_gain, title_peak, album_gain, album_peak)`` tuples
+   for each :class:`PCMReader` processed with
+   :meth:`ReplayGainCalculator.to_pcm`
+   in the order in which they were processed.
+
+ReplayGainCalculatorReader Objects
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. class:: ReplayGainCalculatorReader(replaygain, pcmreader)
+
+   These objects are typically returned from
+   :meth:`ReplayGainCalculator.to_pcm` rather
+   than instantiated directly.
+   They function as :class:`PCMReader` objects
+   which process the :class:`pcm.FrameList` objects
+   returned by ``read`` prior to returning them.
+
+.. method:: ReplayGainCalculatorReader.title_gain()
+
+   Returns the title gain of the whole track as a floating point value.
+
+.. method:: ReplayGainCalculatorReader.title_peak()
+
+   Returns the title peak of the whole track as a floating point value.
+
 ChannelMask Objects
 -------------------
 

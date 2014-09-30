@@ -4,8 +4,6 @@
 .. module:: audiotools.replaygain
    :synopsis: a Module for Calculating and Applying ReplayGain Values
 
-
-
 The :mod:`audiotools.replaygain` module contains the ReplayGain
 class for calculating the ReplayGain gain and peak values for a set of
 PCM data, and the ReplayGainReader class for applying those
@@ -20,26 +18,51 @@ ReplayGain Objects
    the given ``sample_rate``.
    Raises :exc:`ValueError` if the sample rate is not supported.
 
-.. method:: ReplayGain.title_gain(pcmreader)
+.. attribute:: ReplayGain.sample_rate
 
-   Given a :class:`audiotools.PCMReader`-compatible object,
-   calculates its ReplayGain values and returns a pair of floats.
-   The first is the calculated gain value since our last call
-   to :meth:`title_gain`.
-   The second is the calculated peak value since our last call
-   to :meth:`title_gain`.
+   The sample rate given when the object was initialized.
 
-   May raise :exc:`ValueError` if the stream's sample rate
-   doesn't match the rate given at init-time,
-   the stream's number of channels is more than 2,
-   the stream doesn't contain enough samples
-   or the calculation generates some other error.
+.. method:: ReplayGain.update(framelist)
+
+   Given a 1 or 2 channel :class:`pcm.FrameList` object,
+   updates the current gain values with its data.
+   May raise :exc:`ValueError` if the framelist contains
+   too many channels.
+
+.. method:: ReplayGain.title_gain()
+
+   Returns the gain value of the current title as a
+   positive or negative floating point value.
+   May raise :exc:`ValueError` if not enough samples have been
+   submitted for processing.
+
+.. method:: ReplayGain.title_peak()
+
+   Returns the peak value of the title as a floating point value
+   between 0.0 and 1.0.
 
 .. method:: ReplayGain.album_gain()
 
-   Returns a pair of floats.
-   The first is the calculated gain value of the entire stream.
-   The first is the calculated peak value of the entire stream.
+   Returns the gain value of the entire album as a
+   positive or negative floating point value.
+   May raise :exc:`ValueError` if not enough samples have been
+   submitted for processing.
+
+.. method:: ReplayGain.album_peak()
+
+   Returns the peak value of the entire album as a floating point value
+   between 0.0 and 1.0.
+
+.. method:: ReplayGain.next_title()
+
+   Indicates the current track is finished and resets the stream
+   to process the next track.
+   This method should be called after :meth:`ReplayGain.title_gain`
+   and :meth:`ReplayGain.title_peak` have been used to
+   extract the title's gain values, but before data has
+   been submitted for the next title or :meth:`ReplayGain.album_gain`
+   :meth:`ReplayGain.album_peak` have been called to get
+   the entire album's gain values.
 
 ReplayGainReader Objects
 ------------------------

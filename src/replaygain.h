@@ -72,7 +72,9 @@ typedef struct {
     uint32_t  A [STEPS_per_dB_times_MAX_dB];
     uint32_t  B [STEPS_per_dB_times_MAX_dB];
 
+    PyObject *framelist_type;
     unsigned sample_rate;
+    double title_peak;
     double album_peak;
 } replaygain_ReplayGain;
 
@@ -86,10 +88,25 @@ int
 ReplayGain_init(replaygain_ReplayGain *self, PyObject *args, PyObject *kwds);
 
 PyObject*
-ReplayGain_title_gain(replaygain_ReplayGain *self, PyObject* args);
+ReplayGain_sample_rate(replaygain_ReplayGain *self, void *closure);
+
+PyObject*
+ReplayGain_next_title(replaygain_ReplayGain *self);
+
+PyObject*
+ReplayGain_update(replaygain_ReplayGain *self, PyObject *args);
+
+PyObject*
+ReplayGain_title_gain(replaygain_ReplayGain *self);
+
+PyObject*
+ReplayGain_title_peak(replaygain_ReplayGain *self);
 
 PyObject*
 ReplayGain_album_gain(replaygain_ReplayGain *self);
+
+PyObject*
+ReplayGain_album_peak(replaygain_ReplayGain *self);
 
 gain_calc_status
 ReplayGain_analyze_samples(replaygain_ReplayGain* self,
