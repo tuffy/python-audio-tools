@@ -22,6 +22,9 @@
 import audiotools
 from audiotools import PY3, PY2
 
+if PY3:
+    raw_input = input
+
 try:
     import urwid
 
@@ -2654,7 +2657,7 @@ def select_metadata(metadata_choices, msg, use_default=False):
             try:
                 choice = int(raw_input(u"%s (1-%d) : " %
                                        (LAB_SELECT_BEST_MATCH,
-                                        len(metadata_choices)))) - 1
+                                       len(metadata_choices)))) - 1
             except ValueError:
                 choice = None
 

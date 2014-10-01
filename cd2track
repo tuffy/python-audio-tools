@@ -487,23 +487,51 @@ if (__name__ == '__main__'):
     header.add_column(u"")
     header.add_column(_.LAB_TRACKVERIFY_AR_VERSION2, "center", colspan=5)
 
-    header = table.row()
+    # header for terminals with more horizontal space
+    wide_header = [u" #",
+                   u"err",
+                   u"skip",
+                   u"atom",
+                   u"edge",
+                   u"drop",
+                   u"dup",
+                   u"drift",
+                   _.LAB_TRACKVERIFY_AR_CONFIDENCE,
+                   _.LAB_TRACKVERIFY_AR_OFFSET,
+                   _.LAB_TRACKVERIFY_AR_CHECKSUM,
+                   _.LAB_TRACKVERIFY_AR_CONFIDENCE,
+                   _.LAB_TRACKVERIFY_AR_OFFSET,
+                   _.LAB_TRACKVERIFY_AR_CHECKSUM]
 
-    header.add_column(u" #")
-    for label in [u"err",
-                  u"skip",
-                  u"atom",
-                  u"edge",
-                  u"drop",
-                  u"dup",
-                  u"drift",
-                  _.LAB_TRACKVERIFY_AR_CONFIDENCE,
-                  _.LAB_TRACKVERIFY_AR_OFFSET,
-                  _.LAB_TRACKVERIFY_AR_CHECKSUM,
-                  _.LAB_TRACKVERIFY_AR_CONFIDENCE,
-                  _.LAB_TRACKVERIFY_AR_OFFSET,
-                  _.LAB_TRACKVERIFY_AR_CHECKSUM]:
-        header.add_column(u" ")
+    # header for terminals limited to 80 columns
+    narrow_header = [u" #",
+                     u"err",
+                     u"skip",
+                     u"atom",
+                     u"edge",
+                     u"drop",
+                     u"dup",
+                     u"drift",
+                     _.LAB_TRACKVERIFY_AR_CONF,
+                     _.LAB_TRACKVERIFY_AR_OFFSET,
+                     _.LAB_TRACKVERIFY_AR_CHECKSUM,
+                     _.LAB_TRACKVERIFY_AR_CONF,
+                     _.LAB_TRACKVERIFY_AR_OFFSET,
+                     _.LAB_TRACKVERIFY_AR_CHECKSUM]
+
+    if (msg.output_isatty() and
+        (len(audiotools.output_text(u" ").join(
+                 [audiotools.output_text(h) for h in wide_header])) <=
+         msg.terminal_size(sys.stdout.fileno())[1])):
+        header_list = wide_header
+    else:
+        header_list = narrow_header
+
+    header = table.row()
+    for (label, is_first) in [(label, i == 0) for (i, label) in
+                              enumerate(header_list)]:
+        if (not is_first):
+            header.add_column(u" ")
         header.add_column(label, "right")
 
     table.divider_row([_.DIV] +
